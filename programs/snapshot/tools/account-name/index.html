@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Account Lookup | ULTRAIN</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="./lib/scripts/base32.js?h78h" type="text/javascript"></script>
+  <script src="./lib/scripts/sha3.min.js?h78h" type="text/javascript"></script>
+  <!-- <script src="./lib/scripts/polyfill.min.js" type="text/javascript"></script> -->
+  <script src="./lib/scripts/init.js?h78h" type="text/javascript"></script>
+  <script src="./lib/scripts/load-snapshot.js?h78h" type="text/javascript"></script>
+  <!-- <script src="./dist/bundle-account-name.js" type="text/javascript"></script> -->
+  <link rel="stylesheet" href="./lib/styles/main.css?h78h">
+  <link rel="stylesheet" href="./lib/styles/genesis.css?h78h">
+
+  <script type="text/javascript">
+    var SNAPSHOT
+  </script>
+</head>
+<body id="loading">
+<div class="wrapper">
+  <img src="/genesis/tools/genesis/lib/images/logo.png" id="logo" />
+  <div class="search">
+    <form>
+      <H2>Enter ETH Address or ULTRAIN Public Key</h2>
+      <input type="text"></input>
+      <input type="submit"></input>
+    </form>
+    <em class="note">If you have tokens included in the snapshot, enter your Ethereum address or ULTRAIN Public Key to retrieve the username assigned in genesis.</em>
+  </div>
+  <div class="result">
+    Your account name is <span></span>
+  </div>
+  <div class="error">
+
+  </div>
+</div>
+<div class="error wrapper">
+  <div class="error error-not-found">It does not appear that <span></span> is in the <a href="https://raw.githubusercontent.com/ULTRAINIO/genesis/master/snapshot.csv">Snapshot</a></div>
+  <div class="error error-invalid">It does not appear that <span></span> is an ULTRAIN address or Ethereum address</div>
+  <!-- <h1>Error: Snapshot not Found</h1>
+  Unable to locate snapshot.csv in the <a target="_blank" href="https://github.com/ultrainio/genesis">ULTRAINIO/genesis repository</a>. -->
+</div>
+<div class="loader">
+  <svg xmlns="http://www.w3.org/2000/svg" version="1.1">
+    <defs>
+      <filter id="gooey">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur"></feGaussianBlur>
+        <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo"></feColorMatrix>
+        <feBlend in="SourceGraphic" in2="goo"></feBlend>
+      </filter>
+    </defs>
+  </svg>
+  <div class="blob blob-0"></div>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+  <div class="blob blob-5"></div>
+</div>
+</body>
+</html>

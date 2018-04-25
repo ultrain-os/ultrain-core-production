@@ -1,0 +1,36 @@
+version: "3"
+
+services:
+  builder:
+    build:
+      context: builder
+    image: ultrainio/builder
+
+  nodultraind:
+    build:
+      context: .
+    image: ultrainio/ultrain
+    command: /opt/ultrainio/bin/nodultraind.sh
+    hostname: nodultraind
+    ports:
+      - 8888:8888
+      - 9876:9876
+    expose:
+      - "8888"
+    volumes:
+      - nodultrain-data-volume:/opt/ultrainio/bin/data-dir
+
+  kultraind:
+    image: ultrainio/ultrain
+    command: /opt/ultrainio/bin/kultraind
+    hostname: kultraind
+    links:
+      - nodultraind
+    volumes:
+      - kultraind-data-volume:/opt/ultrainio/bin/data-dir
+
+volumes:
+  nodultrain-data-volume:
+    external: true
+  kultraind-data-volume:
+    external: true

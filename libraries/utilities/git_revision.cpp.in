@@ -1,0 +1,14 @@
+#include <stdint.h>
+#include <ultrain/utilities/git_revision.hpp>
+
+#define ULTRAIN_GIT_REVISION_SHA "@ULTRAIN_GIT_REVISION_SHA@"
+#define ULTRAIN_GIT_REVISION_UNIX_TIMESTAMP @ULTRAIN_GIT_REVISION_UNIX_TIMESTAMP@
+#define ULTRAIN_GIT_REVISION_DESCRIPTION "@ULTRAIN_GIT_REVISION_DESCRIPTION@"
+
+namespace ultrainio { namespace utilities {
+
+const char* const git_revision_sha = ULTRAIN_GIT_REVISION_SHA;
+const uint32_t git_revision_unix_timestamp = ULTRAIN_GIT_REVISION_UNIX_TIMESTAMP;
+const char* const git_revision_description = ULTRAIN_GIT_REVISION_DESCRIPTION;
+
+} } // end namespace ultrainio::utilities

@@ -1,0 +1,48 @@
+{
+	"parameters": {
+		"period": 162,
+		"block_begin": 3904416,
+		"block_end": 4669904,
+		"b1_dist": true
+	},
+	"accounts": {
+		"valid": 11223,
+		"registered": 11223,
+		"registered_percent": "100%",
+		"fallback": 0,
+		"fallback_percent": "0%"
+	},
+	"supply": {
+		"expected": 624000000,
+		"included": 170463477.5575,
+		"percent_included": "27%",
+		"liquid": 624000000.066,
+		"margin_of_error": "-0.00000001%"
+	},
+	"meta": {
+		"author": "Sandwich",
+		"timestamp_completed": 1512380163
+	},
+	"checksum": {
+		"output": {
+			"snapshot": "4f6d7d8c9907d10ee98d28c3ae807270587c952c"
+		},
+		"db": {
+			"wallets": "ca8a5e35542e02fefa3dc5679cd44145b4d14796",
+			"buys": "48630f60547142b489b2bf032c4dd458c8a814dd",
+			"claims": "ac9e68d4cb84eaf2ecd8648c29f9e222f99a25f8",
+			"registrations": "7ec93c2b88d6bbffac976a216cd6d3350319993b",
+			"transfers": "a14b3588b0872c23032c679e371bfaf059e9be35",
+			"snapshot": "3394fb176512c29c4da427e5a245c073ec3aa476"
+		}
+	},
+	"stats": {
+		"contracts": {
+			"buys": 123268,
+			"claims": 522271,
+			"registrations": 28320,
+			"transfers": 1260437,
+			"reclaimables": 187
+		}
+	}
+}

@@ -1,0 +1,88 @@
+body, html {  margin:0; padding:0; min-height: 100% !important; height: 100%;}
+html { background: url(../images/bg.jpg) no-repeat center center fixed; -webkit-background-size: cover;-moz-background-size: cover;-o-background-size: cover; background-size: cover; }
+
+* { font-family: 'Open Sans', sans-serif; }
+
+#wrapper { position:fixed; left:40px; right:40px; bottom:40px; top:40px; border-radius: 4px; text-align:center; z-index: 2; }
+/* body#keyGen-active #wrapper, body#validator-active #wrapper { border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.8); } */
+#logo { margin:0 auto; max-height:300px; width:auto; display:block; }
+
+#entropy { text-align:center; position:absolute; z-index:3; top:0px; right:0px; bottom:0px; left: 0px; background:rgba(255,255,255,0.8) url(../images/loading.gif) center center no-repeat;}
+
+#entropy span { display:inline-block; margin:200px auto 0; text-align:center;  }
+
+body #entropy { display:none }
+body.entropy #entropy { display:block;  }
+
+/* #indicator { position:absolute; z-index:1; top:0px; right:0px; bottom:-100px; left: 0px; } */
+body #indicator {display:none; }
+body.valid, body.error {display:block}
+
+input.error { border-color:red; }
+input.valid { border-color:green; }
+.progress {height:10px; background:black; width:0%; display:block; transition: all 2s ease;}
+a.expanded {font-weight:bold;}
+
+div.toggle {display:none;}
+div.toggle.expanded {display:block}
+
+label { margin-top:15px; display:inline-block; text-transform:uppercase; font-weight:bold; color:rgba(0,0,0,0.5) }
+input[type=text] { font-size: 20pt; text-align:center; background:rgba(255,255,255,0.5); border-width:0; width:90%; display:block; margin:0 auto; padding:5px 10px; }
+
+#keyGen input[type=text] { cursor:pointer; }
+
+/* form { margin-top:85px} */
+
+.message { height:85px; }
+
+body#validator-active .message { font-size: 30pt; color:white; }
+body#validator-active .message span { display:none; opacity:0; }
+body#validator-active.valid .message .valid { display:block;opacity:1; }
+body#validator-active.error .message .invalid { display:block;opacity:1; }
+
+/* body.valid {background:green;}
+body.error {background:red;} */
+
+a, input[type=submit], button { margin-top:15px; border:0; font-size:15pt; cursor:pointer; display:inline-block; margin-right:10px; padding:10px 15px; font-weight:bold; letter-spacing:1px; text-decoration: none; border-radius: 5px; }
+a { color: black; background:rgba(248,214,155,0.7);}
+a:hover { background:rgba(248,214,155,0.8) }
+
+a.reset { color: white; background:rgba(255,0,0,0.7); position:absolute; bottom:10px; left:10px;}
+a.reset:hover { color: white; background:rgba(255,0,0,0.8);}
+
+a.regenerate, #validator input[type=submit] { position:absolute; bottom:10px; left:50%; transform: translateX(-50%); }
+
+a.copy { color: white; background:rgba(255,0,0,0.7); position:absolute; bottom:10px; left:10px;}
+a.copy:hover { color: white; background:rgba(255,0,0,0.8);}
+
+/* #validator input[type=submit] { opacity:0; } */
+#validator input[type=submit].ready { opacity:1; }
+
+body.error {
+	width: 100wh;
+	height: 90vh;
+	color: #fff;
+  background-position: 100% 50%;
+	background: linear-gradient(-45deg, rgba(255,255,255,0), rgba(255,0,0,0.5));
+	background-size: 400% 400%;
+	animation: Gradient 3s normal;
+}
+
+body.valid {
+	width: 100wh;
+	height: 90vh;
+	color: #fff;
+  background-position: 100% 50%;
+	background: linear-gradient(-45deg, rgba(255,255,255,0), rgba(0,255,0,0.5));
+	background-size: 400% 400%;
+	animation: Gradient 3s normal;
+}
+
+@keyframes Gradient {
+	0% {
+		background-position: 100% 50%
+	}
+	100% {
+		background-position: 0% 50%
+	}
+}

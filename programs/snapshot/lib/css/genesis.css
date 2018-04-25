@@ -1,0 +1,15 @@
+h1 {font-size:20pt; letter-spacing:1px; text-transform:uppercase; font-weight:normal; color:#555;}
+button  { width:100%; background:#6ab86a; color:white; display:block; margin-top:22px; font-size:12pt; padding:11px 0; border:5px solid rgba(0,0,0,0.1); }
+button:hover  { background:#448b44; cursor:pointer; }
+
+.wrapper {color:#F0F0F0; padding-bottom:44px;}
+
+body { transition: all 1s ease; }
+body#loading {background:#333;}
+body#loading > * {display:none; }
+body#loading .loader {display:block; position:absolute; top:50%; left:50%; transform: translateX(-50%) translateY(-50%) }
+body#ready .loader {display:none;}
+
+body#error > * {display:none;}
+body .error { display:none; }
+body#error .error {display:block; background:rgba(255,0,0,0.3); line-height:20pt; text-align:left;}

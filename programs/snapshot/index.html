@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Genesis Block | ULTRAIN</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="./tools/genesis/lib/scripts/base32.js" type="text/javascript"></script>
+  <script src="./tools/genesis/lib/scripts/sha3.min.js" type="text/javascript"></script>
+  <script src="./tools/genesis/lib/scripts/jquery.datetimepicker.full.min.js" type="text/javascript"></script>
+  <script src="./tools/genesis/lib/scripts/repeatable-fields.js" type="text/javascript"></script>
+  <script src="./tools/genesis/lib/scripts/jquery.repeatable.js" type="text/javascript"></script>
+  <script src="./tools/genesis/lib/scripts/utilities.js" type="text/javascript"></script>
+  <script src="./tools/genesis/lib/scripts/init.js" type="text/javascript"></script>
+  <script src="./tools/genesis/dist/bundle-genesis.js?fhas893n8d923m" type="text/javascript"></script>
+  <link rel="stylesheet" href="./tools/genesis/lib/styles/main.css">
+  <link rel="stylesheet" href="./tools/genesis/lib/styles/genesis.css">
+  <script type="text/javascript">
+    var SNAPSHOT
+  </script>
+</head>
+<body id="loading">
+<div class="templates">
+
+  <!--
+  PRODUCERS TEMPLATE
+  -->
+  <script type="text/template" id="template_initial_producers">
+    <div class="initial-producer repeated">
+      <!-- <label for="owner_name_{?}">Account Name</label> -->
+      <input type="text" class="text" name="owner_{?}" data-key="owner_name" placeholder="Account Name" />
+      <!-- <label for="block_singing_key_{?}">Block Signing Key</label> -->
+      <input type="text" class="text" name="block_singing_key_{?}" data-key="block_signing_key" placeholder="Block Signing Key" />
+    </div>
+  </script>
+
+  <!--
+  ADDITIONAL_ACCOUNTS TEMPLATE
+  -->
+  <script type="text/template" id="template_additional_accounts">
+    <div class="additional-account repeated">
+      <!-- <label for="name_{?}">Account Name</label> -->
+      <input type="text" class="text" name="name_{?}" data-key="name" placeholder="Account Name" />
+      <!-- <label for="owner_key_{?}">Owner Key</label> -->
+      <input type="text" class="text" name="owner_key_{?}" data-key="owner_key" placeholder="Owner Key" />
+      <!-- <label for="active_key_{?}">Active Key</label> -->
+      <input type="text" class="text" name="active_key_{?}" data-key="active_key" placeholder="Active Key" />
+      <!-- <label for="liquid_balance_{?}">ULTRAIN Balance</label> -->
+      <input type="text" class="text" name="liquid_balance_{?}" data-key="liquid_balance" placeholder="UTR Balance" />
+      <button class="delete">X</button>
+    </div>
+  </script>
+
+</div>
+<div class="wrapper">
+    <img src="/genesis/tools/genesis/lib/images/logo.png" id="logo" />
+    <h1>Genesis Block Generator</h1>
+
+    <div class="form-group import-config">
+      <h2> Import Configuration File</h2>
+      <label>Import a <strong>genesis-config.json</strong></label>
+      <input id="config-file" type="file"></input>
+    </div>
+
+    <form>
+      <div class="form-group" data-key="initial_timestamp" data-single="yes">
+        <h2>Set Timestamp</h2>
+        <div class="fields with-labels">
+          <label for="initial_timestamp">Initial Timestamp</label>
+          <input type="text" class="text" name="initial_timestamp" placeholder="yyyy-mm-ddThh:mm:ss">
+        </div>
+      </div>
+      <div class="form-group" data-key="initial_parameters">
+        <h2>Set Initial Parameters</h2>
+        <div class="fields with-labels initial-parameters">
+          <label for="maintenance_interval">Maintenance Interval</label>
+          <input type="text" class="text" name="maintenance_interval" data-key="maintenance_interval" placeholder="Maintenance Interval" value="86400"> <br />
+          <label for="maintenance_skip_slots">Maintenance Skip Slots</label>
+          <input type="text" class="text" name="maintenance_skip_slots" data-key="maintenance_skip_slots" placeholder="Maintenance Skip Slots" value="3"><br />
+          <label for="maximum_transaction_size">Maximum Transaction Size</label>
+          <input type="text" class="text" name="maximum_transaction_size" data-key="maximum_transaction_size" placeholder="Maximum Transaction Size" value="2048"><br />
+          <label for="maximum_block_size">Maximum Block Size</label>
+          <input type="text" class="text" name="maximum_block_size" data-key="maximum_block_size" placeholder="Maximum Block Size" value="2048000000"><br />
+          <label for="maximum_time_until_expiration">Maximum Time Until Expiration</label>
+          <input type="text" class="text" name="maximum_time_until_expiration" data-key="maximum_time_until_expiration" placeholder="Maximum Time Until Expiration" value="86400"><br />
+          <label for="maximum_producer_count">Maximum Producer Count</label>
+          <input type="text" class="text" name="maximum_producer_count" data-key="maximum_producer_count" placeholder="Maximum Producer Count" value="1001"><br />
+        </div>
+      </div>
+      <div class="form-group" data-key="initial_producers">
+        <h2>Set Initial Producers</h2>
+        <div class="initial-producers repeatables"></div>
+      </div>
+      <div class="form-group" data-key="additional_accounts">
+        <h2>Add Additional Accounts</h2>
+        <div class="additional-accounts repeatables"></div>
+        <input type="button" value="Add Account" class="add-account" />
+      </div>
+
+      <input type="submit" id="export_genesis_json" value="Generate Genesis.json" />
+      <button id="export_genesis_config">Save Genesis Config</button>
+    </form>
+
+
+    <!-- <button id="generate_genesis" onclick="download_genesis_json(genesis)">genesis.json</button> -->
+<!--
+    <em>snapshot.csv</em> has not yet been included in the repository, you can upload a snapshot generated from the <a href="./snapshot.html">ULTRAIN Snapshot Generator</a> to test this functionality if desired. -->
+</div>
+<div class="error wrapper">
+  <h1>Error: Snapshot not Found</h1>
+  Unable to locate snapshot.csv in the <a target="_blank" href="https://github.com/ultrainio/genesis">ULTRAINIO/genesis repository</a>. This most likely means it has not yet been committed yet, please standby.
+</div>
+<div class="loader">
+  <svg xmlns="http://www.w3.org/2000/svg" version="1.1">
+    <defs>
+      <filter id="gooey">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur"></feGaussianBlur>
+        <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo"></feColorMatrix>
+        <feBlend in="SourceGraphic" in2="goo"></feBlend>
+      </filter>
+    </defs>
+  </svg>
+  <div class="blob blob-0"></div>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+  <div class="blob blob-5"></div>
+</div>
+</body>
+</html>

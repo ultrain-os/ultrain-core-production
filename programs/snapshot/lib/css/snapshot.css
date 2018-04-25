@@ -1,0 +1,36 @@
+.disconnected, .syncing                             { display:none  }
+body#disconnected #snapshot, body#syncing #snapshot { display:none  }
+body#disconnected .disconnected                     { display:block }
+body#syncing .syncing                               { display:block }
+
+#snapshot.wrapper {}
+.error.wrapper    { background:rgba(255,0,0,0.3); line-height:20pt; text-align:left;}
+
+.status { font-size:14pt; text-transform:uppercase; color:#444;  }
+.status > span { margin:10px 0; text-transform:none; display:block; font-size:25pt; color:#fff; }
+.status > span > span { color:#555; font-size:15pt; display:block; font-weight:normal; }
+
+#snapshot > div { display:none; padding:33px 0; border-bottom:1px solid #222; margin-bottom:22px; }
+#snapshot > div:last-child { margin-bottom:0px; border:none; }
+
+body.registry #registry,
+body.reclaimer #reclaimer,
+body.distribute #distribute,
+body.complete #complete { display:block; }
+
+body.complete #complete div {margin:9px 0 22px;}
+body.complete #complete div span.output                 { display:block; color:#888; background:#111; padding:0; text-align:left; clear:both; }
+body.complete #complete div span.output > *             { display: inline-block; width:33.33%; margin:0; padding:12px 0; font-size:10pt;  font-weight:bold; text-align:center ;}
+body.complete #complete div span.output > span          { text-align:right; }
+body.complete #complete div span.output a.btn           { color:#bbb; text-decoration:none; }
+body.complete #complete div span.output a.btn:hover     { background:#222; color:#ccc; }
+
+body.complete #complete div span.output > .genesis.btn { width:100%;   }
+body.complete #complete div span.output > .genesis.btn, body.complete #complete div span.output .btn.snapshot-csv  { background:#6ab86a; color:white !important; }
+body.complete #complete div span.output > .genesis.btn:hover, body.complete #complete div span.output .btn.snapshot-csv:hover   { background:#448b44; }
+
+body #snapshot > .loader { display:block; height:33px; position:relative; padding:0; } 
+body.complete .loader { visibility:hidden; }
+
+body .testnet-message {display:none;}
+body.testnet .testnet-message {display:block;}

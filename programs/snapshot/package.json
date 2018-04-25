@@ -1,0 +1,35 @@
+{
+  "dependencies": {
+    "ascii-table": "0.0.9",
+    "async": "^2.5.0",
+    "babel-polyfill": "6.26.0",
+    "bignumber.js": "^4.0.4",
+    "chalk": "^2.1.0",
+    "checksum": "0.1.1",
+    "cli-table": "^0.3.1",
+    "ultrainjs-ecc": "^1.3.2",
+    "ethereumjs-util": "5.1.2",
+    "json-to-csv": "github:dskvr/json-to-csv",
+    "jsontocsv": "0.3.0",
+    "md5": "2.2.1",
+    "mysql": "^2.14.1",
+    "mysql2": "^1.4.2",
+    "nodemon": "^1.12.0",
+    "optimist": "0.6.1",
+    "pretty-ms": "3.0.1",
+    "prompt": "1.0.0",
+    "redis": "2.8.0",
+    "redis-commands": "1.3.1",
+    "require-injector": "3.1.6",
+    "sequelize": "^4.13.3",
+    "sql2csv": "1.3.0",
+    "web3": "1.0.0-beta.26"
+  },
+  "devDependencies": {
+    "babel-cli": "6.26.0"
+  },
+  "scripts": {
+    "compile-genesis": "babel ./tools/genesis/lib/scripts/genesis.js ./tools/genesis/lib/scripts/class.genesis.js ./tools/genesis/lib/scripts/export.js  --plugins babel-polyfill --out-file ./tools/genesis/dist/bundle-genesis.js",
+    "compile-account-name": "babel ./tools/account-name/lib/scripts/load-snapshot.js ./tools/account-name/lib/scripts/init.js  --plugins babel-polyfill --out-file ./tools/account-name/dist/bundle-account-name.js"
+  }
+}

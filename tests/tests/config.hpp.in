@@ -1,0 +1,10 @@
+/**
+ *  @file
+ *  @copyright defined in ultrain/LICENSE.txt
+ */
+
+namespace ultrainio { namespace tests { namespace config {
+   constexpr char ultrainiolib_path[] = "${CMAKE_CURRENT_SOURCE_DIR}/../contracts";
+   constexpr char pfr_include_path[] = "${CMAKE_CURRENT_SOURCE_DIR}/../externals/magic_get/include";
+   constexpr char boost_include_path[] = "${Boost_INCLUDE_DIR}";
+}}}

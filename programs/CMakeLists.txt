@@ -1,0 +1,6 @@
+add_subdirectory( nodultrain )
+add_subdirectory( clultrain )
+add_subdirectory( kultraind )
+add_subdirectory( ultrainio-launcher )
+add_subdirectory( ultrainio-applesedemo )
+add_subdirectory( ultrainio-abigen )

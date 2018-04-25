@@ -1,0 +1,223 @@
+#!/bin/bash
+##########################################################################
+# This is the ULTRAINIO automated install script for Linux and Mac OS.
+# This file was downloaded from https://github.com/ULTRAINIO/ultrain
+#
+# Copyright (c) 2017, Respective Authors all rights reserved.
+#
+# After June 1, 2018 this software is available under the following terms:
+#
+# The MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# https://github.com/ULTRAINIO/ultrain/blob/master/LICENSE.txt
+##########################################################################
+
+	VERSION=1.2
+	ULIMIT=$( ulimit -u )
+	WORK_DIR=$PWD
+	BUILD_DIR=${WORK_DIR}/build
+	TEMP_DIR=/tmp
+	ARCH=$( uname )
+	DISK_MIN=20
+	TIME_BEGIN=$( date -u +%s )
+
+	txtbld=$(tput bold)
+	bldred=${txtbld}$(tput setaf 1)
+	txtrst=$(tput sgr0)
+
+
+	printf "\n\tBeginning build version: ${VERSION}\n"
+	printf "\t$( date -u )\n"
+	printf "\tgit head id: $( cat .git/refs/heads/master )\n"
+	printf "\tCurrent branch: $( git branch | grep \* )\n"
+	printf "\n\tARCHITECTURE: ${ARCH}\n"
+
+	if [ $ARCH == "Linux" ]; then
+
+		if [ ! -e /etc/os-release ]; then
+			printf "\n\tULTRAINIO currently supports Amazon, Centos, Fedora, Mint & Ubuntu Linux only.\n"
+			printf "\tPlease install on the latest version of one of these Linux distributions.\n"
+			printf "\thttps://aws.amazon.com/amazon-linux-ami/\n"
+			printf "\thttps://www.centos.org/\n"
+			printf "\thttps://start.fedoraproject.org/\n"
+			printf "\thttps://linuxmint.com/\n"
+			printf "\thttps://www.ubuntu.com/\n"
+			printf "\tExiting now.\n"
+			exit 1
+		fi
+
+		OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
+
+		case $OS_NAME in
+			"Amazon Linux AMI")
+				FILE=${WORK_DIR}/scripts/ultrainio_build_amazon.sh
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+				export CMAKE=${HOME}/opt/cmake/bin/cmake
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
+			;;
+			"CentOS Linux")
+				FILE=${WORK_DIR}/scripts/ultrainio_build_centos.sh
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+				export CMAKE=${HOME}/opt/cmake/bin/cmake
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
+			;;
+			"Fedora")
+				FILE=${WORK_DIR}/scripts/ultrainio_build_fedora.sh
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
+				MONGOD_CONF=/etc/mongod.conf
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+			;;
+			"Linux Mint")
+				FILE=${WORK_DIR}/scripts/ultrainio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
+			;;
+			"Ubuntu")
+				FILE=${WORK_DIR}/scripts/ultrainio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
+			;;
+			*)
+				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
+				exit 1
+		esac
+
+		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
+		export OPENSSL_ROOT_DIR=/usr/include/openssl
+		export WASM_ROOT=${HOME}/opt/wasm
+	fi
+
+	if [ $ARCH == "Darwin" ]; then
+		FILE=${WORK_DIR}/scripts/ultrainio_build_darwin.sh
+		CXX_COMPILER=clang++
+		C_COMPILER=clang
+		MONGOD_CONF=/usr/local/etc/mongod.conf
+		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+		export WASM_ROOT=/usr/local/wasm
+	fi
+
+	. $FILE
+
+	printf "\n\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing ULTRAIN.IO\n\n"
+
+	COMPILE_ULTRAIN=1
+	COMPILE_CONTRACTS=1
+
+# 	export ULTRAIN_BUILD_TYPE=[Debug|Release|RelWithDebInfo|MinSizeRel] to enable
+	CMAKE_BUILD_TYPE=Release
+	if [ ! -z $ULTRAIN_BUILD_TYPE ]; then
+		CMAKE_BUILD_TYPE=$ULTRAIN_BUILD_TYPE
+	fi
+
+	cd ${WORK_DIR}
+	mkdir -p ${BUILD_DIR}
+	cd ${BUILD_DIR}
+
+	if [ -z $CMAKE ]; then
+		CMAKE=$( which cmake )
+	fi
+
+	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
+	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
+	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
+	..
+
+	if [ $? -ne 0 ]; then
+		printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building ULTRAINIO has exited with the above error.\n\n"
+		exit -1
+	fi
+
+	make -j${CPU_CORE}
+
+	if [ $? -ne 0 ]; then
+		printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building ULTRAINIO has exited with the above error.\n\n"
+		exit -1
+	fi
+
+# 	printf "\n\tVerifying MongoDB is running.\n"
+# 	MONGODB_PID=$( pgrep -x mongod )
+# 	if [ -z $MONGODB_PID ]; then
+# 		printf "\tMongoDB is not currently running.\n"
+# 		printf "\tStarting MongoDB.\n"
+# 		mongod -f ${MONGOD_CONF} &
+# 		if [ $? -ne 0 ]; then
+# 			printf "\tUnable to start MongoDB.\nExiting now.\n\n"
+# 			exit -1
+# 		fi
+# 		MONGODB_PID=$( pgrep -x mongod )
+# 		printf "\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n\n"
+# 	else
+# 		printf "\tMongoDB is running PID=${MONGODB_PID}.\n\n"
+# 	fi
+
+	TIME_END=$(( `date -u +%s` - $TIME_BEGIN ))
+
+	printf "\n\n${bldred}\t          _    _________ _______  _______ _________ _       \n"
+	printf '\t|\     /|( \   \__   __/(  ____ )(  ___  )\__   __/( (    /|\n'
+	printf '\t| )   ( || (      ) (   | (    )|| (   ) |   ) (   |  \  ( |\n'
+	printf '\t| |   | || |      | |   | (____)|| (___) |   | |   |   \ | |\n'
+	printf '\t| |   | || |      | |   |     __)|  ___  |   | |   | (\ \) |\n'
+	printf '\t| |   | || |      | |   | (\ (   | (   ) |   | |   | | \   |\n'
+	printf '\t| (___) || (____/\| |   | ) \ \__| )   ( |___) (___| )  \  |\n'
+	printf '\t(_______)(_______/)_(   |/   \__/|/     \|\_______/|/    )_)\n'
+
+	printf "\n\tULTRAIN.IO has been successfully built. %d:%d:%d\n\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
+	printf "\tTo verify your installation run the following commands:\n"
+	printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
+	if [ "$OS_NAME" == "CentOS Linux" ]; then
+		printf "\tsource /opt/rh/python33/enable\n"
+	fi
+	printf "\tcd ${HOME}/ultrain/build; make test\n\n"
+	printf "\tFor more information:\n"
+	printf "\tULTRAIN.IO website: http://ultrain.io\n"
+
+   if [ "x${ULTRAINIO_BUILD_PACKAGE}" != "x" ]; then
+      # Build ultrain.io package
+      $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
+      -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
+      -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
+      -DCMAKE_INSTALL_PREFIX=/usr ..
+
+      if [ $? -ne 0 ]; then
+         printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building ultrain.io package has exited with the above error.\n\n"
+         exit -1
+      fi
+
+      make -j${CPU_CORE} VERBOSE=0 package
+
+      if [ $? -ne 0 ]; then
+         printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building ultrain.io package has exited with the above error.\n\n"
+         exit -1
+      fi
+
+      printf "\n\t>>>>>>>>>>>>>>>>>>>> ultrain.io package has been successfully built.\n\n"
+   fi

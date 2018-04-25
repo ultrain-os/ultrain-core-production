@@ -1,0 +1,13 @@
+machine:
+  services:
+    - docker
+
+dependencies:
+  override:
+    - cd ~/ultrain && docker build -t ultrainio/ultrain -f Docker/Dockerfile .
+
+test:
+  pre:
+    - sleep 5
+  override:
+    - docker run ultrainio/ultrain

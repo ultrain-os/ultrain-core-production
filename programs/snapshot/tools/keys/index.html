@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>ULTRAIN Keys Utility</title>
+    <link rel="stylesheet" href="./src/css/tabby.min.css"></link>
+    <link rel="stylesheet" href="./src/fonts/fonts.css">
+    <link rel="stylesheet" href="./src/css/main.css"></link>
+  </head>
+  <body>
+    <div id="entropy">
+      <span>Adding CPU Entropy</span>
+    </div>
+    <div id="indicator"></div>
+    <div data-tabs-content id="wrapper">
+      <div data-tabs-pane class="tabs-pane active" id="welcome">
+        <img src="./src/images/logo.png" id="logo" />
+        <a data-tabs-pane href="#keyGen">Generator</a>
+        <a data-tabs-pane href="#validator">Validator</a>
+      </div>
+      <div data-tabs-pane class="tabs-pane" id="keyGen">
+        <div class="message">
+          Below is a valid ULTRAIN keypair, click each key to copy.
+        </div>
+        <form>
+          <label for="public_key">Public Key</label>
+          <input type="text" name="public_key" readonly data-clipboard-target="this" />
+          <label for="private_key">Private key</label>
+          <input type="text" name="private_key" readonly data-clipboard-target="this" />
+        </form>
+        <a href="#" class="regenerate">Regenerate</a>
+        <a href="#" class="reset">Go Back</a>
+      </div>
+      <div data-tabs-pane class="tabs-pane" id="validator">
+        <div class="message">
+          <span class="valid">Valid</span>
+          <span class="invalid">Invalid</span>
+        </div>
+        <form>
+          <label for="public_key">Public Key</label>
+          <input type="text" name="public_key" value="UTR5AgpY4XyRvgnQRk5N3VYycoP98WNNxGqZsCRU4yaF9oPkSYq3Q" placeholder="ULTRAIN..." />
+          <label for="private_key">Private key</label>
+          <input type="text" name="private_key" value="5KAATZPGtqeTB2heLdzL8DjDrL9yxSjq8LtG1j5uTfuvwfP1sjt" placeholder="5..." />
+          <input type="submit" value="Validate" />
+        </form>
+        <a href="#" class="reset">Go Back</a>
+      </div>
+    </divb>
+    <script>
+      // You can also require other files to run in this process
+      require('./src/js/app.js')
+    </script>
+  </body>
+</html>
