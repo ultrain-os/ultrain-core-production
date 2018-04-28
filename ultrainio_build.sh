@@ -188,7 +188,7 @@
 	printf '\t| |   | || |      | |   |     __)|  ___  |   | |   | (\ \) |\n'
 	printf '\t| |   | || |      | |   | (\ (   | (   ) |   | |   | | \   |\n'
 	printf '\t| (___) || (____/\| |   | ) \ \__| )   ( |___) (___| )  \  |\n'
-	printf '\t(_______)(_______/)_(   |/   \__/|/     \|\_______/|/    )_)\n'
+	printf "\t(_______)(_______/)_(   |/   \__/|/     \|\_______/|/    )_)\n${txtrst}"
 
 	printf "\n\tULTRAIN.IO has been successfully built. %d:%d:%d\n\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
 	printf "\tTo verify your installation run the following commands:\n"
