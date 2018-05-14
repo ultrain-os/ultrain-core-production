@@ -1,0 +1,3 @@
+[submodule "externals/boringssl"]
+	path = externals/boringssl
+	url = git@github.com:ultrain-os/boringssl.git
