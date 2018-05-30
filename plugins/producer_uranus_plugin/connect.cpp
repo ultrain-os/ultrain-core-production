@@ -1,4 +1,4 @@
-#include "connect.hpp"
+#include <ultrainio/producer_uranus_plugin/connect.hpp>
 
 #include <iostream>
 #include <string>
@@ -7,8 +7,8 @@
 #include <boost/system/system_error.hpp>
 #include <time.h>
 
-#include "define.hpp"
-#include "log.hpp"
+#include <ultrainio/producer_uranus_plugin/define.hpp>
+#include <ultrainio/producer_uranus_plugin/log.hpp>
 
 namespace ultrainio {
 

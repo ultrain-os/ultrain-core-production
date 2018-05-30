@@ -23,7 +23,7 @@
 namespace ultrainio {
     static appbase::abstract_plugin &_producer_uranus_plugin = app().register_plugin<producer_uranus_plugin>();
 
-    static bool parse_genesis(boost::chrono::system_clock::time_point &out_time_point, const char *time_format)
+    static bool parse_genesis(boost::chrono::system_clock::time_point &out_time_point, const char *time_format);
 
     class producer_uranus_plugin_impl {
     public:

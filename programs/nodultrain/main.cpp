@@ -8,7 +8,7 @@
 #include <ultrainio/http_plugin/http_plugin.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
 //#include <ultrainio/producer_plugin/producer_plugin.hpp>
-#include <ultrainio/producer_uranus_plugin/producer_uranus_plugin.hpp>
+//#include <ultrainio/producer_uranus_plugin/producer_uranus_plugin.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>

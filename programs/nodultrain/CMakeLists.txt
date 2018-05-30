@@ -54,7 +54,8 @@ target_link_libraries( nodultrain
         PRIVATE -Wl,${whole_archive_flag} account_api_plugin         -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} producer_uranus_plugin     -Wl,${no_whole_archive_flag}
         PRIVATE account_history_plugin producer_plugin chain_plugin net_plugin http_plugin
-        PRIVATE ultrainio_chain fc ${CMAKE_DL_LIBS} ${PLATFOM_SPECIFIC_LIBS} )
+        PRIVATE ultrainio_chain fc ${CMAKE_DL_LIBS} ${PLATFOM_SPECIFIC_LIBS}
+        )
 
 if(BUILD_MONGO_DB_PLUGIN)
   target_link_libraries( nodultrain

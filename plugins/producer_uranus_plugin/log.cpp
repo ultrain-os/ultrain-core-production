@@ -1,4 +1,4 @@
-#include "log.hpp"
+#include <ultrainio/producer_uranus_plugin/log.hpp>
 
 #include <iostream>
 #include <string>
@@ -16,8 +16,8 @@
 #include <boost/log/detail/format.hpp>
 #include <vector>
 
-#include "define.hpp"
-#include "connect.hpp"
+#include <ultrainio/producer_uranus_plugin/define.hpp>
+#include <ultrainio/producer_uranus_plugin/connect.hpp>
 
 namespace ultrainio {
 
