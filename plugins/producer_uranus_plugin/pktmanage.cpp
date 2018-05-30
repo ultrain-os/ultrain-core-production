@@ -1,467 +1,512 @@
+#include "pktmanage.hpp"
+
 #include <iostream>
 #include <string>
 #include <vector>
 #include <map>
 #include <algorithm>
+
 #include <boost/asio.hpp>
 
-#include <ultrainio/producer_uranus_plugin/define.hpp>
-#include <ultrainio/producer_uranus_plugin/node.hpp>
-#include <ultrainio/producer_uranus_plugin/pktmanage.hpp>
-#include <ultrainio/producer_uranus_plugin/security.hpp>
+#include "define.hpp"
+#include "node.hpp"
+#include "security.hpp"
+#include "log.hpp"
 
 using namespace boost::asio;
 using namespace std;
 
-namespace ultrain {
+namespace ultrainio {
 
-    static string strLocalSign; // TODO
+    MsgInfo PktManager::construct_msg_info(const TxsBlock& block) {
+        MsgInfo msg_info;
+        msg_info.txs_signature = block.txs_signature;
+        msg_info.proposer_pk = block.proposer_pk;
+        msg_info.proposer_role_vrf = block.proposer_role_vrf;
+        msg_info.txs_hash = block.txs_hash;
+        msg_info.txs = block.txs;
+        return msg_info;
+    }
 
-    PktManager::PktManager() : _proposer_msg_map(), _echo_msg_map(), preblock(), preBA() {
+    PktManager::PktManager(UranusNode* node) : _node(node), _proposer_msg_map(), _echo_msg_map() {
 
     }
 
     void PktManager::reset() {
         _proposer_msg_map.clear();
         _echo_msg_map.clear();
-        preblock.clear();
-        preBA.clear();
     }
 
     bool PktManager::isValidMsg(MsgInfo &stMsgInfo, string &signature) {
-        if (signature == stMsgInfo.signature) {
-            std::cout << "loopback msg:" << stMsgInfo.txs << std::endl;
+        if (signature == stMsgInfo.pk) {
+            LOG_INFO << "loopback msg. type = " << stMsgInfo.type << " txs = " << stMsgInfo.txs << std::endl;
             return false;
         }
 
-        if (ultrain::security::vrf_verify((const uint8_t *) stMsgInfo.txs.data(), stMsgInfo.txs.length(),
-                                          (const uint8_t *) stMsgInfo.proof.data(),
-                                          (const uint8_t *) stMsgInfo.proposerSignature.data())) {
-            std::cout << "valid msg fail. proof = " <<  stMsgInfo.proof << std::endl;
-            return false;
+        if (stMsgInfo.type == MSG_TYPE_PROPOSE) {
+            if (!ultrainio::security::vrf_verify((const uint8_t*)stMsgInfo.txs.data(), stMsgInfo.txs.length(),
+                                              (const uint8_t*)stMsgInfo.txs_signature.data(),
+                                              (const uint8_t*)stMsgInfo.proposer_pk.data())) {
+                LOG_INFO << "valid msg fail. txs_signature = " <<  stMsgInfo.txs_signature << std::endl;
+                return false;
+            }
+            // TODO verify proposer role
         }
+        // TODO verify txs_hash, role
         return true;
     }
 
-    bool PktManager::formatMsg(MsgInfo &stMsgInfo, const char *buf, size_t size, unsigned short local_phase) {
-        unsigned short usType;
-        unsigned int ulMsgType;
-        unsigned int ulMsgLen;
+    bool PktManager::formatMsg(MsgInfo &stMsgInfo, const char *buf, size_t size, uint16_t local_phase, uint32_t local_block_id) {
         const char *tmpBuffer = buf;
         char tmpStr[BUFSIZE] = {0};
 
         //lenth check 100:min msg head
-        if ((size >= BUFSIZE) || (NULL == buf) || (size < MIN_MSG_HEAD)) {
-            //log
+        if ((buf == nullptr) || (size >= BUFSIZE) || (size < MIN_MSG_HEAD)) {
+            LOG_INFO << "check error. size = " << size << std::endl;
             return false;
         }
 
-        usType = *(unsigned short *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned short);
-        stMsgInfo.eType = usType;
-        if ((usType != MSG_TYPE_PROPOSE) && (usType != MSG_TYPE_ECHO) && (usType != MSG_TYPE_EMPTY)) {
-            std::cout << "usType : " << usType << "not found." << std::endl;
-            return false;
-        }
-
-        uint16_t phase = *(uint16_t*)tmpBuffer;
+        // type
+        stMsgInfo.type = *(uint16_t*)tmpBuffer;
         tmpBuffer += sizeof(uint16_t);
-        if (phase != local_phase) {
-            std::cerr << "phase = " << phase << " while local phase = " << local_phase << std::endl;
+        if ((stMsgInfo.type != MSG_TYPE_PROPOSE) && (stMsgInfo.type != MSG_TYPE_ECHO)
+            && (stMsgInfo.type != MSG_TYPE_EMPTY)) {
+            LOG_INFO << "type : " << stMsgInfo.type << "not found." << std::endl;
             return false;
         }
 
-        stMsgInfo.phase = phase;
+        // phase
+        stMsgInfo.phase = *(uint16_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint16_t);
+        if (stMsgInfo.phase != local_phase) {
+            LOG_ERROR << "type : " << stMsgInfo.type << " phase = " << stMsgInfo.phase << " while local phase = " << local_phase << std::endl;
+            return false;
+        }
 
-        //proof
-        ulMsgType = *(unsigned int *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned int);
+        // block_id
+        stMsgInfo.block_id = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
+        if (stMsgInfo.block_id != local_block_id) {
+            LOG_ERROR << "type : " << stMsgInfo.type << " phase : " << stMsgInfo.phase << " block_id : " << stMsgInfo.block_id
+                      << " while local_block_id = " << local_block_id << std::endl;
+            return false;
+        }
 
-        ulMsgLen = *(unsigned int *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned int);
+        uint32_t segment_type = 0;
+        uint32_t segment_len = 0;
 
-        memcpy(tmpStr, tmpBuffer, ulMsgLen);
-        tmpBuffer += ulMsgLen;
+        // txs_hash
+        segment_type = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
 
-        stMsgInfo.proof = tmpStr;
+        if (segment_type != TXS_HASH) {
+            LOG_ERROR << "TXS_HASH error. block_id : " << stMsgInfo.block_id << " phase : " << stMsgInfo.phase << std::endl;
+            return false;
+        }
+
+        segment_len = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
+
+        memcpy(tmpStr, tmpBuffer, segment_len);
+        tmpBuffer += segment_len;
+
+        stMsgInfo.txs_hash = std::string(tmpStr, segment_len);
         memset(tmpStr, 0, BUFSIZE);
 
-        if (stMsgInfo.proof.length() != security::VRF_PROOF_LEN)
+        if (stMsgInfo.txs_hash.length() != SHA256_DIGEST_LEN) {
+            LOG_ERROR << "txs hash length = " << stMsgInfo.txs_hash.length() << std::endl;
             return false;
+        }
 
-        //sign
-        ulMsgType = *(unsigned int *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned int);
+        // txs_hash_signature
+        segment_type = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
 
-        ulMsgLen = *(unsigned int *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned int);
+        if (segment_type != TXS_HASH_SIGN) {
+            LOG_ERROR << "TXS_HASH_SIGN error. block_id : " << stMsgInfo.block_id
+                      << " phase : " << stMsgInfo.phase << std::endl;
+            return false;
+        }
 
-        memcpy(tmpStr, tmpBuffer, ulMsgLen);
-        tmpBuffer += ulMsgLen;
+        segment_len = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
 
-        stMsgInfo.signature = tmpStr;
+        memcpy(tmpStr, tmpBuffer, segment_len);
+        tmpBuffer += segment_len;
+
+        stMsgInfo.txs_hash_signature = std::string(tmpStr, segment_len);
         memset(tmpStr, 0, BUFSIZE);
 
-        if (stMsgInfo.signature.length() != MSG_LENGTH_KEY)
+        if (stMsgInfo.txs_hash_signature.length() != VRF_PROOF_LEN) {
+            LOG_ERROR << "txs_hash_signature length = " << stMsgInfo.txs_hash_signature.length() << std::endl;
             return false;
+        }
 
-        //empty,propose proof
-        ulMsgType = *(unsigned int *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned int);
+        // pk
+        segment_type = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
 
-        ulMsgLen = *(unsigned int *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned int);
+        if (segment_type != PK) {
+            LOG_ERROR << "need PK while " << segment_type << " block_id " << stMsgInfo.block_id
+                      << " phase : " << stMsgInfo.phase << std::endl;
+            return false;
+        }
 
-        memcpy(tmpStr, tmpBuffer, ulMsgLen);
-        tmpBuffer += ulMsgLen;
+        segment_len = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
 
-        if (ulMsgType == TXSEMPTY) {
-            //empty block process
-            stMsgInfo.eType = MSG_TYPE_EMPTY;
+        memcpy(tmpStr, tmpBuffer, segment_len);
+        tmpBuffer += segment_len;
+
+        stMsgInfo.pk = std::string(tmpStr, segment_len);
+        memset(tmpStr, 0, BUFSIZE);
+
+        if (stMsgInfo.pk.length() != VRF_PUBLIC_KEY_LEN) {
+            LOG_ERROR << "public key length = " << stMsgInfo.pk.length() << std::endl;
+            return false;
+        }
+
+        // role_vrf
+        segment_type = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
+
+        if (segment_type != ROLE_VRF) {
+            LOG_ERROR << "need ROLE_VRF while " << segment_type << " block_id " << stMsgInfo.block_id
+                      << " phase : " << stMsgInfo.phase << std::endl;
+            return false;
+        }
+
+        segment_len = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
+
+        memcpy(tmpStr, tmpBuffer, segment_len);
+        tmpBuffer += segment_len;
+
+        stMsgInfo.role_vrf = std::string(tmpStr, segment_len);
+        memset(tmpStr, 0, BUFSIZE);
+
+        if (stMsgInfo.role_vrf.length() != VRF_PROOF_LEN) {
+            LOG_ERROR << " role_vrf length = " << stMsgInfo.role_vrf.length()
+                      << " expected : " << VRF_PROOF_LEN << std::endl;
+            return false;
+        }
+
+        if (stMsgInfo.type == MSG_TYPE_EMPTY) {
+            segment_type = *(uint32_t*)tmpBuffer;
+            tmpBuffer += sizeof(uint32_t);
+
+            if (segment_type != TXS_EMPTY) {
+                LOG_ERROR << "need TXS_EMPTY while is " << segment_type << " block_id " << stMsgInfo.block_id
+                          << " phase : " << stMsgInfo.phase << std::endl;
+                return false;
+            }
+
+            if (*(uint32_t*)tmpBuffer != TAIL) {
+                LOG_ERROR << "need TAIL while is " << segment_type << " block_id " << stMsgInfo.block_id
+                          << " phase : " << stMsgInfo.phase << std::endl;
+                return false;
+            }
             return true;
-        } else {
-            stMsgInfo.proposerProof = tmpStr;
+        } else if (stMsgInfo.type == MSG_TYPE_PROPOSE) {
+            segment_type = *(uint32_t*)tmpBuffer;
+            tmpBuffer += sizeof(uint32_t);
+
+            if (segment_type != TXS) {
+                LOG_ERROR << "need TXS while is " << segment_type << " block_id " << stMsgInfo.block_id
+                          << " phase : " << stMsgInfo.phase << std::endl;
+                return false;
+            }
+
+            segment_len = *(uint32_t*)tmpBuffer;
+            tmpBuffer += sizeof(uint32_t);
+
+            memcpy(tmpStr, tmpBuffer, segment_len);
+            tmpBuffer += segment_len;
+
+            stMsgInfo.txs = std::string(tmpStr, segment_len);
             memset(tmpStr, 0, BUFSIZE);
         }
 
-        if (stMsgInfo.proposerProof.length() != security::VRF_PROOF_LEN)
+        // txs_signature
+        segment_type = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
+
+        if (segment_type != TXS_SIGN) {
+            LOG_ERROR << "need TXS_SIGN while is " << segment_type << " block_id " << stMsgInfo.block_id
+                      << " phase : " << stMsgInfo.phase << std::endl;
             return false;
-
-        //propose sign
-        ulMsgType = *(unsigned int *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned int);
-
-        ulMsgLen = *(unsigned int *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned int);
-
-        memcpy(tmpStr, tmpBuffer, ulMsgLen);
-        tmpBuffer += ulMsgLen;
-
-        stMsgInfo.proposerSignature = tmpStr;
-        memset(tmpStr, 0, BUFSIZE);
-
-        if (stMsgInfo.proposerSignature.length() != MSG_LENGTH_KEY)
-            return false;
-
-        //txshash
-        ulMsgType = *(unsigned int *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned int);
-
-        ulMsgLen = *(unsigned int *) tmpBuffer;
-        tmpBuffer += sizeof(unsigned int);
-
-        memcpy(tmpStr, tmpBuffer, ulMsgLen);
-        tmpBuffer += ulMsgLen;
-
-        stMsgInfo.txsHash = tmpStr;
-        memset(tmpStr, 0, BUFSIZE);
-
-        if (stMsgInfo.txsHash.length() != MSG_LENGTH_HASH)
-            return false;
-
-        if (stMsgInfo.eType == MSG_TYPE_PROPOSE) {
-
-            //txs
-            ulMsgType = *(unsigned int *) tmpBuffer;
-            tmpBuffer += sizeof(unsigned int);
-
-            ulMsgLen = *(unsigned int *) tmpBuffer;
-            tmpBuffer += sizeof(unsigned int);
-
-            memcpy(tmpStr, tmpBuffer, ulMsgLen);
-            tmpBuffer += ulMsgLen;
-
-            stMsgInfo.txs = tmpStr;
-            memset(tmpStr, 0, BUFSIZE);
-
         }
+
+        segment_len = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
+
+        memcpy(tmpStr, tmpBuffer, segment_len);
+        tmpBuffer += segment_len;
+
+        stMsgInfo.txs_signature = std::string(tmpStr, segment_len);
+        memset(tmpStr, 0, BUFSIZE);
+
+        if (stMsgInfo.txs_signature.length() != VRF_PROOF_LEN) {
+            LOG_ERROR << " txs_signature length = " << stMsgInfo.txs_signature.length()
+                      << " expected " << VRF_PROOF_LEN << std::endl;
+            return false;
+        }
+        // proposer_pk
+        segment_type = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
+
+        if (segment_type != PROPOSER_PK) {
+            LOG_ERROR << "need PROPOSER_PK while is " << segment_type << " block_id " << stMsgInfo.block_id
+                      << " phase : " << stMsgInfo.phase << std::endl;
+            return false;
+        }
+
+        segment_len = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
+
+        memcpy(tmpStr, tmpBuffer, segment_len);
+        tmpBuffer += segment_len;
+
+        stMsgInfo.proposer_pk = std::string(tmpStr, segment_len);
+        memset(tmpStr, 0, BUFSIZE);
+
+        if (stMsgInfo.proposer_pk.length() != VRF_PUBLIC_KEY_LEN) {
+            LOG_ERROR << "proposer_pk length = " << stMsgInfo.proposer_pk.length() << std::endl;
+            return false;
+        }
+
+        // proposer_role_vrf
+        segment_type = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
+
+        if (segment_type != PROPOSER_ROLE_VRF) {
+            LOG_ERROR << "need PROPOSER_ROLE_VRF while is " << segment_type << " block_id " << stMsgInfo.block_id
+                      << " phase : " << stMsgInfo.phase << std::endl;
+        }
+
+        segment_len = *(uint32_t*)tmpBuffer;
+        tmpBuffer += sizeof(uint32_t);
+
+        memcpy(tmpStr, tmpBuffer, segment_len);
+        tmpBuffer += segment_len;
+
+        stMsgInfo.proposer_role_vrf = std::string(tmpStr, segment_len);
+        memset(tmpStr, 0, BUFSIZE);
+
+        if (stMsgInfo.proposer_role_vrf.length() != VRF_PROOF_LEN) {
+            LOG_ERROR << "proposer_role_vrf length = " << stMsgInfo.proposer_role_vrf.length()
+                      << " expected : " << VRF_PROOF_LEN << std::endl;
+            return false;
+        }
+
+        LOG_INFO << "format msg ok." << endl;
+
+        LOG_INFO << "txsHash = " << UltrainLog::get_unprintable(stMsgInfo.txs_hash) << std::endl;
+        
         return true;
     }
 
     bool PktManager::insertMsg(MsgInfo &stMsgInfo) {
         ProposeMsg stProposeMsg;
         stProposeMsg.phase = PHASE_BA0;
-        stProposeMsg.usSendFlag = MSG_ECHO_SEND_OK;
         stProposeMsg.txs = stMsgInfo.txs;
-        stProposeMsg.txsHash = stMsgInfo.txsHash;
-        stProposeMsg.proof = stMsgInfo.proposerProof;
-        stProposeMsg.signature = stMsgInfo.proposerSignature;
+        stProposeMsg.txs_hash = stMsgInfo.txs_hash;
+        stProposeMsg.txs_signature = stMsgInfo.txs_signature;
+        stProposeMsg.proposer_pk = stMsgInfo.proposer_pk;
+        stProposeMsg.proposer_role_vrf = stMsgInfo.proposer_role_vrf;
 
-        _proposer_msg_map.insert(make_pair(stProposeMsg.txsHash, stProposeMsg));
+        _proposer_msg_map.insert(make_pair(stProposeMsg.txs_hash, stProposeMsg));
         return true;
     }
 
-    processresult PktManager::processMsg(const char* buf, size_t size, unsigned short usLocalRound) {
-        ProposeMsg stProposeMsg;
-        EchoMsg stEchoMsg;
-        std::map<std::string, ProposeMsg>::iterator propose_it;
-        std::map<std::string, EchoMsg>::iterator echo_it;
-        std::vector<std::string>::iterator sign_it;
-        std::string strSign;
-        std::string strMinProof;
-        size_t uiSignNum = 0;
+    processresult PktManager::processMsg(const char* buf, size_t size, uint16_t local_phase, uint32_t local_block_id) {
         MsgInfo msg_info;
-        bool bResult = formatMsg(msg_info, buf, size, usLocalRound);
+        bool bResult = formatMsg(msg_info, buf, size, local_phase, local_block_id);
         if (!bResult)
             return processErr;
 
-        if (!isValidMsg(msg_info, strLocalSign))
+        std::string this_pk = std::string((const char*)UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+        if (!isValidMsg(msg_info, this_pk))
             return processErr;
 
-        cout << "signature :" << msg_info.signature << endl;
+        LOG_INFO << "pk :" << UltrainLog::get_unprintable(msg_info.pk) << std::endl;
         //analyze msg
-        if (msg_info.eType == MSG_TYPE_PROPOSE) {
-            //auth
-            stProposeMsg.phase = msg_info.phase;
+        if (msg_info.type == MSG_TYPE_PROPOSE) {
+            ProposeMsg stProposeMsg;
+            LOG_INFO << "receive msg MSG_TYPE_PROPOSE" << endl;
+            stProposeMsg.phase = static_cast<consensus_phase>(msg_info.phase);
             stProposeMsg.txs = msg_info.txs;
-            stProposeMsg.txsHash = msg_info.txsHash;
-            stProposeMsg.proof = msg_info.proposerProof;
-            stProposeMsg.signature = msg_info.proposerSignature;
+            stProposeMsg.txs_hash = msg_info.txs_hash;
+            stProposeMsg.txs_signature = msg_info.txs_signature;
+            stProposeMsg.proposer_pk = msg_info.proposer_pk;
+            stProposeMsg.proposer_role_vrf = msg_info.proposer_role_vrf;
 
-            propose_it = _proposer_msg_map.find(stProposeMsg.txsHash);
-
+            auto propose_it = _proposer_msg_map.find(stProposeMsg.txs_hash);
             if (_proposer_msg_map.end() == propose_it) {
-                stProposeMsg.usSendFlag = MSG_ECHO_NEED_SEND;
-                _proposer_msg_map.insert(make_pair(stProposeMsg.txsHash, stProposeMsg));
+                if (is_min_propose(stProposeMsg)) {
+                    MsgInfo msg_info;
+                    msg_info.block_id = _node->get_block_id();
+                    msg_info.role_vrf = std::string((char*)_node->get_role_proof(), VRF_PROOF_LEN);
+                    msg_info.phase = stProposeMsg.phase;
+                    msg_info.type = MSG_TYPE_ECHO;
+                    msg_info.txs_signature = stProposeMsg.txs_signature;
+                    msg_info.proposer_pk = stProposeMsg.proposer_pk;
+                    msg_info.proposer_role_vrf = stProposeMsg.proposer_role_vrf;
+                    msg_info.txs_hash = stProposeMsg.txs_hash;
+                    msg_info.pk = std::string((char*)ultrainio::UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+                    uint8_t txs_hash_signature[VRF_PROOF_LEN];
+                    ultrainio::security::vrf_prove(txs_hash_signature, (uint8_t*)msg_info.txs_hash.data(),
+                                                   msg_info.txs_hash.length(), ultrainio::UranusNode::URANUS_PRIVATE_KEY);
+                    msg_info.txs_hash_signature = std::string((char*)txs_hash_signature, VRF_PROOF_LEN);
+                    if (_node->get_role() != LISTENER) {
+                        LOG_INFO << "receive min propose message, and send echo message" << std::endl;
+                        _node->sendMsg(msg_info);
+                    }
+                }
+                _proposer_msg_map.insert(make_pair(stProposeMsg.txs_hash, stProposeMsg));
                 return SendMsg;
             }
-        } else {
-            //echo msg
-            //auth
-            stEchoMsg.phase = msg_info.phase;
-            stEchoMsg.txsHash = msg_info.txsHash;
-            stEchoMsg.proposerProof = msg_info.proposerProof;
-            stEchoMsg.proposerSignature = msg_info.proposerSignature;
-            strSign = msg_info.signature;
-
-            echo_it = _echo_msg_map.find(stEchoMsg.txsHash);
+        } else { // echo message
+            LOG_INFO << "receive msg MSG_TYPE_ECHO" << endl;
+            std::string txs_hash = msg_info.txs_hash;
+            auto echo_it = _echo_msg_map.find(txs_hash);
             if (_echo_msg_map.end() != echo_it) {
-                //modify
-                //signature process
-                sign_it = std::find(echo_it->second.signpool.begin(), echo_it->second.signpool.end(), strSign);
-                //sign_it = echo_it->second.signpool.end();
-                if (sign_it == echo_it->second.signpool.end()) {
-                    echo_it->second.signpool.push_back(strSign);
-                    uiSignNum = echo_it->second.signpool.size();
-                    strMinProof = echo_it->second.proposerProof;
-
-                    if ((uiSignNum == THRESHOLD_SEND_ECHO) && (usLocalRound == PHASE_BA0)) {
-                        echo_it->second.usSendFlag = MSG_ECHO_NEED_SEND;
+                // TODO check echo sign
+                auto sign_it = std::find(echo_it->second.pk_pool.begin(), echo_it->second.pk_pool.end(), msg_info.pk);
+                if (sign_it == echo_it->second.pk_pool.end()) { // new pk
+                    echo_it->second.pk_pool.push_back(msg_info.pk);
+                    size_t sign_num = echo_it->second.pk_pool.size();
+                    if ((sign_num == THRESHOLD_SEND_ECHO) && (local_phase == PHASE_BA0) && is_min_2f_echo(echo_it->second)) {
+                        msg_info.block_id = _node->get_block_id();
+                        msg_info.role_vrf = std::string((char*)_node->get_role_proof(), VRF_PROOF_LEN);
+                        msg_info.phase = echo_it->second.phase;
+                        msg_info.type = MSG_TYPE_ECHO;
+                        msg_info.txs_signature = echo_it->second.txs_signature;
+                        msg_info.proposer_pk = echo_it->second.proposer_pk;
+                        msg_info.proposer_role_vrf = echo_it->second.proposer_role_vrf;
+                        msg_info.txs_hash = echo_it->second.txs_hash;
+                        msg_info.pk = std::string((char*)ultrainio::UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+                        uint8_t txs_hash_signature[VRF_PROOF_LEN];
+                        ultrainio::security::vrf_prove(txs_hash_signature, (uint8_t*)msg_info.txs_hash.data(), msg_info.txs_hash.length(), ultrainio::UranusNode::URANUS_PRIVATE_KEY);
+                        msg_info.txs_hash_signature = std::string((char*)txs_hash_signature, VRF_PROOF_LEN);
+                        if (_node->get_role() != LISTENER) {
+                            LOG_INFO << "receive the " << THRESHOLD_SEND_ECHO << "th echo message, and broadcast echo" << std::endl;
+                            _node->sendMsg(msg_info);
+                        }
                         return SendMsg;
-                    } else if (uiSignNum == THRESHOLD_NEXT_ROUND) {
-                        for (echo_it = _echo_msg_map.begin(); echo_it != _echo_msg_map.end(); echo_it++) {
-                            if (echo_it->second.proposerProof < strMinProof) {
-                                return processOk;
-                            }
-                        }
-                        propose_it = _proposer_msg_map.find(stEchoMsg.txsHash);
-                        if (propose_it == _proposer_msg_map.end()) {
-                            return processOk;
-                        }
-                        if (usLocalRound == PHASE_BA1) {
-                            preblock.proposerProof = echo_it->second.proposerProof;
-                            preblock.proposerSignature = echo_it->second.proposerSignature;
-                            preblock.signpool = echo_it->second.signpool;
-                            preblock.txsHash = echo_it->second.txsHash;
-                            preblock.txs = propose_it->second.txs;
-                            return Block;
-                        } else if (usLocalRound == PHASE_BA0) {
-                            preBA.proposerProof = echo_it->second.proposerProof;
-                            preBA.proposerSignature = echo_it->second.proposerSignature;
-                            preBA.signpool = echo_it->second.signpool;
-                            preBA.txsHash = echo_it->second.txsHash;
-                            preBA.txs = propose_it->second.txs;
-                            return IntoBA;
-                        }
                     }
                 }
             } else {
-                //insert
-                stEchoMsg.usSendFlag = MSG_ECHO_SEND_WAIT;
-                _echo_msg_map.insert(make_pair(stEchoMsg.txsHash, stEchoMsg));
+                EchoMsg stEchoMsg;
+                stEchoMsg.phase = static_cast<consensus_phase>(msg_info.phase);
+                stEchoMsg.txs_hash = msg_info.txs_hash;
+                stEchoMsg.txs_signature = msg_info.txs_signature;
+                stEchoMsg.proposer_pk = msg_info.proposer_pk;
+                stEchoMsg.proposer_role_vrf = msg_info.proposer_role_vrf;
+                stEchoMsg.pk_pool.push_back(msg_info.pk);
+                _echo_msg_map.insert(make_pair(stEchoMsg.txs_hash, stEchoMsg));
             }
         }
         return processOk;
     }
 
-    bool PktManager::getMsgInfo(MsgInfo &msg_info) {
-        for (auto propose_it = _proposer_msg_map.begin(); propose_it != _proposer_msg_map.end(); propose_it++) {
-            if (propose_it->second.usSendFlag == MSG_ECHO_NEED_SEND) {
-                propose_it->second.usSendFlag = MSG_ECHO_SEND_OK;
-                //make echo msg
-                msg_info.phase = propose_it->second.phase;
-                msg_info.eType = MSG_TYPE_ECHO;
-                msg_info.proposerProof = propose_it->second.proof;
-                msg_info.proposerSignature = propose_it->second.signature;
-                msg_info.txsHash = propose_it->second.txsHash;
-                return true;
+    bool PktManager::is_min_propose(const ProposeMsg& propose_msg) {
+        uint64_t priority = UranusNode::proof_to_priority((const uint8_t*)propose_msg.proposer_role_vrf.data());
+        for (auto propose_itor = _proposer_msg_map.begin(); propose_itor != _proposer_msg_map.end(); propose_itor++) {
+            if (UranusNode::proof_to_priority((const uint8_t*)propose_itor->second.proposer_role_vrf.data()) < priority) {
+                return false;
             }
         }
-        for (auto echo_it = _echo_msg_map.begin(); echo_it != _echo_msg_map.end(); echo_it++) {
-            if (echo_it->second.usSendFlag == MSG_ECHO_NEED_SEND) {
-                echo_it->second.usSendFlag = MSG_ECHO_SEND_OK;
-                //make echo msg
-                msg_info.phase = echo_it->second.phase;
-                msg_info.eType = MSG_TYPE_ECHO;
-                msg_info.proposerProof = echo_it->second.proposerProof;
-                msg_info.proposerSignature = echo_it->second.proposerSignature;
-                msg_info.txsHash = echo_it->second.txsHash;
-                return true;
-            }
-        }
-        return false;
+        return true;
     }
 
-    bool PktManager::getMsgForBA(MsgInfo &stMsgInfo) {
-        if (!preBA.txsHash.empty()) {
-            stMsgInfo.phase = PHASE_BA1;
-            stMsgInfo.eType = MSG_TYPE_ECHO;
-            stMsgInfo.proposerProof = preBA.proposerProof;
-            stMsgInfo.proposerSignature = preBA.proposerSignature;
-            stMsgInfo.txsHash = preBA.txsHash;
-            stMsgInfo.txs = preBA.txs;
-        } else {
-            stMsgInfo.phase = PHASE_BA1;
-            stMsgInfo.eType = MSG_TYPE_EMPTY;
+    bool PktManager::is_min_2f_echo(const EchoMsg& echo_msg) {
+        uint64_t priority = UranusNode::proof_to_priority((const uint8_t*)echo_msg.proposer_role_vrf.data());
+        for (auto echo_itor = _echo_msg_map.begin(); echo_itor != _echo_msg_map.end(); echo_itor++) {
+            if (echo_itor->second.pk_pool.size() >= THRESHOLD_SEND_ECHO) {
+                if (UranusNode::proof_to_priority((const uint8_t*)echo_itor->second.proposer_role_vrf.data()) < priority) {
+                    return false;
+                }
+            }
         }
         return true;
     }
 
     bool PktManager::MsgInit(MsgInfo &stMsgInfo) {
-        string strHostName;
-        uint8_t proof[64] = {0}; // security::VRF_PROOF_LEN = 64
-        uint8_t txshash[32] = {0}; // security::SHA256_DIGEST_LEN = 32
         stMsgInfo.phase = PHASE_BA0;
-        stMsgInfo.eType = MSG_TYPE_PROPOSE;
-        stMsgInfo.txs = "txs from " + Connect::s_local_host;
+        stMsgInfo.type = MSG_TYPE_PROPOSE;
+        stMsgInfo.proposer_pk = std::string((char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+        stMsgInfo.pk = std::string((char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
 
-        if (ultrain::security::vrf_prove(proof, (unsigned char *) stMsgInfo.txs.data(), stMsgInfo.txs.length(),
-                                         uranus_private_key)) {
-            std::cout << "vrf_prove" << std::endl;
+        uint8_t txs_signature[VRF_PROOF_LEN] = {0};
+        if (!ultrainio::security::vrf_prove(txs_signature, (uint8_t*) stMsgInfo.txs.data(), stMsgInfo.txs.length(),
+                                         UranusNode::URANUS_PRIVATE_KEY)) {
+            LOG_ERROR << "vrf_prove" << std::endl;
             return false;
         }
+        stMsgInfo.txs_signature = std::string((char *) txs_signature, VRF_PROOF_LEN);
 
-        if (ultrain::security::sha256((unsigned char *) stMsgInfo.txs.data(), stMsgInfo.txs.length(), txshash)) {
-            std::cout << "sha256" << std::endl;
+        uint8_t txs_hash[SHA256_DIGEST_LEN] = {0};
+        if (!ultrainio::security::sha256((uint8_t*) stMsgInfo.txs.data(), stMsgInfo.txs.length(), txs_hash)) {
+            LOG_ERROR << "sha256 failed" << std::endl;
             return false;
         }
+        stMsgInfo.txs_hash = std::string((char *) txs_hash, SHA256_DIGEST_LEN);
 
-        stMsgInfo.txsHash = (char *) txshash;
-        stMsgInfo.proof = (char *) proof;
-        stMsgInfo.proposerProof = (char *) proof;
-        stMsgInfo.proposerSignature = (char *) uranus_public_key;
-        stMsgInfo.signature = (char *) uranus_public_key;
-        strLocalSign = stMsgInfo.signature;
+        uint8_t txs_hash_signature[VRF_PROOF_LEN] = {0};
+        if (!ultrainio::security::vrf_prove(txs_hash_signature, (uint8_t*)stMsgInfo.txs_hash.data(),
+                                          stMsgInfo.txs_hash.length(), UranusNode::URANUS_PRIVATE_KEY)) {
+            LOG_ERROR << "txs_hash_signature vrf_prove error." << std::endl;
+            return false;
+        }
+        stMsgInfo.txs_hash_signature = std::string((char*)txs_hash_signature, VRF_PROOF_LEN);
 
-        std::cout << "msg_init!!!" << std::endl;
-        std::cout << "txs::" << stMsgInfo.txs << std::endl;
+        LOG_INFO << endl;
+        LOG_INFO << "msg_init!!!" << std::endl;
         return true;
     }
 
-    bool PktManager::inToBA() {
-        std::map<string, ProposeMsg>::iterator propose_it;
-        std::map<string, EchoMsg>::iterator echo_it;
-        string strMinKey;
-        string strMinProof;
-        cout << "into BA round." << endl;
-
-        if (!_echo_msg_map.size()) {
-            return false;
-        }
-
-        for (echo_it = _echo_msg_map.begin(); echo_it != _echo_msg_map.end(); echo_it++) {
-            if (echo_it->second.signpool.size() >= THRESHOLD_NEXT_ROUND) {
-                if (strMinKey.empty()) {
-                    strMinKey = echo_it->second.txsHash;
-                    strMinProof = echo_it->second.proposerProof;
-                } else if (echo_it->second.proposerProof < strMinProof) {
-                    strMinKey = echo_it->second.txsHash;
-                    strMinProof = echo_it->second.proposerProof;
+    TxsBlock PktManager::produce_tentative_block() {
+        uint64_t min_priority = UranusNode::MAX_HASH_LEN_VALUE;
+        std::string min_txs_hash;
+        EchoMsg min_echo_msg;
+        for (auto echo_itor = _echo_msg_map.begin(); echo_itor != _echo_msg_map.end(); echo_itor++) {
+            UltrainLog::displayEcho(echo_itor->second);
+            if (echo_itor->second.pk_pool.size() >= THRESHOLD_NEXT_ROUND) {
+                uint64_t priority = UranusNode::proof_to_priority((const uint8_t*)echo_itor->second.proposer_role_vrf.data());
+                if (min_priority >= priority) {
+                    min_txs_hash = echo_itor->second.txs_hash;
+                    min_priority = priority;
+                    min_echo_msg = echo_itor->second;
                 }
             }
         }
-
-        //produce empty block
-        if (strMinKey.empty()) {
-            return false;
+        TxsBlock tentative_block;
+        LOG_INFO << "min_txs_hash : " << UltrainLog::get_unprintable(min_txs_hash) << std::endl;
+        if (min_txs_hash.empty()) {
+            return tentative_block;
         }
-
-        echo_it = _echo_msg_map.find(strMinKey);
-        propose_it = _proposer_msg_map.find(strMinKey);
-
-        if ((echo_it == _echo_msg_map.end()) || (propose_it == _proposer_msg_map.end())) {
-            return false;
+        std::map<string, ProposeMsg>::iterator propose_itor;
+        if ((propose_itor = _proposer_msg_map.find(min_txs_hash)) != _proposer_msg_map.end()) {
+            tentative_block.txs_signature = min_echo_msg.txs_signature;
+            tentative_block.proposer_pk = min_echo_msg.proposer_pk;
+            tentative_block.pk_pool = min_echo_msg.pk_pool;
+            tentative_block.txs_hash = min_echo_msg.txs_hash;
+            tentative_block.proposer_role_vrf = min_echo_msg.proposer_role_vrf;
+            tentative_block.txs = propose_itor->second.txs;
         }
-        preBA.proposerProof = echo_it->second.proposerProof;
-        preBA.proposerSignature = echo_it->second.proposerSignature;
-        preBA.signpool = echo_it->second.signpool;
-        preBA.txsHash = echo_it->second.txsHash;
-        preBA.txs = propose_it->second.txs;
-        return true;
-    }
-
-    bool PktManager::isFinishBA() {
-        std::map<string, ProposeMsg>::iterator propose_it;
-        std::map<string, EchoMsg>::iterator echo_it;
-        string strMinKey;
-        string strMinProof;
-
-        cout << "finish BA" << endl;
-
-        if (!_echo_msg_map.size()) {
-            return false;
-        }
-
-        for (echo_it = _echo_msg_map.begin(); echo_it != _echo_msg_map.end(); echo_it++) {
-            if (echo_it->second.signpool.size() >= THRESHOLD_NEXT_ROUND) {
-                if (strMinKey.empty()) {
-                    strMinKey = echo_it->second.txsHash;
-                    strMinProof = echo_it->second.proposerProof;
-                } else if (echo_it->second.proposerProof < strMinProof) {
-                    strMinKey = echo_it->second.txsHash;
-                    strMinProof = echo_it->second.proposerProof;
-                }
-            }
-
-        }
-
-        //produce empty block
-        if (strMinKey.empty()) {
-            return false;
-        }
-
-        echo_it = _echo_msg_map.find(strMinKey);
-        propose_it = _proposer_msg_map.find(strMinKey);
-
-        if ((echo_it == _echo_msg_map.end()) || (propose_it == _proposer_msg_map.end())) {
-            return false;
-        }
-
-        preblock.proposerProof = echo_it->second.proposerProof;
-        preblock.proposerSignature = echo_it->second.proposerSignature;
-        preblock.signpool = echo_it->second.signpool;
-        preblock.txsHash = echo_it->second.txsHash;
-        preblock.txs = propose_it->second.txs;
-
-        return true;
+        return tentative_block;
     }
 
     void PktManager::block() {
-        if (!preblock.txsHash.empty()) {
-            cout << "block begin!!!" << endl;
-            cout << "proof::" << preblock.proposerProof << endl;
-            cout << "proposeSign::" << preblock.proposerSignature << endl;
-            cout << "txs::" << preblock.txs << endl;
-            cout << "txshash::" << preblock.txsHash << endl;
-
-            for (auto sign_it = preblock.signpool.begin(); sign_it != preblock.signpool.end(); sign_it++) {
-                cout << "signature" << *sign_it << endl;
-            }
+        TxsBlock block = produce_tentative_block();
+        if (!block.txs_hash.empty()) {
+            UltrainLog::displayBlock(block);
         } else {
-            cout << "block is empty!!!" << endl;
+            LOG_ERROR << "block is empty!!!" << std::endl;
         }
     }
 
-}  // namespace ultrain
+}  // namespace ultrainio
 
 

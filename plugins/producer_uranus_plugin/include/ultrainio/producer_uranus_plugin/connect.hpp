@@ -1,5 +1,4 @@
-#ifndef CONNECT_H_
-#define CONNECT_H_
+#pragma once
 
 #include <sys/time.h>
 
@@ -8,7 +7,7 @@
 
 #include <boost/asio.hpp>
 
-namespace ultrain {
+namespace ultrainio {
 
     class Connect : public std::enable_shared_from_this<Connect> {
     public:
@@ -41,37 +40,11 @@ namespace ultrain {
 
     };
 
-#if 0
-    class TimeoutAdjust
-    {
-    public:
-      TimeoutAdjust()
-      {
-        m_dwTimeout.tv_sec = 3;
-        m_dwTimeout.tv_usec = 3;
-      };
-
-      template<class Protocol>
-      int level(const Protocol& p) const {return SOL_SOCKET;}
-
-      template<class Protocol>
-      int name(const Protocol& p) const {return SO_RCVTIMEO;}
-
-      template<class Protocol>
-      const void* data(const Protocol& p) const {return &m_dwTimeout;}
-
-      template<class Protocol>
-      size_t size(const Protocol& p) const {return sizeof(struct timeval);}
-    //private:
-      struct timeval m_dwTimeout;
-    };
-#endif
-
     class TimeoutAdjust {
     public:
         TimeoutAdjust() {
-            tv.tv_sec = 1;
-            tv.tv_usec = 0;
+            tv.tv_sec = 0;
+            tv.tv_usec = 200;
         };
 
         template<class Protocol>
@@ -92,5 +65,3 @@ namespace ultrain {
     };
 
 }
-#endif
-

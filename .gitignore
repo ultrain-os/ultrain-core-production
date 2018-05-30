@@ -74,6 +74,8 @@ object_database/*
 
 build/*
 build-debug/*
+cmake-build-debug/
+.idea/
 
 etc/ultrainio/node_*
 var/lib/node_*

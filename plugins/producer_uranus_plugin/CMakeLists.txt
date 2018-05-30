@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/ultrainio/producer_uranus_plugin/*.hpp")
 add_library( producer_uranus_plugin
              producer_uranus_plugin.cpp
              connect.cpp
+             log.cpp
              node.cpp
              pktmanage.cpp
              security.cpp

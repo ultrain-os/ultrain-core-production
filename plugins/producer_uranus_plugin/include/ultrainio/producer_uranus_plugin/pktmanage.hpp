@@ -9,88 +9,93 @@
 
 #include "define.hpp"
 
-namespace ultrain {
+namespace ultrainio {
+
+    class UranusNode;
 
     struct ProposeMsg {
-        uint16_t phase;
-        unsigned short usSendFlag;
+        consensus_phase phase;
         std::string txs;
-        std::string txsHash;
-        std::string proof;
-        std::string signature; //public key
+        std::string txs_hash;
+        std::string txs_signature;
+        std::string proposer_pk; //public key
+        std::string proposer_role_vrf;
     };
 
     struct EchoMsg {
-        uint16_t phase;
-        unsigned short usSendFlag;
-        std::string txsHash;
-        std::string proposerProof;
-        std::string proposerSignature;//proposer public key
-        std::vector<std::string> signpool;//public key pool
+        consensus_phase phase;
+        std::string txs_hash;
+        std::string txs_signature;
+        std::string proposer_pk; //proposer public key
+        std::string proposer_role_vrf;
+        std::vector<std::string> pk_pool; //public key pool
     };
 
     struct TxsBlock {
         std::string txs;
-        std::string txsHash;
-        std::string proposerProof;
-        std::string proposerSignature; //proposer public key
-        std::vector<std::string> signpool; //public key pool
+        std::string txs_hash;
+        std::string txs_signature;
+        std::string proposer_pk; //proposer public key
+        std::string proposer_role_vrf;
+        std::vector<std::string> pk_pool; //public key pool
         void clear() {
             txs.clear();
-            txsHash.clear();
-            proposerProof.clear();
-            proposerSignature.clear();
-            signpool.clear();
+            txs_hash.clear();
+            txs_signature.clear();
+            proposer_pk.clear();
+            proposer_role_vrf.clear();
+            pk_pool.clear();
         }
     };
 
     struct MsgInfo {
-        unsigned short eType;
+        uint16_t type;
         uint16_t phase;
-        std::string txsHash;
-        std::string proposerProof;
-        std::string proposerSignature; //proposer public key
-        std::string proof;
-        std::string signature; //public key
+        uint32_t block_id;
         std::string txs;
+        std::string txs_signature;
+        std::string proposer_pk; //proposer public key
+        std::string proposer_role_vrf;
+        std::string txs_hash;
+        std::string txs_hash_signature;
+        std::string pk; //public key
+        std::string role_vrf;
 
-        MsgInfo() : eType(MSG_TYPE_NOMSG), phase(PHASE_INIT), txsHash(), proposerProof(), proposerSignature(), proof(),
-                    signature(), txs() {
+        MsgInfo() : type(MSG_TYPE_NOMSG), phase(PHASE_INIT), block_id(0), txs(), txs_signature(), proposer_pk(),
+                    proposer_role_vrf(),txs_hash(), txs_hash_signature(), pk(), role_vrf() {
         }
     };
 
     class PktManager : public std::enable_shared_from_this<PktManager> {
     public:
+        static MsgInfo construct_msg_info(const TxsBlock& block);
 
-        PktManager();
+        PktManager(UranusNode* node);
 
         void reset();
 
-        //format msg
-        processresult processMsg(const char* buf, size_t size, unsigned short local_round);
+        // format msg
+        processresult processMsg(const char* buf, size_t size, uint16_t local_phase, uint32_t local_block_id);
 
-        bool getMsgInfo(MsgInfo &stMsgInfo);
+        bool is_min_propose(const ProposeMsg& propose_msg);
 
-        bool inToBA();
+        bool is_min_2f_echo(const EchoMsg& echo_msg);
 
-        bool isFinishBA();
+        TxsBlock produce_tentative_block();
 
         void block();
 
-        bool formatMsg(MsgInfo &msg_info, const char* buf, size_t size, unsigned short local_round);
+        bool formatMsg(MsgInfo &msg_info, const char* buf, size_t size, uint16_t local_phase, uint32_t local_block_id);
 
         bool MsgInit(MsgInfo &stMsgInfo);
-
-        bool getMsgForBA(MsgInfo &stMsgInfo);
 
         bool isValidMsg(MsgInfo &stMsgInfo, std::string &signature);
 
         bool insertMsg(MsgInfo &stMsgInfo);
 
     private:
+        UranusNode* _node;
         std::map<std::string, ProposeMsg> _proposer_msg_map;
         std::map<std::string, EchoMsg> _echo_msg_map;
-        TxsBlock preblock;
-        TxsBlock preBA;
     };
 }

@@ -1,3 +1,5 @@
+#include "connect.hpp"
+
 #include <iostream>
 #include <string>
 #include <boost/asio.hpp>
@@ -5,10 +7,10 @@
 #include <boost/system/system_error.hpp>
 #include <time.h>
 
-#include <ultrainio/producer_uranus_plugin/define.hpp>
-#include <ultrainio/producer_uranus_plugin/connect.hpp>
+#include "define.hpp"
+#include "log.hpp"
 
-namespace ultrain {
+namespace ultrainio {
 
     //using namespace boost::asio;
     //using namespace std;
@@ -62,10 +64,10 @@ namespace ultrain {
             dataLenth = recvfrom(i_socket.native_handle(), ucBuffer, BUFSIZE, 0, (struct sockaddr *) &clientaddr,
                                  &clientlen);
 
-            //cout<<"peer_ip"<<sender_endpoint.address().to_string().c_str()<<endl;
-            //cout<<"remote ip"<<i_socket.remote_endpoint().address().to_string().c_str()<<endl;
+            //LOG_INFO<<"peer_ip"<<sender_endpoint.address().to_string().c_str()<<endl;
+            //LOG_INFO<<"remote ip"<<i_socket.remote_endpoint().address().to_string().c_str()<<endl;
             //if (i_socket.remote_endpoint().address().to_string() == i_socket.local_endpoint().address().to_string())
-            //    cout<<"same ip"<<endl;
+            //    LOG_INFO<<"same ip"<<endl;
         } catch (const boost::system::system_error &e) {
             if (e.code() != boost::asio::error::timed_out)
                 throw;
@@ -79,5 +81,5 @@ namespace ultrain {
         return dataLenth;
     }
 
-}  // namespace udp
+}  // namespace ultrainio
 
