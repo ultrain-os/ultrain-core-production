@@ -75,15 +75,13 @@ namespace ultrainio {
         void reset();
 
         // format msg
-        processresult processMsg(const char* buf, size_t size, uint16_t local_phase, uint32_t local_block_id);
+        void processMsg(const char* buf, size_t size, uint16_t local_phase, uint32_t local_block_id);
 
         bool is_min_propose(const ProposeMsg& propose_msg);
 
         bool is_min_2f_echo(const EchoMsg& echo_msg);
 
         TxsBlock produce_tentative_block();
-
-        void block();
 
         bool formatMsg(MsgInfo &msg_info, const char* buf, size_t size, uint16_t local_phase, uint32_t local_block_id);
 
