@@ -44,7 +44,7 @@ namespace ultrainio {
 
         uranus_role generate_own_role(uint16_t phase);
 
-        processresult Listen();
+        void listen();
 
         void reset();
 

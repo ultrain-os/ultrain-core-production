@@ -318,15 +318,16 @@ namespace ultrainio {
         return true;
     }
 
-    processresult PktManager::processMsg(const char* buf, size_t size, uint16_t local_phase, uint32_t local_block_id) {
+    void PktManager::processMsg(const char* buf, size_t size, uint16_t local_phase, uint32_t local_block_id) {
         MsgInfo msg_info;
-        bool bResult = formatMsg(msg_info, buf, size, local_phase, local_block_id);
-        if (!bResult)
-            return processErr;
+        if (!formatMsg(msg_info, buf, size, local_phase, local_block_id)) {
+            return;
+        }
 
         std::string this_pk = std::string((const char*)UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
-        if (!isValidMsg(msg_info, this_pk))
-            return processErr;
+        if (!isValidMsg(msg_info, this_pk)) {
+            return;
+        }
 
         LOG_INFO << "pk :" << UltrainLog::get_unprintable(msg_info.pk) << std::endl;
         //analyze msg
@@ -363,7 +364,7 @@ namespace ultrainio {
                     }
                 }
                 _proposer_msg_map.insert(make_pair(stProposeMsg.txs_hash, stProposeMsg));
-                return SendMsg;
+                return;
             }
         } else { // echo message
             LOG_INFO << "receive msg MSG_TYPE_ECHO" << endl;
@@ -392,7 +393,7 @@ namespace ultrainio {
                             LOG_INFO << "receive the " << THRESHOLD_SEND_ECHO << "th echo message, and broadcast echo" << std::endl;
                             _node->sendMsg(msg_info);
                         }
-                        return SendMsg;
+                        return;
                     }
                 }
             } else {
@@ -406,7 +407,6 @@ namespace ultrainio {
                 _echo_msg_map.insert(make_pair(stEchoMsg.txs_hash, stEchoMsg));
             }
         }
-        return processOk;
     }
 
     bool PktManager::is_min_propose(const ProposeMsg& propose_msg) {
@@ -496,16 +496,6 @@ namespace ultrainio {
         }
         return tentative_block;
     }
-
-    void PktManager::block() {
-        TxsBlock block = produce_tentative_block();
-        if (!block.txs_hash.empty()) {
-            UltrainLog::displayBlock(block);
-        } else {
-            LOG_ERROR << "block is empty!!!" << std::endl;
-        }
-    }
-
 }  // namespace ultrainio
 
 

@@ -102,7 +102,7 @@ namespace ultrainio {
         return priority;
     }
     
-    processresult UranusNode::Listen() {
+    void UranusNode::listen() {
         char recv_buffer[BUFSIZE] = {0};
         std::size_t dataLenth = 0;
 
@@ -114,7 +114,7 @@ namespace ultrainio {
             }
             if (isTimeout()) {
                 LOG_INFO << "timeout" << std::endl;
-                return processOk;
+                return;
             }
         }
     }
@@ -124,7 +124,6 @@ namespace ultrainio {
         _phase = PHASE_BA0;
         _role = generate_own_role(_phase);
         LOG_INFO << "start BA0. role = " << _role << std::endl;
-        processresult eResult = processOk;
 
         _start = boost::chrono::steady_clock::now();
 
@@ -149,7 +148,7 @@ namespace ultrainio {
         ba0_state.role = _role;
         ba0_state.self_proof = std::string((char*)_role_proof);
 
-        eResult = Listen();
+        listen();
         LOG_INFO << "BA0 ok." << std::endl;
 
         TxsBlock ba0_block = pktmng.produce_tentative_block();
@@ -168,11 +167,16 @@ namespace ultrainio {
 
         _start = boost::chrono::steady_clock::now();
 
-        eResult = Listen();
+        listen();
         LOG_INFO << "BA1 ok." << std::endl;
 
         // produce block
-        pktmng.block();
+        TxsBlock ba1_block = pktmng.produce_tentative_block();
+        if (!ba1_block.txs_hash.empty()) {
+            UltrainLog::displayBlock(ba1_block);
+        } else {
+            LOG_ERROR << "block is empty!!!" << std::endl;
+        }
         _block_id++;
         sleep(2);
         LOG_INFO << "##############################_block_id = " << _block_id << std::endl;

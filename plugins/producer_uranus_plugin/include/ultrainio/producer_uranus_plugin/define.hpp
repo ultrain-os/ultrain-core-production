@@ -3,10 +3,6 @@
 #define BUFSIZE 1024
 #define MIN_MSG_HEAD 28
 
-#define MSG_ECHO_SEND_WAIT 0
-#define MSG_ECHO_NEED_SEND 1
-#define MSG_ECHO_SEND_OK 2
-
 /**
  * MOST_ATTACK_NUMBER_F = upper(COMMITTER_NUMBER_N/3)
  */
@@ -27,14 +23,6 @@ const std::string consensus_phase_string[] = {
         std::string("PHASE_INIT"),
         std::string("PHASE_BA0"),
         std::string("PHASE_BA1")
-};
-
-enum processresult : unsigned int {
-    processOk = 0,
-    processErr,
-    IntoBA,
-    SendMsg,
-    Block,
 };
 
 enum uranus_role : unsigned int {
