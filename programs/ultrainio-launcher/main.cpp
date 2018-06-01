@@ -1005,7 +1005,7 @@ launcher_def::write_config_file (tn_node_def &node) {
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
     }
-    cfg << "plugin = ultrainio::producer_plugin\n";
+    cfg << "plugin = ultrainio::producer_uranus_plugin\n";
   }
   if( instance.has_db ) {
     cfg << "plugin = ultrainio::mongo_db_plugin\n";

@@ -10,7 +10,7 @@
 #include <ultrainio/chain/chain_controller.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/block.hpp>
-#include <ultrainio/producer_plugin/producer_plugin.hpp>
+#include <ultrainio/producer_uranus_plugin/producer_uranus_plugin.hpp>
 #include <ultrainio/utilities/key_conversion.hpp>
 #include <ultrainio/chain/contracts/types.hpp>
 
@@ -2466,7 +2466,7 @@ namespace ultrainio {
          auto allowed_it = std::find(allowed_peers.begin(), allowed_peers.end(), msg.key);
          auto private_it = private_keys.find(msg.key);
          bool found_producer_key = false;
-         producer_plugin* pp = app().find_plugin<producer_plugin>();
+         producer_uranus_plugin* pp = app().find_plugin<producer_uranus_plugin>();
          if(pp != nullptr)
             found_producer_key = pp->is_producer_key(msg.key);
          if( allowed_it == allowed_peers.end() && private_it == private_keys.end() && !found_producer_key) {
@@ -2517,7 +2517,7 @@ namespace ultrainio {
    chain::public_key_type net_plugin_impl::get_authentication_key() const {
       if(!private_keys.empty())
          return private_keys.begin()->first;
-      /*producer_plugin* pp = app().find_plugin<producer_plugin>();
+      /*producer_uranus_plugin* pp = app().find_plugin<producer_uranus_plugin>();
       if(pp != nullptr && pp->get_state() == abstract_plugin::started)
          return pp->first_producer_public_key();*/
       return chain::public_key_type();
@@ -2528,7 +2528,7 @@ namespace ultrainio {
       auto private_key_itr = private_keys.find(signer);
       if(private_key_itr != private_keys.end())
          return private_key_itr->second.sign(digest);
-      producer_plugin* pp = app().find_plugin<producer_plugin>();
+      producer_uranus_plugin* pp = app().find_plugin<producer_uranus_plugin>();
       if(pp != nullptr && pp->get_state() == abstract_plugin::started)
          return pp->sign_compact(signer, digest);
       return chain::signature_type();

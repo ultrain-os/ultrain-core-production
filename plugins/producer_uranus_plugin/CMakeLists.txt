@@ -17,7 +17,7 @@ FIND_PACKAGE(Boost 1.66 REQUIRED COMPONENTS
         filesystem)
 
 include_directories( "../../externals/boringssl/include" )
-target_link_libraries( producer_uranus_plugin  appbase fc fiat crypto ${Boost_LIBRARIES})
+target_link_libraries( producer_uranus_plugin  appbase fc fiat crypto ultrainio_chain ultrain_utilities net_plugin ${Boost_LIBRARIES})
 target_include_directories( producer_uranus_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 
 
