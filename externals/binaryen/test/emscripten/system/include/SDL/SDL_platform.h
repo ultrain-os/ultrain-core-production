@@ -32,9 +32,9 @@
 #undef __AIX__
 #define __AIX__		1
 #endif
-#if defined(__BULTRAIN__)
-#undef __BULTRAIN__
-#define __BULTRAIN__	1
+#if defined(__BEOS__)
+#undef __BEOS__
+#define __BEOS__	1
 #endif
 #if defined(__HAIKU__)
 #undef __HAIKU__
@@ -85,8 +85,8 @@
 #endif
 #if TARGET_OS_IPHONE
 /* if compiling for iPhone */
-#undef __IPHONULTRAIN__
-#define __IPHONULTRAIN__ 1
+#undef __IPHONEOS__
+#define __IPHONEOS__ 1
 #undef __MACOSX__
 #else
 /* if not compiling for iPhone */

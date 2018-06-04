@@ -138,7 +138,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
     } else if (curr->is<Block>()) {
       return; // handled in visitBlock
     } else if (curr->is<If>()) {
-      assert(!curr->cast<If>()->ifFalse); // if-elses are handled by doNoteIfElse* methods
+      ASSERT_THROW(!curr->cast<If>()->ifFalse); // if-elses are handled by doNoteIfElse* methods
     } else if (curr->is<Switch>()) {
       auto* sw = curr->cast<Switch>();
       for (auto target : sw->targets) {
@@ -153,13 +153,13 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
   static void doNoteIfElseCondition(SimplifyLocals* self, Expression** currp) {
     // we processed the condition of this if-else, and now control flow branches
     // into either the true or the false sides
-    assert((*currp)->cast<If>()->ifFalse);
+    ASSERT_THROW((*currp)->cast<If>()->ifFalse);
     self->sinkables.clear();
   }
 
   static void doNoteIfElseTrue(SimplifyLocals* self, Expression** currp) {
     // we processed the ifTrue side of this if-else, save it on the stack
-    assert((*currp)->cast<If>()->ifFalse);
+    ASSERT_THROW((*currp)->cast<If>()->ifFalse);
     self->ifStack.push_back(std::move(self->sinkables));
   }
 
@@ -167,7 +167,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
     // we processed the ifFalse side of this if-else, we can now try to
     // mere with the ifTrue side and optimize a return value, if possible
     auto* iff = (*currp)->cast<If>();
-    assert(iff->ifFalse);
+    ASSERT_THROW(iff->ifFalse);
     if (self->allowStructure) {
       self->optimizeIfReturn(iff, currp, self->ifStack.back());
     }
@@ -206,7 +206,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
         replaceCurrent(set->value);
       } else {
         replaceCurrent(set);
-        assert(!set->isTee());
+        ASSERT_THROW(!set->isTee());
         set->setTee(true);
       }
       // reuse the getlocal that is dying
@@ -221,7 +221,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
     // collapse drop-tee into set, which can occur if a get was sunk into a tee
     auto* set = curr->value->dynCast<SetLocal>();
     if (set) {
-      assert(set->isTee());
+      ASSERT_THROW(set->isTee());
       set->setTee(false);
       replaceCurrent(set);
     }
@@ -264,7 +264,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
       auto found = self->sinkables.find(set->index);
       if (found != self->sinkables.end()) {
         auto* previous = (*found->second.item)->cast<SetLocal>();
-        assert(!previous->isTee());
+        ASSERT_THROW(!previous->isTee());
         auto* previousValue = previous->value;
         Drop* drop = ExpressionManipulator::convert<SetLocal, Drop>(previous);
         drop->value = previousValue;
@@ -280,7 +280,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
 
     if (set && self->canSink(set)) {
       Index index = set->index;
-      assert(self->sinkables.count(index) == 0);
+      ASSERT_THROW(self->sinkables.count(index) == 0);
       self->sinkables.emplace(std::make_pair(index, SinkableInfo(currp, self->getPassOptions())));
     }
 
@@ -305,7 +305,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
     auto breaks = std::move(blockBreaks[block->name]);
     blockBreaks.erase(block->name);
     if (breaks.size() == 0) return; // block has no branches TODO we might optimize trivial stuff here too
-    assert(!(*breaks[0].brp)->cast<Break>()->value); // block does not already have a return value (if one break has one, they all do)
+    ASSERT_THROW(!(*breaks[0].brp)->cast<Break>()->value); // block does not already have a return value (if one break has one, they all do)
     // look for a set_local that is present in them all
     bool found = false;
     Index sharedIndex = -1;
@@ -345,7 +345,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
       auto* breakSetLocalPointer = breaks[j].sinkables.at(sharedIndex).item;
       auto* brp = breaks[j].brp;
       auto* br = (*brp)->cast<Break>();
-      assert(!br->value);
+      ASSERT_THROW(!br->value);
       // if the break is conditional, then we must set the value here - if the break is not taken, we must still have the new value in the local
       auto* set = (*breakSetLocalPointer)->cast<SetLocal>();
       if (br->condition) {
@@ -369,7 +369,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
 
   // optimize set_locals from both sides of an if into a return value
   void optimizeIfReturn(If* iff, Expression** currp, Sinkables& ifTrue) {
-    assert(iff->ifFalse);
+    ASSERT_THROW(iff->ifFalse);
     // if this if already has a result, we can't do anything
     if (isConcreteWasmType(iff->type)) return;
     // We now have the sinkables from both sides of the if.
@@ -400,14 +400,14 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals>>
     ifTrueBlock->list[ifTrueBlock->list.size() - 1] = (*ifTrueItem)->cast<SetLocal>()->value;
     ExpressionManipulator::nop(*ifTrueItem);
     ifTrueBlock->finalize();
-    assert(ifTrueBlock->type != none);
+    ASSERT_THROW(ifTrueBlock->type != none);
     auto *ifFalseItem = ifFalse.at(sharedIndex).item;
     ifFalseBlock->list[ifFalseBlock->list.size() - 1] = (*ifFalseItem)->cast<SetLocal>()->value;
     ExpressionManipulator::nop(*ifFalseItem);
     ifFalseBlock->finalize();
-    assert(ifTrueBlock->type != none);
+    ASSERT_THROW(ifTrueBlock->type != none);
     iff->finalize(); // update type
-    assert(iff->type != none);
+    ASSERT_THROW(iff->type != none);
     // finally, create a set_local on the iff itself
     auto* newSetLocal = Builder(*getModule()).makeSetLocal(sharedIndex, iff);
     *currp = newSetLocal;

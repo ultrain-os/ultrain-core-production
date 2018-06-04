@@ -37,7 +37,7 @@ PassRegistry* PassRegistry::get() {
 }
 
 void PassRegistry::registerPass(const char* name, const char *description, Creator create) {
-  assert(passInfos.find(name) == passInfos.end());
+  ASSERT_THROW(passInfos.find(name) == passInfos.end());
   passInfos[name] = PassInfo(description, create);
 }
 
@@ -57,7 +57,7 @@ std::vector<std::string> PassRegistry::getRegisteredNames() {
 }
 
 std::string PassRegistry::getPassDescription(std::string name) {
-  assert(passInfos.find(name) != passInfos.end());
+  ASSERT_THROW(passInfos.find(name) != passInfos.end());
   return passInfos[name].description;
 }
 
@@ -293,7 +293,7 @@ void PassRunner::doAdd(Pass* pass) {
 }
 
 void PassRunner::runPassOnFunction(Pass* pass, Function* func) {
-  assert(pass->isFunctionParallel());
+  ASSERT_THROW(pass->isFunctionParallel());
   // function-parallel passes get a new instance per function
   auto instance = std::unique_ptr<Pass>(pass->create());
   instance->runFunction(this, wasm, func);

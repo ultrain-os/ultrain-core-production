@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "ULTRAIN.IO"
-PROJECT_NUMBER         = "DAWN ${DOXY_ULTRAIN_VERSION}"
+PROJECT_NUMBER         = "ULTRAINIO ${DOXY_ULTRAIN_VERSION}"
 PROJECT_BRIEF          =
 PROJECT_LOGO           = ultrain-logo.png
 OUTPUT_DIRECTORY       =

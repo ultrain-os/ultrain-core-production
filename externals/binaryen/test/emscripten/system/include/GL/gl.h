@@ -39,7 +39,7 @@
  */
 #if !defined(__SCITECH_SNAP__)
 
-#if defined(__BULTRAIN__)
+#if defined(__BEOS__)
 #include <stdlib.h>     /* to get some BeOS-isms */
 #endif
 
@@ -72,7 +72,7 @@
 #  define GLAPIENTRY
 #endif /* WIN32 && !CYGWIN */
 
-#if (defined(__BULTRAIN__) && defined(__POWERPC__)) || defined(__QUICKDRAW__)
+#if (defined(__BEOS__) && defined(__POWERPC__)) || defined(__QUICKDRAW__)
 #  define PRAGMA_EXPORT_SUPPORTED		1
 #endif
 

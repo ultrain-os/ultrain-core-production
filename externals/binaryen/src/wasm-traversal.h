@@ -69,7 +69,7 @@ struct Visitor {
   ReturnType visitModule(Module* curr) {}
 
   ReturnType visit(Expression* curr) {
-    assert(curr);
+    ASSERT_THROW(curr);
 
     #define DELEGATE(CLASS_TO_VISIT) \
       return static_cast<SubType*>(this)-> \
@@ -277,12 +277,12 @@ struct Walker : public VisitorType {
   }
 
   void walk(Expression*& root) {
-    assert(stack.size() == 0);
+    ASSERT_THROW(stack.size() == 0);
     pushTask(SubType::scan, &root);
     while (stack.size() > 0) {
       auto task = popTask();
       replacep = task.currp;
-      assert(*task.currp);
+      ASSERT_THROW(*task.currp);
       task.func(static_cast<SubType*>(this), task.currp);
     }
   }
@@ -491,7 +491,7 @@ struct ControlFlowWalker : public PostWalker<SubType, VisitorType> {
 
   // Uses the control flow stack to find the target of a break to a name
   Expression* findBreakTarget(Name name) {
-    assert(!controlFlowStack.empty());
+    ASSERT_THROW(!controlFlowStack.empty());
     Index i = controlFlowStack.size() - 1;
     while (1) {
       auto* curr = controlFlowStack[i];
@@ -501,7 +501,7 @@ struct ControlFlowWalker : public PostWalker<SubType, VisitorType> {
         if (name == loop->name) return curr;
       } else {
         // an if, ignorable
-        assert(curr->template is<If>());
+        ASSERT_THROW(curr->template is<If>());
       }
       if (i == 0) return nullptr;
       i--;
@@ -513,7 +513,7 @@ struct ControlFlowWalker : public PostWalker<SubType, VisitorType> {
   }
 
   static void doPostVisitControlFlow(SubType* self, Expression** currp) {
-    assert(self->controlFlowStack.back() == *currp);
+    ASSERT_THROW(self->controlFlowStack.back() == *currp);
     self->controlFlowStack.pop_back();
   }
 
@@ -554,7 +554,7 @@ struct ExpressionStackWalker : public PostWalker<SubType, VisitorType> {
 
   // Uses the control flow stack to find the target of a break to a name
   Expression* findBreakTarget(Name name) {
-    assert(!expressionStack.empty());
+    ASSERT_THROW(!expressionStack.empty());
     Index i = expressionStack.size() - 1;
     while (1) {
       auto* curr = expressionStack[i];

@@ -137,7 +137,7 @@ extern const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #  define OS_CODE  0x0f
 #endif
 
-#if defined(_BULTRAIN_) || defined(RISCOS)
+#if defined(_BEOS_) || defined(RISCOS)
 #  define fdopen(fd,mode) NULL /* No fdopen() */
 #endif
 

@@ -12,8 +12,8 @@
 #include <ultrainiolib/datastream.hpp>
 #include <ultrainiolib/print.hpp>
 #include <ultrainiolib/compiler_builtins.h>
-
 #include "test_api.hpp"
+
 void test_action::read_action_normal() {
 
    char buffer[100];
@@ -49,6 +49,8 @@ void test_action::test_dummy_action() {
    total = get_action( 1, 0, buffer, static_cast<size_t>(total) );
    ultrainio_assert( total > 0, "get_action failed" );
    ultrainio::action act = ultrainio::get_action( 1, 0 );
+   ultrainio_assert( act.authorization.back().actor == N(testapi), "incorrect permission actor" );
+   ultrainio_assert( act.authorization.back().permission == N(active), "incorrect permission name" );
    ultrainio_assert( ultrainio::pack_size(act) == static_cast<size_t>(total), "pack_size does not match get_action size" );
    ultrainio_assert( act.account == N(testapi), "expected testapi account" );
 
@@ -77,7 +79,6 @@ void test_action::test_cf_action() {
 
    ultrainio::action act = ultrainio::get_action( 0, 0 );
    cf_action cfa = act.data_as<cf_action>();
-
    if ( cfa.payload == 100 ) {
       // verify read of get_context_free_data, also verifies system api access
       int size = get_context_free_data( cfa.cfd_idx, nullptr, 0 );
@@ -102,6 +103,16 @@ void test_action::test_cf_action() {
       memccpy(&v, &i, sizeof(i), sizeof(i));
       // verify transaction api access
       ultrainio_assert(transaction_size() > 0, "transaction_size failed");
+      // verify softfloat api access
+      float f1 = 1.0f, f2 = 2.0f;
+      float f3 = f1 + f2;
+      ultrainio_assert( f3 >  2.0f, "Unable to add float.");
+      // verify compiler builtin api access
+      __int128 ret;
+      __divti3(ret, 2, 2, 2, 2);
+      // verify context_free_system_api
+      ultrainio_assert( true, "verify ultrainio_assert can be called" );
+
 
    } else if ( cfa.payload == 200 ) {
       // attempt to access non context free api, privileged_api
@@ -121,10 +132,31 @@ void test_action::test_cf_action() {
       db_idx64_store( N(testapi), N(testapi), N(testapi), 0, &i );
       ultrainio_assert( false, "db_api should not be allowed" );
    } else if ( cfa.payload == 204 ) {
+      db_find_i64( N(testapi), N(testapi), N(testapi), 1);
+      ultrainio_assert( false, "db_api should not be allowed" );
+   } else if ( cfa.payload == 205 ) {
       // attempt to access non context free api, send action
       ultrainio::action dum_act;
       dum_act.send();
       ultrainio_assert( false, "action send should not be allowed" );
+   } else if ( cfa.payload == 206 ) {
+      ultrainio::require_auth(N(test));
+      ultrainio_assert( false, "authorization_api should not be allowed" );
+   } else if ( cfa.payload == 207 ) {
+      now();
+      ultrainio_assert( false, "system_api should not be allowed" );
+   } else if ( cfa.payload == 208 ) {
+      current_time();
+      ultrainio_assert( false, "system_api should not be allowed" );
+   } else if ( cfa.payload == 209 ) {
+      publication_time();
+      ultrainio_assert( false, "system_api should not be allowed" );
+   } else if ( cfa.payload == 210 ) {
+      send_inline( (char*)"hello", 6 );
+      ultrainio_assert( false, "transaction_api should not be allowed" );
+   } else if ( cfa.payload == 211 ) {
+      send_deferred( N(testapi), N(testapi), "hello", 6 );
+      ultrainio_assert( false, "transaction_api should not be allowed" );
    }
 
 }
@@ -166,8 +198,9 @@ void test_action::test_abort() {
 }
 
 void test_action::test_publication_time() {
-   uint32_t pub_time = 0;
-   read_action_data(&pub_time, sizeof(uint32_t));
+   uint64_t pub_time = 0;
+   uint32_t total = read_action_data(&pub_time, sizeof(uint64_t));
+   ultrainio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
    ultrainio_assert( pub_time == publication_time(), "pub_time == publication_time()" );
 }
 
@@ -179,15 +212,16 @@ void test_action::test_current_receiver(uint64_t receiver, uint64_t code, uint64
    ultrainio_assert( receiver == cur_rec, "the current receiver does not match" );
 }
 
-void test_action::test_current_sender() {
-   account_name cur_send;
-   read_action_data(&cur_send, sizeof(account_name));
-   ultrainio_assert( current_sender() == cur_send, "the current sender does not match" );
+void test_action::test_current_time() {
+   uint64_t tmp = 0;
+   uint32_t total = read_action_data(&tmp, sizeof(uint64_t));
+   ultrainio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
+   ultrainio_assert( tmp == current_time(), "tmp == current_time()" );
 }
 
-void test_action::now() {
-   uint32_t tmp = 0;
-   uint32_t total = read_action_data(&tmp, sizeof(uint32_t));
-   ultrainio_assert( total == sizeof(uint32_t), "total == sizeof(uint32_t)");
-   ultrainio_assert( tmp == ::now(), "tmp == now()" );
+void test_action::test_assert_code() {
+   uint64_t code = 0;
+   uint32_t total = read_action_data(&code, sizeof(uint64_t));
+   ultrainio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
+   ultrainio_assert_code( false, code );
 }

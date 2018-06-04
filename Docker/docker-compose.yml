@@ -10,7 +10,7 @@ services:
     build:
       context: .
     image: ultrainio/ultrain
-    command: /opt/ultrainio/bin/nodultraind.sh
+    command: /opt/ultrainio/bin/nodultraind.sh --data-dir /opt/ultrainio/bin/data-dir -e
     hostname: nodultraind
     ports:
       - 8888:8888
@@ -22,7 +22,7 @@ services:
 
   kultraind:
     image: ultrainio/ultrain
-    command: /opt/ultrainio/bin/kultraind
+    command: /opt/ultrainio/bin/kultraind --wallet-dir /opt/ultrainio/bin/data-dir --http-server-address=127.0.0.1:8900
     hostname: kultraind
     links:
       - nodultraind

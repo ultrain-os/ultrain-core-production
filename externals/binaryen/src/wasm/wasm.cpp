@@ -345,7 +345,7 @@ void Load::finalize() {
 }
 
 void Store::finalize() {
-  assert(valueType != none); // must be set
+  ASSERT_THROW(valueType != none); // must be set
   if (ptr->type == unreachable || value->type == unreachable) {
     type = unreachable;
   } else {
@@ -458,7 +458,7 @@ bool Binary::isRelational() {
 }
 
 void Binary::finalize() {
-  assert(left && right);
+  ASSERT_THROW(left && right);
   if (left->type == unreachable || right->type == unreachable) {
     type = unreachable;
   } else if (isRelational()) {
@@ -469,7 +469,7 @@ void Binary::finalize() {
 }
 
 void Select::finalize() {
-  assert(ifTrue && ifFalse);
+  ASSERT_THROW(ifTrue && ifFalse);
   if (ifTrue->type == unreachable || ifFalse->type == unreachable || condition->type == unreachable) {
     type = unreachable;
   } else {
@@ -529,7 +529,7 @@ bool Function::hasLocalName(Index index) const {
 }
 
 Name Function::getLocalName(Index index) {
-  assert(hasLocalName(index));
+  ASSERT_THROW(hasLocalName(index));
   return localNames[index];
 }
 
@@ -542,7 +542,7 @@ Name Function::getLocalNameOrDefault(Index index) {
 }
 
 Index Function::getLocalIndex(Name name) {
-  assert(localIndices.count(name) > 0);
+  ASSERT_THROW(localIndices.count(name) > 0);
   return localIndices[name];
 }
 
@@ -561,27 +561,27 @@ WasmType Function::getLocalType(Index index) {
 }
 
 FunctionType* Module::getFunctionType(Name name) {
-  assert(functionTypesMap.count(name));
+  ASSERT_THROW(functionTypesMap.count(name));
   return functionTypesMap[name];
 }
 
 Import* Module::getImport(Name name) {
-  assert(importsMap.count(name));
+  ASSERT_THROW(importsMap.count(name));
   return importsMap[name];
 }
 
 Export* Module::getExport(Name name) {
-  assert(exportsMap.count(name));
+  ASSERT_THROW(exportsMap.count(name));
   return exportsMap[name];
 }
 
 Function* Module::getFunction(Name name) {
-  assert(functionsMap.count(name));
+  ASSERT_THROW(functionsMap.count(name));
   return functionsMap[name];
 }
 
 Global* Module::getGlobal(Name name) {
-  assert(globalsMap.count(name));
+  ASSERT_THROW(globalsMap.count(name));
   return globalsMap[name];
 }
 
@@ -616,37 +616,37 @@ Global* Module::getGlobalOrNull(Name name) {
 }
 
 void Module::addFunctionType(FunctionType* curr) {
-  assert(curr->name.is());
+  ASSERT_THROW(curr->name.is());
   functionTypes.push_back(std::unique_ptr<FunctionType>(curr));
-  assert(functionTypesMap.find(curr->name) == functionTypesMap.end());
+  ASSERT_THROW(functionTypesMap.find(curr->name) == functionTypesMap.end());
   functionTypesMap[curr->name] = curr;
 }
 
 void Module::addImport(Import* curr) {
-  assert(curr->name.is());
+  ASSERT_THROW(curr->name.is());
   imports.push_back(std::unique_ptr<Import>(curr));
-  assert(importsMap.find(curr->name) == importsMap.end());
+  ASSERT_THROW(importsMap.find(curr->name) == importsMap.end());
   importsMap[curr->name] = curr;
 }
 
 void Module::addExport(Export* curr) {
-  assert(curr->name.is());
+  ASSERT_THROW(curr->name.is());
   exports.push_back(std::unique_ptr<Export>(curr));
-  assert(exportsMap.find(curr->name) == exportsMap.end());
+  ASSERT_THROW(exportsMap.find(curr->name) == exportsMap.end());
   exportsMap[curr->name] = curr;
 }
 
 void Module::addFunction(Function* curr) {
-  assert(curr->name.is());
+  ASSERT_THROW(curr->name.is());
   functions.push_back(std::unique_ptr<Function>(curr));
-  assert(functionsMap.find(curr->name) == functionsMap.end());
+  ASSERT_THROW(functionsMap.find(curr->name) == functionsMap.end());
   functionsMap[curr->name] = curr;
 }
 
 void Module::addGlobal(Global* curr) {
-  assert(curr->name.is());
+  ASSERT_THROW(curr->name.is());
   globals.push_back(std::unique_ptr<Global>(curr));
-  assert(globalsMap.find(curr->name) == globalsMap.end());
+  ASSERT_THROW(globalsMap.find(curr->name) == globalsMap.end());
   globalsMap[curr->name] = curr;
 }
 

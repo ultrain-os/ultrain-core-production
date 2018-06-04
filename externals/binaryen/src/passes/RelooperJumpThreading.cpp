@@ -121,7 +121,7 @@ struct RelooperJumpThreading : public WalkerPass<ExpressionStackWalker<RelooperJ
               if (!irreducible) {
                 // this is indeed a holder. we can process the ifs, and must also move
                 // the block to enclose the origin, so it is properly reachable
-                assert(holder->list.size() == 1); // must be size 1, a relooper multiple will have its own label, and is an if-else sequence and nothing more
+                ASSERT_THROW(holder->list.size() == 1); // must be size 1, a relooper multiple will have its own label, and is an if-else sequence and nothing more
                 optimizeJumpsToLabelCheck(list[origin], iff);
                 holder->list[0] = list[origin];
                 list[origin] = holder;
@@ -168,11 +168,11 @@ private:
     finder.walk(origin);
     while (iff) {
       auto num = getCheckedLabelValue(iff);
-      assert(labelChecks[num] > 0);
+      ASSERT_THROW(labelChecks[num] > 0);
       if (labelChecks[num] > 1) return true; // checked more than once, somewhere in function
-      assert(labelChecksInOrigin[num] == 0);
+      ASSERT_THROW(labelChecksInOrigin[num] == 0);
       if (labelSetsInOrigin[num] != labelSets[num]) {
-        assert(labelSetsInOrigin[num] < labelSets[num]);
+        ASSERT_THROW(labelSetsInOrigin[num] < labelSets[num]);
         // the label is set outside of the origin
         // if the only other location is inside the if body, then it is ok - it must be in a loop
         // and returning to the top of the loop body, so we don't need to do anything for that

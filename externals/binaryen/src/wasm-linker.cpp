@@ -31,7 +31,7 @@ static constexpr const char* stackPointer = "__stack_pointer";
 
 void Linker::placeStackPointer(Address stackAllocation) {
   // ensure this is the first allocation
-  assert(nextStatic == globalBase || nextStatic == 1);
+  ASSERT_THROW(nextStatic == globalBase || nextStatic == 1);
   const Address pointerSize = 4;
   // Unconditionally allocate space for the stack pointer. Emscripten
   // allocates the stack itself, and initializes the stack pointer itself.
@@ -44,7 +44,7 @@ void Linker::placeStackPointer(Address stackAllocation) {
     auto relocation = new LinkerObject::Relocation(
       LinkerObject::Relocation::kData, (uint32_t*)&raw[0], ".stack", stackAllocation);
     out.addRelocation(relocation);
-    assert(out.wasm.memory.segments.empty());
+    ASSERT_THROW(out.wasm.memory.segments.empty());
     out.addSegment(stackPointer, raw);
   }
 }
@@ -356,7 +356,7 @@ void Linker::ensureTableSegment() {
 }
 
 std::vector<Name>& Linker::getTableDataRef() {
-  assert(out.wasm.table.segments.size() == 1);
+  ASSERT_THROW(out.wasm.table.segments.size() == 1);
   return out.wasm.table.segments[0].data;
 }
 

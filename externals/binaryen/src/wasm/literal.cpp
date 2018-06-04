@@ -26,28 +26,28 @@
 namespace wasm {
 
 Literal Literal::castToF32() {
-  assert(type == WasmType::i32);
+  ASSERT_THROW(type == WasmType::i32);
   Literal ret(i32);
   ret.type = WasmType::f32;
   return ret;
 }
 
 Literal Literal::castToF64() {
-  assert(type == WasmType::i64);
+  ASSERT_THROW(type == WasmType::i64);
   Literal ret(i64);
   ret.type = WasmType::f64;
   return ret;
 }
 
 Literal Literal::castToI32() {
-  assert(type == WasmType::f32);
+  ASSERT_THROW(type == WasmType::f32);
   Literal ret(i32);
   ret.type = WasmType::i32;
   return ret;
 }
 
 Literal Literal::castToI64() {
-  assert(type == WasmType::f64);
+  ASSERT_THROW(type == WasmType::f64);
   Literal ret(i64);
   ret.type = WasmType::i64;
   return ret;
@@ -94,27 +94,27 @@ bool Literal::operator!=(const Literal& other) const {
 }
 
 uint32_t Literal::NaNPayload(float f) {
-  assert(std::isnan(f) && "expected a NaN");
+  ASSERT_THROW(std::isnan(f) && "expected a NaN");
   // SEEEEEEE EFFFFFFF FFFFFFFF FFFFFFFF
   // NaN has all-one exponent and non-zero fraction.
   return ~0xff800000u & bit_cast<uint32_t>(f);
 }
 
 uint64_t Literal::NaNPayload(double f) {
-  assert(std::isnan(f) && "expected a NaN");
+  ASSERT_THROW(std::isnan(f) && "expected a NaN");
   // SEEEEEEE EEEEFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF
   // NaN has all-one exponent and non-zero fraction.
   return ~0xfff0000000000000ull & bit_cast<uint64_t>(f);
 }
 
 float Literal::setQuietNaN(float f) {
-  assert(std::isnan(f) && "expected a NaN");
+  ASSERT_THROW(std::isnan(f) && "expected a NaN");
   // An SNaN is a NaN with the most significant fraction bit clear.
   return bit_cast<float>(0x00400000u | bit_cast<uint32_t>(f));
 }
 
 double Literal::setQuietNaN(double f) {
-  assert(std::isnan(f) && "expected a NaN");
+  ASSERT_THROW(std::isnan(f) && "expected a NaN");
   // An SNaN is a NaN with the most significant fraction bit clear.
   return bit_cast<double>(0x0008000000000000ull | bit_cast<uint64_t>(f));
 }
@@ -193,27 +193,27 @@ Literal Literal::popCount() const {
 }
 
 Literal Literal::extendToSI64() const {
-  assert(type == WasmType::i32);
+  ASSERT_THROW(type == WasmType::i32);
   return Literal((int64_t)i32);
 }
 
 Literal Literal::extendToUI64() const {
-  assert(type == WasmType::i32);
+  ASSERT_THROW(type == WasmType::i32);
   return Literal((uint64_t)(uint32_t)i32);
 }
 
 Literal Literal::extendToF64() const {
-  assert(type == WasmType::f32);
+  ASSERT_THROW(type == WasmType::f32);
   return Literal(double(getf32()));
 }
 
 Literal Literal::truncateToI32() const {
-  assert(type == WasmType::i64);
+  ASSERT_THROW(type == WasmType::i64);
   return Literal((int32_t)i64);
 }
 
 Literal Literal::truncateToF32() const {
-  assert(type == WasmType::f64);
+  ASSERT_THROW(type == WasmType::f64);
   return Literal(float(getf64()));
 }
 

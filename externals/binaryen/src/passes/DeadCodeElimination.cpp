@@ -199,7 +199,7 @@ struct DeadCodeElimination : public WalkerPass<PostWalker<DeadCodeElimination>> 
   }
 
   static void doAfterIfElseTrue(DeadCodeElimination* self, Expression** currp) {
-    assert((*currp)->cast<If>()->ifFalse);
+    ASSERT_THROW((*currp)->cast<If>()->ifFalse);
     bool reachableBefore = self->ifStack.back();
     self->ifStack.pop_back();
     self->ifStack.push_back(self->reachable);
@@ -406,7 +406,7 @@ struct DeadCodeElimination : public WalkerPass<PostWalker<DeadCodeElimination>> 
   }
 
   void visitFunction(Function* curr) {
-    assert(reachableBreaks.size() == 0);
+    ASSERT_THROW(reachableBreaks.size() == 0);
   }
 };
 

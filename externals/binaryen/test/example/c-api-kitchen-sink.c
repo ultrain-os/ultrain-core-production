@@ -4,7 +4,7 @@
 #undef NDEBUG
 #endif
 
-#include <assert.h>
+#include "assert_throw.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -269,7 +269,7 @@ void test_core() {
   BinaryenModuleAutoDrop(module);
 
   // Verify it validates
-  assert(BinaryenModuleValidate(module));
+  ASSERT_THROW(BinaryenModuleValidate(module));
 
   // Print it out
   BinaryenModulePrint(module);
@@ -469,11 +469,11 @@ void test_relooper() {
   printf("raw:\n");
   BinaryenModulePrint(module);
 
-  assert(BinaryenModuleValidate(module));
+  ASSERT_THROW(BinaryenModuleValidate(module));
 
   BinaryenModuleOptimize(module);
 
-  assert(BinaryenModuleValidate(module));
+  ASSERT_THROW(BinaryenModuleValidate(module));
 
   printf("optimized:\n");
   BinaryenModulePrint(module);
@@ -497,14 +497,14 @@ void test_binaries() {
     BinaryenModuleDispose(module);
   }
 
-  assert(size > 0);
-  assert(size < 512); // this is a tiny module
+  ASSERT_THROW(size > 0);
+  ASSERT_THROW(size < 512); // this is a tiny module
 
   // read the module from the binary
   BinaryenModuleRef module = BinaryenModuleRead(buffer, size);
 
   // validate, print, and free
-  assert(BinaryenModuleValidate(module));
+  ASSERT_THROW(BinaryenModuleValidate(module));
   printf("module loaded from binary form:\n");
   BinaryenModulePrint(module);
   BinaryenModuleDispose(module);
@@ -525,7 +525,7 @@ void test_interpret() {
   BinaryenSetStart(module, starter);
 
   BinaryenModulePrint(module);
-  assert(BinaryenModuleValidate(module));
+  ASSERT_THROW(BinaryenModuleValidate(module));
   BinaryenModuleInterpret(module);
   BinaryenModuleDispose(module);
 }

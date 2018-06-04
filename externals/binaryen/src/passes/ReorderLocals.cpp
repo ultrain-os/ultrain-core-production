@@ -56,7 +56,7 @@ struct ReorderLocals : public WalkerPass<PostWalker<ReorderLocals>> {
     });
     // sorting left params in front, perhaps slightly reordered. verify and fix.
     for (size_t i = 0; i < curr->params.size(); i++) {
-      assert(newToOld[i] < curr->params.size());
+      ASSERT_THROW(newToOld[i] < curr->params.size());
     }
     for (size_t i = 0; i < curr->params.size(); i++) {
       newToOld[i] = i;

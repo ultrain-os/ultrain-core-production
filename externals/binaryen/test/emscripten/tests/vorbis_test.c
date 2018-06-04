@@ -44,7 +44,7 @@ write_vorbis_data_or_die (const char *filename, int srate, float q, const float 
   vorbis_dsp_state vd;
   vorbis_block     vb;
 
-  int ultrain = 0, ret;
+  int eos = 0, ret;
 
   if ((file = fopen (filename, "wb")) == NULL) {
     printf("\n\nError : fopen failed : %s\n", strerror (errno)) ;
@@ -79,7 +79,7 @@ write_vorbis_data_or_die (const char *filename, int srate, float q, const float 
     ogg_stream_packetin (&os,&header_code);
 
     /* Ensures the audio data will start on a new page. */
-    while (!ultrain){
+    while (!eos){
         int result = ogg_stream_flush (&os,&og);
         if (result == 0)
             break;
@@ -109,15 +109,15 @@ write_vorbis_data_or_die (const char *filename, int srate, float q, const float 
     while (vorbis_bitrate_flushpacket (&vd,&op)) {
       ogg_stream_packetin (&os,&op);
 
-      while (!ultrain) {
+      while (!eos) {
           int result = ogg_stream_pageout (&os,&og);
           if (result == 0)
               break;
           fwrite (og.header,1,og.header_len,file);
           fwrite (og.body,1,og.body_len,file);
 
-          if (ogg_page_ultrain (&og))
-              ultrain = 1;
+          if (ogg_page_eos (&og))
+              eos = 1;
       }
     }
   }
@@ -149,7 +149,7 @@ read_vorbis_data_or_die (const char *filename, int srate, float * data, int coun
   FILE *file;
   char *buffer;
   int  bytes;
-  int ultrain = 0;
+  int eos = 0;
   int i;
   int read_total = 0 ;
 
@@ -238,8 +238,8 @@ read_vorbis_data_or_die (const char *filename, int srate, float * data, int coun
     vorbis_synthesis_init (&vd,&vi);
     vorbis_block_init (&vd,&vb);
 
-    while(!ultrain) {
-      while (!ultrain) {
+    while(!eos) {
+      while (!eos) {
         int result = ogg_sync_pageout (&oy,&og);
         if (result == 0)
           break;
@@ -273,15 +273,15 @@ read_vorbis_data_or_die (const char *filename, int srate, float * data, int coun
             }
           }
 
-          if (ogg_page_ultrain (&og)) ultrain = 1;
+          if (ogg_page_eos (&og)) eos = 1;
         }
       }
 
-      if (!ultrain) {
+      if (!eos) {
         buffer = ogg_sync_buffer (&oy,4096);
         bytes = fread (buffer,1,4096,file);
         ogg_sync_wrote (&oy,bytes);
-        if (bytes == 0) ultrain = 1;
+        if (bytes == 0) eos = 1;
       }
     }
 

@@ -21,10 +21,11 @@ parser.add_argument("-s", type=str, help="topology", default="mesh")
 parser.add_argument("-v", help="verbose", action='store_true')
 parser.add_argument("--nodes-file", type=str, help="File containing nodes info in JSON format.")
 parser.add_argument("--seed", type=int, help="random seed", default=seed)
-parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
+parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print etc/ultrainio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
+parser.add_argument("--kill-all", help="Kill all nodultrain and klultrain instances", action='store_true')
 
 args = parser.parse_args()
 pnodes=args.p
@@ -34,19 +35,17 @@ total_nodes = pnodes if args.n == 0 else args.n
 debug=args.v
 nodesFile=args.nodes_file
 seed=args.seed
-amINoon=not args.not_noon
+dontKill=args.dont_kill
 dumpErrorDetails=args.dump_error_details
+killAll=args.kill_all
 
-killWallet=True
-killEosInstances=True
+killWallet=not dontKill
+killEosInstances=not dontKill
 if nodesFile is not None:
     killEosInstances=False
 
 testUtils.Utils.Debug=debug
 testSuccessful=False
-
-if not amINoon:
-    testUtils.Utils.iAmNotNoon()
 
 random.seed(seed) # Use a fixed seed for repeatability.
 cluster=testUtils.Cluster(walletd=True)
@@ -54,10 +53,6 @@ walletMgr=testUtils.WalletMgr(True)
 
 try:
     cluster.setWalletMgr(walletMgr)
-
-    Print("Stand up walletd")
-    if walletMgr.launch() is False:
-        errorExit("Failed to stand up ultrain walletd.")
 
     if nodesFile is not None:
         jsonStr=None
@@ -67,20 +62,28 @@ try:
             errorExit("Failed to initilize nodes from Json string.")
         total_nodes=len(cluster.getNodes())
     else:
-        cluster.killall()
+        cluster.killall(allInstances=killAll)
         cluster.cleanup()
+        walletMgr.killall(allInstances=killAll)
+        walletMgr.cleanup()
 
         Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
                (pnodes, total_nodes-pnodes, topo, delay))
 
         Print("Stand up cluster")
-        if cluster.launch(pnodes, total_nodes, topo, delay) is False:
+        if cluster.launch(pnodes, total_nodes, topo=topo, delay=delay) is False:
             errorExit("Failed to stand up ultrain cluster.")
 
         Print ("Wait for Cluster stabilization")
         # wait for cluster to start producing blocks
         if not cluster.waitOnClusterBlockNumSync(3):
             errorExit("Cluster never stabilized")
+
+    Print("Stand up UTR wallet kultraind")
+    walletMgr.killall(allInstances=killAll)
+    walletMgr.cleanup()
+    if walletMgr.launch() is False:
+        errorExit("Failed to stand up kultraind.")
 
     accountsCount=total_nodes
     walletName="MyWallet-%d" % (random.randrange(10000))
@@ -93,16 +96,21 @@ try:
     if not cluster.populateWallet(accountsCount, wallet):
         errorExit("Wallet initialization failed.")
 
+    defproduceraAccount=cluster.defproduceraAccount
+    defproducerbAccount=cluster.defproducerbAccount
+    ultrainioAccount=cluster.ultrainioAccount
+
     Print("Create accounts.")
-    if not cluster.createAccounts(testUtils.Cluster.initaAccount):
+    if not cluster.createAccounts(ultrainioAccount):
         errorExit("Accounts creation failed.")
 
     Print("Spread funds and validate")
     if not cluster.spreadFundsAndValidate(10):
         errorExit("Failed to spread and validate funds.")
 
-    testSuccessful=True
     print("Funds spread validated")
+    
+    testSuccessful=True
 finally:
     if not testSuccessful and dumpErrorDetails:
         cluster.dumpErrorDetails()
@@ -110,12 +118,11 @@ finally:
 
     if killEosInstances:
         Print("Shut down the cluster and cleanup.")
-        cluster.killall()
+        cluster.killall(allInstances=killAll)
         cluster.cleanup()
     if killWallet:
         Print("Shut down the wallet and cleanup.")
-        walletMgr.killall()
+        walletMgr.killall(allInstances=killAll)
         walletMgr.cleanup()
-    pass
 
 exit(0)

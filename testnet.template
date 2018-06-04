@@ -13,8 +13,8 @@ if [ -z "$biosport" ]; then
 fi
 
 wddir=ultrainio-ignition-wd
-wdport=8899
-wdhost=127.0.0.1
+wdaddr=localhost:8899
+wdurl=http://$wdaddr
 # Manual deployers, add a line below this block that looks like:
 #    bioshost=$BIOS_HOSTNAME
 #    biosport=$BIOS_HTTP_PORT
@@ -35,7 +35,7 @@ mkdir $wddir
 step=1
 echo Initializing ignition sequence  at $(date) | tee $logfile
 
-echo "http-server-address = 127.0.0.1:$wdport" > $wddir/config.ini
+echo "http-server-address = $wdaddr" > $wddir/config.ini
 
 programs/kultraind/kultraind --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
 echo $$ > ignition_wallet.pid
@@ -44,9 +44,9 @@ sleep 1
 
 ecmd () {
     echo ===== Start: $step ============ >> $logfile
-    echo executing: clultrain --wallet-port $wdport -p $biosport  -H $bioshost $* | tee -a $logfile
+    echo executing: clultrain --wallet-url $wdurl --url http://$bioshost:$biosport $* | tee -a $logfile
     echo ----------------------- >> $logfile
-    programs/clultrain/clultrain --wallet-port $wdport --wallet-host $wdhost -p $biosport  -H $bioshost $* >> $logfile 2>&1
+    programs/clultrain/clultrain  --wallet-url $wdurl --url http://$bioshost:$biosport $* >> $logfile 2>&1
     echo ==== End: $step ============== >> $logfile
     step=$(($step + 1))
 }
@@ -89,18 +89,18 @@ ecmd set contract ultrainio contracts/ultrainio.bios contracts/ultrainio.bios/ul
 
 #the setprods.json argument cannot pass through the function call due to embedded quotes
 echo ===== Start: $step ============ >> $logfile
-echo executing: clultrain --wallet-port $wdport -p $biosport -H $bioshost push action ultrainio setprods setprods.json -p ultrainio@active | tee -a $logfile
+echo executing: clultrain  --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio setprods setprods.json -p ultrainio@active | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/clultrain/clultrain --wallet-port $wdport --wallet-host $wdhost -p $biosport -H $bioshost push action ultrainio setprods setprods.json -p ultrainio@active >> $logfile 2>&1
+programs/clultrain/clultrain  --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio setprods setprods.json -p ultrainio@active >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
 ecmd set contract ultrainio contracts/ultrainio.system contracts/ultrainio.system/ultrainio.system.wast contracts/ultrainio.system/ultrainio.system.abi
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: clultrain --wallet-port $wdport -p $biosport -H $bioshost push action ultrainio issue '{"to":"ultrainio","quantity":"1000000000.0000 UTR","memo":"init"}' -p ultrainio@active | tee -a $logfile
+echo executing: clultrain  --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio issue '{"to":"ultrainio","quantity":"1000000000.0000 UTR","memo":"init"}' -p ultrainio@active | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/clultrain/clultrain --wallet-port $wdport --wallet-host $wdhost -p $biosport -H $bioshost push action ultrainio issue '{"to":"ultrainio","quantity":"1000000000.0000 UTR","memo":"init"}' -p ultrainio@active >> $logfile 2>&1
+programs/clultrain/clultrain  --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio issue '{"to":"ultrainio","quantity":"1000000000.0000 UTR","memo":"init"}' -p ultrainio@active >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 

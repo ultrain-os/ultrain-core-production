@@ -196,11 +196,11 @@ public:
     auto* ret = allocator.alloc<Store>();
     ret->bytes = bytes; ret->offset = offset; ret->align = align; ret->ptr = ptr; ret->value = value; ret->valueType = type;
     ret->finalize();
-    assert(isConcreteWasmType(ret->value->type) ? ret->value->type == type : true);
+    ASSERT_THROW(isConcreteWasmType(ret->value->type) ? ret->value->type == type : true);
     return ret;
   }
   Const* makeConst(Literal value) {
-    assert(isConcreteWasmType(value.type));
+    ASSERT_THROW(isConcreteWasmType(value.type));
     auto* ret = allocator.alloc<Const>();
     ret->value = value;
     ret->type = value.type;
@@ -255,7 +255,7 @@ public:
 
   static Index addParam(Function* func, Name name, WasmType type) {
     // only ok to add a param if no vars, otherwise indices are invalidated
-    assert(func->localIndices.size() == func->params.size());
+    ASSERT_THROW(func->localIndices.size() == func->params.size());
     func->params.push_back(type);
     Index index = func->localNames.size();
     func->localIndices[name] = index;
@@ -268,7 +268,7 @@ public:
     Index index = func->getNumLocals();
     if (name.is()) {
       // if there is a name, apply it, but here we assume all the rest have names too FIXME
-      assert(func->localIndices.size() == func->params.size() + func->vars.size());
+      ASSERT_THROW(func->localIndices.size() == func->params.size() + func->vars.size());
       func->localIndices[name] = index;
       func->localNames.push_back(name);
     }
@@ -321,7 +321,7 @@ public:
     if (!block) {
       block = makeBlock(any);
     } else {
-      assert(!isConcreteWasmType(block->type));
+      ASSERT_THROW(!isConcreteWasmType(block->type));
     }
     auto* other = append->dynCast<Block>();
     if (!other) {

@@ -146,7 +146,7 @@ private:
     // forward, that way we can push later things out of the way
     // of earlier ones. Once we know all we can push, we push it all
     // in one pass, keeping the order of the pushables intact.
-    assert(firstPushable != Index(-1) && pushPoint != Index(-1) && firstPushable < pushPoint);
+    ASSERT_THROW(firstPushable != Index(-1) && pushPoint != Index(-1) && firstPushable < pushPoint);
     EffectAnalyzer cumulativeEffects(passOptions); // everything that matters if you want
                                                    // to be pushed past the pushPoint
     cumulativeEffects.analyze(list[pushPoint]);
@@ -181,7 +181,7 @@ private:
         // something that can't be pushed, so it might block further pushing
         cumulativeEffects.analyze(list[i]);
       }
-      assert(i > 0);
+      ASSERT_THROW(i > 0);
       i--;
     }
     if (toPush.size() == 0) {
@@ -203,7 +203,7 @@ private:
         }
       }
     }
-    assert(skip == total);
+    ASSERT_THROW(skip == total);
     // write out the skipped elements
     for (Index i = 0; i < total; i++) {
       list[pushPoint - i] = toPush[i];

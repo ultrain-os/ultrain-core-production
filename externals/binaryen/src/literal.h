@@ -21,6 +21,7 @@
 #include "support/utilities.h"
 #include "compiler-support.h"
 #include "wasm-type.h"
+#include "assert_throw.h"
 
 namespace wasm {
 
@@ -57,17 +58,17 @@ private:
   Literal castToI32();
   Literal castToI64();
 
-  int32_t geti32() const { assert(type == WasmType::i32); return i32; }
-  int64_t geti64() const { assert(type == WasmType::i64); return i64; }
-  float   getf32() const { assert(type == WasmType::f32); return bit_cast<float>(i32); }
-  double  getf64() const { assert(type == WasmType::f64); return bit_cast<double>(i64); }
+  int32_t geti32() const { ASSERT_THROW(type == WasmType::i32); return i32; }
+  int64_t geti64() const { ASSERT_THROW(type == WasmType::i64); return i64; }
+  float   getf32() const { ASSERT_THROW(type == WasmType::f32); return bit_cast<float>(i32); }
+  double  getf64() const { ASSERT_THROW(type == WasmType::f64); return bit_cast<double>(i64); }
 
-  int32_t* geti32Ptr() { assert(type == WasmType::i32); return &i32; } // careful!
+  int32_t* geti32Ptr() { ASSERT_THROW(type == WasmType::i32); return &i32; } // careful!
 
-  int32_t reinterpreti32() const { assert(type == WasmType::f32); return i32; }
-  int64_t reinterpreti64() const { assert(type == WasmType::f64); return i64; }
-  float   reinterpretf32() const { assert(type == WasmType::i32); return bit_cast<float>(i32); }
-  double  reinterpretf64() const { assert(type == WasmType::i64); return bit_cast<double>(i64); }
+  int32_t reinterpreti32() const { ASSERT_THROW(type == WasmType::f32); return i32; }
+  int64_t reinterpreti64() const { ASSERT_THROW(type == WasmType::f64); return i64; }
+  float   reinterpretf32() const { ASSERT_THROW(type == WasmType::i32); return bit_cast<float>(i32); }
+  double  reinterpretf64() const { ASSERT_THROW(type == WasmType::i64); return bit_cast<double>(i64); }
 
   int64_t getInteger();
   double getFloat();

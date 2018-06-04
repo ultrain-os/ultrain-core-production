@@ -117,7 +117,7 @@ public:
     // create workers
     DEBUG_THREAD("creating workers");
     numWorkers = ThreadPool::getNumCores();
-    assert(numWorkers >= 1);
+    ASSERT_THROW(numWorkers >= 1);
     // worth it to use threads
     liveWorkers.store(0);
     activeWorkers.store(0);
@@ -170,7 +170,7 @@ public:
       return;
     }
     DEBUG_THREAD("finish()ing");
-    assert(nextFunction == numFunctions);
+    ASSERT_THROW(nextFunction == numFunctions);
     wakeAllWorkers();
     waitUntilAllFinished();
     optimizeGlobally();
@@ -219,7 +219,7 @@ private:
 
   void queueFunction(Function* func) {
     DEBUG_THREAD("queue function");
-    assert(nextFunction < numFunctions); // TODO: if we are given more than we expected, use a slower work queue?
+    ASSERT_THROW(nextFunction < numFunctions); // TODO: if we are given more than we expected, use a slower work queue?
     list[nextFunction++].store(func);
     availableFuncs++;
   }

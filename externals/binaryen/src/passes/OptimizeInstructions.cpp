@@ -85,7 +85,7 @@ static PatternDatabase* database = nullptr;
 
 struct DatabaseEnsurer {
   DatabaseEnsurer() {
-    assert(!database);
+    ASSERT_THROW(!database);
     database = new PatternDatabase;
   }
 };
@@ -105,7 +105,7 @@ struct Match {
   // Check if we can match to this pattern, updating ourselves with the info if so
   bool check(Expression* seen) {
     // compare seen to the pattern input, doing a special operation for our "wildcards"
-    assert(wildcards.size() == 0);
+    ASSERT_THROW(wildcards.size() == 0);
     auto compare = [this](Expression* subInput, Expression* subSeen) {
       CallImport* call = subInput->dynCast<CallImport>();
       if (!call || call->operands.size() != 1 || call->operands[0]->type != i32 || !call->operands[0]->is<Const>()) return false;
@@ -452,7 +452,7 @@ struct OptimizeInstructions : public WalkerPass<PostWalker<OptimizeInstructions,
             if ((count > 0 && count < 32 - bits) || (constSignBit && count == 0)) {
               // mixed or [zero upper const bits with sign bit set]; the compared values can never be identical, so
               // force something definitely impossible even after zext
-              assert(bits < 31);
+              ASSERT_THROW(bits < 31);
               c->value = Literal(int32_t(0x80000000));
               // TODO: if no side effects, we can just replace it all with 1 or 0
             } else {
@@ -842,7 +842,7 @@ private:
     ZeroRemover(getPassOptions()).walk(walked);
     if (constant == 0) return walked; // nothing more to do
     if (auto* c = walked->dynCast<Const>()) {
-      assert(c->value.geti32() == 0);
+      ASSERT_THROW(c->value.geti32() == 0);
       c->value = Literal(constant);
       return c;
     }
@@ -861,7 +861,7 @@ private:
     auto& options = getPassRunner()->options;
     if (options.optimizeLevel < 2 || options.shrinkLevel > 0) return nullptr;
     const auto MIN_COST = 7;
-    assert(binary->op == AndInt32 || binary->op == OrInt32);
+    ASSERT_THROW(binary->op == AndInt32 || binary->op == OrInt32);
     if (binary->right->is<Const>()) return nullptr; // trivial
     // bitwise logical operator on two non-numerical values, check if they are boolean
     auto* left = binary->left;

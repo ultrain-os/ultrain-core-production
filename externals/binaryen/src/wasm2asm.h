@@ -385,9 +385,9 @@ Ref Wasm2AsmBuilder::processFunction(Function* func) {
     ret[3]->splice(theVarIndex, 1);
   }
   // checks
-  assert(frees[i32].size() == temps[i32]); // all temp vars should be free at the end
-  assert(frees[f32].size() == temps[f32]); // all temp vars should be free at the end
-  assert(frees[f64].size() == temps[f64]); // all temp vars should be free at the end
+  ASSERT_THROW(frees[i32].size() == temps[i32]); // all temp vars should be free at the end
+  ASSERT_THROW(frees[f32].size() == temps[f32]); // all temp vars should be free at the end
+  ASSERT_THROW(frees[f64].size() == temps[f64]); // all temp vars should be free at the end
   // cleanups
   willBeStatement.clear();
   return ret;
@@ -507,7 +507,7 @@ Ref Wasm2AsmBuilder::processFunctionBody(Function* func, IString result) {
       //                 allocated in a higher scope, and we can just assign to it as our result is
       //                 going there anyhow.
       ScopedTemp(WasmType type, Wasm2AsmBuilder* parent, IString possible = NO_RESULT) : parent(parent), type(type) {
-        assert(possible != EXPRESSION_RESULT);
+        ASSERT_THROW(possible != EXPRESSION_RESULT);
         if (possible == NO_RESULT) {
           temp = parent->getTemp(type);
           needFree = true;
@@ -664,7 +664,7 @@ Ref Wasm2AsmBuilder::processFunctionBody(Function* func, IString result) {
     }
     Expression *defaultBody = nullptr; // default must be last in asm.js
     Ref visitSwitch(Switch *curr) {
-      assert(!curr->value);
+      ASSERT_THROW(!curr->value);
       Ref ret = ValueBuilder::makeBlock();
       Ref condition;
       if (isStatement(curr->condition)) {

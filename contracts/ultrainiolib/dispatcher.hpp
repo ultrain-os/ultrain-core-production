@@ -43,8 +43,11 @@ namespace ultrainio {
 
       //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
       constexpr size_t max_stack_buffer_size = 512;
-      void* buffer = max_stack_buffer_size < size ? malloc(size) : alloca(size);
-      read_action_data( buffer, size );
+      void* buffer = nullptr;
+      if( size > 0 ) {
+         buffer = max_stack_buffer_size < size ? malloc(size) : alloca(size);
+         read_action_data( buffer, size );
+      }
 
       auto args = unpack<std::tuple<std::decay_t<Args>...>>( (char*)buffer, size );
 
@@ -63,7 +66,7 @@ namespace ultrainio {
 #define ULTRAINIO_API_CALL( r, OP, elem ) \
    case ::ultrainio::string_to_name( BOOST_PP_STRINGIZE(elem) ): \
       ultrainio::execute_action( &thiscontract, &OP::elem ); \
-      return;
+      break;
 
 #define ULTRAINIO_API( TYPE,  MEMBERS ) \
    BOOST_PP_SEQ_FOR_EACH( ULTRAINIO_API_CALL, TYPE, MEMBERS )
@@ -72,12 +75,16 @@ namespace ultrainio {
 extern "C" { \
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) { \
       auto self = receiver; \
-      if( code == self ) { \
+      if( action == N(onerror)) { \
+         /* onerror is only valid if it is for the "ultrainio" code account and authorized by "ultrainio"'s "active permission */ \
+         ultrainio_assert(code == N(ultrainio), "onerror action's are only valid from the \"ultrainio\" system account"); \
+      } \
+      if( code == self || action == N(onerror) ) { \
          TYPE thiscontract( self ); \
          switch( action ) { \
             ULTRAINIO_API( TYPE, MEMBERS ) \
          } \
-         ultrainio_exit(0); \
+         /* does not allow destructor of thiscontract to run: ultrainio_exit(0); */ \
       } \
    } \
 } \

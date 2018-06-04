@@ -485,7 +485,7 @@ struct AutoDrop : public WalkerPass<ExpressionStackWalker<AutoDrop>> {
     }
     if (maybeDrop(curr->list.back())) {
       reFinalize();
-      assert(curr->type == none || curr->type == unreachable);
+      ASSERT_THROW(curr->type == none || curr->type == unreachable);
     }
   }
 
@@ -497,7 +497,7 @@ struct AutoDrop : public WalkerPass<ExpressionStackWalker<AutoDrop>> {
     }
     if (acted) {
       reFinalize();
-      assert(curr->type == none);
+      ASSERT_THROW(curr->type == none);
     }
   }
 

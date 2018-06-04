@@ -45,21 +45,28 @@ endif()
 
 target_link_libraries( nodultrain
         PRIVATE appbase
-        PRIVATE -Wl,${whole_archive_flag} account_history_api_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} history_plugin             -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} bnet_plugin             -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} history_api_plugin         -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} chain_api_plugin           -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} wallet_api_plugin          -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} net_plugin                 -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} net_api_plugin             -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} faucet_testnet_plugin      -Wl,${no_whole_archive_flag}
+#        PRIVATE -Wl,${whole_archive_flag} faucet_testnet_plugin      -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} txn_test_gen_plugin        -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} account_api_plugin         -Wl,${no_whole_archive_flag}
-        PRIVATE account_history_plugin producer_uranus_plugin chain_plugin net_plugin http_plugin
-        PRIVATE ultrainio_chain fc ${CMAKE_DL_LIBS} ${PLATFOM_SPECIFIC_LIBS}
-        )
+        PRIVATE -Wl,${whole_archive_flag} db_size_api_plugin         -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} producer_api_plugin        -Wl,${no_whole_archive_flag}
+        PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin
+        PRIVATE ultrainio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
-if(BUILD_MONGO_DB_PLUGIN)
-  target_link_libraries( nodultrain
-    PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
+if(TARGET sql_db_plugin)
+  target_link_libraries( nodultrain PRIVATE -Wl,${whole_archive_flag} sql_db_plugin -Wl,${no_whole_archive_flag} )
 endif()
+
+#if(BUILD_MONGO_DB_PLUGIN)
+#  target_link_libraries( nodultrain
+#    PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
+#endif()
 
 install( TARGETS
    nodultrain
@@ -87,4 +94,4 @@ install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/ultrainio
                               GROUP_EXECUTE
                               WORLD_READ
                               WORLD_EXECUTE
-)
+			)

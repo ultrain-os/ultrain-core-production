@@ -83,7 +83,7 @@ class Archive {
       return !(*this == other);
     }
     child_iterator& operator++() {
-      assert(!error);
+      ASSERT_THROW(!error);
       child = child.getNext(error);
       return *this;
     }

@@ -14,7 +14,9 @@ namespace ultrainio {
 
          void forward( action_name reqauth, account_name forward_code, account_name forward_auth ) {
             require_auth( reqauth );
-            dispatch_inline( permission_level{forward_auth,N(active)}, forward_code, N(reqauth), &testinline::reqauth, { forward_auth } );
+            INLINE_ACTION_SENDER(testinline, reqauth)( forward_code, {forward_auth,N(active)}, {forward_auth} );
+            //SEND_INLINE_ACTION( testinline(forward_code), reqauth, {forward_auth,N(active)}, {forward_auth} );
+            //ultrainio::dispatch_inline<account_name>( N(forward_code), N(reqauth), {{forward_auth, N(active)}}, {forward_auth} );
          }
    };
 

@@ -130,7 +130,7 @@ class LinkerObject {
 
   void addInitializerFunction(Name name) {
     initializerFunctions.emplace_back(name);
-    assert(symbolInfo.implementedFunctions.count(name));
+    ASSERT_THROW(symbolInfo.implementedFunctions.count(name));
   }
 
   void addUndefinedFunctionCall(Call* call) {
@@ -148,7 +148,7 @@ class LinkerObject {
   }
 
   void addIndirectIndex(Name name, Address index) {
-    assert(!indirectIndexes.count(name));
+    ASSERT_THROW(!indirectIndexes.count(name));
     indirectIndexes[name] = index;
   }
 
@@ -296,7 +296,7 @@ class Linker {
 
   void exportFunction(Name name, bool must_export) {
     if (!out.wasm.getFunctionOrNull(name)) {
-      assert(!must_export);
+      ASSERT_THROW(!must_export);
       return;
     }
     if (out.wasm.getExportOrNull(name)) return; // Already exported

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <assert.h>
+#include "assert_throw.h"
 
 #include <algorithm>
 #include <iostream>
@@ -47,12 +47,12 @@ static std::unique_ptr<ThreadPool> pool;
 // Thread
 
 Thread::Thread() {
-  assert(!ThreadPool::get()->isRunning());
+  ASSERT_THROW(!ThreadPool::get()->isRunning());
   thread = make_unique<std::thread>(mainLoop, this);
 }
 
 Thread::~Thread() {
-  assert(!ThreadPool::get()->isRunning());
+  ASSERT_TERMINATE(!ThreadPool::get()->isRunning());
   {
     std::lock_guard<std::mutex> lock(mutex);
     // notify the thread that it can exit
@@ -144,15 +144,15 @@ void ThreadPool::work(std::vector<std::function<ThreadWorkState ()>>& doWorkers)
   if (num == 0) {
     // just run sequentially
     DEBUG_POOL("work() sequentially\n");
-    assert(doWorkers.size() > 0);
+    ASSERT_THROW(doWorkers.size() > 0);
     while (doWorkers[0]() == ThreadWorkState::More) {}
     return;
   }
   // run in parallel on threads
   // TODO: fancy work stealing
   DEBUG_POOL("work() on threads\n");
-  assert(doWorkers.size() == num);
-  assert(!running);
+  ASSERT_THROW(doWorkers.size() == num);
+  ASSERT_THROW(!running);
   running = true;
   std::unique_lock<std::mutex> lock(mutex);
   resetThreadsAreReady();
@@ -185,7 +185,7 @@ void ThreadPool::resetThreadsAreReady() {
   DEBUG_POOL("reset threads are ready\n";)
   auto old = ready.exchange(0);
   WASM_UNUSED(old);
-  assert(old == threads.size());
+  ASSERT_THROW(old == threads.size());
 }
 
 bool ThreadPool::areThreadsReady() {

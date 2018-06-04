@@ -25,7 +25,7 @@
  *  This is a simple file to encapsulate the OpenGL ES 1.X API headers.
  */
 
-#ifdef __IPHONULTRAIN__
+#ifdef __IPHONEOS__
 #include <OpenGLES/ES1/gl.h>
 #include <OpenGLES/ES1/glext.h>
 #else

@@ -224,7 +224,7 @@ struct ReReloop final : public Pass {
     static void handle(ReReloop& parent, Switch* curr) {
       // set the switch condition for the block ending now
       auto* before = parent.getCurrCFGBlock();
-      assert(!before->SwitchCondition);
+      ASSERT_THROW(!before->SwitchCondition);
       before->SwitchCondition = curr->condition;
       std::map<Name, std::set<Index>> targetValues;
       auto& targets = curr->targets;

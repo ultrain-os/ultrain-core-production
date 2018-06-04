@@ -89,11 +89,11 @@ struct Operation {
 static void verify_result(Literal a, Literal b) {
   if (a == b) return;
   // accept equal nans if equal in all bits
-  assert(a.type == b.type);
+  ASSERT_THROW(a.type == b.type);
   if (a.type == f32) {
-    assert(a.reinterpreti32() == b.reinterpreti32());
+    ASSERT_THROW(a.reinterpreti32() == b.reinterpreti32());
   } else if (a.type == f64) {
-    assert(a.reinterpreti64() == b.reinterpreti64());
+    ASSERT_THROW(a.reinterpreti64() == b.reinterpreti64());
   } else {
     abort();
   }
@@ -191,7 +191,7 @@ static void run_asserts(Name moduleName, size_t* i, bool* checked, Module* wasm,
         abort();
       }
     } else if (id == INVOKE) {
-      assert(wasm);
+      ASSERT_THROW(wasm);
       Operation operation(curr, instance, *builder);
       operation.operate();
     } else if (wasm) { // if no wasm, we skipped the module
@@ -206,7 +206,7 @@ static void run_asserts(Name moduleName, size_t* i, bool* checked, Module* wasm,
         trapped = true;
       }
       if (id == ASSERT_RETURN) {
-        assert(!trapped);
+        ASSERT_THROW(!trapped);
         if (curr.size() >= 3) {
           Literal expected = builder
                                  ->parseExpression(*curr[2])
@@ -220,7 +220,7 @@ static void run_asserts(Name moduleName, size_t* i, bool* checked, Module* wasm,
           verify_result(expected, result);
         }
       }
-      if (id == ASSERT_TRAP) assert(trapped);
+      if (id == ASSERT_TRAP) ASSERT_THROW(trapped);
     }
     *i += 1;
   }
@@ -293,7 +293,7 @@ int main(int argc, const char* argv[]) {
         builders[moduleName].swap(builder);
         modules[moduleName].swap(module);
         i++;
-        assert(WasmValidator().validate(*modules[moduleName]));
+        ASSERT_THROW(WasmValidator().validate(*modules[moduleName]));
         run_asserts(moduleName, &i, &checked, modules[moduleName].get(), &root, builders[moduleName].get(), entry);
       } else {
         run_asserts(Name(), &i, &checked, nullptr, &root, nullptr, entry);

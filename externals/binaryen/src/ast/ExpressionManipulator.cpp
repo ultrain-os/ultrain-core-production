@@ -120,7 +120,7 @@ Expression* flexibleCopy(Expression* original, Module& wasm, CustomCopier custom
       return builder.makeReturn(copy(curr->value));
     }
     Expression* visitHost(Host *curr) {
-      assert(curr->operands.size() == 0);
+      ASSERT_THROW(curr->operands.size() == 0);
       return builder.makeHost(curr->op, curr->nameOperand, {});
     }
     Expression* visitNop(Nop *curr) {

@@ -3,16 +3,9 @@
  *  @copyright defined in ultrain/LICENSE.txt
  */
 #pragma once
-#include <fc/exception/exception.hpp>
+#include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/types.hpp>
 #include <ultrainio/chain/symbol.hpp>
-
-/// ultrain with 8 digits of precision
-#define ULTRAIN_SYMBOL_VALUE  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
-static const ultrainio::chain::symbol ULTRAIN_SYMBOL(ULTRAIN_SYMBOL_VALUE);
-
-/// Defined to be largest power of 10 that fits in 53 bits of precision
-#define ULTRAIN_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
 
 namespace ultrainio { namespace chain {
 
@@ -25,14 +18,17 @@ with amount = 10 and symbol(4,"CUR")
 
 */
 
-
 struct asset
 {
-   explicit asset(share_type a = 0, symbol id = ULTRAIN_SYMBOL)
-      :amount(a), sym(id){}
+   static constexpr int64_t max_amount = (1LL << 62) - 1;
 
-   share_type amount;
-   symbol     sym;
+   explicit asset(share_type a = 0, symbol id = symbol(CORE_SYMBOL)) :amount(a), sym(id) {
+      ULTRAIN_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
+      ULTRAIN_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
+   }
+
+   bool is_amount_within_range()const { return -max_amount <= amount && amount <= max_amount; }
+   bool is_valid()const               { return is_amount_within_range() && sym.valid(); }
 
    double to_real()const { return static_cast<double>(amount) / precision(); }
 
@@ -40,6 +36,7 @@ struct asset
    string      symbol_name()const;
    int64_t     precision()const;
    const symbol& get_symbol() const { return sym; }
+   share_type get_amount()const { return amount; }
 
    static asset from_string(const string& from);
    string       to_string()const;
@@ -84,6 +81,17 @@ struct asset
    }
 
    friend std::ostream& operator << (std::ostream& out, const asset& a) { return out << a.to_string(); }
+
+   friend struct fc::reflector<asset>;
+
+   void reflector_verify()const {
+      ULTRAIN_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
+      ULTRAIN_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
+   }
+
+private:
+   share_type amount;
+   symbol     sym;
 
 };
 

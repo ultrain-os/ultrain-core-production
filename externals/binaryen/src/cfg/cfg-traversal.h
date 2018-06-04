@@ -243,9 +243,9 @@ struct CFGWalker : public ControlFlowWalker<SubType, VisitorType> {
     entry = currBasicBlock;
     ControlFlowWalker<SubType, VisitorType>::doWalkFunction(func);
 
-    assert(branches.size() == 0);
-    assert(ifStack.size() == 0);
-    assert(loopStack.size() == 0);
+    ASSERT_THROW(branches.size() == 0);
+    ASSERT_THROW(ifStack.size() == 0);
+    ASSERT_THROW(loopStack.size() == 0);
   }
 
   std::unordered_set<BasicBlock*> findLiveBlocks() {
@@ -295,17 +295,17 @@ struct CFGWalker : public ControlFlowWalker<SubType, VisitorType> {
     std::cout << "<==\nCFG [" << message << "]:\n";
     generateDebugIds();
     for (auto& block : basicBlocks) {
-      assert(debugIds.count(block.get()) > 0);
+      ASSERT_THROW(debugIds.count(block.get()) > 0);
       std::cout << "  block " << debugIds[block.get()] << ":\n";
       block->contents.dump(static_cast<SubType*>(this)->getFunction());
       for (auto& in : block->in) {
-        assert(debugIds.count(in) > 0);
-        assert(std::find(in->out.begin(), in->out.end(), block.get()) != in->out.end()); // must be a parallel link back
+        ASSERT_THROW(debugIds.count(in) > 0);
+        ASSERT_THROW(std::find(in->out.begin(), in->out.end(), block.get()) != in->out.end()); // must be a parallel link back
       }
       for (auto& out : block->out) {
-        assert(debugIds.count(out) > 0);
+        ASSERT_THROW(debugIds.count(out) > 0);
         std::cout << "    out: " << debugIds[out] << "\n";
-        assert(std::find(out->in.begin(), out->in.end(), block.get()) != out->in.end()); // must be a parallel link back
+        ASSERT_THROW(std::find(out->in.begin(), out->in.end(), block.get()) != out->in.end()); // must be a parallel link back
       }
       checkDuplicates(block->in);
       checkDuplicates(block->out);
@@ -318,7 +318,7 @@ private:
   void checkDuplicates(std::vector<BasicBlock*>& list) {
     std::unordered_set<BasicBlock*> seen;
     for (auto* curr : list) {
-      assert(seen.count(curr) == 0);
+      ASSERT_THROW(seen.count(curr) == 0);
       seen.insert(curr);
     }
   }

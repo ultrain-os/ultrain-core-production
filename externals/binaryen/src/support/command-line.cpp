@@ -90,7 +90,7 @@ Options& Options::add_positional(const std::string& name, Arguments arguments,
 }
 
 void Options::parse(int argc, const char* argv[]) {
-  assert(argc > 0 && "expect at least program name as an argument");
+  ASSERT_THROW(argc > 0 && "expect at least program name as an argument");
   size_t positionalsSeen = 0;
   auto dashes = [](const std::string& s) {
     for (size_t i = 0;; ++i) {

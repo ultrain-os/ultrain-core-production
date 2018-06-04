@@ -6,9 +6,10 @@
 
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <ultrainio/http_plugin/http_plugin.hpp>
+#include <ultrainio/history_plugin.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
-//#include <ultrainio/producer_plugin/producer_plugin.hpp>
-//#include <ultrainio/producer_uranus_plugin/producer_uranus_plugin.hpp>
+#include <ultrainio/producer_plugin/producer_plugin.hpp>
+#include <ultrainio/utilities/common.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
@@ -78,28 +79,63 @@ void initialize_logging()
    logging_conf_loop();
 }
 
+enum return_codes {
+   OTHER_FAIL        = -2,
+   INITIALIZE_FAIL   = -1,
+   SUCCESS           = 0,
+   BAD_ALLOC         = 1,
+   DATABASE_DIRTY    = 2,
+   FIXED_REVERSIBLE  = 3,
+   EXTRACTED_GENESIS = 4
+};
+
 int main(int argc, char** argv)
 {
    try {
       app().set_version(ultrainio::nodultrain::config::version);
-      auto root = fc::app_path(); 
+      app().register_plugin<history_plugin>();
+
+      auto root = fc::app_path();
       app().set_default_data_dir(root / "ultrainio/nodultrain/data" );
       app().set_default_config_dir(root / "ultrainio/nodultrain/config" );
-      if(!app().initialize<chain_plugin, http_plugin, net_plugin>(argc, argv))
-         return -1;
+      if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
+         return INITIALIZE_FAIL;
       initialize_logging();
-      ilog("nodultrain version ${ver}", ("ver", ultrainio::nodultrain::config::itoh(static_cast<uint32_t>(app().version()))));
+      ilog("nodultrain version ${ver}", ("ver", ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
       ilog("ultrainio root is ${root}", ("root", root.string()));
       app().startup();
       app().exec();
-   } catch (const fc::exception& e) {
+   } catch( const extract_genesis_state_exception& e ) {
+      return EXTRACTED_GENESIS;
+   } catch( const fixed_reversible_db_exception& e ) {
+      return FIXED_REVERSIBLE;
+   } catch( const fc::exception& e ) {
       elog("${e}", ("e",e.to_detail_string()));
-   } catch (const boost::exception& e) {
+      return OTHER_FAIL;
+   } catch( const boost::interprocess::bad_alloc& e ) {
+      elog("bad alloc");
+      return BAD_ALLOC;
+   } catch( const boost::exception& e ) {
       elog("${e}", ("e",boost::diagnostic_information(e)));
-   } catch (const std::exception& e) {
+      return OTHER_FAIL;
+   } catch( const std::runtime_error& e ) {
+      if( std::string(e.what()) == "database dirty flag set" ) {
+         elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
+         return DATABASE_DIRTY;
+      } else if( std::string(e.what()) == "database metadata dirty flag set" ) {
+         elog( "database metadata dirty flag set (likely due to unclean shutdown): replay required" );
+         return DATABASE_DIRTY;
+      } else {
+         elog( "${e}", ("e",e.what()));
+      }
+      return OTHER_FAIL;
+   } catch( const std::exception& e ) {
       elog("${e}", ("e",e.what()));
-   } catch (...) {
+      return OTHER_FAIL;
+   } catch( ... ) {
       elog("unknown exception");
+      return OTHER_FAIL;
    }
-   return 0;
+
+   return SUCCESS;
 }

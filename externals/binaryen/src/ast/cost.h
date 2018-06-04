@@ -23,7 +23,7 @@ namespace wasm {
 
 struct CostAnalyzer : public Visitor<CostAnalyzer, Index> {
   CostAnalyzer(Expression *ast) {
-    assert(ast);
+    ASSERT_THROW(ast);
     cost = visit(ast);
   }
 

@@ -115,7 +115,7 @@ struct TypeUpdater : public ExpressionStackWalker<TypeUpdater, UnifiedExpression
   }
 
   void noteAddition(Expression* curr, Expression* parent, Expression* previous = nullptr) {
-    assert(parents.find(curr) == parents.end()); // must not already exist
+    ASSERT_THROW(parents.find(curr) == parents.end()); // must not already exist
     noteRemovalOrAddition(curr, parent);
     // if we didn't replace with the exact same type, propagate types up
     if (!(previous && previous->type == curr->type)) {
@@ -162,7 +162,7 @@ struct TypeUpdater : public ExpressionStackWalker<TypeUpdater, UnifiedExpression
     }
     auto& info = iter->second;
     info.numBreaks += change;
-    assert(info.numBreaks >= 0);
+    ASSERT_THROW(info.numBreaks >= 0);
     auto* block = info.block;
     if (block) { // if to a loop, can ignore
       if (info.numBreaks == 0) {

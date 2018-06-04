@@ -199,15 +199,9 @@ class static_variant {
     int _tag;
 
     template<typename X>
-    void init(const X& x) {
-        _tag = impl::position<X, Types...>::pos;
-        new(storage) X(x);
-    }
-
-    template<typename X>
     void init(X&& x) {
-        _tag = impl::position<X, Types...>::pos;
-        new(storage) X( std::move(x) );
+        _tag = impl::position<std::decay_t<X>, Types...>::pos;
+        new(storage) std::decay_t<X>( std::forward<X>(x) );
     }
 
     template<typename StaticVariant>
@@ -246,14 +240,15 @@ public:
     }
 
     template<typename X>
-    static_variant(const X& v) {
+    static_variant(X&& v) {
         static_assert(
-            impl::position<X, Types...>::pos != -1,
+            impl::position<std::decay_t<X>, Types...>::pos != -1,
             "Type not in static_variant."
         );
-        init(v);
+        init(std::forward<X>(v));
     }
-    ~static_variant() {
+
+   ~static_variant() {
        impl::storage_ops<0, Types...>::del(_tag, storage);
     }
 
@@ -339,12 +334,17 @@ public:
         return impl::storage_ops<0, Types...>::apply(_tag, storage, v);
     }
 
-    static int count() { return impl::type_info<Types...>::count; }
-    void set_which( int w ) {
-      FC_ASSERT( w < count() );
+    static uint32_t count() { return impl::type_info<Types...>::count; }
+    void set_which( uint32_t w ) {
+      FC_ASSERT( w < count()  );
       this->~static_variant();
-      _tag = w;
-      impl::storage_ops<0, Types...>::con(_tag, storage);
+      try {
+         _tag = w;
+         impl::storage_ops<0, Types...>::con(_tag, storage);
+      } catch ( ... ) { 
+         _tag = 0;
+         impl::storage_ops<0, Types...>::con(_tag, storage);
+      } 
     }
 
     int which() const {return _tag;}

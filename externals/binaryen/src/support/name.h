@@ -40,7 +40,7 @@ struct Name : public cashew::IString {
   Name(const std::string& str) : cashew::IString(str.c_str(), false) {}
 
   friend std::ostream& operator<<(std::ostream& o, Name name) {
-    assert(name.str);
+    ASSERT_THROW(name.str);
     return o << '$' << name.str; // reference interpreter requires we prefix all names
   }
 

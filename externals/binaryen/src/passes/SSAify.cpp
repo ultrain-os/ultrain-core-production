@@ -222,8 +222,8 @@ struct SSAify : public WalkerPass<PostWalker<SSAify>> {
   // local usage
 
   void visitGetLocal(GetLocal* curr) {
-    assert(currMapping.size() == numLocals);
-    assert(curr->index < numLocals);
+    ASSERT_THROW(currMapping.size() == numLocals);
+    ASSERT_THROW(curr->index < numLocals);
     for (auto& loopGets : loopGetStack) {
       loopGets.push_back(curr);
     }
@@ -232,8 +232,8 @@ struct SSAify : public WalkerPass<PostWalker<SSAify>> {
     getLocations[curr] = getCurrentPointer();
   }
   void visitSetLocal(SetLocal* curr) {
-    assert(currMapping.size() == numLocals);
-    assert(curr->index < numLocals);
+    ASSERT_THROW(currMapping.size() == numLocals);
+    ASSERT_THROW(curr->index < numLocals);
     // current sets are just this set
     currMapping[curr->index] = { curr }; // TODO optimize?
     curr->index = addLocal(getFunction()->getLocalType(curr->index));
@@ -278,7 +278,7 @@ struct SSAify : public WalkerPass<PostWalker<SSAify>> {
   // if we need phis, writes them into the provided vector. the caller should
   // ensure those are placed in the right location
   Mapping& merge(std::vector<Mapping>& mappings) {
-    assert(mappings.size() > 0);
+    ASSERT_THROW(mappings.size() > 0);
     auto& out = mappings[0];
     if (mappings.size() == 1) {
       return out;

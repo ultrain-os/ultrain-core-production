@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
+#include "assert_throw.h"
 
 #include "support/threads.h"
 #include "support/utilities.h"
@@ -61,7 +61,7 @@ struct IString {
 
   IString() : str(nullptr) {}
   IString(const char *s, bool reuse=true) { // if reuse=true, then input is assumed to remain alive; not copied
-    assert(s);
+    ASSERT_THROW(s);
     set(s, reuse);
   }
 
@@ -112,11 +112,11 @@ struct IString {
   }
 
   bool operator==(const IString& other) const {
-    //assert((str == other.str) == !strcmp(str, other.str));
+    //ASSERT_THROW((str == other.str) == !strcmp(str, other.str));
     return str == other.str; // fast!
   }
   bool operator!=(const IString& other) const {
-    //assert((str == other.str) == !strcmp(str, other.str));
+    //ASSERT_THROW((str == other.str) == !strcmp(str, other.str));
     return str != other.str; // fast!
   }
   bool operator<(const IString& other) const {

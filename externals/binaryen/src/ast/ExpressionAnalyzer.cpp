@@ -32,13 +32,13 @@ bool ExpressionAnalyzer::isResultUsed(std::vector<Expression*> stack, Function* 
       for (size_t j = 0; j < block->list.size() - 1; j++) {
         if (block->list[j] == above) return false;
       }
-      assert(block->list.back() == above);
+      ASSERT_THROW(block->list.back() == above);
       // continue down
     } else if (curr->is<If>()) {
       auto* iff = curr->cast<If>();
       if (above == iff->condition) return true;
       if (!iff->ifFalse) return false;
-      assert(above == iff->ifTrue || above == iff->ifFalse);
+      ASSERT_THROW(above == iff->ifTrue || above == iff->ifFalse);
       // continue down
     } else {
       if (curr->is<Drop>()) return false;
@@ -59,13 +59,13 @@ bool ExpressionAnalyzer::isResultDropped(std::vector<Expression*> stack) {
       for (size_t j = 0; j < block->list.size() - 1; j++) {
         if (block->list[j] == above) return false;
       }
-      assert(block->list.back() == above);
+      ASSERT_THROW(block->list.back() == above);
       // continue down
     } else if (curr->is<If>()) {
       auto* iff = curr->cast<If>();
       if (above == iff->condition) return false;
       if (!iff->ifFalse) return false;
-      assert(above == iff->ifTrue || above == iff->ifFalse);
+      ASSERT_THROW(above == iff->ifTrue || above == iff->ifFalse);
       // continue down
     } else {
       if (curr->is<Drop>()) return true; // dropped

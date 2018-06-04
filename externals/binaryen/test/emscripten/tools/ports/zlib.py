@@ -397,7 +397,7 @@ zconf_h = r'''/* zconf.h -- configuration of the zlib compression library
 #  endif
 #endif
 
-#if defined (__BULTRAIN__)
+#if defined (__BEOS__)
 #  ifdef ZLIB_DLL
 #    ifdef ZLIB_INTERNAL
 #      define ZEXPORT   __declspec(dllexport)

@@ -2,25 +2,23 @@
  *  @file
  *  @copyright defined in ultrain/LICENSE.txt
  */
-
 #include <utility>
 #include <vector>
-#include <ultrainiolib/crypto.h>
-#include <ultrainiolib/types.hpp>
-#include <ultrainiolib/token.hpp>
-#include <ultrainiolib/print.hpp>
-#include <ultrainiolib/action.hpp>
-#include <ultrainiolib/multi_index.hpp>
+#include <string>
+#include <ultrainiolib/ultrainio.hpp>
+#include <ultrainiolib/time.hpp>
+#include <ultrainiolib/asset.hpp>
 #include <ultrainiolib/contract.hpp>
-
-#include <ultrainio.system/ultrainio.system.hpp>
-
-using ultrain_currency = ultrainiosystem::contract<N(ultrainio)>::currency;
+#include <ultrainiolib/crypto.h>
 
 using ultrainio::key256;
 using ultrainio::indexed_by;
 using ultrainio::const_mem_fun;
 using ultrainio::asset;
+using ultrainio::permission_level;
+using ultrainio::action;
+using ultrainio::print;
+using ultrainio::name;
 
 class dice : public ultrainio::contract {
    public:
@@ -37,9 +35,10 @@ class dice : public ultrainio::contract {
       //@abi action
       void offerbet(const asset& bet, const account_name player, const checksum256& commitment) {
 
-         auto amount = ultrain_currency::token_type(bet);
+         ultrainio_assert( bet.symbol == CORE_SYMBOL, "only core token allowed" );
+         ultrainio_assert( bet.is_valid(), "invalid bet" );
+         ultrainio_assert( bet.amount > 0, "must bet positive quantity" );
 
-         ultrainio_assert( amount.quantity > 0, "invalid bet" );
          ultrainio_assert( !has_offer( commitment ), "offer with this commitment already exist" );
          require_auth( player );
 
@@ -60,12 +59,13 @@ class dice : public ultrainio::contract {
          auto matched_offer_itr = idx.lower_bound( (uint64_t)new_offer_itr->bet.amount );
 
          if( matched_offer_itr == idx.end()
-            || matched_offer_itr->bet.amount != new_offer_itr->bet.amount
+            || matched_offer_itr->bet != new_offer_itr->bet
             || matched_offer_itr->owner == new_offer_itr->owner ) {
 
             // No matching bet found, update player's account
             accounts.modify( cur_player_itr, 0, [&](auto& acnt) {
-               acnt.ultrain_balance = (asset)(ultrain_currency::token_type(acnt.ultrain_balance) - amount);
+               ultrainio_assert( acnt.ultrain_balance >= bet, "insufficient balance" );
+               acnt.ultrain_balance -= bet;
                acnt.open_offers++;
             });
 
@@ -87,7 +87,7 @@ class dice : public ultrainio::contract {
             auto game_itr = games.emplace(_self, [&](auto& new_game){
                new_game.id       = gdice_itr->nextgameid;
                new_game.bet      = new_offer_itr->bet;
-               new_game.deadline = 0;
+               new_game.deadline = ultrainio::time_point_sec(0);
 
                new_game.player1.commitment = matched_offer_itr->commitment;
                memset(&new_game.player1.reveal, 0, sizeof(checksum256));
@@ -114,7 +114,8 @@ class dice : public ultrainio::contract {
             });
 
             accounts.modify( cur_player_itr, 0, [&](auto& acnt) {
-               acnt.ultrain_balance = (asset)(ultrain_currency::token_type(acnt.ultrain_balance) - amount);
+               ultrainio_assert( acnt.ultrain_balance >= bet, "insufficient balance" );
+               acnt.ultrain_balance -= bet;
                acnt.open_games++;
             });
          }
@@ -133,7 +134,7 @@ class dice : public ultrainio::contract {
          auto acnt_itr = accounts.find(offer_itr->owner);
          accounts.modify(acnt_itr, 0, [&](auto& acnt){
             acnt.open_offers--;
-            acnt.ultrain_balance.amount += offer_itr->bet.amount;
+            acnt.ultrain_balance += offer_itr->bet;
          });
 
          idx.erase(offer_itr);
@@ -184,7 +185,7 @@ class dice : public ultrainio::contract {
                else
                   game.player2.reveal = source;
 
-               game.deadline = now() + FIVE_MINUTES;
+               game.deadline = ultrainio::time_point_sec(now() + FIVE_MINUTES);
             });
          }
       }
@@ -195,7 +196,7 @@ class dice : public ultrainio::contract {
          auto game_itr = games.find(gameid);
 
          ultrainio_assert(game_itr != games.end(), "game not found");
-         ultrainio_assert(game_itr->deadline != 0 && now() > game_itr->deadline, "game not expired");
+         ultrainio_assert(game_itr->deadline != ultrainio::time_point_sec(0) && ultrainio::time_point_sec(now()) > game_itr->deadline, "game not expired");
 
          auto idx = offers.template get_index<N(commitment)>();
          auto player1_offer = idx.find( offer::get_commitment(game_itr->player1.commitment) );
@@ -212,7 +213,10 @@ class dice : public ultrainio::contract {
       }
 
       //@abi action
-      void deposit( const account_name from, const asset& a ) {
+      void deposit( const account_name from, const asset& quantity ) {
+         
+         ultrainio_assert( quantity.is_valid(), "invalid quantity" );
+         ultrainio_assert( quantity.amount > 0, "must deposit positive quantity" );
 
          auto itr = accounts.find(from);
          if( itr == accounts.end() ) {
@@ -221,27 +225,37 @@ class dice : public ultrainio::contract {
             });
          }
 
-         auto amount = ultrain_currency::token_type(a);
+         action(
+            permission_level{ from, N(active) },
+            N(ultrainio.token), N(transfer),
+            std::make_tuple(from, _self, quantity, std::string(""))
+         ).send();
 
-         ultrain_currency::inline_transfer( from, _self, amount );
          accounts.modify( itr, 0, [&]( auto& acnt ) {
-            acnt.ultrain_balance = (asset)(ultrain_currency::token_type(acnt.ultrain_balance) + amount);
+            acnt.ultrain_balance += quantity;
          });
       }
 
       //@abi action
-      void withdraw( const account_name to, const asset& a ) {
+      void withdraw( const account_name to, const asset& quantity ) {
          require_auth( to );
+
+         ultrainio_assert( quantity.is_valid(), "invalid quantity" );
+         ultrainio_assert( quantity.amount > 0, "must withdraw positive quantity" );
 
          auto itr = accounts.find( to );
          ultrainio_assert(itr != accounts.end(), "unknown account");
 
-         auto amount = ultrain_currency::token_type(a);
          accounts.modify( itr, 0, [&]( auto& acnt ) {
-            acnt.ultrain_balance = (asset)(ultrain_currency::token_type(acnt.ultrain_balance) - amount);
+            ultrainio_assert( acnt.ultrain_balance >= quantity, "insufficient balance" );
+            acnt.ultrain_balance -= quantity;
          });
 
-         ultrain_currency::inline_transfer( _self, to, amount );
+         action(
+            permission_level{ _self, N(active) },
+            N(ultrainio.token), N(transfer),
+            std::make_tuple(_self, to, quantity, std::string(""))
+         ).send();
 
          if( itr->is_empty() ) {
             accounts.erase(itr);
@@ -287,7 +301,7 @@ class dice : public ultrainio::contract {
       struct game {
          uint64_t id;
          asset    bet;
-         time     deadline;
+         ultrainio::time_point_sec deadline;
          player   player1;
          player   player2;
 
@@ -354,7 +368,7 @@ class dice : public ultrainio::contract {
          // Update winner account balance and game count
          auto winner_account = accounts.find(winner_offer.owner);
          accounts.modify( winner_account, 0, [&]( auto& acnt ) {
-            acnt.ultrain_balance.amount += 2*g.bet.amount;
+            acnt.ultrain_balance += 2*g.bet;
             acnt.open_games--;
          });
 

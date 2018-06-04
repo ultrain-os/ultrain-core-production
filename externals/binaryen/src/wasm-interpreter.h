@@ -318,8 +318,8 @@ public:
     if (flow.breaking()) return flow;
     Literal right = flow.value;
     NOTE_EVAL2(left, right);
-    assert(isConcreteWasmType(curr->left->type) ? left.type == curr->left->type : true);
-    assert(isConcreteWasmType(curr->right->type) ? right.type == curr->right->type : true);
+    ASSERT_THROW(isConcreteWasmType(curr->left->type) ? left.type == curr->left->type : true);
+    ASSERT_THROW(isConcreteWasmType(curr->right->type) ? right.type == curr->right->type : true);
     if (left.type == i32) {
       switch (curr->op) {
         case AddInt32:      return left.add(right);
@@ -720,7 +720,7 @@ public:
         locals.resize(function->getNumLocals());
         for (size_t i = 0; i < function->getNumLocals(); i++) {
           if (i < arguments.size()) {
-            assert(function->isParam(i));
+            ASSERT_THROW(function->isParam(i));
             if (function->params[i] != arguments[i].type) {
               std::cerr << "Function `" << function->name << "` expects type "
                         << printWasmType(function->params[i])
@@ -730,7 +730,7 @@ public:
             }
             locals[i] = arguments[i];
           } else {
-            assert(function->isVar(i));
+            ASSERT_THROW(function->isVar(i));
             locals[i].type = function->getLocalType(i);
           }
         }
@@ -741,10 +741,10 @@ public:
     class RuntimeExpressionRunner : public ExpressionRunner<RuntimeExpressionRunner> {
       ModuleInstanceBase& instance;
       FunctionScope& scope;
-
     public:
       RuntimeExpressionRunner(ModuleInstanceBase& instance, FunctionScope& scope) : instance(instance), scope(scope) {}
 
+      Flow last_call;
       Flow generateArguments(const ExpressionList& operands, LiteralList& arguments) {
         NOTE_ENTER_("generateArguments");
         arguments.reserve(operands.size());
@@ -757,7 +757,7 @@ public:
         return Flow();
       }
 
-      Flow visitCall(Call *curr) {
+      Flow _visitCall(Call *curr) {
         NOTE_ENTER("Call");
         NOTE_NAME(curr->target);
         LiteralList arguments;
@@ -769,14 +769,28 @@ public:
 #endif
         return ret;
       }
-      Flow visitCallImport(CallImport *curr) {
+
+      Flow visitCall(Call *curr) {
+         Flow ret = _visitCall(curr);
+         last_call = ret;
+         return ret;
+      }
+
+      Flow _visitCallImport(CallImport *curr) {
         NOTE_ENTER("CallImport");
         LiteralList arguments;
         Flow flow = generateArguments(curr->operands, arguments);
         if (flow.breaking()) return flow;
         return instance.externalInterface->callImport(instance.wasm.getImport(curr->target), arguments);
       }
-      Flow visitCallIndirect(CallIndirect *curr) {
+
+      Flow visitCallImport(CallImport *curr) {
+         Flow ret = _visitCallImport(curr);
+         last_call = ret;
+         return ret;
+      }
+
+      Flow _visitCallIndirect(CallIndirect *curr) {
         NOTE_ENTER("CallIndirect");
         LiteralList arguments;
         Flow flow = generateArguments(curr->operands, arguments);
@@ -785,6 +799,12 @@ public:
         if (target.breaking()) return target;
         Index index = target.value.geti32();
         return instance.externalInterface->callTable(index, arguments, curr->type, *instance.self());
+      }
+
+      Flow visitCallIndirect(CallIndirect *curr) {
+         Flow ret = _visitCallIndirect(curr);
+         last_call = ret;
+         return ret;
       }
 
       Flow visitGetLocal(GetLocal *curr) {
@@ -801,7 +821,7 @@ public:
         if (flow.breaking()) return flow;
         NOTE_EVAL1(index);
         NOTE_EVAL1(flow.value);
-        assert(curr->isTee() ? flow.value.type == curr->type : true);
+        ASSERT_THROW(curr->isTee() ? flow.value.type == curr->type : true);
         scope.locals[index] = flow.value;
         return curr->isTee() ? flow : Flow();
       }
@@ -811,7 +831,7 @@ public:
         auto name = curr->name;
         NOTE_EVAL1(name);
         NOTE_EVAL1(instance.globals[name]);
-        assert(instance.globals.find(name) != instance.globals.end());
+        ASSERT_THROW(instance.globals.find(name) != instance.globals.end());
         return instance.globals[name];
       }
       Flow visitSetGlobal(SetGlobal *curr) {
@@ -889,7 +909,7 @@ public:
     functionStack.push_back(name);
 
     Function *function = wasm.getFunction(name);
-    assert(function);
+    ASSERT_THROW(function);
     FunctionScope scope(function, arguments);
 
 #ifdef WASM_INTERPRETER_DEBUG
@@ -899,14 +919,21 @@ public:
       std::cout << "    $" << i << ": " << arguments[i] << '\n';
     }
 #endif
-
-    Flow flow = RuntimeExpressionRunner(*this, scope).visit(function->body);
-    assert(!flow.breaking() || flow.breakTo == RETURN_FLOW); // cannot still be breaking, it means we missed our stop
+    RuntimeExpressionRunner rer(*this, scope);
+    Flow flow = rer.visit(function->body);
+    ASSERT_THROW(!flow.breaking() || flow.breakTo == RETURN_FLOW); // cannot still be breaking, it means we missed our stop
     Literal ret = flow.value;
+#if 1
     if (function->result != ret.type) {
-      std::cerr << "calling " << function->name << " resulted in " << ret << " but the function type is " << function->result << '\n';
-      WASM_UNREACHABLE();
+       if (rer.last_call.value.type == function->result && ret.type == 0) {
+          ret = rer.last_call.value;
+       }
+       else {
+         std::cerr << "calling " << function->name << " resulted in " << ret << " but the function type is " << function->result << '\n';
+         WASM_UNREACHABLE();
+       }
     }
+#endif
     callDepth = previousCallDepth; // may decrease more than one, if we jumped up the stack
     // if we jumped up the stack, we also need to pop higher frames
     while (functionStack.size() > previousFunctionStackSize) {

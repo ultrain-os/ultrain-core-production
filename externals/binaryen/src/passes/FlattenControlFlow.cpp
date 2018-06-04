@@ -121,7 +121,7 @@ struct FlattenControlFlow : public WalkerPass<PostWalker<FlattenControlFlow>> {
   // the local if this is the first time we see it.
   // expr is used if this is a flowing value.
   Index getBreakTargetIndex(Name name, WasmType type, Expression* expr = nullptr, Index index = -1) {
-    assert(isConcreteWasmType(type)); // we shouldn't get here if the value ins't actually set
+    ASSERT_THROW(isConcreteWasmType(type)); // we shouldn't get here if the value ins't actually set
     if (name.is()) {
       auto iter = breakNameIndexes.find(name);
       if (iter == breakNameIndexes.end()) {
@@ -139,7 +139,7 @@ struct FlattenControlFlow : public WalkerPass<PostWalker<FlattenControlFlow>> {
       }
       return iter->second;
     } else {
-      assert(expr);
+      ASSERT_THROW(expr);
       auto iter = breakExprIndexes.find(expr);
       if (iter == breakExprIndexes.end()) {
         if (index == Index(-1)) {
@@ -172,7 +172,7 @@ struct FlattenControlFlow : public WalkerPass<PostWalker<FlattenControlFlow>> {
       // no need to even set the local
       return child;
     } else {
-      assert(!ControlFlowChecker::is(child));
+      ASSERT_THROW(!ControlFlowChecker::is(child));
       return builder->makeSetLocal(
         myIndex,
         child
@@ -187,7 +187,7 @@ struct FlattenControlFlow : public WalkerPass<PostWalker<FlattenControlFlow>> {
       // it was flattened and saved to a local
       return getFunction()->getLocalType(iter->second);
     }
-    assert(child->type != none);
+    ASSERT_THROW(child->type != none);
     return child->type;
   }
 
@@ -232,7 +232,7 @@ struct FlattenControlFlow : public WalkerPass<PostWalker<FlattenControlFlow>> {
       }
       if (!hasControlFlowChild) {
         // nothing to do here.
-        assert(!hasUnreachableChild); // all of them should be executed
+        ASSERT_THROW(!hasUnreachableChild); // all of them should be executed
         return;
       }
       // we have at least one child we need to split out, so to preserve the order of operations,
@@ -260,7 +260,7 @@ struct FlattenControlFlow : public WalkerPass<PostWalker<FlattenControlFlow>> {
           // a nested none can not happen normally, here it occurs after we flattened a nested
           // we can use the local it already assigned to. TODO: don't even allocate one here
           block->list.push_back(child);
-          assert(parent.breakExprIndexes.count(child) > 0);
+          ASSERT_THROW(parent.breakExprIndexes.count(child) > 0);
           auto index = parent.breakExprIndexes[child];
           *children[i] = builder->makeGetLocal(
             index,

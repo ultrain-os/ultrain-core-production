@@ -34,7 +34,7 @@ inline std::vector<Index> makeIdentity(Index num) {
 
 inline void setIdentity(std::vector<Index>& ret) {
   auto num = ret.size();
-  assert(num > 0); // must already be of the right size
+  ASSERT_THROW(num > 0); // must already be of the right size
   for (Index i = 0; i < num; i++) {
     ret[i] = i;
   }

@@ -35,8 +35,8 @@
 #include "SDL_config_windows.h"
 #elif defined(__MACOSX__)
 #include "SDL_config_macosx.h"
-#elif defined(__IPHONULTRAIN__) 
-#include "SDL_config_iphonultrain.h"
+#elif defined(__IPHONEOS__) 
+#include "SDL_config_iphoneos.h"
 #elif defined(__ANDROID__)
 #include "SDL_config_android.h"
 #elif defined(__NINTENDODS__)

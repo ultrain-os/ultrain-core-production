@@ -22,7 +22,7 @@ added since the original academic paper [1] was published about it.
 [1] Alon Zakai. 2011. Emscripten: an LLVM-to-JavaScript compiler. In Proceedings of the ACM international conference companion on Object oriented programming systems languages and applications companion (SPLASH '11). ACM, New York, NY, USA, 301-312. DOI=10.1145/2048147.2048224 http://doi.acm.org/10.1145/2048147.2048224
 */
 
-#include <assert.h>
+#include "assert_throw.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>

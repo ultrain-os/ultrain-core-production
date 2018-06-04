@@ -105,7 +105,7 @@ struct ProblemFinder : public ControlFlowWalker<ProblemFinder> {
   }
 
   bool found() {
-    assert(brIfs >= droppedBrIfs);
+    ASSERT_THROW(brIfs >= droppedBrIfs);
     return foundSwitch || brIfs > droppedBrIfs;
   }
 };
@@ -239,7 +239,7 @@ struct MergeBlocks : public WalkerPass<PostWalker<MergeBlocks>> {
           return block;
         } else {
           // append to an existing outer block
-          assert(outer->list.back() == curr);
+          ASSERT_THROW(outer->list.back() == curr);
           outer->list.pop_back();
           for (Index i = 0; i < block->list.size() - 1; i++) {
             outer->list.push_back(block->list[i]);

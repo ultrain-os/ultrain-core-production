@@ -7,12 +7,6 @@ if [ -f '/opt/ultrainio/bin/data-dir/config.ini' ]; then
     cp /config.ini /opt/ultrainio/bin/data-dir
 fi
 
-if [ -f '/opt/ultrainio/bin/data-dir/genesis.json' ]; then
-    echo
-  else
-    cp /genesis.json /opt/ultrainio/bin/data-dir
-fi
-
 if [ -d '/opt/ultrainio/bin/data-dir/contracts' ]; then
     echo
   else
@@ -36,4 +30,4 @@ else
     CONFIG_DIR=""
 fi
 
-exec /opt/ultrainio/bin/nodultrain $CONFIG_DIR $@
+exec /opt/ultrainio/bin/nodultrain $CONFIG_DIR "$@"

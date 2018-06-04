@@ -1,4 +1,6 @@
 configure_file( ultrainiocpp.in ultrainiocpp @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/llvm-gcov.sh ${CMAKE_CURRENT_BINARY_DIR}/llvm-gcov.sh COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ctestwrapper.sh ${CMAKE_CURRENT_BINARY_DIR}/ctestwrapper.sh COPYONLY)
 install( FILES ${CMAKE_CURRENT_BINARY_DIR}/ultrainiocpp DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
          PERMISSIONS OWNER_READ
                      OWNER_WRITE

@@ -42,7 +42,7 @@ namespace ExpressionManipulator {
   // Convert a node that allocates
   template<typename InputType, typename OutputType>
   inline OutputType* convert(InputType *input, MixedArena& allocator) {
-    assert(sizeof(OutputType) <= sizeof(InputType));
+    ASSERT_THROW(sizeof(OutputType) <= sizeof(InputType));
     input->~InputType(); // arena-allocaed, so no destructor, but avoid UB.
     OutputType* output = (OutputType*)(input);
     new (output) OutputType(allocator);

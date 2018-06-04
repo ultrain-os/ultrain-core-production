@@ -7,7 +7,7 @@
 
 namespace fc { namespace crypto {
    namespace config {
-      constexpr const char* signature_base_prefix = "UTR";
+      constexpr const char* signature_base_prefix = "SIG";
       constexpr const char* signature_prefix[] = {
          "K1",
          "R1"

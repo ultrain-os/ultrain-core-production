@@ -7,10 +7,10 @@
 #include <ultrainio/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
-#include <ultrainio/chain/chain_controller.hpp>
+#include <ultrainio/chain/controller.hpp>
 
 namespace ultrainio {
-   using ultrainio::chain::chain_controller;
+   using ultrainio::chain::controller;
    using std::unique_ptr;
    using namespace appbase;
 

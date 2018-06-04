@@ -80,7 +80,7 @@ const char *luaX_token2str (LexState *ls, int token) {
   }
   else {
     const char *s = luaX_tokens[token - FIRST_RESERVED];
-    if (token < TK_ULTRAIN)  /* fixed format (symbols and reserved words)? */
+    if (token < TK_EOS)  /* fixed format (symbols and reserved words)? */
       return luaO_pushfstring(ls->L, LUA_QS, s);
     else  /* names, strings, and numerals */
       return s;
@@ -158,7 +158,7 @@ void luaX_setinput (lua_State *L, LexState *ls, ZIO *z, TString *source,
   ls->decpoint = '.';
   ls->L = L;
   ls->current = firstchar;
-  ls->lookahead.token = TK_ULTRAIN;  /* no look-ahead token */
+  ls->lookahead.token = TK_EOS;  /* no look-ahead token */
   ls->z = z;
   ls->fs = NULL;
   ls->linenumber = 1;
@@ -272,7 +272,7 @@ static void read_long_string (LexState *ls, SemInfo *seminfo, int sep) {
     switch (ls->current) {
       case EOZ:
         lexerror(ls, (seminfo) ? "unfinished long string" :
-                                 "unfinished long comment", TK_ULTRAIN);
+                                 "unfinished long comment", TK_EOS);
         break;  /* to avoid warnings */
       case ']': {
         if (skip_sep(ls) == sep) {
@@ -342,7 +342,7 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
   while (ls->current != del) {
     switch (ls->current) {
       case EOZ:
-        lexerror(ls, "unfinished string", TK_ULTRAIN);
+        lexerror(ls, "unfinished string", TK_EOS);
         break;  /* to avoid warnings */
       case '\n':
       case '\r':
@@ -480,7 +480,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         return TK_NUMBER;
       }
       case EOZ: {
-        return TK_ULTRAIN;
+        return TK_EOS;
       }
       default: {
         if (lislalpha(ls->current)) {  /* identifier or reserved word? */
@@ -510,9 +510,9 @@ static int llex (LexState *ls, SemInfo *seminfo) {
 
 void luaX_next (LexState *ls) {
   ls->lastline = ls->linenumber;
-  if (ls->lookahead.token != TK_ULTRAIN) {  /* is there a look-ahead token? */
+  if (ls->lookahead.token != TK_EOS) {  /* is there a look-ahead token? */
     ls->t = ls->lookahead;  /* use this one */
-    ls->lookahead.token = TK_ULTRAIN;  /* and discharge it */
+    ls->lookahead.token = TK_EOS;  /* and discharge it */
   }
   else
     ls->t.token = llex(ls, &ls->t.seminfo);  /* read next token */
@@ -520,7 +520,7 @@ void luaX_next (LexState *ls) {
 
 
 int luaX_lookahead (LexState *ls) {
-  lua_assert(ls->lookahead.token == TK_ULTRAIN);
+  lua_assert(ls->lookahead.token == TK_EOS);
   ls->lookahead.token = llex(ls, &ls->lookahead.seminfo);
   return ls->lookahead.token;
 }

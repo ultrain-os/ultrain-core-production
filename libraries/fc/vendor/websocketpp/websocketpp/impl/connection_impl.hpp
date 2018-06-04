@@ -575,6 +575,16 @@ void connection<config>::set_body(std::string const & value) {
     m_response.set_body(value);
 }
 
+template <typename config>
+void connection<config>::set_body(std::string&& value) {
+    if (m_internal_state != istate::PROCESS_HTTP_REQUEST) {
+        throw exception("Call to set_status from invalid state",
+                      error::make_error_code(error::invalid_state));
+    }
+
+    m_response.set_body(std::move(value));
+}
+
 // TODO: EXCEPTION_FREE
 template <typename config>
 void connection<config>::append_header(std::string const & key,
@@ -1315,6 +1325,8 @@ void connection<config>::write_http_response(lib::error_code const & ec) {
             m_response.remove_header("Server");
         }
     }
+
+    m_response.replace_header("Connection", "close");
 
     // have the processor generate the raw bytes for the wire (if it exists)
     if (m_processor) {

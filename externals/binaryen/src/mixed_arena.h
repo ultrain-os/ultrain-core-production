@@ -24,6 +24,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include "assert_throw.h"
 
 //
 // Arena allocation for mixed-type data.
@@ -164,7 +165,7 @@ protected:
 
 public:
   T& operator[](size_t index) const {
-    assert(index < usedElements);
+    ASSERT_THROW(index < usedElements);
     return data[index];
   }
 
@@ -184,12 +185,12 @@ public:
   }
 
   T& back() const {
-    assert(usedElements > 0);
+    ASSERT_THROW(usedElements > 0);
     return data[usedElements - 1];
   }
 
   T& pop_back() {
-    assert(usedElements > 0);
+    ASSERT_THROW(usedElements > 0);
     usedElements--;
     return data[usedElements];
   }

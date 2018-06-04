@@ -96,7 +96,7 @@ struct ShellExternalInterface final : ModuleInstance::ExternalInterface {
     // apply memory segments
     for (auto& segment : wasm.memory.segments) {
       Address offset = ConstantExpressionRunner<TrivialGlobalManager>(instance.globals).visit(segment.offset).value.geti32();
-      assert(offset + segment.data.size() <= wasm.memory.initial * wasm::Memory::kPageSize);
+      ASSERT_THROW(offset + segment.data.size() <= wasm.memory.initial * wasm::Memory::kPageSize);
       for (size_t i = 0; i != segment.data.size(); ++i) {
         memory.set(offset + i, segment.data[i]);
       }
@@ -105,7 +105,7 @@ struct ShellExternalInterface final : ModuleInstance::ExternalInterface {
     table.resize(wasm.table.initial);
     for (auto& segment : wasm.table.segments) {
       Address offset = ConstantExpressionRunner<TrivialGlobalManager>(instance.globals).visit(segment.offset).value.geti32();
-      assert(offset + segment.data.size() <= wasm.table.initial);
+      ASSERT_THROW(offset + segment.data.size() <= wasm.table.initial);
       for (size_t i = 0; i != segment.data.size(); ++i) {
         table[offset + i] = segment.data[i];
       }

@@ -77,8 +77,8 @@ static wasm::Expression* HandleFollowupMultiples(wasm::Expression* Ret, Shape* P
     } else {
       // add one break target per entry for the loop
       auto* Loop = Shape::IsLoop(Parent->Next);
-      assert(Loop);
-      assert(Loop->Entries.size() > 0);
+      ASSERT_THROW(Loop);
+      ASSERT_THROW(Loop->Entries.size() > 0);
       if (Loop->Entries.size() == 1) {
         Curr->name = Builder.getBlockBreakName((*Loop->Entries.begin())->Id);
       } else {
@@ -114,7 +114,7 @@ wasm::Expression* Branch::Render(RelooperBuilder& Builder, Block *Target, bool S
   if (Type == Break) {
     Ret->list.push_back(Builder.makeBlockBreak(Target->Id));
   } else if (Type == Continue) {
-    assert(Ancestor);
+    ASSERT_THROW(Ancestor);
     Ret->list.push_back(Builder.makeShapeContinue(Ancestor->Id));
   }
   Ret->finalize();
@@ -135,12 +135,12 @@ Block::~Block() {
 }
 
 void Block::AddBranchTo(Block *Target, wasm::Expression* Condition, wasm::Expression* Code) {
-  assert(!contains(BranchesOut, Target)); // cannot add more than one branch to the same target
+  ASSERT_THROW(!contains(BranchesOut, Target)); // cannot add more than one branch to the same target
   BranchesOut[Target] = new Branch(Condition, Code);
 }
 
 void Block::AddSwitchBranchTo(Block *Target, std::vector<wasm::Index>&& Values, wasm::Expression* Code) {
-  assert(!contains(BranchesOut, Target)); // cannot add more than one branch to the same target
+  ASSERT_THROW(!contains(BranchesOut, Target)); // cannot add more than one branch to the same target
   BranchesOut[Target] = new Branch(std::move(Values), Code);
 }
 
@@ -199,11 +199,11 @@ wasm::Expression* Block::Render(RelooperBuilder& Builder, bool InLoop) {
   // Find the default target, the one without a condition
   for (BlockBranchMap::iterator iter = ProcessedBranchesOut.begin(); iter != ProcessedBranchesOut.end(); iter++) {
     if ((!SwitchCondition && !iter->second->Condition) || (SwitchCondition && !iter->second->SwitchValues)) {
-      assert(!DefaultTarget && "block has branches without a default (nullptr for the condition)"); // Must be exactly one default // nullptr
+      ASSERT_THROW(!DefaultTarget && "block has branches without a default (nullptr for the condition)"); // Must be exactly one default // nullptr
       DefaultTarget = iter->first;
     }
   }
-  assert(DefaultTarget); // Since each block *must* branch somewhere, this must be set
+  ASSERT_THROW(DefaultTarget); // Since each block *must* branch somewhere, this must be set
 
   wasm::Expression* Root = nullptr; // root of the main part, that we are about to emit
 
@@ -224,7 +224,7 @@ wasm::Expression* Block::Render(RelooperBuilder& Builder, bool InLoop) {
         Target = iter->first;
         if (Target == DefaultTarget) continue; // done at the end
         Details = iter->second;
-        assert(Details->Condition); // must have a condition if this is not the default target
+        ASSERT_THROW(Details->Condition); // must have a condition if this is not the default target
       } else {
         Target = DefaultTarget;
         Details = ProcessedBranchesOut[DefaultTarget];
@@ -232,7 +232,7 @@ wasm::Expression* Block::Render(RelooperBuilder& Builder, bool InLoop) {
       bool SetCurrLabel = SetLabel && Target->IsCheckedMultipleEntry;
       bool HasFusedContent = Fused && contains(Fused->InnerMap, Target->Id);
       if (HasFusedContent) {
-        assert(Details->Type == Branch::Break);
+        ASSERT_THROW(Details->Type == Branch::Break);
         Details->Type = Branch::Direct;
       }
       wasm::Expression* CurrContent = nullptr;
@@ -254,7 +254,7 @@ wasm::Expression* Block::Render(RelooperBuilder& Builder, bool InLoop) {
             Now = CurrContent;
           }
           if (!CurrIf) {
-            assert(!Root);
+            ASSERT_THROW(!Root);
             Root = Now;
           } else {
             CurrIf->ifFalse = Now;
@@ -264,7 +264,7 @@ wasm::Expression* Block::Render(RelooperBuilder& Builder, bool InLoop) {
           auto* Now = Builder.makeIf(Details->Condition, CurrContent);
           finalizeStack.push_back(Now);
           if (!CurrIf) {
-            assert(!Root);
+            ASSERT_THROW(!Root);
             Root = CurrIf = Now;
           } else {
             CurrIf->ifFalse = Now;
@@ -312,7 +312,7 @@ wasm::Expression* Block::Render(RelooperBuilder& Builder, bool InLoop) {
       bool SetCurrLabel = SetLabel && Target->IsCheckedMultipleEntry;
       bool HasFusedContent = Fused && contains(Fused->InnerMap, Target->Id);
       if (HasFusedContent) {
-        assert(Details->Type == Branch::Break);
+        ASSERT_THROW(Details->Type == Branch::Break);
         Details->Type = Branch::Direct;
       }
       wasm::Expression* CurrContent = nullptr;
@@ -567,7 +567,7 @@ void Relooper::Calculate(Block *Entry) {
 #endif
         }
       }
-      assert(InnerBlocks.size() > 0);
+      ASSERT_THROW(InnerBlocks.size() > 0);
 
       for (BlockSet::iterator iter = InnerBlocks.begin(); iter != InnerBlocks.end(); iter++) {
         Block *Curr = *iter;
@@ -967,11 +967,11 @@ void Relooper::Calculate(Block *Entry) {
   BlockSet Entries;
   Entries.insert(Entry);
   Root = Analyzer(this).Process(AllBlocks, Entries);
-  assert(Root);
+  ASSERT_THROW(Root);
 }
 
 wasm::Expression* Relooper::Render(RelooperBuilder& Builder) {
-  assert(Root);
+  ASSERT_THROW(Root);
   auto* ret = Root->Render(Builder, false);
   // we may use the same name for more than one block in HandleFollowupMultiples
   wasm::UniqueNameMapper::uniquify(ret);
@@ -989,7 +989,7 @@ void Debugging::Dump(BlockSet &Blocks, const char *prefix) {
     for (BlockBranchMap::iterator iter2 = Curr->BranchesOut.begin(); iter2 != Curr->BranchesOut.end(); iter2++) {
       Block *Other = iter2->first;
       printf("  -> %d\n", Other->Id);
-      assert(contains(Other->BranchesIn, Curr));
+      ASSERT_THROW(contains(Other->BranchesIn, Curr));
     }
   }
 }

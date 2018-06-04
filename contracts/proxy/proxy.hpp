@@ -2,14 +2,18 @@
  *  @file
  *  @copyright defined in ultrain/LICENSE.txt
  */
+#pragma once
+
 #include <ultrainiolib/ultrainio.hpp>
 
 namespace proxy {
-   
+
    //@abi action
-   struct PACKED( set_owner ) {
+   struct set_owner {
       account_name owner;
       uint32_t     delay;
+
+      ULTRAINLIB_SERIALIZE( set_owner, (owner)(delay) )
    };
 
    //@abi table

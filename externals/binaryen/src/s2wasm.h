@@ -91,7 +91,7 @@ class S2WasmBuilder {
 
   void skipToEOL() {
     s = strchr(s, '\n');
-    assert(s);
+    ASSERT_THROW(s);
   }
 
   bool skipComma() {
@@ -360,7 +360,7 @@ class S2WasmBuilder {
   }
 
   std::vector<char> getQuoted() {
-    assert(*s == '"');
+    ASSERT_THROW(*s == '"');
     s++;
     std::vector<char> str;
     while (*s && *s != '\"') {
@@ -474,7 +474,7 @@ class S2WasmBuilder {
 
         // get the original name
         Name rhs = getStrToSep();
-        assert(!isFunctionName(rhs));
+        ASSERT_THROW(!isFunctionName(rhs));
         Offset offset = 0;
         if (*s == '+') {
           s++;
@@ -775,9 +775,9 @@ class S2WasmBuilder {
       estack.push_back(curr);
     };
     auto pop = [&]() {
-      assert(!estack.empty());
+      ASSERT_THROW(!estack.empty());
       Expression* ret = estack.back();
-      assert(ret);
+      ASSERT_THROW(ret);
       estack.pop_back();
       //std::cerr << "pop " << ret << '\n';
       return ret;
@@ -871,7 +871,7 @@ class S2WasmBuilder {
       curr->left = inputs[0];
       curr->right = inputs[1];
       curr->finalize();
-      assert(curr->type == type);
+      ASSERT_THROW(curr->type == type);
       setOutput(curr, assign);
     };
     auto makeUnary = [&](UnaryOp op, WasmType type) {
@@ -932,7 +932,7 @@ class S2WasmBuilder {
       curr->ptr = useRelocationExpression(getInput(), relocation);
       curr->align = curr->bytes;
       if (attributes[0]) {
-        assert(strncmp(attributes[0], "p2align=", 8) == 0);
+        ASSERT_THROW(strncmp(attributes[0], "p2align=", 8) == 0);
         curr->align = 1U << getInt(attributes[0] + 8);
       }
       setOutput(curr, assign);
@@ -954,7 +954,7 @@ class S2WasmBuilder {
       curr->ptr = useRelocationExpression(inputs[0], relocation);
       curr->align = curr->bytes;
       if (attributes[0]) {
-        assert(strncmp(attributes[0], "p2align=", 8) == 0);
+        ASSERT_THROW(strncmp(attributes[0], "p2align=", 8) == 0);
         curr->align = 1U << getInt(attributes[0] + 8);
       }
       curr->value = inputs[1];
@@ -969,7 +969,7 @@ class S2WasmBuilder {
       curr->ifTrue = inputs[0];
       curr->ifFalse = inputs[1];
       curr->condition = inputs[2];
-      assert(curr->condition->type == i32);
+      ASSERT_THROW(curr->condition->type == i32);
       curr->type = type;
       setOutput(curr, assign);
     };
@@ -982,7 +982,7 @@ class S2WasmBuilder {
         auto* target = *(inputs.end() - 1);
         std::vector<Expression*> operands(inputs.begin(), inputs.end() - 1);
         auto* funcType = ensureFunctionType(getSig(type, operands), wasm);
-        assert(type == funcType->result);
+        ASSERT_THROW(type == funcType->result);
         auto* indirect = builder.makeCallIndirect(funcType, target, std::move(operands));
         setOutput(indirect, assign);
       } else {
@@ -1167,7 +1167,7 @@ class S2WasmBuilder {
       return cashew::IString(("label$" + std::to_string(nextLabel++)).c_str(), false);
     };
     auto getBranchLabel = [&](uint32_t offset) {
-      assert(offset < bstack.size());
+      ASSERT_THROW(offset < bstack.size());
       Expression* target = bstack[bstack.size() - 1 - offset];
       if (target->is<Block>()) {
         return target->cast<Block>()->name;
@@ -1231,7 +1231,7 @@ class S2WasmBuilder {
         while (skipComma()) {
           curr->targets.push_back(getBranchLabel(getInt()));
         }
-        assert(curr->targets.size() > 0);
+        ASSERT_THROW(curr->targets.size() > 0);
         curr->default_ = curr->targets.back();
         curr->targets.pop_back();
         addToBlock(curr);
@@ -1307,8 +1307,8 @@ class S2WasmBuilder {
     // finishing touches
     bstack.back()->cast<Block>()->finalize();
     bstack.pop_back(); // remove the base block for the function body
-    assert(bstack.empty());
-    assert(estack.empty());
+    ASSERT_THROW(bstack.empty());
+    ASSERT_THROW(estack.empty());
     func->body->cast<Block>()->finalize();
     wasm->addFunction(func);
   }
@@ -1421,7 +1421,7 @@ class S2WasmBuilder {
       mustMatch(name.str);
       mustMatch(",");
       Address seenSize = atoi(getStr().str); // TODO: optimize
-      assert(seenSize >= size);
+      ASSERT_THROW(seenSize >= size);
       while (raw.size() < seenSize) {
         raw.push_back(0);
       }

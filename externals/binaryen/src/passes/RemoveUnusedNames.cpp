@@ -87,7 +87,7 @@ struct RemoveUnusedNames : public WalkerPass<PostWalker<RemoveUnusedNames>> {
   }
 
   void visitFunction(Function *curr) {
-    assert(branchesSeen.empty());
+    ASSERT_THROW(branchesSeen.empty());
   }
 };
 

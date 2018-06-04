@@ -253,7 +253,7 @@ struct Vacuum : public WalkerPass<PostWalker<Vacuum>> {
     }
     // a drop of a tee is a set
     if (auto* set = curr->value->dynCast<SetLocal>()) {
-      assert(set->isTee());
+      ASSERT_THROW(set->isTee());
       set->setTee(false);
       replaceCurrent(set);
       return;

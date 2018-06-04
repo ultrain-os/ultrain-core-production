@@ -1,0 +1,12 @@
+/**
+ *  @file
+ *  @copyright defined in ultrain/LICENSE.txt
+ */
+
+#include <ultrainio/chain/genesis_state.hpp>
+
+namespace ultrainio { namespace chain {
+
+const string genesis_state::ultrainio_root_key = "${ULTRAINIO_ROOT_KEY}";
+
+} } // namespace ultrainio::chain

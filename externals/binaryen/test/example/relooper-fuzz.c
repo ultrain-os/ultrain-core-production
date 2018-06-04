@@ -1,6 +1,6 @@
 
 
-#include <assert.h>
+#include "assert_throw.h"
 #include <stdio.h>
 
 #include "binaryen-c.h"
@@ -258,13 +258,13 @@ int main() {
   // memory
   BinaryenSetMemory(module, 1, 1, "mem", NULL, NULL, NULL, 0);
 
-  assert(BinaryenModuleValidate(module));
+  ASSERT_THROW(BinaryenModuleValidate(module));
 
   BinaryenModulePrint(module);
 
   BinaryenModuleOptimize(module);
 
-  assert(BinaryenModuleValidate(module));
+  ASSERT_THROW(BinaryenModuleValidate(module));
 
   BinaryenModulePrint(module);
 

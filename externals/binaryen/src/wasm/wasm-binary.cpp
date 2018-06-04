@@ -27,7 +27,7 @@ void WasmBinaryWriter::prepare() {
     if (func->type.isNull()) {
       func->type = ensureFunctionType(getSig(func.get()), wasm)->name;
     }
-    // TODO: depending on upstream flux https://github.com/WebAssembly/spec/pull/301 might want this: assert(!func->type.isNull());
+    // TODO: depending on upstream flux https://github.com/WebAssembly/spec/pull/301 might want this: ASSERT_THROW(!func->type.isNull());
   }
 }
 
@@ -227,9 +227,9 @@ void WasmBinaryWriter::writeFunctionSignatures() {
 }
 
 void WasmBinaryWriter::writeExpression(Expression* curr) {
-  assert(depth == 0);
+  ASSERT_THROW(depth == 0);
   recurse(curr);
-  assert(depth == 0);
+  ASSERT_THROW(depth == 0);
 }
 
 void WasmBinaryWriter::writeFunctions() {
@@ -262,7 +262,7 @@ void WasmBinaryWriter::writeFunctions() {
     writeExpression(function->body);
     o << int8_t(BinaryConsts::End);
     size_t size = o.size() - start;
-    assert(size <= std::numeric_limits<uint32_t>::max());
+    ASSERT_THROW(size <= std::numeric_limits<uint32_t>::max());
     if (debug) std::cerr << "body size: " << size << ", writing at " << sizePos << ", next starts at " << o.size() << std::endl;
     o.writeAt(sizePos, U32LEB(size));
   }
@@ -329,17 +329,17 @@ uint32_t WasmBinaryWriter::getFunctionIndex(Name name) {
     // Create name => index mapping.
     for (auto& import : wasm->imports) {
       if (import->kind != ExternalKind::Function) continue;
-      assert(mappedFunctions.count(import->name) == 0);
+      ASSERT_THROW(mappedFunctions.count(import->name) == 0);
       auto index = mappedFunctions.size();
       mappedFunctions[import->name] = index;
     }
     for (size_t i = 0; i < wasm->functions.size(); i++) {
-      assert(mappedFunctions.count(wasm->functions[i]->name) == 0);
+      ASSERT_THROW(mappedFunctions.count(wasm->functions[i]->name) == 0);
       auto index = mappedFunctions.size();
       mappedFunctions[wasm->functions[i]->name] = index;
     }
   }
-  assert(mappedFunctions.count(name));
+  ASSERT_THROW(mappedFunctions.count(name));
   return mappedFunctions[name];
 }
 
@@ -348,17 +348,17 @@ uint32_t WasmBinaryWriter::getGlobalIndex(Name name) {
     // Create name => index mapping.
     for (auto& import : wasm->imports) {
       if (import->kind != ExternalKind::Global) continue;
-      assert(mappedGlobals.count(import->name) == 0);
+      ASSERT_THROW(mappedGlobals.count(import->name) == 0);
       auto index = mappedGlobals.size();
       mappedGlobals[import->name] = index;
     }
     for (size_t i = 0; i < wasm->globals.size(); i++) {
-      assert(mappedGlobals.count(wasm->globals[i]->name) == 0);
+      ASSERT_THROW(mappedGlobals.count(wasm->globals[i]->name) == 0);
       auto index = mappedGlobals.size();
       mappedGlobals[wasm->globals[i]->name] = index;
     }
   }
-  assert(mappedGlobals.count(name));
+  ASSERT_THROW(mappedGlobals.count(name));
   return mappedGlobals[name];
 }
 
@@ -423,7 +423,7 @@ void WasmBinaryWriter::writeNames() {
     writeInlineString(curr->name.str);
     emitted++;
   }
-  assert(emitted == mappedFunctions.size());
+  ASSERT_THROW(emitted == mappedFunctions.size());
   finishSubsection(substart);
   /* TODO: locals */
   finishSection(start);
@@ -510,7 +510,7 @@ void WasmBinaryWriter::writeInlineBuffer(const char* data, size_t size) {
 }
 
 void WasmBinaryWriter::emitBuffer(const char* data, size_t size) {
-  assert(size > 0);
+  ASSERT_THROW(size > 0);
   buffersToWrite.emplace_back(data, size, o.size());
   o << uint32_t(0); // placeholder, we'll fill in the pointer to the buffer later when we have it
 }
@@ -606,7 +606,7 @@ void WasmBinaryWriter::visitIf(If *curr) {
     // we may still be unreachable, if we are an if-else with both sides unreachable.
     // wasm does not allow this to be emitted directly, so we must do something more. we could do
     // better, but for now we emit an extra unreachable instruction after the if, so it is not consumed itself,
-    assert(curr->ifFalse);
+    ASSERT_THROW(curr->ifFalse);
     o << int8_t(BinaryConsts::Unreachable);
   }
 }
@@ -1210,7 +1210,7 @@ void WasmBinaryBuilder::verifyInt64(int64_t x) {
 }
 
 void WasmBinaryBuilder::ungetInt8() {
-  assert(pos > 0);
+  ASSERT_THROW(pos > 0);
   if (debug) std::cerr << "ungetInt8 (at " << pos << ")" << std::endl;
   pos--;
 }
@@ -1273,7 +1273,7 @@ void WasmBinaryBuilder::readSignatures() {
 Name WasmBinaryBuilder::getFunctionIndexName(Index i) {
   if (i < functionImportIndexes.size()) {
     auto* import = wasm.getImport(functionImportIndexes[i]);
-    assert(import->kind == ExternalKind::Function);
+    ASSERT_THROW(import->kind == ExternalKind::Function);
     return import->name;
   } else {
     i -= functionImportIndexes.size();
@@ -1310,7 +1310,7 @@ void WasmBinaryBuilder::readImports() {
           throw ParseException("invalid function index " + std::to_string(index) + " / " + std::to_string(wasm.functionTypes.size()));
         }
         curr->functionType = wasm.functionTypes[index]->name;
-        assert(curr->functionType.is());
+        ASSERT_THROW(curr->functionType.is());
         functionImportIndexes.push_back(curr->name);
         break;
       }
@@ -1407,13 +1407,13 @@ void WasmBinaryBuilder::readFunctions() {
       useDebugLocation = false;
       breaksToReturn = false;
       // process body
-      assert(breakStack.empty());
+      ASSERT_THROW(breakStack.empty());
       breakStack.emplace_back(RETURN_BREAK, func->result != none); // the break target for the function scope
-      assert(expressionStack.empty());
-      assert(depth == 0);
+      ASSERT_THROW(expressionStack.empty());
+      ASSERT_THROW(depth == 0);
       func->body = getMaybeBlock(func->result);
-      assert(depth == 0);
-      assert(breakStack.size() == 1);
+      ASSERT_THROW(depth == 0);
+      ASSERT_THROW(breakStack.size() == 1);
       breakStack.pop_back();
       if (!expressionStack.empty()) {
         throw ParseException("stack not empty on function exit");
@@ -1583,13 +1583,13 @@ void WasmBinaryBuilder::readNextDebugLocation() {
 }
 
 Expression* WasmBinaryBuilder::readExpression() {
-  assert(depth == 0);
+  ASSERT_THROW(depth == 0);
   processExpressions();
   if (expressionStack.size() != 1) {
     throw ParseException("expected to read a single expression");
   }
   auto* ret = popExpression();
-  assert(depth == 0);
+  ASSERT_THROW(depth == 0);
   return ret;
 }
 

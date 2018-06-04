@@ -5,7 +5,7 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <fc/variant.hpp>
-#include <ultrainio/chain/contracts/types.hpp>
+#include <ultrainio/chain/contract_types.hpp>
 #include <ultrainio/chain/transaction.hpp>
 
 namespace fc { class variant; }
@@ -42,4 +42,3 @@ private:
 };
 
 }
-

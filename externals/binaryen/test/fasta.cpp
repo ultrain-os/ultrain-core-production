@@ -78,7 +78,7 @@ static const size_t lineLength = 60;
 struct LineBuffer {
    LineBuffer() : lastN(0) {}
    LineBuffer &genrand( Cumulative &table, size_t N ) {
-      //assert(N <= lineLength);
+      //ASSERT_THROW(N <= lineLength);
       for ( size_t i = 0; i < N; i++ )
          buffer[i] = table[rng.get()];
       buffer[N] = '\n';

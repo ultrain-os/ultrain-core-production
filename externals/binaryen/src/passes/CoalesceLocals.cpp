@@ -106,7 +106,7 @@ struct LocalSet : std::vector<Index> {
 
   void verify() const {
     for (Index i = 1; i < size(); i++) {
-      assert((*this)[i - 1] < (*this)[i]);
+      ASSERT_THROW((*this)[i - 1] < (*this)[i]);
     }
   }
 
@@ -233,7 +233,7 @@ struct CoalesceLocals : public WalkerPass<CFGWalker<CoalesceLocals, Visitor<Coal
   }
 
   void interfereLowHigh(Index low, Index high) { // optimized version where you know that low < high
-    assert(low < high);
+    ASSERT_THROW(low < high);
     interferences[low * numLocals + high] = 1;
   }
 
@@ -336,7 +336,7 @@ void CoalesceLocals::flowLiveness() {
 #ifdef CFG_DEBUG
     std::cout << "change noticed at end of " << debugIds[curr] << " from " << curr->contents.end.size() << " to " << live.size() << " (out of " << numLocals << ")\n";
 #endif
-    assert(curr->contents.end.size() < live.size());
+    ASSERT_THROW(curr->contents.end.size() < live.size());
     curr->contents.end = live;
     scanLivenessThroughActions(curr->contents.actions, live);
     // liveness is now calculated at the start. if something
@@ -345,7 +345,7 @@ void CoalesceLocals::flowLiveness() {
 #ifdef CFG_DEBUG
     std::cout << "change noticed at start of " << debugIds[curr] << " from " << curr->contents.start.size() << " to " << live.size() << ", more work to do\n";
 #endif
-    assert(curr->contents.start.size() < live.size());
+    ASSERT_THROW(curr->contents.start.size() < live.size());
     curr->contents.start = live;
     for (auto* in : curr->in) {
       queue.insert(in);
@@ -489,7 +489,7 @@ void CoalesceLocals::pickIndicesFromOrder(std::vector<Index>& order, std::vector
   // we can't reorder parameters, they are fixed in order, and cannot coalesce
   Index i = 0;
   for (; i < numParams; i++) {
-    assert(order[i] == i); // order must leave the params in place
+    ASSERT_THROW(order[i] == i); // order must leave the params in place
     indices[i] = i;
     types[i] = getFunction()->getLocalType(i);
     for (Index j = numParams; j < numLocals; j++) {
@@ -606,7 +606,7 @@ static void removeIfCopy(Expression** origin, SetLocal* set, If* iff, Expression
 }
 
 void CoalesceLocals::applyIndices(std::vector<Index>& indices, Expression* root) {
-  assert(indices.size() == numLocals);
+  ASSERT_THROW(indices.size() == numLocals);
   for (auto& curr : basicBlocks) {
     auto& actions = curr->contents.actions;
     for (auto& action : actions) {
@@ -708,7 +708,7 @@ void CoalesceLocalsWithLearning::pickIndices(std::vector<Index>& indices) {
       Index removedCopies;
       parent->pickIndicesFromOrder(*order, indices, removedCopies);
       auto maxIndex = *std::max_element(indices.begin(), indices.end());
-      assert(maxIndex <= parent->numLocals);
+      ASSERT_THROW(maxIndex <= parent->numLocals);
       // main part of fitness is the number of locals
       double fitness = parent->numLocals - maxIndex; // higher fitness is better
       // secondarily, it is nice to not reorder locals unnecessarily
@@ -759,7 +759,7 @@ void CoalesceLocalsWithLearning::pickIndices(std::vector<Index>& indices) {
       }
       auto* ret = new Order;
       *ret = *left;
-      assert(size >= 1);
+      ASSERT_THROW(size >= 1);
       for (Index i = parent->getFunction()->getNumParams(); i < size - 1; i++) {
         // if (i, i + 1) is in reverse order in right, flip them
         if (reverseRight[(*ret)[i]] > reverseRight[(*ret)[i + 1]]) {

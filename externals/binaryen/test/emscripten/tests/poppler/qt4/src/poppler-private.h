@@ -4,7 +4,7 @@
  * Copyright (C) 2006-2009, 2011 by Albert Astals Cid <aacid@kde.org>
  * Copyright (C) 2007-2009 by Pino Toscano <pino@kde.org>
  * Inspired on code by
- * Copyright (C) 2004 by Albert Astals Cid <tsdgultrain@terra.es>
+ * Copyright (C) 2004 by Albert Astals Cid <tsdgeos@terra.es>
  * Copyright (C) 2004 by Enrico Ros <eros.kde@email.it>
  *
  * This program is free software; you can redistribute it and/or modify

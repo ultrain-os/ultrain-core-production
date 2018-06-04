@@ -71,12 +71,12 @@ Value& Value::setAssignName(IString target, Ref value) {
 }
 
 Assign* Value::asAssign() {
-  assert(isAssign());
+  ASSERT_THROW(isAssign());
   return static_cast<Assign*>(this);
 }
 
 AssignName* Value::asAssignName() {
-  assert(isAssignName());
+  ASSERT_THROW(isAssignName());
   return static_cast<AssignName*>(this);
 }
 
@@ -212,7 +212,7 @@ struct StackedStack { // a stack, on the stack
   int size() { return used; }
 
   void push_back(const T& t) {
-    assert(used <= available);
+    ASSERT_THROW(used <= available);
     if (used == available) {
       available *= 2;
       if (!alloced) {
@@ -222,22 +222,22 @@ struct StackedStack { // a stack, on the stack
         alloced = true;
       } else {
         T *newStorage = (T*)realloc(storage, sizeof(T)*available);
-        assert(newStorage);
+        ASSERT_THROW(newStorage);
         storage = newStorage;
       }
     }
-    assert(used < available);
-    assert(storage);
+    ASSERT_THROW(used < available);
+    ASSERT_THROW(storage);
     storage[used++] = t;
   }
 
   T& back() {
-    assert(used > 0);
+    ASSERT_THROW(used > 0);
     return storage[used-1];
   }
 
   void pop_back() {
-    assert(used > 0);
+    ASSERT_THROW(used > 0);
     used--;
   }
 };

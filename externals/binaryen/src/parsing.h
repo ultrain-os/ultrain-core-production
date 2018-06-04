@@ -244,7 +244,7 @@ struct UniqueNameMapper {
   }
 
   void popLabelName(Name name) {
-    assert(labelStack.back() == name);
+    ASSERT_THROW(labelStack.back() == name);
     labelStack.pop_back();
     labelMappings[reverseLabelMapping[name]].pop_back();
   }

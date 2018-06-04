@@ -212,9 +212,9 @@ struct Asm2WasmPreProcessor {
       while (*growthFuncStart != '(') growthFuncStart--; // skip params
       while (*growthFuncStart != ' ') growthFuncStart--; // skip function name
       while (*growthFuncStart != 'f') growthFuncStart--; // skip 'function'
-      assert(strstr(growthFuncStart, "function ") == growthFuncStart);
+      ASSERT_THROW(strstr(growthFuncStart, "function ") == growthFuncStart);
       char *growthFuncEnd = strchr(growthSign, '}');
-      assert(growthFuncEnd > growthFuncStart + 5);
+      ASSERT_THROW(growthFuncEnd > growthFuncStart + 5);
       growthFuncStart[0] = '/';
       growthFuncStart[1] = '*';
       growthFuncEnd--;
@@ -388,7 +388,7 @@ public:
 
 private:
   void allocateGlobal(IString name, WasmType type) {
-    assert(mappedGlobals.find(name) == mappedGlobals.end());
+    ASSERT_THROW(mappedGlobals.find(name) == mappedGlobals.end());
     mappedGlobals.emplace(name, MappedGlobal(type));
     auto global = new Global();
     global->name = name;
@@ -438,7 +438,7 @@ private:
   std::map<IString, std::unique_ptr<FunctionType>> importedFunctionTypes;
 
   void noteImportedFunctionCall(Ref ast, WasmType resultType, CallImport* call) {
-    assert(ast[0] == CALL && ast[1]->isString());
+    ASSERT_THROW(ast[0] == CALL && ast[1]->isString());
     IString importName = ast[1]->getIString();
     auto type = make_unique<FunctionType>();
     type->name = IString((std::string("type$") + importName.str).c_str(), false); // TODO: make a list of such types
@@ -509,7 +509,7 @@ private:
       IString name = ast->getIString();
       if (!data->isLocal(name)) {
         // must be global
-        assert(mappedGlobals.find(name) != mappedGlobals.end());
+        ASSERT_THROW(mappedGlobals.find(name) != mappedGlobals.end());
         return wasmToAsmType(mappedGlobals[name].type);
       }
     } else if (ast->isArray(SUB) && ast[1]->isString()) {
@@ -625,7 +625,7 @@ private:
         double num = -ast[2]->getNumber();
         if (isSInteger32(num)) return Literal((int32_t)num);
         if (isUInteger32(num)) return Literal((uint32_t)num);
-        assert(false && "expected signed or unsigned int32");
+        ASSERT_THROW(false && "expected signed or unsigned int32");
       }
       if (ast[1] == PLUS && ast[2]->isArray(UNARY_PREFIX) && ast[2][1] == MINUS && ast[2][2]->isNumber()) {
         return Literal((double)-ast[2][2]->getNumber());
@@ -656,7 +656,7 @@ private:
   FunctionType* getBuiltinFunctionType(Name module, Name base, ExpressionList* operands = nullptr) {
     if (module == GLOBAL_MATH) {
       if (base == ABS) {
-        assert(operands && operands->size() == 1);
+        ASSERT_THROW(operands && operands->size() == 1);
         WasmType type = (*operands)[0]->type;
         if (type == i32) return ensureFunctionType("ii", &wasm);
         if (type == f32) return ensureFunctionType("ff", &wasm);
@@ -832,7 +832,7 @@ private:
       }
       return ret;
     }
-    assert(trapMode == TrapMode::Clamp);
+    ASSERT_THROW(trapMode == TrapMode::Clamp);
     Call *ret = allocator.alloc<Call>();
     ret->target = F64_TO_INT;
     ret->operands.push_back(input);
@@ -889,54 +889,54 @@ private:
 };
 
 void Asm2WasmBuilder::processAsm(Ref ast) {
-  assert(ast[0] == TOPLEVEL);
+  ASSERT_THROW(ast[0] == TOPLEVEL);
   Ref asmFunction = ast[1][0];
-  assert(asmFunction[0] == DEFUN);
+  ASSERT_THROW(asmFunction[0] == DEFUN);
   Ref body = asmFunction[3];
-  assert(body[0][0] == STRING && (body[0][1]->getIString() == IString("use asm") || body[0][1]->getIString() == IString("almost asm")));
+  ASSERT_THROW(body[0][0] == STRING && (body[0][1]->getIString() == IString("use asm") || body[0][1]->getIString() == IString("almost asm")));
 
   auto addImport = [&](IString name, Ref imported, WasmType type) {
-    assert(imported[0] == DOT);
+    ASSERT_THROW(imported[0] == DOT);
     Ref module = imported[1];
     IString moduleName;
     if (module->isArray(DOT)) {
       // we can have (global.Math).floor; skip the 'Math'
-      assert(module[1]->isString());
+      ASSERT_THROW(module[1]->isString());
       if (module[2] == MATH) {
         if (imported[2] == IMUL) {
-          assert(Math_imul.isNull());
+          ASSERT_THROW(Math_imul.isNull());
           Math_imul = name;
           return;
         } else if (imported[2] == CLZ32) {
-          assert(Math_clz32.isNull());
+          ASSERT_THROW(Math_clz32.isNull());
           Math_clz32 = name;
           return;
         } else if (imported[2] == FROUND) {
-          assert(Math_fround.isNull());
+          ASSERT_THROW(Math_fround.isNull());
           Math_fround = name;
           return;
         } else if (imported[2] == ABS) {
-          assert(Math_abs.isNull());
+          ASSERT_THROW(Math_abs.isNull());
           Math_abs = name;
           return;
         } else if (imported[2] == FLOOR) {
-          assert(Math_floor.isNull());
+          ASSERT_THROW(Math_floor.isNull());
           Math_floor = name;
           return;
         } else if (imported[2] == CEIL) {
-          assert(Math_ceil.isNull());
+          ASSERT_THROW(Math_ceil.isNull());
           Math_ceil = name;
           return;
         } else if (imported[2] == SQRT) {
-          assert(Math_sqrt.isNull());
+          ASSERT_THROW(Math_sqrt.isNull());
           Math_sqrt = name;
           return;
         } else if (imported[2] == MAX_) {
-          assert(Math_max.isNull());
+          ASSERT_THROW(Math_max.isNull());
           Math_max = name;
           return;
         } else if (imported[2] == MIN_) {
-          assert(Math_min.isNull());
+          ASSERT_THROW(Math_min.isNull());
           Math_min = name;
           return;
         }
@@ -946,16 +946,16 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
       fullName += + module[2]->getCString();
       moduleName = IString(fullName.c_str(), false);
     } else {
-      assert(module->isString());
+      ASSERT_THROW(module->isString());
       moduleName = module->getIString();
       if (moduleName == ENV) {
         auto base = imported[2]->getIString();
         if (base == TEMP_DOUBLE_PTR) {
-          assert(tempDoublePtr.isNull());
+          ASSERT_THROW(tempDoublePtr.isNull());
           tempDoublePtr = name;
           // we don't return here, as we can only optimize out some uses of tDP. So it remains imported
         } else if (base == LLVM_CTTZ_I32) {
-          assert(llvm_cttz_i32.isNull());
+          ASSERT_THROW(llvm_cttz_i32.isNull());
           llvm_cttz_i32 = name;
           return;
         }
@@ -1036,27 +1036,27 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
         Ref value = pair[1];
         if (value->isNumber()) {
           // global int
-          assert(value->getNumber() == 0);
+          ASSERT_THROW(value->getNumber() == 0);
           allocateGlobal(name, WasmType::i32);
         } else if (value[0] == BINARY) {
           // int import
-          assert(value[1] == OR && value[3]->isNumber() && value[3]->getNumber() == 0);
+          ASSERT_THROW(value[1] == OR && value[3]->isNumber() && value[3]->getNumber() == 0);
           Ref import = value[2]; // env.what
           addImport(name, import, WasmType::i32);
         } else if (value[0] == UNARY_PREFIX) {
           // double import or global
-          assert(value[1] == PLUS);
+          ASSERT_THROW(value[1] == PLUS);
           Ref import = value[2];
           if (import->isNumber()) {
             // global
-            assert(import->getNumber() == 0);
+            ASSERT_THROW(import->getNumber() == 0);
             allocateGlobal(name, WasmType::f64);
           } else {
             // import
             addImport(name, import, WasmType::f64);
           }
         } else if (value[0] == CALL) {
-          assert(value[1]->isString() && value[1] == Math_fround && value[2][0]->isNumber() && value[2][0]->getNumber() == 0);
+          ASSERT_THROW(value[1]->isString() && value[1] == Math_fround && value[2][0]->isNumber() && value[2][0]->getNumber() == 0);
           allocateGlobal(name, WasmType::f32);
         } else if (value[0] == DOT) {
           // simple module.base import. can be a view, or a function.
@@ -1088,7 +1088,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
         } else if (value[0] == NEW) {
           // ignore imports of typed arrays, but note the names of the arrays
           value = value[1];
-          assert(value[0] == CALL);
+          ASSERT_THROW(value[0] == CALL);
           unsigned bytes;
           bool integer, signed_;
           AsmType asmType;
@@ -1115,7 +1115,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
               abort_on("invalid view import", heap);
             }
           } else { // *ArrayView that was previously imported
-            assert(constructor->isString());
+            ASSERT_THROW(constructor->isString());
             IString viewName = constructor->getIString();
             if (viewName == Int8Array) {
               bytes = 1; integer = true; signed_ = true; asmType = ASM_INT;
@@ -1137,7 +1137,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
               abort_on("invalid short view import", viewName);
             }
           }
-          assert(views.find(name) == views.end());
+          ASSERT_THROW(views.find(name) == views.end());
           views.emplace(name, View(bytes, integer, signed_, asmType));
         } else if (value[0] == ARRAY) {
           // function table. we merge them into one big table, so e.g.   [foo, b1] , [b2, bar]  =>  [foo, b1, b2, bar]
@@ -1183,7 +1183,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
           IString value = pair[1]->getIString();
           if (key == Name("_emscripten_replace_memory")) {
             // asm.js memory growth provides this special non-asm function, which we don't need (we use grow_memory)
-            assert(!wasm.getFunctionOrNull(value));
+            ASSERT_THROW(!wasm.getFunctionOrNull(value));
             continue;
           } else if (key == UDIVMODDI4) {
             udivmoddi4 = value;
@@ -1203,8 +1203,8 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
           }
         } else {
           // export a number. create a global and export it
-          assert(pair[1]->isNumber());
-          assert(exported.count(key) == 0);
+          ASSERT_THROW(pair[1]->isNumber());
+          ASSERT_THROW(exported.count(key) == 0);
           auto value = pair[1]->getInteger();
           auto global = new Global();
           global->name = key;
@@ -1291,7 +1291,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
         } else if (curr->operands[i]->type != type->params[i]) {
           // if the param is used, then we have overloading here and the combined type must be f64;
           // if this is an unreachable param, then it doesn't matter.
-          assert(type->params[i] == f64 || curr->operands[i]->type == unreachable);
+          ASSERT_THROW(type->params[i] == f64 || curr->operands[i]->type == unreachable);
           // overloaded, upgrade to f64
           switch (curr->operands[i]->type) {
             case i32: curr->operands[i] = parent->builder.makeUnary(ConvertSInt32ToFloat64, curr->operands[i]); break;
@@ -1315,7 +1315,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
             default: WASM_UNREACHABLE();
           }
         } else {
-          assert(curr->type == none);
+          ASSERT_THROW(curr->type == none);
           // we don't want a return value here, but the import does provide one
           // autodrop will do that for us.
         }
@@ -1369,7 +1369,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
         if (lastDebugInfo) {
           auto& debugLocations = getFunction()->debugLocations;
           uint32_t fileIndex = lastDebugInfo->operands[0]->cast<Const>()->value.geti32();
-          assert(getModule()->debugInfoFileNames.size() > fileIndex);
+          ASSERT_THROW(getModule()->debugInfoFileNames.size() > fileIndex);
           uint32_t lineNumber = lastDebugInfo->operands[1]->cast<Const>()->value.geti32();
           // look up the stack, apply to the root expression
           Index i = expressionStack.size() - 1;
@@ -1512,7 +1512,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
     //    if r then *r = x % y
     //    returns x / y
     auto* func = wasm.getFunction(udivmoddi4);
-    assert(!func->type.is());
+    ASSERT_THROW(!func->type.is());
     Builder::clearLocals(func);
     Index xl  = Builder::addParam(func, "xl", i32),
           xh  = Builder::addParam(func, "xh", i32),
@@ -1657,7 +1657,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
         return call;
       }
       // global var
-      assert(mappedGlobals.find(name) != mappedGlobals.end() ? true : (std::cerr << name.str << '\n', false));
+      ASSERT_THROW(mappedGlobals.find(name) != mappedGlobals.end() ? true : (std::cerr << name.str << '\n', false));
       MappedGlobal& global = mappedGlobals[name];
       return builder.makeGetGlobal(name, global.type);
     }
@@ -1686,7 +1686,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
         return ret;
       }
       // global var
-      assert(mappedGlobals.find(name) != mappedGlobals.end());
+      ASSERT_THROW(mappedGlobals.find(name) != mappedGlobals.end());
       auto* ret = builder.makeSetGlobal(name, process(assign->value()));
       // set_global does not return; if our value is trivially not used, don't emit a load (if nontrivially not used, opts get it later)
       auto parent = astStackHelper.getParent();
@@ -1695,11 +1695,11 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
     }
     if (ast->isAssign()) {
       auto* assign = ast->asAssign();
-      assert(assign->target()->isArray(SUB));
+      ASSERT_THROW(assign->target()->isArray(SUB));
       Ref target = assign->target();
-      assert(target[1]->isString());
+      ASSERT_THROW(target[1]->isString());
       IString heap = target[1]->getIString();
-      assert(views.find(heap) != views.end());
+      ASSERT_THROW(views.find(heap) != views.end());
       View& view = views[heap];
       auto ret = allocator.alloc<Store>();
       ret->bytes = view.bytes;
@@ -1768,9 +1768,9 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
       return ret;
     } else if (what == SUB) {
       Ref target = ast[1];
-      assert(target->isString());
+      ASSERT_THROW(target->isString());
       IString heap = target->getIString();
-      assert(views.find(heap) != views.end());
+      ASSERT_THROW(views.find(heap) != views.end());
       View& view = views[heap];
       auto ret = allocator.alloc<Load>();
       ret->bytes = view.bytes;
@@ -1861,7 +1861,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
       if (ast[1]->isString()) {
         IString name = ast[1]->getIString();
         if (name == Math_imul) {
-          assert(ast[2]->size() == 2);
+          ASSERT_THROW(ast[2]->size() == 2);
           auto ret = allocator.alloc<Binary>();
           ret->op = MulInt32;
           ret->left = process(ast[2][0]);
@@ -1870,7 +1870,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
           return ret;
         }
         if (name == Math_clz32 || name == llvm_cttz_i32) {
-          assert(ast[2]->size() == 1);
+          ASSERT_THROW(ast[2]->size() == 1);
           auto ret = allocator.alloc<Unary>();
           ret->op = name == Math_clz32 ? ClzInt32 : CtzInt32;
           ret->value = process(ast[2][0]);
@@ -1878,7 +1878,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
           return ret;
         }
         if (name == Math_fround) {
-          assert(ast[2]->size() == 1);
+          ASSERT_THROW(ast[2]->size() == 1);
           Literal lit = checkLiteral(ast[2][0], false /* raw is float */);
           if (lit.type == f64) {
             return builder.makeConst(Literal((float)lit.getf64()));
@@ -1969,7 +1969,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
         }
         if (name == Math_max || name == Math_min) {
           // overloaded on type: f32 or f64
-          assert(ast[2]->size() == 2);
+          ASSERT_THROW(ast[2]->size() == 2);
           auto ret = allocator.alloc<Binary>();
           ret->left = process(ast[2][0]);
           ret->right = process(ast[2][1]);
@@ -2144,7 +2144,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
       // function pointers
       auto ret = allocator.alloc<CallIndirect>();
       Ref target = ast[1];
-      assert(target[0] == SUB && target[1]->isString() && target[2][0] == BINARY && target[2][1] == AND && target[2][3]->isNumber()); // FUNCTION_TABLE[(expr) & mask]
+      ASSERT_THROW(target[0] == SUB && target[1]->isString() && target[2][0] == BINARY && target[2][1] == AND && target[2][3]->isNumber()); // FUNCTION_TABLE[(expr) & mask]
       ret->target = process(target[2]); // TODO: as an optimization, we could look through the mask
       Ref args = ast[2];
       for (unsigned i = 0; i < args->size(); i++) {
@@ -2159,7 +2159,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
     } else if (what == RETURN) {
       WasmType type = !!ast[1] ? detectWasmType(ast[1], &asmData) : none;
       if (seenReturn) {
-        assert(function->result == type);
+        ASSERT_THROW(function->result == type);
       } else {
         function->result = type;
       }
@@ -2192,12 +2192,12 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
       return ret;
     } else if (what == BREAK) {
       auto ret = allocator.alloc<Break>();
-      assert(breakStack.size() > 0);
+      ASSERT_THROW(breakStack.size() > 0);
       ret->name = !!ast[1] ? nameMapper.sourceToUnique(getBreakLabelName(ast[1]->getIString())) : breakStack.back();
       return ret;
     } else if (what == CONTINUE) {
       auto ret = allocator.alloc<Break>();
-      assert(continueStack.size() > 0);
+      ASSERT_THROW(continueStack.size() > 0);
       ret->name = !!ast[1] ? nameMapper.sourceToUnique(getContinueLabelName(ast[1]->getIString())) : continueStack.back();
       return ret;
     } else if (what == WHILE) {
@@ -2362,7 +2362,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
       outer->finalize();
       return outer;
     } else if (what == LABEL) {
-      assert(parentLabel.isNull());
+      ASSERT_THROW(parentLabel.isNull());
       parentLabel = ast[1]->getIString();
       return process(ast[2]);
     } else if (what == CONDITIONAL) {
@@ -2484,7 +2484,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
           offsetor->type = i32;
           br->condition = offsetor;
         } else {
-          assert(br->condition->type == i64);
+          ASSERT_THROW(br->condition->type == i64);
           // 64-bit condition. after offsetting it must be in a reasonable range, but the offsetting itself must be 64-bit
           Binary* offsetor = allocator.alloc<Binary>();
           offsetor->op = BinaryOp::SubInt64;
@@ -2506,9 +2506,9 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
             name = br->default_ = nameMapper.pushLabelName("switch-default");
           } else {
             auto index = getLiteral(condition).getInteger();
-            assert(index >= min);
+            ASSERT_THROW(index >= min);
             index -= min;
-            assert(index >= 0);
+            ASSERT_THROW(index >= 0);
             uint64_t index_s = index;
             name = nameMapper.pushLabelName("switch-case");
             if (br->targets.size() <= index_s) {
@@ -2627,8 +2627,8 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
   // body
   function->body = processStatements(body, start);
   // cleanups/checks
-  assert(breakStack.size() == 0 && continueStack.size() == 0);
-  assert(parentLabel.isNull());
+  ASSERT_THROW(breakStack.size() == 0 && continueStack.size() == 0);
+  ASSERT_THROW(parentLabel.isNull());
   return function;
 }
 

@@ -84,7 +84,7 @@ std::map<RelooperBlockRef, size_t> relooperBlocks;
 
 size_t noteExpression(BinaryenExpressionRef expression) {
   auto id = expressions.size();
-  assert(expressions.find(expression) == expressions.end());
+  ASSERT_THROW(expressions.find(expression) == expressions.end());
   expressions[expression] = id;
   return id;
 }

@@ -25,6 +25,7 @@
 #include <memory>
 #include <iostream>
 #include <type_traits>
+#include "assert_throw.h"
 
 namespace wasm {
 
@@ -46,10 +47,10 @@ inline bool isPowerOf2(uint32_t v) {
 }
 
 inline size_t alignAddr(size_t address, size_t alignment) {
-  assert(alignment && isPowerOf2((uint32_t)alignment) &&
+  ASSERT_THROW(alignment && isPowerOf2((uint32_t)alignment) &&
          "Alignment is not a power of two!");
 
-  assert(address + alignment - 1 >= address);
+  ASSERT_THROW(address + alignment - 1 >= address);
 
   return ((address + alignment - 1) & ~(alignment - 1));
 }

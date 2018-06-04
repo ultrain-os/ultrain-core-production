@@ -37,7 +37,7 @@ struct FunctionHasher : public WalkerPass<PostWalker<FunctionHasher>> {
   }
 
   void doWalkFunction(Function* func) {
-    assert(digest == 0);
+    ASSERT_THROW(digest == 0);
     hash(func->getNumParams());
     for (auto type : func->params) hash(type);
     hash(func->getNumVars());

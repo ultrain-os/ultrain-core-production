@@ -45,7 +45,7 @@ Module* module = nullptr;
 bool wasmJSDebug = false;
 
 static void prepare2wasm() {
-  assert(asm2wasm == nullptr && sExpressionParser == nullptr && sExpressionWasmBuilder == nullptr && instance == nullptr); // singletons
+  ASSERT_THROW(asm2wasm == nullptr && sExpressionParser == nullptr && sExpressionWasmBuilder == nullptr && instance == nullptr); // singletons
 #if WASM_JS_DEBUG
   wasmJSDebug = 1;
 #else
@@ -164,7 +164,7 @@ extern "C" void EMSCRIPTEN_KEEPALIVE instantiate() {
       var mod = Pointer_stringify($0);
       var base = Pointer_stringify($1);
       var name = Pointer_stringify($2);
-      assert(Module['lookupImport'](mod, base) !== undefined, 'checking import ' + name + ' = ' + mod + '.' + base);
+      ASSERT_THROW(Module['lookupImport'](mod, base) !== undefined, 'checking import ' + name + ' = ' + mod + '.' + base);
     }, import->module.str, import->base.str, import->name.str);
   }
 
@@ -180,7 +180,7 @@ extern "C" void EMSCRIPTEN_KEEPALIVE instantiate() {
         bool found = false;
         for (auto& import : wasm.imports) {
           if (import->module == ENV && import->base == MEMORY) {
-            assert(import->kind == ExternalKind::Memory);
+            ASSERT_THROW(import->kind == ExternalKind::Memory);
             // memory is imported
             EM_ASM({
               Module['asmExports']['memory'] = Module['lookupImport']('env', 'memory');
@@ -207,7 +207,7 @@ extern "C" void EMSCRIPTEN_KEEPALIVE instantiate() {
         bool found = false;
         for (auto& import : wasm.imports) {
           if (import->module == ENV && import->base == TABLE) {
-            assert(import->kind == ExternalKind::Table);
+            ASSERT_THROW(import->kind == ExternalKind::Table);
             // table is imported
             EM_ASM({
               Module['outside']['wasmTable'] = Module['lookupImport']('env', 'table');
@@ -229,7 +229,7 @@ extern "C" void EMSCRIPTEN_KEEPALIVE instantiate() {
       // TODO: make them all JS methods, wrapping a dynCall where necessary?
       for (auto segment : wasm.table.segments) {
         Address offset = ConstantExpressionRunner<TrivialGlobalManager>(instance.globals).visit(segment.offset).value.geti32();
-        assert(offset + segment.data.size() <= wasm.table.initial);
+        ASSERT_THROW(offset + segment.data.size() <= wasm.table.initial);
         for (size_t i = 0; i != segment.data.size(); ++i) {
           Name name = segment.data[i];
           auto* func = wasm.getFunctionOrNull(name);
@@ -534,7 +534,7 @@ extern "C" void EMSCRIPTEN_KEEPALIVE call_from_js(const char *target) {
   IString exportName(target);
   IString functionName = instance->wasm.getExport(exportName)->value;
   Function *function = instance->wasm.getFunction(functionName);
-  assert(function);
+  ASSERT_THROW(function);
   size_t seen = EM_ASM_INT_V({ return Module['tempArguments'].length });
   size_t actual = function->params.size();
   LiteralList arguments;

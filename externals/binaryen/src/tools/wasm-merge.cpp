@@ -237,7 +237,7 @@ struct OutputMergeable : public PostWalker<OutputMergeable, Visitor<OutputMergea
     if (iter != implementedGlobalImports.end()) {
       // this global is now in the module - get it
       curr->name = iter->second;
-      assert(curr->name.is());
+      ASSERT_THROW(curr->name.is());
     }
   }
 
@@ -269,7 +269,7 @@ struct InputMergeable : public ExpressionStackWalker<InputMergeable, Visitor<Inp
 
   void visitCall(Call* curr) {
     curr->target = fNames[curr->target];
-    assert(curr->target.is());
+    ASSERT_THROW(curr->target.is());
   }
 
   void visitCallImport(CallImport* curr) {
@@ -280,12 +280,12 @@ struct InputMergeable : public ExpressionStackWalker<InputMergeable, Visitor<Inp
       return;
     }
     curr->target = fNames[curr->target];
-    assert(curr->target.is());
+    ASSERT_THROW(curr->target.is());
   }
 
   void visitCallIndirect(CallIndirect* curr) {
     curr->fullType = ftNames[curr->fullType];
-    assert(curr->fullType.is());
+    ASSERT_THROW(curr->fullType.is());
   }
 
   void visitGetGlobal(GetGlobal* curr) {
@@ -296,7 +296,7 @@ struct InputMergeable : public ExpressionStackWalker<InputMergeable, Visitor<Inp
       return;
     }
     curr->name = gNames[curr->name];
-    assert(curr->name.is());
+    ASSERT_THROW(curr->name.is());
     // if this is the memory or table base, add the bump
     if (memoryBaseGlobals.count(curr->name)) {
       addBump(outputMergeable.totalMemorySize);
@@ -307,7 +307,7 @@ struct InputMergeable : public ExpressionStackWalker<InputMergeable, Visitor<Inp
 
   void visitSetGlobal(SetGlobal* curr) {
     curr->name = gNames[curr->name];
-    assert(curr->name.is());
+    ASSERT_THROW(curr->name.is());
   }
 
   void merge() {
@@ -435,7 +435,7 @@ struct InputMergeable : public ExpressionStackWalker<InputMergeable, Visitor<Inp
       // update and add
       if (curr->functionType.is()) {
         curr->functionType = ftNames[curr->functionType];
-        assert(curr->functionType.is());
+        ASSERT_THROW(curr->functionType.is());
       }
       outputMergeable.wasm.addImport(curr.release());
     }
@@ -459,7 +459,7 @@ struct InputMergeable : public ExpressionStackWalker<InputMergeable, Visitor<Inp
     }
     for (auto& curr : wasm.functions) {
       curr->type = ftNames[curr->type];
-      assert(curr->type.is());
+      ASSERT_THROW(curr->type.is());
       outputMergeable.wasm.addFunction(curr.release());
     }
     for (auto& curr : wasm.globals) {

@@ -79,7 +79,7 @@ struct RemoveUnusedBrs : public WalkerPass<PostWalker<RemoveUnusedBrs>> {
     } else if (curr->is<If>()) {
       auto* iff = curr->cast<If>();
       if (iff->ifFalse) {
-        assert(self->ifStack.size() > 0);
+        ASSERT_THROW(self->ifStack.size() > 0);
         for (auto* flow : self->ifStack.back()) {
           flows.push_back(flow);
         }
@@ -229,7 +229,7 @@ struct RemoveUnusedBrs : public WalkerPass<PostWalker<RemoveUnusedBrs>> {
         } else {
           // this is already an if-else. if one side is a dead end, we can append to the other, if
           // there is no returned value to concern us
-          assert(!isConcreteWasmType(iff->type)); // can't be, since in the middle of a block
+          ASSERT_THROW(!isConcreteWasmType(iff->type)); // can't be, since in the middle of a block
           if (ExpressionAnalyzer::obviouslyDoesNotFlowOut(iff->ifTrue)) {
             iff->ifFalse = builder.blockifyMerge(iff->ifFalse, builder.stealSlice(block, i + 1, list.size()));
             return true;
@@ -282,7 +282,7 @@ struct RemoveUnusedBrs : public WalkerPass<PostWalker<RemoveUnusedBrs>> {
     do {
       anotherCycle = false;
       WalkerPass<PostWalker<RemoveUnusedBrs>>::doWalkFunction(func);
-      assert(ifStack.empty());
+      ASSERT_THROW(ifStack.empty());
       // flows may contain returns, which are flowing out and so can be optimized
       for (size_t i = 0; i < flows.size(); i++) {
         auto* flow = (*flows[i])->dynCast<Return>();
@@ -424,7 +424,7 @@ struct RemoveUnusedBrs : public WalkerPass<PostWalker<RemoveUnusedBrs>> {
               auto* br2 = list[i + 1]->dynCast<Break>();
               if (!br2 || !br2->condition) continue;
               if (br1->name == br2->name) {
-                assert(!br1->value && !br2->value);
+                ASSERT_THROW(!br1->value && !br2->value);
                 if (!EffectAnalyzer(passOptions, br2->condition).hasSideEffects()) {
                   // it's ok to execute them both, do it
                   Builder builder(*getModule());
@@ -446,7 +446,7 @@ struct RemoveUnusedBrs : public WalkerPass<PostWalker<RemoveUnusedBrs>> {
           if (curr->name.is()) {
             auto* br = list[0]->dynCast<Break>();
             if (br && br->condition && br->name == curr->name) {
-              assert(!br->value); // can't, it would be dropped or last in the block
+              ASSERT_THROW(!br->value); // can't, it would be dropped or last in the block
               if (BreakSeeker::count(curr, curr->name) == 1) {
                 // no other breaks to that name, so we can do this
                 Builder builder(*getModule());

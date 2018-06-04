@@ -124,7 +124,7 @@ typedef unsigned long  ulg;
 #  define OS_CODE  0x0a
 #endif
 
-#if defined(_BULTRAIN_) || defined(RISCOS)
+#if defined(_BEOS_) || defined(RISCOS)
 #  define fdopen(fd,mode) NULL /* No fdopen() */
 #endif
 

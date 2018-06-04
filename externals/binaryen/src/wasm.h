@@ -65,10 +65,10 @@ struct Address {
   address_t addr;
   Address() : addr(0) {}
   Address(uint64_t a) : addr(static_cast<address_t>(a)) {
-    assert(a <= std::numeric_limits<address_t>::max());
+    ASSERT_THROW(a <= std::numeric_limits<address_t>::max());
   }
   Address& operator=(uint64_t a) {
-    assert(a <= std::numeric_limits<address_t>::max());
+    ASSERT_THROW(a <= std::numeric_limits<address_t>::max());
     addr = static_cast<address_t>(a);
     return *this;
   }
@@ -199,7 +199,7 @@ public:
 
   template<class T>
   T* cast() {
-    assert(int(_id) == int(T::SpecificId));
+    ASSERT_THROW(int(_id) == int(T::SpecificId));
     return (T*)this;
   }
 };
@@ -395,7 +395,7 @@ public:
   Load(MixedArena& allocator) {}
 
   uint8_t bytes;
-  bool signed_;
+  bool signed_    = false;
   Address offset;
   Address align;
   Expression* ptr;

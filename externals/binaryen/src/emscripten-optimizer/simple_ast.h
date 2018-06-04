@@ -227,23 +227,23 @@ struct Value {
   }
 
   const char* getCString() {
-    assert(isString());
+    ASSERT_THROW(isString());
     return str.str;
   }
   IString& getIString() {
-    assert(isString());
+    ASSERT_THROW(isString());
     return str;
   }
   double& getNumber() {
-    assert(isNumber());
+    ASSERT_THROW(isNumber());
     return num;
   }
   ArrayStorage& getArray() {
-    assert(isArray());
+    ASSERT_THROW(isArray());
     return *arr;
   }
   bool& getBool() {
-    assert(isBool());
+    ASSERT_THROW(isBool());
     return boo;
   }
 
@@ -251,9 +251,9 @@ struct Value {
   AssignName* asAssignName();
 
   int32_t getInteger() { // convenience function to get a known integer
-    assert(fmod(getNumber(), 1) == 0);
+    ASSERT_THROW(fmod(getNumber(), 1) == 0);
     int32_t ret = getNumber();
-    assert(double(ret) == getNumber()); // no loss in conversion
+    ASSERT_THROW(double(ret) == getNumber()); // no loss in conversion
     return ret;
   }
 
@@ -310,7 +310,7 @@ struct Value {
       // String
       curr++;
       char *close = strchr(curr, '"');
-      assert(close);
+      ASSERT_THROW(close);
       *close = 0; // end this string, and reuse it straight from the input
       setString(curr);
       curr = close+1;
@@ -325,24 +325,24 @@ struct Value {
         curr = temp->parse(curr);
         skip();
         if (*curr == ']') break;
-        assert(*curr == ',');
+        ASSERT_THROW(*curr == ',');
         curr++;
         skip();
       }
       curr++;
     } else if (*curr == 'n') {
       // Null
-      assert(strncmp(curr, "null", 4) == 0);
+      ASSERT_THROW(strncmp(curr, "null", 4) == 0);
       setNull();
       curr += 4;
     } else if (*curr == 't') {
       // Bool true
-      assert(strncmp(curr, "true", 4) == 0);
+      ASSERT_THROW(strncmp(curr, "true", 4) == 0);
       setBool(true);
       curr += 4;
     } else if (*curr == 'f') {
       // Bool false
-      assert(strncmp(curr, "false", 5) == 0);
+      ASSERT_THROW(strncmp(curr, "false", 5) == 0);
       setBool(false);
       curr += 5;
     } else if (*curr == '{') {
@@ -351,15 +351,15 @@ struct Value {
       skip();
       setObject();
       while (*curr != '}') {
-        assert(*curr == '"');
+        ASSERT_THROW(*curr == '"');
         curr++;
         char *close = strchr(curr, '"');
-        assert(close);
+        ASSERT_THROW(close);
         *close = 0; // end this string, and reuse it straight from the input
         IString key(curr);
         curr = close+1;
         skip();
-        assert(*curr == ':');
+        ASSERT_THROW(*curr == ':');
         curr++;
         skip();
         Ref value = arena.alloc<Value>();
@@ -367,7 +367,7 @@ struct Value {
         (*obj)[key] = value;
         skip();
         if (*curr == '}') break;
-        assert(*curr == ',');
+        ASSERT_THROW(*curr == ',');
         curr++;
         skip();
       }
@@ -390,12 +390,12 @@ struct Value {
   // Array operations
 
   size_t size() {
-    assert(isArray());
+    ASSERT_THROW(isArray());
     return arr->size();
   }
 
   void setSize(size_t size) {
-    assert(isArray());
+    ASSERT_THROW(isArray());
     auto old = arr->size();
     if (old != size) arr->resize(size);
     if (old < size) {
@@ -406,30 +406,30 @@ struct Value {
   }
 
   Ref& operator[](unsigned x) {
-    assert(isArray());
+    ASSERT_THROW(isArray());
     return (*arr)[x];
   }
 
   Value& push_back(Ref r) {
-    assert(isArray());
+    ASSERT_THROW(isArray());
     arr->push_back(r);
     return *this;
   }
   Ref pop_back() {
-    assert(isArray());
+    ASSERT_THROW(isArray());
     Ref ret = arr->back();
     arr->pop_back();
     return ret;
   }
 
   Ref back() {
-    assert(isArray());
+    ASSERT_THROW(isArray());
     if (arr->size() == 0) return nullptr;
     return arr->back();
   }
 
   int indexOf(Ref other) {
-    assert(isArray());
+    ASSERT_THROW(isArray());
     for (size_t i = 0; i < arr->size(); i++) {
       if (other == (*arr)[i]) return i;
     }
@@ -437,7 +437,7 @@ struct Value {
   }
 
   Ref map(std::function<Ref (Ref node)> func) {
-    assert(isArray());
+    ASSERT_THROW(isArray());
     Ref ret = arena.alloc<Value>();
     ret->setArray();
     for (size_t i = 0; i < arr->size(); i++) {
@@ -447,7 +447,7 @@ struct Value {
   }
 
   Ref filter(std::function<bool (Ref node)> func) {
-    assert(isArray());
+    ASSERT_THROW(isArray());
     Ref ret = arena.alloc<Value>();
     ret->setArray();
     for (size_t i = 0; i < arr->size(); i++) {
@@ -472,12 +472,12 @@ struct Value {
   // Object operations
 
   Ref& operator[](IString x) {
-    assert(isObject());
+    ASSERT_THROW(isObject());
     return (*obj)[x];
   }
 
   bool has(IString x) {
-    assert(isObject());
+    ASSERT_THROW(isObject());
     return obj->count(x) > 0;
   }
 };
@@ -572,7 +572,7 @@ struct JSPrinter {
         }
       } else {
         // integer
-        assert(d >= 0);
+        ASSERT_THROW(d >= 0);
         if (wasm::isUInteger64(d)) {
           unsigned long long uu = wasm::toUInteger64(d);
           bool asHex = e && !finalize;
@@ -593,7 +593,7 @@ struct JSPrinter {
       }
       (e ? err_e : err_f) = fabs(temp - d);
       //errv("current attempt: %.18f  =>  %s", d, buffer);
-      //assert(temp == d);
+      //ASSERT_THROW(temp == d);
       char *dot = strchr(buffer, '.');
       if (dot) {
         // remove trailing zeros
@@ -635,7 +635,7 @@ struct JSPrinter {
             test[2] = '0' + (num % 10);
             test[3] = 0;
           } else {
-            assert(num < 1000);
+            ASSERT_THROW(num < 1000);
             test[1] = '0' + (num / 100);
             test[2] = '0' + (num % 100) / 10;
             test[3] = '0' + (num % 10);
@@ -704,7 +704,7 @@ public:
   }
 
   static void appendToBlock(Ref block, Ref element) {
-    assert(block[0] == BLOCK);
+    ASSERT_THROW(block[0] == BLOCK);
     block[1]->push_back(element);
   }
 
@@ -789,7 +789,7 @@ public:
   }
 
   static void appendToCall(Ref call, Ref element) {
-    assert(call[0] == CALL);
+    ASSERT_THROW(call[0] == CALL);
     call[2]->push_back(element);
   }
 
@@ -846,7 +846,7 @@ public:
   }
 
   static void appendArgumentToFunction(Ref func, IString arg) {
-    assert(func[0] == DEFUN);
+    ASSERT_THROW(func[0] == DEFUN);
     func[2]->push_back(makeRawString(arg));
   }
 
@@ -856,7 +856,7 @@ public:
   }
 
   static void appendToVar(Ref var, IString name, Ref value) {
-    assert(var[0] == VAR);
+    ASSERT_THROW(var[0] == VAR);
     Ref array = &makeRawArray(1)->push_back(makeRawString(name));
     if (!!value) array->push_back(value);
     var[1]->push_back(array);
@@ -936,20 +936,20 @@ public:
   }
 
   static void appendCaseToSwitch(Ref switch_, Ref arg) {
-    assert(switch_[0] == SWITCH);
+    ASSERT_THROW(switch_[0] == SWITCH);
     switch_[2]->push_back(&makeRawArray(2)->push_back(arg)
                                            .push_back(makeRawArray()));
   }
 
   static void appendDefaultToSwitch(Ref switch_) {
-    assert(switch_[0] == SWITCH);
+    ASSERT_THROW(switch_[0] == SWITCH);
     switch_[2]->push_back(&makeRawArray(2)->push_back(makeNull())
                                            .push_back(makeRawArray()));
   }
 
   static void appendCodeToSwitch(Ref switch_, Ref code, bool explicitBlock) {
-    assert(switch_[0] == SWITCH);
-    assert(code[0] == BLOCK);
+    ASSERT_THROW(switch_[0] == SWITCH);
+    ASSERT_THROW(code[0] == BLOCK);
     if (!explicitBlock) {
       for (size_t i = 0; i < code[1]->size(); i++) {
         switch_[2]->back()->back()->push_back(code[1][i]);
@@ -966,7 +966,7 @@ public:
   }
 
   static Ref makeDot(Ref obj, Ref key) {
-    assert(key->isString());
+    ASSERT_THROW(key->isString());
     return makeDot(obj, key->getIString());
   }
 
@@ -981,7 +981,7 @@ public:
   }
 
   static void appendToArray(Ref array, Ref element) {
-    assert(array[0] == ARRAY);
+    ASSERT_THROW(array[0] == ARRAY);
     array[1]->push_back(element);
   }
 
@@ -991,7 +991,7 @@ public:
   }
 
   static void appendToObject(Ref array, IString key, Ref value) {
-    assert(array[0] == OBJECT);
+    ASSERT_THROW(array[0] == OBJECT);
     array[1]->push_back(&makeRawArray(2)->push_back(makeRawString(key))
                                          .push_back(value));
   }

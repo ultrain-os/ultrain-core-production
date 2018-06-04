@@ -6,9 +6,10 @@
 #include <ultrainiolib/ultrainio.hpp>
 
 namespace asserter {
-   struct PACKED(assertdef) {
-      int8_t   condition;
-      int8_t   message_length;
-      char     message[];
+   struct assertdef {
+      int8_t      condition;
+      std::string message;
+
+      ULTRAINLIB_SERIALIZE( assertdef, (condition)(message) )
    };
 }

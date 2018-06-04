@@ -25,7 +25,7 @@
  *  This is a simple file to encapsulate the OpenGL ES 2.0 API headers.
  */
 
-#ifdef __IPHONULTRAIN__
+#ifdef __IPHONEOS__
 #include <OpenGLES/ES2/gl.h>
 #include <OpenGLES/ES2/glext.h>
 #else

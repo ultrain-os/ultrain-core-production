@@ -791,7 +791,7 @@ public:
 
   template<typename T>
   void fillCall(T* call, FunctionType* type) {
-    assert(type);
+    ASSERT_THROW(type);
     auto num = type->params.size();
     call->operands.resize(num);
     for (size_t i = 0; i < num; i++) {

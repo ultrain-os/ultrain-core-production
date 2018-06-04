@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 LABEL author="xiaobo <peterwillcn@gmail.com>" maintainer="Xiaobo <peterwillcn@gmail.com> Huang-Ming Huang <huangh@objectcomputing.com>" version="0.1.1" \
   description="This is a base image for building ultrainio/ultrain"
@@ -6,9 +6,9 @@ LABEL author="xiaobo <peterwillcn@gmail.com>" maintainer="Xiaobo <peterwillcn@gm
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
   && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
   && apt-get update \
-  && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ca-certificates unzip
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ca-certificates unzip gnupg
 
-RUN echo "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-4.0 main" >> /etc/apt/sources.list.d/llvm.list \
+RUN echo "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic main" >> /etc/apt/sources.list.d/llvm.list \
   && wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add - \
   && apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y git-core automake autoconf libtool build-essential pkg-config libtool \
@@ -26,17 +26,17 @@ RUN wget --no-check-certificate https://cmake.org/files/v3.9/cmake-3.9.6-Linux-x
 ENV CC clang
 ENV CXX clang++
 
-RUN wget https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 -O - | tar -xj \
-    && cd boost_1_66_0 \
+RUN wget https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.bz2 -O - | tar -xj \
+    && cd boost_1_67_0 \
     && ./bootstrap.sh --prefix=/usr/local \
     && echo 'using clang : 4.0 : clang++-4.0 ;' >> project-config.jam \
     && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
        --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=clang link=static install \
-    && cd .. && rm -rf boost_1_66_0
+    && cd .. && rm -rf boost_1_67_0
 
 RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz -O - | tar -xz \
     && cd mongo-c-driver-1.9.3 \
-    && ./configure --disable-automatic-init-and-cleanup --prefix=/usr/local \
+    && ./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local \
     && make -j$(nproc) install \
     && cd .. && rm -rf mongo-c-driver-1.9.3
 
@@ -62,7 +62,7 @@ RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
 
 RUN git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-driver \
     && cd mongo-cxx-driver \
-    && cmake -H. -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr/local\
+    && cmake -H. -Bbuild -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr/local\
     && cmake --build build --target install \
     && cd .. && rm -rf mongo-cxx-driver
 

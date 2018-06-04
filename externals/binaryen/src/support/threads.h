@@ -120,7 +120,7 @@ public:
 
   void verify() {
     auto before = created.fetch_add(1);
-    assert(before == 0);
+    ASSERT_THROW(before == 0);
   }
 };
 

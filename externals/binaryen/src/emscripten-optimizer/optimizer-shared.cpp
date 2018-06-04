@@ -65,7 +65,7 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef, IString minifiedFr
     }
     // We are in a variable definition, where Math_fround(0) optimized into a global constant becomes f0 = Math_fround(0)
     if (ASM_FLOAT_ZERO.isNull()) ASM_FLOAT_ZERO = node->getIString();
-    else assert(node == ASM_FLOAT_ZERO);
+    else ASSERT_THROW(node == ASM_FLOAT_ZERO);
     return ASM_FLOAT;
   }
   if (node->isNumber()) {
@@ -119,7 +119,7 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef, IString minifiedFr
       if (node[0] == SEQ) {
         return detectType(node[2], asmData, inVarDef, minifiedFround, allowI64);
       } else if (node[0] == SUB) {
-        assert(node[1]->isString());
+        ASSERT_THROW(node[1]->isString());
         HeapInfo info = parseHeap(node[1][1]->getCString());
         if (info.valid) return ASM_NONE;
         return info.floaty ? ASM_DOUBLE : ASM_INT; // XXX ASM_FLOAT?
@@ -128,7 +128,7 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef, IString minifiedFr
     }
   }
   //dump("horrible", node);
-  //assert(0);
+  //ASSERT_THROW(0);
   return ASM_NONE;
 }
 
@@ -212,7 +212,7 @@ Ref makeAsmCoercedZero(AsmType type) {
       return ValueBuilder::makeCall(SIMD_INT32X4, ValueBuilder::makeNum(0), ValueBuilder::makeNum(0), ValueBuilder::makeNum(0), ValueBuilder::makeNum(0));
       break;
     }
-    default: assert(0);
+    default: ASSERT_THROW(0);
   }
   abort();
 }
@@ -233,6 +233,6 @@ Ref makeAsmCoercion(Ref node, AsmType type) {
 }
 
 Ref makeSigning(Ref node, AsmSign sign) {
-  assert(sign == ASM_SIGNED || sign == ASM_UNSIGNED);
+  ASSERT_THROW(sign == ASM_SIGNED || sign == ASM_UNSIGNED);
   return ValueBuilder::makeBinary(node, sign == ASM_SIGNED ? OR : TRSHIFT, ValueBuilder::makeNum(0));
 }

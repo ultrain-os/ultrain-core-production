@@ -7,8 +7,6 @@
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger.hpp>
 
-#include <assert.h>
-
 namespace fc { namespace crypto { namespace r1 {
     namespace detail
     {
@@ -269,7 +267,7 @@ namespace fc { namespace crypto { namespace r1 {
     {
       public_key_data key = serialize();
       uint32_t check = (uint32_t)sha256::hash(key.data, sizeof(key))._hash[0];
-      assert(key.size() + sizeof(check) == 37);
+      static_assert(sizeof(key) + sizeof(check) == 37, ""); // hack around gcc bug: key.size() should be constexpr, but isn't
       array<char, 37> data;
       memcpy(data.data, key.begin(), key.size());
       memcpy(data.begin() + key.size(), (const char*)&check, sizeof(check));
@@ -309,7 +307,7 @@ namespace fc { namespace crypto { namespace r1 {
         BN_mod(secexp, secexp, order, ctx);
 
         fc::sha256 secret;
-        assert(BN_num_bytes(secexp) <= int64_t(sizeof(secret)));
+        FC_ASSERT(BN_num_bytes(secexp) <= int64_t(sizeof(secret)));
         auto shift = sizeof(secret) - BN_num_bytes(secexp);
         BN_bn2bin(secexp, ((unsigned char*)&secret)+shift);
         return regenerate( secret );
@@ -379,7 +377,7 @@ namespace fc { namespace crypto { namespace r1 {
         unsigned int buf_len = ECDSA_size(my->_key);
 //        fprintf( stderr, "%d  %d\n", buf_len, sizeof(sha256) );
         signature sig;
-        assert( buf_len == sizeof(sig) );
+        FC_ASSERT( buf_len == sizeof(sig) );
 
         if( !ECDSA_sign( 0,
                     (const unsigned char*)&digest, sizeof(digest),
@@ -402,7 +400,7 @@ namespace fc { namespace crypto { namespace r1 {
       if( !my->_key ) return dat;
       EC_KEY_set_conv_form( my->_key, POINT_CONVERSION_COMPRESSED );
       /*size_t nbytes = i2o_ECPublicKey( my->_key, nullptr ); */
-      /*assert( nbytes == 33 )*/
+      /*FC_ASSERT( nbytes == 33 )*/
       char* front = &dat.data[0];
       i2o_ECPublicKey( my->_key, (unsigned char**)&front  );
       return dat;
@@ -526,9 +524,11 @@ namespace fc { namespace crypto { namespace r1 {
         if (sig==nullptr)
           FC_THROW_EXCEPTION( exception, "Unable to sign" );
 
-        const BIGNUM *r, *sig_s;
-        ssl_bignum s;
-        ECDSA_SIG_get0(sig, &r, &sig_s);
+        //We can't use ssl_bignum here; _get0() does not transfer ownership to us; _set0() does transfer ownership to fc::ecdsa_sig
+        const BIGNUM *sig_r, *sig_s;
+        BIGNUM *r = BN_new(), *s = BN_new();
+        ECDSA_SIG_get0(sig, &sig_r, &sig_s);
+        BN_copy(r, sig_r);
         BN_copy(s, sig_s);
 
         //want to always use the low S value
@@ -545,6 +545,8 @@ namespace fc { namespace crypto { namespace r1 {
         int nBitsS = BN_num_bits(s);
         if(nBitsR > 256 || nBitsS > 256)
           FC_THROW_EXCEPTION( exception, "Unable to sign" );
+
+        ECDSA_SIG_set0(sig, r, s);
         
         int nRecId = -1;
         for (int i=0; i<4; i++)

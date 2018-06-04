@@ -58,8 +58,8 @@ static void expr (LexState *ls, expdesc *v);
 
 
 static void anchor_token (LexState *ls) {
-  /* last token from outer function must be ULTRAIN */
-  lua_assert(ls->fs != NULL || ls->t.token == TK_ULTRAIN);
+  /* last token from outer function must be EOS */
+  lua_assert(ls->fs != NULL || ls->t.token == TK_EOS);
   if (ls->t.token == TK_NAME || ls->t.token == TK_STRING) {
     TString *ts = ls->t.seminfo.ts;
     luaX_newstring(ls, getstr(ts), ts->tsv.len);
@@ -593,7 +593,7 @@ static void close_func (LexState *ls) {
 static int block_follow (LexState *ls, int withuntil) {
   switch (ls->t.token) {
     case TK_ELSE: case TK_ELSEIF:
-    case TK_END: case TK_ULTRAIN:
+    case TK_END: case TK_EOS:
       return 1;
     case TK_UNTIL: return withuntil;
     default: return 0;
@@ -1610,7 +1610,7 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
   luaX_next(ls);  /* read first token */
   statlist(ls);  /* parse main body */
-  check(ls, TK_ULTRAIN);
+  check(ls, TK_EOS);
   close_func(ls);
 }
 

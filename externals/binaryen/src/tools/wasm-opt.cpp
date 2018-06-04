@@ -154,7 +154,7 @@ int main(int argc, const char* argv[]) {
     if (options.debug) std::cerr << "running passes...\n";
     PassRunner passRunner = options.getPassRunner(wasm);
     passRunner.run();
-    assert(WasmValidator().validate(wasm));
+    ASSERT_THROW(WasmValidator().validate(wasm));
   }
 
   if (fuzzExec) {

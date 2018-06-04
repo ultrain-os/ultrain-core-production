@@ -1,7 +1,7 @@
 /*
  * SDL OpenGL Tutorial.
  * (c) Michael Vance, 2000
- * briarultrain@lokigames.com
+ * briareos@lokigames.com
  *
  * Distributed under terms of the LGPL.
  */

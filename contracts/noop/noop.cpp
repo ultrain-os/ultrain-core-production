@@ -3,13 +3,21 @@
  *  @copyright defined in ultrain/LICENSE.txt
  */
 
-#include <noop/noop.hpp>
+#include <ultrainiolib/ultrainio.hpp>
 
-namespace noop {
-   extern "C" {
-      /// The apply method implements the dispatch of events to this contract
-      void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-         ultrainio::dispatch<noop, noop::anyaction>(code, action);
-      }
-   }
-}
+namespace ultrainio {
+
+   class noop: public contract {
+      public:
+         noop( account_name self ): contract( self ) { }
+         void anyaction( account_name from,
+                         const std::string& /*type*/,
+                         const std::string& /*data*/ )
+         {
+            require_auth( from );
+         }
+   };
+
+   ULTRAINIO_ABI( noop, ( anyaction ) )
+
+} /// ultrainio     

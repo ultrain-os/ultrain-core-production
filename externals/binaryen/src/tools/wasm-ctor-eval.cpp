@@ -268,7 +268,7 @@ private:
         )
       );
     }
-    assert(wasm->memory.segments[0].offset->cast<Const>()->value.getInteger() == 0);
+    ASSERT_THROW(wasm->memory.segments[0].offset->cast<Const>()->value.getInteger() == 0);
     auto max = address + sizeof(T);
     auto& data = wasm->memory.segments[0].data;
     if (max > data.size()) {
