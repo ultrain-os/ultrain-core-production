@@ -112,12 +112,12 @@ namespace ultrainiosystem {
       auto quant_after_fee = quant;
       quant_after_fee.amount -= fee.amount;
 
-      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {payer,N(active)},
-         { payer, N(ultrainio.ram), quant_after_fee, std::string("buy ram") } );
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {payer,N(active)},
+         { payer, N(utrio.ram), quant_after_fee, std::string("buy ram") } );
 
       if( fee.amount > 0 ) {
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {payer,N(active)},
-                                                       { payer, N(ultrainio.ramfee), fee, std::string("ram fee") } );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {payer,N(active)},
+                                                       { payer, N(utrio.ramfee), fee, std::string("ram fee") } );
       }
 
       int64_t bytes_out;
@@ -180,12 +180,12 @@ namespace ultrainiosystem {
       });
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
-      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {N(ultrainio.ram),N(active)},
-                                                       { N(ultrainio.ram), account, asset(tokens_out), std::string("sell ram") } );
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.ram),N(active)},
+                                                       { N(utrio.ram), account, asset(tokens_out), std::string("sell ram") } );
       auto fee = tokens_out.amount / 200;
       if( fee > 0 ) {
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {account,N(active)},
-            { account, N(ultrainio.ramfee), asset(fee), std::string("sell ram fee") } );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {account,N(active)},
+            { account, N(utrio.ramfee), asset(fee), std::string("sell ram fee") } );
       }
    }
 
@@ -260,7 +260,7 @@ namespace ultrainiosystem {
       } // tot_itr can be invalid, should go out of scope
 
       // create refund or update from existing refund
-      if ( N(ultrainio.stake) != source_stake_from ) { //for ultrainio both transfer and refund make no sense
+      if ( N(utrio.stake) != source_stake_from ) { //for ultrainio both transfer and refund make no sense
          refunds_table refunds_tbl( _self, from );
          auto req = refunds_tbl.find( from );
 
@@ -324,8 +324,8 @@ namespace ultrainiosystem {
 
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
-            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {source_stake_from, N(active)},
-               { source_stake_from, N(ultrainio.stake), asset(transfer_amount), std::string("stake bandwidth") } );
+            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {source_stake_from, N(active)},
+               { source_stake_from, N(utrio.stake), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
 
@@ -388,8 +388,8 @@ namespace ultrainiosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {N(ultrainio.stake),N(active)},
-                                                    { N(ultrainio.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.stake),N(active)},
+                                                    { N(utrio.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
    }

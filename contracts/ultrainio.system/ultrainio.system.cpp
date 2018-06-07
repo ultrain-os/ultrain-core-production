@@ -22,7 +22,7 @@ namespace ultrainiosystem {
       auto itr = _rammarket.find(S(4,RAMCORE));
 
       if( itr == _rammarket.end() ) {
-         auto system_token_supply   = ultrainio::token(N(ultrainio.token)).get_supply(ultrainio::symbol_type(system_token_symbol).name()).amount;
+         auto system_token_supply   = ultrainio::token(N(utrio.token)).get_supply(ultrainio::symbol_type(system_token_symbol).name()).amount;
          if( system_token_supply > 0 ) {
             itr = _rammarket.emplace( _self, [&]( auto& m ) {
                m.supply.amount = 100000000000000ll;
@@ -101,8 +101,8 @@ namespace ultrainiosystem {
       ultrainio_assert( bid.symbol == asset().symbol, "asset must be system token" );
       ultrainio_assert( bid.amount > 0, "insufficient bid" );
 
-      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {bidder,N(active)},
-                                                    { bidder, N(ultrainio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {bidder,N(active)},
+                                                    { bidder, N(utrio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
 
       name_bid_table bids(_self,_self);
       print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
@@ -119,8 +119,8 @@ namespace ultrainiosystem {
          ultrainio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          ultrainio_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {N(ultrainio.names),N(active)},
-                                                       { N(ultrainio.names), current->high_bidder, asset(current->high_bid),
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.names),N(active)},
+                                                       { N(utrio.names), current->high_bidder, asset(current->high_bid),
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
          bids.modify( current, bidder, [&]( auto& b ) {

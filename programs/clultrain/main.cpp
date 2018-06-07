@@ -612,7 +612,7 @@ asset to_asset( const string& code, const string& s ) {
 }
 
 inline asset to_asset( const string& s ) {
-   return to_asset( "ultrainio.token", s );
+   return to_asset( "utrio.token", s );
 }
 
 struct set_account_permission_subcommand {

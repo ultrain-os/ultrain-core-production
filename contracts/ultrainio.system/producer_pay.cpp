@@ -77,7 +77,7 @@ namespace ultrainiosystem {
 
       ultrainio_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
 
-      const asset token_supply   = token( N(ultrainio.token)).get_supply(symbol_type(system_token_symbol).name() );
+      const asset token_supply   = token( N(utrio.token)).get_supply(symbol_type(system_token_symbol).name() );
       const auto usecs_since_last_fill = ct - _gstate.last_pervote_bucket_fill;
 
       if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > 0 ) {
@@ -88,17 +88,17 @@ namespace ultrainiosystem {
          auto to_per_block_pay   = to_producers / 4;
          auto to_per_vote_pay    = to_producers - to_per_block_pay;
 
-         INLINE_ACTION_SENDER(ultrainio::token, issue)( N(ultrainio.token), {{N(ultrainio),N(active)}},
+         INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
                                                     {N(ultrainio), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {N(ultrainio),N(active)},
-                                                       { N(ultrainio), N(ultrainio.saving), asset(to_savings), "unallocated inflation" } );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(ultrainio),N(active)},
+                                                       { N(ultrainio), N(utrio.saving), asset(to_savings), "unallocated inflation" } );
 
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {N(ultrainio),N(active)},
-                                                       { N(ultrainio), N(ultrainio.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(ultrainio),N(active)},
+                                                       { N(ultrainio), N(utrio.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
 
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {N(ultrainio),N(active)},
-                                                       { N(ultrainio), N(ultrainio.vpay), asset(to_per_vote_pay), "fund per-vote bucket" } );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(ultrainio),N(active)},
+                                                       { N(ultrainio), N(utrio.vpay), asset(to_per_vote_pay), "fund per-vote bucket" } );
 
          _gstate.pervote_bucket  += to_per_vote_pay;
          _gstate.perblock_bucket += to_per_block_pay;
@@ -127,12 +127,12 @@ namespace ultrainiosystem {
       });
       
       if( producer_per_block_pay > 0 ) {
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {N(ultrainio.bpay),N(active)},
-                                                       { N(ultrainio.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.bpay),N(active)},
+                                                       { N(utrio.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
       }
       if( producer_per_vote_pay > 0 ) {
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(ultrainio.token), {N(ultrainio.vpay),N(active)},
-                                                       { N(ultrainio.vpay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.vpay),N(active)},
+                                                       { N(utrio.vpay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
       }
    }
 
