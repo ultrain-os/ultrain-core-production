@@ -83,6 +83,55 @@ class context_aware_api {
 
 };
 
+#ifdef ULTRAIN_SUPPORT_TYPESCRIPT
+#include <sstream>
+#include <iomanip>
+
+class typescript_action_api : public context_aware_api {
+   private:
+     template<typename T>
+     std::string int_to_hex(T i) {
+         std::stringstream ss;
+         ss << std::showbase /*<<std::setfill('0') << std::setw(sizeof(T)*2)*/ << std::hex << i;
+         return ss.str();
+     }
+
+   public:
+      const static int ERROR_CODE = -1;
+
+      typescript_action_api( apply_context& ctx )
+      :context_aware_api(ctx,true){
+      }
+
+      void ts_log_print_s(int ch) {
+          context.ts_context.log_msg.push_back((char)ch);
+      }
+
+      void ts_log_print_i(int64_t i, int fmt = 10) {
+          std::string val;
+          switch(fmt) {
+            case 16: {/* print as hex*/
+                val = int_to_hex(i);
+            } break;
+            default: {
+                val = std::to_string(i);
+            } break;
+          }
+          context.ts_context.log_msg.append(val);
+      }
+
+      void ts_log_done() {
+          std::cout << "[TS_LOG]: " << context.ts_context.log_msg << std::endl;
+          context.console_append<const char*>(context.ts_context.log_msg.c_str());
+          context.ts_context.log_msg.clear();
+      }
+
+    void ultrain_assert_native(int condition) {
+        FC_ASSERT(condition != 0, "ultrain_assert");
+   }
+};
+#endif
+
 class context_free_api : public context_aware_api {
    public:
       context_free_api( apply_context& ctx )
@@ -1635,6 +1684,15 @@ class call_depth_api : public context_aware_api {
          FC_THROW_EXCEPTION(wasm_execution_error, "Exceeded call depth maximum");
       }
 };
+
+#ifdef ULTRAIN_SUPPORT_TYPESCRIPT
+REGISTER_INTRINSICS(typescript_action_api,
+  (ts_log_print_s,              void(int)     )
+  (ts_log_print_i,              void(int64_t, int)     )
+  (ts_log_done,               void()          )
+  (ultrain_assert_native,    void(int))
+);
+#endif
 
 REGISTER_INJECTED_INTRINSICS(call_depth_api,
    (call_depth_assert,  void()               )

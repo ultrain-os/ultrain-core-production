@@ -600,6 +600,19 @@ class apply_context {
 
       action_trace                                trace;
 
+#ifdef ULTRAIN_SUPPORT_TYPESCRIPT
+      struct typescript_context {
+          typescript_context() : inited(false), act_name(), log_msg() { log_msg.reserve(256); }
+          bool        inited;
+          std::string act_name;
+          std::vector<fc::variant> params;
+
+          std::string log_msg;
+      };
+
+      typescript_context ts_context;
+#endif
+
    private:
 
       iterator_cache<key_value_object>    keyval_cache;

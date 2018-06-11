@@ -4,6 +4,8 @@ project( ULTRAINIO )
 
 enable_testing()
 
+add_definitions(-DULTRAIN_SUPPORT_TYPESCRIPT)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
