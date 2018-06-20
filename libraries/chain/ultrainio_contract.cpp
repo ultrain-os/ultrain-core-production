@@ -92,6 +92,7 @@ void apply_ultrainio_newaccount(apply_context& context) {
 
    const auto& new_account = db.create<account_object>([&](auto& a) {
       a.name = create.name;
+      a.updateable = create.updateable;
       a.creation_date = context.control.pending_block_time();
    });
 
@@ -136,7 +137,12 @@ void apply_ultrainio_setcode(apply_context& context) {
      wasm_interface::validate(act.code);
    }
 
-   const auto& account = db.get<account_object,by_name>(act.account);
+    const auto& account = db.get<account_object, by_name>(act.account);
+    // if account has been deployed, then check updateable or not.
+    if (account.code.size() > 0) {
+        // std::cout << "set code account updateable : " << account.updateable << std::endl;
+        FC_ASSERT(account.updateable, "contract account has deployed and it is not updateable.");
+    }
 
    int64_t code_size = (int64_t)act.code.size();
    int64_t old_size  = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
@@ -171,7 +177,12 @@ void apply_ultrainio_setabi(apply_context& context) {
 
    context.require_authorization(act.account);
 
-   const auto& account = db.get<account_object,by_name>(act.account);
+    const auto& account = db.get<account_object, by_name>(act.account);
+    // if account has been deployed, then check updateable or not.
+    if (account.abi.size() > 0) {
+        // std::cout << "set abi account updateable : " << account.updateable << std::endl;
+        FC_ASSERT(account.updateable, "contract account has deployed and it is not updateable.");
+    }
 
    int64_t abi_size = act.abi.size();
 
