@@ -14,6 +14,7 @@ struct newaccount {
    account_name                     name;
    authority                        owner;
    authority                        active;
+   bool                             updateable;
 
    static account_name get_account() {
       return config::system_account_name;
@@ -156,7 +157,7 @@ struct onerror {
 
 } } /// namespace ultrainio::chain
 
-FC_REFLECT( ultrainio::chain::newaccount                       , (creator)(name)(owner)(active) )
+FC_REFLECT( ultrainio::chain::newaccount                       , (creator)(name)(owner)(active)(updateable) )
 FC_REFLECT( ultrainio::chain::setcode                          , (account)(vmtype)(vmversion)(code) )
 FC_REFLECT( ultrainio::chain::setabi                           , (account)(abi) )
 FC_REFLECT( ultrainio::chain::updateauth                       , (account)(permission)(parent)(auth) )
