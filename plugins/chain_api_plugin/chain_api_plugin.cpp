@@ -78,20 +78,20 @@ void chain_api_plugin::plugin_startup() {
    auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();
 
    app().get_plugin<http_plugin>().add_api({
-      CHAIN_RO_CALL(get_info, 200l),
-      CHAIN_RO_CALL(get_block, 200),
-      CHAIN_RO_CALL(get_account, 200),
-      CHAIN_RO_CALL(get_code, 200),
-      CHAIN_RO_CALL(get_table_rows, 200),
+      CHAIN_RO_CALL(get_chain_info, 200),
+      CHAIN_RO_CALL(get_block_info, 200),
+      CHAIN_RO_CALL(get_account_info, 200),
+      CHAIN_RO_CALL(get_contract, 200),
+      CHAIN_RO_CALL(get_table_records, 200),
       CHAIN_RO_CALL(get_currency_balance, 200),
       CHAIN_RO_CALL(get_currency_stats, 200),
       CHAIN_RO_CALL(get_producers, 200),
-      CHAIN_RO_CALL(abi_json_to_bin, 200),
-      CHAIN_RO_CALL(abi_bin_to_json, 200),
+      CHAIN_RO_CALL(abi_json2bin, 200),
+      CHAIN_RO_CALL(abi_bin2json, 200),
       CHAIN_RO_CALL(get_required_keys, 200),
       CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
-      CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
-      CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202)
+      CHAIN_RW_CALL_ASYNC(push_tx, chain_apis::read_write::push_tx_results, 202),
+      CHAIN_RW_CALL_ASYNC(push_txs, chain_apis::read_write::push_txs_results, 202)
    });
 }
 
