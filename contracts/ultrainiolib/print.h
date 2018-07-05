@@ -35,6 +35,7 @@ extern "C" {
     */
    void prints( const char* cstr );
 
+    void set_result(const char* cstr);
    /**
     *  Prints string up to given length
     *  @brief Prints string

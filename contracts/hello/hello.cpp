@@ -5,9 +5,11 @@ class hello : public ultrainio::contract {
   public:
       using contract::contract;
 
-      /// @abi action 
+      /// @abi action
       void hi( account_name user ) {
          print( "Hello, ", name{user} );
+
+         set_result("Hi-Successed.");
       }
 };
 

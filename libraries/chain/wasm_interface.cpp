@@ -1039,10 +1039,19 @@ class console_api : public context_aware_api {
          }
       }
 
-      void prints_l(array_ptr<const char> str, size_t str_len ) {
-         if ( !ignore ) {
-            context.console_append(string(str, str_len));
-         }
+      void set_result(null_terminated_ptr str) {
+            std::string r(str);
+            if (r.size() > 128) {
+                  r = r.substr(0, 127) + "...";
+            }
+            context.trace.return_value = r;
+      }
+
+      void prints_l(
+              array_ptr<const char> str, size_t str_len) {
+          if (!ignore) {
+              context.console_append(string(str, str_len));
+          }
       }
 
       void printi(int64_t val) {
@@ -1858,6 +1867,7 @@ REGISTER_INTRINSICS(authorization_api,
 
 REGISTER_INTRINSICS(console_api,
    (prints,                void(int)      )
+   (set_result,                void(int)      )
    (prints_l,              void(int, int) )
    (printi,                void(int64_t)  )
    (printui,               void(int64_t)  )

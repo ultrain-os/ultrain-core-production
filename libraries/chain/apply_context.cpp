@@ -77,6 +77,7 @@ action_trace apply_context::exec_one()
    t.trx_id = trx_context.id;
    t.act = act;
    t.console = _pending_console_output.str();
+   t.return_value = trace.return_value;
 
    trx_context.executed.emplace_back( move(r) );
 
@@ -375,8 +376,8 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
          return -1;
       act_ptr = &trx.actions[index];
    }
-   
-   FC_ASSERT(act_ptr, "action is not found" ); 
+
+   FC_ASSERT(act_ptr, "action is not found" );
 
    auto ps = fc::raw::pack_size( *act_ptr );
    if( ps <= buffer_size ) {
