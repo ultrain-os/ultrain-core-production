@@ -324,11 +324,12 @@ struct controller_impl {
       initialize_database();
    }
 
-   void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
+   void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false, bool is_updateable = false ) {
       db.create<account_object>([&](auto& a) {
          a.name = name;
          a.creation_date = conf.genesis.initial_timestamp;
          a.privileged = is_privileged;
+         a.updateable = is_updateable;
 
          if( name == config::system_account_name ) {
             a.set_abi(ultrainio_contract_abi(abi_def()));
@@ -374,7 +375,7 @@ struct controller_impl {
       resource_limits.initialize_database();
 
       authority system_auth(conf.genesis.initial_key);
-      create_native_account( config::system_account_name, system_auth, system_auth, true );
+      create_native_account( config::system_account_name, system_auth, system_auth, true, true );
 
       auto empty_authority = authority(1, {}, {});
       auto active_producers_authority = authority(1, {}, {});

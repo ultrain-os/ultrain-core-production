@@ -59,7 +59,7 @@ public:
    read_only(const controller& db)
       : db(db) {}
 
-   using get_info_params = empty;
+   using get_chain_info_params = empty;
 
    struct get_info_results {
       string                  server_version;
@@ -79,7 +79,7 @@ public:
       //string                  recent_slots;
       //double                  participation_rate = 0;
    };
-   get_info_results get_info(const get_info_params&) const;
+   get_info_results get_chain_info(const get_chain_info_params&) const;
 
    struct producer_info {
       name                       producer_name;
@@ -108,10 +108,10 @@ public:
       fc::variant                voter_info;
    };
 
-   struct get_account_params {
+   struct get_account_info_params {
       name account_name;
    };
-   get_account_results get_account( const get_account_params& params )const;
+   get_account_results get_account_info( const get_account_info_params& params )const;
 
 
    struct get_code_results {
@@ -122,36 +122,36 @@ public:
       optional<abi_def>      abi;
    };
 
-   struct get_code_params {
+   struct get_contract_params {
       name account_name;
       bool code_as_wasm = false;
    };
-   get_code_results get_code( const get_code_params& params )const;
+   get_code_results get_contract( const get_contract_params& params )const;
 
 
 
-   struct abi_json_to_bin_params {
+   struct abi_json2bin_params {
       name         code;
       name         action;
       fc::variant  args;
    };
-   struct abi_json_to_bin_result {
+   struct abi_json2bin_result {
       vector<char>   binargs;
    };
 
-   abi_json_to_bin_result abi_json_to_bin( const abi_json_to_bin_params& params )const;
+   abi_json2bin_result abi_json2bin( const abi_json2bin_params& params )const;
 
 
-   struct abi_bin_to_json_params {
+   struct abi_bin2json_params {
       name         code;
       name         action;
       vector<char> binargs;
    };
-   struct abi_bin_to_json_result {
+   struct abi_bin2json_result {
       fc::variant    args;
    };
 
-   abi_bin_to_json_result abi_bin_to_json( const abi_bin_to_json_params& params )const;
+   abi_bin2json_result abi_bin2json( const abi_bin2json_params& params )const;
 
 
    struct get_required_keys_params {
@@ -165,13 +165,13 @@ public:
    get_required_keys_result get_required_keys( const get_required_keys_params& params)const;
 
 
-   struct get_block_params {
+   struct get_block_info_params {
       string block_num_or_id;
    };
 
-   fc::variant get_block(const get_block_params& params) const;
+   fc::variant get_block_info(const get_block_info_params& params) const;
 
-   struct get_table_rows_params {
+   struct get_table_records_params {
       bool        json = false;
       name        code;
       string      scope;
@@ -188,7 +188,7 @@ public:
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
    };
 
-   get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
+   get_table_rows_result get_table_records( const get_table_records_params& params )const;
 
    struct get_currency_balance_params {
       name             code;
@@ -251,7 +251,7 @@ public:
    }
 
    template <typename IndexType, typename Scope>
-   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const abi_def& abi )const {
+   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_records_params& p, const abi_def& abi )const {
       read_only::get_table_rows_result result;
       const auto& d = db.db();
 
@@ -334,17 +334,17 @@ public:
    using push_block_results = empty;
    void push_block(const push_block_params& params, chain::plugin_interface::next_function<push_block_results> next);
 
-   using push_transaction_params = fc::variant_object;
-   struct push_transaction_results {
+   using push_tx_params = fc::variant_object;
+   struct push_tx_results {
       chain::transaction_id_type  transaction_id;
       fc::variant                 processed;
    };
-   void push_transaction(const push_transaction_params& params, chain::plugin_interface::next_function<push_transaction_results> next);
+   void push_tx(const push_tx_params& params, chain::plugin_interface::next_function<push_tx_results> next);
 
 
-   using push_transactions_params  = vector<push_transaction_params>;
-   using push_transactions_results = vector<push_transaction_results>;
-   void push_transactions(const push_transactions_params& params, chain::plugin_interface::next_function<push_transactions_results> next);
+   using push_txs_params  = vector<push_tx_params>;
+   using push_txs_results = vector<push_tx_results>;
+   void push_txs(const push_txs_params& params, chain::plugin_interface::next_function<push_txs_results> next);
 
    friend resolver_factory<read_write>;
 };
@@ -392,11 +392,11 @@ FC_REFLECT( ultrainio::chain_apis::permission, (perm_name)(parent)(required_auth
 FC_REFLECT(ultrainio::chain_apis::empty, )
 FC_REFLECT(ultrainio::chain_apis::read_only::get_info_results,
 (server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
-FC_REFLECT(ultrainio::chain_apis::read_only::get_block_params, (block_num_or_id))
+FC_REFLECT(ultrainio::chain_apis::read_only::get_block_info_params, (block_num_or_id))
 
-FC_REFLECT( ultrainio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
+FC_REFLECT( ultrainio::chain_apis::read_write::push_tx_results, (transaction_id)(processed) )
 
-FC_REFLECT( ultrainio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
@@ -408,12 +408,12 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(total
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_account_results, (account_name)(privileged)(last_code_update)(created)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(delegated_bandwidth)(voter_info) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
-FC_REFLECT( ultrainio::chain_apis::read_only::get_account_params, (account_name) )
-FC_REFLECT( ultrainio::chain_apis::read_only::get_code_params, (account_name)(code_as_wasm) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_account_info_params, (account_name) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_contract_params, (account_name)(code_as_wasm) )
 FC_REFLECT( ultrainio::chain_apis::read_only::producer_info, (producer_name) )
-FC_REFLECT( ultrainio::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
-FC_REFLECT( ultrainio::chain_apis::read_only::abi_json_to_bin_result, (binargs) )
-FC_REFLECT( ultrainio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
-FC_REFLECT( ultrainio::chain_apis::read_only::abi_bin_to_json_result, (args) )
+FC_REFLECT( ultrainio::chain_apis::read_only::abi_json2bin_params, (code)(action)(args) )
+FC_REFLECT( ultrainio::chain_apis::read_only::abi_json2bin_result, (binargs) )
+FC_REFLECT( ultrainio::chain_apis::read_only::abi_bin2json_params, (code)(action)(binargs) )
+FC_REFLECT( ultrainio::chain_apis::read_only::abi_bin2json_result, (args) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_required_keys_result, (required_keys) )

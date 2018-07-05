@@ -1024,6 +1024,14 @@ class action_api : public context_aware_api {
       name current_receiver() {
          return context.receiver;
       }
+
+      name current_sender() {
+          if (context.act.authorization.size() != 0) {
+            return context.act.authorization[0].actor;
+          } else {
+            return name();
+          }
+      }
 };
 
 class console_api : public context_aware_api {
@@ -1855,6 +1863,7 @@ REGISTER_INTRINSICS(action_api,
    (read_action_data,       int(int, int)  )
    (action_data_size,       int()          )
    (current_receiver,   int64_t()          )
+   (current_sender,   int64_t()          )
 );
 
 REGISTER_INTRINSICS(authorization_api,

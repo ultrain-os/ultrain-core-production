@@ -33,14 +33,14 @@ namespace ultrainio { namespace client { namespace http {
                              const fc::variant& postdata = fc::variant() );
 
    const string chain_func_base = "/v1/chain";
-   const string get_info_func = chain_func_base + "/get_info";
-   const string push_txn_func = chain_func_base + "/push_transaction";
-   const string push_txns_func = chain_func_base + "/push_transactions";
-   const string json_to_bin_func = chain_func_base + "/abi_json_to_bin";
-   const string get_block_func = chain_func_base + "/get_block";
-   const string get_account_func = chain_func_base + "/get_account";
-   const string get_table_func = chain_func_base + "/get_table_rows";
-   const string get_code_func = chain_func_base + "/get_code";
+   const string get_info_func = chain_func_base + "/get_chain_info";
+   const string push_txn_func = chain_func_base + "/push_tx";
+   const string push_txns_func = chain_func_base + "/push_txs";
+   const string json_to_bin_func = chain_func_base + "/abi_json2bin";
+   const string get_block_func = chain_func_base + "/get_block_info";
+   const string get_account_func = chain_func_base + "/get_account_info";
+   const string get_table_func = chain_func_base + "/get_table_records";
+   const string get_code_func = chain_func_base + "/get_contract";
    const string get_currency_balance_func = chain_func_base + "/get_currency_balance";
    const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
    const string get_producers_func = chain_func_base + "/get_producers";
@@ -63,7 +63,7 @@ namespace ultrainio { namespace client { namespace http {
    const string net_connections = net_func_base + "/connections";
 
 
-   const string wallet_func_base = "/v1/wallet";
+   const string wallet_func_base = "/v1/wallet_mgr";
    const string wallet_create = wallet_func_base + "/create";
    const string wallet_open = wallet_func_base + "/open";
    const string wallet_list = wallet_func_base + "/list_wallets";

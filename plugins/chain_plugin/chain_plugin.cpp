@@ -535,7 +535,7 @@ namespace chain_apis {
 
 const string read_only::KEYi64 = "i64";
 
-read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
+read_only::get_info_results read_only::get_chain_info(const read_only::get_chain_info_params&) const {
    const auto& rm = db.get_resource_limits_manager();
    return {
       ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
@@ -573,7 +573,7 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
    ULTRAIN_ASSERT( false, chain::contract_table_query_exception, "Table ${table} is not specified in the ABI", ("table",table_name) );
 }
 
-read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
+read_only::get_table_rows_result read_only::get_table_records( const read_only::get_table_records_params& p )const {
    const abi_def abi = get_abi( db, p.code );
    auto table_type = get_table_type( abi, p.table );
 
@@ -728,7 +728,7 @@ auto make_resolver(const Api *api) {
    return resolver_factory<Api>::make(api);
 }
 
-fc::variant read_only::get_block(const read_only::get_block_params& params) const {
+fc::variant read_only::get_block_info(const read_only::get_block_info_params& params) const {
    signed_block_ptr block;
    try {
       block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>());
@@ -760,7 +760,7 @@ void read_write::push_block(const read_write::push_block_params& params, next_fu
    } CATCH_AND_CALL(next);
 }
 
-void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
+void read_write::push_tx(const read_write::push_tx_params& params, next_function<read_write::push_tx_results> next) {
 
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
@@ -781,7 +781,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
                //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
 
                chain::transaction_id_type id = trx_trace_ptr->id;
-               next(read_write::push_transaction_results{id, pretty_output});
+               next(read_write::push_tx_results{id, pretty_output});
             } CATCH_AND_CALL(next);
          }
       });
@@ -792,13 +792,13 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
    } CATCH_AND_CALL(next);
 }
 
-static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
-   auto wrapped_next = [=](const fc::static_variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
+static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_txs_params>& params, const std::shared_ptr<read_write::push_txs_results>& results, const next_function<read_write::push_txs_results>& next) {
+   auto wrapped_next = [=](const fc::static_variant<fc::exception_ptr, read_write::push_tx_results>& result) {
       if (result.contains<fc::exception_ptr>()) {
          const auto& e = result.get<fc::exception_ptr>();
-         results->emplace_back( read_write::push_transaction_results{ transaction_id_type(), fc::mutable_variant_object( "error", e->to_detail_string() ) } );
+         results->emplace_back( read_write::push_tx_results{ transaction_id_type(), fc::mutable_variant_object( "error", e->to_detail_string() ) } );
       } else {
-         const auto& r = result.get<read_write::push_transaction_results>();
+         const auto& r = result.get<read_write::push_tx_results>();
          results->emplace_back( r );
       }
 
@@ -810,14 +810,14 @@ static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_w
       }
    };
 
-   rw->push_transaction(params->at(index), wrapped_next);
+   rw->push_tx(params->at(index), wrapped_next);
 }
 
-void read_write::push_transactions(const read_write::push_transactions_params& params, next_function<read_write::push_transactions_results> next) {
+void read_write::push_txs(const read_write::push_txs_params& params, next_function<read_write::push_txs_results> next) {
    try {
       FC_ASSERT( params.size() <= 1000, "Attempt to push too many transactions at once" );
-      auto params_copy = std::make_shared<read_write::push_transactions_params>(params.begin(), params.end());
-      auto result = std::make_shared<read_write::push_transactions_results>();
+      auto params_copy = std::make_shared<read_write::push_txs_params>(params.begin(), params.end());
+      auto result = std::make_shared<read_write::push_txs_results>();
       result->reserve(params.size());
 
       push_recurse(this, 0, params_copy, result, next);
@@ -825,7 +825,7 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
    } CATCH_AND_CALL(next);
 }
 
-read_only::get_code_results read_only::get_code( const get_code_params& params )const {
+read_only::get_code_results read_only::get_contract( const get_contract_params& params )const {
    get_code_results result;
    result.account_name = params.account_name;
    const auto& d = db.db();
@@ -849,15 +849,13 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    return result;
 }
 
-read_only::get_account_results read_only::get_account( const get_account_params& params )const {
+read_only::get_account_results read_only::get_account_info( const get_account_info_params& params )const {
    get_account_results result;
    result.account_name = params.account_name;
-
    const auto& d = db.db();
    const auto& rm = db.get_resource_limits_manager();
 
    rm.get_account_limits( result.account_name, result.ram_quota, result.net_weight, result.cpu_weight );
-
    const auto& a = db.get_account(result.account_name);
 
    result.privileged       = a.privileged;
@@ -867,6 +865,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.net_limit = rm.get_account_net_limit_ex( result.account_name );
    result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name );
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
+  
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
@@ -937,8 +936,8 @@ static variant action_abi_to_variant( const abi_def& abi, type_name action_type 
    return v;
 };
 
-read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
-   abi_json_to_bin_result result;
+read_only::abi_json2bin_result read_only::abi_json2bin( const read_only::abi_json2bin_params& params )const try {
+   abi_json2bin_result result;
    const auto code_account = db.db().find<account_object,by_name>( params.code );
    ULTRAIN_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
 
@@ -958,8 +957,8 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
    return result;
 } FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )
 
-read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::abi_bin_to_json_params& params )const {
-   abi_bin_to_json_result result;
+read_only::abi_bin2json_result read_only::abi_bin2json( const read_only::abi_bin2json_params& params )const {
+   abi_bin2json_result result;
    const auto& code_account = db.db().get<account_object,by_name>( params.code );
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {

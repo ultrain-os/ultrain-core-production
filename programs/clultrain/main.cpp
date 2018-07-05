@@ -410,14 +410,15 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
    }
 }
 
-chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active) {
+chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active, bool updateable = false) {
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
       ultrainio::chain::newaccount{
          .creator      = creator,
          .name         = newaccount,
          .owner        = ultrainio::chain::authority{1, {{owner, 1}}, {}},
-         .active       = ultrainio::chain::authority{1, {{active, 1}}, {}}
+         .active       = ultrainio::chain::authority{1, {{active, 1}}, {}},
+         .updateable   = updateable
       }
    };
 }
@@ -831,6 +832,7 @@ struct create_account_subcommand {
    string account_name;
    string owner_key_str;
    string active_key_str;
+   bool   updateable_val = false;
    string stake_net;
    string stake_cpu;
    uint32_t buy_ram_bytes_in_kbytes = 0;
@@ -844,6 +846,7 @@ struct create_account_subcommand {
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
       createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"));
+      createAccount->add_option("-u,--updateable", updateable_val, localized("The updateable setting for the new account"));
 
       if (!simple) {
          createAccount->add_option("--stake-net", stake_net,
@@ -870,7 +873,7 @@ struct create_account_subcommand {
             try {
                active_key = public_key_type(active_key_str);
             } ULTRAIN_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
-            auto create = create_newaccount(creator, account_name, owner_key, active_key);
+            auto create = create_newaccount(creator, account_name, owner_key, active_key, updateable_val);
             if (!simple) {
                if ( buy_ram_ultrain.empty() && buy_ram_bytes_in_kbytes == 0) {
                   std::cerr << "ERROR: Either --buy-ram or --buy-ram-kbytes with non-zero value is required" << std::endl;
