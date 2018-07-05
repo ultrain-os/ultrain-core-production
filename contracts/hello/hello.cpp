@@ -9,7 +9,7 @@ class hello : public ultrainio::contract {
       void hi( account_name user ) {
          print( "Hello, ", name{user} );
 
-         set_result("Hi-Successed.");
+         set_result_str("Hi-Successed.");
       }
 };
 
