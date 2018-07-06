@@ -311,6 +311,7 @@ void print_action( const fc::variant& at ) {
    auto func = act["name"].as_string();
    auto args = fc::json::to_string( act["data"] );
    auto console = at["console"].as_string();
+   auto ret_value = at["return_value"].as_string();
 
    /*
    if( code == "ultrainio" && func == "setcode" )
@@ -319,7 +320,12 @@ void print_action( const fc::variant& at ) {
       args = args.substr(40)+"...";
    */
    if( args.size() > 100 ) args = args.substr(0,100) + "...";
-   cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
+   cout << "#" << std::setw(14) << std::right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args;
+   if (!ret_value.empty()) {
+       cout << "  => " << ret_value;
+   }
+   cout << std::endl;
+
    if( console.size() ) {
       std::stringstream ss(console);
       string line;
@@ -840,7 +846,7 @@ struct create_account_subcommand {
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
       createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"));
-      createAccount->add_option("-u,--updateable", updateable_val, localized("The updateable setting for the new account"));
+      createAccount->add_flag("-u,--updatable", updateable_val, localized("The updatable setting for the new account"));
 
       if (!simple) {
          createAccount->add_option("--stake-net", stake_net,

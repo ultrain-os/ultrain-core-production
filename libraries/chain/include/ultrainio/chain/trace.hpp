@@ -19,6 +19,7 @@ namespace ultrainio { namespace chain {
       fc::microseconds     elapsed;
       uint64_t             cpu_usage = 0;
       string               console;
+      string               return_value;
 
       uint64_t             total_cpu_usage = 0; /// total of inline_traces[x].cpu_usage + cpu_usage
       transaction_id_type  trx_id; ///< the transaction that generated this action
@@ -56,7 +57,7 @@ namespace ultrainio { namespace chain {
 } }  /// namespace ultrainio::chain
 
 FC_REFLECT( ultrainio::chain::base_action_trace,
-                    (receipt)(act)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id) )
+                    (receipt)(act)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)(return_value) )
 
 FC_REFLECT_DERIVED( ultrainio::chain::action_trace,
                     (ultrainio::chain::base_action_trace), (inline_traces) )

@@ -1044,6 +1044,18 @@ class console_api : public context_aware_api {
       : context_aware_api(ctx,true)
       , ignore(!ctx.control.contracts_console()) {}
 
+      void set_result_str(null_terminated_ptr str) {
+          std::string r(str);
+          if (r.size() > 128) {
+              r = r.substr(0, 127) + "...";
+          }
+          context.trace.return_value = r;
+      }
+
+      void set_result_int(int64_t val) {
+          context.trace.return_value = std::to_string(val);
+      }
+
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
          if ( !ignore ) {
@@ -1051,10 +1063,11 @@ class console_api : public context_aware_api {
          }
       }
 
-      void prints_l(array_ptr<const char> str, size_t str_len ) {
-         if ( !ignore ) {
-            context.console_append(string(str, str_len));
-         }
+            void prints_l(
+              array_ptr<const char> str, size_t str_len) {
+          if (!ignore) {
+              context.console_append(string(str, str_len));
+          }
       }
 
       void printi(int64_t val) {
@@ -1872,6 +1885,8 @@ REGISTER_INTRINSICS(authorization_api,
 
 REGISTER_INTRINSICS(console_api,
    (prints,                void(int)      )
+   (set_result_str,        void(int)      )
+   (set_result_int,        void(int64_t) )
    (prints_l,              void(int, int) )
    (printi,                void(int64_t)  )
    (printui,               void(int64_t)  )
