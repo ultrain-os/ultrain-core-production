@@ -839,7 +839,7 @@ read_write::register_result read_write::register_event(const register_event_para
 }
 
 read_write::register_result read_write::unregister_event(const unregister_event_params& params) {
-   ilog("unregister_event for ${account} url${url}", ("account", params.account)("url", url));
+   ilog("unregister_event for ${account} post_url:${url}", ("account", params.account)("url", params.post_url));
    db.unregister_event(params.account, params.post_url);
    return read_write::register_result();
 }
