@@ -341,10 +341,22 @@ public:
    };
    void push_tx(const push_tx_params& params, chain::plugin_interface::next_function<push_tx_results> next);
 
-
    using push_txs_params  = vector<push_tx_params>;
    using push_txs_results = vector<push_tx_results>;
    void push_txs(const push_txs_params& params, chain::plugin_interface::next_function<push_txs_results> next);
+
+   struct register_event_params {
+      string account;
+      string post_url;
+   };
+   using register_result = empty;
+   register_result register_event(const register_event_params& params);
+
+   struct unregister_event_params {
+      string account;
+      string post_url;
+   };
+   register_result unregister_event(const unregister_event_params& params);
 
    friend resolver_factory<read_write>;
 };
@@ -417,3 +429,6 @@ FC_REFLECT( ultrainio::chain_apis::read_only::abi_bin2json_params, (code)(action
 FC_REFLECT( ultrainio::chain_apis::read_only::abi_bin2json_result, (args) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_required_keys_result, (required_keys) )
+
+FC_REFLECT( ultrainio::chain_apis::read_write::register_event_params, (account)(post_url));
+FC_REFLECT( ultrainio::chain_apis::read_write::unregister_event_params, (account)(post_url));

@@ -119,6 +119,13 @@ namespace ultrainio { namespace chain {
           */
          void push_confirmation( const header_confirmation& c );
 
+
+         void register_event(const std::string& account, const std::string& post_url);
+         void unregister_event(const std::string& account, const std::string& post_url);
+         bool check_event_listener(account_name account);
+         void push_event(account_name act_name, transaction_id_type id, const char* event_name, size_t event_name_size,
+                         const char* msg, size_t msg_size );
+
          chainbase::database& db()const;
 
          fork_database& fork_db()const;

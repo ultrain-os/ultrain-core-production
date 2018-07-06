@@ -66,8 +66,38 @@ struct async_result_visitor : public fc::visitor<std::string> {
    }\
 }
 
+/*#define CALL2(api_name, api_handle, call_name, http_response_code) \
+{std::string("/v1/" #api_name "/" #call_name), \
+   [this, api_handle](string, string body, url_response_callback cb) mutable {  \
+      try { \
+         if (body.empty()) body = "{}"; \
+         const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+         auto result = api_handle.call_name(vs.at(0).as<std::string>(), vs.at(1).as<std::string>()); \
+         cb(http_response_code, fc::json::to_string(result)); \
+      } catch (...) { \
+         http_plugin::handle_exception(#api_name, #call_name, body, cb); \
+      } \
+   }\
+}*/
+
+/*#define CALL1(api_name, api_handle, call_name, http_response_code) \
+{std::string("/v1/" #api_name "/" #call_name), \
+   [this, api_handle](string, string body, url_response_callback cb) mutable {  \
+      try { \
+         if (body.empty()) body = "{}"; \
+         const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+         auto result = api_handle.call_name(vs.at(0).as<std::string>()); \
+         cb(http_response_code, fc::json::to_string(result)); \
+      } catch (...) { \
+         http_plugin::handle_exception(#api_name, #call_name, body, cb); \
+      } \
+   }\
+}*/
+
 #define CHAIN_RO_CALL(call_name, http_response_code) CALL(chain, ro_api, chain_apis::read_only, call_name, http_response_code)
 #define CHAIN_RW_CALL(call_name, http_response_code) CALL(chain, rw_api, chain_apis::read_write, call_name, http_response_code)
+//#define CHAIN_RW_CALL2(call_name, http_response_code) CALL2(chain, rw_api, call_name, http_response_code)
+//#define CHAIN_RW_CALL1(call_name, http_response_code) CALL1(chain, rw_api, call_name, http_response_code)
 #define CHAIN_RO_CALL_ASYNC(call_name, call_result, http_response_code) CALL_ASYNC(chain, ro_api, chain_apis::read_only, call_name, call_result, http_response_code)
 #define CHAIN_RW_CALL_ASYNC(call_name, call_result, http_response_code) CALL_ASYNC(chain, rw_api, chain_apis::read_write, call_name, call_result, http_response_code)
 
@@ -91,7 +121,9 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_required_keys, 200),
       CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
       CHAIN_RW_CALL_ASYNC(push_tx, chain_apis::read_write::push_tx_results, 202),
-      CHAIN_RW_CALL_ASYNC(push_txs, chain_apis::read_write::push_txs_results, 202)
+      CHAIN_RW_CALL_ASYNC(push_txs, chain_apis::read_write::push_txs_results, 202),
+      CHAIN_RW_CALL(register_event, 200),
+      CHAIN_RW_CALL(unregister_event, 200)
    });
 }
 

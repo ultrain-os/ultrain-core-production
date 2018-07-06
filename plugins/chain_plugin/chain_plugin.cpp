@@ -26,6 +26,11 @@
 #include <fc/variant.hpp>
 #include <signal.h>
 
+//#include <boost/network/protocol/http.hpp>
+//#include <string>
+//#include <utility>
+//#include <iostream>
+
 namespace ultrainio {
 
 using namespace ultrainio;
@@ -35,7 +40,9 @@ using namespace ultrainio::chain::plugin_interface;
 using vm_type = wasm_interface::vm_type;
 using fc::flat_map;
 
+using namespace std;
 using boost::signals2::scoped_connection;
+//using namespace boost::network;
 
 //using txn_msg_rate_limits = controller::txn_msg_rate_limits;
 
@@ -823,6 +830,18 @@ void read_write::push_txs(const read_write::push_txs_params& params, next_functi
       push_recurse(this, 0, params_copy, result, next);
 
    } CATCH_AND_CALL(next);
+}
+
+read_write::register_result read_write::register_event(const register_event_params& params) {
+   ilog("register_event for ${account}, post_url is ${post_url}", ("account", params.account) ("post_url", params.post_url));
+   db.register_event(params.account, params.post_url);
+   return read_write::register_result();
+}
+
+read_write::register_result read_write::unregister_event(const unregister_event_params& params) {
+   ilog("unregister_event for ${account} url${url}", ("account", params.account)("url", url));
+   db.unregister_event(params.account, params.post_url);
+   return read_write::register_result();
 }
 
 read_only::get_code_results read_only::get_contract( const get_contract_params& params )const {

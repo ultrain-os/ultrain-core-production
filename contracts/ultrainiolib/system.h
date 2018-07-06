@@ -62,6 +62,8 @@ extern "C" {
     */
    uint64_t  current_time();
 
+   void emit_event(void*, int, void*, int);
+
    /**
     *  Returns the time in seconds from 1970 of the block including this action
     *  @brief Get time (rounded down to the nearest second) of the current block (i.e. the block including this action)

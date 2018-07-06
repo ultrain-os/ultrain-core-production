@@ -959,7 +959,11 @@ class system_api : public context_aware_api {
          return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
       }
 
+      void emit_event(array_ptr<const char> event_name, size_t event_name_size, array_ptr<const char> msg, size_t msg_size ) {
+         context.control.push_event(context.receiver, context.trx_context.id, event_name, event_name_size, msg, msg_size);
+      }
 };
+
 
 class context_free_system_api :  public context_aware_api {
 public:
@@ -1840,6 +1844,7 @@ REGISTER_INTRINSICS(permission_api,
 REGISTER_INTRINSICS(system_api,
    (current_time, int64_t()       )
    (publication_time,   int64_t() )
+   (emit_event, void(int, int, int, int) )
 );
 
 REGISTER_INTRINSICS(context_free_system_api,

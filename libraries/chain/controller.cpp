@@ -4,6 +4,8 @@
 #include <ultrainio/chain/block_log.hpp>
 #include <ultrainio/chain/fork_database.hpp>
 
+#include <ultrainio/chain/name.hpp>
+
 #include <ultrainio/chain/account_object.hpp>
 #include <ultrainio/chain/block_summary_object.hpp>
 #include <ultrainio/chain/global_property_object.hpp>
@@ -20,11 +22,14 @@
 #include <fc/scoped_exit.hpp>
 
 #include <ultrainio/chain/ultrainio_contract.hpp>
+#include <appbase/application.hpp>
+#include <fc/network/url.hpp>
+#include <fc/network/http/http_client.hpp>
 
 namespace ultrainio { namespace chain {
 
+using namespace appbase;
 using resource_limits::resource_limits_manager;
-
 
 struct pending_state {
    pending_state( database::session&& s )
@@ -55,11 +60,37 @@ struct controller_impl {
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
    controller::config             conf;
+   std::unique_ptr<fc::http_client>   http_client;
    chain_id_type                  chain_id;
    bool                           replaying = false;
+   const uint32_t                 event_lifetime = 20; ///< 20 blocks' time, which = 10 seconds by default configuration
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
+
+   map< account_name, std::list<std::string> > registered_event_map;
+   struct contract_event_type {
+      account_name name;
+      transaction_id_type id;
+      std::string event_name;
+      std::string message;
+      uint32_t head_block_num;
+      bool notified;
+
+      contract_event_type(account_name name_in, transaction_id_type id_in, const std::string& event_name_in,
+                          const std::string& msg_in, uint32_t head_block_num_in)
+      {
+        name = name_in;
+        id = id_in;
+        event_name = event_name_in;
+        message = msg_in;
+        head_block_num = head_block_num_in;
+        notified = false;
+      }
+   };
+
+   // BUG!!! TODO: We need save event list to database to avoid duplicate when restarts system
+   std::list<contract_event_type> event_list; 
 
    /**
     *  Transactions that were undone by pop_block or abort_block, transactions
@@ -103,9 +134,9 @@ struct controller_impl {
     resource_limits( db ),
     authorization( s, db ),
     conf( cfg ),
+    http_client(new fc::http_client()),
     chain_id( cfg.genesis.compute_chain_id() )
    {
-
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
@@ -127,7 +158,7 @@ struct controller_impl {
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
                                  });
-
+   // TODO: init http client here or in init() ?
    }
 
    /**
@@ -262,6 +293,8 @@ struct controller_impl {
 
       db.flush();
       reversible_blocks.flush();
+
+      http_client = nullptr;
    }
 
    void add_indices() {
@@ -324,12 +357,11 @@ struct controller_impl {
       initialize_database();
    }
 
-   void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false, bool is_updateable = false ) {
+   void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
       db.create<account_object>([&](auto& a) {
          a.name = name;
          a.creation_date = conf.genesis.initial_timestamp;
          a.privileged = is_privileged;
-         a.updateable = is_updateable;
 
          if( name == config::system_account_name ) {
             a.set_abi(ultrainio_contract_abi(abi_def()));
@@ -375,7 +407,7 @@ struct controller_impl {
       resource_limits.initialize_database();
 
       authority system_auth(conf.genesis.initial_key);
-      create_native_account( config::system_account_name, system_auth, system_auth, true, true );
+      create_native_account( config::system_account_name, system_auth, system_auth, true );
 
       auto empty_authority = authority(1, {}, {});
       auto active_producers_authority = authority(1, {}, {});
@@ -613,6 +645,38 @@ struct controller_impl {
       return r;
    }
 
+   // push event to client who registered
+   void notify_event()
+   {
+      for (auto it = event_list.begin(); it != event_list.end(); ) {
+         if (self.head_block_num() > (*it).head_block_num + event_lifetime) {// lifetime expired
+            it = event_list.erase(it);
+            continue;
+         }
+
+         if ((*it).notified) {// has already been notified, but keep it to avoid duplicate
+            ++it;
+            continue;
+         }
+
+         auto map_it = registered_event_map.find(it->name);
+         if (map_it != registered_event_map.end()) {
+            for (auto post_url : map_it->second) {
+               fc::variant params;
+               fc::to_variant(std::make_pair((*it).event_name, (*it).message), params);
+               auto event_url = fc::url(post_url);
+               try {
+                  http_client->post_sync(event_url, params);
+               }
+               catch(...) {// TODO: We skip exception when no response happends, but need to process some type of exception if we can
+               }
+            }
+         }
+         (*it).notified = true;
+         ++it;
+      }
+   }
+
    /**
     *  This is the entry point for new transactions to the block state. It will check authorization and
     *  determine whether to execute it now or to delay it. Lastly it inserts a transaction receipt into
@@ -695,6 +759,9 @@ struct controller_impl {
             if (!implicit) {
                unapplied_transactions.erase( trx->signed_id );
             }
+
+            notify_event();
+
             return trace;
          } catch (const fc::exception& e) {
             trace->except = e;
@@ -833,6 +900,84 @@ struct controller_impl {
       fork_db.add( c );
       emit( self.accepted_confirmation, c );
       maybe_switch_forks();
+   }
+
+   void register_event(const std::string& account, const std::string& post_url) {
+      ilog("account:${account} url:${url} name:${name}", ("account", account)("url", post_url)("name", account));
+
+      auto it = registered_event_map.find(account);
+      if (it == registered_event_map.end())
+      {
+        auto result = registered_event_map.insert(std::pair<account_name, std::list<std::string> >(account, std::list<std::string>()));
+        result.first->second.emplace_back(post_url);
+      }
+      else
+      {
+        for (auto list_it = it->second.begin(); list_it != it->second.end(); ++list_it)
+        {
+           if (*list_it == post_url)
+           {
+              return;
+           }
+        }
+        it->second.emplace_back(post_url);
+      }
+   }
+
+   void unregister_event(const std::string& account, const std::string& post_url) {
+      ilog("account:${account} url:${url}", ("account", account)("url", post_url));
+
+      auto it = registered_event_map.find(account);
+      if (it != registered_event_map.end())
+      {
+         for (auto list_it = it->second.begin(); list_it != it->second.end(); ++list_it)
+         {
+            if (*list_it == post_url)
+            {
+               ilog("found url:", ("url", post_url));
+               it->second.erase(list_it);
+               return;
+            }
+         }
+      }
+   }
+
+   bool check_event_listener(account_name account) {
+      auto it = registered_event_map.find(account);
+      if (it != registered_event_map.end() && it->second.size() > 0)
+      {
+         return true;
+      }
+      return false;
+   }
+
+   void push_event(account_name act_name, transaction_id_type id, const char* event_name, size_t event_name_size,
+      const char* msg, size_t msg_size) {
+      ilog("account_name:${account}", ("account", act_name));
+
+      if (!check_event_listener(act_name))
+      {
+        return;
+      }
+
+      std::string ename(event_name, event_name_size);
+      std::string emsg(msg, msg_size);
+      auto it = event_list.begin();
+      for (; it != event_list.end(); ++it)
+      {
+        if ((*it).id == id && (*it).name == act_name && (*it).event_name == ename && (*it).message == emsg)
+        {
+          break;
+        }
+      }
+
+      ilog("account name:${act_name}, i:${id}, event name:${event_name}, msg:${msg}",
+           ("act_name", act_name)("id", id)("event_name", ename)("msg", emsg));
+
+      if (it == event_list.end())
+      {
+        event_list.emplace_back(act_name, id, ename, emsg, self.head_block_num());
+      }
    }
 
    void maybe_switch_forks( controller::block_status s = controller::block_status::complete ) {
@@ -1176,6 +1321,24 @@ void controller::push_block( const signed_block_ptr& b, block_status s ) {
 
 void controller::push_confirmation( const header_confirmation& c ) {
    my->push_confirmation( c );
+}
+
+void controller::register_event(const std::string& account, const std::string& post_url) {
+   my->register_event(account, post_url);
+}
+
+void controller::unregister_event(const std::string& account, const std::string& post_url) {
+   my->unregister_event(account, post_url);
+}
+
+bool controller::check_event_listener(account_name account) {
+   return my->check_event_listener(account);
+}
+
+void controller::push_event(account_name act_name, transaction_id_type id,
+         const char* event_name, size_t event_name_size,
+         const char* msg, size_t msg_size ) {
+   my->push_event(act_name, id, event_name, event_name_size, msg, msg_size);
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
