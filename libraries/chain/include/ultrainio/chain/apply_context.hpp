@@ -466,6 +466,7 @@ class apply_context {
       ,idx_long_double(*this)
       {
          reset_console();
+         has_event_listener = con.check_event_listener(receiver);
       }
 
 
@@ -591,6 +592,7 @@ class apply_context {
       bool                          privileged   = false;
       bool                          context_free = false;
       bool                          used_context_free_api = false;
+      bool                          has_event_listener = false;
 
       generic_index<index64_object>                                  idx64;
       generic_index<index128_object>                                 idx128;

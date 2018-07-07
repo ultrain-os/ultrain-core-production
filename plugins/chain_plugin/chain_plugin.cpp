@@ -26,11 +26,6 @@
 #include <fc/variant.hpp>
 #include <signal.h>
 
-//#include <boost/network/protocol/http.hpp>
-//#include <string>
-//#include <utility>
-//#include <iostream>
-
 namespace ultrainio {
 
 using namespace ultrainio;

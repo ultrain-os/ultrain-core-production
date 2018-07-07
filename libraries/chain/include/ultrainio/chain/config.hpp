@@ -37,7 +37,7 @@ const static uint64_t owner_name  = N(owner);
 const static uint64_t ultrainio_any_name = N(ultrainio.any);
 const static uint64_t ultrainio_code_name = N(ultrainio.code);
 
-const static int      block_interval_ms = 5000;
+const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;
 const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
 

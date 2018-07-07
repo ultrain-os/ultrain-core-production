@@ -960,7 +960,9 @@ class system_api : public context_aware_api {
       }
 
       void emit_event(array_ptr<const char> event_name, size_t event_name_size, array_ptr<const char> msg, size_t msg_size ) {
-         context.control.push_event(context.receiver, context.trx_context.id, event_name, event_name_size, msg, msg_size);
+         if (context.has_event_listener) {
+            context.control.push_event(context.receiver, context.trx_context.id, event_name, event_name_size, msg, msg_size);
+         }
       }
 };
 
