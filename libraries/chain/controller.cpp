@@ -475,6 +475,20 @@ struct controller_impl {
       return fc::make_scoped_exit( std::move(callback) );
    }
 
+   fc::scoped_exit<std::function<void()>> make_event_restore_point() {
+      auto orig_event_size = event_list.size();
+
+      std::function<void()> callback = [this, orig_event_size]()
+      {
+         while (event_list.size() > orig_event_size)
+         {
+             event_list.erase(--event_list.end());
+         }
+      };
+
+      return fc::make_scoped_exit( std::move(callback) );
+   }
+
    transaction_trace_ptr apply_onerror( const generated_transaction_object& gto,
                                         fc::time_point deadline,
                                         fc::time_point start,
@@ -659,8 +673,7 @@ struct controller_impl {
       }
 
       for (it = event_list.begin(); it != event_list.end(); ++it) {
-         auto it_cmp = (++it);
-         --it;
+         auto it_cmp = std::next(it);
          while (it_cmp != event_list.end()) {
             if ((*it).id == (*it_cmp).id && (*it).name == (*it_cmp).name &&
               (*it).event_name == (*it_cmp).event_name && (*it).message == (*it_cmp).message) {
@@ -738,6 +751,7 @@ struct controller_impl {
                );
             }
 
+            auto event_restore = make_event_restore_point();
             trx_context.exec();
             trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
@@ -769,11 +783,11 @@ struct controller_impl {
 
             trx_context.squash();
             restore.cancel();
-
             if (!implicit) {
                unapplied_transactions.erase( trx->signed_id );
             }
 
+            event_restore.cancel();
             notify_event();
 
             return trace;
