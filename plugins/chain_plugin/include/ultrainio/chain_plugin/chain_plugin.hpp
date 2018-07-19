@@ -28,6 +28,7 @@ namespace ultrainio {
    using std::unique_ptr;
    using namespace appbase;
    using chain::name;
+   using chain::action_name;
    using chain::uint128_t;
    using chain::public_key_type;
    using fc::optional;
@@ -132,7 +133,7 @@ public:
 
    struct abi_json2bin_params {
       name         code;
-      name         action;
+      action_name         action;
       fc::variant  args;
    };
    struct abi_json2bin_result {
@@ -144,7 +145,7 @@ public:
 
    struct abi_bin2json_params {
       name         code;
-      name         action;
+      action_name         action;
       vector<char> binargs;
    };
    struct abi_bin2json_result {

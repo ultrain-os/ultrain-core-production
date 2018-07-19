@@ -6,7 +6,7 @@ namespace ultrainio {
 
    class bios : public contract {
       public:
-         bios( action_name self ):contract(self){}
+         bios( account_name self ):contract(self){}
 
          void setpriv( account_name account, uint8_t ispriv ) {
             require_auth( _self );
@@ -34,11 +34,9 @@ namespace ultrainio {
             set_proposed_producers(buffer, size);
          }
 
-         void reqauth( action_name from ) {
+         void reqauth( account_name from ) {
             require_auth( from );
          }
-
-      private:
    };
 
 } /// namespace ultrainio

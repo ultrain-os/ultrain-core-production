@@ -24,12 +24,13 @@ class binaryen_instantiated_module : public wasm_instantiated_module_interface {
       void apply(apply_context& context) override {
          LiteralList args = {Literal(uint64_t(context.receiver)),
 	                     Literal(uint64_t(context.act.account)),
-                             Literal(uint64_t(context.act.name))};
+                             Literal(uint64_t(context.act.name.valueH)),
+                             Literal(uint64_t(context.act.name.valueL))};
          call("apply", args, context);
       }
 
    private:
-      linear_memory_type&        _shared_linear_memory;      
+      linear_memory_type&        _shared_linear_memory;
       std::vector<uint8_t>       _initial_memory;
       call_indirect_table_type   _table;
       import_lut_type            _import_lut;
@@ -43,7 +44,7 @@ class binaryen_instantiated_module : public wasm_instantiated_module_interface {
          memset(_shared_linear_memory.data, 0, initial_memory_size);
          //copy back in the initial data
          memcpy(_shared_linear_memory.data, _initial_memory.data(), _initial_memory.size());
-         
+
          //be aware that construction of the ModuleInstance implictly fires the start function
          ModuleInstance instance(*_module.get(), &local_interface);
          instance.callExport(Name(entry_point), args);

@@ -8,7 +8,7 @@ vector<type_def> common_type_defs() {
 
    types.push_back( type_def{"account_name", "name"} );
    types.push_back( type_def{"permission_name", "name"} );
-   types.push_back( type_def{"action_name", "name"} );
+   types.push_back( type_def{"action_name", "name_ex"} );
    types.push_back( type_def{"table_name", "name"} );
    types.push_back( type_def{"transaction_id_type", "checksum256"} );
    types.push_back( type_def{"block_id_type", "checksum256"} );
@@ -214,16 +214,16 @@ abi_def ultrainio_contract_abi(const abi_def& ultrainio_system_abi)
    });
 
    // TODO add ricardian contracts
-   ultrain_abi.actions.push_back( action_def{name("newaccount"), "newaccount",""} );
-   ultrain_abi.actions.push_back( action_def{name("setcode"), "setcode",""} );
-   ultrain_abi.actions.push_back( action_def{name("setabi"), "setabi",""} );
-   ultrain_abi.actions.push_back( action_def{name("updateauth"), "updateauth",""} );
-   ultrain_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth",""} );
-   ultrain_abi.actions.push_back( action_def{name("linkauth"), "linkauth",""} );
-   ultrain_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth",""} );
-   ultrain_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
-   ultrain_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
-   ultrain_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("newaccount"), "newaccount",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("setcode"), "setcode",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("setabi"), "setabi",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("updateauth"), "updateauth",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("deleteauth"), "deleteauth",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("linkauth"), "linkauth",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("unlinkauth"), "unlinkauth",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("canceldelay"), "canceldelay",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("onerror"), "onerror",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("onblock"), "onblock",""} );
 
    return ultrain_abi;
 }

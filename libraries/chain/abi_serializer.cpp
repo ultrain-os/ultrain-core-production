@@ -78,6 +78,7 @@ namespace ultrainio { namespace chain {
       built_in_types.emplace("block_timestamp_type",      pack_unpack<block_timestamp_type>());
 
       built_in_types.emplace("name",                      pack_unpack<name>());
+      built_in_types.emplace("name_ex",               pack_unpack<name_ex>());
 
       built_in_types.emplace("bytes",                     pack_unpack<bytes>());
       built_in_types.emplace("string",                    pack_unpack<string>());
@@ -347,7 +348,7 @@ namespace ultrainio { namespace chain {
       return temp;
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
-   type_name abi_serializer::get_action_type(name action)const {
+   type_name abi_serializer::get_action_type(action_name action)const {
       auto itr = actions.find(action);
       if( itr != actions.end() ) return itr->second;
       return type_name();

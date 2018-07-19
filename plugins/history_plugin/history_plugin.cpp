@@ -10,7 +10,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/signals2/connection.hpp>
 
-namespace ultrainio { 
+namespace ultrainio {
    using namespace chain;
    using boost::signals2::scoped_connection;
 
@@ -51,7 +51,7 @@ namespace ultrainio {
       indexed_by<
          ordered_unique<tag<by_id>, member<action_history_object, action_history_object::id_type, &action_history_object::id>>,
          ordered_unique<tag<by_action_sequence_num>, member<action_history_object, uint64_t, &action_history_object::action_sequence_num>>,
-         ordered_unique<tag<by_trx_id>, 
+         ordered_unique<tag<by_trx_id>,
             composite_key< action_history_object,
                member<action_history_object, transaction_id_type, &action_history_object::trx_id>,
                member<action_history_object, uint64_t, &action_history_object::action_sequence_num >
@@ -64,7 +64,7 @@ namespace ultrainio {
       account_history_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<account_history_object, account_history_object::id_type, &account_history_object::id>>,
-         ordered_unique<tag<by_account_action_seq>, 
+         ordered_unique<tag<by_account_action_seq>,
             composite_key< account_history_object,
                member<account_history_object, account_name, &account_history_object::account >,
                member<account_history_object, int32_t, &account_history_object::account_sequence_num >
@@ -123,10 +123,10 @@ namespace ultrainio {
 
    struct filter_entry {
       name receiver;
-      name action;
+      action_name action;
       name actor;
 
-      std::tuple<name, name, name> key() const {
+      std::tuple<name, action_name, name> key() const {
          return std::make_tuple(receiver, action, actor);
       }
 
@@ -174,7 +174,7 @@ namespace ultrainio {
 
             uint64_t asn = 0;
             if( itr != idx.begin() ) --itr;
-            if( itr->account == n ) 
+            if( itr->account == n )
                asn = itr->account_sequence_num + 1;
 
             //idump((n)(act.receipt.global_sequence)(asn));
@@ -189,23 +189,23 @@ namespace ultrainio {
          void on_system_action( const action_trace& at ) {
             auto& chain = chain_plug->chain();
             auto& db = chain.db();
-            if( at.act.name == N(newaccount) )
+            if( at.act.name == NEX(newaccount) )
             {
                const auto create = at.act.data_as<chain::newaccount>();
                add(db, create.owner.keys, create.name, N(owner));
                add(db, create.owner.accounts, create.name, N(owner));
                add(db, create.active.keys, create.name, N(active));
                add(db, create.active.accounts, create.name, N(active));
+            } else if (at.act.name == NEX(updateauth)) {
+                const auto update = at.act.data_as<chain::updateauth>();
+                remove<public_key_history_multi_index, by_account_permission>(
+                        db, update.account, update.permission);
+                remove<account_control_history_multi_index, by_controlled_authority>(
+                        db, update.account, update.permission);
+                add(db, update.auth.keys, update.account, update.permission);
+                add(db, update.auth.accounts, update.account, update.permission);
             }
-            else if( at.act.name == N(updateauth) )
-            {
-               const auto update = at.act.data_as<chain::updateauth>();
-               remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
-               remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
-               add(db, update.auth.keys, update.account, update.permission);
-               add(db, update.auth.accounts, update.account, update.permission);
-            }
-            else if( at.act.name == N(deleteauth) )
+            else if( at.act.name == NEX(deleteauth) )
             {
                const auto del = at.act.data_as<chain::deleteauth>();
                remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
@@ -229,7 +229,7 @@ namespace ultrainio {
                   aho.block_time = chain.pending_block_time();
                   aho.trx_id     = at.trx_id;
                });
-               
+
                auto aset = account_set( at );
                for( auto a : aset ) {
                   record_account_action( a, at );
@@ -279,7 +279,7 @@ namespace ultrainio {
             boost::split(v, s, boost::is_any_of(":"));
             ULTRAIN_ASSERT(v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
             filter_entry fe{ v[0], v[1], v[2] };
-            ULTRAIN_ASSERT(fe.receiver.value && fe.action.value, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
+            ULTRAIN_ASSERT(fe.receiver.value && fe.action.good(), fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
             my->filter_on.insert( fe );
          }
       }
@@ -308,7 +308,7 @@ namespace ultrainio {
 
 
 
-   namespace history_apis { 
+   namespace history_apis {
       read_only::get_actions_result read_only::get_actions( const read_only::get_actions_params& params )const {
          edump((params));
         auto& chain = history->chain_plug->chain();
@@ -329,7 +329,7 @@ namespace ultrainio {
                   pos = itr->account_sequence_num+1;
             } else if( itr != idx.begin() ) --itr;
 
-            if( itr->account == n ) 
+            if( itr->account == n )
                pos = itr->account_sequence_num + 1;
         }
 

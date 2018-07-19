@@ -155,7 +155,7 @@ namespace stltest {
          prints("~MSTR");
       }
    };
-    
+
     class contract {
     public:
         static const uint64_t sent_table_name = N(sent);
@@ -167,7 +167,7 @@ namespace stltest {
            //string msg;
 
             static uint64_t get_account() { return N(stltest); }
-            static uint64_t get_name()  { return N(message); }
+            static action_name get_name()  { return NEX(message); }
 
             template<typename DataStream>
             friend DataStream& operator << ( DataStream& ds, const message& m ){
@@ -262,8 +262,9 @@ namespace stltest {
 
 extern "C" {
 /// The apply method implements the dispatch of events to this contract
-void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+void apply( uint64_t receiver, uint64_t code, uint64_t actH, uint64_t actL ) {
     (void)receiver;
+    action_name action(actH, actL);
     stltest::contract::apply( code, action );
 }
 }

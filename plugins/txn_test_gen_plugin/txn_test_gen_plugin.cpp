@@ -185,7 +185,7 @@ struct txn_test_gen_plugin_impl {
             {
                action act;
                act.account = N(txn.test.t);
-               act.name = N(create);
+               act.name = NEX(create);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
                act.data = ultrainio_token_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"txn.test.t\",\"maximum_supply\":\"1000000000.0000 CUR\"}}"));
                trx.actions.push_back(act);
@@ -193,7 +193,7 @@ struct txn_test_gen_plugin_impl {
             {
                action act;
                act.account = N(txn.test.t);
-               act.name = N(issue);
+               act.name = NEX(issue);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
                act.data = ultrainio_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"txn.test.t\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
                trx.actions.push_back(act);
@@ -201,7 +201,7 @@ struct txn_test_gen_plugin_impl {
             {
                action act;
                act.account = N(txn.test.t);
-               act.name = N(transfer);
+               act.name = NEX(transfer);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
                act.data = ultrainio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.t\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
                trx.actions.push_back(act);
@@ -209,7 +209,7 @@ struct txn_test_gen_plugin_impl {
             {
                action act;
                act.account = N(txn.test.t);
-               act.name = N(transfer);
+               act.name = NEX(transfer);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
                act.data = ultrainio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.t\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
                trx.actions.push_back(act);
@@ -243,12 +243,12 @@ struct txn_test_gen_plugin_impl {
 
       //create the actions here
       act_a_to_b.account = N(txn.test.t);
-      act_a_to_b.name = N(transfer);
+      act_a_to_b.name = NEX(transfer);
       act_a_to_b.authorization = vector<permission_level>{{name("txn.test.a"),config::active_name}};
       act_a_to_b.data = ultrainio_token_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
 
       act_b_to_a.account = N(txn.test.t);
-      act_b_to_a.name = N(transfer);
+      act_b_to_a.name = NEX(transfer);
       act_b_to_a.authorization = vector<permission_level>{{name("txn.test.b"),config::active_name}};
       act_b_to_a.data = ultrainio_token_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
 

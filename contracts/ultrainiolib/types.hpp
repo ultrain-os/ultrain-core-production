@@ -66,6 +66,11 @@ namespace ultrainio {
     */
    #define N(X) ::ultrainio::string_to_name(#X)
 
+   static void trim_right_dots(std::string& str ) {
+        const auto last = str.find_last_not_of('.');
+        if (last != std::string::npos)
+            str = str.substr(0, last + 1);
+   }
 
    static constexpr uint64_t name_suffix( uint64_t n ) {
       uint32_t remaining_bits_after_last_actual_dot = 0;
@@ -128,16 +133,8 @@ namespace ultrainio {
 
       friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
       account_name value = 0;
-
-   private:
-      static void trim_right_dots(std::string& str ) {
-         const auto last = str.find_last_not_of('.');
-         if (last != std::string::npos)
-            str = str.substr(0, last + 1);
-      }
    };
    /// @}
-
 } // namespace ultrainio
 
 namespace std {

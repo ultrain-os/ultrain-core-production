@@ -83,7 +83,7 @@ extern "C" {
   }
 }
 
-void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t action)
+void test_db::primary_i64_general(uint64_t receiver, uint64_t code, action_name action)
 {
    (void)code; (void)action;
    auto table1 = N(table1);
@@ -180,7 +180,7 @@ void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t act
    }
 }
 
-void test_db::primary_i64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action)
+void test_db::primary_i64_lowerbound(uint64_t receiver, uint64_t code, action_name action)
 {
    (void)code;(void)action;
    auto table = N(mytable);
@@ -215,7 +215,7 @@ void test_db::primary_i64_lowerbound(uint64_t receiver, uint64_t code, uint64_t 
    }
 }
 
-void test_db::primary_i64_upperbound(uint64_t receiver, uint64_t code, uint64_t action)
+void test_db::primary_i64_upperbound(uint64_t receiver, uint64_t code, action_name action)
 {
    (void)code;(void)action;
    auto table = N(mytable);
@@ -242,7 +242,7 @@ void test_db::primary_i64_upperbound(uint64_t receiver, uint64_t code, uint64_t 
    }
 }
 
-void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
+void test_db::idx64_general(uint64_t receiver, uint64_t code, action_name action)
 {
    (void)code;(void)action;
    const auto table = N(myindextable);
@@ -361,7 +361,7 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
    }
 }
 
-void test_db::idx64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action)
+void test_db::idx64_lowerbound(uint64_t receiver, uint64_t code, action_name action)
 {
    (void)code;(void)action;
    const auto table = N(myindextable);
@@ -400,7 +400,7 @@ void test_db::idx64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action
    }
 }
 
-void test_db::idx64_upperbound(uint64_t receiver, uint64_t code, uint64_t action)
+void test_db::idx64_upperbound(uint64_t receiver, uint64_t code, action_name action)
 {
    (void)code;(void)action;
    const auto table = N(myindextable);
@@ -438,7 +438,7 @@ void test_db::idx64_upperbound(uint64_t receiver, uint64_t code, uint64_t action
    }
 }
 
-void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t action)
+void test_db::test_invalid_access(uint64_t receiver, uint64_t code, action_name action)
 {
    (void)code;(void)action;
    auto act = ultrainio::get_action(1, 0);
@@ -498,13 +498,13 @@ void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t act
    }
 }
 
-void test_db::idx_double_nan_create_fail(uint64_t receiver, uint64_t, uint64_t) {
+void test_db::idx_double_nan_create_fail(uint64_t receiver, uint64_t, action_name) {
    double x = 0.0;
    x = x / x; // create a NaN
    db_idx_double_store( N(nan), N(nan), receiver, 0, &x); // should fail
 }
 
-void test_db::idx_double_nan_modify_fail(uint64_t receiver, uint64_t, uint64_t) {
+void test_db::idx_double_nan_modify_fail(uint64_t receiver, uint64_t, action_name) {
    double x = 0.0;
    db_idx_double_store( N(nan), N(nan), receiver, 0, &x);
    auto itr = db_idx_double_find_primary(receiver, N(nan), N(nan), &x, 0);
@@ -513,7 +513,7 @@ void test_db::idx_double_nan_modify_fail(uint64_t receiver, uint64_t, uint64_t) 
    db_idx_double_update(itr, 0, &x); // should fail
 }
 
-void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) {
+void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, action_name) {
    auto act = ultrainio::get_action(1, 0);
    auto lookup_type = ultrainio::unpack<uint32_t>(act.data);
 
@@ -539,7 +539,7 @@ void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-align"
 
-void test_db::misaligned_secondary_key256_tests(uint64_t /* receiver */, uint64_t, uint64_t) {
+void test_db::misaligned_secondary_key256_tests(uint64_t /* receiver */, uint64_t, action_name) {
    auto key = ultrainio::key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
    char* ptr = (char*)(&key);
    ptr += 1;
