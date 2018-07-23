@@ -3,15 +3,15 @@
 #include <boost/algorithm/string.hpp>
 #include <fc/exception/exception.hpp>
 #include <ultrainio/chain/exceptions.hpp>
-
-namespace ultrainio { namespace chain { 
+#include <stdlib.h>
+namespace ultrainio { namespace chain {
 
    void name::set( const char* str ) {
       const auto len = strnlen(str, 14);
       ULTRAIN_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", string(str)));
       value = string_to_name(str);
       ULTRAIN_ASSERT(to_string() == string(str), name_type_exception,
-                 "Name not properly normalized (name: ${name}, normalized: ${normalized}) ",
+                 "ShortName not properly normalized (name: ${name}, normalized: ${normalized}) ",
                  ("name", string(str))("normalized", to_string()));
    }
 

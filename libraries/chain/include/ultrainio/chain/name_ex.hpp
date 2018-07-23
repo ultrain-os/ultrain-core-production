@@ -80,7 +80,7 @@ namespace ultrainio { namespace chain {
            return (c - 'a') + 12;
 
        if (c >= 'A' && c <= 'Z')
-           return (c - 'Z') + 38;
+           return (c - 'A') + 38;
 
        return 0xFF; // ERROR
    }
@@ -93,7 +93,7 @@ namespace ultrainio { namespace chain {
         uint64_t name = 0;
         int i = 0;//strlen(str);
         while(str[i] != '\0') {
-            uint64_t sym = char_to_symbol_ex(str[i]) & 0x3F;
+            uint64_t sym = (char_to_symbol_ex(str[i]) & 0x3F);
             if (i <= 9) {
                 name |= (sym << (6 * i));
             } else if (i == 10) {

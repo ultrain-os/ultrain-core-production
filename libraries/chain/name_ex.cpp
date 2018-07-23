@@ -9,14 +9,14 @@ namespace chain {
 
 void name_ex::set(const char* str) {
     const auto len = strnlen(str, 22);
-    ULTRAIN_ASSERT(len <= 21, name_type_exception, "Name is longer than 13 characters (${name}) ",
+    ULTRAIN_ASSERT(len <= 21, name_type_exception, "Name is longer than 22 characters (${name}) ",
             ("name", string(str)));
     name_ex t = string_to_name_ex(str);
     valueH = t.valueH;
     valueL = t.valueL;
 
     ULTRAIN_ASSERT(to_string() == string(str), name_type_exception,
-            "Name not properly normalized (name: ${name}, normalized: ${normalized}) ",
+            "NameEx not properly normalized (name: ${name}, normalized: ${normalized}) ",
             ("name", string(str))("normalized", to_string()));
 }
 
@@ -29,22 +29,24 @@ name_ex::operator string() const {
 
     uint64_t h = valueH;
     uint64_t l = valueL;
+
+//    std::cout << std::showbase << std::hex << h << "   " << l << std::endl;
     uint64_t sym = 0;
     for (uint32_t i = 0; i <= 20; ++i) {
         if (i <= 9) {
-            sym = l & 0x3F;
+            sym = (l & 0x3F);
             str[i] = charmaps[sym];
-            l = l >> 6;
+            l = (l >> 6);
         } else if (i == 10) {
-            uint64_t rb2 = h & 0x3;
-            rb2 = rb2 << 4;
-            sym = rb2 | l;
+            uint64_t rb2 = (h & 0x3);
+            rb2 = (rb2 << 4);
+            sym = (rb2 | l);
             str[i] = charmaps[sym];
-            h = h >> 2;
+            h = (h >> 2);
         } else {
-            sym = h & 0x3F;
+            sym = (h & 0x3F);
             str[i] = charmaps[sym];
-            h = h >> 6;
+            h = (h >> 6);
         }
     }
 

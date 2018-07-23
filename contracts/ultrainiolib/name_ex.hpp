@@ -39,19 +39,19 @@ namespace ultrainio {
             uint64_t sym = 0;
             for (uint32_t i = 0; i <= 20; ++i) {
                 if (i <= 9) {
-                    sym = l & 0x3F;
+                    sym = (l & 0x3F);
                     str[i] = charmaps[sym];
-                    l = l >> 6;
+                    l = (l >> 6);
                 } else if (i == 10) {
-                    uint64_t rb2 = h & 0x3;
-                    rb2 = rb2 << 4;
-                    sym = rb2 | l;
+                    uint64_t rb2 = (h & 0x3);
+                    rb2 = (rb2 << 4);
+                    sym = (rb2 | l);
                     str[i] = charmaps[sym];
-                    h = h >> 2;
+                    h = (h >> 2);
                 } else {
-                    sym = h & 0x3F;
+                    sym = (h & 0x3F);
                     str[i] = charmaps[sym];
-                    h = h >> 6;
+                    h = (h >> 6);
                 }
             }
 
@@ -76,7 +76,7 @@ namespace ultrainio {
            return (c - 'a') + 12;
 
         if (c >= 'A' && c <= 'Z')
-           return (c - 'Z') + 38;
+           return (c - 'A') + 38;
 
         return 0; // ERROR
     }
@@ -89,7 +89,7 @@ namespace ultrainio {
 //        size_t len = strlen(str);
         size_t i = 0;
         while(str[i] != '\0') {
-            uint64_t sym = char_to_symbol_ex(str[i]) & 0x3F;
+            uint64_t sym = (char_to_symbol_ex(str[i]) & 0x3F);
             if (i <= 9) {
                 name |= (sym << (6 * i));
             } else if (i == 10) {
@@ -105,21 +105,7 @@ namespace ultrainio {
 
             ++i;
         }
-//        for (size_t i = 0; i < len; i++) {
-//            uint64_t sym = char_to_symbol_ex(str[i]) & 0x3F;
-//            if (i <= 9) {
-//                name |= (sym << (6 * i));
-//            } else if (i == 10) {
-//                uint64_t rb4 = (sym & 0xF);
-//                name |= (rb4 << (6 * i));
-//                result.valueL = name;
-//
-//                uint64_t lb2 = ((sym & 0x30) >> 4);
-//                name = lb2;
-//            } else {
-//                name |= (sym << (6* (i - 11) + 2));
-//            }
-//        }
+
         if (i <= 10)
           result.valueL = name;
         else
