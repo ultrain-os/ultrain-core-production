@@ -1051,11 +1051,11 @@ class console_api : public context_aware_api {
           if (r.size() > 128) {
               r = r.substr(0, 127) + "...";
           }
-          context.trace.return_value += (r + " ");
+          context.trace.return_value = r;
       }
 
       void set_result_int(int64_t val) {
-          context.trace.return_value += (std::to_string(val) + " ");
+          context.trace.return_value = std::to_string(val);
       }
 
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.

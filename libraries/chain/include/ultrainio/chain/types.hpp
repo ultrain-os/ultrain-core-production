@@ -96,7 +96,7 @@ namespace ultrainio { namespace chain {
    template<typename T>
    using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
 
-//   using action_name      = name;
+   using action_name      = name;
    using scope_name       = name;
    using account_name     = name;
    using permission_name  = name;

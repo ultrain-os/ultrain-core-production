@@ -9,7 +9,6 @@ file(GLOB HEADERS "include/ultrainio/chain/*.hpp"
 add_library( ultrainio_chain
              merkle.cpp
              name.cpp
-	     name_ex.cpp
              transaction.cpp
              block_header.cpp
              block_header_state.cpp
