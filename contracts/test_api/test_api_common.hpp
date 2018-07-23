@@ -18,20 +18,15 @@ static constexpr unsigned int DJBH(const char* cp)
   return hash;
 }
 
-static constexpr action_name WASM_TEST_ACTION_EX(const char* cls, const char* method)
+static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char* method)
 {
-    uint64_t l = static_cast<unsigned long long>(DJBH(cls)) << 32 | static_cast<unsigned long long>(DJBH(method));
-  return action_name(0, l);
-}
-
-static constexpr uint64_t WASM_TEST_ACTION(const char* cls, const char* method) {
-    return WASM_TEST_ACTION_EX(cls, method).valueL;
+  return static_cast<unsigned long long>(DJBH(cls)) << 32 | static_cast<unsigned long long>(DJBH(method));
 }
 
 #pragma pack(push, 1)
 struct dummy_action {
-   static action_name get_name() {
-      return NEX(dummy_action);
+   static uint64_t get_name() {
+      return N(dummy_action);
    }
    static uint64_t get_account() {
       return N(testapi);
@@ -51,8 +46,8 @@ struct u128_action {
 };
 
 struct cf_action {
-   static action_name get_name() {
-      return NEX(cf_action);
+   static uint64_t get_name() {
+      return N(cf_action);
    }
    static uint64_t get_account() {
       return N(testapi);
@@ -66,8 +61,8 @@ struct cf_action {
 
 // Deferred Transaction Trigger Action
 struct dtt_action {
-   static action_name get_name() {
-      return WASM_TEST_ACTION_EX("test_transaction", "send_deferred_tx_with_dtt_action");
+   static uint64_t get_name() {
+      return WASM_TEST_ACTION("test_transaction", "send_deferred_tx_with_dtt_action");
    }
    static uint64_t get_account() {
       return N(testapi);
@@ -75,7 +70,7 @@ struct dtt_action {
 
    uint64_t       payer = N(testapi);
    uint64_t       deferred_account = N(testapi);
-   action_name       deferred_action = WASM_TEST_ACTION_EX("test_transaction", "deferred_print");
+   uint64_t       deferred_action = WASM_TEST_ACTION("test_transaction", "deferred_print");
    uint64_t       permission_name = N(active);
    uint32_t       delay_sec = 2;
 

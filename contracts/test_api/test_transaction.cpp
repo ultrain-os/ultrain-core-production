@@ -16,7 +16,7 @@ struct test_action_action {
    }
 
    static action_name get_name() {
-      return action_name(0, NAME);
+      return action_name(NAME);
    }
 
    ultrainio::vector<char> data;
@@ -43,7 +43,7 @@ struct test_dummy_action {
    }
 
    static action_name get_name() {
-      return action_name(0, NAME);
+      return action_name(NAME);
    }
    char a;
    unsigned long long b;
@@ -162,7 +162,7 @@ void test_transaction::test_transaction_size() {
    ultrainio_assert( trans_size == transaction_size(), "transaction size does not match" );
 }
 
-void test_transaction::send_transaction(uint64_t receiver, uint64_t, action_name) {
+void test_transaction::send_transaction(uint64_t receiver, uint64_t, uint64_t) {
    using namespace ultrainio;
    dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
 
@@ -174,7 +174,7 @@ void test_transaction::send_transaction(uint64_t receiver, uint64_t, action_name
    trx.send(0, receiver);
 }
 
-void test_transaction::send_action_sender(uint64_t receiver, uint64_t, action_name) {
+void test_transaction::send_action_sender(uint64_t receiver, uint64_t, uint64_t) {
    using namespace ultrainio;
    account_name cur_send;
    read_action_data( &cur_send, sizeof(account_name) );
@@ -186,7 +186,7 @@ void test_transaction::send_action_sender(uint64_t receiver, uint64_t, action_na
    trx.send(0, receiver);
 }
 
-void test_transaction::send_transaction_empty(uint64_t receiver, uint64_t, action_name) {
+void test_transaction::send_transaction_empty(uint64_t receiver, uint64_t, uint64_t) {
    using namespace ultrainio;
    auto trx = transaction();
    trx.send(0, receiver);
@@ -194,7 +194,7 @@ void test_transaction::send_transaction_empty(uint64_t receiver, uint64_t, actio
    ultrainio_assert(false, "send_transaction_empty() should've thrown an error");
 }
 
-void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver, uint64_t, action_name) {
+void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver, uint64_t, uint64_t) {
    using namespace ultrainio;
    auto trx = transaction();
    test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_false")> test_action;
@@ -205,7 +205,7 @@ void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver,
 void test_transaction::assert_false_error_handler(const ultrainio::transaction& dtrx) {
    ultrainio_assert(dtrx.actions.size() == 1, "transaction should only have one action");
    ultrainio_assert(dtrx.actions[0].account == N(testapi), "transaction has wrong code");
-//   ultrainio_assert(dtrx.actions[0].name == WASM_TEST_ACTION("test_action", "assert_false"), "transaction has wrong name");
+   ultrainio_assert(dtrx.actions[0].name == WASM_TEST_ACTION("test_action", "assert_false"), "transaction has wrong name");
    ultrainio_assert(dtrx.actions[0].authorization.size() == 1, "action should only have one authorization");
    ultrainio_assert(dtrx.actions[0].authorization[0].actor == N(testapi), "action's authorization has wrong actor");
    ultrainio_assert(dtrx.actions[0].authorization[0].permission == N(active), "action's authorization has wrong permission");
@@ -214,7 +214,7 @@ void test_transaction::assert_false_error_handler(const ultrainio::transaction& 
 /**
  * cause failure due to a large transaction size
  */
-void test_transaction::send_transaction_large(uint64_t receiver, uint64_t, action_name) {
+void test_transaction::send_transaction_large(uint64_t receiver, uint64_t, uint64_t) {
    using namespace ultrainio;
    auto trx = transaction();
    for (int i = 0; i < 32; i ++) {
@@ -236,7 +236,7 @@ void test_transaction::deferred_print() {
    ultrainio::print("deferred executed\n");
 }
 
-void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, action_name) {
+void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, uint64_t) {
    using namespace ultrainio;
    auto trx = transaction();
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
@@ -245,7 +245,7 @@ void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, ac
    trx.send( 0xffffffffffffffff, receiver );
 }
 
-void test_transaction::send_deferred_transaction_replace(uint64_t receiver, uint64_t, action_name) {
+void test_transaction::send_deferred_transaction_replace(uint64_t receiver, uint64_t, uint64_t) {
    using namespace ultrainio;
    auto trx = transaction();
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
@@ -261,7 +261,7 @@ void test_transaction::send_deferred_tx_with_dtt_action() {
 
    action deferred_act;
    deferred_act.account = dtt_act.deferred_account;
-//   deferred_act.name = dtt_act.deferred_action;
+   deferred_act.name = dtt_act.deferred_action;
    deferred_act.authorization = vector<permission_level>{{N(testapi), dtt_act.permission_name}};
 
    auto trx = transaction();

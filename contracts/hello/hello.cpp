@@ -11,12 +11,6 @@ class hello : public ultrainio::contract {
 
          set_result_str("Hi-Successed.");
       }
-
-      void TestALongNameFunction( account_name user ) {
-         print( "TestALongNameFunction, ", name{user} );
-
-         set_result_str("Hi-Successed.");
-      }
 };
 
-ULTRAINIO_ABI( hello, (hi)(TestALongNameFunction) )
+ULTRAINIO_ABI( hello, (hi) )

@@ -18,19 +18,19 @@ namespace ultrainio {
 //       errors in api_tests/memory_tests
 
 #define WASM_TEST_HANDLER(CLASS, METHOD) \
-  if( action == WASM_TEST_ACTION_EX(#CLASS, #METHOD) ) { \
+  if( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \
      CLASS::METHOD(); \
      return; \
   }
 
 #define WASM_TEST_HANDLER_EX(CLASS, METHOD) \
-  if( action == WASM_TEST_ACTION_EX(#CLASS, #METHOD) ) { \
+  if( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \
      CLASS::METHOD(receiver, code, action); \
      return; \
   }
 
 #define WASM_TEST_ERROR_HANDLER(CALLED_CLASS_STR, CALLED_METHOD_STR, HANDLER_CLASS, HANDLER_METHOD) \
-if( error_action == WASM_TEST_ACTION_EX(CALLED_CLASS_STR, CALLED_METHOD_STR) ) { \
+if( error_action == WASM_TEST_ACTION(CALLED_CLASS_STR, CALLED_METHOD_STR) ) { \
    HANDLER_CLASS::HANDLER_METHOD(error_trx); \
    return; \
 }
@@ -63,66 +63,66 @@ struct test_action {
   static void read_action_to_64k();
   static void test_dummy_action();
   static void test_cf_action();
-  static void require_notice(uint64_t receiver, uint64_t code, action_name action);
+  static void require_notice(uint64_t receiver, uint64_t code, uint64_t action);
   static void require_auth();
   static void assert_false();
   static void assert_true();
   static void assert_true_cf();
   static void test_current_time();
   static void test_abort() __attribute__ ((noreturn)) ;
-  static void test_current_receiver(uint64_t receiver, uint64_t code, action_name action);
+  static void test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action);
   static void test_publication_time();
   static void test_assert_code();
 };
 
 struct test_db {
-   static void primary_i64_general(uint64_t receiver, uint64_t code, action_name action);
-   static void primary_i64_lowerbound(uint64_t receiver, uint64_t code, action_name action);
-   static void primary_i64_upperbound(uint64_t receiver, uint64_t code, action_name action);
+   static void primary_i64_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void primary_i64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action);
+   static void primary_i64_upperbound(uint64_t receiver, uint64_t code, uint64_t action);
 
-   static void idx64_general(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_lowerbound(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_upperbound(uint64_t receiver, uint64_t code, action_name action);
+   static void idx64_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_upperbound(uint64_t receiver, uint64_t code, uint64_t action);
 
-   static void test_invalid_access(uint64_t receiver, uint64_t code, action_name action);
+   static void test_invalid_access(uint64_t receiver, uint64_t code, uint64_t action);
 
-   static void idx_double_nan_create_fail(uint64_t receiver, uint64_t code, action_name action);
-   static void idx_double_nan_modify_fail(uint64_t receiver, uint64_t code, action_name action);
-   static void idx_double_nan_lookup_fail(uint64_t receiver, uint64_t code, action_name action);
+   static void idx_double_nan_create_fail(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_double_nan_modify_fail(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_double_nan_lookup_fail(uint64_t receiver, uint64_t code, uint64_t action);
 
-   static void misaligned_secondary_key256_tests(uint64_t, uint64_t, action_name);
+   static void misaligned_secondary_key256_tests(uint64_t, uint64_t, uint64_t);
 };
 
 struct test_multi_index {
 
-   static void idx64_general(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_store_only(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_check_without_storing(uint64_t receiver, uint64_t code, action_name action);
-   static void idx128_general(uint64_t receiver, uint64_t code, action_name action);
-   static void idx128_store_only(uint64_t receiver, uint64_t code, action_name action);
-   static void idx128_check_without_storing(uint64_t receiver, uint64_t code, action_name action);
-   static void idx128_autoincrement_test(uint64_t receiver, uint64_t code, action_name action);
-   static void idx128_autoincrement_test_part1(uint64_t receiver, uint64_t code, action_name action);
-   static void idx128_autoincrement_test_part2(uint64_t receiver, uint64_t code, action_name action);
-   static void idx256_general(uint64_t receiver, uint64_t code, action_name action);
-   static void idx_double_general(uint64_t receiver, uint64_t code, action_name action);
-   static void idx_long_double_general(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pk_iterator_exceed_end(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_sk_iterator_exceed_end(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pk_iterator_exceed_begin(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_sk_iterator_exceed_begin(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pass_pk_ref_to_other_table(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pass_sk_ref_to_other_table(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pass_pk_end_itr_to_iterator_to(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pass_pk_end_itr_to_modify(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pass_pk_end_itr_to_erase(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pass_sk_end_itr_to_iterator_to(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pass_sk_end_itr_to_modify(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pass_sk_end_itr_to_erase(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_modify_primary_key(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_run_out_of_avl_pk(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_sk_cache_pk_lookup(uint64_t receiver, uint64_t code, action_name action);
-   static void idx64_pk_cache_sk_lookup(uint64_t receiver, uint64_t code, action_name action);
+   static void idx64_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_store_only(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_check_without_storing(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_store_only(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_check_without_storing(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_autoincrement_test(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_autoincrement_test_part1(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_autoincrement_test_part2(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx256_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_double_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_long_double_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pk_iterator_exceed_end(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_sk_iterator_exceed_end(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pk_iterator_exceed_begin(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_sk_iterator_exceed_begin(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_pk_ref_to_other_table(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_sk_ref_to_other_table(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_pk_end_itr_to_iterator_to(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_pk_end_itr_to_modify(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_pk_end_itr_to_erase(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_sk_end_itr_to_iterator_to(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_sk_end_itr_to_modify(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_sk_end_itr_to_erase(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_modify_primary_key(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_run_out_of_avl_pk(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_sk_cache_pk_lookup(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pk_cache_sk_lookup(uint64_t receiver, uint64_t code, uint64_t action);
 
 };
 
@@ -160,16 +160,16 @@ struct test_transaction {
   static void send_action_inline_fail();
   static void test_read_transaction();
   static void test_transaction_size();
-  static void send_transaction(uint64_t receiver, uint64_t code, action_name action);
-  static void send_transaction_empty(uint64_t receiver, uint64_t code, action_name action);
-  static void send_transaction_trigger_error_handler(uint64_t receiver, uint64_t code, action_name action);
+  static void send_transaction(uint64_t receiver, uint64_t code, uint64_t action);
+  static void send_transaction_empty(uint64_t receiver, uint64_t code, uint64_t action);
+  static void send_transaction_trigger_error_handler(uint64_t receiver, uint64_t code, uint64_t action);
   static void assert_false_error_handler(const ultrainio::transaction&);
   static void send_transaction_max();
-  static void send_transaction_large(uint64_t receiver, uint64_t code, action_name action);
-  static void send_action_sender(uint64_t receiver, uint64_t code, action_name action);
+  static void send_transaction_large(uint64_t receiver, uint64_t code, uint64_t action);
+  static void send_action_sender(uint64_t receiver, uint64_t code, uint64_t action);
   static void deferred_print();
-  static void send_deferred_transaction(uint64_t receiver, uint64_t code, action_name action);
-  static void send_deferred_transaction_replace(uint64_t receiver, uint64_t code, action_name action);
+  static void send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
+  static void send_deferred_transaction_replace(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_deferred_tx_with_dtt_action();
   static void cancel_deferred_transaction_success();
   static void cancel_deferred_transaction_not_found();
@@ -265,9 +265,9 @@ struct test_softfloat {
 */
 
 struct test_permission {
-  static void check_authorization(uint64_t receiver, uint64_t code, action_name action);
-  static void test_permission_last_used(uint64_t receiver, uint64_t code, action_name action);
-  static void test_account_creation_time(uint64_t receiver, uint64_t code, action_name action);
+  static void check_authorization(uint64_t receiver, uint64_t code, uint64_t action);
+  static void test_permission_last_used(uint64_t receiver, uint64_t code, uint64_t action);
+  static void test_account_creation_time(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_datastream {

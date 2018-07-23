@@ -116,7 +116,7 @@ void test_action::test_cf_action() {
 
    } else if ( cfa.payload == 200 ) {
       // attempt to access non context free api, privileged_api
-      is_privileged(act.account);
+      is_privileged(act.name);
       ultrainio_assert( false, "privileged_api should not be allowed" );
    } else if ( cfa.payload == 201 ) {
       // attempt to access non context free api, producer_api
@@ -161,7 +161,7 @@ void test_action::test_cf_action() {
 
 }
 
-void test_action::require_notice(uint64_t receiver, uint64_t code, action_name action) {
+void test_action::require_notice(uint64_t receiver, uint64_t code, uint64_t action) {
    (void)code;(void)action;
    if( receiver == N(testapi) ) {
       ultrainio::require_recipient( N(acc1) );
@@ -204,7 +204,7 @@ void test_action::test_publication_time() {
    ultrainio_assert( pub_time == publication_time(), "pub_time == publication_time()" );
 }
 
-void test_action::test_current_receiver(uint64_t receiver, uint64_t code, action_name action) {
+void test_action::test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action) {
    (void)code;(void)action;
    account_name cur_rec;
    read_action_data(&cur_rec, sizeof(account_name));

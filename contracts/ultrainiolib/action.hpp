@@ -4,8 +4,6 @@
  */
 #pragma once
 #include <ultrainiolib/action.h>
-#include <ultrainiolib/name_ex.hpp>
-
 #include <ultrainiolib/datastream.hpp>
 #include <ultrainiolib/serialize.hpp>
 
@@ -191,10 +189,10 @@ namespace ultrainio {
 
    };
 
-   template<uint64_t Account, uint64_t actH, uint64_t actL>
+   template<uint64_t Account, uint64_t Name>
    struct action_meta {
       static uint64_t get_account() { return Account; }
-      static action_name get_name()  { return action_name(actH, actL); }
+      static uint64_t get_name()  { return Name; }
    };
 
    template<typename... Args>
@@ -204,33 +202,22 @@ namespace ultrainio {
       action( perms, code, act, std::move(args) ).send();
    }
 
-   template<typename... Args>
-   void dispatch_inline( account_name code, action_name act,
-                         permission_level perm,
-                         std::tuple<Args...> args ) {
-      dispatch_inline(code, act, { perm }, std::move(args));
-   }
-
    template<typename, uint64_t>
    struct inline_dispatcher;
 
    template<typename T, uint64_t Name, typename... Args>
    struct inline_dispatcher<void(T::*)(Args...), Name> {
-      static void call(account_name code, action_name act, const permission_level& perm, std::tuple<Args...> args) {
-         dispatch_inline(code, act, vector<permission_level>(1, perm), std::move(args));
+      static void call(account_name code, const permission_level& perm, std::tuple<Args...> args) {
+         dispatch_inline(code, Name, vector<permission_level>(1, perm), std::move(args));
       }
-      static void call(account_name code, action_name act, vector<permission_level> perms, std::tuple<Args...> args) {
-         dispatch_inline(code, act, std::move(perms), std::move(args));
+      static void call(account_name code, vector<permission_level> perms, std::tuple<Args...> args) {
+         dispatch_inline(code, Name, std::move(perms), std::move(args));
       }
    };
 
  ///@} actioncpp api
 
 } // namespace ultrainio
-
-
-#define SEND_INLINE_ACTION_EX(CONTRACT, ACTION_NAME, PERMISSION, PARAMS) \
-::ultrainio::dispatch_inline(CONTRACT, NEX(ACTION_NAME), PERMISSION, PARAMS)
 
 #define INLINE_ACTION_SENDER3( CONTRACT_CLASS, FUNCTION_NAME, ACTION_NAME  )\
 ::ultrainio::inline_dispatcher<decltype(&CONTRACT_CLASS::FUNCTION_NAME), ACTION_NAME>::call
@@ -241,8 +228,8 @@ INLINE_ACTION_SENDER3( CONTRACT_CLASS, NAME, ::ultrainio::string_to_name(#NAME) 
 #define INLINE_ACTION_SENDER(...) BOOST_PP_OVERLOAD(INLINE_ACTION_SENDER,__VA_ARGS__)(__VA_ARGS__)
 
 #define SEND_INLINE_ACTION( CONTRACT, NAME, ... )\
-INLINE_ACTION_SENDER(std::decay_t<decltype(CONTRACT)>, NAME)( (CONTRACT).get_self(), ::ultrainio::string_to_name_ex(#NAME), \
+INLINE_ACTION_SENDER(std::decay_t<decltype(CONTRACT)>, NAME)( (CONTRACT).get_self(),\
 BOOST_PP_TUPLE_ENUM(BOOST_PP_VARIADIC_SIZE(__VA_ARGS__), BOOST_PP_VARIADIC_TO_TUPLE(__VA_ARGS__)) );
 
 
-#define ACTION( CODE, NAME ) struct NAME : ::ultrainio::action_meta<CODE, (NEX(NAME).valueH), (NEX(NAME).valueL)>
+#define ACTION( CODE, NAME ) struct NAME : ::ultrainio::action_meta<CODE, ::ultrainio::string_to_name(#NAME) >

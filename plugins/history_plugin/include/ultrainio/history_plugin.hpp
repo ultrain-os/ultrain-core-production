@@ -14,7 +14,6 @@ namespace ultrainio {
    using std::shared_ptr;
    using namespace appbase;
    using chain::name;
-   using chain::action_name;
    using fc::optional;
    using chain::uint128_t;
 
@@ -81,7 +80,7 @@ class read_only {
       };
 
       get_transaction_result get_transaction( const get_transaction_params& )const;
-
+      
 
 
 
@@ -120,13 +119,13 @@ class read_only {
 
 /**
  *  This plugin tracks all actions and keys associated with a set of configured accounts. It enables
- *  wallets to paginate queries for history.
+ *  wallets to paginate queries for history.  
  *
  *  An action will be included in the account's history if any of the following:
  *     - receiver
  *     - any account named in auth list
  *
- *  A key will be linked to an account if the key is referneced in authorities of updateauth or newaccount
+ *  A key will be linked to an account if the key is referneced in authorities of updateauth or newaccount 
  */
 class history_plugin : public plugin<history_plugin> {
    public:

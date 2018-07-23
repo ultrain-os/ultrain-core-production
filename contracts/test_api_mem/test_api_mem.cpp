@@ -9,8 +9,7 @@
 #include "test_memory.cpp"
 
 extern "C" {
-   void apply( uint64_t /*receiver*/, uint64_t code, uint64_t actH, uint64_t actL ) {
-      action_name action(actH, actL);
+   void apply( uint64_t /*receiver*/, uint64_t code, uint64_t action ) {
       require_auth(code);
 
       //test_extended_memory
@@ -42,7 +41,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_memory, test_outofbound_11);
       WASM_TEST_HANDLER(test_memory, test_outofbound_12);
       WASM_TEST_HANDLER(test_memory, test_outofbound_13);
-
+      
       //unhandled test call
       ultrainio_assert(false, "Unknown Test");
    }

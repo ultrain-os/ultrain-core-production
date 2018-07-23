@@ -776,7 +776,7 @@ namespace ultrainio { namespace testing {
    transaction_trace_ptr base_tester::set_producers(const vector<account_name>& producer_names) {
       auto schedule = get_producer_keys( producer_names );
 
-      return push_action( N(ultrainio), NEX(setprods), N(ultrainio),
+      return push_action( N(ultrainio), N(setprods), N(ultrainio),
                           fc::mutable_variant_object()("schedule", schedule));
    }
 

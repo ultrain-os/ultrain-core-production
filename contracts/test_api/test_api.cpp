@@ -21,9 +21,8 @@
 account_name global_receiver;
 
 extern "C" {
-   void apply( uint64_t receiver, uint64_t code, uint64_t actH, uint64_t actL ) {
-      action_name action(actH, actL);
-      if( code == N(ultrainio) && action == NEX(onerror) ) {
+   void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+      if( code == N(ultrainio) && action == N(onerror) ) {
          auto error = ultrainio::onerror::from_current_action();
          ultrainio::print("onerror called\n");
          auto error_trx = error.unpack_sent_trx();
@@ -31,19 +30,19 @@ extern "C" {
 
          // Error handlers for deferred transactions in these tests currently only support the first action
 
-//         WASM_TEST_ERROR_HANDLER("test_action", "assert_false", test_transaction, assert_false_error_handler );
+         WASM_TEST_ERROR_HANDLER("test_action", "assert_false", test_transaction, assert_false_error_handler );
 
 
          return;
       }
 
-      if ( action == NEX(cf_action) ) {
+      if ( action == N(cf_action) ) {
          test_action::test_cf_action();
          return;
       }
       WASM_TEST_HANDLER(test_action, assert_true_cf);
 
-      if (action != WASM_TEST_ACTION_EX("test_transaction", "stateful_api") && action != WASM_TEST_ACTION_EX("test_transaction", "context_free_api"))
+      if (action != WASM_TEST_ACTION("test_transaction", "stateful_api") && action != WASM_TEST_ACTION("test_transaction", "context_free_api"))
          require_auth(code);
 
       //test_types
@@ -83,7 +82,7 @@ extern "C" {
 
       // test named actions
       // We enforce action name matches action data type name, so name mangling will not work for these tests.
-      if ( action == NEX(dummy_action) ) {
+      if ( action == N(dummy_action) ) {
          test_action::test_dummy_action();
          return;
       }

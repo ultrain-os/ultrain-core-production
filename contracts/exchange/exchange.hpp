@@ -82,6 +82,6 @@ namespace ultrainio {
          void on( const covermargin& b );
          void on( const currency::transfer& t, account_name code );
 
-         void apply( account_name contract, action_name act );
+         void apply( account_name contract, account_name act );
    };
 } // namespace ultrainio

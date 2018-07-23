@@ -214,7 +214,7 @@ class dice : public ultrainio::contract {
 
       //@abi action
       void deposit( const account_name from, const asset& quantity ) {
-
+         
          ultrainio_assert( quantity.is_valid(), "invalid quantity" );
          ultrainio_assert( quantity.amount > 0, "must deposit positive quantity" );
 
@@ -227,7 +227,7 @@ class dice : public ultrainio::contract {
 
          action(
             permission_level{ from, N(active) },
-            N(utrio.token), NEX(transfer),
+            N(utrio.token), N(transfer),
             std::make_tuple(from, _self, quantity, std::string(""))
          ).send();
 
@@ -253,7 +253,7 @@ class dice : public ultrainio::contract {
 
          action(
             permission_level{ _self, N(active) },
-            N(utrio.token), NEX(transfer),
+            N(utrio.token), N(transfer),
             std::make_tuple(_self, to, quantity, std::string(""))
          ).send();
 

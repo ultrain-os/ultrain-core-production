@@ -9,8 +9,7 @@
 
 extern "C" {
 
-   void apply( uint64_t receiver, uint64_t code, uint64_t actH, uint64_t actL ) {
-      action_name action(actH, actL);
+   void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
       require_auth(code);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_general);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_store_only);

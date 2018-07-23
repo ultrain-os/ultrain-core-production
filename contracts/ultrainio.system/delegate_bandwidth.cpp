@@ -112,12 +112,12 @@ namespace ultrainiosystem {
       auto quant_after_fee = quant;
       quant_after_fee.amount -= fee.amount;
 
-      dispatch_inline(N(utrio.token), NEX(transfer), {payer,N(active)},
-         std::make_tuple( payer, N(utrio.ram), quant_after_fee, std::string("buy ram")) );
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {payer,N(active)},
+         { payer, N(utrio.ram), quant_after_fee, std::string("buy ram") } );
 
       if( fee.amount > 0 ) {
-         dispatch_inline(N(utrio.token), NEX(transfer), {payer,N(active)},
-                                                       std::make_tuple( payer, N(utrio.ramfee), fee, std::string("ram fee")) );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {payer,N(active)},
+                                                       { payer, N(utrio.ramfee), fee, std::string("ram fee") } );
       }
 
       int64_t bytes_out;
@@ -180,12 +180,12 @@ namespace ultrainiosystem {
       });
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
-      dispatch_inline(N(utrio.token), NEX(transfer), {N(utrio.ram),N(active)},
-                                                       std::make_tuple( N(utrio.ram), account, asset(tokens_out), std::string("sell ram")) );
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.ram),N(active)},
+                                                       { N(utrio.ram), account, asset(tokens_out), std::string("sell ram") } );
       auto fee = tokens_out.amount / 200;
       if( fee > 0 ) {
-         dispatch_inline(N(utrio.token), NEX(transfer), {account,N(active)},
-            std::make_tuple( account, N(utrio.ramfee), asset(fee), std::string("sell ram fee")) );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {account,N(active)},
+            { account, N(utrio.ramfee), asset(fee), std::string("sell ram fee") } );
       }
    }
 
@@ -315,7 +315,7 @@ namespace ultrainiosystem {
 
          if ( need_deferred_trx ) {
             ultrainio::transaction out;
-            out.actions.emplace_back( permission_level{ from, N(active) }, _self, NEX(refund), from );
+            out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
             out.delay_sec = refund_delay;
             out.send( from, receiver, true );
          } else {
@@ -324,8 +324,8 @@ namespace ultrainiosystem {
 
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
-            dispatch_inline(N(utrio.token), NEX(transfer), {source_stake_from, N(active)},
-               std::make_tuple( source_stake_from, N(utrio.stake), asset(transfer_amount), std::string("stake bandwidth")) );
+            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {source_stake_from, N(active)},
+               { source_stake_from, N(utrio.stake), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
 
@@ -388,8 +388,8 @@ namespace ultrainiosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      dispatch_inline(N(utrio.token), NEX(transfer), {N(utrio.stake),N(active)},
-                                                    std::make_tuple( N(utrio.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake")) );
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.stake),N(active)},
+                                                    { N(utrio.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
    }

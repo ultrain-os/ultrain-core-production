@@ -101,8 +101,8 @@ namespace ultrainiosystem {
       ultrainio_assert( bid.symbol == asset().symbol, "asset must be system token" );
       ultrainio_assert( bid.amount > 0, "insufficient bid" );
 
-      dispatch_inline(N(utrio.token), NEX(transfer), {bidder,N(active)},
-                                                    std::make_tuple( bidder, N(utrio.names), bid, std::string("bid name ")+(name{newname}).to_string()) );
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {bidder,N(active)},
+                                                    { bidder, N(utrio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
 
       name_bid_table bids(_self,_self);
       print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
@@ -119,9 +119,9 @@ namespace ultrainiosystem {
          ultrainio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          ultrainio_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
-         dispatch_inline(N(utrio.token), NEX(transfer), {N(utrio.names),N(active)},
-                                                       std::make_tuple( N(utrio.names), current->high_bidder, asset(current->high_bid),
-                                                       std::string("refund bid on name ")+(name{newname}).to_string()) );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.names),N(active)},
+                                                       { N(utrio.names), current->high_bidder, asset(current->high_bid),
+                                                       std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
          bids.modify( current, bidder, [&]( auto& b ) {
             b.high_bidder = bidder;

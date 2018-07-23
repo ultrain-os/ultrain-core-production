@@ -90,7 +90,7 @@ struct controller_impl {
    };
 
    // BUG!!! TODO: We need save event list to database to avoid duplicate when restarts system
-   std::list<contract_event_type> event_list;
+   std::list<contract_event_type> event_list; 
 
    /**
     *  Transactions that were undone by pop_block or abort_block, transactions
@@ -675,7 +675,7 @@ struct controller_impl {
       for (it = event_list.begin(); it != event_list.end(); ++it) {
          auto it_cmp = std::next(it);
          while (it_cmp != event_list.end()) {
-            if ((*it).id == (*it_cmp).id && (*it).name == (*it_cmp).name &&
+            if ((*it).id == (*it_cmp).id && (*it).name == (*it_cmp).name && 
               (*it).event_name == (*it_cmp).event_name && (*it).message == (*it_cmp).message) {
                it_cmp = event_list.erase(it_cmp);
                continue;
@@ -1239,7 +1239,7 @@ struct controller_impl {
    {
       action on_block_act;
       on_block_act.account = config::system_account_name;
-      on_block_act.name = NEX(onblock);
+      on_block_act.name = N(onblock);
       on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
       on_block_act.data = fc::raw::pack(self.head_block_header());
 

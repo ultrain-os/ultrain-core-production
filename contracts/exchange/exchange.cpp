@@ -205,11 +205,10 @@ namespace ultrainio {
 
 
    #define N(X) ::ultrainio::string_to_name(#X)
-   #define NEX(X) ::ultrainio::string_to_name_ex(#X)
 
-   void exchange::apply( account_name contract, action_name action ) {
+   void exchange::apply( account_name contract, account_name act ) {
 
-      if( action == NEX(transfer) ) {
+      if( act == N(transfer) ) {
          on( unpack_action_data<currency::transfer>(), contract );
          return;
       }
@@ -218,19 +217,24 @@ namespace ultrainio {
          return;
 
       auto& thiscontract = *this;
+      switch( act ) {
+         ULTRAINIO_API( exchange, (createx)(deposit)(withdraw)(lend)(unlend) )
+      };
 
-      ULTRAINIO_API( exchange, (createx)(deposit)(withdraw)(lend)(unlend) )
-
-
-         if (action == NEX(trade)) {
+      switch( act ) {
+         case N(trade):
             on( unpack_action_data<trade>() );
-         }else if (action == NEX(upmargin)) {
+            return;
+         case N(upmargin):
             on( unpack_action_data<upmargin>() );
-         } else if (action == NEX(covermargin)) {
+            return;
+         case N(covermargin):
             on( unpack_action_data<covermargin>() );
-         } else {
-            _excurrencies.apply( contract, action );
-         }
+            return;
+         default:
+            _excurrencies.apply( contract, act ); 
+            return;
+      }
    }
 
 } /// namespace ultrainio
@@ -238,8 +242,7 @@ namespace ultrainio {
 
 
 extern "C" {
-   [[noreturn]] void apply( uint64_t receiver, uint64_t code, uint64_t actH, uint64_t actL ) {
-      action_name action(actH, actL);
+   [[noreturn]] void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
       ultrainio::exchange  ex( receiver );
       ex.apply( code, action );
       ultrainio_exit(0);

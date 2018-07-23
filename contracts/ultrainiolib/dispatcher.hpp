@@ -1,7 +1,6 @@
 #pragma once
 #include <ultrainiolib/print.hpp>
 #include <ultrainiolib/action.hpp>
-#include <ultrainiolib/name_ex.hpp>
 
 #include <boost/fusion/adapted/std_tuple.hpp>
 #include <boost/fusion/include/std_tuple.hpp>
@@ -10,7 +9,7 @@
 #define N(X) ::ultrainio::string_to_name(#X)
 namespace ultrainio {
    template<typename Contract, typename FirstAction>
-   bool dispatch( uint64_t code, action_name act ) {
+   bool dispatch( uint64_t code, uint64_t act ) {
       if( code == FirstAction::get_account() && FirstAction::get_name() == act ) {
          Contract().on( unpack_action_data<FirstAction>() );
          return true;
@@ -26,11 +25,11 @@ namespace ultrainio {
     * static Contract::on( ActionType )
     * ```
     *
-    * For this to work the Actions must be dervied from the
+    * For this to work the Actions must be dervied from the 
     *
     */
    template<typename Contract, typename FirstAction, typename SecondAction, typename... Actions>
-   bool dispatch( uint64_t code, action_name act ) {
+   bool dispatch( uint64_t code, uint64_t act ) {
       if( code == FirstAction::get_account() && FirstAction::get_name() == act ) {
          Contract().on( unpack_action_data<FirstAction>() );
          return true;
@@ -56,8 +55,8 @@ namespace ultrainio {
          free(buffer);
       }
 
-      auto f2 = [&]( auto... a ){
-         (obj->*func)( a... );
+      auto f2 = [&]( auto... a ){  
+         (obj->*func)( a... ); 
       };
 
       boost::mp11::tuple_apply( f2, args );
@@ -65,27 +64,26 @@ namespace ultrainio {
    }
 
 #define ULTRAINIO_API_CALL( r, OP, elem ) \
-   else if(action == ::ultrainio::string_to_name_ex( BOOST_PP_STRINGIZE(elem) )) { \
+   case ::ultrainio::string_to_name( BOOST_PP_STRINGIZE(elem) ): \
       ultrainio::execute_action( &thiscontract, &OP::elem ); \
-   }
+      break;
 
 #define ULTRAINIO_API( TYPE,  MEMBERS ) \
-   if (false) {} \
-   BOOST_PP_SEQ_FOR_EACH( ULTRAINIO_API_CALL, TYPE, MEMBERS ) \
-   else {}
+   BOOST_PP_SEQ_FOR_EACH( ULTRAINIO_API_CALL, TYPE, MEMBERS )
 
 #define ULTRAINIO_ABI( TYPE, MEMBERS ) \
 extern "C" { \
-   void apply( uint64_t receiver, uint64_t code, uint64_t actH, uint64_t actL ) { \
+   void apply( uint64_t receiver, uint64_t code, uint64_t action ) { \
       auto self = receiver; \
-      action_name action(actH, actL); \
-      if( action == NEX(onerror)) { \
+      if( action == N(onerror)) { \
          /* onerror is only valid if it is for the "ultrainio" code account and authorized by "ultrainio"'s "active permission */ \
          ultrainio_assert(code == N(ultrainio), "onerror action's are only valid from the \"ultrainio\" system account"); \
       } \
-      if( code == self || action == NEX(onerror) ) { \
+      if( code == self || action == N(onerror) ) { \
          TYPE thiscontract( self ); \
-         ULTRAINIO_API( TYPE, MEMBERS ) \
+         switch( action ) { \
+            ULTRAINIO_API( TYPE, MEMBERS ) \
+         } \
          /* does not allow destructor of thiscontract to run: ultrainio_exit(0); */ \
       } \
    } \
@@ -104,7 +102,7 @@ extern "C" { \
       T contract;
    };
 
-   void dispatch( account_name code, account_name action,
+   void dispatch( account_name code, account_name action, 
    */
 
 }

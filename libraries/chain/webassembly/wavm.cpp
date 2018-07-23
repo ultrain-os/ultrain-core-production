@@ -32,8 +32,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       void apply(apply_context& context) override {
          vector<Value> args = {Value(uint64_t(context.receiver)),
 	                       Value(uint64_t(context.act.account)),
-                               Value(uint64_t(context.act.name.valueH)),
-                               Value(uint64_t(context.act.name.valueL))};
+                               Value(uint64_t(context.act.name))};
 
          call("apply", args, context);
       }

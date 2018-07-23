@@ -168,8 +168,7 @@ struct limit_order {
 namespace multi_index_test {
    extern "C" {
       /// The apply method implements the dispatch of events to this contract
-      void apply( uint64_t /* receiver */, uint64_t code, uint64_t actH, uint64_t actL ) {
-         action_name action(actH, actL);
+      void apply( uint64_t /* receiver */, uint64_t code, uint64_t action ) {
          require_auth(code);
          ultrainio_assert(ultrainio::dispatch<multi_index_test, multi_index_test::trigger>(code, action),
                       "Could not dispatch");
