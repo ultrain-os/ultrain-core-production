@@ -9,3 +9,4 @@
 #include <ultrainiolib/multi_index.hpp>
 #include <ultrainiolib/dispatcher.hpp>
 #include <ultrainiolib/contract.hpp>
+#include <ultrainiolib/name_ex.hpp>

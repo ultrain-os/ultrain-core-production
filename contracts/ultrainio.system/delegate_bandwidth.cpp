@@ -315,7 +315,7 @@ namespace ultrainiosystem {
 
          if ( need_deferred_trx ) {
             ultrainio::transaction out;
-            out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
+            out.actions.emplace_back( permission_level{ from, N(active) }, _self, NEX(refund), from );
             out.delay_sec = refund_delay;
             out.send( from, receiver, true );
          } else {

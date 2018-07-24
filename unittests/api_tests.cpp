@@ -26,6 +26,8 @@
 #include <ultrainio/chain/global_property_object.hpp>
 #include <ultrainio/chain/wasm_interface.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
+#include <ultrainio/chain/name_ex.hpp>
+using action_name = ultrainio::chain::name_ex;
 
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/sha256.hpp>
@@ -538,7 +540,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       BOOST_CHECK_EQUAL(ttrace->action_traces[0].inline_traces.size(), 1);
       BOOST_CHECK_EQUAL(ttrace->action_traces[0].inline_traces[0].receipt.receiver, account_name("dummy"));
       BOOST_CHECK_EQUAL(ttrace->action_traces[0].inline_traces[0].act.account, account_name("dummy"));
-      BOOST_CHECK_EQUAL(ttrace->action_traces[0].inline_traces[0].act.name, account_name("event1"));
+      BOOST_CHECK_EQUAL(ttrace->action_traces[0].inline_traces[0].act.name, action_name("event1"));
       BOOST_CHECK_EQUAL(ttrace->action_traces[0].inline_traces[0].act.authorization.size(), 0);
 
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action_fail", {} ),
@@ -1059,7 +1061,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    push_action(config::system_account_name, linkauth::get_name(), "testapi", fc::mutable_variant_object()
            ("account", "testapi")
            ("code", name(dtt_act2.deferred_account))
-           ("type", name(dtt_act2.deferred_action))
+           ("type", action_name(dtt_act2.deferred_action))
            ("requirement", name(dtt_act2.permission_name)));
    BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act2)), unsatisfied_authorization);
 
@@ -1074,14 +1076,14 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    push_action(config::system_account_name, linkauth::get_name(), "testapi", fc::mutable_variant_object()
          ("account", "testapi")
          ("code", name(dtt_act3.deferred_account))
-         ("type", name(dtt_act3.deferred_action))
+         ("type", action_name(dtt_act3.deferred_action))
          ("requirement", name(dtt_act3.permission_name)));
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act3)); //will replace existing transaction
 
    // If we make testapi account to be priviledged account:
    // - the deferred transaction will work no matter who is the payer
    // - the deferred transaction will not care about the delay of the authorization
-   push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
+   push_action(config::system_account_name, NEX(setpriv), config::system_account_name,  mutable_variant_object()
                                                        ("account", "testapi")
                                                        ("is_priv", 1));
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1));
@@ -1098,7 +1100,7 @@ struct setprod_act {
    }
 
    static action_name get_name() {
-      return action_name(NAME);
+      return action_name(0, NAME);
    }
 };
 
@@ -1171,7 +1173,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    // Store value in primary table
    invalid_access_action ia1{.code = N(testapi), .val = 10, .index = 0, .store = true};
    auto res = push_action( action({{N(testapi), config::active_name}},
-                                  N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                                  N(testapi), WASM_TEST_ACTION_EX("test_db", "test_invalid_access"),
                                   fc::raw::pack(ia1)),
                            N(testapi) );
    BOOST_CHECK_EQUAL( res, success() );
@@ -1179,7 +1181,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    // Attempt to change the value stored in the primary table under the code of N(testapi)
    invalid_access_action ia2{.code = ia1.code, .val = 20, .index = 0, .store = true};
    res = push_action( action({{N(testapi2), config::active_name}},
-                             N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             N(testapi2), WASM_TEST_ACTION_EX("test_db", "test_invalid_access"),
                              fc::raw::pack(ia2)),
                       N(testapi2) );
       wdump((res));
@@ -1189,7 +1191,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    // Verify that the value has not changed.
    ia1.store = false;
    res = push_action( action({{N(testapi), config::active_name}},
-                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             N(testapi), WASM_TEST_ACTION_EX("test_db", "test_invalid_access"),
                              fc::raw::pack(ia1)),
                       N(testapi) );
    BOOST_CHECK_EQUAL( res, success() );
@@ -1197,7 +1199,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    // Store value in secondary table
    ia1.store = true; ia1.index = 1;
    res = push_action( action({{N(testapi), config::active_name}},
-                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             N(testapi), WASM_TEST_ACTION_EX("test_db", "test_invalid_access"),
                              fc::raw::pack(ia1)),
                       N(testapi) );
    BOOST_CHECK_EQUAL( res, success() );
@@ -1205,7 +1207,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    // Attempt to change the value stored in the secondary table under the code of N(testapi)
    ia2.index = 1;
    res = push_action( action({{N(testapi2), config::active_name}},
-                             N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             N(testapi2), WASM_TEST_ACTION_EX("test_db", "test_invalid_access"),
                              fc::raw::pack(ia2)),
                       N(testapi2) );
    BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
@@ -1213,7 +1215,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    // Verify that the value has not changed.
    ia1.store = false;
    res = push_action( action({{N(testapi), config::active_name}},
-                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             N(testapi), WASM_TEST_ACTION_EX("test_db", "test_invalid_access"),
                              fc::raw::pack(ia1)),
                       N(testapi) );
    BOOST_CHECK_EQUAL( res, success() );

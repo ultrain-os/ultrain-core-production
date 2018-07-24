@@ -115,10 +115,11 @@ namespace ultrainio { namespace chain {
                                     3010011, "Invalid packed transaction" )
       FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,              chain_type_exception,
                                     3010012, "Invalid asset" )
+      FC_DECLARE_DERIVED_EXCEPTION( name_ex_type_exception,            chain_type_exception,
+                                    3010013, "Invalid name")
 
-
-   FC_DECLARE_DERIVED_EXCEPTION( fork_database_exception, chain_exception,
-                                 3020000, "fork database exception" )
+      FC_DECLARE_DERIVED_EXCEPTION(
+              fork_database_exception, chain_exception, 3020000, "fork database exception")
 
       FC_DECLARE_DERIVED_EXCEPTION( unlinkable_block_exception, chain_exception,
                                     3020001, "unlinkable block" )

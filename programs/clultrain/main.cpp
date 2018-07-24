@@ -440,7 +440,7 @@ chain::action create_buyram(const name& creator, const name& newaccount, const a
          ("receiver", newaccount.to_string())
          ("quant", quantity.to_string());
    return create_action(tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
-                        config::system_account_name, N(buyram), act_payload);
+                        config::system_account_name, NEX(buyram), act_payload);
 }
 
 chain::action create_buyrambytes(const name& creator, const name& newaccount, uint32_t numbytes) {
@@ -449,7 +449,7 @@ chain::action create_buyrambytes(const name& creator, const name& newaccount, ui
          ("receiver", newaccount.to_string())
          ("bytes", numbytes);
    return create_action(tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
-                        config::system_account_name, N(buyrambytes), act_payload);
+                        config::system_account_name, NEX(buyrambytes), act_payload);
 }
 
 chain::action create_delegate(const name& from, const name& receiver, const asset& net, const asset& cpu, bool transfer) {
@@ -460,7 +460,7 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
          ("stake_cpu_quantity", cpu.to_string())
          ("transfer", transfer);
    return create_action(tx_permission.empty() ? vector<chain::permission_level>{{from,config::active_name}} : get_account_permissions(tx_permission),
-                        config::system_account_name, N(delegatebw), act_payload);
+                        config::system_account_name, NEX(delegatebw), act_payload);
 }
 
 fc::variant regproducer_variant(const account_name& producer,
@@ -550,12 +550,12 @@ chain::action create_deleteauth(const name& account, const name& permission) {
                    deleteauth{account, permission}};
 }
 
-chain::action create_linkauth(const name& account, const name& code, const name& type, const name& requirement) {
+chain::action create_linkauth(const name& account, const name& code, const action_name& type, const name& requirement) {
    return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
                    linkauth{account, code, type, requirement}};
 }
 
-chain::action create_unlinkauth(const name& account, const name& code, const name& type) {
+chain::action create_unlinkauth(const name& account, const name& code, const action_name& type) {
    return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
                    unlinkauth{account, code, type}};
 }
@@ -695,7 +695,7 @@ struct set_action_permission_subcommand {
       permissions->set_callback([this] {
          name account = name(accountStr);
          name code = name(codeStr);
-         name type = name(typeStr);
+         action_name type = action_name(typeStr);
          bool is_delete = boost::iequals(requirementStr, "null");
 
          if (is_delete) {
@@ -822,7 +822,7 @@ struct register_producer_subcommand {
          } ULTRAIN_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
 
          auto regprod_var = regproducer_variant(producer_str, producer_key, url, loc );
-         send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(regproducer), regprod_var)});
+         send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, NEX(regproducer), regprod_var)});
       });
    }
 };
@@ -908,7 +908,7 @@ struct unregister_producer_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("producer", producer_str);
 
-         send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(unregprod), act_payload)});
+         send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, NEX(unregprod), act_payload)});
       });
    }
 };
@@ -928,7 +928,7 @@ struct vote_producer_proxy_subcommand {
                   ("voter", voter_str)
                   ("proxy", proxy_str)
                   ("producers", std::vector<account_name>{});
-         send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
+         send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
       });
    }
 };
@@ -951,7 +951,7 @@ struct vote_producers_subcommand {
                   ("voter", voter_str)
                   ("proxy", "")
                   ("producers", producer_names);
-         send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
+         send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
       });
    }
 };
@@ -997,7 +997,7 @@ struct approve_producer_subcommand {
                ("voter", voter)
                ("proxy", "")
                ("producers", prods);
-            send_actions({create_action({permission_level{voter,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
+            send_actions({create_action({permission_level{voter,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
       });
    }
 };
@@ -1042,7 +1042,7 @@ struct unapprove_producer_subcommand {
                ("voter", voter)
                ("proxy", "")
                ("producers", prods);
-            send_actions({create_action({permission_level{voter,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
+            send_actions({create_action({permission_level{voter,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
       });
    }
 };
@@ -1111,7 +1111,7 @@ struct delegate_bandwidth_subcommand {
                   ("transfer", transfer)
                   ;
                   wdump((act_payload));
-         send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
+         send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(delegatebw), act_payload)});
       });
    }
 };
@@ -1137,7 +1137,7 @@ struct undelegate_bandwidth_subcommand {
                   ("receiver", receiver_str)
                   ("unstake_net_quantity", to_asset(unstake_net_amount))
                   ("unstake_cpu_quantity", to_asset(unstake_cpu_amount));
-         send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(undelegatebw), act_payload)});
+         send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(undelegatebw), act_payload)});
       });
    }
 };
@@ -1195,7 +1195,7 @@ struct buyram_subcommand {
                ("payer", from_str)
                ("receiver", receiver_str)
                ("quant", to_asset(amount));
-            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
+            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(buyram), act_payload)});
          });
    }
 };
@@ -1215,7 +1215,7 @@ struct sellram_subcommand {
             fc::variant act_payload = fc::mutable_variant_object()
                ("account", receiver_str)
                ("bytes", amount);
-            send_actions({create_action({permission_level{receiver_str,config::active_name}}, config::system_account_name, N(sellram), act_payload)});
+            send_actions({create_action({permission_level{receiver_str,config::active_name}}, config::system_account_name, NEX(sellram), act_payload)});
          });
    }
 };
@@ -1231,7 +1231,7 @@ struct claimrewards_subcommand {
       claim_rewards->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("owner", owner);
-         send_actions({create_action({permission_level{owner,config::active_name}}, config::system_account_name, N(claimrewards), act_payload)});
+         send_actions({create_action({permission_level{owner,config::active_name}}, config::system_account_name, NEX(claimrewards), act_payload)});
       });
    }
 };
@@ -1248,7 +1248,7 @@ struct regproxy_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("proxy", proxy)
                   ("isproxy", true);
-         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(regproxy), act_payload)});
+         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, NEX(regproxy), act_payload)});
       });
    }
 };
@@ -1265,7 +1265,7 @@ struct unregproxy_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("proxy", proxy)
                   ("isproxy", false);
-         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(regproxy), act_payload)});
+         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, NEX(regproxy), act_payload)});
       });
    }
 };
@@ -1287,7 +1287,7 @@ struct canceldelay_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("canceling_auth", canceling_auth)
                   ("trx_id", trx_id);
-         send_actions({create_action({canceling_auth}, config::system_account_name, N(canceldelay), act_payload)});
+         send_actions({create_action({canceling_auth}, config::system_account_name, NEX(canceldelay), act_payload)});
       });
    }
 };
@@ -2373,7 +2373,7 @@ int main( int argc, char** argv ) {
       trx.max_net_usage_words = 0;
       trx.max_cpu_usage_ms = 0;
       trx.delay_sec = 0;
-      trx.actions = { chain::action(trxperm, name(proposed_contract), name(proposed_action), proposed_trx_serialized) };
+      trx.actions = { chain::action(trxperm, name(proposed_contract), action_name(proposed_action), proposed_trx_serialized) };
 
       fc::to_variant(trx, trx_var);
 

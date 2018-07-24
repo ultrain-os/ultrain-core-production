@@ -94,12 +94,12 @@ namespace ultrainio {
          }
 
          static void inline_transfer( account_name from, account_name to, extended_asset amount, string memo = string(), permission_name perm = N(active) ) {
-            action act( permission_level( from, perm ), amount.contract, N(transfer), transfer{from,to,amount,memo} );
+            action act( permission_level( from, perm ), amount.contract, NEX(transfer), transfer{from,to,amount,memo} );
             act.send();
          }
 
          void inline_transfer( account_name from, account_name to, asset amount, string memo = string(), permission_name perm = N(active) ) {
-            action act( permission_level( from, perm ), _contract, N(transfer), transfer{from,to,amount,memo} );
+            action act( permission_level( from, perm ), _contract, NEX(transfer), transfer{from,to,amount,memo} );
             act.send();
          }
 
@@ -108,21 +108,21 @@ namespace ultrainio {
             if( contract != _contract )
                return false;
 
-            switch( act ) {
-               case N(issue):
-                  print( "issue\n");
-                 on( unpack_action_data<issue>() );
-                 return true;
-               case N(transfer):
-                  print( "transfer\n");
-                 on( unpack_action_data<transfer>() );
-                 return true;
-               case N(create):
-                  print( "create\n");
-                 on( unpack_action_data<create>() );
-                 return true;
+            bool handled = true;
+            if (act == NEX(issue)) {
+                print( "issue\n");
+                on( unpack_action_data<issue>() );
+            } else if (act == NEX(transfer)) {
+                print( "transfer\n");
+                on( unpack_action_data<transfer>() );
+            } else if (act == NEX(create)) {
+                print( "create\n");
+                on( unpack_action_data<create>() );
+            } else {
+                handled = false;
             }
-            return false;
+
+            return handled;
          }
 
           /**

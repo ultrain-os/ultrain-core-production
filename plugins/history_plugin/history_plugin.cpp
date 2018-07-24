@@ -123,10 +123,10 @@ namespace ultrainio {
 
    struct filter_entry {
       name receiver;
-      name action;
+      action_name action;
       name actor;
 
-      std::tuple<name, name, name> key() const {
+      std::tuple<name, action_name, name> key() const {
          return std::make_tuple(receiver, action, actor);
       }
 
@@ -189,23 +189,23 @@ namespace ultrainio {
          void on_system_action( const action_trace& at ) {
             auto& chain = chain_plug->chain();
             auto& db = chain.db();
-            if( at.act.name == N(newaccount) )
+            if( at.act.name == NEX(newaccount) )
             {
                const auto create = at.act.data_as<chain::newaccount>();
                add(db, create.owner.keys, create.name, N(owner));
                add(db, create.owner.accounts, create.name, N(owner));
                add(db, create.active.keys, create.name, N(active));
                add(db, create.active.accounts, create.name, N(active));
+            } else if (at.act.name == NEX(updateauth)) {
+                const auto update = at.act.data_as<chain::updateauth>();
+                remove<public_key_history_multi_index, by_account_permission>(
+                        db, update.account, update.permission);
+                remove<account_control_history_multi_index, by_controlled_authority>(
+                        db, update.account, update.permission);
+                add(db, update.auth.keys, update.account, update.permission);
+                add(db, update.auth.accounts, update.account, update.permission);
             }
-            else if( at.act.name == N(updateauth) )
-            {
-               const auto update = at.act.data_as<chain::updateauth>();
-               remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
-               remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
-               add(db, update.auth.keys, update.account, update.permission);
-               add(db, update.auth.accounts, update.account, update.permission);
-            }
-            else if( at.act.name == N(deleteauth) )
+            else if( at.act.name == NEX(deleteauth) )
             {
                const auto del = at.act.data_as<chain::deleteauth>();
                remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
@@ -279,7 +279,7 @@ namespace ultrainio {
             boost::split(v, s, boost::is_any_of(":"));
             ULTRAIN_ASSERT(v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
             filter_entry fe{ v[0], v[1], v[2] };
-            ULTRAIN_ASSERT(fe.receiver.value && fe.action.value, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
+            ULTRAIN_ASSERT(fe.receiver.value && fe.action.good(), fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
             my->filter_on.insert( fe );
          }
       }

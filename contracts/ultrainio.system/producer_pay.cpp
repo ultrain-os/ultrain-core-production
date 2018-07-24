@@ -41,11 +41,11 @@ namespace ultrainiosystem {
                p.unpaid_blocks++;
          });
       }
-      
+
       /// only update block producers once every minute, block_timestamp is in half seconds
       if( timestamp.slot - _gstate.last_producer_schedule_update.slot > 120 ) {
          update_elected_producers( timestamp );
-         
+
          if( (timestamp.slot - _gstate.last_name_close.slot) > blocks_per_day ) {
             name_bid_table bids(_self,_self);
             auto idx = bids.get_index<N(highbid)>();
@@ -70,7 +70,7 @@ namespace ultrainiosystem {
 
       const auto& prod = _producers.get( owner );
       ultrainio_assert( prod.active(), "producer does not have an active key" );
-      
+
       ultrainio_assert( _gstate.total_activated_stake >= min_activated_stake, "not enough has been staked for producers to claim rewards" );
 
       auto ct = current_time();
@@ -111,7 +111,7 @@ namespace ultrainiosystem {
          producer_per_block_pay = (_gstate.perblock_bucket * prod.unpaid_blocks) / _gstate.total_unpaid_blocks;
       }
       int64_t producer_per_vote_pay = 0;
-      if( _gstate.total_producer_vote_weight > 0 ) { 
+      if( _gstate.total_producer_vote_weight > 0 ) {
          producer_per_vote_pay  = int64_t((_gstate.pervote_bucket * prod.total_votes ) / _gstate.total_producer_vote_weight);
       }
       if( producer_per_vote_pay < min_pervote_daily_pay ) {

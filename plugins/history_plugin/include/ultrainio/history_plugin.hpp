@@ -14,6 +14,7 @@ namespace ultrainio {
    using std::shared_ptr;
    using namespace appbase;
    using chain::name;
+   using chain::action_name;
    using fc::optional;
    using chain::uint128_t;
 

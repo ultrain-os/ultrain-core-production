@@ -3,6 +3,7 @@
  *  @copyright defined in ultrain/LICENSE.txt
  */
 #pragma once
+#include <ultrainio/chain/name_ex.hpp>
 #include <ultrainio/chain/name.hpp>
 #include <ultrainio/chain/chain_id_type.hpp>
 
@@ -96,7 +97,7 @@ namespace ultrainio { namespace chain {
    template<typename T>
    using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
 
-   using action_name      = name;
+   using action_name      = name_ex;
    using scope_name       = name;
    using account_name     = name;
    using permission_name  = name;
