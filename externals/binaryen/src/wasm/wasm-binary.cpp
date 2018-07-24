@@ -1695,14 +1695,6 @@ void WasmBinaryBuilder::processFunctions() {
   // now that we have names for each function, apply things
 
   if (startIndex != static_cast<Index>(-1)) {
-    // FIXME(liangqin.fanlq@ultrain.io)：
-    // the ultrain system will inject some import function such as 'checktime_api::checktime' to wasm binary code,
-    // so the index of 'start' method will lost its order.
-    // the asc tool will generate 'start' method and append it to the end of .wast.
-    // as a temporary solution, adjust startIndex to the last function solt.
-    #ifdef ULTRAIN_SUPPORT_TYPESCRIPT
-        startIndex = wasm.functions.size() + wasm.imports.size() - 1;
-    #endif
     wasm.start = getFunctionIndexName(startIndex);
   }
 
