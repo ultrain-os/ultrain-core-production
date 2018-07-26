@@ -50,7 +50,7 @@ add_library( ultrainio_chain
              ${HEADERS}
              )
 
-target_link_libraries( ultrainio_chain ultrain_utilities fc chainbase Logging IR WAST WASM Runtime
+target_link_libraries( ultrainio_chain ultrain_utilities fc chainbase appbase Logging IR WAST WASM Runtime
       wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins
                      )
 target_include_directories( ultrainio_chain
