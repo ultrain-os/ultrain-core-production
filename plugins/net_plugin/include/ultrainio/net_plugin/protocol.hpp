@@ -7,6 +7,8 @@
 #include <ultrainio/chain/types.hpp>
 #include <chrono>
 
+#include <core/Message.h>
+
 namespace ultrainio {
    using namespace chain;
    using namespace fc;
@@ -145,7 +147,12 @@ namespace ultrainio {
                                       request_message,
                                       sync_request_message,
                                       signed_block,
-                                      packed_transaction>;
+                                      packed_transaction,
+                                      ProposeMsg,
+                                      EchoMsg,
+                                      SyncRequestMessage,
+                                      ReqLastBlockNumMsg,
+                                      RspLastBlockNumMsg>;
 
 } // namespace ultrainio
 

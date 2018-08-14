@@ -99,3 +99,8 @@ if(ENABLE_COVERAGE_TESTING)
     COMMENT "Open ./${Coverage_NAME}/index.html in your browser to view the coverage report."
     )
 endif()
+
+if (build_ultrainio_test)
+    add_subdirectory( crypto )
+    add_subdirectory( uranus )
+endif()

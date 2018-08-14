@@ -6,7 +6,7 @@ enable_testing()
 
 add_definitions(-DULTRAIN_SUPPORT_TYPESCRIPT)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 include( GNUInstallDirs )
@@ -178,7 +178,7 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
-add_subdirectory( externals )
+#add_subdirectory( externals )
 
 if ("${CORE_SYMBOL_NAME}" STREQUAL "")
   set( CORE_SYMBOL_NAME "SYS" )
@@ -200,14 +200,19 @@ message( STATUS "Using '${ULTRAINIO_ROOT_KEY}' as public key for 'ultrainio' acc
 
 include(wasm)
 
-add_subdirectory( libraries )
+#add_subdirectory( libraries )
 add_subdirectory( contracts )
 add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
-add_subdirectory( unittests )
+# ultrainio
+add_subdirectory( core )
+add_subdirectory( crypto )
+add_subdirectory( log )
 add_subdirectory( tests )
-add_subdirectory( tools )
+add_subdirectory( vendor )
+add_subdirectory( unittests )
+add_subdirectory( uranus )
 add_subdirectory( debian )
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/ultrainio)

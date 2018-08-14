@@ -378,6 +378,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    // relay signals to channels
    my->accepted_block_header_connection = my->chain->accepted_block_header.connect([this](const block_state_ptr& blk) {
+      //ilog("publish block id = ${id}", ("id", blk->id));
       my->accepted_block_header_channel.publish(blk);
    });
 
@@ -437,6 +438,7 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
 }
 
 void chain_plugin::accept_transaction(const chain::packed_transaction& trx, next_function<chain::transaction_trace_ptr> next) {
+   //ilog("trx.id = ${id}", ("id", trx.id()));
    my->incoming_transaction_async_method(std::make_shared<packed_transaction>(trx), false, std::forward<decltype(next)>(next));
 }
 

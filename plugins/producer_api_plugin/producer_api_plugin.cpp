@@ -63,7 +63,7 @@ using namespace ultrainio;
 void producer_api_plugin::plugin_startup() {
    ilog("starting producer_api_plugin");
    // lifetime of plugin is lifetime of application
-   auto& producer = app().get_plugin<producer_plugin>();
+   auto& producer = app().get_plugin<producer_uranus_plugin>();
 
    app().get_plugin<http_plugin>().add_api({
        CALL(producer, producer, pause,
@@ -75,7 +75,7 @@ void producer_api_plugin::plugin_startup() {
        CALL(producer, producer, get_runtime_options,
             INVOKE_R_V(producer, get_runtime_options), 201),
        CALL(producer, producer, update_runtime_options,
-            INVOKE_V_R(producer, update_runtime_options, producer_plugin::runtime_options), 201),
+            INVOKE_V_R(producer, update_runtime_options, producer_uranus_plugin::runtime_options), 201),
    });
 }
 

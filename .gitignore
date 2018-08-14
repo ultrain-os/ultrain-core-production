@@ -8,7 +8,6 @@
 *.s
 *.dot
 *.abi.hpp
-*.cmake
 \#*
 \.#*
 CMakeCache.txt
@@ -22,21 +21,27 @@ moc_*
 genesis.json
 hardfork.hpp
 
-libraries/utilities/git_revision.cpp
-libraries/egenesis/egenesis_brief.cpp
-libraries/egenesis/egenesis_full.cpp
-libraries/egenesis/embed_genesis
-libraries/types/type_generator
-libraries/types/types_test
+vendor/boringssl/sources.cmake
+vendor/boringssl/third_party/android-cmake/AndroidNdkGdb.cmake
+vendor/boringssl/third_party/android-cmake/AndroidNdkModules.cmake
+vendor/boringssl/third_party/android-cmake/android.toolchain.cmake
+vendor/boringssl/third_party/googletest/cmake/internal_utils.cmake
 
-libraries/wallet/Doxyfile
-libraries/wallet/api_documentation.cpp
-libraries/wallet/doxygen
+vendor/libraries/utilities/git_revision.cpp
+vendor/libraries/egenesis/egenesis_brief.cpp
+vendor/libraries/egenesis/egenesis_full.cpp
+vendor/libraries/egenesis/embed_genesis
+vendor/libraries/types/type_generator
+vendor/libraries/types/types_test
 
-libraries/wasm-jit/Source/Programs/Assemble
-libraries/wasm-jit/Source/Programs/Disassemble
-libraries/wasm-jit/Source/Programs/Test
-libraries/wasm-jit/Source/Programs/wavm
+vendor/libraries/wallet/Doxyfile
+vendor/libraries/wallet/api_documentation.cpp
+vendor/libraries/wallet/doxygen
+
+vendor/libraries/wasm-jit/Source/Programs/Assemble
+vendor/libraries/wasm-jit/Source/Programs/Disassemble
+vendor/libraries/wasm-jit/Source/Programs/Test
+vendor/libraries/wasm-jit/Source/Programs/wavm
 
 programs/cli_wallet/cli_wallet
 programs/js_operation_serializer/js_operation_serializer
@@ -75,6 +80,7 @@ build/*
 build-debug/*
 cmake-build-debug/
 .idea/
+*si4project/
 
 etc/ultrainio/node_*
 var/lib/node_*

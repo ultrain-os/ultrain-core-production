@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <ultrainio/producer_plugin/producer_plugin.hpp>
+#include <ultrainio/producer_uranus_plugin/producer_uranus_plugin.hpp>
 #include <ultrainio/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
@@ -15,7 +15,7 @@ using namespace appbase;
 
 class producer_api_plugin : public plugin<producer_api_plugin> {
    public:
-      APPBASE_PLUGIN_REQUIRES((producer_plugin) (http_plugin))
+      APPBASE_PLUGIN_REQUIRES((producer_uranus_plugin) (http_plugin))
 
       producer_api_plugin() = default;
       producer_api_plugin(const producer_api_plugin&) = delete;

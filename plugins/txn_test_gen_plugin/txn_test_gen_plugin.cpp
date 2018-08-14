@@ -89,9 +89,15 @@ using namespace ultrainio::chain;
 
 struct txn_test_gen_plugin_impl {
    static void push_next_transaction(const std::shared_ptr<std::vector<signed_transaction>>& trxs, size_t index, const std::function<void(const fc::exception_ptr&)>& next ) {
+      //ilog("push_next_transaction: trxs->size=${p} index=${m}", ("p", trxs->size())("m", index));
       chain_plugin& cp = app().get_plugin<chain_plugin>();
       cp.accept_transaction( packed_transaction(trxs->at(index)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
-         if (result.contains<fc::exception_ptr>()) {
+	  if (index + 1 < trxs->size()) {
+	      push_next_transaction(trxs, index + 1, next);
+	  } else {
+	       next(nullptr);
+          }
+         /*if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());
          } else {
             if (index + 1 < trxs->size()) {
@@ -99,7 +105,7 @@ struct txn_test_gen_plugin_impl {
             } else {
                next(nullptr);
             }
-         }
+         }*/
       });
    }
 
@@ -215,7 +221,7 @@ struct txn_test_gen_plugin_impl {
                trx.actions.push_back(act);
             }
 
-            trx.expiration = cc.head_block_time() + fc::seconds(30);
+            trx.expiration = cc.head_block_time() + fc::seconds(60);
             trx.set_reference_block(cc.head_block_id());
             trx.max_net_usage_words = 5000;
             trx.sign(txn_test_receiver_C_priv_key, chainid);
@@ -236,8 +242,8 @@ struct txn_test_gen_plugin_impl {
          throw fc::exception(fc::invalid_operation_exception_code);
       if(batch_size < 1 || batch_size > 250)
          throw fc::exception(fc::invalid_operation_exception_code);
-      if(batch_size & 1)
-         throw fc::exception(fc::invalid_operation_exception_code);
+     // if(batch_size & 1)
+     //    throw fc::exception(fc::invalid_operation_exception_code);
 
       running = true;
 
@@ -253,7 +259,8 @@ struct txn_test_gen_plugin_impl {
       act_b_to_a.data = ultrainio_token_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
 
       timer_timeout = period;
-      batch = batch_size/2;
+      //batch = batch_size/2;
+      batch = batch_size;
 
       ilog("Started transaction test plugin; performing ${p} transactions every ${m}ms", ("p", batch_size)("m", period));
 
@@ -267,22 +274,24 @@ struct txn_test_gen_plugin_impl {
             return;
 
          send_transaction([this](const fc::exception_ptr& e){
-            if (e) {
-               elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
-               stop_generation();
-            } else {
-               arm_timer(timer.expires_at());
-            }
+//            if (e) {
+//               elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
+//               stop_generation();
+//            } else {
+//               arm_timer(timer.expires_at());
+//            }
+             arm_timer(timer.expires_at());
          });
       });
    }
 
    void send_transaction(std::function<void(const fc::exception_ptr&)> next) {
       std::vector<signed_transaction> trxs;
-      trxs.reserve(2*batch);
+      //trxs.reserve(2*batch);
+      trxs.reserve(batch);
 
       try {
-         controller& cc = app().get_plugin<chain_plugin>().chain();
+         /*controller& cc = app().get_plugin<chain_plugin>().chain();
          auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
 
          name sender("txn.test.a");
@@ -303,22 +312,29 @@ struct txn_test_gen_plugin_impl {
             }
          }
 
-         block_id_type reference_block_id = cc.get_block_id_for_num(reference_block_num);
+         block_id_type reference_block_id = cc.get_block_id_for_num(reference_block_num);*/
 
          for(unsigned int i = 0; i < batch; ++i) {
          {
          signed_transaction trx;
+         trx.sn = trx_count;
+         trx_count++;
+	 if(trx_count%1000 == 0){
+             ilog("trx_count ${p}", ("p", trx_count));
+	 }
          trx.actions.push_back(act_a_to_b);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
-         trx.set_reference_block(reference_block_id);
-         trx.expiration = cc.head_block_time() + fc::seconds(30);
-         trx.max_net_usage_words = 100;
-         trx.sign(a_priv_key, chainid);
+         //trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+         //trx.set_reference_block(reference_block_id);
+         //trx.expiration = cc.head_block_time() + fc::seconds(30);
+         //trx.max_net_usage_words = 100;
+         //trx.sign(a_priv_key, chainid);
          trxs.emplace_back(std::move(trx));
          }
 
-         {
+         /*{
          signed_transaction trx;
+         trx.sn = trx_count;
+         trx_count++;
          trx.actions.push_back(act_b_to_a);
          trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
          trx.set_reference_block(reference_block_id);
@@ -326,7 +342,7 @@ struct txn_test_gen_plugin_impl {
          trx.max_net_usage_words = 100;
          trx.sign(b_priv_key, chainid);
          trxs.emplace_back(std::move(trx));
-         }
+         }*/
          }
       } catch ( const fc::exception& e ) {
          next(e.dynamic_copy_exception());
@@ -355,8 +371,11 @@ struct txn_test_gen_plugin_impl {
    int32_t txn_reference_block_lag;
 
    abi_serializer ultrainio_token_serializer = fc::json::from_string(ultrainio_token_abi).as<abi_def>();
+   static int64_t trx_count;
+
 };
 
+int64_t txn_test_gen_plugin_impl::trx_count = 0;
 txn_test_gen_plugin::txn_test_gen_plugin() {}
 txn_test_gen_plugin::~txn_test_gen_plugin() {}
 

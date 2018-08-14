@@ -38,6 +38,10 @@ add_test(NAME unit_test_wavm COMMAND unit_test
  -t \!wasm_tests/weighted_cpu_limit_tests
  --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
 
+if (build_ultrainio_test)
+    add_subdirectory( uranus )
+endif()
+
 if(ENABLE_COVERAGE_TESTING)
 
   set(Coverage_NAME ${PROJECT_NAME}_ut_coverage)
