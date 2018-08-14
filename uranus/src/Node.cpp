@@ -73,6 +73,13 @@ namespace ultrainio {
         m_isNonProducingNode = v;
     }
 
+    void UranusNode::setGlobalProducingNodeNumber(int32_t v) {
+        if (v > 0) {
+            ilog("setGlobalProducingNodeNumber ${num}", ("num", v));
+            m_globalProducingNodeNumber = v;
+        }
+    }
+
     bool UranusNode::verifyRole(uint32_t blockNum, uint16_t phase, const std::string &role_proof,
                                 const std::string &pk) {
         if (role_proof.empty()) {
@@ -793,7 +800,7 @@ namespace ultrainio {
         // the expected value.
         if (m_isNonProducingNode && pk == std::string((char *) UranusNode::URANUS_PUBLIC_KEY))
             return 0;
-        return VoterSystem::TOTAL_STAKES / GLOBAL_NODE_NUMBER;
+        return VoterSystem::TOTAL_STAKES / m_globalProducingNodeNumber;
     }
 
     ultrainio::chain::block_id_type UranusNode::getPreviousHash() {

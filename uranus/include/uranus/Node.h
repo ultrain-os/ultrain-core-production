@@ -18,7 +18,6 @@
 
 namespace ultrainio {
 
-#define GLOBAL_NODE_NUMBER         6
 #define MOST_ATTACK_NUMBER_F       ((VoterSystem::VOTER_STAKES - 50) / 3)
 #define THRESHOLD_SEND_ECHO        (MOST_ATTACK_NUMBER_F + 1)
 #define THRESHOLD_NEXT_ROUND       (2 * MOST_ATTACK_NUMBER_F + 1)
@@ -43,6 +42,7 @@ namespace ultrainio {
         static std::shared_ptr<UranusNode> getInstance();
 
         void setNonProducingNode(bool);
+        void setGlobalProducingNodeNumber(int32_t);
 
         static bool verifyRole(uint32_t blockNum, uint16_t phase, const std::string &role_proof, const std::string &pk);
 
@@ -147,6 +147,8 @@ namespace ultrainio {
         bool m_syncing;
         bool m_syncFailed;
         bool m_isNonProducingNode = false;
+        // 6 seems to be a good number :)
+        int32_t m_globalProducingNodeNumber = 6;
         ConsensusPhase m_phase;
         uint32_t m_baxCount;
         boost::asio::deadline_timer m_timer;
