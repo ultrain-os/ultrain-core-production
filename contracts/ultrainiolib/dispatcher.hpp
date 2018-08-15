@@ -26,7 +26,7 @@ namespace ultrainio {
     * static Contract::on( ActionType )
     * ```
     *
-    * For this to work the Actions must be dervied from the
+    * For this to work the Actions must be derived from ultrainio::contract
     *
     */
    template<typename Contract, typename FirstAction, typename SecondAction, typename... Actions>
@@ -38,6 +38,30 @@ namespace ultrainio {
       return ultrainio::dispatch<Contract,SecondAction,Actions...>( code, act );
    }
 
+   /**
+    * @defgroup dispatcher Dispatcher API
+    * @brief Defines functions to dispatch action to proper action handler inside a contract
+    * @ingroup contractdev
+    */
+   
+   /**
+    * @defgroup dispatchercpp Dispatcher C++ API
+    * @brief Defines C++ functions to dispatch action to proper action handler inside a contract
+    * @ingroup dispatcher
+    * @{
+    */
+
+   /**
+    * Unpack the received action and execute the correponding action handler
+    * 
+    * @brief Unpack the received action and execute the correponding action handler
+    * @tparam T - The contract class that has the correponding action handler, this contract should be derived from ultrainio::contract
+    * @tparam Q - The namespace of the action handler function 
+    * @tparam Args - The arguments that the action handler accepts, i.e. members of the action
+    * @param obj - The contract object that has the correponding action handler
+    * @param func - The action handler
+    * @return true  
+    */
    template<typename T, typename Q, typename... Args>
    bool execute_action( T* obj, void (Q::*func)(Args...)  ) {
       size_t size = action_data_size();
@@ -56,14 +80,16 @@ namespace ultrainio {
          free(buffer);
       }
 
-      auto f2 = [&]( auto... a ){
-         (obj->*func)( a... );
+      auto f2 = [&]( auto... a ){  
+         (obj->*func)( a... ); 
       };
 
       boost::mp11::tuple_apply( f2, args );
       return true;
    }
+ /// @}  dispatcher
 
+// Helper macro for ULTRAINIO_API
 #define ULTRAINIO_API_CALL( r, OP, elem ) \
    else if(action == ::ultrainio::string_to_name_ex( BOOST_PP_STRINGIZE(elem) )) { \
       ultrainio::execute_action( &thiscontract, &OP::elem ); \
@@ -74,6 +100,19 @@ namespace ultrainio {
    BOOST_PP_SEQ_FOR_EACH( ULTRAINIO_API_CALL, TYPE, MEMBERS ) \
    else {}
 
+/** 
+ * Convenient macro to create contract apply handler
+ * To be able to use this macro, the contract needs to be derived from ultrainio::contract
+ * 
+ * @brief Convenient macro to create contract apply handler 
+ * @param TYPE - The class name of the contract
+ * @param MEMBERS - The sequence of available actions supported by this contract
+ * 
+ * Example:
+ * @code
+ * ULTRAINIO_ABI( ultrainio::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )
+ * @endcode
+ */
 #define ULTRAINIO_ABI( TYPE, MEMBERS ) \
 extern "C" { \
    void apply( uint64_t receiver, uint64_t code, uint64_t actH, uint64_t actL ) { \
@@ -90,6 +129,7 @@ extern "C" { \
       } \
    } \
 } \
+ /// @}  dispatcher
 
 
    /*
@@ -104,7 +144,7 @@ extern "C" { \
       T contract;
    };
 
-   void dispatch( account_name code, account_name action,
+   void dispatch( account_name code, account_name action, 
    */
 
 }

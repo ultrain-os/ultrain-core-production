@@ -24,27 +24,27 @@ public:
    ultrainio_token_tester() {
       produce_blocks( 2 );
 
-      create_accounts( { N(alice), N(bob), N(carol), N(ultrainio.token) } );
+      create_accounts( { N(alice), N(bob), N(carol), N(utrio.token) } );
       produce_blocks( 2 );
 
-      set_code( N(ultrainio.token), ultrainio_token_wast );
-      set_abi( N(ultrainio.token), ultrainio_token_abi );
+      set_code( N(utrio.token), ultrainio_token_wast );
+      set_abi( N(utrio.token), ultrainio_token_abi );
 
       produce_blocks();
 
-      const auto& accnt = control->db().get<account_object,by_name>( N(ultrainio.token) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(utrio.token) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-      abi_ser.set_abi(abi);
+      abi_ser.set_abi(abi, abi_serializer_max_time);
    }
 
    action_result push_action( const account_name& signer, const action_name &name, const variant_object &data ) {
       string action_type_name = abi_ser.get_action_type(name);
 
       action act;
-      act.account = N(ultrainio.token);
+      act.account = N(utrio.token);
       act.name    = name;
-      act.data    = abi_ser.variant_to_binary( action_type_name, data );
+      act.data    = abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
       return base_tester::push_action( std::move(act), uint64_t(signer));
    }
@@ -53,22 +53,22 @@ public:
    {
       auto symb = ultrainio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(ultrainio.token), symbol_code, N(stat), symbol_code );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "currency_stats", data );
+      vector<char> data = get_row_by_account( N(utrio.token), symbol_code, N(stat), symbol_code );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "currency_stats", data, abi_serializer_max_time );
    }
 
    fc::variant get_account( account_name acc, const string& symbolname)
    {
       auto symb = ultrainio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(ultrainio.token), acc, N(accounts), symbol_code );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data );
+      vector<char> data = get_row_by_account( N(utrio.token), acc, N(accounts), symbol_code );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data, abi_serializer_max_time );
    }
 
    action_result create( account_name issuer,
                 asset        maximum_supply ) {
 
-      return push_action( N(ultrainio.token), N(create), mvo()
+      return push_action( N(utrio.token), N(create), mvo()
            ( "issuer", issuer)
            ( "maximum_supply", maximum_supply)
       );

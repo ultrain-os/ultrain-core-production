@@ -45,6 +45,7 @@ endif()
 
 target_link_libraries( nodultrain
         PRIVATE appbase
+        PRIVATE -Wl,${whole_archive_flag} login_plugin               -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} history_plugin             -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} bnet_plugin                -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} history_api_plugin         -Wl,${no_whole_archive_flag}
@@ -99,3 +100,5 @@ install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/ultrainio
                               WORLD_READ
                               WORLD_EXECUTE
 			)
+
+mas_sign(nodultrain)

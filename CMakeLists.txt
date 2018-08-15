@@ -6,6 +6,13 @@ enable_testing()
 
 add_definitions(-DULTRAIN_SUPPORT_TYPESCRIPT)
 
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+   message(WARNING "CMAKE_INSTALL_PREFIX is set to default path of ${CMAKE_INSTALL_PREFIX}, resetting to ${CMAKE_INSTALL_PREFIX}/ultrainio")
+   set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/ultrainio")
+elseif ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
+   message(WARNING "CMAKE_INSTALL_PREFIX is explicitly set to /usr/local. This is not recommended.")
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/vendor/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
@@ -13,6 +20,7 @@ include( GNUInstallDirs )
 include( VersionMacros )
 include( SetupTargetMacros )
 include( InstallDirectoryPermissions )
+include( MASSigning )
 
 set( BLOCKCHAIN_NAME "UTRIO" )
 set( CMAKE_CXX_STANDARD 14 )
@@ -65,6 +73,8 @@ if ("${OPENSSL_ROOT_DIR}" STREQUAL "")
       message(FATAL_ERROR "openssl not found and don't know where to look, please specify OPENSSL_ROOT_DIR")
    endif()
 endif()
+
+find_package(Secp256k1 REQUIRED)
 
 if(UNIX)
   if(APPLE)
@@ -210,6 +220,7 @@ add_subdirectory( core )
 add_subdirectory( crypto )
 add_subdirectory( log )
 add_subdirectory( tests )
+#add_subdirectory( tools )
 add_subdirectory( vendor )
 add_subdirectory( unittests )
 add_subdirectory( uranus )
@@ -221,6 +232,13 @@ install(FILES testnet.template DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/ultr
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/ultrainio)
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/ultrainio/launcher)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testnet.template ${CMAKE_CURRENT_BINARY_DIR}/etc/ultrainio/launcher/testnet.template COPYONLY)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ultrainio.version.in ${CMAKE_CURRENT_BINARY_DIR}/ultrainio.version.hpp)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ultrainio.version.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/UltrainioTester.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/EosioTester.cmake @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/UltrainioBuildTester.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/EosioTester.cmake @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/UltrainioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/)
 
 include(installer)
 

@@ -37,7 +37,7 @@ namespace ultrainio { namespace chain {
     block_header_state result;
 
     if( when != block_timestamp_type() ) {
-       FC_ASSERT( when > header.timestamp, "next block must be in the future" );
+       ULTRAIN_ASSERT( when > header.timestamp, block_validate_exception, "next block must be in the future" );
     } else {
        (when = header.timestamp).slot++;
     }
@@ -129,8 +129,8 @@ namespace ultrainio { namespace chain {
    }
 
   void block_header_state::set_new_producers( producer_schedule_type pending ) {
-      FC_ASSERT( pending.version == active_schedule.version + 1, "wrong producer schedule version specified" );
-      FC_ASSERT( pending_schedule.producers.size() == 0,
+      ULTRAIN_ASSERT( pending.version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified" );
+      ULTRAIN_ASSERT( pending_schedule.producers.size() == 0, producer_schedule_exception,
                  "cannot set new pending producers until last pending is confirmed" );
       header.new_producers     = move(pending);
       pending_schedule_hash    = digest_type::hash( *header.new_producers );
@@ -148,14 +148,14 @@ namespace ultrainio { namespace chain {
    *  If the header specifies new_producers then apply them accordingly.
    */
   block_header_state block_header_state::next( const signed_block_header& h, bool trust )const {
-    FC_ASSERT( h.timestamp != block_timestamp_type(), "", ("h",h) );
-    FC_ASSERT( h.header_extensions.size() == 0, "no supported extensions" );
+    ULTRAIN_ASSERT( h.timestamp != block_timestamp_type(), block_validate_exception, "", ("h",h) );
+    ULTRAIN_ASSERT( h.header_extensions.size() == 0, block_validate_exception, "no supported extensions" );
 
-    FC_ASSERT( h.timestamp > header.timestamp, "block must be later in time" );
-    FC_ASSERT( h.previous == id, "block must link to current state" );
+    ULTRAIN_ASSERT( h.timestamp > header.timestamp, block_validate_exception, "block must be later in time" );
+    ULTRAIN_ASSERT( h.previous == id, unlinkable_block_exception, "block must link to current state" );
     auto result = generate_next( h.timestamp );
-    FC_ASSERT( result.header.producer == h.producer, "wrong producer specified" );
-    FC_ASSERT( result.header.schedule_version == h.schedule_version, "schedule_version in signed block is corrupted" );
+    ULTRAIN_ASSERT( result.header.producer == h.producer, wrong_producer, "wrong producer specified" );
+    ULTRAIN_ASSERT( result.header.schedule_version == h.schedule_version, producer_schedule_exception, "schedule_version in signed block is corrupted" );
 
     //    auto itr = producer_to_last_produced.find(h.producer);
     //    if( itr != producer_to_last_produced.end() ) {
@@ -172,7 +172,7 @@ namespace ultrainio { namespace chain {
     auto was_pending_promoted = result.maybe_promote_pending();
 
     if( h.new_producers ) {
-      FC_ASSERT( !was_pending_promoted, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
+      ULTRAIN_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
       result.set_new_producers( *h.new_producers );
     }
 
@@ -242,13 +242,11 @@ namespace ultrainio { namespace chain {
      return digest_type::hash( std::make_pair(header_bmroot, pending_schedule_hash) );
   }
 
-  void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer, bool trust ) {
+  void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer ) {
      auto d = sig_digest();
      // xiaofen sign
      // header.producer_signature = signer( d );
-     if( !trust ) {
-        //FC_ASSERT( block_signing_key == fc::crypto::public_key( header.producer_signature, d ) );
-     }
+     // ULTRAIN_ASSERT( block_signing_key == fc::crypto::public_key( header.producer_signature, d ), wrong_signing_key, "block is signed with unexpected key" );
   }
 
   public_key_type block_header_state::signee()const {
@@ -257,12 +255,12 @@ namespace ultrainio { namespace chain {
 
   void block_header_state::add_confirmation( const header_confirmation& conf ) {
      for( const auto& c : confirmations )
-        FC_ASSERT( c.producer != conf.producer, "block already confirmed by this producer" );
+        ULTRAIN_ASSERT( c.producer != conf.producer, producer_double_confirm, "block already confirmed by this producer" );
 
      auto key = active_schedule.get_producer_key( conf.producer );
-     FC_ASSERT( key != public_key_type(), "producer not in current schedule" );
+     ULTRAIN_ASSERT( key != public_key_type(), producer_not_in_schedule, "producer not in current schedule" );
      auto signer = fc::crypto::public_key( conf.producer_signature, sig_digest(), true );
-     FC_ASSERT( signer == key, "confirmation not signed by expected key" );
+     ULTRAIN_ASSERT( signer == key, wrong_signing_key, "confirmation not signed by expected key" );
 
      confirmations.emplace_back( conf );
   }

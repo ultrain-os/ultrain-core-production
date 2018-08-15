@@ -15,6 +15,8 @@ target_link_libraries( kultraind
         PRIVATE http_plugin
         PRIVATE ultrainio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
+mas_sign(kultraind)
+
 install( TARGETS
    kultraind
 

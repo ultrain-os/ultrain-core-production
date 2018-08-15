@@ -39,10 +39,10 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, ultrainio_system::ultrainio_system_tester) { 
    BOOST_REQUIRE_MESSAGE(table_allocation_bytes > increment_contract_bytes, "increment_contract_bytes must be less than table_allocation_bytes for this test setup to work");
    buyrambytes(N(ultrainio), N(ultrainio), 70000);
    produce_blocks(10);
-   create_account_with_resources(N(testram11111),N(ultrainio), init_request_bytes);
-   create_account_with_resources(N(testram22222),N(ultrainio), init_request_bytes + 1150);
+   create_account_with_resources(N(testram11111),N(ultrainio), init_request_bytes + 40);
+   create_account_with_resources(N(testram22222),N(ultrainio), init_request_bytes + 1190);
    produce_blocks(10);
-   BOOST_REQUIRE_EQUAL( success(), stake( "ultrainio.stake", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "utrio.stake", "testram11111", core_from_string("10.0000"), core_from_string("5.0000") ) );
    produce_blocks(10);
 
    for (auto i = 0; i < 10; ++i) {

@@ -4,7 +4,7 @@
  */
 
 #pragma once
-#include <ultrainio/history_plugin.hpp>
+#include <ultrainio/history_plugin/history_plugin.hpp>
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <ultrainio/http_plugin/http_plugin.hpp>
 

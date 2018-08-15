@@ -224,10 +224,10 @@ BOOST_AUTO_TEST_SUITE(dice_tests)
 
 BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
-   create_accounts( {N(ultrainio.token), N(dice),N(alice),N(bob),N(carol),N(david)}, false);
+   create_accounts( {N(utrio.token), N(dice),N(alice),N(bob),N(carol),N(david)}, false);
 
-   set_code(N(ultrainio.token), ultrainio_token_wast);
-   set_abi(N(ultrainio.token), ultrainio_token_abi);
+   set_code(N(utrio.token), ultrainio_token_wast);
+   set_abi(N(utrio.token), ultrainio_token_abi);
 
    produce_block();
 
@@ -235,20 +235,20 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    add_dice_authority(N(bob));
    add_dice_authority(N(carol));
 
-   push_action(N(ultrainio.token), N(create), N(ultrainio.token), mvo()
-     ("issuer", "ultrainio.token")
+   push_action(N(utrio.token), N(create), N(utrio.token), mvo()
+     ("issuer", "utrio.token")
      ("maximum_supply", core_from_string("1000000000.0000"))
    );
 
-   push_action(N(ultrainio.token), N(issue), N(ultrainio.token), mvo()
+   push_action(N(utrio.token), N(issue), N(utrio.token), mvo()
      ("to", "ultrainio")
      ("quantity", core_from_string("1000000000.0000"))
      ("memo", "")
    );
 
-   transfer( N(ultrainio), N(alice), core_from_string("10000.0000"), "", N(ultrainio.token) );
-   transfer( N(ultrainio), N(bob),   core_from_string("10000.0000"), "", N(ultrainio.token) );
-   transfer( N(ultrainio), N(carol), core_from_string("10000.0000"), "", N(ultrainio.token) );
+   transfer( N(ultrainio), N(alice), core_from_string("10000.0000"), "", N(utrio.token) );
+   transfer( N(ultrainio), N(bob),   core_from_string("10000.0000"), "", N(utrio.token) );
+   transfer( N(ultrainio), N(carol), core_from_string("10000.0000"), "", N(utrio.token) );
 
    produce_block();
 
@@ -387,7 +387,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    BOOST_REQUIRE_EQUAL( balance_of(N(alice)), core_from_string("1.0000"));
 
    BOOST_REQUIRE_EQUAL(
-      get_currency_balance(N(ultrainio.token), symbol(CORE_SYMBOL), N(alice)),
+      get_currency_balance(N(utrio.token), symbol(CORE_SYMBOL), N(alice)),
       core_from_string("10009.0000")
    );
 
@@ -399,7 +399,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    withdraw( N(alice), core_from_string("1.0000"));
 
    BOOST_REQUIRE_EQUAL(
-      get_currency_balance(N(ultrainio.token), symbol(CORE_SYMBOL), N(alice)),
+      get_currency_balance(N(utrio.token), symbol(CORE_SYMBOL), N(alice)),
       core_from_string("10010.0000")
    );
 

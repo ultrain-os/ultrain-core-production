@@ -56,6 +56,12 @@ void validate_authority_precondition( const apply_context& context, const author
                   );
       }
    }
+
+   if( context.control.is_producing_block() ) {
+      for( const auto& p : auth.keys ) {
+         context.control.check_key_list( p.key );
+      }
+   }
 }
 
 /**
@@ -86,7 +92,7 @@ void apply_ultrainio_newaccount(apply_context& context) {
    }
 
    auto existing_account = db.find<account_object, by_name>(create.name);
-   ULTRAIN_ASSERT(existing_account == nullptr, action_validate_exception,
+   ULTRAIN_ASSERT(existing_account == nullptr, account_name_exists_exception,
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
@@ -127,14 +133,14 @@ void apply_ultrainio_setcode(apply_context& context) {
    auto  act = context.act.data_as<setcode>();
    context.require_authorization(act.account);
 
-   FC_ASSERT( act.vmtype == 0 );
-   FC_ASSERT( act.vmversion == 0 );
+   ULTRAIN_ASSERT( act.vmtype == 0, invalid_contract_vm_type, "code should be 0" );
+   ULTRAIN_ASSERT( act.vmversion == 0, invalid_contract_vm_version, "version should be 0" );
 
    fc::sha256 code_id; /// default ID == 0
-   
+
    if( act.code.size() > 0 ) {
      code_id = fc::sha256::hash( act.code.data(), (uint32_t)act.code.size() );
-     wasm_interface::validate(act.code);
+     wasm_interface::validate(context.control, act.code);
    }
 
     const auto& account = db.get<account_object, by_name>(act.account);
@@ -148,7 +154,7 @@ void apply_ultrainio_setcode(apply_context& context) {
    int64_t old_size  = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
    int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
-   FC_ASSERT( account.code_version != code_id, "contract is already running this version of code" );
+   ULTRAIN_ASSERT( account.code_version != code_id, set_exact_code, "contract is already running this version of code" );
 
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
@@ -287,7 +293,8 @@ void apply_ultrainio_deleteauth(apply_context& context) {
       const auto& index = db.get_index<permission_link_index, by_permission_name>();
       auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
       ULTRAIN_ASSERT(range.first == range.second, action_validate_exception,
-                 "Cannot delete a linked authority. Unlink the authority first");
+                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.", 
+                 ("code", string(range.first->code))("type", string(range.first->message_type)));
    }
 
    const auto& permission = authorization.get_permission({remove.account, remove.permission});

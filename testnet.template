@@ -56,23 +56,58 @@ wcmd () {
 }
 
 cacmd () {
-    ecmd create account ultrainio $*
+    programs/clultrain/clultrain  --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake-net "10000000.0000 SYS" --stake-cpu "10000000.0000 SYS"  --buy-ram "10000000.0000 SYS" ultrainio $* >> $logfile 2>&1
+    ecmd system regproducer $1 $2
+    ecmd system voteproducer prods $1 $1
 }
 
 sleep 2
 ecmd get info
 
-
 wcmd create -n ignition
-# Manual deployers, add a line below this block that looks like:
-#    wcmd import -n ignition $PRODKEY[0]
-#    wcmd import -n ignition $PRODKEY[1]
-#    ...
-#    wcmd import -n ignition $PRODKEY[20]
 
+# Manual deployers, add a line below this block that looks like:
+#    wcmd import -n ignition --private-key $PRODKEY[0]
+#    wcmd import -n ignition --private-key $PRODKEY[1]
+#    ...
+#    wcmd import -n ignition --private-key $PRODKEY[20]
 # where $BIOSKEY is replaced by the private key for the bios node
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
+
+ecmd set contract ultrainio contracts/ultrainio.bios contracts/ultrainio.bios/ultrainio.bios.wast contracts/ultrainio.bios/ultrainio.bios.abi
+
+# Create required system accounts
+ecmd create key
+pubsyskey=`grep "^Public key:" $logfile | tail -1 | sed "s/^Public key://"`
+prisyskey=`grep "^Private key:" $logfile | tail -1 | sed "s/^Private key://"`
+echo ultrainio.* keys: $prisyskey $pubsyskey >> $logfile
+wcmd import -n ignition --private-key $prisyskey
+ecmd create account ultrainio ultrainio.bpay $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.msig $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.names $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.ram $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.ramfee $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.saving $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.stake $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.token $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.vpay $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.sudo $pubsyskey $pubsyskey
+
+ecmd set contract ultrainio.token contracts/ultrainio.token contracts/ultrainio.token/ultrainio.token.wast contracts/ultrainio.token/ultrainio.token.abi
+ecmd set contract ultrainio.msig contracts/ultrainio.msig contracts/ultrainio.msig/ultrainio.msig.wast contracts/ultrainio.msig/ultrainio.msig.abi
+ecmd set contract ultrainio.sudo contracts/ultrainio.sudo contracts/ultrainio.sudo/ultrainio.sudo.wast contracts/ultrainio.sudo/ultrainio.sudo.abi
+
+echo ===== Start: $step ============ >> $logfile
+echo executing: clultrain --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio.token create '[ "ultrainio", "10000000000.0000 SYS" ]' -p ultrainio.token | tee -a $logfile
+echo executing: clultrain --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio.token issue '[ "ultrainio", "1000000000.0000 SYS", "memo" ]' -p ultrainio | tee -a $logfile
+echo ----------------------- >> $logfile
+programs/clultrain/clultrain --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio.token create '[ "ultrainio", "10000000000.0000 SYS" ]' -p ultrainio.token >> $logfile 2>&1
+programs/clultrain/clultrain --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio.token issue '[ "ultrainio", "1000000000.0000 SYS", "memo" ]' -p ultrainio >> $logfile 2>&1
+echo ==== End: $step ============== >> $logfile
+step=$(($step + 1))
+
+ecmd set contract ultrainio contracts/ultrainio.system contracts/ultrainio.system/ultrainio.system.wast contracts/ultrainio.system/ultrainio.system.abi
 
 # Manual deployers, add a series of lines below this block that looks like:
 #    cacmd $PRODNAME[0] $OWNERKEY[0] $ACTIVEKEY[0]
@@ -83,27 +118,5 @@ wcmd create -n ignition
 # public key
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT cacmd
-
-
-ecmd set contract ultrainio contracts/ultrainio.bios contracts/ultrainio.bios/ultrainio.bios.wast contracts/ultrainio.bios/ultrainio.bios.abi
-
-#the setprods.json argument cannot pass through the function call due to embedded quotes
-echo ===== Start: $step ============ >> $logfile
-echo executing: clultrain  --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio setprods setprods.json -p ultrainio@active | tee -a $logfile
-echo ----------------------- >> $logfile
-programs/clultrain/clultrain  --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio setprods setprods.json -p ultrainio@active >> $logfile 2>&1
-echo ==== End: $step ============== >> $logfile
-step=$(($step + 1))
-
-ecmd set contract ultrainio contracts/ultrainio.system contracts/ultrainio.system/ultrainio.system.wast contracts/ultrainio.system/ultrainio.system.abi
-
-echo ===== Start: $step ============ >> $logfile
-echo executing: clultrain  --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio issue '{"to":"ultrainio","quantity":"1000000000.0000 UTR","memo":"init"}' -p ultrainio@active | tee -a $logfile
-echo ----------------------- >> $logfile
-programs/clultrain/clultrain  --wallet-url $wdurl --url http://$bioshost:$biosport push action ultrainio issue '{"to":"ultrainio","quantity":"1000000000.0000 UTR","memo":"init"}' -p ultrainio@active >> $logfile 2>&1
-echo ==== End: $step ============== >> $logfile
-step=$(($step + 1))
-
-for a in {a..u}; do ecmd transfer ultrainio init$a 1000000.0000 "\"fund_producer_init$a\""; done
 
 pkill -15 kultraind

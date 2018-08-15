@@ -36,10 +36,10 @@ class currency_tester : public TESTER {
          string action_type_name = abi_ser.get_action_type(name);
 
          action act;
-         act.account = N(ultrainio.token);
+         act.account = N(utrio.token);
          act.name = name;
          act.authorization = vector<permission_level>{{signer, config::active_name}};
-         act.data = abi_ser.variant_to_binary(action_type_name, data);
+         act.data = abi_ser.variant_to_binary(action_type_name, data, abi_serializer_max_time);
 
          signed_transaction trx;
          trx.actions.emplace_back(std::move(act));
@@ -50,7 +50,7 @@ class currency_tester : public TESTER {
       }
 
       asset get_balance(const account_name& account) const {
-         return get_currency_balance(N(ultrainio.token), symbol(SY(4,CUR)), account);
+         return get_currency_balance(N(utrio.token), symbol(SY(4,CUR)), account);
       }
 
       auto transfer(const account_name& from, const account_name& to, const std::string& quantity, const std::string& memo = "") {
@@ -65,7 +65,7 @@ class currency_tester : public TESTER {
       }
 
       auto issue(const account_name& to, const std::string& quantity, const std::string& memo = "") {
-         auto trace = push_action(N(ultrainio.token), N(issue), mutable_variant_object()
+         auto trace = push_action(N(utrio.token), N(issue), mutable_variant_object()
                                   ("to",       to)
                                   ("quantity", quantity)
                                   ("memo",     memo)
@@ -75,12 +75,12 @@ class currency_tester : public TESTER {
       }
 
       currency_tester()
-      :TESTER(),abi_ser(json::from_string(ultrainio_token_abi).as<abi_def>())
+      :TESTER(),abi_ser(json::from_string(ultrainio_token_abi).as<abi_def>(), abi_serializer_max_time)
       {
-         create_account( N(ultrainio.token));
-         set_code( N(ultrainio.token), ultrainio_token_wast );
+         create_account( N(utrio.token));
+         set_code( N(utrio.token), ultrainio_token_wast );
 
-         auto result = push_action(N(ultrainio.token), N(create), mutable_variant_object()
+         auto result = push_action(N(utrio.token), N(create), mutable_variant_object()
                  ("issuer",       ultrainio_token)
                  ("maximum_supply", "1000000000.0000 CUR")
                  ("can_freeze", 0)
@@ -89,7 +89,7 @@ class currency_tester : public TESTER {
          );
          wdump((result));
 
-         result = push_action(N(ultrainio.token), N(issue), mutable_variant_object()
+         result = push_action(N(utrio.token), N(issue), mutable_variant_object()
                  ("to",       ultrainio_token)
                  ("quantity", "1000000.0000 CUR")
                  ("memo", "gggggggggggg")
@@ -102,14 +102,14 @@ class currency_tester : public TESTER {
       static const std::string ultrainio_token;
 };
 
-const std::string currency_tester::ultrainio_token = name(N(ultrainio.token)).to_string();
+const std::string currency_tester::ultrainio_token = name(N(utrio.token)).to_string();
 
 BOOST_AUTO_TEST_SUITE(currency_tests)
 
 BOOST_AUTO_TEST_CASE( bootstrap ) try {
    auto expected = asset::from_string( "1000000.0000 CUR" );
    currency_tester t;
-   auto actual = t.get_currency_balance(N(ultrainio.token), expected.get_symbol(), N(ultrainio.token));
+   auto actual = t.get_currency_balance(N(utrio.token), expected.get_symbol(), N(utrio.token));
    BOOST_REQUIRE_EQUAL(expected, actual);
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
@@ -118,7 +118,7 @@ BOOST_FIXTURE_TEST_CASE( test_transfer, currency_tester ) try {
 
    // make a transfer from the contract to a user
    {
-      auto trace = push_action(N(ultrainio.token), N(transfer), mutable_variant_object()
+      auto trace = push_action(N(utrio.token), N(transfer), mutable_variant_object()
          ("from", ultrainio_token)
          ("to",   "alice")
          ("quantity", "100.0000 CUR")
@@ -135,14 +135,14 @@ BOOST_FIXTURE_TEST_CASE( test_transfer, currency_tester ) try {
 BOOST_FIXTURE_TEST_CASE( test_duplicate_transfer, currency_tester ) {
    create_accounts( {N(alice)} );
 
-   auto trace = push_action(N(ultrainio.token), N(transfer), mutable_variant_object()
+   auto trace = push_action(N(utrio.token), N(transfer), mutable_variant_object()
       ("from", ultrainio_token)
       ("to",   "alice")
       ("quantity", "100.0000 CUR")
       ("memo", "fund Alice")
    );
 
-   BOOST_REQUIRE_THROW(push_action(N(ultrainio.token), N(transfer), mutable_variant_object()
+   BOOST_REQUIRE_THROW(push_action(N(utrio.token), N(transfer), mutable_variant_object()
                                     ("from", ultrainio_token)
                                     ("to",   "alice")
                                     ("quantity", "100.0000 CUR")
@@ -160,7 +160,7 @@ BOOST_FIXTURE_TEST_CASE( test_addtransfer, currency_tester ) try {
 
    // make a transfer from the contract to a user
    {
-      auto trace = push_action(N(ultrainio.token), N(transfer), mutable_variant_object()
+      auto trace = push_action(N(utrio.token), N(transfer), mutable_variant_object()
          ("from", ultrainio_token)
          ("to",   "alice")
          ("quantity", "100.0000 CUR")
@@ -175,7 +175,7 @@ BOOST_FIXTURE_TEST_CASE( test_addtransfer, currency_tester ) try {
 
    // make a transfer from the contract to a user
    {
-      auto trace = push_action(N(ultrainio.token), N(transfer), mutable_variant_object()
+      auto trace = push_action(N(utrio.token), N(transfer), mutable_variant_object()
          ("from", ultrainio_token)
          ("to",   "alice")
          ("quantity", "10.0000 CUR")
@@ -195,7 +195,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
 
    // make a transfer from the contract to a user
    {
-      auto trace = push_action(N(ultrainio.token), N(transfer), mutable_variant_object()
+      auto trace = push_action(N(utrio.token), N(transfer), mutable_variant_object()
          ("from", ultrainio_token)
          ("to",   "alice")
          ("quantity", "100.0000 CUR")
@@ -230,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE( test_fullspend, currency_tester ) try {
 
    // make a transfer from the contract to a user
    {
-      auto trace = push_action(N(ultrainio.token), N(transfer), mutable_variant_object()
+      auto trace = push_action(N(utrio.token), N(transfer), mutable_variant_object()
          ("from", ultrainio_token)
          ("to",   "alice")
          ("quantity", "100.0000 CUR")
@@ -298,13 +298,13 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // from empty string
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string(""),
-                            fc::assert_exception, fc_assert_exception_message_is("creating symbol from empty string"));
+                            symbol_type_exception, fc_exception_message_is("creating symbol from empty string"));
    }
 
    // precision part missing
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string("RND"),
-                            fc::assert_exception, fc_assert_exception_message_is("missing comma in symbol"));
+                            symbol_type_exception, fc_exception_message_is("missing comma in symbol"));
    }
 
    // 0 decimals part
@@ -317,13 +317,13 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // invalid - contains lower case characters, no validation
    {
       BOOST_CHECK_EXCEPTION(symbol malformed(SY(6,EoS)),
-                            fc::assert_exception, fc_assert_exception_message_is("invalid symbol: EoS"));
+                            symbol_type_exception, fc_exception_message_is("invalid symbol: EoS"));
    }
 
    // invalid - contains lower case characters, exception thrown
    {
       BOOST_CHECK_EXCEPTION(symbol(5,"EoS"),
-                            fc::assert_exception, fc_assert_exception_message_is("invalid character in symbol name"));
+                            symbol_type_exception, fc_exception_message_is("invalid character in symbol name"));
    }
 
    // Missing decimal point, should create asset with 0 decimals
@@ -409,7 +409,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    set_code(N(proxy), proxy_wast);
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>());
+   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
    {
@@ -420,7 +420,8 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       setowner_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
-         ("delay", 10)
+         ("delay", 10),
+         abi_serializer_max_time
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
@@ -434,7 +435,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
    fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
    {
-      auto trace = push_action(N(ultrainio.token), N(transfer), mutable_variant_object()
+      auto trace = push_action(N(utrio.token), N(transfer), mutable_variant_object()
          ("from", ultrainio_token)
          ("to",   "proxy")
          ("quantity", "5.0000 CUR")
@@ -464,7 +465,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    set_code(N(bob), proxy_wast);
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>());
+   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
    {
@@ -475,7 +476,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "bob")
-         ("delay", 10)
+         ("delay", 10),
+         abi_serializer_max_time
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
@@ -488,7 +490,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    const auto& index = control->db().get_index<generated_transaction_multi_index,by_trx_id>();
    BOOST_REQUIRE_EQUAL(0, index.size());
 
-   auto trace = push_action(N(ultrainio.token), N(transfer), mutable_variant_object()
+   auto trace = push_action(N(utrio.token), N(transfer), mutable_variant_object()
       ("from", ultrainio_token)
       ("to",   "proxy")
       ("quantity", "5.0000 CUR")
@@ -526,7 +528,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       setowner_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
-         ("delay", 0)
+         ("delay", 0),
+         abi_serializer_max_time
       );
       trx.actions.emplace_back(std::move(setowner_act));
 

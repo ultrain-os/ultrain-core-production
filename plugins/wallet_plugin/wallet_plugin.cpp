@@ -4,7 +4,8 @@
  */
 #include <ultrainio/wallet_plugin/wallet_plugin.hpp>
 #include <ultrainio/wallet_plugin/wallet_manager.hpp>
-
+#include <ultrainio/wallet_plugin/yubihsm_wallet.hpp>
+#include <ultrainio/chain/exceptions.hpp>
 #include <boost/filesystem/path.hpp>
 #include <chrono>
 
@@ -16,9 +17,7 @@ namespace ultrainio {
 
 static appbase::abstract_plugin& _wallet_plugin = app().register_plugin<wallet_plugin>();
 
-wallet_plugin::wallet_plugin()
-  : wallet_manager_ptr(new wallet_manager()) {
-}
+wallet_plugin::wallet_plugin() {}
 
 wallet_manager& wallet_plugin::get_wallet_manager() {
    return *wallet_manager_ptr;
@@ -34,27 +33,46 @@ void wallet_plugin::set_program_options(options_description& cli, options_descri
           "Activity is defined as any wallet command e.g. list-wallets.")
          ("ultrainio-key", bpo::value<std::string>(),
           "ultrainio key that will be imported automatically when a wallet is created.")
+         ("yubihsm-url", bpo::value<string>()->value_name("URL"),
+          "Override default URL of http://localhost:12345 for connecting to yubihsm-connector")
+         ("yubihsm-authkey", bpo::value<uint16_t>()->value_name("key_num"),
+          "Enables YubiHSM support using given Authkey")
          ;
 }
 
 void wallet_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing wallet plugin");
+   try {
+      wallet_manager_ptr = std::make_unique<wallet_manager>();
 
-   if (options.count("wallet-dir")) {
-      auto dir = options.at("wallet-dir").as<boost::filesystem::path>();
-      if (dir.is_relative())
-         wallet_manager_ptr->set_dir(app().data_dir() / dir);
-      else
-         wallet_manager_ptr->set_dir(dir);
-   }
-   if (options.count("unlock-timeout")) {
-      auto timeout = options.at("unlock-timeout").as<int64_t>();
-      std::chrono::seconds t(timeout);
-      wallet_manager_ptr->set_timeout(t);
-   }
-   if (options.count("ultrainio-key")) {
-      std::string ultrainio_wif_key = options.at("ultrainio-key").as<std::string>();
-      wallet_manager_ptr->set_ultrainio_key(ultrainio_wif_key);
-   }
+      if (options.count("wallet-dir")) {
+         auto dir = options.at("wallet-dir").as<boost::filesystem::path>();
+         if (dir.is_relative())
+            wallet_manager_ptr->set_dir(app().data_dir() / dir);
+         else
+            wallet_manager_ptr->set_dir(dir);
+      }
+      if (options.count("unlock-timeout")) {
+         auto timeout = options.at("unlock-timeout").as<int64_t>();
+         ULTRAIN_ASSERT(timeout > 0, chain::invalid_lock_timeout_exception, "Please specify a positive timeout ${t}", ("t", timeout));
+         std::chrono::seconds t(timeout);
+         wallet_manager_ptr->set_timeout(t);
+      }
+      if (options.count("yubihsm-authkey")) {
+         uint16_t key = options.at("yubihsm-authkey").as<uint16_t>();
+         string connector_endpoint = "http://localhost:12345";
+         if(options.count("yubihsm-url"))
+            connector_endpoint = options.at("yubihsm-url").as<string>();
+         try {
+            wallet_manager_ptr->own_and_use_wallet("YubiHSM", make_unique<yubihsm_wallet>(connector_endpoint, key));
+         }FC_LOG_AND_RETHROW()
+      }
+	  
+	  if (options.count("ultrainio-key")) {
+        std::string ultrainio_wif_key = options.at("ultrainio-key").as<std::string>();
+        wallet_manager_ptr->set_ultrainio_key(ultrainio_wif_key);
+       }
+   } FC_LOG_AND_RETHROW()
 }
+
 } // namespace ultrainio

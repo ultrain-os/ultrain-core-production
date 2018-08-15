@@ -68,7 +68,8 @@ class read_only {
 
 
       struct get_transaction_params {
-         transaction_id_type          id;
+         transaction_id_type           id;
+         optional<uint32_t>            block_num_hint;
       };
 
       struct get_transaction_result {
@@ -150,7 +151,7 @@ FC_REFLECT( ultrainio::history_apis::read_only::get_actions_params, (account_nam
 FC_REFLECT( ultrainio::history_apis::read_only::get_actions_result, (actions)(last_irreversible_block)(time_limit_exceeded_error) )
 FC_REFLECT( ultrainio::history_apis::read_only::ordered_action_result, (global_action_seq)(account_action_seq)(block_num)(block_time)(action_trace) )
 
-FC_REFLECT( ultrainio::history_apis::read_only::get_transaction_params, (id) )
+FC_REFLECT( ultrainio::history_apis::read_only::get_transaction_params, (id)(block_num_hint) )
 FC_REFLECT( ultrainio::history_apis::read_only::get_transaction_result, (id)(trx)(block_time)(block_num)(last_irreversible_block)(traces) )
 /*
 FC_REFLECT(ultrainio::history_apis::read_only::get_transaction_params, (transaction_id) )

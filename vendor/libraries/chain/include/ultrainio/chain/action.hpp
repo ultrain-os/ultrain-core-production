@@ -5,6 +5,7 @@
 #pragma once
 
 #include <ultrainio/chain/types.hpp>
+#include <ultrainio/chain/exceptions.hpp>
 
 namespace ultrainio { namespace chain {
 
@@ -86,8 +87,8 @@ namespace ultrainio { namespace chain {
 
       template<typename T>
       T data_as()const {
-         FC_ASSERT( account == T::get_account() );
-         FC_ASSERT( name == T::get_name()  );
+         ULTRAIN_ASSERT( account == T::get_account(), action_type_exception, "account is not consistent with action struct" );
+         ULTRAIN_ASSERT( name == T::get_name(), action_type_exception, "action name is not consistent with action struct"  );
          return fc::raw::unpack<T>(data);
       }
    };

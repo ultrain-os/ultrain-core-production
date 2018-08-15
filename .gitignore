@@ -5,6 +5,7 @@
 *.bc
 *.wast
 *.wast.hpp
+*.wasm
 *.s
 *.dot
 *.abi.hpp

@@ -3,7 +3,7 @@
 #include <random>
 
 #include "uranus/Voter.h"
-#include "crypto/Vrf.h"
+#include "crypto/Security.h"
 
 using namespace ultrainio;
 
@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
         nodeArray[i].phase0ProposerVote = 0;
         nodeArray[i].phase0VoterVote = 0;
         nodeArray[i].phase1VoterVote = 0;
-        Vrf::keypair(nodeArray[i].pk, nodeArray[i].sk);
+        security::vrf_keypair(nodeArray[i].pk, nodeArray[i].sk);
         totalGammaStakes += nodeArray[i].stakes;
     }
     for (int i = 0; i < nodeNum; i++) {

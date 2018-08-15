@@ -46,23 +46,23 @@ public:
 
       produce_blocks( 2 );
 
-      create_accounts({ N(ultrainio.token), N(ultrainio.ram), N(ultrainio.ramfee), N(ultrainio.stake),
-               N(ultrainio.bpay), N(ultrainio.vpay), N(ultrainio.saving), N(ultrainio.names) });
+      create_accounts({ N(utrio.token), N(utrio.ram), N(utrio.ramfee), N(utrio.stake),
+               N(utrio.names), N(utrio.vpay), N(utrio.saving), N(utrio.names) });
 
 
       produce_blocks( 100 );
 
-      set_code( N(ultrainio.token), ultrainio_token_wast );
-      set_abi( N(ultrainio.token), ultrainio_token_abi );
+      set_code( N(utrio.token), ultrainio_token_wast );
+      set_abi( N(utrio.token), ultrainio_token_abi );
 
       {
-         const auto& accnt = control->db().get<account_object,by_name>( N(ultrainio.token) );
+         const auto& accnt = control->db().get<account_object,by_name>( N(utrio.token) );
          abi_def abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-         token_abi_ser.set_abi(abi);
+         token_abi_ser.set_abi(abi, abi_serializer_max_time);
       }
 
-      create_currency( N(ultrainio.token), config::system_account_name, core_from_string("10000000000.0000") );
+      create_currency( N(utrio.token), config::system_account_name, core_from_string("10000000000.0000") );
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "ultrainio" ) );
 
@@ -73,7 +73,7 @@ public:
          const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
          abi_def abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-         abi_ser.set_abi(abi);
+         abi_ser.set_abi(abi, abi_serializer_max_time);
       }
 
       produce_blocks();
@@ -82,7 +82,7 @@ public:
       create_account_with_resources( N(bob111111111), config::system_account_name, core_from_string("0.4500"), false );
       create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("ultrainio")  + get_balance("ultrainio.ramfee") + get_balance("ultrainio.stake") + get_balance("ultrainio.ram") );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("ultrainio")  + get_balance("utrio.ramfee") + get_balance("utrio.stake") + get_balance("utrio.ram") );
    }
 
 
@@ -229,7 +229,7 @@ public:
          action act;
          act.account = config::system_account_name;
          act.name = name;
-         act.data = abi_ser.variant_to_binary( action_type_name, data );
+         act.data = abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
          return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : signer == N(bob111111111) ? N(alice1111111) : N(bob111111111) );
    }
@@ -329,23 +329,23 @@ public:
    }
 
    asset get_balance( const account_name& act ) {
-      vector<char> data = get_row_by_account( N(ultrainio.token), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
-      return data.empty() ? asset(0, symbol(CORE_SYMBOL)) : token_abi_ser.binary_to_variant("account", data)["balance"].as<asset>();
+      vector<char> data = get_row_by_account( N(utrio.token), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
+      return data.empty() ? asset(0, symbol(CORE_SYMBOL)) : token_abi_ser.binary_to_variant("account", data, abi_serializer_max_time)["balance"].as<asset>();
    }
 
    fc::variant get_total_stake( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, act, N(userres), act );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "user_resources", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "user_resources", data, abi_serializer_max_time );
    }
 
    fc::variant get_voter_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(voters), act );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "voter_info", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "voter_info", data, abi_serializer_max_time );
    }
 
    fc::variant get_producer_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producers), act );
-      return abi_ser.binary_to_variant( "producer_info", data );
+      return abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
    }
 
    void create_currency( name contract, name manager, asset maxsupply ) {
@@ -357,14 +357,14 @@ public:
    }
 
    void issue( name to, const asset& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(ultrainio.token), N(issue), manager, mutable_variant_object()
+      base_tester::push_action( N(utrio.token), N(issue), manager, mutable_variant_object()
                                 ("to",      to )
                                 ("quantity", amount )
                                 ("memo", "")
                                 );
    }
    void transfer( name from, name to, const asset& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(ultrainio.token), N(transfer), manager, mutable_variant_object()
+      base_tester::push_action( N(utrio.token), N(transfer), manager, mutable_variant_object()
                                 ("from",    from)
                                 ("to",      to )
                                 ("quantity", amount)
@@ -384,8 +384,8 @@ public:
    fc::variant get_stats( const string& symbolname ) {
       auto symb = ultrainio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(ultrainio.token), symbol_code, N(stat), symbol_code );
-      return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data );
+      vector<char> data = get_row_by_account( N(utrio.token), symbol_code, N(stat), symbol_code );
+      return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data, abi_serializer_max_time );
    }
 
    asset get_token_supply() {
@@ -395,53 +395,39 @@ public:
    fc::variant get_global_state() {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "ultrainio_global_state", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "ultrainio_global_state", data, abi_serializer_max_time );
 
    }
 
    fc::variant get_refund_request( name account ) {
       vector<char> data = get_row_by_account( config::system_account_name, account, N(refunds), account );
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "refund_request", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "refund_request", data, abi_serializer_max_time );
    }
 
    abi_serializer initialize_multisig() {
       abi_serializer msig_abi_ser;
       {
-         create_account_with_resources( N(ultrainio.msig), config::system_account_name );
-         BOOST_REQUIRE_EQUAL( success(), buyram( "ultrainio", "ultrainio.msig", core_from_string("5000.0000") ) );
+         create_account_with_resources( N(utrio.msig), config::system_account_name );
+         BOOST_REQUIRE_EQUAL( success(), buyram( "ultrainio", "utrio.msig", core_from_string("5000.0000") ) );
          produce_block();
 
          auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
                                                config::system_account_name,  mutable_variant_object()
-                                               ("account", "ultrainio.msig")
+                                               ("account", "utrio.msig")
                                                ("is_priv", 1)
          );
 
-         set_code( N(ultrainio.msig), ultrainio_msig_wast );
-         set_abi( N(ultrainio.msig), ultrainio_msig_abi );
+         set_code( N(utrio.msig), ultrainio_msig_wast );
+         set_abi( N(utrio.msig), ultrainio_msig_abi );
 
          produce_blocks();
-         const auto& accnt = control->db().get<account_object,by_name>( N(ultrainio.msig) );
+         const auto& accnt = control->db().get<account_object,by_name>( N(utrio.msig) );
          abi_def msig_abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, msig_abi), true);
-         msig_abi_ser.set_abi(msig_abi);
+         msig_abi_ser.set_abi(msig_abi, abi_serializer_max_time);
       }
       return msig_abi_ser;
    }
-
-   //helper function
-   /*
-   action_result push_action_msig( const account_name& signer, const action_name &name, const variant_object &data ) {
-      string action_type_name = msig_abi_ser.get_action_type(name);
-
-      action act;
-      act.account = N(ultrainio.msig);
-      act.name = name;
-      act.data = msig_abi_ser.variant_to_binary( action_type_name, data );
-
-      return base_tester::push_action( std::move(act), signer );
-   };
-   */
 
    vector<name> active_and_vote_producers() {
       //stake more than 15% of total ULTRAIN supply to activate chain
@@ -552,9 +538,6 @@ inline fc::mutable_variant_object voter( account_name acct ) {
       //("last_vote_weight", double(0))
       ("proxied_vote_weight", double(0))
       ("is_proxy", 0)
-      ("deferred_trx_id", 0)
-      ("last_unstake_time", fc::time_point_sec() )
-      ("unstaking", asset() )
       ;
 }
 

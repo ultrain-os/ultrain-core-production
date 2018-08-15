@@ -12,11 +12,10 @@ link_directories(${LLVM_LIBRARY_DIR})
 
 set( CMAKE_CXX_STANDARD 14 )
 
-include_directories("${CMAKE_BINARY_DIR}/contracts")
-include_directories("${CMAKE_SOURCE_DIR}/contracts")
-include_directories("${CMAKE_SOURCE_DIR}/unittests/contracts")
-include_directories("${CMAKE_SOURCE_DIR}/libraries/testing/include")
-
+add_subdirectory(contracts)
+if (build_ultrainio_test)
+    add_subdirectory( uranus )
+endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/config.hpp ESCAPE_QUOTES)
 
 file(GLOB UNIT_TESTS "*.cpp")
@@ -24,10 +23,14 @@ file(GLOB UNIT_TESTS "*.cpp")
 add_executable( unit_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} )
 target_link_libraries( unit_test ultrainio_chain chainbase ultrainio_testing ultrain_utilities abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
 
-target_include_directories( unit_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
-target_include_directories( unit_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_tests )
-target_include_directories( unit_test PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include )
-add_dependencies(unit_test asserter test_api test_api_mem test_api_db test_ram_limit test_api_multi_index exchange ultrainio.token proxy identity identity_test stltest infinite ultrainio.system ultrainio.token ultrainio.bios test.inline multi_index_test noop dice ultrainio.msig payloadless tic_tac_toe)
+target_include_directories( unit_test PUBLIC
+                            ${CMAKE_SOURCE_DIR}/libraries/testing/include
+                            ${CMAKE_SOURCE_DIR}/contracts
+                            ${CMAKE_BINARY_DIR}/contracts
+                            ${CMAKE_CURRENT_SOURCE_DIR}/contracts
+                            ${CMAKE_CURRENT_BINARY_DIR}/contracts
+                            ${CMAKE_CURRENT_BINARY_DIR}/include )
+add_dependencies(unit_test asserter test_api test_api_mem test_api_db test_ram_limit test_api_multi_index exchange ultrainio.token proxy identity identity_test stltest infinite ultrainio.system ultrainio.token ultrainio.bios test.inline multi_index_test noop dice ultrainio.msig payloadless tic_tac_toe deferred_test)
 
 #Manually run unit_test for all supported runtimes
 #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
@@ -37,10 +40,6 @@ add_test(NAME unit_test_binaryen COMMAND unit_test
 add_test(NAME unit_test_wavm COMMAND unit_test
  -t \!wasm_tests/weighted_cpu_limit_tests
  --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
-
-if (build_ultrainio_test)
-    add_subdirectory( uranus )
-endif()
 
 if(ENABLE_COVERAGE_TESTING)
 

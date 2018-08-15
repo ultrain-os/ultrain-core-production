@@ -180,6 +180,17 @@ ADD_SUBDIRECTORY(src/wasm)
 
 SET(binaryen_SOURCES
   src/binaryen-c.cpp
+  src/wasm/wasm.cpp
+  src/passes/pass.cpp
+  src/passes/Print.cpp
+  src/wasm/wasm-type.cpp
+  src/wasm/wasm-binary.cpp
+  src/wasm/literal.cpp
+  src/asmjs/asm_v_wasm.cpp
+  src/asmjs/shared-constants.cpp
+  src/support/safe_integer.cpp
+  src/support/bits.cpp
+  src/support/colors.cpp
 )
 IF(BUILD_STATIC_LIB)
   ADD_LIBRARY(binaryen STATIC ${binaryen_SOURCES})    
@@ -198,3 +209,7 @@ TARGET_LINK_LIBRARIES(ultrainio-s2wasm passes wasm asmjs ast cfg support)
 SET_PROPERTY(TARGET ultrainio-s2wasm PROPERTY CXX_STANDARD 11)
 SET_PROPERTY(TARGET ultrainio-s2wasm PROPERTY CXX_STANDARD_REQUIRED ON)
 INSTALL(TARGETS ultrainio-s2wasm DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS binaryen
+   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
+   ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
+

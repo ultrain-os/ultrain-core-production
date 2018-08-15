@@ -33,23 +33,23 @@ class ultrainio_msig_tester : public tester {
 public:
 
    ultrainio_msig_tester() {
-      create_accounts( { N(ultrainio.msig), N(ultrainio.stake), N(ultrainio.ram), N(ultrainio.ramfee), N(alice), N(bob), N(carol) } );
+      create_accounts( { N(utrio.msig), N(utrio.stake), N(utrio.ram), N(utrio.ramfee), N(alice), N(bob), N(carol) } );
       produce_block();
 
       auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
                                             config::system_account_name,  mutable_variant_object()
-                                            ("account", "ultrainio.msig")
+                                            ("account", "utrio.msig")
                                             ("is_priv", 1)
       );
 
-      set_code( N(ultrainio.msig), ultrainio_msig_wast );
-      set_abi( N(ultrainio.msig), ultrainio_msig_abi );
+      set_code( N(utrio.msig), ultrainio_msig_wast );
+      set_abi( N(utrio.msig), ultrainio_msig_abi );
 
       produce_blocks();
-      const auto& accnt = control->db().get<account_object,by_name>( N(ultrainio.msig) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(utrio.msig) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-      abi_ser.set_abi(abi);
+      abi_ser.set_abi(abi, abi_serializer_max_time);
    }
 
    transaction_trace_ptr create_account_with_resources( account_name a, account_name creator, asset ramfunds, bool multisig,
@@ -102,14 +102,14 @@ public:
       base_tester::push_action(contract, N(create), contract, act );
    }
    void issue( name to, const asset& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(ultrainio.token), N(issue), manager, mutable_variant_object()
+      base_tester::push_action( N(utrio.token), N(issue), manager, mutable_variant_object()
                                 ("to",      to )
                                 ("quantity", amount )
                                 ("memo", "")
                                 );
    }
    void transfer( name from, name to, const string& amount, name manager = config::system_account_name ) {
-      base_tester::push_action( N(ultrainio.token), N(transfer), manager, mutable_variant_object()
+      base_tester::push_action( N(utrio.token), N(transfer), manager, mutable_variant_object()
                                 ("from",    from)
                                 ("to",      to )
                                 ("quantity", asset::from_string(amount) )
@@ -121,7 +121,7 @@ public:
       //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
       //generic_currency table name is N(account).
       const auto& db  = control->db();
-      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(ultrainio.token), act, N(accounts)));
+      const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(utrio.token), act, N(accounts)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
@@ -140,30 +140,18 @@ public:
       vector<account_name> accounts;
       if( auth )
          accounts.push_back( signer );
-      auto trace = base_tester::push_action( N(ultrainio.msig), name, accounts, data );
+      auto trace = base_tester::push_action( N(utrio.msig), name, accounts, data );
       produce_block();
       BOOST_REQUIRE_EQUAL( true, chain_has_transaction(trace->id) );
       return trace;
-
-      /*
-         string action_type_name = abi_ser.get_action_type(name);
-
-         action act;
-         act.account = N(ultrainio.msig);
-         act.name = name;
-         act.data = abi_ser.variant_to_binary( action_type_name, data );
-         //std::cout << "test:\n" << fc::to_hex(act.data.data(), act.data.size()) << " size = " << act.data.size() << std::endl;
-
-         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : 0 );
-      */
    }
 
-   transaction reqauth( account_name from, const vector<permission_level>& auths );
+   transaction reqauth( account_name from, const vector<permission_level>& auths, const fc::microseconds& max_serialization_time );
 
    abi_serializer abi_ser;
 };
 
-transaction ultrainio_msig_tester::reqauth( account_name from, const vector<permission_level>& auths ) {
+transaction ultrainio_msig_tester::reqauth( account_name from, const vector<permission_level>& auths, const fc::microseconds& max_serialization_time ) {
    fc::variants v;
    for ( auto& level : auths ) {
       v.push_back(fc::mutable_variant_object()
@@ -187,14 +175,14 @@ transaction ultrainio_msig_tester::reqauth( account_name from, const vector<perm
                })
       );
    transaction trx;
-   abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+   abi_serializer::from_variant(pretty_trx, trx, get_resolver(), max_serialization_time);
    return trx;
 }
 
 BOOST_AUTO_TEST_SUITE(ultrainio_msig_tests)
 
 BOOST_FIXTURE_TEST_CASE( propose_approve_execute, ultrainio_msig_tester ) try {
-   auto trx = reqauth("alice", {permission_level{N(alice), config::active_name}} );
+   auto trx = reqauth("alice", {permission_level{N(alice), config::active_name}}, abi_serializer_max_time );
 
    push_action( N(alice), N(propose), mvo()
                   ("proposer",      "alice")
@@ -235,7 +223,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, ultrainio_msig_tester ) try {
 
 
 BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, ultrainio_msig_tester ) try {
-   auto trx = reqauth("alice", {permission_level{N(alice), config::active_name}} );
+   auto trx = reqauth("alice", {permission_level{N(alice), config::active_name}}, abi_serializer_max_time );
 
    push_action( N(alice), N(propose), mvo()
                   ("proposer",      "alice")
@@ -269,7 +257,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, ultrainio_msig_tester ) try 
 
 
 BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, ultrainio_msig_tester ) try {
-   auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name }, { N(bob), config::active_name } } );
+   auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name }, { N(bob), config::active_name } }, abi_serializer_max_time );
    push_action( N(alice), N(propose), mvo()
                   ("proposer",      "alice")
                   ("proposal_name", "first")
@@ -317,7 +305,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, ultrainio_msig_tester ) try {
 
 
 BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, ultrainio_msig_tester ) try {
-   auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name },  { N(bob), config::active_name } } );
+   auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name },  { N(bob), config::active_name } }, abi_serializer_max_time );
    //try with not enough requested auth
    BOOST_REQUIRE_EXCEPTION( push_action( N(alice), N(propose), mvo()
                                              ("proposer",      "alice")
@@ -358,7 +346,7 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, ultrainio_msig_tester ) try {
       );
 
    transaction trx;
-   abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+   abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
 
    push_action( N(alice), N(propose), mvo()
                   ("proposer",      "alice")
@@ -414,14 +402,14 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, ultrainio_msig_test
    set_producers( {N(alice),N(bob),N(carol)} );
    produce_blocks(50);
 
-   create_accounts( { N(ultrainio.token) } );
-   set_code( N(ultrainio.token), ultrainio_token_wast );
-   set_abi( N(ultrainio.token), ultrainio_token_abi );
+   create_accounts( { N(utrio.token) } );
+   set_code( N(utrio.token), ultrainio_token_wast );
+   set_abi( N(utrio.token), ultrainio_token_abi );
 
-   create_currency( N(ultrainio.token), config::system_account_name, core_from_string("10000000000.0000") );
+   create_currency( N(utrio.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("ultrainio") + get_balance("ultrainio.ramfee") + get_balance("ultrainio.stake") + get_balance("ultrainio.ram") );
+                        get_balance("ultrainio") + get_balance("utrio.ramfee") + get_balance("utrio.stake") + get_balance("utrio.ram") );
 
    set_code( config::system_account_name, ultrainio_system_wast );
    set_abi( config::system_account_name, ultrainio_system_abi );
@@ -433,7 +421,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, ultrainio_msig_test
    create_account_with_resources( N(carol1111111), N(ultrainio), core_from_string("1.0000"), false );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("ultrainio") + get_balance("ultrainio.ramfee") + get_balance("ultrainio.stake") + get_balance("ultrainio.ram") );
+                        get_balance("ultrainio") + get_balance("utrio.ramfee") + get_balance("utrio.stake") + get_balance("utrio.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name} };
@@ -464,7 +452,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, ultrainio_msig_test
       );
 
    transaction trx;
-   abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+   abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
 
    // propose action
    push_action( N(alice), N(propose), mvo()
@@ -526,11 +514,11 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, ultrainio_msig_te
    set_producers( {N(alice),N(bob),N(carol), N(apple)} );
    produce_blocks(50);
 
-   create_accounts( { N(ultrainio.token) } );
-   set_code( N(ultrainio.token), ultrainio_token_wast );
-   set_abi( N(ultrainio.token), ultrainio_token_abi );
+   create_accounts( { N(utrio.token) } );
+   set_code( N(utrio.token), ultrainio_token_wast );
+   set_abi( N(utrio.token), ultrainio_token_abi );
 
-   create_currency( N(ultrainio.token), config::system_account_name, core_from_string("10000000000.0000") );
+   create_currency( N(utrio.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "ultrainio" ) );
 
@@ -544,7 +532,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, ultrainio_msig_te
    create_account_with_resources( N(carol1111111), N(ultrainio), core_from_string("1.0000"), false );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("ultrainio") + get_balance("ultrainio.ramfee") + get_balance("ultrainio.stake") + get_balance("ultrainio.ram") );
+                        get_balance("ultrainio") + get_balance("utrio.ramfee") + get_balance("utrio.stake") + get_balance("utrio.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name}, {N(apple), config::active_name}};
@@ -575,7 +563,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, ultrainio_msig_te
       );
 
    transaction trx;
-   abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+   abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
 
    // propose action
    push_action( N(alice), N(propose), mvo()

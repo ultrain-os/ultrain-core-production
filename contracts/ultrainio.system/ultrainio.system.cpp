@@ -97,6 +97,9 @@ namespace ultrainiosystem {
    void system_contract::bidname( account_name bidder, account_name newname, asset bid ) {
       require_auth( bidder );
       ultrainio_assert( ultrainio::name_suffix(newname) == newname, "you can only bid on top-level suffix" );
+      ultrainio_assert( newname != 0, "the empty name is not a valid account name to bid on" );
+      ultrainio_assert( (newname & 0xFull) == 0, "13 character names are not valid account names to bid on" );
+      ultrainio_assert( (newname & 0x1F0ull) == 0, "accounts with 12 character names and no dots can be created without bidding required" );
       ultrainio_assert( !is_account( newname ), "account already exists" );
       ultrainio_assert( bid.symbol == asset().symbol, "asset must be system token" );
       ultrainio_assert( bid.amount > 0, "insufficient bid" );
@@ -142,7 +145,7 @@ namespace ultrainiosystem {
     */
    void native::newaccount( account_name     creator,
                             account_name     newact
-                            /*  no need to parse authorites
+                            /*  no need to parse authorities
                             const authority& owner,
                             const authority& active*/ ) {
 

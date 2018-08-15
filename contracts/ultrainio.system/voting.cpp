@@ -42,14 +42,12 @@ namespace ultrainiosystem {
       auto prod = _producers.find( producer );
 
       if ( prod != _producers.end() ) {
-         if( producer_key != prod->producer_key ) {
-             _producers.modify( prod, producer, [&]( producer_info& info ){
-                  info.producer_key = producer_key;
-                  info.is_active    = true;
-                  info.url          = url;
-                  info.location     = location;
-             });
-         }
+         _producers.modify( prod, producer, [&]( producer_info& info ){
+               info.producer_key = producer_key;
+               info.is_active    = true;
+               info.url          = url;
+               info.location     = location;
+            });
       } else {
          _producers.emplace( producer, [&]( producer_info& info ){
                info.owner         = producer;
@@ -154,7 +152,7 @@ namespace ultrainiosystem {
        */
       if( voter->last_vote_weight <= 0.0 ) {
          _gstate.total_activated_stake += voter->staked;
-         if( _gstate.total_activated_stake >= min_activated_stake ) {
+         if( _gstate.total_activated_stake >= min_activated_stake && _gstate.thresh_activated_stake_time == 0 ) {
             _gstate.thresh_activated_stake_time = current_time();
          }
       }

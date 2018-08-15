@@ -182,7 +182,7 @@ public:
 
 	void DefaultSymbols(void); // set up default symbols for hard seperator and comment symbol of the '#' character.
 
-	bool EOS(char c)
+	bool ULTRAIN(char c)
 	{
 		if ( mHard[(int)c] == ST_EOS )
 		{
@@ -288,7 +288,7 @@ bool   InPlaceParser::IsWhiteSpace(char c)
 
 char * InPlaceParser::SkipSpaces(char *foo)
 {
-	while ( !EOS(*foo) && IsWhiteSpace(*foo) ) foo++;
+	while ( !ULTRAIN(*foo) && IsWhiteSpace(*foo) ) foo++;
 	return foo;
 }
 
@@ -308,12 +308,12 @@ int InPlaceParser::ProcessLine(int lineno,char *line,InPlaceParserInterface *cal
 
 	char *foo = line;
 
-	while ( !EOS(*foo) && argc < MAXARGS )
+	while ( !ULTRAIN(*foo) && argc < MAXARGS )
 	{
 
 		foo = SkipSpaces(foo); // skip any leading spaces
 
-		if ( EOS(*foo) ) break;
+		if ( ULTRAIN(*foo) ) break;
 
 		if ( *foo == mQuoteChar ) // if it is an open quote
 		{
@@ -322,10 +322,10 @@ int InPlaceParser::ProcessLine(int lineno,char *line,InPlaceParserInterface *cal
 			{
 				argv[argc++] = foo;
 			}
-			while ( !EOS(*foo) && *foo != mQuoteChar ) foo++;
-			if ( !EOS(*foo) )
+			while ( !ULTRAIN(*foo) && *foo != mQuoteChar ) foo++;
+			if ( !ULTRAIN(*foo) )
 			{
-				*foo = 0; // replace close quote with zero byte EOS
+				*foo = 0; // replace close quote with zero byte ULTRAIN
 				foo++;
 			}
 		}
@@ -354,8 +354,8 @@ int InPlaceParser::ProcessLine(int lineno,char *line,InPlaceParserInterface *cal
 					if ( *foo ) *foo = 32;
 				}
 
-				// continue..until we hit an eos ..
-				while ( !EOS(*foo) ) // until we hit EOS
+				// continue..until we hit an ultrain ..
+				while ( !ULTRAIN(*foo) ) // until we hit ULTRAIN
 				{
 					if ( IsWhiteSpace(*foo) ) // if we hit a space, stomp a zero byte, and exit
 					{
@@ -455,12 +455,12 @@ const char ** InPlaceParser::GetArglist(char *line,int &count) // convert source
 
 	char *foo = line;
 
-	while ( !EOS(*foo) && argc < MAXARGS )
+	while ( !ULTRAIN(*foo) && argc < MAXARGS )
 	{
 
 		foo = SkipSpaces(foo); // skip any leading spaces
 
-		if ( EOS(*foo) ) break;
+		if ( ULTRAIN(*foo) ) break;
 
 		if ( *foo == mQuoteChar ) // if it is an open quote
 		{
@@ -469,10 +469,10 @@ const char ** InPlaceParser::GetArglist(char *line,int &count) // convert source
 			{
 				argv[argc++] = foo;
 			}
-			while ( !EOS(*foo) && *foo != mQuoteChar ) foo++;
-			if ( !EOS(*foo) )
+			while ( !ULTRAIN(*foo) && *foo != mQuoteChar ) foo++;
+			if ( !ULTRAIN(*foo) )
 			{
-				*foo = 0; // replace close quote with zero byte EOS
+				*foo = 0; // replace close quote with zero byte ULTRAIN
 				foo++;
 			}
 		}
@@ -501,8 +501,8 @@ const char ** InPlaceParser::GetArglist(char *line,int &count) // convert source
 					if ( *foo ) *foo = 32;
 				}
 
-				// continue..until we hit an eos ..
-				while ( !EOS(*foo) ) // until we hit EOS
+				// continue..until we hit an ultrain ..
+				while ( !ULTRAIN(*foo) ) // until we hit ULTRAIN
 				{
 					if ( IsWhiteSpace(*foo) ) // if we hit a space, stomp a zero byte, and exit
 					{

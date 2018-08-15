@@ -1,4 +1,4 @@
-#include <ultrainio/history_plugin.hpp>
+#include <ultrainio/history_plugin/history_plugin.hpp>
 #include <ultrainio/history_plugin/account_control_history_object.hpp>
 #include <ultrainio/history_plugin/public_key_history_object.hpp>
 #include <ultrainio/chain/controller.hpp>
@@ -10,7 +10,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/signals2/connection.hpp>
 
-namespace ultrainio { 
+namespace ultrainio {
    using namespace chain;
    using boost::signals2::scoped_connection;
 
@@ -51,7 +51,7 @@ namespace ultrainio {
       indexed_by<
          ordered_unique<tag<by_id>, member<action_history_object, action_history_object::id_type, &action_history_object::id>>,
          ordered_unique<tag<by_action_sequence_num>, member<action_history_object, uint64_t, &action_history_object::action_sequence_num>>,
-         ordered_unique<tag<by_trx_id>, 
+         ordered_unique<tag<by_trx_id>,
             composite_key< action_history_object,
                member<action_history_object, transaction_id_type, &action_history_object::trx_id>,
                member<action_history_object, uint64_t, &action_history_object::action_sequence_num >
@@ -64,7 +64,7 @@ namespace ultrainio {
       account_history_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<account_history_object, account_history_object::id_type, &account_history_object::id>>,
-         ordered_unique<tag<by_account_action_seq>, 
+         ordered_unique<tag<by_account_action_seq>,
             composite_key< account_history_object,
                member<account_history_object, account_name, &account_history_object::account >,
                member<account_history_object, int32_t, &account_history_object::account_sequence_num >
@@ -174,7 +174,7 @@ namespace ultrainio {
 
             uint64_t asn = 0;
             if( itr != idx.begin() ) --itr;
-            if( itr->account == n ) 
+            if( itr->account == n )
                asn = itr->account_sequence_num + 1;
 
             //idump((n)(act.receipt.global_sequence)(asn));
@@ -196,14 +196,14 @@ namespace ultrainio {
                add(db, create.owner.accounts, create.name, N(owner));
                add(db, create.active.keys, create.name, N(active));
                add(db, create.active.accounts, create.name, N(active));
-            } else if (at.act.name == NEX(updateauth)) {
-                const auto update = at.act.data_as<chain::updateauth>();
-                remove<public_key_history_multi_index, by_account_permission>(
-                        db, update.account, update.permission);
-                remove<account_control_history_multi_index, by_controlled_authority>(
-                        db, update.account, update.permission);
-                add(db, update.auth.keys, update.account, update.permission);
-                add(db, update.auth.accounts, update.account, update.permission);
+            }
+            else if( at.act.name == NEX(updateauth) )
+            {
+               const auto update = at.act.data_as<chain::updateauth>();
+               remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
+               remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
+               add(db, update.auth.keys, update.account, update.permission);
+               add(db, update.auth.accounts, update.account, update.permission);
             }
             else if( at.act.name == NEX(deleteauth) )
             {
@@ -229,7 +229,7 @@ namespace ultrainio {
                   aho.block_time = chain.pending_block_time();
                   aho.trx_id     = at.trx_id;
                });
-               
+
                auto aset = account_set( at );
                for( auto a : aset ) {
                   record_account_action( a, at );
@@ -266,36 +266,38 @@ namespace ultrainio {
    }
 
    void history_plugin::plugin_initialize(const variables_map& options) {
-      if( options.count("filter-on") )
-      {
-         auto fo = options.at("filter-on").as<vector<string>>();
-         for( auto& s : fo ) {
-            if( s == "*" ) {
-               my->bypass_filter = true;
-               wlog("--filter-on * enabled. This can fill shared_mem, causing nodultrain to stop.");
-               break;
+      try {
+         if( options.count( "filter-on" )) {
+            auto fo = options.at( "filter-on" ).as<vector<string>>();
+            for( auto& s : fo ) {
+               if( s == "*" ) {
+                  my->bypass_filter = true;
+                  wlog( "--filter-on * enabled. This can fill shared_mem, causing nodultrain to stop." );
+                  break;
+               }
+               std::vector<std::string> v;
+               boost::split( v, s, boost::is_any_of( ":" ));
+               ULTRAIN_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
+               filter_entry fe{v[0], v[1], v[2]};
+               ULTRAIN_ASSERT( fe.receiver.value && fe.action.good(), fc::invalid_arg_exception,
+                           "Invalid value ${s} for --filter-on", ("s", s));
+               my->filter_on.insert( fe );
             }
-            std::vector<std::string> v;
-            boost::split(v, s, boost::is_any_of(":"));
-            ULTRAIN_ASSERT(v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
-            filter_entry fe{ v[0], v[1], v[2] };
-            ULTRAIN_ASSERT(fe.receiver.value && fe.action.good(), fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s",s));
-            my->filter_on.insert( fe );
          }
-      }
 
-      my->chain_plug = app().find_plugin<chain_plugin>();
-      auto& chain = my->chain_plug->chain();
+         my->chain_plug = app().find_plugin<chain_plugin>();
+         auto& chain = my->chain_plug->chain();
 
-      chain.db().add_index<account_history_index>();
-      chain.db().add_index<action_history_index>();
-      chain.db().add_index<account_control_history_multi_index>();
-      chain.db().add_index<public_key_history_multi_index>();
+         chain.db().add_index<account_history_index>();
+         chain.db().add_index<action_history_index>();
+         chain.db().add_index<account_control_history_multi_index>();
+         chain.db().add_index<public_key_history_multi_index>();
 
-      my->applied_transaction_connection.emplace(chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ){
-            my->on_applied_transaction(p);
-      }));
-
+         my->applied_transaction_connection.emplace(
+               chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ) {
+                  my->on_applied_transaction( p );
+               } ));
+      } FC_LOG_AND_RETHROW()
    }
 
    void history_plugin::plugin_startup() {
@@ -308,11 +310,12 @@ namespace ultrainio {
 
 
 
-   namespace history_apis { 
+   namespace history_apis {
       read_only::get_actions_result read_only::get_actions( const read_only::get_actions_params& params )const {
          edump((params));
         auto& chain = history->chain_plug->chain();
         const auto& db = chain.db();
+        const auto abi_serializer_max_time = history->chain_plug->get_abi_serializer_max_time();
 
         const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
 
@@ -329,7 +332,7 @@ namespace ultrainio {
                   pos = itr->account_sequence_num+1;
             } else if( itr != idx.begin() ) --itr;
 
-            if( itr->account == n ) 
+            if( itr->account == n )
                pos = itr->account_sequence_num + 1;
         }
 
@@ -343,7 +346,7 @@ namespace ultrainio {
            if( start > pos ) start = 0;
            end   = pos;
         }
-        FC_ASSERT( end >= start );
+        ULTRAIN_ASSERT( end >= start, chain::plugin_exception, "end position is earlier than start position" );
 
         idump((start)(end));
 
@@ -364,7 +367,7 @@ namespace ultrainio {
                                  start_itr->action_sequence_num,
                                  start_itr->account_sequence_num,
                                  a.block_num, a.block_time,
-                                 chain.to_variant_with_abi(t)
+                                 chain.to_variant_with_abi(t, abi_serializer_max_time)
                                  });
 
            end_time = fc::time_point::now();
@@ -380,63 +383,106 @@ namespace ultrainio {
 
       read_only::get_transaction_result read_only::get_transaction( const read_only::get_transaction_params& p )const {
          auto& chain = history->chain_plug->chain();
+         const auto abi_serializer_max_time = history->chain_plug->get_abi_serializer_max_time();
+         auto short_id = fc::variant(p.id).as_string().substr(0,8);
+
+         const auto& db = chain.db();
+         const auto& idx = db.get_index<action_history_index, by_trx_id>();
+         auto itr = idx.lower_bound( boost::make_tuple(p.id) );
+
+         bool in_history = (itr != idx.end() && fc::variant(itr->trx_id).as_string().substr(0,8) == short_id );
+
+         if( !in_history && !p.block_num_hint ) {
+            ULTRAIN_THROW(tx_not_found, "Transaction ${id} not found in history and no block hint was given", ("id",p.id));
+         }
 
          get_transaction_result result;
 
-         result.id = p.id;
-         result.last_irreversible_block = chain.last_irreversible_block_num();
+         if (in_history) {
+            result.id = p.id;
+            result.last_irreversible_block = chain.last_irreversible_block_num();
 
-         const auto& db = chain.db();
 
-         const auto& idx = db.get_index<action_history_index, by_trx_id>();
-         auto itr = idx.lower_bound( boost::make_tuple(p.id) );
-         if( itr == idx.end() ) {
-            return result;
-         }
-         result.id         = itr->trx_id;
-         result.block_num  = itr->block_num;
-         result.block_time = itr->block_time;
+            result.id         = itr->trx_id;
+            result.block_num  = itr->block_num;
+            result.block_time = itr->block_time;
 
-         if( fc::variant(result.id).as_string().substr(0,8) != fc::variant(p.id).as_string().substr(0,8) )
-            return result;
+            while( itr != idx.end() && itr->trx_id == result.id ) {
 
-         while( itr != idx.end() && itr->trx_id == result.id ) {
+              fc::datastream<const char*> ds( itr->packed_action_trace.data(), itr->packed_action_trace.size() );
+              action_trace t;
+              fc::raw::unpack( ds, t );
+              result.traces.emplace_back( chain.to_variant_with_abi(t, abi_serializer_max_time) );
 
-           fc::datastream<const char*> ds( itr->packed_action_trace.data(), itr->packed_action_trace.size() );
-           action_trace t;
-           fc::raw::unpack( ds, t );
-           result.traces.emplace_back( chain.to_variant_with_abi(t) );
+              ++itr;
+            }
 
-           ++itr;
-         }
-
-         auto blk = chain.fetch_block_by_number( result.block_num );
-         if( blk == nullptr ) { // still in pending
-             auto blk_state = chain.pending_block_state();
-             if( blk_state != nullptr ) {
-                 blk = blk_state->block;
-             }
-         }
-         if( blk != nullptr ) {
-             for (const auto &receipt: blk->transactions) {
-                 if (receipt.trx.contains<packed_transaction>()) {
-                     auto &pt = receipt.trx.get<packed_transaction>();
+            auto blk = chain.fetch_block_by_number( result.block_num );
+            if( blk == nullptr ) { // still in pending
+                auto blk_state = chain.pending_block_state();
+                if( blk_state != nullptr ) {
+                    blk = blk_state->block;
+                }
+            }
+            if( blk != nullptr ) {
+                for (const auto &receipt: blk->transactions) {
+                    if (receipt.trx.contains<packed_transaction>()) {
+                        auto &pt = receipt.trx.get<packed_transaction>();
+                        auto mtrx = transaction_metadata(pt);
+                        if (mtrx.id == result.id) {
+                            fc::mutable_variant_object r("receipt", receipt);
+                            r("trx", chain.to_variant_with_abi(mtrx.trx, abi_serializer_max_time));
+                            result.trx = move(r);
+                            break;
+                        }
+                    } else {
+                        auto &id = receipt.trx.get<transaction_id_type>();
+                        if (id == result.id) {
+                            fc::mutable_variant_object r("receipt", receipt);
+                            result.trx = move(r);
+                            break;
+                        }
+                    }
+                }
+            }
+         } else {
+            auto blk = chain.fetch_block_by_number(*p.block_num_hint);
+            bool found = false;
+            if (blk) {
+               for (const auto& receipt: blk->transactions) {
+                  if (receipt.trx.contains<packed_transaction>()) {
+                     auto& pt = receipt.trx.get<packed_transaction>();
                      auto mtrx = transaction_metadata(pt);
-                     if (mtrx.id == result.id) {
-                         fc::mutable_variant_object r("receipt", receipt);
-                         r("trx", chain.to_variant_with_abi(mtrx.trx));
-                         result.trx = move(r);
-                         break;
+                     if (fc::variant(mtrx.id).as_string().substr(0, 8) == short_id) {
+                        result.id = mtrx.id;
+                        result.last_irreversible_block = chain.last_irreversible_block_num();
+                        result.block_num = *p.block_num_hint;
+                        result.block_time = blk->timestamp;
+                        fc::mutable_variant_object r("receipt", receipt);
+                        r("trx", chain.to_variant_with_abi(mtrx.trx, abi_serializer_max_time));
+                        result.trx = move(r);
+                        found = true;
+                        break;
                      }
-                 } else {
-                     auto &id = receipt.trx.get<transaction_id_type>();
-                     if (id == result.id) {
-                         fc::mutable_variant_object r("receipt", receipt);
-                         result.trx = move(r);
-                         break;
+                  } else {
+                     auto& id = receipt.trx.get<transaction_id_type>();
+                     if (fc::variant(id).as_string().substr(0, 8) == short_id) {
+                        result.id = id;
+                        result.last_irreversible_block = chain.last_irreversible_block_num();
+                        result.block_num = *p.block_num_hint;
+                        result.block_time = blk->timestamp;
+                        fc::mutable_variant_object r("receipt", receipt);
+                        result.trx = move(r);
+                        found = true;
+                        break;
                      }
-                 }
-             }
+                  }
+               }
+            }
+
+            if (!found) {
+               ULTRAIN_THROW(tx_not_found, "Transaction ${id} not found in history or in block number ${n}", ("id",p.id)("n", *p.block_num_hint));
+            }
          }
 
          return result;

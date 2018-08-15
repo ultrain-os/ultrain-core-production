@@ -33,23 +33,38 @@ namespace ultrainio { namespace chain {
 
    class fork_database;
 
+   enum class db_read_mode {
+      SPECULATIVE,
+      HEAD,
+      IRREVERSIBLE
+   };
+
    class controller {
       public:
+
          struct config {
             flat_set<account_name>   actor_whitelist;
             flat_set<account_name>   actor_blacklist;
             flat_set<account_name>   contract_whitelist;
             flat_set<account_name>   contract_blacklist;
+            flat_set< pair<account_name, action_name> > action_blacklist;
+            flat_set<public_key_type> key_blacklist;
             path                     blocks_dir             =  chain::config::default_blocks_dir_name;
             path                     state_dir              =  chain::config::default_state_dir_name;
             uint64_t                 state_size             =  chain::config::default_state_size;
+            uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
             uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
+            uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
             bool                     contracts_console      =  false;
 
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
+
+            db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
+
+            flat_set<account_name>   resource_greylist;
          };
 
          enum class block_status {
@@ -149,11 +164,17 @@ namespace ultrainio { namespace chain {
          const block_header&  head_block_header()const;
          block_state_ptr      head_block_state()const;
 
-         block_timestamp_type get_proper_next_block_timestamp() const;
+         uint32_t             fork_db_head_block_num()const;
+         block_id_type        fork_db_head_block_id()const;
+         time_point           fork_db_head_block_time()const;
+         account_name         fork_db_head_block_producer()const;
+
          time_point      pending_block_time()const;
          block_state_ptr pending_block_state()const;
-         // This is a hack ...
-         block_state_ptr pending_block_state_hack();
+		 
+		 block_timestamp_type get_proper_next_block_timestamp() const;
+		 // This is a hack ...
+		 block_state_ptr pending_block_state_hack();
          void set_action_merkle_hack();
          void set_trx_merkle_hack();
 
@@ -167,16 +188,26 @@ namespace ultrainio { namespace chain {
          signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
          signed_block_ptr fetch_block_by_id( block_id_type id )const;
 
+         block_state_ptr fetch_block_state_by_number( uint32_t block_num )const;
+         block_state_ptr fetch_block_state_by_id( block_id_type id )const;
+
          block_id_type get_block_id_for_num( uint32_t block_num )const;
 
          void check_contract_list( account_name code )const;
+         void check_action_list( account_name code, action_name action )const;
+         void check_key_list( const public_key_type& key )const;
          bool is_producing_block()const;
 
-
+         void add_resource_greylist(const account_name &name);
+         void remove_resource_greylist(const account_name &name);
+         bool is_resource_greylisted(const account_name &name) const;
+         const flat_set<account_name> &get_resource_greylist() const;
 
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
+         void validate_db_available_size() const;
+         void validate_reversible_available_size() const;
 
          bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 
@@ -188,6 +219,11 @@ namespace ultrainio { namespace chain {
 
          chain_id_type get_chain_id()const;
 
+         db_read_mode get_read_mode()const;
+
+         void set_subjective_cpu_leeway(fc::microseconds leeway);
+
+         signal<void(const signed_block_ptr&)>         pre_accepted_block;
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
          signal<void(const block_state_ptr&)>          irreversible_block;
@@ -210,22 +246,24 @@ namespace ultrainio { namespace chain {
          wasm_interface& get_wasm_interface();
 
 
-         optional<abi_serializer> get_abi_serializer( account_name n )const {
+         optional<abi_serializer> get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const {
             if( n.good() ) {
                try {
                   const auto& a = get_account( n );
                   abi_def abi;
                   if( abi_serializer::to_abi( a.abi, abi ))
-                     return abi_serializer( abi );
+                     return abi_serializer( abi, max_serialization_time );
                } FC_CAPTURE_AND_LOG((n))
             }
             return optional<abi_serializer>();
          }
 
          template<typename T>
-         fc::variant to_variant_with_abi( const T& obj ) {
+         fc::variant to_variant_with_abi( const T& obj, const fc::microseconds& max_serialization_time ) {
             fc::variant pretty_output;
-            abi_serializer::to_variant( obj, pretty_output, [&]( account_name n ){ return get_abi_serializer( n ); });
+            abi_serializer::to_variant( obj, pretty_output,
+                                        [&]( account_name n ){ return get_abi_serializer( n, max_serialization_time ); },
+                                        max_serialization_time);
             return pretty_output;
          }
 
@@ -242,13 +280,17 @@ FC_REFLECT( ultrainio::chain::controller::config,
             (actor_blacklist)
             (contract_whitelist)
             (contract_blacklist)
+			(action_blacklist)
+			(key_blacklist)
             (blocks_dir)
             (state_dir)
             (state_size)
             (reversible_cache_size)
+			(reversible_guard_size)
             (read_only)
             (force_all_checks)
             (contracts_console)
             (genesis)
             (wasm_runtime)
+            (resource_greylist)
           )

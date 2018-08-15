@@ -71,7 +71,8 @@ namespace ultrainiosystem {
       const auto& prod = _producers.get( owner );
       ultrainio_assert( prod.active(), "producer does not have an active key" );
 
-      ultrainio_assert( _gstate.total_activated_stake >= min_activated_stake, "not enough has been staked for producers to claim rewards" );
+      ultrainio_assert( _gstate.total_activated_stake >= min_activated_stake,
+                    "cannot claim rewards until the chain is activated (at least 15% of all tokens participate in voting)" );
 
       auto ct = current_time();
 
@@ -125,7 +126,7 @@ namespace ultrainiosystem {
           p.last_claim_time = ct;
           p.unpaid_blocks = 0;
       });
-      
+
       if( producer_per_block_pay > 0 ) {
          INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.bpay),N(active)},
                                                        { N(utrio.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );

@@ -9,7 +9,7 @@ namespace ultrainio {
 
    /**
     *  This contract enables the creation, issuance, and transfering of many different tokens.
-    *
+    *  @deprecated This class is deprecated in favor of ultrainio.token in Dawn 3.0
     */
    class currency {
       public:

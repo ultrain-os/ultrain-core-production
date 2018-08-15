@@ -76,7 +76,7 @@ public:
    fc::variant get_global_state() {
       vector<char> data = get_row_by_account( N(ultrainio), N(ultrainio), N(global), N(global) );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
-      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "ultrainio_global_state", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "ultrainio_global_state", data, abi_serializer_max_time );
 
    }
 
@@ -156,7 +156,7 @@ public:
     }
 
     asset get_balance( const account_name& act ) {
-         return get_currency_balance(N(ultrainio.token), symbol(CORE_SYMBOL), act);
+         return get_currency_balance(N(utrio.token), symbol(CORE_SYMBOL), act);
     }
 
     void set_code_abi(const account_name& account, const char* wast, const char* abi, const private_key_type* signer = nullptr) {
@@ -167,7 +167,7 @@ public:
            const auto& accnt = control->db().get<account_object,by_name>( account );
            abi_def abi_definition;
            BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi_definition), true);
-           abi_ser.set_abi(abi_definition);
+           abi_ser.set_abi(abi_definition, abi_serializer_max_time);
         }
         produce_blocks();
     }
@@ -182,32 +182,32 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create ultrainio.msig and ultrainio.token
-        create_accounts({N(ultrainio.msig), N(ultrainio.token), N(ultrainio.ram), N(ultrainio.ramfee), N(ultrainio.stake), N(ultrainio.vpay), N(ultrainio.bpay), N(ultrainio.saving) });
+        create_accounts({N(utrio.msig), N(utrio.token), N(utrio.ram), N(utrio.ramfee), N(utrio.stake), N(utrio.vpay), N(utrio.bpay), N(utrio.saving) });
 
         // Set code for the following accounts:
         //  - ultrainio (code: ultrainio.bios) (already set by tester constructor)
         //  - ultrainio.msig (code: ultrainio.msig)
         //  - ultrainio.token (code: ultrainio.token)
-        set_code_abi(N(ultrainio.msig), ultrainio_msig_wast, ultrainio_msig_abi);//, &ultrainio_active_pk);
-        set_code_abi(N(ultrainio.token), ultrainio_token_wast, ultrainio_token_abi); //, &ultrainio_active_pk);
+        set_code_abi(N(utrio.msig), ultrainio_msig_wast, ultrainio_msig_abi);//, &ultrainio_active_pk);
+        set_code_abi(N(utrio.token), ultrainio_token_wast, ultrainio_token_abi); //, &ultrainio_active_pk);
 
         // Set privileged for ultrainio.msig and ultrainio.token
-        set_privileged(N(ultrainio.msig));
-        set_privileged(N(ultrainio.token));
+        set_privileged(N(utrio.msig));
+        set_privileged(N(utrio.token));
 
         // Verify ultrainio.msig and ultrainio.token is privileged
-        const auto& ultrainio_msig_acc = get<account_object, by_name>(N(ultrainio.msig));
+        const auto& ultrainio_msig_acc = get<account_object, by_name>(N(utrio.msig));
         BOOST_TEST(ultrainio_msig_acc.privileged == true);
-        const auto& ultrainio_token_acc = get<account_object, by_name>(N(ultrainio.token));
+        const auto& ultrainio_token_acc = get<account_object, by_name>(N(utrio.token));
         BOOST_TEST(ultrainio_token_acc.privileged == true);
 
 
         // Create SYS tokens in ultrainio.token, set its manager as ultrainio
         auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
         auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
-        create_currency(N(ultrainio.token), config::system_account_name, max_supply);
+        create_currency(N(utrio.token), config::system_account_name, max_supply);
         // Issue the genesis supply of 1 billion SYS tokens to ultrainio.system
-        issue(N(ultrainio.token), config::system_account_name, config::system_account_name, initial_supply);
+        issue(N(utrio.token), config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
         BOOST_REQUIRE_EQUAL(initial_supply, actual);
@@ -230,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto r = buyram(N(ultrainio), a.aname, asset(ram));
            BOOST_REQUIRE( !r->except_ptr );
 
-           r = delegate_bandwidth(N(ultrainio.stake), a.aname, asset(net), asset(cpu));
+           r = delegate_bandwidth(N(utrio.stake), a.aname, asset(net), asset(cpu));
            BOOST_REQUIRE( !r->except_ptr );
         }
 

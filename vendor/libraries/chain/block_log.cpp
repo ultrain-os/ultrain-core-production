@@ -3,6 +3,7 @@
  *  @copyright defined in ultrain/LICENSE.txt
  */
 #include <ultrainio/chain/block_log.hpp>
+#include <ultrainio/chain/exceptions.hpp>
 #include <fstream>
 #include <fc/io/raw.hpp>
 
@@ -125,15 +126,14 @@ namespace ultrainio { namespace chain {
          my->block_stream.seekg( 0 );
          uint32_t version = 0;
          my->block_stream.read( (char*)&version, sizeof(version) );
-         FC_ASSERT( version > 0, "Block log was not setup properly with genesis information." );
-         FC_ASSERT( version == block_log::supported_version,
+         ULTRAIN_ASSERT( version > 0, block_log_exception, "Block log was not setup properly with genesis information." );
+         ULTRAIN_ASSERT( version == block_log::supported_version, block_log_unsupported_version,
                     "Unsupported version of block log. Block log version is ${version} while code supports version ${supported}",
                     ("version", version)("supported", block_log::supported_version) );
 
          my->genesis_written_to_block_log = true; // Assume it was constructed properly.
          my->head = read_head();
          my->head_id = my->head->id();
-         edump((my->head->block_num()));
 
          if (index_size) {
             my->check_block_read();
@@ -170,13 +170,14 @@ namespace ultrainio { namespace chain {
 
    uint64_t block_log::append(const signed_block_ptr& b) {
       try {
-         FC_ASSERT( my->genesis_written_to_block_log, "Cannot append to block log until the genesis is first written" );
+         ULTRAIN_ASSERT( my->genesis_written_to_block_log, block_log_append_fail, "Cannot append to block log until the genesis is first written" );
 
          my->check_block_write();
          my->check_index_write();
 
          uint64_t pos = my->block_stream.tellp();
-         FC_ASSERT(my->index_stream.tellp() == sizeof(uint64_t) * (b->block_num() - 1),
+         ULTRAIN_ASSERT(my->index_stream.tellp() == sizeof(uint64_t) * (b->block_num() - 1),
+                   block_log_append_fail,
                    "Append to index file occuring at wrong position.",
                    ("position", (uint64_t) my->index_stream.tellp())
                    ("expected", (b->block_num() - 1) * sizeof(uint64_t)));
@@ -256,7 +257,7 @@ namespace ultrainio { namespace chain {
          uint64_t pos = get_block_pos(block_num);
          if (pos != npos) {
             b = read_block(pos).first;
-            FC_ASSERT(b->block_num() == block_num,
+            ULTRAIN_ASSERT(b->block_num() == block_num, reversible_blocks_exception,
                       "Wrong block was read from block log.", ("returned", b->block_num())("expected", block_num));
          }
          return b;
@@ -320,9 +321,9 @@ namespace ultrainio { namespace chain {
       }
    } // construct_index
 
-   fc::path block_log::repair_log( const fc::path& data_dir ) {
+   fc::path block_log::repair_log( const fc::path& data_dir, uint32_t truncate_at_block ) {
       ilog("Recovering Block Log...");
-      FC_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"),
+      ULTRAIN_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
 
       auto now = fc::time_point::now();
@@ -333,10 +334,10 @@ namespace ultrainio { namespace chain {
       }
       auto backup_dir = blocks_dir.parent_path();
       auto blocks_dir_name = blocks_dir.filename();
-      FC_ASSERT( blocks_dir_name.generic_string() != ".", "Invalid path to blocks directory" );
+      ULTRAIN_ASSERT( blocks_dir_name.generic_string() != ".", block_log_exception, "Invalid path to blocks directory" );
       backup_dir = backup_dir / blocks_dir_name.generic_string().append("-").append( now );
 
-      FC_ASSERT( !fc::exists(backup_dir),
+      ULTRAIN_ASSERT( !fc::exists(backup_dir), block_log_backup_dir_exist,
                  "Cannot move existing blocks directory to already existing directory '${new_blocks_dir}'",
                  ("new_blocks_dir", backup_dir) );
 
@@ -360,8 +361,8 @@ namespace ultrainio { namespace chain {
 
       uint32_t version = 0;
       old_block_stream.read( (char*)&version, sizeof(version) );
-      FC_ASSERT( version > 0, "Block log was not setup properly with genesis information." );
-      FC_ASSERT( version == block_log::supported_version,
+      ULTRAIN_ASSERT( version > 0, block_log_exception, "Block log was not setup properly with genesis information." );
+      ULTRAIN_ASSERT( version == block_log::supported_version, block_log_unsupported_version,
                  "Unsupported version of block log. Block log version is ${version} while code supports version ${supported}",
                  ("version", version)("supported", block_log::supported_version) );
 
@@ -419,6 +420,8 @@ namespace ultrainio { namespace chain {
          new_block_stream.write( reinterpret_cast<char*>(&pos), sizeof(pos) );
          block_num = tmp.block_num();
          pos = new_block_stream.tellp();
+         if( block_num == truncate_at_block )
+            break;
       }
 
       if( bad_block.valid() ) {
@@ -451,6 +454,8 @@ namespace ultrainio { namespace chain {
                   "has been written out to '${tail_path}'.",
                   ("num", block_num+1)("tail_path", tail_path) );
          }
+      } else if( block_num == truncate_at_block && pos < end_pos ) {
+         ilog( "Stopped recovery of block log early at specified block number: ${stop}.", ("stop", truncate_at_block) );
       } else {
          ilog( "Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.", ("num", block_num) );
       }
@@ -459,7 +464,7 @@ namespace ultrainio { namespace chain {
    }
 
    genesis_state block_log::extract_genesis_state( const fc::path& data_dir ) {
-      FC_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"),
+      ULTRAIN_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
 
       std::fstream  block_stream;
@@ -467,8 +472,8 @@ namespace ultrainio { namespace chain {
 
       uint32_t version = 0;
       block_stream.read( (char*)&version, sizeof(version) );
-      FC_ASSERT( version > 0, "Block log was not setup properly with genesis information." );
-      FC_ASSERT( version == block_log::supported_version,
+      ULTRAIN_ASSERT( version > 0, block_log_exception, "Block log was not setup properly with genesis information." );
+      ULTRAIN_ASSERT( version == block_log::supported_version, block_log_unsupported_version,
                  "Unsupported version of block log. Block log version is ${version} while code supports version ${supported}",
                  ("version", version)("supported", block_log::supported_version) );
 

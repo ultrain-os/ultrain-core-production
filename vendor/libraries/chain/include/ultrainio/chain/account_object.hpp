@@ -37,7 +37,7 @@ namespace ultrainio { namespace chain {
 
       ultrainio::chain::abi_def get_abi()const {
          ultrainio::chain::abi_def a;
-         FC_ASSERT( abi.size() != 0, "No ABI set on account ${n}", ("n",name) );
+         ULTRAIN_ASSERT( abi.size() != 0, abi_not_found_exception, "No ABI set on account ${n}", ("n",name) );
 
          fc::datastream<const char*> ds( abi.data(), abi.size() );
          fc::raw::unpack( ds, a );

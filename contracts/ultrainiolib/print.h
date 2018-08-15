@@ -11,14 +11,14 @@ extern "C" {
 #endif
    /**
     *  @defgroup consoleapi Console API
-    *  @brief Enables applications to log/print text messages
+    *  @brief Defines APIs to log/print text messages
     *  @ingroup contractdev
     *
     */
 
    /**
     *  @defgroup consolecapi Console C API
-    *  @brief C API to log/print text messages
+    *  @brief Defnes %C API to log/print text messages
     *  @ingroup consoleapi
     *  @{
     */
@@ -29,6 +29,7 @@ extern "C" {
     *  @param cstr - a null terminated string
     *
     *  Example:
+*
     *  @code
     *  prints("Hello World!"); // Output: Hello World!
     *  @endcode
@@ -43,6 +44,7 @@ extern "C" {
     *  @param len - len of string to be printed
     *
     *  Example:
+*
     *  @code
     *  prints_l("Hello World!", 5); // Output: Hello
     *  @endcode
@@ -55,6 +57,7 @@ extern "C" {
     * @param value of 64 bit signed integer to be printed
     *
     *  Example:
+*
     *  @code
     *  printi(-1e+18); // Output: -1000000000000000000
     *  @endcode
@@ -67,6 +70,7 @@ extern "C" {
     * @param value of 64 bit unsigned integer to be printed
     *
     *  Example:
+*
     *  @code
     *  printui(1e+18); // Output: 1000000000000000000
     *  @endcode
@@ -79,6 +83,7 @@ extern "C" {
     * @param value is a pointer to the 128 bit signed integer to be printed
     *
     *  Example:
+*
     *  @code
     *  int128_t large_int(-87654323456);
     *  printi128(&large_int); // Output: -87654323456
@@ -92,6 +97,7 @@ extern "C" {
     * @param value is a pointer to the 128 bit unsigned integer to be printed
     *
     *  Example:
+*
     *  @code
     *  uint128_t large_int(87654323456);
     *  printui128(&large_int); // Output: 87654323456
@@ -105,6 +111,7 @@ extern "C" {
     * @param value of float to be printed
     *
     *  Example:
+*
     *  @code
     *  float value = 5.0 / 10.0;
     *  printsf(value); // Output: 0.5
@@ -118,6 +125,7 @@ extern "C" {
     * @param value of double to be printed
     *
     *  Example:
+*
     *  @code
     *  double value = 5.0 / 10.0;
     *  printdf(value); // Output: 0.5
@@ -131,6 +139,7 @@ extern "C" {
     * @param value is a pointer to the long double to be printed
     *
     *  Example:
+*
     *  @code
     *  long double value = 5.0 / 10.0;
     *  printqf(value); // Output: 0.5

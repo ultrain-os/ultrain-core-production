@@ -45,7 +45,7 @@ Execute a proposal
 Clultrain usage example.
 
 Prerequisites:
-   - ultrainio.token contract installed to ultrainio.token accountm, ultrainio.msig contract installed on ultrainio.msig account which is a priviliged account.
+   - ultrainio.token contract installed to ultrainio.token account, ultrainio.msig contract installed on ultrainio.msig account which is a privileged account.
    - account 'treasury' is the issuer of ULTRAIN token.
    - account 'tester' exists.
    - keys to accounts 'treasury' and 'tester' imported into local wallet, the wallet is unlocked.

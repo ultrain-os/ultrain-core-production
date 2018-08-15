@@ -31,7 +31,7 @@ namespace ultrainio { namespace chain {
 
    wasm_interface::~wasm_interface() {}
 
-   void wasm_interface::validate(const bytes& code) {
+   void wasm_interface::validate(const controller& control, const bytes& code) {
       Module module;
       try {
          Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
@@ -42,7 +42,7 @@ namespace ultrainio { namespace chain {
          ULTRAIN_ASSERT(false, wasm_serialization_error, e.message.c_str());
       }
 
-      wasm_validations::wasm_binary_validation validator(module);
+      wasm_validations::wasm_binary_validation validator(control, module);
       validator.validate();
 
       root_resolver resolver(true);
@@ -70,7 +70,7 @@ class context_aware_api {
       :context(ctx)
       {
          if( context.context_free )
-            FC_ASSERT( context_free, "only context free api's can be used in this context" );
+            ULTRAIN_ASSERT( context_free, unaccessible_api, "only context free api's can be used in this context" );
          context.used_context_free_api |= !context_free;
       }
 
@@ -137,7 +137,7 @@ class context_free_api : public context_aware_api {
       context_free_api( apply_context& ctx )
       :context_aware_api(ctx, true) {
          /* the context_free_data is not available during normal application because it is prunable */
-         FC_ASSERT( context.context_free, "this API may only be called from context_free apply" );
+         ULTRAIN_ASSERT( context.context_free, unaccessible_api, "this API may only be called from context_free apply" );
       }
 
       int get_context_free_data( uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
@@ -150,7 +150,7 @@ class privileged_api : public context_aware_api {
       privileged_api( apply_context& ctx )
       :context_aware_api(ctx)
       {
-         FC_ASSERT( context.privileged, "${code} does not have permission to call this API", ("code",context.receiver) );
+         ULTRAIN_ASSERT( context.privileged, unaccessible_api, "${code} does not have permission to call this API", ("code",context.receiver) );
       }
 
       /**
@@ -171,7 +171,7 @@ class privileged_api : public context_aware_api {
        *  Feature name should be base32 encoded name.
        */
       void activate_feature( int64_t feature_name ) {
-         FC_ASSERT( !"Unsupported Hardfork Detected" );
+         ULTRAIN_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
       }
 
       /**
@@ -761,7 +761,7 @@ class crypto_api : public context_aware_api {
          fc::raw::unpack(pubds, p);
 
          auto check = fc::crypto::public_key( s, digest, false );
-         FC_ASSERT( check == p, "Error expected key different than recovered key" );
+         ULTRAIN_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
       }
 
       int recover_key( const fc::sha256& digest,
@@ -791,22 +791,22 @@ class crypto_api : public context_aware_api {
 
       void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
          auto result = encode<fc::sha256::encoder>( data, datalen );
-         FC_ASSERT( result == hash_val, "hash mismatch" );
+         ULTRAIN_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_sha1(array_ptr<char> data, size_t datalen, const fc::sha1& hash_val) {
          auto result = encode<fc::sha1::encoder>( data, datalen );
-         FC_ASSERT( result == hash_val, "hash mismatch" );
+         ULTRAIN_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_sha512(array_ptr<char> data, size_t datalen, const fc::sha512& hash_val) {
          auto result = encode<fc::sha512::encoder>( data, datalen );
-         FC_ASSERT( result == hash_val, "hash mismatch" );
+         ULTRAIN_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void assert_ripemd160(array_ptr<char> data, size_t datalen, const fc::ripemd160& hash_val) {
          auto result = encode<fc::ripemd160::encoder>( data, datalen );
-         FC_ASSERT( result == hash_val, "hash mismatch" );
+         ULTRAIN_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
@@ -966,7 +966,6 @@ class system_api : public context_aware_api {
       }
 };
 
-
 class context_free_system_api :  public context_aware_api {
 public:
    explicit context_free_system_api( apply_context& ctx )
@@ -974,7 +973,7 @@ public:
 
    void abort() {
       edump(("abort() called"));
-      FC_ASSERT( false, "abort() called");
+      ULTRAIN_ASSERT( false, abort_called, "abort() called");
    }
 
    // Kept as intrinsic rather than implementing on WASM side (using ultrainio_assert_message and strlen) because strlen is faster on native side.
@@ -1213,13 +1212,15 @@ class console_api : public context_aware_api {
 
 #define DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(IDX, ARR_SIZE, ARR_ELEMENT_TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         ULTRAIN_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.store(scope, table, payer, id, data.value);\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len ) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         ULTRAIN_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.update(iterator, payer, data.value);\
@@ -1228,25 +1229,29 @@ class console_api : public context_aware_api {
          return context.IDX.remove(iterator);\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         ULTRAIN_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.find_secondary(code, scope, table, data, primary);\
       }\
       int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t primary ) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         ULTRAIN_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.find_primary(code, scope, table, data.value, primary);\
       }\
       int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         ULTRAIN_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.lowerbound_secondary(code, scope, table, data.value, primary);\
       }\
       int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
-         FC_ASSERT( data_len == ARR_SIZE,\
+         ULTRAIN_ASSERT( data_len == ARR_SIZE,\
+                    db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.upperbound_secondary(code, scope, table, data.value, primary);\
@@ -1375,7 +1380,7 @@ class transaction_api : public context_aware_api {
 
       void send_inline( array_ptr<char> data, size_t data_len ) {
          //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
-         FC_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size,
+         ULTRAIN_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
                     "inline action too big" );
 
          action act;
@@ -1385,7 +1390,7 @@ class transaction_api : public context_aware_api {
 
       void send_context_free_inline( array_ptr<char> data, size_t data_len ) {
          //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
-         FC_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size,
+         ULTRAIN_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
                    "inline action too big" );
 
          action act;
@@ -1398,7 +1403,7 @@ class transaction_api : public context_aware_api {
             transaction trx;
             fc::raw::unpack<transaction>(data, data_len, trx);
             context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
-         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+         } FC_RETHROW_EXCEPTIONS(warn, "data as hex: ${data}", ("data", fc::to_hex(data, data_len)))
       }
 
       bool cancel_deferred( const unsigned __int128& val ) {
@@ -1486,7 +1491,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         FC_ASSERT(rhs != 0, "divide by zero");
+         ULTRAIN_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs /= rhs;
 
@@ -1503,7 +1508,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         FC_ASSERT(rhs != 0, "divide by zero");
+         ULTRAIN_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs /= rhs;
          ret = lhs;
@@ -1533,7 +1538,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         FC_ASSERT(rhs != 0, "divide by zero");
+         ULTRAIN_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs %= rhs;
          ret = lhs;
@@ -1549,7 +1554,7 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         FC_ASSERT(rhs != 0, "divide by zero");
+         ULTRAIN_ASSERT(rhs != 0, arithmetic_exception, "divide by zero");
 
          lhs %= rhs;
          ret = lhs;

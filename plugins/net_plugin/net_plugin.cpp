@@ -86,22 +86,6 @@ namespace ultrainio {
       uint16_t        requests = 0; /// the number of "in flight" requests for this txn
    };
 
-   struct update_entry {
-      const packed_transaction &txn;
-      update_entry(const packed_transaction &msg) : txn(msg) {}
-
-      void operator() (node_transaction_state& nts) {
-         nts.packed_txn = txn;
-         net_message msg(txn);
-         uint32_t packsiz = fc::raw::pack_size(msg);
-         uint32_t bufsiz = packsiz + sizeof(packsiz);
-         nts.serialized_txn.resize(bufsiz);
-         fc::datastream<char*> ds( nts.serialized_txn.data(), bufsiz );
-         ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
-         fc::raw::pack( ds, msg );
-      }
-   };
-
    struct update_in_flight {
       int32_t incr;
       update_in_flight (int32_t delta) : incr (delta) {}
@@ -198,13 +182,15 @@ namespace ultrainio {
 
       shared_ptr<tcp::resolver>     resolver;
 
+      bool                          use_socket_read_watermark = false;
+
       channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
       std::default_random_engine    rand_engine;
 
       void connect( connection_ptr c );
       void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
-      void start_session( connection_ptr c );
+      bool start_session( connection_ptr c );
       void start_listen_loop( );
       void start_read_message( connection_ptr c);
 
@@ -305,6 +291,32 @@ namespace ultrainio {
 
    const fc::string logger_name("net_plugin_impl");
    fc::logger logger;
+   std::string peer_log_format;
+
+#define peer_dlog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( logger.is_enabled( fc::log_level::debug ) ) \
+      logger.log( FC_LOG_MESSAGE( debug, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+  FC_MULTILINE_MACRO_END
+
+#define peer_ilog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( logger.is_enabled( fc::log_level::info ) ) \
+      logger.log( FC_LOG_MESSAGE( info, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+  FC_MULTILINE_MACRO_END
+
+#define peer_wlog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( logger.is_enabled( fc::log_level::warn ) ) \
+      logger.log( FC_LOG_MESSAGE( warn, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+  FC_MULTILINE_MACRO_END
+
+#define peer_elog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( logger.is_enabled( fc::log_level::error ) ) \
+      logger.log( FC_LOG_MESSAGE( error, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant())) ); \
+  FC_MULTILINE_MACRO_END
+
 
    template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
    inline enum_type& operator|=(enum_type& lhs, const enum_type& rhs)
@@ -484,6 +496,7 @@ namespace ultrainio {
       socket_ptr              socket;
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
+      fc::optional<std::size_t>        outstanding_read_bytes;
       vector<char>            blk_buffer;
 
       struct queued_write {
@@ -575,7 +588,6 @@ namespace ultrainio {
       void blk_send(const vector<block_id_type> &txn_lis);
       void stop_send();
 
-      void enqueue( transaction_id_type id );
       void enqueue( const net_message &msg, bool trigger_send = true );
       void cancel_sync(go_away_reason);
       void flush_queues();
@@ -605,6 +617,31 @@ namespace ultrainio {
       bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
 
       bool add_peer_block(const peer_block_state &pbs);
+
+      fc::optional<fc::variant_object> _logger_variant;
+      const fc::variant_object& get_logger_variant()  {
+         if (!_logger_variant) {
+            boost::system::error_code ec;
+            auto rep = socket->remote_endpoint(ec);
+            string ip = ec ? "<unknown>" : rep.address().to_string();
+            string port = ec ? "<unknown>" : std::to_string(rep.port());
+
+            auto lep = socket->local_endpoint(ec);
+            string lip = ec ? "<unknown>" : lep.address().to_string();
+            string lport = ec ? "<unknown>" : std::to_string(lep.port());
+
+            _logger_variant.emplace(fc::mutable_variant_object()
+               ("_name", peer_name())
+               ("_id", node_id)
+               ("_sid", ((string)node_id).substr(0, 7))
+               ("_ip", ip)
+               ("_port", port)
+               ("_lip", lip)
+               ("_lport", lport)
+            );
+         }
+         return *_logger_variant;
+      }
    };
 
    struct msgHandler : public fc::visitor<void> {
@@ -634,13 +671,12 @@ namespace ultrainio {
       connection_ptr source;
       stages         state;
 
-      deque<block_id_type> _blocks;
-      chain_plugin * chain_plug;
+      chain_plugin* chain_plug;
 
       constexpr auto stage_str(stages s );
 
    public:
-      sync_manager(uint32_t span);
+      explicit sync_manager(uint32_t span);
       void set_state(stages s);
       bool sync_required();
       void send_handshakes();
@@ -720,13 +756,8 @@ namespace ultrainio {
 
    class dispatch_manager {
    public:
-      uint32_t just_send_it_max;
+      uint32_t just_send_it_max = 0;
 
-      struct block_request {
-         block_id_type id;
-         bool local_retry;
-      };
-      vector<block_request> req_blks;
       vector<transaction_id_type> req_trx;
 
       struct block_origin {
@@ -806,12 +837,7 @@ namespace ultrainio {
       initialize();
    }
 
-   connection::~connection() {
-      if(peer_addr.empty())
-         wlog( "released connection from client" );
-      else
-         wlog( "released connection to server at ${addr}", ("addr", peer_addr) );
-   }
+   connection::~connection() {}
 
    void connection::initialize() {
       auto *rnd = node_id.data();
@@ -910,7 +936,7 @@ namespace ultrainio {
 
    void connection::blk_send_branch() {
       controller &cc = my_impl->chain_plug->chain();
-      uint32_t head_num = cc.head_block_num ();
+      uint32_t head_num = cc.fork_db_head_block_num ();
       notice_message note;
       note.known_blocks.mode = normal;
       note.known_blocks.pending = 0;
@@ -925,7 +951,7 @@ namespace ultrainio {
       try {
          lib_num = cc.last_irreversible_block_num();
          lib_id = cc.last_irreversible_block_id();
-         head_id = cc.head_block_id();
+         head_id = cc.fork_db_head_block_id();
       }
       catch (const assert_exception &ex) {
          elog( "unable to retrieve block info: ${n} for ${p}",("n",ex.to_string())("p",peer_name()));
@@ -978,16 +1004,8 @@ namespace ultrainio {
          try {
             signed_block_ptr b = cc.fetch_block_by_id(blkid);
             if(b) {
-               uint32_t bnum = b->block_num();
-               bool send_whole = bnum <= cc.last_irreversible_block_num();
-               fc_dlog(logger,"found block for id at num ${n}",("n",bnum));
-               if (send_whole) {
-                  enqueue(net_message(*b));
-               }
-               else {
-                  //signed_block_summary &sbs = *b;
-                  enqueue(net_message(*b));
-               }
+               fc_dlog(logger,"found block for id at num ${n}",("n",b->block_num()));
+               enqueue(net_message(*b));
             }
             else {
                ilog("fetch block by id returned null, id ${id} on block ${c} of ${s} for ${p}",
@@ -1348,7 +1366,7 @@ namespace ultrainio {
          bool fhset = c->fork_head != block_id_type();
          fc_dlog(logger, "fork_head_num = ${fn} fork_head set = ${s}",
                  ("fn", c->fork_head_num)("s", fhset));
-            return c->fork_head != block_id_type() && c->fork_head_num < chain_plug->chain().head_block_num();
+            return c->fork_head != block_id_type() && c->fork_head_num < chain_plug->chain().fork_db_head_block_num();
       }
       return state != in_sync;
    }
@@ -1369,14 +1387,14 @@ namespace ultrainio {
 
    bool sync_manager::sync_required( ) {
       fc_dlog(logger, "last req = ${req}, last recv = ${recv} known = ${known} our head = ${head}",
-              ("req",sync_last_requested_num)("recv",sync_next_expected_num)("known",sync_known_lib_num)("head",chain_plug->chain( ).head_block_num( )));
+              ("req",sync_last_requested_num)("recv",sync_next_expected_num)("known",sync_known_lib_num)("head",chain_plug->chain( ).fork_db_head_block_num( )));
 
       return( sync_last_requested_num < sync_known_lib_num ||
-              chain_plug->chain( ).head_block_num( ) < sync_last_requested_num );
+              chain_plug->chain( ).fork_db_head_block_num( ) < sync_last_requested_num );
    }
 
    void sync_manager::request_next_chunk( connection_ptr conn ) {
-      uint32_t head_block = chain_plug->chain().head_block_num();
+      uint32_t head_block = chain_plug->chain().fork_db_head_block_num();
 
       if (head_block < sync_last_requested_num && source && source->current()) {
          fc_ilog (logger, "ignoring request, head is ${h} last req = ${r} source is ${p}",
@@ -1477,7 +1495,7 @@ namespace ultrainio {
 
       if (!sync_required()) {
          uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
-         uint32_t hnum = chain_plug->chain().head_block_num();
+         uint32_t hnum = chain_plug->chain().fork_db_head_block_num();
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b",bnum)("h",hnum)("t",target));
          return;
@@ -1525,11 +1543,59 @@ namespace ultrainio {
       //
       //-----------------------------
 
-      notice_message note;
-      note.known_blocks.mode = none;
-      note.known_trx.mode = catch_up;
-      note.known_trx.pending = my_impl->local_txns.size();
-      c->enqueue( note );
+      uint32_t head = cc.fork_db_head_block_num( );
+      block_id_type head_id = cc.fork_db_head_block_id();
+      if (head_id == msg.head_id) {
+         fc_dlog(logger, "sync check state 0");
+         // notify peer of our pending transactions
+         notice_message note;
+         note.known_blocks.mode = none;
+         note.known_trx.mode = catch_up;
+         note.known_trx.pending = my_impl->local_txns.size();
+         c->enqueue( note );
+         return;
+      }
+      if (head < peer_lib) {
+         fc_dlog(logger, "sync check state 1");
+         // wait for receipt of a notice message before initiating sync
+         if (c->protocol_version < proto_explicit_sync) {
+            start_sync( c, peer_lib);
+         }
+         return;
+      }
+      if (lib_num > msg.head_num ) {
+         fc_dlog(logger, "sync check state 2");
+         if (msg.generation > 1 || c->protocol_version > proto_base) {
+            notice_message note;
+            note.known_trx.pending = lib_num;
+            note.known_trx.mode = last_irr_catch_up;
+            note.known_blocks.mode = last_irr_catch_up;
+            note.known_blocks.pending = head;
+            c->enqueue( note );
+         }
+         c->syncing = true;
+         return;
+      }
+
+      if (head <= msg.head_num ) {
+         fc_dlog(logger, "sync check state 3");
+         verify_catchup (c, msg.head_num, msg.head_id);
+         return;
+      }
+      else {
+         fc_dlog(logger, "sync check state 4");
+         if (msg.generation > 1 ||  c->protocol_version > proto_base) {
+            notice_message note;
+            note.known_trx.mode = none;
+            note.known_blocks.mode = catch_up;
+            note.known_blocks.pending = head;
+            note.known_blocks.ids.push_back(head_id);
+            c->enqueue( note );
+         }
+         c->syncing = true;
+         return;
+      }
+      elog ("sync check failed to resolve status");
    }
 
    void sync_manager::verify_catchup(connection_ptr c, uint32_t num, block_id_type id) {
@@ -1682,6 +1748,7 @@ namespace ultrainio {
       if (c &&
           c->last_req &&
           c->last_req->req_blocks.mode != none &&
+          !c->last_req->req_blocks.ids.empty() &&
           c->last_req->req_blocks.ids.back() == id) {
          c->last_req.reset();
       }
@@ -1791,6 +1858,7 @@ namespace ultrainio {
       if (c &&
           c->last_req &&
           c->last_req->req_trx.mode != none &&
+          !c->last_req->req_trx.ids.empty() &&
           c->last_req->req_trx.ids.back() == id) {
          c->last_req.reset();
       }
@@ -1851,7 +1919,8 @@ namespace ultrainio {
             peer_block_state entry = {blkid,0,true,true,fc::time_point()};
             try {
                b = cc.fetch_block_by_id(blkid);
-               entry.block_num = b->block_num();
+               if(b)
+                  entry.block_num = b->block_num();
             } catch (const assert_exception &ex) {
                ilog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
                // keep going, client can ask another peer
@@ -1861,7 +1930,6 @@ namespace ultrainio {
             if (!b) {
                send_req = true;
                req.req_blocks.ids.push_back( blkid );
-               req_blks.push_back( {blkid, generated} );
                entry.requested_time = fc::time_point::now();
             }
             c->add_peer_block(entry);
@@ -1887,11 +1955,11 @@ namespace ultrainio {
       transaction_id_type tid;
       block_id_type bid;
       bool is_txn = false;
-      if( c->last_req->req_trx.mode == normal ) {
+      if( c->last_req->req_trx.mode == normal && !c->last_req->req_trx.ids.empty() ) {
          is_txn = true;
          tid = c->last_req->req_trx.ids.back();
       }
-      else if( c->last_req->req_blocks.mode == normal ) {
+      else if( c->last_req->req_blocks.mode == normal && !c->last_req->req_blocks.ids.empty() ) {
          bid = c->last_req->req_blocks.ids.back();
       }
       else {
@@ -1984,8 +2052,9 @@ namespace ultrainio {
             auto c = weak_conn.lock();
             if (!c) return;
             if( !err && c->socket->is_open() ) {
-               start_session( c );
-               c->send_handshake ();
+               if (start_session( c )) {
+                  c->send_handshake ();
+               }
             } else {
                if( endpoint_itr != tcp::resolver::iterator() ) {
                   close(c);
@@ -2001,15 +2070,25 @@ namespace ultrainio {
          } );
    }
 
-   void net_plugin_impl::start_session( connection_ptr con ) {
+   bool net_plugin_impl::start_session( connection_ptr con ) {
       boost::asio::ip::tcp::no_delay nodelay( true );
-      con->socket->set_option( nodelay );
-      start_read_message( con );
-      ++started_sessions;
-
-      // for now, we can just use the application main loop.
-      //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
-      //     con->writeloop_complete = bf::async( [=](){ write_loop con ); } );
+      boost::system::error_code ec;
+      con->socket->set_option( nodelay, ec );
+      if (ec) {
+         elog( "connection failed to ${peer}: ${error}",
+               ( "peer", con->peer_name())("error",ec.message()));
+         con->connecting = false;
+         close(con);
+         return false;
+      }
+      else {
+         start_read_message( con );
+         ++started_sessions;
+         return true;
+         // for now, we can just use the application main loop.
+         //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
+         //     con->writeloop_complete = bf::async( [=](){ write_loop con ); } );
+      }
    }
 
 
@@ -2019,47 +2098,61 @@ namespace ultrainio {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
-               auto paddr = socket->remote_endpoint(ec).address().to_v4();
+               auto paddr = socket->remote_endpoint(ec).address();
                if (ec) {
                   fc_elog(logger,"Error getting remote endpoint: ${m}",("m", ec.message()));
-                  return;
                }
-               for (auto &conn : connections) {
-                  if(conn->socket->is_open()) {
-                     if (conn->peer_addr.empty()) {
-                        visitors++;
-                        boost::system::error_code ec;
-                        if (paddr == conn->socket->remote_endpoint(ec).address().to_v4()) {
-                           from_addr++;
+               else {
+                  for (auto &conn : connections) {
+                     if(conn->socket->is_open()) {
+                        if (conn->peer_addr.empty()) {
+                           visitors++;
+                           boost::system::error_code ec;
+                           if (paddr == conn->socket->remote_endpoint(ec).address()) {
+                              from_addr++;
+                           }
                         }
                      }
                   }
-               }
-               if (num_clients != visitors) {
-                  ilog ("checking max client, visitors = ${v} num clients ${n}",("v",visitors)("n",num_clients));
-                  num_clients = visitors;
-               }
-               if( from_addr < max_nodes_per_host && (max_client_count == 0 || num_clients < max_client_count )) {
-                  ++num_clients;
-                  connection_ptr c = std::make_shared<connection>( socket );
-                  connections.insert( c );
-                  start_session( c );
-               }
-               else {
-                  if (from_addr >= max_nodes_per_host) {
-                     fc_elog(logger, "Number of connections (${n}) from ${ra} exceeds limit",
-                             ("n", from_addr+1)("ra",paddr.to_string()));
+                  if (num_clients != visitors) {
+                     ilog ("checking max client, visitors = ${v} num clients ${n}",("v",visitors)("n",num_clients));
+                     num_clients = visitors;
+                  }
+                  if( from_addr < max_nodes_per_host && (max_client_count == 0 || num_clients < max_client_count )) {
+                     ++num_clients;
+                     connection_ptr c = std::make_shared<connection>( socket );
+                     connections.insert( c );
+                     start_session( c );
+
                   }
                   else {
-                     fc_elog(logger, "Error max_client_count ${m} exceeded",
-                             ( "m", max_client_count) );
+                     if (from_addr >= max_nodes_per_host) {
+                        fc_elog(logger, "Number of connections (${n}) from ${ra} exceeds limit",
+                                ("n", from_addr+1)("ra",paddr.to_string()));
+                     }
+                     else {
+                        fc_elog(logger, "Error max_client_count ${m} exceeded",
+                                ( "m", max_client_count) );
+                     }
+                     socket->close( );
                   }
-                  socket->close( );
                }
-               start_listen_loop();
             } else {
                elog( "Error accepting connection: ${m}",( "m", ec.message() ) );
+               // For the listed error codes below, recall start_listen_loop()
+               switch (ec.value()) {
+                  case ECONNABORTED:
+                  case EMFILE:
+                  case ENFILE:
+                  case ENOBUFS:
+                  case ENOMEM:
+                  case EPROTO:
+                     break;
+                  default:
+                     return;
+               }
             }
+            start_listen_loop();
          });
    }
 
@@ -2139,20 +2232,41 @@ namespace ultrainio {
 
         return true;
     }
-
+	
    void net_plugin_impl::start_read_message( connection_ptr conn ) {
+
       try {
          if(!conn->socket) {
             return;
          }
          connection_wptr weak_conn = conn;
-         conn->socket->async_read_some
-            (conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
-             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+
+         std::size_t minimum_read = conn->outstanding_read_bytes ? *conn->outstanding_read_bytes : message_header_size;
+
+         if (use_socket_read_watermark) {
+            const size_t max_socket_read_watermark = 4096;
+            std::size_t socket_read_watermark = std::min<std::size_t>(minimum_read, max_socket_read_watermark);
+            boost::asio::socket_base::receive_low_watermark read_watermark_opt(socket_read_watermark);
+            conn->socket->set_option(read_watermark_opt);
+         }
+
+         auto completion_handler = [minimum_read](boost::system::error_code ec, std::size_t bytes_transferred) -> std::size_t {
+            if (ec || bytes_transferred >= minimum_read ) {
+               return 0;
+            } else {
+               return minimum_read - bytes_transferred;
+            }
+         };
+
+         boost::asio::async_read(*conn->socket,
+            conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
+            [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                auto conn = weak_conn.lock();
                if (!conn) {
                   return;
                }
+
+               conn->outstanding_read_bytes.reset();
 
                try {
                   if( !ec ) {
@@ -2160,12 +2274,13 @@ namespace ultrainio {
                         elog("async_read_some callback: bytes_transfered = ${bt}, buffer.bytes_to_write = ${btw}",
                              ("bt",bytes_transferred)("btw",conn->pending_message_buffer.bytes_to_write()));
                      }
-                     FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
+                     ULTRAIN_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write(), plugin_exception, "");
                      conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
                      while (conn->pending_message_buffer.bytes_to_read() > 0) {
                         uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
 
                         if (bytes_in_buffer < message_header_size) {
+                           conn->outstanding_read_bytes.emplace(message_header_size - bytes_in_buffer);
                            break;
                         } else {
                            uint32_t message_length;
@@ -2176,13 +2291,22 @@ namespace ultrainio {
                               close(conn);
                               return;
                            }
-                           if (bytes_in_buffer >= message_length + message_header_size) {
+
+                           auto total_message_bytes = message_length + message_header_size;
+
+                           if (bytes_in_buffer >= total_message_bytes) {
                               conn->pending_message_buffer.advance_read_ptr(message_header_size);
                               if (!conn->process_next_message(*this, message_length)) {
                                  return;
                               }
                            } else {
-                              conn->pending_message_buffer.add_space(message_length + message_header_size - bytes_in_buffer);
+                              auto outstanding_message_bytes = total_message_bytes - bytes_in_buffer;
+                              auto available_buffer_bytes = conn->pending_message_buffer.bytes_to_write();
+                              if (outstanding_message_bytes > available_buffer_bytes) {
+                                 conn->pending_message_buffer.add_space( outstanding_message_bytes - available_buffer_bytes );
+                              }
+
+                              conn->outstanding_read_bytes.emplace(outstanding_message_bytes);
                               break;
                            }
                         }
@@ -2267,14 +2391,15 @@ namespace ultrainio {
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const chain_size_message &msg) {
-      fc_dlog( logger, "got a chain_size_message from ${p}", ("p",c->peer_name()));
+      peer_ilog(c, "received chain_size_message");
+
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
-      fc_dlog( logger, "got a handshake_message from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
+      peer_ilog(c, "received handshake_message");
       ilog("got a handshake_message from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
       if (!is_valid(msg)) {
-         elog( "Invalid handshake message received from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
+         peer_elog( c, "bad handshake message");
          c->enqueue( go_away_message( fatal_other ));
          return;
       }
@@ -2374,11 +2499,13 @@ namespace ultrainio {
       }
 
       c->last_handshake_recv = msg;
+      c->_logger_variant.reset();
       sync_master->recv_handshake(c,msg);
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const go_away_message &msg ) {
       string rsn = reason_str( msg.reason );
+      peer_ilog(c, "received go_away_message");
       ilog( "received a go away message from ${p}, reason = ${r}",
             ("p", c->peer_name())("r",rsn));
       c->no_retry = msg.reason;
@@ -2390,6 +2517,7 @@ namespace ultrainio {
    }
 
    void net_plugin_impl::handle_message(connection_ptr c, const time_message &msg) {
+      peer_ilog(c, "received time_message");
       /* We've already lost however many microseconds it took to dispatch
        * the message, but it can't be helped.
        */
@@ -2426,7 +2554,7 @@ namespace ultrainio {
       // peer tells us about one or more blocks or txns. When done syncing, forward on
       // notices of previously unknown blocks or txns,
       //
-      fc_dlog(logger, "got a notice_message from ${p}", ("p",c->peer_name()));
+      peer_ilog(c, "received notice_message");
       c->connecting = false;
       request_message req;
       bool send_req = false;
@@ -2480,7 +2608,7 @@ namespace ultrainio {
          break;
       }
       default: {
-         fc_dlog(logger, "received a bogus known_blocks.mode ${m} from ${p}",("m",static_cast<uint32_t>(msg.known_blocks.mode))("p",c->peer_name()));
+         peer_elog(c, "bad notice_message : invalid known_blocks.mode ${m}",("m",static_cast<uint32_t>(msg.known_blocks.mode)));
       }
       }
       fc_dlog(logger, "send req = ${sr}", ("sr",send_req));
@@ -2492,11 +2620,11 @@ namespace ultrainio {
    void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
       switch (msg.req_blocks.mode) {
       case catch_up :
-         fc_dlog( logger,  "got a catch_up request_message from ${p}", ("p",c->peer_name()));
+         peer_ilog(c,  "received request_message:catch_up");
          c->blk_send_branch( );
          break;
       case normal :
-         fc_dlog(logger, "got a normal block request_message from ${p}", ("p",c->peer_name()));
+         peer_ilog(c, "received request_message:normal");
          c->blk_send(msg.req_blocks.ids);
          break;
       default:;
@@ -2580,7 +2708,7 @@ namespace ultrainio {
             honest_conns.clear();
 
             ilog("rsp conns:${s} block num:${b}", ("s", (*it)->peer_name())("b", (*it)->last_block_info.blockNum));
-            if ((*it)->last_block_info.blockNum != std::numeric_limits<uint32_t>::max()) {
+            if ((*it)->last_block_info.blockNum != 0xffffffff) {
                 honest_conns.emplace_back(*it);
 
                 for (auto next_it = std::next(it); next_it != sync_block_master->rsp_conns.end(); ++next_it) {
@@ -2606,7 +2734,7 @@ namespace ultrainio {
             uint32_t r = rand_engine()%honest_conns.size();
             ilog("select random ${r}th connection to sync block. peer:${p}", ("r", r)("p", honest_conns[r]->peer_name()));
             if (sync_block_master->sync_block_msg.endBlockNum > honest_conns[r]->last_block_info.blockNum) {
-              if (sync_block_master->sync_block_msg.endBlockNum == std::numeric_limits<uint32_t>::max()) {
+              if (sync_block_master->sync_block_msg.endBlockNum == 0xffffffff) {
                 sync_block_master->sync_block_msg.endBlockNum = honest_conns[r]->last_block_info.blockNum+1;
               }else {
                 sync_block_master->sync_block_msg.endBlockNum = honest_conns[r]->last_block_info.blockNum;
@@ -2643,8 +2771,8 @@ namespace ultrainio {
     }
   
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
-      //ilog("got a packed transaction from ${p}, cancel wait", ("p",c->peer_name()));
-      //fc_dlog(logger, "got a packed transaction from ${p}, cancel wait", ("p",c->peer_name()));
+      fc_dlog(logger, "got a packed transaction, cancel wait");
+      peer_ilog(c, "received packed_transaction");
       if( sync_master->is_active(c) ) {
          fc_dlog(logger, "got a txn during sync - dropping");
          return;
@@ -2658,7 +2786,7 @@ namespace ultrainio {
       dispatcher->recv_transaction(c, tid);
       //uint64_t code = 0;
       chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
-          //ilog("start bcast transaction");
+          //ilog("start bcast transaction……");
           dispatcher->bcast_transaction(msg);
 //         if (result.contains<fc::exception_ptr>()) {
 //            auto e_ptr = result.get<fc::exception_ptr>();
@@ -2705,8 +2833,8 @@ namespace ultrainio {
 
       dispatcher->recv_block(c, blk_id, blk_num);
       fc::microseconds age( fc::time_point::now() - msg.timestamp);
-      fc_dlog(logger, "got signed_block #${n} from ${p} block age in secs = ${age}",
-              ("n",blk_num)("p",c->peer_name())("age",age.to_seconds()));
+      peer_ilog(c, "received signed_block : #${n} block age in secs = ${age}",
+              ("n",blk_num)("age",age.to_seconds()));
 
       go_away_reason reason = fatal_other;
       try {
@@ -2714,16 +2842,21 @@ namespace ultrainio {
          chain_plug->accept_block(sbp); //, sync_master->is_active(c));
          reason = no_reason;
       } catch( const unlinkable_block_exception &ex) {
+         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
          reason = unlinkable;
       } catch( const block_validate_exception &ex) {
+         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
          elog( "block_validate_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()));
          reason = validation;
       } catch( const assert_exception &ex) {
+         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
          elog( "unable to accept block on assert exception ${n} from ${p}",("n",ex.to_string())("p",c->peer_name()));
       } catch( const fc::exception &ex) {
+         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
          elog( "accept_block threw a non-assert exception ${x} from ${p}",( "x",ex.to_string())("p",c->peer_name()));
          reason = no_reason;
       } catch( ...) {
+         peer_elog(c, "bad signed_block : unknown exception");
          elog( "handle sync block caught something else from ${p}",("num",blk_num)("p",c->peer_name()));
       }
 
@@ -2818,27 +2951,18 @@ namespace ultrainio {
 
    void net_plugin_impl::connection_monitor( ) {
       start_conn_timer();
-      vector <connection_ptr> discards;
-      num_clients = 0;
-      for( auto &c : connections ) {
-         if( !c->socket->is_open() && !c->connecting) {
-            if( c->peer_addr.length() > 0) {
-               connect(c);
+      auto it = connections.begin();
+      while(it != connections.end()) {
+         if( !(*it)->socket->is_open() && !(*it)->connecting) {
+            if( (*it)->peer_addr.length() > 0) {
+               connect(*it);
             }
             else {
-               discards.push_back( c);
-            }
-         } else {
-            if( c->socket->is_open() && c->peer_addr.empty()) {
-               num_clients++;
+               it = connections.erase(it);
+               continue;
             }
          }
-      }
-      if( discards.size( ) ) {
-         for( auto &c : discards) {
-            connections.erase( c );
-            c.reset();
-         }
+         ++it;
       }
    }
 
@@ -3000,7 +3124,7 @@ namespace ultrainio {
       controller& cc = my_impl->chain_plug->chain();
       hello.head_id = fc::sha256();
       hello.last_irreversible_block_id = fc::sha256();
-      hello.head_num = cc.head_block_num();
+      hello.head_num = cc.fork_db_head_block_num();
       hello.last_irreversible_block_num = cc.last_irreversible_block_num();
       if( hello.last_irreversible_block_num ) {
          try {
@@ -3035,7 +3159,7 @@ namespace ultrainio {
          ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The actual host:port used to listen for incoming p2p connections.")
          ( "p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
          ( "p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
-         ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client0nodes from any single IP address")
+         ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
          ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
@@ -3047,7 +3171,18 @@ namespace ultrainio {
            "True to require exact match of peer network version.")
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
          ( "max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "maximum sizes of transaction or block messages that are sent without first sending a notice")
-         ;
+         ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
+         ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
+           "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
+           "Available Variables:\n"
+           "   _name  \tself-reported name\n\n"
+           "   _id    \tself-reported ID (64 hex characters)\n\n"
+           "   _sid   \tfirst 8 characters of _peer.id\n\n"
+           "   _ip    \tremote IP address of peer\n\n"
+           "   _port  \tremote port number of peer\n\n"
+           "   _lip   \tlocal IP address connected to peer\n\n"
+           "   _lport \tlocal port number connected to peer\n\n")
+        ;
    }
 
    template<typename T>
@@ -3057,106 +3192,107 @@ namespace ultrainio {
 
    void net_plugin::plugin_initialize( const variables_map& options ) {
       ilog("Initialize net plugin");
+      try {
+         peer_log_format = options.at( "peer-log-format" ).as<string>();
 
-      my->network_version_match = options.at("network-version-match").as<bool>();
+         my->network_version_match = options.at( "network-version-match" ).as<bool>();
 
-      my->sync_master.reset( new sync_manager(options.at("sync-fetch-span").as<uint32_t>() ) );
-      my->dispatcher.reset( new dispatch_manager );
+         my->sync_master.reset( new sync_manager( options.at( "sync-fetch-span" ).as<uint32_t>()));
+         my->dispatcher.reset( new dispatch_manager );
       my->sync_block_master.reset( new sync_block_manager );
 
-      my->connector_period = std::chrono::seconds(options.at("connection-cleanup-period").as<int>());
-      my->txn_exp_period = def_txn_expire_wait;
-      my->resp_expected_period = def_resp_expected_wait;
-      my->dispatcher->just_send_it_max = options.at("max-implicit-request").as<uint32_t>();
-      my->max_client_count = options.at("max-clients").as<int>();
-      my->max_nodes_per_host = options.at("p2p-max-nodes-per-host").as<int>();
-      my->num_clients = 0;
-      my->started_sessions = 0;
+         my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
+         my->txn_exp_period = def_txn_expire_wait;
+         my->resp_expected_period = def_resp_expected_wait;
+         my->dispatcher->just_send_it_max = options.at( "max-implicit-request" ).as<uint32_t>();
+         my->max_client_count = options.at( "max-clients" ).as<int>();
+         my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
+         my->num_clients = 0;
+         my->started_sessions = 0;
 
       std::random_device rd;
       my->rand_engine.seed(rd());
 
-      my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service() ) );
-      if(options.count("p2p-listen-endpoint")) {
-         my->p2p_address = options.at("p2p-listen-endpoint").as< string >();
-         auto host = my->p2p_address.substr( 0, my->p2p_address.find(':') );
-         auto port = my->p2p_address.substr( host.size()+1, my->p2p_address.size() );
-         idump((host)(port));
-         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
-         // Note: need to add support for IPv6 too?
+         my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
+         if( options.count( "p2p-listen-endpoint" )) {
+            my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
+            auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
+            auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
+            idump((host)( port ));
+            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
+            // Note: need to add support for IPv6 too?
 
-         my->listen_endpoint = *my->resolver->resolve( query);
+            my->listen_endpoint = *my->resolver->resolve( query );
 
-         my->acceptor.reset( new tcp::acceptor( app().get_io_service() ) );
-      }
-      if(options.count("p2p-server-address")) {
-         my->p2p_address = options.at("p2p-server-address").as< string >();
-      }
-      else {
-         if(my->listen_endpoint.address().to_v4() == address_v4::any()) {
-            boost::system::error_code ec;
-            auto host = host_name(ec);
-            if( ec.value() != boost::system::errc::success) {
-
-               FC_THROW_EXCEPTION( fc::invalid_arg_exception,
-                                   "Unable to retrieve host_name. ${msg}",( "msg",ec.message()));
-
-            }
-            auto port = my->p2p_address.substr( my->p2p_address.find(':'), my->p2p_address.size());
-            my->p2p_address = host + port;
+            my->acceptor.reset( new tcp::acceptor( app().get_io_service()));
          }
-      }
+         if( options.count( "p2p-server-address" )) {
+            my->p2p_address = options.at( "p2p-server-address" ).as<string>();
+         } else {
+            if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
+               boost::system::error_code ec;
+               auto host = host_name( ec );
+               if( ec.value() != boost::system::errc::success ) {
 
-      if(options.count("p2p-peer-address")) {
-         my->supplied_peers = options.at("p2p-peer-address").as<vector<string> >();
-      }
-      if(options.count("agent-name")) {
-         my->user_agent_name = options.at("agent-name").as<string>();
-      }
+                  FC_THROW_EXCEPTION( fc::invalid_arg_exception,
+                                      "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
 
-      if(options.count("allowed-connection")) {
-         const std::vector<std::string> allowed_remotes = options["allowed-connection"].as<std::vector<std::string>>();
-         for(const std::string& allowed_remote : allowed_remotes)
-            {
-               if(allowed_remote == "any")
+               }
+               auto port = my->p2p_address.substr( my->p2p_address.find( ':' ), my->p2p_address.size());
+               my->p2p_address = host + port;
+            }
+         }
+
+         if( options.count( "p2p-peer-address" )) {
+            my->supplied_peers = options.at( "p2p-peer-address" ).as<vector<string> >();
+         }
+         if( options.count( "agent-name" )) {
+            my->user_agent_name = options.at( "agent-name" ).as<string>();
+         }
+
+         if( options.count( "allowed-connection" )) {
+            const std::vector<std::string> allowed_remotes = options["allowed-connection"].as<std::vector<std::string>>();
+            for( const std::string& allowed_remote : allowed_remotes ) {
+               if( allowed_remote == "any" )
                   my->allowed_connections |= net_plugin_impl::Any;
-               else if(allowed_remote == "producers")
+               else if( allowed_remote == "producers" )
                   my->allowed_connections |= net_plugin_impl::Producers;
-               else if(allowed_remote == "specified")
+               else if( allowed_remote == "specified" )
                   my->allowed_connections |= net_plugin_impl::Specified;
-               else if(allowed_remote == "none")
+               else if( allowed_remote == "none" )
                   my->allowed_connections = net_plugin_impl::None;
             }
-      }
-
-      if(my->allowed_connections & net_plugin_impl::Specified)
-         FC_ASSERT(options.count("peer-key"), "At least one peer-key must accompany 'allowed-connection=specified'");
-
-      if(options.count("peer-key")) {
-         const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
-         for(const std::string& key_string : key_strings)
-            {
-               my->allowed_peers.push_back(dejsonify<chain::public_key_type>(key_string));
-            }
-      }
-
-      if(options.count("peer-private-key"))
-         {
-            const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
-            for(const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
-               {
-                  auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(key_id_to_wif_pair_string);
-                  my->private_keys[key_id_to_wif_pair.first] = fc::crypto::private_key(key_id_to_wif_pair.second);
-               }
          }
 
-      my->chain_plug = app().find_plugin<chain_plugin>();
-      my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
-      fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
-      ilog("my node_id is ${id}",("id",my->node_id));
+         if( my->allowed_connections & net_plugin_impl::Specified )
+            ULTRAIN_ASSERT( options.count( "peer-key" ),
+                        plugin_config_exception,
+                       "At least one peer-key must accompany 'allowed-connection=specified'" );
 
-      my->keepalive_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
-      my->ticker();
+         if( options.count( "peer-key" )) {
+            const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
+            for( const std::string& key_string : key_strings ) {
+               my->allowed_peers.push_back( dejsonify<chain::public_key_type>( key_string ));
+            }
+         }
+
+         if( options.count( "peer-private-key" )) {
+            const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
+            for( const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings ) {
+               auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(
+                     key_id_to_wif_pair_string );
+               my->private_keys[key_id_to_wif_pair.first] = fc::crypto::private_key( key_id_to_wif_pair.second );
+            }
+         }
+
+         my->chain_plug = app().find_plugin<chain_plugin>();
+         my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
+         fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
+         ilog( "my node_id is ${id}", ("id", my->node_id));
+
+         my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
+         my->ticker();
+      } FC_LOG_AND_RETHROW()
    }
 
    void net_plugin::plugin_startup() {
