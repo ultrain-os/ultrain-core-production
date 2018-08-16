@@ -138,6 +138,8 @@ namespace ultrainio { namespace chain {
                                     3030004, "block exhausted allowed resources" )
       FC_DECLARE_DERIVED_EXCEPTION( block_too_old_exception,     block_validate_exception,
                                     3030005, "block is too old to push" )
+      FC_DECLARE_DERIVED_EXCEPTION( block_trx_min_cpu_usage_exception,     block_validate_exception,
+                                    3030006, "trx in proposed block has wrong cpu_usage_us set" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( transaction_exception,             chain_exception,

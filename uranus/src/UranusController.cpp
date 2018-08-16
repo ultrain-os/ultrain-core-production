@@ -15,6 +15,8 @@
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <ultrainio/chain/block_timestamp.hpp>
 #include <ultrainio/chain/controller.hpp>
+#include <ultrainio/chain/exceptions.hpp>
+#include <ultrainio/chain/global_property_object.hpp>
 #include <ultrainio/chain/name.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 
@@ -39,6 +41,15 @@ namespace {
         if (!block.proposerPk.empty() || !block.proposerProof.empty())
             return false;
         return true;
+    }
+
+    bool IsBa0TheRightBlock(const ultrainio::chain::signed_block &b,
+                            const ultrainio::chain::signed_block_ptr &block) {
+        return  (b.proposerPk == block->proposerPk &&
+                 b.proposerProof == block->proposerProof &&
+                 b.block_num() == block->block_num() &&
+                 b.timestamp == block->timestamp &&
+                 b.producer == block->producer);
     }
 }
 
@@ -659,6 +670,8 @@ namespace ultrainio {
     size_t UranusController::runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
                                               fc::time_point start_timestamp) {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
+        const auto& cfg = chain.get_global_properties().configuration;
+        const auto& max_trx_cpu = cfg.max_transaction_cpu_usage;
         ilog("------- start running unapplied ${num} trxs", ("num", trxs.size()));
         size_t count = 0;
         for (const auto &trx : trxs) {
@@ -685,22 +698,34 @@ namespace ultrainio {
             //	       }
 
             try {
-                auto deadline = fc::time_point::now() + fc::milliseconds(100);
+                auto deadline = fc::time_point::now() + fc::milliseconds(max_trx_cpu);
                 auto trace = chain.push_transaction(trx, deadline);
                 if (trace->except) {
                     ilog("-----------initProposeMsg push trx failed ${e}", ("e", (trace->except)->what()));
-                    // this failed our configured maximum transaction time, we don't want to replay it
-                    chain.drop_unapplied_transaction(trx);
+                    auto code = trace->except->code();
+                    // If the fail is due to block cpu/net, we break and we don't erase
+                    // the trx since it will run through in the next block
+                    if (code == chain::block_net_usage_exceeded::code_value) {
+                        ilog("----- code exec exceeds the max allowed net, break");
+                        break;
+                    } else if (code == chain::block_cpu_usage_exceeded::code_value) {
+                        ilog("----- code exec exceeds the max allowed time, break");
+                        break;
+                    } else {
+                        // for othe kind of failure, we should erase the trx
+                        chain.drop_unapplied_transaction(trx);
+                    }
                 }
 
                 m_initTrxCount++;
                 count++;
+                //  TODO(yufengshen) : Do we still need this ? will max block cpu limit already cover this ?
                 //  Every 100 trxs we check if we have exceeds the allowed trx running time.
-                if (m_initTrxCount % 100 == 0 &&
-                    (fc::time_point::now() - start_timestamp) > fc::seconds(CODE_EXEC_MAX_TIME_S)) {
-                    ilog("----- code exec exceeds the max allowed time, break");
-                    break;
-                }
+                // if (m_initTrxCount % 100 == 0 &&
+                //    (fc::time_point::now() - start_timestamp) > fc::seconds(CODE_EXEC_MAX_TIME_S)) {
+                //   ilog("----- code exec exceeds the max allowed time, break");
+                //   break;
+                //}
                 if (m_initTrxCount >= MAX_PROPOSE_TRX_COUNT) {
                     break;
                 }
@@ -712,6 +737,8 @@ namespace ultrainio {
     size_t UranusController::runPendingTrxs(std::list<chain::transaction_metadata_ptr> *trxs,
                                             fc::time_point start_timestamp) {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
+        const auto& cfg = chain.get_global_properties().configuration;
+        const auto& max_trx_cpu = cfg.max_transaction_cpu_usage;
         ilog("------- start running pending ${num} trxs", ("num", trxs->size()));
         // TODO(yufengshen) : also scheduled trxs.
         size_t count = 0;
@@ -741,23 +768,36 @@ namespace ultrainio {
             //	       }
 
             try {
-                auto deadline = fc::time_point::now() + fc::milliseconds(100);
+                auto deadline = fc::time_point::now() + fc::milliseconds(max_trx_cpu);
                 auto trace = chain.push_transaction(trx, deadline);
+                trxs->pop_front();
                 if (trace->except) {
                     ilog("-----------initProposeMsg push trx failed ${e}", ("e", (trace->except)->what()));
-                    // this failed our configured maximum transaction time, we don't want to replay it
-                    chain.drop_unapplied_transaction(trx);
+                    auto code = trace->except->code();
+                    // If the fail is due to block cpu/net, we break and we don't erase
+                    // the trx since it will run through in the next block
+                    if (code == chain::block_net_usage_exceeded::code_value) {
+                        ilog("----- code exec exceeds the max allowed net, break");
+                        break;
+                    } else if (code == chain::block_cpu_usage_exceeded::code_value) {
+                        ilog("----- code exec exceeds the max allowed time, break");
+                        break;
+                    } else {
+                        // for othe kind of failure, we should erase the trx
+                        chain.drop_unapplied_transaction(trx);
+                    }
                 }
-                trxs->pop_front();
 
                 m_initTrxCount++;
                 count++;
+                //  TODO(yufengshen) : Do we still need this ? will max block cpu limit already cover this ?
                 //  Every 100 trxs we check if we have exceeds the allowed trx running time.
-                if (m_initTrxCount % 100 == 0 &&
-                    (fc::time_point::now() - start_timestamp) > fc::seconds(CODE_EXEC_MAX_TIME_S)) {
-                    ilog("----- code exec exceeds the max allowed time, break");
-                    break;
-                }
+                //                if (m_initTrxCount % 100 == 0 &&
+                //                    (fc::time_point::now() - start_timestamp) > fc::seconds(CODE_EXEC_MAX_TIME_S)) {
+                //                    ilog("----- code exec exceeds the max allowed time, break");
+                //                    break;
+                //                }
+                // Do we still need this ?
                 if (m_initTrxCount >= MAX_PROPOSE_TRX_COUNT) {
                     break;
                 }
@@ -1004,6 +1044,7 @@ namespace ultrainio {
 
     bool UranusController::verifyBa0Block() {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
+        const auto& cfg = chain.get_global_properties().configuration;
         chain.abort_block();
         const chain::signed_block &block = m_ba0Block.block;
         if (EmptyBlock(block))
@@ -1037,15 +1078,24 @@ namespace ultrainio {
             for (int i = 0; i < block.transactions.size(); i++) {
                 const auto &receipt = block.transactions[i];
                 chain::transaction_trace_ptr trace;
+                // Malicious producer setting wrong cpu_usage_us.
+                ULTRAIN_ASSERT(receipt.cpu_usage_us >= cfg.min_transaction_cpu_usage,
+                               chain::block_trx_min_cpu_usage_exception,
+                               "trx in proposed block has wrong cpu_usage_us set ${n}",
+                               ("n", receipt.cpu_usage_us));
+                // This passed in deadline is used to guard for non-stopping while loop.
+                auto max_cpu_usage = fc::microseconds(cfg.max_transaction_cpu_usage);
+                auto max_deadline = fc::time_point::now() + max_cpu_usage;
                 if (receipt.trx.contains<chain::packed_transaction>()) {
                     auto &pt = receipt.trx.get<chain::packed_transaction>();
                     auto mtrx = std::make_shared<chain::transaction_metadata>(pt);
-                    trace = chain.push_transaction(mtrx, fc::time_point::maximum(), receipt.cpu_usage_us);
+                    trace = chain.push_transaction(mtrx, max_deadline, receipt.cpu_usage_us);
                 } else if (receipt.trx.contains<chain::transaction_id_type>()) {
                     trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
-                                                             fc::time_point::maximum(), receipt.cpu_usage_us);
+                                                             max_deadline, receipt.cpu_usage_us);
                 }
                 if (trace->except) {
+                    // So we can terminate early
                     throw trace->except;
                 }
                 if (i % 100 == 0 &&
@@ -1100,6 +1150,7 @@ namespace ultrainio {
 
     bool UranusController::preRunBa0BlockStep() {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
+        const auto& cfg = chain.get_global_properties().configuration;
         const auto &pbs = chain.pending_block_state();
         if (!pbs) {
             ilog("------- NO PBS in preRunBa0BlockStep, abort");
@@ -1114,13 +1165,26 @@ namespace ultrainio {
             for (; m_currentPreRunBa0TrxIndex < b.transactions.size() &&
                    trx_count <= 1000; m_currentPreRunBa0TrxIndex++, trx_count++) {
                 const auto &receipt = b.transactions[m_currentPreRunBa0TrxIndex];
+                chain::transaction_trace_ptr trace;
+                // Malicious producer setting wrong cpu_usage_us.
+                ULTRAIN_ASSERT(receipt.cpu_usage_us >= cfg.min_transaction_cpu_usage,
+                               chain::block_trx_min_cpu_usage_exception,
+                               "trx in proposed block has wrong cpu_usage_us set ${n}",
+                               ("n", receipt.cpu_usage_us));
+                auto max_cpu_usage = fc::microseconds(cfg.max_transaction_cpu_usage);
+                auto max_deadline = fc::time_point::now() + max_cpu_usage;
                 if (receipt.trx.contains<chain::packed_transaction>()) {
                     auto &pt = receipt.trx.get<chain::packed_transaction>();
                     auto mtrx = std::make_shared<chain::transaction_metadata>(pt);
-                    chain.push_transaction(mtrx, fc::time_point::maximum(), receipt.cpu_usage_us);
+                    trace = chain.push_transaction(mtrx, max_deadline, receipt.cpu_usage_us);
                 } else if (receipt.trx.contains<chain::transaction_id_type>()) {
-                    chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
-                                                     fc::time_point::maximum(), receipt.cpu_usage_us);
+                    trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
+                                                     max_deadline, receipt.cpu_usage_us);
+                }
+
+                if (trace->except) {
+                    // So we can terminate early
+                    throw trace->except;
                 }
             }
         } catch (const fc::exception &e) {
@@ -1152,12 +1216,7 @@ namespace ultrainio {
                            "Voter wont' have ba0 pre-run");
             // first check if ba1 block is indeed ba0 block.
             const chain::signed_block &b = m_ba0Block.block;
-            if (b.proposerPk == block->proposerPk &&
-                b.proposerProof == block->proposerProof &&
-                b.block_num() == block->block_num() &&
-                b.timestamp == block->timestamp &&
-                b.producer == block->producer) {
-
+            if (IsBa0TheRightBlock(b, block)) {
                 ilog("------ Finish voter pre-running ba0 block");
                 chain.finalize_block();
                 chain.sign_block([&](const chain::digest_type &d) { return b.producer_signature; });
@@ -1180,11 +1239,7 @@ namespace ultrainio {
                  ("t1", b.timestamp)("t2", block->timestamp)
                  ("s1", b.producer)("s2", block->producer));
             */
-            if (b.proposerPk == block->proposerPk &&
-                b.proposerProof == block->proposerProof &&
-                b.block_num() == block->block_num() &&
-                b.timestamp == block->timestamp &&
-                b.producer == block->producer) {
+            if (IsBa0TheRightBlock(b, block)) {
                 ilog("------ Finish pre-running ba0 block from ${count}", ("count", m_currentPreRunBa0TrxIndex));
                 try {
                     for (; m_currentPreRunBa0TrxIndex < b.transactions.size(); m_currentPreRunBa0TrxIndex++) {
@@ -1192,6 +1247,7 @@ namespace ultrainio {
                         if (receipt.trx.contains<chain::packed_transaction>()) {
                             auto &pt = receipt.trx.get<chain::packed_transaction>();
                             auto mtrx = std::make_shared<chain::transaction_metadata>(pt);
+                            // Now set the deadline to infinity is fine since voter has already voted for this one.
                             chain.push_transaction(mtrx, fc::time_point::maximum(), receipt.cpu_usage_us);
                         } else if (receipt.trx.contains<chain::transaction_id_type>()) {
                             chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
@@ -1208,11 +1264,13 @@ namespace ultrainio {
                 } catch (const fc::exception &e) {
                     ilog("------ error in finish pre-running block ${s}", ("s", e.to_detail_string()));
                     edump((e.to_detail_string()));
+                    // We should not get here, but if so, we need to re-push the whole block.
+                    needs_push_whole_block = true;
                 }
-
             }
         }
 
+        // TODO(yufengshen) : if push_block fails, what to do ?
         if (needs_push_whole_block) {
             ilog("-------- Actually needs to push_whole_block");
             chain.abort_block();

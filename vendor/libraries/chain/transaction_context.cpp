@@ -114,6 +114,7 @@ namespace ultrainio { namespace chain {
       billing_timer_duration_limit = _deadline - start;
 
       // Check if deadline is limited by caller-set deadline (only change deadline if billed_cpu_time_us is not set)
+      // This means if we are verifying other trx (billed_cpu_time_us > 0), then we use the passed in deadline.
       if( billed_cpu_time_us > 0 || deadline < _deadline ) {
          _deadline = deadline;
          deadline_exception_code = deadline_exception::code_value;
