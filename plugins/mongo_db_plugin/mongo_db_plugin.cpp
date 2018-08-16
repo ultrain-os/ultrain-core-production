@@ -85,9 +85,9 @@ public:
 
    void update_account(const chain::action& msg);
 
-   static const account_name newaccount;
-   static const account_name transfer;
-   static const account_name setabi;
+   static const action_name newaccount;
+   static const action_name transfer;
+   static const action_name setabi;
 
    static const std::string blocks_col;
    static const std::string trans_col;
@@ -96,9 +96,9 @@ public:
    static const std::string accounts_col;
 };
 
-const account_name mongo_db_plugin_impl::newaccount = "newaccount";
-const account_name mongo_db_plugin_impl::transfer = "transfer";
-const account_name mongo_db_plugin_impl::setabi = "setabi";
+const action_name mongo_db_plugin_impl::newaccount = "newaccount";
+const action_name mongo_db_plugin_impl::transfer = "transfer";
+const action_name mongo_db_plugin_impl::setabi = "setabi";
 
 const std::string mongo_db_plugin_impl::blocks_col = "Blocks";
 const std::string mongo_db_plugin_impl::trans_col = "Transactions";
