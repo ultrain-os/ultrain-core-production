@@ -47,6 +47,51 @@ namespace ultrainio {
         }
     };
 
+////////used for monitor Begin/////////////
+    struct BlockHeaderDigest {
+        chain::block_timestamp_type      timestamp;
+        std::string                      proposerPk;
+        chain::block_id_type             previous;
+        chain::block_id_type             myid;
+        uint32_t                         blockNum;
+
+        void digestFromBlockHeader(const chain::signed_block_header& block_header) {
+            timestamp  = block_header.timestamp;
+            proposerPk = block_header.proposerPk;
+            previous   = block_header.previous;
+            myid       = block_header.id();
+            blockNum   = block_header.block_num();
+        }
+    };
+
+    struct EchoMsgDigest {
+        BlockHeaderDigest     head;
+        int32_t               phase;
+        uint32_t              baxCount;
+
+        void digestFromeEchoMsg(const EchoMsg& echo_msg) {
+            head.digestFromBlockHeader(echo_msg.blockHeader);
+            phase    = echo_msg.phase;
+            baxCount = echo_msg.baxCount;
+        }
+    };
+
+    struct EchoMsgInfoDigest {
+        EchoMsgDigest             echoMsg;
+        bool                      hasSend;
+        uint32_t                  pkPoolSize;
+        std::vector<std::string>  pk_pool; //public key pool
+
+        void digestFromeEchoMsgInfo(const echo_message_info& echo_msg_info) {
+            echoMsg.digestFromeEchoMsg(echo_msg_info.echo);
+            hasSend = echo_msg_info.hasSend;
+            pkPoolSize = echo_msg_info.pk_pool.size();
+            pk_pool.assign(echo_msg_info.pk_pool.begin(), echo_msg_info.pk_pool.end());
+        }
+    };
+
+    ////////used for monitor End////////
+
     struct SyncTask {
         std::string peerAddr;
         uint32_t startBlock;
@@ -59,6 +104,8 @@ namespace ultrainio {
     };
 
     typedef std::map<chain::block_id_type, echo_message_info> echo_msg_buff;
+
+    typedef std::vector<std::pair<chain::block_id_type, EchoMsgInfoDigest>> echo_msg_digest_vect;
 
     class UranusController : public std::enable_shared_from_this<UranusController> {
     public:
@@ -166,6 +213,18 @@ namespace ultrainio {
         void clearOldCachedEchoMsg();
 
         void clearOldCachedAllPhaseMsg();
+
+        void getContainersSize(uint32_t& proposeNum, uint32_t& echoNum, uint32_t& proposeCacheSize, uint32_t& echoCacheSize, uint32_t& allPhaseEchoNum) const;
+
+        BlockHeaderDigest findProposeMsgByBlockId(const chain::block_id_type& bid) const;
+
+        EchoMsgInfoDigest findEchoMsgByBlockId(const chain::block_id_type& bid) const;
+
+        std::vector<BlockHeaderDigest> findProposeCacheByKey(const msgkey& msg_key) const;
+
+        std::vector<EchoMsgDigest> findEchoCacheByKey(const msgkey& msg_key) const;
+
+        echo_msg_digest_vect findEchoApMsgByKey(const msgkey& msg_key) const;
 
     private:
         bool updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response);

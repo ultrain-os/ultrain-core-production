@@ -1380,6 +1380,96 @@ namespace ultrainio {
         }
     }
 
+    void UranusController::getContainersSize(uint32_t& proposeNum, uint32_t& echoNum, uint32_t& proposeCacheSize, uint32_t& echoCacheSize, uint32_t& allPhaseEchoNum) const{
+        proposeNum = m_proposerMsgMap.size();
+        echoNum = m_echoMsgMap.size();
+        proposeCacheSize = m_cacheProposeMsgMap.size();
+        echoCacheSize = m_cacheEchoMsgMap.size();
+        allPhaseEchoNum = m_echoMsgAllPhase.size();
+    }
+
+    BlockHeaderDigest UranusController::findProposeMsgByBlockId(const chain::block_id_type& bid) const{
+        BlockHeaderDigest tempHeaderDigest;
+        auto ite = m_proposerMsgMap.find(bid);
+
+        if(ite != m_proposerMsgMap.end()){
+            tempHeaderDigest.digestFromBlockHeader(ite->second.block);
+        }
+        else {
+            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Propose msg not found by id." ));
+            throw fce;
+        }
+        return tempHeaderDigest;
+    }
+
+    EchoMsgInfoDigest UranusController::findEchoMsgByBlockId(const chain::block_id_type& bid) const{
+        EchoMsgInfoDigest tempEchoDigest;
+        auto ite = m_echoMsgMap.find(bid);
+
+        if(ite != m_echoMsgMap.end()) {
+            tempEchoDigest.digestFromeEchoMsgInfo(ite->second);
+        }
+        else {
+            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Echo msg info not found by id." ));
+            throw fce;
+        }
+
+        return tempEchoDigest;
+    }
+
+    std::vector<BlockHeaderDigest> UranusController::findProposeCacheByKey(const msgkey& msg_key) const {
+        std::vector<BlockHeaderDigest> tempDigestVect;
+        auto ite = m_cacheProposeMsgMap.find(msg_key);
+        if(ite != m_cacheProposeMsgMap.end()) {
+            for(auto& proposeMsg : ite->second){
+                BlockHeaderDigest tempHeader;
+                tempHeader.digestFromBlockHeader(proposeMsg.block);
+                tempDigestVect.push_back(tempHeader);
+            }
+        }
+        else {
+            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Propose msg not found by key." ));
+            throw fce;
+        }
+        return tempDigestVect;
+    }
+
+    std::vector<EchoMsgDigest> UranusController::findEchoCacheByKey(const msgkey& msg_key) const {
+        std::vector<EchoMsgDigest> tempEchoDigestVect;
+        auto ite = m_cacheEchoMsgMap.find(msg_key);
+        if(ite != m_cacheEchoMsgMap.end()) {
+            for(auto& echoMsg : ite->second) {
+                EchoMsgDigest tempEchoMsg;
+                tempEchoMsg.digestFromeEchoMsg(echoMsg);
+                tempEchoDigestVect.push_back(tempEchoMsg);
+            }
+        }
+        else {
+            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Echo msg not found by key." ));
+            throw fce;
+        }
+        return tempEchoDigestVect;
+    }
+
+    echo_msg_digest_vect UranusController::findEchoApMsgByKey(const msgkey& msg_key) const {
+        echo_msg_digest_vect tempEchoMsgInfoDigestVect;
+        auto ite = m_echoMsgAllPhase.find(msg_key);
+        if(ite != m_echoMsgAllPhase.end()) {
+            for(auto& echoMsgInfoPair : ite->second) {
+                EchoMsgInfoDigest tempEchoMsgInfo;
+                tempEchoMsgInfo.digestFromeEchoMsgInfo(echoMsgInfoPair.second);
+                std::pair<chain::block_id_type, EchoMsgInfoDigest> tempPair(echoMsgInfoPair.first, tempEchoMsgInfo);
+                tempEchoMsgInfoDigestVect.push_back(tempPair);
+            }
+        }
+        else{
+            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Echo msg info not found by key." ));
+            throw fce;
+        }
+        return tempEchoMsgInfoDigestVect;
+    }
+
+
 #if 0
     void UranusController::clearMsgCache(uint32_t blockNum) {
         for (auto msg_it = m_echoMsgAllPhase.begin(); msg_it != m_echoMsgAllPhase.end(); msg_it++) {

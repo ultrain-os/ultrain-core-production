@@ -82,9 +82,6 @@ class read_only {
 
       get_transaction_result get_transaction( const get_transaction_params& )const;
       
-
-
-
       /*
       struct ordered_transaction_results {
          uint32_t                    seq_num;

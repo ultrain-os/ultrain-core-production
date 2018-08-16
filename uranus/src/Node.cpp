@@ -806,4 +806,24 @@ namespace ultrainio {
     ultrainio::chain::block_id_type UranusNode::getPreviousHash() {
         return m_controllerPtr->getPreviousBlockhash();
     }
+
+    UranusNodeInfo UranusNode::getNodeInfo() const
+    {
+        UranusNodeInfo tempNodeInfo;
+        tempNodeInfo.ready = this->m_ready;
+        tempNodeInfo.connected = this->m_connected;
+        tempNodeInfo.syncing = this->m_syncing;
+        tempNodeInfo.syncFailed = this->m_syncFailed;
+        tempNodeInfo.isNonProducingNode = this->m_isNonProducingNode;
+        tempNodeInfo.globalProducingNodeNumber = this->m_globalProducingNodeNumber;
+        tempNodeInfo.phase = static_cast<int32_t>(this->m_phase);
+        tempNodeInfo.baxCount = this->m_baxCount;
+        m_controllerPtr->getContainersSize(tempNodeInfo.proposeMsgNum, tempNodeInfo.echoMsgnum, tempNodeInfo.proposeMsgCacheSize,
+                                           tempNodeInfo.echoMsgCacheSize, tempNodeInfo.allPhaseEchoMsgNum);
+        return tempNodeInfo;
+    }
+
+    const std::shared_ptr<UranusController> UranusNode::getController() const {
+        return std::shared_ptr<UranusController> (m_controllerPtr);
+    }
 }
