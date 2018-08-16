@@ -297,6 +297,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             list.emplace( code.value, act );
          }
       }
+
       if( options.count( "key-blacklist" )) {
          const std::vector<std::string>& keys = options["key-blacklist"].as<std::vector<std::string>>();
          auto& list = my->chain_config->key_blacklist;
@@ -304,6 +305,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             list.emplace( key_str );
          }
       }
+
       if( options.count( "blocks-dir" )) {
          auto bld = options.at( "blocks-dir" ).as<bfs::path>();
          if( bld.is_relative())
@@ -311,6 +313,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          else
             my->blocks_dir = bld;
       }
+
       if( options.count("checkpoint") ) {
          auto cps = options.at("checkpoint").as<vector<string>>();
          my->loaded_checkpoints.reserve(cps.size());
@@ -328,8 +331,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             }
          }
       }
+
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
+
       if(options.count("abi-serializer-max-time-ms"))
          my->abi_serializer_max_time_ms = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
 
@@ -355,6 +360,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->chain_config->force_all_checks = options.at( "force-all-checks" ).as<bool>();
       my->chain_config->contracts_console = options.at( "contracts-console" ).as<bool>();
+
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
          genesis_state gs;
 
@@ -382,6 +388,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          ULTRAIN_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
       }
+
       if( options.count("export-reversible-blocks") ) {
          auto p = options.at( "export-reversible-blocks" ).as<bfs::path>();
 
@@ -396,6 +403,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          ULTRAIN_THROW( node_management_success, "exported reversible blocks" );
       }
+
       if( options.at( "delete-all-blocks" ).as<bool>()) {
          ilog( "Deleting state database and blocks" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
@@ -499,12 +507,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       } else {
          wlog( "Starting up fresh blockchain with default genesis state." );
       }
+
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
          ULTRAIN_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
       }
+
       my->chain.emplace( *my->chain_config );
       my->chain_id.emplace( my->chain->get_chain_id());
+
       // set up method providers
       my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
             [this]( uint32_t block_num ) -> signed_block_ptr {
@@ -515,13 +526,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             [this]( block_id_type id ) -> signed_block_ptr {
                return my->chain->fetch_block_by_id( id );
             } );
+
       my->get_head_block_id_provider = app().get_method<methods::get_head_block_id>().register_provider( [this]() {
          return my->chain->head_block_id();
       } );
+
       my->get_last_irreversible_block_number_provider = app().get_method<methods::get_last_irreversible_block_number>().register_provider(
             [this]() {
                return my->chain->last_irreversible_block_num();
             } );
+
       // relay signals to channels
       my->pre_accepted_block_connection = my->chain->pre_accepted_block.connect([this](const signed_block_ptr& blk) {
          auto itr = my->loaded_checkpoints.find( blk->block_num() );
@@ -535,24 +549,30 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          my->pre_accepted_block_channel.publish(blk);
       });
+
       my->accepted_block_header_connection = my->chain->accepted_block_header.connect(
             [this]( const block_state_ptr& blk ) {
                my->accepted_block_header_channel.publish( blk );
             } );
+
       my->accepted_block_connection = my->chain->accepted_block.connect( [this]( const block_state_ptr& blk ) {
          my->accepted_block_channel.publish( blk );
       } );
+
       my->irreversible_block_connection = my->chain->irreversible_block.connect( [this]( const block_state_ptr& blk ) {
          my->irreversible_block_channel.publish( blk );
       } );
+
       my->accepted_transaction_connection = my->chain->accepted_transaction.connect(
             [this]( const transaction_metadata_ptr& meta ) {
                my->accepted_transaction_channel.publish( meta );
             } );
+
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
             [this]( const transaction_trace_ptr& trace ) {
                my->applied_transaction_channel.publish( trace );
             } );
+
       my->accepted_confirmation_connection = my->chain->accepted_confirmation.connect(
             [this]( const header_confirmation& conf ) {
                my->accepted_confirmation_channel.publish( conf );
@@ -962,7 +982,7 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
    ULTRAIN_ASSERT( false, chain::contract_table_query_exception, "Table ${table} is not specified in the ABI", ("table",table_name) );
 }
 
-read_only::get_table_rows_result read_only::get_table_records( const read_only::get_table_records_params& p )const {
+read_only::get_table_records_result read_only::get_table_records( const read_only::get_table_records_params& p )const {
    const abi_def abi = ultrainio::chain_apis::get_abi( db, p.code );
 
    bool primary = false;
@@ -971,24 +991,24 @@ read_only::get_table_rows_result read_only::get_table_records( const read_only::
       ULTRAIN_ASSERT( p.table == table_with_index, chain::contract_table_query_exception, "Invalid table name ${t}", ( "t", p.table ));
       auto table_type = get_table_type( abi, p.table );
       if( table_type == KEYi64 || p.key_type == "i64" || p.key_type == "name" ) {
-         return get_table_rows_ex<key_value_index>(p,abi);
+         return get_table_records_ex<key_value_index>(p,abi);
       }
       ULTRAIN_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
    } else {
       ULTRAIN_ASSERT( !p.key_type.empty(), chain::contract_table_query_exception, "key type required for non-primary index" );
 
       if (p.key_type == "i64" || p.key_type == "name") {
-         return get_table_rows_by_seckey<index64_index, uint64_t>(p, abi, [](uint64_t v)->uint64_t {
+         return get_table_records_by_seckey<index64_index, uint64_t>(p, abi, [](uint64_t v)->uint64_t {
             return v;
          });
       }
       else if (p.key_type == "i128") {
-         return get_table_rows_by_seckey<index128_index, uint128_t>(p, abi, [](uint128_t v)->uint128_t {
+         return get_table_records_by_seckey<index128_index, uint128_t>(p, abi, [](uint128_t v)->uint128_t {
             return v;
          });
       }
       else if (p.key_type == "i256") {
-         return get_table_rows_by_seckey<index256_index, uint256_t>(p, abi, [](uint256_t v)->key256_t {
+         return get_table_records_by_seckey<index256_index, uint256_t>(p, abi, [](uint256_t v)->key256_t {
             key256_t k;
             k[0] = ((uint128_t *)&v)[0];
             k[1] = ((uint128_t *)&v)[1];
@@ -996,13 +1016,13 @@ read_only::get_table_rows_result read_only::get_table_records( const read_only::
          });
       }
       else if (p.key_type == "float64") {
-         return get_table_rows_by_seckey<index_double_index, double>(p, abi, [](double v)->float64_t {
+         return get_table_records_by_seckey<index_double_index, double>(p, abi, [](double v)->float64_t {
             float64_t f = *(float64_t *)&v;
             return f;
          });
       }
       else if (p.key_type == "float128") {
-         return get_table_rows_by_seckey<index_long_double_index, double>(p, abi, [](double v)->float128_t{
+         return get_table_records_by_seckey<index_long_double_index, double>(p, abi, [](double v)->float128_t{
             float64_t f = *(float64_t *)&v;
             float128_t f128;
             f64_to_f128M(f, &f128);
@@ -1446,6 +1466,7 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
    result.net_limit = rm.get_account_net_limit_ex( result.account_name, !grelisted);
    result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name, !grelisted);
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
+
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );

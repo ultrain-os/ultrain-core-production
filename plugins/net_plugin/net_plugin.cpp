@@ -2786,7 +2786,6 @@ namespace ultrainio {
       dispatcher->recv_transaction(c, tid);
       //uint64_t code = 0;
       chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
-          //ilog("start bcast transaction……");
           dispatcher->bcast_transaction(msg);
 //         if (result.contains<fc::exception_ptr>()) {
 //            auto e_ptr = result.get<fc::exception_ptr>();

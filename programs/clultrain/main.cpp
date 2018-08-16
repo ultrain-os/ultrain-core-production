@@ -986,7 +986,7 @@ struct approve_producer_subcommand {
                                ("lower_bound", voter.value)
                                ("limit", 1)
             );
-            auto res = result.as<ultrainio::chain_apis::read_only::get_table_rows_result>();
+            auto res = result.as<ultrainio::chain_apis::read_only::get_table_records_result>();
             if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
@@ -1032,7 +1032,7 @@ struct unapprove_producer_subcommand {
                                ("lower_bound", voter.value)
                                ("limit", 1)
             );
-            auto res = result.as<ultrainio::chain_apis::read_only::get_table_rows_result>();
+            auto res = result.as<ultrainio::chain_apis::read_only::get_table_records_result>();
             if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
@@ -1228,7 +1228,7 @@ struct bidname_info_subcommand {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;
          }
-         auto result = rawResult.as<ultrainio::chain_apis::read_only::get_table_rows_result>();
+         auto result = rawResult.as<ultrainio::chain_apis::read_only::get_table_records_result>();
          if ( result.rows.empty() ) {
             std::cout << "No bidname record found" << std::endl;
             return;
@@ -1263,7 +1263,7 @@ struct list_bw_subcommand {
                                ("table", "delband")
             );
             if (!print_json) {
-               auto res = result.as<ultrainio::chain_apis::read_only::get_table_rows_result>();
+               auto res = result.as<ultrainio::chain_apis::read_only::get_table_records_result>();
                if ( !res.rows.empty() ) {
                   std::cout << std::setw(13) << std::left << "Receiver" << std::setw(21) << std::left << "Net bandwidth"
                             << std::setw(21) << std::left << "CPU bandwidth" << std::endl;

@@ -145,7 +145,6 @@ public:
       name account_name;
       bool code_as_wasm = false;
    };
-
    struct get_abi_results {
       name                   account_name;
       optional<abi_def>      abi;
@@ -164,7 +163,6 @@ public:
    struct get_raw_code_and_abi_params {
       name                   account_name;
    };
-
 
    get_contract_results get_contract( const get_contract_params& params )const;
    get_abi_results get_abi( const get_abi_params& params )const;
@@ -232,12 +230,12 @@ public:
       string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
     };
 
-   struct get_table_rows_result {
+   struct get_table_records_result {
       vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
    };
 
-   get_table_rows_result get_table_records( const get_table_records_params& params )const;
+   get_table_records_result get_table_records( const get_table_records_params& params )const;
 
    struct get_currency_balance_params {
       name             code;
@@ -326,8 +324,8 @@ public:
    static uint64_t get_table_index_name(const read_only::get_table_records_params& p, bool& primary);
 
    template <typename IndexType, typename SecKeyType, typename ConvFn>
-   read_only::get_table_rows_result get_table_rows_by_seckey( const read_only::get_table_records_params& p, const abi_def& abi, ConvFn conv )const {
-      read_only::get_table_rows_result result;
+   read_only::get_table_records_result get_table_records_by_seckey( const read_only::get_table_records_params& p, const abi_def& abi, ConvFn conv )const {
+      read_only::get_table_records_result result;
       const auto& d = db.db();
 
       uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
@@ -396,8 +394,8 @@ public:
    }
 
    template <typename IndexType>
-   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_records_params& p, const abi_def& abi )const {
-      read_only::get_table_rows_result result;
+   read_only::get_table_records_result get_table_records_ex( const read_only::get_table_records_params& p, const abi_def& abi )const {
+      read_only::get_table_records_result result;
       const auto& d = db.db();
 
       uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
@@ -563,7 +561,7 @@ FC_REFLECT(ultrainio::chain_apis::read_only::get_block_header_state_params, (blo
 FC_REFLECT( ultrainio::chain_apis::read_write::push_tx_results, (transaction_id)(processed) )
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
-FC_REFLECT( ultrainio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_result, (rows)(more) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
@@ -580,7 +578,6 @@ FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
                 self_delegated_bandwidth)(voter_info))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_result, (transactions)(more) );
-
 FC_REFLECT( ultrainio::chain_apis::read_only::get_contract_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_abi_results, (account_name)(abi) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_account_info_params, (account_name) )

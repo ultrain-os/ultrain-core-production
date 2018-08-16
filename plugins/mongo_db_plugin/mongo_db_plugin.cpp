@@ -103,10 +103,6 @@ public:
    fc::optional<chain::chain_id_type> chain_id;
    fc::microseconds abi_serializer_max_time;
 
-   void consume_blocks();
-
-   void update_account(const chain::action& msg);
-
    static const action_name newaccount;
    static const action_name transfer;
    static const action_name setabi;

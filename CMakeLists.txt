@@ -222,7 +222,7 @@ add_subdirectory( log )
 add_subdirectory( tests )
 #add_subdirectory( tools )
 add_subdirectory( vendor )
-add_subdirectory( unittests )
+#add_subdirectory( unittests )
 add_subdirectory( uranus )
 add_subdirectory( debian )
 
