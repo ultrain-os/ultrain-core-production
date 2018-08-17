@@ -269,12 +269,12 @@ namespace ultrainio {
         if ((!EmptyBlock(ba0_block.block))
             && (ba0_block.block.previous != m_controllerPtr->getPreviousBlockhash())) {
 
-            elog("error. previous block hash error. re-join.hash = ${hash1} local hash = ${hash2}",
-                 ("hash1", ba0_block.block.previous)
-                         ("hash2", m_controllerPtr->getPreviousBlockhash()));
-            LOG_ERROR << "error. previous block hash error. re-join." << std::endl;
-            m_ready = false;
-            applyBlock();
+            elog("ba0Process error. previous block hash error. hash = ${hash1} local hash = ${hash2}",
+                 ("hash1", ba0_block.block.previous)("hash2", m_controllerPtr->getPreviousBlockhash()));
+
+            ULTRAIN_ASSERT(false, chain::chain_exception, "DB error. please reset with cmd --delete-all-blocks.");
+            //m_ready = false;
+            //applyBlock();
             return;
         }
 
@@ -285,7 +285,7 @@ namespace ultrainio {
         m_phase = kPhaseBA1;
         m_baxCount = 0;
 
-        dlog("start BA1. blockNum = ${blockNum}.", ("blockNum", getBlockNum()));
+        dlog("ba0Process. blockNum = ${blockNum}.", ("blockNum", getBlockNum()));
         MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA1, 0);
 
         LOG_INFO << "start BA1. isVoter = " << MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)
@@ -321,7 +321,6 @@ namespace ultrainio {
                 preRunBa0BlockLoop(1);
             }
         }
-
     }
 
     void UranusNode::ba1Process() {
@@ -332,6 +331,16 @@ namespace ultrainio {
         msgkey msg_key;
 
         dlog("ba1Process begin. blockNum = ${id}.", ("id", getBlockNum()));
+
+        if ((!EmptyBlock(ba1_block.block))
+            && (ba1_block.block.previous != m_controllerPtr->getPreviousBlockhash())) {
+
+            elog("ba1Process error. previous block hash error. hash = ${hash1} local hash = ${hash2}",
+                 ("hash1", ba1_block.block.previous)("hash2", m_controllerPtr->getPreviousBlockhash()));
+
+            ULTRAIN_ASSERT(false, chain::chain_exception, "DB error. please reset with cmd --delete-all-blocks.");
+            return;
+        }
 
         if (!EmptyBlock(ba1_block.block)) {
             //UltrainLog::display_block(ba1_block);
