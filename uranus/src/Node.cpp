@@ -439,7 +439,7 @@ namespace ultrainio {
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
         m_timer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
-                ilog("bax loop timer cancel");
+                dlog("bax loop timer cancel");
             } else {
                 this->baxProcess();
             }
@@ -452,8 +452,8 @@ namespace ultrainio {
         m_baxCount++;
         MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBAX, m_baxCount);
         dlog("bax loop. Voter = ${Voter}, count = ${count}.",
-             ("Voter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))("count",
-                                                                                                     m_baxCount));
+             ("Voter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
+                     ("count",m_baxCount));
 
         if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount)) {
             ba0Block = m_controllerPtr->getBa0Block();
