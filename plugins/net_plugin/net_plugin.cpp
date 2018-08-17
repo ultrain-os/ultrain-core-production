@@ -30,6 +30,7 @@
 #include <boost/intrusive/set.hpp>
 
 #include <random>
+#include <log/Log.h>
 
 using namespace ultrainio::chain::plugin_interface::compat;
 
@@ -2660,6 +2661,9 @@ namespace ultrainio {
    void net_plugin_impl::handle_message( connection_ptr c, const EchoMsg &msg) {
        ilog("receive echo msg!!! message from ${p} block_id: ${blockNum} phase: ${phase}",
             ("p", c->peer_name())("blockNum", msg.blockHeader.block_num())("phase", (uint32_t)msg.phase));
+
+       ilog("receive echo msg!!! message from ${p} block_id: ${id} block num: ${num} phase: ${phase} pk: ${pk}",
+            ("p", c->peer_name())("id", msg.blockHeader.id())("num", msg.blockHeader.block_num())("phase", (uint32_t)msg.phase)("pk", UltrainLog::convert2Hex(msg.pk)));
        if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
                if (conn != c) {
@@ -2670,8 +2674,8 @@ namespace ultrainio {
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const ProposeMsg& msg) {
-       ilog("receive propose msg!!! message from ${p} blockNum: ${block_num}",
-            ("p", c->peer_name())("block_num", msg.block.block_num()));
+       ilog("receive propose msg!!! message from ${p} block id: ${id} block num: ${num}",
+            ("p", c->peer_name())("id", msg.block.id())("num", msg.block.block_num()));
        if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
                if (conn != c) {
@@ -2687,11 +2691,10 @@ namespace ultrainio {
     }
       
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg) {
-        ilog("receive rsp last block num msg!!! from peer ${p}", ("p", c->peer_name()));
-        ilog("seq:${s} block num:${b} hash:${h} prev hash:${ph}", ("s", msg.seqNum)("b", msg.blockNum)("h", msg.blockHash)("ph", msg.prevBlockHash));
-	ilog("sync block master selecting src:${s} seq:${seq}", ("s", sync_block_master->selecting_src)("seq", sync_block_master->seq_num));
+        ilog("receive rsp last block num msg!!! from peer ${p} seq: ${s} block num: ${b}", ("p", c->peer_name())("s", msg.seqNum)("b", msg.blockNum));
+        ilog("sync block master selecting src:${s} seq:${seq}", ("s", sync_block_master->selecting_src)("seq", sync_block_master->seq_num));
         if (!sync_block_master->selecting_src || msg.seqNum != sync_block_master->seq_num) {
-          return;
+            return;
         }
 
         c->last_block_info = msg;
@@ -2708,7 +2711,7 @@ namespace ultrainio {
             honest_conns.clear();
 
             ilog("rsp conns:${s} block num:${b}", ("s", (*it)->peer_name())("b", (*it)->last_block_info.blockNum));
-            if ((*it)->last_block_info.blockNum != 0xffffffff) {
+            if ((*it)->last_block_info.blockNum != std::numeric_limits<uint32_t>::max()) {
                 honest_conns.emplace_back(*it);
 
                 for (auto next_it = std::next(it); next_it != sync_block_master->rsp_conns.end(); ++next_it) {
@@ -2734,7 +2737,7 @@ namespace ultrainio {
             uint32_t r = rand_engine()%honest_conns.size();
             ilog("select random ${r}th connection to sync block. peer:${p}", ("r", r)("p", honest_conns[r]->peer_name()));
             if (sync_block_master->sync_block_msg.endBlockNum > honest_conns[r]->last_block_info.blockNum) {
-              if (sync_block_master->sync_block_msg.endBlockNum == 0xffffffff) {
+              if (sync_block_master->sync_block_msg.endBlockNum == std::numeric_limits<uint32_t>::max()) {
                 sync_block_master->sync_block_msg.endBlockNum = honest_conns[r]->last_block_info.blockNum+1;
               }else {
                 sync_block_master->sync_block_msg.endBlockNum = honest_conns[r]->last_block_info.blockNum;
