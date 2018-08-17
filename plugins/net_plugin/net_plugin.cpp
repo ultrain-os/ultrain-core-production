@@ -2659,9 +2659,6 @@ namespace ultrainio {
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const EchoMsg &msg) {
-       ilog("receive echo msg!!! message from ${p} block_id: ${blockNum} phase: ${phase}",
-            ("p", c->peer_name())("blockNum", msg.blockHeader.block_num())("phase", (uint32_t)msg.phase));
-
        ilog("receive echo msg!!! message from ${p} block_id: ${id} block num: ${num} phase: ${phase} pk: ${pk}",
             ("p", c->peer_name())("id", msg.blockHeader.id())("num", msg.blockHeader.block_num())("phase", (uint32_t)msg.phase)("pk", UltrainLog::convert2Hex(msg.pk)));
        if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {

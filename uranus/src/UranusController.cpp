@@ -201,7 +201,7 @@ namespace ultrainio {
                 for (size_t i = 0; i < ev.size(); i++) {
                     if (ev[i].pk == echo.pk && ev[i].blockHeader.id() == id) {
                         ilog("duplicate echo msg!!! id:${id} pk:${pk} blockNum:${b} phase:${p}",
-                             ("id", echo.blockHeader.id())("pk", echo.pk)("b", key.blockNum)("p", key.phase));
+                             ("id", echo.blockHeader.id())("pk", UltrainLog::convert2Hex(echo.pk))("b", key.blockNum)("p", key.phase));
                         duplicate = true;
                         return true;
                     }
