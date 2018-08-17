@@ -121,7 +121,7 @@ namespace ultrainio {
 
         bool isMinPropose(const ProposeMsg &propose_msg);
 
-        bool isMin2fEcho(const echo_message_info &info);
+        bool isMinFEcho(const echo_message_info &info);
 
         bool isMinEcho(const echo_message_info &info);
 

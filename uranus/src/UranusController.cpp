@@ -289,14 +289,14 @@ namespace ultrainio {
 
         auto itor = map_it->second.find(echo.blockHeader.id());
         if (itor != map_it->second.end()) {
-            if (updateAndMayResponse(itor->second, echo, true) || isMinEcho(itor->second)) {
+            if (updateAndMayResponse(itor->second, echo, false)) {
                 return true;
             }
         } else {
             echo_message_info info;
             info.echo = echo;
             map_it->second.insert(make_pair(echo.blockHeader.id(), info));
-            if (updateAndMayResponse(info, echo, true) || isMinEcho(info)) {
+            if (updateAndMayResponse(info, echo, false)) {
                 return true;
             }
         }
@@ -311,16 +311,16 @@ namespace ultrainio {
             int stakes = UranusNode::getInstance()->getStakes(echo.pk);
             info.totalVoter += voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
             if (response && info.totalVoter >= THRESHOLD_SEND_ECHO && !info.hasSend
-                && UranusNode::getInstance()->getPhase() == kPhaseBA0 && isMin2fEcho(info)) {
+                && UranusNode::getInstance()->getPhase() == kPhaseBA0 && isMinFEcho(info)) {
                 if (MessageManager::getInstance()->isVoter(UranusNode::getInstance()->getBlockNum(), echo.phase,
                                                            echo.baxCount)) {
                     ilog("send echo when > f + 1");
                     info.hasSend = true;
                     EchoMsg myEcho = constructMsg(echo);
                     UranusNode::getInstance()->sendMessage(myEcho);
-                    return true;
                 }
             }
+            return true;
         }
         return false;
     }
@@ -513,6 +513,8 @@ namespace ultrainio {
 
     bool UranusController::handleMessage(const EchoMsg &echo) {
         bool duplicate = false;
+        bool bret = false;
+
         if (isLaterMsgAndCache(echo, duplicate)) {
             return (!duplicate);
         }
@@ -528,16 +530,16 @@ namespace ultrainio {
              ("blockhash", echo.blockHeader.id())("pk", UltrainLog::convert2Hex(echo.pk)));
         auto itor = m_echoMsgMap.find(echo.blockHeader.id());
         if (itor != m_echoMsgMap.end()) {
-            updateAndMayResponse(itor->second, echo, true);
-            if (isMinEcho(itor->second) || isMin2fEcho(itor->second)) {
+            bret = updateAndMayResponse(itor->second, echo, true);
+            if ((isMinEcho(itor->second) || isMinFEcho(itor->second)) && bret) {
                 return true;
             }
         } else {
             echo_message_info info;
             info.echo = echo;
-            updateAndMayResponse(info, echo, true);
+            bret = updateAndMayResponse(info, echo, true);
             m_echoMsgMap.insert(make_pair(echo.blockHeader.id(), info));
-            if (isMinEcho(info) || isMin2fEcho(itor->second)) {
+            if ((isMinEcho(info) || isMinFEcho(itor->second)) && bret) {
                 return true;
             }
         }
@@ -641,7 +643,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::isMin2fEcho(const echo_message_info &info) {
+    bool UranusController::isMinFEcho(const echo_message_info &info) {
         VoterSystem voter;
         uint32_t priority = voter.proof2Priority((const uint8_t *) info.echo.blockHeader.proposerProof.data());
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
