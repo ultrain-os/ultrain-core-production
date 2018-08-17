@@ -15,7 +15,7 @@ void monitor_api_plugin::plugin_initialize(const variables_map& options) {}
    [this, api_handle](string, string body, url_response_callback cb) mutable { \
           try { \
              if (body.empty()) body = "{}"; \
-             auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
+             auto result = api_handle.call_name(fc::json::from_string(body).as< api_namespace::call_name ## _params>()); \
              cb(200, fc::json::to_string(result)); \
           } catch (...) { \
              http_plugin::handle_exception(#api_name, #call_name, body, cb); \
