@@ -37,12 +37,7 @@ namespace {
     const fc::string logger_name("UranusController");
     fc::logger _log;
 
-    bool EmptyBlock(const ultrainio::chain::block_header &block) {
-        if (!block.proposerPk.empty() || !block.proposerProof.empty())
-            return false;
-        return true;
-    }
-
+    // TODO(shenyufeng) need more precise compare
     bool IsBa0TheRightBlock(const ultrainio::chain::signed_block &b,
                             const ultrainio::chain::signed_block_ptr &block) {
         return  (b.proposerPk == block->proposerPk &&
@@ -108,9 +103,7 @@ namespace ultrainio {
     }
 
     void UranusController::reset() {
-        BlockRecord ba0_block;
-
-        m_ba0Block = ba0_block;
+        m_ba0Block = Block();
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
         clearMsgCache(m_cacheProposeMsgMap, getLastBlocknum());
@@ -955,10 +948,9 @@ namespace ultrainio {
         return false;
     }
 
-    BlockRecord UranusController::produceBaxBlock() {
+    Block UranusController::produceBaxBlock() {
         VoterSystem voter;
         uint32_t min_priority = std::numeric_limits<uint32_t>::max();
-        BlockRecord blockRecord;
         echo_message_info *echo_info = nullptr;
 
         dlog("produceBaxBlock begin.");
@@ -977,64 +969,72 @@ namespace ultrainio {
                 }
             }
 
-            if (!echo_info || EmptyBlock(echo_info->echo.blockHeader)) {
+            if (!echo_info || isBlank(echo_info->echo.blockHeader)) {
                 continue;
             }
 
+            if (isEmpty(echo_info->echo.blockHeader)) {
+                return emptyBlock();
+            }
             auto propose_itor = m_proposerMsgMap.find(echo_info->echo.blockHeader.id());
             if (propose_itor != m_proposerMsgMap.end()) {
-                blockRecord.block = propose_itor->second.block;
-                blockRecord.pk_pool = echo_info->pk_pool;
-                return blockRecord;
+                return propose_itor->second.block;
             }
         }
 
-        return blockRecord;
+        return Block();
     }
 
-    BlockRecord UranusController::produceTentativeBlock() {
+    /**
+     *
+     * @return
+     * empty block or normal block when ba0 while other phase may return blank, empty, normal block.
+     */
+    Block UranusController::produceTentativeBlock() {
         VoterSystem voter;
-        uint32_t min_priority = std::numeric_limits<uint32_t>::max();
-        echo_message_info echo_info;
+        uint32_t minPriority = std::numeric_limits<uint32_t>::max();
+        BlockIdType minBlockId = BlockIdType();
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
             dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} txs_hash : ${txs_hash}",
                  ("phase", (uint32_t) echo_itor->second.echo.phase)("size", echo_itor->second.pk_pool.size())(
                          "totalVoter", echo_itor->second.totalVoter)("txs_hash",
                                                                      echo_itor->second.echo.blockHeader.id()));
-            //UltrainLog::display_echo(echo_itor->second);
             if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
                 ilog("found >= 2f + 1 echo");
                 uint32_t priority = voter.proof2Priority(
                         (const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data());
-                if (min_priority >= priority) {
-                    echo_info = echo_itor->second;
-                    min_priority = priority;
+                if (minPriority >= priority) {
+                    minBlockId = echo_itor->second.echo.blockHeader.id();
+                    minPriority = priority;
                 }
             }
         }
 
-        BlockRecord blockRecord;
-        dlog("min_blockhash = ${hash}", ("hash", echo_info.echo.blockHeader.id()));
-        if (EmptyBlock(echo_info.echo.blockHeader)) {
+        if (minBlockId == BlockIdType()) { // not found > 2f + 1 echo
+            dlog("can not find >= 2f + 1 blockHash is empty");
+            if (UranusNode::getInstance()->getPhase() == kPhaseBA0) {
+                return emptyBlock();
+            }
             if ((!m_echoMsgAllPhase.empty()) && (UranusNode::getInstance()->getPhase() == kPhaseBAX)) {
                 dlog("blockhash is empty. into produceBaxBlock.");
                 return produceBaxBlock();
             }
-            dlog("blockhash is empty.");
-            return blockRecord;
+            return blankBlock();
         }
-        auto propose_itor = m_proposerMsgMap.find(echo_info.echo.blockHeader.id());
+        // TODO: Cache the empty block's id.
+        if (minBlockId == emptyBlock().id()) {
+            return emptyBlock();
+        }
+        auto propose_itor = m_proposerMsgMap.find(minBlockId);
         if (propose_itor != m_proposerMsgMap.end()) {
             dlog("find propose msg ok.");
-            blockRecord.block = propose_itor->second.block;
-            blockRecord.pk_pool = echo_info.pk_pool;
-            if (kPhaseBA0 == UranusNode::getInstance()->getPhase()) {
-                m_ba0Block = blockRecord;
-            }
-        } else {
-            dlog("error find propose msg.");
+            return propose_itor->second.block;
         }
-        return blockRecord;
+        dlog("> 2f + 1 echo ${hash} can not find it's propose.", ("hash", minBlockId));
+        if (kPhaseBA0 == UranusNode::getInstance()->getPhase()) {
+            return emptyBlock();
+        }
+        return blankBlock();
     }
 
     void UranusController::clearPreRunStatus() {
@@ -1048,8 +1048,8 @@ namespace ultrainio {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         const auto& cfg = chain.get_global_properties().configuration;
         chain.abort_block();
-        const chain::signed_block &block = m_ba0Block.block;
-        if (EmptyBlock(block))
+        const chain::signed_block &block = m_ba0Block;
+        if (isBlank(block))
             return false;
 
         auto id = block.id();
@@ -1120,8 +1120,8 @@ namespace ultrainio {
     bool UranusController::preRunBa0BlockStart() {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.abort_block();
-        const chain::signed_block &block = m_ba0Block.block;
-        if (EmptyBlock(block) || block.transactions.empty()) {
+        const chain::signed_block &block = m_ba0Block;
+        if (isBlank(block) || block.transactions.empty()) {
             return false;
         }
 
@@ -1160,7 +1160,7 @@ namespace ultrainio {
         }
         ULTRAIN_ASSERT(m_currentPreRunBa0TrxIndex >= 0, chain::chain_exception,
                        "m_currentPreRunBa0TrxIndex must be valid");
-        const chain::signed_block &b = m_ba0Block.block;
+        const chain::signed_block &b = m_ba0Block;
         int trx_count = 0;
         ilog("------ Continue pre-running ba0 block from ${count}", ("count", m_currentPreRunBa0TrxIndex));
         try {
@@ -1217,7 +1217,7 @@ namespace ultrainio {
                            chain::chain_exception,
                            "Voter wont' have ba0 pre-run");
             // first check if ba1 block is indeed ba0 block.
-            const chain::signed_block &b = m_ba0Block.block;
+            const chain::signed_block &b = m_ba0Block;
             if (IsBa0TheRightBlock(b, block)) {
                 ilog("------ Finish voter pre-running ba0 block");
                 chain.finalize_block();
@@ -1232,7 +1232,7 @@ namespace ultrainio {
         // We are already pre-running ba0_block
         if (pbs && m_currentPreRunBa0TrxIndex >= 0 && !force_push_whole_block) {
             // first check if ba1 block is indeed ba0 block.
-            const chain::signed_block &b = m_ba0Block.block;
+            const chain::signed_block &b = m_ba0Block;
             /*
             ilog("------ compare ${pk1} ${pk2}, ${pf1} ${pf2}, ${num1} ${num2}, ${t1} ${t2}, ${s1} ${s2}",
                  ("pk1", b.proposerPk)("pk2", block->proposerPk)
@@ -1298,7 +1298,7 @@ namespace ultrainio {
         startSyncTaskTimer();
     }
 
-    const BlockRecord *UranusController::getBa0Block() {
+    const Block* UranusController::getBa0Block() {
         return &m_ba0Block;
     }
 
@@ -1528,31 +1528,52 @@ namespace ultrainio {
         }
         return tempEchoMsgInfoDigestVect;
     }
-
-
-#if 0
-    void UranusController::clearMsgCache(uint32_t blockNum) {
-        for (auto msg_it = m_echoMsgAllPhase.begin(); msg_it != m_echoMsgAllPhase.end(); msg_it++) {
-            if (msg_it->first.blockNum <= blockNum) {
-                m_echoMsgAllPhase.erase(msg_it);
-            }
-        }
+    bool UranusController::isEmpty(const BlockHeader& blockHeader) {
+        // TODO: please find a way to cache the empty block's id
+        return emptyBlock().id() == blockHeader.id();
     }
 
-    void UranusController::clearProposeCache(uint32_t blockNum) {
-        for (auto propose_it = m_cacheProposeMsgMap.begin(); propose_it != m_cacheProposeMsgMap.end(); propose_it++) {
-            if (propose_it->first.blockNum <= blockNum) {
-                m_cacheProposeMsgMap.erase(propose_it);
-            }
-        }
+    bool UranusController::isBlank(const BlockHeader& blockHeader) {
+        return Block().id() == blockHeader.id();
     }
 
-    void UranusController::clearEchoCache(uint32_t blockNum) {
-        for (auto echo_it = m_cacheEchoMsgMap.begin(); echo_it != m_cacheEchoMsgMap.end(); echo_it++) {
-            if (echo_it->first.blockNum <= blockNum) {
-                m_cacheEchoMsgMap.erase(echo_it);
-            }
-        }
+    std::shared_ptr<Block> UranusController::generateEmptyBlock() {
+        chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
+        chain.abort_block();
+        auto block_timestamp = chain.head_block_time() + fc::milliseconds(10000);
+        chain.start_block(block_timestamp, 0);
+
+        chain.set_action_merkle_hack();
+        // empty block does not have trx, so we don't need this?
+        chain.set_trx_merkle_hack();
+        std::shared_ptr<Block> blockPtr = std::make_shared<Block>();
+        const auto &pbs = chain.pending_block_state();
+        const auto &bh = pbs->header;
+        blockPtr->timestamp = bh.timestamp;
+        blockPtr->producer = "ultrainio";
+        blockPtr->previous = bh.previous;
+        blockPtr->confirmed = 1;
+        blockPtr->previous = bh.previous;
+        blockPtr->transaction_mroot = bh.transaction_mroot;
+        blockPtr->action_mroot = bh.action_mroot;
+        // Discard the temp block.
+        chain.abort_block();
+        return blockPtr;
     }
-#endif
+
+    Block UranusController::blankBlock() {
+        return Block();
+    }
+
+    void UranusController::setBa0Block(const Block& block) {
+        m_ba0Block = block;
+    }
+
+    Block UranusController::emptyBlock() {
+        static std::shared_ptr<Block> emptyBlock = nullptr;
+        if (!emptyBlock || emptyBlock->block_num() != UranusNode::getInstance()->getBlockNum()) {
+            emptyBlock = generateEmptyBlock();
+        }
+        return *emptyBlock;
+    }
 }  // namespace ultrainio

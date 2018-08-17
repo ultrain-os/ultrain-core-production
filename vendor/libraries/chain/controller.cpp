@@ -984,12 +984,12 @@ struct controller_impl {
       try {
          ULTRAIN_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
          start_block( b->timestamp, b->confirmed, s );
-// We have to copy here.
-	     chain::signed_block_header* hp = &(pending->_pending_block_state->header);
-	     hp->producer = b->producer;
-	     hp->proposerPk = b->proposerPk;
-	     hp->proposerProof = b->proposerProof;
-	 
+
+         // We have to copy here.
+         chain::signed_block_header* hp = &(pending->_pending_block_state->header);
+         hp->producer = b->producer;
+         hp->proposerPk = b->proposerPk;
+         hp->proposerProof = b->proposerProof;
          transaction_trace_ptr trace;
 
          for( const auto& receipt : b->transactions ) {

@@ -13,4 +13,5 @@ namespace ultrainio {
     using PackedTransactionPtr = std::shared_ptr<PackedTransaction>;
     using TransactionReceipt = chain::transaction_receipt;
     using ExtensionsType = chain::extensions_type;
+    using BlockIdType = chain::block_id_type;
 }

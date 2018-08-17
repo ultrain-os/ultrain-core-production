@@ -28,11 +28,6 @@ namespace ultrainio {
         echo_message_info() : echo(), pk_pool(), totalVoter(0), hasSend(false) {}
     };
 
-    struct BlockRecord {
-        Block block;
-        std::vector<std::string> pk_pool;
-    };
-
     struct msgkey {
         uint32_t blockNum;
         uint16_t phase;
@@ -125,7 +120,7 @@ namespace ultrainio {
 
         bool isMinEcho(const echo_message_info &info);
 
-        BlockRecord produceTentativeBlock();
+        Block produceTentativeBlock();
 
         bool initProposeMsg(ProposeMsg *propose_msg);
 
@@ -167,9 +162,9 @@ namespace ultrainio {
 
         void saveEchoMsg();
 
-        const BlockRecord *getBa0Block();
+        const Block* getBa0Block();
 
-        BlockRecord produceBaxBlock();
+        Block produceBaxBlock();
 
         bool isBeforeMsg(const EchoMsg &echo);
 
@@ -226,7 +221,19 @@ namespace ultrainio {
 
         echo_msg_digest_vect findEchoApMsgByKey(const msgkey& msg_key) const;
 
+        bool isBlank(const BlockHeader& blockHeader);
+
+        bool isEmpty(const BlockHeader& blockHeader);
+
+        Block blankBlock();
+
+        Block emptyBlock();
+
+        void setBa0Block(const Block& block);
     private:
+        // This function is time consuming, please cache the result empty block.
+        std::shared_ptr<Block> generateEmptyBlock();
+
         bool updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response);
 
         size_t runPendingTrxs(std::list<chain::transaction_metadata_ptr> *trxs,
@@ -237,7 +244,7 @@ namespace ultrainio {
 
         std::string signature(const EchoMsg &echo);
 
-        BlockRecord m_ba0Block;
+        Block m_ba0Block;
         bool m_voterPreRunBa0InProgress = false;
         int m_currentPreRunBa0TrxIndex = -1;
         int m_initTrxCount = 0;
