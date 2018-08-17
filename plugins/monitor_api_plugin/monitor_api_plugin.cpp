@@ -32,7 +32,10 @@ void monitor_api_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
       PRODUCER_MP_CALL(monitor_node),
       PRODUCER_MP_CALL(monitor_propose_msg),
-      PRODUCER_MP_CALL(monitor_echo_msg)
+      PRODUCER_MP_CALL(monitor_echo_msg),
+      PRODUCER_MP_CALL(monitor_propose_cache),
+      PRODUCER_MP_CALL(monitor_echo_cache),
+      PRODUCER_MP_CALL(monitor_echo_ap_cache)
    });
 }
 

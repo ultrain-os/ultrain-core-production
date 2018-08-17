@@ -57,7 +57,7 @@ void monitor_plugin::plugin_shutdown() {
             auto fce = fc::exception( FC_LOG_MESSAGE( info, "Failed to get UranusNode. Most possible reason: This Node is not a producer." ));
             throw fce;
         }
-        return nodePtr->getController()->findProposeMsgByBlockId(params);
+        return nodePtr->getController()->findProposeMsgByBlockId(chain::block_id_type(params.block_id));
      }
 
      monitor_only::monitor_echo_msg_result monitor_only::monitor_echo_msg( const monitor_only::monitor_echo_msg_params& params) const{
@@ -66,7 +66,7 @@ void monitor_plugin::plugin_shutdown() {
             auto fce = fc::exception( FC_LOG_MESSAGE( info, "Failed to get UranusNode. Most possible reason: This Node is not a producer." ));
             throw fce;
         }
-        return nodePtr->getController()->findEchoMsgByBlockId(params);
+        return nodePtr->getController()->findEchoMsgByBlockId(chain::block_id_type(params.block_id));
      }
 
      monitor_only::monitor_propose_cache_result monitor_only::monitor_propose_cache(const monitor_only::monitor_propose_cache_params& params) const{

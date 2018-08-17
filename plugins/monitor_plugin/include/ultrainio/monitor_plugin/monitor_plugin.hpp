@@ -33,11 +33,14 @@ class monitor_only {
 
       typedef BlockHeaderDigest monitor_propose_msg_result;
 
-      typedef chain::block_id_type monitor_propose_msg_params;
+      struct monitor_propose_msg_params
+      {
+            std::string block_id;    
+      };
 
       monitor_propose_msg_result monitor_propose_msg( const monitor_propose_msg_params& params) const;
 
-      typedef chain::block_id_type monitor_echo_msg_params; //: public monitor_propose_msg_params {};
+      typedef monitor_propose_msg_params monitor_echo_msg_params; //: public monitor_propose_msg_params {};
       typedef EchoMsgInfoDigest monitor_echo_msg_result;
 
       monitor_echo_msg_result monitor_echo_msg( const monitor_echo_msg_params& params) const;
@@ -90,10 +93,12 @@ FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_node_result, (ready)(
             (isNonProducingNode)(globalProducingNodeNumber)(phase)(baxCount)(proposeMsgNum)(echoMsgnum)
             (proposeMsgCacheSize)(echoMsgCacheSize)(allPhaseEchoMsgNum) )
 
+FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_propose_msg_params, (block_id) )
 FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_propose_msg_result, (timestamp)(proposerPk)(previous)(myid)(blockNum) )
 FC_REFLECT( ultrainio::EchoMsgDigest, (head)(phase)(baxCount) )
 FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_echo_msg_result, (echoMsg)(hasSend)(pkPoolSize)(pk_pool) )
 
+FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_propose_cache_params, (blockNum)(phase) )
 FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_propose_cache_result, (proposeCache) )
 
 FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_echo_cache_result, (echoCache) )
