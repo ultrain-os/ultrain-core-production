@@ -506,4 +506,11 @@ namespace ultrainio { namespace chain {
                                     3230002, "Database API Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( arithmetic_exception,   contract_api_exception,
                                     3230003, "Arithmetic Exception" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( monitor_exception,   chain_exception,
+                                 3240000, "Monitor exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( node_not_found_exception,   monitor_exception,
+                                 3240001, "Failed to get UranusNode." )
+      FC_DECLARE_DERIVED_EXCEPTION( msg_not_found_exception,   monitor_exception,
+                                 3240002, "Can not find required message in corresponding container" )
 } } // ultrainio::chain

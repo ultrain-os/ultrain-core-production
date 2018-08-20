@@ -65,6 +65,9 @@ class monitor_only {
       };
 
       monitor_echo_ap_cache_result monitor_echo_ap_cache(const monitor_echo_ap_cache_params& params) const;
+
+   private:
+      const std::shared_ptr<UranusNode>  getNodePtr() const;
 };
 }  //namespace monitor_apis
 

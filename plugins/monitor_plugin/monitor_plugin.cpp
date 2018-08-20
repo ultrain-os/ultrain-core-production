@@ -3,6 +3,8 @@
  *  @copyright defined in ultrain/LICENSE.txt
  */
 #include <ultrainio/monitor_plugin/monitor_plugin.hpp>
+#include <fc/exception/exception.hpp>
+#include <ultrainio/chain/exceptions.hpp>
 
 namespace ultrainio {
    static appbase::abstract_plugin& _monitor_plugin = app().register_plugin<monitor_plugin>();
@@ -42,57 +44,40 @@ void monitor_plugin::plugin_shutdown() {
 }
 
    namespace monitor_apis {
+
+     const std::shared_ptr<UranusNode>  monitor_only::getNodePtr() const {
+       auto nodePtr = UranusNode::getInstance();
+       ULTRAIN_ASSERT( nodePtr != nullptr, chain::node_not_found_exception, "Failed to get UranusNode. Most possible reason: This Node is not a producer." );
+       return nodePtr;
+     }
+
      monitor_only::monitor_node_result monitor_only::monitor_node( const monitor_only::monitor_node_params& params )const {
-        auto nodePtr = UranusNode::getInstance();
-        if(!nodePtr) {
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Failed to get UranusNode. Most possible reason: This Node is not a producer." ));
-            throw fce;
-        }
+        auto nodePtr = getNodePtr();
         return nodePtr->getNodeInfo();
      }
 
      monitor_only::monitor_propose_msg_result monitor_only::monitor_propose_msg( const monitor_only::monitor_propose_msg_params& params) const {
-        auto nodePtr = UranusNode::getInstance();
-        if(!nodePtr) {
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Failed to get UranusNode. Most possible reason: This Node is not a producer." ));
-            throw fce;
-        }
+        auto nodePtr = getNodePtr();
         return nodePtr->getController()->findProposeMsgByBlockId(chain::block_id_type(params.block_id));
      }
 
      monitor_only::monitor_echo_msg_result monitor_only::monitor_echo_msg( const monitor_only::monitor_echo_msg_params& params) const{
-        auto nodePtr = UranusNode::getInstance();
-        if(!nodePtr) {
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Failed to get UranusNode. Most possible reason: This Node is not a producer." ));
-            throw fce;
-        }
+        auto nodePtr = getNodePtr();
         return nodePtr->getController()->findEchoMsgByBlockId(chain::block_id_type(params.block_id));
      }
 
      monitor_only::monitor_propose_cache_result monitor_only::monitor_propose_cache(const monitor_only::monitor_propose_cache_params& params) const{
-        auto nodePtr = UranusNode::getInstance();
-        if(!nodePtr) {
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Failed to get UranusNode. Most possible reason: This Node is not a producer." ));
-            throw fce;
-        }
+        auto nodePtr = getNodePtr();
         return {nodePtr->getController()->findProposeCacheByKey(params)};
      }
 
      monitor_only::monitor_echo_cache_result monitor_only::monitor_echo_cache(const monitor_only::monitor_echo_cache_params& params) const {
-        auto nodePtr = UranusNode::getInstance();
-        if(!nodePtr) {
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Failed to get UranusNode. Most possible reason: This Node is not a producer." ));
-            throw fce;
-        }
+        auto nodePtr = getNodePtr();
         return {nodePtr->getController()->findEchoCacheByKey(params)};
      }
 
      monitor_only::monitor_echo_ap_cache_result monitor_only::monitor_echo_ap_cache(const monitor_only::monitor_echo_ap_cache_params& params) const {
-        auto nodePtr = UranusNode::getInstance();
-        if(!nodePtr) {
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Failed to get UranusNode. Most possible reason: This Node is not a producer." ));
-            throw fce;
-        }
+        auto nodePtr = getNodePtr();
         return {nodePtr->getController()->findEchoApMsgByKey(params)};
      }
    }

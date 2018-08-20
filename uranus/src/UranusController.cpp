@@ -1456,8 +1456,7 @@ namespace ultrainio {
             tempHeaderDigest.digestFromBlockHeader(ite->second.block);
         }
         else {
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Propose msg not found by id." ));
-            throw fce;
+            ULTRAIN_THROW(chain::msg_not_found_exception, "Propose msg not found by id." );
         }
         return tempHeaderDigest;
     }
@@ -1470,8 +1469,7 @@ namespace ultrainio {
             tempEchoDigest.digestFromeEchoMsgInfo(ite->second);
         }
         else {
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Echo msg info not found by id." ));
-            throw fce;
+            ULTRAIN_THROW(chain::msg_not_found_exception, "Echo msg info not found by id." );
         }
 
         return tempEchoDigest;
@@ -1488,8 +1486,7 @@ namespace ultrainio {
             }
         }
         else {
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Propose msg not found by key." ));
-            throw fce;
+            ULTRAIN_THROW(chain::msg_not_found_exception, "Propose msg not found by key." );
         }
         return tempDigestVect;
     }
@@ -1505,8 +1502,7 @@ namespace ultrainio {
             }
         }
         else {
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Echo msg not found by key." ));
-            throw fce;
+            ULTRAIN_THROW(chain::msg_not_found_exception, "Echo msg not found by key." );
         }
         return tempEchoDigestVect;
     }
@@ -1523,8 +1519,7 @@ namespace ultrainio {
             }
         }
         else{
-            auto fce = fc::exception( FC_LOG_MESSAGE( info, "Echo msg info not found by key." ));
-            throw fce;
+            ULTRAIN_THROW(chain::msg_not_found_exception, "Echo msg info not found by key." );
         }
         return tempEchoMsgInfoDigestVect;
     }
