@@ -277,11 +277,11 @@ namespace ultrainio {
         m_phase = kPhaseBA1;
         m_baxCount = 0;
 
-        dlog("ba0Process. blockNum = ${blockNum}.", ("blockNum", getBlockNum()));
         MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA1, 0);
 
-        LOG_INFO << "start BA1. isVoter = " << MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)
-                 << std::endl;
+        dlog("ba0Process. start ba1. blockNum = ${blockNum}, isVoter = ${isVoter}.", ("blockNum", getBlockNum())
+                ("isVoter",MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
+
         if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)) {
             if (isEmpty(ba0Block)) {
                 elog("ba0Block is empty, and send echo for empty block");
@@ -462,6 +462,7 @@ namespace ultrainio {
                 sendEchoForEmptyBlock();
             } else if (m_controllerPtr->verifyBa0Block()) { // not empty, verify
                 EchoMsg echo = m_controllerPtr->constructMsg(*ba0Block);
+                m_controllerPtr->insert(echo);
                 sendMessage(echo);
             } else {
                 elog("kPhaseBAX verify ba0Block failed. And send echo for empty block");

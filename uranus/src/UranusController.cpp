@@ -310,6 +310,7 @@ namespace ultrainio {
                     ilog("send echo when > f + 1");
                     info.hasSend = true;
                     EchoMsg myEcho = constructMsg(echo);
+                    insert(myEcho);
                     UranusNode::getInstance()->sendMessage(myEcho);
                 }
             }
@@ -495,6 +496,7 @@ namespace ultrainio {
                 if (MessageManager::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
                     EchoMsg echo = constructMsg(propose);
                     UranusNode::getInstance()->sendMessage(echo);
+                    insert(echo);
                 }
                 dlog("save propose msg.blockhash = ${blockhash}", ("blockhash", propose.block.id()));
                 m_proposerMsgMap.insert(make_pair(propose.block.id(), propose));
