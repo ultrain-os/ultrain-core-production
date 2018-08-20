@@ -116,14 +116,24 @@ namespace ultrainio {
     }
 
     bool UranusController::insert(const EchoMsg &echo) {
-        echo_message_info echo_info;
-        echo_info.echo = echo;
-        echo_info.pk_pool.push_back(echo.pk);
-        echo_info.hasSend = true;
         VoterSystem voter;
         int stakes = UranusNode::getInstance()->getStakes(echo.pk);
-        echo_info.totalVoter += voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
-        m_echoMsgMap.insert(make_pair(echo.blockHeader.id(), echo_info));
+
+        auto itor = m_echoMsgMap.find(echo.blockHeader.id());
+        if (itor != m_echoMsgMap.end()) {
+            auto pkItor = std::find(itor->second.pk_pool.begin(), itor->second.pk_pool.end(), echo.pk);
+            if (pkItor == itor->second.pk_pool.end()) {
+                itor->second.pk_pool.push_back(echo.pk);
+                itor->second.totalVoter += voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
+            }
+        } else {
+            echo_message_info echo_info;
+            echo_info.echo = echo;
+            echo_info.pk_pool.push_back(echo.pk);
+            echo_info.hasSend = true;
+            echo_info.totalVoter += voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
+            m_echoMsgMap.insert(make_pair(echo.blockHeader.id(), echo_info));
+        }
         return true;
     }
 
