@@ -2985,7 +2985,7 @@ namespace ultrainio {
    void net_plugin_impl::accepted_block(const block_state_ptr& block) {
       fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
       ilog("signaled, id = ${id}",("id", block->id));
-      dispatcher->bcast_block(*block->block);
+      //dispatcher->bcast_block(*block->block);
    }
 
    void net_plugin_impl::irreversible_block(const block_state_ptr&block) {

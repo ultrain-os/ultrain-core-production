@@ -164,9 +164,9 @@ namespace chainbase {
          BOOST_THROW_EXCEPTION( std::runtime_error( "could not find dirty flag in shared memory" ) );
 
       if( !allow_dirty && *db_is_dirty )
-         throw std::runtime_error( "database dirty flag set" );
+         throw std::runtime_error( "database dirty flag set and the process exits now!!!" );
       if( !allow_dirty && *meta_is_dirty )
-         throw std::runtime_error( "database metadata dirty flag set" );
+         throw std::runtime_error( "database metadata dirty flag set and the process exits now!!!" );
 
       if( write ) {
          _flock = bip::file_lock( abs_path.generic_string().c_str() );

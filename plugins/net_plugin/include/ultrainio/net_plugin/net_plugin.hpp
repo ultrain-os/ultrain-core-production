@@ -30,7 +30,7 @@ namespace ultrainio {
         void plugin_startup();
         void plugin_shutdown();
 
-        void   broadcast_block(const chain::signed_block &sb);
+        //void   broadcast_block(const chain::signed_block &sb);
         void   broadcast(const ProposeMsg& propose);
         void   broadcast(const EchoMsg& echo);
         void   send_block(const string& ip_addr, const Block& block);
