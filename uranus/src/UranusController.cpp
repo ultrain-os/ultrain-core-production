@@ -1055,7 +1055,7 @@ namespace ultrainio {
         }
 
         if (minBlockId == BlockIdType()) { // not found > 2f + 1 echo
-            dlog("can not find >= 2f + 1. blockHash is empty");
+            dlog("can not find >= 2f + 1");
             if (UranusNode::getInstance()->getPhase() == kPhaseBA0) {
                 return emptyBlock();
             }
@@ -1065,10 +1065,9 @@ namespace ultrainio {
             }
             return blankBlock();
         }
-        // TODO: Cache the empty block's id.
-        auto empty_block = emptyBlock();
-        if (minBlockId == empty_block.id()) {
-            return empty_block;
+        if (minBlockId == emptyBlock().id()) {
+            dlog("produce empty Block");
+            return emptyBlock();
         }
         auto propose_itor = m_proposerMsgMap.find(minBlockId);
         if (propose_itor != m_proposerMsgMap.end()) {
@@ -1077,7 +1076,8 @@ namespace ultrainio {
         }
         dlog("> 2f + 1 echo ${hash} can not find it's propose.", ("hash", minBlockId));
         if (kPhaseBA0 == UranusNode::getInstance()->getPhase()) {
-            return empty_block;
+            dlog("produce empty Block");
+            return emptyBlock();
         }
         return blankBlock();
     }

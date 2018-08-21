@@ -409,10 +409,6 @@ namespace ultrainio {
                 if (aggEchoMsg) {
                     sendMessage(*aggEchoMsg);
                 }
-                aggEchoMsg = MessageManager::getInstance()->getMyAggEchoMsg(blockNum - 2);
-                if (aggEchoMsg) {
-                    sendMessage(*aggEchoMsg);
-                }
             }
 
             baxLoop(getRoundInterval());
