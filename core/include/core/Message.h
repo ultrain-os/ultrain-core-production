@@ -43,6 +43,18 @@ namespace ultrainio {
         std::string proof;
         std::string signature;
     };
+
+    // aggregate echo msg
+    struct AggEchoMsg {
+        BlockHeader blockHeader;
+        std::vector<std::string> pkPool;
+        std::vector<std::string> proofPool;
+        ConsensusPhase phase;
+        uint32_t baxCount;
+        std::string pk;
+        std::string proof;
+        std::string signature;
+    };
 }
 
 FC_REFLECT( ultrainio::ProposeMsg, (block) )
@@ -50,3 +62,4 @@ FC_REFLECT( ultrainio::EchoMsg, (blockHeader)(phase)(baxCount)(pk)(proof)(signat
 FC_REFLECT( ultrainio::SyncRequestMessage, (startBlockNum)(endBlockNum) )
 FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
 FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))
+FC_REFLECT( ultrainio::AggEchoMsg, (blockHeader)(pkPool)(proofPool)(phase)(baxCount)(pk)(proof)(signature))

@@ -94,6 +94,8 @@ namespace ultrainio {
 
         void sendMessage(const std::string &peer_addr, const RspLastBlockNumMsg &msg);
 
+        void sendMessage(const AggEchoMsg& aggEchoMsg);
+
         ConsensusPhase getPhase() const;
 
         void ba0Process();

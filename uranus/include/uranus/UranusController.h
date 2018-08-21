@@ -21,11 +21,12 @@ namespace ultrainio {
 
     struct echo_message_info {
         EchoMsg echo;
-        std::vector<std::string> pk_pool; //public key pool
+        std::vector<std::string> pkPool; //public key pool
+        std::vector<std::string> proofPool;
         int totalVoter;
         bool hasSend;
 
-        echo_message_info() : echo(), pk_pool(), totalVoter(0), hasSend(false) {}
+        echo_message_info() : echo(), pkPool(), totalVoter(0), hasSend(false) {}
     };
 
     struct msgkey {
@@ -80,8 +81,8 @@ namespace ultrainio {
         void digestFromeEchoMsgInfo(const echo_message_info& echo_msg_info) {
             echoMsg.digestFromeEchoMsg(echo_msg_info.echo);
             hasSend = echo_msg_info.hasSend;
-            pkPoolSize = echo_msg_info.pk_pool.size();
-            pk_pool.assign(echo_msg_info.pk_pool.begin(), echo_msg_info.pk_pool.end());
+            pkPoolSize = echo_msg_info.pkPool.size();
+            pk_pool.assign(echo_msg_info.pkPool.begin(), echo_msg_info.pkPool.end());
         }
     };
 
@@ -230,6 +231,9 @@ namespace ultrainio {
         Block emptyBlock();
 
         void setBa0Block(const Block& block);
+
+        std::shared_ptr<AggEchoMsg> generateAggEchoMsg(std::shared_ptr<Block> blockPtr);
+
     private:
         // This function is time consuming, please cache the result empty block.
         std::shared_ptr<Block> generateEmptyBlock();

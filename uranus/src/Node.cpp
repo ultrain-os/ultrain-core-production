@@ -318,7 +318,6 @@ namespace ultrainio {
         // produce block
         m_phase = kPhaseInit;
         Block ba1Block = m_controllerPtr->produceTentativeBlock();
-        signed_block_ptr uranus_block = std::make_shared<chain::signed_block>();
 
         dlog("ba1Process begin. blockNum = ${id}.", ("id", getBlockNum()));
 
@@ -332,9 +331,10 @@ namespace ultrainio {
             return;
         }
 
+        std::shared_ptr<Block> blockPtr = std::make_shared<chain::signed_block>();
         if (!isBlank(ba1Block)) {
             //UltrainLog::display_block(ba1_block);
-            *uranus_block = ba1Block;
+            *blockPtr = ba1Block;
         } else {
             elog("ba1Process ba1 finish. block is empty. phase ba2 begin.");
             //init();
@@ -343,17 +343,17 @@ namespace ultrainio {
             return;
         }
 
-        m_controllerPtr->produceBlock(uranus_block);
+        m_controllerPtr->produceBlock(blockPtr);
         dlog("##############finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
              ("block_num", getLastBlocknum())
-                     ("hash", uranus_block->id())
+                     ("hash", blockPtr->id())
                      ("head_hash", m_controllerPtr->getPreviousBlockhash()));
-        ULTRAIN_ASSERT(uranus_block->id() == m_controllerPtr->getPreviousBlockhash(),
+        ULTRAIN_ASSERT(blockPtr->id() == m_controllerPtr->getPreviousBlockhash(),
                        chain::chain_exception, "Produced block hash is not expected");
 
         LOG_INFO << "checkpoint: blockNum:" << getBlockNum() << ";phase:" << m_phase << ";host_name:"
-                 << boost::asio::ip::host_name() << ";block_hash_previous: " << uranus_block->previous << ";txs_hash: "
-                 << uranus_block->id() << std::endl;
+                 << boost::asio::ip::host_name() << ";block_hash_previous: " << blockPtr->previous << ";txs_hash: "
+                 << blockPtr->id() << std::endl;
         run();
     }
 
@@ -403,6 +403,18 @@ namespace ultrainio {
             }
             //init();
             //readyToJoin();
+            if (m_baxCount > 0 && m_baxCount % 6 == 0) {
+                uint32_t blockNum = getBlockNum();
+                std::shared_ptr<AggEchoMsg> aggEchoMsg = MessageManager::getInstance()->getMyAggEchoMsg(blockNum - 1);
+                if (aggEchoMsg) {
+                    sendMessage(*aggEchoMsg);
+                }
+                aggEchoMsg = MessageManager::getInstance()->getMyAggEchoMsg(blockNum - 2);
+                if (aggEchoMsg) {
+                    sendMessage(*aggEchoMsg);
+                }
+            }
+
             baxLoop(getRoundInterval());
         }
     }
@@ -549,6 +561,10 @@ namespace ultrainio {
 
     void UranusNode::sendMessage(const string &peer_addr, const Block &msg) {
         app().get_plugin<net_plugin>().send_block(peer_addr, msg);
+    }
+
+    void UranusNode::sendMessage(const AggEchoMsg& aggEchoMsg) {
+        app().get_plugin<net_plugin>().broadcast(aggEchoMsg);
     }
 
     bool UranusNode::sendMessage(const SyncRequestMessage &msg) {

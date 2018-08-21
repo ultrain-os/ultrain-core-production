@@ -9,10 +9,12 @@
 
 namespace ultrainio {
     enum MessageStatus {
-        kSuccess,
+        kSuccess = 0,
         kDuplicate,
         kSignatureError,
+        kObsolete,
         kFaultProposer,
+        kFaultVoter,
         kTheSameRoundButPhase,
         kLaterRound
     };
@@ -50,6 +52,8 @@ namespace ultrainio {
         uint32_t blockNum = 0;
         int voterCountAsProposer = 0;
         uint8_t proposerProof[VRF_PROOF_LEN] = { 0 };
+        std::shared_ptr<AggEchoMsg> myAggEchoMsgPtr;
+        std::vector<AggEchoMsg> aggEchoMsgV;
     private:
         PhaseMessagePtr initIfNeed(ConsensusPhase phase, int baxCount);
         std::vector<ProposeMsg> proposeMsgList;
@@ -64,9 +68,15 @@ namespace ultrainio {
         MessageManager& operator = (const MessageManager&) = delete;
         MessageManager(const MessageManager&) = delete;
 
-        void insert(const EchoMsg& echoMsg);
+        //void insert(const EchoMsg& echoMsg);
 
-        void insert(const ProposeMsg& proposeMsg);
+        //void insert(const ProposeMsg& proposeMsg);
+
+        int handleMessage(const AggEchoMsg& aggEchoMsg);
+
+        void insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr);
+
+        std::shared_ptr<AggEchoMsg> getMyAggEchoMsg(uint32_t blockNum);
 
         void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
 

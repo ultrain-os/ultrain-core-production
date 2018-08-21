@@ -152,7 +152,8 @@ namespace ultrainio {
                                       EchoMsg,
                                       SyncRequestMessage,
                                       ReqLastBlockNumMsg,
-                                      RspLastBlockNumMsg>;
+                                      RspLastBlockNumMsg,
+                                      AggEchoMsg>;
 
 } // namespace ultrainio
 

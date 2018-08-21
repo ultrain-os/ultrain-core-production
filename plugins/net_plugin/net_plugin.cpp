@@ -31,6 +31,7 @@
 
 #include <random>
 #include <log/Log.h>
+#include <uranus/MessageManager.h>
 
 using namespace ultrainio::chain::plugin_interface::compat;
 
@@ -242,6 +243,7 @@ namespace ultrainio {
       void handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg);
       void handle_message( connection_ptr c, const ultrainio::SyncRequestMessage& msg);
       void handle_message( connection_ptr c, const ultrainio::Block& msg);
+      void handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg);
 
       void start_broadcast(const net_message& msg);
       void send_block(const string& ip_addr, const net_message& msg);
@@ -2682,6 +2684,18 @@ namespace ultrainio {
        }
    }
 
+   void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg) {
+       ilog("receive AggEchoMsg msg!!! message from ${p} block id: ${id} block num: ${num}",
+            ("p", c->peer_name())("id", msg.blockHeader.id())("num", msg.blockHeader.block_num()));
+       if (MessageManager::getInstance()->handleMessage(msg) == kSuccess) {
+           for (auto &conn : connections) {
+               if (conn != c) {
+                   conn->enqueue(net_message(msg));
+               }
+           }
+       }
+   }
+
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg) {
         ilog("receive req last block num msg!!! from peer ${p}", ("p", c->peer_name()));
         app().get_plugin<producer_uranus_plugin>().handle_message(c->socket->remote_endpoint().address().to_v4().to_string(), msg);
@@ -3355,6 +3369,11 @@ namespace ultrainio {
       ilog("broadcast echo");
       my->start_broadcast(net_message(echo));
    }
+
+    void net_plugin::broadcast(const AggEchoMsg& aggEchoMsg) {
+        ilog("broadcast AggEchoMsg");
+        my->start_broadcast(net_message(aggEchoMsg));
+    }
 
    void net_plugin::send_block(const string& ip_addr, const ultrainio::Block& msg) {
        ilog("send block msg to addr:${pa} block num:${n}", ("pa", ip_addr)("n", msg.block_num()));

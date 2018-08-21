@@ -121,15 +121,17 @@ namespace ultrainio {
 
         auto itor = m_echoMsgMap.find(echo.blockHeader.id());
         if (itor != m_echoMsgMap.end()) {
-            auto pkItor = std::find(itor->second.pk_pool.begin(), itor->second.pk_pool.end(), echo.pk);
-            if (pkItor == itor->second.pk_pool.end()) {
-                itor->second.pk_pool.push_back(echo.pk);
+            auto pkItor = std::find(itor->second.pkPool.begin(), itor->second.pkPool.end(), echo.pk);
+            if (pkItor == itor->second.pkPool.end()) {
+                itor->second.pkPool.push_back(echo.pk);
+                itor->second.proofPool.push_back(echo.proof);
                 itor->second.totalVoter += voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
             }
         } else {
             echo_message_info echo_info;
             echo_info.echo = echo;
-            echo_info.pk_pool.push_back(echo.pk);
+            echo_info.pkPool.push_back(echo.pk);
+            echo_info.proofPool.push_back(echo.proof);
             echo_info.hasSend = true;
             echo_info.totalVoter += voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
             m_echoMsgMap.insert(make_pair(echo.blockHeader.id(), echo_info));
@@ -307,9 +309,10 @@ namespace ultrainio {
     }
 
     bool UranusController::updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response) {
-        auto pkItor = std::find(info.pk_pool.begin(), info.pk_pool.end(), echo.pk);
-        if (pkItor == info.pk_pool.end()) {
-            info.pk_pool.push_back(echo.pk);
+        auto pkItor = std::find(info.pkPool.begin(), info.pkPool.end(), echo.pk);
+        if (pkItor == info.pkPool.end()) {
+            info.pkPool.push_back(echo.pk);
+            info.proofPool.push_back(echo.proof);
             VoterSystem voter;
             int stakes = UranusNode::getInstance()->getStakes(echo.pk);
             info.totalVoter += voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
@@ -1008,7 +1011,7 @@ namespace ultrainio {
         BlockIdType minBlockId = BlockIdType();
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
             dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} txs_hash : ${txs_hash}",
-                 ("phase", (uint32_t) echo_itor->second.echo.phase)("size", echo_itor->second.pk_pool.size())(
+                 ("phase", (uint32_t) echo_itor->second.echo.phase)("size", echo_itor->second.pkPool.size())(
                          "totalVoter", echo_itor->second.totalVoter)("txs_hash",
                                                                      echo_itor->second.echo.blockHeader.id()));
             if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
@@ -1047,6 +1050,21 @@ namespace ultrainio {
             return emptyBlock();
         }
         return blankBlock();
+    }
+
+    std::shared_ptr<AggEchoMsg> UranusController::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {
+        std::shared_ptr<AggEchoMsg> aggEchoMsgPtr;
+        aggEchoMsgPtr->blockHeader = *blockPtr;
+        aggEchoMsgPtr->pk = std::string((char*)UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+        aggEchoMsgPtr->proof = std::string((char*)MessageManager::getInstance()->getVoterProof(blockPtr->block_num(), kPhaseBA1, 0), VRF_PROOF_LEN);
+        auto itor = m_echoMsgMap.find(blockPtr->id());
+        aggEchoMsgPtr->pkPool = itor->second.pkPool;
+        aggEchoMsgPtr->proofPool = itor->second.proofPool;
+        aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
+        aggEchoMsgPtr->baxCount = UranusNode::getInstance()->getBaxCount();
+        //TODO(qinxiaofen)
+        //aggEchoMsgPtr->signature
+        return aggEchoMsgPtr;
     }
 
     void UranusController::clearPreRunStatus() {
@@ -1294,6 +1312,9 @@ namespace ultrainio {
         m_voterPreRunBa0InProgress = false;
 
         chain::block_state_ptr new_bs = chain.head_block_state();
+        if (MessageManager::getInstance()->isProposer(block->block_num())) {
+            MessageManager::getInstance()->insert(generateAggEchoMsg(block));
+        }
         ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}--------------",
              ("timestamp", block->timestamp)
                      ("num", block->block_num())
