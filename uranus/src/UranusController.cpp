@@ -133,7 +133,7 @@ namespace ultrainio {
             echo_info.pkPool.push_back(echo.pk);
             echo_info.proofPool.push_back(echo.proof);
             echo_info.hasSend = true;
-            echo_info.totalVoter += voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
+            echo_info.totalVoter = voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
             m_echoMsgMap.insert(make_pair(echo.blockHeader.id(), echo_info));
         }
         return true;
@@ -277,7 +277,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::processEchoMsg(const EchoMsg &echo) {
+    bool UranusController::processBeforeMsg(const EchoMsg &echo) {
         msgkey msg_key;
         msg_key.blockNum = echo.blockHeader.block_num();
         msg_key.phase = echo.phase + echo.baxCount;
@@ -295,14 +295,18 @@ namespace ultrainio {
         auto itor = map_it->second.find(echo.blockHeader.id());
         if (itor != map_it->second.end()) {
             if (updateAndMayResponse(itor->second, echo, false)) {
-                return true;
+                if (isMinEcho(itor->second,map_it->second) || isMinFEcho(itor->second,map_it->second)) {
+                    return true;
+                }
             }
         } else {
             echo_message_info info;
             info.echo = echo;
-            map_it->second.insert(make_pair(echo.blockHeader.id(), info));
             if (updateAndMayResponse(info, echo, false)) {
-                return true;
+                map_it->second.insert(make_pair(echo.blockHeader.id(), info));
+                if (isMinEcho(itor->second,map_it->second) || isMinFEcho(itor->second,map_it->second)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -334,8 +338,7 @@ namespace ultrainio {
 
     bool UranusController::isBeforeMsgAndProcess(const EchoMsg &echo) {
         if (isBeforeMsg(echo)) {
-            processEchoMsg(echo);
-            return true;
+            return processBeforeMsg(echo);
         }
 
         return false;
@@ -357,7 +360,7 @@ namespace ultrainio {
         for (auto vector_itor = m_cacheEchoMsgMap.begin(); vector_itor != m_cacheEchoMsgMap.end(); ++vector_itor) {
             if (vector_itor->first.blockNum > maxBlockNum) {
                 echo_msg_buff echo_msg_map;
-                echo_message_info echo_info;
+                //echo_message_info echo_info;
 
                 for (auto &echo : vector_itor->second) {
                     if (this_pk == echo.pk) {
@@ -395,11 +398,6 @@ namespace ultrainio {
     bool UranusController::isValid(const EchoMsg &echo) {
         std::string this_pk = std::string((const char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
 
-        if (UranusNode::getInstance()->getSyncingStatus()) {
-            elog("node is syncing.");
-            return false;
-        }
-
         if (this_pk == echo.pk) {
             elog("loopback echo. pk : ${pk}", ("pk", this_pk));
             return false;
@@ -419,11 +417,6 @@ namespace ultrainio {
 
     bool UranusController::isValid(const ProposeMsg &propose) {
         std::string this_pk = std::string((const char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
-
-        if (UranusNode::getInstance()->getSyncingStatus()) {
-            elog("node is syncing.");
-            return false;
-        }
 
         if (this_pk == propose.block.proposerPk) {
             elog("loopback propose. pk : ${pk}", ("pk", this_pk));
@@ -484,12 +477,9 @@ namespace ultrainio {
             echo_message_info info;
             info.echo = echo;
             updateAndMayResponse(info, echo, false);
-            if (isMinEcho(info)) {
-                m_echoMsgMap.insert(make_pair(echo.blockHeader.id(), info));
-                return true;
-            }
+            m_echoMsgMap.insert(make_pair(echo.blockHeader.id(), info));
         }
-        return false;
+        return true;
     }
 
     bool UranusController::handleMessage(const ProposeMsg &propose) {
@@ -500,6 +490,11 @@ namespace ultrainio {
 
         if (!isValid(propose)) {
             return false;
+        }
+
+        if ((UranusNode::getInstance()->getSyncingStatus()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
+            dlog("receive propose msg. node is syncing. blockhash = ${blockhash}", ("blockhash", propose.block.id()));
+            return true;
         }
 
         dlog("receive propose msg.blockhash = ${blockhash}", ("blockhash", propose.block.id()));
@@ -527,11 +522,18 @@ namespace ultrainio {
             return (!duplicate);
         }
 
-        if (isBeforeMsgAndProcess(echo)) {
-            return true;
+        if (isBeforeMsg(echo)) {
+            return processBeforeMsg(echo);
         }
+
         if (!isValid(echo)) {
             return false;
+        }
+
+        if ((UranusNode::getInstance()->getSyncingStatus()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
+            dlog("receive echo msg. node is syncing. blockhash = ${blockhash} echo'pk = ${pk}",
+                 ("blockhash", echo.blockHeader.id())("pk", UltrainLog::convert2Hex(echo.pk)));
+            return true;
         }
 
         dlog("receive echo msg.blockhash = ${blockhash} echo'pk = ${pk}",
@@ -651,6 +653,20 @@ namespace ultrainio {
         return true;
     }
 
+    bool UranusController::isMinFEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
+        VoterSystem voter;
+        uint32_t priority = voter.proof2Priority((const uint8_t *) info.echo.blockHeader.proposerProof.data());
+        for (auto echo_itor = msgbuff.begin(); echo_itor != msgbuff.end(); ++echo_itor) {
+            if (echo_itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
+                if (voter.proof2Priority((const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data()) <
+                    priority) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     bool UranusController::isMinFEcho(const echo_message_info &info) {
         VoterSystem voter;
         uint32_t priority = voter.proof2Priority((const uint8_t *) info.echo.blockHeader.proposerProof.data());
@@ -660,6 +676,18 @@ namespace ultrainio {
                     priority) {
                     return false;
                 }
+            }
+        }
+        return true;
+    }
+
+    bool UranusController::isMinEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
+        VoterSystem voter;
+        uint32_t priority = voter.proof2Priority((const uint8_t *) info.echo.blockHeader.proposerProof.data());
+        for (auto echo_itor = msgbuff.begin(); echo_itor != msgbuff.end(); ++echo_itor) {
+            if (voter.proof2Priority((const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data()) <
+                priority) {
+                return false;
             }
         }
         return true;
@@ -935,7 +963,7 @@ namespace ultrainio {
     void UranusController::fastProcessCache(const msgkey &msg_key) {
         auto propose_itor = m_cacheProposeMsgMap.find(msg_key);
         if (propose_itor != m_cacheProposeMsgMap.end()) {
-            dlog("cache propose msg num = ${num}. blockNum = ${id}, phase = ${phase}",
+            dlog("fastProcessCache. cache propose msg num = ${num}. blockNum = ${id}, phase = ${phase}",
                  ("num", propose_itor->second.size())
                          ("id", msg_key.blockNum)("phase", msg_key.phase));
             for (auto &propose : propose_itor->second) {
@@ -946,7 +974,7 @@ namespace ultrainio {
 
         auto echo_itor = m_cacheEchoMsgMap.find(msg_key);
         if (echo_itor != m_cacheEchoMsgMap.end()) {
-            dlog("cache echo msg num = ${num}. blockNum = ${id}, phase = ${phase}", ("num", echo_itor->second.size())
+            dlog("fastProcessCache. cache echo msg num = ${num}. blockNum = ${id}, phase = ${phase}", ("num", echo_itor->second.size())
                     ("id", msg_key.blockNum)("phase", msg_key.phase));
             for (auto &echo : echo_itor->second) {
                 fastHandleMessage(echo);
@@ -1026,12 +1054,12 @@ namespace ultrainio {
         }
 
         if (minBlockId == BlockIdType()) { // not found > 2f + 1 echo
-            dlog("can not find >= 2f + 1 blockHash is empty");
+            dlog("can not find >= 2f + 1. blockHash is empty");
             if (UranusNode::getInstance()->getPhase() == kPhaseBA0) {
                 return emptyBlock();
             }
             if ((!m_echoMsgAllPhase.empty()) && (UranusNode::getInstance()->getPhase() == kPhaseBAX)) {
-                dlog("blockhash is empty. into produceBaxBlock.");
+                dlog("current blockhash is empty. into produceBaxBlock.");
                 return produceBaxBlock();
             }
             return blankBlock();

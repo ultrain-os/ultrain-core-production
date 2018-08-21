@@ -118,9 +118,9 @@ namespace ultrainio {
         bool isMinPropose(const ProposeMsg &propose_msg);
 
         bool isMinFEcho(const echo_message_info &info);
-
+        bool isMinFEcho(const echo_message_info &info, const echo_msg_buff &msgbuff);
         bool isMinEcho(const echo_message_info &info);
-
+        bool isMinEcho(const echo_message_info &info, const echo_msg_buff &msgbuff);
         Block produceTentativeBlock();
 
         bool initProposeMsg(ProposeMsg *propose_msg);
@@ -169,7 +169,7 @@ namespace ultrainio {
 
         bool isBeforeMsg(const EchoMsg &echo);
 
-        bool processEchoMsg(const EchoMsg &echo);
+        bool processBeforeMsg(const EchoMsg &echo);
 
         bool isBeforeMsgAndProcess(const EchoMsg &echo);
 
