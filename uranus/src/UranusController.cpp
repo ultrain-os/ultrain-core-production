@@ -38,13 +38,14 @@ namespace {
     fc::logger _log;
 
     // TODO(shenyufeng) need more precise compare
-    bool IsBa0TheRightBlock(const ultrainio::chain::signed_block &b,
+    bool IsBa0TheRightBlock(const ultrainio::chain::signed_block &ba0_block,
                             const ultrainio::chain::signed_block_ptr &block) {
-        return  (b.proposerPk == block->proposerPk &&
-                 b.proposerProof == block->proposerProof &&
-                 b.block_num() == block->block_num() &&
-                 b.timestamp == block->timestamp &&
-                 b.producer == block->producer);
+        return  (ba0_block.proposerPk == block->proposerPk &&
+                 ba0_block.proposerProof == block->proposerProof &&
+                 ba0_block.timestamp == block->timestamp &&
+                 ba0_block.transaction_mroot == block->transaction_mroot &&
+                 ba0_block.action_mroot == block->action_mroot &&
+                 ba0_block.previous == block->previous);
     }
 }
 
@@ -1065,8 +1066,9 @@ namespace ultrainio {
             return blankBlock();
         }
         // TODO: Cache the empty block's id.
-        if (minBlockId == emptyBlock().id()) {
-            return emptyBlock();
+        auto empty_block = emptyBlock();
+        if (minBlockId == empty_block.id()) {
+            return empty_block;
         }
         auto propose_itor = m_proposerMsgMap.find(minBlockId);
         if (propose_itor != m_proposerMsgMap.end()) {
@@ -1075,7 +1077,7 @@ namespace ultrainio {
         }
         dlog("> 2f + 1 echo ${hash} can not find it's propose.", ("hash", minBlockId));
         if (kPhaseBA0 == UranusNode::getInstance()->getPhase()) {
-            return emptyBlock();
+            return empty_block;
         }
         return blankBlock();
     }
@@ -1165,6 +1167,14 @@ namespace ultrainio {
                     return false;
                 }
             }
+            chain.set_action_merkle_hack();
+            chain.set_trx_merkle_hack();
+            ULTRAIN_ASSERT(pbs->header.action_mroot == block.action_mroot,
+                           chain::chain_exception,
+                           "Verify Ba0 block not generating expected action_mroot");
+            ULTRAIN_ASSERT(pbs->header.transaction_mroot == block.transaction_mroot,
+                           chain::chain_exception,
+                           "Verify Ba0 block not generating expected transaction_mroot");
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
             chain.abort_block();
@@ -1282,8 +1292,7 @@ namespace ultrainio {
                 chain.sign_block([&](const chain::digest_type &d) { return b.producer_signature; });
                 chain.commit_block();
                 needs_push_whole_block = false;
-                // TODO(yufengshen) : CHECK if the produced block is the same as the ba1 block, e.g.
-                // action/trx_mroot ...
+                // No need to check trx/action_mroot, it was already verified in verifyBa0Block();
             }
         }
 
@@ -1316,11 +1325,15 @@ namespace ultrainio {
                     }
 
                     chain.finalize_block();
+                    ULTRAIN_ASSERT(pbs->header.action_mroot == block->action_mroot,
+                           chain::chain_exception,
+                           "Pre-run Ba0 block not generating expected action_mroot");
+                    ULTRAIN_ASSERT(pbs->header.transaction_mroot == block->transaction_mroot,
+                           chain::chain_exception,
+                           "Pre-run Ba0 block not generating expected transaction_mroot");
                     chain.sign_block([&](const chain::digest_type &d) { return b.producer_signature; });
                     chain.commit_block();
                     needs_push_whole_block = false;
-                    // TODO(yufengshen) : CHECK if the produced block is the same as the ba1 block, e.g.
-                    // action/trx_mroot ...
                 } catch (const fc::exception &e) {
                     ilog("------ error in finish pre-running block ${s}", ("s", e.to_detail_string()));
                     edump((e.to_detail_string()));
@@ -1345,9 +1358,9 @@ namespace ultrainio {
         }
         ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}--------------",
              ("timestamp", block->timestamp)
-                     ("num", block->block_num())
-                     ("id", block->id())
-                     ("count", new_bs->block->transactions.size()));
+             ("num", block->block_num())
+             ("id", block->id())
+             ("count", new_bs->block->transactions.size()));
     }
 
     void UranusController::init() {
