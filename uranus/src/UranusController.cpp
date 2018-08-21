@@ -1081,7 +1081,7 @@ namespace ultrainio {
     }
 
     std::shared_ptr<AggEchoMsg> UranusController::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {
-        std::shared_ptr<AggEchoMsg> aggEchoMsgPtr;
+        std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
         aggEchoMsgPtr->blockHeader = *blockPtr;
         aggEchoMsgPtr->pk = std::string((char*)UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
         aggEchoMsgPtr->proof = std::string((char*)MessageManager::getInstance()->getVoterProof(blockPtr->block_num(), kPhaseBA1, 0), VRF_PROOF_LEN);
