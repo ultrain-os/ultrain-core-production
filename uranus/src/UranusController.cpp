@@ -158,7 +158,7 @@ namespace ultrainio {
         if (echo.blockHeader.block_num() == currentBlockNum) {
             if (echo.phase > current_phase) {
                 return true;
-            } else if ((echo.phase == current_phase) && (current_bax_count > echo.baxCount)) {
+            } else if ((echo.phase == current_phase) && (echo.baxCount > current_bax_count)) {
                 return true;
             }
         }
