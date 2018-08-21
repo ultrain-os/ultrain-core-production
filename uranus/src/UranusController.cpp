@@ -1326,11 +1326,11 @@ namespace ultrainio {
 
                     chain.finalize_block();
                     ULTRAIN_ASSERT(pbs->header.action_mroot == block->action_mroot,
-                           chain::chain_exception,
-                           "Pre-run Ba0 block not generating expected action_mroot");
+                                   chain::chain_exception,
+                                   "Pre-run Ba0 block not generating expected action_mroot");
                     ULTRAIN_ASSERT(pbs->header.transaction_mroot == block->transaction_mroot,
-                           chain::chain_exception,
-                           "Pre-run Ba0 block not generating expected transaction_mroot");
+                                   chain::chain_exception,
+                                   "Pre-run Ba0 block not generating expected transaction_mroot");
                     chain.sign_block([&](const chain::digest_type &d) { return b.producer_signature; });
                     chain.commit_block();
                     needs_push_whole_block = false;
