@@ -298,11 +298,11 @@ namespace ultrainio {
             map_it = result.first;
         }
 
-        dlog("processBeforeMsg.insert ok,cal voters begin.");
+        //dlog("processBeforeMsg.insert ok,cal voters begin.");
 
         auto itor = map_it->second.find(echo.blockHeader.id());
         if (itor != map_it->second.end()) {
-            dlog("processBeforeMsg.blockhash is already exist.");
+            //dlog("processBeforeMsg.blockhash is already exist.");
             if (updateAndMayResponse(itor->second, echo, false)) {
                 if (isMinEcho(itor->second,map_it->second) || isMinFEcho(itor->second,map_it->second)) {
                     return true;
@@ -311,7 +311,7 @@ namespace ultrainio {
         } else {
             echo_message_info info;
             info.echo = echo;
-            dlog("processBeforeMsg.new blockhash.");
+            //dlog("processBeforeMsg.new blockhash.");
             if (updateAndMayResponse(info, echo, false)) {
                 map_it->second.insert(make_pair(echo.blockHeader.id(), info));
                 if (isMinEcho(info,map_it->second) || isMinFEcho(info,map_it->second)) {
@@ -341,7 +341,7 @@ namespace ultrainio {
                     UranusNode::getInstance()->sendMessage(myEcho);
                 }
             }
-            ilog("updateAndMayResponse new pk insert.");
+            //ilog("updateAndMayResponse new pk insert.");
             return true;
         }
         return false;
@@ -456,11 +456,6 @@ namespace ultrainio {
             return false;
         }
 
-        //save timestamp
-        if (m_fast_timestamp < propose.block.timestamp.to_time_point()) {
-            m_fast_timestamp = propose.block.timestamp.to_time_point();
-        }
-
         auto itor = m_proposerMsgMap.find(propose.block.id());
         if (itor == m_proposerMsgMap.end()) {
             if (isMinPropose(propose)) {
@@ -474,11 +469,6 @@ namespace ultrainio {
     bool UranusController::fastHandleMessage(const EchoMsg &echo) {
         if (!isValid(echo)) {
             return false;
-        }
-
-        //save timestamp
-        if (m_fast_timestamp < echo.blockHeader.timestamp.to_time_point()) {
-            m_fast_timestamp = echo.blockHeader.timestamp.to_time_point();
         }
 
         auto itor = m_echoMsgMap.find(echo.blockHeader.id());
@@ -1091,6 +1081,31 @@ namespace ultrainio {
             return emptyBlock();
         }
         return blankBlock();
+    }
+
+    bool UranusController::isProcessNow() {
+        VoterSystem voter;
+        uint32_t minPriority = std::numeric_limits<uint32_t>::max();
+        BlockIdType minBlockId = BlockIdType();
+        for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
+            if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
+                ilog("isProcessNow.found >= 2f + 1 echo");
+                uint32_t priority = voter.proof2Priority(
+                        (const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data());
+                if (minPriority >= priority) {
+                    minBlockId = echo_itor->second.echo.blockHeader.id();
+                    minPriority = priority;
+                    break;
+                }
+            }
+        }
+
+        if (minBlockId == BlockIdType()) { // not found > 2f + 1 echo
+            dlog("isProcessNow.can not find >= 2f + 1");
+            return false;
+        }
+
+        return true;
     }
 
     std::shared_ptr<AggEchoMsg> UranusController::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {

@@ -759,6 +759,7 @@ namespace ultrainio {
     }
 
     bool UranusNode::isProcessNow() {
+#if 0
         fc::time_point time_now = fc::time_point::now();
 
         dlog("isProcessNow: timenow = ${time} and block_timestamp = ${timestamp} time2 = ${interval} time2 = ${interval2}",
@@ -772,6 +773,8 @@ namespace ultrainio {
         }
 
         return false;
+#endif
+        return m_controllerPtr->isProcessNow();
     }
 
     uint32_t UranusNode::getRoundInterval() {

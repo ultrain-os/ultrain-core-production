@@ -122,7 +122,7 @@ namespace ultrainio {
         bool isMinEcho(const echo_message_info &info);
         bool isMinEcho(const echo_message_info &info, const echo_msg_buff &msgbuff);
         Block produceTentativeBlock();
-
+        bool isProcessNow();
         bool initProposeMsg(ProposeMsg *propose_msg);
 
         bool isLaterMsg(const EchoMsg &echo);
