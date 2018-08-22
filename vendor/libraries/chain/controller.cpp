@@ -1207,21 +1207,14 @@ struct controller_impl {
       }
    }
 
-block_timestamp_type get_proper_next_block_timestamp() const {
-      auto time_now = fc::time_point::now();
-      auto block_timestamp = chain::block_timestamp_type(time_now);
-      block_timestamp = block_timestamp.next();
-      if ((block_timestamp.to_time_point() - time_now) < fc::seconds(5)) {
-	block_timestamp = block_timestamp.next();
-      }
-      // In case the current time is less than the last block timestamp, we try our best
-      // to generate a new blocktime stamp that's not so far in the future.
-      int count = 0;
-      while (block_timestamp <= head->header.timestamp && count++ <= 5) {
-	block_timestamp = block_timestamp.next();
-      }
-      return block_timestamp;
-   }
+    block_timestamp_type get_proper_next_block_timestamp() const {
+        auto time_now = fc::time_point::now();
+        auto block_timestamp = chain::block_timestamp_type(time_now);
+        if (block_timestamp <= head->header.timestamp) {
+            block_timestamp = head->header.timestamp.next();
+        }
+        return block_timestamp;
+    }
 
    bool should_enforce_runtime_limits()const {
       return false;
