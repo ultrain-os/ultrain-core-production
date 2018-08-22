@@ -188,6 +188,7 @@ namespace ultrainio {
     bool UranusController::isLaterMsgAndCache(const EchoMsg &echo, bool &duplicate) {
         duplicate = false;
         if (isLaterMsg(echo)) {
+            dlog("isLaterMsgAndCache. later msg.");
             msgkey key;
             key.blockNum = echo.blockHeader.block_num();
             key.phase = echo.phase + echo.baxCount;
@@ -271,6 +272,7 @@ namespace ultrainio {
         }
         if ((UranusNode::getInstance()->getPhase() == kPhaseBAX) && (echo.phase != kPhaseBA0)) {
             if (UranusNode::getInstance()->getBaxCount() > echo.baxCount) {
+                dlog("isBeforeMsg. before msg.");
                 return true;
             }
         }
@@ -284,17 +286,23 @@ namespace ultrainio {
         msg_key.phase = echo.phase + echo.baxCount;
         echo_msg_buff echo_msg_map;
 
+        dlog("processBeforeMsg.");
+
         auto map_it = m_echoMsgAllPhase.find(msg_key);
         if (map_it == m_echoMsgAllPhase.end()) {
             if (m_echoMsgAllPhase.size() >= m_maxCachedAllPhaseKeys) {
+                dlog("processBeforeMsg.map reach the up limit. size = ${size}",("size",m_echoMsgAllPhase.size()));
                 clearOldCachedAllPhaseMsg();
             }
             auto result = m_echoMsgAllPhase.insert(make_pair(msg_key, echo_msg_map));
             map_it = result.first;
         }
 
+        dlog("processBeforeMsg.insert ok,cal voters begin.");
+
         auto itor = map_it->second.find(echo.blockHeader.id());
         if (itor != map_it->second.end()) {
+            dlog("processBeforeMsg.blockhash is already exist.");
             if (updateAndMayResponse(itor->second, echo, false)) {
                 if (isMinEcho(itor->second,map_it->second) || isMinFEcho(itor->second,map_it->second)) {
                     return true;
@@ -303,6 +311,7 @@ namespace ultrainio {
         } else {
             echo_message_info info;
             info.echo = echo;
+            dlog("processBeforeMsg.new blockhash.");
             if (updateAndMayResponse(info, echo, false)) {
                 map_it->second.insert(make_pair(echo.blockHeader.id(), info));
                 if (isMinEcho(itor->second,map_it->second) || isMinFEcho(itor->second,map_it->second)) {
@@ -332,6 +341,7 @@ namespace ultrainio {
                     UranusNode::getInstance()->sendMessage(myEcho);
                 }
             }
+            ilog("updateAndMayResponse new pk insert.");
             return true;
         }
         return false;
