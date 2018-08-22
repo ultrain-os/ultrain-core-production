@@ -239,7 +239,7 @@ namespace ultrainio { namespace chain {
 
       const auto linked_permission_name = lookup_minimum_permission(link.account, link.code, link.type);
 
-      if( !linked_permission_name ) // if action is linked to ultrainio.any permission
+      if( !linked_permission_name ) // if action is linked to utrio.any permission
          return;
 
       ULTRAIN_ASSERT( get_permission(auth).satisfies( get_permission({link.account, *linked_permission_name}),
@@ -373,7 +373,7 @@ namespace ultrainio { namespace chain {
 
             if( !special_case ) {
                auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
-               if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is ultrainio.any
+               if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is utrio.any
                   const auto& min_permission = get_permission({declared_auth.actor, *min_permission_name});
                   ULTRAIN_ASSERT( get_permission(declared_auth).satisfies( min_permission,
                                                                        _db.get_index<permission_index>().indices() ),
