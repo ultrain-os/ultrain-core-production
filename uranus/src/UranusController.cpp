@@ -1253,9 +1253,9 @@ namespace ultrainio {
                                                      max_deadline, receipt.cpu_usage_us);
                 }
 
-                if (trace->except) {
+                if (trace && trace->except) {
                     // So we can terminate early
-                    throw trace->except;
+                    throw *trace->except;
                 }
             }
         } catch (const fc::exception &e) {
