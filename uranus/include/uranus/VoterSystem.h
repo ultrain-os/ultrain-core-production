@@ -3,13 +3,6 @@
 #include <string>
 
 namespace ultrainio {
-    enum Role {
-        kNone,
-        kProposer,
-        kVoter,
-        kListener
-    };
-
     class VoterSystem {
     public:
         static const int TOTAL_STAKES;

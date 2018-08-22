@@ -602,7 +602,7 @@ namespace ultrainio {
                 m_controllerPtr->insert(echo);
                 sendMessage(echo);
             }
-            LOG_INFO << "checkpoint: blockNum:" << getBlockNum() << ";phase:" << m_phase << ";role:" << kProposer
+            LOG_INFO << "checkpoint: blockNum:" << getBlockNum() << ";phase:" << m_phase << ";role: Proposer"
                      << ";host_name:" << boost::asio::ip::host_name() << ";txs_hash: " << propose.block.id()
                      << std::endl;
         } else {

@@ -170,7 +170,7 @@ namespace ultrainio {
         if (newRound(phase, baxCount)) {
             ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
             std::string previousHash(blockId.data());
-            std::string proposerSeed = previousHash + std::to_string(blockNum) + std::to_string(phase) + std::to_string(baxCount) + std::to_string(kProposer);
+            std::string proposerSeed = previousHash + std::to_string(blockNum) + std::to_string(phase) + std::to_string(baxCount) + std::string("01");
             int stakes = UranusNode::getInstance()->getStakes(std::string((char*)UranusNode::URANUS_PUBLIC_KEY));
             VoterSystem voterSystem;
             voterCountAsProposer = voterSystem.vote(proposerSeed, UranusNode::URANUS_PRIVATE_KEY, stakes, VoterSystem::PROPOSER_RATIO, proposerProof);
@@ -216,7 +216,7 @@ namespace ultrainio {
         ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
         std::string previousHash(blockId.data());
         std::string voterSeed = previousHash + std::to_string(blockNum) + std::to_string(static_cast<int>(phase))
-                + std::to_string(baxCount) + std::to_string(kVoter);
+                + std::to_string(baxCount) + std::string("02");
         int stakes = UranusNode::getInstance()->getStakes(std::string((char*)UranusNode::URANUS_PUBLIC_KEY));
         VoterSystem voterSystem;
         voterCountAsVoter = voterSystem.vote(voterSeed, UranusNode::URANUS_PRIVATE_KEY, stakes, VoterSystem::VOTER_RATIO, proof);
