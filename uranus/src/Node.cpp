@@ -828,7 +828,9 @@ namespace ultrainio {
 
     void UranusNode::sendEchoForEmptyBlock() {
         Block block = m_controllerPtr->emptyBlock();
+        dlog("empty block hash : ${hash}", ("hash", block.id()));
         EchoMsg echoMsg = m_controllerPtr->constructMsg(block);
+        m_controllerPtr->insert(echoMsg);
         sendMessage(echoMsg);
     }
 }
