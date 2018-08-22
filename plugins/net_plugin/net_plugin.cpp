@@ -864,6 +864,7 @@ namespace ultrainio {
 
    void connection::flush_queues() {
       write_queue.clear();
+      out_queue.clear();
    }
 
    void connection::close() {
@@ -1117,7 +1118,7 @@ namespace ultrainio {
                while (conn->out_queue.size() > 0) {
                   conn->out_queue.pop_front();
                }
-               conn->enqueue_sync_block();
+               //conn->enqueue_sync_block();
                conn->do_queue_write();
             }
             catch(const std::exception &ex) {
@@ -1533,6 +1534,7 @@ namespace ultrainio {
       uint32_t peer_lib = msg.last_irreversible_block_num;
       reset_lib_num(c);
       c->syncing = false;
+      return;
 
       //--------------------------------
       // sync need checks; (lib == last irreversible block)
@@ -2503,7 +2505,7 @@ namespace ultrainio {
 
       c->last_handshake_recv = msg;
       c->_logger_variant.reset();
-      //sync_master->recv_handshake(c,msg);
+      sync_master->recv_handshake(c,msg);
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const go_away_message &msg ) {
