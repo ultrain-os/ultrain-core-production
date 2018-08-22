@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <string>
+#include <string.h>
 
 #include "a.param.h"
 #include <crypto/Bls.h>

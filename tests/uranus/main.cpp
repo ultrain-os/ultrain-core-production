@@ -2,8 +2,8 @@
 #include <iostream>
 #include <random>
 
-#include "uranus/Voter.h"
-#include "crypto/Security.h"
+#include "uranus/VoterSystem.h"
+#include "crypto/Vrf.h"
 
 using namespace ultrainio;
 
@@ -30,7 +30,7 @@ struct ExperimentStatistics {
 static double calcVariance(ExperimentStatistics *statistics, size_t size, double mean, int which);
 
 int main(int argc, char **argv) {
-    Voter voter;
+    VoterSystem voter;
     int nodeNum = 1000;
     NodeInfo *nodeArray = new NodeInfo[nodeNum];
     std::default_random_engine generator;
@@ -41,11 +41,11 @@ int main(int argc, char **argv) {
         nodeArray[i].phase0ProposerVote = 0;
         nodeArray[i].phase0VoterVote = 0;
         nodeArray[i].phase1VoterVote = 0;
-        security::vrf_keypair(nodeArray[i].pk, nodeArray[i].sk);
+        Vrf::keypair(nodeArray[i].pk, nodeArray[i].sk);
         totalGammaStakes += nodeArray[i].stakes;
     }
     for (int i = 0; i < nodeNum; i++) {
-        nodeArray[i].stakes = nodeArray[i].stakes * Voter::TOTAL_STAKES / totalGammaStakes;
+        nodeArray[i].stakes = nodeArray[i].stakes * VoterSystem::TOTAL_STAKES / totalGammaStakes;
         //std::cout << " node [" << i << "] stakes = " << nodeArray[i].stakes << std::endl;
     }
 
@@ -58,12 +58,12 @@ int main(int argc, char **argv) {
             std::string phase0("00");
             uint8_t proof[VRF_PROOF_LEN];
             nodeArray[j].phase0ProposerVote = voter.vote(round + phase0 + "01", nodeArray[j].sk,
-                                                         nodeArray[j].stakes, Voter::PROPOSER_RATIO, proof);
+                                                         nodeArray[j].stakes, VoterSystem::PROPOSER_RATIO, proof);
             nodeArray[j].phase0VoterVote = voter.vote(round + phase0 + "02", nodeArray[j].sk,
-                                                      nodeArray[j].stakes, Voter::VOTER_RATIO, proof);
+                                                      nodeArray[j].stakes, VoterSystem::VOTER_RATIO, proof);
             std::string phase1("01");
             nodeArray[j].phase1VoterVote = voter.vote(round + phase1 + "01", nodeArray[j].sk,
-                                                      nodeArray[j].stakes, Voter::VOTER_RATIO, proof);
+                                                      nodeArray[j].stakes, VoterSystem::VOTER_RATIO, proof);
             statistics[i].phase0TotalProposerVoter += nodeArray[j].phase0ProposerVote;
             statistics[i].phase0TotalVoterVote += nodeArray[j].phase0VoterVote;
             statistics[i].phase1TotalVoterVote += nodeArray[j].phase1VoterVote;
