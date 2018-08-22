@@ -314,7 +314,7 @@ namespace ultrainio {
             dlog("processBeforeMsg.new blockhash.");
             if (updateAndMayResponse(info, echo, false)) {
                 map_it->second.insert(make_pair(echo.blockHeader.id(), info));
-                if (isMinEcho(itor->second,map_it->second) || isMinFEcho(itor->second,map_it->second)) {
+                if (isMinEcho(info,map_it->second) || isMinFEcho(info,map_it->second)) {
                     return true;
                 }
             }
