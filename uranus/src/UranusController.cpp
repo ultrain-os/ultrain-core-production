@@ -809,7 +809,6 @@ namespace ultrainio {
             try {
                 auto deadline = fc::time_point::now() + fc::milliseconds(max_trx_cpu);
                 auto trace = chain.push_transaction(trx, deadline);
-                trxs->pop_front();
                 if (trace->except) {
                     ilog("-----------initProposeMsg push trx failed ${e}", ("e", (trace->except)->what()));
                     auto code = trace->except->code();
@@ -826,6 +825,8 @@ namespace ultrainio {
                         chain.drop_unapplied_transaction(trx);
                     }
                 }
+                // Pop the trx after the above exception handling.
+                trxs->pop_front();
 
                 m_initTrxCount++;
                 count++;
@@ -1156,9 +1157,9 @@ namespace ultrainio {
                     trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
                                                              max_deadline, receipt.cpu_usage_us);
                 }
-                if (trace->except) {
+                if (trace && trace->except) {
                     // So we can terminate early
-                    throw trace->except;
+                    throw *trace->except;
                 }
                 if (i % 100 == 0 &&
                     (fc::time_point::now() - start_timestamp) > fc::seconds(5)) {
