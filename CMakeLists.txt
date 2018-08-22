@@ -4,7 +4,7 @@ project( ULTRAINIO )
 
 enable_testing()
 
-add_definitions(-DULTRAIN_SUPPORT_TYPESCRIPT)
+add_definitions(-DULTRAIN_SUPPORT_TYPESCRIPT -DULTRAIN_CONFIG_CONTRACT_PARAMS)
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
    message(WARNING "CMAKE_INSTALL_PREFIX is set to default path of ${CMAKE_INSTALL_PREFIX}, resetting to ${CMAKE_INSTALL_PREFIX}/ultrainio")

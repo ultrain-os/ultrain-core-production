@@ -1470,6 +1470,16 @@ authorization_manager&         controller::get_mutable_authorization_manager()
    return my->authorization;
 }
 
+#ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
+uint64_t controller::get_contract_return_length() const {
+  return my->conf.contract_return_length;
+}
+
+uint64_t controller::get_contract_emit_length() const {
+  return my->conf.contract_emit_length;
+}
+#endif
+
 controller::controller( const controller::config& cfg )
 :my( new controller_impl( cfg, *this ) )
 {

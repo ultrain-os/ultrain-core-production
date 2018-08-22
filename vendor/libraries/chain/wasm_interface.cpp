@@ -949,8 +949,16 @@ class authorization_api : public context_aware_api {
 
 class system_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+//      using context_aware_api::context_aware_api;
+      explicit system_api( apply_context& ctx ) : context_aware_api(ctx,true) {
+          emit_length = 128;
+          return_length = 128;
 
+          #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
+             emit_length = ctx.control.get_contract_emit_length();
+             return_length = ctx.control.get_contract_return_length();
+          #endif
+      }
       uint64_t current_time() {
          return static_cast<uint64_t>( context.control.pending_block_time().time_since_epoch().count() );
       }
@@ -959,11 +967,41 @@ class system_api : public context_aware_api {
          return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
       }
 
-      void emit_event(array_ptr<const char> event_name, size_t event_name_size, array_ptr<const char> msg, size_t msg_size ) {
+      int emit_event(array_ptr<const char> event_name, size_t event_name_size, array_ptr<const char> msg, size_t msg_size ) {
+         if (event_name_size > 64) return -1; // event name is too long.
+         if (msg_size > emit_length) return -2; // event message is too long.
+
          if (context.has_event_listener) {
             context.control.push_event(context.receiver, context.trx_context.id, event_name, event_name_size, msg, msg_size);
          }
+
+         return 0;
       }
+
+      void set_result_str(null_terminated_ptr str) {
+          std::string r(str);
+          if (r.size() > 128) {
+              r = r.substr(0, 127) + "...";
+          }
+
+          if (r.size() + context.trace.return_value.size() > return_length) return;
+
+          context.trace.return_value += r;
+      }
+
+      void set_result_int(int64_t val) {
+          std::string r= std::to_string(val);
+
+          if (r.size() + context.trace.return_value.size() > return_length) return;
+
+          context.trace.return_value += r;
+      }
+
+
+    private:
+         uint64_t return_length;
+         uint64_t emit_length;
+
 };
 
 class context_free_system_api :  public context_aware_api {
@@ -1044,18 +1082,6 @@ class console_api : public context_aware_api {
       console_api( apply_context& ctx )
       : context_aware_api(ctx,true)
       , ignore(!ctx.control.contracts_console()) {}
-
-      void set_result_str(null_terminated_ptr str) {
-          std::string r(str);
-          if (r.size() > 128) {
-              r = r.substr(0, 127) + "...";
-          }
-          context.trace.return_value += (r + " ");
-      }
-
-      void set_result_int(int64_t val) {
-          context.trace.return_value += (std::to_string(val) + " ");
-      }
 
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
@@ -1863,7 +1889,9 @@ REGISTER_INTRINSICS(permission_api,
 REGISTER_INTRINSICS(system_api,
    (current_time, int64_t()       )
    (publication_time,   int64_t() )
-   (emit_event, void(int, int, int, int) )
+   (emit_event, int(int, int, int, int) )
+   (set_result_str,        void(int)      )
+   (set_result_int,        void(int64_t) )
 );
 
 REGISTER_INTRINSICS(context_free_system_api,
@@ -1891,8 +1919,6 @@ REGISTER_INTRINSICS(authorization_api,
 
 REGISTER_INTRINSICS(console_api,
    (prints,                void(int)      )
-   (set_result_str,        void(int)      )
-   (set_result_int,        void(int64_t) )
    (prints_l,              void(int, int) )
    (printi,                void(int64_t)  )
    (printui,               void(int64_t)  )

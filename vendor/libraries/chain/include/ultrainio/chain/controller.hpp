@@ -65,6 +65,11 @@ namespace ultrainio { namespace chain {
             db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
 
             flat_set<account_name>   resource_greylist;
+
+            #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
+            uint64_t                 contract_return_length  = chain::config::default_contract_return_length;
+            uint64_t                 contract_emit_length    = chain::config::default_contract_emit_length;
+            #endif
          };
 
          enum class block_status {
@@ -221,6 +226,11 @@ namespace ultrainio { namespace chain {
 
          db_read_mode get_read_mode()const;
 
+         #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
+         uint64_t get_contract_return_length() const;
+         uint64_t get_contract_emit_length() const;
+         #endif
+
          void set_subjective_cpu_leeway(fc::microseconds leeway);
 
          signal<void(const signed_block_ptr&)>         pre_accepted_block;
@@ -290,4 +300,8 @@ FC_REFLECT( ultrainio::chain::controller::config,
             (genesis)
             (wasm_runtime)
             (resource_greylist)
+            #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
+            (contract_return_length)
+            (contract_emit_length)
+            #endif
           )

@@ -202,6 +202,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
           "In \"head\" mode database contains changes done up to the current head block.\n")
           //"In \"irreversible\" mode database contains changes done up the current irreversible block.\n")
+          #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
+         ("contract-return-string-length", bpo::value<uint64_t>()->default_value(config::default_contract_return_length),
+          "Contract return string length limits the string length of Returns")
+         ("contract-emit-string-length", bpo::value<uint64_t>()->default_value(config::default_contract_emit_length),
+          "Contract emit string length limits the string length of serialized EventObject.")
+          #endif
          ;
 
 // TODO: rate limiting
@@ -285,6 +291,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       LOAD_VALUE_SET( options, "actor-blacklist", my->chain_config->actor_blacklist );
       LOAD_VALUE_SET( options, "contract-whitelist", my->chain_config->contract_whitelist );
       LOAD_VALUE_SET( options, "contract-blacklist", my->chain_config->contract_blacklist );
+
+      #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
+      if( options.count( "contract-return-string-length" ))
+         my->chain_config->contract_return_length = options.at( "contract-return-string-length" ).as<uint64_t>();
+
+      if( options.count( "contract-emit-string-length" ))
+         my->chain_config->contract_emit_length = options.at( "contract-emit-string-length" ).as<uint64_t>();
+      #endif
 
       if( options.count( "action-blacklist" )) {
          const std::vector<std::string>& acts = options["action-blacklist"].as<std::vector<std::string>>();

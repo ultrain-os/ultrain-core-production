@@ -533,7 +533,7 @@ chain::action create_transfer(const string& contract, const name& sender, const 
 
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission),
-      contract, "transfer", variant_to_bin( contract, N(transfer), transfer )
+      contract, "transfer", variant_to_bin( contract, NEX(transfer), transfer )
    };
 }
 
