@@ -442,6 +442,7 @@ namespace ultrainio {
     void UranusNode::baxLoop(uint32_t timeout) {
         const Block* ba0Block = nullptr;
         EchoMsg echo_msg;
+        msgkey msg_key;
 
         dlog("start baxLoop timeout = ${timeout}", ("timeout", timeout));
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
@@ -477,6 +478,11 @@ namespace ultrainio {
                 sendEchoForEmptyBlock();
             }
         }
+
+        msg_key.blockNum = getBlockNum();
+        msg_key.phase = m_phase;
+        msg_key.phase += m_baxCount;
+        m_controllerPtr->processCache(msg_key);
     }
 
     bool UranusNode::handleMessage(const EchoMsg &echo) {

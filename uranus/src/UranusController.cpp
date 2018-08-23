@@ -215,8 +215,8 @@ namespace ultrainio {
                 }
                 ev.push_back(echo);
             }
-            dlog("next phase echo msg. blockNum = ${id}, phase = ${phase}",
-                 ("id", echo.blockHeader.block_num())("phase", (uint32_t) echo.phase));
+            dlog("next phase echo msg. blockNum = ${id}, phase = ${phase},baxcount = ${baxcount}",
+                 ("id", echo.blockHeader.block_num())("phase", (uint32_t) echo.phase)("baxcount",echo.baxCount));
             return true;
         }
         return false;
