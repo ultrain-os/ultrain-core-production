@@ -1542,9 +1542,16 @@ namespace ultrainio {
             return;
         }
 
+        clearMsgCache(m_echoMsgAllPhase, getLastBlocknum());
+        if (m_echoMsgAllPhase.size() < m_maxCachedAllPhaseKeys) {
+            ilog("after clear echo all phase msgs before ${lst}, map size: ${s}", ("lst", getLastBlocknum())("s", m_echoMsgAllPhase.size()));
+            return;
+        }
+
         msgkey key = m_echoMsgAllPhase.begin()->first;
+        key.phase = std::numeric_limits<uint16_t>::max();
         for (auto &it : m_echoMsgAllPhase) {
-            if (it.first.phase < key.phase) {
+            if (it.first.phase != kPhaseBA1 && it.first.phase < key.phase) {
                 key.phase = it.first.phase;
             }
         }
@@ -1555,6 +1562,7 @@ namespace ultrainio {
         if (itor != m_echoMsgAllPhase.end()) {
             m_echoMsgAllPhase.erase(itor);
         }
+        ilog("after clear echo all phase msgs, map size: ${s}", ("s", m_echoMsgAllPhase.size()));
     }
     
     bool UranusController::isEmpty(const BlockHeader& blockHeader) {
