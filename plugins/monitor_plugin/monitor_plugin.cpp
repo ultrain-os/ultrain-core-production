@@ -53,32 +53,38 @@ void monitor_plugin::plugin_shutdown() {
 
      monitor_only::monitor_node_result monitor_only::monitor_node( const monitor_only::monitor_node_params& params )const {
         auto nodePtr = getNodePtr();
-        return nodePtr->getNodeInfo();
+        UranusNodeMonitor nodeMonitor(nodePtr);
+        return nodeMonitor.getNodeInfo();
      }
 
      monitor_only::monitor_propose_msg_result monitor_only::monitor_propose_msg( const monitor_only::monitor_propose_msg_params& params) const {
         auto nodePtr = getNodePtr();
-        return nodePtr->getController()->findProposeMsgByBlockId(chain::block_id_type(params.block_id));
+        UranusControllerMonitor controllerMonitor(nodePtr->getController());
+        return controllerMonitor.findProposeMsgByBlockId(chain::block_id_type(params.block_id));
      }
 
      monitor_only::monitor_echo_msg_result monitor_only::monitor_echo_msg( const monitor_only::monitor_echo_msg_params& params) const{
         auto nodePtr = getNodePtr();
-        return nodePtr->getController()->findEchoMsgByBlockId(chain::block_id_type(params.block_id));
+        UranusControllerMonitor controllerMonitor(nodePtr->getController());
+        return controllerMonitor.findEchoMsgByBlockId(chain::block_id_type(params.block_id));
      }
 
      monitor_only::monitor_propose_cache_result monitor_only::monitor_propose_cache(const monitor_only::monitor_propose_cache_params& params) const{
         auto nodePtr = getNodePtr();
-        return {nodePtr->getController()->findProposeCacheByKey(params)};
+        UranusControllerMonitor controllerMonitor(nodePtr->getController());
+        return {controllerMonitor.findProposeCacheByKey(params)};
      }
 
      monitor_only::monitor_echo_cache_result monitor_only::monitor_echo_cache(const monitor_only::monitor_echo_cache_params& params) const {
         auto nodePtr = getNodePtr();
-        return {nodePtr->getController()->findEchoCacheByKey(params)};
+        UranusControllerMonitor controllerMonitor(nodePtr->getController());
+        return {controllerMonitor.findEchoCacheByKey(params)};
      }
 
      monitor_only::monitor_echo_ap_cache_result monitor_only::monitor_echo_ap_cache(const monitor_only::monitor_echo_ap_cache_params& params) const {
         auto nodePtr = getNodePtr();
-        return {nodePtr->getController()->findEchoApMsgByKey(params)};
+        UranusControllerMonitor controllerMonitor(nodePtr->getController());
+        return {controllerMonitor.findEchoApMsgByKey(params)};
      }
    }
 } ///namespace ultrainio

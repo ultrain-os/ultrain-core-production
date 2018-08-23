@@ -29,21 +29,7 @@ namespace ultrainio {
 
     class UranusController;
 
-    struct UranusNodeInfo{
-        bool ready;
-        bool connected;
-        bool syncing;
-        bool syncFailed;
-        bool isNonProducingNode;
-        int32_t globalProducingNodeNumber;
-        int32_t phase;
-        uint32_t baxCount;
-        uint32_t proposeMsgNum;
-        uint32_t echoMsgnum;
-        uint32_t proposeMsgCacheSize;
-        uint32_t echoMsgCacheSize;
-        uint32_t allPhaseEchoMsgNum;
-    };
+    class UranusNodeMonitor;
 
     class UranusNode : public std::enable_shared_from_this<UranusNode> {
     public:
@@ -56,6 +42,8 @@ namespace ultrainio {
         static std::shared_ptr<UranusNode> initAndGetInstance(boost::asio::io_service &ioservice);
 
         static std::shared_ptr<UranusNode> getInstance();
+
+        friend class UranusNodeMonitor;
 
         void setNonProducingNode(bool);
         void setGlobalProducingNodeNumber(int32_t);
@@ -135,8 +123,6 @@ namespace ultrainio {
         ultrainio::chain::block_id_type getPreviousHash();
 
         bool isProcessNow();
-
-        UranusNodeInfo getNodeInfo() const;
 
         const std::shared_ptr<UranusController> getController() const; 
 

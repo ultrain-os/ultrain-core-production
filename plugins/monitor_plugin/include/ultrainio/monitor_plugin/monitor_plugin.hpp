@@ -5,8 +5,8 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <ultrainio/producer_uranus_plugin/producer_uranus_plugin.hpp>
-#include <uranus/Node.h>
-#include <uranus/UranusController.h>
+#include "uranus_node_monitor.hpp"
+#include "uranus_controller_monitor.hpp"
 
 namespace ultrainio {
 
