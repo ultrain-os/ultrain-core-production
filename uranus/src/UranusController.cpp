@@ -550,7 +550,7 @@ namespace ultrainio {
             info.echo = echo;
             bret = updateAndMayResponse(info, echo, true);
             m_echoMsgMap.insert(make_pair(echo.blockHeader.id(), info));
-            if ((isMinEcho(info) || isMinFEcho(itor->second)) && bret) {
+            if ((isMinEcho(info) || isMinFEcho(info)) && bret) {
                 return true;
             }
         }
