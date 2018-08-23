@@ -1481,7 +1481,7 @@ namespace ultrainio {
 
     //NOTE: The template T must be type of map because the erase operation is not generalized.
     template<class T>
-    void UranusController::clearMsgCache(T cache, uint32_t blockNum) {
+    void UranusController::clearMsgCache(T &cache, uint32_t blockNum) {
         for (auto msg_it = cache.begin(); msg_it != cache.end();) {
             if (msg_it->first.blockNum <= blockNum) {
                 cache.erase(msg_it++);

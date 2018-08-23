@@ -145,7 +145,7 @@ namespace ultrainio {
         void processSyncTask();
 
         template<class T>
-        void clearMsgCache(T cache, uint32_t blockNum);
+        void clearMsgCache(T &cache, uint32_t blockNum);
 
         bool preRunBa0BlockStart();
 
