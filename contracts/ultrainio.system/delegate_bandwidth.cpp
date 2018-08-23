@@ -358,6 +358,24 @@ namespace ultrainiosystem {
       // update voting power
       {
          asset total_update = stake_net_delta + stake_cpu_delta;
+          auto it = _producers.find(from);
+          if(it != _producers.end()) {
+              auto last_state = it->is_enabled;
+              auto enabled = ((it->total_votes+total_update.amount) >=
+                            min_activated_stake/_gstate.min_committee_member);
+              _producers.modify(it, 0 , [&](auto & v) {
+                      v.total_votes += total_update.amount;
+                      v.is_enabled = enabled;
+                      });
+              if(enabled) {
+                  if(!last_state) {
+                    _gstate.total_activated_stake+=it->total_votes;
+                  }
+                  else {
+                    _gstate.total_activated_stake+=total_update.amount;
+                  }
+              }
+          }
          auto from_voter = _voters.find(from);
          if( from_voter == _voters.end() ) {
             from_voter = _voters.emplace( from, [&]( auto& v ) {

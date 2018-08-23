@@ -271,7 +271,7 @@ public:
       string              more; ///< fill lower_bound with this value to fetch more rows
    };
 
-   get_producers_result get_producers( const get_producers_params& params )const;
+   get_producers_result get_producers( const get_producers_params& params, bool filter_enabled = false)const;
 
    struct get_producer_schedule_params {
    };

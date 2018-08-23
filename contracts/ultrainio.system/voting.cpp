@@ -49,11 +49,22 @@ namespace ultrainiosystem {
                info.location     = location;
             });
       } else {
+          int64_t self_stake = 0;
+          bool enable_prods = false;
+          auto selfv = _voters.find(producer);
+          if(selfv != _voters.end()) {
+              self_stake = selfv->staked;
+              if(self_stake > min_activated_stake/_gstate.min_committee_member) {
+                  enable_prods = true;
+                  _gstate.total_activated_stake+=self_stake;
+              }
+          }
          _producers.emplace( producer, [&]( producer_info& info ){
                info.owner         = producer;
-               info.total_votes   = 0;
+               info.total_votes   = self_stake;
                info.producer_key  = producer_key;
                info.is_active     = true;
+               info.is_enabled    = enable_prods;
                info.url           = url;
                info.location      = location;
          });

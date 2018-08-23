@@ -39,6 +39,7 @@ namespace ultrainiosystem {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
       uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
+      uint32_t             min_committee_member = 1000;
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
 
@@ -66,6 +67,7 @@ namespace ultrainiosystem {
       double                total_votes = 0;
       ultrainio::public_key     producer_key; /// a packed public key object
       bool                  is_active = true;
+      bool                  is_enabled = false;
       std::string           url;
       uint32_t              unpaid_blocks = 0;
       uint64_t              last_claim_time = 0;
@@ -77,7 +79,7 @@ namespace ultrainiosystem {
       void     deactivate()       { producer_key = public_key(); is_active = false; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(url)
+      ULTRAINLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(is_enabled)(url)
                         (unpaid_blocks)(last_claim_time)(location) )
    };
 

@@ -1120,7 +1120,7 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
    return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms);
 }
 
-read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
+read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p , bool filter_enabled) const {
    const abi_def abi = ultrainio::chain_apis::get_abi(db, N(ultrainio));
    const auto table_type = get_table_type(abi, N(producers));
    const abi_serializer abis{ abi, abi_serializer_max_time };
@@ -1152,6 +1152,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
             secondary_index_by_primary.lower_bound(
                boost::make_tuple(secondary_table_id->id, lower.value)));
    }();
+   it = secondary_index_by_secondary.begin();
 
    for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
       if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
@@ -1159,6 +1160,11 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
          break;
       }
       copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
+      auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
+      if(filter_enabled && !producer["is_enabled"]) {
+          continue;
+      }
+      ilog("data, ${data}",("data", abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time)));
       if (p.json)
          result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
       else
