@@ -14,8 +14,11 @@ namespace ultrainio {
     std::string Hex::toHex(const uint8_t* c, size_t len) {
         std::string r;
         const char* hexStr="0123456789abcdef";
-        for (size_t i = 0; i < len; i++)
-            (r += hexStr[(c[i]>>4)]) += hexStr[(c[i] &0x0f)];
+        r.resize(len * 2);
+        for (size_t i = 0; i < len; i++) {
+            r[i*2] = hexStr[(c[i]>>4)];
+            r[i*2 + 1] = hexStr[(c[i] & 0x0f)];
+        }
         return r;
     }
 
