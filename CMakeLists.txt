@@ -216,6 +216,7 @@ add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
 # ultrainio
+add_subdirectory( base )
 add_subdirectory( core )
 add_subdirectory( crypto )
 add_subdirectory( log )

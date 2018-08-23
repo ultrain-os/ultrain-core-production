@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "a.param.h"
+//#include "a.param.h"
 #include <crypto/Bls.h>
 
 using ultrainio::Bls;
@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
     const char* ultrain = "ultrain";
 
     char s[16888];
-    readString(s, "/Users/xiaofen/work/source_code/ultrain-core/tests/crypto/a.param");
+    readString(s, (char*)"/Users/xiaofen/work/source_code/ultrain-core/tests/crypto/a.param");
     //Bls bls(a_param, strlen(a_param));
     Bls bls(s, strlen(s));
 

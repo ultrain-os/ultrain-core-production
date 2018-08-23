@@ -7,3 +7,8 @@ add_executable( vrf_test
         VrfTest.cpp)
 
 target_link_libraries( vrf_test ultrainio_crypto fc)
+
+add_executable( publickey_test
+        PublicKeyTest.cpp)
+
+target_link_libraries( publickey_test ultrainio_crypto )
