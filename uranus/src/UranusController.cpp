@@ -1004,10 +1004,12 @@ namespace ultrainio {
             echo_msg_buff &echo_msg_map = map_itor->second;
             for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
                 if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
-                    ilog("found >= 2f + 1 echo");
+                    dlog("found >= 2f + 1 echo. blocknum = ${blocknum} phase = {phase}",
+                         ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
                     uint32_t priority = voter.proof2Priority(
                             (const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data());
                     if (min_priority >= priority) {
+                        dlog("min proof change.");
                         echo_info = &(echo_itor->second);
                         min_priority = priority;
                     }
@@ -1018,11 +1020,16 @@ namespace ultrainio {
                 continue;
             }
 
+            dlog("produceBaxBlock.min_hash = ${hash}",("hash",echo_info->echo.blockHeader.id()));
+
             if (isEmpty(echo_info->echo.blockHeader)) {
+                dlog("produceBaxBlock.produce empty Block");
                 return emptyBlock();
             }
             auto propose_itor = m_proposerMsgMap.find(echo_info->echo.blockHeader.id());
             if (propose_itor != m_proposerMsgMap.end()) {
+                dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = {phase}",
+                     ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
                 return propose_itor->second.block;
             }
         }
@@ -1040,9 +1047,9 @@ namespace ultrainio {
         uint32_t minPriority = std::numeric_limits<uint32_t>::max();
         BlockIdType minBlockId = BlockIdType();
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
-            dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} txs_hash : ${txs_hash}",
+            dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} block_hash : ${block_hash}",
                  ("phase", (uint32_t) echo_itor->second.echo.phase)("size", echo_itor->second.pkPool.size())(
-                         "totalVoter", echo_itor->second.totalVoter)("txs_hash",
+                         "totalVoter", echo_itor->second.totalVoter)("block_hash",
                                                                      echo_itor->second.echo.blockHeader.id()));
             if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
                 ilog("found >= 2f + 1 echo");

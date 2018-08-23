@@ -282,6 +282,8 @@ namespace ultrainio {
         dlog("ba0Process. start ba1. blockNum = ${blockNum}, isVoter = ${isVoter}.", ("blockNum", getBlockNum())
                 ("isVoter",MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
 
+        dlog("ba0Process voter.hash = ${hash1}",("hash1", ba0Block.id()));
+
         if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)) {
             if (isEmpty(ba0Block)) {
                 elog("ba0Block is empty, and send echo for empty block");
