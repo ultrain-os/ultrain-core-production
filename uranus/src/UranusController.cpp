@@ -1001,10 +1001,12 @@ namespace ultrainio {
         dlog("produceBaxBlock begin.");
 
         for (auto map_itor = m_echoMsgAllPhase.begin(); map_itor != m_echoMsgAllPhase.end(); ++map_itor) {
+            min_priority = std::numeric_limits<uint32_t>::max();
+            echo_info = nullptr;
             echo_msg_buff &echo_msg_map = map_itor->second;
             for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
                 if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
-                    dlog("found >= 2f + 1 echo. blocknum = ${blocknum} phase = {phase}",
+                    dlog("found >= 2f + 1 echo. blocknum = ${blocknum} phase = ${phase}",
                          ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
                     uint32_t priority = voter.proof2Priority(
                             (const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data());
@@ -1028,10 +1030,11 @@ namespace ultrainio {
             }
             auto propose_itor = m_proposerMsgMap.find(echo_info->echo.blockHeader.id());
             if (propose_itor != m_proposerMsgMap.end()) {
-                dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = {phase}",
+                dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase}",
                      ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
                 return propose_itor->second.block;
             }
+            dlog("produceBaxBlock.> 2f + 1 echo. hash = ${hash} can not find it's propose.",("hash",echo_info->echo.blockHeader.id()));
         }
 
         return Block();

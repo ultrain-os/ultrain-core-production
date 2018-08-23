@@ -99,6 +99,7 @@ namespace ultrainio {
     }
 
     void UranusNode::reset() {
+        dlog("reset node cache.");
         m_phase = kPhaseInit;
         m_baxCount = 0;
         m_controllerPtr->reset();
