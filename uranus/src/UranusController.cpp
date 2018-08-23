@@ -20,8 +20,11 @@
 #include <ultrainio/chain/name.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 
+#include <uranus/MessageBuilder.h>
 #include <uranus/MessageManager.h>
 #include <uranus/Node.h>
+#include <uranus/Signer.h>
+#include <uranus/Validator.h>
 #include <log/Log.h>
 #include <appbase/application.hpp>
 
@@ -50,50 +53,6 @@ namespace {
 }
 
 namespace ultrainio {
-
-    std::string UranusController::signature(const EchoMsg &echo) {
-        fc::sha256 echoSHA256 = fc::sha256::hash(echo);
-        uint8_t signature[VRF_PROOF_LEN];
-        Vrf::prove(signature, (const uint8_t *) (echoSHA256.data()), echoSHA256.data_size(),
-                            UranusNode::URANUS_PRIVATE_KEY);
-        return std::string((char *) (signature), VRF_PROOF_LEN);
-    }
-
-    EchoMsg UranusController::constructMsg(const Block &block) {
-        EchoMsg echo;
-        echo.blockHeader = block;
-        echo.phase = UranusNode::getInstance()->getPhase();
-        echo.baxCount = UranusNode::getInstance()->getBaxCount();
-        echo.pk = std::string((char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
-        echo.proof = std::string(
-                (char *) MessageManager::getInstance()->getVoterProof(block.block_num(), echo.phase, echo.baxCount),
-                VRF_PROOF_LEN);
-        echo.signature = signature(echo);
-        return echo;
-    }
-
-    EchoMsg UranusController::constructMsg(const ProposeMsg &propose) {
-        EchoMsg echo;
-        echo.blockHeader = propose.block;
-        echo.phase = UranusNode::getInstance()->getPhase();
-        echo.baxCount = UranusNode::getInstance()->getBaxCount();
-        echo.pk = std::string((char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
-        echo.proof = std::string(
-                (char *) MessageManager::getInstance()->getVoterProof(propose.block.block_num(), echo.phase,
-                                                                      echo.baxCount), VRF_PROOF_LEN);
-        echo.signature = signature(echo);
-        return echo;
-    }
-
-    EchoMsg UranusController::constructMsg(const EchoMsg &echo) {
-        EchoMsg myEcho = echo;
-        myEcho.pk = std::string((char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
-        myEcho.proof = std::string(
-                (char *) MessageManager::getInstance()->getVoterProof(echo.blockHeader.block_num(), echo.phase,
-                                                                      echo.baxCount), VRF_PROOF_LEN);
-        myEcho.signature = signature(echo);
-        return myEcho;
-    }
 
     UranusController::UranusController() : m_ba0Block(), m_proposerMsgMap(), m_echoMsgMap(),
                                            m_cacheProposeMsgMap(), m_cacheEchoMsgMap(),
@@ -259,10 +218,10 @@ namespace ultrainio {
     }
 
     bool UranusController::isBeforeMsg(const EchoMsg &echo) {
-        std::string this_pk = std::string((const char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+        std::string myPk = std::string(UranusNode::getInstance()->getPublicKey());
 
-        if (this_pk == echo.pk) {
-            elog("loopback echo. pk : ${pk}", ("pk", this_pk));
+        if (myPk == echo.pk) {
+            elog("loopback echo. pk : ${pk}", ("pk", myPk));
             return false;
         }
         if (echo.blockHeader.block_num() != UranusNode::getInstance()->getBlockNum()) {
@@ -336,7 +295,7 @@ namespace ultrainio {
                                                            echo.baxCount)) {
                     ilog("send echo when > f + 1");
                     info.hasSend = true;
-                    EchoMsg myEcho = constructMsg(echo);
+                    EchoMsg myEcho = MessageBuilder::constructMsg(echo);
                     insert(myEcho);
                     UranusNode::getInstance()->sendMessage(myEcho);
                 }
@@ -357,7 +316,7 @@ namespace ultrainio {
 
     uint32_t UranusController::isSyncing() {
         uint32_t maxBlockNum = UranusNode::getInstance()->getBlockNum();
-        std::string this_pk = std::string((const char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+        std::string myPk = std::string(UranusNode::getInstance()->getPublicKey());
 
         if (m_cacheEchoMsgMap.empty()) {
             return INVALID_BLOCK_NUM;
@@ -374,8 +333,8 @@ namespace ultrainio {
                 //echo_message_info echo_info;
 
                 for (auto &echo : vector_itor->second) {
-                    if (this_pk == echo.pk) {
-                        elog("loopback echo. pk : ${pk}", ("pk", this_pk));
+                    if (myPk == echo.pk) {
+                        elog("loopback echo. pk : ${pk}", ("pk", myPk));
                         continue;
                     }
 
@@ -407,10 +366,13 @@ namespace ultrainio {
     }
 
     bool UranusController::isValid(const EchoMsg &echo) {
-        std::string this_pk = std::string((const char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
-
-        if (this_pk == echo.pk) {
-            elog("loopback echo. pk : ${pk}", ("pk", this_pk));
+        std::string myPk = std::string(UranusNode::getInstance()->getPublicKey());
+        if (myPk == echo.pk) {
+            elog("loopback echo. pk : ${pk}", ("pk", myPk));
+            return false;
+        }
+        if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, PublicKey(echo.pk))) {
+            elog("validator echo error. pk : ${pk}", ("pk", echo.pk));
             return false;
         }
         if (echo.blockHeader.block_num() != UranusNode::getInstance()->getBlockNum()) {
@@ -427,18 +389,18 @@ namespace ultrainio {
     }
 
     bool UranusController::isValid(const ProposeMsg &propose) {
-        std::string this_pk = std::string((const char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+        std::string myPk = std::string(UranusNode::getInstance()->getPublicKey());
 
-        if (this_pk == propose.block.proposerPk) {
-            elog("loopback propose. pk : ${pk}", ("pk", this_pk));
+        if (myPk == propose.block.proposerPk) {
+            elog("loopback propose. pk : ${pk}", ("pk", myPk));
             return false;
         }
-//        if (!ultrainio::Vrf::verify((const uint8_t*)propose.txs.data(), propose.txs.length(),
-//                                             (const uint8_t*)propose.txs_signature.data(),
-//                                             (const uint8_t*)propose.proposer_pk.data())) {
-//            LOG_ERROR << "valid msg fail. txs_signature = " <<  propose.txs_signature << std::endl;
-//            return false;
-//        }
+
+        if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, PublicKey(propose.block.proposerPk))) {
+            elog("validator proposer error. proposerPk : ${proposerPk}", ("proposerPk", propose.block.proposerPk));
+            return false;
+        }
+
         if (propose.block.block_num() != UranusNode::getInstance()->getBlockNum()) {
             elog("invalid propose msg . blockNum = ${id1}. local blockNum = ${id2}",
                  ("id1", propose.block.block_num())("id2", UranusNode::getInstance()->getBlockNum()));
@@ -503,7 +465,7 @@ namespace ultrainio {
         if (itor == m_proposerMsgMap.end()) {
             if (isMinPropose(propose)) {
                 if (MessageManager::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
-                    EchoMsg echo = constructMsg(propose);
+                    EchoMsg echo = MessageBuilder::constructMsg(propose);
                     UranusNode::getInstance()->sendMessage(echo);
                     insert(echo);
                 }
@@ -888,7 +850,7 @@ namespace ultrainio {
             const auto &bh = pbs->header;
             block.timestamp = bh.timestamp;
             block.producer = "ultrainio";
-            block.proposerPk = std::string((char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+            block.proposerPk = std::string(UranusNode::getInstance()->getPublicKey());
             block.proposerProof = std::string(
                     (char *) MessageManager::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()),
                     VRF_PROOF_LEN);
@@ -898,16 +860,9 @@ namespace ultrainio {
             block.transaction_mroot = bh.transaction_mroot;
             block.action_mroot = bh.action_mroot;
             block.transactions = pbs->block->transactions;
-            ilog("-------- propose a block, trx num ${num}", ("num", block.transactions.size()));
-
-            uint8_t signature[VRF_PROOF_LEN] = {0};
-            std::string blockHash = (block.id()).str();
-            if (!Vrf::prove(signature, (uint8_t *) blockHash.c_str(), blockHash.length(),
-                                                UranusNode::URANUS_PRIVATE_KEY)) {
-                elog("vrf_prove error");
-                return false;
-            }
-            block.signature = std::string((char *) signature, VRF_PROOF_LEN);
+            block.signature = std::string(Signer::sign<BlockHeader>(block, UranusNode::getInstance()->getPrivateKey()));
+            ilog("-------- propose a block, trx num ${num} proposerPk ${proposerPk} block signature ${signature}",
+                    ("num", block.transactions.size())("proposerPk", block.proposerPk)("signature", block.signature));
             /*
               ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${c} ${prv} ${ma} ${mt} ${id}",
               ("t", block.timestamp)
@@ -1121,15 +1076,14 @@ namespace ultrainio {
     std::shared_ptr<AggEchoMsg> UranusController::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {
         std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
         aggEchoMsgPtr->blockHeader = *blockPtr;
-        aggEchoMsgPtr->pk = std::string((char*)UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+        aggEchoMsgPtr->pk = std::string(UranusNode::getInstance()->getPublicKey());
         aggEchoMsgPtr->proof = std::string((char*)MessageManager::getInstance()->getVoterProof(blockPtr->block_num(), kPhaseBA1, 0), VRF_PROOF_LEN);
         auto itor = m_echoMsgMap.find(blockPtr->id());
         aggEchoMsgPtr->pkPool = itor->second.pkPool;
         aggEchoMsgPtr->proofPool = itor->second.proofPool;
         aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
         aggEchoMsgPtr->baxCount = UranusNode::getInstance()->getBaxCount();
-        //TODO(qinxiaofen)
-        //aggEchoMsgPtr->signature
+        aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, UranusNode::getInstance()->getPrivateKey()));
         return aggEchoMsgPtr;
     }
 

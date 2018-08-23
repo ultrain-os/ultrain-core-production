@@ -9,6 +9,7 @@
 #include <fc/log/logger.hpp>
 
 #include <log/Log.h>
+#include <uranus/MessageBuilder.h>
 #include <uranus/MessageManager.h>
 #include <uranus/UranusController.h>
 
@@ -44,7 +45,8 @@ namespace ultrainio {
                                                                  m_syncFailed(false),
                                                                  m_phase(kPhaseInit), m_baxCount(0), m_timer(ioservice),
                                                                  m_preRunTimer(ioservice),
-                                                                 m_controllerPtr(std::make_shared<UranusController>()) {
+                                                                 m_controllerPtr(std::make_shared<UranusController>()),
+                                                                 m_privateKey() {
     };
 
     uint32_t UranusNode::getBlockNum() const {
@@ -72,28 +74,13 @@ namespace ultrainio {
         }
     }
 
-    bool UranusNode::verifyRole(uint32_t blockNum, uint16_t phase, const std::string &role_proof,
-                                const std::string &pk) {
-        if (role_proof.empty()) {
-            return false;
-        }
-        char msg[64] = {0};
-        snprintf(msg, 64, "%d%d", blockNum, phase);
-        if (Vrf::verify((const uint8_t *) msg, strlen(msg), (const uint8_t *) role_proof.data(),
-                                 (const uint8_t *) pk.data())) {
-            return true;
-        }
-        return false;
-    }
-
     bool UranusNode::startup() {
         ilog("UranusNode starts as producing node: ${b}", ("b", !m_isNonProducingNode));
-        if (!Vrf::keypair(UranusNode::URANUS_PUBLIC_KEY, UranusNode::URANUS_PRIVATE_KEY)) {
-            //elog("generate key error.");
+        if (!initKeyPair(std::string(), std::string())) {
             return false;
         }
         LOG_INFO << "node startup pk : "
-                 << UltrainLog::convert2Hex(std::string((char *) UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN))
+                 << std::string(m_privateKey.getPublicKey())
                  << std::endl;
         return true;
     }
@@ -123,6 +110,22 @@ namespace ultrainio {
         m_phase = kPhaseInit;
         m_baxCount = 0;
         m_controllerPtr->init();
+    }
+
+    bool UranusNode::initKeyPair(const std::string& privateKeyHexStr, const std::string& publicKeyHexStr) {
+        PublicKey publicKey(publicKeyHexStr);
+        m_privateKey = PrivateKey(privateKeyHexStr, publicKey);
+        if (!m_privateKey.isValid()) {
+            wlog("init private : ${private}, public : ${public} error, and generate new one", ("private", privateKeyHexStr)("public", (publicKeyHexStr)));
+            m_privateKey = PrivateKey::generate();
+            publicKey = m_privateKey.getPublicKey();
+        }
+        if (m_privateKey.isValid()) {
+            publicKey.getRaw(UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
+            m_privateKey.getRaw(UranusNode::URANUS_PRIVATE_KEY, VRF_PRIVATE_KEY_LEN);
+            return true;
+        }
+        return false;
     }
 
     void UranusNode::readyToJoin() {
@@ -290,7 +293,7 @@ namespace ultrainio {
                 elog("ba0Block is empty, and send echo for empty block");
                 sendEchoForEmptyBlock();
             } else if (m_controllerPtr->verifyBa0Block()) { // not empty, verify
-                EchoMsg echo = m_controllerPtr->constructMsg(ba0Block);
+                EchoMsg echo = MessageBuilder::constructMsg(ba0Block);
                 m_controllerPtr->insert(echo);
                 sendMessage(echo);
             } else {
@@ -473,7 +476,7 @@ namespace ultrainio {
                 elog("baxLoop ba0Block is empty, and send echo for empty block");
                 sendEchoForEmptyBlock();
             } else if (m_controllerPtr->verifyBa0Block()) { // not empty, verify
-                EchoMsg echo = m_controllerPtr->constructMsg(*ba0Block);
+                EchoMsg echo = MessageBuilder::constructMsg(*ba0Block);
                 m_controllerPtr->insert(echo);
                 sendMessage(echo);
             } else {
@@ -607,7 +610,7 @@ namespace ultrainio {
             m_controllerPtr->insert(propose);
             sendMessage(propose);
             if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
-                EchoMsg echo = m_controllerPtr->constructMsg(propose);
+                EchoMsg echo = MessageBuilder::constructMsg(propose);
                 m_controllerPtr->insert(echo);
                 sendMessage(echo);
             }
@@ -801,7 +804,7 @@ namespace ultrainio {
         // TODO(yufengshen): hack for now, when get stakes for self return 0 so that the role
         // will always be listener (non-producing), but for stakes for others, we still return
         // the expected value.
-        if (m_isNonProducingNode && pk == std::string((char *) UranusNode::URANUS_PUBLIC_KEY))
+        if (m_isNonProducingNode && pk == std::string(UranusNode::getInstance()->getPublicKey()))
             return 0;
         return VoterSystem::TOTAL_STAKES / m_globalProducingNodeNumber;
     }
@@ -825,8 +828,16 @@ namespace ultrainio {
     void UranusNode::sendEchoForEmptyBlock() {
         Block block = m_controllerPtr->emptyBlock();
         dlog("empty block hash : ${hash}", ("hash", block.id()));
-        EchoMsg echoMsg = m_controllerPtr->constructMsg(block);
+        EchoMsg echoMsg = MessageBuilder::constructMsg(block);
         m_controllerPtr->insert(echoMsg);
         sendMessage(echoMsg);
+    }
+
+    PrivateKey UranusNode::getPrivateKey() const {
+        return m_privateKey;
+    }
+
+    PublicKey UranusNode::getPublicKey() const {
+        return m_privateKey.getPublicKey();
     }
 }

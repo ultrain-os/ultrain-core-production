@@ -2,6 +2,7 @@
 
 #include <log/Log.h>
 #include <uranus/Node.h>
+#include <uranus/Validator.h>
 
 namespace ultrainio {
     using namespace std;
@@ -70,11 +71,12 @@ namespace ultrainio {
     }
 
     int MessageManager::handleMessage(const AggEchoMsg& aggEchoMsg) {
-        // verify
-        // duplicate
-        // kObsolete
+        if (!Validator::verify<UnsignedAggEchoMsg>(Signature(aggEchoMsg.signature), aggEchoMsg, PublicKey(aggEchoMsg.pk))) {
+            elog("verify AggEchoMsg error. pk : ${pk}", ("pk", aggEchoMsg.pk));
+            return kSignatureError;
+        }
         uint32_t blockNum = UranusNode::getInstance()->getBlockNum();
-        if (blockNum - 2 > aggEchoMsg.blockHeader.block_num()) {
+        if (blockNum - 1 > aggEchoMsg.blockHeader.block_num()) {
             return kObsolete;
         }
         BlockMessagePtr blockMessagePtr = initIfNeed(aggEchoMsg.blockHeader.block_num());
@@ -171,7 +173,7 @@ namespace ultrainio {
             ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
             std::string previousHash(blockId.data());
             std::string proposerSeed = previousHash + std::to_string(blockNum) + std::to_string(phase) + std::to_string(baxCount) + std::string("01");
-            int stakes = UranusNode::getInstance()->getStakes(std::string((char*)UranusNode::URANUS_PUBLIC_KEY));
+            int stakes = UranusNode::getInstance()->getStakes(std::string(UranusNode::getInstance()->getPublicKey()));
             VoterSystem voterSystem;
             voterCountAsProposer = voterSystem.vote(proposerSeed, UranusNode::URANUS_PRIVATE_KEY, stakes, VoterSystem::PROPOSER_RATIO, proposerProof);
             //ilog("blockNum = ${blockNum} voterCountAsProposer = ${voterCountAsProposer} proposerProof = ${proposerProof}",
@@ -217,7 +219,7 @@ namespace ultrainio {
         std::string previousHash(blockId.data());
         std::string voterSeed = previousHash + std::to_string(blockNum) + std::to_string(static_cast<int>(phase))
                 + std::to_string(baxCount) + std::string("02");
-        int stakes = UranusNode::getInstance()->getStakes(std::string((char*)UranusNode::URANUS_PUBLIC_KEY));
+        int stakes = UranusNode::getInstance()->getStakes(std::string(UranusNode::getInstance()->getPublicKey()));
         VoterSystem voterSystem;
         voterCountAsVoter = voterSystem.vote(voterSeed, UranusNode::URANUS_PRIVATE_KEY, stakes, VoterSystem::VOTER_RATIO, proof);
         //ilog("blockNum = ${blockNum} phase = ${phase} baxCount = ${baxCount} voterCountAsVoter = ${voterCountAsVoter} proof = ${proof}",

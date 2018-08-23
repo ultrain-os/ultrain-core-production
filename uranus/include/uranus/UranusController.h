@@ -62,12 +62,6 @@ namespace ultrainio {
     public:
         UranusController();
 
-        EchoMsg constructMsg(const Block &block);
-
-        EchoMsg constructMsg(const ProposeMsg &propose);
-
-        EchoMsg constructMsg(const EchoMsg &echo);
-
         void reset();
 
         bool isMinPropose(const ProposeMsg &propose_msg);
@@ -190,8 +184,6 @@ namespace ultrainio {
 
         size_t runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
                                 fc::time_point start_timesamp);
-
-        std::string signature(const EchoMsg &echo);
 
         Block m_ba0Block;
         bool m_voterPreRunBa0InProgress = false;

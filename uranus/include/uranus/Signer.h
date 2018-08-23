@@ -2,17 +2,17 @@
 
 #include <fc/crypto/sha256.hpp>
 #include <crypto/Digest.h>
-#include <crypto/PublicKey.h>
+#include <crypto/PrivateKey.h>
 #include <crypto/Signature.h>
 
 namespace ultrainio {
-    class Validator {
+    class Signer {
     public:
         template <class T>
-        static bool verify(const Signature& signature, const T& v, const PublicKey& publicKey) {
+        static Signature sign(const T& v, const PrivateKey& privateKey) {
             fc::sha256 h = fc::sha256::hash(v);
             Digest digest(h.str());
-            return publicKey.verify(signature, digest);
+            return privateKey.sign(digest);
         }
     };
 }

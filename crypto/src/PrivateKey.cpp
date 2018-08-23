@@ -12,15 +12,17 @@ namespace ultrainio {
         return PrivateKey(sk, ED25519_PRIVATE_KEY_LEN, publicKey);
     }
 
+    // TODO(qinxiaofen) to generator public key when pass an default public key
     PrivateKey::PrivateKey(const std::string& key, const PublicKey& publicKey) : m_key(key), m_publicKey(publicKey) {}
 
+    // TODO(qinxiaofen) to generator public key when pass an default public key
     PrivateKey::PrivateKey(uint8_t* rawKey, size_t len, const PublicKey& publicKey) : m_key(Hex::toHex(rawKey, len)), m_publicKey(publicKey) {}
 
     PrivateKey::operator std::string() const {
         return m_key;
     }
 
-    Signature PrivateKey::sign(const Digest& digest) {
+    Signature PrivateKey::sign(const Digest& digest) const {
         std::string digestStr = std::string(digest);
         uint8_t rawKey[ED25519_PRIVATE_KEY_LEN];
         if (!getRaw(rawKey, ED25519_SIGNATURE_LEN)) {
@@ -39,7 +41,7 @@ namespace ultrainio {
 
     // maybe more condition check
     bool PrivateKey::isValid() {
-        if (m_key.length() == 2 * ED25519_PRIVATE_KEY_LEN) {
+        if (m_key.length() == 2 * ED25519_PRIVATE_KEY_LEN && m_publicKey.isValid()) {
             return true;
         }
         return false;

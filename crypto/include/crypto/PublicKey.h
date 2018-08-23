@@ -22,12 +22,14 @@ namespace ultrainio {
 
         explicit operator std::string() const;
 
-        bool verify(const Signature& signature, const Digest& digest);
+        bool verify(const Signature& signature, const Digest& digest) const;
 
-        bool isValid();
+        bool isValid() const;
 
     private:
         bool getRaw(uint8_t* rawKey, size_t len) const;
         std::string m_key;
+        // (qinxiaofen)this may be remove after remove UranusController::
+        friend class UranusNode;
     };
 }

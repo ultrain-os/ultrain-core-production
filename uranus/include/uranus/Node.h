@@ -12,6 +12,8 @@
 
 #include <core/Message.h>
 #include <core/Transaction.h>
+#include <crypto/PrivateKey.h>
+#include <crypto/PublicKey.h>
 #include <crypto/Vrf.h>
 
 #include <uranus/VoterSystem.h>
@@ -29,13 +31,13 @@ namespace ultrainio {
 
     class UranusController;
 
-    class UranusNodeMonitor;
-
     class UranusNode : public std::enable_shared_from_this<UranusNode> {
     public:
         static const int MAX_ROUND_SECONDS;
         static const int MAX_PHASE_SECONDS;
         static boost::chrono::system_clock::time_point GENESIS;
+
+        // TODO(qinxiaofen) should be remove
         static uint8_t URANUS_PUBLIC_KEY[VRF_PUBLIC_KEY_LEN];
         static uint8_t URANUS_PRIVATE_KEY[VRF_PRIVATE_KEY_LEN];
 
@@ -43,12 +45,8 @@ namespace ultrainio {
 
         static std::shared_ptr<UranusNode> getInstance();
 
-        friend class UranusNodeMonitor;
-
         void setNonProducingNode(bool);
         void setGlobalProducingNodeNumber(int32_t);
-
-        static bool verifyRole(uint32_t blockNum, uint16_t phase, const std::string &role_proof, const std::string &pk);
 
         uint32_t getBlockNum() const;
 
@@ -57,6 +55,8 @@ namespace ultrainio {
         bool getSyncingStatus() const;
 
         void init();
+
+        bool initKeyPair(const std::string& privateKeyHexStr, const std::string& publicKeyHexStr);
 
         void readyToJoin();
 
@@ -124,7 +124,12 @@ namespace ultrainio {
 
         bool isProcessNow();
 
-        const std::shared_ptr<UranusController> getController() const; 
+        const std::shared_ptr<UranusController> getController() const;
+
+        // TODO(qinxiaofen) may be not secure
+        PrivateKey getPrivateKey() const;
+
+        PublicKey getPublicKey() const;
 
     private:
         explicit UranusNode(boost::asio::io_service &ioservice);
@@ -168,5 +173,7 @@ namespace ultrainio {
         boost::asio::deadline_timer m_timer;
         boost::asio::deadline_timer m_preRunTimer;
         std::shared_ptr<UranusController> m_controllerPtr;
+        PrivateKey m_privateKey;
+        friend class UranusNodeMonitor;
     };
 }

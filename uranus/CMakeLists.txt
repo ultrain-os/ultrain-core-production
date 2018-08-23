@@ -1,5 +1,6 @@
 file(GLOB HEADERS "include/consensus/*.h")
 add_library( ultrainio_uranus
+        src/MessageBuilder.cpp
         src/MessageManager.cpp
         src/Node.cpp
         src/UranusController.cpp

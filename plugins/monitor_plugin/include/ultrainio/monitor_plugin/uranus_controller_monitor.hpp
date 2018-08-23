@@ -10,7 +10,7 @@ namespace ultrainio {
         chain::block_id_type             myid;
         uint32_t                         blockNum;
 
-        void digestFromBlockHeader(const chain::signed_block_header& block_header) {
+        void digestFromBlockHeader(const BlockHeader& block_header) {
             timestamp  = block_header.timestamp;
             proposerPk = block_header.proposerPk;
             previous   = block_header.previous;

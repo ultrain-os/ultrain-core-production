@@ -9,7 +9,7 @@ namespace ultrainio { namespace chain {
       block_timestamp_type             timestamp;
       account_name                     producer;
 
-      std::string                      proposerPk;
+      std::string                      proposerPk; // hex str
       std::string                      proposerProof;
       uint32_t                         version = 0;
 

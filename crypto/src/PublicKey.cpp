@@ -16,7 +16,7 @@ namespace ultrainio {
         return m_key;
     }
 
-    bool PublicKey::verify(const Signature& signature, const Digest& digest) {
+    bool PublicKey::verify(const Signature& signature, const Digest& digest) const {
         if (!isValid()) {
             return false;
         }
@@ -39,7 +39,7 @@ namespace ultrainio {
         return Hex::fromHex(m_key, rawKey, len) == ED25519_PUBLIC_KEY_LEN;
     }
 
-    bool PublicKey::isValid() {
+    bool PublicKey::isValid() const {
         if (m_key.length() == 2 * ED25519_PUBLIC_KEY_LEN) {
             return true;
         }

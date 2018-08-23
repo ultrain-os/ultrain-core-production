@@ -11,6 +11,8 @@ namespace ultrainio {
     class PrivateKey {
     public:
         static PrivateKey generate();
+
+        PrivateKey() = default;
         // hex string
         explicit PrivateKey(const std::string& key, const PublicKey& publicKey = PublicKey());
 
@@ -22,7 +24,7 @@ namespace ultrainio {
 
         explicit operator std::string() const;
 
-        Signature sign(const Digest& digest);
+        Signature sign(const Digest& digest) const;
 
         // valid when PrivateKey produced by PrivateKey::generate now
         PublicKey getPublicKey() const;
@@ -34,5 +36,7 @@ namespace ultrainio {
 
         std::string m_key;
         PublicKey m_publicKey;
+        // (qinxiaofen)this may be remove after remove UranusController::
+        friend class UranusNode;
     };
 }
