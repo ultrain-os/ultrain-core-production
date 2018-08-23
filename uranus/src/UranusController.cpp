@@ -1229,18 +1229,25 @@ namespace ultrainio {
         // Here is the hack, we are actually using the template of ba0_block, but we don't use
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
         // e.g. pk, proof, producer.
-        chain.start_block(block.timestamp, block.confirmed);
-        chain::block_state_ptr pbs = chain.pending_block_state_hack();
-        chain::signed_block_ptr bp = pbs->block;
-        chain::signed_block_header *hp = &(pbs->header);
-        bp->producer = block.producer;
-        bp->proposerPk = block.proposerPk;
-        bp->proposerProof = block.proposerProof;
-        hp->producer = block.producer;
-        hp->proposerPk = block.proposerPk;
-        hp->proposerProof = block.proposerProof;
-        bp->confirmed = block.confirmed;
-        m_currentPreRunBa0TrxIndex = 0;
+        try {
+            chain.start_block(block.timestamp, block.confirmed);
+            chain::block_state_ptr pbs = chain.pending_block_state_hack();
+            chain::signed_block_ptr bp = pbs->block;
+            chain::signed_block_header *hp = &(pbs->header);
+            bp->producer = block.producer;
+            bp->proposerPk = block.proposerPk;
+            bp->proposerProof = block.proposerProof;
+            hp->producer = block.producer;
+            hp->proposerPk = block.proposerPk;
+            hp->proposerProof = block.proposerProof;
+            bp->confirmed = block.confirmed;
+            m_currentPreRunBa0TrxIndex = 0;
+        } catch (const fc::exception &e) {
+            edump((e.to_detail_string()));
+            chain.abort_block();
+            m_currentPreRunBa0TrxIndex = -1;
+            return false;
+        }
         return true;
     }
 
