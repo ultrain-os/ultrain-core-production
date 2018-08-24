@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/crypto/*.h")
 add_library( ultrainio_crypto
         src/Bls.cpp
         src/Digest.cpp
+        src/Ed25519.cpp
         src/PrivateKey.cpp
         src/PublicKey.cpp
         src/Signature.cpp

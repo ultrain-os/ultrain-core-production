@@ -1,7 +1,7 @@
 #include "crypto/Signature.h"
 
-#include <boringssl/curve25519.h>
 #include <base/Hex.h>
+#include <crypto/Ed25519.h>
 
 namespace ultrainio {
     Signature::Signature() {}
@@ -15,6 +15,6 @@ namespace ultrainio {
     }
 
     bool Signature::getRaw(uint8_t* rawKey, size_t len) const {
-        return Hex::fromHex(m_sig, rawKey, len) == ED25519_SIGNATURE_LEN;
+        return Hex::fromHex(m_sig, rawKey, len) == Ed25519::SIGNATURE_LEN;
     }
 }
