@@ -5,7 +5,7 @@
 #include <chrono>
 #include <iostream>
 
-#include <crypto/Vrf.h>
+#include <crypto/Ed25519.h>
 #include <fc/crypto/public_key.hpp>
 #include <fc/crypto/private_key.hpp>
 #include <fc/crypto/signature.hpp>
@@ -15,7 +15,7 @@ using namespace std;
 using namespace fc;
 using namespace fc::crypto;
 
-// test vrf time prove/verify consume
+// test ed25519 time prove/verify consume
 int main(int argc, char* argv[]) {
     int NUMBER = 10000;
     uint8_t* skList[NUMBER];
@@ -23,22 +23,22 @@ int main(int argc, char* argv[]) {
     uint8_t* proofList[NUMBER];
     const char* hash = "hash test";
     for (int i = 0; i < NUMBER; i++) {
-        skList[i] = (uint8_t*)malloc(VRF_PRIVATE_KEY_LEN);
-        pkList[i] = (uint8_t*)malloc(VRF_PUBLIC_KEY_LEN);
-        proofList[i] = (uint8_t*)malloc(VRF_PROOF_LEN);
-        Vrf::keypair(pkList[i], skList[i]);
+        skList[i] = (uint8_t*)malloc(Ed25519::PRIVATE_KEY_LEN);
+        pkList[i] = (uint8_t*)malloc(Ed25519::PUBLIC_KEY_LEN);
+        proofList[i] = (uint8_t*)malloc(Ed25519::SIGNATURE_LEN);
+        Ed25519::keypair(pkList[i], skList[i]);
     }
     // test prove time
     std::chrono::steady_clock::time_point pointStart = std::chrono::steady_clock::now();
     for (int i = 0; i < NUMBER; i++) {
-        Vrf::prove(proofList[i], (uint8_t*)hash, strlen(hash), skList[i]);
+        Ed25519::sign(proofList[i], (uint8_t*)hash, strlen(hash), skList[i]);
     }
     std::chrono::microseconds d = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - pointStart);
-    cout << "prove each one consume : " << d.count() / NUMBER << " microseconds " << std::endl;
+    cout << "sign each one consume : " << d.count() / NUMBER << " microseconds " << std::endl;
 
     pointStart = std::chrono::steady_clock::now();
     for (int i = 0; i < NUMBER; i++) {
-        Vrf::verify((uint8_t*)hash, strlen(hash), proofList[i], pkList[i]);
+        Ed25519::verify((uint8_t*)hash, strlen(hash), proofList[i], pkList[i]);
     }
     d = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - pointStart);
     cout << "verify each one consume : " << d.count() / NUMBER << " microseconds " << std::endl;

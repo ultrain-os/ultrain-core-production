@@ -3,12 +3,14 @@ add_executable( bls_test
 
 target_link_libraries( bls_test ultrainio_crypto )
 
-add_executable( vrf_test
-        VrfTest.cpp)
+#Ed25519 performance test
+add_executable( ed25519_performance_test
+        Ed25519PerformanceTest.cpp)
 
-target_link_libraries( vrf_test ultrainio_crypto fc)
+target_link_libraries( ed25519_performance_test ultrainio_crypto fc)
 
-add_executable( publickey_test
-        PublicKeyTest.cpp)
+#Private/Public key test
+add_executable( privatekeypublickey_test
+        PrivateKeyPublicKeyTest.cpp)
 
-target_link_libraries( publickey_test ultrainio_crypto )
+target_link_libraries( privatekeypublickey_test ultrainio_crypto )
