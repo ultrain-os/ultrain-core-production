@@ -65,7 +65,7 @@ namespace ultrainiosystem {
    struct producer_info {
       account_name          owner;
       double                total_votes = 0;
-      ultrainio::public_key     producer_key; /// a packed public key object
+      std::string           producer_key; /// a packed public key object
       bool                  is_active = true;
       bool                  is_enabled = false;
       std::string           url;
@@ -76,7 +76,7 @@ namespace ultrainiosystem {
       uint64_t primary_key()const { return owner;                                   }
       double   by_votes()const    { return is_active ? -total_votes : total_votes;  }
       bool     active()const      { return is_active;                               }
-      void     deactivate()       { producer_key = public_key(); is_active = false; }
+      void     deactivate()       { producer_key = std::string(); is_active = false; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(is_enabled)(url)
@@ -197,7 +197,7 @@ namespace ultrainiosystem {
 
          // functions defined in voting.cpp
 
-         void regproducer( const account_name producer, const public_key& producer_key, const std::string& url, uint16_t location );
+         void regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint16_t location );
 
          void unregprod( const account_name producer );
 

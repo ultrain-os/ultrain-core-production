@@ -445,7 +445,6 @@ void print_result( const fc::variant& result ) { try {
 using std::cout;
 void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
    auto result = push_actions( move(actions), extra_kcpu, compression);
-
    if( tx_print_json ) {
       cout << fc::json::to_pretty_string( result ) << endl;
    } else {
@@ -509,13 +508,13 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
                         config::system_account_name, NEX(delegatebw), act_payload);
 }
 
-fc::variant regproducer_variant(const account_name& producer, const public_key_type& key, const string& url, uint16_t location) {
-   return fc::mutable_variant_object()
-            ("producer", producer)
-            ("producer_key", key)
-            ("url", url)
-            ("location", location)
-            ;
+fc::variant regproducer_variant(const account_name& producer, const std::string& key, const string& url, uint16_t location) {
+    return fc::mutable_variant_object()
+        ("producer", producer)
+        ("producer_key", key)
+        ("url", url)
+        ("location", location)
+        ;
 }
 
 chain::action create_transfer(const string& contract, const name& sender, const name& recipient, asset amount, const string& memo ) {
@@ -825,14 +824,9 @@ struct register_producer_subcommand {
       register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), true);
       add_standard_transaction_options(register_producer);
 
-
       register_producer->set_callback([this] {
-         public_key_type producer_key;
-         try {
-            producer_key = public_key_type(producer_key_str);
-         } ULTRAIN_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
-
-         auto regprod_var = regproducer_variant(producer_str, producer_key, url, loc );
+         // TODO(yufengshen): Check if the key is valid.
+         auto regprod_var = regproducer_variant(producer_str, producer_key_str, url, loc );
          send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, NEX(regproducer), regprod_var)});
       });
    }

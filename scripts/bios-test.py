@@ -67,8 +67,9 @@ def importKeys():
     run(args.clultrain + 'wallet import --private-key ' + args.private_key)
 
 def randomTransfer():
-    for i in list('12345abcdefghijklmnopqrstuvwxyz'):
-        for j in list('12345abcdefghijklmnopqrstuvwxyz'):
+#    for j in list('12345abcdefghijklmnopqrstuvwxyz'):
+    for i in list('12345'):
+        for j in list('12345'):
             simple_run(args.clultrain + 'transfer -f user.%s user.%s "0.%s SYS" ' %(i, j, random.randint(1, 999)))
     sleep(1)
     
@@ -92,26 +93,31 @@ def createSystemAccounts():
         run(args.clultrain + 'create account ultrainio ' + a + ' ' + args.public_key)
 
 def stepInstallSystemContracts():
-    run(args.clultrain + 'set contract utrio.token ' + args.contracts_dir + 'ultrainio.token/')
-    run(args.clultrain + 'set contract utrio.msig ' + args.contracts_dir + 'ultrainio.msig/')
+    retry(args.clultrain + 'set contract utrio.token ' + args.contracts_dir + 'ultrainio.token/')
+    retry(args.clultrain + 'set contract utrio.msig ' + args.contracts_dir + 'ultrainio.msig/')
     sleep(20)
 
 def stepCreateTokens():
-    run(args.clultrain + 'push action utrio.token create \'["ultrainio", "10000000000.0000 SYS"]\' -p utrio.token')
-    run(args.clultrain + 'push action utrio.token issue \'["ultrainio", "10000000.0000 SYS", "memo"]\' -p ultrainio')
+    run(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 SYS"]\' -p utrio.token')
+    run(args.clultrain + 'push action utrio.token issue \'["ultrainio", "500000000.0000 SYS", "memo"]\' -p ultrainio')
     sleep(15)
 
 def stepSetSystemContract():
     retry(args.clultrain + 'set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/')
-    run(args.clultrain + 'push action ultrainio setpriv' + jsonArg(['utrio.msig', 1]) + '-p ultrainio@active')
+    retry(args.clultrain + 'push action ultrainio setpriv' + jsonArg(['utrio.msig', 1]) + '-p ultrainio@active')
     sleep(15)
     
 def stepCreateStakedAccounts():
-    for i in list('12345abcdefghijklmnopqrstuvwxyz'):
-        retry(args.clultrain + 'system newaccount --transfer ultrainio user.%s %s --stake-net "0.0010 SYS" --stake-cpu "0.0010 SYS" --buy-ram "0.1000 SYS" ' % (i,args.public_key))
-        retry(args.clultrain + 'transfer ultrainio user.%s "500.0000 SYS"' % (i))
-
+    for i in list('12345'):
+        retry(args.clultrain + 'system newaccount --transfer ultrainio user.%s %s --stake-net "15000000.1234 SYS" --stake-cpu "15000000.5678 SYS" --buy-ram "1000.000 SYS" ' % (i,args.public_key))
+        retry(args.clultrain + 'transfer ultrainio user.%s "5000.0000 SYS"' % (i))
     sleep(15)
+
+def stepRegProducers():
+    for i in list('12345'):
+        retry(args.clultrain + 'system regproducer user.%s 45744b94db8ea5f6abf6de7c9225e1cf6158631d82dd079d62fbc57b1237cf7b https://user.%s.com 0123 ' % (i, i))
+    sleep(1)
+    run(args.clultrain + 'system listproducers')
 
 def stepTransfer():
     while True:
@@ -130,14 +136,14 @@ commands = [
     ('t', 'tokens',         stepCreateTokens,           True,    "Create tokens"),
     ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
-#    ('p', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
+    ('p', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
 #    ('P', 'start-prod',     stepStartProducers,         True,    "Start producers"),
 #    ('v', 'vote',           stepVote,                   True,    "Vote for producers"),
 #    ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
 #    ('x', 'proxy',          stepProxyVotes,             True,    "Proxy votes"),
 #    ('q', 'resign',         stepResign,                 True,    "Resign utrio"),
 #    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
-    ('X', 'xfer',           stepTransfer,               True,   "Random transfer tokens (infinite loop)"),
+#    ('X', 'xfer',           stepTransfer,               True,   "Random transfer tokens (infinite loop)"),
 #    ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
 ]
 

@@ -151,7 +151,7 @@ namespace ultrainio {
        *
        * @brief Block signing key used by this producer
        */
-      public_key       block_signing_key;
+       std::string       block_signing_key;
 
       friend bool operator < ( const producer_key& a, const producer_key& b ) {
          return a.producer_name < b.producer_name;
