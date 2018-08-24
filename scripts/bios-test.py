@@ -28,6 +28,34 @@ systemAccounts = [
     'utrio.vpay',
 ]
 
+accounts = [
+    'user.11',
+    'user.12',
+    'user.13',
+    'user.14',
+    'user.15',
+    'user.21',
+    'user.22',
+    'user.23',
+    'user.24',
+    'user.25',
+    'user.31',
+    'user.32',
+    'user.33',
+    'user.34',
+    'user.35',
+    'user.41',
+    'user.42',
+    'user.43',
+    'user.44',
+    'user.45',
+    'user.51',
+    'user.52',
+    'user.53',
+    'user.54',
+    'user.55',
+]
+
 def jsonArg(a):
     return " '" + json.dumps(a) + "' "
 
@@ -67,11 +95,10 @@ def importKeys():
     run(args.clultrain + 'wallet import --private-key ' + args.private_key)
 
 def randomTransfer():
-#    for j in list('12345abcdefghijklmnopqrstuvwxyz'):
-    for i in list('12345'):
-        for j in list('12345'):
-            simple_run(args.clultrain + 'transfer -f user.%s user.%s "0.%s SYS" ' %(i, j, random.randint(1, 999)))
-    sleep(1)
+    for i in accounts:
+        for j in accounts:
+            simple_run(args.clultrain + 'transfer -f %s %s "0.%s SYS" ' %(i, j, random.randint(1, 999)))
+    sleep(3)
     
 def startWallet():
     run('rm -rf ' + os.path.abspath(args.wallet_dir))
@@ -108,14 +135,14 @@ def stepSetSystemContract():
     sleep(15)
     
 def stepCreateStakedAccounts():
-    for i in list('12345'):
-        retry(args.clultrain + 'system newaccount --transfer ultrainio user.%s %s --stake-net "15000000.1234 SYS" --stake-cpu "15000000.5678 SYS" --buy-ram "1000.000 SYS" ' % (i,args.public_key))
-        retry(args.clultrain + 'transfer ultrainio user.%s "5000.0000 SYS"' % (i))
+    for a in accounts:
+        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1500000.1234 SYS" --stake-cpu "1500000.5678 SYS" --buy-ram "1000.000 SYS" ' % (a,args.public_key))
+        retry(args.clultrain + 'transfer ultrainio %s "5000.0000 SYS"' % (a))
     sleep(15)
 
 def stepRegProducers():
-    for i in list('12345'):
-        retry(args.clultrain + 'system regproducer user.%s 45744b94db8ea5f6abf6de7c9225e1cf6158631d82dd079d62fbc57b1237cf7b https://user.%s.com 0123 ' % (i, i))
+    for a in accounts:
+        retry(args.clultrain + 'system regproducer %s 45744b94db8ea5f6abf6de7c9225e1cf6158631d82dd079d62fbc57b1237cf7b https://%s.com 0123 ' % (a,a))
     sleep(1)
     run(args.clultrain + 'system listproducers')
 
