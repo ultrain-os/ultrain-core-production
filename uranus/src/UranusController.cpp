@@ -63,12 +63,13 @@ namespace ultrainio {
     }
 
     void UranusController::reset() {
+        uint32_t blockNum = getLastBlocknum();
         m_ba0Block = Block();
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
-        clearMsgCache(m_cacheProposeMsgMap, getLastBlocknum());
-        clearMsgCache(m_cacheEchoMsgMap, getLastBlocknum());
-        clearMsgCache(m_echoMsgAllPhase, getLastBlocknum());
+        clearMsgCache(m_cacheProposeMsgMap, blockNum);
+        clearMsgCache(m_cacheEchoMsgMap, blockNum);
+        clearMsgCache(m_echoMsgAllPhase, blockNum);
     }
 
     void UranusController::resetEcho() {
@@ -136,7 +137,7 @@ namespace ultrainio {
         if ((propose.block.block_num() == currentBlockNum)
             // Default genesis block is #1, so the first block
             // nodes are working on is #2.
-            && (currentBlockNum == 2)
+            // && (currentBlockNum == 2)
             && (current_phase == kPhaseInit)) {
             return true;
         }
@@ -380,6 +381,10 @@ namespace ultrainio {
                  ("id1", echo.blockHeader.block_num())("id2", UranusNode::getInstance()->getBlockNum()));
             return false;
         }
+        if (echo.phase == kPhaseInit) {
+            elog("invalid echo msg . phase = kPhaseInit");
+            return false;
+        }
         if (static_cast<ConsensusPhase>(echo.phase) != UranusNode::getInstance()->getPhase()) {
             elog("invalid echo msg . phase = ${phase1}. local phase = ${phase2}",
                  ("phase1", (uint32_t) echo.phase)("phase2", (uint32_t) UranusNode::getInstance()->getPhase()));
@@ -584,16 +589,18 @@ namespace ultrainio {
 
     bool UranusController::handleMessage(const Block &block) {
         uint32_t last_num = getLastBlocknum();
-        ilog("@@@@@@@@@@@@@@@ last block num in local chain:${last}", ("last", last_num));
+        dlog("@@@@@@@@@@@@@@@ last block num in local chain:${last}", ("last", last_num));
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         auto b = chain.fetch_block_by_number(last_num);
         if (b) {
             if (block.previous == b->id()) {
                 // TODO(yufengshen) -- Do not copy here, should have shared_ptr at the first place.
                 produceBlock(std::make_shared<chain::signed_block>(block), true);
+                dlog("apply block finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
+                     ("block_num", getLastBlocknum())("hash", block.id())("head_hash", block.previous));
                 return true;
             } else {
-                elog("block error. block in local chain: num = ${n} hash = ${hash}", ("n", last_num)("hash", b->id()));
+                elog("block error. block in local chain: blockNum = ${n} hash = ${hash}", ("n", last_num)("hash", b->id()));
                 elog("comming block num:${n} hash:${h} previous hash:${ph}",
                      ("n", block.block_num())("h", block.id())("ph", block.previous));
                 return false;
