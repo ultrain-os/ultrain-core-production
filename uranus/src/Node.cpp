@@ -345,6 +345,7 @@ namespace ultrainio {
             elog("ba1Process ba1 finish. block is empty. phase ba2 begin.");
             //init();
             //readyToJoin();
+            m_phase = kPhaseBAX;
             baxLoop(getRoundInterval());
             return;
         }
