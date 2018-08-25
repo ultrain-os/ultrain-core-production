@@ -8,9 +8,3 @@ add_executable( ed25519_performance_test
         Ed25519PerformanceTest.cpp)
 
 target_link_libraries( ed25519_performance_test ultrainio_crypto fc)
-
-#Private/Public key test
-add_executable( privatekeypublickey_test
-        PrivateKeyPublicKeyTest.cpp)
-
-target_link_libraries( privatekeypublickey_test ultrainio_crypto )

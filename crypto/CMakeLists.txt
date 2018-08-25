@@ -6,7 +6,6 @@ add_library( ultrainio_crypto
         src/PrivateKey.cpp
         src/PublicKey.cpp
         src/Signature.cpp
-        src/Vrf.cpp
         ${HEADERS} )
 
 include_directories( "${PROJECT_SOURCE_DIR}/vendor/boringssl/include" )

@@ -40,7 +40,7 @@ namespace ultrainio {
     }
 
     // maybe more condition check
-    bool PrivateKey::isValid() {
+    bool PrivateKey::isValid() const {
         if (m_key.length() == 2 * Ed25519::PRIVATE_KEY_LEN && m_publicKey.isValid()) {
             return true;
         }

@@ -1,4 +1,4 @@
-#include <uranus/UranusController.h>
+#include <rpos/UranusController.h>
 
 #include <iostream>
 #include <string>
@@ -20,11 +20,11 @@
 #include <ultrainio/chain/name.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 
-#include <uranus/MessageBuilder.h>
-#include <uranus/MessageManager.h>
-#include <uranus/Node.h>
-#include <uranus/Signer.h>
-#include <uranus/Validator.h>
+#include <rpos/MessageBuilder.h>
+#include <rpos/MessageManager.h>
+#include <rpos/Node.h>
+#include <rpos/Signer.h>
+#include <rpos/Validator.h>
 #include <log/Log.h>
 #include <appbase/application.hpp>
 
@@ -77,8 +77,9 @@ namespace ultrainio {
     }
 
     bool UranusController::insert(const EchoMsg &echo) {
-        VoterSystem voter;
-        int stakes = UranusNode::getInstance()->getStakes(echo.pk);
+        VoterSystem voterSystem;
+        int stakes = voterSystem.getStakes(echo.pk);
+        double voterRatio = voterSystem.getVoterRatio();
 
         auto itor = m_echoMsgMap.find(echo.blockHeader.id());
         if (itor != m_echoMsgMap.end()) {
@@ -86,7 +87,9 @@ namespace ultrainio {
             if (pkItor == itor->second.pkPool.end()) {
                 itor->second.pkPool.push_back(echo.pk);
                 itor->second.proofPool.push_back(echo.proof);
-                itor->second.totalVoter += voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
+                Proof proof(echo.proof);
+
+                itor->second.totalVoter += voterSystem.count(proof, stakes, voterRatio);
             }
         } else {
             echo_message_info echo_info;
@@ -94,7 +97,8 @@ namespace ultrainio {
             echo_info.pkPool.push_back(echo.pk);
             echo_info.proofPool.push_back(echo.proof);
             echo_info.hasSend = true;
-            echo_info.totalVoter = voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
+            Proof proof(echo.proof);
+            echo_info.totalVoter = voterSystem.count(proof, stakes, voterRatio);
             m_echoMsgMap.insert(make_pair(echo.blockHeader.id(), echo_info));
         }
         return true;
@@ -287,9 +291,11 @@ namespace ultrainio {
         if (pkItor == info.pkPool.end()) {
             info.pkPool.push_back(echo.pk);
             info.proofPool.push_back(echo.proof);
-            VoterSystem voter;
-            int stakes = UranusNode::getInstance()->getStakes(echo.pk);
-            info.totalVoter += voter.vote((uint8_t *) echo.proof.data(), stakes, VoterSystem::VOTER_RATIO);
+            VoterSystem voterSystem;
+            int stakes = voterSystem.getStakes(echo.pk);
+            double voterRatio = voterSystem.getVoterRatio();
+            Proof proof(echo.proof);
+            info.totalVoter += voterSystem.count(proof, stakes, voterRatio);
             if (response && info.totalVoter >= THRESHOLD_SEND_ECHO && !info.hasSend
                 && UranusNode::getInstance()->getPhase() == kPhaseBA0 && isMinFEcho(info)) {
                 if (MessageManager::getInstance()->isVoter(UranusNode::getInstance()->getBlockNum(), echo.phase,
@@ -611,12 +617,12 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::isMinPropose(const ProposeMsg &propose_msg) {
-        VoterSystem voter;
-        uint32_t priority = voter.proof2Priority((const uint8_t *) propose_msg.block.proposerProof.data());
-        for (auto propose_itor = m_proposerMsgMap.begin(); propose_itor != m_proposerMsgMap.end(); ++propose_itor) {
-            uint32_t p = voter.proof2Priority((const uint8_t *) propose_itor->second.block.proposerProof.data());
-            if (p < priority) {
+    bool UranusController::isMinPropose(const ProposeMsg &proposeMsg) {
+        Proof proof(proposeMsg.block.proposerProof);
+        uint32_t priority = proof.getPriority();
+        for (auto itor = m_proposerMsgMap.begin(); itor != m_proposerMsgMap.end(); ++itor) {
+            Proof itorProof(itor->second.block.proposerProof);
+            if (itorProof.getPriority() < priority) {
                 return false;
             }
         }
@@ -624,12 +630,12 @@ namespace ultrainio {
     }
 
     bool UranusController::isMinFEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
-        VoterSystem voter;
-        uint32_t priority = voter.proof2Priority((const uint8_t *) info.echo.blockHeader.proposerProof.data());
-        for (auto echo_itor = msgbuff.begin(); echo_itor != msgbuff.end(); ++echo_itor) {
-            if (echo_itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
-                if (voter.proof2Priority((const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data()) <
-                    priority) {
+        Proof proof(info.echo.blockHeader.proposerProof);
+        uint32_t priority = proof.getPriority();
+        for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
+            if (itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
+                Proof itorProof(itor->second.echo.blockHeader.proposerProof);
+                if (itorProof.getPriority() < priority) {
                     return false;
                 }
             }
@@ -638,12 +644,12 @@ namespace ultrainio {
     }
 
     bool UranusController::isMinFEcho(const echo_message_info &info) {
-        VoterSystem voter;
-        uint32_t priority = voter.proof2Priority((const uint8_t *) info.echo.blockHeader.proposerProof.data());
-        for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
-            if (echo_itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
-                if (voter.proof2Priority((const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data()) <
-                    priority) {
+        Proof proof(info.echo.blockHeader.proposerProof);
+        uint32_t priority = proof.getPriority();
+        for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
+            if (itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
+                Proof itorProof(itor->second.echo.blockHeader.proposerProof);
+                if (itorProof.getPriority() < priority) {
                     return false;
                 }
             }
@@ -652,11 +658,11 @@ namespace ultrainio {
     }
 
     bool UranusController::isMinEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
-        VoterSystem voter;
-        uint32_t priority = voter.proof2Priority((const uint8_t *) info.echo.blockHeader.proposerProof.data());
-        for (auto echo_itor = msgbuff.begin(); echo_itor != msgbuff.end(); ++echo_itor) {
-            if (voter.proof2Priority((const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data()) <
-                priority) {
+        Proof proof(info.echo.blockHeader.proposerProof);
+        uint32_t priority = proof.getPriority();
+        for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
+            Proof itorProof(itor->second.echo.blockHeader.proposerProof);
+            if (itorProof.getPriority() < priority) {
                 return false;
             }
         }
@@ -664,11 +670,11 @@ namespace ultrainio {
     }
 
     bool UranusController::isMinEcho(const echo_message_info &info) {
-        VoterSystem voter;
-        uint32_t priority = voter.proof2Priority((const uint8_t *) info.echo.blockHeader.proposerProof.data());
-        for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
-            if (voter.proof2Priority((const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data()) <
-                priority) {
+        Proof proof(info.echo.blockHeader.proposerProof);
+        uint32_t priority = proof.getPriority();
+        for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
+            Proof itorProof(itor->second.echo.blockHeader.proposerProof);
+            if (itorProof.getPriority() < priority) {
                 return false;
             }
         }
@@ -858,9 +864,7 @@ namespace ultrainio {
             block.timestamp = bh.timestamp;
             block.producer = "ultrainio";
             block.proposerPk = std::string(UranusNode::getInstance()->getPublicKey());
-            block.proposerProof = std::string(
-                    (char *) MessageManager::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()),
-                    VRF_PROOF_LEN);
+            block.proposerProof = std::string(MessageManager::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()));
             block.version = 0;
             block.confirmed = 1;
             block.previous = bh.previous;
@@ -970,8 +974,8 @@ namespace ultrainio {
                 if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
                     dlog("found >= 2f + 1 echo. blocknum = ${blocknum} phase = ${phase}",
                          ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
-                    uint32_t priority = voter.proof2Priority(
-                            (const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data());
+                    Proof itorProof(echo_itor->second.echo.blockHeader.proposerProof);
+                    uint32_t priority = itorProof.getPriority();
                     if (min_priority >= priority) {
                         dlog("min proof change.");
                         echo_info = &(echo_itor->second);
@@ -1018,8 +1022,8 @@ namespace ultrainio {
                                                                      echo_itor->second.echo.blockHeader.id()));
             if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
                 ilog("found >= 2f + 1 echo");
-                uint32_t priority = voter.proof2Priority(
-                        (const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data());
+                Proof itorProof(echo_itor->second.echo.blockHeader.proposerProof);
+                uint32_t priority = itorProof.getPriority();
                 if (minPriority >= priority) {
                     minBlockId = echo_itor->second.echo.blockHeader.id();
                     minPriority = priority;
@@ -1062,8 +1066,8 @@ namespace ultrainio {
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
             if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
                 ilog("isProcessNow.found >= 2f + 1 echo");
-                uint32_t priority = voter.proof2Priority(
-                        (const uint8_t *) echo_itor->second.echo.blockHeader.proposerProof.data());
+                Proof itorProof(echo_itor->second.echo.blockHeader.proposerProof);
+                uint32_t priority = itorProof.getPriority();
                 if (minPriority >= priority) {
                     minBlockId = echo_itor->second.echo.blockHeader.id();
                     minPriority = priority;
@@ -1084,7 +1088,7 @@ namespace ultrainio {
         std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
         aggEchoMsgPtr->blockHeader = *blockPtr;
         aggEchoMsgPtr->pk = std::string(UranusNode::getInstance()->getPublicKey());
-        aggEchoMsgPtr->proof = std::string((char*)MessageManager::getInstance()->getVoterProof(blockPtr->block_num(), kPhaseBA1, 0), VRF_PROOF_LEN);
+        aggEchoMsgPtr->proof = std::string(MessageManager::getInstance()->getVoterProof(blockPtr->block_num(), kPhaseBA1, 0));
         auto itor = m_echoMsgMap.find(blockPtr->id());
         aggEchoMsgPtr->pkPool = itor->second.pkPool;
         aggEchoMsgPtr->proofPool = itor->second.proofPool;

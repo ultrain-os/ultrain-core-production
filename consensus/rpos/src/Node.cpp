@@ -1,4 +1,4 @@
-#include <uranus/Node.h>
+#include <rpos/Node.h>
 
 #include <chrono>
 #include <iostream>
@@ -9,9 +9,9 @@
 #include <fc/log/logger.hpp>
 
 #include <log/Log.h>
-#include <uranus/MessageBuilder.h>
-#include <uranus/MessageManager.h>
-#include <uranus/UranusController.h>
+#include <rpos/MessageBuilder.h>
+#include <rpos/MessageManager.h>
+#include <rpos/UranusController.h>
 
 // eos net
 #include <appbase/application.hpp>
@@ -23,8 +23,6 @@ using namespace std;
 namespace ultrainio {
     const int UranusNode::MAX_ROUND_SECONDS = 10;
     const int UranusNode::MAX_PHASE_SECONDS = 5;
-    uint8_t UranusNode::URANUS_PUBLIC_KEY[VRF_PUBLIC_KEY_LEN] = {0};
-    uint8_t UranusNode::URANUS_PRIVATE_KEY[VRF_PRIVATE_KEY_LEN] = {0};
 
     boost::chrono::system_clock::time_point UranusNode::GENESIS;
 
@@ -67,11 +65,19 @@ namespace ultrainio {
         m_isNonProducingNode = v;
     }
 
+    bool UranusNode::getNonProducingNode() const {
+        return m_isNonProducingNode;
+    }
+
     void UranusNode::setGlobalProducingNodeNumber(int32_t v) {
         if (v > 0) {
             ilog("setGlobalProducingNodeNumber ${num}", ("num", v));
             m_globalProducingNodeNumber = v;
         }
+    }
+
+    int UranusNode::getGlobalProducingNodeNumber() const {
+        return m_globalProducingNodeNumber;
     }
 
     bool UranusNode::startup() {
@@ -121,8 +127,6 @@ namespace ultrainio {
             publicKey = m_privateKey.getPublicKey();
         }
         if (m_privateKey.isValid()) {
-            publicKey.getRaw(UranusNode::URANUS_PUBLIC_KEY, VRF_PUBLIC_KEY_LEN);
-            m_privateKey.getRaw(UranusNode::URANUS_PRIVATE_KEY, VRF_PRIVATE_KEY_LEN);
             return true;
         }
         return false;
@@ -799,15 +803,6 @@ namespace ultrainio {
              ("id", MAX_PHASE_SECONDS - (pass_time_to_genesis.count() % MAX_PHASE_SECONDS)));
 
         return MAX_PHASE_SECONDS - (pass_time_to_genesis.count() % MAX_PHASE_SECONDS);
-    }
-
-    int UranusNode::getStakes(const std::string &pk) {
-        // TODO(yufengshen): hack for now, when get stakes for self return 0 so that the role
-        // will always be listener (non-producing), but for stakes for others, we still return
-        // the expected value.
-        if (m_isNonProducingNode && pk == std::string(UranusNode::getInstance()->getPublicKey()))
-            return 0;
-        return VoterSystem::TOTAL_STAKES / m_globalProducingNodeNumber;
     }
 
     BlockIdType UranusNode::getPreviousHash() {

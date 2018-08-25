@@ -2,19 +2,28 @@
 #include <iostream>
 #include <random>
 
-#include "uranus/VoterSystem.h"
-#include "crypto/Vrf.h"
+#include <crypto/PrivateKey.h>
+#include <crypto/PublicKey.h>
+#include <rpos/Proof.h>
+#include <rpos/VoterSystem.h>
+#include <rpos/Vrf.h>
+#include <rpos/Seed.h>
 
 using namespace ultrainio;
+
+#define NODE_NUMBER 5000 // node number
+#define M 60000 // min stake number for echo node
+#define VOTER_TOTAL_COUNT 1000.0
+#define PROPOSER_TOTAL_COUNT 20.0
 
 struct NodeInfo {
     int stakes;
     int phase0ProposerVote;
     int phase0VoterVote;
     int phase1VoterVote;
-    uint8_t sk[VRF_PRIVATE_KEY_LEN];
-    uint8_t pk[VRF_PUBLIC_KEY_LEN];
-    uint8_t proof[VRF_PROOF_LEN];
+    PrivateKey privateKey;
+    PublicKey publicKey;
+    Proof proof;
 };
 
 struct ExperimentStatistics {
@@ -31,39 +40,35 @@ static double calcVariance(ExperimentStatistics *statistics, size_t size, double
 
 int main(int argc, char **argv) {
     VoterSystem voter;
-    int nodeNum = 1000;
-    NodeInfo *nodeArray = new NodeInfo[nodeNum];
-    std::default_random_engine generator;
-    std::gamma_distribution<double> distribution(1.8, 0.5);
-    int totalGammaStakes = 0;
-    for (int i = 0; i < nodeNum; i++) {
-        nodeArray[i].stakes = distribution(generator) * 100;
+    NodeInfo *nodeArray = new NodeInfo[NODE_NUMBER];
+    for (int i = 0; i < NODE_NUMBER; i++) {
+        nodeArray[i].stakes = M;
         nodeArray[i].phase0ProposerVote = 0;
         nodeArray[i].phase0VoterVote = 0;
         nodeArray[i].phase1VoterVote = 0;
-        Vrf::keypair(nodeArray[i].pk, nodeArray[i].sk);
-        totalGammaStakes += nodeArray[i].stakes;
+        nodeArray[i].privateKey = PrivateKey::generate();
+        nodeArray[i].publicKey = nodeArray[i].privateKey.getPublicKey();
+        nodeArray[i].stakes = M;
     }
-    for (int i = 0; i < nodeNum; i++) {
-        nodeArray[i].stakes = nodeArray[i].stakes * VoterSystem::TOTAL_STAKES / totalGammaStakes;
-        //std::cout << " node [" << i << "] stakes = " << nodeArray[i].stakes << std::endl;
-    }
+    double VOTER_RATIO = (VOTER_TOTAL_COUNT / NODE_NUMBER) / M;
+    double PROPOSER_RATIO = (PROPOSER_TOTAL_COUNT / NODE_NUMBER) / M;
 
     int testCount = 100;
     ExperimentStatistics *statistics = new ExperimentStatistics[testCount];
     for (int i = 0; i < testCount; i++) {
         std::chrono::steady_clock::time_point pointStart = std::chrono::steady_clock::now();
-        for (int j = 0; j < nodeNum; j++) {
-            std::string round = std::to_string(1545 + i);
-            std::string phase0("00");
-            uint8_t proof[VRF_PROOF_LEN];
-            nodeArray[j].phase0ProposerVote = voter.vote(round + phase0 + "01", nodeArray[j].sk,
-                                                         nodeArray[j].stakes, VoterSystem::PROPOSER_RATIO, proof);
-            nodeArray[j].phase0VoterVote = voter.vote(round + phase0 + "02", nodeArray[j].sk,
-                                                      nodeArray[j].stakes, VoterSystem::VOTER_RATIO, proof);
-            std::string phase1("01");
-            nodeArray[j].phase1VoterVote = voter.vote(round + phase1 + "01", nodeArray[j].sk,
-                                                      nodeArray[j].stakes, VoterSystem::VOTER_RATIO, proof);
+        for (int j = 0; j < NODE_NUMBER; j++) {
+            Seed seed(std::string("preHash"), 1545 + i, kPhaseBA0, 0);
+            Proof proof = Vrf::vrf(nodeArray[j].privateKey, seed, Vrf::kProposer);
+            nodeArray[j].phase0ProposerVote = voter.count(proof, nodeArray[j].stakes, PROPOSER_RATIO);
+
+            Proof proofV = Vrf::vrf(nodeArray[j].privateKey, seed, Vrf::kVoter);
+            nodeArray[j].phase0VoterVote = voter.count(proofV, nodeArray[j].stakes, VOTER_RATIO);
+
+            Seed seedPhaseBA1(std::string("preHash"), 1545 + i, kPhaseBA1, 0);
+            Proof proofV2 = Vrf::vrf(nodeArray[j].privateKey, seedPhaseBA1, Vrf::kVoter);
+            nodeArray[j].phase1VoterVote = voter.count(proofV2, nodeArray[j].stakes, VOTER_RATIO);
+
             statistics[i].phase0TotalProposerVoter += nodeArray[j].phase0ProposerVote;
             statistics[i].phase0TotalVoterVote += nodeArray[j].phase0VoterVote;
             statistics[i].phase1TotalVoterVote += nodeArray[j].phase1VoterVote;
@@ -111,7 +116,7 @@ int main(int argc, char **argv) {
     std::cout << "average phase0 proposer voter : " << phase0ProposerMean << " average num : " << totalPhase0ProposerNum * 1.0 / testCount << " variance : " << phase0ProposerVariance << std::endl
               << "average phase0 average voter : " << phase0VoterMean << " average num : " << totalPhase0VoterNum * 1.0 / testCount << " variance : " << phase0VoterVariance << std::endl
               << "average phase1 average voter : " << phase1VoterMean << " average num : " << totalPhase1VoterNum * 1.0 / testCount << " variance : " << phase1VoterVariance << std::endl;
-    std::cout << "vote consume time : " << totalConsumeMs / (nodeNum * testCount * 3) << "ms" << std::endl;
+    std::cout << "vote consume time : " << totalConsumeMs / (NODE_NUMBER * testCount * 3) << "ms" << std::endl;
     return 0;
 }
 

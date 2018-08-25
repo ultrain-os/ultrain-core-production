@@ -27,7 +27,7 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/signals2/connection.hpp>
 
-#include <uranus/Node.h>
+#include <rpos/Node.h>
 #include <log/Log.h>
 
 namespace bmi = boost::multi_index;

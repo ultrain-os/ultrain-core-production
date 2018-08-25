@@ -12,7 +12,6 @@
 
 #include <core/Message.h>
 #include <core/Transaction.h>
-#include <crypto/Vrf.h>
 #include <boost/asio/steady_timer.hpp>
 
 namespace ultrainio {

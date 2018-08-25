@@ -29,7 +29,7 @@ namespace ultrainio {
         // valid when PrivateKey produced by PrivateKey::generate now
         PublicKey getPublicKey() const;
 
-        bool isValid();
+        bool isValid() const;
 
     private:
         bool getRaw(uint8_t* rawKey, size_t len) const;

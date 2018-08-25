@@ -12,23 +12,13 @@
 
 #include <core/Message.h>
 #include <core/Transaction.h>
+#include <crypto/Ed25519.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
-#include <crypto/Vrf.h>
-
-#include <uranus/VoterSystem.h>
+#include <rpos/Config.h>
+#include <rpos/VoterSystem.h>
 
 namespace ultrainio {
-
-#define MOST_ATTACK_NUMBER_F       ((VoterSystem::VOTER_STAKES - 50) / 3)
-#define THRESHOLD_SEND_ECHO        (MOST_ATTACK_NUMBER_F + 1)
-#define THRESHOLD_NEXT_ROUND       (2 * MOST_ATTACK_NUMBER_F + 1)
-#define THRESHOLD_SYNCING          (2 * MOST_ATTACK_NUMBER_F + 1)
-#define INVALID_BLOCK_NUM          0xFFFFFFFF
-
-#define CODE_EXEC_MAX_TIME_S       3
-#define MAX_PROPOSE_TRX_COUNT      5000
-
     class UranusController;
 
     class UranusNode : public std::enable_shared_from_this<UranusNode> {
@@ -37,16 +27,17 @@ namespace ultrainio {
         static const int MAX_PHASE_SECONDS;
         static boost::chrono::system_clock::time_point GENESIS;
 
-        // TODO(qinxiaofen) should be remove
-        static uint8_t URANUS_PUBLIC_KEY[VRF_PUBLIC_KEY_LEN];
-        static uint8_t URANUS_PRIVATE_KEY[VRF_PRIVATE_KEY_LEN];
-
         static std::shared_ptr<UranusNode> initAndGetInstance(boost::asio::io_service &ioservice);
 
         static std::shared_ptr<UranusNode> getInstance();
 
         void setNonProducingNode(bool);
+
+        bool getNonProducingNode() const;
+
         void setGlobalProducingNodeNumber(int32_t);
+
+        int getGlobalProducingNodeNumber() const;
 
         uint32_t getBlockNum() const;
 
@@ -117,8 +108,6 @@ namespace ultrainio {
         void cancelTimer();
 
         void applyBlockLoop(uint32_t timeout);
-
-        int getStakes(const std::string &pk);
 
         ultrainio::chain::block_id_type getPreviousHash();
 

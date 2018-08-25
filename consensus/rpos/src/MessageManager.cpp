@@ -1,13 +1,14 @@
-#include <uranus/MessageManager.h>
+#include <rpos/MessageManager.h>
 
 #include <log/Log.h>
-#include <uranus/Node.h>
-#include <uranus/Validator.h>
+#include <rpos/Node.h>
+#include <rpos/Proof.h>
+#include <rpos/Seed.h>
+#include <rpos/Validator.h>
+#include <rpos/Vrf.h>
 
 namespace ultrainio {
     using namespace std;
-
-    static bool newRound(ConsensusPhase phase, int baxCount);
 
     // class MessageManager
     shared_ptr<MessageManager> MessageManager::s_self = nullptr;
@@ -49,8 +50,9 @@ namespace ultrainio {
     void MessageManager::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         ilog("moveToNewStep blockNum = ${blockNum}, phase = ${phase}, baxCount = ${baxCount}",
                 ("blockNum", blockNum)("phase", static_cast<int>(phase))("baxCount", baxCount));
-        if (newRound(phase, baxCount)) {
+        if (BlockMessage::newRound(phase, baxCount)) {
             clearSomeBlockMessage(blockNum);
+            // TODO(init StakeAccountInfo
         }
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         blockMessagePtr->moveToNewStep(blockNum, phase, baxCount);
@@ -103,12 +105,12 @@ namespace ultrainio {
         return kSuccess;
     }
 
-    const uint8_t* MessageManager::getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+    Proof MessageManager::getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         return blockMessagePtr->getVoterProof(phase, baxCount);
     }
 
-    const uint8_t* MessageManager::getProposerProof(uint32_t blockNum) {
+    Proof MessageManager::getProposerProof(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         return blockMessagePtr->proposerProof;
     }
@@ -140,96 +142,5 @@ namespace ultrainio {
                 itor++;
             }
         }
-    }
-
-    // class BlockMessage
-    PhaseMessagePtr BlockMessage::initIfNeed(ConsensusPhase phase, int baxCount) {
-        int key = phase + baxCount;
-        auto itor = phaseMessageMap.find(key);
-        if (itor == phaseMessageMap.end()) {
-            PhaseMessagePtr phaseMessagePtr = std::make_shared<PhaseMessage>();
-            phaseMessagePtr->phase = phase;
-            phaseMessagePtr->baxCount = baxCount;
-            phaseMessageMap.insert(make_pair(key, phaseMessagePtr));
-            return phaseMessagePtr;
-        }
-        return itor->second;
-    }
-
-    void BlockMessage::insert(const EchoMsg& echoMsg) {
-        ConsensusPhase phase = echoMsg.phase;
-        uint32_t baxCount = echoMsg.baxCount;
-        PhaseMessagePtr phaseMessagePtr = initIfNeed(phase, baxCount);
-        assert(phaseMessagePtr->phase == phase && phaseMessagePtr->baxCount == baxCount);
-        phaseMessagePtr->insert(echoMsg);
-    }
-
-    void BlockMessage::insert(const ProposeMsg& proposeMsg) {
-        proposeMsgList.push_back(proposeMsg);
-    }
-
-    void BlockMessage::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        if (newRound(phase, baxCount)) {
-            ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
-            std::string previousHash(blockId.data());
-            std::string proposerSeed = previousHash + std::to_string(blockNum) + std::to_string(phase) + std::to_string(baxCount) + std::string("01");
-            int stakes = UranusNode::getInstance()->getStakes(std::string(UranusNode::getInstance()->getPublicKey()));
-            VoterSystem voterSystem;
-            voterCountAsProposer = voterSystem.vote(proposerSeed, UranusNode::URANUS_PRIVATE_KEY, stakes, VoterSystem::PROPOSER_RATIO, proposerProof);
-            //ilog("blockNum = ${blockNum} voterCountAsProposer = ${voterCountAsProposer} proposerProof = ${proposerProof}",
-            //        ("blockNum", blockNum)("voterCountAsProposer", voterCountAsProposer)("proposerProof", UltrainLog::convert2Hex(std::string((char*)proposerProof, VRF_PROOF_LEN))));
-        }
-        PhaseMessagePtr phaseMessagePtr = initIfNeed(phase, baxCount);
-        phaseMessagePtr->moveToNewStep(blockNum, phase, baxCount);
-    }
-
-    const uint8_t* BlockMessage::getVoterProof(ConsensusPhase phase, int baxCount) {
-        PhaseMessagePtr phaseMessagePtr = initIfNeed(phase, baxCount);
-        return phaseMessagePtr->proof;
-    }
-
-    int BlockMessage::getVoterVoterCount(ConsensusPhase phase, int baxCount) {
-        PhaseMessagePtr phaseMessagePtr = initIfNeed(phase, baxCount);
-        return phaseMessagePtr->voterCountAsVoter;
-    }
-
-    // class PhaseMessage
-    void PhaseMessage::insert(const EchoMsg& echoMsg) {
-        chain::block_id_type blockId = echoMsg.blockHeader.id();
-        auto itor = echoMsgSetMap.find(blockId);
-        VoterSystem voter;
-        int stakes = UranusNode::getInstance()->getStakes(echoMsg.pk);
-        int voterCount = voter.vote((uint8_t*)echoMsg.proof.data(), stakes, VoterSystem::VOTER_RATIO);
-        if (itor == echoMsgSetMap.end()) {
-            EchoMsgSet echoMsgSet;
-            echoMsgSet.echoMsgV.push_back(echoMsg);
-            echoMsgSet.pkPool.push_back(echoMsg.pk);
-            echoMsgSet.blockHeader = echoMsg.blockHeader;
-            echoMsgSet.totalVoterCount = voterCount;
-            echoMsgSetMap.insert(make_pair(blockId, echoMsgSet));
-        } else {
-            itor->second.echoMsgV.push_back(echoMsg);
-            itor->second.pkPool.push_back(echoMsg.pk);
-            itor->second.totalVoterCount += voterCount;
-        }
-    }
-
-    void PhaseMessage::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
-        std::string previousHash(blockId.data());
-        std::string voterSeed = previousHash + std::to_string(blockNum) + std::to_string(static_cast<int>(phase))
-                + std::to_string(baxCount) + std::string("02");
-        int stakes = UranusNode::getInstance()->getStakes(std::string(UranusNode::getInstance()->getPublicKey()));
-        VoterSystem voterSystem;
-        voterCountAsVoter = voterSystem.vote(voterSeed, UranusNode::URANUS_PRIVATE_KEY, stakes, VoterSystem::VOTER_RATIO, proof);
-        //ilog("blockNum = ${blockNum} phase = ${phase} baxCount = ${baxCount} voterCountAsVoter = ${voterCountAsVoter} proof = ${proof}",
-        //        ("blockNum", blockNum)("phase", static_cast<int>(phase))("baxCount", baxCount)("voterCountAsVoter", voterCountAsVoter)("proof", UltrainLog::convert2Hex(std::string((char*)proof, VRF_PROOF_LEN))));
-    }
-
-    bool newRound(ConsensusPhase phase, int baxCount) {
-        if (kPhaseBA0 == phase && 0 == baxCount) {
-            return true;
-        }
-        return false;
     }
 }

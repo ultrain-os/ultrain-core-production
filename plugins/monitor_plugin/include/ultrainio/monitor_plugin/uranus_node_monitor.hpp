@@ -1,6 +1,8 @@
 #pragma once
-#include <uranus/Node.h>
+
 #include "uranus_controller_monitor.hpp"
+
+#include <rpos/Node.h>
 
 namespace ultrainio {
 
