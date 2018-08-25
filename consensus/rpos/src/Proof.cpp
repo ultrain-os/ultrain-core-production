@@ -1,5 +1,8 @@
 #include "rpos/Proof.h"
 
+#include <cstdint>
+#include <limits>
+
 #include <crypto/Ed25519.h>
 
 namespace ultrainio {

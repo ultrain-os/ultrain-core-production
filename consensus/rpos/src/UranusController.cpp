@@ -20,12 +20,15 @@
 #include <ultrainio/chain/name.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 
+#include <log/Log.h>
 #include <rpos/MessageBuilder.h>
 #include <rpos/MessageManager.h>
 #include <rpos/Node.h>
+#include <rpos/Seed.h>
 #include <rpos/Signer.h>
 #include <rpos/Validator.h>
-#include <log/Log.h>
+#include <rpos/Vrf.h>
+
 #include <appbase/application.hpp>
 
 using namespace boost::asio;
@@ -378,10 +381,7 @@ namespace ultrainio {
             elog("loopback echo. pk : ${pk}", ("pk", myPk));
             return false;
         }
-        if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, PublicKey(echo.pk))) {
-            elog("validator echo error. pk : ${pk}", ("pk", echo.pk));
-            return false;
-        }
+
         if (echo.blockHeader.block_num() != UranusNode::getInstance()->getBlockNum()) {
             elog("invalid echo msg . blockNum = ${id1}. local blockNum = ${id2}",
                  ("id1", echo.blockHeader.block_num())("id2", UranusNode::getInstance()->getBlockNum()));
@@ -396,6 +396,21 @@ namespace ultrainio {
                  ("phase1", (uint32_t) echo.phase)("phase2", (uint32_t) UranusNode::getInstance()->getPhase()));
             return false;
         }
+
+        PublicKey publicKey(echo.pk);
+        if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
+            elog("validator echo error. pk : ${pk}", ("pk", echo.pk));
+            return false;
+        }
+
+        Proof proof(echo.proof);
+        ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
+        std::string previousHash(blockId.data());
+        Seed seed(previousHash, echo.blockHeader.block_num(), echo.phase, echo.baxCount);
+        if (!Vrf::verify(publicKey, proof, seed, Vrf::kVoter)) {
+            elog("proof verify error. pk : ${pk}", ("pk", echo.pk));
+            return false;
+        }
         return true;
     }
 
@@ -407,20 +422,26 @@ namespace ultrainio {
             return false;
         }
 
-        if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, PublicKey(propose.block.proposerPk))) {
-            elog("validator proposer error. proposerPk : ${proposerPk}", ("proposerPk", propose.block.proposerPk));
-            return false;
-        }
-
         if (propose.block.block_num() != UranusNode::getInstance()->getBlockNum()) {
             elog("invalid propose msg . blockNum = ${id1}. local blockNum = ${id2}",
                  ("id1", propose.block.block_num())("id2", UranusNode::getInstance()->getBlockNum()));
             return false;
         }
-//        if (kPhaseBA0 != UranusNode::getInstance()->getPhase()) {
-////            elog("invalid propose msg . phase = ${phase1}. local phase = ${phase2}",("phase1", (uint32_t)propose.phase)("phase2",(uint32_t)UranusNode::getInstance()->getPhase()));
-////            return false;
-////        }
+
+        PublicKey publicKey(propose.block.proposerPk);
+        if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
+            elog("validator proposer error. proposerPk : ${proposerPk}", ("proposerPk", propose.block.proposerPk));
+            return false;
+        }
+
+        Proof proposerProof(propose.block.proposerProof);
+        ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
+        std::string previousHash(blockId.data());
+        Seed seed(previousHash, propose.block.block_num(), kPhaseBA0, 0);
+        if (!Vrf::verify(publicKey, proposerProof, seed, Vrf::kProposer)) {
+            elog("proof verify error. pk : ${pk}", ("pk", propose.block.proposerProof));
+            return false;
+        }
         return true;
     }
 

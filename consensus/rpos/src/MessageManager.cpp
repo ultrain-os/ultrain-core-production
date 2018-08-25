@@ -100,6 +100,17 @@ namespace ultrainio {
             echoMsg.proof = aggEchoMsg.proofPool[i];
             echoMsg.phase = aggEchoMsg.phase;
             echoMsg.baxCount = aggEchoMsg.baxCount;
+
+            //TODO(qinxiaofen) proof check
+//            PublicKey publicKey(echoMsg.pk);
+//            Proof proposerProof(echoMsg.proof);
+//            ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
+//            std::string previousHash(blockId.data());
+//            Seed seed(previousHash, echoMsg.blockHeader.block_num(), echoMsg.phase, echoMsg.baxCount);
+//            if (!Vrf::verify(publicKey, proposerProof, seed, Vrf::kProposer)) {
+//                elog("proof verify error. pk : ${pk}", ("pk", propose.block.proposerProof));
+//                return false;
+//            }
             UranusNode::getInstance()->handleMessage(echoMsg);
         }
         return kSuccess;

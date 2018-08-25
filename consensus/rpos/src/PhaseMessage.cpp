@@ -35,12 +35,12 @@ namespace ultrainio {
         std::string previousHash(blockId.data());
         Seed voterSeed(previousHash, blockNum, phase, baxCount);
         PrivateKey privateKey = UranusNode::getInstance()->getPrivateKey();
-        Proof proof = Vrf::vrf(privateKey, voterSeed, Vrf::kVoter);
+        proof = Vrf::vrf(privateKey, voterSeed, Vrf::kVoter);
         VoterSystem voterSystem;
         int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getPublicKey()));
         double voterRatio = voterSystem.getVoterRatio();
         voterCountAsVoter = voterSystem.count(proof, stakes, voterRatio);
         //ilog("blockNum = ${blockNum} phase = ${phase} baxCount = ${baxCount} voterCountAsVoter = ${voterCountAsVoter} proof = ${proof}",
-        //        ("blockNum", blockNum)("phase", static_cast<int>(phase))("baxCount", baxCount)("voterCountAsVoter", voterCountAsVoter)("proof", UltrainLog::convert2Hex(std::string((char*)proof, Ed25519::SIGNATURE_LEN))));
+                //("blockNum", blockNum)("phase", static_cast<int>(phase))("baxCount", baxCount)("voterCountAsVoter", voterCountAsVoter)("proof", std::string(proof)));
     }
 }

@@ -9,6 +9,7 @@ namespace ultrainio {
         static constexpr int DEFAULT_THRESHOLD = 6000;
     };
 
+    // TODO(qinxiaofen) should add into Config class
 #define INVALID_BLOCK_NUM          0xFFFFFFFF
 #define THRESHOLD_SEND_ECHO        330
 #define THRESHOLD_NEXT_ROUND       670

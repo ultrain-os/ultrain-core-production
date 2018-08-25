@@ -39,13 +39,13 @@ namespace ultrainio {
             std::string previousHash(blockId.data());
             Seed proposerSeed(previousHash, blockNum, phase, baxCount);
             PrivateKey privateKey = UranusNode::getInstance()->getPrivateKey();
-            Proof proof = Vrf::vrf(privateKey, proposerSeed, Vrf::kProposer);
+            proposerProof = Vrf::vrf(privateKey, proposerSeed, Vrf::kProposer);
             VoterSystem voterSystem;
             int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getPublicKey()));
             double proposerRatio = voterSystem.getProposerRatio();
-            voterCountAsProposer = voterSystem.count(proof, stakes, proposerRatio);
+            voterCountAsProposer = voterSystem.count(proposerProof, stakes, proposerRatio);
             //ilog("blockNum = ${blockNum} voterCountAsProposer = ${voterCountAsProposer} proposerProof = ${proposerProof}",
-            //        ("blockNum", blockNum)("voterCountAsProposer", voterCountAsProposer)("proposerProof", UltrainLog::convert2Hex(std::string((char*)proposerProof, Ed25519::SIGNATURE_LEN))));
+                    //("blockNum", blockNum)("voterCountAsProposer", voterCountAsProposer)("proposerProof", std::string(proposerProof)));
         }
         PhaseMessagePtr phaseMessagePtr = initIfNeed(phase, baxCount);
         phaseMessagePtr->moveToNewStep(blockNum, phase, baxCount);
