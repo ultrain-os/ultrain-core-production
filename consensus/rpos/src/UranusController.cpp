@@ -1111,6 +1111,10 @@ namespace ultrainio {
         aggEchoMsgPtr->pk = std::string(UranusNode::getInstance()->getPublicKey());
         aggEchoMsgPtr->proof = std::string(MessageManager::getInstance()->getVoterProof(blockPtr->block_num(), kPhaseBA1, 0));
         auto itor = m_echoMsgMap.find(blockPtr->id());
+        if (itor == m_echoMsgMap.end()) {
+            elog("can't find block id ${id} in echo msg map", ("id", blockPtr->id()));
+            return nullptr;
+        }
         aggEchoMsgPtr->pkPool = itor->second.pkPool;
         aggEchoMsgPtr->proofPool = itor->second.proofPool;
         aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
@@ -1383,7 +1387,10 @@ namespace ultrainio {
 
         chain::block_state_ptr new_bs = chain.head_block_state();
         if (MessageManager::getInstance()->isProposer(block->block_num())) {
-            MessageManager::getInstance()->insert(generateAggEchoMsg(block));
+            std::shared_ptr<AggEchoMsg> agg_echo = generateAggEchoMsg(block);
+            if (agg_echo) {
+                MessageManager::getInstance()->insert(agg_echo);
+            }
         }
         ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}--------------",
              ("timestamp", block->timestamp)

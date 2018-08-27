@@ -35,6 +35,7 @@ namespace ultrainio {
 //    }
 
     void MessageManager::insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr) {
+        ULTRAIN_ASSERT(aggEchoMsgPtr, chain::chain_exception, "agg echo msg pointer is null");
         BlockMessagePtr blockMessagePtr = initIfNeed(aggEchoMsgPtr->blockHeader.block_num());
         blockMessagePtr->m_myAggEchoMsgPtr = aggEchoMsgPtr;
     }
