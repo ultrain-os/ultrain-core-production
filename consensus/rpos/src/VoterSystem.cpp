@@ -36,18 +36,17 @@ namespace ultrainio {
     std::shared_ptr<std::vector<fc::variant>> VoterSystem::getCommitteeInfoList() {
         static const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         static struct chain_apis::read_only::get_producers_params params;
-        params.json=false;
-        params.lower_bound="0";
-        params.limit=50;
+        params.json = false;
+        params.lower_bound = "0";
+        params.limit = 50;
         auto result = ro_api.get_producers(params, true);
 //        auto result = rawResult.as<ultrainio::chain_apis::read_only::get_producers_result>();
-        if(!result.rows.empty()) {
-            for( const auto& r : result.rows ) {
+        if (!result.rows.empty()) {
+            for (const auto& r : result.rows ) {
                ilog("********************token ${token}, pk ${pk}", ("token", r)("pk", r["producer_key"]));
             }
-       }
-        return NULL; 
-
+        }
+        return nullptr;
     }
 
     int VoterSystem::count(const Proof& proof, int stakes, double p) {

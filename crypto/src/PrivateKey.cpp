@@ -12,6 +12,14 @@ namespace ultrainio {
         return PrivateKey(sk, Ed25519::PRIVATE_KEY_LEN, publicKey);
     }
 
+    bool PrivateKey::verifyKeyPair(const PublicKey& publicKey, const PrivateKey& privateKey) {
+        Digest digest("");
+        if (!privateKey.isValid() || !publicKey.isValid()) {
+            return false;
+        }
+        return publicKey.verify(privateKey.sign(digest), digest);
+    }
+
     // TODO(qinxiaofen) to generator public key when pass an default public key
     PrivateKey::PrivateKey(const std::string& key, const PublicKey& publicKey) : m_key(key), m_publicKey(publicKey) {}
 

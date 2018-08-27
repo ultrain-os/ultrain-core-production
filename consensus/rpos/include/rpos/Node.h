@@ -31,10 +31,11 @@ namespace ultrainio {
 
         static std::shared_ptr<UranusNode> getInstance();
 
-        void setNonProducingNode(bool);
+        void setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk);
 
-        void setGenesisLeaderPk(const std::string&);
-        void setGenesisLeaderSk(const std::string&);
+        void setCommmitteeKeyPair(const std::string& pk, const std::string& sk);
+
+        void setNonProducingNode(bool);
 
         bool getNonProducingNode() const;
 
@@ -57,8 +58,6 @@ namespace ultrainio {
         void readyToConnect();
 
         void readyLoop(uint32_t timeout);
-
-        bool startup();
 
         void run();
 
@@ -158,8 +157,7 @@ namespace ultrainio {
         bool m_syncing;
         bool m_syncFailed;
         bool m_isNonProducingNode = false;
-        std::string m_genesis_leader_pk;
-        std::string m_genesis_leader_sk;
+        bool m_isGenesisLeader = false;
         // 6 seems to be a good number :)
         int32_t m_globalProducingNodeNumber = 6;
         ConsensusPhase m_phase;
@@ -167,6 +165,9 @@ namespace ultrainio {
         boost::asio::deadline_timer m_timer;
         boost::asio::deadline_timer m_preRunTimer;
         std::shared_ptr<UranusController> m_controllerPtr;
+        PublicKey m_genesisLeaderPk;
+        PrivateKey m_genesisLeaderSk;
+        PublicKey m_publicKey;
         PrivateKey m_privateKey;
         friend class UranusNodeMonitor;
     };

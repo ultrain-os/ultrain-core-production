@@ -12,6 +12,8 @@ namespace ultrainio {
     public:
         static PrivateKey generate();
 
+        static bool verifyKeyPair(const PublicKey& publicKey, const PrivateKey& privateKey);
+
         PrivateKey() = default;
         // hex string
         explicit PrivateKey(const std::string& key, const PublicKey& publicKey = PublicKey());

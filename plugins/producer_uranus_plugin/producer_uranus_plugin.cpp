@@ -103,7 +103,6 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
 
       boost::program_options::variables_map _options;
       std::string _genesis_time = std::string("2018-7-26 11:0:0");
-      bool        _is_genesis_leader                  = false; // whether is genesis leader,
       std::string _genesis_leader_pk;                       // genesis leader'public key, known by all committee member
       std::string _genesis_leader_sk;                       // genesis leader'private key, set when it is genesis leader
       std::string _my_pk_as_committee;                      // public key when register as committee member
@@ -389,7 +388,6 @@ void producer_uranus_plugin::set_program_options(
           "   KULTRAIND:<data>    \tis the URL where kultraind is available and the approptiate wallet(s) are unlocked")
          ("kultraind-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a kultraind provider for signing")
-         ("genesis-leader", boost::program_options::bool_switch()->notifier([this](bool l){my->_is_genesis_leader = l;}))
          ("genesis-leader-pk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_pk = g; }), "geneis leader pk")
          ("genesis-leader-sk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_sk = g; }), "geneis leader sk")
          ("my_pk_as_committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_pk_as_committee = g; }), "pk as committer member")
@@ -578,11 +576,8 @@ void producer_uranus_plugin::plugin_startup()
    std::shared_ptr<UranusNode> nodePtr = UranusNode::initAndGetInstance(app().get_io_service());
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
    nodePtr->setGlobalProducingNodeNumber(my->_global_producing_node_number);
-   nodePtr->setGenesisLeaderPk(my->_genesis_leader_pk);
-   nodePtr->setGenesisLeaderSk(my->_genesis_leader_sk);
-   if (!nodePtr->startup()) {
-      return;
-   }
+   nodePtr->setGenesisLeaderKeyPair(my->_genesis_leader_pk, my->_genesis_leader_sk);
+   nodePtr->setCommmitteeKeyPair(my->_my_pk_as_committee, my->_my_sk_as_committee);
 
    //ultrainio::UranusNode::GENESIS = tp;
    ultrainio::UranusNode::GENESIS = boost::chrono::system_clock::now() + boost::chrono::seconds(60);

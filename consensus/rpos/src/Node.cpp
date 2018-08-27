@@ -65,12 +65,22 @@ namespace ultrainio {
         m_isNonProducingNode = v;
     }
 
-    void UranusNode::setGenesisLeaderPk(const std::string& v) {
-        m_genesis_leader_pk = v;
+    void UranusNode::setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk) {
+        m_genesisLeaderPk = PublicKey(pk);
+        m_genesisLeaderSk = PrivateKey(sk);
+        if (m_genesisLeaderSk.isValid() && !PrivateKey::verifyKeyPair(m_publicKey, m_privateKey)) {
+            wlog("verify genesis leader key pair failed. pk : {pk}, sk : {sk}", ("pk", pk)("sk", sk));
+            return;
+        }
+        m_isGenesisLeader = true;
     }
 
-    void UranusNode::setGenesisLeaderSk(const std::string& v) {
-        m_genesis_leader_sk = v;
+    void UranusNode::setCommmitteeKeyPair(const std::string& pk, const std::string& sk) {
+        m_publicKey = PublicKey(pk);
+        m_privateKey = PrivateKey(sk);
+        if (!PrivateKey::verifyKeyPair(m_publicKey, m_privateKey)) {
+            wlog("verify committee key pair failed. pk : {pk}, sk : {sk}", ("pk", pk)("sk", sk));
+        }
     }
 
     bool UranusNode::getNonProducingNode() const {
@@ -86,21 +96,6 @@ namespace ultrainio {
 
     int UranusNode::getGlobalProducingNodeNumber() const {
         return m_globalProducingNodeNumber;
-    }
-
-    bool UranusNode::startup() {
-        ilog("UranusNode starts as producing node: ${b}", ("b", !m_isNonProducingNode));
-        ilog("UranusNode genesis leader pk: ${pk}, sk: ${sk}",
-             ("pk", m_genesis_leader_pk)
-             ("sk", m_genesis_leader_sk));
-
-        if (!initKeyPair(std::string(), std::string())) {
-            return false;
-        }
-        LOG_INFO << "node startup pk : "
-                 << std::string(m_privateKey.getPublicKey())
-                 << std::endl;
-        return true;
     }
 
     void UranusNode::reset() {

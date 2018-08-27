@@ -20,12 +20,13 @@ namespace ultrainio {
         void insert(const EchoMsg& echoMsg);
         void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
 
-        ConsensusPhase phase = kPhaseInit;
-        int baxCount = 0;
-        int voterCountAsVoter = 0;
-        Proof proof;
     private:
-        std::map<chain::block_id_type, EchoMsgSet> echoMsgSetMap;
+        std::map<chain::block_id_type, EchoMsgSet> m_echoMsgSetMap;
+        ConsensusPhase m_phase = kPhaseInit;
+        int m_baxCount = 0;
+        int m_voterCountAsVoter = 0;
+        Proof m_proof;
+        friend class BlockMessage;
     };
 
     typedef std::shared_ptr<PhaseMessage> PhaseMessagePtr;

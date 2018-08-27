@@ -19,17 +19,18 @@ namespace ultrainio {
         void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
         Proof getVoterProof(ConsensusPhase phase, int baxCount);
         int getVoterVoterCount(ConsensusPhase phase, int baxCount);
-
-        uint32_t blockNum = 0;
-        int voterCountAsProposer = 0;
-        Proof proposerProof;
-        std::shared_ptr<AggEchoMsg> myAggEchoMsgPtr;
-        std::vector<AggEchoMsg> aggEchoMsgV;
-        std::vector<CommitteeInfo> committeeInfoV;
     private:
         PhaseMessagePtr initIfNeed(ConsensusPhase phase, int baxCount);
-        std::vector<ProposeMsg> proposeMsgList;
-        std::map<int, PhaseMessagePtr> phaseMessageMap; // key = phase + bax_count
+        std::vector<ProposeMsg> m_proposeMsgList;
+        std::map<int, PhaseMessagePtr> m_phaseMessageMap; // key = phase + bax_count
+        uint32_t m_blockNum = 0;
+        int m_voterCountAsProposer = 0;
+        Proof m_proposerProof;
+        std::shared_ptr<AggEchoMsg> m_myAggEchoMsgPtr;
+        std::vector<AggEchoMsg> m_aggEchoMsgV;
+        std::shared_ptr<std::vector<CommitteeInfo>> m_committeeInfoVPtr = nullptr;
+
+        friend class MessageManager;
     };
 
     typedef std::shared_ptr<BlockMessage> BlockMessagePtr;

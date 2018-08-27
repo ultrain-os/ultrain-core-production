@@ -10,19 +10,19 @@
 namespace ultrainio {
     void PhaseMessage::insert(const EchoMsg& echoMsg) {
         chain::block_id_type blockId = echoMsg.blockHeader.id();
-        auto itor = echoMsgSetMap.find(blockId);
+        auto itor = m_echoMsgSetMap.find(blockId);
         Proof proof(echoMsg.proof);
         VoterSystem voterSystem;
         int stakes = voterSystem.getStakes(echoMsg.pk);
         double voterRatio = voterSystem.getVoterRatio();
         int voterCount = voterSystem.count(proof, stakes, voterRatio);
-        if (itor == echoMsgSetMap.end()) {
+        if (itor == m_echoMsgSetMap.end()) {
             EchoMsgSet echoMsgSet;
             echoMsgSet.echoMsgV.push_back(echoMsg);
             echoMsgSet.pkPool.push_back(echoMsg.pk);
             echoMsgSet.blockHeader = echoMsg.blockHeader;
             echoMsgSet.totalVoterCount = voterCount;
-            echoMsgSetMap.insert(std::make_pair(blockId, echoMsgSet));
+            m_echoMsgSetMap.insert(std::make_pair(blockId, echoMsgSet));
         } else {
             itor->second.echoMsgV.push_back(echoMsg);
             itor->second.pkPool.push_back(echoMsg.pk);
@@ -35,11 +35,11 @@ namespace ultrainio {
         std::string previousHash(blockId.data());
         Seed voterSeed(previousHash, blockNum, phase, baxCount);
         PrivateKey privateKey = UranusNode::getInstance()->getPrivateKey();
-        proof = Vrf::vrf(privateKey, voterSeed, Vrf::kVoter);
+        m_proof = Vrf::vrf(privateKey, voterSeed, Vrf::kVoter);
         VoterSystem voterSystem;
         int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getPublicKey()));
         double voterRatio = voterSystem.getVoterRatio();
-        voterCountAsVoter = voterSystem.count(proof, stakes, voterRatio);
+        m_voterCountAsVoter = voterSystem.count(m_proof, stakes, voterRatio);
         //ilog("blockNum = ${blockNum} phase = ${phase} baxCount = ${baxCount} voterCountAsVoter = ${voterCountAsVoter} proof = ${proof}",
                 //("blockNum", blockNum)("phase", static_cast<int>(phase))("baxCount", baxCount)("voterCountAsVoter", voterCountAsVoter)("proof", std::string(proof)));
     }

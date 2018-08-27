@@ -36,7 +36,7 @@ namespace ultrainio {
 
     void MessageManager::insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr) {
         BlockMessagePtr blockMessagePtr = initIfNeed(aggEchoMsgPtr->blockHeader.block_num());
-        blockMessagePtr->myAggEchoMsgPtr = aggEchoMsgPtr;
+        blockMessagePtr->m_myAggEchoMsgPtr = aggEchoMsgPtr;
     }
 
     std::shared_ptr<AggEchoMsg> MessageManager::getMyAggEchoMsg(uint32_t blockNum) {
@@ -44,17 +44,20 @@ namespace ultrainio {
         if (!blockMessagePtr) {
             return nullptr;
         }
-        return blockMessagePtr->myAggEchoMsgPtr;
+        return blockMessagePtr->m_myAggEchoMsgPtr;
     }
 
     void MessageManager::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         ilog("moveToNewStep blockNum = ${blockNum}, phase = ${phase}, baxCount = ${baxCount}",
                 ("blockNum", blockNum)("phase", static_cast<int>(phase))("baxCount", baxCount));
+        BlockMessagePtr blockMessagePtr = nullptr;
         if (BlockMessage::newRound(phase, baxCount)) {
             clearSomeBlockMessage(blockNum);
+
             // TODO(init StakeAccountInfo
+
         }
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
+        blockMessagePtr = initIfNeed(blockNum);
         blockMessagePtr->moveToNewStep(blockNum, phase, baxCount);
     }
 
@@ -65,7 +68,7 @@ namespace ultrainio {
         auto itor = blockMessageMap.find(blockNum);
         if (itor == blockMessageMap.end()) {
             BlockMessagePtr blockMessagePtr = std::make_shared<BlockMessage>();
-            blockMessagePtr->blockNum = blockNum;
+            blockMessagePtr->m_blockNum = blockNum;
             blockMessageMap.insert(make_pair(blockNum, blockMessagePtr));
             return blockMessagePtr;
         }
@@ -82,17 +85,17 @@ namespace ultrainio {
             return kObsolete;
         }
         BlockMessagePtr blockMessagePtr = initIfNeed(aggEchoMsg.blockHeader.block_num());
-        if (blockMessagePtr->myAggEchoMsgPtr && blockMessagePtr->myAggEchoMsgPtr->pk == aggEchoMsg.pk) {
+        if (blockMessagePtr->m_myAggEchoMsgPtr && blockMessagePtr->m_myAggEchoMsgPtr->pk == aggEchoMsg.pk) {
             ilog("loopback AggEchoMsg");
             return kDuplicate;
         }
-        for (auto itor = blockMessagePtr->aggEchoMsgV.begin(); itor != blockMessagePtr->aggEchoMsgV.end(); itor++) {
+        for (auto itor = blockMessagePtr->m_aggEchoMsgV.begin(); itor != blockMessagePtr->m_aggEchoMsgV.end(); itor++) {
             if (itor->pk == aggEchoMsg.pk) {
                 ilog("duplicate AggEchoMsg");
                 return kDuplicate;
             }
         }
-        blockMessagePtr->aggEchoMsgV.push_back(aggEchoMsg);
+        blockMessagePtr->m_aggEchoMsgV.push_back(aggEchoMsg);
         for (int i = 0; i < aggEchoMsg.pkPool.size(); i++) {
             EchoMsg echoMsg;
             echoMsg.blockHeader = aggEchoMsg.blockHeader;
@@ -123,12 +126,12 @@ namespace ultrainio {
 
     Proof MessageManager::getProposerProof(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->proposerProof;
+        return blockMessagePtr->m_proposerProof;
     }
 
     int MessageManager::getProposerVoterCount(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->voterCountAsProposer;
+        return blockMessagePtr->m_voterCountAsProposer;
     }
 
     int MessageManager::getVoterVoterCount(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
