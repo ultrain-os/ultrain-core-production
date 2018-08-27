@@ -46,6 +46,8 @@ namespace ultrainio {
         bool isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount);
 
         bool isProposer(uint32_t blockNum);
+
+        std::shared_ptr<std::vector<CommitteeInfo>> getCommitteeInfoVPtr(uint32_t blockNum);
     private:
         MessageManager() = default;
 

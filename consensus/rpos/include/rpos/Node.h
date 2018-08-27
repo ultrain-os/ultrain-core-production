@@ -41,8 +41,6 @@ namespace ultrainio {
 
         void setGlobalProducingNodeNumber(int32_t);
 
-        int getGlobalProducingNodeNumber() const;
-
         uint32_t getBlockNum() const;
 
         uint32_t getBaxCount() const;
@@ -50,8 +48,6 @@ namespace ultrainio {
         bool getSyncingStatus() const;
 
         void init();
-
-        bool initKeyPair(const std::string& privateKeyHexStr, const std::string& publicKeyHexStr);
 
         void readyToJoin();
 
@@ -122,6 +118,10 @@ namespace ultrainio {
 
         PublicKey getPublicKey() const;
 
+        bool isGenesisLeader(const PublicKey& pk) const;
+
+        int getCommitteeMember();
+
     private:
         explicit UranusNode(boost::asio::io_service &ioservice);
 
@@ -158,8 +158,6 @@ namespace ultrainio {
         bool m_syncFailed;
         bool m_isNonProducingNode = false;
         bool m_isGenesisLeader = false;
-        // 6 seems to be a good number :)
-        int32_t m_globalProducingNodeNumber = 6;
         ConsensusPhase m_phase;
         uint32_t m_baxCount;
         boost::asio::deadline_timer m_timer;

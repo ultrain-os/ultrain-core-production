@@ -8,7 +8,7 @@ namespace ultrainio {
 
     PublicKey::PublicKey(uint8_t* rawKey, size_t len) : m_key(Hex::toHex(rawKey, len)) {}
 
-    bool PublicKey::operator == (const PublicKey& rhs) {
+    bool PublicKey::operator == (const PublicKey& rhs) const {
         return m_key == rhs.m_key;
     }
 

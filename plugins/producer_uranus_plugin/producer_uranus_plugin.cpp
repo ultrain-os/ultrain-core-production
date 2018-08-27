@@ -110,8 +110,6 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       bool     _pause_production                   = false;
       bool     _is_non_producing_node              = false;
 
-      int32_t                                                   _global_producing_node_number;
-
       using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
       std::set<chain::account_name>                             _producers;
@@ -367,8 +365,6 @@ void producer_uranus_plugin::set_program_options(
 
    producer_options.add_options()
          ("is-non-producing-node", boost::program_options::bool_switch()->notifier([this](bool e){my->_is_non_producing_node = e;}), "If this is a non-producing node (listener).")
-         ("global-producing-node-number", bpo::value<int32_t>()->default_value(6),
-          "number of global producing node")
          ("pause-on-startup,x", boost::program_options::bool_switch()->notifier([this](bool p){my->_pause_production = p;}), "Start this node in a state where production is paused")
          ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
@@ -509,7 +505,6 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    // TODO(yufenshen): temp hack.
    //   my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
    my->_max_transaction_time_ms = 200;
-   my->_global_producing_node_number = options.at("global-producing-node-number").as<int32_t>();
 
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
@@ -575,7 +570,6 @@ void producer_uranus_plugin::plugin_startup()
    }
    std::shared_ptr<UranusNode> nodePtr = UranusNode::initAndGetInstance(app().get_io_service());
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
-   nodePtr->setGlobalProducingNodeNumber(my->_global_producing_node_number);
    nodePtr->setGenesisLeaderKeyPair(my->_genesis_leader_pk, my->_genesis_leader_sk);
    nodePtr->setCommitteeKeyPair(my->_my_pk_as_committee, my->_my_sk_as_committee);
 

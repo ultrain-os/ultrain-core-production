@@ -6,6 +6,7 @@
 
 #include <crypto/Ed25519.h>
 #include <rpos/Config.h>
+#include <rpos/MessageManager.h>
 #include <rpos/Node.h>
 #include <rpos/Proof.h>
 
@@ -14,23 +15,57 @@ using std::string;
 
 namespace ultrainio {
     double VoterSystem::getProposerRatio() {
-        int stakeNodeNumber = UranusNode::getInstance()->getGlobalProducingNodeNumber();
-        long totalStake = stakeNodeNumber * Config::DEFAULT_THRESHOLD;
+        long totalStake = getTotalStakes(UranusNode::getInstance()->getBlockNum());
         return Config::PROPOSER_STAKES_NUMBER / totalStake;
     }
 
     double VoterSystem::getVoterRatio() {
-        int stakeNodeNumber = UranusNode::getInstance()->getGlobalProducingNodeNumber();
-        long totalStake = stakeNodeNumber * Config::DEFAULT_THRESHOLD;
+        long totalStake = getTotalStakes(UranusNode::getInstance()->getBlockNum());
         return Config::VOTER_STAKES_NUMBER / totalStake;
     }
+
+    bool VoterSystem::isStillGenesis(uint32_t blockNum) const {
+        std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
+        std::shared_ptr<std::vector<CommitteeInfo>> committeeInfoVPtr = messageManagerPtr->getCommitteeInfoVPtr(blockNum);
+        //TODO(qinxiaofen) still genesis startup
+        if (!committeeInfoVPtr || committeeInfoVPtr->size() < 6) {
+            return true;
+        }
+        return false;
+    }
+
+    long VoterSystem::getTotalStakes(uint32_t blockNum) const {
+        return getCommitteeMember(blockNum) * Config::DEFAULT_THRESHOLD;
+    }
+
     int VoterSystem::getStakes(const std::string &pk) {
-        bool isNonProducingNode = UranusNode::getInstance()->getNonProducingNode();
-        string myPk(UranusNode::getInstance()->getPublicKey());
+        std::shared_ptr<UranusNode> nodePtr = UranusNode::getInstance();
+        bool isNonProducingNode = nodePtr->getNonProducingNode();
+        uint32_t blockNum = nodePtr->getBlockNum();
+        bool isGenesisLeader = nodePtr->isGenesisLeader(PublicKey(pk));
+        string myPk(nodePtr->getPublicKey());
         // (shenyufeng)always be no listener
         if (isNonProducingNode && pk == myPk)
             return 0;
-        return Config::DEFAULT_THRESHOLD;
+        if ((isStillGenesis(blockNum) && isGenesisLeader)
+                || (!isStillGenesis(blockNum) && isCommitteeMember(PublicKey(pk)))) {
+            return Config::DEFAULT_THRESHOLD;
+        }
+        return 0;
+    }
+
+    int VoterSystem::getCommitteeMember(uint32_t blockNum) const {
+        if (isStillGenesis(blockNum)) {
+            return 1; // genesis leader only
+        }
+        std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
+        std::shared_ptr<std::vector<CommitteeInfo>> committeeInfoVPtr = messageManagerPtr->getCommitteeInfoVPtr(blockNum);
+        return committeeInfoVPtr->size();
+    }
+
+    bool VoterSystem::isCommitteeMember(const PublicKey& publicKey) const {
+        // TODO(qinxiaofen) get from Committee member
+        return true;
     }
 
     std::shared_ptr<std::vector<fc::variant>> VoterSystem::getCommitteeInfoList() {

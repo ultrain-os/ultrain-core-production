@@ -18,7 +18,7 @@ namespace ultrainio {
 
         PublicKey&operator = (const PublicKey& rhs) = default;
 
-        bool operator == (const PublicKey& rhs);
+        bool operator == (const PublicKey& rhs) const;
 
         explicit operator std::string() const;
 

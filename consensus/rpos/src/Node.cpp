@@ -69,7 +69,7 @@ namespace ultrainio {
         m_genesisLeaderPk = PublicKey(pk);
         m_genesisLeaderSk = PrivateKey(sk);
         if (m_genesisLeaderSk.isValid() && !PrivateKey::verifyKeyPair(m_publicKey, m_privateKey)) {
-            wlog("verify genesis leader key pair failed. pk : {pk}, sk : {sk}", ("pk", pk)("sk", sk));
+            wlog("verify genesis leader key pair failed. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
             return;
         }
         m_isGenesisLeader = true;
@@ -79,23 +79,12 @@ namespace ultrainio {
         m_publicKey = PublicKey(pk);
         m_privateKey = PrivateKey(sk);
         if (!PrivateKey::verifyKeyPair(m_publicKey, m_privateKey)) {
-            wlog("verify committee key pair failed. pk : {pk}, sk : {sk}", ("pk", pk)("sk", sk));
+            wlog("verify committee key pair failed. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
         }
     }
 
     bool UranusNode::getNonProducingNode() const {
         return m_isNonProducingNode;
-    }
-
-    void UranusNode::setGlobalProducingNodeNumber(int32_t v) {
-        if (v > 0) {
-            ilog("setGlobalProducingNodeNumber ${num}", ("num", v));
-            m_globalProducingNodeNumber = v;
-        }
-    }
-
-    int UranusNode::getGlobalProducingNodeNumber() const {
-        return m_globalProducingNodeNumber;
     }
 
     void UranusNode::reset() {
@@ -123,20 +112,6 @@ namespace ultrainio {
         m_phase = kPhaseInit;
         m_baxCount = 0;
         m_controllerPtr->init();
-    }
-
-    bool UranusNode::initKeyPair(const std::string& privateKeyHexStr, const std::string& publicKeyHexStr) {
-        PublicKey publicKey(publicKeyHexStr);
-        m_privateKey = PrivateKey(privateKeyHexStr, publicKey);
-        if (!m_privateKey.isValid()) {
-            wlog("init private : ${private}, public : ${public} error, and generate new one", ("private", privateKeyHexStr)("public", (publicKeyHexStr)));
-            m_privateKey = PrivateKey::generate();
-            publicKey = m_privateKey.getPublicKey();
-        }
-        if (m_privateKey.isValid()) {
-            return true;
-        }
-        return false;
     }
 
     void UranusNode::readyToJoin() {
@@ -842,5 +817,14 @@ namespace ultrainio {
 
     PublicKey UranusNode::getPublicKey() const {
         return m_privateKey.getPublicKey();
+    }
+
+    bool UranusNode::isGenesisLeader(const PublicKey& pk) const {
+        return pk.isValid() && m_genesisLeaderPk == pk;
+    }
+
+    int UranusNode::getCommitteeMember() {
+        VoterSystem voterSystem;
+        return voterSystem.getCommitteeMember(getBlockNum());
     }
 }

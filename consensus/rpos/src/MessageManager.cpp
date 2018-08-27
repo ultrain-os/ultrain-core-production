@@ -1,5 +1,7 @@
 #include <rpos/MessageManager.h>
 
+#include <ultrainio/chain/exceptions.hpp>
+
 #include <log/Log.h>
 #include <rpos/Node.h>
 #include <rpos/Proof.h>
@@ -54,18 +56,13 @@ namespace ultrainio {
         BlockMessagePtr blockMessagePtr = nullptr;
         if (BlockMessage::newRound(phase, baxCount)) {
             clearSomeBlockMessage(blockNum);
-
-            // TODO(init StakeAccountInfo
-
         }
         blockMessagePtr = initIfNeed(blockNum);
         blockMessagePtr->moveToNewStep(blockNum, phase, baxCount);
     }
 
     BlockMessagePtr MessageManager::initIfNeed(uint32_t blockNum) {
-        if (blockNum < 1) {
-            return nullptr;
-        }
+        ULTRAIN_ASSERT(blockNum > 1, chain::chain_exception, "blockNum should > 1");
         auto itor = blockMessageMap.find(blockNum);
         if (itor == blockMessageMap.end()) {
             BlockMessagePtr blockMessagePtr = std::make_shared<BlockMessage>();
@@ -157,5 +154,10 @@ namespace ultrainio {
                 itor++;
             }
         }
+    }
+
+    std::shared_ptr<std::vector<CommitteeInfo>> MessageManager::getCommitteeInfoVPtr(uint32_t blockNum) {
+        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
+        return blockMessagePtr->m_committeeInfoVPtr;
     }
 }
