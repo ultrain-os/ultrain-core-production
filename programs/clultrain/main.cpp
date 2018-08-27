@@ -2831,12 +2831,12 @@ int main( int argc, char** argv ) {
    auto registerProducer = register_producer_subcommand(system);
    auto unregisterProducer = unregister_producer_subcommand(system);
 
-   auto voteProducer = system->add_subcommand("voteproducer", localized("Vote for a producer"));
-   voteProducer->require_subcommand();
-   auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
-   auto voteProducers = vote_producers_subcommand(voteProducer);
-   auto approveProducer = approve_producer_subcommand(voteProducer);
-   auto unapproveProducer = unapprove_producer_subcommand(voteProducer);
+//   auto voteProducer = system->add_subcommand("voteproducer", localized("Vote for a producer"));
+//   voteProducer->require_subcommand();
+//   auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
+//   auto voteProducers = vote_producers_subcommand(voteProducer);
+//   auto approveProducer = approve_producer_subcommand(voteProducer);
+//   auto unapproveProducer = unapprove_producer_subcommand(voteProducer);
 
    auto listProducers = list_producers_subcommand(system);
 

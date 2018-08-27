@@ -1164,7 +1164,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       if(filter_enabled && !(producer["is_enabled"].as_bool())) {
           continue;
       }
-      ilog("data, ${data}",("data", abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time)));
+      ilog("data, ${data}, json ${json}",("data", abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time))("json", p.json));
       if (p.json)
          result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
       else
