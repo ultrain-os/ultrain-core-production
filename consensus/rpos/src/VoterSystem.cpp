@@ -33,6 +33,10 @@ namespace ultrainio {
         return Config::DEFAULT_THRESHOLD;
     }
 
+    std::shared_ptr<std::vector<CommitteeInfo>> VoterSystem::getCommitteeInfoList() {
+        return nullptr;
+    }
+
     int VoterSystem::count(const Proof& proof, int stakes, double p) {
         double rand = proof.getRand();
         return reverseBinoCdf(rand, stakes, p);

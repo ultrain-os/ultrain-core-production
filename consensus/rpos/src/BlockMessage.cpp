@@ -3,7 +3,6 @@
 #include <crypto/PrivateKey.h>
 #include <rpos/Node.h>
 #include <rpos/Seed.h>
-#include <rpos/StakeAccountInfo.h>
 #include <rpos/VoterSystem.h>
 #include <rpos/Vrf.h>
 

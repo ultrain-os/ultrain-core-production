@@ -103,9 +103,11 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
 
       boost::program_options::variables_map _options;
       std::string _genesis_time = std::string("2018-7-26 11:0:0");
-      std::string _genesis_leader_pk;
-      std::string _genesis_leader_sk;
-      bool     _production_enabled                 = true;
+      bool        _is_genesis_leader                  = false; // whether is genesis leader,
+      std::string _genesis_leader_pk;                       // genesis leader'public key, known by all committee member
+      std::string _genesis_leader_sk;                       // genesis leader'private key, set when it is genesis leader
+      std::string _my_pk_as_committee;                      // public key when register as committee member
+      std::string _my_sk_as_committee;
       bool     _pause_production                   = false;
       bool     _is_non_producing_node              = false;
 
@@ -339,7 +341,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       }
 
       bool production_disabled_by_policy() {
-         return !_production_enabled || _pause_production || (_max_irreversible_block_age_us.count() >= 0 && get_irreversible_block_age() >= _max_irreversible_block_age_us);
+         return _pause_production || (_max_irreversible_block_age_us.count() >= 0 && get_irreversible_block_age() >= _max_irreversible_block_age_us);
       }
 
       enum class start_block_result {
@@ -365,7 +367,6 @@ void producer_uranus_plugin::set_program_options(
    boost::program_options::options_description producer_options;
 
    producer_options.add_options()
-         ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable uranus block production.")
          ("is-non-producing-node", boost::program_options::bool_switch()->notifier([this](bool e){my->_is_non_producing_node = e;}), "If this is a non-producing node (listener).")
          ("global-producing-node-number", bpo::value<int32_t>()->default_value(6),
           "number of global producing node")
@@ -388,8 +389,11 @@ void producer_uranus_plugin::set_program_options(
           "   KULTRAIND:<data>    \tis the URL where kultraind is available and the approptiate wallet(s) are unlocked")
          ("kultraind-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a kultraind provider for signing")
+         ("genesis-leader", boost::program_options::bool_switch()->notifier([this](bool l){my->_is_genesis_leader = l;}))
          ("genesis-leader-pk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_pk = g; }), "geneis leader pk")
          ("genesis-leader-sk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_sk = g; }), "geneis leader sk")
+         ("my_pk_as_committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_pk_as_committee = g; }), "pk as committer member")
+         ("my_sk_as_committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_sk_as_committee = g; }), "sk as committer member")
          ("genesis-time", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_time = g; }), "geneis time")
          ;
    config_file_options.add(producer_options);
@@ -534,52 +538,31 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
 } FC_LOG_AND_RETHROW() }
 
 bool producer_uranus_plugin::handle_message(const EchoMsg& echo) {
-   if(!my->_production_enabled) {
-      return false;
-   }
    return UranusNode::getInstance()->handleMessage(echo);
 }
 
 bool producer_uranus_plugin::handle_message(const ProposeMsg& propose) {
-   if(!my->_production_enabled) {
-      return false;
-   }
    return UranusNode::getInstance()->handleMessage(propose);
 }
 
 bool producer_uranus_plugin::handle_message(string peer_addr, const SyncRequestMessage& msg) {
-   if(!my->_production_enabled) {
-      return false;
-   }
    return UranusNode::getInstance()->handleMessage(peer_addr,msg);
 }
 
 bool producer_uranus_plugin::handle_message(const Block& block, bool last_block) {
-   if(!my->_production_enabled) {
-      return false;
-   }
    return UranusNode::getInstance()->handleMessage(block, last_block);
 }
 
 bool producer_uranus_plugin::handle_message(const string& peer_addr, const ReqLastBlockNumMsg& msg) {
-  if (!my->_production_enabled) {
-    return false;
-  }
   return UranusNode::getInstance()->handleMessage(peer_addr, msg);
 }
 
 bool producer_uranus_plugin::sync_fail() {
-  if (!my->_production_enabled) {
-    return false;
-  }
   return UranusNode::getInstance()->syncFail();
 }
 
 void producer_uranus_plugin::plugin_startup()
 { try {
-   if(!my->_production_enabled) {
-      return;
-   }
    if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end()) {
       _log = fc::get_logger_map()[logger_name];
    }
@@ -609,11 +592,6 @@ void producer_uranus_plugin::plugin_startup()
 } FC_CAPTURE_AND_RETHROW() }
 
 void producer_uranus_plugin::plugin_shutdown() {
-   // uranus
-   if(my->_production_enabled) {
-       UranusNode::getInstance()->cancelTimer();
-   }
-
    my->_accepted_block_connection.reset();
    my->_irreversible_block_connection.reset();
 }

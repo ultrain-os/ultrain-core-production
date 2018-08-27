@@ -5,12 +5,11 @@
 #include <vector>
 
 #include <core/Message.h>
+#include <rpos/CommitteeInfo.h>
 #include <rpos/PhaseMessage.h>
 #include <rpos/Proof.h>
-#include <rpos/StakeAccountInfo.h>
 
 namespace ultrainio {
-    struct StakeAccountInfo;
 
     class BlockMessage {
     public:
@@ -26,7 +25,7 @@ namespace ultrainio {
         Proof proposerProof;
         std::shared_ptr<AggEchoMsg> myAggEchoMsgPtr;
         std::vector<AggEchoMsg> aggEchoMsgV;
-        std::vector<StakeAccountInfo> stakeAccountInfoV;
+        std::vector<CommitteeInfo> committeeInfoV;
     private:
         PhaseMessagePtr initIfNeed(ConsensusPhase phase, int baxCount);
         std::vector<ProposeMsg> proposeMsgList;
