@@ -65,6 +65,14 @@ namespace ultrainio {
         m_isNonProducingNode = v;
     }
 
+    void UranusNode::setGenesisLeaderPk(const std::string& v) {
+        m_genesis_leader_pk = v;
+    }
+
+    void UranusNode::setGenesisLeaderSk(const std::string& v) {
+        m_genesis_leader_sk = v;
+    }
+
     bool UranusNode::getNonProducingNode() const {
         return m_isNonProducingNode;
     }
@@ -82,6 +90,10 @@ namespace ultrainio {
 
     bool UranusNode::startup() {
         ilog("UranusNode starts as producing node: ${b}", ("b", !m_isNonProducingNode));
+        ilog("UranusNode genesis leader pk: ${pk}, sk: ${sk}",
+             ("pk", m_genesis_leader_pk)
+             ("sk", m_genesis_leader_sk));
+
         if (!initKeyPair(std::string(), std::string())) {
             return false;
         }

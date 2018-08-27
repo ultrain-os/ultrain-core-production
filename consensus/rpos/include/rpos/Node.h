@@ -33,6 +33,9 @@ namespace ultrainio {
 
         void setNonProducingNode(bool);
 
+        void setGenesisLeaderPk(const std::string&);
+        void setGenesisLeaderSk(const std::string&);
+
         bool getNonProducingNode() const;
 
         void setGlobalProducingNodeNumber(int32_t);
@@ -155,6 +158,8 @@ namespace ultrainio {
         bool m_syncing;
         bool m_syncFailed;
         bool m_isNonProducingNode = false;
+        std::string m_genesis_leader_pk;
+        std::string m_genesis_leader_sk;
         // 6 seems to be a good number :)
         int32_t m_globalProducingNodeNumber = 6;
         ConsensusPhase m_phase;

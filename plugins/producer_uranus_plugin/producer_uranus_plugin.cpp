@@ -103,6 +103,8 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
 
       boost::program_options::variables_map _options;
       std::string _genesis_time = std::string("2018-7-26 11:0:0");
+      std::string _genesis_leader_pk;
+      std::string _genesis_leader_sk;
       bool     _production_enabled                 = true;
       bool     _pause_production                   = false;
       bool     _is_non_producing_node              = false;
@@ -386,6 +388,8 @@ void producer_uranus_plugin::set_program_options(
           "   KULTRAIND:<data>    \tis the URL where kultraind is available and the approptiate wallet(s) are unlocked")
          ("kultraind-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a kultraind provider for signing")
+         ("genesis-leader-pk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_pk = g; }), "geneis leader pk")
+         ("genesis-leader-sk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_sk = g; }), "geneis leader sk")
          ("genesis-time", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_time = g; }), "geneis time")
          ;
    config_file_options.add(producer_options);
@@ -591,6 +595,8 @@ void producer_uranus_plugin::plugin_startup()
    std::shared_ptr<UranusNode> nodePtr = UranusNode::initAndGetInstance(app().get_io_service());
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
    nodePtr->setGlobalProducingNodeNumber(my->_global_producing_node_number);
+   nodePtr->setGenesisLeaderPk(my->_genesis_leader_pk);
+   nodePtr->setGenesisLeaderSk(my->_genesis_leader_sk);
    if (!nodePtr->startup()) {
       return;
    }
