@@ -117,8 +117,11 @@ namespace ultrainio {
 
         bool isGenesisLeader(const PublicKey& pk) const;
 
+        uint32_t getRoundCount();
+
         int getCommitteeMemberNumber();
 
+        void vote(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount);
     private:
         explicit UranusNode(boost::asio::io_service &ioservice);
 

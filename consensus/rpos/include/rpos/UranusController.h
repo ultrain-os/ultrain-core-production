@@ -148,7 +148,7 @@ namespace ultrainio {
 
         void clearPreRunStatus();
 
-        fc::time_point getFastTimestamp();
+        uint32_t getFastTimestamp();
 
         void resetTimestamp();
 
@@ -200,6 +200,6 @@ namespace ultrainio {
         boost::asio::steady_timer::duration m_syncTaskPeriod{std::chrono::seconds{1}};
         std::unique_ptr<boost::asio::steady_timer> m_syncTaskTimer;
         std::list<SyncTask> m_syncTaskQueue;
-        fc::time_point m_fast_timestamp;
+        uint32_t m_fast_timestamp;
     };
 }

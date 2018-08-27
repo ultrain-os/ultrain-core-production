@@ -279,19 +279,7 @@ namespace ultrainio {
 
         dlog("ba0Process voter.hash = ${hash1}",("hash1", ba0Block.id()));
 
-        if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)) {
-            if (isEmpty(ba0Block)) {
-                elog("ba0Block is empty, and send echo for empty block");
-                sendEchoForEmptyBlock();
-            } else if (m_controllerPtr->verifyBa0Block()) { // not empty, verify
-                EchoMsg echo = MessageBuilder::constructMsg(ba0Block);
-                m_controllerPtr->insert(echo);
-                sendMessage(echo);
-            } else {
-                elog("verify ba0Block failed. And send echo for empty block");
-                sendEchoForEmptyBlock();
-            }
-        }
+        vote(getBlockNum(),kPhaseBA1,0);
 
         dlog("############## ba0 finish blockNum = ${id}, host_name = ${host_name}",
              ("id", getBlockNum())("host_name", boost::asio::ip::host_name()));
@@ -309,6 +297,49 @@ namespace ultrainio {
                 preRunBa0BlockLoop(1);
             }
         }
+    }
+
+    void UranusNode::vote(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount) {
+        const Block* ba0Block = nullptr;
+
+        dlog("vote. blockNum = ${blockNum} phase = ${phase} baxCount = ${cnt}", ("blockNum", blockNum)
+                ("phase",uint32_t(phase))("cnt",baxCount));
+
+        if (MessageManager::getInstance()->isProposer(blockNum) && (kPhaseBA0 == phase)) {
+            ProposeMsg propose;
+            bool ret = m_controllerPtr->initProposeMsg(&propose);
+            ULTRAIN_ASSERT(ret, chain::chain_exception, "Init propose msg failed");
+            dlog("vote.propose.block_hash : ${block_hash}", ("block_hash", propose.block.id()));
+            m_controllerPtr->insert(propose);
+            propose.timestamp = getRoundCount();
+            sendMessage(propose);
+            if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
+                EchoMsg echo = MessageBuilder::constructMsg(propose);
+                m_controllerPtr->insert(echo);
+                echo.timestamp = getRoundCount();
+                dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockHeader.id()));
+                sendMessage(echo);
+            }
+            return;
+        }
+
+        if (MessageManager::getInstance()->isVoter(blockNum, phase, baxCount)) {
+            ba0Block = m_controllerPtr->getBa0Block();
+            if (isEmpty(*ba0Block)) {
+                elog("vote ba0Block is empty, and send echo for empty block");
+                sendEchoForEmptyBlock();
+            } else if (m_controllerPtr->verifyBa0Block()) { // not empty, verify
+                EchoMsg echo = MessageBuilder::constructMsg(*ba0Block);
+                m_controllerPtr->insert(echo);
+                echo.timestamp = getRoundCount();
+                dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockHeader.id()));
+                sendMessage(echo);
+            } else {
+                elog("vote. verify ba0Block failed. And send echo for empty block");
+                sendEchoForEmptyBlock();
+            }
+        }
+        return;
     }
 
     void UranusNode::ba1Process() {
@@ -407,6 +438,7 @@ namespace ultrainio {
                 if (aggEchoMsg) {
                     sendMessage(*aggEchoMsg);
                 }
+                vote(getBlockNum(),kPhaseBA1,0);
             }
 
             baxLoop(getRoundInterval());
@@ -462,20 +494,7 @@ namespace ultrainio {
              ("Voter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
                      ("count",m_baxCount));
 
-        if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount)) {
-            ba0Block = m_controllerPtr->getBa0Block();
-            if (isEmpty(*ba0Block)) {
-                elog("baxLoop ba0Block is empty, and send echo for empty block");
-                sendEchoForEmptyBlock();
-            } else if (m_controllerPtr->verifyBa0Block()) { // not empty, verify
-                EchoMsg echo = MessageBuilder::constructMsg(*ba0Block);
-                m_controllerPtr->insert(echo);
-                sendMessage(echo);
-            } else {
-                elog("kPhaseBAX verify ba0Block failed. And send echo for empty block");
-                sendEchoForEmptyBlock();
-            }
-        }
+        vote(getBlockNum(),kPhaseBAX,m_baxCount);
 
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
@@ -552,10 +571,12 @@ namespace ultrainio {
     }
 
     void UranusNode::sendMessage(const EchoMsg &echo) {
+        //echo.timestamp = getRoundCount();
         app().get_plugin<net_plugin>().broadcast(echo);
     }
 
     void UranusNode::sendMessage(const ProposeMsg &propose) {
+        //propose.timestamp = getRoundCount();
         app().get_plugin<net_plugin>().broadcast(propose);
     }
 
@@ -594,25 +615,8 @@ namespace ultrainio {
         msg_key.phase = m_phase;
         m_controllerPtr->processCache(msg_key);
 
-        if (MessageManager::getInstance()->isProposer(getBlockNum())) {
-            ProposeMsg propose;
-            bool ret = m_controllerPtr->initProposeMsg(&propose);
-            ULTRAIN_ASSERT(ret, chain::chain_exception, "Init propose msg failed");
-            ilog("txs_hash : ${txs_hash}", ("txs_hash", propose.block.id()));
-            m_controllerPtr->insert(propose);
-            sendMessage(propose);
-            if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
-                EchoMsg echo = MessageBuilder::constructMsg(propose);
-                m_controllerPtr->insert(echo);
-                sendMessage(echo);
-            }
-            LOG_INFO << "checkpoint: blockNum:" << getBlockNum() << ";phase:" << m_phase << ";role: Proposer"
-                     << ";host_name:" << boost::asio::ip::host_name() << ";txs_hash: " << propose.block.id()
-                     << std::endl;
-        } else {
-            LOG_INFO << "checkpoint: blockNum:" << getBlockNum() << ";phase:" << m_phase << ";host_name:"
-                     << boost::asio::ip::host_name() << std::endl;
-        }
+        vote(getBlockNum(),kPhaseBA0,0);
+        return;
     }
 
     void UranusNode::join() {
@@ -636,9 +640,11 @@ namespace ultrainio {
         msgkey msg_key;
         signed_block_ptr uranus_block = std::make_shared<chain::signed_block>();
 
+        Block ba0Block = m_controllerPtr->produceTentativeBlock();
+        m_controllerPtr->setBa0Block(ba0Block);
+
         m_phase = kPhaseBA1;
         m_baxCount = 0;
-
         m_controllerPtr->resetEcho();
 
         msg_key.blockNum = getBlockNum();
@@ -660,16 +666,13 @@ namespace ultrainio {
                      ("id", getBlockNum())("hash", uranus_block->id()));
                 m_controllerPtr->produceBlock(uranus_block);
 
-                LOG_INFO << "checkpoint: blockNum:" << getBlockNum() << ";phase:" << m_phase << ";host_name:"
-                         << boost::asio::ip::host_name() << ";block_hash_previous: " << uranus_block->previous
-                         << ";txs_hash: " << uranus_block->id() << std::endl;
-
                 fastBlock(msg_key.blockNum);
             } else {
                 if ((getRoundInterval() == MAX_PHASE_SECONDS) && (isProcessNow())) {
                     //todo process two phase
                     ba1Process();
                 } else {
+                    vote(getBlockNum(),kPhaseBA1,0);
                     ba1Loop(getRoundInterval());
                 }
             }
@@ -683,6 +686,7 @@ namespace ultrainio {
                     //todo process two phase
                     ba1Process();
                 } else {
+                    vote(getBlockNum(),kPhaseBA1,0);
                     ba1Loop(getRoundInterval());
                 }
             }
@@ -716,9 +720,6 @@ namespace ultrainio {
                 m_controllerPtr->produceBlock(uranus_block);
                 dlog("##############finish blockNum = ${id}, hash = ${hash}",
                      ("id", getBlockNum())("hash", uranus_block->id()));
-                LOG_INFO << "checkpoint: blockNum:" << getBlockNum() << ";phase:" << m_phase << ";host_name:"
-                         << boost::asio::ip::host_name() << ";block_hash_previous: " << uranus_block->previous
-                         << ";txs_hash: " << uranus_block->id() << std::endl;
 
                 fastBlock(msg_key.blockNum);
             } else {
@@ -743,11 +744,17 @@ namespace ultrainio {
         dlog("fastBlock begin. blockNum = ${id}", ("id", getBlockNum()));
 
         reset();
-
         m_controllerPtr->resetTimestamp();
-        fastBa0();
 
         msg_key.blockNum = getBlockNum();
+        msg_key.phase = kPhaseBA0;
+        if (m_controllerPtr->findEchoCache(msg_key)) {
+            fastBa0();
+        } else {
+            run();
+            return;
+        }
+
         msg_key.phase = kPhaseBA1;
 
         if (m_controllerPtr->findEchoCache(msg_key)) {
@@ -757,28 +764,32 @@ namespace ultrainio {
                 //todo process two phase
                 ba0Process();
             } else {
+                vote(getBlockNum(),kPhaseBA0,0);
                 ba0Loop(getRoundInterval());
             }
         }
     }
 
     bool UranusNode::isProcessNow() {
-#if 0
-        fc::time_point time_now = fc::time_point::now();
+        dlog("isProcessNow. current timestamp = ${id1}, fast timestamp = ${id2}",
+             ("id1", getRoundCount())("id2",m_controllerPtr->getFastTimestamp()));
 
-        dlog("isProcessNow: timenow = ${time} and block_timestamp = ${timestamp} time2 = ${interval} time2 = ${interval2}",
-             ("time", time_now)("timestamp", m_controllerPtr->getFastTimestamp())("interval", fc::seconds(1))
-                     ("interval2", time_now - m_controllerPtr->getFastTimestamp()));
-
-        if (time_now > m_controllerPtr->getFastTimestamp()) {
-            if ((time_now - m_controllerPtr->getFastTimestamp()) > fc::seconds(1)) {
-                return true;
-            }
+        if ((m_controllerPtr->getFastTimestamp() < getRoundCount()) && (m_controllerPtr->getFastTimestamp() != 0)) {
+            return true;
         }
 
         return false;
-#endif
-        return m_controllerPtr->isProcessNow();
+    }
+
+    uint32_t UranusNode::getRoundCount() {
+        boost::chrono::system_clock::time_point current_time = boost::chrono::system_clock::now();
+        boost::chrono::seconds pass_time_to_genesis
+                = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - GENESIS);
+
+        dlog("getRoundCount. count = ${id}.",
+             ("id", pass_time_to_genesis.count() / MAX_PHASE_SECONDS));
+
+        return pass_time_to_genesis.count() / MAX_PHASE_SECONDS;
     }
 
     uint32_t UranusNode::getRoundInterval() {
@@ -813,6 +824,7 @@ namespace ultrainio {
         dlog("empty block hash : ${hash}", ("hash", block.id()));
         EchoMsg echoMsg = MessageBuilder::constructMsg(block);
         m_controllerPtr->insert(echoMsg);
+        echoMsg.timestamp = getRoundCount();
         sendMessage(echoMsg);
     }
 

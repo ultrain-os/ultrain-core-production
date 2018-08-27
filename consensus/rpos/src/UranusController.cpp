@@ -62,7 +62,7 @@ namespace ultrainio {
                                            m_echoMsgAllPhase() {
         m_syncTaskPeriod = {std::chrono::seconds{1}};
         m_syncTaskTimer.reset(new boost::asio::steady_timer(app().get_io_service()));
-        m_fast_timestamp = fc::time_point::now();
+        m_fast_timestamp = 0;
     }
 
     void UranusController::reset() {
@@ -307,6 +307,7 @@ namespace ultrainio {
                     info.hasSend = true;
                     EchoMsg myEcho = MessageBuilder::constructMsg(echo);
                     insert(myEcho);
+                    myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(myEcho);
                 }
             }
@@ -450,6 +451,10 @@ namespace ultrainio {
             return false;
         }
 
+        if (m_fast_timestamp < propose.timestamp) {
+            m_fast_timestamp = propose.timestamp;
+        }
+
         auto itor = m_proposerMsgMap.find(propose.block.id());
         if (itor == m_proposerMsgMap.end()) {
             if (isMinPropose(propose)) {
@@ -463,6 +468,10 @@ namespace ultrainio {
     bool UranusController::fastHandleMessage(const EchoMsg &echo) {
         if (!isValid(echo)) {
             return false;
+        }
+
+        if (m_fast_timestamp < echo.timestamp) {
+            m_fast_timestamp = echo.timestamp;
         }
 
         auto itor = m_echoMsgMap.find(echo.blockHeader.id());
@@ -498,6 +507,7 @@ namespace ultrainio {
             if (isMinPropose(propose)) {
                 if (MessageManager::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
                     EchoMsg echo = MessageBuilder::constructMsg(propose);
+                    echo.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(echo);
                     insert(echo);
                 }
@@ -952,6 +962,9 @@ namespace ultrainio {
 
     void UranusController::fastProcessCache(const msgkey &msg_key) {
         auto propose_itor = m_cacheProposeMsgMap.find(msg_key);
+
+        resetTimestamp();
+
         if (propose_itor != m_cacheProposeMsgMap.end()) {
             dlog("fastProcessCache. cache propose msg num = ${num}. blockNum = ${id}, phase = ${phase}",
                  ("num", propose_itor->second.size())
@@ -1485,12 +1498,12 @@ namespace ultrainio {
         }
     }
 
-    fc::time_point UranusController::getFastTimestamp() {
+    uint32_t UranusController::getFastTimestamp() {
         return m_fast_timestamp;
     }
 
     void UranusController::resetTimestamp() {
-        m_fast_timestamp = fc::time_point::now();
+        m_fast_timestamp = 0;
     }
 
     void UranusController::clearOldCachedProposeMsg() {
