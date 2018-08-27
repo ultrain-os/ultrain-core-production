@@ -33,7 +33,7 @@ namespace ultrainio {
 
         void setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk);
 
-        void setCommmitteeKeyPair(const std::string& pk, const std::string& sk);
+        void setCommitteeKeyPair(const std::string& pk, const std::string& sk);
 
         void setNonProducingNode(bool);
 

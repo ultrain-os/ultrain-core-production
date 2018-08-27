@@ -75,7 +75,7 @@ namespace ultrainio {
         m_isGenesisLeader = true;
     }
 
-    void UranusNode::setCommmitteeKeyPair(const std::string& pk, const std::string& sk) {
+    void UranusNode::setCommitteeKeyPair(const std::string& pk, const std::string& sk) {
         m_publicKey = PublicKey(pk);
         m_privateKey = PrivateKey(sk);
         if (!PrivateKey::verifyKeyPair(m_publicKey, m_privateKey)) {

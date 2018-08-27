@@ -577,7 +577,7 @@ void producer_uranus_plugin::plugin_startup()
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
    nodePtr->setGlobalProducingNodeNumber(my->_global_producing_node_number);
    nodePtr->setGenesisLeaderKeyPair(my->_genesis_leader_pk, my->_genesis_leader_sk);
-   nodePtr->setCommmitteeKeyPair(my->_my_pk_as_committee, my->_my_sk_as_committee);
+   nodePtr->setCommitteeKeyPair(my->_my_pk_as_committee, my->_my_sk_as_committee);
 
    //ultrainio::UranusNode::GENESIS = tp;
    ultrainio::UranusNode::GENESIS = boost::chrono::system_clock::now() + boost::chrono::seconds(60);
