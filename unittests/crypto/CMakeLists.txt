@@ -1,6 +1,6 @@
-add_executable( crypto_unittest
-        crypto_unittest_main.cpp)
+add_executable( key_test
+        KeyTest.cpp)
 
-target_link_libraries( crypto_unittest ultrainio_rpos )
+target_link_libraries( key_test ultrainio_rpos )
 
-add_test(NAME crypto_unittest COMMAND crypto_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME key_test COMMAND key_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

@@ -16,9 +16,9 @@ namespace ultrainio {
 
         PrivateKey() = default;
         // hex string
-        explicit PrivateKey(const std::string& key, const PublicKey& publicKey = PublicKey());
+        explicit PrivateKey(const std::string& key, const PublicKey& publicKey);
 
-        PrivateKey(uint8_t* rawKey, size_t len, const PublicKey& publicKey = PublicKey());
+        PrivateKey(uint8_t* rawKey, size_t len, const PublicKey& publicKey);
 
         PrivateKey(const PrivateKey& rhs) = default;
 

@@ -67,22 +67,22 @@ namespace ultrainio {
 
     void UranusNode::setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk) {
         m_genesisLeaderPk = PublicKey(pk);
-        m_genesisLeaderSk = PrivateKey(sk);
+        m_genesisLeaderSk = PrivateKey(sk, m_genesisLeaderPk);
         ULTRAIN_ASSERT(m_genesisLeaderPk.isValid(),
                        chain::chain_exception,
                        "should set correct genesis public key");
-        if (m_genesisLeaderSk.isValid() &&
-            PrivateKey::verifyKeyPair(m_publicKey, m_privateKey)) {
-            dlog("verify genesis leader key pair ok. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
+        if (m_genesisLeaderSk.isValid()) {
+            dlog("genesis leader key pair ok. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
+            ULTRAIN_ASSERT(PrivateKey::verifyKeyPair(m_genesisLeaderPk, m_genesisLeaderSk),
+                    chain::chain_exception, "verify genesis leader key pair failed");
         } else {
-            wlog("verify genesis leader key pair failed. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
-            ULTRAIN_ASSERT(false, chain::chain_exception, "verify genesis leader key pair failed");
+            dlog("not genesis leader. verify genesis leader key pair failed. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
         }
     }
 
     void UranusNode::setCommitteeKeyPair(const std::string& pk, const std::string& sk) {
         m_publicKey = PublicKey(pk);
-        m_privateKey = PrivateKey(sk);
+        m_privateKey = PrivateKey(sk, m_publicKey);
         ULTRAIN_ASSERT(PrivateKey::verifyKeyPair(m_publicKey, m_privateKey),
                        chain::chain_exception,
                        "should set correct committee key pair.");

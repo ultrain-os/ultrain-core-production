@@ -21,8 +21,10 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < n; i++) {
         PrivateKey privateKey = PrivateKey::generate();
         PublicKey publicKey = privateKey.getPublicKey();
-        cout << "pri:" << std::string(privateKey) << endl;
-        cout << "pub:" << std::string(publicKey) << endl;
+        std::string hexPri = std::string(privateKey);
+        std::string hexPub = std::string(publicKey);
+        cout << "pri:" << hexPri << endl;
+        cout << "pub:" << hexPub << endl;
         cout << endl;
     }
 
