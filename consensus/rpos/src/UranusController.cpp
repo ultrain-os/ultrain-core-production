@@ -439,7 +439,7 @@ namespace ultrainio {
         std::string previousHash(blockId.data());
         Seed seed(previousHash, propose.block.block_num(), kPhaseBA0, 0);
         if (!Vrf::verify(publicKey, proposerProof, seed, Vrf::kProposer)) {
-            elog("proof verify error. pk : ${pk}", ("pk", propose.block.proposerProof));
+            elog("proof verify error. proof : ${proof}", ("proof", propose.block.proposerProof));
             return false;
         }
         return true;
@@ -893,8 +893,9 @@ namespace ultrainio {
             block.action_mroot = bh.action_mroot;
             block.transactions = pbs->block->transactions;
             block.signature = std::string(Signer::sign<BlockHeader>(block, UranusNode::getInstance()->getSignaturePrivate()));
-            ilog("-------- propose a block, trx num ${num} proposerPk ${proposerPk} block signature ${signature}",
-                    ("num", block.transactions.size())("proposerPk", block.proposerPk)("signature", block.signature));
+            ilog("-------- propose a block, trx num ${num} proposerPk ${proposerPk} block signature ${signature} proof ${proof}",
+                 ("num", block.transactions.size())("proposerPk", block.proposerPk)("signature", block.signature)
+                 ("proof", block.proposerProof));
             /*
               ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${c} ${prv} ${ma} ${mt} ${id}",
               ("t", block.timestamp)

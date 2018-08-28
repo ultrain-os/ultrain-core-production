@@ -56,6 +56,15 @@ accounts = [
     'user.55',
 ]
 
+pk_list = ["b3f88e7694995cf2d46fb9bbe172b1e9d2ae8ea372ec26c01a6603bd415dc64d",
+           "e2e7339522395916f941c49b3d58dfc4c0c61e0e3910fcf568b3c2ce2005e32b",
+           "92f7b32418e79b2a4ba716f6745c361381411f0537376e438b2399486ed0c8dc",
+           "4141e8c7a4780df3cf840ed556d52108b08a3bc2ead12bece6bc06b9d9487eb2",
+           "933c5ceddf3d27af114351112c131f1bb4001a6a6669449365b204441db181a3",
+           "6fadc36ba297d6db53ec0a094c27a32ee266ab17a63cfa149609edfe881c7118",
+           "4ae81777689da3f6c6972effa4857cd32ddd3466fef42cb281babc0198546faa"
+           ]
+
 def jsonArg(a):
     return " '" + json.dumps(a) + "' "
 
@@ -141,8 +150,8 @@ def stepCreateStakedAccounts():
     sleep(15)
 
 def stepRegProducers():
-    for a in accounts:
-        retry(args.clultrain + 'system regproducer %s 45744b94db8ea5f6abf6de7c9225e1cf6158631d82dd079d62fbc57b1237cf7b https://%s.com 0123 ' % (a,a))
+    for i in range(0, 7):
+        retry(args.clultrain + 'system regproducer %s %s https://%s.com 0123 ' % (accounts[i], pk_list[i], accounts[i]))
     sleep(1)
     run(args.clultrain + 'system listproducers')
 

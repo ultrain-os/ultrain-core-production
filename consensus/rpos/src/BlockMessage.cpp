@@ -36,14 +36,16 @@ namespace ultrainio {
         if (newRound(phase, baxCount)) {
             ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
             std::string previousHash(blockId.data());
-            Seed proposerSeed(previousHash, blockNum, phase, baxCount);
-            PrivateKey privateKey = UranusNode::getInstance()->getSignaturePrivate();
-            m_proposerProof = Vrf::vrf(privateKey, proposerSeed, Vrf::kProposer);
             VoterSystem voterSystem;
+            // #### This line has to run first, all the following caculation depends on this line. ###
+            m_committeeInfoVPtr = voterSystem.getCommitteeInfoList();
             int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getSignaturePublic()));
             double proposerRatio = voterSystem.getProposerRatio();
             m_voterCountAsProposer = voterSystem.count(m_proposerProof, stakes, proposerRatio);
-            m_committeeInfoVPtr = voterSystem.getCommitteeInfoList();
+            Seed proposerSeed(previousHash, blockNum, phase, baxCount);
+            PrivateKey privateKey = UranusNode::getInstance()->getSignaturePrivate();
+            m_proposerProof = Vrf::vrf(privateKey, proposerSeed, Vrf::kProposer);
+
             //ilog("blockNum = ${blockNum} voterCountAsProposer = ${voterCountAsProposer} proposerProof = ${proposerProof}",
                     //("blockNum", blockNum)("voterCountAsProposer", voterCountAsProposer)("proposerProof", std::string(proposerProof)));
         }
