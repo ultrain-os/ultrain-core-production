@@ -34,7 +34,6 @@ namespace ultrainio {
     };
 
     struct ProposeMsg {
-        uint32_t timestamp;
         Block block;
     };
 
@@ -42,12 +41,12 @@ namespace ultrainio {
         BlockHeader blockHeader;
         ConsensusPhase phase;
         uint32_t    baxCount;
+        uint32_t    timestamp;
         std::string pk; // hex string
         std::string proof;
     };
 
     struct EchoMsg : public UnsignedEchoMsg {
-        uint32_t timestamp;
         std::string signature; // hex string
     };
 
@@ -67,9 +66,9 @@ namespace ultrainio {
     };
 }
 
-FC_REFLECT( ultrainio::ProposeMsg, (timestamp)(block))
-FC_REFLECT( ultrainio::UnsignedEchoMsg, (blockHeader)(phase)(baxCount)(pk)(proof))
-FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (timestamp)(signature))
+FC_REFLECT( ultrainio::ProposeMsg, (block))
+FC_REFLECT( ultrainio::UnsignedEchoMsg, (blockHeader)(phase)(baxCount)(timestamp)(pk)(proof))
+FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature))
 FC_REFLECT( ultrainio::SyncRequestMessage, (startBlockNum)(endBlockNum) )
 FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
 FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))

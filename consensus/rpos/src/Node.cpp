@@ -310,20 +310,21 @@ namespace ultrainio {
         dlog("vote. blockNum = ${blockNum} phase = ${phase} baxCount = ${cnt}", ("blockNum", blockNum)
                 ("phase",uint32_t(phase))("cnt",baxCount));
 
-        if (MessageManager::getInstance()->isProposer(blockNum) && (kPhaseBA0 == phase)) {
-            ProposeMsg propose;
-            bool ret = m_controllerPtr->initProposeMsg(&propose);
-            ULTRAIN_ASSERT(ret, chain::chain_exception, "Init propose msg failed");
-            dlog("vote.propose.block_hash : ${block_hash}", ("block_hash", propose.block.id()));
-            m_controllerPtr->insert(propose);
-            propose.timestamp = getRoundCount();
-            sendMessage(propose);
-            if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
-                EchoMsg echo = MessageBuilder::constructMsg(propose);
-                m_controllerPtr->insert(echo);
-                echo.timestamp = getRoundCount();
-                dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockHeader.id()));
-                sendMessage(echo);
+        if (kPhaseBA0 == phase) {
+            if (MessageManager::getInstance()->isProposer(blockNum)) {
+                ProposeMsg propose;
+                bool ret = m_controllerPtr->initProposeMsg(&propose);
+                ULTRAIN_ASSERT(ret, chain::chain_exception, "Init propose msg failed");
+                dlog("vote.propose.block_hash : ${block_hash}", ("block_hash", propose.block.id()));
+                m_controllerPtr->insert(propose);
+                sendMessage(propose);
+                if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
+                    EchoMsg echo = MessageBuilder::constructMsg(propose);
+                    m_controllerPtr->insert(echo);
+                    echo.timestamp = getRoundCount();
+                    dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockHeader.id()));
+                    sendMessage(echo);
+                }
             }
             return;
         }

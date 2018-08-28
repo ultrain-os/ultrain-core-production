@@ -451,10 +451,6 @@ namespace ultrainio {
             return false;
         }
 
-        if (m_fast_timestamp < propose.timestamp) {
-            m_fast_timestamp = propose.timestamp;
-        }
-
         auto itor = m_proposerMsgMap.find(propose.block.id());
         if (itor == m_proposerMsgMap.end()) {
             if (isMinPropose(propose)) {
