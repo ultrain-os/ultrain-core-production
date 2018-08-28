@@ -1,5 +1,5 @@
 #pragma once
-
+#include <rpos/CommitteeInfo.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -11,7 +11,7 @@ namespace ultrainio {
     // forward declare
     class PublicKey;
     class Proof;
-    struct get_producers_result;
+    struct CommitteeInfo;
 
     class VoterSystem {
     public:
@@ -20,7 +20,7 @@ namespace ultrainio {
         double getVoterRatio();
         int getCommitteeMember(uint32_t blockNum) const;
         int count(const Proof& proof, int stakes, double p);
-        std::shared_ptr<std::vector<fc::variant>> getCommitteeInfoList();
+        std::shared_ptr<std::vector<CommitteeInfo>> getCommitteeInfoList();
     private:
         bool isCommitteeMember(const PublicKey& publicKey) const;
         bool isStillGenesis(uint32_t blockNum) const;

@@ -1,9 +1,11 @@
 #pragma once
 
+#include <string>
 namespace ultrainio {
-    class CommitteeInfo {
+    struct CommitteeInfo {
         std::string accountName;
         std::string pk;
-        std::string stakesCount;
+        double stakesCount;
     };
 }
+

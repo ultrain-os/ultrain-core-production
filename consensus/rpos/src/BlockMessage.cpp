@@ -44,7 +44,7 @@ namespace ultrainio {
             double proposerRatio = voterSystem.getProposerRatio();
             m_voterCountAsProposer = voterSystem.count(m_proposerProof, stakes, proposerRatio);
             // TODO(qinxiaofen)
-            voterSystem.getCommitteeInfoList();
+            auto vecPtr = voterSystem.getCommitteeInfoList();
             //ilog("blockNum = ${blockNum} voterCountAsProposer = ${voterCountAsProposer} proposerProof = ${proposerProof}",
                     //("blockNum", blockNum)("voterCountAsProposer", voterCountAsProposer)("proposerProof", std::string(proposerProof)));
         }
