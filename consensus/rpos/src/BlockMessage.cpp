@@ -37,14 +37,13 @@ namespace ultrainio {
             ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
             std::string previousHash(blockId.data());
             Seed proposerSeed(previousHash, blockNum, phase, baxCount);
-            PrivateKey privateKey = UranusNode::getInstance()->getPrivateKey();
+            PrivateKey privateKey = UranusNode::getInstance()->getSignaturePrivate();
             m_proposerProof = Vrf::vrf(privateKey, proposerSeed, Vrf::kProposer);
             VoterSystem voterSystem;
-            int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getPublicKey()));
+            int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getSignaturePublic()));
             double proposerRatio = voterSystem.getProposerRatio();
             m_voterCountAsProposer = voterSystem.count(m_proposerProof, stakes, proposerRatio);
-            // TODO(qinxiaofen)
-            auto vecPtr = voterSystem.getCommitteeInfoList();
+            m_committeeInfoVPtr = voterSystem.getCommitteeInfoList();
             //ilog("blockNum = ${blockNum} voterCountAsProposer = ${voterCountAsProposer} proposerProof = ${proposerProof}",
                     //("blockNum", blockNum)("voterCountAsProposer", voterCountAsProposer)("proposerProof", std::string(proposerProof)));
         }

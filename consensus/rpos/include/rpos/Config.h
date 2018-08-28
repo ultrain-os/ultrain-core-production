@@ -7,6 +7,7 @@ namespace ultrainio {
         static constexpr double VOTER_STAKES_NUMBER = 1000.0;
         static constexpr double PROPOSER_STAKES_NUMBER = 20.0;
         static constexpr int DEFAULT_THRESHOLD = 6000;
+        static constexpr int MIN_COMMITTEE_MEMBER_NUMBER = 6;
     };
 
     // TODO(qinxiaofen) should add into Config class

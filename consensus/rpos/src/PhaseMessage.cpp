@@ -34,10 +34,10 @@ namespace ultrainio {
         ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
         std::string previousHash(blockId.data());
         Seed voterSeed(previousHash, blockNum, phase, baxCount);
-        PrivateKey privateKey = UranusNode::getInstance()->getPrivateKey();
+        PrivateKey privateKey = UranusNode::getInstance()->getSignaturePrivate();
         m_proof = Vrf::vrf(privateKey, voterSeed, Vrf::kVoter);
         VoterSystem voterSystem;
-        int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getPublicKey()));
+        int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getSignaturePublic()));
         double voterRatio = voterSystem.getVoterRatio();
         m_voterCountAsVoter = voterSystem.count(m_proof, stakes, voterRatio);
         //ilog("blockNum = ${blockNum} phase = ${phase} baxCount = ${baxCount} voterCountAsVoter = ${voterCountAsVoter} proof = ${proof}",

@@ -68,18 +68,21 @@ namespace ultrainio {
     void UranusNode::setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk) {
         m_genesisLeaderPk = PublicKey(pk);
         m_genesisLeaderSk = PrivateKey(sk);
-        if (m_genesisLeaderSk.isValid() && !PrivateKey::verifyKeyPair(m_publicKey, m_privateKey)) {
-            wlog("verify genesis leader key pair failed. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
+        if (!m_genesisLeaderPk.isValid()) {
+            wlog("should set genesis leader pk");
+            ULTRAIN_ASSERT(false, chain::chain_exception, "should set correct genesis public key");
+        }
+        if (m_genesisLeaderSk.isValid() && m_genesisLeaderPk.isValid() && PrivateKey::verifyKeyPair(m_publicKey, m_privateKey)) {
+            dlog("verify genesis leader key pair ok. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
             return;
         }
-        m_isGenesisLeader = true;
     }
 
     void UranusNode::setCommitteeKeyPair(const std::string& pk, const std::string& sk) {
         m_publicKey = PublicKey(pk);
         m_privateKey = PrivateKey(sk);
         if (!PrivateKey::verifyKeyPair(m_publicKey, m_privateKey)) {
-            wlog("verify committee key pair failed. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
+            ULTRAIN_ASSERT(false, chain::chain_exception, "should set correct committee key pair.");
         }
     }
 
@@ -811,20 +814,32 @@ namespace ultrainio {
         sendMessage(echoMsg);
     }
 
-    PrivateKey UranusNode::getPrivateKey() const {
-        return m_privateKey;
-    }
-
-    PublicKey UranusNode::getPublicKey() const {
-        return m_privateKey.getPublicKey();
-    }
-
     bool UranusNode::isGenesisLeader(const PublicKey& pk) const {
         return pk.isValid() && m_genesisLeaderPk == pk;
     }
 
-    int UranusNode::getCommitteeMember() {
+    int UranusNode::getCommitteeMemberNumber() {
         VoterSystem voterSystem;
-        return voterSystem.getCommitteeMember(getBlockNum());
+        return voterSystem.getCommitteeMemberNumber(getBlockNum());
+    }
+
+    PrivateKey UranusNode::getSignaturePrivate() const {
+        VoterSystem voterSystem;
+        if (voterSystem.isCommitteeMember(m_genesisLeaderPk) && m_genesisLeaderSk.isValid()) {
+            return m_genesisLeaderSk;
+        } else if (voterSystem.isCommitteeMember(m_publicKey)) {
+            return m_privateKey;
+        }
+        return PrivateKey();
+    }
+
+    PublicKey UranusNode::getSignaturePublic() const {
+        VoterSystem voterSystem;
+        if (voterSystem.isCommitteeMember(m_genesisLeaderPk) && m_genesisLeaderSk.isValid()) {
+            return m_genesisLeaderPk;
+        } else if (voterSystem.isCommitteeMember(m_publicKey)) {
+            return m_publicKey;
+        }
+        return PublicKey();
     }
 }

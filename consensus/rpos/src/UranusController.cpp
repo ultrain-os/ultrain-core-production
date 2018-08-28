@@ -226,7 +226,7 @@ namespace ultrainio {
     }
 
     bool UranusController::isBeforeMsg(const EchoMsg &echo) {
-        std::string myPk = std::string(UranusNode::getInstance()->getPublicKey());
+        std::string myPk = std::string(UranusNode::getInstance()->getSignaturePublic());
 
         if (myPk == echo.pk) {
             elog("loopback echo. pk : ${pk}", ("pk", myPk));
@@ -326,7 +326,7 @@ namespace ultrainio {
 
     uint32_t UranusController::isSyncing() {
         uint32_t maxBlockNum = UranusNode::getInstance()->getBlockNum();
-        std::string myPk = std::string(UranusNode::getInstance()->getPublicKey());
+        std::string myPk = std::string(UranusNode::getInstance()->getSignaturePublic());
 
         if (m_cacheEchoMsgMap.empty()) {
             return INVALID_BLOCK_NUM;
@@ -376,7 +376,7 @@ namespace ultrainio {
     }
 
     bool UranusController::isValid(const EchoMsg &echo) {
-        std::string myPk = std::string(UranusNode::getInstance()->getPublicKey());
+        std::string myPk = std::string(UranusNode::getInstance()->getSignaturePublic());
         if (myPk == echo.pk) {
             elog("loopback echo. pk : ${pk}", ("pk", myPk));
             return false;
@@ -415,7 +415,7 @@ namespace ultrainio {
     }
 
     bool UranusController::isValid(const ProposeMsg &propose) {
-        std::string myPk = std::string(UranusNode::getInstance()->getPublicKey());
+        std::string myPk = std::string(UranusNode::getInstance()->getSignaturePublic());
 
         if (myPk == propose.block.proposerPk) {
             elog("loopback propose. pk : ${pk}", ("pk", myPk));
@@ -884,7 +884,7 @@ namespace ultrainio {
             const auto &bh = pbs->header;
             block.timestamp = bh.timestamp;
             block.producer = "ultrainio";
-            block.proposerPk = std::string(UranusNode::getInstance()->getPublicKey());
+            block.proposerPk = std::string(UranusNode::getInstance()->getSignaturePublic());
             block.proposerProof = std::string(MessageManager::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()));
             block.version = 0;
             block.confirmed = 1;
@@ -892,7 +892,7 @@ namespace ultrainio {
             block.transaction_mroot = bh.transaction_mroot;
             block.action_mroot = bh.action_mroot;
             block.transactions = pbs->block->transactions;
-            block.signature = std::string(Signer::sign<BlockHeader>(block, UranusNode::getInstance()->getPrivateKey()));
+            block.signature = std::string(Signer::sign<BlockHeader>(block, UranusNode::getInstance()->getSignaturePrivate()));
             ilog("-------- propose a block, trx num ${num} proposerPk ${proposerPk} block signature ${signature}",
                     ("num", block.transactions.size())("proposerPk", block.proposerPk)("signature", block.signature));
             /*
@@ -1108,7 +1108,7 @@ namespace ultrainio {
     std::shared_ptr<AggEchoMsg> UranusController::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {
         std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
         aggEchoMsgPtr->blockHeader = *blockPtr;
-        aggEchoMsgPtr->pk = std::string(UranusNode::getInstance()->getPublicKey());
+        aggEchoMsgPtr->pk = std::string(UranusNode::getInstance()->getSignaturePublic());
         aggEchoMsgPtr->proof = std::string(MessageManager::getInstance()->getVoterProof(blockPtr->block_num(), kPhaseBA1, 0));
         auto itor = m_echoMsgMap.find(blockPtr->id());
         if (itor == m_echoMsgMap.end()) {
@@ -1119,7 +1119,7 @@ namespace ultrainio {
         aggEchoMsgPtr->proofPool = itor->second.proofPool;
         aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
         aggEchoMsgPtr->baxCount = UranusNode::getInstance()->getBaxCount();
-        aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, UranusNode::getInstance()->getPrivateKey()));
+        aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, UranusNode::getInstance()->getSignaturePrivate()));
         return aggEchoMsgPtr;
     }
 

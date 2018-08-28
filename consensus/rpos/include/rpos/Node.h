@@ -39,8 +39,6 @@ namespace ultrainio {
 
         bool getNonProducingNode() const;
 
-        void setGlobalProducingNodeNumber(int32_t);
-
         uint32_t getBlockNum() const;
 
         uint32_t getBaxCount() const;
@@ -113,14 +111,13 @@ namespace ultrainio {
 
         const std::shared_ptr<UranusController> getController() const;
 
-        // TODO(qinxiaofen) may be not secure
-        PrivateKey getPrivateKey() const;
+        PrivateKey getSignaturePrivate() const;
 
-        PublicKey getPublicKey() const;
+        PublicKey getSignaturePublic() const;
 
         bool isGenesisLeader(const PublicKey& pk) const;
 
-        int getCommitteeMember();
+        int getCommitteeMemberNumber();
 
     private:
         explicit UranusNode(boost::asio::io_service &ioservice);
@@ -157,7 +154,6 @@ namespace ultrainio {
         bool m_syncing;
         bool m_syncFailed;
         bool m_isNonProducingNode = false;
-        bool m_isGenesisLeader = false;
         ConsensusPhase m_phase;
         uint32_t m_baxCount;
         boost::asio::deadline_timer m_timer;

@@ -10,9 +10,9 @@ namespace ultrainio {
         echo.blockHeader = block;
         echo.phase = UranusNode::getInstance()->getPhase();
         echo.baxCount = UranusNode::getInstance()->getBaxCount();
-        echo.pk = std::string(UranusNode::getInstance()->getPublicKey());
+        echo.pk = std::string(UranusNode::getInstance()->getSignaturePublic());
         echo.proof = std::string(MessageManager::getInstance()->getVoterProof(block.block_num(), echo.phase, echo.baxCount));
-        echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, UranusNode::getInstance()->getPrivateKey()));
+        echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, UranusNode::getInstance()->getSignaturePrivate()));
         return echo;
     }
 
@@ -21,17 +21,17 @@ namespace ultrainio {
         echo.blockHeader = propose.block;
         echo.phase = UranusNode::getInstance()->getPhase();
         echo.baxCount = UranusNode::getInstance()->getBaxCount();
-        echo.pk = std::string(UranusNode::getInstance()->getPublicKey());
+        echo.pk = std::string(UranusNode::getInstance()->getSignaturePublic());
         echo.proof = std::string(MessageManager::getInstance()->getVoterProof(propose.block.block_num(), echo.phase, echo.baxCount));
-        echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, UranusNode::getInstance()->getPrivateKey()));
+        echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, UranusNode::getInstance()->getSignaturePrivate()));
         return echo;
     }
 
     EchoMsg MessageBuilder::constructMsg(const EchoMsg &echo) {
         EchoMsg myEcho = echo;
-        myEcho.pk = std::string(UranusNode::getInstance()->getPublicKey());
+        myEcho.pk = std::string(UranusNode::getInstance()->getSignaturePublic());
         myEcho.proof = std::string(MessageManager::getInstance()->getVoterProof(echo.blockHeader.block_num(), echo.phase, echo.baxCount));
-        myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, UranusNode::getInstance()->getPrivateKey()));
+        myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, UranusNode::getInstance()->getSignaturePrivate()));
         return myEcho;
     }
 }

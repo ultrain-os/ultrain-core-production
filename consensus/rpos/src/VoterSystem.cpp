@@ -28,33 +28,30 @@ namespace ultrainio {
         std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
         std::shared_ptr<std::vector<CommitteeInfo>> committeeInfoVPtr = messageManagerPtr->getCommitteeInfoVPtr(blockNum);
         //TODO(qinxiaofen) still genesis startup
-        if (!committeeInfoVPtr || committeeInfoVPtr->size() < 6) {
+        if (!committeeInfoVPtr || committeeInfoVPtr->size() < Config::MIN_COMMITTEE_MEMBER_NUMBER) {
             return true;
         }
         return false;
     }
 
     long VoterSystem::getTotalStakes(uint32_t blockNum) const {
-        return getCommitteeMember(blockNum) * Config::DEFAULT_THRESHOLD;
+        return getCommitteeMemberNumber(blockNum) * Config::DEFAULT_THRESHOLD;
     }
 
     int VoterSystem::getStakes(const std::string &pk) {
         std::shared_ptr<UranusNode> nodePtr = UranusNode::getInstance();
         bool isNonProducingNode = nodePtr->getNonProducingNode();
-        uint32_t blockNum = nodePtr->getBlockNum();
-        bool isGenesisLeader = nodePtr->isGenesisLeader(PublicKey(pk));
-        string myPk(nodePtr->getPublicKey());
+        string myPk(nodePtr->getSignaturePublic());
         // (shenyufeng)always be no listener
         if (isNonProducingNode && pk == myPk)
             return 0;
-        if ((isStillGenesis(blockNum) && isGenesisLeader)
-                || (!isStillGenesis(blockNum) && isCommitteeMember(PublicKey(pk)))) {
+        if (isCommitteeMember(PublicKey(pk))) {
             return Config::DEFAULT_THRESHOLD;
         }
         return 0;
     }
 
-    int VoterSystem::getCommitteeMember(uint32_t blockNum) const {
+    int VoterSystem::getCommitteeMemberNumber(uint32_t blockNum) const {
         if (isStillGenesis(blockNum)) {
             return 1; // genesis leader only
         }
@@ -64,7 +61,22 @@ namespace ultrainio {
     }
 
     bool VoterSystem::isCommitteeMember(const PublicKey& publicKey) const {
-        // TODO(qinxiaofen) get from Committee member
+        std::shared_ptr<UranusNode> nodePtr = UranusNode::getInstance();
+        uint32_t blockNum = nodePtr->getBlockNum();
+
+        if (isStillGenesis(blockNum) && nodePtr->isGenesisLeader(publicKey)) {
+            return true;
+        } else if (!isStillGenesis(blockNum)) {
+            std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
+            std::shared_ptr<std::vector<CommitteeInfo>> committeeInfoVPtr = messageManagerPtr->getCommitteeInfoVPtr(blockNum);
+            if (committeeInfoVPtr) {
+                for (auto& v : *committeeInfoVPtr) {
+                    if (PublicKey(v.pk) == publicKey) {
+                        return true;
+                    }
+                }
+            }
+        }
         return true;
     }
 

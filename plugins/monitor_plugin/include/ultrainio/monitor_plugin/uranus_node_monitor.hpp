@@ -39,7 +39,7 @@ namespace ultrainio {
             tempNodeInfo.syncing = pNode->m_syncing;
             tempNodeInfo.syncFailed = pNode->m_syncFailed;
             tempNodeInfo.isNonProducingNode = pNode->m_isNonProducingNode;
-            tempNodeInfo.globalProducingNodeNumber = pNode->getCommitteeMember();
+            tempNodeInfo.globalProducingNodeNumber = pNode->getCommitteeMemberNumber();
             tempNodeInfo.phase = static_cast<int32_t>(pNode->m_phase);
             tempNodeInfo.baxCount = pNode->m_baxCount;
             UranusControllerMonitor controllerMonitor(pNode->getController());
