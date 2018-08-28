@@ -23,7 +23,8 @@ namespace ultrainio {
         int count(const Proof& proof, int stakes, double p);
         std::shared_ptr<std::vector<CommitteeInfo>> getCommitteeInfoList();
     private:
-        bool isStillGenesis(uint32_t blockNum) const;
+        bool inCommitteeMemberList(uint32_t blockNum, const PublicKey& publicKey) const;
+        bool isGenesisPeriod(uint32_t blockNum) const;
         long getTotalStakes(uint32_t blockNum) const;
         int reverseBinoCdf(double rand, int stake, double p);
     };

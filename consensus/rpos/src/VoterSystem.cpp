@@ -24,10 +24,10 @@ namespace ultrainio {
         return Config::VOTER_STAKES_NUMBER / totalStake;
     }
 
-    bool VoterSystem::isStillGenesis(uint32_t blockNum) const {
+    bool VoterSystem::isGenesisPeriod(uint32_t blockNum) const {
         std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
         std::shared_ptr<std::vector<CommitteeInfo>> committeeInfoVPtr = messageManagerPtr->getCommitteeInfoVPtr(blockNum);
-        //TODO(qinxiaofen) still genesis startup
+        //TODO(qinxiaofen) still genesis startup, maybe also compare timestamp
         if (!committeeInfoVPtr || committeeInfoVPtr->size() < Config::MIN_COMMITTEE_MEMBER_NUMBER) {
             return true;
         }
@@ -52,7 +52,7 @@ namespace ultrainio {
     }
 
     int VoterSystem::getCommitteeMemberNumber(uint32_t blockNum) const {
-        if (isStillGenesis(blockNum)) {
+        if (isGenesisPeriod(blockNum)) {
             return 1; // genesis leader only
         }
         std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
@@ -64,20 +64,25 @@ namespace ultrainio {
         std::shared_ptr<UranusNode> nodePtr = UranusNode::getInstance();
         uint32_t blockNum = nodePtr->getBlockNum();
 
-        if (isStillGenesis(blockNum) && nodePtr->isGenesisLeader(publicKey)) {
+        if (isGenesisPeriod(blockNum) && nodePtr->isGenesisLeader(publicKey)) {
             return true;
-        } else if (!isStillGenesis(blockNum)) {
-            std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
-            std::shared_ptr<std::vector<CommitteeInfo>> committeeInfoVPtr = messageManagerPtr->getCommitteeInfoVPtr(blockNum);
-            if (committeeInfoVPtr) {
-                for (auto& v : *committeeInfoVPtr) {
-                    if (PublicKey(v.pk) == publicKey) {
-                        return true;
-                    }
+        } else if (!isGenesisPeriod(blockNum) && inCommitteeMemberList(blockNum, publicKey)) {
+            return true;
+        }
+        return false;
+    }
+
+    bool VoterSystem::inCommitteeMemberList(uint32_t blockNum, const PublicKey& publicKey) const {
+        std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
+        std::shared_ptr<std::vector<CommitteeInfo>> committeeInfoVPtr = messageManagerPtr->getCommitteeInfoVPtr(blockNum);
+        if (committeeInfoVPtr) {
+            for (auto& v : *committeeInfoVPtr) {
+                if (PublicKey(v.pk) == publicKey) {
+                    return true;
                 }
             }
         }
-        return true;
+        return false;
     }
 
     std::shared_ptr<std::vector<CommitteeInfo>> VoterSystem::getCommitteeInfoList() {

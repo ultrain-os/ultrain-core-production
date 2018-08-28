@@ -12,5 +12,5 @@ add_library( ultrainio_rpos
         src/Vrf.cpp
         ${HEADERS} )
 
-target_link_libraries( ultrainio_rpos fc appbase net_plugin ultrainio_core ultrainio_crypto ultrainio_log )
+target_link_libraries( ultrainio_rpos appbase net_plugin ultrainio_core ultrainio_crypto ultrainio_log )
 target_include_directories( ultrainio_rpos PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
