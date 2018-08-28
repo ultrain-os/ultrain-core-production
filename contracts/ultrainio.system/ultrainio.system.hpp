@@ -64,7 +64,7 @@ namespace ultrainiosystem {
 
    struct producer_info {
       account_name          owner;
-      double                total_votes = 0;
+      int64_t               total_votes = 0;
       std::string           producer_key; /// a packed public key object
       bool                  is_active = true;
       bool                  is_enabled = false;
@@ -219,6 +219,7 @@ namespace ultrainiosystem {
          void bidname( account_name bidder, account_name newname, asset bid );
       private:
          void update_elected_producers( block_timestamp timestamp );
+         inline void update_activated_stake(int64_t stake);
 
          // Implementation details:
 

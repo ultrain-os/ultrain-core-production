@@ -5,7 +5,7 @@ namespace ultrainio {
     struct CommitteeInfo {
         std::string accountName;
         std::string pk;
-        double stakesCount;
+        int64_t stakesCount;
     };
 }
 

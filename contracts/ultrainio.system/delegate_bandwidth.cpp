@@ -369,10 +369,10 @@ namespace ultrainiosystem {
                       });
               if(enabled) {
                   if(!last_state) {
-                    _gstate.total_activated_stake+=it->total_votes;
+                    update_activated_stake(it->total_votes);
                   }
                   else {
-                    _gstate.total_activated_stake+=total_update.amount;
+                    update_activated_stake(total_update.amount);
                   }
               }
           }

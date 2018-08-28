@@ -98,7 +98,7 @@ namespace ultrainio {
                 for( const auto& r : result.rows ) {
                     cinfo.accountName = r["owner"].as_string();
                     cinfo.pk = r["producer_key"].as_string();
-                    cinfo.stakesCount = r["total_votes"].as_double();
+                    cinfo.stakesCount = r["total_votes"].as_int64();
                     ilog("#########################token ${token}, pk ${pk}", ("token", r)("pk", r["owner"]));
                     vecPtr->push_back(cinfo);
                 }

@@ -1072,16 +1072,16 @@ struct list_producers_subcommand {
             std::cout << "No producers found" << std::endl;
             return;
          }
-         auto weight = result.total_producer_vote_weight;
+         auto weight = result.thresh_activated_stake_time;
          if ( !weight )
             weight = 1;
          printf("%-13s %-54s %-59s %-15s %s\n", "Producer", "Producer key", "Url", "Scaled votes", "is_enabled");
          for ( auto& row : result.rows )
-            printf("%-13.13s %-54.54s %-59.59s %15.4f %u\n",
+            printf("%-13.13s %-54.54s %-59.59s %15lld %u\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
-                   row["total_votes"].as_double() / weight,
+                   row["total_votes"].as_int64(),
                    row["is_enabled"].as_bool());
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;

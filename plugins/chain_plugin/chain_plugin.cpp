@@ -1169,8 +1169,10 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       else
          result.rows.emplace_back(fc::variant(data));
    }
+   auto test = get_global_row(d, abi, abis, abi_serializer_max_time);
+   ilog("global ${gl}", ("gl", test));
 
-   result.total_producer_vote_weight = get_global_row(d, abi, abis, abi_serializer_max_time)["total_producer_vote_weight"].as_double();
+   result.thresh_activated_stake_time = get_global_row(d, abi, abis, abi_serializer_max_time)["thresh_activated_stake_time"].as_double();
    return result;
 }
 
