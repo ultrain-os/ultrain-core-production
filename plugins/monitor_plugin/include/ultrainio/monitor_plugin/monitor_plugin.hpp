@@ -20,11 +20,10 @@ namespace ultrainio {
 namespace monitor_apis {
 
 class monitor_only {
-   monitor_const_ptr monitor;
    public:
-      monitor_only(monitor_const_ptr&& _monitor)
-      :monitor(_monitor) {}
+      monitor_only() = default;
 
+      // server response to clultrain
       struct monitor_node_params {};
 
       typedef UranusNodeInfo  monitor_node_result;
@@ -66,8 +65,14 @@ class monitor_only {
 
       monitor_echo_ap_cache_result monitor_echo_ap_cache(const monitor_echo_ap_cache_params& params) const;
 
+      //client request to monitor central server
+      periodic_reort_data getPeriodicReortData();
+
    private:
+      
       const std::shared_ptr<UranusNode>  getNodePtr() const;
+
+      std::shared_ptr<UranusNodeMonitor> m_nodeMonitor;
 };
 }  //namespace monitor_apis
 
@@ -83,13 +88,12 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   monitor_apis::monitor_only  get_monitor_only_api()const { return monitor_apis::monitor_only(monitor_const_ptr(my)); }
+   monitor_apis::monitor_only  get_monitor_only_api()const;
 private:
    monitor_ptr my;
 };
 
 } ///namespace ultrainio
-
 
 FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_node_params, )
 FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_node_result, (ready)(connected)(syncing)(syncFailed)

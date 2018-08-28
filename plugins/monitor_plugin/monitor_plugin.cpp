@@ -6,41 +6,153 @@
 #include <fc/exception/exception.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 
+#include <boost/asio/ip/tcp.hpp>
+#include <fc/variant.hpp>
+#include <fc/io/json.hpp>
+#include "httpc.hpp"
+
+using namespace ultrainio::client::http;
+
 namespace ultrainio {
    static appbase::abstract_plugin& _monitor_plugin = app().register_plugin<monitor_plugin>();
 
+   using boost::asio::ip::tcp;
+
+
+ultrainio::client::http::http_context context;
+
+template<typename T>
+fc::variant call( const std::string& url,
+                  const std::string& path,
+                  const T& v ) {
+   try {
+       vector<string> headers; //pass an empty header vector
+       auto sp = std::make_unique<ultrainio::client::http::connection_param>(context, parse_url(url) + path,  false, headers);
+       return ultrainio::client::http::do_http_call( *sp, fc::variant(v), false, false );
+   }
+   catch(client::http::connection_exception& e) {
+       std::cerr << e.to_detail_string() << std::endl;
+       return fc::json::from_string("{\"exception\":\"Connection refused\"}");
+   }
+   catch(boost::system::system_error& e) {
+       std::cerr << e.what() << std::endl;
+       return fc::json::from_string("{\"exception\":\" system error\"}");
+   }
+   catch (...) {
+       std::cerr << "Exception happen." << std::endl;
+       return fc::json::from_string("{\"exception\":\" unknown\"}");
+   }
+}
+
+
 class monitor_plugin_impl {
-   public:
+  public:
 
-   monitor_plugin_impl() = default;
-   ~monitor_plugin_impl() = default;
+    monitor_plugin_impl();
+    ~monitor_plugin_impl() = default;
 
-   producer_uranus_plugin* producer_plug = nullptr;
+    void startMonitorTaskTimer();
+
+    tcp::endpoint  self_endpoint; // same as p2p-listen-endpoint in net plugin
+    std::string    monitor_central_server;
+    std::string    call_path;
+    bool           needReportTask = true;
+    uint32_t       reportInterval;
+
+    monitor_apis::monitor_only m_monitorHandler;
+
+  private:
+    void processReportTask();
+
+    std::unique_ptr<boost::asio::steady_timer> m_reportTaskTimer;
 };
 
+monitor_plugin_impl::monitor_plugin_impl() {
+    m_reportTaskTimer.reset(new boost::asio::steady_timer(app().get_io_service()));
+}
+
+void monitor_plugin_impl::startMonitorTaskTimer() {
+    if(!needReportTask)
+        return;
+        
+    boost::asio::steady_timer::duration reportTaskPeriod = std::chrono::seconds(reportInterval);
+    m_reportTaskTimer->expires_from_now(reportTaskPeriod);
+    m_reportTaskTimer->async_wait([this](boost::system::error_code ec) {
+        if (ec.value() == boost::asio::error::operation_aborted) {
+            ilog("report task timer be canceled.");
+        } else {
+            processReportTask();
+            startMonitorTaskTimer();
+        }
+    });
+}
+
+void monitor_plugin_impl::processReportTask() {
+  try{
+    periodic_reort_data rst = m_monitorHandler.getPeriodicReortData();
+    rst.nodeIp = self_endpoint.address().to_v4().to_string();
+    auto rsp = call(monitor_central_server, call_path, rst);
+  }
+  catch(chain::node_not_found_exception& e) {
+    //auto exceptionInfo = std::string("exception happened: node not initialized.");
+    //call(monitor_central_server, call_path, exceptionInfo);
+  }
+}
+
 monitor_plugin::monitor_plugin():my(new monitor_plugin_impl()){}
-monitor_plugin::~monitor_plugin(){}
+monitor_plugin::~monitor_plugin() = default;
 
 void monitor_plugin::set_program_options(options_description&, options_description& cfg) {
-   //cfg.add_options()
-   //      ("option-name", bpo::value<string>()->default_value("default value"),
-   //       "Option Description");
+    cfg.add_options()
+         ( "monitor-server-endpoint", bpo::value<string>()->default_value("http://127.0.0.1:8078"), 
+           "The actual host:port used to monitor central server")
+         ( "periodic-report", bpo::value<bool>()->default_value(true),
+           "True to enable the periodic report to central server.")
+         ( "report-interval", bpo::value<int>()->default_value(12),
+           "The interval time (seconds) of the periodic report to monitor central server");
 }
 
 void monitor_plugin::plugin_initialize(const variables_map& options) {
-   if(options.count("option-name")) {
-      // Handle the option
-   }
+    try{
+        if( options.count( "monitor-server-endpoint" )) {
+            my->monitor_central_server = options.at( "monitor-server-endpoint" ).as<string>();
+        }
 
-   my->producer_plug = app().find_plugin<producer_uranus_plugin>();
+        if( options.count( "p2p-server-address" )) {
+            auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
+            std::string self_address = options.at( "mp2p-server-address" ).as<string>();
+            
+            auto host = self_address.substr( 0, self_address.find( ':' ));
+            auto port = self_address.substr( host.size() + 1, self_address.size());
+            //idump((host)( port ));
+            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
+            // Note: need to add support for IPv6 too?
+
+            my->self_endpoint = *resolver->resolve( query );
+        }
+
+        my->needReportTask = options.at( "periodic-report" ).as<bool>();
+
+        my->reportInterval = options.at( "report-interval" ).as<int>();
+
+    }FC_LOG_AND_RETHROW()
+
+    my->call_path = "/status/info";
+
+   context = ultrainio::client::http::create_http_context();
 }
 
 void monitor_plugin::plugin_startup() {
    // Make the magic happen
+   my->startMonitorTaskTimer();
 }
 
 void monitor_plugin::plugin_shutdown() {
    // OK, that's enough magic
+}
+
+monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const { 
+    return my->m_monitorHandler;
 }
 
    namespace monitor_apis {
@@ -86,5 +198,15 @@ void monitor_plugin::plugin_shutdown() {
         UranusControllerMonitor controllerMonitor(nodePtr->getController());
         return {controllerMonitor.findEchoApMsgByKey(params)};
      }
-   }
+
+     periodic_reort_data monitor_only::getPeriodicReortData() {
+        if(nullptr == m_nodeMonitor) {
+            auto nodePtr = getNodePtr();
+            m_nodeMonitor = std::make_shared<UranusNodeMonitor>(nodePtr);
+            m_nodeMonitor->setCallbackInNode();
+        }
+        
+        return m_nodeMonitor->getReortData();
+     }
+   } //namespace monitor_apis 
 } ///namespace ultrainio

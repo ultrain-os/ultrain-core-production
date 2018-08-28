@@ -21,6 +21,9 @@
 namespace ultrainio {
     class UranusController;
 
+    // used for monitor to record block producing time
+    typedef std::function<void ()> monitorCallback;
+
     class UranusNode : public std::enable_shared_from_this<UranusNode> {
     public:
         static const int MAX_ROUND_SECONDS;
@@ -167,5 +170,7 @@ namespace ultrainio {
         PublicKey m_publicKey;
         PrivateKey m_privateKey;
         friend class UranusNodeMonitor;
+        monitorCallback ba0Callback = nullptr;
+        monitorCallback ba1Callback = nullptr;
     };
 }

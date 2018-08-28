@@ -3,17 +3,18 @@
 #include "uranus_controller_monitor.hpp"
 
 #include <rpos/Node.h>
+#include <boost/date_time/posix_time/posix_time.hpp> 
 
 namespace ultrainio {
 
-    struct UranusNodeInfo{
-        bool ready;
-        bool connected;
-        bool syncing;
-        bool syncFailed;
-        bool isNonProducingNode;
-        int32_t globalProducingNodeNumber;
-        int32_t phase;
+    struct UranusNodeInfo {
+        bool     ready;
+        bool     connected;
+        bool     syncing;
+        bool     syncFailed;
+        bool     isNonProducingNode;
+        int32_t  globalProducingNodeNumber;
+        int32_t  phase;
         uint32_t baxCount;
         uint32_t proposeMsgNum;
         uint32_t echoMsgnum;
@@ -22,16 +23,38 @@ namespace ultrainio {
         uint32_t allPhaseEchoMsgNum;
     };
 
+    struct periodic_reort_data {
+        std::string nodeIp;
+        uint32_t    blockNum;
+        std::string phase;
+        uint32_t    baxCount;
+        bool        syncing;
+        bool        syncFailed;
+        bool        connected;
+        bool        ready;
+        std::string blockHash;
+        std::string previousBlockHash;
+        std::string ba0BlockTime;
+        std::string ba1BlockTime; 
+    };
+
+    
+
     class UranusNodeMonitor
     {
     public:
-        UranusNodeMonitor(std::weak_ptr<UranusNode> pNode):m_pNode(pNode) {}
+        UranusNodeMonitor(std::weak_ptr<UranusNode> pNode):m_pNode(pNode) {
+            phaseStr[0] = "kPhaseInit";
+            phaseStr[1] = "kPhaseBA0";
+            phaseStr[2] = "kPhaseBA1";
+            phaseStr[3] = "kPhaseBAX";
+        }
 
         ~UranusNodeMonitor() = default;
         UranusNodeMonitor(const UranusNodeMonitor& ) = delete;
         const UranusNodeMonitor& operator=(const UranusNodeMonitor&) = delete;
        
-        UranusNodeInfo getNodeInfo() const{
+        UranusNodeInfo getNodeInfo() const {
             std::shared_ptr<UranusNode> pNode = m_pNode.lock(); 
             UranusNodeInfo tempNodeInfo;
             tempNodeInfo.ready = pNode->m_ready;
@@ -48,7 +71,62 @@ namespace ultrainio {
             return tempNodeInfo;
         }
 
+        periodic_reort_data getReortData() const {
+            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            periodic_reort_data reportData;
+            reportData.phase             = phaseStr[static_cast<int32_t>(pNode->m_phase)];
+            reportData.baxCount          = pNode->m_baxCount;
+            reportData.syncing           = pNode->m_syncing;
+            reportData.syncFailed        = pNode->m_syncFailed;
+            reportData.connected         = pNode->m_connected;
+            reportData.ready             = pNode->m_ready;
+
+            const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
+            reportData.blockNum          = chain.head_block_num();
+            reportData.blockHash         = chain.head_block_id().str();
+            reportData.previousBlockHash = chain.head_block_state()->prev().str();
+            reportData.ba0BlockTime      = m_ba0BlockTime;
+            reportData.ba1BlockTime      = m_ba1BlockTime;
+
+            return reportData;
+        }
+
+        void setCallbackInNode() {
+            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            pNode->ba0Callback = std::bind(&UranusNodeMonitor::ba0BlockProducingTime, this);
+            pNode->ba1Callback = std::bind(&UranusNodeMonitor::ba1BlockProducingTime, this);
+        }
+
+        void ba0BlockProducingTime() {
+            m_ba0BlockTime = boost::posix_time::to_iso_string(boost::posix_time::second_clock::local_time());
+
+            auto pos = m_ba0BlockTime.find('T');  
+            m_ba0BlockTime.replace(pos, 1, std::string(" "));  
+            m_ba0BlockTime.replace(pos + 3, 0, std::string(":"));  
+            m_ba0BlockTime.replace(pos + 6, 0, std::string(":"));
+            m_ba0BlockTime.replace(pos - 2, 0, std::string("-"));
+            m_ba0BlockTime.replace(pos - 4, 0, std::string("-"));
+        }
+
+        void ba1BlockProducingTime() {
+            m_ba1BlockTime = boost::posix_time::to_iso_string(boost::posix_time::second_clock::local_time());
+
+            auto pos = m_ba1BlockTime.find('T');  
+            m_ba1BlockTime.replace(pos, 1, std::string(" "));  
+            m_ba1BlockTime.replace(pos + 3, 0, std::string(":"));
+            m_ba1BlockTime.replace(pos + 6, 0, std::string(":"));
+            m_ba1BlockTime.replace(pos - 2, 0, std::string("-"));
+            m_ba1BlockTime.replace(pos - 4, 0, std::string("-"));
+        }
+
     private:
         std::weak_ptr<UranusNode> m_pNode;
+        std::string phaseStr[4];
+        std::string m_ba0BlockTime;
+        std::string m_ba1BlockTime;
     };
 }
+
+
+FC_REFLECT( ultrainio::periodic_reort_data, (nodeIp)(blockNum)(phase)(baxCount)(syncing)(syncFailed)(connected)(ready)
+                                            (blockHash)(previousBlockHash)(ba0BlockTime)(ba1BlockTime) )

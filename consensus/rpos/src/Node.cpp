@@ -252,6 +252,11 @@ namespace ultrainio {
 
         //to_do hash error process
         Block ba0Block = m_controllerPtr->produceTentativeBlock();
+        //monitor begin, record ba0 block producing time
+        if(ba0Callback != nullptr) {
+            ba0Callback();
+        }
+        //monitor end
         m_controllerPtr->setBa0Block(ba0Block);
         if ((!isBlank(ba0Block))
             && (ba0Block.previous != m_controllerPtr->getPreviousBlockhash())) {
@@ -346,6 +351,11 @@ namespace ultrainio {
         // produce block
         m_phase = kPhaseInit;
         Block ba1Block = m_controllerPtr->produceTentativeBlock();
+        //monitor begin, record ba1 block producing time
+        if(ba1Callback != nullptr) {
+            ba1Callback();
+        }
+        //monitor end
 
         dlog("ba1Process begin. blockNum = ${id}.", ("id", getBlockNum()));
 
