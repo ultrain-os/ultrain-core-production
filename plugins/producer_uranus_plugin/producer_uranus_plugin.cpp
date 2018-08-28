@@ -386,8 +386,8 @@ void producer_uranus_plugin::set_program_options(
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a kultraind provider for signing")
          ("genesis-leader-pk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_pk = g; }), "geneis leader pk")
          ("genesis-leader-sk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_sk = g; }), "geneis leader sk")
-         ("my_pk_as_committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_pk_as_committee = g; }), "pk as committer member")
-         ("my_sk_as_committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_sk_as_committee = g; }), "sk as committer member")
+         ("my-pk-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_pk_as_committee = g; }), "pk as committer member")
+         ("my-sk-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_sk_as_committee = g; }), "sk as committer member")
          ("genesis-time", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_time = g; }), "geneis time")
          ;
    config_file_options.add(producer_options);
