@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
- 
+
 import argparse
 import json
 import numpy
@@ -89,12 +89,12 @@ def retry(args):
             print('*** Retry')
         else:
             break
-        
+
 def background(args):
     print('bios-boot-tutorial.py:', args)
     logFile.write(args + '\n')
     return subprocess.Popen(args, shell=True)
-        
+
 def sleep(t):
     print('sleep', t, '...')
     time.sleep(t)
@@ -108,7 +108,7 @@ def randomTransfer():
         for j in accounts:
             simple_run(args.clultrain + 'transfer -f %s %s "0.%s SYS" ' %(i, j, random.randint(1, 999)))
     sleep(3)
-    
+
 def startWallet():
     run('rm -rf ' + os.path.abspath(args.wallet_dir))
     run('mkdir -p ' + os.path.abspath(args.wallet_dir))
@@ -135,22 +135,22 @@ def stepInstallSystemContracts():
 
 def stepCreateTokens():
     run(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 SYS"]\' -p utrio.token')
-    run(args.clultrain + 'push action utrio.token issue \'["ultrainio", "500000000.0000 SYS", "memo"]\' -p ultrainio')
+    run(args.clultrain + 'push action utrio.token issue \'["ultrainio", "600000000.0000 SYS", "memo"]\' -p ultrainio')
     sleep(15)
 
 def stepSetSystemContract():
     retry(args.clultrain + 'set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/')
     retry(args.clultrain + 'push action ultrainio setpriv' + jsonArg(['utrio.msig', 1]) + '-p ultrainio@active')
     sleep(15)
-    
+
 def stepCreateStakedAccounts():
     for a in accounts:
-        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1500000.1234 SYS" --stake-cpu "1500000.5678 SYS" --buy-ram "1000.000 SYS" ' % (a,args.public_key))
+        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "11000000.1234 SYS" --stake-cpu "11000000.5678 SYS" --buy-ram "1000.000 SYS" ' % (a,args.public_key))
         retry(args.clultrain + 'transfer ultrainio %s "5000.0000 SYS"' % (a))
     sleep(15)
 
 def stepRegProducers():
-    for i in range(0, 7):
+    for i in range(0, args.num_producers):
         retry(args.clultrain + 'system regproducer %s %s https://%s.com 0123 ' % (accounts[i], pk_list[i], accounts[i]))
     sleep(1)
     run(args.clultrain + 'system listproducers')
@@ -194,17 +194,7 @@ parser.add_argument('--genesis', metavar='', help="Path to genesis.json", defaul
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
 parser.add_argument('--symbol', metavar='', help="The utrio.system symbol", default='SYS')
-parser.add_argument('--user-limit', metavar='', help="Max number of users. (0 = no limit)", type=int, default=3000)
-parser.add_argument('--max-user-keys', metavar='', help="Maximum user keys to import into wallet", type=int, default=10)
-parser.add_argument('--ram-funds', metavar='', help="How much funds for each user to spend on ram", type=float, default=0.1)
-parser.add_argument('--min-stake', metavar='', help="Minimum stake before allocating unstaked funds", type=float, default=0.9)
-parser.add_argument('--max-unstaked', metavar='', help="Maximum unstaked funds", type=float, default=10)
-parser.add_argument('--producer-limit', metavar='', help="Maximum number of producers. (0 = no limit)", type=int, default=0)
-parser.add_argument('--min-producer-funds', metavar='', help="Minimum producer funds", type=float, default=1000.0000)
-parser.add_argument('--num-producers-vote', metavar='', help="Number of producers for which each user votes", type=int, default=20)
-parser.add_argument('--num-voters', metavar='', help="Number of voters", type=int, default=10)
-parser.add_argument('--num-senders', metavar='', help="Number of users to transfer funds randomly", type=int, default=10)
-parser.add_argument('--producer-sync-delay', metavar='', help="Time (s) to sleep to allow producers to sync", type=int, default=80)
+parser.add_argument('--num-producers', metavar='', help="Number of producers to register", type=int, default=7, dest="num_producers")
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
 
