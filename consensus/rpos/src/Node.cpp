@@ -442,8 +442,8 @@ namespace ultrainio {
             }
             //init();
             //readyToJoin();
-            if (m_baxCount > 0 && m_baxCount % 6 == 0) {
-                uint32_t blockNum = getBlockNum();
+            uint32_t blockNum = getBlockNum();
+            if (m_baxCount > 0 && m_baxCount % 6 == 0 && blockNum > 2) {
                 std::shared_ptr<AggEchoMsg> aggEchoMsg = MessageManager::getInstance()->getMyAggEchoMsg(blockNum - 1);
                 if (aggEchoMsg) {
                     sendMessage(*aggEchoMsg);
