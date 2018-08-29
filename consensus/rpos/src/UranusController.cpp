@@ -861,7 +861,7 @@ namespace ultrainio {
             }
 
             // TODO(yufengshen): We have to cap the block size, cpu/net resource when packing a block.
-            // Refer to the subjective and exhausted design.  
+            // Refer to the subjective and exhausted design.
             std::list<chain::transaction_metadata_ptr> *pending_trxs = chain.get_pending_transactions();
             const auto &unapplied_trxs = chain.get_unapplied_transactions();
 
@@ -899,9 +899,8 @@ namespace ultrainio {
             block.action_mroot = bh.action_mroot;
             block.transactions = pbs->block->transactions;
             block.signature = std::string(Signer::sign<BlockHeader>(block, UranusNode::getInstance()->getSignaturePrivate()));
-            ilog("-------- propose a block, trx num ${num} proposerPk ${proposerPk} block signature ${signature} proof ${proof}",
-                 ("num", block.transactions.size())("proposerPk", block.proposerPk)("signature", block.signature)
-                 ("proof", block.proposerProof));
+            ilog("-------- propose a block, trx num ${num} proposerPk ${proposerPk} block signature ${signature}",
+                 ("num", block.transactions.size())("proposerPk", block.proposerPk)("signature", block.signature));
             /*
               ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${c} ${prv} ${ma} ${mt} ${id}",
               ("t", block.timestamp)
@@ -1567,7 +1566,7 @@ namespace ultrainio {
         }
         ilog("after clear echo all phase msgs, map size: ${s}", ("s", m_echoMsgAllPhase.size()));
     }
-    
+
     bool UranusController::isEmpty(const BlockHeader& blockHeader) {
         // TODO: please find a way to cache the empty block's id
         return emptyBlock().id() == blockHeader.id();

@@ -147,8 +147,8 @@ namespace ultrainio {
 
     void MessageManager::clearSomeBlockMessage(uint32_t blockNum) {
         for (auto itor = blockMessageMap.begin(); itor != blockMessageMap.end();) {
-            ilog("has blockNum = ${blockNum}", ("blockNum", blockNum));
             if (blockNum - itor->first > 3) { // keep 3 block behind this one
+                ilog("clear block msg for blockNum = ${blockNum}", ("blockNum", itor->first));
                 blockMessageMap.erase(itor++);
             } else {
                 itor++;
