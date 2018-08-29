@@ -26,9 +26,10 @@ namespace ultrainio {
 
     bool VoterSystem::isGenesisPeriod(uint32_t blockNum) const {
         std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
-        std::shared_ptr<std::vector<CommitteeInfo>> committeeInfoVPtr = messageManagerPtr->getCommitteeInfoVPtr(blockNum);
+        std::shared_ptr<CommitteeState> committeeStatePtr = messageManagerPtr->getCommitteeStatePtr(
+                blockNum);
         //TODO(qinxiaofen) still genesis startup, maybe also compare timestamp
-        if (!committeeInfoVPtr || committeeInfoVPtr->size() < Config::MIN_COMMITTEE_MEMBER_NUMBER) {
+        if (!committeeStatePtr || !(committeeStatePtr->chainStateNormal)) {
             return true;
         }
         return false;
@@ -56,8 +57,9 @@ namespace ultrainio {
             return 1; // genesis leader only
         }
         std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
-        std::shared_ptr<std::vector<CommitteeInfo>> committeeInfoVPtr = messageManagerPtr->getCommitteeInfoVPtr(blockNum);
-        return committeeInfoVPtr->size();
+        std::shared_ptr<CommitteeState> committeeStatePtr = messageManagerPtr->getCommitteeStatePtr(
+                blockNum);
+        return committeeStatePtr->cinfo.size();
     }
 
     bool VoterSystem::isCommitteeMember(const PublicKey& publicKey) const {
@@ -74,9 +76,10 @@ namespace ultrainio {
 
     bool VoterSystem::inCommitteeMemberList(uint32_t blockNum, const PublicKey& publicKey) const {
         std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
-        std::shared_ptr<std::vector<CommitteeInfo>> committeeInfoVPtr = messageManagerPtr->getCommitteeInfoVPtr(blockNum);
-        if (committeeInfoVPtr) {
-            for (auto& v : *committeeInfoVPtr) {
+        std::shared_ptr<CommitteeState> committeeStatePtr = messageManagerPtr->getCommitteeStatePtr(
+                blockNum);
+        if (committeeStatePtr) {
+            for (auto& v : committeeStatePtr->cinfo) {
                 if (PublicKey(v.pk) == publicKey) {
                     return true;
                 }
@@ -85,11 +88,11 @@ namespace ultrainio {
         return false;
     }
 
-    std::shared_ptr<std::vector<CommitteeInfo>> VoterSystem::getCommitteeInfoList() {
+    std::shared_ptr<CommitteeState> VoterSystem::getCommitteeState() {
         static const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         static struct chain_apis::read_only::get_producers_params params;
         CommitteeInfo cinfo;
-        auto vecPtr(std::make_shared<std::vector<CommitteeInfo>>());
+        auto statePtr(std::make_shared<CommitteeState>());
         params.json=true;
         params.lower_bound="";
         try {
@@ -100,15 +103,18 @@ namespace ultrainio {
                     cinfo.pk = r["producer_key"].as_string();
                     cinfo.stakesCount = r["total_votes"].as_int64();
                     ilog("#########################token ${token}, pk ${pk}", ("token", r)("pk", r["owner"]));
-                    vecPtr->push_back(cinfo);
+                    statePtr->cinfo.push_back(cinfo);
                 }
+           }
+           if (result.thresh_activated_stake_time > 0 && statePtr->cinfo.size() > Config::MIN_COMMITTEE_MEMBER_NUMBER) {
+               statePtr->chainStateNormal = true;
            }
         }
         catch(...) {
             ilog("catch expe");
             return nullptr;
         }
-        return vecPtr;
+        return statePtr;
     }
 
     int VoterSystem::count(const Proof& proof, int stakes, double p) {

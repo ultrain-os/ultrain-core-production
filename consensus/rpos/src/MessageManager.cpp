@@ -156,8 +156,8 @@ namespace ultrainio {
         }
     }
 
-    std::shared_ptr<std::vector<CommitteeInfo>> MessageManager::getCommitteeInfoVPtr(uint32_t blockNum) {
+    std::shared_ptr<CommitteeState> MessageManager::getCommitteeStatePtr(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->m_committeeInfoVPtr;
+        return blockMessagePtr->m_committeeStatePtr;
     }
 }

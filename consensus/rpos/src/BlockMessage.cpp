@@ -38,7 +38,7 @@ namespace ultrainio {
             std::string previousHash(blockId.data());
             VoterSystem voterSystem;
             // #### This line has to run first, all the following caculation depends on this line. ###
-            m_committeeInfoVPtr = voterSystem.getCommitteeInfoList();
+            m_committeeStatePtr = voterSystem.getCommitteeState();
             int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getSignaturePublic()));
             double proposerRatio = voterSystem.getProposerRatio();
             m_voterCountAsProposer = voterSystem.count(m_proposerProof, stakes, proposerRatio);

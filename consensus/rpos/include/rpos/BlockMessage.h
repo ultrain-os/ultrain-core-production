@@ -28,7 +28,7 @@ namespace ultrainio {
         Proof m_proposerProof;
         std::shared_ptr<AggEchoMsg> m_myAggEchoMsgPtr;
         std::vector<AggEchoMsg> m_aggEchoMsgV;
-        std::shared_ptr<std::vector<CommitteeInfo>> m_committeeInfoVPtr = nullptr;
+        std::shared_ptr<CommitteeState> m_committeeStatePtr = nullptr;
 
         friend class MessageManager;
     };

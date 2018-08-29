@@ -11,7 +11,6 @@ namespace ultrainio {
     // forward declare
     class PublicKey;
     class Proof;
-    struct CommitteeInfo;
 
     class VoterSystem {
     public:
@@ -21,7 +20,7 @@ namespace ultrainio {
         int getCommitteeMemberNumber(uint32_t blockNum) const;
         bool isCommitteeMember(const PublicKey& publicKey) const;
         int count(const Proof& proof, int stakes, double p);
-        std::shared_ptr<std::vector<CommitteeInfo>> getCommitteeInfoList();
+        std::shared_ptr<CommitteeState> getCommitteeState();
     private:
         bool inCommitteeMemberList(uint32_t blockNum, const PublicKey& publicKey) const;
         bool isGenesisPeriod(uint32_t blockNum) const;
