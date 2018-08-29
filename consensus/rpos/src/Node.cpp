@@ -86,6 +86,7 @@ namespace ultrainio {
         ULTRAIN_ASSERT(PrivateKey::verifyKeyPair(m_publicKey, m_privateKey),
                        chain::chain_exception,
                        "should set correct committee key pair.");
+        ilog("My committee key pair is pk : ${pk}", ("pk", pk));
     }
 
     bool UranusNode::getNonProducingNode() const {
