@@ -13,7 +13,6 @@ namespace ultrainio {
    struct connection_status {
       string            peer;
       bool              connecting = false;
-      bool              syncing    = false;
       handshake_message last_handshake;
    };
 
@@ -51,4 +50,4 @@ namespace ultrainio {
 
 }
 
-FC_REFLECT( ultrainio::connection_status, (peer)(connecting)(syncing)(last_handshake) )
+FC_REFLECT( ultrainio::connection_status, (peer)(connecting)(last_handshake) )

@@ -57,7 +57,6 @@ namespace ultrainio {
 
    class connection;
    class sync_block_manager;
-   class sync_manager;
    class dispatch_manager;
 
    using connection_ptr = std::shared_ptr<connection>;
@@ -157,7 +156,6 @@ namespace ultrainio {
 
       std::set< connection_ptr >       connections;
       bool                             done = false;
-      unique_ptr< sync_manager >       sync_master;
       unique_ptr< dispatch_manager >   dispatcher;
       unique_ptr< sync_block_manager > sync_block_master;
 
@@ -231,7 +229,6 @@ namespace ultrainio {
       /** @} */
       void handle_message( connection_ptr c, const notice_message &msg);
       void handle_message( connection_ptr c, const request_message &msg);
-      void handle_message( connection_ptr c, const sync_request_message &msg);
       //void handle_message( connection_ptr c, const signed_block &msg);
       void handle_message( connection_ptr c, const packed_transaction &msg);
 
@@ -509,7 +506,6 @@ namespace ultrainio {
       handshake_message       last_handshake_sent;
       int16_t                 sent_handshake_count = 0;
       bool                    connecting = false;
-      bool                    syncing = false;
       uint16_t                protocol_version  = 0;
       string                  peer_addr;
       unique_ptr<boost::asio::steady_timer> response_expected;
@@ -524,7 +520,6 @@ namespace ultrainio {
          connection_status stat;
          stat.peer = peer_addr;
          stat.connecting = connecting;
-         stat.syncing = syncing;
          stat.last_handshake = last_handshake_recv;
          return stat;
       }
@@ -588,15 +583,10 @@ namespace ultrainio {
       void stop_send();
 
       void enqueue( const net_message &msg, bool trigger_send = true );
-      void cancel_sync(go_away_reason);
       void flush_queues();
-      bool enqueue_sync_block();
-      void request_sync_blocks (uint32_t start, uint32_t end);
 
       void cancel_wait();
-      void sync_wait();
       void fetch_wait();
-      void sync_timeout(boost::system::error_code ec);
       void fetch_timeout(boost::system::error_code ec);
 
       void queue_write(std::shared_ptr<vector<char>> buff,
@@ -653,42 +643,6 @@ namespace ultrainio {
       {
          impl.handle_message( c, msg);
       }
-   };
-
-   class sync_manager {
-   private:
-      enum stages {
-         lib_catchup,
-         head_catchup,
-         in_sync
-      };
-
-      uint32_t       sync_known_lib_num;
-      uint32_t       sync_last_requested_num;
-      uint32_t       sync_next_expected_num;
-      uint32_t       sync_req_span;
-      connection_ptr source;
-      stages         state;
-
-      chain_plugin* chain_plug;
-
-      constexpr auto stage_str(stages s );
-
-   public:
-      explicit sync_manager(uint32_t span);
-      void set_state(stages s);
-      bool sync_required();
-      void send_handshakes();
-      bool is_active(connection_ptr conn);
-      void reset_lib_num(connection_ptr conn);
-      void request_next_chunk(connection_ptr conn = connection_ptr() );
-      void start_sync(connection_ptr c, uint32_t target);
-      void reassign_fetch(connection_ptr c, go_away_reason reason);
-      void verify_catchup(connection_ptr c, uint32_t num, block_id_type id);
-      void rejected_block(connection_ptr c, uint32_t blk_num);
-      void recv_block(connection_ptr c, const block_id_type &blk_id, uint32_t blk_num);
-      void recv_handshake(connection_ptr c, const handshake_message& msg);
-      void recv_notice(connection_ptr c, const notice_message& msg);
    };
 
    class sync_block_manager {
@@ -890,7 +844,6 @@ namespace ultrainio {
         last_handshake_sent(),
         sent_handshake_count(0),
         connecting(false),
-        syncing(false),
         protocol_version(0),
         peer_addr(endpoint),
         response_expected(),
@@ -915,7 +868,6 @@ namespace ultrainio {
         last_handshake_sent(),
         sent_handshake_count(0),
         connecting(true),
-        syncing(false),
         protocol_version(0),
         peer_addr(),
         response_expected(),
@@ -943,7 +895,7 @@ namespace ultrainio {
    }
 
    bool connection::current() {
-      return (connected() && !syncing);
+      return connected();
    }
 
    void connection::reset() {
@@ -966,7 +918,6 @@ namespace ultrainio {
       }
       flush_queues();
       connecting = false;
-      syncing = false;
       if( last_req ) {
          my_impl->dispatcher->retry_fetch (shared_from_this());
       }
@@ -974,7 +925,6 @@ namespace ultrainio {
       sent_handshake_count = 0;
       last_handshake_recv = handshake_message();
       last_handshake_sent = handshake_message();
-      my_impl->sync_master->reset_lib_num(shared_from_this());
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
       pending_message_buffer.reset();
@@ -1086,8 +1036,6 @@ namespace ultrainio {
       } else {
          fc_ilog(logger, "Nothing to send on fork request");
       }
-
-      syncing = false;
    }
 
    void connection::blk_send(const vector<block_id_type> &ids) {
@@ -1122,7 +1070,6 @@ namespace ultrainio {
    }
 
    void connection::stop_send() {
-      syncing = false;
    }
 
    void connection::send_handshake( ) {
@@ -1208,7 +1155,6 @@ namespace ultrainio {
                while (conn->out_queue.size() > 0) {
                   conn->out_queue.pop_front();
                }
-               //conn->enqueue_sync_block();
                conn->do_queue_write();
             }
             catch(const std::exception &ex) {
@@ -1227,45 +1173,6 @@ namespace ultrainio {
                elog("Exception in do_queue_write to ${p}", ("p",pname) );
             }
          });
-   }
-
-   void connection::cancel_sync(go_away_reason reason) {
-      fc_dlog(logger,"cancel sync reason = ${m}, write queue size ${o} peer ${p}",
-              ("m",reason_str(reason)) ("o", write_queue.size())("p", peer_name()));
-      cancel_wait();
-      flush_queues();
-      switch (reason) {
-      case validation :
-      case fatal_other : {
-         no_retry = reason;
-         enqueue( go_away_message( reason ));
-         break;
-      }
-      default:
-         fc_dlog(logger, "sending empty request but not calling sync wait on ${p}", ("p",peer_name()));
-         enqueue( ( sync_request_message ) {0,0} );
-      }
-   }
-
-   bool connection::enqueue_sync_block() {
-      controller& cc = app().find_plugin<chain_plugin>()->chain();
-      if (!peer_requested)
-         return false;
-      uint32_t num = ++peer_requested->last;
-      bool trigger_send = num == peer_requested->start_block;
-      if(num == peer_requested->end_block) {
-         peer_requested.reset();
-      }
-      try {
-         signed_block_ptr sb = cc.fetch_block_by_number(num);
-         if(sb) {
-            enqueue( *sb, trigger_send);
-            return true;
-         }
-      } catch ( ... ) {
-         wlog( "write loop exception" );
-      }
-      return false;
    }
 
    void connection::enqueue( const net_message &m, bool trigger_send ) {
@@ -1305,20 +1212,6 @@ namespace ultrainio {
          response_expected->cancel();
    }
 
-   void connection::sync_wait( ) {
-      response_expected->expires_from_now( my_impl->resp_expected_period);
-      connection_wptr c(shared_from_this());
-      response_expected->async_wait( [c]( boost::system::error_code ec){
-            connection_ptr conn = c.lock();
-            if (!conn) {
-               // connection was destroyed before this lambda was delivered
-               return;
-            }
-
-            conn->sync_timeout(ec);
-         } );
-   }
-
    void connection::fetch_wait( ) {
       response_expected->expires_from_now( my_impl->resp_expected_period);
       connection_wptr c(shared_from_this());
@@ -1331,17 +1224,6 @@ namespace ultrainio {
 
             conn->fetch_timeout(ec);
          } );
-   }
-
-   void connection::sync_timeout( boost::system::error_code ec ) {
-      if( !ec ) {
-         my_impl->sync_master->reassign_fetch (shared_from_this(),benign_other);
-      }
-      else if( ec == boost::asio::error::operation_aborted) {
-      }
-      else {
-         elog ("setting timer for sync request got error ${ec}",("ec", ec.message()));
-      }
    }
 
    const string connection::peer_name() {
@@ -1368,12 +1250,6 @@ namespace ultrainio {
       else {
          elog( "setting timer for fetch request got error ${ec}", ("ec", ec.message( ) ) );
       }
-   }
-
-   void connection::request_sync_blocks (uint32_t start, uint32_t end) {
-      sync_request_message srm = {start,end};
-      enqueue( net_message(srm));
-      sync_wait();
    }
 
    bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
@@ -1423,371 +1299,6 @@ namespace ultrainio {
          }
       }
       return added;
-   }
-
-   //-----------------------------------------------------------
-
-    sync_manager::sync_manager( uint32_t req_span )
-      :sync_known_lib_num( 0 )
-      ,sync_last_requested_num( 0 )
-      ,sync_next_expected_num( 1 )
-      ,sync_req_span( req_span )
-      ,source()
-      ,state(in_sync)
-   {
-      chain_plug = app( ).find_plugin<chain_plugin>( );
-   }
-
-   constexpr auto sync_manager::stage_str(stages s ) {
-    switch (s) {
-    case in_sync : return "in sync";
-    case lib_catchup: return "lib catchup";
-    case head_catchup : return "head catchup";
-    default : return "unkown";
-    }
-  }
-
-   void sync_manager::set_state(stages newstate) {
-      if (state == newstate) {
-         return;
-      }
-      fc_dlog(logger, "old state ${os} becoming ${ns}",("os",stage_str (state))("ns",stage_str (newstate)));
-      state = newstate;
-   }
-
-   bool sync_manager::is_active(connection_ptr c) {
-      if (state == head_catchup && c) {
-         bool fhset = c->fork_head != block_id_type();
-         fc_dlog(logger, "fork_head_num = ${fn} fork_head set = ${s}",
-                 ("fn", c->fork_head_num)("s", fhset));
-            return c->fork_head != block_id_type() && c->fork_head_num < chain_plug->chain().fork_db_head_block_num();
-      }
-      return state != in_sync;
-   }
-
-   void sync_manager::reset_lib_num(connection_ptr c) {
-      if(state == in_sync) {
-         source.reset();
-      }
-      if( c->current() ) {
-         if( c->last_handshake_recv.last_irreversible_block_num > sync_known_lib_num) {
-            sync_known_lib_num =c->last_handshake_recv.last_irreversible_block_num;
-         }
-      } else if( c == source ) {
-         sync_last_requested_num = 0;
-         request_next_chunk();
-      }
-   }
-
-   bool sync_manager::sync_required( ) {
-      fc_dlog(logger, "last req = ${req}, last recv = ${recv} known = ${known} our head = ${head}",
-              ("req",sync_last_requested_num)("recv",sync_next_expected_num)("known",sync_known_lib_num)("head",chain_plug->chain( ).fork_db_head_block_num( )));
-
-      return( sync_last_requested_num < sync_known_lib_num ||
-              chain_plug->chain( ).fork_db_head_block_num( ) < sync_last_requested_num );
-   }
-
-   void sync_manager::request_next_chunk( connection_ptr conn ) {
-      uint32_t head_block = chain_plug->chain().fork_db_head_block_num();
-
-      if (head_block < sync_last_requested_num && source && source->current()) {
-         fc_ilog (logger, "ignoring request, head is ${h} last req = ${r} source is ${p}",
-                  ("h",head_block)("r",sync_last_requested_num)("p",source->peer_name()));
-         return;
-      }
-
-      /* ----------
-       * next chunk provider selection criteria
-       * a provider is supplied and able to be used, use it.
-       * otherwise select the next available from the list, round-robin style.
-       */
-
-      if (conn && conn->current() ) {
-         source = conn;
-      }
-      else {
-         if (my_impl->connections.size() == 1) {
-            if (!source) {
-               source = *my_impl->connections.begin();
-            }
-         }
-         else {
-            // init to a linear array search
-            auto cptr = my_impl->connections.begin();
-            auto cend = my_impl->connections.end();
-            // do we remember the previous source?
-            if (source) {
-               //try to find it in the list
-               cptr = my_impl->connections.find(source);
-               cend = cptr;
-               if (cptr == my_impl->connections.end()) {
-                  //not there - must have been closed! cend is now connections.end, so just flatten the ring.
-                  source.reset();
-                  cptr = my_impl->connections.begin();
-               } else {
-                  //was found - advance the start to the next. cend is the old source.
-                  if (++cptr == my_impl->connections.end() && cend != my_impl->connections.end() ) {
-                     cptr = my_impl->connections.begin();
-                  }
-               }
-            }
-
-            //scan the list of peers looking for another able to provide sync blocks.
-            while (cptr != cend) {
-               //select the first one which is current and break out.
-               if ((*cptr)->current()) {
-                  source = *cptr;
-                  break;
-               }
-               else {
-                  // advance the iterator in a round robin fashion.
-                  if (++cptr == my_impl->connections.end()) {
-                     cptr = my_impl->connections.begin();
-                  }
-               }
-            }
-            // no need to check the result, either source advanced or the whole list was checked and the old source is reused.
-         }
-      }
-
-      // verify there is an available source
-      if (!source || !source->current() ) {
-         elog("Unable to continue syncing at this time");
-         sync_known_lib_num = chain_plug->chain().last_irreversible_block_num();
-         sync_last_requested_num = 0;
-         set_state(in_sync); // probably not, but we can't do anything else
-         return;
-      }
-
-      if( sync_last_requested_num != sync_known_lib_num ) {
-         uint32_t start = sync_next_expected_num;
-         uint32_t end = start + sync_req_span - 1;
-         if( end > sync_known_lib_num )
-            end = sync_known_lib_num;
-         if( end > 0 && end >= start ) {
-            fc_ilog(logger, "requesting range ${s} to ${e}, from ${n}",
-                    ("n",source->peer_name())("s",start)("e",end));
-            source->request_sync_blocks(start, end);
-            sync_last_requested_num = end;
-         }
-      }
-   }
-
-   void sync_manager::send_handshakes ()
-   {
-      for( auto &ci : my_impl->connections) {
-         if( ci->current()) {
-            ci->send_handshake();
-         }
-      }
-   }
-
-   void sync_manager::start_sync( connection_ptr c, uint32_t target) {
-      if( target > sync_known_lib_num) {
-         sync_known_lib_num = target;
-      }
-
-      if (!sync_required()) {
-         uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
-         uint32_t hnum = chain_plug->chain().fork_db_head_block_num();
-         fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
-                  ("b",bnum)("h",hnum)("t",target));
-         return;
-      }
-
-      if (state == in_sync) {
-         set_state(lib_catchup);
-         sync_next_expected_num = chain_plug->chain().last_irreversible_block_num() + 1;
-      }
-
-      fc_ilog(logger, "Catching up with chain, our last req is ${cc}, theirs is ${t} peer ${p}",
-              ( "cc",sync_last_requested_num)("t",target)("p",c->peer_name()));
-
-      request_next_chunk(c);
-   }
-
-   void sync_manager::reassign_fetch(connection_ptr c, go_away_reason reason) {
-      fc_ilog(logger, "reassign_fetch, our last req is ${cc}, next expected is ${ne} peer ${p}",
-              ( "cc",sync_last_requested_num)("ne",sync_next_expected_num)("p",c->peer_name()));
-
-      if (c == source) {
-         c->cancel_sync (reason);
-         sync_last_requested_num = 0;
-         request_next_chunk();
-      }
-   }
-
-   void sync_manager::recv_handshake (connection_ptr c, const handshake_message &msg) {
-      ilog("recv handshake for peer : ${peer}", ("peer", c->peer_name()));
-      controller& cc = chain_plug->chain();
-      uint32_t lib_num = cc.last_irreversible_block_num( );
-      uint32_t peer_lib = msg.last_irreversible_block_num;
-      reset_lib_num(c);
-      c->syncing = false;
-      return;
-
-      //--------------------------------
-      // sync need checks; (lib == last irreversible block)
-      //
-      // 0. my head block id == peer head id means we are all caugnt up block wise
-      // 1. my head block num < peer lib - start sync locally
-      // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
-      //
-      // 3  my head block num <= peer head block num - update sync state and send a catchup request
-      // 4  my head block num > peer block num ssend a notice catchup if this is not the first generation
-      //
-      //-----------------------------
-
-      uint32_t head = cc.fork_db_head_block_num( );
-      block_id_type head_id = cc.fork_db_head_block_id();
-      if (head_id == msg.head_id) {
-         fc_dlog(logger, "sync check state 0");
-         // notify peer of our pending transactions
-         notice_message note;
-         note.known_blocks.mode = none;
-         note.known_trx.mode = catch_up;
-         note.known_trx.pending = my_impl->local_txns.size();
-         c->enqueue( note );
-         return;
-      }
-      if (head < peer_lib) {
-         fc_dlog(logger, "sync check state 1");
-         // wait for receipt of a notice message before initiating sync
-         if (c->protocol_version < proto_explicit_sync) {
-            start_sync( c, peer_lib);
-         }
-         return;
-      }
-      if (lib_num > msg.head_num ) {
-         fc_dlog(logger, "sync check state 2");
-         if (msg.generation > 1 || c->protocol_version > proto_base) {
-            notice_message note;
-            note.known_trx.pending = lib_num;
-            note.known_trx.mode = last_irr_catch_up;
-            note.known_blocks.mode = last_irr_catch_up;
-            note.known_blocks.pending = head;
-            c->enqueue( note );
-         }
-         c->syncing = true;
-         return;
-      }
-
-      if (head <= msg.head_num ) {
-         fc_dlog(logger, "sync check state 3");
-         verify_catchup (c, msg.head_num, msg.head_id);
-         return;
-      }
-      else {
-         fc_dlog(logger, "sync check state 4");
-         if (msg.generation > 1 ||  c->protocol_version > proto_base) {
-            notice_message note;
-            note.known_trx.mode = none;
-            note.known_blocks.mode = catch_up;
-            note.known_blocks.pending = head;
-            note.known_blocks.ids.push_back(head_id);
-            c->enqueue( note );
-         }
-         c->syncing = true;
-         return;
-      }
-      elog ("sync check failed to resolve status");
-   }
-
-   void sync_manager::verify_catchup(connection_ptr c, uint32_t num, block_id_type id) {
-      request_message req;
-      req.req_blocks.mode = catch_up;
-      for (auto cc : my_impl->connections) {
-         if (cc->fork_head == id ||
-             cc->fork_head_num > num)
-            req.req_blocks.mode = none;
-         break;
-      }
-      if( req.req_blocks.mode == catch_up ) {
-         c->fork_head = id;
-         c->fork_head_num = num;
-         ilog ("got a catch_up notice while in ${s}, fork head num = ${fhn} target LIB = ${lib} next_expected = ${ne}", ("s",stage_str(state))("fhn",num)("lib",sync_known_lib_num)("ne", sync_next_expected_num));
-         if (state == lib_catchup)
-            return;
-         set_state(head_catchup);
-      }
-      else {
-         c->fork_head = block_id_type();
-         c->fork_head_num = 0;
-      }
-      req.req_trx.mode = none;
-      c->enqueue( req );
-   }
-
-   void sync_manager::recv_notice (connection_ptr c, const notice_message &msg) {
-      fc_ilog (logger, "sync_manager got ${m} block notice",("m",modes_str(msg.known_blocks.mode)));
-      if (msg.known_blocks.mode == catch_up) {
-         if (msg.known_blocks.ids.size() == 0) {
-            elog ("got a catch up with ids size = 0");
-         }
-         else {
-            verify_catchup(c,  msg.known_blocks.pending, msg.known_blocks.ids.back());
-         }
-      }
-      else {
-         c->last_handshake_recv.last_irreversible_block_num = msg.known_trx.pending;
-         reset_lib_num (c);
-         //start_sync(c, msg.known_blocks.pending);
-      }
-   }
-
-   void sync_manager::rejected_block (connection_ptr c, uint32_t blk_num) {
-      if (state != in_sync ) {
-         fc_ilog (logger, "block ${bn} not accepted from ${p}",("bn",blk_num)("p",c->peer_name()));
-         sync_last_requested_num = 0;
-         source.reset();
-         my_impl->close(c);
-         set_state(in_sync);
-         send_handshakes();
-      }
-   }
-   void sync_manager::recv_block (connection_ptr c, const block_id_type &blk_id, uint32_t blk_num) {
-      fc_dlog(logger," got block ${bn} from ${p}",("bn",blk_num)("p",c->peer_name()));
-      if (state == lib_catchup) {
-         if (blk_num != sync_next_expected_num) {
-            fc_ilog (logger, "expected block ${ne} but got ${bn}",("ne",sync_next_expected_num)("bn",blk_num));
-            my_impl->close(c);
-            return;
-         }
-         sync_next_expected_num = blk_num + 1;
-      }
-      if (state == head_catchup) {
-         fc_dlog (logger, "sync_manager in head_catchup state");
-         set_state(in_sync);
-         source.reset();
-
-         block_id_type null_id;
-         for (auto cp : my_impl->connections) {
-            if (cp->fork_head == null_id) {
-               continue;
-            }
-            if (cp->fork_head == blk_id || cp->fork_head_num < blk_num) {
-               c->fork_head = null_id;
-               c->fork_head_num = 0;
-            }
-            else {
-               set_state(head_catchup);
-            }
-         }
-      }
-      else if (state == lib_catchup) {
-         if( blk_num == sync_known_lib_num ) {
-            fc_dlog( logger, "All caught up with last known last irreversible block resending handshake");
-            set_state(in_sync);
-            send_handshakes();
-         }
-         else if (blk_num == sync_last_requested_num) {
-            request_next_chunk();
-         }
-         else {
-            fc_dlog(logger,"calling sync_wait on connection ${p}",("p",c->peer_name()));
-            c->sync_wait();
-         }
-      }
    }
 
    //------------------------------------------------------------------------
@@ -1908,7 +1419,7 @@ namespace ultrainio {
       if( !large_msg_notify || bufsiz <= just_send_it_max) {
          connection_wptr weak_skip = skip;
          my_impl->send_all( trx, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
-               if(c == weak_skip.lock() || c->syncing ) {
+               if(c == weak_skip.lock()) {
                   return false;
                }
                const auto& bs = c->trx_state.find(id);
@@ -1930,7 +1441,7 @@ namespace ultrainio {
          pending_notify.known_blocks.mode = none;
          connection_wptr weak_skip = skip;
          my_impl->send_all(pending_notify, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
-               if (c == weak_skip.lock() || c->syncing) {
+               if (c == weak_skip.lock()) {
                   return false;
                }
                const auto& bs = c->trx_state.find(id);
@@ -2602,7 +2113,6 @@ namespace ultrainio {
 
       c->last_handshake_recv = msg;
       c->_logger_variant.reset();
-      sync_master->recv_handshake(c,msg);
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const go_away_message &msg ) {
@@ -2702,7 +2212,6 @@ namespace ultrainio {
       }
       case last_irr_catch_up:
       case catch_up: {
-         sync_master->recv_notice(c,msg);
          break;
       }
       case normal : {
@@ -2747,16 +2256,6 @@ namespace ultrainio {
       default:;
       }
 
-   }
-
-   void net_plugin_impl::handle_message( connection_ptr c, const sync_request_message &msg) {
-      if( msg.end_block == 0) {
-         c->peer_requested.reset();
-         c->flush_queues();
-      } else {
-         c->peer_requested = sync_state( msg.start_block,msg.end_block,msg.start_block-1);
-         c->enqueue_sync_block();
-      }
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const EchoMsg &msg) {
@@ -2853,10 +2352,6 @@ namespace ultrainio {
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
       fc_dlog(logger, "got a packed transaction, cancel wait");
       peer_ilog(c, "received packed_transaction");
-      if( sync_master->is_active(c) ) {
-         fc_dlog(logger, "got a txn during sync - dropping");
-         return;
-      }
       transaction_id_type tid = msg.id();
       c->cancel_wait();
       if(local_txns.get<by_id>().find(tid) != local_txns.end()) {
@@ -3276,7 +2771,6 @@ namespace ultrainio {
 
          my->network_version_match = options.at( "network-version-match" ).as<bool>();
 
-         my->sync_master.reset( new sync_manager( options.at( "sync-fetch-span" ).as<uint32_t>()));
          my->dispatcher.reset( new dispatch_manager );
          my->sync_block_master.reset( new sync_block_manager );
 

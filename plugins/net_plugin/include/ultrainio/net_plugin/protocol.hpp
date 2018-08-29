@@ -134,18 +134,12 @@ namespace ultrainio {
     ordered_blk_ids req_blocks;
   };
 
-   struct sync_request_message {
-      uint32_t start_block;
-      uint32_t end_block;
-   };
-
    using net_message = static_variant<handshake_message,
                                       chain_size_message,
                                       go_away_message,
                                       time_message,
                                       notice_message,
                                       request_message,
-                                      sync_request_message,
                                       signed_block,
                                       packed_transaction,
                                       ProposeMsg,
@@ -171,7 +165,6 @@ FC_REFLECT( ultrainio::go_away_message, (reason)(node_id) )
 FC_REFLECT( ultrainio::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( ultrainio::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( ultrainio::request_message, (req_trx)(req_blocks) )
-FC_REFLECT( ultrainio::sync_request_message, (start_block)(end_block) )
 
 /**
  *
