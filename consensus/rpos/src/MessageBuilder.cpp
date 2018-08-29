@@ -10,6 +10,7 @@ namespace ultrainio {
         echo.blockHeader = block;
         echo.phase = UranusNode::getInstance()->getPhase();
         echo.baxCount = UranusNode::getInstance()->getBaxCount();
+        echo.timestamp = UranusNode::getInstance()->getRoundCount();
         echo.pk = std::string(UranusNode::getInstance()->getSignaturePublic());
         echo.proof = std::string(MessageManager::getInstance()->getVoterProof(block.block_num(), echo.phase, echo.baxCount));
         echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, UranusNode::getInstance()->getSignaturePrivate()));
@@ -21,6 +22,7 @@ namespace ultrainio {
         echo.blockHeader = propose.block;
         echo.phase = UranusNode::getInstance()->getPhase();
         echo.baxCount = UranusNode::getInstance()->getBaxCount();
+        echo.timestamp = UranusNode::getInstance()->getRoundCount();
         echo.pk = std::string(UranusNode::getInstance()->getSignaturePublic());
         echo.proof = std::string(MessageManager::getInstance()->getVoterProof(propose.block.block_num(), echo.phase, echo.baxCount));
         echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, UranusNode::getInstance()->getSignaturePrivate()));
@@ -29,6 +31,7 @@ namespace ultrainio {
 
     EchoMsg MessageBuilder::constructMsg(const EchoMsg &echo) {
         EchoMsg myEcho = echo;
+        myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
         myEcho.pk = std::string(UranusNode::getInstance()->getSignaturePublic());
         myEcho.proof = std::string(MessageManager::getInstance()->getVoterProof(echo.blockHeader.block_num(), echo.phase, echo.baxCount));
         myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, UranusNode::getInstance()->getSignaturePrivate()));

@@ -321,7 +321,6 @@ namespace ultrainio {
                 if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
                     EchoMsg echo = MessageBuilder::constructMsg(propose);
                     m_controllerPtr->insert(echo);
-                    echo.timestamp = getRoundCount();
                     dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockHeader.id()));
                     sendMessage(echo);
                 }
@@ -337,7 +336,7 @@ namespace ultrainio {
             } else if (m_controllerPtr->verifyBa0Block()) { // not empty, verify
                 EchoMsg echo = MessageBuilder::constructMsg(*ba0Block);
                 m_controllerPtr->insert(echo);
-                echo.timestamp = getRoundCount();
+                //echo.timestamp = getRoundCount();
                 dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockHeader.id()));
                 sendMessage(echo);
             } else {
@@ -835,7 +834,7 @@ namespace ultrainio {
         dlog("empty block hash : ${hash}", ("hash", block.id()));
         EchoMsg echoMsg = MessageBuilder::constructMsg(block);
         m_controllerPtr->insert(echoMsg);
-        echoMsg.timestamp = getRoundCount();
+        //echoMsg.timestamp = getRoundCount();
         sendMessage(echoMsg);
     }
 

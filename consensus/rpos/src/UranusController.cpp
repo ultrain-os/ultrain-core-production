@@ -307,7 +307,7 @@ namespace ultrainio {
                     info.hasSend = true;
                     EchoMsg myEcho = MessageBuilder::constructMsg(echo);
                     insert(myEcho);
-                    myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
+                    //myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(myEcho);
                 }
             }
@@ -503,7 +503,7 @@ namespace ultrainio {
             if (isMinPropose(propose)) {
                 if (MessageManager::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
                     EchoMsg echo = MessageBuilder::constructMsg(propose);
-                    echo.timestamp = UranusNode::getInstance()->getRoundCount();
+                    //echo.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(echo);
                     insert(echo);
                 }
