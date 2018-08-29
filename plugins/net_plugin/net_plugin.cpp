@@ -188,15 +188,13 @@ namespace ultrainio {
 
       channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
-      std::default_random_engine    rand_engine;
-
       void connect( connection_ptr c );
       void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
       bool start_session( connection_ptr c );
       void start_listen_loop( );
       void start_read_message( connection_ptr c);
 
-      void   close( connection_ptr c );
+      void close( connection_ptr c );
       size_t count_open_sockets() const;
 
       template<typename VerifierFunc>
@@ -345,8 +343,6 @@ namespace ultrainio {
    constexpr bool     large_msg_notify = false;
 
    constexpr auto     message_header_size = 4;
-   constexpr auto     def_least_conns_percent = 0.67;
-   constexpr auto     def_least_conns_count = 0;
 
    /**
     *  For a while, network version was a 16 bit value equal to the second set of 16 bits
@@ -708,12 +704,15 @@ namespace ultrainio {
       unique_ptr<boost::asio::steady_timer> src_block_check;
       boost::asio::steady_timer::duration   conn_timeout{std::chrono::seconds{12}};
       unique_ptr<boost::asio::steady_timer> conn_check;
+      std::default_random_engine            rand_engine;
       
       sync_block_manager() {
         seq_num = 0;
         reset();
         src_block_check.reset(new boost::asio::steady_timer(app().get_io_service()));
         conn_check.reset(new boost::asio::steady_timer(app().get_io_service()));
+	std::random_device rd;
+        rand_engine.seed(rd());
       }
 
       void reset() {
@@ -755,6 +754,97 @@ namespace ultrainio {
               }
           });
       }
+
+        connection_ptr select_strong_sync_src(uint32_t least_conn_count) {
+            std::vector<connection_ptr> honest_conns;
+            for (auto it = rsp_conns.begin(); it != rsp_conns.end(); ++it) {
+                honest_conns.clear();
+
+                ilog("rsp conns:${s} block num:${b}", ("s", (*it)->peer_name())("b", (*it)->last_block_info.blockNum));
+                if ((*it)->last_block_info.blockNum != std::numeric_limits<uint32_t>::max()) {
+                    honest_conns.emplace_back(*it);
+
+                    for (auto next_it = std::next(it); next_it != rsp_conns.end(); ++next_it) {
+                        if ((*it)->last_block_info.blockNum == (*next_it)->last_block_info.blockNum
+                            && (*it)->last_block_info.blockHash == (*next_it)->last_block_info.blockHash
+                            && (*it)->last_block_info.prevBlockHash == (*next_it)->last_block_info.prevBlockHash) {
+                            honest_conns.emplace_back(*next_it);
+                        }
+                    }
+
+                    if (honest_conns.size() > least_conn_count) {
+                        break;
+                    }
+                }
+            }
+
+            if (honest_conns.size() >= least_conn_count) {
+                uint32_t r = rand_engine()%honest_conns.size();
+                ilog("select random ${r}th strong connection to sync block. peer:${p}", ("r", r)("p", honest_conns[r]->peer_name()));
+                return honest_conns[r];
+            }
+            
+            return nullptr;
+        }
+
+        connection_ptr select_weak_sync_src() {
+            std::map<uint32_t, std::vector<connection_ptr> > block_conns_map;
+            for (auto& con : rsp_conns) {
+                std::vector<connection_ptr>& conns = block_conns_map[con->last_block_info.blockNum];
+                conns.emplace_back(con);
+            }
+
+            size_t count = 0;
+            auto it = block_conns_map.begin(); 
+            for (; it != block_conns_map.end(); ++it) {
+                if (it->second.size() > count) {
+                    count = it->second.size();
+                }
+            }
+
+            ilog("select weak sync src. The most connections count of the same block number is ${cnt}", ("cnt", count));
+
+            if (count == 0) {
+                return nullptr;
+            }
+
+            std::vector<std::vector<connection_ptr>* > most_conns;
+            for (it = block_conns_map.begin(); it != block_conns_map.end(); ++it) {
+                if (it->second.size() == count) {
+                    most_conns.emplace_back(&(it->second));
+                }
+            }
+
+            std::vector<connection_ptr>* src_cons = most_conns[0];
+            for (size_t i = 1; i < most_conns.size(); i++) {
+                if ((*most_conns[i])[0]->last_block_info.blockNum > (*src_cons)[0]->last_block_info.blockNum) {
+                    src_cons = most_conns[i];
+                }
+            }
+
+            uint32_t r = rand_engine()%src_cons->size();
+            ilog("select random ${r}th weak connection to sync block. peer:${p}", ("r", r)("p", (*src_cons)[r]->peer_name()));
+            return (*src_cons)[r];
+        }
+
+        void sync_block(connection_ptr con) {
+            src_block_check->cancel();
+            selecting_src = false;
+            last_received_block = 0;
+            last_checked_block = 0;
+
+            if (sync_block_msg.endBlockNum > con->last_block_info.blockNum) {
+                if (sync_block_msg.endBlockNum == std::numeric_limits<uint32_t>::max()) {
+                    sync_block_msg.endBlockNum = con->last_block_info.blockNum + 1;
+                }else {
+                    sync_block_msg.endBlockNum = con->last_block_info.blockNum;
+                }
+            }
+            end_block_num = sync_block_msg.endBlockNum;
+            con->enqueue(sync_block_msg);
+            rsp_conns.clear();
+            start_conn_check_timer();
+        }
    };
 
    class dispatch_manager {
@@ -2207,8 +2297,10 @@ namespace ultrainio {
             }
         }
 
-        uint32_t count = static_cast<uint32_t>(connections.size()*def_least_conns_percent);
-        if (conn_list.size() < count || conn_list.size() < def_least_conns_count) {
+        uint32_t count = connections.size()/2 + 1;
+        if (conn_list.size() < count) {
+            elog("Available connection count is ${cc}, which is less than ${cnt}, can't sync block.",
+                 ("cc", conn_list.size())("cnt", count));
             return false;
         }
 
@@ -2230,14 +2322,19 @@ namespace ultrainio {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("select sync source canceled");
             }else if (sync_block_master->selecting_src && sync_block_master->end_block_num == 0) {
-                ilog("select sync source timeout");
-                app().get_plugin<producer_uranus_plugin>().sync_fail();
+                connection_ptr wc = sync_block_master->select_weak_sync_src();
+                if (wc) {
+                    sync_block_master->sync_block(wc);
+                } else {
+                    ilog("select sync source timeout");
+                    app().get_plugin<producer_uranus_plugin>().sync_fail();
+                }
             }
         });
 
         return true;
     }
-	
+
    void net_plugin_impl::start_read_message( connection_ptr conn ) {
 
       try {
@@ -2711,56 +2808,22 @@ namespace ultrainio {
             return;
         }
 
+        for (auto& con : sync_block_master->rsp_conns) {
+            if (con == c) {
+                elog("duplicate rsp last block num msg from peer ${p}", ("p", c->peer_name()));
+                return;
+            }
+        }
         c->last_block_info = msg;
-
         sync_block_master->rsp_conns.emplace_back(c);
 
-        uint32_t count = static_cast<uint32_t>(connections.size()*def_least_conns_percent);
+        uint32_t count = connections.size()/2 + 1;
         if (sync_block_master->rsp_conns.size() < count) {
             return;
         }
-
-        std::vector<connection_ptr> honest_conns;
-        for (auto it = sync_block_master->rsp_conns.begin(); it != sync_block_master->rsp_conns.end(); ++it) {
-            honest_conns.clear();
-
-            ilog("rsp conns:${s} block num:${b}", ("s", (*it)->peer_name())("b", (*it)->last_block_info.blockNum));
-            if ((*it)->last_block_info.blockNum != std::numeric_limits<uint32_t>::max()) {
-                honest_conns.emplace_back(*it);
-
-                for (auto next_it = std::next(it); next_it != sync_block_master->rsp_conns.end(); ++next_it) {
-                    if ((*it)->last_block_info.blockNum == (*next_it)->last_block_info.blockNum
-                        && (*it)->last_block_info.blockHash == (*next_it)->last_block_info.blockHash
-                        && (*it)->last_block_info.prevBlockHash == (*next_it)->last_block_info.prevBlockHash) {
-                        honest_conns.emplace_back(*next_it);
-                    }
-                }
-
-                if (honest_conns.size() > count) {
-                    break;
-                }
-            }
-        }
-
-        if (honest_conns.size() > count) {
-            sync_block_master->src_block_check->cancel();
-            sync_block_master->selecting_src = false;
-            sync_block_master->last_received_block = 0;
-            sync_block_master->last_checked_block = 0;
-
-            uint32_t r = rand_engine()%honest_conns.size();
-            ilog("select random ${r}th connection to sync block. peer:${p}", ("r", r)("p", honest_conns[r]->peer_name()));
-            if (sync_block_master->sync_block_msg.endBlockNum > honest_conns[r]->last_block_info.blockNum) {
-              if (sync_block_master->sync_block_msg.endBlockNum == std::numeric_limits<uint32_t>::max()) {
-                sync_block_master->sync_block_msg.endBlockNum = honest_conns[r]->last_block_info.blockNum+1;
-              }else {
-                sync_block_master->sync_block_msg.endBlockNum = honest_conns[r]->last_block_info.blockNum;
-              }
-            }
-            sync_block_master->end_block_num = sync_block_master->sync_block_msg.endBlockNum;
-            honest_conns[r]->enqueue(sync_block_master->sync_block_msg);
-            sync_block_master->rsp_conns.clear();
-            sync_block_master->start_conn_check_timer();
+        connection_ptr sc = sync_block_master->select_strong_sync_src(count);
+        if (sc) {
+            sync_block_master->sync_block(sc);
         }
     }
 
@@ -3215,7 +3278,7 @@ namespace ultrainio {
 
          my->sync_master.reset( new sync_manager( options.at( "sync-fetch-span" ).as<uint32_t>()));
          my->dispatcher.reset( new dispatch_manager );
-      my->sync_block_master.reset( new sync_block_manager );
+         my->sync_block_master.reset( new sync_block_manager );
 
          my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
          my->txn_exp_period = def_txn_expire_wait;
@@ -3225,9 +3288,6 @@ namespace ultrainio {
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
          my->num_clients = 0;
          my->started_sessions = 0;
-
-      std::random_device rd;
-      my->rand_engine.seed(rd());
 
          my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
          if( options.count( "p2p-listen-endpoint" )) {
