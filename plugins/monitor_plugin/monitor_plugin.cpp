@@ -118,21 +118,17 @@ void monitor_plugin::plugin_initialize(const variables_map& options) {
             my->monitor_central_server = options.at( "monitor-server-endpoint" ).as<string>();
         }
 
-        if( options.count( "p2p-server-address" )) {
-            auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
-            std::string self_address = options.at( "mp2p-server-address" ).as<string>();
-            
-            auto host = self_address.substr( 0, self_address.find( ':' ));
-            auto port = self_address.substr( host.size() + 1, self_address.size());
-            //idump((host)( port ));
-            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
-            // Note: need to add support for IPv6 too?
+        auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
 
-            my->self_endpoint = *resolver->resolve( query );
+        tcp::resolver::query query(tcp::v4(), boost::asio::ip::host_name(), "");
+        tcp::resolver::iterator iter = resolver->resolve(query);
+        tcp::resolver::iterator end; // End marker.
+        if (iter != end)
+        {
+            my->self_endpoint = *iter;
         }
 
         my->needReportTask = options.at( "periodic-report" ).as<bool>();
-
         my->reportInterval = options.at( "report-interval" ).as<int>();
 
     }FC_LOG_AND_RETHROW()
