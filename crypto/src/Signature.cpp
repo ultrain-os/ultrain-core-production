@@ -15,7 +15,7 @@ namespace ultrainio {
     }
 
     bool Signature::isValid() const {
-        return m_sig.length() == 2 * Ed25519::SIGNATURE_LEN;
+        return m_sig.length() == Ed25519::SIGNATURE_HEX_LEN;
     }
 
     bool Signature::getRaw(uint8_t* rawKey, size_t len) const {

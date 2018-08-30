@@ -38,7 +38,5 @@ namespace ultrainio {
 
         std::string m_key;
         PublicKey m_publicKey;
-        // (qinxiaofen)this may be remove after remove UranusController::
-        friend class UranusNode;
     };
 }

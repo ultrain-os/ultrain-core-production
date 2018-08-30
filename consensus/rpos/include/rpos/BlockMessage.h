@@ -10,10 +10,12 @@
 #include <rpos/Proof.h>
 
 namespace ultrainio {
+    class VoterSystem;
 
     class BlockMessage {
     public:
         static bool newRound(ConsensusPhase phase, int baxCount);
+        BlockMessage(uint32_t blockNum);
         void insert(const EchoMsg& echoMsg);
         void insert(const ProposeMsg& proposeMsg);
         void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
@@ -28,7 +30,7 @@ namespace ultrainio {
         Proof m_proposerProof;
         std::shared_ptr<AggEchoMsg> m_myAggEchoMsgPtr;
         std::vector<AggEchoMsg> m_aggEchoMsgV;
-        std::shared_ptr<CommitteeState> m_committeeStatePtr = nullptr;
+        std::shared_ptr<VoterSystem> m_voterSystem = nullptr;
 
         friend class MessageManager;
     };

@@ -5,14 +5,14 @@
 namespace ultrainio {
     struct BlockHeaderDigest {
         chain::block_timestamp_type      timestamp;
-        std::string                      proposerPk;
+        AccountName                      proposer;
         chain::block_id_type             previous;
         chain::block_id_type             myid;
         uint32_t                         blockNum;
 
         void digestFromBlockHeader(const BlockHeader& block_header) {
             timestamp  = block_header.timestamp;
-            proposerPk = block_header.proposerPk;
+            proposer   = block_header.proposer;
             previous   = block_header.previous;
             myid       = block_header.id();
             blockNum   = block_header.block_num();
@@ -34,14 +34,14 @@ namespace ultrainio {
     struct EchoMsgInfoDigest {
         EchoMsgDigest             echoMsg;
         bool                      hasSend;
-        uint32_t                  pkPoolSize;
-        std::vector<std::string>  pk_pool; //public key pool
+        uint32_t                  accountPoolSize;
+        std::vector<AccountName>  account_pool; //public key pool
 
         void digestFromeEchoMsgInfo(const echo_message_info& echo_msg_info) {
             echoMsg.digestFromeEchoMsg(echo_msg_info.echo);
             hasSend = echo_msg_info.hasSend;
-            pkPoolSize = echo_msg_info.pkPool.size();
-            pk_pool.assign(echo_msg_info.pkPool.begin(), echo_msg_info.pkPool.end());
+            accountPoolSize = echo_msg_info.accountPool.size();
+            account_pool.assign(echo_msg_info.accountPool.begin(), echo_msg_info.accountPool.end());
         }
     };
 

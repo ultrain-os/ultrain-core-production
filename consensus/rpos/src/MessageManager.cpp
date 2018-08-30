@@ -65,8 +65,7 @@ namespace ultrainio {
         ULTRAIN_ASSERT(blockNum > 1, chain::chain_exception, "blockNum should > 1");
         auto itor = blockMessageMap.find(blockNum);
         if (itor == blockMessageMap.end()) {
-            BlockMessagePtr blockMessagePtr = std::make_shared<BlockMessage>();
-            blockMessagePtr->m_blockNum = blockNum;
+            BlockMessagePtr blockMessagePtr = std::make_shared<BlockMessage>(blockNum);
             blockMessageMap.insert(make_pair(blockNum, blockMessagePtr));
             return blockMessagePtr;
         }
@@ -74,35 +73,43 @@ namespace ultrainio {
     }
 
     int MessageManager::handleMessage(const AggEchoMsg& aggEchoMsg) {
-        if (!Validator::verify<UnsignedAggEchoMsg>(Signature(aggEchoMsg.signature), aggEchoMsg, PublicKey(aggEchoMsg.pk))) {
-            elog("verify AggEchoMsg error. pk : ${pk}", ("pk", aggEchoMsg.pk));
-            return kSignatureError;
-        }
-        uint32_t blockNum = UranusNode::getInstance()->getBlockNum();
-        if (blockNum - 1 > aggEchoMsg.blockHeader.block_num()) {
+        uint32_t blockNum = aggEchoMsg.blockHeader.block_num();
+        uint32_t thisBlockNum = UranusNode::getInstance()->getBlockNum();
+        if (thisBlockNum - Config::MAX_LATER_NUMBER > blockNum) {
             return kObsolete;
         }
         BlockMessagePtr blockMessagePtr = initIfNeed(aggEchoMsg.blockHeader.block_num());
-        if (blockMessagePtr->m_myAggEchoMsgPtr && blockMessagePtr->m_myAggEchoMsgPtr->pk == aggEchoMsg.pk) {
+        if (blockMessagePtr->m_myAggEchoMsgPtr && blockMessagePtr->m_myAggEchoMsgPtr->account == aggEchoMsg.account) {
             ilog("loopback AggEchoMsg");
             return kDuplicate;
         }
         for (auto itor = blockMessagePtr->m_aggEchoMsgV.begin(); itor != blockMessagePtr->m_aggEchoMsgV.end(); itor++) {
-            if (itor->pk == aggEchoMsg.pk) {
+            if (itor->account == aggEchoMsg.account) {
                 ilog("duplicate AggEchoMsg");
                 return kDuplicate;
             }
         }
         blockMessagePtr->m_aggEchoMsgV.push_back(aggEchoMsg);
-        for (int i = 0; i < aggEchoMsg.pkPool.size(); i++) {
-            EchoMsg echoMsg;
-            echoMsg.blockHeader = aggEchoMsg.blockHeader;
-            echoMsg.pk = aggEchoMsg.pkPool[i];
-            echoMsg.proof = aggEchoMsg.proofPool[i];
-            echoMsg.phase = aggEchoMsg.phase;
-            echoMsg.baxCount = aggEchoMsg.baxCount;
-
-            //TODO(qinxiaofen) proof check
+        if (blockNum == thisBlockNum) {
+            std::shared_ptr<VoterSystem> voterSysPtr = getVoterSys(blockNum);
+            PublicKey publicKey = voterSysPtr->getPublicKey(aggEchoMsg.account);
+            ULTRAIN_ASSERT(publicKey.isValid(), chain::chain_exception, "public key is not valid");
+            if (!publicKey.isValid()) {
+                return kAccountError;
+            }
+            if (!Validator::verify<UnsignedAggEchoMsg>(Signature(aggEchoMsg.signature), aggEchoMsg, publicKey)) {
+                elog("verify AggEchoMsg error. account : ${account}", ("account", std::string(aggEchoMsg.account)));
+                return kSignatureError;
+            }
+            // TODO(qinxiaofen)verify stake
+            for (int i = 0; i < aggEchoMsg.accountPool.size(); i++) {
+                EchoMsg echoMsg;
+                echoMsg.blockHeader = aggEchoMsg.blockHeader;
+                echoMsg.account = aggEchoMsg.accountPool[i];
+                echoMsg.proof = aggEchoMsg.proofPool[i];
+                echoMsg.phase = aggEchoMsg.phase;
+                echoMsg.baxCount = aggEchoMsg.baxCount;
+                //TODO(qinxiaofen) proof check
 //            PublicKey publicKey(echoMsg.pk);
 //            Proof proposerProof(echoMsg.proof);
 //            ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
@@ -112,7 +119,8 @@ namespace ultrainio {
 //                elog("proof verify error. pk : ${pk}", ("pk", propose.block.proposerProof));
 //                return false;
 //            }
-            UranusNode::getInstance()->handleMessage(echoMsg);
+                UranusNode::getInstance()->handleMessage(echoMsg);
+            }
         }
         return kSuccess;
     }
@@ -156,8 +164,8 @@ namespace ultrainio {
         }
     }
 
-    std::shared_ptr<CommitteeState> MessageManager::getCommitteeStatePtr(uint32_t blockNum) {
+    std::shared_ptr<VoterSystem> MessageManager::getVoterSys(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->m_committeeStatePtr;
+        return blockMessagePtr->m_voterSystem;
     }
 }

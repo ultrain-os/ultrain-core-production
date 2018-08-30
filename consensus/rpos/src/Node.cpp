@@ -12,6 +12,7 @@
 #include <rpos/MessageBuilder.h>
 #include <rpos/MessageManager.h>
 #include <rpos/UranusController.h>
+#include <rpos/KeyKeeper.h>
 
 // eos net
 #include <appbase/application.hpp>
@@ -45,8 +46,7 @@ namespace ultrainio {
                                                                  m_syncFailed(false),
                                                                  m_phase(kPhaseInit), m_baxCount(0), m_timer(ioservice),
                                                                  m_preRunTimer(ioservice),
-                                                                 m_controllerPtr(std::make_shared<UranusController>()),
-                                                                 m_privateKey() {
+                                                                 m_controllerPtr(std::make_shared<UranusController>()) {
         ilog("Code version is ${s}", ("s", version));
     };
 
@@ -68,28 +68,12 @@ namespace ultrainio {
         m_isNonProducingNode = v;
     }
 
-    void UranusNode::setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk) {
-        m_genesisLeaderPk = PublicKey(pk);
-        m_genesisLeaderSk = PrivateKey(sk, m_genesisLeaderPk);
-        ULTRAIN_ASSERT(m_genesisLeaderPk.isValid(),
-                       chain::chain_exception,
-                       "should set correct genesis public key");
-        if (m_genesisLeaderSk.isValid()) {
-            dlog("genesis leader key pair ok. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
-            ULTRAIN_ASSERT(PrivateKey::verifyKeyPair(m_genesisLeaderPk, m_genesisLeaderSk),
-                    chain::chain_exception, "verify genesis leader key pair failed");
-        } else {
-            dlog("not genesis leader. verify genesis leader key pair failed. pk : ${pk}, sk : ${sk}", ("pk", pk)("sk", sk));
-        }
+    void UranusNode::setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk, const std::string& account) {
+        VoterSystem::getKeyKeeper()->setGenesisLeaderKeyPair(pk, sk, account);
     }
 
-    void UranusNode::setCommitteeKeyPair(const std::string& pk, const std::string& sk) {
-        m_publicKey = PublicKey(pk);
-        m_privateKey = PrivateKey(sk, m_publicKey);
-        ULTRAIN_ASSERT(PrivateKey::verifyKeyPair(m_publicKey, m_privateKey),
-                       chain::chain_exception,
-                       "should set correct committee key pair.");
-        ilog("My committee key pair is pk : ${pk}", ("pk", pk));
+    void UranusNode::setCommitteeKeyPair(const std::string& pk, const std::string& sk, const std::string& account) {
+        VoterSystem::getKeyKeeper()->setCommitteeKeyPair(pk, sk, account);
     }
 
     bool UranusNode::getNonProducingNode() const {
@@ -522,7 +506,7 @@ namespace ultrainio {
              ("Voter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
                      ("count",m_baxCount));
 
-        if (m_baxCount >= 20) {
+        if (m_baxCount >= 20) { // TODO(why not check role)
             sendEchoForEmptyBlock();
         } else {
             vote(getBlockNum(),kPhaseBAX,m_baxCount);
@@ -868,32 +852,8 @@ namespace ultrainio {
         sendMessage(echoMsg);
     }
 
-    bool UranusNode::isGenesisLeader(const PublicKey& pk) const {
-        return pk.isValid() && m_genesisLeaderPk == pk;
-    }
-
     int UranusNode::getCommitteeMemberNumber() {
-        VoterSystem voterSystem;
-        return voterSystem.getCommitteeMemberNumber(getBlockNum());
-    }
-
-    PrivateKey UranusNode::getSignaturePrivate() const {
-        VoterSystem voterSystem;
-        if (voterSystem.isCommitteeMember(m_genesisLeaderPk) && m_genesisLeaderSk.isValid()) {
-            return m_genesisLeaderSk;
-        } else if (voterSystem.isCommitteeMember(m_publicKey)) {
-            return m_privateKey;
-        }
-        return PrivateKey();
-    }
-
-    PublicKey UranusNode::getSignaturePublic() const {
-        VoterSystem voterSystem;
-        if (voterSystem.isCommitteeMember(m_genesisLeaderPk) && m_genesisLeaderSk.isValid()) {
-            return m_genesisLeaderPk;
-        } else if (voterSystem.isCommitteeMember(m_publicKey)) {
-            return m_publicKey;
-        }
-        return PublicKey();
+        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(this->getBlockNum());
+        return voterSysPtr->getCommitteeMemberNumber();
     }
 }

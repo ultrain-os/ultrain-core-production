@@ -1,30 +1,71 @@
 #pragma once
-#include <rpos/CommitteeInfo.h>
+
 #include <memory>
 #include <string>
 #include <vector>
-#include <appbase/application.hpp>
-#include <ultrainio/chain_plugin/chain_plugin.hpp>
-using namespace appbase;
+
+#include <core/Redefined.h>
+#include <crypto/PrivateKey.h>
+#include <crypto/PublicKey.h>
+#include <rpos/CommitteeInfo.h>
 
 namespace ultrainio {
     // forward declare
+    struct CommitteeState;
     class PublicKey;
     class Proof;
+    class KeyKeeper;
 
     class VoterSystem {
     public:
-        int getStakes(const std::string &pk);
+        static std::shared_ptr<VoterSystem> create(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
+
+        static std::shared_ptr<KeyKeeper> getKeyKeeper();
+
+        AccountName getMyWorkingAccount();
+
+        PrivateKey getMyWorkingPrivateKey();
+
+        int getStakes(const AccountName& account, bool isNonProducingNode);
+
         double getProposerRatio();
+
         double getVoterRatio();
-        int getCommitteeMemberNumber(uint32_t blockNum) const;
-        bool isCommitteeMember(const PublicKey& publicKey) const;
+
+        int getCommitteeMemberNumber() const;
+
         int count(const Proof& proof, int stakes, double p);
-        std::shared_ptr<CommitteeState> getCommitteeState();
+
+        PrivateKey getPrivateKey(const AccountName& account) const;
+
+        PublicKey getPublicKey(const AccountName& account) const;
     private:
-        bool inCommitteeMemberList(uint32_t blockNum, const PublicKey& publicKey) const;
-        bool isGenesisPeriod(uint32_t blockNum) const;
-        long getTotalStakes(uint32_t blockNum) const;
+        static std::shared_ptr<KeyKeeper> s_keyKeeper;
+
+        static const int kGenesisStartupTime;
+
+        static const int kGenesisStartupBlockNum;
+
+        VoterSystem(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
+
+        // get committee state from world state
+        std::shared_ptr<CommitteeState> getCommitteeState();
+
+        PublicKey findInCommitteeMemberList(const AccountName& account) const;
+
+        bool isGenesisLeader(const AccountName& account) const;
+
+        bool isCommitteeMember(const AccountName& account) const;
+
+        bool isGenesisPeriod() const;
+
+        long getTotalStakes() const;
+
         int reverseBinoCdf(double rand, int stake, double p);
+
+        uint32_t m_blockNum = 0;
+        std::shared_ptr<CommitteeState> m_committeeStatePtr = nullptr;
+        double m_proposerRatio = 0.0;
+        double m_voterRatio = 0.0;
     };
 }

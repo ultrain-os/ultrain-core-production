@@ -988,7 +988,7 @@ struct controller_impl {
          // We have to copy here.
          chain::signed_block_header* hp = &(pending->_pending_block_state->header);
          hp->producer = b->producer;
-         hp->proposerPk = b->proposerPk;
+         hp->proposer = b->proposer;
          hp->proposerProof = b->proposerProof;
          transaction_trace_ptr trace;
 

@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/rpos/*.h")
 add_library( ultrainio_rpos
         src/BlockMessage.cpp
+        src/KeyKeeper.cpp
         src/MessageBuilder.cpp
         src/MessageManager.cpp
         src/Node.cpp

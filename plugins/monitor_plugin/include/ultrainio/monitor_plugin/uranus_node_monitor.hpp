@@ -3,6 +3,8 @@
 #include "uranus_controller_monitor.hpp"
 
 #include <rpos/Node.h>
+#include <rpos/KeyKeeper.h>
+#include <rpos/VoterSystem.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace ultrainio {
@@ -88,10 +90,10 @@ namespace ultrainio {
                 reportData.connected         = pNode->m_connected;
                 reportData.ready             = pNode->m_ready;
                 reportData.nonProducingNode  = pNode->getNonProducingNode();
-                reportData.genesisLeaderPk   = std::string(pNode->m_genesisLeaderPk);
-                reportData.genesisLeaderSk   = std::string(pNode->m_genesisLeaderSk);
-                reportData.publicKey         = std::string(pNode->m_publicKey);
-                reportData.privateKey        = std::string(pNode->m_privateKey);
+                reportData.genesisLeaderPk   = std::string(VoterSystem::getKeyKeeper()->m_genesisLeaderPk);
+                reportData.genesisLeaderSk   = std::string(VoterSystem::getKeyKeeper()->m_genesisLeaderSk);
+                reportData.publicKey         = std::string(VoterSystem::getKeyKeeper()->m_publicKey);
+                reportData.privateKey        = std::string(VoterSystem::getKeyKeeper()->m_privateKey);
 
                 const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
                 reportData.blockNum          = chain.head_block_num();

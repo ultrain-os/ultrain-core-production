@@ -3,6 +3,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <ultrainio/chain/block.hpp>
 #include <crypto/Signature.h>
+#include <core/Redefined.h>
 
 namespace ultrainio {
 
@@ -42,7 +43,7 @@ namespace ultrainio {
         ConsensusPhase phase;
         uint32_t    baxCount;
         uint32_t    timestamp;
-        std::string pk; // hex string
+        AccountName account;
         std::string proof;
     };
 
@@ -53,11 +54,11 @@ namespace ultrainio {
     // aggregate echo msg
     struct UnsignedAggEchoMsg {
         BlockHeader blockHeader;
-        std::vector<std::string> pkPool;
+        std::vector<AccountName> accountPool;
         std::vector<std::string> proofPool;
         ConsensusPhase phase;
         uint32_t baxCount;
-        std::string pk; // hex string
+        AccountName account;
         std::string proof;
     };
 
@@ -67,10 +68,10 @@ namespace ultrainio {
 }
 
 FC_REFLECT( ultrainio::ProposeMsg, (block))
-FC_REFLECT( ultrainio::UnsignedEchoMsg, (blockHeader)(phase)(baxCount)(timestamp)(pk)(proof))
+FC_REFLECT( ultrainio::UnsignedEchoMsg, (blockHeader)(phase)(baxCount)(timestamp)(account)(proof))
 FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature))
 FC_REFLECT( ultrainio::SyncRequestMessage, (startBlockNum)(endBlockNum) )
 FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
 FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))
-FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockHeader)(pkPool)(proofPool)(phase)(baxCount)(pk)(proof))
+FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockHeader)(accountPool)(proofPool)(phase)(baxCount)(account)(proof))
 FC_REFLECT_DERIVED( ultrainio::AggEchoMsg, (ultrainio::UnsignedAggEchoMsg), (signature))

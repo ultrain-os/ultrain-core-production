@@ -11,23 +11,21 @@
 #include <ultrainio/chain/types.hpp>
 
 #include <core/Message.h>
-#include <core/Transaction.h>
+#include <core/Redefined.h>
 #include <boost/asio/steady_timer.hpp>
 
 namespace ultrainio {
-
     class UranusNode;
-
     class UranusControllerMonitor;
 
     struct echo_message_info {
         EchoMsg echo;
-        std::vector<std::string> pkPool; //public key pool
+        std::vector<AccountName> accountPool;
         std::vector<std::string> proofPool;
         int totalVoter;
         bool hasSend;
 
-        echo_message_info() : echo(), pkPool(), totalVoter(0), hasSend(false) {}
+        echo_message_info() : echo(), accountPool(), totalVoter(0), hasSend(false) {}
     };
 
     struct msgkey {

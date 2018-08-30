@@ -46,7 +46,7 @@ namespace {
     // TODO(shenyufeng) need more precise compare
     bool IsBa0TheRightBlock(const ultrainio::chain::signed_block &ba0_block,
                             const ultrainio::chain::signed_block_ptr &block) {
-        return  (ba0_block.proposerPk == block->proposerPk &&
+        return  (ba0_block.proposer == block->proposer &&
                  ba0_block.proposerProof == block->proposerProof &&
                  ba0_block.timestamp == block->timestamp &&
                  ba0_block.transaction_mroot == block->transaction_mroot &&
@@ -80,28 +80,27 @@ namespace ultrainio {
     }
 
     bool UranusController::insert(const EchoMsg &echo) {
-        VoterSystem voterSystem;
-        int stakes = voterSystem.getStakes(echo.pk);
-        double voterRatio = voterSystem.getVoterRatio();
+        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(echo.blockHeader.block_num());
+        int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
+        double voterRatio = voterSysPtr->getVoterRatio();
 
         auto itor = m_echoMsgMap.find(echo.blockHeader.id());
         if (itor != m_echoMsgMap.end()) {
-            auto pkItor = std::find(itor->second.pkPool.begin(), itor->second.pkPool.end(), echo.pk);
-            if (pkItor == itor->second.pkPool.end()) {
-                itor->second.pkPool.push_back(echo.pk);
+            auto pkItor = std::find(itor->second.accountPool.begin(), itor->second.accountPool.end(), echo.account);
+            if (pkItor == itor->second.accountPool.end()) {
+                itor->second.accountPool.push_back(echo.account);
                 itor->second.proofPool.push_back(echo.proof);
                 Proof proof(echo.proof);
-
-                itor->second.totalVoter += voterSystem.count(proof, stakes, voterRatio);
+                itor->second.totalVoter += voterSysPtr->count(proof, stakes, voterRatio);
             }
         } else {
             echo_message_info echo_info;
             echo_info.echo = echo;
-            echo_info.pkPool.push_back(echo.pk);
+            echo_info.accountPool.push_back(echo.account);
             echo_info.proofPool.push_back(echo.proof);
             echo_info.hasSend = true;
             Proof proof(echo.proof);
-            echo_info.totalVoter = voterSystem.count(proof, stakes, voterRatio);
+            echo_info.totalVoter = voterSysPtr->count(proof, stakes, voterRatio);
             m_echoMsgMap.insert(make_pair(echo.blockHeader.id(), echo_info));
         }
         return true;
@@ -173,9 +172,9 @@ namespace ultrainio {
                 auto id = echo.blockHeader.id();
                 std::vector<EchoMsg> &ev = itor->second;
                 for (size_t i = 0; i < ev.size(); i++) {
-                    if (ev[i].pk == echo.pk && ev[i].blockHeader.id() == id) {
-                        ilog("duplicate echo msg!!! id:${id} pk:${pk} blockNum:${b} phase:${p}",
-                             ("id", echo.blockHeader.id())("pk", echo.pk)("b", key.blockNum)("p", key.phase));
+                    if (ev[i].account == echo.account && ev[i].blockHeader.id() == id) {
+                        ilog("duplicate echo msg!!! id:${id} account:${account} blockNum:${b} phase:${p}",
+                             ("id", echo.blockHeader.id())("account", std::string(echo.account))("b", key.blockNum)("p", key.phase));
                         duplicate = true;
                         return true;
                     }
@@ -209,9 +208,9 @@ namespace ultrainio {
                 auto id = propose.block.id();
                 std::vector<ProposeMsg> &pv = itor->second;
                 for (size_t i = 0; i < pv.size(); i++) {
-                    if (pv[i].block.proposerPk == propose.block.proposerPk && pv[i].block.id() == id) {
+                    if (pv[i].block.proposer == propose.block.proposer && pv[i].block.id() == id) {
                         ilog("duplicate propose msg!!! id:${id} pk:${pk} blockNum:${b} phase:${p}",
-                             ("id", propose.block.id())("pk", propose.block.proposerPk)("b", key.blockNum)("p",
+                             ("id", propose.block.id())("pk", propose.block.proposer)("b", key.blockNum)("p",
                                                                                                            key.phase));
                         duplicate = true;
                         return true;
@@ -226,10 +225,10 @@ namespace ultrainio {
     }
 
     bool UranusController::isBeforeMsg(const EchoMsg &echo) {
-        std::string myPk = std::string(UranusNode::getInstance()->getSignaturePublic());
+        AccountName myAccount = MessageManager::getInstance()->getVoterSys(echo.blockHeader.block_num())->getMyWorkingAccount();
 
-        if (myPk == echo.pk) {
-            elog("loopback echo. pk : ${pk}", ("pk", myPk));
+        if (myAccount == echo.account) {
+            elog("loopback echo. account : ${account}", ("account", std::string(myAccount)));
             return false;
         }
         if (echo.blockHeader.block_num() != UranusNode::getInstance()->getBlockNum()) {
@@ -290,15 +289,15 @@ namespace ultrainio {
     }
 
     bool UranusController::updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response) {
-        auto pkItor = std::find(info.pkPool.begin(), info.pkPool.end(), echo.pk);
-        if (pkItor == info.pkPool.end()) {
-            info.pkPool.push_back(echo.pk);
+        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(echo.blockHeader.block_num());
+        auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
+        if (pkItor == info.accountPool.end()) {
+            info.accountPool.push_back(echo.account);
             info.proofPool.push_back(echo.proof);
-            VoterSystem voterSystem;
-            int stakes = voterSystem.getStakes(echo.pk);
-            double voterRatio = voterSystem.getVoterRatio();
+            int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
+            double voterRatio = voterSysPtr->getVoterRatio();
             Proof proof(echo.proof);
-            info.totalVoter += voterSystem.count(proof, stakes, voterRatio);
+            info.totalVoter += voterSysPtr->count(proof, stakes, voterRatio);
             if (response && info.totalVoter >= THRESHOLD_SEND_ECHO && !info.hasSend
                 && UranusNode::getInstance()->getPhase() == kPhaseBA0 && isMinFEcho(info)) {
                 if (MessageManager::getInstance()->isVoter(UranusNode::getInstance()->getBlockNum(), echo.phase,
@@ -327,7 +326,7 @@ namespace ultrainio {
 
     uint32_t UranusController::isSyncing() {
         uint32_t maxBlockNum = UranusNode::getInstance()->getBlockNum();
-        std::string myPk = std::string(UranusNode::getInstance()->getSignaturePublic());
+        AccountName myAccount = MessageManager::getInstance()->getVoterSys(maxBlockNum)->getMyWorkingAccount();
 
         if (m_cacheEchoMsgMap.empty()) {
             return INVALID_BLOCK_NUM;
@@ -344,8 +343,8 @@ namespace ultrainio {
                 //echo_message_info echo_info;
 
                 for (auto &echo : vector_itor->second) {
-                    if (myPk == echo.pk) {
-                        elog("loopback echo. pk : ${pk}", ("pk", myPk));
+                    if (myAccount == echo.account) {
+                        elog("loopback echo. account : ${account}", ("account", std::string(myAccount)));
                         continue;
                     }
 
@@ -377,9 +376,10 @@ namespace ultrainio {
     }
 
     bool UranusController::isValid(const EchoMsg &echo) {
-        std::string myPk = std::string(UranusNode::getInstance()->getSignaturePublic());
-        if (myPk == echo.pk) {
-            elog("loopback echo. pk : ${pk}", ("pk", myPk));
+        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(echo.blockHeader.block_num());
+        AccountName myAccount = voterSysPtr->getMyWorkingAccount();
+        if (myAccount == echo.account) {
+            elog("loopback echo. account : ${account}", ("account", std::string(myAccount)));
             return false;
         }
 
@@ -398,9 +398,9 @@ namespace ultrainio {
             return false;
         }
 
-        PublicKey publicKey(echo.pk);
+        PublicKey publicKey = voterSysPtr->getPublicKey(echo.account);
         if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
-            elog("validator echo error. pk : ${pk}", ("pk", echo.pk));
+            elog("validator echo error. account : ${account}", ("account", std::string(echo.account)));
             return false;
         }
 
@@ -409,17 +409,20 @@ namespace ultrainio {
         std::string previousHash(blockId.data());
         Seed seed(previousHash, echo.blockHeader.block_num(), echo.phase, echo.baxCount);
         if (!Vrf::verify(publicKey, proof, seed, Vrf::kVoter)) {
-            elog("proof verify error. pk : ${pk}", ("pk", echo.pk));
+            elog("proof verify error. account : ${account}", ("account", std::string(echo.account)));
             return false;
         }
+
+        // TODO verify tickes
         return true;
     }
 
     bool UranusController::isValid(const ProposeMsg &propose) {
-        std::string myPk = std::string(UranusNode::getInstance()->getSignaturePublic());
+        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(propose.block.block_num());
+        AccountName myAccount = voterSysPtr->getMyWorkingAccount();
 
-        if (myPk == propose.block.proposerPk) {
-            elog("loopback propose. pk : ${pk}", ("pk", myPk));
+        if (myAccount == propose.block.proposer) {
+            elog("loopback propose. account : ${account}", ("account", std::string(myAccount)));
             return false;
         }
 
@@ -429,9 +432,9 @@ namespace ultrainio {
             return false;
         }
 
-        PublicKey publicKey(propose.block.proposerPk);
+        PublicKey publicKey = voterSysPtr->getPublicKey(propose.block.proposer);
         if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
-            elog("validator proposer error. proposerPk : ${proposerPk}", ("proposerPk", propose.block.proposerPk));
+            elog("validator proposer error. proposer : ${proposer}", ("proposer", std::string(propose.block.proposer)));
             return false;
         }
 
@@ -532,13 +535,13 @@ namespace ultrainio {
         }
 
         if ((UranusNode::getInstance()->getSyncingStatus()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
-            dlog("receive echo msg. node is syncing. blockhash = ${blockhash} echo'pk = ${pk}",
-                 ("blockhash", echo.blockHeader.id())("pk", echo.pk));
+            dlog("receive echo msg. node is syncing. blockhash = ${blockhash} echo'account = ${account}",
+                 ("blockhash", echo.blockHeader.id())("account", std::string(echo.account)));
             return true;
         }
 
-        dlog("receive echo msg.blockhash = ${blockhash} echo'pk = ${pk}",
-             ("blockhash", echo.blockHeader.id())("pk", echo.pk));
+        dlog("receive echo msg.blockhash = ${blockhash} echo'account = ${account}",
+             ("blockhash", echo.blockHeader.id())("account", std::string(echo.account)));
         auto itor = m_echoMsgMap.find(echo.blockHeader.id());
         if (itor != m_echoMsgMap.end()) {
             bret = updateAndMayResponse(itor->second, echo, true);
@@ -890,7 +893,8 @@ namespace ultrainio {
             const auto &bh = pbs->header;
             block.timestamp = bh.timestamp;
             block.producer = "ultrainio";
-            block.proposerPk = std::string(UranusNode::getInstance()->getSignaturePublic());
+            std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+            block.proposer = voterSysPtr->getMyWorkingAccount();
             block.proposerProof = std::string(MessageManager::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()));
             block.version = 0;
             block.confirmed = 1;
@@ -898,9 +902,9 @@ namespace ultrainio {
             block.transaction_mroot = bh.transaction_mroot;
             block.action_mroot = bh.action_mroot;
             block.transactions = pbs->block->transactions;
-            block.signature = std::string(Signer::sign<BlockHeader>(block, UranusNode::getInstance()->getSignaturePrivate()));
-            ilog("-------- propose a block, trx num ${num} proposerPk ${proposerPk} block signature ${signature}",
-                 ("num", block.transactions.size())("proposerPk", block.proposerPk)("signature", block.signature));
+            block.signature = std::string(Signer::sign<BlockHeader>(block, voterSysPtr->getMyWorkingPrivateKey()));
+            ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature}",
+                 ("num", block.transactions.size())("proposer", std::string(block.proposer))("signature", block.signature));
             /*
               ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${c} ${prv} ${ma} ${mt} ${id}",
               ("t", block.timestamp)
@@ -990,7 +994,6 @@ namespace ultrainio {
     }
 
     Block UranusController::produceBaxBlock() {
-        VoterSystem voter;
         uint32_t min_priority = std::numeric_limits<uint32_t>::max();
         echo_message_info *echo_info = nullptr;
 
@@ -1042,12 +1045,11 @@ namespace ultrainio {
      * empty block or normal block when ba0 while other phase may return blank, empty, normal block.
      */
     Block UranusController::produceTentativeBlock() {
-        VoterSystem voter;
         uint32_t minPriority = std::numeric_limits<uint32_t>::max();
         BlockIdType minBlockId = BlockIdType();
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
             dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} block_hash : ${block_hash}",
-                 ("phase", (uint32_t) echo_itor->second.echo.phase)("size", echo_itor->second.pkPool.size())(
+                 ("phase", (uint32_t) echo_itor->second.echo.phase)("size", echo_itor->second.accountPool.size())(
                          "totalVoter", echo_itor->second.totalVoter)("block_hash",
                                                                      echo_itor->second.echo.blockHeader.id()));
             if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
@@ -1090,7 +1092,6 @@ namespace ultrainio {
     }
 
     bool UranusController::isProcessNow() {
-        VoterSystem voter;
         uint32_t minPriority = std::numeric_limits<uint32_t>::max();
         BlockIdType minBlockId = BlockIdType();
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
@@ -1115,20 +1116,21 @@ namespace ultrainio {
     }
 
     std::shared_ptr<AggEchoMsg> UranusController::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {
+        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(blockPtr->block_num());
         std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
         aggEchoMsgPtr->blockHeader = *blockPtr;
-        aggEchoMsgPtr->pk = std::string(UranusNode::getInstance()->getSignaturePublic());
+        aggEchoMsgPtr->account = voterSysPtr->getMyWorkingAccount();
         aggEchoMsgPtr->proof = std::string(MessageManager::getInstance()->getVoterProof(blockPtr->block_num(), kPhaseBA1, 0));
         auto itor = m_echoMsgMap.find(blockPtr->id());
         if (itor == m_echoMsgMap.end()) {
             elog("can't find block id ${id} in echo msg map", ("id", blockPtr->id()));
             return nullptr;
         }
-        aggEchoMsgPtr->pkPool = itor->second.pkPool;
+        aggEchoMsgPtr->accountPool = itor->second.accountPool;
         aggEchoMsgPtr->proofPool = itor->second.proofPool;
         aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
         aggEchoMsgPtr->baxCount = UranusNode::getInstance()->getBaxCount();
-        aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, UranusNode::getInstance()->getSignaturePrivate()));
+        aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, voterSysPtr->getMyWorkingPrivateKey()));
         return aggEchoMsgPtr;
     }
 
@@ -1164,10 +1166,10 @@ namespace ultrainio {
         chain::signed_block_header *hp = &(pbs->header);
         // TODO(yufengshen): Move all this into start_block() to remove dup codes.
         bp->producer = block.producer;
-        bp->proposerPk = block.proposerPk;
+        bp->proposer = block.proposer;
         bp->proposerProof = block.proposerProof;
         hp->producer = block.producer;
-        hp->proposerPk = block.proposerPk;
+        hp->proposer = block.proposer;
         hp->proposerProof = block.proposerProof;
         bp->confirmed = block.confirmed;
         auto start_timestamp = fc::time_point::now();
@@ -1244,10 +1246,10 @@ namespace ultrainio {
             chain::signed_block_ptr bp = pbs->block;
             chain::signed_block_header *hp = &(pbs->header);
             bp->producer = block.producer;
-            bp->proposerPk = block.proposerPk;
+            bp->proposer = block.proposer;
             bp->proposerProof = block.proposerProof;
             hp->producer = block.producer;
-            hp->proposerPk = block.proposerPk;
+            hp->proposer = block.proposer;
             hp->proposerProof = block.proposerProof;
             bp->confirmed = block.confirmed;
             m_currentPreRunBa0TrxIndex = 0;

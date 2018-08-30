@@ -6,7 +6,6 @@
 namespace ultrainio {
     class Seed {
     public:
-        virtual ~Seed() = default;
         Seed(const std::string& preHash, uint32_t blockNum, ConsensusPhase phase, int baxCount);
         explicit operator std::string() const;
 

@@ -29,7 +29,5 @@ namespace ultrainio {
     private:
         bool getRaw(uint8_t* rawKey, size_t len) const;
         std::string m_key;
-        // (qinxiaofen)this may be remove after remove UranusController::
-        friend class UranusNode;
     };
 }

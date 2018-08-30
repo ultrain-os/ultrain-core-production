@@ -10,7 +10,7 @@
 namespace ultrainio {
     struct EchoMsgSet {
         std::vector<EchoMsg> echoMsgV;
-        std::vector<std::string> pkPool; // pk pool of echoMsgDescV, speed up search
+        std::vector<AccountName> accountPool; // pk pool of echoMsgDescV, speed up search
         int totalVoterCount = 0;
         BlockHeader blockHeader;
     };

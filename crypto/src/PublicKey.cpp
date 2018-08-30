@@ -40,7 +40,7 @@ namespace ultrainio {
     }
 
     bool PublicKey::isValid() const {
-        if (m_key.length() == 2 * Ed25519::PUBLIC_KEY_LEN) {
+        if (m_key.length() == Ed25519::PUBLIC_KEY_HEX_LEN) {
             return true;
         }
         return false;

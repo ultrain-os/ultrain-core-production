@@ -11,7 +11,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <core/Message.h>
-#include <core/Transaction.h>
+#include <core/Redefined.h>
 #include <crypto/Ed25519.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
@@ -20,6 +20,7 @@
 
 namespace ultrainio {
     class UranusController;
+    class KeyKeeper;
 
     // used for monitor to record block producing time
     typedef std::function<void ()> monitorCallback;
@@ -34,9 +35,9 @@ namespace ultrainio {
 
         static std::shared_ptr<UranusNode> getInstance();
 
-        void setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk);
+        void setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk, const std::string& account);
 
-        void setCommitteeKeyPair(const std::string& pk, const std::string& sk);
+        void setCommitteeKeyPair(const std::string& pk, const std::string& sk, const std::string& account);
 
         void setNonProducingNode(bool);
 
@@ -116,17 +117,13 @@ namespace ultrainio {
 
         const std::shared_ptr<UranusController> getController() const;
 
-        PrivateKey getSignaturePrivate() const;
-
-        PublicKey getSignaturePublic() const;
-
-        bool isGenesisLeader(const PublicKey& pk) const;
-
         uint32_t getRoundCount();
 
         int getCommitteeMemberNumber();
 
         void vote(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount);
+
+        std::shared_ptr<KeyKeeper> getKeyKeeper() const;
     private:
         explicit UranusNode(boost::asio::io_service &ioservice);
 
@@ -167,10 +164,6 @@ namespace ultrainio {
         boost::asio::deadline_timer m_timer;
         boost::asio::deadline_timer m_preRunTimer;
         std::shared_ptr<UranusController> m_controllerPtr;
-        PublicKey m_genesisLeaderPk;
-        PrivateKey m_genesisLeaderSk;
-        PublicKey m_publicKey;
-        PrivateKey m_privateKey;
         friend class UranusNodeMonitor;
         monitorCallback ba0Callback = nullptr;
         monitorCallback ba1Callback = nullptr;

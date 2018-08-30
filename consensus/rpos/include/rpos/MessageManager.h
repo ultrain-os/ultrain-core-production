@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <core/Message.h>
+#include <core/Redefined.h>
 #include <crypto/Ed25519.h>
 #include <rpos/BlockMessage.h>
 #include <rpos/Proof.h>
@@ -15,10 +16,12 @@ namespace ultrainio {
         kDuplicate,
         kSignatureError,
         kObsolete,
+        kAccountError,
         kFaultProposer,
         kFaultVoter,
         kTheSameRoundButPhase,
-        kLaterRound
+        kLaterRound,
+        kUnknownError
     };
 
     class MessageManager {
@@ -47,7 +50,8 @@ namespace ultrainio {
 
         bool isProposer(uint32_t blockNum);
 
-        std::shared_ptr<CommitteeState> getCommitteeStatePtr(uint32_t blockNum);
+        std::shared_ptr<VoterSystem> getVoterSys(uint32_t blockNum);
+
     private:
         MessageManager() = default;
 

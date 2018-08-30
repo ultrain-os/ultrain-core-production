@@ -1,4 +1,4 @@
-#define BOOST_TEST_MODULE rpos_unittest
+#define BOOST_TEST_MODULE proof_unittest
 #include <boost/test/included/unit_test.hpp>
 
 #include <iostream>
@@ -10,33 +10,9 @@
 #include <rpos/Proof.h>
 #include <rpos/Seed.h>
 #include <rpos/Vrf.h>
-#include <rpos/Validator.h>
-#include <rpos/Signer.h>
 
 using namespace ultrainio;
 using namespace std;
-
-// Signer/Validator
-BOOST_AUTO_TEST_SUITE(signervalidator_test_suite)
-
-    BOOST_AUTO_TEST_CASE(normal_flow) {
-        PrivateKey privateKey = PrivateKey::generate();
-        PublicKey publicKey = privateKey.getPublicKey();
-        Block block;
-        block.version = 1;
-        block.proposerPk = std::string(publicKey);
-        block.signature = std::string(Signer::sign<BlockHeader>(block, privateKey));
-        BOOST_CHECK(Validator::verify<BlockHeader>(Signature(block.signature), block, publicKey));
-
-        EchoMsg echoMsg;
-        echoMsg.baxCount = 0;
-        echoMsg.pk = std::string(publicKey);
-        echoMsg.signature = std::string(Signer::sign<UnsignedEchoMsg>(echoMsg, privateKey));
-        BOOST_CHECK(Validator::verify<UnsignedEchoMsg>(Signature(echoMsg.signature), echoMsg, publicKey));
-    }
-
-BOOST_AUTO_TEST_SUITE_END()
-
 
 // Proof
 BOOST_AUTO_TEST_SUITE(proof_test_suite)
@@ -61,7 +37,7 @@ BOOST_AUTO_TEST_SUITE(proof_test_suite)
         BOOST_CHECK(faultProof.getPriority() == faultProof.getPriority());
         BOOST_CHECK(!Vrf::verify(publicKey, faultProof, seed, Vrf::kProposer));
         string faultHexStr1;
-        for (int i = 0; i < 2 * Ed25519::SIGNATURE_LEN; i++) {
+        for (int i = 0; i < Ed25519::SIGNATURE_HEX_LEN; i++) {
             faultHexStr1 += "0";
         }
         Proof faultProof1(faultHexStr1);

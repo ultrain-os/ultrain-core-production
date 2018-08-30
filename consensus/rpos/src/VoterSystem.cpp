@@ -1,6 +1,5 @@
 #include "rpos/VoterSystem.h"
 
-#include <chrono>
 #include <limits>
 
 #include <boost/math/distributions/binomial.hpp>
@@ -10,85 +9,142 @@
 #include <rpos/MessageManager.h>
 #include <rpos/Node.h>
 #include <rpos/Proof.h>
+#include <rpos/KeyKeeper.h>
+
+#include <appbase/application.hpp>
+#include <ultrainio/chain_plugin/chain_plugin.hpp>
 
 using boost::math::binomial;
 using std::string;
+using namespace appbase;
 
 namespace ultrainio {
+    std::shared_ptr<KeyKeeper> VoterSystem::s_keyKeeper = std::make_shared<KeyKeeper>();
+
+    const int VoterSystem::kGenesisStartupTime = 60;
+
+    const int VoterSystem::kGenesisStartupBlockNum = kGenesisStartupTime * 6;
+
+    std::shared_ptr<VoterSystem> VoterSystem::create(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr) {
+        VoterSystem* voterSysPtr = new VoterSystem(blockNum, committeeStatePtr);
+        return std::shared_ptr<VoterSystem>(voterSysPtr);
+    }
+
+    VoterSystem::VoterSystem(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr)
+            : m_blockNum(blockNum), m_committeeStatePtr(committeeStatePtr) {
+        if (!m_committeeStatePtr) {
+            m_committeeStatePtr = getCommitteeState();
+        }
+        long totalStake = getTotalStakes();
+        m_proposerRatio = Config::PROPOSER_STAKES_NUMBER / totalStake;
+        m_voterRatio = Config::VOTER_STAKES_NUMBER / totalStake;
+    }
+
+    std::shared_ptr<KeyKeeper> VoterSystem::getKeyKeeper() {
+        return s_keyKeeper;
+    }
+
+    AccountName VoterSystem::getMyWorkingAccount() {
+        if (isGenesisPeriod() && s_keyKeeper->m_genesisLeaderSk.isValid()) {
+            return AccountName(s_keyKeeper->m_genesisLeader);
+        } else {
+            return AccountName(s_keyKeeper->m_account);
+        }
+    }
+
+    PrivateKey VoterSystem::getMyWorkingPrivateKey() {
+        return getPrivateKey(getMyWorkingAccount());
+    }
+
     double VoterSystem::getProposerRatio() {
-        long totalStake = getTotalStakes(UranusNode::getInstance()->getBlockNum());
-        return Config::PROPOSER_STAKES_NUMBER / totalStake;
+        return m_proposerRatio;
     }
 
     double VoterSystem::getVoterRatio() {
-        long totalStake = getTotalStakes(UranusNode::getInstance()->getBlockNum());
-        return Config::VOTER_STAKES_NUMBER / totalStake;
+        return m_voterRatio;
     }
 
-    bool VoterSystem::isGenesisPeriod(uint32_t blockNum) const {
-        std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
-        std::shared_ptr<CommitteeState> committeeStatePtr = messageManagerPtr->getCommitteeStatePtr(
-                blockNum);
-        boost::chrono::minutes genesisElapsed = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - UranusNode::GENESIS);
-        if ((!committeeStatePtr || !(committeeStatePtr->chainStateNormal))
-                && (genesisElapsed < boost::chrono::minutes(60))) {
+    bool VoterSystem::isGenesisPeriod() const {
+        boost::chrono::minutes genesisElapsed
+                = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - UranusNode::GENESIS);
+        if ((!m_committeeStatePtr || !(m_committeeStatePtr->chainStateNormal))
+                && (genesisElapsed < boost::chrono::minutes(kGenesisStartupTime))) {
             return true;
         }
         return false;
     }
 
-    long VoterSystem::getTotalStakes(uint32_t blockNum) const {
-        return getCommitteeMemberNumber(blockNum) * Config::DEFAULT_THRESHOLD;
+    long VoterSystem::getTotalStakes() const {
+        return getCommitteeMemberNumber() * Config::DEFAULT_THRESHOLD;
     }
 
-    int VoterSystem::getStakes(const std::string &pk) {
-        std::shared_ptr<UranusNode> nodePtr = UranusNode::getInstance();
-        bool isNonProducingNode = nodePtr->getNonProducingNode();
-        string myPk(nodePtr->getSignaturePublic());
+    int VoterSystem::getStakes(const AccountName& account, bool isNonProducingNode) {
+        AccountName myAccount = getMyWorkingAccount();
         // (shenyufeng)always be no listener
-        if (isNonProducingNode && pk == myPk)
+        if (isNonProducingNode && account == myAccount) {
             return 0;
-        if (isCommitteeMember(PublicKey(pk))) {
+        } else if (isCommitteeMember(account)) {
             return Config::DEFAULT_THRESHOLD;
         }
         return 0;
     }
 
-    int VoterSystem::getCommitteeMemberNumber(uint32_t blockNum) const {
-        if (isGenesisPeriod(blockNum)) {
+    int VoterSystem::getCommitteeMemberNumber() const {
+        if (isGenesisPeriod()) {
             return 1; // genesis leader only
         }
-        std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
-        std::shared_ptr<CommitteeState> committeeStatePtr = messageManagerPtr->getCommitteeStatePtr(
-                blockNum);
-        ULTRAIN_ASSERT(committeeStatePtr, chain::chain_exception, "DO YOU HAVE STAKE");
-        return committeeStatePtr->cinfo.size();
+        if (!m_committeeStatePtr) {
+            if (m_blockNum > kGenesisStartupBlockNum) {
+                ULTRAIN_ASSERT(m_committeeStatePtr != nullptr, chain::chain_exception, "DO YOU HAVE STAKES");
+            }
+            // may be a bundle of node join
+            return 1;
+        }
+
+        return m_committeeStatePtr->cinfo.size();
     }
 
-    bool VoterSystem::isCommitteeMember(const PublicKey& publicKey) const {
-        std::shared_ptr<UranusNode> nodePtr = UranusNode::getInstance();
-        uint32_t blockNum = nodePtr->getBlockNum();
-
-        if (isGenesisPeriod(blockNum) && nodePtr->isGenesisLeader(publicKey)) {
+    bool VoterSystem::isCommitteeMember(const AccountName& account) const {
+        if (isGenesisPeriod() && isGenesisLeader(account)) {
             return true;
-        } else if (!isGenesisPeriod(blockNum) && inCommitteeMemberList(blockNum, publicKey)) {
+        } else if (!isGenesisPeriod() && findInCommitteeMemberList(account).isValid()) {
             return true;
         }
         return false;
     }
 
-    bool VoterSystem::inCommitteeMemberList(uint32_t blockNum, const PublicKey& publicKey) const {
-        std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
-        std::shared_ptr<CommitteeState> committeeStatePtr = messageManagerPtr->getCommitteeStatePtr(
-                blockNum);
-        if (committeeStatePtr) {
-            for (auto& v : committeeStatePtr->cinfo) {
-                if (PublicKey(v.pk) == publicKey) {
-                    return true;
+    PublicKey VoterSystem::findInCommitteeMemberList(const AccountName& account) const {
+        if (m_committeeStatePtr) {
+            for (auto& v : m_committeeStatePtr->cinfo) {
+                ULTRAIN_ASSERT(!v.accountName.empty(), chain::chain_exception, "account name is empty");
+                if (account == AccountName(v.accountName)) {
+                    return PublicKey(v.pk);
                 }
             }
         }
-        return false;
+        return PublicKey();
+    }
+
+    PublicKey VoterSystem::getPublicKey(const AccountName& account) const {
+        if (account == AccountName(s_keyKeeper->m_account)) {
+            return s_keyKeeper->m_publicKey;
+        } else if (account == AccountName(s_keyKeeper->m_genesisLeader)) {
+            return s_keyKeeper->m_genesisLeaderPk;
+        }
+        return findInCommitteeMemberList(account);
+    }
+
+    PrivateKey VoterSystem::getPrivateKey(const AccountName& account) const {
+        if (account == AccountName(s_keyKeeper->m_account)) {
+            return s_keyKeeper->m_privateKey;
+        } else if (account == AccountName(s_keyKeeper->m_genesisLeader)){
+            return s_keyKeeper->m_genesisLeaderSk;
+        }
+        return PrivateKey();
+    }
+
+    bool VoterSystem::isGenesisLeader(const AccountName& account) const {
+        return account.good() && account == AccountName(s_keyKeeper->m_genesisLeader);
     }
 
     std::shared_ptr<CommitteeState> VoterSystem::getCommitteeState() {

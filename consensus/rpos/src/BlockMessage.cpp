@@ -7,6 +7,8 @@
 #include <rpos/Vrf.h>
 
 namespace ultrainio {
+    BlockMessage::BlockMessage(uint32_t blockNum) : m_blockNum(blockNum) {}
+
     PhaseMessagePtr BlockMessage::initIfNeed(ConsensusPhase phase, int baxCount) {
         int key = phase + baxCount;
         auto itor = m_phaseMessageMap.find(key);
@@ -24,7 +26,8 @@ namespace ultrainio {
         ConsensusPhase phase = echoMsg.phase;
         uint32_t baxCount = echoMsg.baxCount;
         PhaseMessagePtr phaseMessagePtr = initIfNeed(phase, baxCount);
-        assert(phaseMessagePtr->m_phase == phase && phaseMessagePtr->m_baxCount == baxCount);
+        ULTRAIN_ASSERT(phaseMessagePtr->m_phase == phase && phaseMessagePtr->m_baxCount == baxCount,
+                chain::chain_exception, "phase or baxCount not equal");
         phaseMessagePtr->insert(echoMsg);
     }
 
@@ -33,19 +36,18 @@ namespace ultrainio {
     }
 
     void BlockMessage::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        if (newRound(phase, baxCount) || !m_proposerProof.isValid()) {
+        ULTRAIN_ASSERT(blockNum == m_blockNum, chain::chain_exception, "blockNum is equal");
+        if (!m_proposerProof.isValid()) {
             ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
             std::string previousHash(blockId.data());
-            VoterSystem voterSystem;
             // #### This line has to run first, all the following caculation depends on this line. ###
-            m_committeeStatePtr = voterSystem.getCommitteeState();
+            m_voterSystem = VoterSystem::create(blockNum, nullptr);
             Seed proposerSeed(previousHash, blockNum, kPhaseBA0, 0);
-            PrivateKey privateKey = UranusNode::getInstance()->getSignaturePrivate();
+            PrivateKey privateKey = m_voterSystem->getMyWorkingPrivateKey();
             m_proposerProof = Vrf::vrf(privateKey, proposerSeed, Vrf::kProposer);
-            int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getSignaturePublic()));
-            double proposerRatio = voterSystem.getProposerRatio();
-            m_voterCountAsProposer = voterSystem.count(m_proposerProof, stakes, proposerRatio);
-
+            int stakes = m_voterSystem->getStakes(m_voterSystem->getMyWorkingAccount(), UranusNode::getInstance()->getNonProducingNode());
+            double proposerRatio = m_voterSystem->getProposerRatio();
+            m_voterCountAsProposer = m_voterSystem->count(m_proposerProof, stakes, proposerRatio);
             //ilog("blockNum = ${blockNum} voterCountAsProposer = ${voterCountAsProposer} proposerProof = ${proposerProof}",
                     //("blockNum", blockNum)("voterCountAsProposer", voterCountAsProposer)("proposerProof", std::string(proposerProof)));
         }

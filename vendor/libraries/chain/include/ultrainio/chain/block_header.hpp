@@ -7,9 +7,9 @@ namespace ultrainio { namespace chain {
    struct block_header
    {
       block_timestamp_type             timestamp;
+      account_name                     proposer;
       account_name                     producer;
 
-      std::string                      proposerPk; // hex str
       std::string                      proposerProof;
       uint32_t                         version = 0;
 
@@ -61,8 +61,7 @@ namespace ultrainio { namespace chain {
 } } /// namespace ultrainio::chain
 
 FC_REFLECT(ultrainio::chain::block_header, 
-           (timestamp)(producer)
-           (proposerPk)(proposerProof)(version)
+           (timestamp)(proposer)(producer)(proposerProof)(version)
            (confirmed)(previous)(transaction_mroot)(action_mroot)
            (schedule_version)(new_producers)(header_extensions))
 

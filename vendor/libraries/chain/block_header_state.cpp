@@ -179,7 +179,7 @@ namespace ultrainio { namespace chain {
     result.header.action_mroot       = h.action_mroot;
     result.header.transaction_mroot  = h.transaction_mroot;
     result.header.producer_signature = h.producer_signature;
-    result.header.proposerPk         = h.proposerPk;
+    result.header.proposer         = h.proposer;
     result.header.proposerProof      = h.proposerProof;
     result.id                        = result.header.id();
     /*

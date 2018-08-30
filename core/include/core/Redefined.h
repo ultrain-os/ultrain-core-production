@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-
 #include <ultrainio/chain/block.hpp>
 #include <ultrainio/chain/transaction.hpp>
 
@@ -14,4 +13,5 @@ namespace ultrainio {
     using TransactionReceipt = chain::transaction_receipt;
     using ExtensionsType = chain::extensions_type;
     using BlockIdType = chain::block_id_type;
+    using AccountName = chain::account_name;
 }
