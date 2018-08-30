@@ -1,22 +1,18 @@
 #include "ultrainio.system.hpp"
 
 #include <ultrainio.token/ultrainio.token.hpp>
-#include <ultrainiolib/transaction.h>
 
 namespace ultrainiosystem {
 
    const int64_t  min_pervote_daily_pay = 100'0000;
    const int64_t  min_activated_stake   = 150'000'000'0000;
-   const uint32_t rate1                 = 50;
-   const uint32_t rate2                 = 100;
-   const uint32_t rate3                 = 150;
-   const uint32_t rate4                 = 200;
-   const uint32_t rate[num_rate]        = {rate1,rate2,rate3,rate4,rate3,rate2,rate1};
-   const uint32_t seconds_per_block     = 10;
-   const uint32_t blocks_per_year       = 52*7*24*3600/seconds_per_block;   // half seconds per year
+   const double   continuous_rate       = 0.04879;          // 5% annual rate
+   const double   perblock_rate         = 0.0025;           // 0.25%
+   const double   standby_rate          = 0.0075;           // 0.75%
+   const uint32_t blocks_per_year       = 52*7*24*2*3600;   // half seconds per year
    const uint32_t seconds_per_year      = 52*7*24*3600;
-   const uint32_t blocks_per_day        = 24 * 3600/seconds_per_block;
-   const uint32_t blocks_per_hour       = 3600/seconds_per_block;
+   const uint32_t blocks_per_day        = 2 * 24 * 3600;
+   const uint32_t blocks_per_hour       = 2 * 3600;
    const uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
    const uint64_t useconds_per_year     = seconds_per_year*1000000ll;
 
@@ -30,22 +26,25 @@ namespace ultrainiosystem {
       if( _gstate.total_activated_stake < min_activated_stake )
          return;
 
+      if( _gstate.last_pervote_bucket_fill == 0 )  /// start the presses
+         _gstate.last_pervote_bucket_fill = current_time();
+
+
       /**
        * At startup the initial producer may not be one that is registered / elected
        * and therefore there may be no producer object for them.
        */
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
-	 int temp = 2*(tapos_block_num()+1)/(int)blocks_per_year;
-         const int interval = temp < num_rate ? temp:(num_rate-1);
-	 _gstate.total_unpaid_blocks[interval]++;
+         _gstate.total_unpaid_blocks++;
          _producers.modify( prod, 0, [&](auto& p ) {
-               p.unpaid_blocks[interval]++;
+               p.unpaid_blocks++;
          });
       }
 
       /// only update block producers once every minute, block_timestamp is in half seconds
       if( timestamp.slot - _gstate.last_producer_schedule_update.slot > 120 ) {
+
          if( (timestamp.slot - _gstate.last_name_close.slot) > blocks_per_day ) {
             name_bid_table bids(_self,_self);
             auto idx = bids.get_index<N(highbid)>();
@@ -78,28 +77,62 @@ namespace ultrainiosystem {
 
       ultrainio_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
 
-      int64_t new_tokens = 0;
-      for(int i=0;i<num_rate;++i){
-	 new_tokens += static_cast<int64_t>(_gstate.total_unpaid_blocks[i]*rate[i]);
-	 _gstate.total_unpaid_blocks[i] = 0;
-      }
-      INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
+      const asset token_supply   = token( N(utrio.token)).get_supply(symbol_type(system_token_symbol).name() );
+      const auto usecs_since_last_fill = ct - _gstate.last_pervote_bucket_fill;
+
+      if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > 0 ) {
+         auto new_tokens = static_cast<int64_t>( (continuous_rate * double(token_supply.amount) * double(usecs_since_last_fill)) / double(useconds_per_year) );
+
+         auto to_producers       = new_tokens / 5;
+         auto to_savings         = new_tokens - to_producers;
+         auto to_per_block_pay   = to_producers / 4;
+         auto to_per_vote_pay    = to_producers - to_per_block_pay;
+
+         INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
                                                     {N(ultrainio), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
-      int64_t producer_per_block_pay = 0;
-      for(int i=0;i<num_rate;++i){
-	 producer_per_block_pay += static_cast<int64_t>(prod.unpaid_blocks[i]*rate[i]);
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(ultrainio),N(active)},
+                                                       { N(ultrainio), N(utrio.saving), asset(to_savings), "unallocated inflation" } );
+
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(ultrainio),N(active)},
+                                                       { N(ultrainio), N(utrio.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
+
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(ultrainio),N(active)},
+                                                       { N(ultrainio), N(utrio.vpay), asset(to_per_vote_pay), "fund per-vote bucket" } );
+
+         _gstate.pervote_bucket  += to_per_vote_pay;
+         _gstate.perblock_bucket += to_per_block_pay;
+
+         _gstate.last_pervote_bucket_fill = ct;
       }
+
+      int64_t producer_per_block_pay = 0;
+      if( _gstate.total_unpaid_blocks > 0 ) {
+         producer_per_block_pay = (_gstate.perblock_bucket * prod.unpaid_blocks) / _gstate.total_unpaid_blocks;
+      }
+      int64_t producer_per_vote_pay = 0;
+      if( _gstate.total_producer_vote_weight > 0 ) {
+         producer_per_vote_pay  = int64_t((_gstate.pervote_bucket * prod.total_votes ) / _gstate.total_producer_vote_weight);
+      }
+      if( producer_per_vote_pay < min_pervote_daily_pay ) {
+         producer_per_vote_pay = 0;
+      }
+      _gstate.pervote_bucket      -= producer_per_vote_pay;
+      _gstate.perblock_bucket     -= producer_per_block_pay;
+      _gstate.total_unpaid_blocks -= prod.unpaid_blocks;
+
       _producers.modify( prod, 0, [&](auto& p) {
           p.last_claim_time = ct;
-          for(int i=0;i<num_rate;++i) {
-	     p.unpaid_blocks[i] = 0;
-	  }
+          p.unpaid_blocks = 0;
       });
 
       if( producer_per_block_pay > 0 ) {
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(ultrainio),N(active)},
-                                                       { N(ultrainio), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.bpay),N(active)},
+                                                       { N(utrio.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
+      }
+      if( producer_per_vote_pay > 0 ) {
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.vpay),N(active)},
+                                                       { N(utrio.vpay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
       }
    }
 
