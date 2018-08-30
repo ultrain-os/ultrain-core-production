@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <chrono>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/function_output_iterator.hpp>
 #include <boost/multi_index_container.hpp>
@@ -109,6 +110,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       std::string _my_sk_as_committee;
       bool     _pause_production                   = false;
       bool     _is_non_producing_node              = false;
+      int32_t  _genesis_delay;
 
       using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
@@ -384,11 +386,12 @@ void producer_uranus_plugin::set_program_options(
           "   KULTRAIND:<data>    \tis the URL where kultraind is available and the approptiate wallet(s) are unlocked")
          ("kultraind-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a kultraind provider for signing")
-         ("genesis-leader-pk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_pk = g; }), "geneis leader pk")
-         ("genesis-leader-sk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_sk = g; }), "geneis leader sk")
+         ("genesis-leader-pk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_pk = g; }), "genesis leader pk")
+         ("genesis-leader-sk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_sk = g; }), "genesis leader sk")
          ("my-pk-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_pk_as_committee = g; }), "pk as committer member")
          ("my-sk-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_sk_as_committee = g; }), "sk as committer member")
-         ("genesis-time", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_time = g; }), "geneis time")
+         ("genesis-delay", boost::program_options::value<int32_t>()->default_value(60), "genesis delay")
+         ("genesis-time", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_time = g; }), "genesis time")
          ;
    config_file_options.add(producer_options);
 }
@@ -505,6 +508,7 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    // TODO(yufenshen): temp hack.
    //   my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
    my->_max_transaction_time_ms = 200;
+   my->_genesis_delay = options.at("genesis-delay").as<int32_t>();
 
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
@@ -573,8 +577,11 @@ void producer_uranus_plugin::plugin_startup()
    nodePtr->setGenesisLeaderKeyPair(my->_genesis_leader_pk, my->_genesis_leader_sk);
    nodePtr->setCommitteeKeyPair(my->_my_pk_as_committee, my->_my_sk_as_committee);
 
+   // Align to the boundary of 5 seconds.
+   unsigned long msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+   int patch = 5000 - (msecs % 5000);
+   ultrainio::UranusNode::GENESIS = boost::chrono::system_clock::now() + boost::chrono::milliseconds(my->_genesis_delay * 1000 + patch);
    //ultrainio::UranusNode::GENESIS = tp;
-   ultrainio::UranusNode::GENESIS = boost::chrono::system_clock::now() + boost::chrono::seconds(60);
    nodePtr->init();
    nodePtr->readyToJoin();
    ilog("producer plugin:  plugin_startup() end");
