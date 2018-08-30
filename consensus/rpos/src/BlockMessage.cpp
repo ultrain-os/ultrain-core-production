@@ -39,12 +39,12 @@ namespace ultrainio {
             VoterSystem voterSystem;
             // #### This line has to run first, all the following caculation depends on this line. ###
             m_committeeStatePtr = voterSystem.getCommitteeState();
-            int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getSignaturePublic()));
-            double proposerRatio = voterSystem.getProposerRatio();
-            m_voterCountAsProposer = voterSystem.count(m_proposerProof, stakes, proposerRatio);
             Seed proposerSeed(previousHash, blockNum, phase, baxCount);
             PrivateKey privateKey = UranusNode::getInstance()->getSignaturePrivate();
             m_proposerProof = Vrf::vrf(privateKey, proposerSeed, Vrf::kProposer);
+            int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getSignaturePublic()));
+            double proposerRatio = voterSystem.getProposerRatio();
+            m_voterCountAsProposer = voterSystem.count(m_proposerProof, stakes, proposerRatio);
 
             //ilog("blockNum = ${blockNum} voterCountAsProposer = ${voterCountAsProposer} proposerProof = ${proposerProof}",
                     //("blockNum", blockNum)("voterCountAsProposer", voterCountAsProposer)("proposerProof", std::string(proposerProof)));
