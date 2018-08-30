@@ -444,12 +444,11 @@ namespace ultrainio {
             //init();
             //readyToJoin();
             uint32_t blockNum = getBlockNum();
-            if (m_baxCount > 0 && m_baxCount % 6 == 0 && blockNum > 2) {
+            if (m_baxCount > 0 && m_baxCount % 5 == 0 && blockNum > 2) {
                 std::shared_ptr<AggEchoMsg> aggEchoMsg = MessageManager::getInstance()->getMyAggEchoMsg(blockNum - 1);
                 if (aggEchoMsg) {
                     sendMessage(*aggEchoMsg);
                 }
-                vote(getBlockNum(),kPhaseBA1,0);
             }
 
             baxLoop(getRoundInterval());
@@ -505,7 +504,12 @@ namespace ultrainio {
              ("Voter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
                      ("count",m_baxCount));
 
-        vote(getBlockNum(),kPhaseBAX,m_baxCount);
+        if (m_baxCount >= 20) {
+            sendEchoForEmptyBlock();
+        } else {
+            vote(getBlockNum(),kPhaseBAX,m_baxCount);
+        }
+
 
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
@@ -832,7 +836,7 @@ namespace ultrainio {
 
     void UranusNode::sendEchoForEmptyBlock() {
         Block block = m_controllerPtr->emptyBlock();
-        dlog("empty block hash : ${hash}", ("hash", block.id()));
+        dlog("vote empty block. blockNum = ${blockNum} hash = ${hash}", ("blockNum",getBlockNum())("hash", block.id()));
         EchoMsg echoMsg = MessageBuilder::constructMsg(block);
         m_controllerPtr->insert(echoMsg);
         //echoMsg.timestamp = getRoundCount();
