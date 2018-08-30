@@ -129,6 +129,9 @@ namespace ultrainio {
             return;
         }
 
+        std::time_t t = boost::chrono::system_clock::to_time_t(current_time);
+        ilog("readyToJoin current_time ${t}", ("t", std::ctime(&t)));
+
         if (current_time < GENESIS) {
             pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(GENESIS - current_time);
 

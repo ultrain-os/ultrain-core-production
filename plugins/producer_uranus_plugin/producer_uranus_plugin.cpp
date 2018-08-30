@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <ctime>
 #include <chrono>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/function_output_iterator.hpp>
@@ -103,7 +104,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       }
 
       boost::program_options::variables_map _options;
-      std::string _genesis_time = std::string("2018-7-26 11:0:0");
+      std::string _genesis_time = std::string();
       std::string _genesis_leader_pk;                       // genesis leader'public key, known by all committee member
       std::string _genesis_leader_sk;                       // genesis leader'private key, set when it is genesis leader
       std::string _my_pk_as_committee;                      // public key when register as committee member
@@ -564,24 +565,28 @@ void producer_uranus_plugin::plugin_startup()
       _log = fc::get_logger_map()[logger_name];
    }
 
-   ilog("producer plugin:  plugin_startup() begin genesis : " + my->_genesis_time);
-   // uranus
+   ilog("producer plugin:  plugin_startup() begin");
    ultrainio::UltrainLog::init("./log");
-   boost::chrono::system_clock::time_point tp;
-   if (!parse_genesis(tp, my->_genesis_time.data())) {
-      ilog("parse_genesis error。");
-      return;
-   }
+
    std::shared_ptr<UranusNode> nodePtr = UranusNode::initAndGetInstance(app().get_io_service());
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
    nodePtr->setGenesisLeaderKeyPair(my->_genesis_leader_pk, my->_genesis_leader_sk);
    nodePtr->setCommitteeKeyPair(my->_my_pk_as_committee, my->_my_sk_as_committee);
 
-   // Align to the boundary of 5 seconds.
-   unsigned long msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-   int patch = 5000 - (msecs % 5000);
-   ultrainio::UranusNode::GENESIS = boost::chrono::system_clock::now() + boost::chrono::milliseconds(my->_genesis_delay * 1000 + patch);
-   //ultrainio::UranusNode::GENESIS = tp;
+   if (!my->_genesis_time.empty()) {
+       boost::chrono::system_clock::time_point tp;
+       FC_ASSERT(parse_genesis(tp, my->_genesis_time.data()),
+                 "parse_genesis error ${t}", ("t",my->_genesis_time));
+       ultrainio::UranusNode::GENESIS = tp;
+   } else {
+       // Align to the boundary of 5 seconds.
+       unsigned long msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+       int patch = 5000 - (msecs % 5000);
+       ultrainio::UranusNode::GENESIS = boost::chrono::system_clock::now() + boost::chrono::milliseconds(my->_genesis_delay * 1000 + patch);
+   }
+
+   std::time_t t = boost::chrono::system_clock::to_time_t(ultrainio::UranusNode::GENESIS);
+   ilog("Genesis time is ${t}", ("t", std::ctime(&t)));
    nodePtr->init();
    nodePtr->readyToJoin();
    ilog("producer plugin:  plugin_startup() end");
@@ -624,21 +629,21 @@ producer_uranus_plugin::runtime_options producer_uranus_plugin::get_runtime_opti
    };
 }
 
-    static bool parse_genesis(boost::chrono::system_clock::time_point &out_time_point, const char *time_format) {
-       if (!time_format) {
-          ilog("genesis time parameter error.");
-          return false;
-       }
-       std::tm t;
-       if (6 != std::sscanf(time_format, "%d-%d-%d %d:%d:%d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min,
-                            &t.tm_sec)) {
-          ilog("format error : ${time}", ("time", std::string(time_format)));
-          return false;
-       }
-       t.tm_year -= 1900;
-       t.tm_mon -= 1;
-       out_time_point = boost::chrono::system_clock::from_time_t(std::mktime(&t));
-       return true;
+static bool parse_genesis(boost::chrono::system_clock::time_point &out_time_point, const char *time_format) {
+    if (!time_format) {
+        ilog("genesis time parameter error.");
+        return false;
     }
+    std::tm t;
+    if (6 != std::sscanf(time_format, "%d-%d-%d %d:%d:%d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min,
+                         &t.tm_sec)) {
+        ilog("format error : ${time}", ("time", std::string(time_format)));
+        return false;
+    }
+    t.tm_year -= 1900;
+    t.tm_mon -= 1;
+    out_time_point = boost::chrono::system_clock::from_time_t(std::mktime(&t));
+    return true;
+}
 
 } // namespace ultrainio
