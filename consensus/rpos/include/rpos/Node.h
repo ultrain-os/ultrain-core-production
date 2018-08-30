@@ -102,7 +102,7 @@ namespace ultrainio {
 
         uint32_t getLastBlocknum();
 
-        bool syncFail();
+        bool syncFail(const ultrainio::SyncRequestMessage& sync_msg);
 
         void cancelTimer();
 

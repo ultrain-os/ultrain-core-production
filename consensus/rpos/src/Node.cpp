@@ -577,10 +577,17 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusNode::syncFail() {
+    bool UranusNode::syncFail(const ultrainio::SyncRequestMessage& sync_msg) {
         m_syncFailed = true;
         m_ready = true;
         m_syncing = false;
+
+        if (sync_msg.startBlockNum == sync_msg.endBlockNum && sync_msg.endBlockNum == getLastBlocknum() + 1) {
+            ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local.",
+                 ("s", sync_msg.startBlockNum)("e", sync_msg.endBlockNum)("last", getLastBlocknum()));
+            run();
+        }
+
         return true;
     }
 

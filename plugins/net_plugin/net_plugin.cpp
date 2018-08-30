@@ -665,7 +665,7 @@ namespace ultrainio {
         reset();
         src_block_check.reset(new boost::asio::steady_timer(app().get_io_service()));
         conn_check.reset(new boost::asio::steady_timer(app().get_io_service()));
-	std::random_device rd;
+        std::random_device rd;
         rand_engine.seed(rd());
       }
 
@@ -700,7 +700,7 @@ namespace ultrainio {
               }else if (last_received_block <= last_checked_block || ec.value() != 0) {
                   ilog("no block received in last period or error occur. last received:${rcv} last checked:${chk} ec:${ec}",
                       ("rcv", last_received_block)("chk", last_checked_block)("ec", ec.value()));
-                  app().get_plugin<producer_uranus_plugin>().sync_fail();
+                  app().get_plugin<producer_uranus_plugin>().sync_fail(sync_block_msg);
                   reset();
               }else {
                   last_checked_block = last_received_block;
@@ -1838,7 +1838,7 @@ namespace ultrainio {
                     sync_block_master->sync_block(wc);
                 } else {
                     ilog("select sync source timeout");
-                    app().get_plugin<producer_uranus_plugin>().sync_fail();
+                    app().get_plugin<producer_uranus_plugin>().sync_fail(sync_block_master->sync_block_msg);
                 }
             }
         });
