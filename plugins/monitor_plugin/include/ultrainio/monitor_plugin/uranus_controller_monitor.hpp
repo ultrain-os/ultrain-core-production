@@ -131,7 +131,7 @@ namespace ultrainio {
             return tempEchoMsgInfoDigestVect;
         }
 
-        void getContainersSize(uint32_t& proposeNum, uint32_t& echoNum, uint32_t& proposeCacheSize, 
+        void getContainersSize(uint32_t& proposeNum, uint32_t& echoNum, uint32_t& proposeCacheSize,
                                uint32_t& echoCacheSize, uint32_t& allPhaseEchoNum) const {
             std::shared_ptr<UranusController> pController = m_pController.lock();
             proposeNum = pController->m_proposerMsgMap.size();

@@ -3,7 +3,7 @@
 #include "uranus_controller_monitor.hpp"
 
 #include <rpos/Node.h>
-#include <boost/date_time/posix_time/posix_time.hpp> 
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace ultrainio {
 
@@ -32,13 +32,16 @@ namespace ultrainio {
         bool        syncFailed;
         bool        connected;
         bool        ready;
+        bool        nonProducingNode;
         std::string blockHash;
         std::string previousBlockHash;
         std::string ba0BlockTime;
-        std::string ba1BlockTime; 
+        std::string ba1BlockTime;
+        std::string genesisLeaderPk;
+        std::string genesisLeaderSk;
+        std::string publicKey;
+        std::string privateKey;
     };
-
-    
 
     class UranusNodeMonitor
     {
@@ -55,7 +58,7 @@ namespace ultrainio {
         const UranusNodeMonitor& operator=(const UranusNodeMonitor&) = delete;
        
         UranusNodeInfo getNodeInfo() const {
-            std::shared_ptr<UranusNode> pNode = m_pNode.lock(); 
+            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
             UranusNodeInfo tempNodeInfo;
             tempNodeInfo.ready = pNode->m_ready;
             tempNodeInfo.connected = pNode->m_connected;
@@ -80,6 +83,11 @@ namespace ultrainio {
             reportData.syncFailed        = pNode->m_syncFailed;
             reportData.connected         = pNode->m_connected;
             reportData.ready             = pNode->m_ready;
+            reportData.nonProducingNode  = pNode->getNonProducingNode();
+            reportData.genesisLeaderPk   = std::string(pNode->m_genesisLeaderPk);
+            reportData.genesisLeaderSk   = std::string(pNode->m_genesisLeaderSk);
+            reportData.publicKey         = std::string(pNode->m_publicKey);
+            reportData.privateKey        = std::string(pNode->m_privateKey);
 
             const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
             reportData.blockNum          = chain.head_block_num();
@@ -100,9 +108,9 @@ namespace ultrainio {
         void ba0BlockProducingTime() {
             m_ba0BlockTime = boost::posix_time::to_iso_string(boost::posix_time::second_clock::local_time());
 
-            auto pos = m_ba0BlockTime.find('T');  
-            m_ba0BlockTime.replace(pos, 1, std::string(" "));  
-            m_ba0BlockTime.replace(pos + 3, 0, std::string(":"));  
+            auto pos = m_ba0BlockTime.find('T');
+            m_ba0BlockTime.replace(pos, 1, std::string(" "));
+            m_ba0BlockTime.replace(pos + 3, 0, std::string(":"));
             m_ba0BlockTime.replace(pos + 6, 0, std::string(":"));
             m_ba0BlockTime.replace(pos - 2, 0, std::string("-"));
             m_ba0BlockTime.replace(pos - 4, 0, std::string("-"));
@@ -112,7 +120,7 @@ namespace ultrainio {
             m_ba1BlockTime = boost::posix_time::to_iso_string(boost::posix_time::second_clock::local_time());
 
             auto pos = m_ba1BlockTime.find('T');  
-            m_ba1BlockTime.replace(pos, 1, std::string(" "));  
+            m_ba1BlockTime.replace(pos, 1, std::string(" "));
             m_ba1BlockTime.replace(pos + 3, 0, std::string(":"));
             m_ba1BlockTime.replace(pos + 6, 0, std::string(":"));
             m_ba1BlockTime.replace(pos - 2, 0, std::string("-"));

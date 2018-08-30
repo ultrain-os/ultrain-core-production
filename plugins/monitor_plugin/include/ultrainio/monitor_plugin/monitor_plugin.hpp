@@ -34,7 +34,7 @@ class monitor_only {
 
       struct monitor_propose_msg_params
       {
-            std::string block_id;    
+            std::string block_id;
       };
 
       monitor_propose_msg_result monitor_propose_msg( const monitor_propose_msg_params& params) const;
@@ -48,7 +48,7 @@ class monitor_only {
       struct monitor_propose_cache_result{
             std::vector<BlockHeaderDigest>  proposeCache;
       };
-      
+
       monitor_propose_cache_result monitor_propose_cache(const monitor_propose_cache_params& params) const;
 
       typedef msgkey monitor_echo_cache_params;
@@ -69,7 +69,7 @@ class monitor_only {
       periodic_reort_data getPeriodicReortData();
 
    private:
-      
+
       const std::shared_ptr<UranusNode>  getNodePtr() const;
 
       std::shared_ptr<UranusNodeMonitor> m_nodeMonitor;

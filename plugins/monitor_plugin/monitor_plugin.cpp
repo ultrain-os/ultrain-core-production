@@ -74,7 +74,7 @@ monitor_plugin_impl::monitor_plugin_impl() {
 void monitor_plugin_impl::startMonitorTaskTimer() {
     if(!needReportTask)
         return;
-        
+
     boost::asio::steady_timer::duration reportTaskPeriod = std::chrono::seconds(reportInterval);
     m_reportTaskTimer->expires_from_now(reportTaskPeriod);
     m_reportTaskTimer->async_wait([this](boost::system::error_code ec) {
@@ -97,6 +97,7 @@ void monitor_plugin_impl::processReportTask() {
     //auto exceptionInfo = std::string("exception happened: node not initialized.");
     //call(monitor_central_server, call_path, exceptionInfo);
   }
+  catch(...) {} //don't allow exception be thrown out, to prevent Ultrainode from exiting.
 }
 
 monitor_plugin::monitor_plugin():my(new monitor_plugin_impl()){}
@@ -147,7 +148,7 @@ void monitor_plugin::plugin_shutdown() {
    // OK, that's enough magic
 }
 
-monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const { 
+monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const {
     return my->m_monitorHandler;
 }
 
@@ -201,7 +202,7 @@ monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const {
             m_nodeMonitor = std::make_shared<UranusNodeMonitor>(nodePtr);
             m_nodeMonitor->setCallbackInNode();
         }
-        
+
         return m_nodeMonitor->getReortData();
      }
    } //namespace monitor_apis 
