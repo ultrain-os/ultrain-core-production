@@ -56,45 +56,49 @@ namespace ultrainio {
         ~UranusNodeMonitor() = default;
         UranusNodeMonitor(const UranusNodeMonitor& ) = delete;
         const UranusNodeMonitor& operator=(const UranusNodeMonitor&) = delete;
-       
+
         UranusNodeInfo getNodeInfo() const {
-            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
             UranusNodeInfo tempNodeInfo;
-            tempNodeInfo.ready = pNode->m_ready;
-            tempNodeInfo.connected = pNode->m_connected;
-            tempNodeInfo.syncing = pNode->m_syncing;
-            tempNodeInfo.syncFailed = pNode->m_syncFailed;
-            tempNodeInfo.isNonProducingNode = pNode->m_isNonProducingNode;
-            tempNodeInfo.globalProducingNodeNumber = pNode->getCommitteeMemberNumber();
-            tempNodeInfo.phase = static_cast<int32_t>(pNode->m_phase);
-            tempNodeInfo.baxCount = pNode->m_baxCount;
-            UranusControllerMonitor controllerMonitor(pNode->getController());
-            controllerMonitor.getContainersSize(tempNodeInfo.proposeMsgNum, tempNodeInfo.echoMsgnum, tempNodeInfo.proposeMsgCacheSize,
-                                                 tempNodeInfo.echoMsgCacheSize, tempNodeInfo.allPhaseEchoMsgNum);
+            if (!m_pNode.expired()) {
+                std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+                tempNodeInfo.ready = pNode->m_ready;
+                tempNodeInfo.connected = pNode->m_connected;
+                tempNodeInfo.syncing = pNode->m_syncing;
+                tempNodeInfo.syncFailed = pNode->m_syncFailed;
+                tempNodeInfo.isNonProducingNode = pNode->m_isNonProducingNode;
+                tempNodeInfo.globalProducingNodeNumber = pNode->getCommitteeMemberNumber();
+                tempNodeInfo.phase = static_cast<int32_t>(pNode->m_phase);
+                tempNodeInfo.baxCount = pNode->m_baxCount;
+                UranusControllerMonitor controllerMonitor(pNode->getController());
+                controllerMonitor.getContainersSize(tempNodeInfo.proposeMsgNum, tempNodeInfo.echoMsgnum, tempNodeInfo.proposeMsgCacheSize,
+                                                    tempNodeInfo.echoMsgCacheSize, tempNodeInfo.allPhaseEchoMsgNum);
+            }
             return tempNodeInfo;
         }
 
         periodic_reort_data getReortData() const {
-            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
             periodic_reort_data reportData;
-            reportData.phase             = phaseStr[static_cast<int32_t>(pNode->m_phase)];
-            reportData.baxCount          = pNode->m_baxCount;
-            reportData.syncing           = pNode->m_syncing;
-            reportData.syncFailed        = pNode->m_syncFailed;
-            reportData.connected         = pNode->m_connected;
-            reportData.ready             = pNode->m_ready;
-            reportData.nonProducingNode  = pNode->getNonProducingNode();
-            reportData.genesisLeaderPk   = std::string(pNode->m_genesisLeaderPk);
-            reportData.genesisLeaderSk   = std::string(pNode->m_genesisLeaderSk);
-            reportData.publicKey         = std::string(pNode->m_publicKey);
-            reportData.privateKey        = std::string(pNode->m_privateKey);
+            if (!m_pNode.expired()) {
+                std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+                reportData.phase             = phaseStr[static_cast<int32_t>(pNode->m_phase)];
+                reportData.baxCount          = pNode->m_baxCount;
+                reportData.syncing           = pNode->m_syncing;
+                reportData.syncFailed        = pNode->m_syncFailed;
+                reportData.connected         = pNode->m_connected;
+                reportData.ready             = pNode->m_ready;
+                reportData.nonProducingNode  = pNode->getNonProducingNode();
+                reportData.genesisLeaderPk   = std::string(pNode->m_genesisLeaderPk);
+                reportData.genesisLeaderSk   = std::string(pNode->m_genesisLeaderSk);
+                reportData.publicKey         = std::string(pNode->m_publicKey);
+                reportData.privateKey        = std::string(pNode->m_privateKey);
 
-            const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
-            reportData.blockNum          = chain.head_block_num();
-            reportData.blockHash         = chain.head_block_id().str();
-            reportData.previousBlockHash = chain.head_block_state()->prev().str();
-            reportData.ba0BlockTime      = m_ba0BlockTime;
-            reportData.ba1BlockTime      = m_ba1BlockTime;
+                const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
+                reportData.blockNum          = chain.head_block_num();
+                reportData.blockHash         = chain.head_block_id().str();
+                reportData.previousBlockHash = chain.head_block_state()->prev().str();
+                reportData.ba0BlockTime      = m_ba0BlockTime;
+                reportData.ba1BlockTime      = m_ba1BlockTime;
+            }
 
             return reportData;
         }
@@ -135,6 +139,6 @@ namespace ultrainio {
     };
 }
 
-
 FC_REFLECT( ultrainio::periodic_reort_data, (nodeIp)(blockNum)(phase)(baxCount)(syncing)(syncFailed)(connected)(ready)
-                                            (blockHash)(previousBlockHash)(ba0BlockTime)(ba1BlockTime) )
+                                            (blockHash)(previousBlockHash)(ba0BlockTime)(ba1BlockTime)(genesisLeaderPk) 
+                                            (genesisLeaderSk)(publicKey)(privateKey))
