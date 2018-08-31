@@ -33,13 +33,13 @@ namespace ultrainio {
     }
 
     void BlockMessage::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        if (newRound(phase, baxCount)) {
+        if (newRound(phase, baxCount) || !m_proposerProof.isValid()) {
             ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
             std::string previousHash(blockId.data());
             VoterSystem voterSystem;
             // #### This line has to run first, all the following caculation depends on this line. ###
             m_committeeStatePtr = voterSystem.getCommitteeState();
-            Seed proposerSeed(previousHash, blockNum, phase, baxCount);
+            Seed proposerSeed(previousHash, blockNum, kPhaseBA0, 0);
             PrivateKey privateKey = UranusNode::getInstance()->getSignaturePrivate();
             m_proposerProof = Vrf::vrf(privateKey, proposerSeed, Vrf::kProposer);
             int stakes = voterSystem.getStakes(std::string(UranusNode::getInstance()->getSignaturePublic()));

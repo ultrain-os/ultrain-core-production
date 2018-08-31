@@ -1,5 +1,6 @@
 #include "rpos/VoterSystem.h"
 
+#include <chrono>
 #include <limits>
 
 #include <boost/math/distributions/binomial.hpp>
@@ -28,8 +29,9 @@ namespace ultrainio {
         std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
         std::shared_ptr<CommitteeState> committeeStatePtr = messageManagerPtr->getCommitteeStatePtr(
                 blockNum);
-        //TODO(qinxiaofen) still genesis startup, maybe also compare timestamp
-        if (!committeeStatePtr || !(committeeStatePtr->chainStateNormal)) {
+        boost::chrono::minutes genesisElapsed = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - UranusNode::GENESIS);
+        if ((!committeeStatePtr || !(committeeStatePtr->chainStateNormal))
+                && (genesisElapsed < boost::chrono::minutes(60))) {
             return true;
         }
         return false;
