@@ -767,6 +767,7 @@ namespace ultrainio {
 
         dlog("fastBlock begin. blockNum = ${id}", ("id", getBlockNum()));
 
+        MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
         reset();
         m_controllerPtr->resetTimestamp();
 
