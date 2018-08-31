@@ -1311,6 +1311,16 @@ namespace ultrainio {
 
     void UranusController::produceBlock(const chain::signed_block_ptr &block, bool force_push_whole_block) {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
+        uint32_t last_num = getLastBlocknum();
+
+        dlog("produceBlock. last block num in local chain:${last}", ("last", last_num));
+        auto blk = chain.fetch_block_by_number(last_num);
+        if (blk) {
+            if (block->previous != blk->id()) {
+                ULTRAIN_ASSERT(false, chain::chain_exception, "DB error. please reset with cmd --delete-all-blocks.");
+                return;
+            }
+        }
 
         auto id = block->id();
         auto existing = chain.fetch_block_by_id(id);

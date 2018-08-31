@@ -513,7 +513,6 @@ namespace ultrainio {
             vote(getBlockNum(),kPhaseBAX,m_baxCount);
         }
 
-
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
         msg_key.phase += m_baxCount;
