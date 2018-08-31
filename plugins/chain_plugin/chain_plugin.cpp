@@ -1155,10 +1155,13 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    it = secondary_index_by_secondary.begin();
 
    for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
+      //TODO add an option to make the stop time and size limit valid according to requirement
+#if 0
       if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
          result.more = name{it->primary_key}.to_string();
          break;
       }
+#endif
       copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
       auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
       if(filter_enabled && !(producer["is_enabled"].as_bool())) {

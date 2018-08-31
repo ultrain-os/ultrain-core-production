@@ -102,9 +102,9 @@ namespace ultrainio {
                     cinfo.accountName = r["owner"].as_string();
                     cinfo.pk = r["producer_key"].as_string();
                     cinfo.stakesCount = r["total_votes"].as_int64();
-                    ilog("#########################token ${token}, pk ${pk}", ("token", r)("pk", r["owner"]));
                     statePtr->cinfo.push_back(cinfo);
                 }
+                ilog("#########################there is ${p} committee member enabled", ("p", result.rows.size()));
            }
            if (result.thresh_activated_stake_time > 0 && statePtr->cinfo.size() > Config::MIN_COMMITTEE_MEMBER_NUMBER) {
                statePtr->chainStateNormal = true;
