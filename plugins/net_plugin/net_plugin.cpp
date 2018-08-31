@@ -659,7 +659,7 @@ namespace ultrainio {
       boost::asio::steady_timer::duration   conn_timeout{std::chrono::seconds{12}};
       unique_ptr<boost::asio::steady_timer> conn_check;
       std::default_random_engine            rand_engine;
-      
+
       sync_block_manager() {
         seq_num = 0;
         reset();
@@ -737,7 +737,7 @@ namespace ultrainio {
                 ilog("select random ${r}th strong connection to sync block. peer:${p}", ("r", r)("p", honest_conns[r]->peer_name()));
                 return honest_conns[r];
             }
-            
+
             return nullptr;
         }
 
@@ -749,7 +749,7 @@ namespace ultrainio {
             }
 
             size_t count = 0;
-            auto it = block_conns_map.begin(); 
+            auto it = block_conns_map.begin();
             for (; it != block_conns_map.end(); ++it) {
                 if (it->second.size() > count) {
                     count = it->second.size();
@@ -2133,7 +2133,7 @@ namespace ultrainio {
       /* We've already lost however many microseconds it took to dispatch
        * the message, but it can't be helped.
        */
-      ilog("received time");
+      //ilog("received time");
       msg.dst = c->get_time();
 
       // If the transmit timestamp is zero, the peer is horribly broken.
@@ -2261,7 +2261,7 @@ namespace ultrainio {
    void net_plugin_impl::handle_message( connection_ptr c, const EchoMsg &msg) {
        ilog("receive echo msg!!! message from ${p} block_id: ${id} block num: ${num} phase: ${phase} baxcount: ${baxcount} pk: ${pk}",
             ("p", c->peer_name())("id", msg.blockHeader.id())("num", msg.blockHeader.block_num())
-                    ("phase", (uint32_t)msg.phase)("baxcount",msg.baxCount)("pk", UltrainLog::convert2Hex(msg.pk)));
+            ("phase", (uint32_t)msg.phase)("baxcount",msg.baxCount)("pk", msg.pk));
        if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
                if (conn != c) {
@@ -2299,7 +2299,7 @@ namespace ultrainio {
         ilog("receive req last block num msg!!! from peer ${p}", ("p", c->peer_name()));
         app().get_plugin<producer_uranus_plugin>().handle_message(c->socket->remote_endpoint().address().to_v4().to_string(), msg);
     }
-      
+
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg) {
         ilog("receive rsp last block num msg!!! from peer ${p} seq: ${s} block num: ${b}", ("p", c->peer_name())("s", msg.seqNum)("b", msg.blockNum));
         ilog("sync block master selecting src:${s} seq:${seq}", ("s", sync_block_master->selecting_src)("seq", sync_block_master->seq_num));
@@ -2340,7 +2340,7 @@ namespace ultrainio {
         if (sync_block_master->end_block_num > 0) {
           sync_block_master->last_received_block = block.block_num();
           bool is_last_block = (block.block_num() == sync_block_master->end_block_num);
- 
+
           app().get_plugin<producer_uranus_plugin>().handle_message(block, is_last_block);
           if (is_last_block) {
              ilog("is last block reset");
@@ -2348,7 +2348,7 @@ namespace ultrainio {
           }
         }
     }
-  
+
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
       fc_dlog(logger, "got a packed transaction, cancel wait");
       peer_ilog(c, "received packed_transaction");

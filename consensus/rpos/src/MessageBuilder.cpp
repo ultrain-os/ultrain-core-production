@@ -25,6 +25,8 @@ namespace ultrainio {
         echo.timestamp = UranusNode::getInstance()->getRoundCount();
         echo.pk = std::string(UranusNode::getInstance()->getSignaturePublic());
         echo.proof = std::string(MessageManager::getInstance()->getVoterProof(propose.block.block_num(), echo.phase, echo.baxCount));
+        ilog("sign propose msg with private key ${sk}",
+             ("sk", std::string(UranusNode::getInstance()->getSignaturePrivate())));
         echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, UranusNode::getInstance()->getSignaturePrivate()));
         return echo;
     }
