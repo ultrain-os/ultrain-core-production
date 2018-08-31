@@ -61,6 +61,7 @@ namespace ultrainio {
         std::shared_ptr<MessageManager> messageManagerPtr = MessageManager::getInstance();
         std::shared_ptr<CommitteeState> committeeStatePtr = messageManagerPtr->getCommitteeStatePtr(
                 blockNum);
+        ULTRAIN_ASSERT(committeeStatePtr, chain::chain_exception, "DO YOU HAVE STAKE");
         return committeeStatePtr->cinfo.size();
     }
 
