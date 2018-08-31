@@ -94,10 +94,13 @@ void monitor_plugin_impl::processReportTask() {
     auto rsp = call(monitor_central_server, call_path, rst);
   }
   catch(chain::node_not_found_exception& e) {
-    //auto exceptionInfo = std::string("exception happened: node not initialized.");
+    auto exceptionInfo = std::string("exception happened, node not initialized.");
+    std::cerr << "Periodic report: " << exceptionInfo << std::endl;
     //call(monitor_central_server, call_path, exceptionInfo);
   }
-  catch(...) {} //don't allow exception be thrown out, to prevent Ultrainode from exiting.
+  catch(...) {
+    std::cerr << "Periodic report: unknown exception." << std::endl;
+  } //don't allow exception be thrown out, to prevent Ultrainode from exiting.
 }
 
 monitor_plugin::monitor_plugin():my(new monitor_plugin_impl()){}

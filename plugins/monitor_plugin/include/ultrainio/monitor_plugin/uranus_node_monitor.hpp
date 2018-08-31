@@ -28,6 +28,7 @@ namespace ultrainio {
         uint32_t    blockNum;
         std::string phase;
         uint32_t    baxCount;
+        uint32_t    transactionNum;
         bool        syncing;
         bool        syncFailed;
         bool        connected;
@@ -59,8 +60,8 @@ namespace ultrainio {
 
         UranusNodeInfo getNodeInfo() const {
             UranusNodeInfo tempNodeInfo;
-            if (!m_pNode.expired()) {
-                std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            if (pNode) {
                 tempNodeInfo.ready = pNode->m_ready;
                 tempNodeInfo.connected = pNode->m_connected;
                 tempNodeInfo.syncing = pNode->m_syncing;
@@ -78,8 +79,8 @@ namespace ultrainio {
 
         periodic_reort_data getReortData() const {
             periodic_reort_data reportData;
-            if (!m_pNode.expired()) {
-                std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            if (pNode) {
                 reportData.phase             = phaseStr[static_cast<int32_t>(pNode->m_phase)];
                 reportData.baxCount          = pNode->m_baxCount;
                 reportData.syncing           = pNode->m_syncing;
@@ -96,6 +97,7 @@ namespace ultrainio {
                 reportData.blockNum          = chain.head_block_num();
                 reportData.blockHash         = chain.head_block_id().str();
                 reportData.previousBlockHash = chain.head_block_state()->prev().str();
+                reportData.transactionNum    = chain.head_block_state()->trxs.size();
                 reportData.ba0BlockTime      = m_ba0BlockTime;
                 reportData.ba1BlockTime      = m_ba1BlockTime;
             }
@@ -105,8 +107,10 @@ namespace ultrainio {
 
         void setCallbackInNode() {
             std::shared_ptr<UranusNode> pNode = m_pNode.lock();
-            pNode->ba0Callback = std::bind(&UranusNodeMonitor::ba0BlockProducingTime, this);
-            pNode->ba1Callback = std::bind(&UranusNodeMonitor::ba1BlockProducingTime, this);
+            if (pNode) {
+                pNode->ba0Callback = std::bind(&UranusNodeMonitor::ba0BlockProducingTime, this);
+                pNode->ba1Callback = std::bind(&UranusNodeMonitor::ba1BlockProducingTime, this);
+            }
         }
 
         void ba0BlockProducingTime() {
@@ -139,6 +143,6 @@ namespace ultrainio {
     };
 }
 
-FC_REFLECT( ultrainio::periodic_reort_data, (nodeIp)(blockNum)(phase)(baxCount)(syncing)(syncFailed)(connected)(ready)
-                                            (blockHash)(previousBlockHash)(ba0BlockTime)(ba1BlockTime)(genesisLeaderPk) 
-                                            (genesisLeaderSk)(publicKey)(privateKey))
+FC_REFLECT( ultrainio::periodic_reort_data, (nodeIp)(blockNum)(phase)(baxCount)(transactionNum)(syncing)(syncFailed)(connected)
+                                            (ready)(nonProducingNode)(blockHash)(previousBlockHash)(ba0BlockTime)(ba1BlockTime)
+                                            (genesisLeaderPk)(genesisLeaderSk)(publicKey)(privateKey))

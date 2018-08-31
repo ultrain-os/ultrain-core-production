@@ -57,8 +57,8 @@ namespace ultrainio {
 
         BlockHeaderDigest findProposeMsgByBlockId(const chain::block_id_type& bid) const {
             BlockHeaderDigest tempHeaderDigest;
-            if (!m_pController.expired()) {
-                std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<UranusController> pController = m_pController.lock();
+            if (pController) {
                 auto ite = pController->m_proposerMsgMap.find(bid);
                 if(ite != pController->m_proposerMsgMap.end()){
                     tempHeaderDigest.digestFromBlockHeader(ite->second.block);
@@ -71,8 +71,8 @@ namespace ultrainio {
 
         EchoMsgInfoDigest findEchoMsgByBlockId(const chain::block_id_type& bid) const {
             EchoMsgInfoDigest tempEchoDigest;
-            if (!m_pController.expired()) {
-                std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<UranusController> pController = m_pController.lock();
+            if (pController) {
                 auto ite = pController->m_echoMsgMap.find(bid);
                 if(ite != pController->m_echoMsgMap.end()) {
                     tempEchoDigest.digestFromeEchoMsgInfo(ite->second);
@@ -85,8 +85,8 @@ namespace ultrainio {
 
         std::vector<BlockHeaderDigest> findProposeCacheByKey(const msgkey& msg_key) const {
             std::vector<BlockHeaderDigest> tempDigestVect;
-            if (!m_pController.expired()) {
-                std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<UranusController> pController = m_pController.lock();
+            if (pController) {
                 auto ite = pController->m_cacheProposeMsgMap.find(msg_key);
                 if(ite != pController->m_cacheProposeMsgMap.end()) {
                     for(const auto& proposeMsg : ite->second){
@@ -103,8 +103,8 @@ namespace ultrainio {
 
         std::vector<EchoMsgDigest> findEchoCacheByKey(const msgkey& msg_key) const {
             std::vector<EchoMsgDigest> tempEchoDigestVect;
-            if (!m_pController.expired()) {
-                std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<UranusController> pController = m_pController.lock();
+            if (pController) {
                 auto ite = pController->m_cacheEchoMsgMap.find(msg_key);
                 if(ite != pController->m_cacheEchoMsgMap.end()) {
                     for(const auto& echoMsg : ite->second) {
@@ -121,8 +121,8 @@ namespace ultrainio {
 
         echo_msg_digest_vect findEchoApMsgByKey(const msgkey& msg_key) const {
             echo_msg_digest_vect tempEchoMsgInfoDigestVect;
-            if (!m_pController.expired()) {
-                std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<UranusController> pController = m_pController.lock();
+            if (pController) {
                 auto ite = pController->m_echoMsgAllPhase.find(msg_key);
                 if(ite != pController->m_echoMsgAllPhase.end()) {
                     for(const auto& echoMsgInfoPair : ite->second) {
@@ -140,8 +140,8 @@ namespace ultrainio {
 
         void getContainersSize(uint32_t& proposeNum, uint32_t& echoNum, uint32_t& proposeCacheSize,
                                uint32_t& echoCacheSize, uint32_t& allPhaseEchoNum) const {
-            if (!m_pController.expired()) {
-                std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<UranusController> pController = m_pController.lock();
+            if (pController) {
                 proposeNum = pController->m_proposerMsgMap.size();
                 echoNum = pController->m_echoMsgMap.size();
                 proposeCacheSize = pController->m_cacheProposeMsgMap.size();
