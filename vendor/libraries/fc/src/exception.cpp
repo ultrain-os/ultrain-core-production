@@ -120,7 +120,6 @@ namespace fc
    const char*  exception::name()const throw() { return my->_name.c_str(); }
    const char*  exception::what()const throw() { return my->_what.c_str(); }
    int64_t      exception::code()const throw() { return my->_code;         }
-
    exception::~exception(){}
 
    void to_variant( const exception& e, variant& v )

@@ -1902,7 +1902,15 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
+   // get CPU NET SOURCERATE
+   string sourcerateName;
+   auto getSourceRate = get->add_subcommand("sourcerate", localized("Retrieve sourcetrans from the blockchain"), false);
+   getSourceRate->add_option("name", sourcerateName, localized("The name of the account whose abi should be retrieved"));
+   getSourceRate->set_callback([&]() { 
+    auto json = call(get_sourcerate_func,fc::mutable_variant_object("account_name", accountName));
+    std::cout << fc::json::to_pretty_string(json) << std::endl;
 
+    });
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "), false);

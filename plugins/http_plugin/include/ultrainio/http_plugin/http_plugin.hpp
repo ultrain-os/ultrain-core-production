@@ -94,12 +94,13 @@ namespace ultrainio {
          int64_t code;
          string name;
          string what;
-
          struct error_detail {
             string message;
             string file;
             uint64_t line_number;
             string method;
+            uint64_t needsnum;
+            uint64_t availablenum;
          };
 
          vector<error_detail> details;
@@ -119,7 +120,8 @@ namespace ultrainio {
                   // Append error
                   error_detail detail = {
                           itr->get_message(), itr->get_context().get_file(),
-                          itr->get_context().get_line_number(), itr->get_context().get_method()
+                          itr->get_context().get_line_number(), itr->get_context().get_method(),
+                          itr->get_needsnum(),itr->get_availablenum()
                   };
                   details.emplace_back(detail);
                }
@@ -131,6 +133,6 @@ namespace ultrainio {
    };
 }
 
-FC_REFLECT(ultrainio::error_results::error_info::error_detail, (message)(file)(line_number)(method))
+FC_REFLECT(ultrainio::error_results::error_info::error_detail, (message)(file)(line_number)(method)(needsnum)(availablenum))
 FC_REFLECT(ultrainio::error_results::error_info, (code)(name)(what)(details))
 FC_REFLECT(ultrainio::error_results, (code)(message)(error))
