@@ -46,11 +46,11 @@ namespace ultrainio { namespace chain {
 
       name( const char* str )   { set(str);           }
       name( const string& str ) { set( str.c_str() ); }
-      name(uint64_t val): value(val) {}
+      //name(uint64_t val): value(val) {}
       void set( const char* str );
 
-//      template<typename T>
-//      name( T v ):value(v){}
+      template<typename T>
+      name( T v ):value(v){}
       name(){}
 
       explicit operator string()const;
