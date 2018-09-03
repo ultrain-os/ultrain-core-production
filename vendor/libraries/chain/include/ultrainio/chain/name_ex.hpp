@@ -19,9 +19,9 @@ namespace ultrainio { namespace chain {
 
       void set( const char* str );
 
-      template <typename T> name_ex(T v) : valueL(v) {
-          // TODO (liangqin)
-      }
+//      template <typename T> name_ex(T v) : valueL(v) {
+//          // TODO (liangqin)
+//      }
       constexpr name_ex(): valueH(0), valueL(0) {}
 
       explicit operator string()const;

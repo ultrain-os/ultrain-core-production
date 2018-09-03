@@ -2597,7 +2597,7 @@ int main( int argc, char** argv ) {
       trx.max_net_usage_words = 0;
       trx.max_cpu_usage_ms = 0;
       trx.delay_sec = 0;
-      trx.actions = { chain::action(trxperm, name(proposed_contract), name(proposed_action), proposed_trx_serialized) };
+      trx.actions = { chain::action(trxperm, name(proposed_contract), name_ex(proposed_action), proposed_trx_serialized) };
 
       fc::to_variant(trx, trx_var);
 

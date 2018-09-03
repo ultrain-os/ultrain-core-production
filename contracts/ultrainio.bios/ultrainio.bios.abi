@@ -8,7 +8,7 @@
       "type": "name"
    },{
       "new_type_name": "action_name",
-      "type": "name"
+      "type": "name_ex"
    },{
       "new_type_name": "transaction_id_type",
       "type": "checksum256"
