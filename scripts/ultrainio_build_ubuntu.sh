@@ -85,15 +85,15 @@
 			printf "\\tPackage %s found.\\n" "${DEP_ARRAY[$i]}"
 			continue
 		fi
-	done		
+	done
 
 	if [ "${COUNT}" -gt 1 ]; then
 		printf "\\n\\tThe following dependencies are required to install ULTRAINIO.\\n"
-		printf "\\n\\t${DISPLAY}\\n\\n" 
+		printf "\\n\\t${DISPLAY}\\n\\n"
 		printf "\\tDo you wish to install these packages?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
-				[Yy]* ) 
+				[Yy]* )
 					printf "\\n\\n\\tInstalling dependencies\\n\\n"
 					sudo apt-get update
 					if ! sudo apt-get -y install ${DEP}
@@ -109,7 +109,7 @@
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done
-	else 
+	else
 		printf "\\n\\tNo required dpkg dependencies to install.\\n"
 	fi
 
@@ -129,6 +129,11 @@
 			fi
 		fi
 	fi
+
+    # Replace the version in Node.h with the head hash
+    b=`git log "$BUILD_DIR/../"| head -1`
+    echo ${b:7:6}
+    sed -i -e "s/char version\[\]=.*/char version\[\]=\"${b:7:6}\";/g" $BUILD_DIR/../consensus/rpos/src/Node.cpp
 
 	printf "\\n\\tChecking boost library installation.\\n"
 	BVERSION=$( grep BOOST_LIB_VERSION "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null \
@@ -286,7 +291,7 @@ mongodconf
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		
+
 		maj=$( echo "${version}" | cut -d'.' -f1 )
 		min=$( echo "${version}" | cut -d'.' -f2 )
 		if [ "${maj}" -gt 3 ]; then

@@ -21,6 +21,8 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
+    char version[]="053f58";
+
     const int UranusNode::MAX_ROUND_SECONDS = 10;
     const int UranusNode::MAX_PHASE_SECONDS = 5;
 
@@ -45,6 +47,7 @@ namespace ultrainio {
                                                                  m_preRunTimer(ioservice),
                                                                  m_controllerPtr(std::make_shared<UranusController>()),
                                                                  m_privateKey() {
+        ilog("Code version is ${s}", ("s", version));
     };
 
     uint32_t UranusNode::getBlockNum() const {
