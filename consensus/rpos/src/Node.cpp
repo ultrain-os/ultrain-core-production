@@ -458,6 +458,18 @@ namespace ultrainio {
         }
     }
 
+    void UranusNode::runLoop(uint32_t timeout) {
+        dlog("start runLoop timeout = ${timeout}", ("timeout", timeout));
+        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.async_wait([this](boost::system::error_code ec) {
+            if (ec.value() == boost::asio::error::operation_aborted) {
+                ilog("run loop timer cancel");
+            } else {
+                this->run();
+            }
+        });
+    }
+
     void UranusNode::ba0Loop(uint32_t timeout) {
         dlog("start ba0Loop timeout = ${timeout}", ("timeout", timeout));
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
@@ -584,7 +596,7 @@ namespace ultrainio {
         if (sync_msg.startBlockNum == sync_msg.endBlockNum && sync_msg.endBlockNum == getLastBlocknum() + 1) {
             ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local.",
                  ("s", sync_msg.startBlockNum)("e", sync_msg.endBlockNum)("last", getLastBlocknum()));
-            run();
+            runLoop(getRoundInterval());
         }
 
         return true;

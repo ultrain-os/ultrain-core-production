@@ -84,6 +84,8 @@ namespace ultrainio {
 
         void baxProcess();
 
+        void runLoop(uint32_t timeout);
+
         void ba0Loop(uint32_t timeout);
 
         void ba1Loop(uint32_t timeout);
