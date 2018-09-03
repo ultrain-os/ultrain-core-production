@@ -1808,12 +1808,12 @@ namespace ultrainio {
             }
         }
 
-        uint32_t count = connections.size()/2 + 1;
+        /*uint32_t count = connections.size()/2 + 1;
         if (conn_list.size() < count) {
             elog("Available connection count is ${cc}, which is less than ${cnt}, can't sync block.",
                  ("cc", conn_list.size())("cnt", count));
             return false;
-        }
+        }*/
 
         ReqLastBlockNumMsg req_last_block_msg;
         req_last_block_msg.seqNum = ++sync_block_master->seq_num;
