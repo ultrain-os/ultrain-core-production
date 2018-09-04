@@ -5,6 +5,7 @@
 #include <ultrainio/chain/fork_database.hpp>
 
 #include <ultrainio/chain/name.hpp>
+#include <ultrainio/chain/config.hpp>
 
 #include <ultrainio/chain/account_object.hpp>
 #include <ultrainio/chain/block_summary_object.hpp>
@@ -366,7 +367,7 @@ struct controller_impl {
       genheader.block_num             = genheader.header.block_num();
 
       ilog("genesis block id = ${id}", ("id", genheader.id));
-      
+
       head = std::make_shared<block_state>( genheader );
       head->block = std::make_shared<signed_block>(genheader.header);
       fork_db.set( head );
@@ -1817,7 +1818,10 @@ std::list<transaction_metadata_ptr>* controller::get_pending_transactions() {
 }
 
 void controller::push_into_pending_transaction(const transaction_metadata_ptr& trx) {
-  my->pending_transactions.push_back(trx);
+    if (my->pending_transactions.size() > ultrainio::chain::config::default_max_pending_trx_count ||
+        my->unapplied_transactions.size() > ultrainio::chain::config::default_max_unapplied_trx_count)
+        return;
+    my->pending_transactions.push_back(trx);
 }
 
 void controller::clear_unapplied_transaction() {

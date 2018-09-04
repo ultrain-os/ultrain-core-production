@@ -19,6 +19,7 @@
 #include <ultrainio/chain/global_property_object.hpp>
 #include <ultrainio/chain/name.hpp>
 #include <ultrainio/chain/exceptions.hpp>
+#include <ultrainio/chain/config.hpp>
 
 #include <log/Log.h>
 #include <rpos/MessageBuilder.h>
@@ -771,7 +772,7 @@ namespace ultrainio {
                 //   ilog("----- code exec exceeds the max allowed time, break");
                 //   break;
                 //}
-                if (m_initTrxCount >= MAX_PROPOSE_TRX_COUNT) {
+                if (m_initTrxCount >= chain::config::default_max_propose_trx_count) {
                     break;
                 }
             } FC_LOG_AND_DROP();
@@ -844,7 +845,7 @@ namespace ultrainio {
                 //                    break;
                 //                }
                 // Do we still need this ?
-                if (m_initTrxCount >= MAX_PROPOSE_TRX_COUNT) {
+                if (m_initTrxCount >= chain::config::default_max_propose_trx_count) {
                     break;
                 }
             } FC_LOG_AND_DROP();
@@ -874,7 +875,7 @@ namespace ultrainio {
             size_t count2 = runUnappliedTrxs(unapplied_trxs, start_timestamp);
 
             // We are under very heavy pressure, lets drop transactions.
-            if (m_initTrxCount >= MAX_PROPOSE_TRX_COUNT) {
+            if (m_initTrxCount >= chain::config::default_max_propose_trx_count) {
                 pending_trxs->clear();
                 chain.clear_unapplied_transaction();
             }

@@ -15,5 +15,4 @@ namespace ultrainio {
 #define THRESHOLD_SEND_ECHO        330
 #define THRESHOLD_NEXT_ROUND       670
 #define THRESHOLD_SYNCING          670
-#define MAX_PROPOSE_TRX_COUNT      5000
 }

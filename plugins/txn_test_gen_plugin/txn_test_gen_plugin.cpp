@@ -254,19 +254,19 @@ struct txn_test_gen_plugin_impl {
       auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
       abi_serializer ultrainio_token_serializer{fc::json::from_string(ultrainio_token_abi).as<abi_def>(), abi_serializer_max_time};
       //create the actions here
-      act_a_to_b.account = N(txn.test.t);
+      act_a_to_b.account = N(utrio.token);
       act_a_to_b.name = NEX(transfer);
-      act_a_to_b.authorization = vector<permission_level>{{name("txn.test.a"),config::active_name}};
+      act_a_to_b.authorization = vector<permission_level>{{name("user.111"),config::active_name}};
       act_a_to_b.data = ultrainio_token_serializer.variant_to_binary("transfer",
-                                                                  fc::json::from_string(fc::format_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
+                                                                  fc::json::from_string(fc::format_string("{\"from\":\"user.111\",\"to\":\"user.112\",\"quantity\":\"0.1234 SYS\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("l", salt))),
                                                                   abi_serializer_max_time);
 
-      act_b_to_a.account = N(txn.test.t);
+      act_b_to_a.account = N(utrio.token);
       act_b_to_a.name = NEX(transfer);
-      act_b_to_a.authorization = vector<permission_level>{{name("txn.test.b"),config::active_name}};
+      act_b_to_a.authorization = vector<permission_level>{{name("user.112"),config::active_name}};
       act_b_to_a.data = ultrainio_token_serializer.variant_to_binary("transfer",
-                                                                  fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
+                                                                  fc::json::from_string(fc::format_string("{\"from\":\"user.112\",\"to\":\"user.111\",\"quantity\":\"0.1234 SYS\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("l", salt))),
                                                                   abi_serializer_max_time);
 
@@ -299,20 +299,17 @@ struct txn_test_gen_plugin_impl {
 
    void send_transaction(std::function<void(const fc::exception_ptr&)> next) {
       std::vector<signed_transaction> trxs;
-      //trxs.reserve(2*batch);
-      trxs.reserve(batch);
+      trxs.reserve(2*batch);
 
       try {
-         /*controller& cc = app().get_plugin<chain_plugin>().chain();
-         auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
+          controller& cc = app().get_plugin<chain_plugin>().chain();
+          auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
 
-         name sender("txn.test.a");
-         name recipient("txn.test.b");
-         fc::crypto::private_key a_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
-         fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
+          fc::crypto::private_key a_priv_key(std::string("5JNuk2NHzJhhc5KCgZDnkD1fj9T6ThTScejzXjQPajWddm4PVma"));
+          fc::crypto::private_key b_priv_key(std::string("5JNuk2NHzJhhc5KCgZDnkD1fj9T6ThTScejzXjQPajWddm4PVma"));
 
          static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
-         abi_serializer ultrainio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());
+         //         abi_serializer ultrainio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());
 
          uint32_t reference_block_num = cc.last_irreversible_block_num();
          if (txn_reference_block_lag >= 0) {
@@ -324,37 +321,38 @@ struct txn_test_gen_plugin_impl {
             }
          }
 
-         block_id_type reference_block_id = cc.get_block_id_for_num(reference_block_num);*/
+         block_id_type reference_block_id = cc.get_block_id_for_num(reference_block_num);
 
          for(unsigned int i = 0; i < batch; ++i) {
-         {
-            signed_transaction trx;
-            trx.sn = trx_count;
-            trx_count++;
-            if(trx_count%1000 == 0){
-                ilog("trx_count ${p}", ("p", trx_count));
-            }
-            trx.actions.push_back(act_a_to_b);
-            //trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
-            //trx.set_reference_block(reference_block_id);
-            //trx.expiration = cc.head_block_time() + fc::seconds(30);
-            //trx.max_net_usage_words = 100;
-            //trx.sign(a_priv_key, chainid);
-            trxs.emplace_back(std::move(trx));
-         }
+             if(trx_count%1000 == 0){
+                 ilog("trx_count ${p}", ("p", trx_count));
+             }
 
-         /*{
-         signed_transaction trx;
-         trx.sn = trx_count;
-         trx_count++;
-         trx.actions.push_back(act_b_to_a);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
-         trx.set_reference_block(reference_block_id);
-         trx.expiration = cc.head_block_time() + fc::seconds(30);
-         trx.max_net_usage_words = 100;
-         trx.sign(b_priv_key, chainid);
-         trxs.emplace_back(std::move(trx));
-         }*/
+             {
+                 signed_transaction trx;
+                 trx.sn = trx_count;
+                 trx_count++;
+                 trx.actions.push_back(act_a_to_b);
+                 trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+                 trx.set_reference_block(reference_block_id);
+                 trx.expiration = cc.head_block_time() + fc::seconds(120);
+                 trx.max_net_usage_words = 100;
+                 trx.sign(a_priv_key, chainid);
+                 trxs.emplace_back(std::move(trx));
+             }
+
+             {
+                 signed_transaction trx;
+                 trx.sn = trx_count;
+                 trx_count++;
+                 trx.actions.push_back(act_b_to_a);
+                 trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+                 trx.set_reference_block(reference_block_id);
+                 trx.expiration = cc.head_block_time() + fc::seconds(120);
+                 trx.max_net_usage_words = 100;
+                 trx.sign(b_priv_key, chainid);
+                 trxs.emplace_back(std::move(trx));
+             }
          }
       } catch ( const fc::exception& e ) {
          next(e.dynamic_copy_exception());
