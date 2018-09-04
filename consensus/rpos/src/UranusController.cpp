@@ -258,7 +258,8 @@ namespace ultrainio {
         if (map_it == m_echoMsgAllPhase.end()) {
             if (m_echoMsgAllPhase.size() >= m_maxCachedAllPhaseKeys) {
                 dlog("processBeforeMsg.map reach the up limit. size = ${size}",("size",m_echoMsgAllPhase.size()));
-                clearOldCachedAllPhaseMsg();
+                return true;
+                //clearOldCachedAllPhaseMsg();
             }
             auto result = m_echoMsgAllPhase.insert(make_pair(msg_key, echo_msg_map));
             map_it = result.first;
@@ -1440,7 +1441,13 @@ namespace ultrainio {
 
     void UranusController::saveEchoMsg() {
         if (m_echoMsgAllPhase.size() >= m_maxCachedAllPhaseKeys) {
-            clearOldCachedAllPhaseMsg();
+            //clearOldCachedAllPhaseMsg();
+            wlog("echo all phase msgs exceeds ${max} blockNum: ${b} phase: ${p} baxcount: ${bx}",
+                 ("max", m_maxCachedAllPhaseKeys)
+                 ("b", UranusNode::getInstance()->getBlockNum())
+                 ("p", (int)UranusNode::getInstance()->getPhase())
+                 ("bx", UranusNode::getInstance()->getBaxCount()));
+            return;
         }
 
         msgkey msg_key;
