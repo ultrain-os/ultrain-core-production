@@ -39,6 +39,8 @@ namespace ultrainio {
    using chain::abi_def;
    using chain::abi_serializer;
 
+   constexpr int MIN_COMMITTEE_MEMBER_NUMBER = 4;
+
 namespace chain_apis {
 struct empty{};
 
@@ -269,6 +271,7 @@ public:
       vector<fc::variant> rows; ///< one row per item, either encoded as hex string or JSON object
       uint64_t            thresh_activated_stake_time;
       string              more; ///< fill lower_bound with this value to fetch more rows
+      bool                committee_state {false};
    };
 
    get_producers_result get_producers( const get_producers_params& params, bool filter_enabled = false)const;

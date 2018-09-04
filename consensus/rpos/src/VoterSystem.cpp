@@ -165,7 +165,7 @@ namespace ultrainio {
                 }
                 ilog("#########################there is ${p} committee member enabled", ("p", result.rows.size()));
            }
-           if (result.thresh_activated_stake_time > 0 && statePtr->cinfo.size() > Config::MIN_COMMITTEE_MEMBER_NUMBER) {
+           if (result.thresh_activated_stake_time > 0 && result.committee_state) {
                statePtr->chainStateNormal = true;
            }
         }
