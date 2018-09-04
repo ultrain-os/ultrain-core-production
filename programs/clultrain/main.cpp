@@ -1081,7 +1081,7 @@ struct list_producers_subcommand {
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
-                   row["total_votes"].as_int64(),
+                   row["total_votes"].as_uint64(),
                    row["is_enabled"].as_bool());
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;
