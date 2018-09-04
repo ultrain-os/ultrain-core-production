@@ -4,9 +4,7 @@
 
 #include <boost/math/distributions/binomial.hpp>
 
-#include <crypto/Ed25519.h>
 #include <rpos/Config.h>
-#include <rpos/MessageManager.h>
 #include <rpos/Node.h>
 #include <rpos/Proof.h>
 #include <rpos/KeyKeeper.h>

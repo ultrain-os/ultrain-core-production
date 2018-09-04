@@ -2,7 +2,6 @@
 
 #include <ultrainio/chain/exceptions.hpp>
 
-#include <log/Log.h>
 #include <rpos/Node.h>
 #include <rpos/Proof.h>
 #include <rpos/Seed.h>
