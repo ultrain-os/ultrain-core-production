@@ -163,7 +163,7 @@ namespace ultrainio {
                     cinfo.stakesCount = r["total_votes"].as_int64();
                     statePtr->cinfo.push_back(cinfo);
                 }
-                ilog("#########################there is ${p} committee member enabled", ("p", result.rows.size()));
+                ilog("#########################there are ${p} committee member enabled", ("p", result.rows.size()));
            }
             statePtr->chainStateNormal = ro_api.is_genesis_finished();
             statePtr->chainMinStakeThresh = result.min_stake_thresh;

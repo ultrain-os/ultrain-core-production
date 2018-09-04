@@ -6,6 +6,16 @@
 #include <ultrainio/chain/generated_transaction_object.hpp>
 #include <ultrainio/chain/transaction_object.hpp>
 #include <ultrainio/chain/global_property_object.hpp>
+#include <ultrainio/chain_plugin/chain_plugin.hpp>
+#include <appbase/application.hpp>
+
+#include <fc/io/json.hpp>
+
+#include <ultrainio.token/ultrainio.token.wast.hpp>
+#include <ultrainio.token/ultrainio.token.abi.hpp>
+
+//TODO  comments bill out firstly
+#define BILL 0
 
 namespace ultrainio { namespace chain {
 
@@ -27,13 +37,56 @@ namespace ultrainio { namespace chain {
       ULTRAIN_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
    }
 
+#if BILL == 1
+   static std::vector<string>  superAccount ={"ultrainio",
+                                            "utrio.bpay",
+                                            "utrio.msig",
+                                            "utrio.names",
+                                            "utrio.ram",
+                                            "utrio.ramfee",
+                                            "utrio.saving",
+                                            "utrio.stake",
+                                            "utrio.token",
+                                            "utrio.vpay",
+                                            "genesis"
+                                            };
+   void check_billed_account(const chain_apis::read_only & ro_api, const account_name& acc, share_type& least_amount) {
+        static struct chain_apis::read_only::get_currency_balance_params params1;
+        if ( std::find(std::begin(superAccount), std::end(superAccount), acc) == std::end(superAccount) ) {
+            params1.code = N(utrio.token);
+            params1.account = acc;
+            params1.symbol = "SYS";
+            auto result = ro_api.get_currency_balance(params1);
+            ULTRAIN_ASSERT(result.size() == 1, unsupported_feature, "can't find acc");
+            ULTRAIN_ASSERT(result[0].get_amount() > 0, unsupported_feature, "unsupport");
+            if (result[0].get_amount()<least_amount) {
+                least_amount = result[0].get_amount();
+            }
+            ilog("account ${acc}, ${am}", ("acc", acc)("am", least_amount));
+        }
+        return;
+   }
+#endif
+
    void transaction_context::init(uint64_t initial_net_usage)
    {
       ULTRAIN_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
+      const static auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+      share_type least_amount = INT64_MAX;
 
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
+
+      // Record accounts to be billed for network and CPU usage
+      for( const auto& act : trx.actions ) {
+         for( const auto& auth : act.authorization ) {
+            bill_to_accounts.insert( auth.actor );
+#if BILL == 1
+            check_billed_account(ro_api, auth.actor, least_amount);
+#endif
+         }
+      }
 
       net_limit = rl.get_block_net_limit();
 
@@ -75,12 +128,7 @@ namespace ultrainio { namespace chain {
       if( billed_cpu_time_us > 0 ) // could also call on explicit_billed_cpu_time but it would be redundant
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
-      // Record accounts to be billed for network and CPU usage
-      for( const auto& act : trx.actions ) {
-         for( const auto& auth : act.authorization ) {
-            bill_to_accounts.insert( auth.actor );
-         }
-      }
+
       validate_ram_usage.reserve( bill_to_accounts.size() );
 
       // Update usage values of accounts to reflect new time
@@ -191,8 +239,34 @@ namespace ultrainio { namespace chain {
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
             trace->action_traces.emplace_back();
+            ilog("action ${acc}, ${act}",("acc",act.account)("act",act.name));
             dispatch_action( trace->action_traces.back(), act );
          }
+#if BILL == 1
+         auto bill_account_for_trx_fee = [&](){
+             for( const auto& auth : bill_to_accounts ) {
+                 if ( std::find(std::begin(superAccount), std::end(superAccount), auth) != std::end(superAccount) ) {
+                     continue;
+                 }
+                 static action act_tmp;
+                 static auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
+                 static abi_serializer ultrainio_token_serializer{fc::json::from_string(ultrainio_token_abi).as<abi_def>(), abi_serializer_max_time};
+
+                 std::string act = "{\"from\":\""+auth.to_string()+"\",\"to\":\"utrio.saving\",\"quantity\":\"0.0300 SYS\",\"memo\":\"charge\"}";
+
+                 ilog("bill acc ${acc}, cmd ${cmd}", ("acc", auth)("cmd",act));
+
+                 act_tmp.account = N(utrio.token);
+
+                 act_tmp.name = NEX(transfer);
+                 act_tmp.authorization = vector<permission_level>{{auth,config::active_name}};
+                 act_tmp.data = ultrainio_token_serializer.variant_to_binary("transfer", fc::json::from_string(act), abi_serializer_max_time);
+                trace->action_traces.emplace_back();
+                dispatch_action( trace->action_traces.back(), act_tmp );
+             }
+         };
+         bill_account_for_trx_fee();
+#endif
       } else {
          schedule_transaction();
       }
@@ -301,7 +375,7 @@ namespace ultrainio { namespace chain {
          }
          ULTRAIN_ASSERT( false,  transaction_exception, "unexpected deadline exception code" );
       }
-#endif      
+#endif
    }
 
    void transaction_context::pause_billing_timer() {
@@ -328,7 +402,7 @@ namespace ultrainio { namespace chain {
    }
 
    void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {
-#if TEST_MODE == 0     
+#if TEST_MODE == 0
       if( check_minimum ) {
          const auto& cfg = control.get_global_properties().configuration;
          ULTRAIN_ASSERT( billed_us >= cfg.min_transaction_cpu_usage, transaction_exception,

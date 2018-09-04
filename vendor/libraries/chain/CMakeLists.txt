@@ -50,13 +50,15 @@ add_library( ultrainio_chain
              ${HEADERS}
              )
 
-target_link_libraries( ultrainio_chain ultrain_utilities fc chainbase appbase Logging IR WAST WASM Runtime
+add_dependencies(ultrainio_chain  ultrainio.token)
+target_link_libraries( ultrainio_chain ultrain_utilities fc chainbase appbase chain_plugin Logging IR WAST WASM Runtime
       wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins
                      )
 target_include_directories( ultrainio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/binaryen/src"
+                                   "${CMAKE_BINARY_DIR}/contracts"
                             )
 
 install( TARGETS ultrainio_chain

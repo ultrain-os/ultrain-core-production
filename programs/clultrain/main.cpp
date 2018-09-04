@@ -1080,7 +1080,7 @@ struct list_producers_subcommand {
 	    uint64_t unpaid_blocks = 0;
 	    for ( auto tmp : row["unpaid_blocks"].get_array())
 	       unpaid_blocks += tmp.as_uint64();
-            printf("%-13.13s %-54.54s %-59.59s %15lld %u %15lu\n",
+            printf("%-13.13s %-54.54s %-59.59s %15ld %u %15lu\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
