@@ -16,7 +16,6 @@
 
 namespace ultrainio {
     class UranusNode;
-    class UranusControllerMonitor;
 
     struct echo_message_info {
         EchoMsg echo;

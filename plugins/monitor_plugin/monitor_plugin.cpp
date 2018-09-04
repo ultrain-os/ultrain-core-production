@@ -53,21 +53,26 @@ class monitor_plugin_impl {
 
     void startMonitorTaskTimer();
 
-    tcp::endpoint  self_endpoint; // same as p2p-listen-endpoint in net plugin
-    std::string    monitor_central_server;
-    std::string    call_path;
-    bool           needReportTask = true;
-    uint32_t       reportInterval;
+    void sendStaticConfigInfo();
+
+    tcp::endpoint   self_endpoint; // same as p2p-listen-endpoint in net plugin
+    std::string     monitor_central_server;
+    std::string     call_path_dynamic;
+    std::string     call_path_static;
+    bool            needReportTask = true;
+    uint32_t        reportInterval;
+    vector<string>  supplied_peers;
 
     monitor_apis::monitor_only m_monitorHandler;
 
   private:
     void processReportTask();
 
+    bool firstLoop;
     std::unique_ptr<boost::asio::steady_timer> m_reportTaskTimer;
 };
 
-monitor_plugin_impl::monitor_plugin_impl() {
+monitor_plugin_impl::monitor_plugin_impl() : firstLoop(true) {
     m_reportTaskTimer.reset(new boost::asio::steady_timer(app().get_io_service()));
 }
 
@@ -89,18 +94,38 @@ void monitor_plugin_impl::startMonitorTaskTimer() {
 
 void monitor_plugin_impl::processReportTask() {
   try{
-    periodic_reort_data rst = m_monitorHandler.getPeriodicReortData();
+    if (firstLoop) {
+      sendStaticConfigInfo();
+      firstLoop = false;
+    }
+
+    periodic_report_dynamic_data rst = m_monitorHandler.getPeriodicReortData();
     rst.nodeIp = self_endpoint.address().to_v4().to_string();
-    auto rsp = call(monitor_central_server, call_path, rst);
+    auto rsp = call(monitor_central_server, call_path_dynamic, rst);
+
+    if (rsp["result"].is_string()) {
+        if(rsp["result"].as<std::string>() == "Y") {
+            sendStaticConfigInfo();
+        }
+    } else {
+        std::cerr << "Invalid response from monitor central server." << std::endl;
+    }
   }
   catch(chain::node_not_found_exception& e) {
     auto exceptionInfo = std::string("exception happened, node not initialized.");
     std::cerr << "Periodic report: " << exceptionInfo << std::endl;
-    //call(monitor_central_server, call_path, exceptionInfo);
+    //call(monitor_central_server, call_path_dynamic, exceptionInfo);
   }
   catch(...) {
     std::cerr << "Periodic report: unknown exception." << std::endl;
   } //don't allow exception be thrown out, to prevent Ultrainode from exiting.
+}
+
+void monitor_plugin_impl::sendStaticConfigInfo() {
+  periodic_report_static_data configInfo = m_monitorHandler.getStaticConfigInfo();
+  configInfo.nodeIp = self_endpoint.address().to_v4().to_string();
+  configInfo.configuredPeers = supplied_peers;
+  call(monitor_central_server, call_path_static, configInfo);
 }
 
 monitor_plugin::monitor_plugin():my(new monitor_plugin_impl()){}
@@ -121,6 +146,9 @@ void monitor_plugin::plugin_initialize(const variables_map& options) {
         if( options.count( "monitor-server-endpoint" )) {
             my->monitor_central_server = options.at( "monitor-server-endpoint" ).as<string>();
         }
+        if( options.count( "p2p-peer-address" )) {
+            my->supplied_peers = options.at( "p2p-peer-address" ).as<vector<string> >();
+         }
 
         auto resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
 
@@ -137,7 +165,8 @@ void monitor_plugin::plugin_initialize(const variables_map& options) {
 
     }FC_LOG_AND_RETHROW()
 
-    my->call_path = "/status/info";
+    my->call_path_dynamic = "/status/info";
+    my->call_path_static  = "/status/staticInfo";
 
    context = ultrainio::client::http::create_http_context();
 }
@@ -199,14 +228,20 @@ monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const {
         return {controllerMonitor.findEchoApMsgByKey(params)};
      }
 
-     periodic_reort_data monitor_only::getPeriodicReortData() {
+     periodic_report_dynamic_data monitor_only::getPeriodicReortData() {
         if(nullptr == m_nodeMonitor) {
             auto nodePtr = getNodePtr();
             m_nodeMonitor = std::make_shared<UranusNodeMonitor>(nodePtr);
-            m_nodeMonitor->setCallbackInNode();
         }
-
         return m_nodeMonitor->getReortData();
+     }
+
+     periodic_report_static_data monitor_only::getStaticConfigInfo() {
+       if(nullptr == m_nodeMonitor) {
+            auto nodePtr = getNodePtr();
+            m_nodeMonitor = std::make_shared<UranusNodeMonitor>(nodePtr);
+        }
+        return m_nodeMonitor->getStaticConfigInfo();
      }
    } //namespace monitor_apis 
 } ///namespace ultrainio

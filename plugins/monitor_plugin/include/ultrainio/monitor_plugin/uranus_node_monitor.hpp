@@ -6,8 +6,11 @@
 #include <rpos/KeyKeeper.h>
 #include <rpos/VoterSystem.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <ultrainio/net_plugin/net_plugin.hpp>
 
 namespace ultrainio {
+
+    extern char version[];
 
     struct UranusNodeInfo {
         bool     ready;
@@ -25,7 +28,7 @@ namespace ultrainio {
         uint32_t allPhaseEchoMsgNum;
     };
 
-    struct periodic_reort_data {
+    struct periodic_report_dynamic_data {
         std::string nodeIp;
         uint32_t    blockNum;
         std::string phase;
@@ -35,15 +38,22 @@ namespace ultrainio {
         bool        syncFailed;
         bool        connected;
         bool        ready;
-        bool        nonProducingNode;
         std::string blockHash;
         std::string previousBlockHash;
         std::string ba0BlockTime;
         std::string ba1BlockTime;
+        std::vector<string> activePeers;
+    };
+
+     struct periodic_report_static_data {
+        std::string nodeIp;
+        std::string version;
+        bool        nonProducingNode;
         std::string genesisLeaderPk;
         std::string genesisLeaderSk;
         std::string publicKey;
         std::string privateKey;
+        std::vector<string> configuredPeers;
     };
 
     class UranusNodeMonitor
@@ -54,6 +64,7 @@ namespace ultrainio {
             phaseStr[1] = "kPhaseBA0";
             phaseStr[2] = "kPhaseBA1";
             phaseStr[3] = "kPhaseBAX";
+            setCallbackInNode();
         }
 
         ~UranusNodeMonitor() = default;
@@ -79,8 +90,8 @@ namespace ultrainio {
             return tempNodeInfo;
         }
 
-        periodic_reort_data getReortData() const {
-            periodic_reort_data reportData;
+        periodic_report_dynamic_data getReortData() const {
+            periodic_report_dynamic_data reportData;
             std::shared_ptr<UranusNode> pNode = m_pNode.lock();
             if (pNode) {
                 reportData.phase             = phaseStr[static_cast<int32_t>(pNode->m_phase)];
@@ -89,11 +100,6 @@ namespace ultrainio {
                 reportData.syncFailed        = pNode->m_syncFailed;
                 reportData.connected         = pNode->m_connected;
                 reportData.ready             = pNode->m_ready;
-                reportData.nonProducingNode  = pNode->getNonProducingNode();
-                reportData.genesisLeaderPk   = std::string(VoterSystem::getKeyKeeper()->m_genesisLeaderPk);
-                reportData.genesisLeaderSk   = std::string(VoterSystem::getKeyKeeper()->m_genesisLeaderSk);
-                reportData.publicKey         = std::string(VoterSystem::getKeyKeeper()->m_publicKey);
-                reportData.privateKey        = std::string(VoterSystem::getKeyKeeper()->m_privateKey);
 
                 const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
                 reportData.blockNum          = chain.head_block_num();
@@ -102,9 +108,30 @@ namespace ultrainio {
                 reportData.transactionNum    = chain.head_block_state()->trxs.size();
                 reportData.ba0BlockTime      = m_ba0BlockTime;
                 reportData.ba1BlockTime      = m_ba1BlockTime;
+
+                vector<connection_status> connectionsStatus = appbase::app().get_plugin<net_plugin>().connections();
+                for (const auto& connectStatus : connectionsStatus) {
+                    if(connectStatus.connecting) {   //only report connected peers
+                        reportData.activePeers.push_back(connectStatus.peer);
+                    }
+                }
             }
 
             return reportData;
+        }
+
+        periodic_report_static_data getStaticConfigInfo() const {
+            periodic_report_static_data staticConfig;
+            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            if (pNode) {
+                staticConfig.version           = version;
+                staticConfig.nonProducingNode  = pNode->getNonProducingNode();
+                staticConfig.genesisLeaderPk   = std::string(VoterSystem::getKeyKeeper()->m_genesisLeaderPk);
+                staticConfig.genesisLeaderSk   = std::string(VoterSystem::getKeyKeeper()->m_genesisLeaderSk);
+                staticConfig.publicKey         = std::string(VoterSystem::getKeyKeeper()->m_publicKey);
+                staticConfig.privateKey        = std::string(VoterSystem::getKeyKeeper()->m_privateKey);
+            }
+            return staticConfig;
         }
 
         void setCallbackInNode() {
@@ -145,6 +172,7 @@ namespace ultrainio {
     };
 }
 
-FC_REFLECT( ultrainio::periodic_reort_data, (nodeIp)(blockNum)(phase)(baxCount)(transactionNum)(syncing)(syncFailed)(connected)
-                                            (ready)(nonProducingNode)(blockHash)(previousBlockHash)(ba0BlockTime)(ba1BlockTime)
-                                            (genesisLeaderPk)(genesisLeaderSk)(publicKey)(privateKey))
+FC_REFLECT( ultrainio::periodic_report_dynamic_data, (nodeIp)(blockNum)(phase)(baxCount)(transactionNum)(syncing)(syncFailed)(connected)
+                                                     (ready)(blockHash)(previousBlockHash)(ba0BlockTime)(ba1BlockTime)(activePeers) )
+FC_REFLECT( ultrainio::periodic_report_static_data, (nodeIp)(version)(nonProducingNode)(genesisLeaderPk)(genesisLeaderSk)(publicKey)
+                                                    (privateKey)(configuredPeers) )

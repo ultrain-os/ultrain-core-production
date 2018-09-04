@@ -66,7 +66,8 @@ class monitor_only {
       monitor_echo_ap_cache_result monitor_echo_ap_cache(const monitor_echo_ap_cache_params& params) const;
 
       //client request to monitor central server
-      periodic_reort_data getPeriodicReortData();
+      periodic_report_dynamic_data getPeriodicReortData();
+      periodic_report_static_data getStaticConfigInfo();
 
    private:
 
