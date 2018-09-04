@@ -172,13 +172,13 @@ namespace ultrainiosystem {
          }
       }
 
-      // user_resources_table  userres( _self, newact);
+      user_resources_table  userres( _self, newact);
 
-      // userres.emplace( newact, [&]( auto& res ) {
-      //   res.owner = newact;
-      // });
+      userres.emplace( newact, [&]( auto& res ) {
+        res.owner = newact;
+      });
 
-      // set_resource_limits( newact, 0, 0, 0 );
+      set_resource_limits( newact, 0, 0, 0 );
    }
 
 } /// ultrainio.system
