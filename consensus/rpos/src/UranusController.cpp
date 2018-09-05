@@ -291,11 +291,16 @@ namespace ultrainio {
     }
 
     bool UranusController::updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response) {
-        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(echo.blockHeader.block_num());
+        std::shared_ptr<VoterSystem> voterSysPtr = nullptr;
         auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
         if (pkItor == info.accountPool.end()) {
             info.accountPool.push_back(echo.account);
             info.proofPool.push_back(echo.proof);
+            voterSysPtr = MessageManager::getInstance()->getVoterSys(echo.blockHeader.block_num());
+            if (voterSysPtr == nullptr) {
+                ULTRAIN_ASSERT(false, chain::chain_exception, "voterSysPtr is nullptr.");
+            }
+
             int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
             double voterRatio = voterSysPtr->getVoterRatio();
             Proof proof(echo.proof);
@@ -352,17 +357,17 @@ namespace ultrainio {
 
                     auto itor = echo_msg_map.find(echo.blockHeader.id());
                     if (itor != echo_msg_map.end()) {
-                        updateAndMayResponse(itor->second, echo, false);
+                        insertAccount(itor->second, echo);
                     } else {
                         echo_message_info info;
                         info.echo = echo;
-                        updateAndMayResponse(info, echo, false);
+                        insertAccount(info, echo);
                         echo_msg_map.insert(make_pair(echo.blockHeader.id(), info));
                     }
                 }
 
                 for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
-                    if (echo_itor->second.totalVoter >= THRESHOLD_SYNCING) {
+                    if (echo_itor->second.accountPool.size() >= THRESHOLD_SYNCING) {
                         maxBlockNum = vector_itor->first.blockNum;
                         break;
                     }
@@ -1634,5 +1639,13 @@ namespace ultrainio {
             emptyBlock = generateEmptyBlock();
         }
         return *emptyBlock;
+    }
+
+    void UranusController::insertAccount(echo_message_info &info, const EchoMsg &echo) {
+        auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
+        if (pkItor == info.accountPool.end()) {
+            info.accountPool.push_back(echo.account);
+        }
+        return;
     }
 }  // namespace ultrainio

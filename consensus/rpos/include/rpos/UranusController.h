@@ -167,6 +167,8 @@ namespace ultrainio {
 
         std::shared_ptr<AggEchoMsg> generateAggEchoMsg(std::shared_ptr<Block> blockPtr);
 
+        void insertAccount(echo_message_info &info, const EchoMsg &echo);
+
         friend class UranusControllerMonitor;
 
     private:

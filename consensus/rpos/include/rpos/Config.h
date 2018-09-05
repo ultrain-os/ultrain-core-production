@@ -14,5 +14,5 @@ namespace ultrainio {
 #define INVALID_BLOCK_NUM          0xFFFFFFFF
 #define THRESHOLD_SEND_ECHO        330
 #define THRESHOLD_NEXT_ROUND       670
-#define THRESHOLD_SYNCING          670
+#define THRESHOLD_SYNCING          3
 }
