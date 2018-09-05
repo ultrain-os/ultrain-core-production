@@ -29,6 +29,7 @@ namespace ultrainio {
     public:
         static const int MAX_ROUND_SECONDS;
         static const int MAX_PHASE_SECONDS;
+        static const int MAX_BAX_COUNT;
         static boost::chrono::system_clock::time_point GENESIS;
 
         static std::shared_ptr<UranusNode> initAndGetInstance(boost::asio::io_service &ioservice);

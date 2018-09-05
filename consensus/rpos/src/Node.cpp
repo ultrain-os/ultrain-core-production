@@ -26,6 +26,7 @@ namespace ultrainio {
 
     const int UranusNode::MAX_ROUND_SECONDS = 10;
     const int UranusNode::MAX_PHASE_SECONDS = 5;
+    const int UranusNode::MAX_BAX_COUNT = 20;
 
     boost::chrono::system_clock::time_point UranusNode::GENESIS;
 
@@ -414,9 +415,6 @@ namespace ultrainio {
             ULTRAIN_ASSERT(uranus_block->id() == m_controllerPtr->getPreviousBlockhash(),
                            chain::chain_exception, "Produced block hash is not expected");
 
-            LOG_INFO << "checkpoint: blockNum:" << getBlockNum() << ";phase:" << m_phase << ";host_name:"
-                     << boost::asio::ip::host_name() << ";block_hash_previous: " << uranus_block->previous
-                     << ";txs_hash: " << uranus_block->id() << std::endl;
             fastBlock(getBlockNum());
             //join();
         } else {
@@ -502,8 +500,10 @@ namespace ultrainio {
              ("Voter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
                      ("count",m_baxCount));
 
-        if (m_baxCount >= 20) { // TODO(why not check role)
-            sendEchoForEmptyBlock();
+        if (m_baxCount >= MAX_BAX_COUNT) {
+            if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount)) {
+                sendEchoForEmptyBlock();
+            }
         } else {
             vote(getBlockNum(),kPhaseBAX,m_baxCount);
         }
