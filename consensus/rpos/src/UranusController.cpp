@@ -369,14 +369,10 @@ namespace ultrainio {
                 for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
                     if (echo_itor->second.accountPool.size() >= THRESHOLD_SYNCING) {
                         maxBlockNum = vector_itor->first.blockNum;
-                        break;
+                        return maxBlockNum;
                     }
                 }
             }
-        }
-
-        if (maxBlockNum > UranusNode::getInstance()->getBlockNum()) {
-            return maxBlockNum;
         }
 
         return INVALID_BLOCK_NUM;

@@ -427,7 +427,7 @@ namespace ultrainio {
             elog("baxProcess.phase bax finish. block is empty.");
 
             if (INVALID_BLOCK_NUM != isSyncing()) {
-                dlog("baxProcess. syncing begin. count = ${count}.", ("count", m_baxCount));
+                dlog("baxProcess. syncing begin. m_baxCount = ${count}.", ("count", m_baxCount));
                 applyBlockOnce();
                 //join();
             }
