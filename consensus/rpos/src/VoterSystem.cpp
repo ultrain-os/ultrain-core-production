@@ -42,16 +42,12 @@ namespace ultrainio {
         return s_keyKeeper;
     }
 
-    AccountName VoterSystem::getMyWorkingAccount() {
-        if (isGenesisPeriod() && s_keyKeeper->m_genesisLeaderSk.isValid()) {
-            return AccountName(s_keyKeeper->m_genesisLeader);
-        } else {
-            return AccountName(s_keyKeeper->m_account);
-        }
+    AccountName VoterSystem::getMyAccount() {
+        return s_keyKeeper->getMyAccount();
     }
 
-    PrivateKey VoterSystem::getMyWorkingPrivateKey() {
-        return getPrivateKey(getMyWorkingAccount());
+    PrivateKey VoterSystem::getMyPrivateKey() {
+        return s_keyKeeper->getPrivateKey();
     }
 
     double VoterSystem::getProposerRatio() {
@@ -77,7 +73,7 @@ namespace ultrainio {
     }
 
     int VoterSystem::getStakes(const AccountName& account, bool isNonProducingNode) {
-        AccountName myAccount = getMyWorkingAccount();
+        AccountName myAccount = getMyAccount();
         // (shenyufeng)always be no listener
         if (isNonProducingNode && account == myAccount) {
             return 0;
@@ -103,9 +99,9 @@ namespace ultrainio {
     }
 
     bool VoterSystem::isCommitteeMember(const AccountName& account) const {
-        if (isGenesisPeriod() && isGenesisLeader(account)) {
-            return true;
-        } else if (!isGenesisPeriod() && findInCommitteeMemberList(account).isValid()) {
+        bool genesis = isGenesisPeriod();
+        if ((genesis && isGenesisLeader(account))
+            || (!genesis && findInCommitteeMemberList(account).isValid())) {
             return true;
         }
         return false;
@@ -124,25 +120,16 @@ namespace ultrainio {
     }
 
     PublicKey VoterSystem::getPublicKey(const AccountName& account) const {
-        if (account == AccountName(s_keyKeeper->m_account)) {
-            return s_keyKeeper->m_publicKey;
-        } else if (account == AccountName(s_keyKeeper->m_genesisLeader)) {
-            return s_keyKeeper->m_genesisLeaderPk;
+        if (account == s_keyKeeper->getMyAccount()) {
+            return s_keyKeeper->getPrivateKey().getPublicKey();
+        } else if (account == AccountName(Config::GENESIS_LEADER_ACCOUNT)) {
+            return PublicKey(Config::GENESIS_LEADER_PK);
         }
         return findInCommitteeMemberList(account);
     }
 
-    PrivateKey VoterSystem::getPrivateKey(const AccountName& account) const {
-        if (account == AccountName(s_keyKeeper->m_account)) {
-            return s_keyKeeper->m_privateKey;
-        } else if (account == AccountName(s_keyKeeper->m_genesisLeader)){
-            return s_keyKeeper->m_genesisLeaderSk;
-        }
-        return PrivateKey();
-    }
-
     bool VoterSystem::isGenesisLeader(const AccountName& account) const {
-        return account.good() && account == AccountName(s_keyKeeper->m_genesisLeader);
+        return account.good() && account == AccountName(Config::GENESIS_LEADER_ACCOUNT);
     }
 
     std::shared_ptr<CommitteeState> VoterSystem::getCommitteeState() {

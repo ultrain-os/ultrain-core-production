@@ -43,9 +43,9 @@ namespace ultrainio {
             // #### This line has to run first, all the following caculation depends on this line. ###
             m_voterSystem = VoterSystem::create(blockNum, nullptr);
             Seed proposerSeed(previousHash, blockNum, kPhaseBA0, 0);
-            PrivateKey privateKey = m_voterSystem->getMyWorkingPrivateKey();
+            PrivateKey privateKey = VoterSystem::getMyPrivateKey();
             m_proposerProof = Vrf::vrf(privateKey, proposerSeed, Vrf::kProposer);
-            int stakes = m_voterSystem->getStakes(m_voterSystem->getMyWorkingAccount(), UranusNode::getInstance()->getNonProducingNode());
+            int stakes = m_voterSystem->getStakes(VoterSystem::getMyAccount(), UranusNode::getInstance()->getNonProducingNode());
             double proposerRatio = m_voterSystem->getProposerRatio();
             m_voterCountAsProposer = m_voterSystem->count(m_proposerProof, stakes, proposerRatio);
             //ilog("blockNum = ${blockNum} voterCountAsProposer = ${voterCountAsProposer} proposerProof = ${proposerProof}",

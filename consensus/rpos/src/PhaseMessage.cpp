@@ -36,14 +36,11 @@ namespace ultrainio {
         std::string previousHash(blockId.data());
         std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(blockNum);
         ULTRAIN_ASSERT(voterSysPtr != nullptr, chain::chain_exception, "voterSystemPtr is nullptr");
-        AccountName workingAccount = voterSysPtr->getMyWorkingAccount();
+        AccountName myAccount = VoterSystem::getMyAccount();
         Seed voterSeed(previousHash, blockNum, phase, baxCount);
-        PrivateKey privateKey = voterSysPtr->getPrivateKey(workingAccount);
-        if (!privateKey.isValid()) {
-            return;
-        }
+        PrivateKey privateKey = VoterSystem::getMyPrivateKey();
         m_proof = Vrf::vrf(privateKey, voterSeed, Vrf::kVoter);
-        int stakes = voterSysPtr->getStakes(workingAccount, UranusNode::getInstance()->getNonProducingNode());
+        int stakes = voterSysPtr->getStakes(myAccount, UranusNode::getInstance()->getNonProducingNode());
         if (stakes == 0) {
             m_voterCountAsVoter = 0;
             return;

@@ -126,10 +126,10 @@ namespace ultrainio {
             if (pNode) {
                 staticConfig.version           = version;
                 staticConfig.nonProducingNode  = pNode->getNonProducingNode();
-                staticConfig.genesisLeaderPk   = std::string(VoterSystem::getKeyKeeper()->m_genesisLeaderPk);
-                staticConfig.genesisLeaderSk   = std::string(VoterSystem::getKeyKeeper()->m_genesisLeaderSk);
-                staticConfig.publicKey         = std::string(VoterSystem::getKeyKeeper()->m_publicKey);
-                staticConfig.privateKey        = std::string(VoterSystem::getKeyKeeper()->m_privateKey);
+                staticConfig.genesisLeaderPk   = std::string(Config::GENESIS_LEADER_PK);
+                staticConfig.genesisLeaderSk   = std::string(); // TODO
+                staticConfig.publicKey         = std::string(VoterSystem::getMyPrivateKey().getPublicKey());
+                staticConfig.privateKey        = std::string(VoterSystem::getMyPrivateKey());
             }
             return staticConfig;
         }

@@ -68,12 +68,8 @@ namespace ultrainio {
         m_isNonProducingNode = v;
     }
 
-    void UranusNode::setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk, const std::string& account) {
-        VoterSystem::getKeyKeeper()->setGenesisLeaderKeyPair(pk, sk, account);
-    }
-
-    void UranusNode::setCommitteeKeyPair(const std::string& pk, const std::string& sk, const std::string& account) {
-        VoterSystem::getKeyKeeper()->setCommitteeKeyPair(pk, sk, account);
+    void UranusNode::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account) {
+        VoterSystem::getKeyKeeper()->setMyInfoAsCommitteeKey(sk, account);
     }
 
     bool UranusNode::getNonProducingNode() const {

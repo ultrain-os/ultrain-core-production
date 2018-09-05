@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace ultrainio {
 
     class Config {
@@ -8,6 +10,11 @@ namespace ultrainio {
         static constexpr double PROPOSER_STAKES_NUMBER = 20.0;
         static constexpr int DEFAULT_THRESHOLD = 6000;
         static constexpr int MAX_LATER_NUMBER = 3;
+
+        static const char* GENESIS_LEADER_PK;
+
+        // virtual leader
+        static const char* GENESIS_LEADER_ACCOUNT;
     };
 
     // TODO(qinxiaofen) should add into Config class

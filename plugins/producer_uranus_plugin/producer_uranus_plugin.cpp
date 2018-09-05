@@ -113,10 +113,6 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
 
       boost::program_options::variables_map _options;
       std::string _genesis_time = std::string();
-      std::string _genesis_leader_pk;                       // genesis leader'public key, known by all committee member
-      std::string _genesis_leader_sk;                       // genesis leader'private key, set when it is genesis leader
-      std::string _genesis_leader_account;                  // genesis leader account
-      std::string _my_pk_as_committee;                      // public key when register as committee member
       std::string _my_sk_as_committee;
       std::string _my_account_as_committee;
       bool     _pause_production                   = false;
@@ -391,10 +387,6 @@ void producer_uranus_plugin::set_program_options(
           "   KULTRAIND:<data>    \tis the URL where kultraind is available and the approptiate wallet(s) are unlocked")
          ("kultraind-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a kultraind provider for signing")
-         ("genesis-leader-pk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_pk = g; }), "genesis leader pk")
-         ("genesis-leader-sk", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_sk = g; }), "genesis leader sk")
-         ("genesis-leader-account", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_leader_account = g; }), "geneis leader account")
-         ("my-pk-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_pk_as_committee = g; }), "pk as committer member")
          ("my-sk-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_sk_as_committee = g; }), "sk as committer member")
          ("my-account-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_account_as_committee = g; }), "account as committer member")
          ("genesis-delay", boost::program_options::value<int32_t>()->default_value(60), "genesis delay")
@@ -576,8 +568,7 @@ void producer_uranus_plugin::plugin_startup()
 
    std::shared_ptr<UranusNode> nodePtr = UranusNode::initAndGetInstance(app().get_io_service());
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
-   nodePtr->setGenesisLeaderKeyPair(my->_genesis_leader_pk, my->_genesis_leader_sk, my->_genesis_leader_account);
-   nodePtr->setCommitteeKeyPair(my->_my_pk_as_committee, my->_my_sk_as_committee, my->_my_account_as_committee);
+   nodePtr->setMyInfoAsCommitteeKey(my->_my_sk_as_committee, my->_my_account_as_committee);
 
    if (!my->_genesis_time.empty()) {
        boost::chrono::system_clock::time_point tp;

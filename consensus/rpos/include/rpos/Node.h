@@ -35,9 +35,7 @@ namespace ultrainio {
 
         static std::shared_ptr<UranusNode> getInstance();
 
-        void setGenesisLeaderKeyPair(const std::string& pk, const std::string& sk, const std::string& account);
-
-        void setCommitteeKeyPair(const std::string& pk, const std::string& sk, const std::string& account);
+        void setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account);
 
         void setNonProducingNode(bool);
 

@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_SUITE(key_test_suite)
         std::string pubHexStr(publicKey);
         cout << "pri : " << priHexStr << endl;
         cout << "pub : " << pubHexStr << endl;
-        BOOST_CHECK(PrivateKey::verifyKeyPair(PublicKey(pubHexStr), PrivateKey(priHexStr, PublicKey(pubHexStr))));
+        BOOST_CHECK(PrivateKey::verifyKeyPair(PrivateKey(priHexStr).getPublicKey(), PrivateKey(priHexStr)));
     }
 
 BOOST_AUTO_TEST_SUITE_END()

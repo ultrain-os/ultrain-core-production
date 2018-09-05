@@ -22,9 +22,9 @@ namespace ultrainio {
 
         static std::shared_ptr<KeyKeeper> getKeyKeeper();
 
-        AccountName getMyWorkingAccount();
+        static AccountName getMyAccount();
 
-        PrivateKey getMyWorkingPrivateKey();
+        static PrivateKey getMyPrivateKey();
 
         int getStakes(const AccountName& account, bool isNonProducingNode);
 
@@ -35,8 +35,6 @@ namespace ultrainio {
         int getCommitteeMemberNumber() const;
 
         int count(const Proof& proof, int stakes, double p);
-
-        PrivateKey getPrivateKey(const AccountName& account) const;
 
         PublicKey getPublicKey(const AccountName& account) const;
     private:

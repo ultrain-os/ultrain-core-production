@@ -8,8 +8,7 @@ namespace ultrainio {
         uint8_t pk[Ed25519::PUBLIC_KEY_LEN];
         uint8_t sk[Ed25519::PRIVATE_KEY_LEN];
         Ed25519::keypair(pk, sk);
-        PublicKey publicKey(pk, Ed25519::PUBLIC_KEY_LEN);
-        return PrivateKey(sk, Ed25519::PRIVATE_KEY_LEN, publicKey);
+        return PrivateKey(sk, Ed25519::PRIVATE_KEY_LEN);
     }
 
     bool PrivateKey::verifyKeyPair(const PublicKey& publicKey, const PrivateKey& privateKey) {
@@ -20,11 +19,13 @@ namespace ultrainio {
         return publicKey.verify(privateKey.sign(digest), digest);
     }
 
-    // TODO(qinxiaofen) to generator public key when pass an default public key
-    PrivateKey::PrivateKey(const std::string& key, const PublicKey& publicKey) : m_key(key), m_publicKey(publicKey) {}
+    PrivateKey::PrivateKey(const std::string& key) : m_key(key) {
+        m_publicKey = PublicKey(std::string(m_key, Ed25519::PRIVATE_KEY_HEX_LEN - Ed25519::PUBLIC_KEY_HEX_LEN));
+    }
 
-    // TODO(qinxiaofen) to generator public key when pass an default public key
-    PrivateKey::PrivateKey(uint8_t* rawKey, size_t len, const PublicKey& publicKey) : m_key(Hex::toHex(rawKey, len)), m_publicKey(publicKey) {}
+    PrivateKey::PrivateKey(uint8_t* rawKey, size_t len) : m_key(Hex::toHex(rawKey, len)) {
+        m_publicKey = PublicKey(std::string(m_key, Ed25519::PRIVATE_KEY_HEX_LEN - Ed25519::PUBLIC_KEY_HEX_LEN));
+    }
 
     PrivateKey::operator std::string() const {
         return m_key;
