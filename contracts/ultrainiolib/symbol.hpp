@@ -123,8 +123,17 @@ namespace ultrainio {
       /**
        * This symbol's precision
        */
-      uint64_t precision()const { return value & 0xff; }
+      uint8_t decimals() const { return value & 0xFF; }
 
+      uint64_t precision() const
+      {
+         uint64_t p10 = 1;
+         uint64_t p = decimals();
+         while( p > 0  ) {
+            p10 *= 10; --p;
+         }
+         return p10;
+      }
       /**
        * Returns uint64_t representation of symbol name
        */

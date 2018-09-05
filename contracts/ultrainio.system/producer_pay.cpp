@@ -80,18 +80,21 @@ namespace ultrainiosystem {
 
       ultrainio_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
 
+      uint64_t p10 = symbol_type(system_token_symbol).precision();
       int64_t new_tokens = 0;
       for(int i=0;i<num_rate;++i){
 	 new_tokens += static_cast<int64_t>(_gstate.total_unpaid_blocks[i]*rate[i]);
 	 _gstate.total_unpaid_blocks[i] = 0;
       }
+      new_tokens*=p10;
       INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
-                                                    {N(ultrainio), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
+                                                    {N(ultrainio), asset(new_tokens), std::string("issue tokens for claimrewards")} );
 
       int64_t producer_per_block_pay = 0;
       for(int i=0;i<num_rate;++i){
 	 producer_per_block_pay += static_cast<int64_t>(prod.unpaid_blocks[i]*rate[i]);
       }
+      producer_per_block_pay*=p10;
       _producers.modify( prod, 0, [&](auto& p) {
           p.last_claim_time = ct;
           for(int i=0;i<num_rate;++i) {

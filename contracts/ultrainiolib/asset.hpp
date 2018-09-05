@@ -347,12 +347,8 @@ namespace ultrainio {
        * @brief %Print the asset
        */
       void print()const {
-         int64_t p = (int64_t)symbol.precision();
-         int64_t p10 = 1;
-         while( p > 0  ) {
-            p10 *= 10; --p;
-         }
-         p = (int64_t)symbol.precision();
+         int64_t p = (int64_t)symbol.decimals();
+         int64_t p10 =(int64_t)symbol.precision();
 
          char fraction[p+1];
          fraction[p] = '\0';
