@@ -889,7 +889,7 @@ struct controller_impl {
             notify_event();
             return trace;
          } catch (const fc::exception& e) {
-	    ilog("-----------exception in push_transaction ${e}", ("e", e.to_detail_string()));
+            ilog("-----------exception in push_transaction ${e}", ("e", e.to_detail_string()));
             trace->except = e;
             trace->except_ptr = std::current_exception();
          }

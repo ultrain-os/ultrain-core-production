@@ -54,6 +54,14 @@ namespace fc {
 const fc::string logger_name("producer_uranus_plugin");
 fc::logger _log;
 
+namespace {
+    bool failure_is_subjective(const fc::exception& e) {
+        auto code = e.code();
+        return ((code == ultrainio::chain::block_cpu_usage_exceeded::code_value) ||
+                (code == ultrainio::chain::block_net_usage_exceeded::code_value));
+    }
+}
+
 namespace ultrainio {
 
 static appbase::abstract_plugin& _producer_uranus_plugin = app().register_plugin<producer_uranus_plugin>();
@@ -313,23 +321,17 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
          try {
             auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
             if (trace->except) {
-	      //               if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
-	      //                  _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
-	      //	       } else {
-                  auto e_ptr = trace->except->dynamic_copy_exception();
-                  send_response(e_ptr);
-		  //               }
+                if (failure_is_subjective(*trace->except)) {
+                    ilog("---------Failure is subjective, abort block--------");
+                    chain.abort_block();
+                }
+                auto e_ptr = trace->except->dynamic_copy_exception();
+                send_response(e_ptr);
             } else {
-	      //    if (persist_until_expired) {
-                  // if this trx didnt fail/soft-fail and the persist flag is set, store its ID so that we can
-                  // ensure its applied to all future speculative blocks as well.
-	      //                  _persistent_transactions.insert(transaction_id_with_expiry{trx->id(), trx->expiration()});
-	      //               }
-	      send_response(trace);
+                send_response(trace);
             }
-
          } catch ( boost::interprocess::bad_alloc& ) {
-            raise(SIGUSR1);
+             raise(SIGUSR1);
          } CATCH_AND_CALL(send_response);
       }
 
