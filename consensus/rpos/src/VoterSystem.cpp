@@ -34,6 +34,7 @@ namespace ultrainio {
             m_committeeStatePtr = getCommitteeState();
         }
         long totalStake = getTotalStakes();
+        ULTRAIN_ASSERT(totalStake != 0, chain::chain_exception, "totalStake is 0");
         m_proposerRatio = Config::PROPOSER_STAKES_NUMBER / totalStake;
         m_voterRatio = Config::VOTER_STAKES_NUMBER / totalStake;
     }

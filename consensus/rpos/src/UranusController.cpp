@@ -416,7 +416,12 @@ namespace ultrainio {
             return false;
         }
 
-        // TODO verify tickes
+        int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
+        double p = voterSysPtr->getVoterRatio();
+        if (voterSysPtr->count(proof, stakes, p) <= 0) {
+            elog("send echo by non voter. account : ${account}", ("account", std::string(echo.account)));
+            return false;
+        }
         return true;
     }
 
@@ -447,6 +452,13 @@ namespace ultrainio {
         Seed seed(previousHash, propose.block.block_num(), kPhaseBA0, 0);
         if (!Vrf::verify(publicKey, proposerProof, seed, Vrf::kProposer)) {
             elog("proof verify error. proof : ${proof}", ("proof", propose.block.proposerProof));
+            return false;
+        }
+
+        int stakes = voterSysPtr->getStakes(propose.block.proposer, UranusNode::getInstance()->getNonProducingNode());
+        double p = voterSysPtr->getProposerRatio();
+        if (voterSysPtr->count(proposerProof, stakes, p) <= 0) {
+            elog("send propose by non proposer. account : ${account}", ("account", std::string(propose.block.proposer)));
             return false;
         }
         return true;
