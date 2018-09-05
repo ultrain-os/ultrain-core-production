@@ -29,6 +29,7 @@ systemAccounts = [
 ]
 
 accounts = [
+"genesis",
 "user.111",
 "user.112",
 "user.113",
@@ -139,7 +140,8 @@ accounts = [
 #           "4ae81777689da3f6c6972effa4857cd32ddd3466fef42cb281babc0198546faa"
 #           ]
 
-pk_list = ["b7e0a16fdca44d4ece1b14d8e7e6207402a6447115ca7d2d7edb08958e6d8ed5",
+pk_list = ["369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35",
+"b7e0a16fdca44d4ece1b14d8e7e6207402a6447115ca7d2d7edb08958e6d8ed5",
 "4031a95071a092eca8646d3999c438bdfde368d4837770755af65a11b4520a48",
 "2b43a3d8e0523a85141bbfca41006cf9abc47587d0ff3c46d257551ec05f1677",
 "b9a55c3c661abd8c539b7a7c05c8176036f87aeeb6b117a138327cfdb374cc23",
