@@ -56,6 +56,8 @@ namespace ultrainio {
         BlockHeader blockHeader;
         std::vector<AccountName> accountPool;
         std::vector<std::string> proofPool;
+        std::vector<std::string> sigPool;
+        uint32_t timestamp;
         ConsensusPhase phase;
         uint32_t baxCount;
         AccountName account;

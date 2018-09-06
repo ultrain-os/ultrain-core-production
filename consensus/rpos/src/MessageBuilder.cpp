@@ -14,6 +14,8 @@ namespace ultrainio {
         echo.account = VoterSystem::getMyAccount();
         echo.proof = std::string(MessageManager::getInstance()->getVoterProof(block.block_num(), echo.phase, echo.baxCount));
         echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, VoterSystem::getMyPrivateKey()));
+        ilog("account : ${account} sign block ${id} signature ${signature}",
+             ("account", std::string(VoterSystem::getMyAccount()))("id", block.id())("signature", echo.signature));
         return echo;
     }
 
@@ -25,8 +27,9 @@ namespace ultrainio {
         echo.timestamp = UranusNode::getInstance()->getRoundCount();
         echo.account = VoterSystem::getMyAccount();
         echo.proof = std::string(MessageManager::getInstance()->getVoterProof(propose.block.block_num(), echo.phase, echo.baxCount));
-        ilog("account : ${account} sign block ${id}", ("account", std::string(VoterSystem::getMyPrivateKey()))("id", propose.block.id()));
         echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, VoterSystem::getMyPrivateKey()));
+        ilog("account : ${account} sign block ${id} signature ${signature}",
+                ("account", std::string(VoterSystem::getMyAccount()))("id", propose.block.id())("signature", echo.signature));
         return echo;
     }
 
@@ -36,6 +39,8 @@ namespace ultrainio {
         myEcho.account = VoterSystem::getMyAccount();
         myEcho.proof = std::string(MessageManager::getInstance()->getVoterProof(echo.blockHeader.block_num(), echo.phase, echo.baxCount));
         myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, VoterSystem::getMyPrivateKey()));
+        ilog("account : ${account} sign block ${id} signature ${signature}",
+             ("account", std::string(VoterSystem::getMyAccount()))("id", myEcho.blockHeader.id())("signature", echo.signature));
         return myEcho;
     }
 }

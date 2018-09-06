@@ -429,8 +429,10 @@ namespace ultrainio {
             //readyToJoin();
             uint32_t blockNum = getBlockNum();
             if (m_baxCount > 0 && m_baxCount % 5 == 0 && blockNum > 2) {
-                std::shared_ptr<AggEchoMsg> aggEchoMsg = MessageManager::getInstance()->getMyAggEchoMsg(blockNum - 1);
-                if (aggEchoMsg) {
+                uint32_t preBlockNum = blockNum - 1;
+                if (MessageManager::getInstance()->isProposer(preBlockNum)) {
+                    std::shared_ptr<AggEchoMsg> aggEchoMsg = MessageManager::getInstance()->getMyAggEchoMsg(preBlockNum);
+                    ULTRAIN_ASSERT(aggEchoMsg, chain::chain_exception, "Pre AggEchoMsg is null");
                     sendMessage(*aggEchoMsg);
                 }
             }

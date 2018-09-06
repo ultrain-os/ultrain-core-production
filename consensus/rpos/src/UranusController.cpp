@@ -91,6 +91,8 @@ namespace ultrainio {
             if (pkItor == itor->second.accountPool.end()) {
                 itor->second.accountPool.push_back(echo.account);
                 itor->second.proofPool.push_back(echo.proof);
+                itor->second.sigPool.push_back(echo.signature);
+                ULTRAIN_ASSERT(itor->second.timestamp == echo.timestamp, chain::chain_exception, "timestamp is not the same");
                 Proof proof(echo.proof);
                 itor->second.totalVoter += voterSysPtr->count(proof, stakes, voterRatio);
             }
@@ -99,6 +101,8 @@ namespace ultrainio {
             echo_info.echo = echo;
             echo_info.accountPool.push_back(echo.account);
             echo_info.proofPool.push_back(echo.proof);
+            echo_info.sigPool.push_back(echo.signature);
+            echo_info.timestamp = echo.timestamp;
             echo_info.hasSend = true;
             Proof proof(echo.proof);
             echo_info.totalVoter = voterSysPtr->count(proof, stakes, voterRatio);
@@ -296,6 +300,7 @@ namespace ultrainio {
         if (pkItor == info.accountPool.end()) {
             info.accountPool.push_back(echo.account);
             info.proofPool.push_back(echo.proof);
+            info.sigPool.push_back(echo.signature);
             voterSysPtr = MessageManager::getInstance()->getVoterSys(echo.blockHeader.block_num());
             if (voterSysPtr == nullptr) {
                 ULTRAIN_ASSERT(false, chain::chain_exception, "voterSysPtr is nullptr.");
@@ -403,7 +408,8 @@ namespace ultrainio {
 
         PublicKey publicKey = voterSysPtr->getPublicKey(echo.account);
         if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
-            elog("validator echo error. account : ${account}", ("account", std::string(echo.account)));
+            elog("validator echo error. account : ${account} pk : ${pk} signature : ${signature}",
+                    ("account", std::string(echo.account))("pk", std::string(publicKey))("signature", echo.signature));
             return false;
         }
 
@@ -1141,6 +1147,8 @@ namespace ultrainio {
         }
         aggEchoMsgPtr->accountPool = itor->second.accountPool;
         aggEchoMsgPtr->proofPool = itor->second.proofPool;
+        aggEchoMsgPtr->sigPool = itor->second.sigPool;
+        aggEchoMsgPtr->timestamp = itor->second.timestamp;
         aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
         aggEchoMsgPtr->baxCount = UranusNode::getInstance()->getBaxCount();
         aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, VoterSystem::getMyPrivateKey()));

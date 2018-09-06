@@ -21,6 +21,8 @@ namespace ultrainio {
         EchoMsg echo;
         std::vector<AccountName> accountPool;
         std::vector<std::string> proofPool;
+        std::vector<std::string> sigPool;
+        uint32_t timestamp;
         int totalVoter;
         bool hasSend;
 

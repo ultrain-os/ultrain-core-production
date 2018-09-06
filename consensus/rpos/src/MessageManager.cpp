@@ -106,8 +106,10 @@ namespace ultrainio {
                 echoMsg.blockHeader = aggEchoMsg.blockHeader;
                 echoMsg.account = aggEchoMsg.accountPool[i];
                 echoMsg.proof = aggEchoMsg.proofPool[i];
+                echoMsg.signature = aggEchoMsg.sigPool[i];
                 echoMsg.phase = aggEchoMsg.phase;
                 echoMsg.baxCount = aggEchoMsg.baxCount;
+                echoMsg.timestamp = aggEchoMsg.timestamp;
                 //TODO(qinxiaofen) proof check
 //            PublicKey publicKey(echoMsg.pk);
 //            Proof proposerProof(echoMsg.proof);
