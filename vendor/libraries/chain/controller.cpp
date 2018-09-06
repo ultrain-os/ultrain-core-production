@@ -1199,11 +1199,12 @@ struct controller_impl {
 
    void abort_block() {
       if( pending ) {
-	     ilog("############## ABORT BLOCK ###############");
          if ( read_mode == db_read_mode::SPECULATIVE ) {
-            for( const auto& t : pending->_pending_block_state->trxs )
+             for( const auto& t : pending->_pending_block_state->trxs ) {
                unapplied_transactions[t->signed_id] = t;
+             }
          }
+         ilog("########### ABORT BLOCK ############# trx size ${s}", ("s",unapplied_transactions.size()));
          pending.reset();
       }
    }

@@ -180,10 +180,10 @@ namespace ultrainio {
         bool updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response);
 
         size_t runPendingTrxs(std::list<chain::transaction_metadata_ptr> *trxs,
-                              fc::time_point start_timesamp);
+                              fc::time_point start_timesamp, fc::time_point block_time);
 
         size_t runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
-                                fc::time_point start_timesamp);
+                                fc::time_point start_timesamp, fc::time_point block_time);
 
         Block m_ba0Block;
         bool m_voterPreRunBa0InProgress = false;

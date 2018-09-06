@@ -733,7 +733,8 @@ namespace ultrainio {
     }
 
     size_t UranusController::runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
-                                              fc::time_point start_timestamp) {
+                                              fc::time_point start_timestamp,
+                                              fc::time_point block_time) {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
         const auto& cfg = chain.get_global_properties().configuration;
         const auto& max_trx_cpu = cfg.max_transaction_cpu_usage;
@@ -753,14 +754,12 @@ namespace ultrainio {
                 continue;
             }
 
-            // TODO -- yufengshen -- We still need this.
-            //	       if (trx->packed_trx.expiration() > pbs->header.timestamp.to_time_point()) {
-            // expired, drop it
-            //		 ilog("-----------initProposeMsg expired trx exp ${exp}, blocktime ${bt}",
-            //		      ("exp",trx->packed_trx.expiration())("bt",pbs->header.timestamp));
-            //                 chain.drop_unapplied_transaction(trx);
-            //                 continue;
-            //	       }
+            if (fc::time_point(trx->packed_trx.expiration()) < block_time) {
+                //                ilog("-----------initProposeMsg expired trx exp ${exp}, blocktime ${bt}",
+                //                     ("exp",trx->packed_trx.expiration())("bt",block_time));
+                chain.drop_unapplied_transaction(trx);
+                continue;
+            }
 
             try {
                 auto deadline = fc::time_point::now() + fc::milliseconds(max_trx_cpu);
@@ -800,7 +799,8 @@ namespace ultrainio {
     }
 
     size_t UranusController::runPendingTrxs(std::list<chain::transaction_metadata_ptr> *trxs,
-                                            fc::time_point start_timestamp) {
+                                            fc::time_point start_timestamp,
+                                            fc::time_point block_time) {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
         const auto& cfg = chain.get_global_properties().configuration;
         const auto& max_trx_cpu = cfg.max_transaction_cpu_usage;
@@ -823,14 +823,13 @@ namespace ultrainio {
                 continue;
             }
 
-            // TODO -- yufengshen -- We still need this.
-            //	       if (trx->packed_trx.expiration() > pbs->header.timestamp.to_time_point()) {
-            // expired, drop it
-            //		 ilog("-----------initProposeMsg expired trx exp ${exp}, blocktime ${bt}",
-            //		      ("exp",trx->packed_trx.expiration())("bt",pbs->header.timestamp));
-            //                 chain.drop_unapplied_transaction(trx);
-            //                 continue;
-            //	       }
+            if (fc::time_point(trx->packed_trx.expiration()) < block_time) {
+                //                ilog("-----------initProposeMsg expired trx exp ${exp}, blocktime ${bt}",
+                //                     ("exp",trx->packed_trx.expiration())("bt", block_time));
+                chain.drop_unapplied_transaction(trx);
+                trxs->pop_front();
+                continue;
+            }
 
             try {
                 auto deadline = fc::time_point::now() + fc::milliseconds(max_trx_cpu);
@@ -890,8 +889,9 @@ namespace ultrainio {
             const auto &unapplied_trxs = chain.get_unapplied_transactions();
 
             m_initTrxCount = 0;
-            size_t count1 = runPendingTrxs(pending_trxs, start_timestamp);
-            size_t count2 = runUnappliedTrxs(unapplied_trxs, start_timestamp);
+            auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
+            size_t count1 = runPendingTrxs(pending_trxs, start_timestamp, block_time);
+            size_t count2 = runUnappliedTrxs(unapplied_trxs, start_timestamp, block_time);
 
             // We are under very heavy pressure, lets drop transactions.
             if (m_initTrxCount >= chain::config::default_max_propose_trx_count) {
@@ -900,8 +900,8 @@ namespace ultrainio {
             }
             ilog("------- run ${count1} ${count2}  trxs, taking time ${time}",
                  ("count1", count1)
-                         ("count2", count2)
-                         ("time", fc::time_point::now() - start_timestamp));
+                 ("count2", count2)
+                 ("time", fc::time_point::now() - start_timestamp));
             // TODO(yufengshen) - Do we finalize here ?
             // If we finalize here, we insert the block summary into the database.
             //chain.finalize_block();
@@ -924,7 +924,9 @@ namespace ultrainio {
             block.transactions = pbs->block->transactions;
             block.signature = std::string(Signer::sign<BlockHeader>(block, VoterSystem::getMyPrivateKey()));
             ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature}",
-                 ("num", block.transactions.size())("proposer", std::string(block.proposer))("signature", block.signature));
+                 ("num", block.transactions.size())
+                 ("proposer", std::string(block.proposer))
+                 ("signature", block.signature));
             /*
               ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${c} ${prv} ${ma} ${mt} ${id}",
               ("t", block.timestamp)
@@ -1427,6 +1429,16 @@ namespace ultrainio {
         m_currentPreRunBa0TrxIndex = -1;
         m_voterPreRunBa0InProgress = false;
 
+        // TODO(yufengshen):
+        // Non-producing node has no chance to run through unapplied trxs
+        // so as to eliminate invalid/expired trxs and this could lead to
+        // memleak, so lets just clear them here. This might drop some trxs.
+        // So maybe better to find a timing to re-run these trx and send
+        // valid and unexpired trx to other nodes.
+        if (UranusNode::getInstance()->getNonProducingNode()) {
+            chain.clear_unapplied_transaction();
+        }
+
         chain::block_state_ptr new_bs = chain.head_block_state();
         if (MessageManager::getInstance()->isProposer(block->block_num())) {
             std::shared_ptr<AggEchoMsg> agg_echo = generateAggEchoMsg(block);
@@ -1434,7 +1446,7 @@ namespace ultrainio {
                 MessageManager::getInstance()->insert(agg_echo);
             }
         }
-        ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}--------------",
+        ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}",
              ("timestamp", block->timestamp)
              ("num", block->block_num())
              ("id", block->id())

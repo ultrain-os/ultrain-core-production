@@ -288,7 +288,7 @@ def randomTransfer():
     for i in subaccounts:
         for j in subaccounts:
             simple_run(args.clultrain + 'transfer -f %s %s "0.%s SYS" ' %(i, j, random.randint(1, 999)))
-    sleep(3)
+#    sleep(2)
 
 def startWallet():
     run('rm -rf ' + os.path.abspath(args.wallet_dir))
@@ -315,8 +315,8 @@ def stepInstallSystemContracts():
     sleep(20)
 
 def stepCreateTokens():
-    run(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 SYS"]\' -p utrio.token')
-    run(args.clultrain + 'push action utrio.token issue \'["ultrainio", "600000000.0000 SYS", "memo"]\' -p ultrainio')
+    retry(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 SYS"]\' -p utrio.token')
+    retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "600000000.0000 SYS", "memo"]\' -p ultrainio')
     sleep(15)
 
 def stepSetSystemContract():
