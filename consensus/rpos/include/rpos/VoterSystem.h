@@ -26,6 +26,8 @@ namespace ultrainio {
 
         static PrivateKey getMyPrivateKey();
 
+        static bool committeeHasWorked();
+
         int getStakes(const AccountName& account, bool isNonProducingNode);
 
         double getProposerRatio();
@@ -47,7 +49,7 @@ namespace ultrainio {
         VoterSystem(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
 
         // get committee state from world state
-        std::shared_ptr<CommitteeState> getCommitteeState();
+        static std::shared_ptr<CommitteeState> getCommitteeState();
 
         PublicKey findInCommitteeMemberList(const AccountName& account) const;
 

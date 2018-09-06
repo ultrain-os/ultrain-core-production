@@ -51,6 +51,14 @@ namespace ultrainio {
         return s_keyKeeper->getPrivateKey();
     }
 
+    bool VoterSystem::committeeHasWorked() {
+        std::shared_ptr<CommitteeState> committeeStatePtr = getCommitteeState();
+        if (committeeStatePtr && committeeStatePtr->chainStateNormal) {
+            return true;
+        }
+        return false;
+    }
+
     double VoterSystem::getProposerRatio() {
         return m_proposerRatio;
     }
