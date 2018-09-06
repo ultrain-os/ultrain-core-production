@@ -1177,8 +1177,17 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
 
    result.thresh_activated_stake_time = gstate["thresh_activated_stake_time"].as_double();
    result.min_stake_thresh = gstate["min_activated_stake"].as_double()/gstate["min_committee_member"].as_double();
-   result.genesis_finished = result.thresh_activated_stake_time && result.rows.size()>MIN_COMMITTEE_MEMBER_NUMBER? true: false;
+
    return result;
+}
+
+bool read_only::is_genesis_finished(const read_only::get_producers_params& p , bool filter_enabled) const{
+    static bool genesis_finished {};
+    if (!genesis_finished){
+        auto result = get_producers(p,filter_enabled);
+        genesis_finished = result.thresh_activated_stake_time && result.rows.size()>MIN_COMMITTEE_MEMBER_NUMBER? true: false;
+    }
+    return genesis_finished;
 }
 
 read_only::get_producer_schedule_result read_only::get_producer_schedule( const read_only::get_producer_schedule_params& p ) const {
