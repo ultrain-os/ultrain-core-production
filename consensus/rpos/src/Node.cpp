@@ -22,7 +22,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="8c34dd";
+    char version[]="943b2f";
 
     const int UranusNode::MAX_ROUND_SECONDS = 10;
     const int UranusNode::MAX_PHASE_SECONDS = 5;
@@ -581,7 +581,11 @@ namespace ultrainio {
         if (sync_msg.startBlockNum == sync_msg.endBlockNum && sync_msg.endBlockNum == getLastBlocknum() + 1) {
             ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local.",
                  ("s", sync_msg.startBlockNum)("e", sync_msg.endBlockNum)("last", getLastBlocknum()));
-            runLoop(getRoundInterval());
+            if (VoterSystem::committeeHasWorked()) {
+                runLoop(getRoundInterval());
+            } else {
+                ilog("Committee has not worked.");
+            }
         }
 
         return true;

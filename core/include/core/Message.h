@@ -75,5 +75,5 @@ FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature
 FC_REFLECT( ultrainio::SyncRequestMessage, (startBlockNum)(endBlockNum) )
 FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
 FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))
-FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockHeader)(accountPool)(proofPool)(phase)(baxCount)(account)(proof))
+FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockHeader)(accountPool)(proofPool)(sigPool)(phase)(baxCount)(account)(proof))
 FC_REFLECT_DERIVED( ultrainio::AggEchoMsg, (ultrainio::UnsignedAggEchoMsg), (signature))
