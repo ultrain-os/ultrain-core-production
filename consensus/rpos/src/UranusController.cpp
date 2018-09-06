@@ -92,7 +92,6 @@ namespace ultrainio {
                 itor->second.accountPool.push_back(echo.account);
                 itor->second.proofPool.push_back(echo.proof);
                 itor->second.sigPool.push_back(echo.signature);
-                ULTRAIN_ASSERT(itor->second.timestamp == echo.timestamp, chain::chain_exception, "timestamp is not the same");
                 Proof proof(echo.proof);
                 itor->second.totalVoter += voterSysPtr->count(proof, stakes, voterRatio);
             }
