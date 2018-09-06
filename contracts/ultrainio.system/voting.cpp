@@ -55,7 +55,7 @@ namespace ultrainiosystem {
           auto selfv = _voters.find(producer);
           if(selfv != _voters.end()) {
               self_stake = selfv->staked;
-              if(self_stake > min_activated_stake/_gstate.min_committee_member) {
+              if(self_stake > _gstate.min_activated_stake/_gstate.min_committee_member) {
                   enable_prods = true;
                   update_activated_stake(self_stake);
               }
@@ -84,7 +84,7 @@ namespace ultrainiosystem {
 
    inline void system_contract::update_activated_stake(int64_t stake) {
        _gstate.total_activated_stake += stake;
-         if( _gstate.total_activated_stake >= min_activated_stake && _gstate.thresh_activated_stake_time == 0 ) {
+         if( _gstate.total_activated_stake >= _gstate.min_activated_stake && _gstate.thresh_activated_stake_time == 0 ) {
             _gstate.thresh_activated_stake_time = current_time();
          }
 
@@ -172,7 +172,7 @@ namespace ultrainiosystem {
        */
       if( voter->last_vote_weight <= 0.0 ) {
          _gstate.total_activated_stake += voter->staked;
-         if( _gstate.total_activated_stake >= min_activated_stake && _gstate.thresh_activated_stake_time == 0 ) {
+         if( _gstate.total_activated_stake >= _gstate.min_activated_stake && _gstate.thresh_activated_stake_time == 0 ) {
             _gstate.thresh_activated_stake_time = current_time();
          }
       }

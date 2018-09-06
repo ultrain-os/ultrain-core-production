@@ -11,6 +11,7 @@ namespace ultrainio {
     struct CommitteeState {
         std::vector<CommitteeInfo> cinfo;
         bool chainStateNormal = false;
+        uint64_t chainMinStakeThresh {};
     };
 }
 

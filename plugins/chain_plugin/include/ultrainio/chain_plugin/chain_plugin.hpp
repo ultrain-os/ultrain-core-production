@@ -272,6 +272,7 @@ public:
       uint64_t            thresh_activated_stake_time;
       string              more; ///< fill lower_bound with this value to fetch more rows
       bool                genesis_finished {false};
+      int64_t             min_stake_thresh {};
    };
 
    get_producers_result get_producers( const get_producers_params& params, bool filter_enabled = false)const;

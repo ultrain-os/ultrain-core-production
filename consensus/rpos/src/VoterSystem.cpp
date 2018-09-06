@@ -152,6 +152,7 @@ namespace ultrainio {
                 ilog("#########################there is ${p} committee member enabled", ("p", result.rows.size()));
            }
             statePtr->chainStateNormal = result.genesis_finished;
+            statePtr->chainMinStakeThresh = result.min_stake_thresh;
         }
         catch(...) {
             ilog("catch expe");

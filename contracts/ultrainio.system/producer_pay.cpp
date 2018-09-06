@@ -6,8 +6,6 @@
 namespace ultrainiosystem {
 
    const int64_t  min_pervote_daily_pay = 100'0000;
-   const int64_t  min_activated_stake   = 150'000'000'0000;
-
    const uint32_t rate1                 = 50;
    const uint32_t rate2                 = 100;
    const uint32_t rate3                 = 150;
@@ -29,7 +27,7 @@ namespace ultrainiosystem {
       require_auth(N(ultrainio));
 
       /** until activated stake crosses this threshold no new rewards are paid */
-      if( _gstate.total_activated_stake < min_activated_stake )
+      if( _gstate.total_activated_stake < _gstate.min_activated_stake )
          return;
 
       /**
@@ -40,8 +38,8 @@ namespace ultrainiosystem {
       if ( prod != _producers.end() ) {
 	 int temp = 2*(tapos_block_num()+1)/(int)blocks_per_year;
          const int interval = temp < num_rate ? temp:(num_rate-1);
-	 _gstate.total_unpaid_blocks[interval]++;
-	 _producers.modify( prod, 0, [&](auto& p ) {
+         _gstate.total_unpaid_blocks[interval]++;
+         _producers.modify( prod, 0, [&](auto& p ) {
                p.unpaid_blocks[interval]++;
          });
       }
@@ -73,7 +71,7 @@ namespace ultrainiosystem {
       const auto& prod = _producers.get( owner );
       ultrainio_assert( prod.active(), "producer does not have an active key" );
 
-      ultrainio_assert( _gstate.total_activated_stake >= min_activated_stake,
+      ultrainio_assert( _gstate.total_activated_stake >= _gstate.min_activated_stake,
                     "cannot claim rewards until the chain is activated (at least 15% of all tokens participate in voting)" );
 
       auto ct = current_time();

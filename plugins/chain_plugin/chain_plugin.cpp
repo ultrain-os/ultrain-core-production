@@ -1172,10 +1172,11 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       else
          result.rows.emplace_back(fc::variant(data));
    }
-   auto test = get_global_row(d, abi, abis, abi_serializer_max_time);
-   ilog("global ${gl}", ("gl", test));
+   auto gstate = get_global_row(d, abi, abis, abi_serializer_max_time);
+   ilog("global ${gl}", ("gl", gstate));
 
-   result.thresh_activated_stake_time = get_global_row(d, abi, abis, abi_serializer_max_time)["thresh_activated_stake_time"].as_double();
+   result.thresh_activated_stake_time = gstate["thresh_activated_stake_time"].as_double();
+   result.min_stake_thresh = gstate["min_activated_stake"].as_double()/gstate["min_committee_member"].as_double();
    result.genesis_finished = result.thresh_activated_stake_time && result.rows.size()>MIN_COMMITTEE_MEMBER_NUMBER? true: false;
    return result;
 }

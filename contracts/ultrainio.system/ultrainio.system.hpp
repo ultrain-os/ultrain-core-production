@@ -39,8 +39,8 @@ namespace ultrainiosystem {
 
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
-
       uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
+      int64_t             min_activated_stake   = 150'000'000'0000;
       uint32_t             min_committee_member = 1000;
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
@@ -49,7 +49,7 @@ namespace ultrainiosystem {
       uint64_t             last_pervote_bucket_fill = 0;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
-      uint32_t            total_unpaid_blocks[num_rate] {}; /// all blocks which have been produced but not paid
+      uint32_t             total_unpaid_blocks[num_rate] {}; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
       uint64_t             thresh_activated_stake_time = 0;
       uint16_t             last_producer_schedule_size = 0;
@@ -58,7 +58,7 @@ namespace ultrainiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
-                                (max_ram_size)(min_committee_member)(total_ram_bytes_reserved)(total_ram_stake)
+                                (max_ram_size)(min_activated_stake)(min_committee_member)(total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)(last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
                                 (last_producer_schedule_size)(total_producer_vote_weight)(last_name_close) )
@@ -71,7 +71,7 @@ namespace ultrainiosystem {
       bool                  is_active = true;
       bool                  is_enabled = false;
       std::string           url;
-      uint32_t  unpaid_blocks[num_rate] {};
+      uint32_t              unpaid_blocks[num_rate] {};
       uint64_t              last_claim_time = 0;
       uint16_t              location = 0;
 

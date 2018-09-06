@@ -362,7 +362,7 @@ namespace ultrainiosystem {
           if(it != _producers.end()) {
               auto last_state = it->is_enabled;
               auto enabled = ((it->total_votes+total_update.amount) >=
-                            min_activated_stake/_gstate.min_committee_member);
+                      _gstate.min_activated_stake/_gstate.min_committee_member);
               _producers.modify(it, 0 , [&](auto & v) {
                       v.total_votes += total_update.amount;
                       v.is_enabled = enabled;
@@ -416,7 +416,7 @@ namespace ultrainiosystem {
       ultrainio_assert( asset() <= unstake_cpu_quantity, "must unstake a positive amount" );
       ultrainio_assert( asset() <= unstake_net_quantity, "must unstake a positive amount" );
       ultrainio_assert( asset() < unstake_cpu_quantity + unstake_net_quantity, "must unstake a positive amount" );
-      ultrainio_assert( _gstate.total_activated_stake >= min_activated_stake,
+      ultrainio_assert( _gstate.total_activated_stake >= _gstate.min_activated_stake,
                     "cannot undelegate bandwidth until the chain is activated (at least 15% of all tokens participate in voting)" );
 
       changebw( from, receiver, -unstake_net_quantity, -unstake_cpu_quantity, false);
