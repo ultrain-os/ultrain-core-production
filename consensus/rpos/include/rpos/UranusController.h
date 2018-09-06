@@ -108,7 +108,7 @@ namespace ultrainio {
 
         ultrainio::chain::block_id_type getPreviousBlockhash();
 
-        void saveEchoMsg();
+        void moveEchoMsg2AllPhaseMap();
 
         const Block* getBa0Block();
 

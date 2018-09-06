@@ -1470,7 +1470,7 @@ namespace ultrainio {
         return chain.head_block_id();
     }
 
-    void UranusController::saveEchoMsg() {
+    void UranusController::moveEchoMsg2AllPhaseMap() {
         if (m_echoMsgAllPhase.size() >= m_maxCachedAllPhaseKeys) {
             //clearOldCachedAllPhaseMsg();
             wlog("echo all phase msgs exceeds ${max} blockNum: ${b} phase: ${p} baxcount: ${bx}",
@@ -1485,7 +1485,7 @@ namespace ultrainio {
         msg_key.blockNum = UranusNode::getInstance()->getBlockNum();
         msg_key.phase = UranusNode::getInstance()->getPhase();
         msg_key.phase += UranusNode::getInstance()->getBaxCount();
-        m_echoMsgAllPhase.insert(make_pair(msg_key, m_echoMsgMap));
+        m_echoMsgAllPhase.insert(make_pair(msg_key, std::move(m_echoMsgMap)));
     }
 
     void UranusController::startSyncTaskTimer() {

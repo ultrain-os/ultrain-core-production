@@ -492,7 +492,7 @@ namespace ultrainio {
             }
         });
 
-        m_controllerPtr->saveEchoMsg();
+        m_controllerPtr->moveEchoMsg2AllPhaseMap();
         m_controllerPtr->resetEcho();
         m_controllerPtr->clearPreRunStatus();
         m_phase = kPhaseBAX;
