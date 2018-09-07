@@ -105,7 +105,7 @@ namespace ultrainio {
                 reportData.blockNum          = chain.head_block_num();
                 reportData.blockHash         = chain.head_block_id().str();
                 reportData.previousBlockHash = chain.head_block_state()->prev().str();
-                reportData.transactionNum    = chain.head_block_state()->trxs.size();
+                reportData.transactionNum    = chain.head_block_state()->block->transactions.size(); //trxs.size();
                 reportData.ba0BlockTime      = m_ba0BlockTime;
                 reportData.ba1BlockTime      = m_ba1BlockTime;
 
