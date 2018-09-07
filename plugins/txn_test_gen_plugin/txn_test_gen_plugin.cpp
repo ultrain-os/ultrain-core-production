@@ -330,7 +330,6 @@ struct txn_test_gen_plugin_impl {
 
              {
                  signed_transaction trx;
-                 trx.sn = trx_count;
                  trx_count++;
                  trx.actions.push_back(act_a_to_b);
                  trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
@@ -343,7 +342,6 @@ struct txn_test_gen_plugin_impl {
 
              {
                  signed_transaction trx;
-                 trx.sn = trx_count;
                  trx_count++;
                  trx.actions.push_back(act_b_to_a);
                  trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
