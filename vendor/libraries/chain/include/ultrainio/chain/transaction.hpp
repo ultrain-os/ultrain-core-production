@@ -55,7 +55,6 @@ namespace ultrainio { namespace chain {
       vector<action>         context_free_actions;
       vector<action>         actions;
       extensions_type        transaction_extensions;
-      int64_t                sn;
 
       transaction_id_type        id()const;
       digest_type                sig_digest( const chain_id_type& chain_id, const vector<bytes>& cfd = vector<bytes>() )const;
@@ -190,7 +189,7 @@ namespace ultrainio { namespace chain {
 
 FC_REFLECT( ultrainio::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)
                                               (max_net_usage_words)(max_cpu_usage_ms)(delay_sec) )
-FC_REFLECT_DERIVED( ultrainio::chain::transaction, (ultrainio::chain::transaction_header), (context_free_actions)(actions)(transaction_extensions)(sn) )
+FC_REFLECT_DERIVED( ultrainio::chain::transaction, (ultrainio::chain::transaction_header), (context_free_actions)(actions)(transaction_extensions))
 FC_REFLECT_DERIVED( ultrainio::chain::signed_transaction, (ultrainio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( ultrainio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( ultrainio::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx) )

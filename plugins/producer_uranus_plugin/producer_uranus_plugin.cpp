@@ -255,8 +255,8 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
 	 // (just before ba0 propose msg)
 	 if (!_is_non_producing_node) {
 #if TEST_MODE == 0
-	   ilog("on_incoming_transaction_async cache trx.id = ${id} sn = ${sn}",
-		("id", trx->id())("sn", trx->get_signed_transaction().sn));
+	   /*ilog("on_incoming_transaction_async cache trx.id = ${id} sn = ${sn}",
+		("id", trx->id())("sn", trx->get_signed_transaction().sn));*/
 #endif
 	   chain.push_into_pending_transaction(std::make_shared<transaction_metadata>(*trx));
 	   // Broadcast this trx for now.
@@ -268,8 +268,8 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
 	 }
 
 #if TEST_MODE == 0
-	 ilog("on_incoming_transaction_async pre-run trx.id = ${id} sn = ${sn}",
-	      ("id", trx->id())("sn", trx->get_signed_transaction().sn));
+	 /*ilog("on_incoming_transaction_async pre-run trx.id = ${id} sn = ${sn}",
+	      ("id", trx->id())("sn", trx->get_signed_transaction().sn));*/
 #endif
 #if TEST_MODE == 1
 	   next(std::static_pointer_cast<fc::exception>(std::make_shared<tx_duplicate>(FC_LOG_MESSAGE(error, "normal return") )));
