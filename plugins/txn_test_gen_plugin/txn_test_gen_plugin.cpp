@@ -324,8 +324,14 @@ struct txn_test_gen_plugin_impl {
          block_id_type reference_block_id = cc.get_block_id_for_num(reference_block_num);
 
          for(unsigned int i = 0; i < batch; ++i) {
+             if(trx_count%1000 == 0){
+                 ilog("trx_count ${p}", ("p", trx_count));
+             }
+
              {
                  signed_transaction trx;
+                 trx.sn = trx_count;
+                 trx_count++;
                  trx.actions.push_back(act_a_to_b);
                  trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
                  trx.set_reference_block(reference_block_id);
@@ -337,6 +343,8 @@ struct txn_test_gen_plugin_impl {
 
              {
                  signed_transaction trx;
+                 trx.sn = trx_count;
+                 trx_count++;
                  trx.actions.push_back(act_b_to_a);
                  trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
                  trx.set_reference_block(reference_block_id);
@@ -373,9 +381,11 @@ struct txn_test_gen_plugin_impl {
    int32_t txn_reference_block_lag;
 
 //    abi_serializer ultrainio_token_serializer = fc::json::from_string(ultrainio_token_abi).as<abi_def>();
+   static int64_t trx_count;
+
 };
 
-//int64_t txn_test_gen_plugin_impl::trx_count = 0;
+int64_t txn_test_gen_plugin_impl::trx_count = 0;
 txn_test_gen_plugin::txn_test_gen_plugin() {}
 txn_test_gen_plugin::~txn_test_gen_plugin() {}
 
