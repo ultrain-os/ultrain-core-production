@@ -95,41 +95,79 @@ class typescript_action_api : public context_aware_api {
          ss << std::showbase /*<<std::setfill('0') << std::setw(sizeof(T)*2)*/ << std::hex << i;
          return ss.str();
      }
+     bool ignore;
 
    public:
       const static int ERROR_CODE = -1;
 
       typescript_action_api( apply_context& ctx )
-      :context_aware_api(ctx,true){
+      :context_aware_api(ctx,true), ignore(!ctx.control.contracts_console()) {
       }
 
       void ts_log_print_s(int ch) {
-          context.ts_context.log_msg.push_back((char)ch);
+          if (!ignore)
+            context.ts_context.log_msg.push_back((char)ch);
       }
 
       void ts_log_print_i(int64_t i, int fmt = 10) {
-          std::string val;
-          switch(fmt) {
-            case 16: {/* print as hex*/
+            if (!ignore) {
+              std::string val;
+              switch (fmt) {
+              case 16: { /* print as hex*/
                 val = int_to_hex(i);
-            } break;
-            default: {
-                val = std::to_string(i);
-            } break;
-          }
-          context.ts_context.log_msg.append(val);
+              } break;
+              default: { val = std::to_string(i); } break;
+              }
+              context.ts_context.log_msg.append(val);
+            }
       }
 
       void ts_log_done() {
-          std::cout << "[TS_LOG]: " << context.ts_context.log_msg << std::endl;
-          context.console_append<const char*>(context.ts_context.log_msg.c_str());
-          context.ts_context.log_msg.clear();
+            if (!ignore) {
+              std::cout << "[TS_LOG]: " << context.ts_context.log_msg << std::endl;
+              context.console_append<const char *>(context.ts_context.log_msg.c_str());
+              context.ts_context.log_msg.clear();
+            }
       }
 
     void ultrain_assert_native(int condition) {
         FC_ASSERT(condition != 0, "ultrain_assert");
    }
 };
+
+class typescript_block_api : public context_aware_api {
+   public:
+
+      typescript_block_api( apply_context& ctx )
+      :context_aware_api(ctx,true){
+      }
+
+      void head_block_id(array_ptr<char> buffer, size_t buffer_size) {
+          fc::sha256 hash = context.control.head_block_header().id();
+          int size = std::min(buffer_size, hash.data_size());
+      //     std::cout << "head_block_id: " << hash.str() << std::endl;
+          memcpy(buffer, hash.data(), size);
+      }
+
+      void head_block_previous_id(array_ptr<char> buffer, size_t buffer_size) {
+          fc::sha256 hash = context.control.head_block_header().previous;
+          int size = std::min(buffer_size, hash.data_size());
+          memcpy(buffer, hash.data(), size);
+      }
+
+      int head_block_number() const {
+          return context.control.head_block_header().block_num();
+      }
+
+      int head_block_timestamp() const {
+          return context.control.head_block_header().timestamp.to_time_point().sec_since_epoch();
+      }
+
+      uint64_t head_block_producer() const {
+          return context.control.head_block_header().producer.value;
+      }
+};
+
 #endif
 
 class context_free_api : public context_aware_api {
@@ -1749,6 +1787,15 @@ REGISTER_INTRINSICS(typescript_action_api,
   (ts_log_done,               void()          )
   (ultrain_assert_native,    void(int))
 );
+
+REGISTER_INTRINSICS(typescript_block_api,
+  (head_block_id,              void(int, int)     )
+  (head_block_previous_id,     void(int, int)     )
+  (head_block_number,          int()              )
+  (head_block_producer,        int64_t()          )
+  (head_block_timestamp,       int()              )
+);
+
 #endif
 
 REGISTER_INJECTED_INTRINSICS(call_depth_api,
