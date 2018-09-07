@@ -277,7 +277,7 @@ public:
 
    get_producers_result get_producers( const get_producers_params& params, bool filter_enabled = false)const;
 
-   bool is_genesis_finished(const get_producers_params& params, bool filter_enabled = false)const;
+   bool is_genesis_finished()const;
 
    struct get_producer_schedule_params {
    };

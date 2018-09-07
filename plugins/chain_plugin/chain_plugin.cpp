@@ -1181,10 +1181,13 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    return result;
 }
 
-bool read_only::is_genesis_finished(const read_only::get_producers_params& p , bool filter_enabled) const{
+bool read_only::is_genesis_finished() const{
     static bool genesis_finished {};
     if (!genesis_finished){
-        auto result = get_producers(p,filter_enabled);
+        get_producers_params params;
+        params.json=true;
+        params.lower_bound="";
+        auto result = get_producers(params,true);
         genesis_finished = result.thresh_activated_stake_time && result.rows.size()>MIN_COMMITTEE_MEMBER_NUMBER? true: false;
     }
     return genesis_finished;
