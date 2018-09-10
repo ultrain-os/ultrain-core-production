@@ -9,6 +9,7 @@
 #include <fc/log/logger.hpp>
 
 #include <log/Log.h>
+#include <rpos/Genesis.h>
 #include <rpos/MessageBuilder.h>
 #include <rpos/MessageManager.h>
 #include <rpos/UranusController.h>
@@ -27,8 +28,6 @@ namespace ultrainio {
     const int UranusNode::MAX_ROUND_SECONDS = 10;
     const int UranusNode::MAX_PHASE_SECONDS = 5;
     const int UranusNode::MAX_BAX_COUNT = 20;
-
-    boost::chrono::system_clock::time_point UranusNode::GENESIS;
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -116,8 +115,8 @@ namespace ultrainio {
         std::time_t t = boost::chrono::system_clock::to_time_t(current_time);
         ilog("readyToJoin current_time ${t}", ("t", std::ctime(&t)));
 
-        if (current_time < GENESIS) {
-            pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(GENESIS - current_time);
+        if (current_time < Genesis::s_time) {
+            pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(Genesis::s_time - current_time);
 
             if (pass_time_to_genesis.count() > MAX_ROUND_SECONDS) {
                 LOG_INFO << "ready_loop timer = 10. interval = " << pass_time_to_genesis.count() << std::endl;
@@ -130,12 +129,12 @@ namespace ultrainio {
                 LOG_INFO << "ready_loop timer =  " << pass_time_to_genesis.count() << std::endl;
                 readyLoop(pass_time_to_genesis.count());
             }
-        } else if (GENESIS == current_time) {
+        } else if (Genesis::s_time == current_time) {
             m_ready = true;
             LOG_INFO << "genesis block " << std::endl;
             run();
         } else {
-            pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - GENESIS);
+            pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
             if (pass_time_to_genesis.count() == 0) {
                 m_ready = true;
                 LOG_INFO << "genesis block " << std::endl;
@@ -810,7 +809,7 @@ namespace ultrainio {
     uint32_t UranusNode::getRoundCount() {
         boost::chrono::system_clock::time_point current_time = boost::chrono::system_clock::now();
         boost::chrono::seconds pass_time_to_genesis
-                = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - GENESIS);
+                = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
 
         dlog("getRoundCount. count = ${id}.",
              ("id", pass_time_to_genesis.count() / MAX_PHASE_SECONDS));
@@ -821,7 +820,7 @@ namespace ultrainio {
     uint32_t UranusNode::getRoundInterval() {
         boost::chrono::system_clock::time_point current_time = boost::chrono::system_clock::now();
         boost::chrono::seconds pass_time_to_genesis
-                = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - GENESIS);
+                = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
 
         dlog("getRoundInterval. interval = ${id}.",
              ("id", MAX_PHASE_SECONDS - (pass_time_to_genesis.count() % MAX_PHASE_SECONDS)));
@@ -857,5 +856,11 @@ namespace ultrainio {
     int UranusNode::getCommitteeMemberNumber() {
         std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(this->getBlockNum());
         return voterSysPtr->getCommitteeMemberNumber();
+    }
+
+    void UranusNode::setGenesisTime(const boost::chrono::system_clock::time_point& tp) {
+        Genesis::s_time = tp;
+        std::time_t t = boost::chrono::system_clock::to_time_t(Genesis::s_time);
+        ilog("Genesis time is ${t}", ("t", std::ctime(&t)));
     }
 }

@@ -5,7 +5,7 @@
 #include <boost/math/distributions/binomial.hpp>
 
 #include <rpos/Config.h>
-#include <rpos/Node.h>
+#include <rpos/Genesis.h>
 #include <rpos/Proof.h>
 #include <rpos/KeyKeeper.h>
 
@@ -52,6 +52,7 @@ namespace ultrainio {
     }
 
     bool VoterSystem::committeeHasWorked() {
+        wlog("be caution to call this");
         static const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         return ro_api.is_genesis_finished();
     }
@@ -73,7 +74,7 @@ namespace ultrainio {
 
     bool VoterSystem::isGenesisPeriod() const {
         boost::chrono::minutes genesisElapsed
-                = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - UranusNode::GENESIS);
+                = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - Genesis::s_time);
         if (!committeeHasWorked2() && (genesisElapsed < boost::chrono::minutes(kGenesisStartupTime))) {
             return true;
         }

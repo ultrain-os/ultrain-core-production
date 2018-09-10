@@ -574,16 +574,13 @@ void producer_uranus_plugin::plugin_startup()
        boost::chrono::system_clock::time_point tp;
        FC_ASSERT(parse_genesis(tp, my->_genesis_time.data()),
                  "parse_genesis error ${t}", ("t",my->_genesis_time));
-       ultrainio::UranusNode::GENESIS = tp;
+       nodePtr->setGenesisTime(tp);
    } else {
        // Align to the boundary of 5 seconds.
        unsigned long msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
        int patch = 5000 - (msecs % 5000);
-       ultrainio::UranusNode::GENESIS = boost::chrono::system_clock::now() + boost::chrono::milliseconds(my->_genesis_delay * 1000 + patch);
+       nodePtr->setGenesisTime(boost::chrono::system_clock::now() + boost::chrono::milliseconds(my->_genesis_delay * 1000 + patch));
    }
-
-   std::time_t t = boost::chrono::system_clock::to_time_t(ultrainio::UranusNode::GENESIS);
-   ilog("Genesis time is ${t}", ("t", std::ctime(&t)));
    nodePtr->init();
    nodePtr->readyToJoin();
    ilog("producer plugin:  plugin_startup() end");
