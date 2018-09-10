@@ -239,7 +239,6 @@ namespace ultrainio { namespace chain {
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
             trace->action_traces.emplace_back();
-            ilog("action ${acc}, ${act}",("acc",act.account)("act",act.name));
             dispatch_action( trace->action_traces.back(), act );
          }
 #if BILL == 1
