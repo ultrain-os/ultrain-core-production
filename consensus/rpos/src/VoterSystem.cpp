@@ -162,8 +162,8 @@ namespace ultrainio {
             statePtr->chainStateNormal = ro_api.is_genesis_finished();
             statePtr->chainMinStakeThresh = result.min_stake_thresh;
         }
-        catch(...) {
-            ilog("catch expe");
+        catch (fc::exception& e) {
+            ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
             return nullptr;
         }
         return statePtr;

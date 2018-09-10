@@ -1184,11 +1184,16 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
 bool read_only::is_genesis_finished() const{
     static bool genesis_finished {};
     if (!genesis_finished){
-        get_producers_params params;
-        params.json=true;
-        params.lower_bound="";
-        auto result = get_producers(params,true);
-        genesis_finished = result.thresh_activated_stake_time && result.rows.size()>MIN_COMMITTEE_MEMBER_NUMBER? true: false;
+        try {
+            get_producers_params params;
+            params.json=true;
+            params.lower_bound="";
+            auto result = get_producers(params,true);
+            genesis_finished = result.thresh_activated_stake_time && result.rows.size()>MIN_COMMITTEE_MEMBER_NUMBER? true: false;
+        }
+        catch (fc::exception& e) {
+            ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
+        }
     }
     return genesis_finished;
 }
