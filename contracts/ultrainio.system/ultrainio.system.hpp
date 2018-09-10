@@ -49,7 +49,7 @@ namespace ultrainiosystem {
       uint64_t             last_pervote_bucket_fill = 0;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
-      uint32_t             total_unpaid_blocks[num_rate] {}; /// all blocks which have been produced but not paid
+      uint64_t             total_unpaid_blocks[num_rate] {}; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
       uint64_t             thresh_activated_stake_time = 0;
       uint16_t             last_producer_schedule_size = 0;
@@ -71,7 +71,7 @@ namespace ultrainiosystem {
       bool                  is_active = true;
       bool                  is_enabled = false;
       std::string           url;
-      uint32_t              unpaid_blocks[num_rate] {};
+      uint64_t              unpaid_blocks[num_rate] {};
       uint64_t              last_claim_time = 0;
       uint16_t              location = 0;
 

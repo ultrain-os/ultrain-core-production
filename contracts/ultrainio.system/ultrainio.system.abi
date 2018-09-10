@@ -255,7 +255,7 @@
          {"name":"last_pervote_bucket_fill",      "type":"uint64"},
          {"name":"pervote_bucket",                "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
-         {"name":"total_unpaid_blocks",           "type":"uint32[]"},
+         {"name":"total_unpaid_blocks",           "type":"uint64[]"},
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"thresh_activated_stake_time",   "type":"uint64"},
          {"name":"last_producer_schedule_size",   "type":"uint16"},
@@ -272,7 +272,7 @@
          {"name":"is_active",       "type":"bool"},
          {"name":"is_enabled",      "type":"bool"},
          {"name":"url",             "type":"string"},
-         {"name":"unpaid_blocks",   "type":"uint32[]"},
+         {"name":"unpaid_blocks",   "type":"uint64[]"},
          {"name":"last_claim_time", "type":"uint64"},
          {"name":"location",        "type":"uint16"}
       ]

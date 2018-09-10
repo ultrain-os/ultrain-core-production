@@ -36,7 +36,9 @@ namespace ultrainiosystem {
        */
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
-	 int temp = 2*(tapos_block_num()+1)/(int)blocks_per_year;
+	 /** TODO: blocks_per_day is for testing; remind to remove it */
+	 //int temp = 2*(tapos_block_num()+1)/(int)blocks_per_year;
+	 int temp = 24*(tapos_block_num()+1)/(int)blocks_per_day;
          const int interval = temp < num_rate ? temp:(num_rate-1);
          _gstate.total_unpaid_blocks[interval]++;
          _producers.modify( prod, 0, [&](auto& p ) {
@@ -80,19 +82,25 @@ namespace ultrainiosystem {
 
       uint64_t p10 = symbol_type(system_token_symbol).precision();
       int64_t new_tokens = 0;
+      print("claimrewards gloable:\n[");
       for(int i=0;i<num_rate;++i){
+	 print("{",i,", ",_gstate.total_unpaid_blocks[i],"},");
 	 new_tokens += static_cast<int64_t>(_gstate.total_unpaid_blocks[i]*rate[i]);
 	 _gstate.total_unpaid_blocks[i] = 0;
       }
       new_tokens*=p10;
+      print("]\nclaimrewards new_tokens:",new_tokens,"\n");
       INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
                                                     {N(ultrainio), asset(new_tokens), std::string("issue tokens for claimrewards")} );
 
       int64_t producer_per_block_pay = 0;
+      print("claimrewards proudcer:\n[");
       for(int i=0;i<num_rate;++i){
+	 print("{",i,", ",prod.unpaid_blocks[i],"},");
 	 producer_per_block_pay += static_cast<int64_t>(prod.unpaid_blocks[i]*rate[i]);
       }
       producer_per_block_pay*=p10;
+      print("]\nclaimrewards producer_pay:",producer_per_block_pay,"\n");
       _producers.modify( prod, 0, [&](auto& p) {
           p.last_claim_time = ct;
           for(int i=0;i<num_rate;++i) {
