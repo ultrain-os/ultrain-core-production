@@ -246,7 +246,7 @@ namespace ultrainio {
         }
         //monitor end
         m_controllerPtr->setBa0Block(ba0Block);
-        if ((!isBlank(ba0Block))
+        if ((!isBlank(ba0Block.id()))
             && (ba0Block.previous != m_controllerPtr->getPreviousBlockhash())) {
 
             elog("ba0Process error. previous block hash error. hash = ${hash1} local hash = ${hash2}",
@@ -309,7 +309,7 @@ namespace ultrainio {
                 if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
                     EchoMsg echo = MessageBuilder::constructMsg(propose);
                     m_controllerPtr->insert(echo);
-                    dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockHeader.id()));
+                    dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockId));
                     sendMessage(echo);
                 }
             }
@@ -318,14 +318,14 @@ namespace ultrainio {
 
         if (MessageManager::getInstance()->isVoter(blockNum, phase, baxCount)) {
             ba0Block = m_controllerPtr->getBa0Block();
-            if (isEmpty(*ba0Block)) {
+            if (isEmpty(ba0Block->id())) {
                 elog("vote ba0Block is empty, and send echo for empty block");
                 sendEchoForEmptyBlock();
             } else if (m_controllerPtr->verifyBa0Block()) { // not empty, verify
                 EchoMsg echo = MessageBuilder::constructMsg(*ba0Block);
                 m_controllerPtr->insert(echo);
                 //echo.timestamp = getRoundCount();
-                dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockHeader.id()));
+                dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockId));
                 sendMessage(echo);
             } else {
                 elog("vote. verify ba0Block failed. And send echo for empty block");
@@ -347,7 +347,7 @@ namespace ultrainio {
 
         dlog("ba1Process begin. blockNum = ${id}.", ("id", getBlockNum()));
 
-        if ((!isBlank(ba1Block))
+        if ((!isBlank(ba1Block.id()))
             && (ba1Block.previous != m_controllerPtr->getPreviousBlockhash())) {
 
             elog("ba1Process error. previous block hash error. hash = ${hash1} local hash = ${hash2}",
@@ -358,7 +358,7 @@ namespace ultrainio {
         }
 
         std::shared_ptr<Block> blockPtr = std::make_shared<chain::signed_block>();
-        if (!isBlank(ba1Block)) {
+        if (!isBlank(ba1Block.id())) {
             //UltrainLog::display_block(ba1_block);
             *blockPtr = ba1Block;
         } else {
@@ -400,7 +400,7 @@ namespace ultrainio {
             return;
         }
 
-        if (!isBlank(baxBlock)) {
+        if (!isBlank(baxBlock.id())) {
             m_ready = true;
             m_syncing = false;
             m_syncFailed = false;
@@ -680,7 +680,7 @@ namespace ultrainio {
         dlog("fastBa1 begin. blockNum = ${id}", ("id", getBlockNum()));
 
         Block baxBlock = m_controllerPtr->produceTentativeBlock();
-        if (!isBlank(baxBlock)) {
+        if (!isBlank(baxBlock.id())) {
             msg_key.blockNum = getBlockNum() + 1;
             msg_key.phase = kPhaseBA0;
 
@@ -735,7 +735,7 @@ namespace ultrainio {
 
         dlog("fastBax begin. blockNum = ${id}, phase = ${phase}", ("id", getBlockNum())("phase", msg_key.phase));
 
-        if (!isBlank(baxBlock)) {
+        if (!isBlank(baxBlock.id())) {
             msg_key.blockNum = getBlockNum() + 1;
             msg_key.phase = kPhaseBA0;
 
@@ -837,12 +837,12 @@ namespace ultrainio {
         return std::shared_ptr<UranusController> (m_controllerPtr);
     }
 
-    bool UranusNode::isBlank(const BlockHeader& blockHeader) {
-        return m_controllerPtr->isBlank(blockHeader);
+    bool UranusNode::isBlank(const BlockIdType& blockId) {
+        return m_controllerPtr->isBlank(blockId);
     }
 
-    bool UranusNode::isEmpty(const BlockHeader& blockHeader) {
-        return m_controllerPtr->isEmpty(blockHeader);
+    bool UranusNode::isEmpty(const BlockIdType& blockId) {
+        return m_controllerPtr->isEmpty(blockId);
     }
 
     void UranusNode::sendEchoForEmptyBlock() {

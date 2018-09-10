@@ -28,6 +28,9 @@ namespace ultrainio {
 
         static bool committeeHasWorked();
 
+        // TODO should remove committeeHasWorked
+        bool committeeHasWorked2() const;
+
         int getStakes(const AccountName& account, bool isNonProducingNode);
 
         double getProposerRatio();

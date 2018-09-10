@@ -39,8 +39,9 @@ namespace ultrainio {
     };
 
     struct UnsignedEchoMsg {
-        BlockHeader blockHeader;
+        BlockIdType blockId;
         ConsensusPhase phase;
+        uint32_t    proposerPriority;
         uint32_t    baxCount;
         uint32_t    timestamp;
         AccountName account;
@@ -53,7 +54,8 @@ namespace ultrainio {
 
     // aggregate echo msg
     struct UnsignedAggEchoMsg {
-        BlockHeader blockHeader;
+        BlockIdType blockId;
+        uint32_t    proposerPriority;
         std::vector<AccountName> accountPool;
         std::vector<std::string> proofPool;
         std::vector<std::string> sigPool;
@@ -70,10 +72,10 @@ namespace ultrainio {
 }
 
 FC_REFLECT( ultrainio::ProposeMsg, (block))
-FC_REFLECT( ultrainio::UnsignedEchoMsg, (blockHeader)(phase)(baxCount)(timestamp)(account)(proof))
+FC_REFLECT( ultrainio::UnsignedEchoMsg, (blockId)(phase)(proposerPriority)(baxCount)(timestamp)(account)(proof))
 FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature))
 FC_REFLECT( ultrainio::SyncRequestMessage, (startBlockNum)(endBlockNum) )
 FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
 FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))
-FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockHeader)(accountPool)(proofPool)(sigPool)(timestamp)(phase)(baxCount)(account)(proof))
+FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockId)(proposerPriority)(accountPool)(proofPool)(sigPool)(timestamp)(phase)(baxCount)(account)(proof))
 FC_REFLECT_DERIVED( ultrainio::AggEchoMsg, (ultrainio::UnsignedAggEchoMsg), (signature))

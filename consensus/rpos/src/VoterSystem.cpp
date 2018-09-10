@@ -52,8 +52,12 @@ namespace ultrainio {
     }
 
     bool VoterSystem::committeeHasWorked() {
-        std::shared_ptr<CommitteeState> committeeStatePtr = getCommitteeState();
-        if (committeeStatePtr && committeeStatePtr->chainStateNormal) {
+        static const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+        return ro_api.is_genesis_finished();
+    }
+
+    bool VoterSystem::committeeHasWorked2() const {
+        if (m_committeeStatePtr && m_committeeStatePtr->chainStateNormal) {
             return true;
         }
         return false;
@@ -70,8 +74,7 @@ namespace ultrainio {
     bool VoterSystem::isGenesisPeriod() const {
         boost::chrono::minutes genesisElapsed
                 = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - UranusNode::GENESIS);
-        if ((!m_committeeStatePtr || !(m_committeeStatePtr->chainStateNormal))
-                && (genesisElapsed < boost::chrono::minutes(kGenesisStartupTime))) {
+        if (!committeeHasWorked2() && (genesisElapsed < boost::chrono::minutes(kGenesisStartupTime))) {
             return true;
         }
         return false;
@@ -95,6 +98,9 @@ namespace ultrainio {
     int VoterSystem::getCommitteeMemberNumber() const {
         if (isGenesisPeriod()) {
             return 1; // genesis leader only
+        }
+        if (!committeeHasWorked2()) { // pass genesis startup , but still has not world state, that is fresh node join
+            return 1;
         }
         if (!m_committeeStatePtr) {
             if (m_blockNum > kGenesisStartupBlockNum) {

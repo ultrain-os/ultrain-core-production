@@ -157,9 +157,9 @@ namespace ultrainio {
 
         void clearOldCachedAllPhaseMsg();
 
-        bool isBlank(const BlockHeader& blockHeader);
+        bool isBlank(const BlockIdType& blockId);
 
-        bool isEmpty(const BlockHeader& blockHeader);
+        bool isEmpty(const BlockIdType& blockId);
 
         Block blankBlock();
 

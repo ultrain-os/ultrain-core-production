@@ -126,9 +126,9 @@ namespace ultrainio {
     private:
         explicit UranusNode(boost::asio::io_service &ioservice);
 
-        bool isBlank(const BlockHeader& blockHeader);
+        bool isBlank(const BlockIdType& blockId);
 
-        bool isEmpty(const BlockHeader& blockHeader);
+        bool isEmpty(const BlockIdType& blockId);
 
         void sendEchoForEmptyBlock();
 

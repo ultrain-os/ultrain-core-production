@@ -7,7 +7,8 @@
 namespace ultrainio {
     EchoMsg MessageBuilder::constructMsg(const Block &block) {
         EchoMsg echo;
-        echo.blockHeader = block;
+        echo.blockId = block.id();
+        echo.proposerPriority = Proof(block.proposerProof).getPriority();
         echo.phase = UranusNode::getInstance()->getPhase();
         echo.baxCount = UranusNode::getInstance()->getBaxCount();
         echo.timestamp = UranusNode::getInstance()->getRoundCount();
@@ -21,7 +22,8 @@ namespace ultrainio {
 
     EchoMsg MessageBuilder::constructMsg(const ProposeMsg &propose) {
         EchoMsg echo;
-        echo.blockHeader = propose.block;
+        echo.blockId = propose.block.id();
+        echo.proposerPriority = Proof(propose.block.proposerProof).getPriority();
         echo.phase = UranusNode::getInstance()->getPhase();
         echo.baxCount = UranusNode::getInstance()->getBaxCount();
         echo.timestamp = UranusNode::getInstance()->getRoundCount();
@@ -34,13 +36,14 @@ namespace ultrainio {
     }
 
     EchoMsg MessageBuilder::constructMsg(const EchoMsg &echo) {
+        uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
         EchoMsg myEcho = echo;
         myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
         myEcho.account = VoterSystem::getMyAccount();
-        myEcho.proof = std::string(MessageManager::getInstance()->getVoterProof(echo.blockHeader.block_num(), echo.phase, echo.baxCount));
+        myEcho.proof = std::string(MessageManager::getInstance()->getVoterProof(blockNum, echo.phase, echo.baxCount));
         myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, VoterSystem::getMyPrivateKey()));
         ilog("account : ${account} sign block ${id} signature ${signature}",
-             ("account", std::string(VoterSystem::getMyAccount()))("id", myEcho.blockHeader.id())("signature", echo.signature));
+             ("account", std::string(VoterSystem::getMyAccount()))("id", myEcho.blockId)("signature", echo.signature));
         return myEcho;
     }
 }

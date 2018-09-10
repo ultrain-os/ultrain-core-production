@@ -10,10 +10,10 @@
 
 namespace ultrainio {
     void PhaseMessage::insert(const EchoMsg& echoMsg) {
-        chain::block_id_type blockId = echoMsg.blockHeader.id();
+        chain::block_id_type blockId = echoMsg.blockId;
         auto itor = m_echoMsgSetMap.find(blockId);
         Proof proof(echoMsg.proof);
-        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(echoMsg.blockHeader.block_num());
+        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(BlockHeader::num_from_id(echoMsg.blockId));
         int stakes = voterSysPtr->getStakes(echoMsg.account, UranusNode::getInstance()->getNonProducingNode());
         double voterRatio = voterSysPtr->getVoterRatio();
         int voterCount = voterSysPtr->count(proof, stakes, voterRatio);
@@ -21,7 +21,7 @@ namespace ultrainio {
             EchoMsgSet echoMsgSet;
             echoMsgSet.echoMsgV.push_back(echoMsg);
             echoMsgSet.accountPool.push_back(echoMsg.account);
-            echoMsgSet.blockHeader = echoMsg.blockHeader;
+            echoMsgSet.blockId = echoMsg.blockId;
             echoMsgSet.totalVoterCount = voterCount;
             m_echoMsgSetMap.insert(std::make_pair(blockId, echoMsgSet));
         } else {

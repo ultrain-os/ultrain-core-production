@@ -12,7 +12,7 @@ namespace ultrainio {
         std::vector<EchoMsg> echoMsgV;
         std::vector<AccountName> accountPool; // pk pool of echoMsgDescV, speed up search
         int totalVoterCount = 0;
-        BlockHeader blockHeader;
+        BlockIdType blockId;
     };
 
     class PhaseMessage {

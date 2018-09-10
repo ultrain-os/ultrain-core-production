@@ -37,7 +37,7 @@ namespace ultrainio {
 
     void MessageManager::insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr) {
         ULTRAIN_ASSERT(aggEchoMsgPtr, chain::chain_exception, "agg echo msg pointer is null");
-        BlockMessagePtr blockMessagePtr = initIfNeed(aggEchoMsgPtr->blockHeader.block_num());
+        BlockMessagePtr blockMessagePtr = initIfNeed(BlockHeader::num_from_id(aggEchoMsgPtr->blockId));
         blockMessagePtr->m_myAggEchoMsgPtr = aggEchoMsgPtr;
     }
 
@@ -72,12 +72,12 @@ namespace ultrainio {
     }
 
     int MessageManager::handleMessage(const AggEchoMsg& aggEchoMsg) {
-        uint32_t blockNum = aggEchoMsg.blockHeader.block_num();
+        uint32_t blockNum = BlockHeader::num_from_id(aggEchoMsg.blockId);
         uint32_t thisBlockNum = UranusNode::getInstance()->getBlockNum();
         if (thisBlockNum - Config::MAX_LATER_NUMBER > blockNum) {
             return kObsolete;
         }
-        BlockMessagePtr blockMessagePtr = initIfNeed(aggEchoMsg.blockHeader.block_num());
+        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         if (blockMessagePtr->m_myAggEchoMsgPtr && blockMessagePtr->m_myAggEchoMsgPtr->account == aggEchoMsg.account) {
             ilog("loopback AggEchoMsg");
             return kDuplicate;
@@ -103,23 +103,15 @@ namespace ultrainio {
             // TODO(qinxiaofen)verify stake
             for (int i = 0; i < aggEchoMsg.accountPool.size(); i++) {
                 EchoMsg echoMsg;
-                echoMsg.blockHeader = aggEchoMsg.blockHeader;
+                echoMsg.blockId = aggEchoMsg.blockId;
+                echoMsg.proposerPriority = aggEchoMsg.proposerPriority;
                 echoMsg.account = aggEchoMsg.accountPool[i];
                 echoMsg.proof = aggEchoMsg.proofPool[i];
                 echoMsg.signature = aggEchoMsg.sigPool[i];
                 echoMsg.phase = aggEchoMsg.phase;
                 echoMsg.baxCount = aggEchoMsg.baxCount;
                 echoMsg.timestamp = aggEchoMsg.timestamp;
-                //TODO(qinxiaofen) proof check
-//            PublicKey publicKey(echoMsg.pk);
-//            Proof proposerProof(echoMsg.proof);
-//            ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
-//            std::string previousHash(blockId.data());
-//            Seed seed(previousHash, echoMsg.blockHeader.block_num(), echoMsg.phase, echoMsg.baxCount);
-//            if (!Vrf::verify(publicKey, proposerProof, seed, Vrf::kProposer)) {
-//                elog("proof verify error. pk : ${pk}", ("pk", propose.block.proposerProof));
-//                return false;
-//            }
+                //TODO(qinxiaofen) proof check, tickes check
                 UranusNode::getInstance()->handleMessage(echoMsg);
             }
         }

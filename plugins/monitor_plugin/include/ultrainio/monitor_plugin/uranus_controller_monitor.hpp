@@ -4,18 +4,12 @@
 
 namespace ultrainio {
     struct BlockHeaderDigest {
-        chain::block_timestamp_type      timestamp;
-        AccountName                      proposer;
-        chain::block_id_type             previous;
         chain::block_id_type             myid;
         uint32_t                         blockNum;
 
-        void digestFromBlockHeader(const BlockHeader& block_header) {
-            timestamp  = block_header.timestamp;
-            proposer   = block_header.proposer;
-            previous   = block_header.previous;
-            myid       = block_header.id();
-            blockNum   = block_header.block_num();
+        void digestFromBlockHeader(chain::block_id_type block_id) {
+            myid       = block_id;
+            blockNum   = BlockHeader::num_from_id(myid);
         }
     };
 
@@ -25,7 +19,7 @@ namespace ultrainio {
         uint32_t              baxCount;
 
         void digestFromeEchoMsg(const EchoMsg& echo_msg) {
-            head.digestFromBlockHeader(echo_msg.blockHeader);
+            head.digestFromBlockHeader(echo_msg.blockId);
             phase    = echo_msg.phase;
             baxCount = echo_msg.baxCount;
         }
@@ -61,7 +55,7 @@ namespace ultrainio {
             if (pController) {
                 auto ite = pController->m_proposerMsgMap.find(bid);
                 if(ite != pController->m_proposerMsgMap.end()){
-                    tempHeaderDigest.digestFromBlockHeader(ite->second.block);
+                    tempHeaderDigest.digestFromBlockHeader(ite->second.block.id());
                 } else {
                     ULTRAIN_THROW(chain::msg_not_found_exception, "Propose msg not found by id." );
                 }
@@ -91,7 +85,7 @@ namespace ultrainio {
                 if(ite != pController->m_cacheProposeMsgMap.end()) {
                     for(const auto& proposeMsg : ite->second){
                         BlockHeaderDigest tempHeader;
-                        tempHeader.digestFromBlockHeader(proposeMsg.block);
+                        tempHeader.digestFromBlockHeader(proposeMsg.block.id());
                         tempDigestVect.push_back(tempHeader);
                     }
                 } else {

@@ -102,7 +102,7 @@ FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_node_result, (ready)(
             (proposeMsgCacheSize)(echoMsgCacheSize)(allPhaseEchoMsgNum) )
 
 FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_propose_msg_params, (block_id) )
-FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_propose_msg_result, (timestamp)(proposer)(previous)(myid)(blockNum) )
+FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_propose_msg_result, (myid)(blockNum) )
 FC_REFLECT( ultrainio::EchoMsgDigest, (head)(phase)(baxCount) )
 FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_echo_msg_result, (echoMsg)(hasSend)(accountPoolSize)(account_pool) )
 
