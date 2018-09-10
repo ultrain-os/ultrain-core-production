@@ -72,6 +72,11 @@ namespace ultrainio {
     }
 
     int MessageManager::handleMessage(const AggEchoMsg& aggEchoMsg) {
+        if (!UranusNode::getInstance()->isReady()) {
+            ilog("Node is not ready, but we need transfer the msg.");
+            return kSuccess;
+        }
+
         uint32_t blockNum = BlockHeader::num_from_id(aggEchoMsg.blockId);
         uint32_t thisBlockNum = UranusNode::getInstance()->getBlockNum();
         if (thisBlockNum - Config::MAX_LATER_NUMBER > blockNum) {

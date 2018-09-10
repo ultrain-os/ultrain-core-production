@@ -80,6 +80,8 @@ namespace ultrainio {
 
         uint32_t isSyncing();
 
+        bool isReady() {return m_ready;}
+
         void ba1Process();
 
         void baxProcess();
