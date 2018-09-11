@@ -257,7 +257,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
          transaction_metadata_ptr trx_ptr = std::make_shared<transaction_metadata>(*trx);
          auto block_time = chain.head_block_state()->header.timestamp.to_time_point();
 
-         if( fc::time_point(trx->expiration()) < block_time ) {
+         if( fc::time_point(trx_ptr->trx.expiration) < block_time ) {
              ilog("on_incoming_transaction_async cache trx.id = ${id}, but expired so drop", ("id", trx_ptr->id));
              auto e = std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", trx_ptr->id)));
              _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(e, trx));
