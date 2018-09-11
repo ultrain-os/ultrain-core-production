@@ -812,13 +812,8 @@ namespace ultrainio {
          connection_ptr origin;
       };
 
-      struct transaction_origin {
-         transaction_id_type id;
-         connection_ptr origin;
-      };
-
       vector<block_origin> received_blocks;
-      vector<transaction_origin> received_transactions;
+      std::multimap<transaction_id_type, connection_ptr> received_transactions;
 
       void bcast_transaction (const packed_transaction& msg);
       void rejected_transaction (const transaction_id_type& msg);
@@ -1375,16 +1370,14 @@ namespace ultrainio {
    }
 
    void dispatch_manager::bcast_transaction (const packed_transaction& trx) {
-      connection_ptr skip;
+      std::set<connection_ptr> skips;
       transaction_id_type id = trx.id();
 
-      for (auto org = received_transactions.begin(); org != received_transactions.end(); org++) {
-         if (org->id == id) {
-            skip = org->origin;
-            received_transactions.erase(org);
-            break;
-         }
+      auto range = received_transactions.equal_range(id);
+      for (auto org = range.first; org != range.second; ++org) {
+         skips.insert(org->second);
       }
+      received_transactions.erase(range.first, range.second);
 
       for (auto ref = req_trx.begin(); ref != req_trx.end(); ++ref) {
          if (*ref == id) {
@@ -1417,9 +1410,8 @@ namespace ultrainio {
       my_impl->local_txns.insert(std::move(nts));
 
       if( !large_msg_notify || bufsiz <= just_send_it_max) {
-         connection_wptr weak_skip = skip;
-         my_impl->send_all( trx, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
-               if(c == weak_skip.lock()) {
+         my_impl->send_all( trx, [id, &skips, trx_expiration](connection_ptr c) -> bool {
+               if( skips.find(c) != skips.end() ) {
                   return false;
                }
                const auto& bs = c->trx_state.find(id);
@@ -1439,9 +1431,8 @@ namespace ultrainio {
          pending_notify.known_trx.mode = normal;
          pending_notify.known_trx.ids.push_back( id );
          pending_notify.known_blocks.mode = none;
-         connection_wptr weak_skip = skip;
-         my_impl->send_all(pending_notify, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
-               if (c == weak_skip.lock()) {
+         my_impl->send_all(pending_notify, [id, &skips, trx_expiration](connection_ptr c) -> bool {
+               if (skips.find(c) != skips.end() ) {
                   return false;
                }
                const auto& bs = c->trx_state.find(id);
@@ -1460,7 +1451,7 @@ namespace ultrainio {
    }
 
    void dispatch_manager::recv_transaction (connection_ptr c, const transaction_id_type& id) {
-      received_transactions.emplace_back((transaction_origin){id, c});
+      received_transactions.insert(std::make_pair(id, c));
       if (c &&
           c->last_req &&
           c->last_req->req_trx.mode != none &&
@@ -1475,12 +1466,8 @@ namespace ultrainio {
 
    void dispatch_manager::rejected_transaction (const transaction_id_type& id) {
       fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
-      for (auto org = received_transactions.begin(); org != received_transactions.end(); org++) {
-         if (org->id == id) {
-            received_transactions.erase(org);
-            break;
-         }
-      }
+      auto range = received_transactions.equal_range(id);
+      received_transactions.erase(range.first, range.second);
    }
 
    void dispatch_manager::recv_notice (connection_ptr c, const notice_message& msg, bool generated) {
