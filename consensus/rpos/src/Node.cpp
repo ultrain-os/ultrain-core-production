@@ -23,7 +23,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="4f48b6";
+    char version[]="5357fb";
 
     const int UranusNode::MAX_ROUND_SECONDS = 10;
     const int UranusNode::MAX_PHASE_SECONDS = 5;

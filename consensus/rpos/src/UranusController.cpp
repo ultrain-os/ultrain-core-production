@@ -912,7 +912,6 @@ namespace ultrainio {
             FC_ASSERT(pbs, "pending_block_state does not exist but it should, another plugin may have corrupted it");
             const auto &bh = pbs->header;
             block.timestamp = bh.timestamp;
-            block.producer = "ultrainio";
             block.proposer = VoterSystem::getMyAccount();
             block.proposerProof = std::string(MessageManager::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()));
             block.version = 0;
@@ -929,7 +928,6 @@ namespace ultrainio {
             /*
               ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${c} ${prv} ${ma} ${mt} ${id}",
               ("t", block.timestamp)
-              ("p", block.producer)
               ("pk", block.proposerPk)
               ("pf", block.proposerProof)
               ("v", block.version)
@@ -1200,10 +1198,8 @@ namespace ultrainio {
         chain::signed_block_ptr bp = pbs->block;
         chain::signed_block_header *hp = &(pbs->header);
         // TODO(yufengshen): Move all this into start_block() to remove dup codes.
-        bp->producer = block.producer;
         bp->proposer = block.proposer;
         bp->proposerProof = block.proposerProof;
-        hp->producer = block.producer;
         hp->proposer = block.proposer;
         hp->proposerProof = block.proposerProof;
         bp->confirmed = block.confirmed;
@@ -1280,10 +1276,8 @@ namespace ultrainio {
             chain::block_state_ptr pbs = chain.pending_block_state_hack();
             chain::signed_block_ptr bp = pbs->block;
             chain::signed_block_header *hp = &(pbs->header);
-            bp->producer = block.producer;
             bp->proposer = block.proposer;
             bp->proposerProof = block.proposerProof;
-            hp->producer = block.producer;
             hp->proposer = block.proposer;
             hp->proposerProof = block.proposerProof;
             bp->confirmed = block.confirmed;
@@ -1395,7 +1389,7 @@ namespace ultrainio {
                  ("pf1", b.proposerProof)("pf2", block->proposerProof)
                  ("num1", b.block_num())("num2", block->block_num())
                  ("t1", b.timestamp)("t2", block->timestamp)
-                 ("s1", b.producer)("s2", block->producer));
+                 ("s2", block->producer));
             */
             if (IsBa0TheRightBlock(b, block)) {
                 ilog("------ Finish pre-running ba0 block from ${count}", ("count", m_currentPreRunBa0TrxIndex));
@@ -1672,7 +1666,6 @@ namespace ultrainio {
         const auto &pbs = chain.pending_block_state();
         const auto &bh = pbs->header;
         blockPtr->timestamp = bh.timestamp;
-        blockPtr->producer = "ultrainio";
         blockPtr->previous = bh.previous;
         blockPtr->confirmed = 1;
         blockPtr->previous = bh.previous;

@@ -159,44 +159,6 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
        */
       uint32_t _timer_corelation_id = 0;
 
-
-      void on_block( const block_state_ptr& bsp ) {
-         ilog("block_num = ${block_num}", ("block_num", bsp->block_num));
-         if( bsp->header.timestamp <= _last_signed_block_time ) return;
-         if( bsp->header.timestamp <= _start_time ) return;
-         if( bsp->block_num <= _last_signed_block_num ) return;
-
-         const auto& active_producer_to_signing_key = bsp->active_schedule.producers;
-
-         flat_set<account_name> active_producers;
-         active_producers.reserve(bsp->active_schedule.producers.size());
-         for (const auto& p: bsp->active_schedule.producers) {
-            active_producers.insert(p.producer_name);
-         }
-
-         std::set_intersection( _producers.begin(), _producers.end(),
-                                active_producers.begin(), active_producers.end(),
-                                boost::make_function_output_iterator( [&]( const chain::account_name& producer )
-         {
-            if( producer != bsp->header.producer ) {
-               auto itr = std::find_if( active_producer_to_signing_key.begin(), active_producer_to_signing_key.end(),
-                                        [&](const producer_key& k){ return k.producer_name == producer; } );
-               if( itr != active_producer_to_signing_key.end() ) {
-                  auto private_key_itr = _signature_providers.find( itr->block_signing_key );
-                  if( private_key_itr != _signature_providers.end() ) {
-                     auto d = bsp->sig_digest();
-                     auto sig = private_key_itr->second( d );
-                     _last_signed_block_time = bsp->header.timestamp;
-                     _last_signed_block_num  = bsp->block_num;
-
-   //                  ilog( "${n} confirmed", ("n",name(producer)) );
-                     _self->confirmed_block( { bsp->id, d, producer, sig } );
-                  }
-               }
-            }
-         } ) );
-      }
-
       void on_irreversible_block( const signed_block_ptr& lib ) {
          _irreversible_block_time = lib->timestamp.to_time_point();
          ilog("refresh _irreversible_block_time = ${_irreversible_block_time}", ("_irreversible_block_time", _irreversible_block_time));

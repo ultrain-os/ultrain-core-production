@@ -47,7 +47,7 @@ namespace ultrainiosystem {
 
    struct block_header {
       uint32_t                                  timestamp;
-      account_name                              producer;
+      account_name                              proposer;
       uint16_t                                  confirmed = 0;
       block_id_type                             previous;
       checksum256                               transaction_mroot;
@@ -56,7 +56,7 @@ namespace ultrainiosystem {
       ultrainio::optional<ultrainio::producer_schedule> new_producers;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE(block_header, (timestamp)(producer)(confirmed)(previous)(transaction_mroot)(action_mroot)
+      ULTRAINLIB_SERIALIZE(block_header, (timestamp)(proposer)(confirmed)(previous)(transaction_mroot)(action_mroot)
                                      (schedule_version)(new_producers))
    };
 

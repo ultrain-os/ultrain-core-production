@@ -17,7 +17,7 @@ namespace ultrainio { namespace testing {
       std::ifstream wast_file(fn);
       FC_ASSERT( wast_file.is_open(), "wast file cannot be found" );
       wast_file.seekg(0, std::ios::end);
-      std::vector<char> wast; 
+      std::vector<char> wast;
       int len = wast_file.tellg();
       FC_ASSERT( len >= 0, "wast file length is -1" );
       wast.resize(len+1);
@@ -32,7 +32,7 @@ namespace ultrainio { namespace testing {
       std::ifstream wasm_file(fn, std::ios::binary);
       FC_ASSERT( wasm_file.is_open(), "wasm file cannot be found" );
       wasm_file.seekg(0, std::ios::end);
-      std::vector<uint8_t> wasm; 
+      std::vector<uint8_t> wasm;
       int len = wasm_file.tellg();
       FC_ASSERT( len >= 0, "wasm file length is -1" );
       wasm.resize(len);
@@ -46,7 +46,7 @@ namespace ultrainio { namespace testing {
       std::ifstream abi_file(fn);
       FC_ASSERT( abi_file.is_open(), "abi file cannot be found" );
       abi_file.seekg(0, std::ios::end);
-      std::vector<char> abi; 
+      std::vector<char> abi;
       int len = abi_file.tellg();
       FC_ASSERT( len >= 0, "abi file length is -1" );
       abi.resize(len+1);
@@ -145,10 +145,10 @@ namespace ultrainio { namespace testing {
       control->abort_block();
       control->push_block(b);
 
-      auto itr = last_produced_block.find(b->producer);
-      if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
-         last_produced_block[b->producer] = b->id();
-      }
+      //      auto itr = last_produced_block.find(b->producer);
+      //      if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
+          //         last_produced_block[b->producer] = b->id();
+      //      }
 
       return b;
    }
@@ -201,7 +201,7 @@ namespace ultrainio { namespace testing {
                     });
 
       control->commit_block();
-      last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
+      //      last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
 
       _start_block( next_time + fc::microseconds(config::block_interval_us));
       return control->head_block_state()->block;

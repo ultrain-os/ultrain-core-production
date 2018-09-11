@@ -894,7 +894,7 @@ read_only::get_info_results read_only::get_chain_info(const read_only::get_chain
       db.last_irreversible_block_id(),
       db.fork_db_head_block_id(),
       db.fork_db_head_block_time(),
-      db.fork_db_head_block_producer(),
+      db.fork_db_head_block_proposer(),
       rm.get_virtual_block_cpu_limit(),
       rm.get_virtual_block_net_limit(),
       rm.get_block_cpu_limit(),

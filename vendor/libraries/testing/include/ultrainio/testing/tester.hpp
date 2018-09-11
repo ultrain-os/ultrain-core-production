@@ -381,8 +381,7 @@ namespace ultrainio { namespace testing {
                hbh.previous == vn_hbh.previous &&
                hbh.timestamp == vn_hbh.timestamp &&
                hbh.transaction_mroot == vn_hbh.transaction_mroot &&
-               hbh.action_mroot == vn_hbh.action_mroot &&
-               hbh.producer == vn_hbh.producer;
+               hbh.action_mroot == vn_hbh.action_mroot;
 
         validating_node.reset();
         validating_node = std::make_unique<controller>(vcfg);

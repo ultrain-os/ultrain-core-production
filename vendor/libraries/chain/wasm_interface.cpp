@@ -163,8 +163,8 @@ class typescript_block_api : public context_aware_api {
           return context.control.head_block_header().timestamp.to_time_point().sec_since_epoch();
       }
 
-      uint64_t head_block_producer() const {
-          return context.control.head_block_header().producer.value;
+      uint64_t head_block_proposer() const {
+          return context.control.head_block_header().proposer.value;
       }
 };
 
@@ -1792,7 +1792,7 @@ REGISTER_INTRINSICS(typescript_block_api,
   (head_block_id,              void(int, int)     )
   (head_block_previous_id,     void(int, int)     )
   (head_block_number,          int()              )
-  (head_block_producer,        int64_t()          )
+  (head_block_proposer,        int64_t()          )
   (head_block_timestamp,       int()              )
 );
 

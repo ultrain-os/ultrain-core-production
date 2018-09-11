@@ -167,14 +167,14 @@ namespace ultrainio { namespace chain {
          uint32_t             head_block_num()const;
          time_point           head_block_time()const;
          block_id_type        head_block_id()const;
-         account_name         head_block_producer()const;
+         account_name         head_block_proposer()const;
          const block_header&  head_block_header()const;
          block_state_ptr      head_block_state()const;
 
          uint32_t             fork_db_head_block_num()const;
          block_id_type        fork_db_head_block_id()const;
          time_point           fork_db_head_block_time()const;
-         account_name         fork_db_head_block_producer()const;
+         account_name         fork_db_head_block_proposer()const;
 
          time_point      pending_block_time()const;
          block_state_ptr pending_block_state()const;

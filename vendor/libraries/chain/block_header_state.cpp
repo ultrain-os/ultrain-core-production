@@ -23,7 +23,7 @@ namespace ultrainio { namespace chain {
       /// 2/3 must be greater, so if I go 1/3 into the list sorted from low to high, then 2/3 are greater
 
       if( blocknums.size() == 0 ) return 0;
-      /// TODO: update to nth_element 
+      /// TODO: update to nth_element
       std::sort( blocknums.begin(), blocknums.end() );
       return blocknums[ (blocknums.size()-1) / 3 ];
    }
@@ -46,13 +46,9 @@ namespace ultrainio { namespace chain {
     // TODO -- yufengshen -- check this
     //    result.header.schedule_version                         = active_schedule.version;
     result.header.schedule_version                         = 0;
-                                                           
+
     auto prokey                                            = get_scheduled_producer(when);
     result.block_signing_key                               = prokey.block_signing_key;
-    // TODO -- yufengshen -- check this
-    result.header.producer = "ultrainio";
-    //    result.header.producer                                 = prokey.producer_name;
-                                                           
     result.pending_schedule_lib_num                        = pending_schedule_lib_num;
     result.pending_schedule_hash                           = pending_schedule_hash;
     result.block_num                                       = block_num + 1;
@@ -70,7 +66,7 @@ namespace ultrainio { namespace chain {
     result.bft_irreversible_blocknum             = bft_irreversible_blocknum;
 
     result.producer_to_last_implied_irb[prokey.producer_name] = result.dpos_proposed_irreversible_blocknum;
-    result.dpos_irreversible_blocknum                         = result.calc_dpos_last_irreversible(); 
+    result.dpos_irreversible_blocknum                         = result.calc_dpos_last_irreversible();
 
     /// grow the confirmed count
     static_assert(std::numeric_limits<uint8_t>::max() >= (config::max_producers * 2 / 3) + 1, "8bit confirmations may not be able to hold all of the needed confirmations");
@@ -121,7 +117,6 @@ namespace ultrainio { namespace chain {
 
          producer_to_last_produced = move( new_producer_to_last_produced );
          producer_to_last_implied_irb = move( new_producer_to_last_implied_irb);
-         producer_to_last_produced[header.producer] = block_num;
 
          return true;
       }
@@ -154,7 +149,6 @@ namespace ultrainio { namespace chain {
     ULTRAIN_ASSERT( h.timestamp > header.timestamp, block_validate_exception, "block must be later in time" );
     ULTRAIN_ASSERT( h.previous == id, unlinkable_block_exception, "block must link to current state" );
     auto result = generate_next( h.timestamp );
-    ULTRAIN_ASSERT( result.header.producer == h.producer, wrong_producer, "wrong producer specified" );
     ULTRAIN_ASSERT( result.header.schedule_version == h.schedule_version, producer_schedule_exception, "schedule_version in signed block is corrupted" );
 
     //    auto itr = producer_to_last_produced.find(h.producer);

@@ -990,7 +990,6 @@ struct controller_impl {
 
          // We have to copy here.
          chain::signed_block_header* hp = &(pending->_pending_block_state->header);
-         hp->producer = b->producer;
          hp->proposer = b->proposer;
          hp->proposerProof = b->proposerProof;
          transaction_trace_ptr trace;
@@ -1255,7 +1254,6 @@ struct controller_impl {
             ("n",pending->_pending_block_state->block_num)
             ("id",pending->_pending_block_state->header.id())
             ("t",pending->_pending_block_state->header.timestamp)
-            ("p",pending->_pending_block_state->header.producer)
             ("signing_key", pending->_pending_block_state->block_signing_key)
             ("v",pending->_pending_block_state->header.schedule_version)
             ("lib",pending->_pending_block_state->dpos_irreversible_blocknum)
@@ -1283,7 +1281,6 @@ struct controller_impl {
       /*
       ilog("----------finalize block current header is ${t} ${p} ${pk} ${pf} ${v} ${c} ${prv} ${ma} ${mt} ${id}",
 	   ("t", p->header.timestamp)
-	   ("p", p->header.producer)
 	   ("pk", p->header.proposerPk)
 	   ("pf", p->header.proposerProof)
 	   ("v", p->header.version)
@@ -1579,14 +1576,13 @@ block_timestamp_type controller::get_proper_next_block_timestamp() const {
 uint32_t controller::head_block_num()const {
    return my->head->block_num;
 }
+
+
 time_point controller::head_block_time()const {
    return my->head->header.timestamp;
 }
 block_id_type controller::head_block_id()const {
    return my->head->id;
-}
-account_name  controller::head_block_producer()const {
-   return my->head->header.producer;
 }
 const block_header& controller::head_block_header()const {
    return my->head->header;
@@ -1598,17 +1594,18 @@ block_state_ptr controller::head_block_state()const {
 uint32_t controller::fork_db_head_block_num()const {
    return my->fork_db.head()->block_num;
 }
-
+account_name  controller::head_block_proposer()const {
+   return my->head->header.proposer;
+}
+account_name  controller::fork_db_head_block_proposer()const {
+   return my->fork_db.head()->header.proposer;
+}
 block_id_type controller::fork_db_head_block_id()const {
    return my->fork_db.head()->id;
 }
 
 time_point controller::fork_db_head_block_time()const {
    return my->fork_db.head()->header.timestamp;
-}
-
-account_name  controller::fork_db_head_block_producer()const {
-   return my->fork_db.head()->header.producer;
 }
 
 block_state_ptr controller::pending_block_state()const {

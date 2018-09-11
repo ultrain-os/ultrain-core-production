@@ -8,21 +8,20 @@ namespace ultrainio { namespace chain {
    {
       block_timestamp_type             timestamp;
       account_name                     proposer;
-      account_name                     producer;
 
       std::string                      proposerProof;
       uint32_t                         version = 0;
 
      /**
-       *  By signing this block this producer is confirming blocks [block_num() - confirmed, blocknum()) 
+       *  By signing this block this producer is confirming blocks [block_num() - confirmed, blocknum())
        *  as being the best blocks for that range and that he has not signed any other
-       *  statements that would contradict.  
+       *  statements that would contradict.
        *
        *  No producer should sign a block with overlapping ranges or it is proof of byzantine
        *  behavior. When producing a block a producer is always confirming at least the block he
        *  is building off of.  A producer cannot confirm "this" block, only prior blocks.
        */
-      uint16_t                         confirmed = 1;  
+      uint16_t                         confirmed = 1;
 
       block_id_type                    previous;
 
@@ -60,8 +59,8 @@ namespace ultrainio { namespace chain {
 
 } } /// namespace ultrainio::chain
 
-FC_REFLECT(ultrainio::chain::block_header, 
-           (timestamp)(proposer)(producer)(proposerProof)(version)
+FC_REFLECT(ultrainio::chain::block_header,
+           (timestamp)(proposer)(proposerProof)(version)
            (confirmed)(previous)(transaction_mroot)(action_mroot)
            (schedule_version)(new_producers)(header_extensions))
 
