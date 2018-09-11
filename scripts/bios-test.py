@@ -328,7 +328,7 @@ def stepSetSystemContract():
 
 def stepCreateStakedAccounts():
     funds = 500000000 / args.num_producers / 2
-    for i in range(1, args.num_producers):
+    for i in range(0, args.num_producers):
         retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "%.4f SYS" --stake-cpu "%.4f SYS" --buy-ram "1000.000 SYS" ' % (accounts[i], args.public_key, funds, funds))
         retry(args.clultrain + 'transfer ultrainio %s "5000.0000 SYS"' % (accounts[i]))
     sleep(15)
