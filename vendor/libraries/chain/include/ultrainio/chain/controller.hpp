@@ -103,9 +103,11 @@ namespace ultrainio { namespace chain {
           */
          vector<transaction_metadata_ptr> get_unapplied_transactions() const;
          std::list<transaction_metadata_ptr>* get_pending_transactions();
+         void drop_pending_transaction_from_set(const transaction_metadata_ptr& trx);
          void clear_unapplied_transaction();
          void drop_unapplied_transaction(const transaction_metadata_ptr& trx);
-         void push_into_pending_transaction(const transaction_metadata_ptr& trx);
+         // returns if (overflow, duplicate)
+         std::pair<bool, bool> push_into_pending_transaction(const transaction_metadata_ptr& trx);
 
          /**
           * These transaction IDs represent transactions available in the head chain state as scheduled
@@ -176,7 +178,7 @@ namespace ultrainio { namespace chain {
 
          time_point      pending_block_time()const;
          block_state_ptr pending_block_state()const;
-		 
+
 		 block_timestamp_type get_proper_next_block_timestamp() const;
 		 // This is a hack ...
 		 block_state_ptr pending_block_state_hack();

@@ -111,6 +111,7 @@ namespace ultrainio {
         void processCache(const msgkey &msg_key);
 
         void produceBlock(const chain::signed_block_ptr &block, bool force_push_whole_block = false);
+        void clearTrxQueue();
 
         void init();
 

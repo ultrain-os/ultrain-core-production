@@ -103,8 +103,10 @@ struct controller_impl {
     *  are removed from this list if they are re-applied in other blocks. Producers
     *  can query this list when scheduling new transactions into blocks.
     */
-   map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
-  std::list<transaction_metadata_ptr>    pending_transactions;
+
+    map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
+    std::list<transaction_metadata_ptr>    pending_transactions;
+    set<digest_type>     pending_transactions_set;
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
@@ -1818,11 +1820,28 @@ std::list<transaction_metadata_ptr>* controller::get_pending_transactions() {
   return &(my->pending_transactions);
 }
 
-void controller::push_into_pending_transaction(const transaction_metadata_ptr& trx) {
+std::pair<bool, bool> controller::push_into_pending_transaction(const transaction_metadata_ptr& trx) {
     if (my->pending_transactions.size() > ultrainio::chain::config::default_max_pending_trx_count ||
         my->unapplied_transactions.size() > ultrainio::chain::config::default_max_unapplied_trx_count)
-        return;
-    my->pending_transactions.push_back(trx);
+        return std::pair<bool, bool>(true, false);
+
+    if (my->pending_transactions_set.find(trx->signed_id) == my->pending_transactions_set.end()) {
+        my->pending_transactions_set.insert(trx->signed_id);
+        my->pending_transactions.push_back(trx);
+        return std::pair<bool, bool>(false, false);
+    }
+    // TODO(yufengshen): THis should be removed eventually.
+    ULTRAIN_ASSERT( my->pending_transactions_set.size() == my->pending_transactions.size(),
+                    chain_exception,
+                    "pending trx size ${s1} not equal to pending trx set size ${s2}",
+                    ("s1", my->pending_transactions.size())
+                    ("s2", my->pending_transactions_set.size()));
+    return std::pair<bool, bool>(false, true);
+
+}
+
+void controller::drop_pending_transaction_from_set(const transaction_metadata_ptr& trx) {
+    my->pending_transactions_set.erase(trx->signed_id);
 }
 
 void controller::clear_unapplied_transaction() {

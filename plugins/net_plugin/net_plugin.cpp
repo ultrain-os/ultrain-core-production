@@ -2361,21 +2361,20 @@ namespace ultrainio {
       dispatcher->recv_transaction(c, tid);
       //uint64_t code = 0;
       chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
-          dispatcher->bcast_transaction(msg);
-//         if (result.contains<fc::exception_ptr>()) {
-//            auto e_ptr = result.get<fc::exception_ptr>();
-//            if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value)
-//               elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
-//         } else {
-//            auto trace = result.get<transaction_trace_ptr>();
-//            if (!trace->except) {
-//               fc_dlog(logger, "chain accepted transaction");
-//               dispatcher->bcast_transaction(msg);
-//               return;
-//            }
-//         }
-//
-//         dispatcher->rejected_transaction(tid);
+          if (result.contains<fc::exception_ptr>()) {
+              auto e_ptr = result.get<fc::exception_ptr>();
+              if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value)
+                  elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
+          } else {
+              auto trace = result.get<transaction_trace_ptr>();
+              if (!trace->except) {
+                  fc_dlog(logger, "chain accepted transaction");
+                  dispatcher->bcast_transaction(msg);
+                  return;
+              }
+          }
+
+          dispatcher->rejected_transaction(tid);
       });
    }
 

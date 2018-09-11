@@ -64,7 +64,7 @@ static const uint32_t block_size_average_window_ms         = 60*1000l;
 
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
-const static uint32_t   default_max_propose_trx_count                 = 5000;
+const static uint32_t   default_max_propose_trx_count                 = 8000;
 const static uint32_t   default_max_pending_trx_count                 = 50000;
 const static uint32_t   default_max_unapplied_trx_count               = 50000;
 // 500K is the block limit, so that ~20 proposer would be 10M traffic at maximal for about 3~4s
