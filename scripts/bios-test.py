@@ -284,7 +284,7 @@ def importKeys():
     run(args.clultrain + 'wallet import --private-key ' + args.private_key)
 
 def randomTransfer():
-    subaccounts = accounts[0:args.num_producers]
+    subaccounts = accounts[1:args.num_producers]
     for i in subaccounts:
         for j in subaccounts:
             simple_run(args.clultrain + 'transfer -f %s %s "0.%s SYS" ' %(i, j, random.randint(1, 999)))
@@ -326,13 +326,13 @@ def stepSetSystemContract():
 
 def stepCreateStakedAccounts():
     funds = 500000000 / args.num_producers / 2
-    for i in range(0, args.num_producers):
+    for i in range(1, args.num_producers):
         retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "%.4f SYS" --stake-cpu "%.4f SYS" --buy-ram "1000.000 SYS" ' % (accounts[i], args.public_key, funds, funds))
         retry(args.clultrain + 'transfer ultrainio %s "5000.0000 SYS"' % (accounts[i]))
     sleep(15)
 
 def stepRegProducers():
-    for i in range(0, args.num_producers):
+    for i in range(1, args.num_producers):
         retry(args.clultrain + 'system regproducer %s %s https://%s.com 0123 ' % (accounts[i], pk_list[i], accounts[i]))
     sleep(1)
     run(args.clultrain + 'system listproducers')
