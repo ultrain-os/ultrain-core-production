@@ -1129,21 +1129,35 @@ namespace ultrainio {
         return true;
     }
 
+    echo_message_info UranusController::findEchoMsg(BlockIdType blockId) {
+        auto itor = m_echoMsgMap.find(blockId);
+        if (itor != m_echoMsgMap.end() && itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
+            return itor->second;
+        }
+        for (auto allPhaseItor = m_echoMsgAllPhase.begin(); allPhaseItor != m_echoMsgAllPhase.end(); ++allPhaseItor) {
+            auto itor = allPhaseItor->second.find(blockId);
+            if (itor != allPhaseItor->second.end() && itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
+                return itor->second;
+            }
+        }
+        return echo_message_info();
+    }
+
     std::shared_ptr<AggEchoMsg> UranusController::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {
         std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
         aggEchoMsgPtr->blockId = blockPtr->id();
         aggEchoMsgPtr->account = VoterSystem::getMyAccount();
         aggEchoMsgPtr->proof = std::string(MessageManager::getInstance()->getVoterProof(blockPtr->block_num(), kPhaseBA1, 0));
-        auto itor = m_echoMsgMap.find(blockPtr->id());
-        if (itor == m_echoMsgMap.end()) {
-            elog("can't find block id ${id} in echo msg map", ("id", blockPtr->id()));
+        echo_message_info echoMessageInfo = findEchoMsg(aggEchoMsgPtr->blockId);
+        if (echoMessageInfo.empty()) {
+            ULTRAIN_ASSERT(false, chain::chain_exception, "can not find blockId's echo list");
             return nullptr;
         }
-        aggEchoMsgPtr->proposerPriority = itor->second.echo.proposerPriority;
-        aggEchoMsgPtr->accountPool = itor->second.accountPool;
-        aggEchoMsgPtr->proofPool = itor->second.proofPool;
-        aggEchoMsgPtr->sigPool = itor->second.sigPool;
-        aggEchoMsgPtr->timestamp = itor->second.timestamp;
+        aggEchoMsgPtr->proposerPriority = echoMessageInfo.echo.proposerPriority;
+        aggEchoMsgPtr->accountPool = echoMessageInfo.accountPool;
+        aggEchoMsgPtr->proofPool = echoMessageInfo.proofPool;
+        aggEchoMsgPtr->sigPool = echoMessageInfo.sigPool;
+        aggEchoMsgPtr->timestamp = echoMessageInfo.timestamp;
         aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
         aggEchoMsgPtr->baxCount = UranusNode::getInstance()->getBaxCount();
         aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, VoterSystem::getMyPrivateKey()));

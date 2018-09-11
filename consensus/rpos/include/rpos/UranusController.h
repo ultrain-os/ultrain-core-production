@@ -26,7 +26,15 @@ namespace ultrainio {
         int totalVoter;
         bool hasSend;
 
-        echo_message_info() : echo(), accountPool(), totalVoter(0), hasSend(false) {}
+        echo_message_info() :
+                echo(), accountPool(), proofPool(), sigPool(), timestamp(0), totalVoter(0), hasSend(false) {}
+
+        bool empty() {
+            if (accountPool.size() <= 0) {
+                return true;
+            }
+            return false;
+        }
     };
 
     struct msgkey {
@@ -170,9 +178,6 @@ namespace ultrainio {
         std::shared_ptr<AggEchoMsg> generateAggEchoMsg(std::shared_ptr<Block> blockPtr);
 
         void insertAccount(echo_message_info &info, const EchoMsg &echo);
-
-        friend class UranusControllerMonitor;
-
     private:
         // This function is time consuming, please cache the result empty block.
         std::shared_ptr<Block> generateEmptyBlock();
@@ -185,6 +190,9 @@ namespace ultrainio {
         size_t runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
                                 fc::time_point start_timesamp, fc::time_point block_time);
 
+        echo_message_info findEchoMsg(BlockIdType blockId);
+
+        // data member
         Block m_ba0Block;
         bool m_voterPreRunBa0InProgress = false;
         int m_currentPreRunBa0TrxIndex = -1;
@@ -202,5 +210,6 @@ namespace ultrainio {
         std::unique_ptr<boost::asio::steady_timer> m_syncTaskTimer;
         std::list<SyncTask> m_syncTaskQueue;
         uint32_t m_fast_timestamp;
+        friend class UranusControllerMonitor;
     };
 }

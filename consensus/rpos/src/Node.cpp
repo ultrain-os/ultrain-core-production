@@ -431,8 +431,9 @@ namespace ultrainio {
                 uint32_t preBlockNum = blockNum - 1;
                 if (MessageManager::getInstance()->isProposer(preBlockNum)) {
                     std::shared_ptr<AggEchoMsg> aggEchoMsg = MessageManager::getInstance()->getMyAggEchoMsg(preBlockNum);
-                    ULTRAIN_ASSERT(aggEchoMsg, chain::chain_exception, "Pre AggEchoMsg is null");
-                    sendMessage(*aggEchoMsg);
+                    if (aggEchoMsg) {
+                        sendMessage(*aggEchoMsg);
+                    }
                 }
             }
 
