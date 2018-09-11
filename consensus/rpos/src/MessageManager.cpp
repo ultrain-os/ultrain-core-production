@@ -120,7 +120,7 @@ namespace ultrainio {
                 elog("send AggEchoMsg by non Proposer. account : ${account}", ("account", std::string(aggEchoMsg.account)));
                 return kFaultProposer;
             }
-            for (int i = 0; i < aggEchoMsg.accountPool.size(); i++) {
+            for (size_t i = 0; i < aggEchoMsg.accountPool.size(); i++) {
                 EchoMsg echoMsg;
                 echoMsg.blockId = aggEchoMsg.blockId;
                 echoMsg.proposerPriority = aggEchoMsg.proposerPriority;

@@ -266,15 +266,13 @@ namespace ultrainio {
 
         MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA1, 0);
 
-        dlog("ba0Process. start ba1. blockNum = ${blockNum}, isVoter = ${isVoter}.", ("blockNum", getBlockNum())
-                ("isVoter",MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
-
-        dlog("ba0Process voter.hash = ${hash1}",("hash1", ba0Block.id()));
-
-        vote(getBlockNum(),kPhaseBA1,0);
-
         dlog("############## ba0 finish blockNum = ${id}, host_name = ${host_name}",
              ("id", getBlockNum())("host_name", boost::asio::ip::host_name()));
+        dlog("ba0Process voter.hash = ${hash1}",("hash1", ba0Block.id()));
+        dlog("ba0Process. prepare ba1. blockNum = ${blockNum}, isVoter = ${isVoter}.", ("blockNum", getBlockNum())
+                ("isVoter",MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
+
+        vote(getBlockNum(),kPhaseBA1,0);
 
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
@@ -359,7 +357,7 @@ namespace ultrainio {
             //UltrainLog::display_block(ba1_block);
             *blockPtr = ba1Block;
         } else {
-            elog("ba1Process ba1 finish. block is empty. phase ba2 begin.");
+            elog("ba1Process ba1 finish. block is blank. phase ba2 begin.");
             //init();
             //readyToJoin();
             m_phase = kPhaseBA1;
@@ -382,6 +380,7 @@ namespace ultrainio {
     }
 
     void UranusNode::baxProcess() {
+        ilog("In baxProcess");
         Block baxBlock = m_controllerPtr->produceTentativeBlock();
         signed_block_ptr uranus_block = std::make_shared<chain::signed_block>();
 
@@ -411,7 +410,7 @@ namespace ultrainio {
             fastBlock(getBlockNum());
             //join();
         } else {
-            elog("baxProcess.phase bax finish. block is empty.");
+            elog("baxProcess.phase bax finish. block is blank.");
 
             if (INVALID_BLOCK_NUM != isSyncing()) {
                 dlog("baxProcess. syncing begin. m_baxCount = ${count}.", ("count", m_baxCount));

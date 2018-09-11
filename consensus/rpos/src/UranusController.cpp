@@ -185,7 +185,12 @@ namespace ultrainio {
                         return true;
                     }
                 }
-                ev.push_back(echo);
+
+                if (ev.size() < m_maxCommitteeSize) {
+                    ev.emplace_back(echo);
+                } else {
+                    ilog("Size of vector in m_cacheEchoMsgMap exceeds ${mcs}", ("mcs", m_maxCommitteeSize));
+                }
             }
             dlog("next phase echo msg. blockNum = ${id}, phase = ${phase},baxcount = ${baxcount}",
                  ("id", key.blockNum)("phase", (uint32_t) echo.phase)("baxcount",echo.baxCount));
@@ -222,7 +227,13 @@ namespace ultrainio {
                         return true;
                     }
                 }
-                pv.push_back(propose);
+
+                if (pv.size() < m_maxCommitteeSize) {
+                    pv.emplace_back(propose);
+                }
+                else {
+                    wlog("Size of vector in cacheProposeMsgMap exceeds ${mcs}", ("mcs", m_maxCommitteeSize));
+                }
             }
             dlog("next phase propose msg. blockNum = ${id}", ("id", key.blockNum));
             return true;
@@ -266,7 +277,6 @@ namespace ultrainio {
             if (m_echoMsgAllPhase.size() >= m_maxCachedAllPhaseKeys) {
                 dlog("processBeforeMsg.map reach the up limit. size = ${size}",("size",m_echoMsgAllPhase.size()));
                 return true;
-                //clearOldCachedAllPhaseMsg();
             }
             auto result = m_echoMsgAllPhase.insert(make_pair(msg_key, echo_msg_map));
             map_it = result.first;
@@ -1499,7 +1509,6 @@ namespace ultrainio {
 
     void UranusController::moveEchoMsg2AllPhaseMap() {
         if (m_echoMsgAllPhase.size() >= m_maxCachedAllPhaseKeys) {
-            //clearOldCachedAllPhaseMsg();
             wlog("echo all phase msgs exceeds ${max} blockNum: ${b} phase: ${p} baxcount: ${bx}",
                  ("max", m_maxCachedAllPhaseKeys)
                  ("b", UranusNode::getInstance()->getBlockNum())
@@ -1614,34 +1623,6 @@ namespace ultrainio {
                 ++it;
             }
         }
-    }
-
-    void UranusController::clearOldCachedAllPhaseMsg() {
-        if (m_echoMsgAllPhase.empty()) {
-            return;
-        }
-
-        clearMsgCache(m_echoMsgAllPhase, getLastBlocknum());
-        if (m_echoMsgAllPhase.size() < m_maxCachedAllPhaseKeys) {
-            ilog("after clear echo all phase msgs before ${lst}, map size: ${s}", ("lst", getLastBlocknum())("s", m_echoMsgAllPhase.size()));
-            return;
-        }
-
-        msgkey key = m_echoMsgAllPhase.begin()->first;
-        key.phase = std::numeric_limits<uint16_t>::max();
-        for (auto &it : m_echoMsgAllPhase) {
-            if (it.first.phase != kPhaseBA1 && it.first.phase < key.phase) {
-                key.phase = it.first.phase;
-            }
-        }
-
-        wlog("m_echoMsgAllPhase exceeds ${max}, echo all phase msgs with block num ${num} and phase ${p} will be cleared",
-             ("max", m_maxCachedAllPhaseKeys)("num", key.blockNum)("p", key.phase));
-        auto itor = m_echoMsgAllPhase.find(key);
-        if (itor != m_echoMsgAllPhase.end()) {
-            m_echoMsgAllPhase.erase(itor);
-        }
-        ilog("after clear echo all phase msgs, map size: ${s}", ("s", m_echoMsgAllPhase.size()));
     }
 
     bool UranusController::isEmpty(const BlockIdType& blockId) {

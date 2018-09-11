@@ -164,8 +164,6 @@ namespace ultrainio {
 
         void clearOldCachedEchoMsg();
 
-        void clearOldCachedAllPhaseMsg();
-
         bool isBlank(const BlockIdType& blockId);
 
         bool isEmpty(const BlockIdType& blockId);
@@ -204,6 +202,7 @@ namespace ultrainio {
         std::map<msgkey, std::vector<EchoMsg>> m_cacheEchoMsgMap;
         std::map<msgkey, echo_msg_buff> m_echoMsgAllPhase;
         const uint32_t m_maxCachedKeys = 360;
+        const uint32_t m_maxCommitteeSize = 1000; //This is not strict, just to limit cache size.
         const uint32_t m_maxCachedAllPhaseKeys = 100;
         const uint32_t m_maxSyncClients = 10;
         const uint32_t m_maxPacketsOnce = 80;
