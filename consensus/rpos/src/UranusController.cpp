@@ -92,20 +92,21 @@ namespace ultrainio {
                 itor->second.accountPool.push_back(echo.account);
                 itor->second.proofPool.push_back(echo.proof);
                 itor->second.sigPool.push_back(echo.signature);
+                itor->second.timePool.push_back(echo.timestamp);
                 Proof proof(echo.proof);
                 itor->second.totalVoter += voterSysPtr->count(proof, stakes, voterRatio);
             }
         } else {
-            echo_message_info echo_info;
-            echo_info.echo = echo;
-            echo_info.accountPool.push_back(echo.account);
-            echo_info.proofPool.push_back(echo.proof);
-            echo_info.sigPool.push_back(echo.signature);
-            echo_info.timestamp = echo.timestamp;
-            echo_info.hasSend = true;
+            echo_message_info echoMessageInfo;
+            echoMessageInfo.echo = echo;
+            echoMessageInfo.accountPool.push_back(echo.account);
+            echoMessageInfo.proofPool.push_back(echo.proof);
+            echoMessageInfo.sigPool.push_back(echo.signature);
+            echoMessageInfo.timePool.push_back(echo.timestamp);
+            echoMessageInfo.hasSend = true;
             Proof proof(echo.proof);
-            echo_info.totalVoter = voterSysPtr->count(proof, stakes, voterRatio);
-            m_echoMsgMap.insert(make_pair(echo.blockId, echo_info));
+            echoMessageInfo.totalVoter = voterSysPtr->count(proof, stakes, voterRatio);
+            m_echoMsgMap.insert(make_pair(echo.blockId, echoMessageInfo));
         }
         return true;
     }
@@ -302,10 +303,9 @@ namespace ultrainio {
             info.accountPool.push_back(echo.account);
             info.proofPool.push_back(echo.proof);
             info.sigPool.push_back(echo.signature);
+            info.timePool.push_back(echo.timestamp);
             voterSysPtr = MessageManager::getInstance()->getVoterSys(BlockHeader::num_from_id(echo.blockId));
-            if (voterSysPtr == nullptr) {
-                ULTRAIN_ASSERT(false, chain::chain_exception, "voterSysPtr is nullptr.");
-            }
+            ULTRAIN_ASSERT(voterSysPtr, chain::chain_exception, "voterSysPtr is nullptr.");
 
             int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
             double voterRatio = voterSysPtr->getVoterRatio();
@@ -1147,7 +1147,7 @@ namespace ultrainio {
         std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
         aggEchoMsgPtr->blockId = blockPtr->id();
         aggEchoMsgPtr->account = VoterSystem::getMyAccount();
-        aggEchoMsgPtr->proof = std::string(MessageManager::getInstance()->getVoterProof(blockPtr->block_num(), kPhaseBA1, 0));
+        aggEchoMsgPtr->myProposerProof = std::string(MessageManager::getInstance()->getProposerProof(blockPtr->block_num()));
         echo_message_info echoMessageInfo = findEchoMsg(aggEchoMsgPtr->blockId);
         if (echoMessageInfo.empty()) {
             ULTRAIN_ASSERT(false, chain::chain_exception, "can not find blockId's echo list");
@@ -1157,7 +1157,7 @@ namespace ultrainio {
         aggEchoMsgPtr->accountPool = echoMessageInfo.accountPool;
         aggEchoMsgPtr->proofPool = echoMessageInfo.proofPool;
         aggEchoMsgPtr->sigPool = echoMessageInfo.sigPool;
-        aggEchoMsgPtr->timestamp = echoMessageInfo.timestamp;
+        aggEchoMsgPtr->timePool = echoMessageInfo.timePool;
         aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
         aggEchoMsgPtr->baxCount = UranusNode::getInstance()->getBaxCount();
         aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, VoterSystem::getMyPrivateKey()));

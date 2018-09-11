@@ -22,12 +22,12 @@ namespace ultrainio {
         std::vector<AccountName> accountPool;
         std::vector<std::string> proofPool;
         std::vector<std::string> sigPool;
-        uint32_t timestamp;
+        std::vector<uint32_t>    timePool;
         int totalVoter;
         bool hasSend;
 
         echo_message_info() :
-                echo(), accountPool(), proofPool(), sigPool(), timestamp(0), totalVoter(0), hasSend(false) {}
+                echo(), accountPool(), proofPool(), sigPool(), timePool(), totalVoter(0), hasSend(false) {}
 
         bool empty() {
             if (accountPool.size() <= 0) {

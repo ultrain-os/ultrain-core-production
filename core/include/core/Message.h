@@ -59,11 +59,12 @@ namespace ultrainio {
         std::vector<AccountName> accountPool;
         std::vector<std::string> proofPool;
         std::vector<std::string> sigPool;
-        uint32_t timestamp;
+        std::vector<uint32_t> timePool;
         ConsensusPhase phase;
         uint32_t baxCount;
         AccountName account;
-        std::string proof;
+        // the proof of the node which send AggEchoMsg
+        std::string myProposerProof;
     };
 
     struct AggEchoMsg : public UnsignedAggEchoMsg {
@@ -77,5 +78,6 @@ FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature
 FC_REFLECT( ultrainio::SyncRequestMessage, (startBlockNum)(endBlockNum) )
 FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
 FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))
-FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockId)(proposerPriority)(accountPool)(proofPool)(sigPool)(timestamp)(phase)(baxCount)(account)(proof))
+FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockId)(proposerPriority)(accountPool)(proofPool)(sigPool)(timePool)
+                                           (phase)(baxCount)(account)(myProposerProof))
 FC_REFLECT_DERIVED( ultrainio::AggEchoMsg, (ultrainio::UnsignedAggEchoMsg), (signature))

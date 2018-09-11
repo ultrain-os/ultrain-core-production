@@ -105,7 +105,21 @@ namespace ultrainio {
                 elog("verify AggEchoMsg error. account : ${account}", ("account", std::string(aggEchoMsg.account)));
                 return kSignatureError;
             }
-            // TODO(qinxiaofen)verify stake
+            Proof proof(aggEchoMsg.myProposerProof);
+            ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
+            std::string previousHash(blockId.data());
+            Seed seed(previousHash, blockNum, kPhaseBA0, 0);
+            if (!Vrf::verify(publicKey, proof, seed, Vrf::kProposer)) {
+                elog("verify AggEchoMsg proof error. account : ${account}", ("account", std::string(aggEchoMsg.account)));
+                return kFaultProposer;
+            }
+
+            int stakes = voterSysPtr->getStakes(aggEchoMsg.account, UranusNode::getInstance()->getNonProducingNode());
+            double p = voterSysPtr->getProposerRatio();
+            if (voterSysPtr->count(proof, stakes, p) <= 0) {
+                elog("send AggEchoMsg by non Proposer. account : ${account}", ("account", std::string(aggEchoMsg.account)));
+                return kFaultProposer;
+            }
             for (int i = 0; i < aggEchoMsg.accountPool.size(); i++) {
                 EchoMsg echoMsg;
                 echoMsg.blockId = aggEchoMsg.blockId;
@@ -113,10 +127,9 @@ namespace ultrainio {
                 echoMsg.account = aggEchoMsg.accountPool[i];
                 echoMsg.proof = aggEchoMsg.proofPool[i];
                 echoMsg.signature = aggEchoMsg.sigPool[i];
+                echoMsg.timestamp = aggEchoMsg.timePool[i];
                 echoMsg.phase = aggEchoMsg.phase;
                 echoMsg.baxCount = aggEchoMsg.baxCount;
-                echoMsg.timestamp = aggEchoMsg.timestamp;
-                //TODO(qinxiaofen) proof check, tickes check
                 UranusNode::getInstance()->handleMessage(echoMsg);
             }
         }
