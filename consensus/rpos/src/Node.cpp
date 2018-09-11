@@ -276,8 +276,6 @@ namespace ultrainio {
         dlog("############## ba0 finish blockNum = ${id}, host_name = ${host_name}",
              ("id", getBlockNum())("host_name", boost::asio::ip::host_name()));
 
-        LOG_INFO << "checkpoint: blockNum:" << getBlockNum() << ";phase:" << m_phase << ";host_name:"
-                 << boost::asio::ip::host_name() << std::endl;
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
         m_controllerPtr->processCache(msg_key);
@@ -376,10 +374,6 @@ namespace ultrainio {
                      ("head_hash", m_controllerPtr->getPreviousBlockhash()));
         ULTRAIN_ASSERT(blockPtr->id() == m_controllerPtr->getPreviousBlockhash(),
                        chain::chain_exception, "Produced block hash is not expected");
-
-        LOG_INFO << "checkpoint: blockNum:" << getBlockNum() << ";phase:" << m_phase << ";host_name:"
-                 << boost::asio::ip::host_name() << ";block_hash_previous: " << blockPtr->previous << ";txs_hash: "
-                 << blockPtr->id() << std::endl;
         run();
     }
 
@@ -621,7 +615,7 @@ namespace ultrainio {
         app().get_plugin<net_plugin>().send_last_block_num(peer_addr, msg);
     }
 
-    void UranusNode::run() {
+    void UranusNode::run(bool voteFlag) {
         msgkey msg_key;
 
         reset();
@@ -632,7 +626,6 @@ namespace ultrainio {
         ba0Loop(getRoundInterval());
         MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
 
-        LOG_INFO << "start BA0. " << std::endl;
         dlog("start BA0. blockNum = ${blockNum}. isProposer = ${isProposer} and isVoter = ${isVoter}",
              ("blockNum", getBlockNum())("isProposer", MessageManager::getInstance()->isProposer(getBlockNum()))
                      ("isVoter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)));
@@ -640,7 +633,9 @@ namespace ultrainio {
         msg_key.phase = m_phase;
         m_controllerPtr->processCache(msg_key);
 
-        vote(getBlockNum(),kPhaseBA0,0);
+        if (voteFlag) {
+            vote(getBlockNum(), kPhaseBA0, 0);
+        }
         return;
     }
 
@@ -777,7 +772,7 @@ namespace ultrainio {
         if (m_controllerPtr->findEchoCache(msg_key)) {
             fastBa0();
         } else {
-            run();
+            run(false);
             return;
         }
 
@@ -790,7 +785,7 @@ namespace ultrainio {
                 //todo process two phase
                 ba0Process();
             } else {
-                vote(getBlockNum(),kPhaseBA0,0);
+                //vote(getBlockNum(),kPhaseBA0,0);
                 ba0Loop(getRoundInterval());
             }
         }

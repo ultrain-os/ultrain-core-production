@@ -55,7 +55,7 @@ namespace ultrainio {
 
         void readyLoop(uint32_t timeout);
 
-        void run();
+        void run(bool voteFlag = true);
 
         void join();
 

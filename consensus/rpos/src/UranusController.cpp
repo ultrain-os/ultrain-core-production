@@ -438,13 +438,18 @@ namespace ultrainio {
         AccountName myAccount = VoterSystem::getMyAccount();
 
         if (myAccount == propose.block.proposer) {
-            elog("loopback propose. account : ${account}", ("account", std::string(myAccount)));
+            elog("invalid propose. msg loopback. account : ${account}", ("account", std::string(myAccount)));
             return false;
         }
 
         if (propose.block.block_num() != UranusNode::getInstance()->getBlockNum()) {
             elog("invalid propose msg . blockNum = ${id1}. local blockNum = ${id2}",
                  ("id1", propose.block.block_num())("id2", UranusNode::getInstance()->getBlockNum()));
+            return false;
+        }
+
+        if (kPhaseBA0 != UranusNode::getInstance()->getPhase()) {
+            elog("invalid propose. phase = ${phase}", ("phase", uint32_t(UranusNode::getInstance()->getPhase())));
             return false;
         }
 
