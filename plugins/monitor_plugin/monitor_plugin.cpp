@@ -103,8 +103,9 @@ void monitor_plugin_impl::processReportTask() {
     rst.nodeIp = self_endpoint.address().to_v4().to_string();
     auto rsp = call(monitor_central_server, call_path_dynamic, rst);
 
-    if (rsp["result"].is_string()) {
-        if(rsp["result"].as<std::string>() == "Y") {
+
+    if (rsp.is_object() && rsp["result"].is_string()) {
+        if(rsp["result"].as_string() == "Y") {
             sendStaticConfigInfo();
         }
     } else {
@@ -115,6 +116,12 @@ void monitor_plugin_impl::processReportTask() {
     auto exceptionInfo = std::string("exception happened, node not initialized.");
     std::cerr << "Periodic report: " << exceptionInfo << std::endl;
     //call(monitor_central_server, call_path_dynamic, exceptionInfo);
+  }
+  catch(fc::key_not_found_exception& e) {
+      //std::cerr << "Periodic report: fc::key_not_found_exception, " << e.what() << std::endl;
+  }
+  catch(fc::bad_cast_exception& e) {
+      //std::cerr << "Periodic report: fc::bad_cast_exception, " << e.what() << std::endl;
   }
   catch(...) {
     std::cerr << "Periodic report: unknown exception." << std::endl;

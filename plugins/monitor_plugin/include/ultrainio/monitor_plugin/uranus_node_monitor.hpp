@@ -1,7 +1,7 @@
 #pragma once
 
 #include "uranus_controller_monitor.hpp"
-
+#include "runtime_os_info.hpp"
 #include <rpos/Node.h>
 #include <rpos/KeyKeeper.h>
 #include <rpos/VoterSystem.h>
@@ -29,30 +29,34 @@ namespace ultrainio {
     };
 
     struct periodic_report_dynamic_data {
-        std::string nodeIp;
-        uint32_t    blockNum;
-        std::string phase;
-        uint32_t    baxCount;
-        uint32_t    transactionNum;
-        bool        syncing;
-        bool        syncFailed;
-        bool        connected;
-        bool        ready;
-        std::string blockHash;
-        std::string previousBlockHash;
-        std::string ba0BlockTime;
-        std::string ba1BlockTime;
+        std::string  nodeIp;
+        uint32_t     blockNum;
+        std::string  phase;
+        uint32_t     baxCount;
+        uint32_t     transactionNum;
+        std::string  blockProposer;
+        bool         syncing;
+        bool         syncFailed;
+        bool         connected;
+        bool         ready;
+        std::string  blockHash;
+        std::string  previousBlockHash;
+        std::string  ba0BlockTime;
+        std::string  ba1BlockTime;
+        float        cpu;
+        uint32_t     memory;          // kB
+        uint32_t     virtualMemory;   // kB
         std::vector<string> activePeers;
     };
 
      struct periodic_report_static_data {
-        std::string nodeIp;
-        std::string version;
-        bool        nonProducingNode;
-        std::string genesisLeaderPk;
-        std::string genesisLeaderSk;
-        std::string publicKey;
-        std::string privateKey;
+        std::string  nodeIp;
+        std::string  version;
+        bool         nonProducingNode;
+        std::string  genesisLeaderPk;
+        std::string  publicKey;
+        std::string  privateKey;
+        std::string  account;
         std::vector<string> configuredPeers;
     };
 
@@ -90,7 +94,7 @@ namespace ultrainio {
             return tempNodeInfo;
         }
 
-        periodic_report_dynamic_data getReortData() const {
+        periodic_report_dynamic_data getReortData() {
             periodic_report_dynamic_data reportData;
             std::shared_ptr<UranusNode> pNode = m_pNode.lock();
             if (pNode) {
@@ -106,12 +110,31 @@ namespace ultrainio {
                 reportData.blockHash         = chain.head_block_id().str();
                 reportData.previousBlockHash = chain.head_block_state()->prev().str();
                 reportData.transactionNum    = chain.head_block_state()->block->transactions.size(); //trxs.size();
+                reportData.blockProposer     = std::string(chain.head_block_state()->block->proposer);
                 reportData.ba0BlockTime      = m_ba0BlockTime;
                 reportData.ba1BlockTime      = m_ba1BlockTime;
+                reportData.memory            = m_perfMonitor.get_proc_mem();
+                reportData.virtualMemory     = m_perfMonitor.get_proc_virtualmem();
+
+                uint64_t currentTotalCpu     = m_perfMonitor.get_cpu_total_occupy();
+                uint64_t currentMyCpu        = m_perfMonitor.get_cpu_proc_occupy();
+                if(m_lastTotalCpu == 0 && m_lastMyCpu == 0) {
+                    reportData.cpu = 0;
+                }
+                else {
+                    if(currentTotalCpu - m_lastTotalCpu > 0) {
+                        reportData.cpu = 100.0f * float(currentMyCpu - m_lastMyCpu) / float(currentTotalCpu - m_lastTotalCpu);
+                    }
+                    else {
+                        reportData.cpu = 0;
+                    }
+                }
+                m_lastTotalCpu = currentTotalCpu;
+                m_lastMyCpu = currentMyCpu;
 
                 vector<connection_status> connectionsStatus = appbase::app().get_plugin<net_plugin>().connections();
                 for (const auto& connectStatus : connectionsStatus) {
-                    if(connectStatus.connecting) {   //only report connected peers
+                    if(!connectStatus.connecting) {   //only report connected peers
                         reportData.activePeers.push_back(connectStatus.peer);
                     }
                 }
@@ -127,9 +150,9 @@ namespace ultrainio {
                 staticConfig.version           = version;
                 staticConfig.nonProducingNode  = pNode->getNonProducingNode();
                 staticConfig.genesisLeaderPk   = std::string(Config::GENESIS_LEADER_PK);
-                staticConfig.genesisLeaderSk   = std::string(); // TODO
                 staticConfig.publicKey         = std::string(VoterSystem::getMyPrivateKey().getPublicKey());
                 staticConfig.privateKey        = std::string(VoterSystem::getMyPrivateKey());
+                staticConfig.account           = std::string(VoterSystem::getMyAccount());
             }
             return staticConfig;
         }
@@ -169,10 +192,14 @@ namespace ultrainio {
         std::string phaseStr[4];
         std::string m_ba0BlockTime;
         std::string m_ba1BlockTime;
+        PerformanceMonitor m_perfMonitor;
+        uint64_t    m_lastTotalCpu;
+        uint64_t    m_lastMyCpu;
     };
 }
 
-FC_REFLECT( ultrainio::periodic_report_dynamic_data, (nodeIp)(blockNum)(phase)(baxCount)(transactionNum)(syncing)(syncFailed)(connected)
-                                                     (ready)(blockHash)(previousBlockHash)(ba0BlockTime)(ba1BlockTime)(activePeers) )
-FC_REFLECT( ultrainio::periodic_report_static_data, (nodeIp)(version)(nonProducingNode)(genesisLeaderPk)(genesisLeaderSk)(publicKey)
-                                                    (privateKey)(configuredPeers) )
+FC_REFLECT( ultrainio::periodic_report_dynamic_data, (nodeIp)(blockNum)(phase)(baxCount)(transactionNum)(blockProposer)(syncing)
+                                                     (syncFailed)(connected)(ready)(blockHash)(previousBlockHash)(ba0BlockTime)
+                                                     (ba1BlockTime)(cpu)(memory)(virtualMemory)(activePeers) )
+FC_REFLECT( ultrainio::periodic_report_static_data, (nodeIp)(version)(nonProducingNode)(genesisLeaderPk)(publicKey)
+                                                    (privateKey)(account)(configuredPeers) )
