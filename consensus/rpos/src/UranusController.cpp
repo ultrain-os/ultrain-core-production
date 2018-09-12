@@ -892,7 +892,7 @@ namespace ultrainio {
                 auto block_timestamp = chain.get_proper_next_block_timestamp();
                 ilog("initProposeMsg: start block at ${time} and block_timestamp is ${timestamp}",
                      ("time", fc::time_point::now())("timestamp", block_timestamp));
-                chain.start_block(block_timestamp, 0);
+                chain.start_block(block_timestamp);
             }
 
             // TODO(yufengshen): We have to cap the block size, cpu/net resource when packing a block.
@@ -925,7 +925,6 @@ namespace ultrainio {
             block.proposer = VoterSystem::getMyAccount();
             block.proposerProof = std::string(MessageManager::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()));
             block.version = 0;
-            block.confirmed = 1;
             block.previous = bh.previous;
             block.transaction_mroot = bh.transaction_mroot;
             block.action_mroot = bh.action_mroot;
@@ -936,12 +935,11 @@ namespace ultrainio {
                  ("proposer", std::string(block.proposer))
                  ("signature", block.signature));
             /*
-              ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${c} ${prv} ${ma} ${mt} ${id}",
+              ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${prv} ${ma} ${mt} ${id}",
               ("t", block.timestamp)
               ("pk", block.proposerPk)
               ("pf", block.proposerProof)
               ("v", block.version)
-              ("c", block.confirmed)
               ("prv", block.previous)
               ("ma", block.transaction_mroot)
               ("mt", block.action_mroot)
@@ -1204,7 +1202,7 @@ namespace ultrainio {
         // Here is the hack, we are actually using the template of ba0_block, but we don't use
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
         // e.g. pk, proof, producer.
-        chain.start_block(block.timestamp, block.confirmed);
+        chain.start_block(block.timestamp);
         chain::block_state_ptr pbs = chain.pending_block_state_hack();
         chain::signed_block_ptr bp = pbs->block;
         chain::signed_block_header *hp = &(pbs->header);
@@ -1213,7 +1211,6 @@ namespace ultrainio {
         bp->proposerProof = block.proposerProof;
         hp->proposer = block.proposer;
         hp->proposerProof = block.proposerProof;
-        bp->confirmed = block.confirmed;
         auto start_timestamp = fc::time_point::now();
         try {
             for (int i = 0; i < block.transactions.size(); i++) {
@@ -1283,7 +1280,7 @@ namespace ultrainio {
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
         // e.g. pk, proof, producer.
         try {
-            chain.start_block(block.timestamp, block.confirmed);
+            chain.start_block(block.timestamp);
             chain::block_state_ptr pbs = chain.pending_block_state_hack();
             chain::signed_block_ptr bp = pbs->block;
             chain::signed_block_header *hp = &(pbs->header);
@@ -1291,7 +1288,6 @@ namespace ultrainio {
             bp->proposerProof = block.proposerProof;
             hp->proposer = block.proposer;
             hp->proposerProof = block.proposerProof;
-            bp->confirmed = block.confirmed;
             m_currentPreRunBa0TrxIndex = 0;
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
@@ -1639,7 +1635,7 @@ namespace ultrainio {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.abort_block();
         auto block_timestamp = chain.head_block_time() + fc::milliseconds(10000);
-        chain.start_block(block_timestamp, 0);
+        chain.start_block(block_timestamp);
 
         chain.set_action_merkle_hack();
         // empty block does not have trx, so we don't need this?
@@ -1649,7 +1645,6 @@ namespace ultrainio {
         const auto &bh = pbs->header;
         blockPtr->timestamp = bh.timestamp;
         blockPtr->previous = bh.previous;
-        blockPtr->confirmed = 1;
         blockPtr->previous = bh.previous;
         blockPtr->transaction_mroot = bh.transaction_mroot;
         blockPtr->action_mroot = bh.action_mroot;

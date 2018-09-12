@@ -89,12 +89,11 @@ abi_def ultrainio_contract_abi(const abi_def& ultrainio_system_abi)
    ultrain_abi.structs.emplace_back( struct_def {
       "block_header", "", {
          {"timestamp", "uint32"},
-         {"producer", "account_name"},
+         {"proposer", "account_name"},
          {"confirmed", "uint16"},
          {"previous", "block_id_type"},
          {"transaction_mroot", "checksum256"},
          {"action_mroot", "checksum256"},
-         {"schedule_version", "uint32"},
          {"new_producers", "producer_schedule?"},
          {"header_extensions", "extension[]"}
       }

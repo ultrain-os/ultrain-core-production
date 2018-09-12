@@ -253,7 +253,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
            auto block_timestamp = chain.get_proper_next_block_timestamp();
            ilog("on_transaction: start block at ${time} and block_timestamp is ${timestamp}",
                 ("time", fc::time_point::now())("timestamp", block_timestamp));
-           chain.start_block(block_timestamp, 0);
+           chain.start_block(block_timestamp);
            // non-producing node does not seem to have a good way to clear dead unapplied trx queue.
            chain.clear_unapplied_transaction();
        }

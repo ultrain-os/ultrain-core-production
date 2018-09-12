@@ -218,7 +218,7 @@ namespace ultrainio { namespace testing {
       }
 
       control->abort_block();
-      control->start_block( block_time, head_block_number - last_produced_block_num );
+      control->start_block( block_time );
    }
 
 

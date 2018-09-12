@@ -43,9 +43,6 @@ namespace ultrainio { namespace chain {
     }
     result.header.timestamp                                = when;
     result.header.previous                                 = id;
-    // TODO -- yufengshen -- check this
-    //    result.header.schedule_version                         = active_schedule.version;
-    result.header.schedule_version                         = 0;
 
     auto prokey                                            = get_scheduled_producer(when);
     result.block_signing_key                               = prokey.block_signing_key;
@@ -149,19 +146,14 @@ namespace ultrainio { namespace chain {
     ULTRAIN_ASSERT( h.timestamp > header.timestamp, block_validate_exception, "block must be later in time" );
     ULTRAIN_ASSERT( h.previous == id, unlinkable_block_exception, "block must link to current state" );
     auto result = generate_next( h.timestamp );
-    ULTRAIN_ASSERT( result.header.schedule_version == h.schedule_version, producer_schedule_exception, "schedule_version in signed block is corrupted" );
-
-    //    auto itr = producer_to_last_produced.find(h.producer);
-    //    if( itr != producer_to_last_produced.end() ) {
-    //       FC_ASSERT( itr->second < result.block_num - h.confirmed, "producer ${prod} double-confirming known range", ("prod", h.producer) );
-    //    }
 
     // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mismatch block merkle root" );
 
      /// below this point is state changes that cannot be validated with headers alone, but never-the-less,
      /// must result in header state changes
 
-    result.set_confirmed( h.confirmed );
+    // TODO(yufengshen) : always confirming 1 for now.
+    result.set_confirmed(1);
 
     auto was_pending_promoted = result.maybe_promote_pending();
 
@@ -177,10 +169,10 @@ namespace ultrainio { namespace chain {
     result.header.proposerProof      = h.proposerProof;
     result.id                        = result.header.id();
     /*
-    ilog("----block_header_state::next ${time} ${pro} ${bn} ${prev} ${tx_mroot} ${action_mroot} ${hash} ${s_ver} ${confirm} ${ver} ${producer}",
+    ilog("----block_header_state::next ${time} ${pro} ${bn} ${prev} ${tx_mroot} ${action_mroot} ${hash}  ${ver} ${producer}",
 	 ("time",result.header.timestamp)("pro", result.header.producer) ("bn", result.header.block_num())
 	 ("prev", result.header.previous)("tx_mroot",result.header.transaction_mroot)("action_mroot",result.header.action_mroot)
-	 ("s_ver",result.header.schedule_version)("confirm",result.header.confirmed)("ver", result.header.version)
+	 ("ver", result.header.version)
 	 ("producer", (bool)(result.header.new_producers))
 	 ("hash",result.header.id()));
 
@@ -204,7 +196,6 @@ namespace ultrainio { namespace chain {
         std::cerr << "confirm_count["<<i<<"] = " << int(confirm_count[i]) << "\n";
      }
      */
-     header.confirmed = num_prev_blocks;
 
      int32_t i = (int32_t)(confirm_count.size() - 1);
      uint32_t blocks_to_confirm = num_prev_blocks + 1; /// confirm the head block too

@@ -905,7 +905,7 @@ struct controller_impl {
    } /// push_transaction
 
 
-   void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s ) {
+   void start_block( block_timestamp_type when, controller::block_status s ) {
       ULTRAIN_ASSERT( !pending, block_validate_exception, "pending block is not available" );
 
       ULTRAIN_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
@@ -922,7 +922,8 @@ struct controller_impl {
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
-      pending->_pending_block_state->set_confirmed(confirm_block_count);
+      // TODO(yufengshen) : always confirming 1 for now.
+      pending->_pending_block_state->set_confirmed(1);
 
       auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
 
@@ -986,7 +987,7 @@ struct controller_impl {
    void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
          ULTRAIN_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
-         start_block( b->timestamp, b->confirmed, s );
+         start_block( b->timestamp, s );
 
          // We have to copy here.
          chain::signed_block_header* hp = &(pending->_pending_block_state->header);
@@ -1250,12 +1251,11 @@ struct controller_impl {
 
 
       /*
-      ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
+      ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
             ("n",pending->_pending_block_state->block_num)
             ("id",pending->_pending_block_state->header.id())
             ("t",pending->_pending_block_state->header.timestamp)
             ("signing_key", pending->_pending_block_state->block_signing_key)
-            ("v",pending->_pending_block_state->header.schedule_version)
             ("lib",pending->_pending_block_state->dpos_irreversible_blocknum)
             ("ndtrxs",db.get_index<generated_transaction_multi_index,by_trx_id>().size())
             ("np",pending->_pending_block_state->header.new_producers)
@@ -1279,12 +1279,11 @@ struct controller_impl {
       auto p = pending->_pending_block_state;
       p->id = p->header.id();
       /*
-      ilog("----------finalize block current header is ${t} ${p} ${pk} ${pf} ${v} ${c} ${prv} ${ma} ${mt} ${id}",
+      ilog("----------finalize block current header is ${t} ${p} ${pk} ${pf} ${v} ${prv} ${ma} ${mt} ${id}",
 	   ("t", p->header.timestamp)
 	   ("pk", p->header.proposerPk)
 	   ("pf", p->header.proposerProof)
 	   ("v", p->header.version)
-	   ("c", p->header.confirmed)
 	   ("prv", p->header.previous)
 	   ("ma", p->header.transaction_mroot)
 	   ("mt", p->header.action_mroot)
@@ -1505,9 +1504,9 @@ chainbase::database& controller::db()const { return my->db; }
 fork_database& controller::fork_db()const { return my->fork_db; }
 
 
-void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {
+void controller::start_block( block_timestamp_type when) {
    validate_db_available_size();
-   my->start_block(when, confirm_block_count, block_status::incomplete );
+   my->start_block(when, block_status::incomplete );
 }
 
 void controller::finalize_block() {
