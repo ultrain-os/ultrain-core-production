@@ -351,7 +351,7 @@ def resourceTransaction(fromacc,recacc,value):
     assert j["net_weight"] == 4950/value*10000,'undelegate account:'+recacc+' net_weight:'+str(j["net_weight"])+'!='+str(4950/value*10000)
     assert j["cpu_weight"] == 4940/value*10000,'undelegate account:'+recacc+' cpu_weight:'+str(j["cpu_weight"])+'!='+str(4940/value*10000)
     retry(args.clultrain + 'system buyram  %s  %s  "%s SYS"  '  % (fromacc,recacc,50000/value))
-    sleep(2) 
+    sleep(2)
     retry(args.clultrain + 'transfer  %s  %s  "%s SYS" '  % (fromacc,recacc,20000/value))
     sleep(25)
     j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
@@ -442,7 +442,7 @@ parser.add_argument('--genesis', metavar='', help="Path to genesis.json", defaul
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
 parser.add_argument('--symbol', metavar='', help="The utrio.system symbol", default='SYS')
-parser.add_argument('--num-producers', metavar='', help="Number of producers to register", type=int, default=7, dest="num_producers")
+parser.add_argument('--num-producers', metavar='', help="Number of producers to register", type=int, default=6, dest="num_producers")
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
 
