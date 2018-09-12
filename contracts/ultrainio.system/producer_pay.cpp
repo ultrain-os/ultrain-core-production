@@ -38,7 +38,7 @@ namespace ultrainiosystem {
       if ( prod != _producers.end() ) {
 	 /** TODO: blocks_per_day is for testing; remind to remove it */
 	 //int temp = 2*(tapos_block_num()+1)/(int)blocks_per_year;
-	 int temp = 24*(tapos_block_num()+1)/(int)blocks_per_day;
+	 int temp = 24*6*(tapos_block_num()+1)/(int)blocks_per_day;
          const int interval = temp < num_rate ? temp:(num_rate-1);
          _gstate.total_unpaid_blocks[interval]++;
          _producers.modify( prod, 0, [&](auto& p ) {
