@@ -8,7 +8,6 @@
 
 #include <fc/log/logger.hpp>
 
-#include <log/Log.h>
 #include <rpos/Genesis.h>
 #include <rpos/MessageBuilder.h>
 #include <rpos/MessageManager.h>
@@ -85,7 +84,6 @@ namespace ultrainio {
 
     void UranusNode::readyToConnect() {
         m_connected = true;
-        LOG_INFO << "ready_to_connect time = " << 6 * MAX_ROUND_SECONDS << std::endl;
         readyLoop(6 * MAX_ROUND_SECONDS);
     }
 
@@ -119,25 +117,20 @@ namespace ultrainio {
             pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(Genesis::s_time - current_time);
 
             if (pass_time_to_genesis.count() > MAX_ROUND_SECONDS) {
-                LOG_INFO << "ready_loop timer = 10. interval = " << pass_time_to_genesis.count() << std::endl;
                 readyLoop(MAX_ROUND_SECONDS);
             } else if (pass_time_to_genesis.count() == 0) {
                 m_ready = true;
-                LOG_INFO << "genesis block " << std::endl;
                 run();
             } else {
-                LOG_INFO << "ready_loop timer =  " << pass_time_to_genesis.count() << std::endl;
                 readyLoop(pass_time_to_genesis.count());
             }
         } else if (Genesis::s_time == current_time) {
             m_ready = true;
-            LOG_INFO << "genesis block " << std::endl;
             run();
         } else {
             pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
             if (pass_time_to_genesis.count() == 0) {
                 m_ready = true;
-                LOG_INFO << "genesis block " << std::endl;
                 run();
             } else {
                 m_phase = kPhaseInit;

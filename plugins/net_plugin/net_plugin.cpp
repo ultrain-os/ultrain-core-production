@@ -30,7 +30,6 @@
 #include <boost/intrusive/set.hpp>
 
 #include <random>
-#include <log/Log.h>
 #include <rpos/MessageManager.h>
 
 using namespace ultrainio::chain::plugin_interface::compat;

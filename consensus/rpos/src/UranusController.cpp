@@ -21,7 +21,6 @@
 #include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/config.hpp>
 
-#include <log/Log.h>
 #include <rpos/MessageBuilder.h>
 #include <rpos/MessageManager.h>
 #include <rpos/Node.h>

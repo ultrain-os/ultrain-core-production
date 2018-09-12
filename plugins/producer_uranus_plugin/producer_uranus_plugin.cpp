@@ -30,7 +30,6 @@
 #include <boost/signals2/connection.hpp>
 
 #include <rpos/Node.h>
-#include <log/Log.h>
 
 namespace bmi = boost::multi_index;
 using bmi::indexed_by;
@@ -541,7 +540,6 @@ void producer_uranus_plugin::plugin_startup()
    }
 
    ilog("producer plugin:  plugin_startup() begin");
-   ultrainio::UltrainLog::init("./log");
 
    std::shared_ptr<UranusNode> nodePtr = UranusNode::initAndGetInstance(app().get_io_service());
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
