@@ -44,8 +44,6 @@ namespace ultrainio { namespace chain {
          block_state_ptr add( block_state_ptr next_block );
          void            remove( const block_id_type& id );
 
-         void            add( const header_confirmation& c );
-
          const block_state_ptr& head()const;
 
          /**

@@ -202,7 +202,6 @@ namespace ultrainio {
       void irreversible_block(const block_state_ptr&);
       void accepted_transaction(const transaction_metadata_ptr&);
       void applied_transaction(const transaction_trace_ptr&);
-      void accepted_confirmation(const header_confirmation&);
 
       void transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>&);
 
@@ -2561,10 +2560,6 @@ namespace ultrainio {
       fc_dlog(logger,"signaled, id = ${id}",("id", txn->id));
    }
 
-   void net_plugin_impl::accepted_confirmation(const header_confirmation& head) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", head.block_id));
-   }
-
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>& results) {
       transaction_id_type id = results.second->id();
       if (results.first) {
@@ -2866,7 +2861,6 @@ namespace ultrainio {
          cc.irreversible_block.connect( boost::bind(&net_plugin_impl::irreversible_block, my.get(), _1));
          cc.accepted_transaction.connect( boost::bind(&net_plugin_impl::accepted_transaction, my.get(), _1));
          cc.applied_transaction.connect( boost::bind(&net_plugin_impl::applied_transaction, my.get(), _1));
-         cc.accepted_confirmation.connect( boost::bind(&net_plugin_impl::accepted_confirmation, my.get(), _1));
       }
 
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));

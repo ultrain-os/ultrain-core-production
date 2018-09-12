@@ -949,10 +949,6 @@ namespace ultrainio {
               auto signature_provider_itr = _signature_providers.find( pbs->block_signing_key );
               FC_ASSERT(signature_provider_itr != _signature_providers.end(), "Attempting to produce a block for which we don't have the private key");
               //idump( (fc::time_point::now() - chain.pending_block_time()) );
-              chain.sign_block( [&]( const digest_type& d ) {
-              auto debug_logger = maybe_make_debug_time_logger();
-              return signature_provider_itr->second(d);
-              } );
             */
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
@@ -1378,7 +1374,7 @@ namespace ultrainio {
             if (IsBa0TheRightBlock(b, block)) {
                 ilog("------ Finish voter pre-running ba0 block");
                 chain.finalize_block();
-                chain.sign_block([&](const chain::digest_type &d) { return b.producer_signature; });
+                chain.assign_header_to_block();
                 chain.commit_block();
                 needs_push_whole_block = false;
                 // No need to check trx/action_mroot, it was already verified in verifyBa0Block();
@@ -1420,7 +1416,7 @@ namespace ultrainio {
                     ULTRAIN_ASSERT(pbs->header.transaction_mroot == block->transaction_mroot,
                                    chain::chain_exception,
                                    "Pre-run Ba0 block not generating expected transaction_mroot");
-                    chain.sign_block([&](const chain::digest_type &d) { return b.producer_signature; });
+                    chain.assign_header_to_block();
                     chain.commit_block();
                     needs_push_whole_block = false;
                 } catch (const fc::exception &e) {

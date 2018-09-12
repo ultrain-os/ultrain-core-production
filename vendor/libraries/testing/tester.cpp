@@ -196,9 +196,9 @@ namespace ultrainio { namespace testing {
 
 
       control->finalize_block();
-      control->sign_block( [&]( digest_type d ) {
-                    return priv_key.sign(d);
-                    });
+      //      control->sign_block( [&]( digest_type d ) {
+      //                    return priv_key.sign(d);
+      //                    });
 
       control->commit_block();
       //      last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;

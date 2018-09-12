@@ -86,51 +86,6 @@ namespace ultrainio { namespace chain {
     return result;
   } /// generate_next
 
-   bool block_header_state::maybe_promote_pending() {
-      if( pending_schedule.producers.size() &&
-          dpos_irreversible_blocknum >= pending_schedule_lib_num )
-      {
-         active_schedule = move( pending_schedule );
-
-         flat_map<account_name,uint32_t> new_producer_to_last_produced;
-         for( const auto& pro : active_schedule.producers ) {
-            auto existing = producer_to_last_produced.find( pro.producer_name );
-            if( existing != producer_to_last_produced.end() ) {
-               new_producer_to_last_produced[pro.producer_name] = existing->second;
-            } else {
-               new_producer_to_last_produced[pro.producer_name] = dpos_irreversible_blocknum;
-            }
-         }
-
-         flat_map<account_name,uint32_t> new_producer_to_last_implied_irb;
-         for( const auto& pro : active_schedule.producers ) {
-            auto existing = producer_to_last_implied_irb.find( pro.producer_name );
-            if( existing != producer_to_last_implied_irb.end() ) {
-               new_producer_to_last_implied_irb[pro.producer_name] = existing->second;
-            } else {
-               new_producer_to_last_implied_irb[pro.producer_name] = dpos_irreversible_blocknum;
-            }
-         }
-
-         producer_to_last_produced = move( new_producer_to_last_produced );
-         producer_to_last_implied_irb = move( new_producer_to_last_implied_irb);
-
-         return true;
-      }
-      return false;
-   }
-
-  void block_header_state::set_new_producers( producer_schedule_type pending ) {
-      ULTRAIN_ASSERT( pending.version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified" );
-      ULTRAIN_ASSERT( pending_schedule.producers.size() == 0, producer_schedule_exception,
-                 "cannot set new pending producers until last pending is confirmed" );
-      header.new_producers     = move(pending);
-      pending_schedule_hash    = digest_type::hash( *header.new_producers );
-      pending_schedule         = *header.new_producers;
-      pending_schedule_lib_num = block_num;
-  }
-
-
   /**
    *  Transitions the current header state into the next header state given the supplied signed block header.
    *
@@ -155,17 +110,9 @@ namespace ultrainio { namespace chain {
     // TODO(yufengshen) : always confirming 1 for now.
     result.set_confirmed(1);
 
-    auto was_pending_promoted = result.maybe_promote_pending();
-
-    if( h.new_producers ) {
-      ULTRAIN_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
-      result.set_new_producers( *h.new_producers );
-    }
-
     result.header.action_mroot       = h.action_mroot;
     result.header.transaction_mroot  = h.transaction_mroot;
-    result.header.producer_signature = h.producer_signature;
-    result.header.proposer         = h.proposer;
+    result.header.proposer           = h.proposer;
     result.header.proposerProof      = h.proposerProof;
     result.id                        = result.header.id();
     /*
@@ -226,29 +173,5 @@ namespace ultrainio { namespace chain {
      auto header_bmroot = digest_type::hash( std::make_pair( header.digest(), blockroot_merkle.get_root() ) );
      return digest_type::hash( std::make_pair(header_bmroot, pending_schedule_hash) );
   }
-
-  void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer ) {
-     auto d = sig_digest();
-     // xiaofen sign
-     // header.producer_signature = signer( d );
-     // ULTRAIN_ASSERT( block_signing_key == fc::crypto::public_key( header.producer_signature, d ), wrong_signing_key, "block is signed with unexpected key" );
-  }
-
-  public_key_type block_header_state::signee()const {
-    return fc::crypto::public_key( header.producer_signature, sig_digest(), true );
-  }
-
-  void block_header_state::add_confirmation( const header_confirmation& conf ) {
-     for( const auto& c : confirmations )
-        ULTRAIN_ASSERT( c.producer != conf.producer, producer_double_confirm, "block already confirmed by this producer" );
-
-     auto key = active_schedule.get_producer_key( conf.producer );
-     ULTRAIN_ASSERT( key != public_key_type(), producer_not_in_schedule, "producer not in current schedule" );
-     auto signer = fc::crypto::public_key( conf.producer_signature, sig_digest(), true );
-     ULTRAIN_ASSERT( signer == key, wrong_signing_key, "confirmation not signed by expected key" );
-
-     confirmations.emplace_back( conf );
-  }
-
 
 } } /// namespace ultrainio::chain

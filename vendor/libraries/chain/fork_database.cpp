@@ -110,7 +110,7 @@ namespace ultrainio { namespace chain {
 
    void fork_database::set( block_state_ptr s ) {
       auto result = my->index.insert( s );
-      ULTRAIN_ASSERT( s->id == s->header.id(), fork_database_exception, 
+      ULTRAIN_ASSERT( s->id == s->header.id(), fork_database_exception,
                   "block state id (${id}) is different from block state header id (${hid})", ("id", string(s->id))("hid", string(s->header.id())) );
 
          //FC_ASSERT( s->block_num == s->header.block_num() );
@@ -187,8 +187,8 @@ namespace ultrainio { namespace chain {
          result.second.push_back(second_branch);
          first_branch = get_block( first_branch->header.previous );
          second_branch = get_block( second_branch->header.previous );
-         ULTRAIN_ASSERT( first_branch && second_branch, fork_db_block_not_found, 
-                     "either block ${fid} or ${sid} does not exist", 
+         ULTRAIN_ASSERT( first_branch && second_branch, fork_db_block_not_found,
+                     "either block ${fid} or ${sid} does not exist",
                      ("fid", string(first_branch->header.previous))("sid", string(second_branch->header.previous)) );
       }
 
@@ -286,17 +286,6 @@ namespace ultrainio { namespace chain {
       if( nitr == numidx.end() || (*nitr)->block_num != n || (*nitr)->in_current_chain != true )
          return block_state_ptr();
       return *nitr;
-   }
-
-   void fork_database::add( const header_confirmation& c ) {
-      auto b = get_block( c.block_id );
-      ULTRAIN_ASSERT( b, fork_db_block_not_found, "unable to find block id ${id}", ("id",c.block_id));
-      b->add_confirmation( c );
-
-      if( b->bft_irreversible_blocknum < b->block_num &&
-         b->confirmations.size() > ((b->active_schedule.producers.size() * 2) / 3) ) {
-         set_bft_irreversible( c.block_id );
-      }
    }
 
    /**

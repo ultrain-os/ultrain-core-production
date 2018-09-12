@@ -132,18 +132,11 @@ namespace ultrainio { namespace chain {
          transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
 
          void finalize_block();
-         void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
+         void assign_header_to_block();
          void commit_block();
          void pop_block();
 
          void push_block( const signed_block_ptr& b, block_status s = block_status::complete );
-
-         /**
-          * Call this method when a producer confirmation is received, this might update
-          * the last bft irreversible block and/or cause a switch of forks
-          */
-         void push_confirmation( const header_confirmation& c );
-
 
          void register_event(const std::string& account, const std::string& post_url);
          void unregister_event(const std::string& account, const std::string& post_url);
@@ -241,7 +234,6 @@ namespace ultrainio { namespace chain {
          signal<void(const block_state_ptr&)>          irreversible_block;
          signal<void(const transaction_metadata_ptr&)> accepted_transaction;
          signal<void(const transaction_trace_ptr&)>    applied_transaction;
-         signal<void(const header_confirmation&)>      accepted_confirmation;
          signal<void(const int&)>                      bad_alloc;
 
          /*

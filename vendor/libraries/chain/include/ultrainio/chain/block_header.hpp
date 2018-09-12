@@ -30,14 +30,7 @@ namespace ultrainio { namespace chain {
 
    struct signed_block_header : public block_header
    {
-      signature_type    producer_signature;
       std::string       signature;
-   };
-
-   struct header_confirmation {
-      block_id_type   block_id;
-      account_name    producer;
-      signature_type  producer_signature;
    };
 
 } } /// namespace ultrainio::chain
@@ -47,5 +40,4 @@ FC_REFLECT(ultrainio::chain::block_header,
            (previous)(transaction_mroot)(action_mroot)
            (new_producers)(header_extensions))
 
-FC_REFLECT_DERIVED(ultrainio::chain::signed_block_header, (ultrainio::chain::block_header), (producer_signature)(signature))
-FC_REFLECT(ultrainio::chain::header_confirmation,  (block_id)(producer)(producer_signature) )
+FC_REFLECT_DERIVED(ultrainio::chain::signed_block_header, (ultrainio::chain::block_header), (signature))

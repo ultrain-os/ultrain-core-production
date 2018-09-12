@@ -925,32 +925,8 @@ struct controller_impl {
       // TODO(yufengshen) : always confirming 1 for now.
       pending->_pending_block_state->set_confirmed(1);
 
-      auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
-
       //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
-
-         const auto& gpo = db.get<global_property_object>();
-         if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
-             ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
-             pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
-             !was_pending_promoted // ... and not just because it was promoted to active at the start of this block, then:
-         )
-            {
-               // Promote proposed schedule to pending schedule.
-               if( !replaying ) {
-                  ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-                        ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
-                        ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
-                        ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
-               }
-               pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
-               db.modify( gpo, [&]( auto& gp ) {
-                     gp.proposed_schedule_block_num = optional<block_num_type>();
-                     gp.proposed_schedule.clear();
-                  });
-            }
-
          try {
             auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
             auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
@@ -975,16 +951,12 @@ struct controller_impl {
    } // start_block
 
 
-
-   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback  ) {
+   void assign_header_to_block() {
       auto p = pending->_pending_block_state;
-
-      p->sign( signer_callback );
-
       static_cast<signed_block_header&>(*p->block) = p->header;
-   } /// sign_block
+   } /// assign_header_to_block
 
-   void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
+    void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
          ULTRAIN_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
          start_block( b->timestamp, s );
@@ -1034,7 +1006,9 @@ struct controller_impl {
          ULTRAIN_ASSERT(b->id() == pending->_pending_block_state->header.id(),
                    block_validate_exception, "Block ID does not match",
                    ("producer_block_id",b->id())("validator_block_id",pending->_pending_block_state->header.id()));
-	 sign_block( [&]( const auto& ){ return b->producer_signature; } ); //trust );
+
+         assign_header_to_block();
+
          // We need to fill out the pending block state's block because that gets serialized in the reversible block log
          // in the future we can optimize this by serializing the original and not the copy
 
@@ -1042,7 +1016,6 @@ struct controller_impl {
          //   - prior to apply_block, we call fork_db.add which does a signature check IFF the block is untrusted
          //   - OTHERWISE the block is trusted and therefore we trust that the signature is valid
          // Also, as ::sign_block does not lazily calculate the digest of the block, we can just short-circuit to save cycles
-         pending->_pending_block_state->header.producer_signature = b->producer_signature;
          static_cast<signed_block_header&>(*pending->_pending_block_state->block) =  pending->_pending_block_state->header;
 
          commit_block(false);
@@ -1075,14 +1048,6 @@ struct controller_impl {
       } FC_LOG_AND_RETHROW( )
    }
 
-   void push_confirmation( const header_confirmation& c ) {
-      ULTRAIN_ASSERT(!pending, block_validate_exception, "it is not valid to push a confirmation when there is a pending block");
-      fork_db.add( c );
-      emit( self.accepted_confirmation, c );
-      if ( read_mode != db_read_mode::IRREVERSIBLE ) {
-         maybe_switch_forks();
-      }
-  }
    void register_event(const std::string& account, const std::string& post_url) {
       auto it = registered_event_map.find(account);
       if (it == registered_event_map.end())
@@ -1514,8 +1479,8 @@ void controller::finalize_block() {
    my->finalize_block();
 }
 
-void controller::sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
-   my->sign_block( signer_callback );
+void controller::assign_header_to_block() {
+   my->assign_header_to_block();
 }
 
 void controller::commit_block() {
@@ -1532,11 +1497,6 @@ void controller::push_block( const signed_block_ptr& b, block_status s ) {
    validate_db_available_size();
    validate_reversible_available_size();
    my->push_block( b, s );
-}
-
-void controller::push_confirmation( const header_confirmation& c ) {
-   validate_db_available_size();
-   my->push_confirmation( c );
 }
 
 void controller::register_event(const std::string& account, const std::string& post_url) {
