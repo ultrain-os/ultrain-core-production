@@ -1033,7 +1033,8 @@ namespace ultrainio {
             echo_info = nullptr;
             echo_msg_buff &echo_msg_map = map_itor->second;
             for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
-                if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
+                if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (map_itor->first.phase < UranusNode::MAX_BAX_COUNT))
+                    || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (map_itor->first.phase >= UranusNode::MAX_BAX_COUNT))) {
                     dlog("found >= 2f + 1 echo. blocknum = ${blocknum} phase = ${phase}",
                          ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
                     uint32_t priority = echo_itor->second.echo.proposerPriority;
