@@ -318,7 +318,7 @@ def stepInstallSystemContracts():
 
 def stepCreateTokens():
     retry(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 SYS"]\' -p utrio.token')
-    retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "600000000.0000 SYS", "memo"]\' -p ultrainio')
+    retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "900000000.0000 SYS", "memo"]\' -p ultrainio')
     sleep(15)
 
 def stepSetSystemContract():
@@ -327,8 +327,11 @@ def stepSetSystemContract():
     sleep(15)
 
 def stepCreateStakedAccounts():
-    funds = 500000000 / args.num_producers / 2
     for i in range(0, args.num_producers):
+        funds = 500000000 / args.num_producers / 2
+        # user.111 & user.112 are used for tps pressure test, so they need more staked resources
+        if accounts[i] == 'user.111' or accounts[i] == 'user.112':
+            funds += 80000000
         retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "%.4f SYS" --stake-cpu "%.4f SYS" --buy-ram "1000.000 SYS" ' % (accounts[i], args.public_key, funds, funds))
         retry(args.clultrain + 'transfer ultrainio %s "5000.0000 SYS"' % (accounts[i]))
     sleep(15)
