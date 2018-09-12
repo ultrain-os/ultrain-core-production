@@ -234,21 +234,6 @@ class privileged_api : public context_aware_api {
          context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
-      int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
-         datastream<const char*> ds( packed_producer_schedule, datalen );
-         vector<producer_key> producers;
-         fc::raw::unpack(ds, producers);
-         ULTRAIN_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
-         // check that producers are unique
-         std::set<account_name> unique_producers;
-         for (const auto& p: producers) {
-            ULTRAIN_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
-            ULTRAIN_ASSERT( p.block_signing_key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
-            unique_producers.insert(p.producer_name);
-         }
-         ULTRAIN_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
-         return context.control.set_proposed_producers( std::move(producers) );
-      }
 
       uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t buffer_size) {
          auto& gpo = context.control.get_global_properties();
@@ -1853,7 +1838,6 @@ REGISTER_INTRINSICS(privileged_api,
    (activate_feature,                 void(int64_t)                         )
    (get_resource_limits,              void(int64_t,int,int,int)             )
    (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
-   (set_proposed_producers,           int64_t(int,int)                      )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )

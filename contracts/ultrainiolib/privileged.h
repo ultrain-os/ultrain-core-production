@@ -39,15 +39,6 @@ extern "C" {
    void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight );
 
    /**
-    * Proposes a schedule change, once the block that contains the proposal becomes irreversible, the schedule is promoted to "pending" automatically. Once the block that promotes the schedule is irreversible, the schedule will become "active"
-    * @param producer_data - packed data of produce_keys in the appropriate producer schedule order
-    * @param producer_data_size - size of the data buffer
-    *
-    * @return -1 if proposing a new producer schedule was unsuccessful, otherwise returns the version of the new proposed schedule
-    */
-   int64_t set_proposed_producers( char *producer_data, uint32_t producer_data_size );
-
-   /**
     * @brief Set new active producers
     * Set new active producers. Producers will only be activated once the block which starts the next round is irrreversible
     * @param producer_data - pointer to producer schedule packed as bytes

@@ -45,23 +45,21 @@ namespace ultrainiosystem {
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
 
-      block_timestamp      last_producer_schedule_update;
       uint64_t             last_pervote_bucket_fill = 0;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
       uint64_t             total_unpaid_blocks[num_rate] {}; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
       uint64_t             thresh_activated_stake_time = 0;
-      uint16_t             last_producer_schedule_size = 0;
       double               total_producer_vote_weight = 0; /// the sum of all producer votes
       block_timestamp      last_name_close;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
                                 (max_ram_size)(min_activated_stake)(min_committee_member)(total_ram_bytes_reserved)(total_ram_stake)
-                                (last_producer_schedule_update)(last_pervote_bucket_fill)
+                                (last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
-                                (last_producer_schedule_size)(total_producer_vote_weight)(last_name_close) )
+                                (total_producer_vote_weight)(last_name_close) )
    };
 
    struct producer_info {
