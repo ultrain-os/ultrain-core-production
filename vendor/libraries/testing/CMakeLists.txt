@@ -14,8 +14,6 @@ target_include_directories( ultrainio_testing
                                    "${CMAKE_BINARY_DIR}/contracts"
                             )
 
-add_dependencies( ultrainio_testing ultrainio.bios )
-
 if(MSVC)
   set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)
@@ -28,4 +26,3 @@ install( TARGETS ultrainio_testing
    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/ultrainio/testing
 )
 install_directory_permissions( DIRECTORY ${CMAKE_INSTALL_FULL_INCLUDEDIR}/ultrainio/testing )
-
