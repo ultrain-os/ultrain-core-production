@@ -10,6 +10,8 @@ import subprocess
 import sys
 import time
 import string
+import requests
+import json
 
 args = None
 logFile = None
@@ -337,6 +339,69 @@ def stepRegProducers():
     sleep(1)
     run(args.clultrain + 'system listproducers')
 
+def resourceTransaction(fromacc,recacc,value):
+    retry(args.clultrain + 'system delegatebw  %s %s "%s SYS"  "%s SYS"'  % (fromacc,recacc,5000/value,5000/value))
+    sleep(20)
+    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
+    assert j["cpu_weight"] ==5000/value*10000,'account:'+recacc+' cpu_weight:'+str(j["cpu_weight"])+'!='+str(5000/value*10000)
+    assert j["net_weight"] ==5000/value*10000,'account:'+recacc+' net_weight:'+str(j["net_weight"])+'!='+str(5000/value*10000)
+    retry(args.clultrain + 'system undelegatebw  %s  %s  "%s SYS"  "%s SYS" '  % (fromacc,recacc,50/value,60/value))
+    sleep(20)
+    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
+    assert j["net_weight"] == 4950/value*10000,'undelegate account:'+recacc+' net_weight:'+str(j["net_weight"])+'!='+str(4950/value*10000)
+    assert j["cpu_weight"] == 4940/value*10000,'undelegate account:'+recacc+' cpu_weight:'+str(j["cpu_weight"])+'!='+str(4940/value*10000)
+    retry(args.clultrain + 'system buyram  %s  %s  "%s SYS"  '  % (fromacc,recacc,50000/value))
+    sleep(2) 
+    retry(args.clultrain + 'transfer  %s  %s  "%s SYS" '  % (fromacc,recacc,20000/value))
+    sleep(25)
+    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
+    ramjson = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_table_records",data = json.dumps({"code":"ultrainio","scope":"ultrainio","table":"rammarket","json":"true","table_key":"","lower_bound":"","upper_bound":"","limit":10,"key_type":"","index_position":""})).text)   #Calculating ram ratio
+    ramvalue = ramjson["rows"][0]["base"]["balance"].replace(" RAM","")
+    sysvalue = ramjson["rows"][0]["quote"]["balance"].replace(" SYS","")
+    shouldbuyram = float(ramvalue)*50000/value/float(sysvalue)
+    sellram_before = j["ram_quota"]
+    assert j["ram_quota"] >= shouldbuyram,'buyram account:'+recacc+' RAM:'+str(j["ram_quota"])+'<'+str(shouldbuyram)
+    core_liquid_balance = float(j["core_liquid_balance"].replace(" SYS",""))
+    assert core_liquid_balance == 20000/value,'transfer account:'+recacc+' balance:'+str(core_liquid_balance)+'!='+str(20000/value)
+    #print(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
+    #retry(args.clultrain + 'get account  %s ' % (recacc))
+    retry(args.clultrain + 'system sellram  %s  "1024 bytes" '  % (recacc))
+    sleep(20)
+    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
+    assert (sellram_before-j["ram_quota"]) == 1024,'sellram account:'+recacc+' sell_ram:'+str(sellram_before-j["ram_quota"])+'!='+str(1024)
+    retry(args.clultrain + 'set contract %s  %sultrainio.msig/' % (recacc,args.contracts_dir))
+    sleep(20)
+    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_raw_code_and_abi",data = json.dumps({"account_name":recacc})).text)
+    assert j["wasm"] != "",'set contract account:'+recacc+' failed ,wasm is null'
+
+def stepResourceTransaction():
+    resourceAccount = [
+        "resacc11",
+        "resacc22",
+        "resacc33aaaa",
+        "resacc44aaaa"
+    ]
+    retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "0 SYS" --stake-cpu "0 SYS" --buy-ram "1.000 SYS" ' % (resourceAccount[0], args.public_key))
+    retry(args.clultrain + 'create account ultrainio %s %s ' % (resourceAccount[1], args.public_key))
+    sleep(20)
+    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":resourceAccount[0]})).text)
+    assert j["ram_usage"] ==272,'system newaccount:'+resourceAccount[2]+' ramusage:'+str(j["ram_usage"])+'!=272'
+
+    r = requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":resourceAccount[1]}))
+    j = json.loads(r.text)
+    assert j["ram_usage"] ==0,'create account:'+resourceAccount[2]+' ramusage:'+str(j["ram_usage"])+'!=0'
+    resourceTransaction("ultrainio",resourceAccount[0],1)
+    resourceTransaction("ultrainio",resourceAccount[1],1)
+    retry(args.clultrain + 'system newaccount --transfer %s %s %s --stake-net "0 SYS" --stake-cpu "0 SYS" --buy-ram "1.000 SYS" ' % (resourceAccount[0],resourceAccount[2], args.public_key))
+    retry(args.clultrain + 'create account %s %s %s ' % (resourceAccount[1], resourceAccount[3], args.public_key))
+    sleep(20)
+    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":resourceAccount[2]})).text)
+    assert j["ram_usage"] ==272,'system newaccount:'+resourceAccount[2]+' ramusage:'+str(j["ram_usage"])+'!=272'
+    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":resourceAccount[3]})).text)
+    assert j["ram_usage"] ==0,'create account:'+resourceAccount[3]+' ramusage:'+str(j["ram_usage"])+'!=0'
+    resourceTransaction(resourceAccount[0],resourceAccount[2],5)
+    resourceTransaction(resourceAccount[1], resourceAccount[3],5)
+
 def stepTransfer():
     while True:
         randomTransfer()
@@ -363,6 +428,7 @@ commands = [
 #    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
 #    ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
+    ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction")
 ]
 
 parser.add_argument('--public-key', metavar='', help="EOSIO Public Key", default='UTR7vfv95bvjB54jZ69yaQqLxZkWNaC9xAjYG7Dq1bW1zpJKD2tkP', dest="public_key")
