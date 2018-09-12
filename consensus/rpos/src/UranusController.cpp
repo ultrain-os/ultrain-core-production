@@ -577,8 +577,8 @@ namespace ultrainio {
             return true;
         }
 
-        dlog("receive echo msg.blockhash = ${blockhash} echo'account = ${account}",
-             ("blockhash", echo.blockId)("account", std::string(echo.account)));
+        dlog("receive echo msg.blockhash = ${blockhash} echo'account = ${account} signature : ${signature}",
+             ("blockhash", echo.blockId)("account", std::string(echo.account))("signature", echo.signature));
         auto itor = m_echoMsgMap.find(echo.blockId);
         if (itor != m_echoMsgMap.end()) {
             bret = updateAndMayResponse(itor->second, echo, true);
