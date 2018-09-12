@@ -1104,7 +1104,6 @@ namespace ultrainio {
                                 bool trigger_send,
                                 std::function<void(boost::system::error_code, std::size_t)> callback) {
       write_queue.push_back({buff, callback});
-      ilog("out queue size: ${qs} trigger send: ${ts}", ("qs", out_queue.size())("ts", trigger_send));
       if(out_queue.empty() && trigger_send)
          do_queue_write();
    }
@@ -1173,7 +1172,6 @@ namespace ultrainio {
    }
 
    void connection::enqueue( const net_message &m, bool trigger_send ) {
-      ilog("net message enqueue trigger send: ${t}", ("t", trigger_send));
       go_away_reason close_after_send = no_reason;
       if (m.contains<go_away_message>()) {
          close_after_send = m.get<go_away_message>().reason;
@@ -1841,7 +1839,6 @@ namespace ultrainio {
    void net_plugin_impl::start_read_message( connection_ptr conn ) {
 
       try {
-	 ilog("start read message");
          if(!conn->socket) {
             return;
          }
@@ -1856,11 +1853,8 @@ namespace ultrainio {
             conn->socket->set_option(read_watermark_opt);
          }
 
-	 ilog("mini read: ${mr}", ("mr", minimum_read));
-
          auto completion_handler = [minimum_read](boost::system::error_code ec, std::size_t bytes_transferred) -> std::size_t {
             if (ec || bytes_transferred >= minimum_read ) {
-	       ilog("completion handler ec: ${ec}", ("ec", ec.value()));
                return 0;
             } else {
                return minimum_read - bytes_transferred;
@@ -1889,7 +1883,6 @@ namespace ultrainio {
 		     ilog("start read msg from buffer");
                      while (conn->pending_message_buffer.bytes_to_read() > 0) {
                         uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
-                        ilog("bytes in buffer: ${bs}", ("bs", bytes_in_buffer));
                         if (bytes_in_buffer < message_header_size) {
                            conn->outstanding_read_bytes.emplace(message_header_size - bytes_in_buffer);
                            break;
@@ -1897,7 +1890,7 @@ namespace ultrainio {
                            uint32_t message_length;
                            auto index = conn->pending_message_buffer.read_index();
                            conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
-			   ilog("peek message length: ${len} index: ${index}", ("len", message_length)("index", index));
+
                            if(message_length > def_send_buffer_size*2 || message_length == 0) {
                               elog("incoming message length unexpected (${i})", ("i", message_length));
                               close(conn);
@@ -1905,7 +1898,6 @@ namespace ultrainio {
                            }
 
                            auto total_message_bytes = message_length + message_header_size;
-                           ilog("total bytes: ${bys} bytes in buffer: ${bb}", ("bys", total_message_bytes)("bb", bytes_in_buffer));
                            if (bytes_in_buffer >= total_message_bytes) {
                               conn->pending_message_buffer.advance_read_ptr(message_header_size);
                               if (!conn->process_next_message(*this, message_length)) {
