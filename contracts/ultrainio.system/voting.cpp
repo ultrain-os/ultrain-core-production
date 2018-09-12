@@ -90,38 +90,6 @@ namespace ultrainiosystem {
 
    }
 
-   void system_contract::update_elected_producers( block_timestamp block_time ) {
-      _gstate.last_producer_schedule_update = block_time;
-
-      auto idx = _producers.get_index<N(prototalvote)>();
-
-      std::vector< std::pair<ultrainio::producer_key,uint16_t> > top_producers;
-      top_producers.reserve(21);
-
-      for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes && it->active(); ++it ) {
-         top_producers.emplace_back( std::pair<ultrainio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}) );
-      }
-
-      if ( top_producers.size() < _gstate.last_producer_schedule_size ) {
-         return;
-      }
-
-      /// sort by producer name
-      std::sort( top_producers.begin(), top_producers.end() );
-
-      std::vector<ultrainio::producer_key> producers;
-
-      producers.reserve(top_producers.size());
-      for( const auto& item : top_producers )
-         producers.push_back(item.first);
-
-      bytes packed_schedule = pack(producers);
-
-      if( set_proposed_producers( packed_schedule.data(),  packed_schedule.size() ) >= 0 ) {
-         _gstate.last_producer_schedule_size = static_cast<decltype(_gstate.last_producer_schedule_size)>( top_producers.size() );
-      }
-   }
-
    double stake2vote( int64_t staked ) {
       /// TODO subtract 2080 brings the large numbers closer to this decade
       double weight = int64_t( (now() - (block_timestamp::block_timestamp_epoch / 1000)) / (seconds_per_day * 7) )  / double( 52 );
