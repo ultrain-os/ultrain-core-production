@@ -21,6 +21,7 @@ namespace ultrainio {
         void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
         Proof getVoterProof(ConsensusPhase phase, int baxCount);
         int getVoterVoterCount(ConsensusPhase phase, int baxCount);
+        std::shared_ptr<VoterSystem> getVoterSys();
     private:
         PhaseMessagePtr initIfNeed(ConsensusPhase phase, int baxCount);
         std::vector<ProposeMsg> m_proposeMsgList;

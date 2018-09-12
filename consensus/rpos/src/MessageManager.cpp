@@ -78,9 +78,12 @@ namespace ultrainio {
         }
 
         uint32_t blockNum = BlockHeader::num_from_id(aggEchoMsg.blockId);
-        uint32_t thisBlockNum = UranusNode::getInstance()->getBlockNum();
-        if (thisBlockNum - Config::MAX_LATER_NUMBER > blockNum) {
+        uint32_t myBlockNum = UranusNode::getInstance()->getBlockNum();
+        if (myBlockNum - Config::MAX_LATER_NUMBER > blockNum) {
             return kObsolete;
+        }
+        if (blockNum > myBlockNum) {
+            return kSuccess;
         }
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         if (blockMessagePtr->m_myAggEchoMsgPtr && blockMessagePtr->m_myAggEchoMsgPtr->account == aggEchoMsg.account) {
@@ -94,7 +97,7 @@ namespace ultrainio {
             }
         }
         blockMessagePtr->m_aggEchoMsgV.push_back(aggEchoMsg);
-        if (blockNum == thisBlockNum) {
+        if (blockNum == myBlockNum) {
             std::shared_ptr<VoterSystem> voterSysPtr = getVoterSys(blockNum);
             PublicKey publicKey = voterSysPtr->getPublicKey(aggEchoMsg.account);
             ULTRAIN_ASSERT(publicKey.isValid(), chain::chain_exception, "public key is not valid");
@@ -166,7 +169,7 @@ namespace ultrainio {
 
     void MessageManager::clearSomeBlockMessage(uint32_t blockNum) {
         for (auto itor = blockMessageMap.begin(); itor != blockMessageMap.end();) {
-            if (blockNum - itor->first > 3) { // keep 3 block behind this one
+            if (blockNum - Config::MAX_LATER_NUMBER > itor->first) {
                 ilog("clear block msg for blockNum = ${blockNum}", ("blockNum", itor->first));
                 blockMessageMap.erase(itor++);
             } else {
@@ -177,6 +180,6 @@ namespace ultrainio {
 
     std::shared_ptr<VoterSystem> MessageManager::getVoterSys(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->m_voterSystem;
+        return blockMessagePtr->getVoterSys();
     }
 }

@@ -32,20 +32,22 @@ namespace ultrainio {
     }
 
     void PhaseMessage::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
-        std::string previousHash(blockId.data());
-        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(blockNum);
-        ULTRAIN_ASSERT(voterSysPtr != nullptr, chain::chain_exception, "voterSystemPtr is nullptr");
-        AccountName myAccount = VoterSystem::getMyAccount();
-        Seed voterSeed(previousHash, blockNum, phase, baxCount);
-        PrivateKey privateKey = VoterSystem::getMyPrivateKey();
-        m_proof = Vrf::vrf(privateKey, voterSeed, Vrf::kVoter);
-        int stakes = voterSysPtr->getStakes(myAccount, UranusNode::getInstance()->getNonProducingNode());
-        if (stakes == 0) {
-            m_voterCountAsVoter = 0;
-            return;
+        if (!m_proof.isValid()) {
+            ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
+            std::string previousHash(blockId.data());
+            std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(blockNum);
+            ULTRAIN_ASSERT(voterSysPtr != nullptr, chain::chain_exception, "voterSystemPtr is nullptr");
+            AccountName myAccount = VoterSystem::getMyAccount();
+            Seed voterSeed(previousHash, blockNum, phase, baxCount);
+            PrivateKey privateKey = VoterSystem::getMyPrivateKey();
+            m_proof = Vrf::vrf(privateKey, voterSeed, Vrf::kVoter);
+            int stakes = voterSysPtr->getStakes(myAccount, UranusNode::getInstance()->getNonProducingNode());
+            if (stakes == 0) {
+                m_voterCountAsVoter = 0;
+                return;
+            }
+            double voterRatio = voterSysPtr->getVoterRatio();
+            m_voterCountAsVoter = voterSysPtr->count(m_proof, stakes, voterRatio);
         }
-        double voterRatio = voterSysPtr->getVoterRatio();
-        m_voterCountAsVoter = voterSysPtr->count(m_proof, stakes, voterRatio);
     }
 }

@@ -48,8 +48,6 @@ namespace ultrainio {
             int stakes = m_voterSystem->getStakes(VoterSystem::getMyAccount(), UranusNode::getInstance()->getNonProducingNode());
             double proposerRatio = m_voterSystem->getProposerRatio();
             m_voterCountAsProposer = m_voterSystem->count(m_proposerProof, stakes, proposerRatio);
-            //ilog("blockNum = ${blockNum} voterCountAsProposer = ${voterCountAsProposer} proposerProof = ${proposerProof}",
-                    //("blockNum", blockNum)("voterCountAsProposer", voterCountAsProposer)("proposerProof", std::string(proposerProof)));
         }
         PhaseMessagePtr phaseMessagePtr = initIfNeed(phase, baxCount);
         phaseMessagePtr->moveToNewStep(blockNum, phase, baxCount);
@@ -70,5 +68,10 @@ namespace ultrainio {
             return true;
         }
         return false;
+    }
+
+    std::shared_ptr<VoterSystem> BlockMessage::getVoterSys() {
+        ULTRAIN_ASSERT(m_voterSystem, chain::chain_exception, "m_voterSystem is nullptr");
+        return m_voterSystem;
     }
 }

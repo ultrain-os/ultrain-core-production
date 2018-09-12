@@ -308,15 +308,14 @@ namespace ultrainio {
 
     bool UranusController::updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response) {
         std::shared_ptr<VoterSystem> voterSysPtr = nullptr;
+        uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
         auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
         if (pkItor == info.accountPool.end()) {
             info.accountPool.push_back(echo.account);
             info.proofPool.push_back(echo.proof);
             info.sigPool.push_back(echo.signature);
             info.timePool.push_back(echo.timestamp);
-            voterSysPtr = MessageManager::getInstance()->getVoterSys(BlockHeader::num_from_id(echo.blockId));
-            ULTRAIN_ASSERT(voterSysPtr, chain::chain_exception, "voterSysPtr is nullptr.");
-
+            voterSysPtr = MessageManager::getInstance()->getVoterSys(blockNum);
             int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
             double voterRatio = voterSysPtr->getVoterRatio();
             Proof proof(echo.proof);
@@ -396,7 +395,6 @@ namespace ultrainio {
 
     bool UranusController::isValid(const EchoMsg &echo) {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
-        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(blockNum);
         AccountName myAccount = VoterSystem::getMyAccount();
         if (myAccount == echo.account) {
             elog("loopback echo. account : ${account}", ("account", std::string(myAccount)));
@@ -418,6 +416,7 @@ namespace ultrainio {
             return false;
         }
 
+        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(blockNum);
         PublicKey publicKey = voterSysPtr->getPublicKey(echo.account);
         if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
             elog("validator echo error. account : ${account} pk : ${pk} signature : ${signature}",
@@ -444,17 +443,17 @@ namespace ultrainio {
     }
 
     bool UranusController::isValid(const ProposeMsg &propose) {
-        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(propose.block.block_num());
         AccountName myAccount = VoterSystem::getMyAccount();
-
+        uint32_t blockNum = propose.block.block_num();
+        uint32_t myBlockNum = UranusNode::getInstance()->getBlockNum();
         if (myAccount == propose.block.proposer) {
             elog("invalid propose. msg loopback. account : ${account}", ("account", std::string(myAccount)));
             return false;
         }
 
-        if (propose.block.block_num() != UranusNode::getInstance()->getBlockNum()) {
+        if (blockNum != myBlockNum) {
             elog("invalid propose msg . blockNum = ${id1}. local blockNum = ${id2}",
-                 ("id1", propose.block.block_num())("id2", UranusNode::getInstance()->getBlockNum()));
+                 ("id1", blockNum)("id2", myBlockNum));
             return false;
         }
 
@@ -463,6 +462,7 @@ namespace ultrainio {
             return false;
         }
 
+        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(propose.block.block_num());
         PublicKey publicKey = voterSysPtr->getPublicKey(propose.block.proposer);
         if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
             elog("validator proposer error. proposer : ${proposer}", ("proposer", std::string(propose.block.proposer)));
@@ -1156,15 +1156,15 @@ namespace ultrainio {
     }
 
     std::shared_ptr<AggEchoMsg> UranusController::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {
-        std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
-        aggEchoMsgPtr->blockId = blockPtr->id();
-        aggEchoMsgPtr->account = VoterSystem::getMyAccount();
-        aggEchoMsgPtr->myProposerProof = std::string(MessageManager::getInstance()->getProposerProof(blockPtr->block_num()));
-        echo_message_info echoMessageInfo = findEchoMsg(aggEchoMsgPtr->blockId);
-        if (echoMessageInfo.empty()) {
-            ULTRAIN_ASSERT(false, chain::chain_exception, "can not find blockId's echo list");
+        BlockIdType blockId = blockPtr->id();
+        echo_message_info echoMessageInfo = findEchoMsg(blockId);
+        if (echoMessageInfo.empty()) { // May be empty when sync block
             return nullptr;
         }
+        std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
+        aggEchoMsgPtr->blockId = blockId;
+        aggEchoMsgPtr->account = VoterSystem::getMyAccount();
+        aggEchoMsgPtr->myProposerProof = std::string(MessageManager::getInstance()->getProposerProof(blockPtr->block_num()));
         aggEchoMsgPtr->proposerPriority = echoMessageInfo.echo.proposerPriority;
         aggEchoMsgPtr->accountPool = echoMessageInfo.accountPool;
         aggEchoMsgPtr->proofPool = echoMessageInfo.proofPool;
@@ -1451,11 +1451,13 @@ namespace ultrainio {
                 MessageManager::getInstance()->insert(agg_echo);
             }
         }
+        MessageManager::getInstance()->moveToNewStep(block->block_num() + 1, kPhaseBA0, 0);
         ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}",
              ("timestamp", block->timestamp)
              ("num", block->block_num())
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
+
     }
 
     void UranusController::clearTrxQueue() {
