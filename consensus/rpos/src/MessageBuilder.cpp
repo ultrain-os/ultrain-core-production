@@ -43,7 +43,7 @@ namespace ultrainio {
         myEcho.proof = std::string(MessageManager::getInstance()->getVoterProof(blockNum, echo.phase, echo.baxCount));
         myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, VoterSystem::getMyPrivateKey()));
         ilog("account : ${account} sign block ${id} signature ${signature}",
-             ("account", std::string(VoterSystem::getMyAccount()))("id", myEcho.blockId)("signature", echo.signature));
+             ("account", std::string(VoterSystem::getMyAccount()))("id", myEcho.blockId)("signature", myEcho.signature));
         return myEcho;
     }
 }
