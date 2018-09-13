@@ -40,10 +40,11 @@ namespace ultrainio {
         EchoMsg myEcho = echo;
         myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
         myEcho.account = VoterSystem::getMyAccount();
-        myEcho.proof = std::string(MessageManager::getInstance()->getVoterProof(blockNum, echo.phase, echo.baxCount));
-        myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, VoterSystem::getMyPrivateKey()));
-        ilog("account : ${account} sign block ${id} signature ${signature}",
-             ("account", std::string(VoterSystem::getMyAccount()))("id", myEcho.blockId)("signature", myEcho.signature));
+        myEcho.proof = std::string(MessageManager::getInstance()->getVoterProof(blockNum, myEcho.phase, myEcho.baxCount));
+        myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(myEcho, VoterSystem::getMyPrivateKey()));
+        ilog("timestamp : ${timestamp} proof : ${proof} account : ${account} sign block ${id} signature ${signature}",
+             ("proof", myEcho.proof)("timestamp", myEcho.timestamp)("account", std::string(VoterSystem::getMyAccount()))
+             ("id", myEcho.blockId)("signature", myEcho.signature));
         return myEcho;
     }
 }
