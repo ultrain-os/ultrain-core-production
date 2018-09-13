@@ -2,6 +2,7 @@
 
 #include "uranus_controller_monitor.hpp"
 #include "runtime_os_info.hpp"
+#include <rpos/Genesis.h>
 #include <rpos/Node.h>
 #include <rpos/KeyKeeper.h>
 #include <rpos/VoterSystem.h>
@@ -149,7 +150,7 @@ namespace ultrainio {
             if (pNode) {
                 staticConfig.version           = version;
                 staticConfig.nonProducingNode  = pNode->getNonProducingNode();
-                staticConfig.genesisLeaderPk   = std::string(Config::GENESIS_LEADER_PK);
+                staticConfig.genesisLeaderPk   = Genesis::s_genesisPk;
                 staticConfig.publicKey         = std::string(VoterSystem::getMyPrivateKey().getPublicKey());
                 staticConfig.privateKey        = std::string(VoterSystem::getMyPrivateKey());
                 staticConfig.account           = std::string(VoterSystem::getMyAccount());

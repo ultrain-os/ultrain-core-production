@@ -29,6 +29,7 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/signals2/connection.hpp>
 
+#include <rpos/Genesis.h>
 #include <rpos/Node.h>
 
 namespace bmi = boost::multi_index;
@@ -114,9 +115,11 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       std::string _genesis_time = std::string();
       std::string _my_sk_as_committee;
       std::string _my_account_as_committee;
+      std::string _genesis_pk                      = Genesis::s_genesisPk;
       bool     _pause_production                   = false;
       bool     _is_non_producing_node              = false;
       int32_t  _genesis_delay;
+      int32_t _genesis_startup_time                = Genesis::s_genesisStartupTime;
 
       using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
@@ -367,6 +370,8 @@ void producer_uranus_plugin::set_program_options(
          ("my-account-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_account_as_committee = g; }), "account as committer member")
          ("genesis-delay", boost::program_options::value<int32_t>()->default_value(60), "genesis delay")
          ("genesis-time", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_time = g; }), "genesis time")
+         ("genesis-startup-time", bpo::value<int32_t>()->default_value(60), "genesis startup time")
+         ("genesis-pk", bpo::value<std::string>()->notifier([this](std::string g) { my->_genesis_pk = g; }), "genesis public key")
          ;
    config_file_options.add(producer_options);
 }
@@ -484,6 +489,7 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    //   my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
    my->_max_transaction_time_ms = 200;
    my->_genesis_delay = options.at("genesis-delay").as<int32_t>();
+   my->_genesis_startup_time = options.at("genesis-startup-time").as<int32_t>();
 
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
@@ -555,6 +561,10 @@ void producer_uranus_plugin::plugin_startup()
        unsigned long msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
        int patch = 5000 - (msecs % 5000);
        nodePtr->setGenesisTime(boost::chrono::system_clock::now() + boost::chrono::milliseconds(my->_genesis_delay * 1000 + patch));
+   }
+   nodePtr->setGenesisStartupTime(my->_genesis_startup_time);
+   if (!my->_genesis_pk.empty()) {
+       nodePtr->setGenesisPk(my->_genesis_pk);
    }
    nodePtr->init();
    nodePtr->readyToJoin();

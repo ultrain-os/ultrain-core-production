@@ -851,4 +851,16 @@ namespace ultrainio {
         std::time_t t = boost::chrono::system_clock::to_time_t(Genesis::s_time);
         ilog("Genesis time is ${t}", ("t", std::ctime(&t)));
     }
+
+    void UranusNode::setGenesisStartupTime(int32_t minutes) {
+        Genesis::s_genesisStartupTime = minutes;
+        Genesis::s_genesisStartupBlockNum = Genesis:: s_genesisStartupTime * Config::kAverageBlockPerMinutes;
+        ilog("Genesis startup time : ${minutes} minutes, startup block num : ${number}",
+                ("minutes",Genesis::s_genesisStartupTime)("number", Genesis::s_genesisStartupBlockNum));
+    }
+
+    void UranusNode::setGenesisPk(const std::string& pk) {
+        Genesis::s_genesisPk = pk;
+        ilog("Genesis pk : ${pk}", ("pk", pk));
+    }
 }

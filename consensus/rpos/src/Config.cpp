@@ -1,8 +1,11 @@
 #include "rpos/Config.h"
 
 namespace ultrainio {
-    const char* Config::GENESIS_LEADER_PK = "369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35";
+    const int Config::kAverageBlockPerMinutes = 6;
 
-    const char* Config::GENESIS_LEADER_ACCOUNT = "genesis";
+    const double Config::VOTER_STAKES_NUMBER = 1000.0;
+    const double Config::PROPOSER_STAKES_NUMBER = 20.0;
+    const int Config::DEFAULT_THRESHOLD = 6000;
+    const int Config::MAX_LATER_NUMBER = 3;
 }
 

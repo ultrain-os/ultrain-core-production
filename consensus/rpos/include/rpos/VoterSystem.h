@@ -45,10 +45,6 @@ namespace ultrainio {
     private:
         static std::shared_ptr<KeyKeeper> s_keyKeeper;
 
-        static const int kGenesisStartupTime;
-
-        static const int kGenesisStartupBlockNum;
-
         VoterSystem(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
 
         // get committee state from world state

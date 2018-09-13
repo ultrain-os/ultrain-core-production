@@ -125,6 +125,10 @@ namespace ultrainio {
 
         void setGenesisTime(const boost::chrono::system_clock::time_point& tp);
 
+        void setGenesisStartupTime(int32_t minutes);
+
+        void setGenesisPk(const std::string& pk);
+
     private:
         explicit UranusNode(boost::asio::io_service &ioservice);
 

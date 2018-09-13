@@ -19,10 +19,6 @@ using namespace appbase;
 namespace ultrainio {
     std::shared_ptr<KeyKeeper> VoterSystem::s_keyKeeper = std::make_shared<KeyKeeper>();
 
-    const int VoterSystem::kGenesisStartupTime = 60;
-
-    const int VoterSystem::kGenesisStartupBlockNum = kGenesisStartupTime * 6;
-
     std::shared_ptr<VoterSystem> VoterSystem::create(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr) {
         VoterSystem* voterSysPtr = new VoterSystem(blockNum, committeeStatePtr);
         return std::shared_ptr<VoterSystem>(voterSysPtr);
@@ -75,7 +71,7 @@ namespace ultrainio {
     bool VoterSystem::isGenesisPeriod() const {
         boost::chrono::minutes genesisElapsed
                 = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - Genesis::s_time);
-        if (!committeeHasWorked2() && (genesisElapsed < boost::chrono::minutes(kGenesisStartupTime))) {
+        if (!committeeHasWorked2() && (genesisElapsed < boost::chrono::minutes(Genesis::s_genesisStartupTime))) {
             return true;
         }
         return false;
@@ -104,7 +100,7 @@ namespace ultrainio {
             return 1;
         }
         if (!m_committeeStatePtr) {
-            if (m_blockNum > kGenesisStartupBlockNum) {
+            if (m_blockNum > Genesis::s_genesisStartupBlockNum) {
                 ULTRAIN_ASSERT(m_committeeStatePtr != nullptr, chain::chain_exception, "DO YOU HAVE STAKES");
             }
             // may be a bundle of node join
@@ -138,14 +134,14 @@ namespace ultrainio {
     PublicKey VoterSystem::getPublicKey(const AccountName& account) const {
         if (account == s_keyKeeper->getMyAccount()) {
             return s_keyKeeper->getPrivateKey().getPublicKey();
-        } else if (account == AccountName(Config::GENESIS_LEADER_ACCOUNT)) {
-            return PublicKey(Config::GENESIS_LEADER_PK);
+        } else if (account == AccountName(Genesis::kGenesisAccount)) {
+            return PublicKey(Genesis::s_genesisPk);
         }
         return findInCommitteeMemberList(account);
     }
 
     bool VoterSystem::isGenesisLeader(const AccountName& account) const {
-        return account.good() && account == AccountName(Config::GENESIS_LEADER_ACCOUNT);
+        return account.good() && account == AccountName(Genesis::kGenesisAccount);
     }
 
     std::shared_ptr<CommitteeState> VoterSystem::getCommitteeState() {
