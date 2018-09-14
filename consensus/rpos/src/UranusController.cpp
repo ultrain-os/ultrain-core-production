@@ -1452,7 +1452,7 @@ namespace ultrainio {
                 MessageManager::getInstance()->insert(agg_echo);
             }
         }
-        MessageManager::getInstance()->moveToNewStep(block->block_num() + 1, kPhaseBA0, 0);
+        MessageManager::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
         ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}",
              ("timestamp", block->timestamp)
              ("num", block->block_num())
