@@ -764,7 +764,7 @@ namespace ultrainio {
         if (m_controllerPtr->findEchoCache(msg_key)) {
             fastBa0();
         } else {
-            run(false);
+            run();
             return;
         }
 

@@ -1346,6 +1346,12 @@ namespace ultrainio {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         uint32_t last_num = getLastBlocknum();
 
+        dlog("produceBlock. m_proposerMsgMap = ${size}", ("size", m_proposerMsgMap.size()));
+        dlog("produceBlock. m_echoMsgMap = ${size}", ("size", m_echoMsgMap.size()));
+        dlog("produceBlock. m_cacheProposeMsgMap = ${size}", ("size", m_cacheProposeMsgMap.size()));
+        dlog("produceBlock. m_cacheEchoMsgMap = ${size}", ("size", m_cacheEchoMsgMap.size()));
+        dlog("produceBlock. m_echoMsgAllPhase = ${size}", ("size", m_echoMsgAllPhase.size()));
+
         dlog("produceBlock. last block num in local chain:${last}", ("last", last_num));
         auto blk = chain.fetch_block_by_number(last_num);
         if (blk) {
