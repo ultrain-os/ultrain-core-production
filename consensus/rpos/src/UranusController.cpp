@@ -308,6 +308,7 @@ namespace ultrainio {
     bool UranusController::updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response) {
         std::shared_ptr<VoterSystem> voterSysPtr = nullptr;
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
+        ilog("update echo blockId: ${id}", ("id", echo.blockId));
         auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
         if (pkItor == info.accountPool.end()) {
             info.accountPool.push_back(echo.account);
@@ -583,6 +584,7 @@ namespace ultrainio {
         if (itor != m_echoMsgMap.end()) {
             bret = updateAndMayResponse(itor->second, echo, true);
             if ((isMinEcho(itor->second) || isMinFEcho(itor->second)) && bret) {
+                ilog("handle echo finish.");
                 return true;
             }
         } else {
@@ -591,9 +593,11 @@ namespace ultrainio {
             bret = updateAndMayResponse(info, echo, true);
             m_echoMsgMap.insert(make_pair(echo.blockId, info));
             if ((isMinEcho(info) || isMinFEcho(info)) && bret) {
+                ilog("handle new echo finish");
                 return true;
             }
         }
+        ilog("handle echo finish blockId: ${id}", ("id", echo.blockId));
         return false;
     }
 
