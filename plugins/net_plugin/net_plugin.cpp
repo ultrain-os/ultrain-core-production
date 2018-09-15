@@ -1188,7 +1188,7 @@ namespace ultrainio {
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
       connection_wptr weak_this = shared_from_this();
-      ilog("before queue write: head size: ${hs} buffer size: {bs}", ("hs", header_size)("bs", buffer_size));
+      ilog("before queue write: head size: ${hs} buffer size: ${bs}", ("hs", header_size)("bs", buffer_size));
       queue_write(send_buffer,trigger_send,
                   [weak_this, close_after_send](boost::system::error_code ec, std::size_t ) {
                      connection_ptr conn = weak_this.lock();
