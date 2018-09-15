@@ -80,6 +80,8 @@ void monitor_plugin_impl::startMonitorTaskTimer() {
     if(!needReportTask)
         return;
 
+    auto start_timestamp = fc::time_point::now();
+
     boost::asio::steady_timer::duration reportTaskPeriod = std::chrono::seconds(reportInterval);
     m_reportTaskTimer->expires_from_now(reportTaskPeriod);
     m_reportTaskTimer->async_wait([this](boost::system::error_code ec) {
@@ -90,6 +92,8 @@ void monitor_plugin_impl::startMonitorTaskTimer() {
             startMonitorTaskTimer();
         }
     });
+
+    ilog("report task taking time ${time}", ("time", fc::time_point::now() - start_timestamp));
 }
 
 void monitor_plugin_impl::processReportTask() {
@@ -140,7 +144,7 @@ monitor_plugin::~monitor_plugin() = default;
 
 void monitor_plugin::set_program_options(options_description&, options_description& cfg) {
     cfg.add_options()
-         ( "monitor-server-endpoint", bpo::value<string>()->default_value("http://127.0.0.1:8078"), 
+         ( "monitor-server-endpoint", bpo::value<string>()->default_value("http://127.0.0.1:8078"),
            "The actual host:port used to monitor central server")
          ( "periodic-report", bpo::value<bool>()->default_value(true),
            "True to enable the periodic report to central server.")
@@ -250,5 +254,5 @@ monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const {
         }
         return m_nodeMonitor->getStaticConfigInfo();
      }
-   } //namespace monitor_apis 
+   } //namespace monitor_apis
 } ///namespace ultrainio
