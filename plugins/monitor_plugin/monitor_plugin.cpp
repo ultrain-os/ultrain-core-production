@@ -80,20 +80,18 @@ void monitor_plugin_impl::startMonitorTaskTimer() {
     if(!needReportTask)
         return;
 
-    auto start_timestamp = fc::time_point::now();
-
     boost::asio::steady_timer::duration reportTaskPeriod = std::chrono::seconds(reportInterval);
     m_reportTaskTimer->expires_from_now(reportTaskPeriod);
     m_reportTaskTimer->async_wait([this](boost::system::error_code ec) {
         if (ec.value() == boost::asio::error::operation_aborted) {
             ilog("report task timer be canceled.");
         } else {
+            auto start_timestamp = fc::time_point::now();
             processReportTask();
             startMonitorTaskTimer();
+            ilog("report task taking time ${time}", ("time", fc::time_point::now() - start_timestamp));
         }
     });
-
-    ilog("report task taking time ${time}", ("time", fc::time_point::now() - start_timestamp));
 }
 
 void monitor_plugin_impl::processReportTask() {
