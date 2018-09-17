@@ -40,11 +40,13 @@ namespace ultrainiosystem {
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
       uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
-      int64_t             min_activated_stake   = 150'000'000'0000;
+      int64_t              min_activated_stake   = 150'000'000'0000;
       uint32_t             min_committee_member = 1000;
+      uint32_t             min_committee_member_number = 4;
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
 
+      uint64_t             start_block =0;
       uint64_t             last_pervote_bucket_fill = 0;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
@@ -56,8 +58,8 @@ namespace ultrainiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
-                                (max_ram_size)(min_activated_stake)(min_committee_member)(total_ram_bytes_reserved)(total_ram_stake)
-                                (last_pervote_bucket_fill)
+                                (max_ram_size)(min_activated_stake)(min_committee_member)(min_committee_member_number)
+                                (total_ram_bytes_reserved)(total_ram_stake)(start_block)(last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
                                 (total_producer_vote_weight)(last_name_close) )
    };

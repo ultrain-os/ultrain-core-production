@@ -39,8 +39,6 @@ namespace ultrainio {
    using chain::abi_def;
    using chain::abi_serializer;
 
-   constexpr int MIN_COMMITTEE_MEMBER_NUMBER = 4;
-
 namespace chain_apis {
 struct empty{};
 
@@ -273,6 +271,7 @@ public:
       uint64_t            thresh_activated_stake_time;
       string              more; ///< fill lower_bound with this value to fetch more rows
       int64_t             min_stake_thresh {};
+      uint32_t            min_committee_member_number {};
    };
 
    get_producers_result get_producers( const get_producers_params& params, bool filter_enabled = false)const;

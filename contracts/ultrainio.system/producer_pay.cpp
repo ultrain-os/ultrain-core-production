@@ -34,11 +34,20 @@ namespace ultrainiosystem {
        * At startup the initial producer may not be one that is registered / elected
        * and therefore there may be no producer object for them.
        */
-      auto prod = _producers.find(producer);
+      if ( !_gstate.start_block){
+         uint32_t i {};
+         for(auto itr = _producers.begin(); i < _gstate.min_committee_member_number && itr != _producers.end(); ++itr, ++i){}
+		 if( i == _gstate.min_committee_member_number){
+			_gstate.start_block=(uint64_t)tapos_block_num();
+         }else{
+            return;
+         }
+      }
+	  auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
 	 /** TODO: blocks_per_day is for testing; remind to remove it */
-	 //int temp = 2*(tapos_block_num()+1)/(int)blocks_per_year;
-	 int temp = 12*(tapos_block_num()+1)/(int)blocks_per_hour;
+	 //int temp = 2*(tapos_block_num()-(int)_gstate.start_block)/(int)blocks_per_year;
+     	 int temp = 12*(tapos_block_num()-(int)_gstate.start_block)/(int)blocks_per_hour;
          const int interval = temp < num_rate ? temp:(num_rate-1);
          _gstate.total_unpaid_blocks[interval]++;
          _producers.modify( prod, 0, [&](auto& p ) {
