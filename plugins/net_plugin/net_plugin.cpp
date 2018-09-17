@@ -1109,7 +1109,6 @@ namespace ultrainio {
    }
 
    void connection::do_queue_write() {
-      ilog("write queue size: ${qs} out_queue: ${oqs}", ("qs", write_queue.size())("oqs", out_queue.size()));
       if(write_queue.empty() || !out_queue.empty())
          return;
       connection_wptr c(shared_from_this());
@@ -2270,8 +2269,8 @@ namespace ultrainio {
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg) {
-       ilog("receive AggEchoMsg msg!!! message from ${p} block id: ${id} block num: ${num}",
-            ("p", c->peer_name())("id", msg.blockId)("num", BlockHeader::num_from_id(msg.blockId)));
+       ilog("receive AggEchoMsg msg!!! message from ${p} block id: ${id} block num: ${num} account : ${account}",
+            ("p", c->peer_name())("id", msg.blockId)("num", BlockHeader::num_from_id(msg.blockId))("account", std::string(msg.account)));
        if (MessageManager::getInstance()->handleMessage(msg) == kSuccess) {
            for (auto &conn : connections) {
                if (conn != c) {

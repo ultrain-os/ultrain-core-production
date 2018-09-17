@@ -83,14 +83,11 @@ namespace ultrainio {
         if (myBlockNum - Config::MAX_LATER_NUMBER > blockNum) {
             return kObsolete;
         }
-        if (blockNum > myBlockNum) {
-            return kSuccess;
-        }
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        if (blockMessagePtr->m_myAggEchoMsgPtr && blockMessagePtr->m_myAggEchoMsgPtr->account == aggEchoMsg.account) {
+        if (VoterSystem::getMyAccount() == aggEchoMsg.account) {
             ilog("loopback AggEchoMsg");
             return kDuplicate;
         }
+        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         for (auto itor = blockMessagePtr->m_aggEchoMsgV.begin(); itor != blockMessagePtr->m_aggEchoMsgV.end(); itor++) {
             if (itor->account == aggEchoMsg.account) {
                 ilog("duplicate AggEchoMsg");
