@@ -355,11 +355,12 @@ namespace ultrainio {
             return;
         }
 
-        m_controllerPtr->produceBlock(blockPtr);
-        dlog("##############finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
-             ("block_num", getLastBlocknum())
+        dlog("##############ba1Process. finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
+             ("block_num", getBlockNum())
                      ("hash", blockPtr->id())
                      ("head_hash", m_controllerPtr->getPreviousBlockhash()));
+        m_controllerPtr->produceBlock(blockPtr);
+
         ULTRAIN_ASSERT(blockPtr->id() == m_controllerPtr->getPreviousBlockhash(),
                        chain::chain_exception, "Produced block hash is not expected");
         run();
@@ -388,12 +389,13 @@ namespace ultrainio {
             m_syncFailed = false;
             app().get_plugin<net_plugin>().stop_sync_block();
             *uranus_block = baxBlock;
-
-            m_controllerPtr->produceBlock(uranus_block);
-            dlog("##############finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
-                 ("block_num", getLastBlocknum())
+            dlog("##############baxProcess. finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
+                 ("block_num", getBlockNum())
                          ("hash", uranus_block->id())
                          ("head_hash", m_controllerPtr->getPreviousBlockhash()));
+
+            m_controllerPtr->produceBlock(uranus_block);
+
             ULTRAIN_ASSERT(uranus_block->id() == m_controllerPtr->getPreviousBlockhash(),
                            chain::chain_exception, "Produced block hash is not expected");
 
@@ -485,7 +487,7 @@ namespace ultrainio {
              ("Voter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
                      ("count",m_baxCount));
 
-        if (m_baxCount >= Config::kMaxBaxCount) {
+        if ((m_baxCount + m_phase) >= Config::kMaxBaxCount) {
             if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount)) {
                 sendEchoForEmptyBlock();
             }

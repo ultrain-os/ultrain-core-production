@@ -394,6 +394,24 @@ namespace ultrainio {
         return INVALID_BLOCK_NUM;
     }
 
+    bool UranusController::isBroadcast(const EchoMsg &echo) {
+        uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
+
+        if (blockNum != UranusNode::getInstance()->getBlockNum()) {
+            dlog("invalid echo msg, only broadcast. blockNum = ${id1}. local blockNum = ${id2}",
+                 ("id1", blockNum)("id2", UranusNode::getInstance()->getBlockNum()));
+            return true;
+        }
+
+        if (static_cast<ConsensusPhase>(echo.phase) != UranusNode::getInstance()->getPhase()) {
+            dlog("invalid echo msg, only broadcast. phase = ${phase1}. local phase = ${phase2}",
+                 ("phase1", (uint32_t) echo.phase)("phase2", (uint32_t) UranusNode::getInstance()->getPhase()));
+            return true;
+        }
+
+        return false;
+    }
+
     bool UranusController::isValid(const EchoMsg &echo) {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
         AccountName myAccount = VoterSystem::getMyAccount();
@@ -402,18 +420,8 @@ namespace ultrainio {
             return false;
         }
 
-        if (blockNum != UranusNode::getInstance()->getBlockNum()) {
-            elog("invalid echo msg . blockNum = ${id1}. local blockNum = ${id2}",
-                 ("id1", blockNum)("id2", UranusNode::getInstance()->getBlockNum()));
-            return false;
-        }
         if (echo.phase == kPhaseInit) {
             elog("invalid echo msg . phase = kPhaseInit");
-            return false;
-        }
-        if (static_cast<ConsensusPhase>(echo.phase) != UranusNode::getInstance()->getPhase()) {
-            elog("invalid echo msg . phase = ${phase1}. local phase = ${phase2}",
-                 ("phase1", (uint32_t) echo.phase)("phase2", (uint32_t) UranusNode::getInstance()->getPhase()));
             return false;
         }
 
@@ -443,23 +451,28 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::isValid(const ProposeMsg &propose) {
-        AccountName myAccount = VoterSystem::getMyAccount();
+    bool UranusController::isBroadcast(const ProposeMsg &propose) {
         uint32_t blockNum = propose.block.block_num();
         uint32_t myBlockNum = UranusNode::getInstance()->getBlockNum();
-        if (myAccount == propose.block.proposer) {
-            elog("invalid propose. msg loopback. account : ${account}", ("account", std::string(myAccount)));
-            return false;
-        }
 
         if (blockNum != myBlockNum) {
-            elog("invalid propose msg . blockNum = ${id1}. local blockNum = ${id2}",
+            dlog("invalid propose msg, only broadcast. blockNum = ${id1}. local blockNum = ${id2}",
                  ("id1", blockNum)("id2", myBlockNum));
-            return false;
+            return true;
         }
 
         if (kPhaseBA0 != UranusNode::getInstance()->getPhase()) {
-            elog("invalid propose. phase = ${phase}", ("phase", uint32_t(UranusNode::getInstance()->getPhase())));
+            dlog("invalid propose msg, only broadcast. phase = ${phase}", ("phase", uint32_t(UranusNode::getInstance()->getPhase())));
+            return true;
+        }
+
+        return false;
+    }
+
+    bool UranusController::isValid(const ProposeMsg &propose) {
+        AccountName myAccount = VoterSystem::getMyAccount();
+        if (myAccount == propose.block.proposer) {
+            elog("invalid propose. msg loopback. account : ${account}", ("account", std::string(myAccount)));
             return false;
         }
 
@@ -489,6 +502,10 @@ namespace ultrainio {
     }
 
     bool UranusController::fastHandleMessage(const ProposeMsg &propose) {
+        if (isBroadcast(propose)) {
+            return true;
+        }
+
         if (!isValid(propose)) {
             return false;
         }
@@ -504,6 +521,10 @@ namespace ultrainio {
     }
 
     bool UranusController::fastHandleMessage(const EchoMsg &echo) {
+        if (isBroadcast(echo)) {
+            return true;
+        }
+
         if (!isValid(echo)) {
             return false;
         }
@@ -528,6 +549,10 @@ namespace ultrainio {
         bool duplicate = false;
         if (isLaterMsgAndCache(propose, duplicate)) {
             return (!duplicate);
+        }
+
+        if (isBroadcast(propose)) {
+            return true;
         }
 
         if (!isValid(propose)) {
@@ -567,6 +592,10 @@ namespace ultrainio {
 
         if (isBeforeMsg(echo)) {
             return processBeforeMsg(echo);
+        }
+
+        if (isBroadcast(echo)) {
+            return true;
         }
 
         if (!isValid(echo)) {
@@ -1072,13 +1101,17 @@ namespace ultrainio {
     Block UranusController::produceTentativeBlock() {
         uint32_t minPriority = std::numeric_limits<uint32_t>::max();
         BlockIdType minBlockId = BlockIdType();
+        uint32_t phase = UranusNode::getInstance()->getPhase();
+        phase += UranusNode::getInstance()->getBaxCount();
+
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
             dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} block_hash : ${block_hash}",
                  ("phase", (uint32_t) echo_itor->second.echo.phase)("size", echo_itor->second.accountPool.size())(
-                         "totalVoter", echo_itor->second.totalVoter)("block_hash",
-                                                                     echo_itor->second.echo.blockId));
-            if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
-                ilog("found >= 2f + 1 echo");
+                         "totalVoter", echo_itor->second.totalVoter)("block_hash", echo_itor->second.echo.blockId));
+
+            if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (phase < Config::kMaxBaxCount))
+                || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (phase >= Config::kMaxBaxCount))) {
+                dlog("found >= 2f + 1 echo, phase+cnt = ${phase}",("phase",phase));
                 uint32_t priority = echo_itor->second.echo.proposerPriority;
                 if (minPriority >= priority) {
                     minBlockId = echo_itor->second.echo.blockId;

@@ -92,6 +92,10 @@ namespace ultrainio {
 
         bool isValid(const ProposeMsg &propose);
 
+        bool isBroadcast(const EchoMsg &echo);
+
+        bool isBroadcast(const ProposeMsg &propose);
+
         bool insert(const EchoMsg &echo);
 
         bool insert(const ProposeMsg &propose);
