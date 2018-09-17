@@ -503,7 +503,7 @@ namespace ultrainio {
 
     bool UranusController::fastHandleMessage(const ProposeMsg &propose) {
         if (isBroadcast(propose)) {
-            return true;
+            return false;
         }
 
         if (!isValid(propose)) {
@@ -522,7 +522,7 @@ namespace ultrainio {
 
     bool UranusController::fastHandleMessage(const EchoMsg &echo) {
         if (isBroadcast(echo)) {
-            return true;
+            return false;
         }
 
         if (!isValid(echo)) {
@@ -552,7 +552,7 @@ namespace ultrainio {
         }
 
         if (isBroadcast(propose)) {
-            return true;
+            return false;
         }
 
         if (!isValid(propose)) {
@@ -595,7 +595,7 @@ namespace ultrainio {
         }
 
         if (isBroadcast(echo)) {
-            return true;
+            return false;
         }
 
         if (!isValid(echo)) {
