@@ -1135,8 +1135,6 @@ namespace ultrainio {
                   m.callback(ec, w);
                }
 
-	       ilog("async write callback error code: ${ec}", ("ec", ec.value()));
-
                if(ec) {
                   string pname = conn ? conn->peer_name() : "no connection name";
                   if( ec.value() != boost::asio::error::eof) {

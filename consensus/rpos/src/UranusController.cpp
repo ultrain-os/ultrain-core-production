@@ -584,7 +584,6 @@ namespace ultrainio {
         if (itor != m_echoMsgMap.end()) {
             bret = updateAndMayResponse(itor->second, echo, true);
             if ((isMinEcho(itor->second) || isMinFEcho(itor->second)) && bret) {
-                ilog("handle echo finish.");
                 return true;
             }
         } else {
@@ -593,11 +592,9 @@ namespace ultrainio {
             bret = updateAndMayResponse(info, echo, true);
             m_echoMsgMap.insert(make_pair(echo.blockId, info));
             if ((isMinEcho(info) || isMinFEcho(info)) && bret) {
-                ilog("handle new echo finish");
                 return true;
             }
         }
-        ilog("handle echo finish blockId: ${id}", ("id", echo.blockId));
         return false;
     }
 
