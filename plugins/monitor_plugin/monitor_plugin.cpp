@@ -9,7 +9,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
-#include "httpc.hpp"
+#include "httpc_only_send.hpp"
 
 using namespace ultrainio::client::http;
 
@@ -103,30 +103,19 @@ void monitor_plugin_impl::processReportTask() {
 
     periodic_report_dynamic_data rst = m_monitorHandler.getPeriodicReortData();
     rst.nodeIp = self_endpoint.address().to_v4().to_string();
-    auto rsp = call(monitor_central_server, call_path_dynamic, rst);
-
-
-    if (rsp.is_object() && rsp["result"].is_string()) {
-        if(rsp["result"].as_string() == "Y") {
-            sendStaticConfigInfo();
-        }
-    } else {
-        std::cerr << "Invalid response from monitor central server." << std::endl;
-    }
+    call(monitor_central_server, call_path_dynamic, rst);
   }
   catch(chain::node_not_found_exception& e) {
     auto exceptionInfo = std::string("exception happened, node not initialized.");
-    std::cerr << "Periodic report: " << exceptionInfo << std::endl;
+    ilog("Periodic report: node not initialized.");
     //call(monitor_central_server, call_path_dynamic, exceptionInfo);
   }
   catch(fc::key_not_found_exception& e) {
-      //std::cerr << "Periodic report: fc::key_not_found_exception, " << e.what() << std::endl;
   }
   catch(fc::bad_cast_exception& e) {
-      //std::cerr << "Periodic report: fc::bad_cast_exception, " << e.what() << std::endl;
   }
   catch(...) {
-    std::cerr << "Periodic report: unknown exception." << std::endl;
+    ilog("Periodic report: unknown exception.");
   } //don't allow exception be thrown out, to prevent Ultrainode from exiting.
 }
 
@@ -252,5 +241,5 @@ monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const {
         }
         return m_nodeMonitor->getStaticConfigInfo();
      }
-   } //namespace monitor_apis
+  }
 } ///namespace ultrainio
