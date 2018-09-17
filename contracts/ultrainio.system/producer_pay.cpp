@@ -36,8 +36,8 @@ namespace ultrainiosystem {
        */
       if ( !_gstate.start_block){
          uint32_t i {};
-         for(auto itr = _producers.begin(); i < _gstate.min_committee_member_number && itr != _producers.end(); ++itr, ++i){}
-		 if( i == _gstate.min_committee_member_number){
+         for(auto itr = _producers.begin(); i <= _gstate.min_committee_member_number && itr != _producers.end(); ++itr, ++i){}
+		 if( i > _gstate.min_committee_member_number){
 			_gstate.start_block=(uint64_t)tapos_block_num();
          }else{
             return;
