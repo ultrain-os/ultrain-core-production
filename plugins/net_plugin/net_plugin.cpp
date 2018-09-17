@@ -1188,7 +1188,7 @@ namespace ultrainio {
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
       connection_wptr weak_this = shared_from_this();
-      ilog("before queue write: head size: ${hs} buffer size: ${bs}", ("hs", header_size)("bs", buffer_size));
+
       queue_write(send_buffer,trigger_send,
                   [weak_this, close_after_send](boost::system::error_code ec, std::size_t ) {
                      connection_ptr conn = weak_this.lock();
@@ -1267,7 +1267,6 @@ namespace ultrainio {
             auto index = pending_message_buffer.read_index();
             pending_message_buffer.peek(blk_buffer.data(), message_length, index);
          }
-	 ilog("before call handler");
          auto ds = pending_message_buffer.create_datastream();
          net_message msg;
          fc::raw::unpack(ds, msg);
@@ -1866,7 +1865,6 @@ namespace ultrainio {
             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                auto conn = weak_conn.lock();
                if (!conn) {
-	          ilog("async read callback, con is NULL");
                   return;
                }
 
@@ -1880,7 +1878,6 @@ namespace ultrainio {
                      }
                      ULTRAIN_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write(), plugin_exception, "");
                      conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
-		     ilog("start read msg from buffer");
                      while (conn->pending_message_buffer.bytes_to_read() > 0) {
                         uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
                         if (bytes_in_buffer < message_header_size) {
