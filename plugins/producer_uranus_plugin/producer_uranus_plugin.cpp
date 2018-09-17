@@ -212,102 +212,121 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       std::vector<std::tuple<packed_transaction_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
-	 // We do pre-run here only for returning results asap to the transaction caller.
-	 chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+          // We do pre-run here only for returning results asap to the transaction caller.
+          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
 
-	 // For producer we don't pre-run the trx cause it will run at the fixed timepoint
-	 // (just before ba0 propose msg)
-	 if (!_is_non_producing_node) {
-         transaction_metadata_ptr trx_ptr = std::make_shared<transaction_metadata>(*trx);
-         auto block_time = chain.head_block_state()->header.timestamp.to_time_point();
+          static auto last_incoming_trx_report_time = fc::time_point::now();
+          static int incoming_trx_count = 0;
+          const int report_period = 10;
+          const int report_trx_count_thresh = 2000;
 
-         if( fc::time_point(trx_ptr->trx.expiration) < block_time ) {
-             ilog("on_incoming_transaction_async cache trx.id = ${id}, but expired so drop", ("id", trx_ptr->id));
-             auto e = std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", trx_ptr->id)));
-             _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(e, trx));
-             return;
-         }
+          auto time_delta = fc::time_point::now() - last_incoming_trx_report_time;
+          incoming_trx_count++;
 
-         if (chain.is_known_unexpired_transaction(trx_ptr->id)) {
-             ilog("on_incoming_transaction_async cache trx.id = ${id}, but known so drop", ("id", trx_ptr->id));
-             auto e = std::make_shared<tx_duplicate>(FC_LOG_MESSAGE(error, "duplicate transaction ${id}", ("id", trx_ptr->id)));
-             _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(e, trx));
-             return;
-         }
+          // For producer we don't pre-run the trx cause it will run at the fixed timepoint
+          // (just before ba0 propose msg)
+          if (!_is_non_producing_node) {
+              transaction_metadata_ptr trx_ptr = std::make_shared<transaction_metadata>(*trx);
+              auto block_time = chain.head_block_state()->header.timestamp.to_time_point();
 
-         std::pair<bool, bool> ret = chain.push_into_pending_transaction(trx_ptr);
-         ilog("on_incoming_transaction_async cache trx.id = ${id}, overflow ${o}, duplicate ${d}",
-              ("id", trx->id())("o", ret.first)("d", ret.second));;
-         if (!ret.first && !ret.second)
-             _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
-         return;
-	 }
+              if( fc::time_point(trx_ptr->trx.expiration) < block_time ) {
+                  ilog("on_incoming_transaction_async cache trx.id = ${id}, but expired so drop", ("id", trx_ptr->id));
+                  auto e = std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", trx_ptr->id)));
+                  _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(e, trx));
+                  return;
+              }
 
-#if TEST_MODE == 0
-	 ilog("on_incoming_transaction_async pre-run trx.id = ${id}", ("id", trx->id()));
-#endif
-#if TEST_MODE == 1
-	   next(std::static_pointer_cast<fc::exception>(std::make_shared<tx_duplicate>(FC_LOG_MESSAGE(error, "normal return") )));
-	   _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
-	   return;
-#endif
-       if (!chain.pending_block_state()) {
-           auto block_timestamp = chain.get_proper_next_block_timestamp();
-           ilog("on_transaction: start block at ${time} and block_timestamp is ${timestamp}",
-                ("time", fc::time_point::now())("timestamp", block_timestamp));
-           chain.start_block(block_timestamp);
-           // non-producing node does not seem to have a good way to clear dead unapplied trx queue.
-           chain.clear_unapplied_transaction();
-       }
+              if (chain.is_known_unexpired_transaction(trx_ptr->id)) {
+                  ilog("on_incoming_transaction_async cache trx.id = ${id}, but known so drop", ("id", trx_ptr->id));
+                  auto e = std::make_shared<tx_duplicate>(FC_LOG_MESSAGE(error, "duplicate transaction ${id}", ("id", trx_ptr->id)));
+                  _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(e, trx));
+                  return;
+              }
 
-       auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
+              std::pair<bool, bool> ret = chain.push_into_pending_transaction(trx_ptr);
+              //         ilog("on_incoming_transaction_async cache trx.id = ${id}, overflow ${o}, duplicate ${d}",
+              //              ("id", trx->id())("o", ret.first)("d", ret.second));;
+              if (!ret.first && !ret.second)
+                  _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
 
-       auto send_response = [this, &trx, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
-           next(response);
-           if (response.contains<fc::exception_ptr>()) {
-               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(response.get<fc::exception_ptr>(), trx));
-           } else {
-               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
-           }
-       };
+              if (time_delta > fc::seconds(report_period) || incoming_trx_count > report_trx_count_thresh) {
+                  ilog("on_incoming_transaction_async cache ${count} trxs in last ${delta} seconds",
+                       ("count", incoming_trx_count)
+                       ("delta", time_delta.to_seconds()));
+                  last_incoming_trx_report_time = fc::time_point::now();
+                  incoming_trx_count = 0;
+              }
 
-       auto id = trx->id();
+              return;
+          }
 
-       if( fc::time_point(trx->expiration()) < block_time ) {
-           //ilog("-------pre-run expired trx");
-           send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)) )));
-           return;
-       }
+          if (time_delta > fc::seconds(report_period) || incoming_trx_count > report_trx_count_thresh) {
+              ilog("on_incoming_transaction_async pre-run ${count} trxs in last ${delta} seconds",
+                   ("count", incoming_trx_count)
+                   ("delta", time_delta.to_seconds()));
+              last_incoming_trx_report_time = fc::time_point::now();
+              incoming_trx_count = 0;
+          }
 
-       if( chain.is_known_unexpired_transaction(id) ) {
-           //ilog("-------pre-run duplicate trx");
-           send_response(std::static_pointer_cast<fc::exception>(std::make_shared<tx_duplicate>(FC_LOG_MESSAGE(error, "duplicate transaction ${id}", ("id", id)) )));
-           return;
-       }
+          //	 ilog("on_incoming_transaction_async pre-run trx.id = ${id}", ("id", trx->id()));
 
-       auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
-       // TODO -- yufengshen - setting deadline
-       //         bool deadline_is_subjective = false;
-       //         if (_max_transaction_time_ms < 0 || (_pending_block_mode == pending_block_mode::producing && block_time < deadline) ) {
-       //            deadline_is_subjective = true;
-       //            deadline = block_time;
-       //         }
+          if (!chain.pending_block_state()) {
+              auto block_timestamp = chain.get_proper_next_block_timestamp();
+              ilog("on_transaction: start block at ${time} and block_timestamp is ${timestamp}",
+                   ("time", fc::time_point::now())("timestamp", block_timestamp));
+              chain.start_block(block_timestamp);
+              // non-producing node does not seem to have a good way to clear dead unapplied trx queue.
+              chain.clear_unapplied_transaction();
+          }
 
-       try {
-           auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
-           if (trace->except) {
-               if (failure_is_subjective(*trace->except)) {
-                   ilog("---------Failure is subjective, abort block--------");
-                   chain.abort_block();
-               }
-               auto e_ptr = trace->except->dynamic_copy_exception();
-               send_response(e_ptr);
-           } else {
-               send_response(trace);
-           }
-       } catch ( boost::interprocess::bad_alloc& ) {
-           raise(SIGUSR1);
-       } CATCH_AND_CALL(send_response);
+          auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
+
+          auto send_response = [this, &trx, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
+                                   next(response);
+                                   if (response.contains<fc::exception_ptr>()) {
+                                       _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(response.get<fc::exception_ptr>(), trx));
+                                   } else {
+                                       _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
+                                   }
+                               };
+
+          auto id = trx->id();
+
+          if( fc::time_point(trx->expiration()) < block_time ) {
+              //ilog("-------pre-run expired trx");
+              send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)) )));
+              return;
+          }
+
+          if( chain.is_known_unexpired_transaction(id) ) {
+              //ilog("-------pre-run duplicate trx");
+              send_response(std::static_pointer_cast<fc::exception>(std::make_shared<tx_duplicate>(FC_LOG_MESSAGE(error, "duplicate transaction ${id}", ("id", id)) )));
+              return;
+          }
+
+          auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
+          // TODO -- yufengshen - setting deadline
+          //         bool deadline_is_subjective = false;
+          //         if (_max_transaction_time_ms < 0 || (_pending_block_mode == pending_block_mode::producing && block_time < deadline) ) {
+          //            deadline_is_subjective = true;
+          //            deadline = block_time;
+          //         }
+
+          try {
+              auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
+              if (trace->except) {
+                  if (failure_is_subjective(*trace->except)) {
+                      ilog("---------Failure is subjective, abort block--------");
+                      chain.abort_block();
+                  }
+                  auto e_ptr = trace->except->dynamic_copy_exception();
+                  send_response(e_ptr);
+              } else {
+                  send_response(trace);
+              }
+          } catch ( boost::interprocess::bad_alloc& ) {
+              raise(SIGUSR1);
+          } CATCH_AND_CALL(send_response);
       }
 
       fc::microseconds get_irreversible_block_age() {
