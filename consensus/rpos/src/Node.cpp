@@ -8,6 +8,7 @@
 
 #include <fc/log/logger.hpp>
 
+#include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/MessageBuilder.h>
 #include <rpos/MessageManager.h>
@@ -23,10 +24,6 @@ using namespace std;
 
 namespace ultrainio {
     char version[]="b5ce67";
-
-    const int UranusNode::MAX_ROUND_SECONDS = 10;
-    const int UranusNode::MAX_PHASE_SECONDS = 5;
-    const int UranusNode::MAX_BAX_COUNT = 20;
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -84,7 +81,7 @@ namespace ultrainio {
 
     void UranusNode::readyToConnect() {
         m_connected = true;
-        readyLoop(6 * MAX_ROUND_SECONDS);
+        readyLoop(6 * Config::s_maxRoundSeconds);
     }
 
     bool UranusNode::getSyncingStatus() const {
@@ -116,8 +113,8 @@ namespace ultrainio {
         if (current_time < Genesis::s_time) {
             pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(Genesis::s_time - current_time);
 
-            if (pass_time_to_genesis.count() > MAX_ROUND_SECONDS) {
-                readyLoop(MAX_ROUND_SECONDS);
+            if (pass_time_to_genesis.count() > Config::s_maxRoundSeconds) {
+                readyLoop(Config::s_maxRoundSeconds);
             } else if (pass_time_to_genesis.count() == 0) {
                 m_ready = true;
                 run();
@@ -488,7 +485,7 @@ namespace ultrainio {
              ("Voter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
                      ("count",m_baxCount));
 
-        if (m_baxCount >= MAX_BAX_COUNT) {
+        if (m_baxCount >= Config::kMaxBaxCount) {
             if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount)) {
                 sendEchoForEmptyBlock();
             }
@@ -680,7 +677,7 @@ namespace ultrainio {
 
                 fastBlock(msg_key.blockNum);
             } else {
-                if ((getRoundInterval() == MAX_PHASE_SECONDS) && (isProcessNow())) {
+                if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
                     //todo process two phase
                     ba1Process();
                 } else {
@@ -694,7 +691,7 @@ namespace ultrainio {
             if (m_controllerPtr->findEchoCache(msg_key)) {
                 fastBax();
             } else {
-                if ((getRoundInterval() == MAX_PHASE_SECONDS) && (isProcessNow())) {
+                if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
                     //todo process two phase
                     ba1Process();
                 } else {
@@ -773,7 +770,7 @@ namespace ultrainio {
         if (m_controllerPtr->findEchoCache(msg_key)) {
             fastBa1();
         } else {
-            if ((getRoundInterval() == MAX_PHASE_SECONDS) && (isProcessNow())) {
+            if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
                 //todo process two phase
                 ba0Process();
             } else {
@@ -800,9 +797,9 @@ namespace ultrainio {
                 = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
 
         dlog("getRoundCount. count = ${id}.",
-             ("id", pass_time_to_genesis.count() / MAX_PHASE_SECONDS));
+             ("id", pass_time_to_genesis.count() / Config::s_maxPhaseSeconds));
 
-        return pass_time_to_genesis.count() / MAX_PHASE_SECONDS;
+        return pass_time_to_genesis.count() / Config::s_maxPhaseSeconds;
     }
 
     uint32_t UranusNode::getRoundInterval() {
@@ -811,9 +808,9 @@ namespace ultrainio {
                 = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
 
         dlog("getRoundInterval. interval = ${id}.",
-             ("id", MAX_PHASE_SECONDS - (pass_time_to_genesis.count() % MAX_PHASE_SECONDS)));
+             ("id", Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % Config::s_maxPhaseSeconds)));
 
-        return MAX_PHASE_SECONDS - (pass_time_to_genesis.count() % MAX_PHASE_SECONDS);
+        return Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % Config::s_maxPhaseSeconds);
     }
 
     BlockIdType UranusNode::getPreviousHash() {
@@ -862,5 +859,12 @@ namespace ultrainio {
     void UranusNode::setGenesisPk(const std::string& pk) {
         Genesis::s_genesisPk = pk;
         ilog("Genesis pk : ${pk}", ("pk", pk));
+    }
+
+    void UranusNode::setRoundAndPhaseSecond(int32_t roundSecond, int32_t phaseSecond) {
+        Config::s_maxRoundSeconds = roundSecond;
+        Config::s_maxPhaseSeconds = phaseSecond;
+        ilog("maxRoundSecond : ${maxRoundSecond}, maxPhaseSecond : ${maxPhaseSecond}",
+                ("maxRoundSecond", Config::s_maxRoundSeconds)("maxPhaseSecond", Config::s_maxPhaseSeconds));
     }
 }

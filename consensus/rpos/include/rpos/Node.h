@@ -15,7 +15,6 @@
 #include <crypto/Ed25519.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
-#include <rpos/Config.h>
 #include <rpos/VoterSystem.h>
 
 namespace ultrainio {
@@ -27,10 +26,6 @@ namespace ultrainio {
 
     class UranusNode : public std::enable_shared_from_this<UranusNode> {
     public:
-        static const int MAX_ROUND_SECONDS;
-        static const int MAX_PHASE_SECONDS;
-        static const int MAX_BAX_COUNT;
-
         static std::shared_ptr<UranusNode> initAndGetInstance(boost::asio::io_service &ioservice);
 
         static std::shared_ptr<UranusNode> getInstance();
@@ -128,6 +123,8 @@ namespace ultrainio {
         void setGenesisStartupTime(int32_t minutes);
 
         void setGenesisPk(const std::string& pk);
+
+        void setRoundAndPhaseSecond(int32_t roundSecond, int32_t phaseSecond);
 
     private:
         explicit UranusNode(boost::asio::io_service &ioservice);

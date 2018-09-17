@@ -29,6 +29,7 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/signals2/connection.hpp>
 
+#include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/Node.h>
 
@@ -119,7 +120,9 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       bool     _pause_production                   = false;
       bool     _is_non_producing_node              = false;
       int32_t  _genesis_delay;
-      int32_t _genesis_startup_time                = Genesis::s_genesisStartupTime;
+      int32_t  _genesis_startup_time               = Genesis::s_genesisStartupTime;
+      int32_t  _max_round_seconds                  = Config::s_maxRoundSeconds;
+      int32_t  _max_phase_seconds                  = Config::s_maxPhaseSeconds;
 
       using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
@@ -389,8 +392,10 @@ void producer_uranus_plugin::set_program_options(
          ("my-account-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_account_as_committee = g; }), "account as committer member")
          ("genesis-delay", boost::program_options::value<int32_t>()->default_value(60), "genesis delay")
          ("genesis-time", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_time = g; }), "genesis time")
-         ("genesis-startup-time", bpo::value<int32_t>()->default_value(60), "genesis startup time")
-         ("genesis-pk", bpo::value<std::string>()->notifier([this](std::string g) { my->_genesis_pk = g; }), "genesis public key")
+         ("genesis-startup-time", bpo::value<int32_t>()->default_value(Genesis::s_genesisStartupTime), "genesis startup time, set by test mode usually")
+         ("genesis-pk", bpo::value<std::string>()->notifier([this](std::string g) { my->_genesis_pk = g; }), "genesis public key, set by test mode usually")
+         ("max-round-seconds", bpo::value<int32_t>()->default_value(Config::s_maxRoundSeconds), "max round second, set by test mode usually")
+         ("max-phase-seconds", bpo::value<int32_t>()->default_value(Config::s_maxPhaseSeconds), "max phase second, set by test mode usually")
          ;
    config_file_options.add(producer_options);
 }
@@ -509,6 +514,8 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    my->_max_transaction_time_ms = 200;
    my->_genesis_delay = options.at("genesis-delay").as<int32_t>();
    my->_genesis_startup_time = options.at("genesis-startup-time").as<int32_t>();
+   my->_max_round_seconds = options.at("max-round-seconds").as<int32_t>();
+   my->_max_phase_seconds = options.at("max-phase-seconds").as<int32_t>();
 
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
@@ -585,6 +592,7 @@ void producer_uranus_plugin::plugin_startup()
    if (!my->_genesis_pk.empty()) {
        nodePtr->setGenesisPk(my->_genesis_pk);
    }
+   nodePtr->setRoundAndPhaseSecond(my->_max_round_seconds, my->_max_phase_seconds);
    nodePtr->init();
    nodePtr->readyToJoin();
    ilog("producer plugin:  plugin_startup() end");
