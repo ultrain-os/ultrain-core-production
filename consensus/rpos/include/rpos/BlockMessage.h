@@ -34,6 +34,9 @@ namespace ultrainio {
         std::shared_ptr<VoterSystem> m_voterSystem = nullptr;
 
         friend class MessageManager;
+
+        // Only for debug purpose.
+        friend class UranusController;
     };
 
     typedef std::shared_ptr<BlockMessage> BlockMessagePtr;

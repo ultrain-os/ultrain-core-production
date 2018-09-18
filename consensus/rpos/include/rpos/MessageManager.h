@@ -65,5 +65,8 @@ namespace ultrainio {
 
         static std::shared_ptr<MessageManager> s_self;
         std::map<int, BlockMessagePtr> blockMessageMap; // key - blockNum
+
+        // Only for debug purpose.
+        friend class UranusController;
     };
 }

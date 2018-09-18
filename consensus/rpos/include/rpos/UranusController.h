@@ -195,6 +195,8 @@ namespace ultrainio {
 
         echo_message_info findEchoMsg(BlockIdType blockId);
 
+        void start_memleak_check();
+
         // data member
         Block m_ba0Block;
         bool m_voterPreRunBa0InProgress = false;
@@ -212,6 +214,8 @@ namespace ultrainio {
         const uint32_t m_maxPacketsOnce = 80;
         boost::asio::steady_timer::duration m_syncTaskPeriod{std::chrono::seconds{1}};
         std::unique_ptr<boost::asio::steady_timer> m_syncTaskTimer;
+        boost::asio::steady_timer::duration m_memleakCheckPeriod{std::chrono::seconds{10}};
+        std::unique_ptr<boost::asio::steady_timer> m_memleakCheck;
         std::list<SyncTask> m_syncTaskQueue;
         uint32_t m_fast_timestamp;
         friend class UranusControllerMonitor;

@@ -2488,6 +2488,10 @@ namespace ultrainio {
 
    void net_plugin_impl::expire_txns() {
       start_txn_timer( );
+
+      // Lets keep watch on the size of received_transactions.
+      ilog("received_trx size ${s}", ("s", dispatcher->received_transactions.size()));
+
       auto &old = local_txns.get<by_expiry>();
       auto ex_up = old.upper_bound( time_point::now());
       auto ex_lo = old.lower_bound( fc::time_point_sec( 0));

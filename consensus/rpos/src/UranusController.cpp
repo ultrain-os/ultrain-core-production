@@ -63,7 +63,74 @@ namespace ultrainio {
                                            m_echoMsgAllPhase() {
         m_syncTaskPeriod = {std::chrono::seconds{1}};
         m_syncTaskTimer.reset(new boost::asio::steady_timer(app().get_io_service()));
+        m_memleakCheck.reset(new boost::asio::steady_timer(app().get_io_service()));
+        start_memleak_check();
         m_fast_timestamp = 0;
+    }
+
+    void UranusController::start_memleak_check() {
+      m_memleakCheck->expires_from_now(m_memleakCheckPeriod);
+      m_memleakCheck->async_wait( [this](boost::system::error_code ec) {
+            if( !ec) {
+                start_memleak_check();
+                int s1 = m_proposerMsgMap.size();
+
+                int s2 = m_echoMsgMap.size();
+                int s3 = 0;
+                for(const auto& it : m_echoMsgMap) {
+                    s3 += it.second.accountPool.size();
+                    s3 += it.second.proofPool.size();
+                    s3 += it.second.sigPool.size();
+                    s3 += it.second.timePool.size();
+                }
+
+                int s4 = m_cacheProposeMsgMap.size();
+                int s5 = 0;
+                for(const auto& it: m_cacheProposeMsgMap) {
+                    s5 += it.second.size();
+                }
+
+                int s6 = m_cacheEchoMsgMap.size();
+                int s7 = 0;
+                for(const auto& it: m_cacheEchoMsgMap) {
+                    s7 += it.second.size();
+                }
+
+                int s8 = m_echoMsgAllPhase.size();
+                int s9 = 0;
+                for(const auto& it : m_echoMsgAllPhase) {
+                    for( const auto& it2: it.second) {
+                        s9 += it2.second.accountPool.size();
+                        s9 += it2.second.proofPool.size();
+                        s9 += it2.second.sigPool.size();
+                        s9 += it2.second.timePool.size();
+                    }
+                }
+
+                int s10 = 0;
+                int s11 = 0;
+                int s12 = 0;
+                int s13 = 0;
+                auto mm = MessageManager::getInstance();
+                if (mm) {
+                    s10 = mm->blockMessageMap.size();
+                    for(const auto& it :  mm->blockMessageMap) {
+                        const auto& it2 = *(it.second);
+                        s11 += it2.m_proposeMsgList.size();
+                        s12 += it2.m_phaseMessageMap.size();
+                        s13 += it2.m_aggEchoMsgV.size();
+                    }
+                }
+                ilog("memleak check m_proposerMsgMap ${1}, m_echoMsgMap ${2} ${3} m_cacheProposeMsgMap ${4} ${5} m_cacheEchoMsgMap ${6} ${7} m_echoMsgAllPhase ${8} ${9} blockMessageMap ${10} m_proposeMsgList ${11} m_phaseMessageMap ${12} m_aggEchoMsgV ${13}",
+                     ("1", s1)("2", s2)("3", s3)("4", s4)("5", s5)("6", s6)
+                     ("7", s7)("8", s8)("9", s9)("10", s10)("11", s11)("12", s12)
+                     ("13",s13));
+            }
+            else {
+               elog( "Error from memleak check monitor: ${m}",( "m", ec.message()));
+               start_memleak_check( );
+            }
+         });
     }
 
     void UranusController::reset() {
