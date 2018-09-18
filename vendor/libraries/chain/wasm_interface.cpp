@@ -1002,20 +1002,25 @@ class system_api : public context_aware_api {
       }
 
       void set_result_str(null_terminated_ptr str) {
-          std::string r(str);
-          if (r.size() > 128) {
-              r = r.substr(0, 127) + "...";
-          }
+          if (context.trace.return_value.size() > return_length) return;
 
-          if (r.size() + context.trace.return_value.size() > return_length) return;
+          int leftSize = return_length - context.trace.return_value.size();
+
+          std::string r(str);
+          int srcSize = r.size();
+          r = r.substr(0, std::min(srcSize, leftSize));
 
           context.trace.return_value += r;
       }
 
       void set_result_int(int64_t val) {
-          std::string r= std::to_string(val);
+          if (context.trace.return_value.size() > return_length) return;
 
-          if (r.size() + context.trace.return_value.size() > return_length) return;
+          int leftSize = return_length - context.trace.return_value.size();
+
+          std::string r = std::to_string(val);
+          int srcSize = r.size();
+          r = r.substr(0, std::min(srcSize, leftSize));
 
           context.trace.return_value += r;
       }
