@@ -10,6 +10,8 @@ namespace ultrainio {
 
         static const int kMaxBaxCount;
 
+        static const int kDeadlineCnt;
+
         static int s_maxRoundSeconds;
 
         static int s_maxPhaseSeconds;
@@ -27,4 +29,5 @@ namespace ultrainio {
 #define THRESHOLD_NEXT_ROUND       670
 #define THRESHOLD_SYNCING          3
 #define THRESHOLD_EMPTY_BLOCK      888
+#define THRESHOLD_EMPTY_BLOCK2     750
 }

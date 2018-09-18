@@ -5,6 +5,8 @@ namespace ultrainio {
 
     const int Config::kMaxBaxCount = 20;
 
+    const int Config::kDeadlineCnt = 100;
+
     int Config::s_maxRoundSeconds = 10;
 
     int Config::s_maxPhaseSeconds = 5;

@@ -71,7 +71,7 @@ namespace ultrainio {
         void reset();
 
         bool isMinPropose(const ProposeMsg &propose_msg);
-
+        bool isMin2FEcho(int totalVoter, uint32_t phasecnt);
         bool isMinFEcho(const echo_message_info &info);
         bool isMinFEcho(const echo_message_info &info, const echo_msg_buff &msgbuff);
         bool isMinEcho(const echo_message_info &info);
@@ -207,7 +207,7 @@ namespace ultrainio {
         std::map<msgkey, echo_msg_buff> m_echoMsgAllPhase;
         const uint32_t m_maxCachedKeys = 360;
         const uint32_t m_maxCommitteeSize = 1000; //This is not strict, just to limit cache size.
-        const uint32_t m_maxCachedAllPhaseKeys = 100;
+        const uint32_t m_maxCachedAllPhaseKeys = 200;
         const uint32_t m_maxSyncClients = 10;
         const uint32_t m_maxPacketsOnce = 80;
         boost::asio::steady_timer::duration m_syncTaskPeriod{std::chrono::seconds{1}};

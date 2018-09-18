@@ -276,7 +276,7 @@ namespace ultrainio {
         if (map_it == m_echoMsgAllPhase.end()) {
             if (m_echoMsgAllPhase.size() >= m_maxCachedAllPhaseKeys) {
                 dlog("processBeforeMsg.map reach the up limit. size = ${size}",("size",m_echoMsgAllPhase.size()));
-                return true;
+                return false;
             }
             auto result = m_echoMsgAllPhase.insert(make_pair(msg_key, echo_msg_map));
             map_it = result.first;
@@ -715,6 +715,21 @@ namespace ultrainio {
         return false;
     }
 
+    bool UranusController::isMin2FEcho(int totalVoter, uint32_t phasecnt) {
+        if ((totalVoter >= THRESHOLD_EMPTY_BLOCK) && (phasecnt >= Config::kMaxBaxCount)) {
+            return true;
+        }
+
+        if ((totalVoter >= THRESHOLD_NEXT_ROUND) && (phasecnt < Config::kMaxBaxCount)) {
+            return true;
+        }
+
+        if ((totalVoter >= THRESHOLD_EMPTY_BLOCK2) && (phasecnt >= Config::kDeadlineCnt)) {
+            return true;
+        }
+
+    }
+
     bool UranusController::isMinPropose(const ProposeMsg &proposeMsg) {
         Proof proof(proposeMsg.block.proposerProof);
         uint32_t priority = proof.getPriority();
@@ -1057,8 +1072,9 @@ namespace ultrainio {
             echo_info = nullptr;
             echo_msg_buff &echo_msg_map = map_itor->second;
             for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
-                if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (map_itor->first.phase < Config::kMaxBaxCount))
-                    || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (map_itor->first.phase >= Config::kMaxBaxCount))) {
+//                if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (map_itor->first.phase < Config::kMaxBaxCount))
+//                    || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (map_itor->first.phase >= Config::kMaxBaxCount))) {
+                if (isMin2FEcho(echo_itor->second.totalVoter, map_itor->first.phase)) {
                     dlog("found >= 2f + 1 echo. blocknum = ${blocknum} phase = ${phase}",
                          ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
                     uint32_t priority = echo_itor->second.echo.proposerPriority;
@@ -1109,8 +1125,9 @@ namespace ultrainio {
                  ("phase", (uint32_t) echo_itor->second.echo.phase)("size", echo_itor->second.accountPool.size())(
                          "totalVoter", echo_itor->second.totalVoter)("block_hash", echo_itor->second.echo.blockId));
 
-            if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (phase < Config::kMaxBaxCount))
-                || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (phase >= Config::kMaxBaxCount))) {
+//            if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (phase < Config::kMaxBaxCount))
+//                || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (phase >= Config::kMaxBaxCount))) {
+            if (isMin2FEcho(echo_itor->second.totalVoter, phase)) {
                 dlog("found >= 2f + 1 echo, phase+cnt = ${phase}",("phase",phase));
                 uint32_t priority = echo_itor->second.echo.proposerPriority;
                 if (minPriority >= priority) {
