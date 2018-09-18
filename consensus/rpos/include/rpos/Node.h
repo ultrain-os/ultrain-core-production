@@ -102,6 +102,8 @@ namespace ultrainio {
 
         bool syncFail(const ultrainio::SyncRequestMessage& sync_msg);
 
+        bool syncCancel();
+
         void cancelTimer();
 
         void applyBlockLoop(uint32_t timeout);

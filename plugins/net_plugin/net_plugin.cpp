@@ -649,6 +649,7 @@ namespace ultrainio {
       uint32_t                         last_received_block;
       uint32_t                         last_checked_block;
       std::vector<connection_ptr>      rsp_conns;
+      connection_ptr                   sync_conn;
       ultrainio::SyncRequestMessage    sync_block_msg;
       uint32_t                         end_block_num;
       bool                             selecting_src = false;
@@ -671,6 +672,7 @@ namespace ultrainio {
         last_received_block = 0;
         last_checked_block = 0;
         rsp_conns.clear();
+        sync_conn = nullptr;
         memset(&sync_block_msg, 0, sizeof(sync_block_msg));
         end_block_num = 0;
         selecting_src = false;
@@ -694,6 +696,7 @@ namespace ultrainio {
               if (ec.value() == boost::asio::error::operation_aborted) {
                   ilog("receive block conn check canceled, will not wait for next block. last received:${rcv} last checked:${chk}",
                       ("rcv", last_received_block)("chk", last_checked_block));
+                  app().get_plugin<producer_uranus_plugin>().sync_cancel();
                   reset();
               }else if (last_received_block <= last_checked_block || ec.value() != 0) {
                   ilog("no block received in last period or error occur. last received:${rcv} last checked:${chk} ec:${ec}",
@@ -794,6 +797,7 @@ namespace ultrainio {
             }
             end_block_num = sync_block_msg.endBlockNum;
             con->enqueue(sync_block_msg);
+            sync_conn = con;
             rsp_conns.clear();
             start_conn_check_timer();
         }
@@ -1818,6 +1822,7 @@ namespace ultrainio {
         sync_block_master->src_block_check->async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("select sync source canceled");
+                app().get_plugin<producer_uranus_plugin>().sync_cancel();
             }else if (sync_block_master->selecting_src && sync_block_master->end_block_num == 0) {
                 connection_ptr wc = sync_block_master->select_weak_sync_src();
                 if (wc) {
@@ -2321,6 +2326,11 @@ namespace ultrainio {
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::Block& block) {
         ilog("receive block msg!!! message from ${p} blockNum = ${blockNum} end block num:${eb}",
              ("p", c->peer_name())("blockNum", block.block_num())("eb", sync_block_master->end_block_num));
+
+        if (c != sync_block_master->sync_conn) {
+            wlog("receive old block msg!!! Discard.");
+            return;
+        }
 
         if (sync_block_master->end_block_num > 0) {
           sync_block_master->last_received_block = block.block_num();

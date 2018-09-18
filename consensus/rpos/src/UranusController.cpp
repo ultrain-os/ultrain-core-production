@@ -795,6 +795,7 @@ namespace ultrainio {
             return true;
         }
 
+        return false;
     }
 
     bool UranusController::isMinPropose(const ProposeMsg &proposeMsg) {

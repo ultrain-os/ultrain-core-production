@@ -576,6 +576,11 @@ namespace ultrainio {
         return true;
     }
 
+    bool UranusNode::syncCancel() {
+        m_syncing = false;
+        return true;
+    }
+
     void UranusNode::cancelTimer() {
         m_timer.cancel();
     }

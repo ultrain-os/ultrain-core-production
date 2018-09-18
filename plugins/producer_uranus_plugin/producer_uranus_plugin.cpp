@@ -565,6 +565,10 @@ bool producer_uranus_plugin::sync_fail(const ultrainio::SyncRequestMessage& sync
   return UranusNode::getInstance()->syncFail(sync_msg);
 }
 
+bool producer_uranus_plugin::sync_cancel() {
+  return UranusNode::getInstance()->syncCancel();
+}
+
 void producer_uranus_plugin::plugin_startup()
 { try {
    if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end()) {

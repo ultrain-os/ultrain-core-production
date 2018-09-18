@@ -46,6 +46,7 @@ public:
    bool handle_message(const Block& block, bool last_block);
    bool handle_message(const string& peer_addr, const ReqLastBlockNumMsg& msg);
    bool sync_fail(const ultrainio::SyncRequestMessage& sync_msg);
+   bool sync_cancel();
 
    void pause();
    void resume();
