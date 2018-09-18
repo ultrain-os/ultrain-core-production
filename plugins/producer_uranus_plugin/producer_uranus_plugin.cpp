@@ -249,8 +249,14 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
               std::pair<bool, bool> ret = chain.push_into_pending_transaction(trx_ptr);
               //         ilog("on_incoming_transaction_async cache trx.id = ${id}, overflow ${o}, duplicate ${d}",
               //              ("id", trx->id())("o", ret.first)("d", ret.second));;
-              if (!ret.first && !ret.second)
+              if (!ret.first && !ret.second) {
                   _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
+              } else {
+                  auto e = std::make_shared<tx_duplicate>(
+                      FC_LOG_MESSAGE(error, "overflow ${o} or duplicate ${d} transaction ${id}",
+                                     ("o", ret.first)("d", ret.second)("id", trx_ptr->id)));
+                  _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(e, trx));
+              }
 
               if (time_delta > fc::seconds(report_period) || incoming_trx_count > report_trx_count_thresh) {
                   ilog("on_incoming_transaction_async cache ${count} trxs in last ${delta} seconds",
