@@ -782,8 +782,26 @@ namespace ultrainio {
             return (*src_cons)[r];
         }
 
+        connection_ptr select_longest_sync_src() {
+          std::vector<connection_ptr> longest_conns;
+          uint32_t block_num = 0;
+          for (auto& con : rsp_conns) {
+            if (con->last_block_info.blockNum > block_num) {
+              longest_conns.clear();
+              longest_conns.emplace_back(con);
+              block_num = con->last_block_info.blockNum;
+            } else if (con->last_block_info.blockNum == block_num) {
+              longest_conns.emplace_back(con);
+            }
+          }
+
+          uint32_t r = rand_engine()%longest_conns.size();
+          ilog("select random ${r}th longest connection to sync block. peer:${p}", ("r", r)("p", longest_conns[r]->peer_name()));
+          return longest_conns[r];
+        }
+
         void sync_block(connection_ptr con) {
-            src_block_check->cancel();
+            ilog("start sync block");
             selecting_src = false;
             last_received_block = 0;
             last_checked_block = 0;
@@ -1798,13 +1816,6 @@ namespace ultrainio {
             }
         }
 
-        /*uint32_t count = connections.size()/2 + 1;
-        if (conn_list.size() < count) {
-            elog("Available connection count is ${cc}, which is less than ${cnt}, can't sync block.",
-                 ("cc", conn_list.size())("cnt", count));
-            return false;
-        }*/
-
         ReqLastBlockNumMsg req_last_block_msg;
         req_last_block_msg.seqNum = ++sync_block_master->seq_num;
         for (auto c:conn_list) {
@@ -1822,9 +1833,12 @@ namespace ultrainio {
         sync_block_master->src_block_check->async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("select sync source canceled");
-                app().get_plugin<producer_uranus_plugin>().sync_cancel();
+                if (!sync_block_master->sync_conn) {
+                    ilog("producer_uranus_plugin sync cancel");
+                    app().get_plugin<producer_uranus_plugin>().sync_cancel();
+                }
             }else if (sync_block_master->selecting_src && sync_block_master->end_block_num == 0) {
-                connection_ptr wc = sync_block_master->select_weak_sync_src();
+                connection_ptr wc = sync_block_master->select_longest_sync_src();
                 if (wc) {
                     sync_block_master->sync_block(wc);
                 } else {
@@ -2306,12 +2320,12 @@ namespace ultrainio {
         c->last_block_info = msg;
         sync_block_master->rsp_conns.emplace_back(c);
 
-        uint32_t count = connections.size()/2 + 1;
-        if (sync_block_master->rsp_conns.size() < count) {
+        if (sync_block_master->rsp_conns.size() < connections.size()) {
             return;
         }
-        connection_ptr sc = sync_block_master->select_strong_sync_src(count);
+        connection_ptr sc = sync_block_master->select_longest_sync_src();
         if (sc) {
+            sync_block_master->src_block_check->cancel();
             sync_block_master->sync_block(sc);
         }
     }
