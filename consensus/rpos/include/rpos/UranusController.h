@@ -207,7 +207,8 @@ namespace ultrainio {
         std::map<msgkey, std::vector<ProposeMsg>> m_cacheProposeMsgMap;
         std::map<msgkey, std::vector<EchoMsg>> m_cacheEchoMsgMap;
         std::map<msgkey, echo_msg_buff> m_echoMsgAllPhase;
-        const uint32_t m_maxCachedKeys = 360;
+        const uint32_t m_maxCacheEcho = 60;
+        const uint32_t m_maxCachePropose = 120;
         const uint32_t m_maxCommitteeSize = 1000; //This is not strict, just to limit cache size.
         const uint32_t m_maxCachedAllPhaseKeys = 200;
         const uint32_t m_maxSyncClients = 10;

@@ -234,7 +234,7 @@ namespace ultrainio {
 
             auto itor = m_cacheEchoMsgMap.find(key);
             if (itor == m_cacheEchoMsgMap.end()) {
-                if (m_cacheEchoMsgMap.size() >= m_maxCachedKeys) {
+                if (m_cacheEchoMsgMap.size() >= m_maxCacheEcho) {
                     //NOTE: itor will be invalid after the operation below.
                     clearOldCachedEchoMsg();
                 }
@@ -275,7 +275,7 @@ namespace ultrainio {
 
             auto itor = m_cacheProposeMsgMap.find(key);
             if (itor == m_cacheProposeMsgMap.end()) {
-                if (m_cacheProposeMsgMap.size() >= m_maxCachedKeys) {
+                if (m_cacheProposeMsgMap.size() >= m_maxCachePropose) {
                     //NOTE: itor will be invalid after the operation below.
                     clearOldCachedProposeMsg();
                 }
@@ -1716,7 +1716,7 @@ namespace ultrainio {
         }
 
         wlog("m_cacheProposeMsgMap exceeds ${max}, echo msgs with block num ${num} will be cleared",
-             ("max", m_maxCachedKeys)("num", old_block_num));
+             ("max", m_maxCachePropose)("num", old_block_num));
         for (auto it = m_cacheProposeMsgMap.begin(); it != m_cacheProposeMsgMap.end();) {
             if (it->first.blockNum == old_block_num) {
                 m_cacheProposeMsgMap.erase(it++);
@@ -1735,7 +1735,7 @@ namespace ultrainio {
         }
 
         wlog("m_cacheEchoMsgMap exceeds ${max}, echo msgs with block num ${num} will be cleared",
-             ("max", m_maxCachedKeys)("num", old_block_num));
+             ("max", m_maxCacheEcho)("num", old_block_num));
         for (auto it = m_cacheEchoMsgMap.begin(); it != m_cacheEchoMsgMap.end();) {
             if (it->first.blockNum == old_block_num) {
                 m_cacheEchoMsgMap.erase(it++);
