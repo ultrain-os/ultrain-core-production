@@ -12,13 +12,14 @@ namespace ultrainio {
 
         static const int kDeadlineCnt;
 
+        static const double kProposerStakeNumber;
+
         static int s_maxRoundSeconds;
 
         static int s_maxPhaseSeconds;
 
         // TODO(qinxiaofen) code style
         static const double VOTER_STAKES_NUMBER;
-        static const double PROPOSER_STAKES_NUMBER;
         static const int DEFAULT_THRESHOLD;
         static const int MAX_LATER_NUMBER;
     };

@@ -185,6 +185,8 @@ namespace ultrainio {
         // This function is time consuming, please cache the result empty block.
         std::shared_ptr<Block> generateEmptyBlock();
 
+        bool isDuplicate(const ProposeMsg& proposeMsg);
+
         bool updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response);
 
         size_t runPendingTrxs(std::list<chain::transaction_metadata_ptr> *trxs,
