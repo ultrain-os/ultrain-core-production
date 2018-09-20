@@ -289,7 +289,7 @@ def randomTransfer():
     subaccounts = accounts[1:args.num_producers]
     for i in subaccounts:
         for j in subaccounts:
-            simple_run(args.clultrain + 'transfer -f %s %s "0.%s SYS" ' %(i, j, random.randint(1, 999)))
+            simple_run(args.clultrain + 'transfer -f %s %s "0.%s UGAS" ' %(i, j, random.randint(1, 999)))
 #    sleep(2)
 
 def startWallet():
@@ -317,8 +317,8 @@ def stepInstallSystemContracts():
     sleep(20)
 
 def stepCreateTokens():
-    retry(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 SYS"]\' -p utrio.token')
-    retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "900000000.0000 SYS", "memo"]\' -p ultrainio')
+    retry(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 UGAS"]\' -p utrio.token')
+    retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "900000000.0000 UGAS", "memo"]\' -p ultrainio')
     sleep(15)
 
 def stepSetSystemContract():
@@ -332,8 +332,8 @@ def stepCreateStakedAccounts():
         # user.111 & user.112 are used for tps pressure test, so they need more staked resources
         if accounts[i] == 'user.111' or accounts[i] == 'user.112':
             funds += 80000000
-        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "%.4f SYS" --stake-cpu "%.4f SYS" --buy-ram "1000.000 SYS" ' % (accounts[i], args.public_key, funds, funds))
-        retry(args.clultrain + 'transfer ultrainio %s "5000.0000 SYS"' % (accounts[i]))
+        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "%.4f UGAS" --stake-cpu "%.4f UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key, funds, funds))
+        retry(args.clultrain + 'transfer ultrainio %s "5000.0000 UGAS"' % (accounts[i]))
     sleep(15)
 
 def stepRegProducers():
@@ -343,28 +343,28 @@ def stepRegProducers():
     run(args.clultrain + 'system listproducers')
 
 def resourceTransaction(fromacc,recacc,value):
-    retry(args.clultrain + 'system delegatebw  %s %s "%s SYS"  "%s SYS"'  % (fromacc,recacc,5000/value,5000/value))
+    retry(args.clultrain + 'system delegatebw  %s %s "%s UGAS"  "%s UGAS"'  % (fromacc,recacc,5000/value,5000/value))
     sleep(20)
     j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
     assert j["cpu_weight"] ==5000/value*10000,'account:'+recacc+' cpu_weight:'+str(j["cpu_weight"])+'!='+str(5000/value*10000)
     assert j["net_weight"] ==5000/value*10000,'account:'+recacc+' net_weight:'+str(j["net_weight"])+'!='+str(5000/value*10000)
-    retry(args.clultrain + 'system undelegatebw  %s  %s  "%s SYS"  "%s SYS" '  % (fromacc,recacc,50/value,60/value))
+    retry(args.clultrain + 'system undelegatebw  %s  %s  "%s UGAS"  "%s UGAS" '  % (fromacc,recacc,50/value,60/value))
     sleep(20)
     j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
     assert j["net_weight"] == 4950/value*10000,'undelegate account:'+recacc+' net_weight:'+str(j["net_weight"])+'!='+str(4950/value*10000)
     assert j["cpu_weight"] == 4940/value*10000,'undelegate account:'+recacc+' cpu_weight:'+str(j["cpu_weight"])+'!='+str(4940/value*10000)
-    retry(args.clultrain + 'system buyram  %s  %s  "%s SYS"  '  % (fromacc,recacc,50000/value))
+    retry(args.clultrain + 'system buyram  %s  %s  "%s UGAS"  '  % (fromacc,recacc,50000/value))
     sleep(2)
-    retry(args.clultrain + 'transfer  %s  %s  "%s SYS" '  % (fromacc,recacc,20000/value))
+    retry(args.clultrain + 'transfer  %s  %s  "%s UGAS" '  % (fromacc,recacc,20000/value))
     sleep(25)
     j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
     ramjson = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_table_records",data = json.dumps({"code":"ultrainio","scope":"ultrainio","table":"rammarket","json":"true","table_key":"","lower_bound":"","upper_bound":"","limit":10,"key_type":"","index_position":""})).text)   #Calculating ram ratio
     ramvalue = ramjson["rows"][0]["base"]["balance"].replace(" RAM","")
-    sysvalue = ramjson["rows"][0]["quote"]["balance"].replace(" SYS","")
+    sysvalue = ramjson["rows"][0]["quote"]["balance"].replace(" UGAS","")
     shouldbuyram = float(ramvalue)*50000/value/float(sysvalue)
     sellram_before = j["ram_quota"]
     assert j["ram_quota"] >= shouldbuyram,'buyram account:'+recacc+' RAM:'+str(j["ram_quota"])+'<'+str(shouldbuyram)
-    core_liquid_balance = float(j["core_liquid_balance"].replace(" SYS",""))
+    core_liquid_balance = float(j["core_liquid_balance"].replace(" UGAS",""))
     assert core_liquid_balance == 20000/value,'transfer account:'+recacc+' balance:'+str(core_liquid_balance)+'!='+str(20000/value)
     #print(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
     #retry(args.clultrain + 'get account  %s ' % (recacc))
@@ -384,7 +384,7 @@ def stepResourceTransaction():
         "resacc33aaaa",
         "resacc44aaaa"
     ]
-    retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "0 SYS" --stake-cpu "0 SYS" --buy-ram "1.000 SYS" ' % (resourceAccount[0], args.public_key))
+    retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "0 UGAS" --stake-cpu "0 UGAS" --buy-ram "1.000 UGAS" ' % (resourceAccount[0], args.public_key))
     retry(args.clultrain + 'create account ultrainio %s %s ' % (resourceAccount[1], args.public_key))
     sleep(20)
     j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":resourceAccount[0]})).text)
@@ -395,7 +395,7 @@ def stepResourceTransaction():
     assert j["ram_usage"] ==0,'create account:'+resourceAccount[2]+' ramusage:'+str(j["ram_usage"])+'!=0'
     resourceTransaction("ultrainio",resourceAccount[0],1)
     resourceTransaction("ultrainio",resourceAccount[1],1)
-    retry(args.clultrain + 'system newaccount --transfer %s %s %s --stake-net "0 SYS" --stake-cpu "0 SYS" --buy-ram "1.000 SYS" ' % (resourceAccount[0],resourceAccount[2], args.public_key))
+    retry(args.clultrain + 'system newaccount --transfer %s %s %s --stake-net "0 UGAS" --stake-cpu "0 UGAS" --buy-ram "1.000 UGAS" ' % (resourceAccount[0],resourceAccount[2], args.public_key))
     retry(args.clultrain + 'create account %s %s %s ' % (resourceAccount[1], resourceAccount[3], args.public_key))
     sleep(20)
     j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":resourceAccount[2]})).text)
@@ -444,7 +444,7 @@ parser.add_argument('--nodes-dir', metavar='', help="Path to nodes directory", d
 parser.add_argument('--genesis', metavar='', help="Path to genesis.json", default="./genesis.json")
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
-parser.add_argument('--symbol', metavar='', help="The utrio.system symbol", default='SYS')
+parser.add_argument('--symbol', metavar='', help="The utrio.system symbol", default='UGAS')
 parser.add_argument('--num-producers', metavar='', help="Number of producers to register", type=int, default=6, dest="num_producers")
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')

@@ -48,7 +48,7 @@
    DISK_MIN=10
    DOXYGEN=false
    ENABLE_COVERAGE_TESTING=false
-   CORE_SYMBOL_NAME="SYS"
+   CORE_SYMBOL_NAME="UGAS"
    START_MAKE=true
    TEMP_DIR="/tmp"
    TIME_BEGIN=$( date -u +%s )
@@ -293,4 +293,3 @@
 
    printf "\\tFor more information:\\n"
    printf "\\tULTRAIN.IO website: https://ultrain.io\\n"
-   

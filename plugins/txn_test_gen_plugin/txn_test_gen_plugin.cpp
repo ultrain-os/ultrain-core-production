@@ -258,7 +258,7 @@ struct txn_test_gen_plugin_impl {
       act_a_to_b.name = NEX(transfer);
       act_a_to_b.authorization = vector<permission_level>{{name("user.111"),config::active_name}};
       act_a_to_b.data = ultrainio_token_serializer.variant_to_binary("transfer",
-                                                                  fc::json::from_string(fc::format_string("{\"from\":\"user.111\",\"to\":\"user.112\",\"quantity\":\"0.1234 SYS\",\"memo\":\"${l}\"}",
+                                                                  fc::json::from_string(fc::format_string("{\"from\":\"user.111\",\"to\":\"user.112\",\"quantity\":\"0.1234 UGAS\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("l", salt))),
                                                                   abi_serializer_max_time);
 
@@ -266,7 +266,7 @@ struct txn_test_gen_plugin_impl {
       act_b_to_a.name = NEX(transfer);
       act_b_to_a.authorization = vector<permission_level>{{name("user.112"),config::active_name}};
       act_b_to_a.data = ultrainio_token_serializer.variant_to_binary("transfer",
-                                                                  fc::json::from_string(fc::format_string("{\"from\":\"user.112\",\"to\":\"user.111\",\"quantity\":\"0.1234 SYS\",\"memo\":\"${l}\"}",
+                                                                  fc::json::from_string(fc::format_string("{\"from\":\"user.112\",\"to\":\"user.111\",\"quantity\":\"0.1234 UGAS\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("l", salt))),
                                                                   abi_serializer_max_time);
 
