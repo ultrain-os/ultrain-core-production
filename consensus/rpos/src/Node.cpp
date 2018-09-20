@@ -611,14 +611,35 @@ namespace ultrainio {
         app().get_plugin<net_plugin>().send_last_block_num(peer_addr, msg);
     }
 
+    bool UranusNode::isFastBlock() {
+        msgkey msg_key;
+        msg_key.blockNum = getBlockNum();
+        msg_key.phase = kPhaseBA0;
+
+        if (m_controllerPtr->findProposeCache(msg_key)) {
+            msg_key.phase = kPhaseBA1;
+            if (m_controllerPtr->findEchoCache(msg_key)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void UranusNode::run(bool voteFlag) {
         msgkey msg_key;
 
         reset();
-
-        // BA0=======
         m_phase = kPhaseBA0;
         m_baxCount = 0;
+
+        if (isFastBlock()) {
+            dlog("start BA0. fastblock begin. blockNum = ${blockNum}.",("blockNum", getBlockNum()));
+            fastBlock(getBlockNum());
+            return;
+        }
+
+        // BA0=======
         ba0Loop(getRoundInterval());
         MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
 

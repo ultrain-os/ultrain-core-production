@@ -68,6 +68,8 @@ namespace ultrainio {
 
         void sendMessage(const AggEchoMsg& aggEchoMsg);
 
+        bool isFastBlock();
+
         ConsensusPhase getPhase() const;
 
         void ba0Process();

@@ -1137,6 +1137,14 @@ namespace ultrainio {
         return false;
     }
 
+    bool UranusController::findProposeCache(const msgkey &msg_key) {
+        auto echo_itor = m_cacheProposeMsgMap.find(msg_key);
+        if (echo_itor != m_cacheProposeMsgMap.end()) {
+            return true;
+        }
+        return false;
+    }
+
     Block UranusController::produceBaxBlock() {
         uint32_t min_priority = std::numeric_limits<uint32_t>::max();
         echo_message_info *echo_info = nullptr;
