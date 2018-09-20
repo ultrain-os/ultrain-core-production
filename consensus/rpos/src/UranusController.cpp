@@ -622,17 +622,13 @@ namespace ultrainio {
             return false;
         }
 
-        auto duplicateStartTime = fc::time_point::now();
         if (isDuplicate(propose)) {
             return false;
         }
-        ilog("proposer duplicate checking taking time ${time}", ("time", fc::time_point::now() - duplicateStartTime));
 
-        auto validStartTime = fc::time_point::now();
         if (!isValid(propose)) {
             return false;
         }
-        ilog("proposer valid checking taking time ${time}", ("time", fc::time_point::now() - validStartTime));
 
         if ((UranusNode::getInstance()->getSyncingStatus()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
             dlog("receive propose msg. node is syncing. blockhash = ${blockhash}", ("blockhash", propose.block.id()));

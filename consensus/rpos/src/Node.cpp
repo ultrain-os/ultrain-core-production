@@ -463,7 +463,6 @@ namespace ultrainio {
     }
 
     void UranusNode::baxLoop(uint32_t timeout) {
-        const Block* ba0Block = nullptr;
         EchoMsg echo_msg;
         msgkey msg_key;
 
