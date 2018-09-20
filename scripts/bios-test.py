@@ -28,6 +28,7 @@ systemAccounts = [
     'utrio.stake',
     'utrio.token',
     'utrio.vpay',
+    'hello',
 ]
 
 accounts = [
@@ -322,6 +323,7 @@ def stepCreateTokens():
     sleep(15)
 
 def stepSetSystemContract():
+    retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
     retry(args.clultrain + 'set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/')
     retry(args.clultrain + 'push action ultrainio setpriv' + jsonArg(['utrio.msig', 1]) + '-p ultrainio@active')
     sleep(15)

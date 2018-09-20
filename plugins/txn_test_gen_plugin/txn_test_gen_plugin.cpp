@@ -25,6 +25,8 @@
 
 #include <ultrainio.token/ultrainio.token.wast.hpp>
 #include <ultrainio.token/ultrainio.token.abi.hpp>
+#include <hello/hello.wast.hpp>
+#include <hello/hello.abi.hpp>
 
 namespace ultrainio { namespace detail {
   struct txn_test_gen_empty {};
@@ -238,7 +240,7 @@ struct txn_test_gen_plugin_impl {
       push_transactions(std::move(trxs), next);
    }
 
-   void start_generation(const std::string& salt, const uint64_t& period, const uint64_t& batch_size) {
+   void start_generation_transfer(const std::string& salt, const uint64_t& period, const uint64_t& batch_size) {
       if(running)
          throw fc::exception(fc::invalid_operation_exception_code);
       if(period < 1 || period > 2500)
@@ -248,6 +250,7 @@ struct txn_test_gen_plugin_impl {
      // if(batch_size & 1)
      //    throw fc::exception(fc::invalid_operation_exception_code);
 
+      is_transfer_test = true;
       running = true;
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
@@ -270,6 +273,36 @@ struct txn_test_gen_plugin_impl {
                                                                   fc::mutable_variant_object()("l", salt))),
                                                                   abi_serializer_max_time);
 
+      timer_timeout = period;
+      //batch = batch_size/2;
+      batch = batch_size;
+
+      ilog("Started transaction test plugin; performing ${p} transactions every ${m}ms", ("p", batch_size)("m", period));
+
+      arm_timer(boost::asio::high_resolution_timer::clock_type::now());
+   }
+
+   void start_generation_hello(const std::string& salt, const uint64_t& period, const uint64_t& batch_size) {
+      if(running)
+         throw fc::exception(fc::invalid_operation_exception_code);
+      if(period < 1 || period > 2500)
+         throw fc::exception(fc::invalid_operation_exception_code);
+      if(batch_size < 1 || batch_size > 250)
+         throw fc::exception(fc::invalid_operation_exception_code);
+     // if(batch_size & 1)
+     //    throw fc::exception(fc::invalid_operation_exception_code);
+
+      running = true;
+      is_hello_test = true;
+
+      controller& cc = app().get_plugin<chain_plugin>().chain();
+      auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
+      abi_serializer hello_serializer{fc::json::from_string(hello_abi).as<abi_def>(), abi_serializer_max_time};
+      //create the actions here
+      hello.account = N(hello);
+      hello.name = NEX(hi);
+      hello.authorization = vector<permission_level>{{name("user.111"),config::active_name}};
+      hello.data = hello_serializer.variant_to_binary("hi",fc::json::from_string("{\"user\":\"hhh\"}"), abi_serializer_max_time);
       timer_timeout = period;
       //batch = batch_size/2;
       batch = batch_size;
@@ -328,28 +361,44 @@ struct txn_test_gen_plugin_impl {
                  ilog("trx_count ${p}", ("p", trx_count));
              }
 
-             {
-                 signed_transaction trx;
-                 trx_count++;
-                 trx.actions.push_back(act_a_to_b);
-                 trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
-                 trx.set_reference_block(reference_block_id);
-                 trx.expiration = cc.head_block_time() + fc::seconds(60);
-                 trx.max_net_usage_words = 100;
-                 trx.sign(a_priv_key, chainid);
-                 trxs.emplace_back(std::move(trx));
+             if (is_transfer_test) {
+                 {
+                     signed_transaction trx;
+                     trx_count++;
+                     trx.actions.push_back(act_a_to_b);
+                     trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+                     trx.set_reference_block(reference_block_id);
+                     trx.expiration = cc.head_block_time() + fc::seconds(60);
+                     trx.max_net_usage_words = 100;
+                     trx.sign(a_priv_key, chainid);
+                     trxs.emplace_back(std::move(trx));
+                 }
+
+                 {
+                     signed_transaction trx;
+                     trx_count++;
+                     trx.actions.push_back(act_b_to_a);
+                     trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+                     trx.set_reference_block(reference_block_id);
+                     trx.expiration = cc.head_block_time() + fc::seconds(60);
+                     trx.max_net_usage_words = 100;
+                     trx.sign(b_priv_key, chainid);
+                     trxs.emplace_back(std::move(trx));
+                 }
              }
 
-             {
-                 signed_transaction trx;
-                 trx_count++;
-                 trx.actions.push_back(act_b_to_a);
-                 trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
-                 trx.set_reference_block(reference_block_id);
-                 trx.expiration = cc.head_block_time() + fc::seconds(60);
-                 trx.max_net_usage_words = 100;
-                 trx.sign(b_priv_key, chainid);
-                 trxs.emplace_back(std::move(trx));
+             if (is_hello_test) {
+                 {
+                     signed_transaction trx;
+                     trx_count++;
+                     trx.actions.push_back(hello);
+                     trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+                     trx.set_reference_block(reference_block_id);
+                     trx.expiration = cc.head_block_time() + fc::seconds(60);
+                     trx.max_net_usage_words = 100;
+                     trx.sign(a_priv_key, chainid);
+                     trxs.emplace_back(std::move(trx));
+                 }
              }
          }
       } catch ( const fc::exception& e ) {
@@ -364,22 +413,28 @@ struct txn_test_gen_plugin_impl {
          throw fc::exception(fc::invalid_operation_exception_code);
       timer.cancel();
       running = false;
+      is_transfer_test = false;
+      is_hello_test = false;
       ilog("Stopping transaction generation test");
    }
 
-   boost::asio::high_resolution_timer timer{app().get_io_service()};
-   bool running{false};
+    boost::asio::high_resolution_timer timer{app().get_io_service()};
+    bool running{false};
 
-   unsigned timer_timeout;
-   unsigned batch;
+    bool is_transfer_test{false};
+    bool is_hello_test{false};
 
-   action act_a_to_b;
-   action act_b_to_a;
+    unsigned timer_timeout;
+    unsigned batch;
 
-   int32_t txn_reference_block_lag;
+    action act_a_to_b;
+    action act_b_to_a;
+    action hello;
+
+    int32_t txn_reference_block_lag;
 
 //    abi_serializer ultrainio_token_serializer = fc::json::from_string(ultrainio_token_abi).as<abi_def>();
-   static int64_t trx_count;
+    static int64_t trx_count;
 
 };
 
@@ -404,7 +459,8 @@ void txn_test_gen_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
       CALL_ASYNC(txn_test_gen, my, create_test_accounts, INVOKE_ASYNC_R_R(my, create_test_accounts, std::string, std::string), 200),
       CALL(txn_test_gen, my, stop_generation, INVOKE_V_V(my, stop_generation), 200),
-      CALL(txn_test_gen, my, start_generation, INVOKE_V_R_R_R(my, start_generation, std::string, uint64_t, uint64_t), 200)
+      CALL(txn_test_gen, my, start_generation_transfer, INVOKE_V_R_R_R(my, start_generation_transfer, std::string, uint64_t, uint64_t), 200),
+      CALL(txn_test_gen, my, start_generation_hello, INVOKE_V_R_R_R(my, start_generation_hello, std::string, uint64_t, uint64_t), 200)
    });
 }
 
