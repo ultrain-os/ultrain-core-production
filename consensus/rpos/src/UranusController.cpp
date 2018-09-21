@@ -1354,6 +1354,13 @@ namespace ultrainio {
     bool UranusController::verifyBa0Block() {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         const auto& cfg = chain.get_global_properties().configuration;
+
+        //add optimization for not to run trxs multiple times in same block
+        if (m_ba0BlockVerified) {
+           m_voterPreRunBa0InProgress = true;
+           return true;
+        }
+
         chain.abort_block();
         const chain::signed_block &block = m_ba0Block;
         if (isBlank(block.id()))
