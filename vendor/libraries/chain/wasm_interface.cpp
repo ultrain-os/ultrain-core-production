@@ -168,6 +168,108 @@ class typescript_block_api : public context_aware_api {
       }
 };
 
+class typescript_crypto_api : public context_aware_api {
+   public:
+      explicit typescript_crypto_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
+      /**
+       * This method can be optimized out during replay as it has
+       * no possible side effects other than "passing".
+       */
+      void ts_assert_recover_key( array_ptr<char> hash, size_t hashlen,
+                        array_ptr<char> sig, size_t siglen,
+                        array_ptr<char> pub, size_t publen ) {
+         fc::crypto::signature s;
+         fc::crypto::public_key p;
+         datastream<const char*> ds( sig, siglen );
+         datastream<const char*> pubds( pub, publen );
+
+         fc::raw::unpack(ds, s);
+         fc::raw::unpack(pubds, p);
+
+         std::string hash_str(hash.value);
+         fc::sha256 digest(hash_str);
+
+         auto check = fc::crypto::public_key( s, digest, false );
+         ULTRAIN_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
+      }
+
+      int ts_recover_key( array_ptr<char> hash, size_t hashlen,
+                        array_ptr<char> sig, size_t siglen,
+                        array_ptr<char> pub, size_t publen ) {
+         fc::crypto::signature s;
+         datastream<const char*> ds( sig, siglen );
+         datastream<char*> pubds( pub, publen );
+
+         std::string hash_str(hash.value);
+         fc::sha256 digest(hash_str);
+
+         fc::raw::unpack(ds, s);
+         fc::raw::pack( pubds, fc::crypto::public_key( s, digest, false ) );
+         return pubds.tellp();
+      }
+
+      template<class Encoder> auto encode(char* data, size_t datalen) {
+         Encoder e;
+         const size_t bs = ultrainio::chain::config::hashing_checktime_block_size;
+         while ( datalen > bs ) {
+            e.write( data, bs );
+            data += bs;
+            datalen -= bs;
+            context.trx_context.checktime();
+         }
+         e.write( data, datalen );
+         return e.result();
+      }
+
+      void ts_assert_sha256(array_ptr<char> data, size_t datalen, array_ptr<char> hash, size_t hashlen) {
+         auto result = encode<fc::sha256::encoder>( data, datalen );
+         std::string hash_str(hash.value);
+         fc::sha256 hash_val(hash_str);
+         ULTRAIN_ASSERT( result == hash_val, crypto_api_exception, "hash as sha256 mismatch" );
+      }
+
+      void ts_assert_sha1(array_ptr<char> data, size_t datalen, array_ptr<char> hash, size_t hashlen) {
+         auto result = encode<fc::sha1::encoder>( data, datalen );
+         std::string hash_str(hash.value);
+         fc::sha1 hash_val(hash_str);
+         ULTRAIN_ASSERT( result == hash_val, crypto_api_exception, "hash as sha1 mismatch" );
+      }
+
+      void ts_assert_sha512(array_ptr<char> data, size_t datalen, array_ptr<char> hash, size_t hashlen) {
+         auto result = encode<fc::sha512::encoder>( data, datalen );
+         std::string hash_str(hash.value);
+         fc::sha512 hash_val(hash_str);
+         ULTRAIN_ASSERT( result == hash_val, crypto_api_exception, "hash as sha512 mismatch" );
+      }
+
+      void ts_assert_ripemd160(array_ptr<char> data, size_t datalen, array_ptr<char> hash, size_t hashlen) {
+         auto result = encode<fc::ripemd160::encoder>( data, datalen );
+         std::string hash_str(hash.value);
+         fc::ripemd160 hash_val(hash_str);
+         ULTRAIN_ASSERT( result == hash_val, crypto_api_exception, "hash as ripemd160 mismatch" );
+      }
+
+      void ts_sha1(array_ptr<char> data, size_t datalen, array_ptr<char> hash_val, size_t hashlen) {
+         fc::sha1 hash = encode<fc::sha1::encoder>( data, datalen );
+         memcpy(hash_val, hash.data(), hash.data_size());
+      }
+
+      void ts_sha256(array_ptr<char> data, size_t datalen, array_ptr<char> hash_val, size_t hashlen) {
+         fc::sha256 hash = encode<fc::sha256::encoder>( data, datalen );
+         memcpy(hash_val, hash.data(), hash.data_size());
+      }
+
+      void ts_sha512(array_ptr<char> data, size_t datalen, array_ptr<char> hash_val, size_t hashlen) {
+         fc::sha512 hash = encode<fc::sha512::encoder>( data, datalen );
+         memcpy(hash_val, hash.data(), hash.data_size());
+      }
+
+      void ts_ripemd160(array_ptr<char> data, size_t datalen, array_ptr<char> hash_val, size_t hashlen) {
+         fc::ripemd160 hash = encode<fc::ripemd160::encoder>( data, datalen );
+         memcpy(hash_val, hash.data(), hash.data_size());
+      }
+};
 #endif
 
 class context_free_api : public context_aware_api {
@@ -1786,6 +1888,18 @@ REGISTER_INTRINSICS(typescript_block_api,
   (head_block_timestamp,       int()              )
 );
 
+REGISTER_INTRINSICS(typescript_crypto_api,
+   (ts_assert_recover_key,     void(int, int, int, int, int, int) )
+   (ts_recover_key,            int(int, int, int, int, int, int)  )
+   (ts_assert_sha256,          void(int, int, int, int)           )
+   (ts_assert_sha1,            void(int, int, int, int)           )
+   (ts_assert_sha512,          void(int, int, int, int)           )
+   (ts_assert_ripemd160,       void(int, int, int, int)           )
+   (ts_sha1,                   void(int, int, int, int)           )
+   (ts_sha256,                 void(int, int, int, int)           )
+   (ts_sha512,                 void(int, int, int, int)           )
+   (ts_ripemd160,              void(int, int, int, int)           )
+);
 #endif
 
 REGISTER_INJECTED_INTRINSICS(call_depth_api,
