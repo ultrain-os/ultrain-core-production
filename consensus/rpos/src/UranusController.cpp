@@ -1358,9 +1358,6 @@ namespace ultrainio {
         const chain::signed_block &block = m_ba0Block;
         if (isBlank(block.id()))
             return false;
-        if (m_ba0BlockVerified)
-            m_voterPreRunBa0InProgress = true;
-            return true;
 
         auto id = block.id();
         auto existing = chain.fetch_block_by_id(id);
