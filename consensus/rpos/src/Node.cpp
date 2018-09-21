@@ -383,6 +383,15 @@ namespace ultrainio {
             return;
         }
 
+        //fast into baxcount 20
+        if ((m_baxCount < (Config::kMaxBaxCount - m_phase))
+            && (m_controllerPtr->isChangePhase())) {
+            m_baxCount = Config::kMaxBaxCount - m_phase - 1;
+            dlog("baxProcess.ChangePhase to baxcount[20]. blockNum = ${id}, m_baxCount = ${phase}", ("id", getBlockNum())("phase", m_baxCount));
+            baxLoop(getRoundInterval());
+            return;
+        }
+
         if (!isBlank(baxBlock.id())) {
             m_ready = true;
             m_syncing = false;
@@ -482,7 +491,7 @@ namespace ultrainio {
         m_phase = kPhaseBAX;
         m_baxCount++;
         MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBAX, m_baxCount);
-        dlog("bax loop. Voter = ${Voter}, count = ${count}.",
+        dlog("bax loop. Voter = ${Voter}, m_baxCount = ${count}.",
              ("Voter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
                      ("count",m_baxCount));
 
@@ -615,7 +624,8 @@ namespace ultrainio {
         msg_key.blockNum = getBlockNum();
         msg_key.phase = kPhaseBA0;
 
-        if (m_controllerPtr->findProposeCache(msg_key)) {
+        if ((m_controllerPtr->findProposeCache(msg_key))
+            && (m_controllerPtr->findEchoCache(msg_key))) {
             msg_key.phase = kPhaseBA1;
             if (m_controllerPtr->findEchoCache(msg_key)) {
                 return true;
@@ -737,6 +747,13 @@ namespace ultrainio {
         m_baxCount++;
 
         m_controllerPtr->resetEcho();
+
+        //fast into baxcount 20
+        if ((m_baxCount < (Config::kMaxBaxCount - m_phase))
+            && (m_controllerPtr->isChangePhase())) {
+            m_baxCount = Config::kMaxBaxCount - m_phase;
+            dlog("fastBax.ChangePhase to baxcount[20]. blockNum = ${id}, m_baxCount = ${phase}", ("id", getBlockNum())("phase", m_baxCount));
+        }
 
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;

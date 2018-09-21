@@ -461,6 +461,46 @@ namespace ultrainio {
         return INVALID_BLOCK_NUM;
     }
 
+    bool UranusController::isChangePhase() {
+        AccountName myAccount = VoterSystem::getMyAccount();
+
+        if (m_cacheEchoMsgMap.empty()) {
+            return false;
+        }
+
+        for (auto vector_itor = m_cacheEchoMsgMap.begin(); vector_itor != m_cacheEchoMsgMap.end(); ++vector_itor) {
+            if ((vector_itor->first.blockNum == UranusNode::getInstance()->getBlockNum())
+                && (vector_itor->first.phase >= Config::kMaxBaxCount)) {
+                echo_msg_buff echo_msg_map;
+
+                for (auto &echo : vector_itor->second) {
+                    if (myAccount == echo.account) {
+                        elog("loopback echo. account : ${account}", ("account", std::string(myAccount)));
+                        continue;
+                    }
+
+                    auto itor = echo_msg_map.find(echo.blockId);
+                    if (itor != echo_msg_map.end()) {
+                        updateAndMayResponse(itor->second, echo, false);
+                    } else {
+                        echo_message_info info;
+                        info.echo = echo;
+                        updateAndMayResponse(info, echo, false);
+                        echo_msg_map.insert(make_pair(echo.blockId, info));
+                    }
+                }
+
+                for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
+                    if (echo_itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     bool UranusController::isBroadcast(const EchoMsg &echo) {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
 

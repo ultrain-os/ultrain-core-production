@@ -135,6 +135,8 @@ namespace ultrainio {
 
         uint32_t isSyncing();
 
+        bool isChangePhase();
+
         bool fastHandleMessage(const ProposeMsg &propose);
 
         bool fastHandleMessage(const EchoMsg &echo);
