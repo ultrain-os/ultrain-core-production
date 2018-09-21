@@ -1075,6 +1075,7 @@ struct list_producers_subcommand {
          auto weight = result.thresh_activated_stake_time;
          if ( !weight )
             weight = 1;
+        uint64_t total_unpaid_blocks = 0;
          printf("%-13s %-54s %-59s %-15s %s %s\n", "Producer", "Producer key", "Url", "Scaled votes", "is_enabled","unpaid blocks");
          for ( auto& row : result.rows ){
             printf("%-13.13s %-54.54s %-59.59s %15ld %u ",
@@ -1085,9 +1086,13 @@ struct list_producers_subcommand {
                    row["is_enabled"].as_bool());
 			printf("         [");
             for (auto tmp : row["unpaid_blocks"].get_array())
-				printf("%lu,",tmp.as_uint64());
+            {
+                total_unpaid_blocks += tmp.as_uint64();
+                printf("%lu,",tmp.as_uint64());
+            }				
 			printf("]\n");
-	 }
+	    }
+        std::cout << "total_unpaid_blocks: " << total_unpaid_blocks << std::endl;
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;
       });
