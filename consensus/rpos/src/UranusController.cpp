@@ -136,6 +136,7 @@ namespace ultrainio {
     void UranusController::reset() {
         uint32_t blockNum = getLastBlocknum();
         m_ba0Block = Block();
+        m_ba0BlockVerified = false;
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
         clearMsgCache(m_cacheProposeMsgMap, blockNum);
@@ -1357,6 +1358,9 @@ namespace ultrainio {
         const chain::signed_block &block = m_ba0Block;
         if (isBlank(block.id()))
             return false;
+        if (m_ba0BlockVerified)
+            m_voterPreRunBa0InProgress = true;
+            return true;
 
         auto id = block.id();
         auto existing = chain.fetch_block_by_id(id);
@@ -1425,6 +1429,7 @@ namespace ultrainio {
         }
         // TODO(yufengshen): SHOULD CHECK the signature and block's validity.
         m_voterPreRunBa0InProgress = true;
+        m_ba0BlockVerified = true;
         return true;
     }
 
