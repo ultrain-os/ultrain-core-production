@@ -367,8 +367,10 @@ def stepCreateStakedAccounts():
         # user.111 & user.112 are used for tps pressure test, so they need more staked resources
         if accounts[i] == 'user.111' or accounts[i] == 'user.112':
             funds += 80000000
-        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "%.4f UGAS" --stake-cpu "%.4f UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key, funds, funds))
-        retry(args.clultrain + 'transfer ultrainio %s "5000.0000 UGAS"' % (accounts[i]))
+        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "2000.0000 UGAS" --stake-cpu "2000.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key))
+        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], (funds*2+5000)))
+        sleep(20)
+        retry(args.clultrain + 'system delegatecons %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
     sleep(15)
 
 def stepRegProducers():

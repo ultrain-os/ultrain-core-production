@@ -1164,6 +1164,45 @@ struct undelegate_bandwidth_subcommand {
    }
 };
 
+struct delegate_cons_subcommand {
+   string from_str;
+   string stake_cons_amount;
+
+   delegate_cons_subcommand(CLI::App* actionRoot) {
+      auto delegate_cons = actionRoot->add_subcommand("delegatecons", localized("Delegate consensus weight "));
+      delegate_cons->add_option("from", from_str, localized("The account to delegate consensus weight from"))->required();
+      delegate_cons->add_option("stake_cons_quantity", stake_cons_amount, localized("The amount of UTR to stake for consensus weight"))->required();
+      add_standard_transaction_options(delegate_cons);
+
+      delegate_cons->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("from", from_str)
+                  ("stake_cons_quantity", to_asset(stake_cons_amount));
+         std::vector<chain::action> acts{create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(delegatecons), act_payload)};
+         send_actions(std::move(acts));
+      });
+   }
+};
+
+struct undelegate_cons_subcommand {
+   string from_str;
+   string unstake_cons_amount;
+
+   undelegate_cons_subcommand(CLI::App* actionRoot) {
+      auto undelegate_cons = actionRoot->add_subcommand("undelegatecons", localized("Undelegate consensus weight bandwidth"));
+      undelegate_cons->add_option("from", from_str, localized("The account undelegating consensus weight bandwidth"))->required();
+      undelegate_cons->add_option("unstake_cons_quantity", unstake_cons_amount, localized("The amount of UTR to undelegate for network bandwidth"))->required();
+      add_standard_transaction_options(undelegate_cons);
+
+      undelegate_cons->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("from", from_str)
+                  ("unstake_cons_quantity", to_asset(unstake_cons_amount));
+         send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(undelegatecons), act_payload)});
+      });
+   }
+};
+
 struct bidname_subcommand {
    string bidder_str;
    string newname_str;
@@ -1576,7 +1615,7 @@ void get_account( const string& accountName, bool json_format ) {
 
          if( unstaking > asset( 0, unstaking.get_symbol() ) ) {
             std::cout << std::fixed << setprecision(3);
-            std::cout << "unstaking tokens:" << std::endl;
+            std::cout << "bandwidth unstaking tokens:" << std::endl;
             std::cout << indent << std::left << std::setw(25) << "time of unstake request:" << std::right << std::setw(20) << string(request_time);
             if( now >= refund_time ) {
                std::cout << " (available to claim now with 'ultrainio::refund' action)\n";
@@ -1586,6 +1625,28 @@ void get_account( const string& accountName, bool json_format ) {
             std::cout << indent << std::left << std::setw(25) << "from net bandwidth:" << std::right << std::setw(18) << net << std::endl;
             std::cout << indent << std::left << std::setw(25) << "from cpu bandwidth:" << std::right << std::setw(18) << cpu << std::endl;
             std::cout << indent << std::left << std::setw(25) << "total:" << std::right << std::setw(18) << unstaking << std::endl;
+            std::cout << std::endl;
+         }
+      }
+
+      if ( res.refund_cons.is_object() ) {
+         auto& obj = res.refund_cons.get_object();
+         auto request_time = fc::time_point_sec::from_iso_string( obj["request_time"].as_string() );
+         fc::time_point refund_time = request_time + fc::minutes(3);
+         auto now = res.head_block_time;
+         asset cons = asset::from_string( obj["cons_amount"].as_string() );
+         unstaking += cons;
+
+         if( unstaking > asset( 0, unstaking.get_symbol() ) ) {
+            std::cout << std::fixed << setprecision(3);
+            std::cout << "cons unstaking tokens:" << std::endl;
+            std::cout << indent << std::left << std::setw(25) << "time of cons unstake request:" << std::right << std::setw(20) << string(request_time);
+            if( now >= refund_time ) {
+               std::cout << " (available to claim now with 'ultrainio::refundcons' action)\n";
+            } else {
+               std::cout << " (funds will be available in " << to_pretty_time( (refund_time - now).count(), 0 ) << ")\n";
+            }
+            std::cout << indent << std::left << std::setw(25) << "from cons:" << std::right << std::setw(18) << cons << std::endl;
             std::cout << std::endl;
          }
       }
@@ -2907,6 +2968,9 @@ int main( int argc, char** argv ) {
 
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
+   auto delegatecons = delegate_cons_subcommand(system);
+   auto undelegatecons = undelegate_cons_subcommand(system);
+
    auto listBandWidth = list_bw_subcommand(system);
    auto bidname = bidname_subcommand(system);
    auto bidnameinfo = bidname_info_subcommand(system);

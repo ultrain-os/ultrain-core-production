@@ -176,7 +176,8 @@ namespace ultrainiosystem {
          void undelegatebw( account_name from, account_name receiver,
                             asset unstake_net_quantity, asset unstake_cpu_quantity );
 
-
+         void delegatecons( account_name from,asset stake_net_quantity);
+         void undelegatecons( account_name from,asset unstake_net_quantity);
          /**
           * Increases receiver's ram quota based upon current price and quantity of
           * tokens provided. An inline transfer from receiver to system contract of
@@ -196,6 +197,8 @@ namespace ultrainiosystem {
           *  unstaked tokens belonging to owner
           */
          void refund( account_name owner );
+
+         void refundcons( account_name owner );
 
          // functions defined in voting.cpp
 
@@ -227,6 +230,8 @@ namespace ultrainiosystem {
          //defind in delegate_bandwidth.cpp
          void changebw( account_name from, account_name receiver,
                         asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
+
+         void change_cons( account_name from, asset stake_cons_quantity);
 
          //defined in voting.hpp
          static ultrainio_global_state get_default_parameters();

@@ -125,6 +125,7 @@ public:
       fc::variant                total_resources;
       fc::variant                self_delegated_bandwidth;
       fc::variant                refund_request;
+      fc::variant                refund_cons;
       fc::variant                voter_info;
    };
 
@@ -616,7 +617,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_schedule_result, (act
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
         (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
                 net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(
-                self_delegated_bandwidth)(refund_request)(voter_info))
+                self_delegated_bandwidth)(refund_request)(refund_cons)(voter_info))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_sourcerate_results,(net_rate)(cpu_rate))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_result, (transactions)(more) );

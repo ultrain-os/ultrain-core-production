@@ -177,7 +177,27 @@
          {"name":"unstake_cpu_quantity", "type":"asset"}
       ]
     },{
+      "name": "delegatecons", 
+      "base": "",
+      "fields": [
+         {"name":"from", "type":"account_name"},
+         {"name":"stake_cons_quantity", "type":"asset"}
+      ]
+    },{
+      "name": "undelegatecons",
+      "base": "",
+      "fields": [
+         {"name":"from", "type":"account_name"},
+         {"name":"unstake_cons_quantity", "type":"asset"}
+      ]
+    },{
       "name": "refund",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"}
+      ]
+    },{
+      "name": "refundcons",
       "base": "",
       "fields": [
          {"name":"owner", "type":"account_name"}
@@ -217,6 +237,14 @@
          {"name":"request_time", "type":"time_point_sec"},
          {"name":"net_amount", "type":"asset"},
          {"name":"cpu_amount", "type":"asset"}
+      ]
+    },{
+      "name": "refund_cons",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"},
+         {"name":"request_time", "type":"time_point_sec"},
+         {"name":"cons_amount", "type":"asset"}
       ]
     },{
       "name": "blockchain_parameters",
@@ -466,8 +494,20 @@
       "type": "undelegatebw",
       "ricardian_contract": ""
    },{
+      "name": "delegatecons",
+      "type": "delegatecons",
+      "ricardian_contract": ""
+   },{
+      "name": "undelegatecons",
+      "type": "undelegatecons",
+      "ricardian_contract": ""
+   },{
       "name": "refund",
       "type": "refund",
+      "ricardian_contract": ""
+   },{
+      "name": "refundcons",
+      "type": "refundcons",
       "ricardian_contract": ""
    },{
       "name": "regproducer",
@@ -565,6 +605,12 @@
     },{
       "name": "refunds",
       "type": "refund_request",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "refundscons",
+      "type": "refund_cons",
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
