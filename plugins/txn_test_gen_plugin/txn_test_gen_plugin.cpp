@@ -37,6 +37,8 @@ FC_REFLECT(ultrainio::detail::txn_test_gen_empty, );
 namespace ultrainio {
 
 static appbase::abstract_plugin& _txn_test_gen_plugin = app().register_plugin<txn_test_gen_plugin>();
+static abi_serializer* hello_serializer = nullptr;
+static fc::microseconds abi_serializer_max_time;
 
 using namespace ultrainio::chain;
 
@@ -93,7 +95,8 @@ struct txn_test_gen_plugin_impl {
    static void push_next_transaction(const std::shared_ptr<std::vector<signed_transaction>>& trxs, size_t index, const std::function<void(const fc::exception_ptr&)>& next ) {
       //ilog("push_next_transaction: trxs->size=${p} index=${m}", ("p", trxs->size())("m", index));
       chain_plugin& cp = app().get_plugin<chain_plugin>();
-      cp.accept_transaction( packed_transaction(trxs->at(index)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
+      cp.accept_transaction( packed_transaction(trxs->at(index), packed_transaction::zlib), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
+      //      cp.accept_transaction( packed_transaction(trxs->at(index)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
 	  if (index + 1 < trxs->size()) {
 	      push_next_transaction(trxs, index + 1, next);
 	  } else {
@@ -130,7 +133,7 @@ struct txn_test_gen_plugin_impl {
 
          controller& cc = app().get_plugin<chain_plugin>().chain();
          auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
-         auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
+         abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
          abi_serializer ultrainio_token_serializer{fc::json::from_string(ultrainio_token_abi).as<abi_def>(), abi_serializer_max_time};
 
@@ -254,7 +257,7 @@ struct txn_test_gen_plugin_impl {
       running = true;
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
-      auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
+      abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
       abi_serializer ultrainio_token_serializer{fc::json::from_string(ultrainio_token_abi).as<abi_def>(), abi_serializer_max_time};
       //create the actions here
       act_a_to_b.account = N(utrio.token);
@@ -296,13 +299,15 @@ struct txn_test_gen_plugin_impl {
       is_hello_test = true;
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
-      auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
-      abi_serializer hello_serializer{fc::json::from_string(hello_abi).as<abi_def>(), abi_serializer_max_time};
+      abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
+      if (!hello_serializer) {
+          hello_serializer = new abi_serializer(fc::json::from_string(hello_abi).as<abi_def>(), abi_serializer_max_time);
+      }
       //create the actions here
       hello.account = N(hello);
       hello.name = NEX(hi);
       hello.authorization = vector<permission_level>{{name("user.111"),config::active_name}};
-      hello.data = hello_serializer.variant_to_binary("hi",fc::json::from_string("{\"user\":\"hhh\"}"), abi_serializer_max_time);
+      hello.data = hello_serializer->variant_to_binary("hi",fc::json::from_string("{\"user\":\"hhh\"}"), abi_serializer_max_time);
       timer_timeout = period;
       //batch = batch_size/2;
       batch = batch_size;
@@ -391,8 +396,17 @@ struct txn_test_gen_plugin_impl {
                  {
                      signed_transaction trx;
                      trx_count++;
+                     // Lets use different payload to generate unique trx, so to avoid embedding context free action.
+                     char buf[5] = "aaaa";
+                     int t = trx_count;
+                     for (int i = 0; i < 4; i++) {
+                         buf[i] = (t % 26) + 'a';
+                         t = t / 26;
+                     }
+                     std::string s = "{\"user\":\"" + std::string(buf) + std::string("\"}");
+                     hello.data = hello_serializer->variant_to_binary("hi",fc::json::from_string(s.c_str()), abi_serializer_max_time);
                      trx.actions.push_back(hello);
-                     trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+                     // trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
                      trx.set_reference_block(reference_block_id);
                      trx.expiration = cc.head_block_time() + fc::seconds(60);
                      trx.max_net_usage_words = 100;
