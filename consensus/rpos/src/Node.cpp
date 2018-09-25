@@ -103,8 +103,9 @@ namespace ultrainio {
         boost::chrono::seconds pass_time_to_genesis;
 
         if (!m_connected) {
-            readyToConnect();
-            return;
+            //readyToConnect();
+            //return;
+            m_connected = true;
         }
 
         std::time_t t = boost::chrono::system_clock::to_time_t(current_time);
