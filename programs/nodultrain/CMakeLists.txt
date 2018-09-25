@@ -53,6 +53,7 @@ target_link_libraries( nodultrain
         PRIVATE -Wl,${whole_archive_flag} wallet_api_plugin          -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} net_plugin                 -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} net_api_plugin             -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin            -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} monitor_plugin             -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} monitor_api_plugin         -Wl,${no_whole_archive_flag}
 #        PRIVATE -Wl,${whole_archive_flag} faucet_testnet_plugin      -Wl,${no_whole_archive_flag}
