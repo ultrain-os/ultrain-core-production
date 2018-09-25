@@ -587,7 +587,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thres
 FC_REFLECT_EMPTY( ultrainio::chain_apis::read_only::get_producer_schedule_params )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_schedule_result, (active)(pending)(proposed) );
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
-        (account_name)(privileged)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
+        (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
                 net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(
                 self_delegated_bandwidth)(refund_request)(voter_info))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_sourcerate_results,(net_rate)(cpu_rate))
