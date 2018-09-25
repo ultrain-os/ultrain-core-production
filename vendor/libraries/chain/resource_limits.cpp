@@ -198,9 +198,8 @@ double  resource_limits_manager::get_net_rate(bool elastic) const
    uint128_t virtual_network_capacity_in_window = (uint128_t)(elastic ? state.virtual_net_limit : config.net_limit_parameters.max) * window_size;
    int64_t net_weight = 10000;//
    uint128_t all_user_weight = (uint128_t)state.total_net_weight;
-   auto netrate = ((virtual_network_capacity_in_window * net_weight) / (double)(1024*all_user_weight));
-   printf("netrate:%f",netrate);
-   return netrate;//KiB/UGAS
+   auto netrate = ((virtual_network_capacity_in_window * net_weight) / (double)all_user_weight);
+   return netrate;//bytes/UGAS
 }
 double  resource_limits_manager::get_cpu_rate(bool elastic)  const
 {
@@ -212,9 +211,9 @@ double  resource_limits_manager::get_cpu_rate(bool elastic)  const
    uint128_t window_size = config.account_cpu_usage_average_window;
     uint128_t virtual_cpu_capacity_in_window = (uint128_t)(elastic ? state.virtual_cpu_limit : config.cpu_limit_parameters.max) * window_size;
    uint128_t all_user_weight = (uint128_t)state.total_cpu_weight;
-   int64_t cpu_weight = 10; //
+   int64_t cpu_weight = 10000; 
    double cpurate = (virtual_cpu_capacity_in_window * cpu_weight) /((double)all_user_weight);
-   return cpurate;// ms/UGAS
+   return cpurate;// us/UGAS
 }
 
 int64_t resource_limits_manager::get_account_ram_usage( const account_name& name )const {
