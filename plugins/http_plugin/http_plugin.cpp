@@ -319,7 +319,7 @@ namespace ultrainio {
              })->default_value(false),
              "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
             ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024), "The maximum body size in bytes allowed for incoming RPC requests")
-            ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
+            ("verbose-http-errors", boost::program_options::value<bool>()->default_value(true), "Append the error log to HTTP responses")//bpo::bool_switch()->default_value(true)
             ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
             ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
             ;
