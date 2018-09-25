@@ -205,7 +205,7 @@ namespace ultrainio {
 
         // data member
         Block m_ba0Block;
-        bool m_ba0BlockVerified = false;
+        BlockIdType m_ba0VerifiedBlkId = BlockIdType();
         bool m_voterPreRunBa0InProgress = false;
         int m_currentPreRunBa0TrxIndex = -1;
         int m_initTrxCount = 0;

@@ -136,7 +136,7 @@ namespace ultrainio {
     void UranusController::reset() {
         uint32_t blockNum = getLastBlocknum();
         m_ba0Block = Block();
-        m_ba0BlockVerified = false;
+        m_ba0VerifiedBlkId = BlockIdType();
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
         clearMsgCache(m_cacheProposeMsgMap, blockNum);
@@ -1354,24 +1354,28 @@ namespace ultrainio {
     bool UranusController::verifyBa0Block() {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         const auto& cfg = chain.get_global_properties().configuration;
-
-        //add optimization for not to run trxs multiple times in same block
-        /*if (m_ba0BlockVerified) {
-           m_voterPreRunBa0InProgress = true;
-           return true;
-        }*/
-
-        chain.abort_block();
         const chain::signed_block &block = m_ba0Block;
-        if (isBlank(block.id()))
-            return false;
-
         auto id = block.id();
+
+        if (isBlank(id)) {
+            return false;
+	}
+
         auto existing = chain.fetch_block_by_id(id);
         if (existing) {
             ULTRAIN_ASSERT(!existing, chain::chain_exception, "Produced block is already in the chain");
             return false;
         }
+
+        //not to run trxs multiple times in same block
+        if (m_ba0VerifiedBlkId == id) {
+           m_voterPreRunBa0InProgress = true;
+	   ilog("Block ${blk} has been verified before", ("blk", id));
+           return true;
+        }
+
+        chain.abort_block();
+
         ilog("---- UranusController::verifyBa0Block with trx number ${count}",
              ("count", block.transactions.size()));
         // Here is the hack, we are actually using the template of ba0_block, but we don't use
@@ -1433,7 +1437,7 @@ namespace ultrainio {
         }
         // TODO(yufengshen): SHOULD CHECK the signature and block's validity.
         m_voterPreRunBa0InProgress = true;
-        m_ba0BlockVerified = true;
+        m_ba0VerifiedBlkId = id;
         return true;
     }
 
