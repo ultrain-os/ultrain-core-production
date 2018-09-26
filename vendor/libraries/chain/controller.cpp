@@ -867,13 +867,14 @@ struct controller_impl {
             fc::move_append(pending->_actions, move(trx_context.executed));
 
             // call the accept signal but only once for this transaction
-            if (!trx->accepted) {
+            if (!trx->accepted && !implicit) {
                emit( self.accepted_transaction, trx);
                trx->accepted = true;
             }
 
-            emit(self.applied_transaction, trace);
-
+            if(!implicit) {
+                emit(self.applied_transaction, trace);
+            }
 
             if ( read_mode != db_read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete ) {
                //this may happen automatically in destructor, but I prefere make it more explicit
