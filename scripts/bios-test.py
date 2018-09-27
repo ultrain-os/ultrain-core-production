@@ -31,6 +31,19 @@ systemAccounts = [
     'hello',
 ]
 
+accountsToResign = [
+    'utrio.bpay',
+    'utrio.msig',
+    'utrio.names',
+    'utrio.ram',
+    'utrio.ramfee',
+    'utrio.saving',
+    'utrio.stake',
+    'utrio.token',
+    'utrio.vpay',
+    'ultrainio',
+]
+
 accounts = [
 "genesis",
 "user.111",
@@ -286,6 +299,26 @@ def sleep(t):
 def importKeys():
     run(args.clultrain + 'wallet import --private-key ' + args.private_key)
 
+def updateAuth(account, permission, parent, controller):
+    run(args.clultrain + 'push action ultrainio updateauth' + jsonArg({
+        'account': account,
+        'permission': permission,
+        'parent': parent,
+        'auth': {
+            'threshold': 1, 'keys': [], 'waits': [],
+            'accounts': [{
+                'weight': 1,
+                'permission': {'actor': controller, 'permission': 'active'}
+            }]
+        }
+    }) + '-p ' + account + '@' + permission)
+
+def resign(account, controller):
+    updateAuth(account, 'owner', '', controller)
+    updateAuth(account, 'active', 'owner', controller)
+    sleep(1)
+    run(args.clultrain + 'get account ' + account)
+
 def randomTransfer():
     subaccounts = accounts[1:args.num_producers]
     for i in subaccounts:
@@ -343,6 +376,11 @@ def stepRegProducers():
         retry(args.clultrain + 'system regproducer %s %s https://%s.com 0123 ' % (accounts[i], pk_list[i], accounts[i]))
     sleep(1)
     run(args.clultrain + 'system listproducers')
+
+def stepResign():
+    resign('ultrainio', 'utrio.null')
+#    for a in accountsToResign:
+#        resign(a, 'utrio.null')
 
 def resourceTransaction(fromacc,recacc,value):
     retry(args.clultrain + 'system delegatebw  %s %s "%s UGAS"  "%s UGAS"'  % (fromacc,recacc,5000/value,5000/value))
@@ -416,7 +454,7 @@ def stepTransfer():
 parser = argparse.ArgumentParser()
 
 commands = [
-    ('k', 'kill',           stepKillAll,                True,    "Kill all nodeos and kultraind processes"),
+    ('k', 'kill',           stepKillAll,                True,    "Kill all nodultrain and kultraind processes"),
     ('w', 'wallet',         stepStartWallet,            True,    "Start kultraind, create wallet, fill with keys"),
 #    ('b', 'boot',           stepStartBoot,              True,    "Start boot node"),
     ('s', 'sys',            createSystemAccounts,       True,    "Create system accounts (utrio.*)"),
@@ -429,20 +467,18 @@ commands = [
 #    ('v', 'vote',           stepVote,                   True,    "Vote for producers"),
 #    ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
 #    ('x', 'proxy',          stepProxyVotes,             True,    "Proxy votes"),
-#    ('q', 'resign',         stepResign,                 True,    "Resign utrio"),
+     ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
 #    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
 #    ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
     ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction")
 ]
 
-parser.add_argument('--public-key', metavar='', help="EOSIO Public Key", default='UTR7vfv95bvjB54jZ69yaQqLxZkWNaC9xAjYG7Dq1bW1zpJKD2tkP', dest="public_key")
-parser.add_argument('--private-Key', metavar='', help="EOSIO Private Key", default='5JNuk2NHzJhhc5KCgZDnkD1fj9T6ThTScejzXjQPajWddm4PVma', dest="private_key")
+parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")
+parser.add_argument('--private-Key', metavar='', help="ULTRAIN Private Key", default='5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H', dest="private_key")
 parser.add_argument('--clultrain', metavar='', help="Clultrain command", default='/root/workspace/yufengshen/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 ')
-parser.add_argument('--nodeos', metavar='', help="Path to nodeos binary", default='../../build/programs/nodeos/nodeos')
 parser.add_argument('--kultraind', metavar='', help="Path to kultraind binary", default='/root/workspace/yufengshen/ultrain-core/build/programs/kultraind/kultraind')
 parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default='/root/workspace/yufengshen/ultrain-core/build/contracts/')
-parser.add_argument('--nodes-dir', metavar='', help="Path to nodes directory", default='./nodes/')
 parser.add_argument('--genesis', metavar='', help="Path to genesis.json", default="./genesis.json")
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
