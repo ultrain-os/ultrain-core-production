@@ -194,10 +194,10 @@ namespace ultrainio {
         bool updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response);
 
         size_t runPendingTrxs(std::list<chain::transaction_metadata_ptr> *trxs,
-                              fc::time_point start_timesamp, fc::time_point block_time);
+                              fc::time_point hard_cpu_deadline, fc::time_point block_time);
 
         size_t runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
-                                fc::time_point start_timesamp, fc::time_point block_time);
+                                fc::time_point hard_cpu_deadline, fc::time_point block_time);
 
         echo_message_info findEchoMsg(BlockIdType blockId);
 

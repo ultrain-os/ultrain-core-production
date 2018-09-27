@@ -14,6 +14,7 @@
 #include <appbase/application.hpp>
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <ultrainio/chain/block_timestamp.hpp>
+#include <ultrainio/chain/config.hpp>
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/global_property_object.hpp>
@@ -900,7 +901,7 @@ namespace ultrainio {
     }
 
     size_t UranusController::runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
-                                              fc::time_point start_timestamp,
+                                              fc::time_point hard_cpu_deadline,
                                               fc::time_point block_time) {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
         const auto& cfg = chain.get_global_properties().configuration;
@@ -950,13 +951,10 @@ namespace ultrainio {
 
                 m_initTrxCount++;
                 count++;
-                //  TODO(yufengshen) : Do we still need this ? will max block cpu limit already cover this ?
-                //  Every 100 trxs we check if we have exceeds the allowed trx running time.
-                // if (m_initTrxCount % 100 == 0 &&
-                //    (fc::time_point::now() - start_timestamp) > fc::seconds(CODE_EXEC_MAX_TIME_S)) {
-                //   ilog("----- code exec exceeds the max allowed time, break");
-                //   break;
-                //}
+                if (m_initTrxCount % 500 == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                    ilog("----- code exec exceeds the hard cpu deadline, break");
+                    break;
+                }
                 if (m_initTrxCount >= chain::config::default_max_propose_trx_count) {
                     break;
                 }
@@ -966,7 +964,7 @@ namespace ultrainio {
     }
 
     size_t UranusController::runPendingTrxs(std::list<chain::transaction_metadata_ptr> *trxs,
-                                            fc::time_point start_timestamp,
+                                            fc::time_point hard_cpu_deadline,
                                             fc::time_point block_time) {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
         const auto& cfg = chain.get_global_properties().configuration;
@@ -1025,14 +1023,10 @@ namespace ultrainio {
 
                 m_initTrxCount++;
                 count++;
-                //  TODO(yufengshen) : Do we still need this ? will max block cpu limit already cover this ?
-                //  Every 100 trxs we check if we have exceeds the allowed trx running time.
-                //                if (m_initTrxCount % 100 == 0 &&
-                //                    (fc::time_point::now() - start_timestamp) > fc::seconds(CODE_EXEC_MAX_TIME_S)) {
-                //                    ilog("----- code exec exceeds the max allowed time, break");
-                //                    break;
-                //                }
-                // Do we still need this ?
+                if (m_initTrxCount % 500 == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                    ilog("----- code exec exceeds the hard cpu deadline, break");
+                    break;
+                }
                 if (m_initTrxCount >= chain::config::default_max_propose_trx_count) {
                     break;
                 }
@@ -1060,8 +1054,13 @@ namespace ultrainio {
 
             m_initTrxCount = 0;
             auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
-            size_t count1 = runPendingTrxs(pending_trxs, start_timestamp, block_time);
-            size_t count2 = runUnappliedTrxs(unapplied_trxs, start_timestamp, block_time);
+            // There is case where cpu block limits can't handle, which is when there are huge number
+            // of pending trxs that are all from the same user but the user has used up his cpu resources
+            // and keep failing the trx execution; so we still need the hard cpu deadline to handle this.
+            fc::time_point hard_cpu_deadline =
+                fc::time_point::now() + fc::microseconds(chain::config::default_max_block_cpu_usage * 1.3);
+            size_t count1 = runPendingTrxs(pending_trxs, hard_cpu_deadline, block_time);
+            size_t count2 = runUnappliedTrxs(unapplied_trxs, hard_cpu_deadline, block_time);
 
             ilog("------- run ${count1} ${count2}  trxs, taking time ${time}, remaining pending trx ${count3}, remaining unapplied trx ${count4}",
                  ("count1", count1)
