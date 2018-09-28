@@ -66,11 +66,12 @@ struct controller_impl {
    std::unique_ptr<fc::http_client>   http_client;
    chain_id_type                  chain_id;
    bool                           replaying = false;
-   bool                           can_accept_event_register = true;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
 
+   bool                           can_accept_event_register = true;
+   bool                           can_receive_event = false;
    const uint32_t                 event_lifetime = 20; ///< 20 blocks' time, which = 10 seconds by default configuration
 
    typedef pair<scope_name,action_name>                   handler_key;
@@ -830,7 +831,7 @@ struct controller_impl {
                trx->accepted = true;
             }
 
-            if(!implicit&& emit_signal) {
+            if(!implicit && emit_signal) {
                 emit(self.applied_transaction, trace);
             }
 
@@ -1059,35 +1060,37 @@ struct controller_impl {
 
    void push_event(account_name act_name, transaction_id_type id, const char* event_name, size_t event_name_size,
       const char* msg, size_t msg_size) {
+      if (!can_receive_event) {
+         return;
+      }
       std::string ename(event_name, event_name_size);
       std::string emsg(msg, msg_size);
       event_list.emplace_back(act_name, id, ename, emsg, self.head_block_num());
       ilog("act name: ${an} trx: ${trx} event name: ${en} msg: ${msg}", ("an", act_name)("trx", id)("en", event_name)("msg", msg));
    }
 
-   void clear_event(uint32_t block_num) {
-      for (auto it = event_list.begin(); it != event_list.end(); ) {
-         if (it->head_block_num == block_num) {
-            it = event_list.erase(it);
-         } else {
-            ++it;
-         }
-      }
+   void start_receive_event() {
+      event_list.clear();
+      can_receive_event = true;
+   }
+
+   void stop_receive_event() {
+      can_receive_event = false;
    }
 
    // push event to client who registered
    void notify_event()
    {
-      auto it = event_list.begin();
+      /*auto it = event_list.begin();
       while (it != event_list.end()) {
          if (self.head_block_num() > (*it).head_block_num + event_lifetime) {// lifetime expired
             it = event_list.erase(it);
             continue;
          }
          ++it;
-      }
+      }*/
 
-      for (it = event_list.begin(); it != event_list.end(); ++it) {
+      for (auto it = event_list.begin(); it != event_list.end(); ++it) {
          auto it_cmp = std::next(it);
          while (it_cmp != event_list.end()) {
             if ((*it).id == (*it_cmp).id && (*it).name == (*it_cmp).name &&
@@ -1112,7 +1115,7 @@ struct controller_impl {
                   ilog("post event: ${e} to url: ${url}", ("e", (*it).event_name)("url", post_url));
                   http_client->post_sync(event_url, params);
                }
-                  catch(...) {// TODO: We skip exception when no response happends, but need to process some type of exception if we can
+               catch(...) {// TODO: We skip exception when no response happends, but need to process some type of exception if we can
                }
             }
          }
@@ -1440,7 +1443,6 @@ void controller::clear_emit_signal()
     my->emit_signal = false;
 }
 
-
 const resource_limits_manager&   controller::get_resource_limits_manager()const
 {
    return my->resource_limits;
@@ -1552,8 +1554,12 @@ void controller::notify_event() {
    my->notify_event();
 }
 
-void controller::clear_event(uint32_t block_num) {
-   my->clear_event(block_num);
+void controller::start_receive_event() {
+   my->start_receive_event();
+}
+
+void controller::stop_receive_event() {
+   my->stop_receive_event();
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {

@@ -146,7 +146,8 @@ namespace ultrainio { namespace chain {
          void push_event(account_name act_name, transaction_id_type id, const char* event_name, size_t event_name_size,
                          const char* msg, size_t msg_size );
          void notify_event();
-         void clear_event(uint32_t block_num);
+         void start_receive_event();
+         void stop_receive_event();
 
          chainbase::database& db()const;
 
@@ -176,9 +177,9 @@ namespace ultrainio { namespace chain {
          time_point      pending_block_time()const;
          block_state_ptr pending_block_state()const;
 
-		 block_timestamp_type get_proper_next_block_timestamp() const;
-		 // This is a hack ...
-		 block_state_ptr pending_block_state_hack();
+         block_timestamp_type get_proper_next_block_timestamp() const;
+         // This is a hack ...
+         block_state_ptr pending_block_state_hack();
          void set_action_merkle_hack();
          void set_trx_merkle_hack();
 

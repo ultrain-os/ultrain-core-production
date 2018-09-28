@@ -1624,22 +1624,14 @@ namespace ultrainio {
             chain.abort_block();
             if (UranusNode::getInstance()->getNonProducingNode()) {
                 chain.set_emit_signal();
-                chain.clear_event(block->block_num());
+                chain.start_receive_event();
             }
             chain.push_block(block);
             if (UranusNode::getInstance()->getNonProducingNode()) {
                 chain.clear_emit_signal();
                 chain.notify_event();
+                chain.stop_receive_event();
             }
-        }
-
-        if (needs_push_whole_block || force_push_whole_block) {
-            // When push_block fails or the operation is syncing block, we need not notify event.
-           ilog("needs_push_whole_block: ${np} force_push_whole_block: ${fp}", ("np", needs_push_whole_block)("fp", force_push_whole_block));
-            chain.clear_event(block->block_num());
-        } else {
-            ilog("before notify");
-            chain.notify_event();
         }
 
         m_currentPreRunBa0TrxIndex = -1;
