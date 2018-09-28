@@ -305,11 +305,6 @@ namespace {
       using bsoncxx::builder::basic::kvp;
       return trans.find_one( make_document( kvp( "trx_id", id )));
    }
-   void find_and_del_transaction_trace(mongocxx::collection& trans_traces, const string& id) {
-          using bsoncxx::builder::basic::make_document;
-          using bsoncxx::builder::basic::kvp;
-          trans_traces.find_one_and_delete( make_document( kvp( "id", id )));
-   }
 
    auto find_block(mongocxx::collection& blocks, const string& id) {
       using bsoncxx::builder::basic::make_document;
@@ -522,11 +517,7 @@ void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection&
 void mongo_db_plugin_impl::process_accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
       // always call since we need to capture setabi on accounts even if not storing transactions
-      auto trans = mongo_conn[db_name][trans_col];
-      auto trx_tmp = find_transaction( trans, t->id.str() );
-      if(!trx_tmp) {
-          _process_accepted_transaction(t);
-      }
+      _process_accepted_transaction(t);
    } catch (fc::exception& e) {
       elog("FC Exception while processing accepted transaction metadata: ${e}", ("e", e.to_detail_string()));
    } catch (std::exception& e) {
@@ -539,8 +530,6 @@ void mongo_db_plugin_impl::process_accepted_transaction( const chain::transactio
 void mongo_db_plugin_impl::process_applied_transaction( const chain::transaction_trace_ptr& t ) {
    try {
       if( start_block_reached ) {
-          auto trans_trace = mongo_conn[db_name][trans_traces_col];
-         find_and_del_transaction_trace( trans_trace, t->id.str() );
          _process_applied_transaction( t );
       }
    } catch (fc::exception& e) {
@@ -928,6 +917,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
       ir_block = find_block( blocks, block_id_str );
       if( !ir_block ) return; // should never happen
    }
+
    auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
                                                                 kvp( "validated", b_bool{bs->validated} ),
                                                                 kvp( "in_current_chain", b_bool{bs->in_current_chain} ),
