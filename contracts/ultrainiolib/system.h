@@ -78,7 +78,7 @@ extern "C" {
     */
    uint64_t  current_time();
 
-   void emit_event(void*, int, void*, int);
+   int emit_event(const char*, int, const char*, int);
 
    /**
     *  Returns the time in seconds from 1970 of the block including this action

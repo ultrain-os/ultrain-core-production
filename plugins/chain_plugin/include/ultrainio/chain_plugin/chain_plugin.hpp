@@ -497,7 +497,9 @@ public:
       string account;
       string post_url;
    };
-   using register_result = empty;
+   struct register_result {
+      string result;
+   };
    register_result register_event(const register_event_params& params);
 
    struct unregister_event_params {
@@ -611,3 +613,4 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_required_keys_result, (require
 
 FC_REFLECT( ultrainio::chain_apis::read_write::register_event_params, (account)(post_url));
 FC_REFLECT( ultrainio::chain_apis::read_write::unregister_event_params, (account)(post_url));
+FC_REFLECT( ultrainio::chain_apis::read_write::register_result, (result));

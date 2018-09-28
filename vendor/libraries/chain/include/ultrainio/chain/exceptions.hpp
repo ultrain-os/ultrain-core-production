@@ -196,6 +196,11 @@ namespace ultrainio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_compression, transaction_exception,
                                     3040014, "Unknown transaction compression" )
 
+      FC_DECLARE_DERIVED_EXCEPTION( event_register_duplicate, transaction_exception,
+                                    3040015, "Duplicate event" )
+      FC_DECLARE_DERIVED_EXCEPTION( event_unregister_error, transaction_exception,
+                                    3040016, "Wrong account or unregistered url" )
+
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
                                  3050000, "Action validate exception" )

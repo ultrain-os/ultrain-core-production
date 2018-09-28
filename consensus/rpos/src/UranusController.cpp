@@ -1568,6 +1568,8 @@ namespace ultrainio {
                 chain.commit_block();
                 needs_push_whole_block = false;
                 // No need to check trx/action_mroot, it was already verified in verifyBa0Block();
+            } else {
+                chain.clear_event(block->block_num());
             }
         }
 
@@ -1624,6 +1626,16 @@ namespace ultrainio {
             chain.abort_block();
             chain.push_block(block);
         }
+
+        if (needs_push_whole_block || force_push_whole_block) {
+            // When push_block fails or the operation is syncing block, we need not notify event.
+           ilog("needs_push_whole_block: ${np} force_push_whole_block: ${fp}", ("np", needs_push_whole_block)("fp", force_push_whole_block));
+            chain.clear_event(block->block_num());
+        } else {
+            ilog("before notify");
+            chain.notify_event();
+        }
+
         m_currentPreRunBa0TrxIndex = -1;
         m_voterPreRunBa0InProgress = false;
 

@@ -747,50 +747,6 @@ struct controller_impl {
       return r;
    }
 
-   // push event to client who registered
-   void notify_event()
-   {
-      auto it = event_list.begin();
-      while (it != event_list.end()) {
-         if (self.head_block_num() > (*it).head_block_num + event_lifetime) {// lifetime expired
-            it = event_list.erase(it);
-            continue;
-         }
-         ++it;
-      }
-
-      for (it = event_list.begin(); it != event_list.end(); ++it) {
-         auto it_cmp = std::next(it);
-         while (it_cmp != event_list.end()) {
-            if ((*it).id == (*it_cmp).id && (*it).name == (*it_cmp).name &&
-              (*it).event_name == (*it_cmp).event_name && (*it).message == (*it_cmp).message) {
-               it_cmp = event_list.erase(it_cmp);
-               continue;
-            }
-            ++it_cmp;
-         }
-
-         if ((*it).notified) {// has already been notified, but keep it to avoid duplicate
-            continue;
-         }
-
-         auto map_it = registered_event_map.find(it->name);
-         if (map_it != registered_event_map.end()) {
-            for (auto post_url : map_it->second) {
-               fc::variant params;
-               fc::to_variant(std::make_pair((*it).event_name, (*it).message), params);
-               auto event_url = fc::url(post_url);
-               try {
-                  http_client->post_sync(event_url, params);
-               }
-               catch(...) {// TODO: We skip exception when no response happends, but need to process some type of exception if we can
-               }
-            }
-         }
-         (*it).notified = true;
-      }
-   }
-
    /**
     *  This is the entry point for new transactions to the block state. It will check authorization and
     *  determine whether to execute it now or to delay it. Lastly it inserts a transaction receipt into
@@ -889,7 +845,6 @@ struct controller_impl {
             }
 
             event_restore.cancel();
-            notify_event();
             return trace;
          } catch (const fc::exception& e) {
             ilog("-----------exception in push_transaction ${e}", ("e", e.to_detail_string()));
@@ -1060,10 +1015,7 @@ struct controller_impl {
       {
         for (auto list_it = it->second.begin(); list_it != it->second.end(); ++list_it)
         {
-           if (*list_it == post_url)
-           {
-              return;
-           }
+           ULTRAIN_ASSERT(*list_it != post_url, event_register_duplicate, "Duplicate register.");
         }
         it->second.emplace_back(post_url);
       }
@@ -1083,12 +1035,16 @@ struct controller_impl {
             }
          }
       }
+
+      ULTRAIN_ASSERT(false, event_unregister_error, "Wrong account or unregistered url.");
    }
 
    bool check_event_listener(account_name account) {
+      ilog("account: ${account}", ("account", name{account}));
       auto it = registered_event_map.find(account);
       if (it != registered_event_map.end() && it->second.size() > 0)
       {
+         ilog("found registered url");
          return true;
       }
       return false;
@@ -1099,7 +1055,64 @@ struct controller_impl {
       std::string ename(event_name, event_name_size);
       std::string emsg(msg, msg_size);
       event_list.emplace_back(act_name, id, ename, emsg, self.head_block_num());
+      ilog("act name: ${an} trx: ${trx} event name: ${en} msg: ${msg}", ("an", act_name)("trx", id)("en", event_name)("msg", msg));
    }
+
+   void clear_event(uint32_t block_num) {
+      for (auto it = event_list.begin(); it != event_list.end(); ) {
+         if (it->head_block_num == block_num) {
+            it = event_list.erase(it);
+         } else {
+            ++it;
+         }
+      }
+   }
+
+   // push event to client who registered
+   void notify_event()
+   {
+      auto it = event_list.begin();
+      while (it != event_list.end()) {
+         if (self.head_block_num() > (*it).head_block_num + event_lifetime) {// lifetime expired
+            it = event_list.erase(it);
+            continue;
+         }
+         ++it;
+      }
+
+      for (it = event_list.begin(); it != event_list.end(); ++it) {
+         auto it_cmp = std::next(it);
+         while (it_cmp != event_list.end()) {
+            if ((*it).id == (*it_cmp).id && (*it).name == (*it_cmp).name &&
+              (*it).event_name == (*it_cmp).event_name && (*it).message == (*it_cmp).message) {
+               it_cmp = event_list.erase(it_cmp);
+               continue;
+            }
+            ++it_cmp;
+         }
+
+         if ((*it).notified) {// has already been notified, but keep it to avoid duplicate
+            continue;
+         }
+
+         auto map_it = registered_event_map.find(it->name);
+         if (map_it != registered_event_map.end()) {
+            for (auto post_url : map_it->second) {
+               fc::variant params;
+               fc::to_variant(std::make_pair((*it).event_name, (*it).message), params);
+               auto event_url = fc::url(post_url);
+               try {
+                  ilog("post event: ${e} to url: ${url}", ("e", (*it).event_name)("url", post_url));
+                  http_client->post_sync(event_url, params);
+               }
+                  catch(...) {// TODO: We skip exception when no response happends, but need to process some type of exception if we can
+               }
+            }
+         }
+         (*it).notified = true;
+      }
+   }
+
 
    void maybe_switch_forks( controller::block_status s = controller::block_status::complete ) {
       auto new_head = fork_db.head();
@@ -1516,6 +1529,14 @@ void controller::push_event(account_name act_name, transaction_id_type id,
          const char* event_name, size_t event_name_size,
          const char* msg, size_t msg_size ) {
    my->push_event(act_name, id, event_name, event_name_size, msg, msg_size);
+}
+
+void controller::notify_event() {
+   my->notify_event();
+}
+
+void controller::clear_event(uint32_t block_num) {
+   my->clear_event(block_num);
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {

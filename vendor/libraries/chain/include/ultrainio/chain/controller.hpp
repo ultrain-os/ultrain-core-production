@@ -143,6 +143,8 @@ namespace ultrainio { namespace chain {
          bool check_event_listener(account_name account);
          void push_event(account_name act_name, transaction_id_type id, const char* event_name, size_t event_name_size,
                          const char* msg, size_t msg_size );
+         void notify_event();
+         void clear_event(uint32_t block_num);
 
          chainbase::database& db()const;
 

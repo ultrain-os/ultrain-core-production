@@ -1421,14 +1421,34 @@ void read_write::push_txs(const read_write::push_txs_params& params, next_functi
 
 read_write::register_result read_write::register_event(const register_event_params& params) {
    ilog("register_event for ${account}, post_url is ${post_url}", ("account", params.account) ("post_url", params.post_url));
-   db.register_event(params.account, params.post_url);
-   return read_write::register_result();
+
+   read_write::register_result res;
+   res.result = "Success";
+   try {
+      db.register_event(params.account, params.post_url);
+   } catch (event_register_duplicate& e) {
+      res.result = e.what();
+   } catch (...) {
+      res.result = "Unknown error.";
+   }
+
+   return res;
 }
 
 read_write::register_result read_write::unregister_event(const unregister_event_params& params) {
    ilog("unregister_event for ${account} post_url:${url}", ("account", params.account)("url", params.post_url));
-   db.unregister_event(params.account, params.post_url);
-   return read_write::register_result();
+
+   read_write::register_result res;
+   res.result = "Success";
+   try {
+      db.unregister_event(params.account, params.post_url);
+   } catch (event_unregister_error& e) {
+      res.result = e.what();
+   } catch (...) {
+      res.result = "Unknown error.";
+   }
+
+   return res;
 }
 
 read_only::get_abi_results read_only::get_abi( const get_abi_params& params )const {
