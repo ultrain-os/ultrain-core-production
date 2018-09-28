@@ -185,6 +185,8 @@ namespace ultrainio {
         std::shared_ptr<AggEchoMsg> generateAggEchoMsg(std::shared_ptr<Block> blockPtr);
 
         void insertAccount(echo_message_info &info, const EchoMsg &echo);
+
+        void enableEventRegister(bool v);
     private:
         // This function is time consuming, please cache the result empty block.
         std::shared_ptr<Block> generateEmptyBlock();

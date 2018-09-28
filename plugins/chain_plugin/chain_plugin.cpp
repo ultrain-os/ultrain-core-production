@@ -1421,7 +1421,6 @@ void read_write::push_txs(const read_write::push_txs_params& params, next_functi
 
 read_write::register_result read_write::register_event(const register_event_params& params) {
    ilog("register_event for ${account}, post_url is ${post_url}", ("account", params.account) ("post_url", params.post_url));
-
    read_write::register_result res;
    res.result = "Success";
    try {

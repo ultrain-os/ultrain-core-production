@@ -23,7 +23,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="2b7747";
+    char version[]="5c58aa";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -62,6 +62,7 @@ namespace ultrainio {
 
     void UranusNode::setNonProducingNode(bool v) {
         m_isNonProducingNode = v;
+        m_controllerPtr->enableEventRegister(v);
     }
 
     void UranusNode::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account) {

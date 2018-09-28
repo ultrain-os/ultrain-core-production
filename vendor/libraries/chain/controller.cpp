@@ -65,6 +65,7 @@ struct controller_impl {
    std::unique_ptr<fc::http_client>   http_client;
    chain_id_type                  chain_id;
    bool                           replaying = false;
+   bool                           can_accept_event_register = true;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
@@ -1005,6 +1006,10 @@ struct controller_impl {
    }
 
    void register_event(const std::string& account, const std::string& post_url) {
+       if (!can_accept_event_register) {
+           // throw
+       }
+
       auto it = registered_event_map.find(account);
       if (it == registered_event_map.end())
       {
@@ -1901,6 +1906,11 @@ void controller::remove_resource_greylist(const account_name &name) {
 
 bool controller::is_resource_greylisted(const account_name &name) const {
    return my->conf.resource_greylist.find(name) !=  my->conf.resource_greylist.end();
+}
+
+void controller::enable_event_register(bool v){
+    ilog("controller::enable_event_register ${v}", ("v", v));
+    my->can_accept_event_register = v;
 }
 
 const flat_set<account_name> &controller::get_resource_greylist() const {

@@ -218,8 +218,9 @@ namespace ultrainio { namespace chain {
          bool contracts_console()const;
 
          chain_id_type get_chain_id()const;
-
          db_read_mode get_read_mode()const;
+
+         void enable_event_register(bool v);
 
          #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
          uint64_t get_contract_return_length() const;

@@ -1876,6 +1876,11 @@ namespace ultrainio {
         return;
     }
 
+    void UranusController::enableEventRegister(bool v) {
+        chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
+        chain.enable_event_register(v);
+    }
+
     bool UranusController::isDuplicate(const ProposeMsg& proposeMsg) {
         auto itor = m_proposerMsgMap.find(proposeMsg.block.id());
         return itor != m_proposerMsgMap.end();
