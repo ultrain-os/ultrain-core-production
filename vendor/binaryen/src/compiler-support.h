@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <stdexcept>
 
 #ifndef wasm_compiler_support_h
 #define wasm_compiler_support_h
@@ -27,14 +28,16 @@
 
 // If control flow reaches the point of the WASM_UNREACHABLE(), the program is
 // undefined.
-#if __has_builtin(__builtin_unreachable)
-# define WASM_UNREACHABLE() __builtin_unreachable()
-#elif defined(_MSC_VER)
-# define WASM_UNREACHABLE() __assume(false)
-#else
-# include <stdlib.h>
-# define WASM_UNREACHABLE() abort()
-#endif
+//#if __has_builtin(__builtin_unreachable)
+//# define WASM_UNREACHABLE() __builtin_unreachable()
+//#elif defined(_MSC_VER)
+//# define WASM_UNREACHABLE() __assume(false)
+//#else
+//# include <stdlib.h>
+//# define WASM_UNREACHABLE() abort()
+//#endif
+
+#define WASM_UNREACHABLE() do { throw std::runtime_error{"binaryen assert: got WASM_UNREACHABLE error"}; } while(0)
 
 #ifdef __GNUC__
 #define WASM_NORETURN __attribute__((noreturn))
