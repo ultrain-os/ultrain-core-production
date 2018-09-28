@@ -1006,9 +1006,7 @@ struct controller_impl {
    }
 
    void register_event(const std::string& account, const std::string& post_url) {
-       if (!can_accept_event_register) {
-           // throw
-       }
+      ULTRAIN_ASSERT(can_accept_event_register, event_register_wrong_node, "Can't register event on producing node.");
 
       auto it = registered_event_map.find(account);
       if (it == registered_event_map.end())
@@ -1045,7 +1043,10 @@ struct controller_impl {
    }
 
    bool check_event_listener(account_name account) {
-      ilog("account: ${account}", ("account", name{account}));
+      if (!can_accept_event_register) {
+         return false;
+      }
+
       auto it = registered_event_map.find(account);
       if (it != registered_event_map.end() && it->second.size() > 0)
       {

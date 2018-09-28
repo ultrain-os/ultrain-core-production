@@ -1568,8 +1568,6 @@ namespace ultrainio {
                 chain.commit_block();
                 needs_push_whole_block = false;
                 // No need to check trx/action_mroot, it was already verified in verifyBa0Block();
-            } else {
-                chain.clear_event(block->block_num());
             }
         }
 
@@ -1624,7 +1622,13 @@ namespace ultrainio {
         if (needs_push_whole_block) {
             ilog("-------- Actually needs to push_whole_block");
             chain.abort_block();
+            if (UranusNode::getInstance()->getNonProducingNode()) {
+                chain.clear_event(block->block_num());
+            }
             chain.push_block(block);
+            if (UranusNode::getInstance()->getNonProducingNode()) {
+                chain.notify_event();
+            }
         }
 
         if (needs_push_whole_block || force_push_whole_block) {

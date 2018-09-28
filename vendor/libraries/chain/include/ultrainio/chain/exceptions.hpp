@@ -196,14 +196,8 @@ namespace ultrainio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_compression, transaction_exception,
                                     3040014, "Unknown transaction compression" )
 
-      FC_DECLARE_DERIVED_EXCEPTION( event_register_duplicate, transaction_exception,
-                                    3040015, "Duplicate event" )
-      FC_DECLARE_DERIVED_EXCEPTION( event_unregister_error, transaction_exception,
-                                    3040016, "Wrong account or unregistered url" )
-
-
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
-                                 3050000, "Action validate exception" )
+                                    3050000, "Action validate exception" )
 
       FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception, action_validate_exception,
                                     3050001, "Account name already exists" )
@@ -518,4 +512,13 @@ namespace ultrainio { namespace chain {
                                  3240001, "Failed to get UranusNode." )
       FC_DECLARE_DERIVED_EXCEPTION( msg_not_found_exception,   monitor_exception,
                                  3240002, "Can not find required message in corresponding container" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( event_exception, chain_exception,
+			         3250000, "Event exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( event_register_duplicate, event_exception,
+                                    3250001, "Duplicate event" )
+      FC_DECLARE_DERIVED_EXCEPTION( event_register_wrong_node, event_exception,
+                                    3250002, "Can't register event on producing node.")
+      FC_DECLARE_DERIVED_EXCEPTION( event_unregister_error, event_exception,
+                                    3250003, "Wrong account or unregistered url" )
 } } // ultrainio::chain
