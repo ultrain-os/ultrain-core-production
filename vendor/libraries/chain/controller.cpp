@@ -57,6 +57,7 @@ struct controller_impl {
    block_log                      blog;
    optional<pending_state>        pending;
    block_state_ptr                head;
+   bool                           emit_signal = false;
    fork_database                  fork_db;
    wasm_interface                 wasmif;
    resource_limits_manager        resource_limits;
@@ -824,12 +825,12 @@ struct controller_impl {
             fc::move_append(pending->_actions, move(trx_context.executed));
 
             // call the accept signal but only once for this transaction
-            if (!trx->accepted && !implicit) {
+            if (!trx->accepted && !implicit && emit_signal) {
                emit( self.accepted_transaction, trx);
                trx->accepted = true;
             }
 
-            if(!implicit) {
+            if(!implicit&& emit_signal) {
                 emit(self.applied_transaction, trace);
             }
 
@@ -1429,6 +1430,16 @@ struct controller_impl {
    }
 
 }; /// controller_impl
+
+void controller::set_emit_signal()
+{
+    my->emit_signal = true;
+}
+void controller::clear_emit_signal()
+{
+    my->emit_signal = false;
+}
+
 
 const resource_limits_manager&   controller::get_resource_limits_manager()const
 {

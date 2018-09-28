@@ -1623,10 +1623,12 @@ namespace ultrainio {
             ilog("-------- Actually needs to push_whole_block");
             chain.abort_block();
             if (UranusNode::getInstance()->getNonProducingNode()) {
+                chain.set_emit_signal();
                 chain.clear_event(block->block_num());
             }
             chain.push_block(block);
             if (UranusNode::getInstance()->getNonProducingNode()) {
+                chain.clear_emit_signal();
                 chain.notify_event();
             }
         }

@@ -91,6 +91,8 @@ namespace ultrainio { namespace chain {
          void start_block( block_timestamp_type time = block_timestamp_type() );
 
          void abort_block();
+         void set_emit_signal();
+         void clear_emit_signal();
 
          /**
           *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
