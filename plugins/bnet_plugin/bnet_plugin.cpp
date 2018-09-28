@@ -358,8 +358,8 @@ namespace ultrainio {
              * wait for an "ack", making this larger could result in higher latency for smaller urgent
              * messages.
              */
-            _ws->next_layer().set_option( boost::asio::socket_base::send_buffer_size( 256*1024 ) );
-            _ws->next_layer().set_option( boost::asio::socket_base::receive_buffer_size( 256*1024 ) );
+            _ws->next_layer().set_option( boost::asio::socket_base::send_buffer_size( 1024*1024 ) );
+            _ws->next_layer().set_option( boost::asio::socket_base::receive_buffer_size( 1024*1024 ) );
            } catch ( ... ) {
               elog( "uncaught exception on set socket options" );
            }
