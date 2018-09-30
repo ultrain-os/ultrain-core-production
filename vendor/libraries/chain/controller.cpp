@@ -1113,7 +1113,7 @@ struct controller_impl {
                auto event_url = fc::url(post_url);
                try {
                   ilog("post event: ${e} to url: ${url}", ("e", (*it).event_name)("url", post_url));
-                  http_client->post_sync(event_url, params);
+                  http_client->post_sync(event_url, params, fc::time_point::now() + fc::microseconds(200000));
                }
                catch(...) {// TODO: We skip exception when no response happends, but need to process some type of exception if we can
                }
