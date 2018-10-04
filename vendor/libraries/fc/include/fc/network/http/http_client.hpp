@@ -17,8 +17,15 @@ class http_client {
       http_client();
       ~http_client();
 
-      variant post_sync(const url& dest, const variant& payload, const time_point& deadline = time_point::maximum());
+      void post(const url& dest, const variant& payload, const time_point& deadline = time_point::maximum());
+      template<typename T>
+      void post(const url& dest, const T& payload, const time_point& deadline = time_point::maximum()) {
+         variant payload_v;
+         to_variant(payload, payload_v);
+         post(dest, payload_v, deadline);
+      }
 
+      variant post_sync(const url& dest, const variant& payload, const time_point& deadline = time_point::maximum());
       template<typename T>
       variant post_sync(const url& dest, const T& payload, const time_point& deadline = time_point::maximum()) {
          variant payload_v;

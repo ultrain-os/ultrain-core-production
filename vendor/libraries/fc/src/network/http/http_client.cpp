@@ -333,6 +333,35 @@ public:
       return result;
    }
 
+   void post(const url& dest, const variant& payload, const fc::time_point& _deadline) {
+      static const deadline_type epoch(boost::gregorian::date(1970, 1, 1));
+      auto deadline = epoch + boost::posix_time::microseconds(_deadline.time_since_epoch().count());
+      FC_ASSERT(dest.host(), "No host set on URL");
+
+      string path = dest.path() ? dest.path()->generic_string() : "/";
+      if (dest.query()) {
+         path = path + "?" + *dest.query();
+      }
+
+      http::request<http::string_body> req{http::verb::post, path, 11};
+      req.set(http::field::host, *dest.host());
+      req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+      req.set(http::field::content_type, "application/json");
+      req.keep_alive(true);
+      req.body() = json::to_string(payload);
+      req.prepare_payload();
+
+      auto conn_iter = get_connection(dest, deadline);
+      auto eraser = make_scoped_exit([this, &conn_iter](){
+         _connections.erase(conn_iter);
+      });
+
+      ilog("get_connection succeeds.");
+
+      // Send the HTTP request to the remote host
+      error_code ec = conn_iter->second.visit(write_request_visitor(this, req, deadline));
+      FC_ASSERT(!ec, "Failed to send request: ${message}", ("message",ec.message()));
+    }
 
    boost::asio::io_context  _ioc;
    ssl::context             _sslc;
@@ -344,6 +373,10 @@ http_client::http_client()
 :_my(new http_client_impl())
 {
 
+}
+
+void http_client::post(const url& dest, const variant& payload, const fc::time_point& deadline) {
+   return _my->post(dest, payload, deadline);
 }
 
 variant http_client::post_sync(const url& dest, const variant& payload, const fc::time_point& deadline) {
