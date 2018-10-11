@@ -165,6 +165,7 @@ namespace ultrainio {
         bool m_syncing;
         bool m_syncFailed;
         bool m_isNonProducingNode = false;
+        bool m_timerCanceled = false;
         ConsensusPhase m_phase;
         uint32_t m_baxCount;
         boost::asio::deadline_timer m_timer;
