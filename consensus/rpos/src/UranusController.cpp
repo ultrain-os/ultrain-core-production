@@ -1190,6 +1190,13 @@ namespace ultrainio {
         for (auto map_itor = m_echoMsgAllPhase.begin(); map_itor != m_echoMsgAllPhase.end(); ++map_itor) {
             min_priority = std::numeric_limits<uint32_t>::max();
             echo_info = nullptr;
+
+            if ((UranusNode::getInstance()->getPhase() + UranusNode::getInstance()->getBaxCount()) >= Config::kMaxBaxCount) {
+                if (map_itor->first.phase < Config::kMaxBaxCount) {
+                    continue;
+                }
+            }
+
             echo_msg_buff &echo_msg_map = map_itor->second;
             for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
 //                if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (map_itor->first.phase < Config::kMaxBaxCount))
