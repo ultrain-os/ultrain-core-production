@@ -18,7 +18,8 @@ namespace ultrainio {
         kPhaseBAX
     };
 
-    struct SyncRequestMessage {
+    struct ReqSyncMsg {
+        uint32_t seqNum;
         uint32_t startBlockNum;
         uint32_t endBlockNum;
     };
@@ -32,6 +33,20 @@ namespace ultrainio {
         uint32_t blockNum;
         std::string blockHash;
         std::string prevBlockHash;
+    };
+
+    // Keep account & signature in the struct and we will use them soon.
+    struct SyncBlockMsg {
+        uint32_t seqNum;
+        AccountName account;
+        std::string signature;
+        Block block;
+    };
+
+    struct SyncStopMsg {
+        uint32_t seqNum;
+        AccountName account;
+        std::string signature;
     };
 
     struct ProposeMsg {
@@ -75,9 +90,11 @@ namespace ultrainio {
 FC_REFLECT( ultrainio::ProposeMsg, (block))
 FC_REFLECT( ultrainio::UnsignedEchoMsg, (blockId)(phase)(proposerPriority)(baxCount)(timestamp)(account)(proof))
 FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature))
-FC_REFLECT( ultrainio::SyncRequestMessage, (startBlockNum)(endBlockNum) )
+FC_REFLECT( ultrainio::ReqSyncMsg, (seqNum)(startBlockNum)(endBlockNum) )
 FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
 FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))
+FC_REFLECT( ultrainio::SyncBlockMsg, (seqNum)(block))
+FC_REFLECT( ultrainio::SyncStopMsg, (seqNum))
 FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockId)(proposerPriority)(accountPool)(proofPool)(sigPool)(timePool)
                                            (phase)(baxCount)(account)(myProposerProof))
 FC_REFLECT_DERIVED( ultrainio::AggEchoMsg, (ultrainio::UnsignedAggEchoMsg), (signature))

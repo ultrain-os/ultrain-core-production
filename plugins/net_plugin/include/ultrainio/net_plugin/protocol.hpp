@@ -144,7 +144,9 @@ namespace ultrainio {
                                       packed_transaction,
                                       ProposeMsg,
                                       EchoMsg,
-                                      SyncRequestMessage,
+                                      ReqSyncMsg,
+                                      SyncBlockMsg,
+                                      SyncStopMsg,
                                       ReqLastBlockNumMsg,
                                       RspLastBlockNumMsg,
                                       AggEchoMsg>;

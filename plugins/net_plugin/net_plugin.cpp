@@ -227,20 +227,21 @@ namespace ultrainio {
       /** @} */
       void handle_message( connection_ptr c, const notice_message &msg);
       void handle_message( connection_ptr c, const request_message &msg);
-      //void handle_message( connection_ptr c, const signed_block &msg);
+      void handle_message( connection_ptr c, const signed_block &msg);
       void handle_message( connection_ptr c, const packed_transaction &msg);
 
       void handle_message( connection_ptr c, const ultrainio::EchoMsg &msg);
       void handle_message( connection_ptr c, const ultrainio::ProposeMsg& msg);
       void handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg);
       void handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg);
-      void handle_message( connection_ptr c, const ultrainio::SyncRequestMessage& msg);
-      void handle_message( connection_ptr c, const ultrainio::Block& msg);
+      void handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg);
+      void handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg);
+      void handle_message( connection_ptr c, const ultrainio::SyncStopMsg& msg);
       void handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg);
 
       void start_broadcast(const net_message& msg);
       void send_block(const string& ip_addr, const net_message& msg);
-      bool send_apply(const ultrainio::SyncRequestMessage& msg);
+      bool send_apply(const ultrainio::ReqSyncMsg& msg);
       void send_last_block_num(const string& ip_addr, const net_message& msg);
       void stop_sync_block();
 
@@ -650,7 +651,7 @@ namespace ultrainio {
       uint32_t                         last_checked_block;
       std::vector<connection_ptr>      rsp_conns;
       connection_ptr                   sync_conn;
-      ultrainio::SyncRequestMessage    sync_block_msg;
+      ultrainio::ReqSyncMsg            sync_block_msg;
       uint32_t                         end_block_num;
       bool                             selecting_src = false;
       boost::asio::steady_timer::duration   src_block_period{std::chrono::seconds{3}};
@@ -1804,10 +1805,15 @@ namespace ultrainio {
     }
 
     void net_plugin_impl::stop_sync_block() {
-      sync_block_master->reset();
+        if (sync_block_master->sync_conn) {
+            SyncStopMsg stop_msg;
+            stop_msg.seqNum = sync_block_master->seq_num;
+            sync_block_master->sync_conn->enqueue(stop_msg);
+        }
+        sync_block_master->reset();
     }
 
-    bool net_plugin_impl::send_apply(const ultrainio::SyncRequestMessage& msg) {
+    bool net_plugin_impl::send_apply(const ultrainio::ReqSyncMsg& msg) {
         sync_block_master->rsp_conns.clear();
         std::vector<connection_ptr> conn_list;
         conn_list.reserve(connections.size());
@@ -1831,6 +1837,7 @@ namespace ultrainio {
 
         sync_block_master->end_block_num = 0;
         sync_block_master->sync_block_msg = msg;
+        sync_block_master->sync_block_msg.seqNum = req_last_block_msg.seqNum;
         sync_block_master->selecting_src = true;
 
         sync_block_master->src_block_check->expires_from_now(sync_block_master->src_block_period);
@@ -2334,32 +2341,42 @@ namespace ultrainio {
         }
     }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncRequestMessage& msg) {
-        ilog("receive apply msg!!! message from ${p} addr:${addr} blockNum = ${blockNum}",
+    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg) {
+        ilog("receive req sync msg!!! message from ${p} addr:${addr} blockNum = ${blockNum}",
              ("p", c->peer_name())("addr", c->peer_addr)("blockNum", msg.endBlockNum));
 
         app().get_plugin<producer_uranus_plugin>().handle_message(c->socket->remote_endpoint().address().to_v4().to_string(), msg);
     }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::Block& block) {
+    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg) {
         ilog("receive block msg!!! message from ${p} blockNum = ${blockNum} end block num:${eb}",
-             ("p", c->peer_name())("blockNum", block.block_num())("eb", sync_block_master->end_block_num));
+             ("p", c->peer_name())("blockNum", msg.block.block_num())("eb", sync_block_master->end_block_num));
 
-        if (c != sync_block_master->sync_conn) {
-            wlog("receive old block msg!!! Discard.");
+        if (c != sync_block_master->sync_conn || msg.seqNum != sync_block_master->seq_num) {
+            wlog("receive old block msg!!! Discard. seq num in msg: ${snm}, seq num in master: ${sns}", ("snm", msg.seqNum)("sns", sync_block_master->seq_num));
+            SyncStopMsg stop_msg;
+            stop_msg.seqNum = msg.seqNum;
+            c->enqueue(stop_msg);
             return;
         }
 
         if (sync_block_master->end_block_num > 0) {
-          sync_block_master->last_received_block = block.block_num();
-          bool is_last_block = (block.block_num() == sync_block_master->end_block_num);
+            sync_block_master->last_received_block = msg.block.block_num();
+            bool is_last_block = (msg.block.block_num() == sync_block_master->end_block_num);
 
-          app().get_plugin<producer_uranus_plugin>().handle_message(block, is_last_block);
-          if (is_last_block) {
-             ilog("is last block reset");
-             sync_block_master->reset();
-          }
+            app().get_plugin<producer_uranus_plugin>().handle_message(msg.block, is_last_block);
+            if (is_last_block) {
+                ilog("is last block reset");
+                sync_block_master->reset();
+            }
         }
+    }
+
+    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncStopMsg &msg) {
+        ilog("receive sync stop msg!!! message from ${p} addr:${addr} seqNum = ${sn}",
+             ("p", c->peer_name())("addr", c->peer_addr)("sn", msg.seqNum));
+
+        app().get_plugin<producer_uranus_plugin>().handle_message(c->socket->remote_endpoint().address().to_v4().to_string(), msg);
     }
 
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
@@ -2391,80 +2408,12 @@ namespace ultrainio {
       });
    }
 
-   /*void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {
-     ilog("receive block msg!!! message from ${p} blockNum = ${blockNum}",
+   // This function is obsolete and will be deleted later.
+   void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {
+      elog("receive raw block msg!!! message from ${p} blockNum = ${blockNum}",
 	  ("p", c->peer_name())("blockNum", msg.block_num()));
-
-     app().get_plugin<producer_uranus_plugin>().handle_message(msg);
-
-     // TODO ----- Should process sync logic.
-     return;
-
-      ilog("got a signed_block from ${p}, cancel wait", ("p",c->peer_name()));
-      controller &cc = chain_plug->chain();
-      block_id_type blk_id = msg.id();
-      uint32_t blk_num = msg.block_num();
-      fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
-      c->cancel_wait();
-
-      try {
-         if( cc.fetch_block_by_id(blk_id)) {
-            sync_master->recv_block(c, blk_id, blk_num);
-            return;
-         }
-      } catch( ...) {
-         // should this even be caught?
-         elog("Caught an unknown exception trying to recall blockID");
-      }
-
-      dispatcher->recv_block(c, blk_id, blk_num);
-      fc::microseconds age( fc::time_point::now() - msg.timestamp);
-      peer_ilog(c, "received signed_block : #${n} block age in secs = ${age}",
-              ("n",blk_num)("age",age.to_seconds()));
-
-      go_away_reason reason = fatal_other;
-      try {
-         signed_block_ptr sbp = std::make_shared<signed_block>(msg);
-         chain_plug->accept_block(sbp); //, sync_master->is_active(c));
-         reason = no_reason;
-      } catch( const unlinkable_block_exception &ex) {
-         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
-         reason = unlinkable;
-      } catch( const block_validate_exception &ex) {
-         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
-         elog( "block_validate_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()));
-         reason = validation;
-      } catch( const assert_exception &ex) {
-         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
-         elog( "unable to accept block on assert exception ${n} from ${p}",("n",ex.to_string())("p",c->peer_name()));
-      } catch( const fc::exception &ex) {
-         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
-         elog( "accept_block threw a non-assert exception ${x} from ${p}",( "x",ex.to_string())("p",c->peer_name()));
-         reason = no_reason;
-      } catch( ...) {
-         peer_elog(c, "bad signed_block : unknown exception");
-         elog( "handle sync block caught something else from ${p}",("num",blk_num)("p",c->peer_name()));
-      }
-
-      update_block_num ubn(blk_num);
-      if( reason == no_reason ) {
-         for (const auto &recpt : msg.transactions) {
-            auto id = (recpt.trx.which() == 0) ? recpt.trx.get<transaction_id_type>() : recpt.trx.get<packed_transaction>().id();
-            auto ltx = local_txns.get<by_id>().find(id);
-            if( ltx != local_txns.end()) {
-               local_txns.modify( ltx, ubn );
-            }
-            auto ctx = c->trx_state.get<by_id>().find(id);
-            if( ctx != c->trx_state.end()) {
-               c->trx_state.modify( ctx, ubn );
-            }
-         }
-         sync_master->recv_block(c, blk_id, blk_num);
-      }
-      else {
-         sync_master->rejected_block(c, blk_num);
-      }
-   }*/
+      return;
+   }
 
    void net_plugin_impl::start_conn_timer( ) {
       connector_check->expires_from_now( connector_period);
@@ -2943,12 +2892,12 @@ namespace ultrainio {
         my->start_broadcast(net_message(aggEchoMsg));
     }
 
-   void net_plugin::send_block(const string& ip_addr, const ultrainio::Block& msg) {
-       ilog("send block msg to addr:${pa} block num:${n}", ("pa", ip_addr)("n", msg.block_num()));
+   void net_plugin::send_block(const string& ip_addr, const ultrainio::SyncBlockMsg& msg) {
+       ilog("send block msg to addr:${pa} block num:${n} seq num:${sn}", ("pa", ip_addr)("n", msg.block.block_num())("sn", msg.seqNum));
        my->send_block(ip_addr, net_message(msg));
    }
 
-   bool net_plugin::send_apply(const ultrainio::SyncRequestMessage& msg) {
+   bool net_plugin::send_apply(const ultrainio::ReqSyncMsg& msg) {
        ilog("send apply msg");
        return my->send_apply(msg);
    }
@@ -2956,7 +2905,7 @@ namespace ultrainio {
    void net_plugin::send_last_block_num(const string& ip_addr, const ultrainio::RspLastBlockNumMsg& msg) {
        ilog("send last block num:${n} hash:${h} prev hash:${ph}", ("n", msg.blockNum)("h", msg.blockHash)("ph", msg.prevBlockHash));
        my->send_last_block_num(ip_addr, net_message(msg));
-   }
+   } 
 
    void net_plugin::stop_sync_block() {
        ilog("stop sync block");

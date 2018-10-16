@@ -42,10 +42,11 @@ public:
    virtual void plugin_shutdown();
    bool handle_message(const EchoMsg& echo);
    bool handle_message(const ProposeMsg& propose);
-   bool handle_message(string peer_addr, const SyncRequestMessage& msg);
+   bool handle_message(string peer_addr, const ReqSyncMsg& msg);
    bool handle_message(const Block& block, bool last_block);
    bool handle_message(const string& peer_addr, const ReqLastBlockNumMsg& msg);
-   bool sync_fail(const ultrainio::SyncRequestMessage& sync_msg);
+   bool handle_message(const string& peer_addr, const SyncStopMsg& msg);
+   bool sync_fail(const ultrainio::ReqSyncMsg& sync_msg);
    bool sync_cancel();
 
    void pause();

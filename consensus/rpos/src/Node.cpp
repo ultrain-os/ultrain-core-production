@@ -23,7 +23,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="20649d";
+    char version[]="dc315c";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -200,7 +200,7 @@ namespace ultrainio {
     }
 
     void UranusNode::applyBlock(bool once) {
-        SyncRequestMessage msg;
+        ReqSyncMsg msg;
         dlog("@@@@@@@@@@@ applyBlock syncing:${s}", ("s", m_syncing));
         if (m_syncing) {
             applyBlockLoop(getRoundInterval());
@@ -549,7 +549,7 @@ namespace ultrainio {
         return m_controllerPtr->handleMessage(propose);
     }
 
-    bool UranusNode::handleMessage(const std::string &peer_addr, const SyncRequestMessage &msg) {
+    bool UranusNode::handleMessage(const std::string &peer_addr, const ReqSyncMsg &msg) {
         return m_controllerPtr->handleMessage(peer_addr, msg);
     }
 
@@ -598,7 +598,11 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusNode::syncFail(const ultrainio::SyncRequestMessage& sync_msg) {
+    bool UranusNode::handleMessage(const string &peer_addr, const SyncStopMsg& msg) {
+        return m_controllerPtr->handleMessage(peer_addr, msg);
+    }
+
+    bool UranusNode::syncFail(const ultrainio::ReqSyncMsg& sync_msg) {
         m_syncFailed = true;
         m_ready = true;
         m_syncing = false;
@@ -636,7 +640,7 @@ namespace ultrainio {
         app().get_plugin<net_plugin>().broadcast(propose);
     }
 
-    void UranusNode::sendMessage(const string &peer_addr, const Block &msg) {
+    void UranusNode::sendMessage(const string &peer_addr, const SyncBlockMsg &msg) {
         app().get_plugin<net_plugin>().send_block(peer_addr, msg);
     }
 
@@ -644,7 +648,7 @@ namespace ultrainio {
         app().get_plugin<net_plugin>().broadcast(aggEchoMsg);
     }
 
-    bool UranusNode::sendMessage(const SyncRequestMessage &msg) {
+    bool UranusNode::sendMessage(const ReqSyncMsg &msg) {
         return app().get_plugin<net_plugin>().send_apply(msg);
     }
 

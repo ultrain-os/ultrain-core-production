@@ -55,10 +55,12 @@ namespace ultrainio {
         std::string peerAddr;
         uint32_t startBlock;
         uint32_t endBlock;
+        uint32_t seqNum;
 
-        SyncTask(const std::string &_peerAddr, size_t _startBlock, uint32_t _endBlock) : peerAddr(_peerAddr) {
+        SyncTask(const std::string &_peerAddr, uint32_t _startBlock, uint32_t _endBlock, uint32_t _seqNum) : peerAddr(_peerAddr) {
             startBlock = _startBlock;
             endBlock = _endBlock;
+            seqNum = _seqNum;
         }
     };
 
@@ -104,11 +106,13 @@ namespace ultrainio {
 
         bool handleMessage(const ProposeMsg &propose);
 
-        bool handleMessage(const std::string &peer_addr, const SyncRequestMessage &msg);
+        bool handleMessage(const std::string &peer_addr, const ReqSyncMsg &msg);
 
         bool handleMessage(const std::string &peer_addr, const ReqLastBlockNumMsg &msg);
 
         bool handleMessage(const Block &msg);
+
+        bool handleMessage(const std::string &peer_addr, const SyncStopMsg &msg);
 
         void resetEcho();
 

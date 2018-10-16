@@ -741,7 +741,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::handleMessage(const string &peer_addr, const SyncRequestMessage &msg) {
+    bool UranusController::handleMessage(const string &peer_addr, const ReqSyncMsg &msg) {
         if (UranusNode::getInstance()->getSyncingStatus()) {
             return true;
         }
@@ -765,17 +765,20 @@ namespace ultrainio {
         uint32_t send_count = 0;
         uint32_t num = msg.startBlockNum;
 
+        SyncBlockMsg sync_block;
+        sync_block.seqNum = msg.seqNum;
         for (; num <= end_block_num && send_count < max_count; num++, send_count++) {
             auto b = chain.fetch_block_by_number(num);
             if (b) {
-                UranusNode::getInstance()->sendMessage(peer_addr, *b);
+                sync_block.block = *b;
+                UranusNode::getInstance()->sendMessage(peer_addr, sync_block);
             } else if (num == end_block_num) { // try to send last block next time
                 break;
             } // else: skip the block if not exist
         }
 
         if (num <= end_block_num) {
-            m_syncTaskQueue.emplace_back(peer_addr, num, end_block_num);
+            m_syncTaskQueue.emplace_back(peer_addr, num, end_block_num, msg.seqNum);
         }
 
         return true;
@@ -826,6 +829,25 @@ namespace ultrainio {
 
         elog("Error!!! Get last block failed!!! num:${n}", ("n", last_num));
         return false;
+    }
+
+    bool UranusController::handleMessage(const string &peer_addr, const SyncStopMsg& msg) {
+        ilog("Stop sync msg to ${pa}, seqNum: ${sn}", ("pa", peer_addr)("sn", msg.seqNum));
+        if (m_syncTaskQueue.empty()) {
+            return true;
+        }
+
+        for (std::list<SyncTask>::iterator it = m_syncTaskQueue.begin(); it != m_syncTaskQueue.end();) {
+            if (it->peerAddr == peer_addr) {
+                if (it->seqNum != msg.seqNum) {
+                    elog("seqNum in task:${snt} != seqNum in msg:${snm}, but we still stop sync msg.", ("snt", it->seqNum)("snm", msg.seqNum));
+                }
+                m_syncTaskQueue.erase(it);
+                break;
+            }
+        }
+
+        return true;
     }
 
     bool UranusController::isMin2FEcho(int totalVoter, uint32_t phasecnt) {
@@ -1742,15 +1764,18 @@ namespace ultrainio {
             return;
         }
 
+        SyncBlockMsg sync_block;
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         uint32_t last_num = getLastBlocknum();
         uint32_t max_count = m_maxPacketsOnce / m_syncTaskQueue.size() + 1;
         uint32_t send_count = 0;
         for (std::list<SyncTask>::iterator it = m_syncTaskQueue.begin(); it != m_syncTaskQueue.end();) {
+            sync_block.seqNum = it->seqNum;
             while (send_count < max_count && it->startBlock <= it->endBlock && it->startBlock <= last_num) {
                 auto b = chain.fetch_block_by_number(it->startBlock);
                 if (b) {
-                    UranusNode::getInstance()->sendMessage(it->peerAddr, *b);
+                    sync_block.block = *b;
+                    UranusNode::getInstance()->sendMessage(it->peerAddr, sync_block);
                 } else if (it->startBlock == last_num) { // try to send last block next time
                     break;
                 } // else: skip the block if not exist

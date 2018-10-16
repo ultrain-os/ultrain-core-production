@@ -555,7 +555,7 @@ bool producer_uranus_plugin::handle_message(const ProposeMsg& propose) {
    return UranusNode::getInstance()->handleMessage(propose);
 }
 
-bool producer_uranus_plugin::handle_message(string peer_addr, const SyncRequestMessage& msg) {
+bool producer_uranus_plugin::handle_message(string peer_addr, const ReqSyncMsg& msg) {
    return UranusNode::getInstance()->handleMessage(peer_addr,msg);
 }
 
@@ -567,7 +567,11 @@ bool producer_uranus_plugin::handle_message(const string& peer_addr, const ReqLa
   return UranusNode::getInstance()->handleMessage(peer_addr, msg);
 }
 
-bool producer_uranus_plugin::sync_fail(const ultrainio::SyncRequestMessage& sync_msg) {
+bool producer_uranus_plugin::handle_message(const string& peer_addr, const SyncStopMsg& msg) {
+  return UranusNode::getInstance()->handleMessage(peer_addr, msg);
+}
+
+bool producer_uranus_plugin::sync_fail(const ultrainio::ReqSyncMsg& sync_msg) {
   return UranusNode::getInstance()->syncFail(sync_msg);
 }
 

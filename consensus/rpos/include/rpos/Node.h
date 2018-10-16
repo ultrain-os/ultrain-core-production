@@ -60,9 +60,9 @@ namespace ultrainio {
 
         void sendMessage(const ProposeMsg &propose);
 
-        void sendMessage(const std::string &peer_addr, const Block &msg);
+        void sendMessage(const std::string &peer_addr, const SyncBlockMsg &msg);
 
-        bool sendMessage(const SyncRequestMessage &msg);
+        bool sendMessage(const ReqSyncMsg &msg);
 
         void sendMessage(const std::string &peer_addr, const RspLastBlockNumMsg &msg);
 
@@ -94,15 +94,17 @@ namespace ultrainio {
 
         bool handleMessage(const ProposeMsg &propose);
 
-        bool handleMessage(const std::string &peer_addr, const SyncRequestMessage &msg);
+        bool handleMessage(const std::string &peer_addr, const ReqSyncMsg &msg);
 
         bool handleMessage(const std::string &peer_addr, const ReqLastBlockNumMsg &msg);
 
         bool handleMessage(const Block &block, bool last_block);
 
+        bool handleMessage(const std::string &peer_addr, const SyncStopMsg &msg);
+
         uint32_t getLastBlocknum();
 
-        bool syncFail(const ultrainio::SyncRequestMessage& sync_msg);
+        bool syncFail(const ultrainio::ReqSyncMsg& sync_msg);
 
         bool syncCancel();
 
