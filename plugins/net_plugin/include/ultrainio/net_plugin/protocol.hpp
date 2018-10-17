@@ -140,7 +140,7 @@ namespace ultrainio {
                                       time_message,
                                       notice_message,
                                       request_message,
-                                      signed_block,
+                                      //signed_block,
                                       packed_transaction,
                                       ProposeMsg,
                                       EchoMsg,

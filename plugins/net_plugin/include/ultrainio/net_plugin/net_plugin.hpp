@@ -8,17 +8,17 @@
 #include <ultrainio/net_plugin/protocol.hpp>
 
 namespace ultrainio {
-   using namespace appbase;
+    using namespace appbase;
 
-   struct connection_status {
-      string            peer;
-      bool              connecting = false;
-      handshake_message last_handshake;
-   };
+    struct connection_status {
+        string            peer;
+        bool              connecting = false;
+        handshake_message last_handshake;
+    };
 
-   class net_plugin : public appbase::plugin<net_plugin>
-   {
-      public:
+    class net_plugin : public appbase::plugin<net_plugin>
+    {
+    public:
         net_plugin();
         virtual ~net_plugin();
 
@@ -29,7 +29,6 @@ namespace ultrainio {
         void plugin_startup();
         void plugin_shutdown();
 
-        //void   broadcast_block(const chain::signed_block &sb);
         void   broadcast(const ProposeMsg& propose);
         void   broadcast(const EchoMsg& echo);
         void   broadcast(const AggEchoMsg& aggEchoMsg);
@@ -44,9 +43,9 @@ namespace ultrainio {
         vector<connection_status>    connections()const;
 
         size_t num_peers() const;
-      private:
+    private:
         std::unique_ptr<class net_plugin_impl> my;
-   };
+    };
 
 }
 

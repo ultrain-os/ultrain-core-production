@@ -35,260 +35,248 @@
 using namespace ultrainio::chain::plugin_interface::compat;
 
 namespace fc {
-   extern std::unordered_map<std::string,logger>& get_logger_map();
+    extern std::unordered_map<std::string,logger>& get_logger_map();
 }
 
 namespace ultrainio {
-   static appbase::abstract_plugin& _net_plugin = app().register_plugin<net_plugin>();
+    static appbase::abstract_plugin& _net_plugin = app().register_plugin<net_plugin>();
 
-   using std::vector;
+    using std::vector;
 
-   using boost::asio::ip::tcp;
-   using boost::asio::ip::address_v4;
-   using boost::asio::ip::host_name;
-   using boost::intrusive::rbtree;
-   using boost::multi_index_container;
+    using boost::asio::ip::tcp;
+    using boost::asio::ip::address_v4;
+    using boost::asio::ip::host_name;
+    using boost::intrusive::rbtree;
+    using boost::multi_index_container;
 
-   using fc::time_point;
-   using fc::time_point_sec;
-   using ultrainio::chain::transaction_id_type;
-   namespace bip = boost::interprocess;
+    using fc::time_point;
+    using fc::time_point_sec;
+    using ultrainio::chain::transaction_id_type;
+    namespace bip = boost::interprocess;
 
-   class connection;
-   class sync_block_manager;
-   class dispatch_manager;
+    class connection;
+    class sync_block_manager;
+    class dispatch_manager;
 
-   using connection_ptr = std::shared_ptr<connection>;
-   using connection_wptr = std::weak_ptr<connection>;
+    using connection_ptr = std::shared_ptr<connection>;
+    using connection_wptr = std::weak_ptr<connection>;
 
-   using socket_ptr = std::shared_ptr<tcp::socket>;
+    using socket_ptr = std::shared_ptr<tcp::socket>;
 
-   using net_message_ptr = shared_ptr<net_message>;
+    using net_message_ptr = shared_ptr<net_message>;
 
-   template<typename I>
-   std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
-      static const char* digits = "0123456789abcdef";
-      std::string r(hlen, '0');
-      for(size_t i = 0, j = (hlen - 1) * 4 ; i < hlen; ++i, j -= 4)
-         r[i] = digits[(n>>j) & 0x0f];
-      return r;
-   }
+    template<typename I> std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
+        static const char* digits = "0123456789abcdef";
+        std::string r(hlen, '0');
+        for(size_t i = 0, j = (hlen - 1) * 4 ; i < hlen; ++i, j -= 4)
+            r[i] = digits[(n>>j) & 0x0f];
+        return r;
+    }
 
-   struct node_transaction_state {
-      transaction_id_type id;
-      time_point_sec  expires;  /// time after which this may be purged.
-                                /// Expires increased while the txn is
-                                /// "in flight" to anoher peer
-      packed_transaction packed_txn;
-      vector<char>    serialized_txn; /// the received raw bundle
-      uint32_t        block_num = 0; /// block transaction was included in
-      uint32_t        true_block = 0; /// used to reset block_uum when request is 0
-      uint16_t        requests = 0; /// the number of "in flight" requests for this txn
-   };
+    struct node_transaction_state {
+        transaction_id_type id;
+        time_point_sec  expires;  /// time after which this may be purged.
+                                  /// Expires increased while the txn is
+                                  /// "in flight" to anoher peer
+        packed_transaction packed_txn;
+        vector<char>       serialized_txn; /// the received raw bundle
+        uint32_t           block_num = 0; /// block transaction was included in
+        uint32_t           true_block = 0; /// used to reset block_uum when request is 0
+        uint16_t           requests = 0; /// the number of "in flight" requests for this txn
+    };
 
-   struct update_in_flight {
-      int32_t incr;
-      update_in_flight (int32_t delta) : incr (delta) {}
-      void operator() (node_transaction_state& nts) {
-         int32_t exp = nts.expires.sec_since_epoch();
-         nts.expires = fc::time_point_sec (exp + incr * 60);
-         if( nts.requests == 0 ) {
-            nts.true_block = nts.block_num;
-            nts.block_num = 0;
-         }
-         nts.requests += incr;
-         if( nts.requests == 0 ) {
-            nts.block_num = nts.true_block;
-         }
-      }
-   } incr_in_flight(1), decr_in_flight(-1);
+    struct update_in_flight {
+        int32_t incr;
+        update_in_flight (int32_t delta) : incr (delta) {}
+        void operator() (node_transaction_state& nts) {
+            int32_t exp = nts.expires.sec_since_epoch();
+            nts.expires = fc::time_point_sec (exp + incr * 60);
+            if( nts.requests == 0 ) {
+                nts.true_block = nts.block_num;
+                nts.block_num = 0;
+            }
+            nts.requests += incr;
+            if( nts.requests == 0 ) {
+                nts.block_num = nts.true_block;
+            }
+        }
+    } incr_in_flight(1), decr_in_flight(-1);
 
-   struct by_expiry;
-   struct by_block_num;
+    struct by_expiry;
+    struct by_block_num;
 
-   typedef multi_index_container<
-      node_transaction_state,
-      indexed_by<
-         ordered_unique<
-            tag< by_id >,
-            member < node_transaction_state,
-                     transaction_id_type,
-                     &node_transaction_state::id > >,
-         ordered_non_unique<
-            tag< by_expiry >,
-            member< node_transaction_state,
+    typedef multi_index_container<
+        node_transaction_state,
+        indexed_by<
+            ordered_unique<
+               tag< by_id >,
+               member < node_transaction_state,
+                    transaction_id_type,
+                    &node_transaction_state::id > >,
+            ordered_non_unique<
+                tag< by_expiry >,
+                member< node_transaction_state,
                     fc::time_point_sec,
-                    &node_transaction_state::expires >
-            >,
-         ordered_non_unique<
-            tag<by_block_num>,
-            member< node_transaction_state,
+                    &node_transaction_state::expires > >,
+            ordered_non_unique<
+                tag<by_block_num>,
+                member< node_transaction_state,
                     uint32_t,
                     &node_transaction_state::block_num > >
-         >
-      >
-   node_transaction_index;
+        >
+    > node_transaction_index;
 
-   class net_plugin_impl {
-   public:
-      unique_ptr<tcp::acceptor>        acceptor;
-      tcp::endpoint                    listen_endpoint;
-      string                           p2p_address;
-      uint32_t                         max_client_count = 0;
-      uint32_t                         max_nodes_per_host = 1;
-      uint32_t                         num_clients = 0;
+    class net_plugin_impl {
+    public:
+        unique_ptr<tcp::acceptor>        acceptor;
+        tcp::endpoint                    listen_endpoint;
+        string                           p2p_address;
+        uint32_t                         max_client_count = 0;
+        uint32_t                         max_nodes_per_host = 1;
+        uint32_t                         num_clients = 0;
 
-      vector<string>                   supplied_peers;
-      vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
-      std::map<chain::public_key_type,
-               chain::private_key_type> private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
+        vector<string>                   supplied_peers;
+        vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
+        std::map<chain::public_key_type,
+                 chain::private_key_type> private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
 
-      enum possible_connections : char {
-         None = 0,
+        enum possible_connections : char {
+            None = 0,
             Producers = 1 << 0,
             Specified = 1 << 1,
             Any = 1 << 2
-            };
-      possible_connections             allowed_connections{None};
+        };
+        possible_connections             allowed_connections{None};
 
-      connection_ptr find_connection( string host )const;
+        connection_ptr find_connection( string host )const;
 
-      std::set< connection_ptr >       connections;
-      bool                             done = false;
-      unique_ptr< dispatch_manager >   dispatcher;
-      unique_ptr< sync_block_manager > sync_block_master;
+        std::set< connection_ptr >       connections;
+        bool                             done = false;
+        unique_ptr< dispatch_manager >   dispatcher;
+        unique_ptr< sync_block_manager > sync_block_master;
 
-      unique_ptr<boost::asio::steady_timer> connector_check;
-      unique_ptr<boost::asio::steady_timer> transaction_check;
-      unique_ptr<boost::asio::steady_timer> keepalive_timer;
+        unique_ptr<boost::asio::steady_timer> connector_check;
+        unique_ptr<boost::asio::steady_timer> transaction_check;
+        unique_ptr<boost::asio::steady_timer> keepalive_timer;
 
-      boost::asio::steady_timer::duration   connector_period;
-      boost::asio::steady_timer::duration   txn_exp_period;
-      boost::asio::steady_timer::duration   resp_expected_period;
-      boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
+        boost::asio::steady_timer::duration   connector_period;
+        boost::asio::steady_timer::duration   txn_exp_period;
+        boost::asio::steady_timer::duration   resp_expected_period;
+        boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
 
-      const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
+        const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
-      bool                          network_version_match = false;
-      chain_id_type                 chain_id;
-      fc::sha256                    node_id;
+        bool                          network_version_match = false;
+        chain_id_type                 chain_id;
+        fc::sha256                    node_id;
 
-      string                        user_agent_name;
-      chain_plugin*                 chain_plug;
-      int                           started_sessions = 0;
+        string                        user_agent_name;
+        chain_plugin*                 chain_plug;
+        int                           started_sessions = 0;
 
-      node_transaction_index        local_txns;
+        node_transaction_index        local_txns;
 
-      shared_ptr<tcp::resolver>     resolver;
+        shared_ptr<tcp::resolver>     resolver;
 
-      bool                          use_socket_read_watermark = false;
+        bool                          use_socket_read_watermark = false;
 
-      channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
+        channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
-      void connect( connection_ptr c );
-      void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
-      bool start_session( connection_ptr c );
-      void start_listen_loop( );
-      void start_read_message( connection_ptr c);
+        void connect( connection_ptr c );
+        void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
+        bool start_session( connection_ptr c );
+        void start_listen_loop( );
+        void start_read_message( connection_ptr c);
 
-      void close( connection_ptr c );
-      size_t count_open_sockets() const;
+        void close( connection_ptr c );
+        size_t count_open_sockets() const;
 
-      template<typename VerifierFunc>
-      void send_all( const net_message &msg, VerifierFunc verify );
+        template<typename VerifierFunc>
+        void send_all( const net_message &msg, VerifierFunc verify );
 
-      void accepted_block_header(const block_state_ptr&);
-      void accepted_block(const block_state_ptr&);
-      void irreversible_block(const block_state_ptr&);
-      void accepted_transaction(const transaction_metadata_ptr&);
-      void applied_transaction(const transaction_trace_ptr&);
+        void accepted_block_header(const block_state_ptr&);
+        void accepted_block(const block_state_ptr&);
+        void irreversible_block(const block_state_ptr&);
+        void accepted_transaction(const transaction_metadata_ptr&);
+        void applied_transaction(const transaction_trace_ptr&);
 
-      void transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>&);
+        void transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>&);
 
-      bool is_valid( const handshake_message &msg);
+        bool is_valid( const handshake_message &msg);
 
-      void handle_message( connection_ptr c, const handshake_message &msg);
-      void handle_message( connection_ptr c, const chain_size_message &msg);
-      void handle_message( connection_ptr c, const go_away_message &msg );
-      /** \name Peer Timestamps
-       *  Time message handling
-       *  @{
-       */
-      /** \brief Process time_message
-       *
-       * Calculate offset, delay and dispersion.  Note carefully the
-       * implied processing.  The first-order difference is done
-       * directly in 64-bit arithmetic, then the result is converted
-       * to floating double.  All further processing is in
-       * floating-double arithmetic with rounding done by the hardware.
-       * This is necessary in order to avoid overflow and preserve precision.
-       */
-      void handle_message( connection_ptr c, const time_message &msg);
-      /** @} */
-      void handle_message( connection_ptr c, const notice_message &msg);
-      void handle_message( connection_ptr c, const request_message &msg);
-      void handle_message( connection_ptr c, const signed_block &msg);
-      void handle_message( connection_ptr c, const packed_transaction &msg);
+        void handle_message( connection_ptr c, const handshake_message &msg);
+        void handle_message( connection_ptr c, const chain_size_message &msg);
+        void handle_message( connection_ptr c, const go_away_message &msg);
 
-      void handle_message( connection_ptr c, const ultrainio::EchoMsg &msg);
-      void handle_message( connection_ptr c, const ultrainio::ProposeMsg& msg);
-      void handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg);
-      void handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg);
-      void handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg);
-      void handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg);
-      void handle_message( connection_ptr c, const ultrainio::SyncStopMsg& msg);
-      void handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg);
+        /** \brief Process time_message
+         *
+         * Calculate offset, delay and dispersion.  Note carefully the
+         * implied processing.  The first-order difference is done
+         * directly in 64-bit arithmetic, then the result is converted
+         * to floating double.  All further processing is in
+         * floating-double arithmetic with rounding done by the hardware.
+         * This is necessary in order to avoid overflow and preserve precision.
+         */
+        void handle_message( connection_ptr c, const time_message &msg);
+        void handle_message( connection_ptr c, const notice_message &msg);
+        void handle_message( connection_ptr c, const request_message &msg);
+        void handle_message( connection_ptr c, const packed_transaction &msg);
 
-      void start_broadcast(const net_message& msg);
-      void send_block(const string& ip_addr, const net_message& msg);
-      bool send_apply(const ultrainio::ReqSyncMsg& msg);
-      void send_last_block_num(const string& ip_addr, const net_message& msg);
-      void stop_sync_block();
+        void handle_message( connection_ptr c, const ultrainio::EchoMsg &msg);
+        void handle_message( connection_ptr c, const ultrainio::ProposeMsg& msg);
+        void handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg);
+        void handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg);
+        void handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg);
+        void handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg);
+        void handle_message( connection_ptr c, const ultrainio::SyncStopMsg& msg);
+        void handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg);
 
-      void start_conn_timer( );
-      void start_txn_timer( );
-      void start_monitors( );
+        void start_broadcast(const net_message& msg);
+        void send_block(const string& ip_addr, const net_message& msg);
+        bool send_apply(const ultrainio::ReqSyncMsg& msg);
+        void send_last_block_num(const string& ip_addr, const net_message& msg);
+        void stop_sync_block();
 
-      void expire_txns( );
-      void connection_monitor( );
-      /** \name Peer Timestamps
-       *  Time message handling
-       *  @{
-       */
-      /** \brief Peer heartbeat ticker.
-       */
-      void ticker();
-      /** @} */
-      /** \brief Determine if a peer is allowed to connect.
-       *
-       * Checks current connection mode and key authentication.
-       *
-       * \return False if the peer should not connect, true otherwise.
-       */
-      bool authenticate_peer(const handshake_message& msg) const;
-      /** \brief Retrieve public key used to authenticate with peers.
-       *
-       * Finds a key to use for authentication.  If this node is a producer, use
-       * the front of the producer key map.  If the node is not a producer but has
-       * a configured private key, use it.  If the node is neither a producer nor has
-       * a private key, returns an empty key.
-       *
-       * \note On a node with multiple private keys configured, the key with the first
-       *       numerically smaller byte will always be used.
-       */
-      chain::public_key_type get_authentication_key() const;
-      /** \brief Returns a signature of the digest using the corresponding private key of the signer.
-       *
-       * If there are no configured private keys, returns an empty signature.
-       */
-      chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
+        void start_conn_timer( );
+        void start_txn_timer( );
+        void start_monitors( );
 
-      uint16_t to_protocol_version(uint16_t v);
-   };
+        void expire_txns( );
+        void connection_monitor( );
 
-   const fc::string logger_name("net_plugin_impl");
-   fc::logger logger;
-   std::string peer_log_format;
+        /** \brief Peer heartbeat ticker.
+         */
+        void ticker();
+        /** \brief Determine if a peer is allowed to connect.
+         *
+         * Checks current connection mode and key authentication.
+         *
+         * \return False if the peer should not connect, true otherwise.
+         */
+        bool authenticate_peer(const handshake_message& msg) const;
+        /** \brief Retrieve public key used to authenticate with peers.
+         *
+         * Finds a key to use for authentication.  If this node is a producer, use
+         * the front of the producer key map.  If the node is not a producer but has
+         * a configured private key, use it.  If the node is neither a producer nor has
+         * a private key, returns an empty key.
+         *
+         * \note On a node with multiple private keys configured, the key with the first
+         *       numerically smaller byte will always be used.
+         */
+        chain::public_key_type get_authentication_key() const;
+        /** \brief Returns a signature of the digest using the corresponding private key of the signer.
+         *
+         * If there are no configured private keys, returns an empty signature.
+         */
+        chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
+
+        uint16_t to_protocol_version(uint16_t v);
+    };
+
+    const fc::string logger_name("net_plugin_impl");
+    fc::logger logger;
+    std::string peer_log_format;
 
 #define peer_dlog( PEER, FORMAT, ... ) \
   FC_MULTILINE_MACRO_BEGIN \
@@ -315,79 +303,79 @@ namespace ultrainio {
   FC_MULTILINE_MACRO_END
 
 
-   template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
-   inline enum_type& operator|=(enum_type& lhs, const enum_type& rhs)
-   {
-      using T = std::underlying_type_t <enum_type>;
-      return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
-   }
+    template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
+    inline enum_type& operator|=(enum_type& lhs, const enum_type& rhs)
+    {
+        using T = std::underlying_type_t <enum_type>;
+        return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
+    }
 
-   static net_plugin_impl *my_impl;
+    static net_plugin_impl *my_impl;
 
-   /**
-    * default value initializers
-    */
-   constexpr auto     def_send_buffer_size_mb = 4;
-   constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
-   constexpr auto     def_max_clients = 25; // 0 for unlimited clients
-   constexpr auto     def_max_nodes_per_host = 1;
-   constexpr auto     def_conn_retry_wait = 30;
-   constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
-   constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
-   constexpr auto     def_sync_fetch_span = 100;
-   constexpr uint32_t  def_max_just_send = 1500; // roughly 1 "mtu"
-   constexpr bool     large_msg_notify = false;
+    /**
+     * default value initializers
+     */
+    constexpr auto     def_send_buffer_size_mb = 4;
+    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
+    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
+    constexpr auto     def_max_nodes_per_host = 1;
+    constexpr auto     def_conn_retry_wait = 30;
+    constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
+    constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
+    constexpr auto     def_sync_fetch_span = 100;
+    constexpr uint32_t  def_max_just_send = 1500; // roughly 1 "mtu"
+    constexpr bool     large_msg_notify = false;
 
-   constexpr auto     message_header_size = 4;
+    constexpr auto     message_header_size = 4;
 
-   /**
-    *  For a while, network version was a 16 bit value equal to the second set of 16 bits
-    *  of the current build's git commit id. We are now replacing that with an integer protocol
-    *  identifier. Based on historical analysis of all git commit identifiers, the larges gap
-    *  between ajacent commit id values is shown below.
-    *  these numbers were found with the following commands on the master branch:
-    *
-    *  git log | grep "^commit" | awk '{print substr($2,5,4)}' | sort -u > sorted.txt
-    *  rm -f gap.txt; prev=0; for a in $(cat sorted.txt); do echo $prev $((0x$a - 0x$prev)) $a >> gap.txt; prev=$a; done; sort -k2 -n gap.txt | tail
-    *
-    *  DO NOT EDIT net_version_base OR net_version_range!
-    */
-   constexpr uint16_t net_version_base = 0x04b5;
-   constexpr uint16_t net_version_range = 106;
-   /**
-    *  If there is a change to network protocol or behavior, increment net version to identify
-    *  the need for compatibility hooks
-    */
-   constexpr uint16_t proto_base = 0;
-   constexpr uint16_t proto_explicit_sync = 1;
+    /**
+     *  For a while, network version was a 16 bit value equal to the second set of 16 bits
+     *  of the current build's git commit id. We are now replacing that with an integer protocol
+     *  identifier. Based on historical analysis of all git commit identifiers, the larges gap
+     *  between ajacent commit id values is shown below.
+     *  these numbers were found with the following commands on the master branch:
+     *
+     *  git log | grep "^commit" | awk '{print substr($2,5,4)}' | sort -u > sorted.txt
+     *  rm -f gap.txt; prev=0; for a in $(cat sorted.txt); do echo $prev $((0x$a - 0x$prev)) $a >> gap.txt; prev=$a; done; sort -k2 -n gap.txt | tail
+     *
+     *  DO NOT EDIT net_version_base OR net_version_range!
+     */
+    constexpr uint16_t net_version_base = 0x04b5;
+    constexpr uint16_t net_version_range = 106;
+    /**
+     *  If there is a change to network protocol or behavior, increment net version to identify
+     *  the need for compatibility hooks
+     */
+    constexpr uint16_t proto_base = 0;
+    constexpr uint16_t proto_explicit_sync = 1;
 
-   constexpr uint16_t net_version = proto_explicit_sync;
+    constexpr uint16_t net_version = proto_explicit_sync;
 
-   /**
-    *  Index by id
-    *  Index by is_known, block_num, validated_time, this is the order we will broadcast
-    *  to peer.
-    *  Index by is_noticed, validated_time
-    *
-    */
-   struct transaction_state {
-      transaction_id_type id;
-      bool                is_known_by_peer = false; ///< true if we sent or received this trx to this peer or received notice from peer
-      bool                is_noticed_to_peer = false; ///< have we sent peer notice we know it (true if we receive from this peer)
-      uint32_t            block_num = 0; ///< the block number the transaction was included in
-      time_point_sec      expires;
-      time_point          requested_time; /// in case we fetch large trx
-   };
+    /**
+     *  Index by id
+     *  Index by is_known, block_num, validated_time, this is the order we will broadcast
+     *  to peer.
+     *  Index by is_noticed, validated_time
+     *
+     */
+    struct transaction_state {
+        transaction_id_type id;
+        bool                is_known_by_peer = false; ///< true if we sent or received this trx to this peer or received notice from peer
+        bool                is_noticed_to_peer = false; ///< have we sent peer notice we know it (true if we receive from this peer)
+        uint32_t            block_num = 0; ///< the block number the transaction was included in
+        time_point_sec      expires;
+        time_point          requested_time; /// in case we fetch large trx
+    };
 
-   struct update_txn_expiry {
-      time_point_sec new_expiry;
-      update_txn_expiry(time_point_sec e) : new_expiry(e) {}
-      void operator() (transaction_state& ts) {
-         ts.expires = new_expiry;
-      }
-   };
+    struct update_txn_expiry {
+        time_point_sec new_expiry;
+        update_txn_expiry(time_point_sec e) : new_expiry(e) {}
+        void operator() (transaction_state& ts) {
+            ts.expires = new_expiry;
+        }
+    };
 
-   typedef multi_index_container<
+    typedef multi_index_container<
       transaction_state,
       indexed_by<
          ordered_unique< tag<by_id>, member<transaction_state, transaction_id_type, &transaction_state::id > >,
@@ -401,315 +389,281 @@ namespace ultrainio {
 
       > transaction_state_index;
 
-   /**
-    *
-    */
-   struct peer_block_state {
-      block_id_type id;
-      uint32_t      block_num;
-      bool          is_known;
-      bool          is_noticed;
-      time_point    requested_time;
-   };
+    struct peer_block_state {
+        block_id_type id;
+        uint32_t      block_num;
+        bool          is_known;
+        bool          is_noticed;
+        time_point    requested_time;
+    };
 
-   struct update_request_time {
-      void operator() (struct transaction_state &ts) {
-         ts.requested_time = time_point::now();
-      }
-      void operator () (struct ultrainio::peer_block_state &bs) {
-         bs.requested_time = time_point::now();
-      }
-   } set_request_time;
-
-   typedef multi_index_container<
-      ultrainio::peer_block_state,
-      indexed_by<
-         ordered_unique< tag<by_id>, member<ultrainio::peer_block_state, block_id_type, &ultrainio::peer_block_state::id > >,
-         ordered_unique< tag<by_block_num>, member<ultrainio::peer_block_state, uint32_t, &ultrainio::peer_block_state::block_num > >
-         >
-      > peer_block_state_index;
-
-
-   struct update_known_by_peer {
-      void operator() (ultrainio::peer_block_state& bs) {
-         bs.is_known = true;
-      }
-      void operator() (transaction_state& ts) {
-         ts.is_known_by_peer = true;
-      }
-   } set_is_known;
-
-
-   struct update_block_num {
-      uint32_t new_bnum;
-      update_block_num(uint32_t bnum) : new_bnum(bnum) {}
-      void operator() (node_transaction_state& nts) {
-         if (nts.requests ) {
-            nts.true_block = new_bnum;
-         }
-         else {
-            nts.block_num = new_bnum;
-         }
-      }
-      void operator() (transaction_state& ts) {
-         ts.block_num = new_bnum;
-      }
-      void operator() (peer_block_state& pbs) {
-         pbs.block_num = new_bnum;
-      }
-   };
-
-   /**
-    * Index by start_block_num
-    */
-   struct sync_state {
-      sync_state(uint32_t start = 0, uint32_t end = 0, uint32_t last_acted = 0)
-         :start_block( start ), end_block( end ), last( last_acted ),
-          start_time(time_point::now())
-      {}
-      uint32_t     start_block;
-      uint32_t     end_block;
-      uint32_t     last; ///< last sent or received
-      time_point   start_time; ///< time request made or received
-   };
-
-   struct handshake_initializer {
-      static void populate(handshake_message &hello);
-   };
-
-   class connection : public std::enable_shared_from_this<connection> {
-   public:
-      explicit connection( string endpoint );
-
-      explicit connection( socket_ptr s );
-      ~connection();
-      void initialize();
-
-      peer_block_state_index  blk_state;
-      transaction_state_index trx_state;
-      optional<sync_state>    peer_requested;  // this peer is requesting info from us
-      socket_ptr              socket;
-
-      fc::message_buffer<1024*1024>    pending_message_buffer;
-      fc::optional<std::size_t>        outstanding_read_bytes;
-      vector<char>            blk_buffer;
-
-      struct queued_write {
-         std::shared_ptr<vector<char>> buff;
-         std::function<void(boost::system::error_code, std::size_t)> callback;
-      };
-      deque<queued_write>     write_queue;
-      deque<queued_write>     out_queue;
-      fc::sha256              node_id;
-      handshake_message       last_handshake_recv;
-      handshake_message       last_handshake_sent;
-      int16_t                 sent_handshake_count = 0;
-      bool                    connecting = false;
-      uint16_t                protocol_version  = 0;
-      string                  peer_addr;
-      unique_ptr<boost::asio::steady_timer> response_expected;
-      optional<request_message> pending_fetch;
-      go_away_reason         no_retry = no_reason;
-      block_id_type          fork_head;
-      uint32_t               fork_head_num = 0;
-      optional<request_message> last_req;
-      RspLastBlockNumMsg       last_block_info;
-
-      connection_status get_status()const {
-         connection_status stat;
-         stat.peer = peer_addr;
-         stat.connecting = connecting;
-         stat.last_handshake = last_handshake_recv;
-         return stat;
-      }
-
-      /** \name Peer Timestamps
-       *  Time message handling
-       *  @{
-       */
-      // Members set from network data
-      tstamp                         org{0};          //!< originate timestamp
-      tstamp                         rec{0};          //!< receive timestamp
-      tstamp                         dst{0};          //!< destination timestamp
-      tstamp                         xmt{0};          //!< transmit timestamp
-
-      // Computed data
-      double                         offset{0};       //!< peer offset
-
-      static const size_t            ts_buffer_size{32};
-      char                           ts[ts_buffer_size];          //!< working buffer for making human readable timestamps
-      /** @} */
-
-      bool connected();
-      bool current();
-      void reset();
-      void close();
-      void send_handshake();
-
-      /** \name Peer Timestamps
-       *  Time message handling
-       */
-      /** @{ */
-      /** \brief Convert an std::chrono nanosecond rep to a human readable string
-       */
-      char* convert_tstamp(const tstamp& t);
-      /**  \brief Populate and queue time_message
-       */
-      void send_time();
-      /** \brief Populate and queue time_message immediately using incoming time_message
-       */
-      void send_time(const time_message& msg);
-      /** \brief Read system time and convert to a 64 bit integer.
-       *
-       * There are only two calls on this routine in the program.  One
-       * when a packet arrives from the network and the other when a
-       * packet is placed on the send queue.  Calls the kernel time of
-       * day routine and converts to a (at least) 64 bit integer.
-       */
-      tstamp get_time()
-      {
-         return std::chrono::system_clock::now().time_since_epoch().count();
-      }
-      /** @} */
-
-      const string peer_name();
-
-      void txn_send_pending(const vector<transaction_id_type> &ids);
-      void txn_send(const vector<transaction_id_type> &txn_lis);
-
-      void blk_send_branch();
-      void blk_send(const vector<block_id_type> &txn_lis);
-      void stop_send();
-
-      void enqueue( const net_message &msg, bool trigger_send = true );
-      void flush_queues();
-
-      void cancel_wait();
-      void fetch_wait();
-      void fetch_timeout(boost::system::error_code ec);
-
-      void queue_write(std::shared_ptr<vector<char>> buff,
-                       bool trigger_send,
-                       std::function<void(boost::system::error_code, std::size_t)> callback);
-      void do_queue_write();
-
-      /** \brief Process the next message from the pending message buffer
-       *
-       * Process the next message from the pending_message_buffer.
-       * message_length is the already determined length of the data
-       * part of the message and impl in the net plugin implementation
-       * that will handle the message.
-       * Returns true is successful. Returns false if an error was
-       * encountered unpacking or processing the message.
-       */
-      bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
-
-      bool add_peer_block(const peer_block_state &pbs);
-
-      fc::optional<fc::variant_object> _logger_variant;
-      const fc::variant_object& get_logger_variant()  {
-         if (!_logger_variant) {
-            boost::system::error_code ec;
-            auto rep = socket->remote_endpoint(ec);
-            string ip = ec ? "<unknown>" : rep.address().to_string();
-            string port = ec ? "<unknown>" : std::to_string(rep.port());
-
-            auto lep = socket->local_endpoint(ec);
-            string lip = ec ? "<unknown>" : lep.address().to_string();
-            string lport = ec ? "<unknown>" : std::to_string(lep.port());
-
-            _logger_variant.emplace(fc::mutable_variant_object()
-               ("_name", peer_name())
-               ("_id", node_id)
-               ("_sid", ((string)node_id).substr(0, 7))
-               ("_ip", ip)
-               ("_port", port)
-               ("_lip", lip)
-               ("_lport", lport)
-            );
-         }
-         return *_logger_variant;
-      }
-   };
-
-   struct msgHandler : public fc::visitor<void> {
-      net_plugin_impl &impl;
-      connection_ptr c;
-      msgHandler( net_plugin_impl &imp, connection_ptr conn) : impl(imp), c(conn) {}
-
-      template <typename T>
-      void operator()(const T &msg) const
-      {
-         impl.handle_message( c, msg);
-      }
-   };
-
-   class sync_block_manager {
-   public:
-      uint32_t                         seq_num;
-      uint32_t                         last_received_block;
-      uint32_t                         last_checked_block;
-      std::vector<connection_ptr>      rsp_conns;
-      connection_ptr                   sync_conn;
-      ultrainio::ReqSyncMsg            sync_block_msg;
-      uint32_t                         end_block_num;
-      bool                             selecting_src = false;
-      boost::asio::steady_timer::duration   src_block_period{std::chrono::seconds{3}};
-      unique_ptr<boost::asio::steady_timer> src_block_check;
-      boost::asio::steady_timer::duration   conn_timeout{std::chrono::seconds{12}};
-      unique_ptr<boost::asio::steady_timer> conn_check;
-      std::default_random_engine            rand_engine;
-
-      sync_block_manager() {
-        seq_num = 0;
-        reset();
-        src_block_check.reset(new boost::asio::steady_timer(app().get_io_service()));
-        conn_check.reset(new boost::asio::steady_timer(app().get_io_service()));
-        std::random_device rd;
-        rand_engine.seed(rd());
-      }
-
-      void reset() {
-        last_received_block = 0;
-        last_checked_block = 0;
-        rsp_conns.clear();
-        sync_conn = nullptr;
-        memset(&sync_block_msg, 0, sizeof(sync_block_msg));
-        end_block_num = 0;
-        selecting_src = false;
-        src_block_period = {std::chrono::seconds{3}};
-        if (src_block_check) {
-          src_block_check->cancel();
+    struct update_request_time {
+        void operator() (struct transaction_state &ts) {
+            ts.requested_time = time_point::now();
         }
-        conn_timeout = {std::chrono::seconds{12}};
-        if (conn_check) {
-           conn_check->cancel();
+        void operator () (struct ultrainio::peer_block_state &bs) {
+            bs.requested_time = time_point::now();
         }
-      }
+    } set_request_time;
 
-      void set_src_block_period(const boost::asio::steady_timer::duration& d) {
-        src_block_period = d;
-      }
+    typedef multi_index_container<
+        ultrainio::peer_block_state,
+        indexed_by<
+            ordered_unique< tag<by_id>, member<ultrainio::peer_block_state, block_id_type, &ultrainio::peer_block_state::id > >,
+            ordered_unique< tag<by_block_num>, member<ultrainio::peer_block_state, uint32_t, &ultrainio::peer_block_state::block_num > >
+        >
+    > peer_block_state_index;
 
-      void start_conn_check_timer() {
-          conn_check->expires_from_now(conn_timeout);
-          conn_check->async_wait([this](boost::system::error_code ec) {
-              if (ec.value() == boost::asio::error::operation_aborted) {
-                  ilog("receive block conn check canceled, will not wait for next block. last received:${rcv} last checked:${chk}",
-                      ("rcv", last_received_block)("chk", last_checked_block));
-                  app().get_plugin<producer_uranus_plugin>().sync_cancel();
-                  reset();
-              }else if (last_received_block <= last_checked_block || ec.value() != 0) {
-                  ilog("no block received in last period or error occur. last received:${rcv} last checked:${chk} ec:${ec}",
-                      ("rcv", last_received_block)("chk", last_checked_block)("ec", ec.value()));
-                  app().get_plugin<producer_uranus_plugin>().sync_fail(sync_block_msg);
-                  reset();
-              }else {
-                  last_checked_block = last_received_block;
-                  start_conn_check_timer();
-              }
-          });
-      }
+    struct update_known_by_peer {
+        void operator() (ultrainio::peer_block_state& bs) {
+            bs.is_known = true;
+        }
+        void operator() (transaction_state& ts) {
+            ts.is_known_by_peer = true;
+        }
+    } set_is_known;
+
+
+    struct update_block_num {
+        uint32_t new_bnum;
+        update_block_num(uint32_t bnum) : new_bnum(bnum) {}
+        void operator() (node_transaction_state& nts) {
+            if (nts.requests ) {
+                nts.true_block = new_bnum;
+            }
+            else {
+                nts.block_num = new_bnum;
+            }
+        }
+        void operator() (transaction_state& ts) {
+            ts.block_num = new_bnum;
+        }
+        void operator() (peer_block_state& pbs) {
+            pbs.block_num = new_bnum;
+        }
+    };
+
+    struct handshake_initializer {
+        static void populate(handshake_message &hello);
+    };
+
+    class connection : public std::enable_shared_from_this<connection> {
+    public:
+        explicit connection( string endpoint );
+
+        explicit connection( socket_ptr s );
+        ~connection();
+        void initialize();
+
+        peer_block_state_index  blk_state;
+        transaction_state_index trx_state;
+        socket_ptr              socket;
+
+        fc::message_buffer<1024*1024>    pending_message_buffer;
+        fc::optional<std::size_t>        outstanding_read_bytes;
+        vector<char>            blk_buffer;
+
+        struct queued_write {
+            std::shared_ptr<vector<char>> buff;
+            std::function<void(boost::system::error_code, std::size_t)> callback;
+        };
+        deque<queued_write>     write_queue;
+        deque<queued_write>     out_queue;
+        fc::sha256              node_id;
+        handshake_message       last_handshake_recv;
+        handshake_message       last_handshake_sent;
+        int16_t                 sent_handshake_count = 0;
+        bool                    connecting = false;
+        uint16_t                protocol_version  = 0;
+        string                  peer_addr;
+        unique_ptr<boost::asio::steady_timer> response_expected;
+        optional<request_message> pending_fetch;
+        go_away_reason         no_retry = no_reason;
+        block_id_type          fork_head;
+        uint32_t               fork_head_num = 0;
+        optional<request_message> last_req;
+        RspLastBlockNumMsg       last_block_info;
+
+        connection_status get_status()const {
+            connection_status stat;
+            stat.peer = peer_addr;
+            stat.connecting = connecting;
+            stat.last_handshake = last_handshake_recv;
+            return stat;
+        }
+
+        // Members set from network data
+        tstamp                         org{0};          //!< originate timestamp
+        tstamp                         rec{0};          //!< receive timestamp
+        tstamp                         dst{0};          //!< destination timestamp
+        tstamp                         xmt{0};          //!< transmit timestamp
+
+        // Computed data
+        double                         offset{0};       //!< peer offset
+
+        static const size_t            ts_buffer_size{32};
+        char                           ts[ts_buffer_size];          //!< working buffer for making human readable timestamps
+
+        bool connected();
+        bool current();
+        void reset();
+        void close();
+        void send_handshake();
+
+        /** \brief Convert an std::chrono nanosecond rep to a human readable string
+         */
+        char* convert_tstamp(const tstamp& t);
+        /**  \brief Populate and queue time_message
+         */
+        void send_time();
+        /** \brief Populate and queue time_message immediately using incoming time_message
+         */
+        void send_time(const time_message& msg);
+        /** \brief Read system time and convert to a 64 bit integer.
+         *
+         * There are only two calls on this routine in the program.  One
+         * when a packet arrives from the network and the other when a
+         * packet is placed on the send queue.  Calls the kernel time of
+         * day routine and converts to a (at least) 64 bit integer.
+         */
+        tstamp get_time()
+        {
+            return std::chrono::system_clock::now().time_since_epoch().count();
+        }
+
+        const string peer_name();
+
+        void txn_send_pending(const vector<transaction_id_type> &ids);
+        void txn_send(const vector<transaction_id_type> &txn_lis);
+
+        void enqueue( const net_message &msg, bool trigger_send = true );
+        void flush_queues();
+
+        void cancel_wait();
+        void fetch_wait();
+        void fetch_timeout(boost::system::error_code ec);
+
+        void queue_write(std::shared_ptr<vector<char>> buff,
+                         bool trigger_send,
+                         std::function<void(boost::system::error_code, std::size_t)> callback);
+        void do_queue_write();
+
+        /** \brief Process the next message from the pending message buffer
+         *
+         * Process the next message from the pending_message_buffer.
+         * message_length is the already determined length of the data
+         * part of the message and impl in the net plugin implementation
+         * that will handle the message.
+         * Returns true is successful. Returns false if an error was
+         * encountered unpacking or processing the message.
+         */
+        bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
+
+        bool add_peer_block(const peer_block_state &pbs);
+
+        fc::optional<fc::variant_object> _logger_variant;
+        const fc::variant_object& get_logger_variant()  {
+            if (!_logger_variant) {
+                boost::system::error_code ec;
+                auto rep = socket->remote_endpoint(ec);
+                string ip = ec ? "<unknown>" : rep.address().to_string();
+                string port = ec ? "<unknown>" : std::to_string(rep.port());
+
+                auto lep = socket->local_endpoint(ec);
+                string lip = ec ? "<unknown>" : lep.address().to_string();
+                string lport = ec ? "<unknown>" : std::to_string(lep.port());
+
+                _logger_variant.emplace(fc::mutable_variant_object()
+                    ("_name", peer_name())
+                    ("_id", node_id)
+                    ("_sid", ((string)node_id).substr(0, 7))
+                    ("_ip", ip)
+                    ("_port", port)
+                    ("_lip", lip)
+                    ("_lport", lport)
+                );
+            }
+            return *_logger_variant;
+        }
+    };
+
+    struct msgHandler : public fc::visitor<void> {
+        net_plugin_impl &impl;
+        connection_ptr c;
+        msgHandler( net_plugin_impl &imp, connection_ptr conn) : impl(imp), c(conn) {}
+
+        template <typename T> void operator()(const T &msg) const
+        {
+            impl.handle_message( c, msg);
+        }
+    };
+
+    class sync_block_manager {
+    public:
+        uint32_t                         seq_num;
+        uint32_t                         last_received_block;
+        uint32_t                         last_checked_block;
+        std::vector<connection_ptr>      rsp_conns;
+        connection_ptr                   sync_conn;
+        ultrainio::ReqSyncMsg            sync_block_msg;
+        uint32_t                         end_block_num;
+        bool                             selecting_src = false;
+        boost::asio::steady_timer::duration   src_block_period{std::chrono::seconds{3}};
+        unique_ptr<boost::asio::steady_timer> src_block_check;
+        boost::asio::steady_timer::duration   conn_timeout{std::chrono::seconds{12}};
+        unique_ptr<boost::asio::steady_timer> conn_check;
+        std::default_random_engine            rand_engine;
+
+        sync_block_manager() {
+            seq_num = 0;
+            reset();
+            src_block_check.reset(new boost::asio::steady_timer(app().get_io_service()));
+            conn_check.reset(new boost::asio::steady_timer(app().get_io_service()));
+            std::random_device rd;
+            rand_engine.seed(rd());
+        }
+
+        void reset() {
+            last_received_block = 0;
+            last_checked_block = 0;
+            rsp_conns.clear();
+            sync_conn = nullptr;
+            memset(&sync_block_msg, 0, sizeof(sync_block_msg));
+            end_block_num = 0;
+            selecting_src = false;
+            src_block_period = {std::chrono::seconds{3}};
+            if (src_block_check) {
+                src_block_check->cancel();
+            }
+            conn_timeout = {std::chrono::seconds{12}};
+            if (conn_check) {
+                conn_check->cancel();
+            }
+        }
+
+        void set_src_block_period(const boost::asio::steady_timer::duration& d) {
+            src_block_period = d;
+        }
+
+        void start_conn_check_timer() {
+            conn_check->expires_from_now(conn_timeout);
+            conn_check->async_wait([this](boost::system::error_code ec) {
+                if (ec.value() == boost::asio::error::operation_aborted) {
+                    ilog("receive block conn check canceled, will not wait for next block. last received:${rcv} last checked:${chk}",
+                         ("rcv", last_received_block)("chk", last_checked_block));
+                    app().get_plugin<producer_uranus_plugin>().sync_cancel();
+                    reset();
+                }else if (last_received_block <= last_checked_block || ec.value() != 0) {
+                    ilog("no block received in last period or error occur. last received:${rcv} last checked:${chk} ec:${ec}",
+                         ("rcv", last_received_block)("chk", last_checked_block)("ec", ec.value()));
+                    app().get_plugin<producer_uranus_plugin>().sync_fail(sync_block_msg);
+                    reset();
+                }else {
+                    last_checked_block = last_received_block;
+                    start_conn_check_timer();
+                }
+            });
+        }
 
         connection_ptr select_strong_sync_src(uint32_t least_conn_count) {
             std::vector<connection_ptr> honest_conns;
@@ -842,8 +796,6 @@ namespace ultrainio {
 
       void bcast_transaction (const packed_transaction& msg);
       void rejected_transaction (const transaction_id_type& msg);
-      void bcast_block (const signed_block& msg);
-      void rejected_block (const block_id_type &id);
 
       void recv_block (connection_ptr conn, const block_id_type& msg, uint32_t bnum);
       void recv_transaction(connection_ptr conn, const transaction_id_type& id);
@@ -857,7 +809,6 @@ namespace ultrainio {
    connection::connection( string endpoint )
       : blk_state(),
         trx_state(),
-        peer_requested(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
         node_id(),
         last_handshake_recv(),
@@ -881,7 +832,6 @@ namespace ultrainio {
    connection::connection( socket_ptr s )
       : blk_state(),
         trx_state(),
-        peer_requested(),
         socket( s ),
         node_id(),
         last_handshake_recv(),
@@ -919,7 +869,6 @@ namespace ultrainio {
    }
 
    void connection::reset() {
-      peer_requested.reset();
       blk_state.clear();
       trx_state.clear();
    }
@@ -996,100 +945,6 @@ namespace ultrainio {
                         });
          }
       }
-   }
-
-   void connection::blk_send_branch() {
-      controller &cc = my_impl->chain_plug->chain();
-      uint32_t head_num = cc.fork_db_head_block_num ();
-      notice_message note;
-      note.known_blocks.mode = normal;
-      note.known_blocks.pending = 0;
-      fc_dlog(logger, "head_num = ${h}",("h",head_num));
-      if(head_num == 0) {
-         enqueue(note);
-         return;
-      }
-      block_id_type head_id;
-      block_id_type lib_id;
-      uint32_t lib_num;
-      try {
-         lib_num = cc.last_irreversible_block_num();
-         lib_id = cc.last_irreversible_block_id();
-         head_id = cc.fork_db_head_block_id();
-      }
-      catch (const assert_exception &ex) {
-         elog( "unable to retrieve block info: ${n} for ${p}",("n",ex.to_string())("p",peer_name()));
-         enqueue(note);
-         return;
-      }
-      catch (const fc::exception &ex) {
-      }
-      catch (...) {
-      }
-
-      vector<signed_block_ptr> bstack;
-      block_id_type null_id;
-      for (auto bid = head_id; bid != null_id && bid != lib_id; ) {
-         try {
-            signed_block_ptr b = cc.fetch_block_by_id(bid);
-            if ( b ) {
-               bid = b->previous;
-               bstack.push_back(b);
-            }
-            else {
-               break;
-            }
-         } catch (...) {
-            break;
-         }
-      }
-      size_t count = 0;
-      if (!bstack.empty()) {
-         if (bstack.back()->previous == lib_id) {
-            count = bstack.size();
-            while (bstack.size()) {
-               enqueue(*bstack.back());
-               bstack.pop_back();
-            }
-         }
-         fc_ilog(logger, "Sent ${n} blocks on my fork",("n",count));
-      } else {
-         fc_ilog(logger, "Nothing to send on fork request");
-      }
-   }
-
-   void connection::blk_send(const vector<block_id_type> &ids) {
-      controller &cc = my_impl->chain_plug->chain();
-      int count = 0;
-      for(auto &blkid : ids) {
-         ++count;
-         try {
-            signed_block_ptr b = cc.fetch_block_by_id(blkid);
-            if(b) {
-               fc_dlog(logger,"found block for id at num ${n}",("n",b->block_num()));
-               enqueue(net_message(*b));
-            }
-            else {
-               ilog("fetch block by id returned null, id ${id} on block ${c} of ${s} for ${p}",
-                     ("id",blkid)("c",count)("s",ids.size())("p",peer_name()));
-               break;
-            }
-         }
-         catch (const assert_exception &ex) {
-            elog( "caught assert on fetch_block_by_id, ${ex}, id ${id} on block ${c} of ${s} for ${p}",
-                  ("ex",ex.to_string())("id",blkid)("c",count)("s",ids.size())("p",peer_name()));
-            break;
-         }
-         catch (...) {
-            elog( "caught othser exception fetching block id ${id} on block ${c} of ${s} for ${p}",
-                  ("id",blkid)("c",count)("s",ids.size())("p",peer_name()));
-            break;
-         }
-      }
-
-   }
-
-   void connection::stop_send() {
    }
 
    void connection::send_handshake( ) {
@@ -1275,7 +1130,7 @@ namespace ultrainio {
 
    bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
       try {
-         // If it is a signed_block, then save the raw message for the cache
+         // If it is a SyncBlockMsg, then save the raw message for the cache
          // This must be done before we unpack the message.
          // This code is copied from fc::io::unpack(..., unsigned_int)
          auto index = pending_message_buffer.read_index();
@@ -1286,7 +1141,7 @@ namespace ultrainio {
             by += 7;
          } while( uint8_t(b) & 0x80 && by < 32);
 
-         if (which == uint64_t(net_message::tag<signed_block>::value)) {
+         if (which == uint64_t(net_message::tag<SyncBlockMsg>::value)) {
             blk_buffer.resize(message_length);
             auto index = pending_message_buffer.read_index();
             pending_message_buffer.peek(blk_buffer.data(), message_length, index);
@@ -1324,52 +1179,6 @@ namespace ultrainio {
 
    //------------------------------------------------------------------------
 
-   void dispatch_manager::bcast_block (const signed_block &bsum) {
-      connection_ptr skip;
-      for (auto org = received_blocks.begin(); org != received_blocks.end(); org++) {
-         if (org->id == bsum.id()) {
-            skip = org->origin;
-            received_blocks.erase(org);
-            break;
-         }
-      }
-      net_message msg(bsum);
-      uint32_t packsiz = fc::raw::pack_size(msg);
-      uint32_t msgsiz = packsiz + sizeof(packsiz);
-      notice_message pending_notify;
-      block_id_type bid = bsum.id();
-      uint32_t bnum = bsum.block_num();
-      pending_notify.known_blocks.mode = normal;
-      pending_notify.known_blocks.ids.push_back( bid );
-      pending_notify.known_trx.mode = none;
-
-      peer_block_state pbstate = {bid, bnum, false,true,time_point()};
-      // skip will be empty if our producer emitted this block so just send it
-      if (( large_msg_notify && msgsiz > just_send_it_max) && skip) {
-         fc_ilog(logger, "block size is ${ms}, sending notify",("ms", msgsiz));
-         connection_wptr weak_skip = skip;
-         my_impl->send_all(pending_notify, [weak_skip, pbstate](connection_ptr c) -> bool {
-            if (c == weak_skip.lock() || !c->current())
-               return false;
-            bool unknown = c->add_peer_block(pbstate);
-            if (!unknown) {
-               elog("${p} already has knowledge of block ${b}", ("p",c->peer_name())("b",pbstate.block_num));
-            }
-            return unknown;
-            });
-      }
-      else {
-         pbstate.is_known = true;
-         for (auto cp : my_impl->connections) {
-            if (cp == skip || !cp->current()) {
-               continue;
-            }
-            cp->add_peer_block(pbstate);
-            cp->enqueue( bsum );
-         }
-      }
-   }
-
    void dispatch_manager::recv_block (connection_ptr c, const block_id_type& id, uint32_t bnum) {
       received_blocks.emplace_back((block_origin){id, c});
       if (c &&
@@ -1383,16 +1192,6 @@ namespace ultrainio {
 
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
-   }
-
-   void dispatch_manager::rejected_block (const block_id_type& id) {
-      fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
-      for (auto org = received_blocks.begin(); org != received_blocks.end(); org++) {
-         if (org->id == id) {
-            received_blocks.erase(org);
-            break;
-         }
-      }
    }
 
    void dispatch_manager::bcast_transaction (const packed_transaction& trx) {
@@ -2243,34 +2042,30 @@ namespace ultrainio {
       }
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
-      switch (msg.req_blocks.mode) {
-      case catch_up :
-         peer_ilog(c,  "received request_message:catch_up");
-         c->blk_send_branch( );
-         break;
-      case normal :
-         peer_ilog(c, "received request_message:normal");
-         c->blk_send(msg.req_blocks.ids);
-         break;
-      default:;
-      }
+    void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
+        switch (msg.req_blocks.mode) {
+        case catch_up :
+            peer_elog(c,  "received request_message:catch_up");
+            break;
+        case normal :
+            peer_elog(c, "received request_message:normal");
+            break;
+        default:;
+        }
 
-
-      switch (msg.req_trx.mode) {
-      case catch_up :
-         c->txn_send_pending(msg.req_trx.ids);
-         break;
-      case normal :
-         c->txn_send(msg.req_trx.ids);
-         break;
-      case none :
-         if(msg.req_blocks.mode == none)
-            c->stop_send();
-         break;
-      default:;
-      }
-
+        switch (msg.req_trx.mode) {
+        case catch_up :
+            c->txn_send_pending(msg.req_trx.ids);
+            break;
+        case normal :
+            c->txn_send(msg.req_trx.ids);
+            break;
+        case none :
+            if(msg.req_blocks.mode == none)
+                peer_elog(c, "received request_message:none");
+            break;
+        default:;
+        }
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const EchoMsg &msg) {
@@ -2408,13 +2203,6 @@ namespace ultrainio {
       });
    }
 
-   // This function is obsolete and will be deleted later.
-   void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {
-      elog("receive raw block msg!!! message from ${p} blockNum = ${blockNum}",
-	  ("p", c->peer_name())("blockNum", msg.block_num()));
-      return;
-   }
-
    void net_plugin_impl::start_conn_timer( ) {
       connector_check->expires_from_now( connector_period);
       connector_check->async_wait( [this](boost::system::error_code ec) {
@@ -2525,7 +2313,6 @@ namespace ultrainio {
    void net_plugin_impl::accepted_block(const block_state_ptr& block) {
       fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
       ilog("signaled, id = ${id}",("id", block->id));
-      //dispatcher->bcast_block(*block->block);
    }
 
    void net_plugin_impl::irreversible_block(const block_state_ptr&block) {
