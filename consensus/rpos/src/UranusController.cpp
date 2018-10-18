@@ -831,13 +831,13 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::handleMessage(const string &peer_addr, const SyncStopMsg& msg) {
+    bool UranusController::handleMessage(const string &peer_addr, const SyncStopMsg &msg) {
         ilog("Stop sync msg to ${pa}, seqNum: ${sn}", ("pa", peer_addr)("sn", msg.seqNum));
         if (m_syncTaskQueue.empty()) {
             return true;
         }
 
-        for (std::list<SyncTask>::iterator it = m_syncTaskQueue.begin(); it != m_syncTaskQueue.end();) {
+        for (std::list<SyncTask>::iterator it = m_syncTaskQueue.begin(); it != m_syncTaskQueue.end(); ++it) {
             if (it->peerAddr == peer_addr) {
                 if (it->seqNum != msg.seqNum) {
                     elog("seqNum in task:${snt} != seqNum in msg:${snm}, but we still stop sync msg.", ("snt", it->seqNum)("snm", msg.seqNum));
