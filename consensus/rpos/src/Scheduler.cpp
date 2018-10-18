@@ -922,6 +922,46 @@ namespace ultrainio {
         return true;
     }
 
+    size_t Scheduler::runScheduledTrxs(const std::vector<chain::transaction_id_type> &trxs,
+                                              fc::time_point hard_cpu_deadline,
+                                              fc::time_point block_time) {
+        chain::controller &chain = app().get_plugin<chain_plugin>().chain();
+        const auto& cfg = chain.get_global_properties().configuration;
+        const auto& max_trx_cpu = cfg.max_transaction_cpu_usage;
+        ilog("-------runScheduledTrxs start running scheduled ${num} trxs", ("num", trxs.size()));
+        size_t count = 0;
+        for (const auto &trx : trxs) {
+            try {
+                auto deadline = fc::time_point::now() + fc::milliseconds(max_trx_cpu);
+                auto trace = chain.push_scheduled_transaction(trx, deadline);
+                if (trace->except) {
+                    ilog("-----------runScheduledTrxs scheduled push trx failed ${e}", ("e", (trace->except)->what()));
+                    auto code = trace->except->code();
+                    // If the fail is due to block cpu/net, we break and we don't erase
+                    // the trx since it will run through in the next block
+                    if (code == chain::block_net_usage_exceeded::code_value) {
+                        ilog("-----runScheduledTrxs code exec exceeds the max allowed net, break");
+                        break;
+                    } else if (code == chain::block_cpu_usage_exceeded::code_value) {
+                        ilog("-----runScheduledTrxs code exec exceeds the max allowed time, break");
+                        break;
+                    }
+                } else {
+                    count++;
+                    m_initTrxCount++;
+                    if (m_initTrxCount % 500 == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                        ilog("-----runScheduledTrxs code exec exceeds the hard cpu deadline, break");
+                        break;
+                    }
+                    if (m_initTrxCount >= chain::config::default_max_propose_trx_count) {
+                        break;
+                    }
+                }
+            }FC_LOG_AND_DROP();    
+        }
+        return count;
+    }
+
     size_t Scheduler::runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
                                               fc::time_point hard_cpu_deadline,
                                               fc::time_point block_time) {
@@ -1073,6 +1113,7 @@ namespace ultrainio {
             // Refer to the subjective and exhausted design.
             std::list<chain::transaction_metadata_ptr> *pending_trxs = chain.get_pending_transactions();
             const auto &unapplied_trxs = chain.get_unapplied_transactions();
+            const auto &scheduled_trxs = chain.get_scheduled_transactions();
 
             m_initTrxCount = 0;
             auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
@@ -1083,13 +1124,15 @@ namespace ultrainio {
                 fc::time_point::now() + fc::microseconds(chain::config::default_max_block_cpu_usage * 1.3);
             size_t count1 = runPendingTrxs(pending_trxs, hard_cpu_deadline, block_time);
             size_t count2 = runUnappliedTrxs(unapplied_trxs, hard_cpu_deadline, block_time);
+            size_t count3 = runScheduledTrxs(scheduled_trxs, hard_cpu_deadline, block_time);
 
-            ilog("------- run ${count1} ${count2}  trxs, taking time ${time}, remaining pending trx ${count3}, remaining unapplied trx ${count4}",
+            ilog("------- run ${count1} ${count2}  ScheduledTrxs:${count3} trxs, taking time ${time}, remaining pending trx ${count4}, remaining unapplied trx ${count5}",
                  ("count1", count1)
                  ("count2", count2)
+                 ("count3)", count3)
                  ("time", fc::time_point::now() - start_timestamp)
-                 ("count3", pending_trxs->size())
-                 ("count4", unapplied_trxs.size() - count2));
+                 ("count4", pending_trxs->size())
+                 ("count5", unapplied_trxs.size() - count2));
             // TODO(yufengshen) - Do we finalize here ?
             // If we finalize here, we insert the block summary into the database.
             //chain.finalize_block();

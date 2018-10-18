@@ -202,6 +202,10 @@ namespace ultrainio {
         size_t runPendingTrxs(std::list<chain::transaction_metadata_ptr> *trxs,
                               fc::time_point hard_cpu_deadline, fc::time_point block_time);
 
+        size_t runScheduledTrxs(const std::vector<chain::transaction_id_type> &trxs,
+                                fc::time_point hard_cpu_deadline,
+                                fc::time_point block_time);
+
         size_t runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
                                 fc::time_point hard_cpu_deadline, fc::time_point block_time);
 
