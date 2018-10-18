@@ -247,6 +247,26 @@ public:
 
    get_table_records_result get_table_records( const get_table_records_params& params )const;
 
+   struct get_table_by_scope_params {
+      name        code; // mandatory
+      name        table = 0; // optional, act as filter
+      string      lower_bound; // lower bound of scope, optional
+      string      upper_bound; // upper bound of scope, optional
+      uint32_t    limit = 10;
+   };
+   struct get_table_by_scope_result_row {
+      name        code;
+      name        scope;
+      name        table;
+      name        payer;
+      uint32_t    count;
+   };
+   struct get_table_by_scope_result {
+      vector<get_table_by_scope_result_row> rows;
+      bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
+   };
+   get_table_by_scope_result get_table_by_scope( const get_table_by_scope_params& params )const;
+
    struct get_currency_balance_params {
       name             code;
       name             account;
@@ -578,6 +598,10 @@ FC_REFLECT( ultrainio::chain_apis::read_write::push_tx_results, (transaction_id)
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_result, (rows)(more) );
+
+FC_REFLECT( ultrainio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_table_by_scope_result_row, (code)(scope)(table)(payer)(count));
+FC_REFLECT( ultrainio::chain_apis::read_only::get_table_by_scope_result, (rows)(more) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));

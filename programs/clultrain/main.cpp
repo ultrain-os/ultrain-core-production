@@ -1853,6 +1853,23 @@ int main( int argc, char** argv ) {
                 << std::endl;
    });
 
+   auto getScope = get->add_subcommand( "scope", localized("Retrieve a list of scopes and tables owned by a contract"), false);
+   getScope->add_option( "contract", code, localized("The contract who owns the table") )->required();
+   getScope->add_option( "-t,--table", table, localized("The name of the table as filter") );
+   getScope->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
+   getScope->add_option( "-L,--lower", lower, localized("lower bound of scope") );
+   getScope->add_option( "-U,--upper", upper, localized("upper bound of scope") );
+   getScope->set_callback([&] {
+      auto result = call(get_table_by_scope_func, fc::mutable_variant_object("code",code)
+                         ("table",table)
+                         ("lower_bound",lower)
+                         ("upper_bound",upper)
+                         ("limit",limit)
+                         );
+          std::cout << fc::json::to_pretty_string(result)
+                << std::endl;
+   });
+
    // currency accessors
    // get currency balance
    string symbol;
@@ -2220,6 +2237,72 @@ int main( int argc, char** argv ) {
 
       send_actions({create_transfer(con,sender, recipient, to_asset(amount), memo)});
    });
+
+   //set clear contract
+    auto empty_contract = app.add_subcommand("clearcontract", localized("clear contract"), false);
+    empty_contract->require_subcommand();
+    auto emptyContractSubcommand = empty_contract->add_subcommand("contract", localized("Remove the code on an account"));
+    emptyContractSubcommand->add_option("account", account, localized("The account to remove contract for"))->required();
+
+    auto emptyCodeSubcommand = empty_contract->add_subcommand("code", localized("Remove the code on an account"));
+    emptyCodeSubcommand->add_option("account", account, localized("The account to remove code for"))->required();
+
+    auto emptyAbiSubcommand = empty_contract->add_subcommand("abi", localized("Remove the code on an account"));
+    emptyAbiSubcommand->add_option("account", account, localized("The account to remove abi for"))->required();
+
+    bool shouldSendEmpty = true;
+
+    auto set_empty_code_callback = [&]() {
+
+      chain::action code_action = chain::action {
+            tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
+            setcode{
+               .account   = account,
+               .vmtype    = 0,
+               .vmversion = 0,
+               .code      = bytes()
+            }
+        };
+
+      actions.emplace_back(
+        std::move(code_action)
+      );
+      if ( shouldSendEmpty ) {
+         std::cerr << localized("Setting Code...") << std::endl;
+         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      }
+
+    };
+
+    auto set_empty_abi_callback = [&]() {
+      try {
+         chain::action abi_action = chain::action {
+            tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
+            setabi{
+               .account   = account,
+               .abi      = bytes()
+            }
+         };
+         actions.emplace_back(std::move(abi_action));
+      } ULTRAIN_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
+      if ( shouldSendEmpty ) {
+         std::cerr << localized("Setting ABI...") << std::endl;
+         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      }
+    };
+
+    add_standard_transaction_options(emptyContractSubcommand, "account@active");
+    add_standard_transaction_options(emptyCodeSubcommand, "account@active");
+    add_standard_transaction_options(emptyAbiSubcommand, "account@active");
+    emptyContractSubcommand->set_callback([&] {
+      shouldSendEmpty = false;
+      set_empty_code_callback();
+      set_empty_abi_callback();
+      std::cerr << localized("Publishing contract...") << std::endl;
+      send_actions(std::move(actions), 10000, packed_transaction::zlib);
+    });
+    emptyCodeSubcommand->set_callback(set_empty_code_callback);
+    emptyAbiSubcommand->set_callback(set_empty_abi_callback);
 
    // Net subcommand
    string new_host;
