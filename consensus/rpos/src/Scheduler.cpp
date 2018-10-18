@@ -1,4 +1,4 @@
-#include <rpos/UranusController.h>
+#include <rpos/Scheduler.h>
 
 #include <iostream>
 #include <string>
@@ -23,8 +23,8 @@
 #include <ultrainio/chain/config.hpp>
 
 #include <rpos/Config.h>
-#include <rpos/MessageBuilder.h>
-#include <rpos/MessageManager.h>
+#include <rpos/MsgBuilder.h>
+#include <rpos/MsgMgr.h>
 #include <rpos/Node.h>
 #include <rpos/Seed.h>
 #include <rpos/Signer.h>
@@ -42,7 +42,7 @@ namespace fc {
 }
 
 namespace {
-    const fc::string logger_name("UranusController");
+    const fc::string logger_name("Scheduler");
     fc::logger _log;
 
     // TODO(shenyufeng) need more precise compare
@@ -59,7 +59,7 @@ namespace {
 
 namespace ultrainio {
 
-    UranusController::UranusController() : m_ba0Block(), m_proposerMsgMap(), m_echoMsgMap(),
+    Scheduler::Scheduler() : m_ba0Block(), m_proposerMsgMap(), m_echoMsgMap(),
                                            m_cacheProposeMsgMap(), m_cacheEchoMsgMap(),
                                            m_echoMsgAllPhase() {
         m_syncTaskPeriod = {std::chrono::seconds{1}};
@@ -69,7 +69,7 @@ namespace ultrainio {
         m_fast_timestamp = 0;
     }
 
-    void UranusController::start_memleak_check() {
+    void Scheduler::start_memleak_check() {
       m_memleakCheck->expires_from_now(m_memleakCheckPeriod);
       m_memleakCheck->async_wait( [this](boost::system::error_code ec) {
             if( !ec) {
@@ -112,7 +112,7 @@ namespace ultrainio {
                 int s11 = 0;
                 int s12 = 0;
                 int s13 = 0;
-                auto mm = MessageManager::getInstance();
+                auto mm = MsgMgr::getInstance();
                 if (mm) {
                     s10 = mm->blockMessageMap.size();
                     for(const auto& it :  mm->blockMessageMap) {
@@ -134,7 +134,7 @@ namespace ultrainio {
          });
     }
 
-    void UranusController::reset() {
+    void Scheduler::reset() {
         uint32_t blockNum = getLastBlocknum();
         m_ba0Block = Block();
         m_ba0VerifiedBlkId = BlockIdType();
@@ -145,12 +145,12 @@ namespace ultrainio {
         clearMsgCache(m_echoMsgAllPhase, blockNum);
     }
 
-    void UranusController::resetEcho() {
+    void Scheduler::resetEcho() {
         m_echoMsgMap.clear();
     }
 
-    bool UranusController::insert(const EchoMsg &echo) {
-        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(BlockHeader::num_from_id(echo.blockId));
+    bool Scheduler::insert(const EchoMsg &echo) {
+        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(echo.blockId));
         int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
         double voterRatio = voterSysPtr->getVoterRatio();
 
@@ -180,13 +180,13 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::insert(const ProposeMsg &propose) {
+    bool Scheduler::insert(const ProposeMsg &propose) {
         dlog("insert.save propose msg.blockhash = ${blockhash}", ("blockhash", propose.block.id()));
         m_proposerMsgMap.insert(make_pair(propose.block.id(), propose));
         return true;
     }
 
-    bool UranusController::isLaterMsg(const EchoMsg &echo) {
+    bool Scheduler::isLaterMsg(const EchoMsg &echo) {
         uint32_t currentBlockNum = UranusNode::getInstance()->getBlockNum();
         ConsensusPhase current_phase = UranusNode::getInstance()->getPhase();
         uint32_t current_bax_count = UranusNode::getInstance()->getBaxCount();
@@ -207,7 +207,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::isLaterMsg(const ProposeMsg &propose) {
+    bool Scheduler::isLaterMsg(const ProposeMsg &propose) {
         uint32_t currentBlockNum = UranusNode::getInstance()->getBlockNum();
         ConsensusPhase current_phase = UranusNode::getInstance()->getPhase();
 
@@ -226,7 +226,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::isLaterMsgAndCache(const EchoMsg &echo, bool &duplicate) {
+    bool Scheduler::isLaterMsgAndCache(const EchoMsg &echo, bool &duplicate) {
         duplicate = false;
         if (isLaterMsg(echo)) {
             dlog("isLaterMsgAndCache. later msg.");
@@ -268,7 +268,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::isLaterMsgAndCache(const ProposeMsg &propose, bool &duplicate) {
+    bool Scheduler::isLaterMsgAndCache(const ProposeMsg &propose, bool &duplicate) {
         duplicate = false;
         if (isLaterMsg(propose)) {
             msgkey key;
@@ -310,8 +310,8 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::isBeforeMsg(const EchoMsg &echo) {
-        AccountName myAccount = VoterSystem::getMyAccount();
+    bool Scheduler::isBeforeMsg(const EchoMsg &echo) {
+        AccountName myAccount = StakeVote::getMyAccount();
 
         if (myAccount == echo.account) {
             elog("loopback echo. account : ${account}", ("account", std::string(myAccount)));
@@ -333,7 +333,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::processBeforeMsg(const EchoMsg &echo) {
+    bool Scheduler::processBeforeMsg(const EchoMsg &echo) {
         msgkey msg_key;
         msg_key.blockNum = BlockHeader::num_from_id(echo.blockId);
         msg_key.phase = echo.phase + echo.baxCount;
@@ -375,8 +375,8 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response) {
-        std::shared_ptr<VoterSystem> voterSysPtr = nullptr;
+    bool Scheduler::updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response) {
+        std::shared_ptr<StakeVote> voterSysPtr = nullptr;
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
         ilog("update echo blockId: ${id}", ("id", echo.blockId));
         auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
@@ -385,18 +385,18 @@ namespace ultrainio {
             info.proofPool.push_back(echo.proof);
             info.sigPool.push_back(echo.signature);
             info.timePool.push_back(echo.timestamp);
-            voterSysPtr = MessageManager::getInstance()->getVoterSys(blockNum);
+            voterSysPtr = MsgMgr::getInstance()->getVoterSys(blockNum);
             int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
             double voterRatio = voterSysPtr->getVoterRatio();
             Proof proof(echo.proof);
             info.totalVoter += voterSysPtr->count(proof, stakes, voterRatio);
             if (response && info.totalVoter >= THRESHOLD_SEND_ECHO && !info.hasSend
                 && UranusNode::getInstance()->getPhase() == kPhaseBA0 && isMinFEcho(info)) {
-                if (MessageManager::getInstance()->isVoter(UranusNode::getInstance()->getBlockNum(), echo.phase,
+                if (MsgMgr::getInstance()->isVoter(UranusNode::getInstance()->getBlockNum(), echo.phase,
                                                            echo.baxCount)) {
                     ilog("send echo when > f + 1");
                     info.hasSend = true;
-                    EchoMsg myEcho = MessageBuilder::constructMsg(echo);
+                    EchoMsg myEcho = MsgBuilder::constructMsg(echo);
                     insert(myEcho);
                     //myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(myEcho);
@@ -408,7 +408,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::isBeforeMsgAndProcess(const EchoMsg &echo) {
+    bool Scheduler::isBeforeMsgAndProcess(const EchoMsg &echo) {
         if (isBeforeMsg(echo)) {
             return processBeforeMsg(echo);
         }
@@ -416,9 +416,9 @@ namespace ultrainio {
         return false;
     }
 
-    uint32_t UranusController::isSyncing() {
+    uint32_t Scheduler::isSyncing() {
         uint32_t maxBlockNum = UranusNode::getInstance()->getBlockNum();
-        AccountName myAccount = VoterSystem::getMyAccount();
+        AccountName myAccount = StakeVote::getMyAccount();
 
         if (m_cacheEchoMsgMap.empty()) {
             return INVALID_BLOCK_NUM;
@@ -463,8 +463,8 @@ namespace ultrainio {
         return INVALID_BLOCK_NUM;
     }
 
-    bool UranusController::isChangePhase() {
-        AccountName myAccount = VoterSystem::getMyAccount();
+    bool Scheduler::isChangePhase() {
+        AccountName myAccount = StakeVote::getMyAccount();
 
         if (m_cacheEchoMsgMap.empty()) {
             return false;
@@ -503,7 +503,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::isBroadcast(const EchoMsg &echo) {
+    bool Scheduler::isBroadcast(const EchoMsg &echo) {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
 
         if (blockNum != UranusNode::getInstance()->getBlockNum()) {
@@ -521,9 +521,9 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::isValid(const EchoMsg &echo) {
+    bool Scheduler::isValid(const EchoMsg &echo) {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
-        AccountName myAccount = VoterSystem::getMyAccount();
+        AccountName myAccount = StakeVote::getMyAccount();
         if (myAccount == echo.account) {
             elog("loopback echo. account : ${account}", ("account", std::string(myAccount)));
             return false;
@@ -534,7 +534,7 @@ namespace ultrainio {
             return false;
         }
 
-        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(blockNum);
+        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(blockNum);
         PublicKey publicKey = voterSysPtr->getPublicKey(echo.account);
         if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
             elog("validator echo error. account : ${account} pk : ${pk} signature : ${signature}",
@@ -560,7 +560,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::isBroadcast(const ProposeMsg &propose) {
+    bool Scheduler::isBroadcast(const ProposeMsg &propose) {
         uint32_t blockNum = propose.block.block_num();
         uint32_t myBlockNum = UranusNode::getInstance()->getBlockNum();
 
@@ -578,14 +578,14 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::isValid(const ProposeMsg &propose) {
-        AccountName myAccount = VoterSystem::getMyAccount();
+    bool Scheduler::isValid(const ProposeMsg &propose) {
+        AccountName myAccount = StakeVote::getMyAccount();
         if (myAccount == propose.block.proposer) {
             elog("invalid propose. msg loopback. account : ${account}", ("account", std::string(myAccount)));
             return false;
         }
 
-        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(propose.block.block_num());
+        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(propose.block.block_num());
         PublicKey publicKey = voterSysPtr->getPublicKey(propose.block.proposer);
         if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
             elog("validator proposer error. proposer : ${proposer}", ("proposer", std::string(propose.block.proposer)));
@@ -610,7 +610,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::fastHandleMessage(const ProposeMsg &propose) {
+    bool Scheduler::fastHandleMessage(const ProposeMsg &propose) {
         if (isBroadcast(propose)) {
             return false;
         }
@@ -629,7 +629,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::fastHandleMessage(const EchoMsg &echo) {
+    bool Scheduler::fastHandleMessage(const EchoMsg &echo) {
         if (isBroadcast(echo)) {
             return false;
         }
@@ -654,7 +654,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::handleMessage(const ProposeMsg &propose) {
+    bool Scheduler::handleMessage(const ProposeMsg &propose) {
         bool duplicate = false;
         if (isLaterMsgAndCache(propose, duplicate)) {
             return (!duplicate);
@@ -681,8 +681,8 @@ namespace ultrainio {
         auto itor = m_proposerMsgMap.find(propose.block.id());
         if (itor == m_proposerMsgMap.end()) {
             if (isMinPropose(propose)) {
-                if (MessageManager::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
-                    EchoMsg echo = MessageBuilder::constructMsg(propose);
+                if (MsgMgr::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
+                    EchoMsg echo = MsgBuilder::constructMsg(propose);
                     //echo.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(echo);
                     insert(echo);
@@ -695,7 +695,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::handleMessage(const EchoMsg &echo) {
+    bool Scheduler::handleMessage(const EchoMsg &echo) {
         bool duplicate = false;
         bool bret = false;
 
@@ -741,7 +741,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::handleMessage(const string &peer_addr, const ReqSyncMsg &msg) {
+    bool Scheduler::handleMessage(const string &peer_addr, const ReqSyncMsg &msg) {
         if (UranusNode::getInstance()->getSyncingStatus()) {
             return true;
         }
@@ -784,7 +784,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::handleMessage(const string &peer_addr, const ReqLastBlockNumMsg &msg) {
+    bool Scheduler::handleMessage(const string &peer_addr, const ReqLastBlockNumMsg &msg) {
         RspLastBlockNumMsg rsp_msg;
         rsp_msg.seqNum = msg.seqNum;
         rsp_msg.blockNum = getLastBlocknum();
@@ -802,12 +802,12 @@ namespace ultrainio {
         return true;
     }
 
-    uint32_t UranusController::getLastBlocknum() {
+    uint32_t Scheduler::getLastBlocknum() {
         const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         return chain.head_block_num();
     }
 
-    bool UranusController::handleMessage(const Block &block) {
+    bool Scheduler::handleMessage(const Block &block) {
         uint32_t last_num = getLastBlocknum();
         dlog("@@@@@@@@@@@@@@@ last block num in local chain:${last}", ("last", last_num));
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
@@ -831,7 +831,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::handleMessage(const string &peer_addr, const SyncStopMsg &msg) {
+    bool Scheduler::handleMessage(const string &peer_addr, const SyncStopMsg &msg) {
         ilog("Stop sync msg to ${pa}, seqNum: ${sn}", ("pa", peer_addr)("sn", msg.seqNum));
         if (m_syncTaskQueue.empty()) {
             return true;
@@ -850,7 +850,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::isMin2FEcho(int totalVoter, uint32_t phasecnt) {
+    bool Scheduler::isMin2FEcho(int totalVoter, uint32_t phasecnt) {
         if ((totalVoter >= THRESHOLD_EMPTY_BLOCK) && (phasecnt >= Config::kMaxBaxCount)) {
             return true;
         }
@@ -866,7 +866,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::isMinPropose(const ProposeMsg &proposeMsg) {
+    bool Scheduler::isMinPropose(const ProposeMsg &proposeMsg) {
         Proof proof(proposeMsg.block.proposerProof);
         uint32_t priority = proof.getPriority();
         for (auto itor = m_proposerMsgMap.begin(); itor != m_proposerMsgMap.end(); ++itor) {
@@ -878,7 +878,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::isMinFEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
+    bool Scheduler::isMinFEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
         uint32_t priority = info.echo.proposerPriority;
         for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
             if (itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
@@ -890,7 +890,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::isMinFEcho(const echo_message_info &info) {
+    bool Scheduler::isMinFEcho(const echo_message_info &info) {
         uint32_t priority = info.echo.proposerPriority;
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
             if (itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
@@ -902,7 +902,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::isMinEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
+    bool Scheduler::isMinEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
         uint32_t priority = info.echo.proposerPriority;
         for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
             if (itor->second.echo.proposerPriority < priority) {
@@ -912,7 +912,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::isMinEcho(const echo_message_info &info) {
+    bool Scheduler::isMinEcho(const echo_message_info &info) {
         uint32_t priority = info.echo.proposerPriority;
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
             if (itor->second.echo.proposerPriority < priority) {
@@ -922,7 +922,7 @@ namespace ultrainio {
         return true;
     }
 
-    size_t UranusController::runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
+    size_t Scheduler::runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
                                               fc::time_point hard_cpu_deadline,
                                               fc::time_point block_time) {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
@@ -985,7 +985,7 @@ namespace ultrainio {
         return count;
     }
 
-    size_t UranusController::runPendingTrxs(std::list<chain::transaction_metadata_ptr> *trxs,
+    size_t Scheduler::runPendingTrxs(std::list<chain::transaction_metadata_ptr> *trxs,
                                             fc::time_point hard_cpu_deadline,
                                             fc::time_point block_time) {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
@@ -1057,7 +1057,7 @@ namespace ultrainio {
         return count;
     }
 
-    bool UranusController::initProposeMsg(ProposeMsg *propose_msg) {
+    bool Scheduler::initProposeMsg(ProposeMsg *propose_msg) {
         auto &block = propose_msg->block;
         auto start_timestamp = fc::time_point::now();
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
@@ -1101,14 +1101,14 @@ namespace ultrainio {
             FC_ASSERT(pbs, "pending_block_state does not exist but it should, another plugin may have corrupted it");
             const auto &bh = pbs->header;
             block.timestamp = bh.timestamp;
-            block.proposer = VoterSystem::getMyAccount();
-            block.proposerProof = std::string(MessageManager::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()));
+            block.proposer = StakeVote::getMyAccount();
+            block.proposerProof = std::string(MsgMgr::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()));
             block.version = 0;
             block.previous = bh.previous;
             block.transaction_mroot = bh.transaction_mroot;
             block.action_mroot = bh.action_mroot;
             block.transactions = pbs->block->transactions;
-            block.signature = std::string(Signer::sign<BlockHeader>(block, VoterSystem::getMyPrivateKey()));
+            block.signature = std::string(Signer::sign<BlockHeader>(block, StakeVote::getMyPrivateKey()));
             ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature}",
                  ("num", block.transactions.size())
                  ("proposer", std::string(block.proposer))
@@ -1138,7 +1138,7 @@ namespace ultrainio {
         return true;
     }
 
-    void UranusController::processCache(const msgkey &msg_key) {
+    void Scheduler::processCache(const msgkey &msg_key) {
         auto propose_itor = m_cacheProposeMsgMap.find(msg_key);
         if (propose_itor != m_cacheProposeMsgMap.end()) {
             dlog("cache propose msg num = ${num}. blockNum = ${id}, phase = ${phase}",
@@ -1161,7 +1161,7 @@ namespace ultrainio {
         }
     }
 
-    void UranusController::fastProcessCache(const msgkey &msg_key) {
+    void Scheduler::fastProcessCache(const msgkey &msg_key) {
         auto propose_itor = m_cacheProposeMsgMap.find(msg_key);
 
         resetTimestamp();
@@ -1187,7 +1187,7 @@ namespace ultrainio {
         }
     }
 
-    bool UranusController::findEchoCache(const msgkey &msg_key) {
+    bool Scheduler::findEchoCache(const msgkey &msg_key) {
         auto echo_itor = m_cacheEchoMsgMap.find(msg_key);
         if (echo_itor != m_cacheEchoMsgMap.end()) {
             return true;
@@ -1195,7 +1195,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool UranusController::findProposeCache(const msgkey &msg_key) {
+    bool Scheduler::findProposeCache(const msgkey &msg_key) {
         auto echo_itor = m_cacheProposeMsgMap.find(msg_key);
         if (echo_itor != m_cacheProposeMsgMap.end()) {
             return true;
@@ -1203,7 +1203,7 @@ namespace ultrainio {
         return false;
     }
 
-    Block UranusController::produceBaxBlock() {
+    Block Scheduler::produceBaxBlock() {
         uint32_t min_priority = std::numeric_limits<uint32_t>::max();
         echo_message_info *echo_info = nullptr;
 
@@ -1263,7 +1263,7 @@ namespace ultrainio {
      * @return
      * empty block or normal block when ba0 while other phase may return blank, empty, normal block.
      */
-    Block UranusController::produceTentativeBlock() {
+    Block Scheduler::produceTentativeBlock() {
         uint32_t minPriority = std::numeric_limits<uint32_t>::max();
         BlockIdType minBlockId = BlockIdType();
         uint32_t phase = UranusNode::getInstance()->getPhase();
@@ -1314,7 +1314,7 @@ namespace ultrainio {
         return blankBlock();
     }
 
-    bool UranusController::isProcessNow() {
+    bool Scheduler::isProcessNow() {
         uint32_t minPriority = std::numeric_limits<uint32_t>::max();
         BlockIdType minBlockId = BlockIdType();
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
@@ -1337,7 +1337,7 @@ namespace ultrainio {
         return true;
     }
 
-    echo_message_info UranusController::findEchoMsg(BlockIdType blockId) {
+    echo_message_info Scheduler::findEchoMsg(BlockIdType blockId) {
         auto itor = m_echoMsgMap.find(blockId);
         if (itor != m_echoMsgMap.end() && itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
             return itor->second;
@@ -1351,7 +1351,7 @@ namespace ultrainio {
         return echo_message_info();
     }
 
-    std::shared_ptr<AggEchoMsg> UranusController::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {
+    std::shared_ptr<AggEchoMsg> Scheduler::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {
         BlockIdType blockId = blockPtr->id();
         echo_message_info echoMessageInfo = findEchoMsg(blockId);
         if (echoMessageInfo.empty()) { // May be empty when sync block
@@ -1359,8 +1359,8 @@ namespace ultrainio {
         }
         std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
         aggEchoMsgPtr->blockId = blockId;
-        aggEchoMsgPtr->account = VoterSystem::getMyAccount();
-        aggEchoMsgPtr->myProposerProof = std::string(MessageManager::getInstance()->getProposerProof(blockPtr->block_num()));
+        aggEchoMsgPtr->account = StakeVote::getMyAccount();
+        aggEchoMsgPtr->myProposerProof = std::string(MsgMgr::getInstance()->getProposerProof(blockPtr->block_num()));
         aggEchoMsgPtr->proposerPriority = echoMessageInfo.echo.proposerPriority;
         aggEchoMsgPtr->accountPool = echoMessageInfo.accountPool;
         aggEchoMsgPtr->proofPool = echoMessageInfo.proofPool;
@@ -1368,18 +1368,18 @@ namespace ultrainio {
         aggEchoMsgPtr->timePool = echoMessageInfo.timePool;
         aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
         aggEchoMsgPtr->baxCount = UranusNode::getInstance()->getBaxCount();
-        aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, VoterSystem::getMyPrivateKey()));
+        aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, StakeVote::getMyPrivateKey()));
         return aggEchoMsgPtr;
     }
 
-    void UranusController::clearPreRunStatus() {
+    void Scheduler::clearPreRunStatus() {
         m_voterPreRunBa0InProgress = false;
         m_currentPreRunBa0TrxIndex = -1;
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.abort_block();
     }
 
-    bool UranusController::verifyBa0Block() {
+    bool Scheduler::verifyBa0Block() {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         const auto& cfg = chain.get_global_properties().configuration;
         const chain::signed_block &block = m_ba0Block;
@@ -1404,7 +1404,7 @@ namespace ultrainio {
 
         chain.abort_block();
 
-        ilog("---- UranusController::verifyBa0Block with trx number ${count}",
+        ilog("---- Scheduler::verifyBa0Block with trx number ${count}",
              ("count", block.transactions.size()));
         // Here is the hack, we are actually using the template of ba0_block, but we don't use
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
@@ -1469,7 +1469,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::preRunBa0BlockStart() {
+    bool Scheduler::preRunBa0BlockStart() {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.abort_block();
         const chain::signed_block &block = m_ba0Block;
@@ -1483,7 +1483,7 @@ namespace ultrainio {
             ULTRAIN_ASSERT(!existing, chain::chain_exception, "Produced block is already in the chain");
             return false;
         }
-        ilog("---- UranusController::preRunBa0BlockStart() start block");
+        ilog("---- Scheduler::preRunBa0BlockStart() start block");
         // Here is the hack, we are actually using the template of ba0_block, but we don't use
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
         // e.g. pk, proof, producer.
@@ -1506,7 +1506,7 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusController::preRunBa0BlockStep() {
+    bool Scheduler::preRunBa0BlockStep() {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
         const auto& cfg = chain.get_global_properties().configuration;
         const auto &pbs = chain.pending_block_state();
@@ -1555,7 +1555,7 @@ namespace ultrainio {
         return true;
     }
 
-    void UranusController::produceBlock(const chain::signed_block_ptr &block, bool force_push_whole_block) {
+    void Scheduler::produceBlock(const chain::signed_block_ptr &block, bool force_push_whole_block) {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         uint32_t last_num = getLastBlocknum();
 
@@ -1669,13 +1669,13 @@ namespace ultrainio {
         clearTrxQueue();
 
         chain::block_state_ptr new_bs = chain.head_block_state();
-        if (MessageManager::getInstance()->isProposer(block->block_num())) {
+        if (MsgMgr::getInstance()->isProposer(block->block_num())) {
             std::shared_ptr<AggEchoMsg> agg_echo = generateAggEchoMsg(block);
             if (agg_echo) {
-                MessageManager::getInstance()->insert(agg_echo);
+                MsgMgr::getInstance()->insert(agg_echo);
             }
         }
-        MessageManager::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
+        MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
         ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}",
              ("timestamp", block->timestamp)
              ("num", block->block_num())
@@ -1684,7 +1684,7 @@ namespace ultrainio {
 
     }
 
-    void UranusController::clearTrxQueue() {
+    void Scheduler::clearTrxQueue() {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
 
         // TODO(yufengshen):
@@ -1712,7 +1712,7 @@ namespace ultrainio {
         }
     }
 
-    void UranusController::init() {
+    void Scheduler::init() {
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
         m_cacheProposeMsgMap.clear();
@@ -1721,16 +1721,16 @@ namespace ultrainio {
         startSyncTaskTimer();
     }
 
-    const Block* UranusController::getBa0Block() {
+    const Block* Scheduler::getBa0Block() {
         return &m_ba0Block;
     }
 
-    ultrainio::chain::block_id_type UranusController::getPreviousBlockhash() {
+    ultrainio::chain::block_id_type Scheduler::getPreviousBlockhash() {
         const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         return chain.head_block_id();
     }
 
-    void UranusController::moveEchoMsg2AllPhaseMap() {
+    void Scheduler::moveEchoMsg2AllPhaseMap() {
         if (m_echoMsgAllPhase.size() >= m_maxCachedAllPhaseKeys) {
             wlog("echo all phase msgs exceeds ${max} blockNum: ${b} phase: ${p} baxcount: ${bx}",
                  ("max", m_maxCachedAllPhaseKeys)
@@ -1747,7 +1747,7 @@ namespace ultrainio {
         m_echoMsgAllPhase.insert(make_pair(msg_key, std::move(m_echoMsgMap)));
     }
 
-    void UranusController::startSyncTaskTimer() {
+    void Scheduler::startSyncTaskTimer() {
         m_syncTaskTimer->expires_from_now(m_syncTaskPeriod);
         m_syncTaskTimer->async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
@@ -1759,7 +1759,7 @@ namespace ultrainio {
         });
     }
 
-    void UranusController::processSyncTask() {
+    void Scheduler::processSyncTask() {
         if (m_syncTaskQueue.empty()) {
             return;
         }
@@ -1795,7 +1795,7 @@ namespace ultrainio {
 
     //NOTE: The template T must be type of map because the erase operation is not generalized.
     template<class T>
-    void UranusController::clearMsgCache(T &cache, uint32_t blockNum) {
+    void Scheduler::clearMsgCache(T &cache, uint32_t blockNum) {
         for (auto msg_it = cache.begin(); msg_it != cache.end();) {
             if (msg_it->first.blockNum <= blockNum) {
                 cache.erase(msg_it++);
@@ -1805,15 +1805,15 @@ namespace ultrainio {
         }
     }
 
-    uint32_t UranusController::getFastTimestamp() {
+    uint32_t Scheduler::getFastTimestamp() {
         return m_fast_timestamp;
     }
 
-    void UranusController::resetTimestamp() {
+    void Scheduler::resetTimestamp() {
         m_fast_timestamp = 0;
     }
 
-    void UranusController::clearOldCachedProposeMsg() {
+    void Scheduler::clearOldCachedProposeMsg() {
         uint32_t old_block_num = std::numeric_limits<uint32_t>::max();
         for (auto &it : m_cacheProposeMsgMap) {
             if (it.first.blockNum < old_block_num) {
@@ -1832,7 +1832,7 @@ namespace ultrainio {
         }
     }
 
-    void UranusController::clearOldCachedEchoMsg() {
+    void Scheduler::clearOldCachedEchoMsg() {
         uint32_t old_block_num = std::numeric_limits<uint32_t>::max();
         for (auto &it : m_cacheEchoMsgMap) {
             if (it.first.blockNum < old_block_num) {
@@ -1851,16 +1851,16 @@ namespace ultrainio {
         }
     }
 
-    bool UranusController::isEmpty(const BlockIdType& blockId) {
+    bool Scheduler::isEmpty(const BlockIdType& blockId) {
         // TODO: please find a way to cache the empty block's id
         return emptyBlock().id() == blockId;
     }
 
-    bool UranusController::isBlank(const BlockIdType& blockId) {
+    bool Scheduler::isBlank(const BlockIdType& blockId) {
         return Block().id() == blockId;
     }
 
-    std::shared_ptr<Block> UranusController::generateEmptyBlock() {
+    std::shared_ptr<Block> Scheduler::generateEmptyBlock() {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.abort_block();
         auto block_timestamp = chain.head_block_time() + fc::milliseconds(10000);
@@ -1882,15 +1882,15 @@ namespace ultrainio {
         return blockPtr;
     }
 
-    Block UranusController::blankBlock() {
+    Block Scheduler::blankBlock() {
         return Block();
     }
 
-    void UranusController::setBa0Block(const Block& block) {
+    void Scheduler::setBa0Block(const Block& block) {
         m_ba0Block = block;
     }
 
-    Block UranusController::emptyBlock() {
+    Block Scheduler::emptyBlock() {
         static std::shared_ptr<Block> emptyBlock = nullptr;
         if (!emptyBlock || emptyBlock->block_num() != UranusNode::getInstance()->getBlockNum()) {
             emptyBlock = generateEmptyBlock();
@@ -1898,7 +1898,7 @@ namespace ultrainio {
         return *emptyBlock;
     }
 
-    void UranusController::insertAccount(echo_message_info &info, const EchoMsg &echo) {
+    void Scheduler::insertAccount(echo_message_info &info, const EchoMsg &echo) {
         auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
         if (pkItor == info.accountPool.end()) {
             info.accountPool.push_back(echo.account);
@@ -1906,12 +1906,12 @@ namespace ultrainio {
         return;
     }
 
-    void UranusController::enableEventRegister(bool v) {
+    void Scheduler::enableEventRegister(bool v) {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.enable_event_register(v);
     }
 
-    bool UranusController::isDuplicate(const ProposeMsg& proposeMsg) {
+    bool Scheduler::isDuplicate(const ProposeMsg& proposeMsg) {
         auto itor = m_proposerMsgMap.find(proposeMsg.block.id());
         return itor != m_proposerMsgMap.end();
     }

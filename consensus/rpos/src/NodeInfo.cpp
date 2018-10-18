@@ -1,9 +1,9 @@
 #include <rpos/Genesis.h>
-#include "rpos/KeyKeeper.h"
+#include "rpos/NodeInfo.h"
 
 namespace ultrainio {
 
-    void KeyKeeper::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account) {
+    void NodeInfo::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account) {
         m_privateKey = PrivateKey(sk);
         m_account = account;
         dlog("My committee key pair. sk : ${sk} account : ${account}", ("sk", sk)("account", account));
@@ -18,11 +18,11 @@ namespace ultrainio {
         ULTRAIN_ASSERT(!m_account.empty(), chain::chain_exception, "account is empty");
     }
 
-    AccountName KeyKeeper::getMyAccount() const {
+    AccountName NodeInfo::getMyAccount() const {
         return AccountName(m_account);
     }
 
-    PrivateKey KeyKeeper::getPrivateKey() const {
+    PrivateKey NodeInfo::getPrivateKey() const {
         return m_privateKey;
     }
 }

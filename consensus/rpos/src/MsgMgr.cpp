@@ -1,4 +1,4 @@
-#include <rpos/MessageManager.h>
+#include <rpos/MsgMgr.h>
 
 #include <ultrainio/chain/exceptions.hpp>
 
@@ -13,11 +13,11 @@ namespace ultrainio {
     using namespace std;
 
     // class MessageManager
-    shared_ptr<MessageManager> MessageManager::s_self = nullptr;
+    shared_ptr<MsgMgr> MsgMgr::s_self = nullptr;
 
-    std::shared_ptr<MessageManager> MessageManager::getInstance() {
+    std::shared_ptr<MsgMgr> MsgMgr::getInstance() {
         if (!s_self) {
-            s_self = std::shared_ptr<MessageManager>(new MessageManager());
+            s_self = std::shared_ptr<MsgMgr>(new MsgMgr());
         }
         return s_self;
     }
@@ -36,13 +36,13 @@ namespace ultrainio {
 //        blockMessagePtr->insert(proposeMsg);
 //    }
 
-    void MessageManager::insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr) {
+    void MsgMgr::insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr) {
         ULTRAIN_ASSERT(aggEchoMsgPtr, chain::chain_exception, "agg echo msg pointer is null");
         BlockMessagePtr blockMessagePtr = initIfNeed(BlockHeader::num_from_id(aggEchoMsgPtr->blockId));
         blockMessagePtr->m_myAggEchoMsgPtr = aggEchoMsgPtr;
     }
 
-    std::shared_ptr<AggEchoMsg> MessageManager::getMyAggEchoMsg(uint32_t blockNum) {
+    std::shared_ptr<AggEchoMsg> MsgMgr::getMyAggEchoMsg(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         if (!blockMessagePtr) {
             return nullptr;
@@ -50,29 +50,29 @@ namespace ultrainio {
         return blockMessagePtr->m_myAggEchoMsgPtr;
     }
 
-    void MessageManager::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+    void MsgMgr::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         ilog("moveToNewStep blockNum = ${blockNum}, phase = ${phase}, baxCount = ${baxCount}",
                 ("blockNum", blockNum)("phase", static_cast<int>(phase))("baxCount", baxCount));
         BlockMessagePtr blockMessagePtr = nullptr;
-        if (BlockMessage::newRound(phase, baxCount)) {
+        if (BlockMsg::newRound(phase, baxCount)) {
             clearSomeBlockMessage(blockNum);
         }
         blockMessagePtr = initIfNeed(blockNum);
         blockMessagePtr->moveToNewStep(blockNum, phase, baxCount);
     }
 
-    BlockMessagePtr MessageManager::initIfNeed(uint32_t blockNum) {
+    BlockMessagePtr MsgMgr::initIfNeed(uint32_t blockNum) {
         ULTRAIN_ASSERT(blockNum > 1, chain::chain_exception, "blockNum should > 1");
         auto itor = blockMessageMap.find(blockNum);
         if (itor == blockMessageMap.end()) {
-            BlockMessagePtr blockMessagePtr = std::make_shared<BlockMessage>(blockNum);
+            BlockMessagePtr blockMessagePtr = std::make_shared<BlockMsg>(blockNum);
             blockMessageMap.insert(make_pair(blockNum, blockMessagePtr));
             return blockMessagePtr;
         }
         return itor->second;
     }
 
-    int MessageManager::handleMessage(const AggEchoMsg& aggEchoMsg) {
+    int MsgMgr::handleMessage(const AggEchoMsg& aggEchoMsg) {
         if (!UranusNode::getInstance()->isReady()) {
             ilog("Node is not ready, but we need transfer the msg.");
             return kSuccess;
@@ -83,7 +83,7 @@ namespace ultrainio {
         if (myBlockNum - Config::MAX_LATER_NUMBER > blockNum) {
             return kObsolete;
         }
-        if (VoterSystem::getMyAccount() == aggEchoMsg.account) {
+        if (StakeVote::getMyAccount() == aggEchoMsg.account) {
             ilog("loopback AggEchoMsg");
             return kDuplicate;
         }
@@ -96,7 +96,7 @@ namespace ultrainio {
         }
         blockMessagePtr->m_aggEchoMsgV.push_back(aggEchoMsg);
         if (blockNum == myBlockNum) {
-            std::shared_ptr<VoterSystem> voterSysPtr = getVoterSys(blockNum);
+            std::shared_ptr<StakeVote> voterSysPtr = getVoterSys(blockNum);
             PublicKey publicKey = voterSysPtr->getPublicKey(aggEchoMsg.account);
             ULTRAIN_ASSERT(publicKey.isValid(), chain::chain_exception, "public key is not valid");
             if (!publicKey.isValid()) {
@@ -137,35 +137,35 @@ namespace ultrainio {
         return kSuccess;
     }
 
-    Proof MessageManager::getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+    Proof MsgMgr::getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         return blockMessagePtr->getVoterProof(phase, baxCount);
     }
 
-    Proof MessageManager::getProposerProof(uint32_t blockNum) {
+    Proof MsgMgr::getProposerProof(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         return blockMessagePtr->m_proposerProof;
     }
 
-    int MessageManager::getProposerVoterCount(uint32_t blockNum) {
+    int MsgMgr::getProposerVoterCount(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         return blockMessagePtr->m_voterCountAsProposer;
     }
 
-    int MessageManager::getVoterVoterCount(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+    int MsgMgr::getVoterVoterCount(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         return blockMessagePtr->getVoterVoterCount(phase, baxCount);
     }
 
-    bool MessageManager::isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+    bool MsgMgr::isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         return getVoterVoterCount(blockNum, phase, baxCount) > 0;
     }
 
-    bool MessageManager::isProposer(uint32_t blockNum) {
+    bool MsgMgr::isProposer(uint32_t blockNum) {
         return getProposerVoterCount(blockNum);
     }
 
-    void MessageManager::clearSomeBlockMessage(uint32_t blockNum) {
+    void MsgMgr::clearSomeBlockMessage(uint32_t blockNum) {
         for (auto itor = blockMessageMap.begin(); itor != blockMessageMap.end();) {
             if (blockNum - Config::MAX_LATER_NUMBER > itor->first) {
                 ilog("clear block msg for blockNum = ${blockNum}", ("blockNum", itor->first));
@@ -176,7 +176,7 @@ namespace ultrainio {
         }
     }
 
-    std::shared_ptr<VoterSystem> MessageManager::getVoterSys(uint32_t blockNum) {
+    std::shared_ptr<StakeVote> MsgMgr::getVoterSys(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         return blockMessagePtr->getVoterSys();
     }

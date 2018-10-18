@@ -1,7 +1,7 @@
 #define BOOST_TEST_MODULE messagemanager_unittest
 #include <boost/test/included/unit_test.hpp>
 
-#include <rpos/MessageManager.h>
+#include <rpos/MsgMgr.h>
 
 using namespace ultrainio;
 //using namespace std;

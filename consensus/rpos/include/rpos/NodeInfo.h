@@ -5,7 +5,7 @@
 #include <crypto/PublicKey.h>
 
 namespace ultrainio {
-    class KeyKeeper {
+    class NodeInfo {
     public:
         void setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account);
 

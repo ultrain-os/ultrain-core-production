@@ -66,9 +66,9 @@ namespace ultrainio {
 
     typedef std::map<chain::block_id_type, echo_message_info> echo_msg_buff;
 
-    class UranusController : public std::enable_shared_from_this<UranusController> {
+    class Scheduler : public std::enable_shared_from_this<Scheduler> {
     public:
-        UranusController();
+        Scheduler();
 
         void reset();
 

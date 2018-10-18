@@ -4,7 +4,7 @@
 #include <crypto/Signature.h>
 
 namespace ultrainio {
-    class MessageBuilder {
+    class MsgBuilder {
     public:
         static EchoMsg constructMsg(const Block &block);
 

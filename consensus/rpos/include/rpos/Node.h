@@ -15,11 +15,11 @@
 #include <crypto/Ed25519.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
-#include <rpos/VoterSystem.h>
+#include <rpos/StakeVote.h>
 
 namespace ultrainio {
-    class UranusController;
-    class KeyKeeper;
+    class Scheduler;
+    class NodeInfo;
 
     // used for monitor to record block producing time
     typedef std::function<void ()> monitorCallback;
@@ -116,7 +116,7 @@ namespace ultrainio {
 
         bool isProcessNow();
 
-        const std::shared_ptr<UranusController> getController() const;
+        const std::shared_ptr<Scheduler> getController() const;
 
         uint32_t getRoundCount();
 
@@ -172,7 +172,7 @@ namespace ultrainio {
         uint32_t m_baxCount;
         boost::asio::deadline_timer m_timer;
         boost::asio::deadline_timer m_preRunTimer;
-        std::shared_ptr<UranusController> m_controllerPtr;
+        std::shared_ptr<Scheduler> m_controllerPtr;
         friend class UranusNodeMonitor;
         monitorCallback ba0Callback = nullptr;
         monitorCallback ba1Callback = nullptr;

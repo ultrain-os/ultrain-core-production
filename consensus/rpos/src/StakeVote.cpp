@@ -1,4 +1,4 @@
-#include "rpos/VoterSystem.h"
+#include "rpos/StakeVote.h"
 
 #include <limits>
 
@@ -7,7 +7,7 @@
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/Proof.h>
-#include <rpos/KeyKeeper.h>
+#include <rpos/NodeInfo.h>
 
 #include <appbase/application.hpp>
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
@@ -17,14 +17,14 @@ using std::string;
 using namespace appbase;
 
 namespace ultrainio {
-    std::shared_ptr<KeyKeeper> VoterSystem::s_keyKeeper = std::make_shared<KeyKeeper>();
+    std::shared_ptr<NodeInfo> StakeVote::s_keyKeeper = std::make_shared<NodeInfo>();
 
-    std::shared_ptr<VoterSystem> VoterSystem::create(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr) {
-        VoterSystem* voterSysPtr = new VoterSystem(blockNum, committeeStatePtr);
-        return std::shared_ptr<VoterSystem>(voterSysPtr);
+    std::shared_ptr<StakeVote> StakeVote::create(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr) {
+        StakeVote* voterSysPtr = new StakeVote(blockNum, committeeStatePtr);
+        return std::shared_ptr<StakeVote>(voterSysPtr);
     }
 
-    VoterSystem::VoterSystem(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr)
+    StakeVote::StakeVote(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr)
             : m_blockNum(blockNum), m_committeeStatePtr(committeeStatePtr) {
         if (!m_committeeStatePtr) {
             m_committeeStatePtr = getCommitteeState();
@@ -35,40 +35,40 @@ namespace ultrainio {
         m_voterRatio = Config::VOTER_STAKES_NUMBER / totalStake;
     }
 
-    std::shared_ptr<KeyKeeper> VoterSystem::getKeyKeeper() {
+    std::shared_ptr<NodeInfo> StakeVote::getKeyKeeper() {
         return s_keyKeeper;
     }
 
-    AccountName VoterSystem::getMyAccount() {
+    AccountName StakeVote::getMyAccount() {
         return s_keyKeeper->getMyAccount();
     }
 
-    PrivateKey VoterSystem::getMyPrivateKey() {
+    PrivateKey StakeVote::getMyPrivateKey() {
         return s_keyKeeper->getPrivateKey();
     }
 
-    bool VoterSystem::committeeHasWorked() {
+    bool StakeVote::committeeHasWorked() {
         wlog("be caution to call this");
         static const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         return ro_api.is_genesis_finished();
     }
 
-    bool VoterSystem::committeeHasWorked2() const {
+    bool StakeVote::committeeHasWorked2() const {
         if (m_committeeStatePtr && m_committeeStatePtr->chainStateNormal) {
             return true;
         }
         return false;
     }
 
-    double VoterSystem::getProposerRatio() {
+    double StakeVote::getProposerRatio() {
         return m_proposerRatio;
     }
 
-    double VoterSystem::getVoterRatio() {
+    double StakeVote::getVoterRatio() {
         return m_voterRatio;
     }
 
-    bool VoterSystem::isGenesisPeriod() const {
+    bool StakeVote::isGenesisPeriod() const {
         boost::chrono::minutes genesisElapsed
                 = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - Genesis::s_time);
         if (!committeeHasWorked2() && (genesisElapsed < boost::chrono::minutes(Genesis::s_genesisStartupTime))) {
@@ -77,11 +77,11 @@ namespace ultrainio {
         return false;
     }
 
-    long VoterSystem::getTotalStakes() const {
+    long StakeVote::getTotalStakes() const {
         return getCommitteeMemberNumber() * Config::DEFAULT_THRESHOLD;
     }
 
-    int VoterSystem::getStakes(const AccountName& account, bool isNonProducingNode) {
+    int StakeVote::getStakes(const AccountName& account, bool isNonProducingNode) {
         AccountName myAccount = getMyAccount();
         // (shenyufeng)always be no listener
         if (isNonProducingNode && account == myAccount) {
@@ -92,7 +92,7 @@ namespace ultrainio {
         return 0;
     }
 
-    int VoterSystem::getCommitteeMemberNumber() const {
+    int StakeVote::getCommitteeMemberNumber() const {
         if (isGenesisPeriod()) {
             return 1; // genesis leader only
         }
@@ -110,7 +110,7 @@ namespace ultrainio {
         return m_committeeStatePtr->cinfo.size();
     }
 
-    bool VoterSystem::isCommitteeMember(const AccountName& account) const {
+    bool StakeVote::isCommitteeMember(const AccountName& account) const {
         bool genesis = isGenesisPeriod();
         if ((genesis && isGenesisLeader(account))
             || (!genesis && findInCommitteeMemberList(account).isValid())) {
@@ -119,7 +119,7 @@ namespace ultrainio {
         return false;
     }
 
-    PublicKey VoterSystem::findInCommitteeMemberList(const AccountName& account) const {
+    PublicKey StakeVote::findInCommitteeMemberList(const AccountName& account) const {
         if (m_committeeStatePtr) {
             for (auto& v : m_committeeStatePtr->cinfo) {
                 ULTRAIN_ASSERT(!v.accountName.empty(), chain::chain_exception, "account name is empty");
@@ -131,7 +131,7 @@ namespace ultrainio {
         return PublicKey();
     }
 
-    PublicKey VoterSystem::getPublicKey(const AccountName& account) const {
+    PublicKey StakeVote::getPublicKey(const AccountName& account) const {
         if (account == s_keyKeeper->getMyAccount()) {
             return s_keyKeeper->getPrivateKey().getPublicKey();
         } else if (account == AccountName(Genesis::kGenesisAccount)) {
@@ -140,11 +140,11 @@ namespace ultrainio {
         return findInCommitteeMemberList(account);
     }
 
-    bool VoterSystem::isGenesisLeader(const AccountName& account) const {
+    bool StakeVote::isGenesisLeader(const AccountName& account) const {
         return account.good() && account == AccountName(Genesis::kGenesisAccount);
     }
 
-    std::shared_ptr<CommitteeState> VoterSystem::getCommitteeState() {
+    std::shared_ptr<CommitteeState> StakeVote::getCommitteeState() {
         static const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         static struct chain_apis::read_only::get_producers_params params;
         CommitteeInfo cinfo;
@@ -172,12 +172,12 @@ namespace ultrainio {
         return statePtr;
     }
 
-    int VoterSystem::count(const Proof& proof, int stakes, double p) {
+    int StakeVote::count(const Proof& proof, int stakes, double p) {
         double rand = proof.getRand();
         return reverseBinoCdf(rand, stakes, p);
     }
 
-    int VoterSystem::reverseBinoCdf(double rand, int stake, double p) {
+    int StakeVote::reverseBinoCdf(double rand, int stake, double p) {
         int k = 0;
         binomial b(stake, p);
 

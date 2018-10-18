@@ -1,7 +1,7 @@
 #define BOOST_TEST_MODULE blockmessage_unittest
 #include <boost/test/included/unit_test.hpp>
 
-#include <rpos/BlockMessage.h>
+#include <rpos/BlockMsg.h>
 
 using namespace ultrainio;
 //using namespace std;

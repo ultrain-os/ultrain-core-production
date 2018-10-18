@@ -15,7 +15,7 @@ namespace ultrainio {
         BlockIdType blockId;
     };
 
-    class PhaseMessage {
+    class PhaseMsg {
     public:
         void insert(const EchoMsg& echoMsg);
         void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
@@ -26,8 +26,8 @@ namespace ultrainio {
         int m_baxCount = 0;
         int m_voterCountAsVoter = 0;
         Proof m_proof;
-        friend class BlockMessage;
+        friend class BlockMsg;
     };
 
-    typedef std::shared_ptr<PhaseMessage> PhaseMessagePtr;
+    typedef std::shared_ptr<PhaseMsg> PhaseMsgPtr;
 }

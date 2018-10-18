@@ -30,7 +30,7 @@
 #include <boost/intrusive/set.hpp>
 
 #include <random>
-#include <rpos/MessageManager.h>
+#include <rpos/MsgMgr.h>
 
 using namespace ultrainio::chain::plugin_interface::compat;
 
@@ -2096,7 +2096,7 @@ namespace ultrainio {
    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg) {
        ilog("receive AggEchoMsg msg!!! message from ${p} block id: ${id} block num: ${num} account : ${account}",
             ("p", c->peer_name())("id", msg.blockId)("num", BlockHeader::num_from_id(msg.blockId))("account", std::string(msg.account)));
-       if (MessageManager::getInstance()->handleMessage(msg) == kSuccess) {
+       if (MsgMgr::getInstance()->handleMessage(msg) == kSuccess) {
            for (auto &conn : connections) {
                if (conn != c) {
                    conn->enqueue(net_message(msg));

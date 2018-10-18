@@ -14,13 +14,13 @@ namespace ultrainio {
     struct CommitteeState;
     class PublicKey;
     class Proof;
-    class KeyKeeper;
+    class NodeInfo;
 
-    class VoterSystem {
+    class StakeVote {
     public:
-        static std::shared_ptr<VoterSystem> create(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
+        static std::shared_ptr<StakeVote> create(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
 
-        static std::shared_ptr<KeyKeeper> getKeyKeeper();
+        static std::shared_ptr<NodeInfo> getKeyKeeper();
 
         static AccountName getMyAccount();
 
@@ -43,9 +43,9 @@ namespace ultrainio {
 
         PublicKey getPublicKey(const AccountName& account) const;
     private:
-        static std::shared_ptr<KeyKeeper> s_keyKeeper;
+        static std::shared_ptr<NodeInfo> s_keyKeeper;
 
-        VoterSystem(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
+        StakeVote(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
 
         // get committee state from world state
         static std::shared_ptr<CommitteeState> getCommitteeState();

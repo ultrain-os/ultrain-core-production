@@ -1,19 +1,19 @@
-#include "rpos/PhaseMessage.h"
+#include "rpos/PhaseMsg.h"
 
 #include <crypto/PrivateKey.h>
-#include <rpos/MessageManager.h>
+#include <rpos/MsgMgr.h>
 #include <rpos/Node.h>
 #include <rpos/Proof.h>
 #include <rpos/Seed.h>
-#include <rpos/VoterSystem.h>
+#include <rpos/StakeVote.h>
 #include <rpos/Vrf.h>
 
 namespace ultrainio {
-    void PhaseMessage::insert(const EchoMsg& echoMsg) {
+    void PhaseMsg::insert(const EchoMsg& echoMsg) {
         chain::block_id_type blockId = echoMsg.blockId;
         auto itor = m_echoMsgSetMap.find(blockId);
         Proof proof(echoMsg.proof);
-        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(BlockHeader::num_from_id(echoMsg.blockId));
+        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(echoMsg.blockId));
         int stakes = voterSysPtr->getStakes(echoMsg.account, UranusNode::getInstance()->getNonProducingNode());
         double voterRatio = voterSysPtr->getVoterRatio();
         int voterCount = voterSysPtr->count(proof, stakes, voterRatio);
@@ -31,15 +31,15 @@ namespace ultrainio {
         }
     }
 
-    void PhaseMessage::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+    void PhaseMsg::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         if (!m_proof.isValid()) {
             ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
             std::string previousHash(blockId.data());
-            std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(blockNum);
+            std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(blockNum);
             ULTRAIN_ASSERT(voterSysPtr != nullptr, chain::chain_exception, "voterSystemPtr is nullptr");
-            AccountName myAccount = VoterSystem::getMyAccount();
+            AccountName myAccount = StakeVote::getMyAccount();
             Seed voterSeed(previousHash, blockNum, phase, baxCount);
-            PrivateKey privateKey = VoterSystem::getMyPrivateKey();
+            PrivateKey privateKey = StakeVote::getMyPrivateKey();
             m_proof = Vrf::vrf(privateKey, voterSeed, Vrf::kVoter);
             int stakes = voterSysPtr->getStakes(myAccount, UranusNode::getInstance()->getNonProducingNode());
             if (stakes == 0) {

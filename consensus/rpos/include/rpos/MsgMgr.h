@@ -6,9 +6,9 @@
 #include <core/Message.h>
 #include <core/Redefined.h>
 #include <crypto/Ed25519.h>
-#include <rpos/BlockMessage.h>
+#include <rpos/BlockMsg.h>
 #include <rpos/Proof.h>
-#include <rpos/VoterSystem.h>
+#include <rpos/StakeVote.h>
 
 namespace ultrainio {
     enum MessageStatus {
@@ -24,11 +24,11 @@ namespace ultrainio {
         kUnknownError
     };
 
-    class MessageManager {
+    class MsgMgr {
     public:
-        static std::shared_ptr<MessageManager> getInstance();
-        MessageManager& operator = (const MessageManager&) = delete;
-        MessageManager(const MessageManager&) = delete;
+        static std::shared_ptr<MsgMgr> getInstance();
+        MsgMgr& operator = (const MsgMgr&) = delete;
+        MsgMgr(const MsgMgr&) = delete;
 
         //void insert(const EchoMsg& echoMsg);
 
@@ -50,10 +50,10 @@ namespace ultrainio {
 
         bool isProposer(uint32_t blockNum);
 
-        std::shared_ptr<VoterSystem> getVoterSys(uint32_t blockNum);
+        std::shared_ptr<StakeVote> getVoterSys(uint32_t blockNum);
 
     private:
-        MessageManager() = default;
+        MsgMgr() = default;
 
         int getProposerVoterCount(uint32_t blockNum);
 
@@ -63,10 +63,10 @@ namespace ultrainio {
 
         void clearSomeBlockMessage(uint32_t blockNum);
 
-        static std::shared_ptr<MessageManager> s_self;
+        static std::shared_ptr<MsgMgr> s_self;
         std::map<int, BlockMessagePtr> blockMessageMap; // key - blockNum
 
         // Only for debug purpose.
-        friend class UranusController;
+        friend class Scheduler;
     };
 }

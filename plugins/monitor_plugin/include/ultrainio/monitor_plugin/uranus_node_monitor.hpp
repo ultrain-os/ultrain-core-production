@@ -4,8 +4,8 @@
 #include "runtime_os_info.hpp"
 #include <rpos/Genesis.h>
 #include <rpos/Node.h>
-#include <rpos/KeyKeeper.h>
-#include <rpos/VoterSystem.h>
+#include <rpos/NodeInfo.h>
+#include <rpos/StakeVote.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
 
@@ -151,9 +151,9 @@ namespace ultrainio {
                 staticConfig.version           = version;
                 staticConfig.nonProducingNode  = pNode->getNonProducingNode();
                 staticConfig.genesisLeaderPk   = Genesis::s_genesisPk;
-                staticConfig.publicKey         = std::string(VoterSystem::getMyPrivateKey().getPublicKey());
-                staticConfig.privateKey        = std::string(VoterSystem::getMyPrivateKey());
-                staticConfig.account           = std::string(VoterSystem::getMyAccount());
+                staticConfig.publicKey         = std::string(StakeVote::getMyPrivateKey().getPublicKey());
+                staticConfig.privateKey        = std::string(StakeVote::getMyPrivateKey());
+                staticConfig.account           = std::string(StakeVote::getMyAccount());
             }
             return staticConfig;
         }

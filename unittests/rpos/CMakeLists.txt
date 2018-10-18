@@ -14,7 +14,7 @@ target_link_libraries( proof_unittest ultrainio_rpos )
 
 add_test(NAME proof_unittest COMMAND proof_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-### VoterSystem
+### StakeVote
 #add_executable( votersystem_unittest
 #        VoterSystemTest.cpp)
 

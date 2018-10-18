@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rpos/UranusController.h>
+#include <rpos/Scheduler.h>
 
 namespace ultrainio {
     struct BlockHeaderDigest {
@@ -44,14 +44,14 @@ namespace ultrainio {
     class UranusControllerMonitor
     {
     public:
-        UranusControllerMonitor(std::weak_ptr<UranusController> pController):m_pController(pController) {}
+        UranusControllerMonitor(std::weak_ptr<Scheduler> pController):m_pController(pController) {}
         ~UranusControllerMonitor() = default;
         UranusControllerMonitor(const UranusControllerMonitor&) = delete;
         const UranusControllerMonitor& operator=(const UranusControllerMonitor&) = delete;
 
         BlockHeaderDigest findProposeMsgByBlockId(const chain::block_id_type& bid) const {
             BlockHeaderDigest tempHeaderDigest;
-            std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<Scheduler> pController = m_pController.lock();
             if (pController) {
                 auto ite = pController->m_proposerMsgMap.find(bid);
                 if(ite != pController->m_proposerMsgMap.end()){
@@ -65,7 +65,7 @@ namespace ultrainio {
 
         EchoMsgInfoDigest findEchoMsgByBlockId(const chain::block_id_type& bid) const {
             EchoMsgInfoDigest tempEchoDigest;
-            std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<Scheduler> pController = m_pController.lock();
             if (pController) {
                 auto ite = pController->m_echoMsgMap.find(bid);
                 if(ite != pController->m_echoMsgMap.end()) {
@@ -79,7 +79,7 @@ namespace ultrainio {
 
         std::vector<BlockHeaderDigest> findProposeCacheByKey(const msgkey& msg_key) const {
             std::vector<BlockHeaderDigest> tempDigestVect;
-            std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<Scheduler> pController = m_pController.lock();
             if (pController) {
                 auto ite = pController->m_cacheProposeMsgMap.find(msg_key);
                 if(ite != pController->m_cacheProposeMsgMap.end()) {
@@ -97,7 +97,7 @@ namespace ultrainio {
 
         std::vector<EchoMsgDigest> findEchoCacheByKey(const msgkey& msg_key) const {
             std::vector<EchoMsgDigest> tempEchoDigestVect;
-            std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<Scheduler> pController = m_pController.lock();
             if (pController) {
                 auto ite = pController->m_cacheEchoMsgMap.find(msg_key);
                 if(ite != pController->m_cacheEchoMsgMap.end()) {
@@ -115,7 +115,7 @@ namespace ultrainio {
 
         echo_msg_digest_vect findEchoApMsgByKey(const msgkey& msg_key) const {
             echo_msg_digest_vect tempEchoMsgInfoDigestVect;
-            std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<Scheduler> pController = m_pController.lock();
             if (pController) {
                 auto ite = pController->m_echoMsgAllPhase.find(msg_key);
                 if(ite != pController->m_echoMsgAllPhase.end()) {
@@ -134,7 +134,7 @@ namespace ultrainio {
 
         void getContainersSize(uint32_t& proposeNum, uint32_t& echoNum, uint32_t& proposeCacheSize,
                                uint32_t& echoCacheSize, uint32_t& allPhaseEchoNum) const {
-            std::shared_ptr<UranusController> pController = m_pController.lock();
+            std::shared_ptr<Scheduler> pController = m_pController.lock();
             if (pController) {
                 proposeNum = pController->m_proposerMsgMap.size();
                 echoNum = pController->m_echoMsgMap.size();
@@ -151,6 +151,6 @@ namespace ultrainio {
             }
         }
     private:
-        std::weak_ptr<UranusController> m_pController;
+        std::weak_ptr<Scheduler> m_pController;
     };
 }

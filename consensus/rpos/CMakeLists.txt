@@ -1,17 +1,17 @@
 file(GLOB HEADERS "include/rpos/*.h")
 add_library( ultrainio_rpos
-        src/BlockMessage.cpp
+        src/BlockMsg.cpp
         src/Config.cpp
         src/Genesis.cpp
-        src/KeyKeeper.cpp
-        src/MessageBuilder.cpp
-        src/MessageManager.cpp
+        src/NodeInfo.cpp
+        src/MsgBuilder.cpp
+        src/MsgMgr.cpp
         src/Node.cpp
-        src/PhaseMessage.cpp
+        src/PhaseMsg.cpp
         src/Proof.cpp
+        src/Scheduler.cpp
         src/Seed.cpp
-        src/UranusController.cpp
-        src/VoterSystem.cpp
+        src/StakeVote.cpp
         src/Vrf.cpp
         ${HEADERS} )
 

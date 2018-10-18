@@ -10,10 +10,10 @@
 
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
-#include <rpos/MessageBuilder.h>
-#include <rpos/MessageManager.h>
-#include <rpos/UranusController.h>
-#include <rpos/KeyKeeper.h>
+#include <rpos/MsgBuilder.h>
+#include <rpos/MsgMgr.h>
+#include <rpos/Scheduler.h>
+#include <rpos/NodeInfo.h>
 
 // eos net
 #include <appbase/application.hpp>
@@ -42,7 +42,7 @@ namespace ultrainio {
                                                                  m_syncFailed(false),
                                                                  m_phase(kPhaseInit), m_baxCount(0), m_timer(ioservice),
                                                                  m_preRunTimer(ioservice),
-                                                                 m_controllerPtr(std::make_shared<UranusController>()) {
+                                                                 m_controllerPtr(std::make_shared<Scheduler>()) {
         ilog("Code version is ${s}", ("s", version));
     };
 
@@ -66,7 +66,7 @@ namespace ultrainio {
     }
 
     void UranusNode::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account) {
-        VoterSystem::getKeyKeeper()->setMyInfoAsCommitteeKey(sk, account);
+        StakeVote::getKeyKeeper()->setMyInfoAsCommitteeKey(sk, account);
     }
 
     bool UranusNode::getNonProducingNode() const {
@@ -266,13 +266,13 @@ namespace ultrainio {
         m_phase = kPhaseBA1;
         m_baxCount = 0;
 
-        MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA1, 0);
+        MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA1, 0);
 
         dlog("############## ba0 finish blockNum = ${id}, host_name = ${host_name}",
              ("id", getBlockNum())("host_name", boost::asio::ip::host_name()));
         dlog("ba0Process voter.hash = ${hash1}",("hash1", ba0Block.id()));
         dlog("ba0Process. prepare ba1. blockNum = ${blockNum}, isVoter = ${isVoter}.", ("blockNum", getBlockNum())
-                ("isVoter",MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
+                ("isVoter",MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
 
         vote(getBlockNum(),kPhaseBA1,0);
 
@@ -281,7 +281,7 @@ namespace ultrainio {
         m_controllerPtr->processCache(msg_key);
         // Only producing node will pre-run proposed block, non-producing node still
         // try to run trx asap.
-        if (!MessageManager::getInstance()->isVoter(getBlockNum(), m_phase, m_baxCount) && !m_isNonProducingNode) {
+        if (!MsgMgr::getInstance()->isVoter(getBlockNum(), m_phase, m_baxCount) && !m_isNonProducingNode) {
             bool ret = m_controllerPtr->preRunBa0BlockStart();
             if (ret) {
                 preRunBa0BlockLoop(1);
@@ -296,15 +296,15 @@ namespace ultrainio {
                 ("phase",uint32_t(phase))("cnt",baxCount));
 
         if (kPhaseBA0 == phase) {
-            if (MessageManager::getInstance()->isProposer(blockNum)) {
+            if (MsgMgr::getInstance()->isProposer(blockNum)) {
                 ProposeMsg propose;
                 bool ret = m_controllerPtr->initProposeMsg(&propose);
                 ULTRAIN_ASSERT(ret, chain::chain_exception, "Init propose msg failed");
                 dlog("vote.propose.block_hash : ${block_hash}", ("block_hash", propose.block.id()));
                 m_controllerPtr->insert(propose);
                 sendMessage(propose);
-                if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
-                    EchoMsg echo = MessageBuilder::constructMsg(propose);
+                if (MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
+                    EchoMsg echo = MsgBuilder::constructMsg(propose);
                     m_controllerPtr->insert(echo);
                     dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockId));
                     sendMessage(echo);
@@ -313,13 +313,13 @@ namespace ultrainio {
             return;
         }
 
-        if (MessageManager::getInstance()->isVoter(blockNum, phase, baxCount)) {
+        if (MsgMgr::getInstance()->isVoter(blockNum, phase, baxCount)) {
             ba0Block = m_controllerPtr->getBa0Block();
             if (isEmpty(ba0Block->id())) {
                 elog("vote ba0Block is empty, and send echo for empty block");
                 sendEchoForEmptyBlock();
             } else if (m_controllerPtr->verifyBa0Block()) { // not empty, verify
-                EchoMsg echo = MessageBuilder::constructMsg(*ba0Block);
+                EchoMsg echo = MsgBuilder::constructMsg(*ba0Block);
                 m_controllerPtr->insert(echo);
                 //echo.timestamp = getRoundCount();
                 dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockId));
@@ -435,8 +435,8 @@ namespace ultrainio {
             uint32_t blockNum = getBlockNum();
             if (m_baxCount > 0 && m_baxCount % 5 == 0 && blockNum > 2) {
                 uint32_t preBlockNum = blockNum - 1;
-                if (MessageManager::getInstance()->isProposer(preBlockNum)) {
-                    std::shared_ptr<AggEchoMsg> aggEchoMsg = MessageManager::getInstance()->getMyAggEchoMsg(preBlockNum);
+                if (MsgMgr::getInstance()->isProposer(preBlockNum)) {
+                    std::shared_ptr<AggEchoMsg> aggEchoMsg = MsgMgr::getInstance()->getMyAggEchoMsg(preBlockNum);
                     if (aggEchoMsg) {
                         sendMessage(*aggEchoMsg);
                     }
@@ -522,13 +522,13 @@ namespace ultrainio {
         m_controllerPtr->clearPreRunStatus();
         m_phase = kPhaseBAX;
         m_baxCount++;
-        MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBAX, m_baxCount);
+        MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBAX, m_baxCount);
         dlog("bax loop. Voter = ${Voter}, m_baxCount = ${count}.",
-             ("Voter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
+             ("Voter", MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
                      ("count",m_baxCount));
 
         if ((m_baxCount + m_phase) >= Config::kMaxBaxCount) {
-            if (MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount)) {
+            if (MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount)) {
                 sendEchoForEmptyBlock();
             }
         } else {
@@ -610,7 +610,7 @@ namespace ultrainio {
         if (sync_msg.startBlockNum == sync_msg.endBlockNum && sync_msg.endBlockNum == getLastBlocknum() + 1) {
             ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local.",
                  ("s", sync_msg.startBlockNum)("e", sync_msg.endBlockNum)("last", getLastBlocknum()));
-            if (VoterSystem::committeeHasWorked()) {
+            if (StakeVote::committeeHasWorked()) {
                 runLoop(getRoundInterval());
             } else {
                 ilog("Committee has not worked.");
@@ -687,11 +687,11 @@ namespace ultrainio {
 
         // BA0=======
         ba0Loop(getRoundInterval());
-        MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
+        MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
 
         dlog("start BA0. blockNum = ${blockNum}. isProposer = ${isProposer} and isVoter = ${isVoter}",
-             ("blockNum", getBlockNum())("isProposer", MessageManager::getInstance()->isProposer(getBlockNum()))
-                     ("isVoter", MessageManager::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)));
+             ("blockNum", getBlockNum())("isProposer", MsgMgr::getInstance()->isProposer(getBlockNum()))
+                     ("isVoter", MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)));
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
         m_controllerPtr->processCache(msg_key);
@@ -833,7 +833,7 @@ namespace ultrainio {
 
         dlog("fastBlock begin. blockNum = ${id}", ("id", getBlockNum()));
 
-        MessageManager::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
+        MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
         reset();
         m_controllerPtr->resetTimestamp();
 
@@ -898,8 +898,8 @@ namespace ultrainio {
         return m_controllerPtr->getPreviousBlockhash();
     }
 
-    const std::shared_ptr<UranusController> UranusNode::getController() const {
-        return std::shared_ptr<UranusController> (m_controllerPtr);
+    const std::shared_ptr<Scheduler> UranusNode::getController() const {
+        return std::shared_ptr<Scheduler> (m_controllerPtr);
     }
 
     bool UranusNode::isBlank(const BlockIdType& blockId) {
@@ -913,14 +913,14 @@ namespace ultrainio {
     void UranusNode::sendEchoForEmptyBlock() {
         Block block = m_controllerPtr->emptyBlock();
         dlog("vote empty block. blockNum = ${blockNum} hash = ${hash}", ("blockNum",getBlockNum())("hash", block.id()));
-        EchoMsg echoMsg = MessageBuilder::constructMsg(block);
+        EchoMsg echoMsg = MsgBuilder::constructMsg(block);
         m_controllerPtr->insert(echoMsg);
         //echoMsg.timestamp = getRoundCount();
         sendMessage(echoMsg);
     }
 
     int UranusNode::getCommitteeMemberNumber() {
-        std::shared_ptr<VoterSystem> voterSysPtr = MessageManager::getInstance()->getVoterSys(this->getBlockNum());
+        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(this->getBlockNum());
         return voterSysPtr->getCommitteeMemberNumber();
     }
 
