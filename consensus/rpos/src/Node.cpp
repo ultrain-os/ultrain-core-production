@@ -23,7 +23,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="dc315c";
+    char version[]="16163a";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -42,7 +42,7 @@ namespace ultrainio {
                                                                  m_syncFailed(false),
                                                                  m_phase(kPhaseInit), m_baxCount(0), m_timer(ioservice),
                                                                  m_preRunTimer(ioservice),
-                                                                 m_controllerPtr(std::make_shared<Scheduler>()) {
+                                                                 m_schedulerPtr(std::make_shared<Scheduler>()) {
         ilog("Code version is ${s}", ("s", version));
     };
 
@@ -62,7 +62,7 @@ namespace ultrainio {
 
     void UranusNode::setNonProducingNode(bool v) {
         m_isNonProducingNode = v;
-        m_controllerPtr->enableEventRegister(v);
+        m_schedulerPtr->enableEventRegister(v);
     }
 
     void UranusNode::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account) {
@@ -77,7 +77,7 @@ namespace ultrainio {
         dlog("reset node cache.");
         m_phase = kPhaseInit;
         m_baxCount = 0;
-        m_controllerPtr->reset();
+        m_schedulerPtr->reset();
     }
 
     void UranusNode::readyToConnect() {
@@ -96,7 +96,7 @@ namespace ultrainio {
         m_syncFailed = false;
         m_phase = kPhaseInit;
         m_baxCount = 0;
-        m_controllerPtr->init();
+        m_schedulerPtr->init();
     }
 
     void UranusNode::readyToJoin() {
@@ -142,7 +142,7 @@ namespace ultrainio {
         if (m_phase != kPhaseBA1)
             return;
 
-        bool ret = m_controllerPtr->preRunBa0BlockStep();
+        bool ret = m_schedulerPtr->preRunBa0BlockStep();
         if (ret) {
             preRunBa0BlockLoop(1);
         }
@@ -240,18 +240,18 @@ namespace ultrainio {
         dlog("ba0Process begin. blockNum = ${id}.", ("id", getBlockNum()));
 
         //to_do hash error process
-        Block ba0Block = m_controllerPtr->produceTentativeBlock();
+        Block ba0Block = m_schedulerPtr->produceTentativeBlock();
         //monitor begin, record ba0 block producing time
         if(ba0Callback != nullptr) {
             ba0Callback();
         }
         //monitor end
-        m_controllerPtr->setBa0Block(ba0Block);
+        m_schedulerPtr->setBa0Block(ba0Block);
         if ((!isBlank(ba0Block.id()))
-            && (ba0Block.previous != m_controllerPtr->getPreviousBlockhash())) {
+            && (ba0Block.previous != m_schedulerPtr->getPreviousBlockhash())) {
 
             elog("ba0Process error. previous block hash error. hash = ${hash1} local hash = ${hash2}",
-                 ("hash1", ba0Block.previous)("hash2", m_controllerPtr->getPreviousBlockhash()));
+                 ("hash1", ba0Block.previous)("hash2", m_schedulerPtr->getPreviousBlockhash()));
 
             ULTRAIN_ASSERT(false, chain::chain_exception, "DB error. please reset with cmd --delete-all-blocks.");
             //m_ready = false;
@@ -262,7 +262,7 @@ namespace ultrainio {
         msgkey msg_key;
         ba1Loop(getRoundInterval());
 
-        m_controllerPtr->resetEcho();
+        m_schedulerPtr->resetEcho();
         m_phase = kPhaseBA1;
         m_baxCount = 0;
 
@@ -278,11 +278,11 @@ namespace ultrainio {
 
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
-        m_controllerPtr->processCache(msg_key);
+        m_schedulerPtr->processCache(msg_key);
         // Only producing node will pre-run proposed block, non-producing node still
         // try to run trx asap.
         if (!MsgMgr::getInstance()->isVoter(getBlockNum(), m_phase, m_baxCount) && !m_isNonProducingNode) {
-            bool ret = m_controllerPtr->preRunBa0BlockStart();
+            bool ret = m_schedulerPtr->preRunBa0BlockStart();
             if (ret) {
                 preRunBa0BlockLoop(1);
             }
@@ -298,14 +298,14 @@ namespace ultrainio {
         if (kPhaseBA0 == phase) {
             if (MsgMgr::getInstance()->isProposer(blockNum)) {
                 ProposeMsg propose;
-                bool ret = m_controllerPtr->initProposeMsg(&propose);
+                bool ret = m_schedulerPtr->initProposeMsg(&propose);
                 ULTRAIN_ASSERT(ret, chain::chain_exception, "Init propose msg failed");
                 dlog("vote.propose.block_hash : ${block_hash}", ("block_hash", propose.block.id()));
-                m_controllerPtr->insert(propose);
+                m_schedulerPtr->insert(propose);
                 sendMessage(propose);
                 if (MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
                     EchoMsg echo = MsgBuilder::constructMsg(propose);
-                    m_controllerPtr->insert(echo);
+                    m_schedulerPtr->insert(echo);
                     dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockId));
                     sendMessage(echo);
                 }
@@ -314,13 +314,13 @@ namespace ultrainio {
         }
 
         if (MsgMgr::getInstance()->isVoter(blockNum, phase, baxCount)) {
-            ba0Block = m_controllerPtr->getBa0Block();
+            ba0Block = m_schedulerPtr->getBa0Block();
             if (isEmpty(ba0Block->id())) {
                 elog("vote ba0Block is empty, and send echo for empty block");
                 sendEchoForEmptyBlock();
-            } else if (m_controllerPtr->verifyBa0Block()) { // not empty, verify
+            } else if (m_schedulerPtr->verifyBa0Block()) { // not empty, verify
                 EchoMsg echo = MsgBuilder::constructMsg(*ba0Block);
-                m_controllerPtr->insert(echo);
+                m_schedulerPtr->insert(echo);
                 //echo.timestamp = getRoundCount();
                 dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockId));
                 sendMessage(echo);
@@ -335,7 +335,7 @@ namespace ultrainio {
     void UranusNode::ba1Process() {
         // produce block
         m_phase = kPhaseInit;
-        Block ba1Block = m_controllerPtr->produceTentativeBlock();
+        Block ba1Block = m_schedulerPtr->produceTentativeBlock();
         //monitor begin, record ba1 block producing time
         if(ba1Callback != nullptr) {
             ba1Callback();
@@ -345,10 +345,10 @@ namespace ultrainio {
         dlog("ba1Process begin. blockNum = ${id}.", ("id", getBlockNum()));
 
         if ((!isBlank(ba1Block.id()))
-            && (ba1Block.previous != m_controllerPtr->getPreviousBlockhash())) {
+            && (ba1Block.previous != m_schedulerPtr->getPreviousBlockhash())) {
 
             elog("ba1Process error. previous block hash error. hash = ${hash1} local hash = ${hash2}",
-                 ("hash1", ba1Block.previous)("hash2", m_controllerPtr->getPreviousBlockhash()));
+                 ("hash1", ba1Block.previous)("hash2", m_schedulerPtr->getPreviousBlockhash()));
 
             ULTRAIN_ASSERT(false, chain::chain_exception, "DB error. please reset with cmd --delete-all-blocks.");
             return;
@@ -370,21 +370,21 @@ namespace ultrainio {
         dlog("##############ba1Process. finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
              ("block_num", getBlockNum())
                      ("hash", blockPtr->id())
-                     ("head_hash", m_controllerPtr->getPreviousBlockhash()));
-        m_controllerPtr->produceBlock(blockPtr);
+                     ("head_hash", m_schedulerPtr->getPreviousBlockhash()));
+        m_schedulerPtr->produceBlock(blockPtr);
 
-        ULTRAIN_ASSERT(blockPtr->id() == m_controllerPtr->getPreviousBlockhash(),
+        ULTRAIN_ASSERT(blockPtr->id() == m_schedulerPtr->getPreviousBlockhash(),
                        chain::chain_exception, "Produced block hash is not expected");
         run();
     }
 
     uint32_t UranusNode::isSyncing() {
-        return m_controllerPtr->isSyncing();
+        return m_schedulerPtr->isSyncing();
     }
 
     void UranusNode::baxProcess() {
         ilog("In baxProcess");
-        Block baxBlock = m_controllerPtr->produceTentativeBlock();
+        Block baxBlock = m_schedulerPtr->produceTentativeBlock();
         signed_block_ptr uranus_block = std::make_shared<chain::signed_block>();
 
         if (m_phase == kPhaseInit) {
@@ -397,7 +397,7 @@ namespace ultrainio {
 
         //fast into baxcount 20
         if ((m_baxCount < (Config::kMaxBaxCount - m_phase))
-            && (m_controllerPtr->isChangePhase())) {
+            && (m_schedulerPtr->isChangePhase())) {
             m_baxCount = Config::kMaxBaxCount - m_phase - 1;
             dlog("baxProcess.ChangePhase to baxcount[20]. blockNum = ${id}, m_baxCount = ${phase}", ("id", getBlockNum())("phase", m_baxCount));
             baxLoop(getRoundInterval());
@@ -413,11 +413,11 @@ namespace ultrainio {
             dlog("##############baxProcess. finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
                  ("block_num", getBlockNum())
                          ("hash", uranus_block->id())
-                         ("head_hash", m_controllerPtr->getPreviousBlockhash()));
+                         ("head_hash", m_schedulerPtr->getPreviousBlockhash()));
 
-            m_controllerPtr->produceBlock(uranus_block);
+            m_schedulerPtr->produceBlock(uranus_block);
 
-            ULTRAIN_ASSERT(uranus_block->id() == m_controllerPtr->getPreviousBlockhash(),
+            ULTRAIN_ASSERT(uranus_block->id() == m_schedulerPtr->getPreviousBlockhash(),
                            chain::chain_exception, "Produced block hash is not expected");
 
             fastBlock(getBlockNum());
@@ -517,9 +517,9 @@ namespace ultrainio {
             }
         });
 
-        m_controllerPtr->moveEchoMsg2AllPhaseMap();
-        m_controllerPtr->resetEcho();
-        m_controllerPtr->clearPreRunStatus();
+        m_schedulerPtr->moveEchoMsg2AllPhaseMap();
+        m_schedulerPtr->resetEcho();
+        m_schedulerPtr->clearPreRunStatus();
         m_phase = kPhaseBAX;
         m_baxCount++;
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBAX, m_baxCount);
@@ -538,27 +538,27 @@ namespace ultrainio {
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
         msg_key.phase += m_baxCount;
-        m_controllerPtr->processCache(msg_key);
+        m_schedulerPtr->processCache(msg_key);
     }
 
     bool UranusNode::handleMessage(const EchoMsg &echo) {
-        return m_controllerPtr->handleMessage(echo);
+        return m_schedulerPtr->handleMessage(echo);
     }
 
     bool UranusNode::handleMessage(const ProposeMsg &propose) {
-        return m_controllerPtr->handleMessage(propose);
+        return m_schedulerPtr->handleMessage(propose);
     }
 
     bool UranusNode::handleMessage(const std::string &peer_addr, const ReqSyncMsg &msg) {
-        return m_controllerPtr->handleMessage(peer_addr, msg);
+        return m_schedulerPtr->handleMessage(peer_addr, msg);
     }
 
     bool UranusNode::handleMessage(const string &peer_addr, const ReqLastBlockNumMsg &msg) {
-        return m_controllerPtr->handleMessage(peer_addr, msg);
+        return m_schedulerPtr->handleMessage(peer_addr, msg);
     }
 
     uint32_t UranusNode::getLastBlocknum() {
-        return m_controllerPtr->getLastBlocknum();
+        return m_schedulerPtr->getLastBlocknum();
     }
 
     bool UranusNode::handleMessage(const Block &msg, bool last_block) {
@@ -567,7 +567,7 @@ namespace ultrainio {
             return true;
         }
 
-        bool result = m_controllerPtr->handleMessage(msg);
+        bool result = m_schedulerPtr->handleMessage(msg);
         if (!result) {
             m_ready = true;
             m_syncing = false;
@@ -599,7 +599,7 @@ namespace ultrainio {
     }
 
     bool UranusNode::handleMessage(const string &peer_addr, const SyncStopMsg& msg) {
-        return m_controllerPtr->handleMessage(peer_addr, msg);
+        return m_schedulerPtr->handleMessage(peer_addr, msg);
     }
 
     bool UranusNode::syncFail(const ultrainio::ReqSyncMsg& sync_msg) {
@@ -631,12 +631,10 @@ namespace ultrainio {
     }
 
     void UranusNode::sendMessage(const EchoMsg &echo) {
-        //echo.timestamp = getRoundCount();
         app().get_plugin<net_plugin>().broadcast(echo);
     }
 
     void UranusNode::sendMessage(const ProposeMsg &propose) {
-        //propose.timestamp = getRoundCount();
         app().get_plugin<net_plugin>().broadcast(propose);
     }
 
@@ -661,10 +659,10 @@ namespace ultrainio {
         msg_key.blockNum = getBlockNum();
         msg_key.phase = kPhaseBA0;
 
-        if ((m_controllerPtr->findProposeCache(msg_key))
-            && (m_controllerPtr->findEchoCache(msg_key))) {
+        if ((m_schedulerPtr->findProposeCache(msg_key))
+            && (m_schedulerPtr->findEchoCache(msg_key))) {
             msg_key.phase = kPhaseBA1;
-            if (m_controllerPtr->findEchoCache(msg_key)) {
+            if (m_schedulerPtr->findEchoCache(msg_key)) {
                 return true;
             }
         }
@@ -694,7 +692,7 @@ namespace ultrainio {
                      ("isVoter", MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)));
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
-        m_controllerPtr->processCache(msg_key);
+        m_schedulerPtr->processCache(msg_key);
 
         if (voteFlag) {
             vote(getBlockNum(), kPhaseBA0, 0);
@@ -716,38 +714,38 @@ namespace ultrainio {
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
         msg_key.phase += m_baxCount;
-        m_controllerPtr->fastProcessCache(msg_key);
+        m_schedulerPtr->fastProcessCache(msg_key);
     }
 
     void UranusNode::fastBa1() {
         msgkey msg_key;
         signed_block_ptr uranus_block = std::make_shared<chain::signed_block>();
 
-        Block ba0Block = m_controllerPtr->produceTentativeBlock();
-        m_controllerPtr->setBa0Block(ba0Block);
+        Block ba0Block = m_schedulerPtr->produceTentativeBlock();
+        m_schedulerPtr->setBa0Block(ba0Block);
 
         m_phase = kPhaseBA1;
         m_baxCount = 0;
-        m_controllerPtr->resetEcho();
+        m_schedulerPtr->resetEcho();
 
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
         msg_key.phase += m_baxCount;
-        m_controllerPtr->fastProcessCache(msg_key);
+        m_schedulerPtr->fastProcessCache(msg_key);
 
         dlog("fastBa1 begin. blockNum = ${id}", ("id", getBlockNum()));
 
-        Block baxBlock = m_controllerPtr->produceTentativeBlock();
+        Block baxBlock = m_schedulerPtr->produceTentativeBlock();
         if (!isBlank(baxBlock.id())) {
             msg_key.blockNum = getBlockNum() + 1;
             msg_key.phase = kPhaseBA0;
 
-            if (m_controllerPtr->findEchoCache(msg_key)) {
+            if (m_schedulerPtr->findEchoCache(msg_key)) {
                 *uranus_block = baxBlock;
 
                 dlog("##############fastBa1.finish blockNum = ${id}, hash = ${hash}",
                      ("id", getBlockNum())("hash", uranus_block->id()));
-                m_controllerPtr->produceBlock(uranus_block);
+                m_schedulerPtr->produceBlock(uranus_block);
 
                 fastBlock(msg_key.blockNum);
             } else {
@@ -762,7 +760,7 @@ namespace ultrainio {
         } else {
             msg_key.blockNum = getBlockNum();
             msg_key.phase = kPhaseBAX + 1;
-            if (m_controllerPtr->findEchoCache(msg_key)) {
+            if (m_schedulerPtr->findEchoCache(msg_key)) {
                 fastBax();
             } else {
                 if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
@@ -783,11 +781,11 @@ namespace ultrainio {
         m_phase = kPhaseBAX;
         m_baxCount++;
 
-        m_controllerPtr->resetEcho();
+        m_schedulerPtr->resetEcho();
 
         //fast into baxcount 20
         if ((m_baxCount < (Config::kMaxBaxCount - m_phase))
-            && (m_controllerPtr->isChangePhase())) {
+            && (m_schedulerPtr->isChangePhase())) {
             m_baxCount = Config::kMaxBaxCount - m_phase;
             dlog("fastBax.ChangePhase to baxcount[20]. blockNum = ${id}, m_baxCount = ${phase}", ("id", getBlockNum())("phase", m_baxCount));
         }
@@ -795,8 +793,8 @@ namespace ultrainio {
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
         msg_key.phase += m_baxCount;
-        m_controllerPtr->fastProcessCache(msg_key);
-        Block baxBlock = m_controllerPtr->produceTentativeBlock();
+        m_schedulerPtr->fastProcessCache(msg_key);
+        Block baxBlock = m_schedulerPtr->produceTentativeBlock();
 
         dlog("fastBax begin. blockNum = ${id}, phase = ${phase}", ("id", getBlockNum())("phase", msg_key.phase));
 
@@ -804,10 +802,10 @@ namespace ultrainio {
             msg_key.blockNum = getBlockNum() + 1;
             msg_key.phase = kPhaseBA0;
 
-            if (m_controllerPtr->findEchoCache(msg_key)) {
+            if (m_schedulerPtr->findEchoCache(msg_key)) {
                 *uranus_block = baxBlock;
 
-                m_controllerPtr->produceBlock(uranus_block);
+                m_schedulerPtr->produceBlock(uranus_block);
                 dlog("##############finish blockNum = ${id}, hash = ${hash}",
                      ("id", getBlockNum())("hash", uranus_block->id()));
 
@@ -819,7 +817,7 @@ namespace ultrainio {
         } else {
             msg_key.blockNum = getBlockNum();
             msg_key.phase = m_phase + m_baxCount + 1;
-            if (m_controllerPtr->findEchoCache(msg_key)) {
+            if (m_schedulerPtr->findEchoCache(msg_key)) {
                 fastBax();
             } else {
                 //todo addjust
@@ -835,11 +833,11 @@ namespace ultrainio {
 
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
         reset();
-        m_controllerPtr->resetTimestamp();
+        m_schedulerPtr->resetTimestamp();
 
         msg_key.blockNum = getBlockNum();
         msg_key.phase = kPhaseBA0;
-        if (m_controllerPtr->findEchoCache(msg_key)) {
+        if (m_schedulerPtr->findEchoCache(msg_key)) {
             fastBa0();
         } else {
             run();
@@ -848,7 +846,7 @@ namespace ultrainio {
 
         msg_key.phase = kPhaseBA1;
 
-        if (m_controllerPtr->findEchoCache(msg_key)) {
+        if (m_schedulerPtr->findEchoCache(msg_key)) {
             fastBa1();
         } else {
             if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
@@ -863,9 +861,9 @@ namespace ultrainio {
 
     bool UranusNode::isProcessNow() {
         dlog("isProcessNow. current timestamp = ${id1}, fast timestamp = ${id2}",
-             ("id1", getRoundCount())("id2",m_controllerPtr->getFastTimestamp()));
+             ("id1", getRoundCount())("id2",m_schedulerPtr->getFastTimestamp()));
 
-        if ((m_controllerPtr->getFastTimestamp() < getRoundCount()) && (m_controllerPtr->getFastTimestamp() != 0)) {
+        if ((m_schedulerPtr->getFastTimestamp() < getRoundCount()) && (m_schedulerPtr->getFastTimestamp() != 0)) {
             return true;
         }
 
@@ -895,26 +893,26 @@ namespace ultrainio {
     }
 
     BlockIdType UranusNode::getPreviousHash() {
-        return m_controllerPtr->getPreviousBlockhash();
+        return m_schedulerPtr->getPreviousBlockhash();
     }
 
-    const std::shared_ptr<Scheduler> UranusNode::getController() const {
-        return std::shared_ptr<Scheduler> (m_controllerPtr);
+    const std::shared_ptr<Scheduler> UranusNode::getScheduler() const {
+        return std::shared_ptr<Scheduler> (m_schedulerPtr);
     }
 
     bool UranusNode::isBlank(const BlockIdType& blockId) {
-        return m_controllerPtr->isBlank(blockId);
+        return m_schedulerPtr->isBlank(blockId);
     }
 
     bool UranusNode::isEmpty(const BlockIdType& blockId) {
-        return m_controllerPtr->isEmpty(blockId);
+        return m_schedulerPtr->isEmpty(blockId);
     }
 
     void UranusNode::sendEchoForEmptyBlock() {
-        Block block = m_controllerPtr->emptyBlock();
+        Block block = m_schedulerPtr->emptyBlock();
         dlog("vote empty block. blockNum = ${blockNum} hash = ${hash}", ("blockNum",getBlockNum())("hash", block.id()));
         EchoMsg echoMsg = MsgBuilder::constructMsg(block);
-        m_controllerPtr->insert(echoMsg);
+        m_schedulerPtr->insert(echoMsg);
         //echoMsg.timestamp = getRoundCount();
         sendMessage(echoMsg);
     }

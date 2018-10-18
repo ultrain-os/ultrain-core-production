@@ -116,7 +116,7 @@ namespace ultrainio {
 
         bool isProcessNow();
 
-        const std::shared_ptr<Scheduler> getController() const;
+        const std::shared_ptr<Scheduler> getScheduler() const;
 
         uint32_t getRoundCount();
 
@@ -172,7 +172,7 @@ namespace ultrainio {
         uint32_t m_baxCount;
         boost::asio::deadline_timer m_timer;
         boost::asio::deadline_timer m_preRunTimer;
-        std::shared_ptr<Scheduler> m_controllerPtr;
+        std::shared_ptr<Scheduler> m_schedulerPtr;
         friend class UranusNodeMonitor;
         monitorCallback ba0Callback = nullptr;
         monitorCallback ba1Callback = nullptr;

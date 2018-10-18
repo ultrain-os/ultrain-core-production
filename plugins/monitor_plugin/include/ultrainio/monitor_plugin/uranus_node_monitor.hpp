@@ -88,7 +88,7 @@ namespace ultrainio {
                 tempNodeInfo.globalProducingNodeNumber = pNode->getCommitteeMemberNumber();
                 tempNodeInfo.phase = static_cast<int32_t>(pNode->m_phase);
                 tempNodeInfo.baxCount = pNode->m_baxCount;
-                UranusControllerMonitor controllerMonitor(pNode->getController());
+                UranusControllerMonitor controllerMonitor(pNode->getScheduler());
                 controllerMonitor.getContainersSize(tempNodeInfo.proposeMsgNum, tempNodeInfo.echoMsgnum, tempNodeInfo.proposeMsgCacheSize,
                                                     tempNodeInfo.echoMsgCacheSize, tempNodeInfo.allPhaseEchoMsgNum);
             }

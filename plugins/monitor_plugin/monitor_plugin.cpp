@@ -198,31 +198,31 @@ monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const {
 
      monitor_only::monitor_propose_msg_result monitor_only::monitor_propose_msg( const monitor_only::monitor_propose_msg_params& params) const {
         auto nodePtr = getNodePtr();
-        UranusControllerMonitor controllerMonitor(nodePtr->getController());
+        UranusControllerMonitor controllerMonitor(nodePtr->getScheduler());
         return controllerMonitor.findProposeMsgByBlockId(chain::block_id_type(params.block_id));
      }
 
      monitor_only::monitor_echo_msg_result monitor_only::monitor_echo_msg( const monitor_only::monitor_echo_msg_params& params) const{
         auto nodePtr = getNodePtr();
-        UranusControllerMonitor controllerMonitor(nodePtr->getController());
+        UranusControllerMonitor controllerMonitor(nodePtr->getScheduler());
         return controllerMonitor.findEchoMsgByBlockId(chain::block_id_type(params.block_id));
      }
 
      monitor_only::monitor_propose_cache_result monitor_only::monitor_propose_cache(const monitor_only::monitor_propose_cache_params& params) const{
         auto nodePtr = getNodePtr();
-        UranusControllerMonitor controllerMonitor(nodePtr->getController());
+        UranusControllerMonitor controllerMonitor(nodePtr->getScheduler());
         return {controllerMonitor.findProposeCacheByKey(params)};
      }
 
      monitor_only::monitor_echo_cache_result monitor_only::monitor_echo_cache(const monitor_only::monitor_echo_cache_params& params) const {
         auto nodePtr = getNodePtr();
-        UranusControllerMonitor controllerMonitor(nodePtr->getController());
+        UranusControllerMonitor controllerMonitor(nodePtr->getScheduler());
         return {controllerMonitor.findEchoCacheByKey(params)};
      }
 
      monitor_only::monitor_echo_ap_cache_result monitor_only::monitor_echo_ap_cache(const monitor_only::monitor_echo_ap_cache_params& params) const {
         auto nodePtr = getNodePtr();
-        UranusControllerMonitor controllerMonitor(nodePtr->getController());
+        UranusControllerMonitor controllerMonitor(nodePtr->getScheduler());
         return {controllerMonitor.findEchoApMsgByKey(params)};
      }
 
