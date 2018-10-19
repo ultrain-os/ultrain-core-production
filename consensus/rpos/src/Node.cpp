@@ -23,7 +23,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="63abdb";
+    char version[]="1a9192";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -133,7 +133,7 @@ namespace ultrainio {
                 run();
             } else {
                 m_phase = kPhaseInit;
-                applyBlock();
+                syncBlock();
             }
         }
     }
@@ -176,36 +176,36 @@ namespace ultrainio {
         });
     }
 
-    void UranusNode::applyBlockLoop(uint32_t timeout) {
+    void UranusNode::syncBlockLoop(uint32_t timeout) {
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
         m_currentTimerHandlerNo = THN_SYNC_BLOCK;
         resetTimerCanceled(THN_SYNC_BLOCK);
         m_timer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
-                ilog("apply block timer cancel");
+                ilog("sync block timer cancel");
             } else {
                 if (isTimerCanceled(THN_SYNC_BLOCK)) {
                     ilog("Loop timer has been already canceled.");
                 } else {
-                    this->applyBlock();
+                    this->syncBlock();
                 }
             }
         });
     }
 
-    void UranusNode::applyBlockOnce() {
-        applyBlock(true);
+    void UranusNode::syncBlockOnce() {
+        syncBlock(true);
     }
 
-    void UranusNode::applyBlock() {
-        applyBlock(false);
+    void UranusNode::syncBlock() {
+        syncBlock(false);
     }
 
-    void UranusNode::applyBlock(bool once) {
+    void UranusNode::syncBlock(bool once) {
         ReqSyncMsg msg;
-        dlog("@@@@@@@@@@@ applyBlock syncing:${s}", ("s", m_syncing));
+        dlog("@@@@@@@@@@@ syncBlock syncing:${s}", ("s", m_syncing));
         if (m_syncing) {
-            applyBlockLoop(getRoundInterval());
+            syncBlockLoop(getRoundInterval());
             return;
         }
 
@@ -221,21 +221,21 @@ namespace ultrainio {
 
         msg.endBlockNum = INVALID_BLOCK_NUM;
 
-        dlog("apply block. start id = ${sid}  end id = ${eid}", ("sid", msg.startBlockNum)("eid", msg.endBlockNum));
+        dlog("sync block. start id = ${sid}  end id = ${eid}", ("sid", msg.startBlockNum)("eid", msg.endBlockNum));
         if (!sendMessage(msg)) {
-            elog("@applyBlock send sync request msg failed!!!");
+            elog("@syncBlock send sync request msg failed!!!");
             m_syncing = false;
             m_syncFailed = true;
         }
 
         if (!once) {
-            applyBlockLoop(getRoundInterval());
+            syncBlockLoop(getRoundInterval());
         }
     }
 
     void UranusNode::ba0Process() {
         if (!m_ready) {
-            applyBlock();
+            syncBlock();
             return;
         }
 
@@ -256,8 +256,6 @@ namespace ultrainio {
                  ("hash1", ba0Block.previous)("hash2", m_schedulerPtr->getPreviousBlockhash()));
 
             ULTRAIN_ASSERT(false, chain::chain_exception, "DB error. please reset with cmd --delete-all-blocks.");
-            //m_ready = false;
-            //applyBlock();
             return;
         }
 
@@ -390,10 +388,10 @@ namespace ultrainio {
         signed_block_ptr uranus_block = std::make_shared<chain::signed_block>();
 
         if (m_phase == kPhaseInit) {
-            dlog("baxProcess finish.apply block ok. blockNum = ${id}, m_syncing = ${m_syncing}.",
+            dlog("baxProcess finish. Sync block ok. blockNum = ${id}, m_syncing = ${m_syncing}.",
                  ("id", getBlockNum() - 1)("m_syncing", (uint32_t) m_syncing));
 
-            applyBlock();
+            syncBlock();
             return;
         }
 
@@ -429,11 +427,9 @@ namespace ultrainio {
 
             if (INVALID_BLOCK_NUM != isSyncing()) {
                 dlog("baxProcess. syncing begin. m_baxCount = ${count}.", ("count", m_baxCount));
-                applyBlockOnce();
-                //join();
+                syncBlockOnce();
             }
-            //init();
-            //readyToJoin();
+
             uint32_t blockNum = getBlockNum();
             if (m_baxCount > 0 && m_baxCount % 5 == 0 && blockNum > 2) {
                 uint32_t preBlockNum = blockNum - 1;
@@ -653,7 +649,7 @@ namespace ultrainio {
     }
 
     bool UranusNode::sendMessage(const ReqSyncMsg &msg) {
-        return app().get_plugin<net_plugin>().send_apply(msg);
+        return app().get_plugin<net_plugin>().send_req_sync(msg);
     }
 
     void UranusNode::sendMessage(const std::string &peer_addr, const RspLastBlockNumMsg &msg) {

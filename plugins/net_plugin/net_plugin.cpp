@@ -233,7 +233,7 @@ namespace ultrainio {
 
         void start_broadcast(const net_message& msg);
         void send_block(const string& ip_addr, const net_message& msg);
-        bool send_apply(const ultrainio::ReqSyncMsg& msg);
+        bool send_req_sync(const ultrainio::ReqSyncMsg& msg);
         void send_last_block_num(const string& ip_addr, const net_message& msg);
         void stop_sync_block();
 
@@ -738,25 +738,25 @@ namespace ultrainio {
         }
 
         connection_ptr select_longest_sync_src() {
-          std::vector<connection_ptr> longest_conns;
-          uint32_t block_num = 0;
-          for (auto& con : rsp_conns) {
-            if (con->last_block_info.blockNum > block_num) {
-              longest_conns.clear();
-              longest_conns.emplace_back(con);
-              block_num = con->last_block_info.blockNum;
-            } else if (con->last_block_info.blockNum == block_num) {
-              longest_conns.emplace_back(con);
+            std::vector<connection_ptr> longest_conns;
+            uint32_t block_num = 0;
+            for (auto& con : rsp_conns) {
+                if (con->last_block_info.blockNum > block_num) {
+                    longest_conns.clear();
+                    longest_conns.emplace_back(con);
+                    block_num = con->last_block_info.blockNum;
+                } else if (con->last_block_info.blockNum == block_num) {
+                    longest_conns.emplace_back(con);
+                }
             }
-          }
 
-          if (longest_conns.empty()) {
-            return nullptr;
-	  }
+            if (longest_conns.empty()) {
+                return nullptr;
+            }
 
-          uint32_t r = rand_engine()%longest_conns.size();
-          ilog("select random ${r}th longest connection to sync block. peer:${p}", ("r", r)("p", longest_conns[r]->peer_name()));
-          return longest_conns[r];
+            uint32_t r = rand_engine()%longest_conns.size();
+            ilog("select random ${r}th longest connection to sync block. peer:${p}", ("r", r)("p", longest_conns[r]->peer_name()));
+            return longest_conns[r];
         }
 
         void sync_block(connection_ptr con) {
@@ -778,36 +778,36 @@ namespace ultrainio {
             rsp_conns.clear();
             start_conn_check_timer();
         }
-   };
+    };
 
-   class dispatch_manager {
-   public:
-      uint32_t just_send_it_max = 0;
+    class dispatch_manager {
+    public:
+        uint32_t just_send_it_max = 0;
 
-      vector<transaction_id_type> req_trx;
+        vector<transaction_id_type> req_trx;
 
-      struct block_origin {
-         block_id_type id;
-         connection_ptr origin;
-      };
+        struct block_origin {
+            block_id_type id;
+            connection_ptr origin;
+        };
 
-      vector<block_origin> received_blocks;
-      std::multimap<transaction_id_type, connection_ptr> received_transactions;
+        vector<block_origin> received_blocks;
+        std::multimap<transaction_id_type, connection_ptr> received_transactions;
 
-      void bcast_transaction (const packed_transaction& msg);
-      void rejected_transaction (const transaction_id_type& msg);
+        void bcast_transaction (const packed_transaction& msg);
+        void rejected_transaction (const transaction_id_type& msg);
 
-      void recv_block (connection_ptr conn, const block_id_type& msg, uint32_t bnum);
-      void recv_transaction(connection_ptr conn, const transaction_id_type& id);
-      void recv_notice (connection_ptr conn, const notice_message& msg, bool generated);
+        void recv_block (connection_ptr conn, const block_id_type& msg, uint32_t bnum);
+        void recv_transaction(connection_ptr conn, const transaction_id_type& id);
+        void recv_notice (connection_ptr conn, const notice_message& msg, bool generated);
 
-      void retry_fetch (connection_ptr conn);
-   };
+        void retry_fetch (connection_ptr conn);
+    };
 
-   //---------------------------------------------------------------------------
+    //---------------------------------------------------------------------------
 
-   connection::connection( string endpoint )
-      : blk_state(),
+    connection::connection( string endpoint )
+        : blk_state(),
         trx_state(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
         node_id(),
@@ -824,13 +824,13 @@ namespace ultrainio {
         fork_head_num(0),
         last_req(),
         last_block_info()
-   {
-      wlog( "created connection to ${n}", ("n", endpoint) );
-      initialize();
-   }
+    {
+        wlog( "created connection to ${n}", ("n", endpoint) );
+        initialize();
+    }
 
-   connection::connection( socket_ptr s )
-      : blk_state(),
+    connection::connection( socket_ptr s )
+        : blk_state(),
         trx_state(),
         socket( s ),
         node_id(),
@@ -847,626 +847,624 @@ namespace ultrainio {
         fork_head_num(0),
         last_req(),
         last_block_info()
-   {
-      wlog( "accepted network connection" );
-      initialize();
-   }
+    {
+        wlog( "accepted network connection" );
+        initialize();
+    }
 
-   connection::~connection() {}
+    connection::~connection() {}
 
-   void connection::initialize() {
-      auto *rnd = node_id.data();
-      rnd[0] = 0;
-      response_expected.reset(new boost::asio::steady_timer(app().get_io_service()));
-   }
+    void connection::initialize() {
+        auto *rnd = node_id.data();
+        rnd[0] = 0;
+        response_expected.reset(new boost::asio::steady_timer(app().get_io_service()));
+    }
 
-   bool connection::connected() {
-      return (socket && socket->is_open() && !connecting);
-   }
+    bool connection::connected() {
+        return (socket && socket->is_open() && !connecting);
+    }
 
-   bool connection::current() {
-      return connected();
-   }
+    bool connection::current() {
+        return connected();
+    }
 
-   void connection::reset() {
-      blk_state.clear();
-      trx_state.clear();
-   }
+    void connection::reset() {
+        blk_state.clear();
+        trx_state.clear();
+     }
 
-   void connection::flush_queues() {
-      write_queue.clear();
-      out_queue.clear();
-   }
+    void connection::flush_queues() {
+        write_queue.clear();
+        out_queue.clear();
+    }
 
-   void connection::close() {
-      if(socket) {
-         socket->close();
-      }
-      else {
-         wlog("no socket to close!");
-      }
-      flush_queues();
-      connecting = false;
-      if( last_req ) {
-         my_impl->dispatcher->retry_fetch (shared_from_this());
-      }
-      reset();
-      sent_handshake_count = 0;
-      last_handshake_recv = handshake_message();
-      last_handshake_sent = handshake_message();
-      fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
-      cancel_wait();
-      pending_message_buffer.reset();
-   }
+    void connection::close() {
+        if(socket) {
+            socket->close();
+        }
+        else {
+            wlog("no socket to close!");
+        }
+        flush_queues();
+        connecting = false;
+        if( last_req ) {
+            my_impl->dispatcher->retry_fetch (shared_from_this());
+        }
+        reset();
+        sent_handshake_count = 0;
+        last_handshake_recv = handshake_message();
+        last_handshake_sent = handshake_message();
+        fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
+        cancel_wait();
+        pending_message_buffer.reset();
+    }
 
-   void connection::txn_send_pending(const vector<transaction_id_type> &ids) {
-      for(auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ){
-         if(tx->serialized_txn.size() && tx->block_num == 0) {
-            bool found = false;
-            for(auto known : ids) {
-               if( known == tx->id) {
-                  found = true;
-                  break;
-               }
+    void connection::txn_send_pending(const vector<transaction_id_type> &ids) {
+        for(auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ){
+            if(tx->serialized_txn.size() && tx->block_num == 0) {
+                bool found = false;
+                for(auto known : ids) {
+                    if( known == tx->id) {
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found) {
+                    my_impl->local_txns.modify(tx,incr_in_flight);
+                    queue_write(std::make_shared<vector<char>>(tx->serialized_txn),
+                                true,
+                                [tx_id=tx->id](boost::system::error_code ec, std::size_t ) {
+                                    auto& local_txns = my_impl->local_txns;
+                                    auto tx = local_txns.get<by_id>().find(tx_id);
+                                    if (tx != local_txns.end()) {
+                                        local_txns.modify(tx, decr_in_flight);
+                                    } else {
+                                        fc_wlog(logger, "Local pending TX erased before queued_write called callback");
+                                    }
+                                });
+                }
             }
-            if(!found) {
-               my_impl->local_txns.modify(tx,incr_in_flight);
-               queue_write(std::make_shared<vector<char>>(tx->serialized_txn),
-                           true,
-                           [tx_id=tx->id](boost::system::error_code ec, std::size_t ) {
-                              auto& local_txns = my_impl->local_txns;
-                              auto tx = local_txns.get<by_id>().find(tx_id);
-                              if (tx != local_txns.end()) {
-                                 local_txns.modify(tx, decr_in_flight);
-                              } else {
-                                 fc_wlog(logger, "Local pending TX erased before queued_write called callback");
-                              }
-                           });
+        }
+    }
+
+    void connection::txn_send(const vector<transaction_id_type> &ids) {
+        for(auto t : ids) {
+            auto tx = my_impl->local_txns.get<by_id>().find(t);
+            if( tx != my_impl->local_txns.end() && tx->serialized_txn.size()) {
+                my_impl->local_txns.modify( tx,incr_in_flight);
+                queue_write(std::make_shared<vector<char>>(tx->serialized_txn),
+                            true,
+                            [t](boost::system::error_code ec, std::size_t ) {
+                                auto& local_txns = my_impl->local_txns;
+                                auto tx = local_txns.get<by_id>().find(t);
+                                if (tx != local_txns.end()) {
+                                    local_txns.modify(tx, decr_in_flight);
+                                } else {
+                                    fc_wlog(logger, "Local TX erased before queued_write called callback");
+                                }
+                            });
             }
-         }
-      }
-   }
+        }
+    }
 
-   void connection::txn_send(const vector<transaction_id_type> &ids) {
-      for(auto t : ids) {
-         auto tx = my_impl->local_txns.get<by_id>().find(t);
-         if( tx != my_impl->local_txns.end() && tx->serialized_txn.size()) {
-            my_impl->local_txns.modify( tx,incr_in_flight);
-            queue_write(std::make_shared<vector<char>>(tx->serialized_txn),
-                        true,
-                        [t](boost::system::error_code ec, std::size_t ) {
-                           auto& local_txns = my_impl->local_txns;
-                           auto tx = local_txns.get<by_id>().find(t);
-                           if (tx != local_txns.end()) {
-                              local_txns.modify(tx, decr_in_flight);
-                           } else {
-                              fc_wlog(logger, "Local TX erased before queued_write called callback");
-                           }
-                        });
-         }
-      }
-   }
+    void connection::send_handshake( ) {
+        ilog("send_handshake to peer : ${peer}", ("peer", this->peer_name()));
+        handshake_initializer::populate(last_handshake_sent);
+        last_handshake_sent.generation = ++sent_handshake_count;
+        fc_dlog(logger, "Sending handshake generation ${g} to ${ep}",
+                ("g",last_handshake_sent.generation)("ep", peer_name()));
+        enqueue(last_handshake_sent);
+    }
 
-   void connection::send_handshake( ) {
-      ilog("send_handshake to peer : ${peer}", ("peer", this->peer_name()));
-      handshake_initializer::populate(last_handshake_sent);
-      last_handshake_sent.generation = ++sent_handshake_count;
-      fc_dlog(logger, "Sending handshake generation ${g} to ${ep}",
-              ("g",last_handshake_sent.generation)("ep", peer_name()));
-      enqueue(last_handshake_sent);
-   }
+    char* connection::convert_tstamp(const tstamp& t) {
+        const long long NsecPerSec{1000000000};
+        time_t seconds = t / NsecPerSec;
+        strftime(ts, ts_buffer_size, "%F %T", localtime(&seconds));
+        snprintf(ts+19, ts_buffer_size-19, ".%lld", t % NsecPerSec);
+        return ts;
+    }
 
-   char* connection::convert_tstamp(const tstamp& t)
-   {
-      const long long NsecPerSec{1000000000};
-      time_t seconds = t / NsecPerSec;
-      strftime(ts, ts_buffer_size, "%F %T", localtime(&seconds));
-      snprintf(ts+19, ts_buffer_size-19, ".%lld", t % NsecPerSec);
-      return ts;
-   }
+    void connection::send_time() {
+        time_message xpkt;
+        xpkt.org = rec;
+        xpkt.rec = dst;
+        xpkt.xmt = get_time();
+        org = xpkt.xmt;
+        enqueue(xpkt);
+    }
 
-   void connection::send_time() {
-      time_message xpkt;
-      xpkt.org = rec;
-      xpkt.rec = dst;
-      xpkt.xmt = get_time();
-      org = xpkt.xmt;
-      enqueue(xpkt);
-   }
+    void connection::send_time(const time_message& msg) {
+        time_message xpkt;
+        xpkt.org = msg.xmt;
+        xpkt.rec = msg.dst;
+        xpkt.xmt = get_time();
+        enqueue(xpkt);
+    }
 
-   void connection::send_time(const time_message& msg) {
-      time_message xpkt;
-      xpkt.org = msg.xmt;
-      xpkt.rec = msg.dst;
-      xpkt.xmt = get_time();
-      enqueue(xpkt);
-   }
+    void connection::queue_write(std::shared_ptr<vector<char>> buff,
+                                 bool trigger_send,
+                                 std::function<void(boost::system::error_code, std::size_t)> callback) {
+        write_queue.push_back({buff, callback});
+        if(out_queue.empty() && trigger_send)
+            do_queue_write();
+    }
 
-   void connection::queue_write(std::shared_ptr<vector<char>> buff,
-                                bool trigger_send,
-                                std::function<void(boost::system::error_code, std::size_t)> callback) {
-      write_queue.push_back({buff, callback});
-      if(out_queue.empty() && trigger_send)
-         do_queue_write();
-   }
-
-   void connection::do_queue_write() {
-      if(write_queue.empty() || !out_queue.empty())
-         return;
-      connection_wptr c(shared_from_this());
-      if(!socket->is_open()) {
-         fc_elog(logger,"socket not open to ${p}",("p",peer_name()));
-         my_impl->close(c.lock());
-         return;
-      }
-      std::vector<boost::asio::const_buffer> bufs;
-      while (write_queue.size() > 0) {
-         auto& m = write_queue.front();
-         bufs.push_back(boost::asio::buffer(*m.buff));
-         out_queue.push_back(m);
-         write_queue.pop_front();
-      }
-      boost::asio::async_write(*socket, bufs, [c](boost::system::error_code ec, std::size_t w) {
+    void connection::do_queue_write() {
+        if(write_queue.empty() || !out_queue.empty())
+            return;
+        connection_wptr c(shared_from_this());
+        if(!socket->is_open()) {
+            fc_elog(logger,"socket not open to ${p}",("p",peer_name()));
+            my_impl->close(c.lock());
+            return;
+        }
+        std::vector<boost::asio::const_buffer> bufs;
+        while (write_queue.size() > 0) {
+            auto& m = write_queue.front();
+            bufs.push_back(boost::asio::buffer(*m.buff));
+            out_queue.push_back(m);
+            write_queue.pop_front();
+        }
+        boost::asio::async_write(*socket, bufs, [c](boost::system::error_code ec, std::size_t w) {
             try {
-               auto conn = c.lock();
-               if(!conn)
-                  return;
+                auto conn = c.lock();
+                if(!conn)
+                    return;
 
-               for (auto& m: conn->out_queue) {
-                  m.callback(ec, w);
-               }
+                for (auto& m: conn->out_queue) {
+                    m.callback(ec, w);
+                }
 
-               if(ec) {
-                  string pname = conn ? conn->peer_name() : "no connection name";
-                  if( ec.value() != boost::asio::error::eof) {
-                     elog("Error sending to peer ${p}: ${i}", ("p",pname)("i", ec.message()));
-                  }
-                  else {
-                     ilog("connection closure detected on write to ${p}",("p",pname));
-                  }
-                  my_impl->close(conn);
-                  return;
-               }
-               while (conn->out_queue.size() > 0) {
-                  conn->out_queue.pop_front();
-               }
-               conn->do_queue_write();
+                if(ec) {
+                    string pname = conn ? conn->peer_name() : "no connection name";
+                    if( ec.value() != boost::asio::error::eof) {
+                        elog("Error sending to peer ${p}: ${i}", ("p",pname)("i", ec.message()));
+                    }
+                    else {
+                        ilog("connection closure detected on write to ${p}",("p",pname));
+                    }
+                    my_impl->close(conn);
+                    return;
+                }
+                while (conn->out_queue.size() > 0) {
+                    conn->out_queue.pop_front();
+                }
+                conn->do_queue_write();
             }
             catch(const std::exception &ex) {
-               auto conn = c.lock();
-               string pname = conn ? conn->peer_name() : "no connection name";
-               elog("Exception in do_queue_write to ${p} ${s}", ("p",pname)("s",ex.what()));
+                auto conn = c.lock();
+                string pname = conn ? conn->peer_name() : "no connection name";
+                elog("Exception in do_queue_write to ${p} ${s}", ("p",pname)("s",ex.what()));
             }
             catch(const fc::exception &ex) {
-               auto conn = c.lock();
-               string pname = conn ? conn->peer_name() : "no connection name";
-               elog("Exception in do_queue_write to ${p} ${s}", ("p",pname)("s",ex.to_string()));
+                auto conn = c.lock();
+                string pname = conn ? conn->peer_name() : "no connection name";
+                elog("Exception in do_queue_write to ${p} ${s}", ("p",pname)("s",ex.to_string()));
             }
             catch(...) {
-               auto conn = c.lock();
-               string pname = conn ? conn->peer_name() : "no connection name";
-               elog("Exception in do_queue_write to ${p}", ("p",pname) );
+                auto conn = c.lock();
+                string pname = conn ? conn->peer_name() : "no connection name";
+                elog("Exception in do_queue_write to ${p}", ("p",pname) );
             }
-         });
-   }
+        });
+    }
 
-   void connection::enqueue( const net_message &m, bool trigger_send ) {
-      go_away_reason close_after_send = no_reason;
-      if (m.contains<go_away_message>()) {
-         close_after_send = m.get<go_away_message>().reason;
-      }
+    void connection::enqueue( const net_message &m, bool trigger_send ) {
+        go_away_reason close_after_send = no_reason;
+        if (m.contains<go_away_message>()) {
+            close_after_send = m.get<go_away_message>().reason;
+        }
 
-      uint32_t payload_size = fc::raw::pack_size( m );
-      char * header = reinterpret_cast<char*>(&payload_size);
-      size_t header_size = sizeof(payload_size);
+        uint32_t payload_size = fc::raw::pack_size( m );
+        char * header = reinterpret_cast<char*>(&payload_size);
+        size_t header_size = sizeof(payload_size);
 
-      size_t buffer_size = header_size + payload_size;
+        size_t buffer_size = header_size + payload_size;
 
-      auto send_buffer = std::make_shared<vector<char>>(buffer_size);
-      fc::datastream<char*> ds( send_buffer->data(), buffer_size);
-      ds.write( header, header_size );
-      fc::raw::pack( ds, m );
-      connection_wptr weak_this = shared_from_this();
+        auto send_buffer = std::make_shared<vector<char>>(buffer_size);
+        fc::datastream<char*> ds( send_buffer->data(), buffer_size);
+        ds.write( header, header_size );
+        fc::raw::pack( ds, m );
+        connection_wptr weak_this = shared_from_this();
 
-      queue_write(send_buffer,trigger_send,
-                  [weak_this, close_after_send](boost::system::error_code ec, std::size_t ) {
-                     connection_ptr conn = weak_this.lock();
-                     if (conn) {
-                        if (close_after_send != no_reason) {
-                           elog ("sent a go away message: ${r}, closing connection to ${p}",("r", reason_str(close_after_send))("p", conn->peer_name()));
-                           my_impl->close(conn);
-                           return;
+        queue_write(send_buffer,trigger_send,
+                    [weak_this, close_after_send](boost::system::error_code ec, std::size_t ) {
+                        connection_ptr conn = weak_this.lock();
+                        if (conn) {
+                            if (close_after_send != no_reason) {
+                                elog ("sent a go away message: ${r}, closing connection to ${p}",("r", reason_str(close_after_send))("p", conn->peer_name()));
+                                my_impl->close(conn);
+                                return;
+                            }
+                        } else {
+                            fc_wlog(logger, "connection expired before enqueued net_message called callback!");
                         }
-                     } else {
-                        fc_wlog(logger, "connection expired before enqueued net_message called callback!");
-                     }
-                  });
-   }
+                    });
+    }
 
-   void connection::cancel_wait() {
-      if (response_expected)
-         response_expected->cancel();
-   }
+    void connection::cancel_wait() {
+        if (response_expected)
+            response_expected->cancel();
+    }
 
-   void connection::fetch_wait( ) {
-      response_expected->expires_from_now( my_impl->resp_expected_period);
-      connection_wptr c(shared_from_this());
-      response_expected->async_wait( [c]( boost::system::error_code ec){
+    void connection::fetch_wait( ) {
+        response_expected->expires_from_now( my_impl->resp_expected_period);
+        connection_wptr c(shared_from_this());
+        response_expected->async_wait( [c]( boost::system::error_code ec){
             connection_ptr conn = c.lock();
             if (!conn) {
-               // connection was destroyed before this lambda was delivered
-               return;
+                // connection was destroyed before this lambda was delivered
+                return;
             }
 
             conn->fetch_timeout(ec);
-         } );
-   }
+        } );
+    }
 
-   const string connection::peer_name() {
-      if( !last_handshake_recv.p2p_address.empty() ) {
-         return last_handshake_recv.p2p_address;
-      }
-      if( !peer_addr.empty() ) {
-         return peer_addr;
-      }
-      return "connecting client";
-   }
+    const string connection::peer_name() {
+        if( !last_handshake_recv.p2p_address.empty() ) {
+            return last_handshake_recv.p2p_address;
+        }
+        if( !peer_addr.empty() ) {
+            return peer_addr;
+        }
+        return "connecting client";
+    }
 
-   void connection::fetch_timeout( boost::system::error_code ec ) {
-      if( !ec ) {
-         if( pending_fetch.valid() && !( pending_fetch->req_trx.empty( ) || pending_fetch->req_blocks.empty( ) ) ) {
-            my_impl->dispatcher->retry_fetch (shared_from_this() );
-         }
-      }
-      else if( ec == boost::asio::error::operation_aborted ) {
-         if( !connected( ) ) {
-            fc_dlog(logger, "fetch timeout was cancelled due to dead connection");
-         }
-      }
-      else {
-         elog( "setting timer for fetch request got error ${ec}", ("ec", ec.message( ) ) );
-      }
-   }
+    void connection::fetch_timeout( boost::system::error_code ec ) {
+        if( !ec ) {
+            if( pending_fetch.valid() && !( pending_fetch->req_trx.empty( ) || pending_fetch->req_blocks.empty( ) ) ) {
+                my_impl->dispatcher->retry_fetch (shared_from_this() );
+            }
+        }
+        else if( ec == boost::asio::error::operation_aborted ) {
+            if( !connected( ) ) {
+                fc_dlog(logger, "fetch timeout was cancelled due to dead connection");
+            }
+        }
+        else {
+            elog( "setting timer for fetch request got error ${ec}", ("ec", ec.message( ) ) );
+        }
+    }
 
-   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
-      try {
-         // If it is a SyncBlockMsg, then save the raw message for the cache
-         // This must be done before we unpack the message.
-         // This code is copied from fc::io::unpack(..., unsigned_int)
-         auto index = pending_message_buffer.read_index();
-         uint64_t which = 0; char b = 0; uint8_t by = 0;
-         do {
-            pending_message_buffer.peek(&b, 1, index);
-            which |= uint32_t(uint8_t(b) & 0x7f) << by;
-            by += 7;
-         } while( uint8_t(b) & 0x80 && by < 32);
-
-         if (which == uint64_t(net_message::tag<SyncBlockMsg>::value)) {
-            blk_buffer.resize(message_length);
+    bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
+        try {
+            // If it is a SyncBlockMsg, then save the raw message for the cache
+            // This must be done before we unpack the message.
+            // This code is copied from fc::io::unpack(..., unsigned_int)
             auto index = pending_message_buffer.read_index();
-            pending_message_buffer.peek(blk_buffer.data(), message_length, index);
-         }
-         auto ds = pending_message_buffer.create_datastream();
-         net_message msg;
-         fc::raw::unpack(ds, msg);
-         msgHandler m(impl, shared_from_this() );
-         msg.visit(m);
-      } catch(  const fc::exception& e ) {
-         edump((e.to_detail_string() ));
-         impl.close( shared_from_this() );
-         return false;
-      }
-      return true;
-   }
+            uint64_t which = 0; char b = 0; uint8_t by = 0;
+            do {
+                pending_message_buffer.peek(&b, 1, index);
+                which |= uint32_t(uint8_t(b) & 0x7f) << by;
+                by += 7;
+            } while( uint8_t(b) & 0x80 && by < 32);
 
-   bool connection::add_peer_block(const peer_block_state &entry) {
-      auto bptr = blk_state.get<by_id>().find(entry.id);
-      bool added = (bptr == blk_state.end());
-      if (added){
-         blk_state.insert(entry);
-      }
-      else {
-         blk_state.modify(bptr,set_is_known);
-         if (entry.block_num == 0) {
-            blk_state.modify(bptr,update_block_num(entry.block_num));
-         }
-         else {
-            blk_state.modify(bptr,set_request_time);
-         }
-      }
-      return added;
-   }
+            if (which == uint64_t(net_message::tag<SyncBlockMsg>::value)) {
+                blk_buffer.resize(message_length);
+                auto index = pending_message_buffer.read_index();
+                pending_message_buffer.peek(blk_buffer.data(), message_length, index);
+            }
+            auto ds = pending_message_buffer.create_datastream();
+            net_message msg;
+            fc::raw::unpack(ds, msg);
+            msgHandler m(impl, shared_from_this() );
+            msg.visit(m);
+        } catch(  const fc::exception& e ) {
+            edump((e.to_detail_string() ));
+            impl.close( shared_from_this() );
+            return false;
+        }
+        return true;
+    }
 
-   //------------------------------------------------------------------------
+    bool connection::add_peer_block(const peer_block_state &entry) {
+        auto bptr = blk_state.get<by_id>().find(entry.id);
+        bool added = (bptr == blk_state.end());
+        if (added){
+            blk_state.insert(entry);
+        }
+        else {
+            blk_state.modify(bptr,set_is_known);
+            if (entry.block_num == 0) {
+                blk_state.modify(bptr,update_block_num(entry.block_num));
+            }
+            else {
+                blk_state.modify(bptr,set_request_time);
+            }
+        }
+        return added;
+    }
 
-   void dispatch_manager::recv_block (connection_ptr c, const block_id_type& id, uint32_t bnum) {
-      received_blocks.emplace_back((block_origin){id, c});
-      if (c &&
-          c->last_req &&
-          c->last_req->req_blocks.mode != none &&
-          !c->last_req->req_blocks.ids.empty() &&
-          c->last_req->req_blocks.ids.back() == id) {
-         c->last_req.reset();
-      }
-      c->add_peer_block({id, bnum, false,true,time_point()});
+    //------------------------------------------------------------------------
 
-      fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
-      c->cancel_wait();
-   }
+    void dispatch_manager::recv_block (connection_ptr c, const block_id_type& id, uint32_t bnum) {
+        received_blocks.emplace_back((block_origin){id, c});
+        if (c &&
+            c->last_req &&
+            c->last_req->req_blocks.mode != none &&
+            !c->last_req->req_blocks.ids.empty() &&
+            c->last_req->req_blocks.ids.back() == id) {
+            c->last_req.reset();
+        }
+        c->add_peer_block({id, bnum, false,true,time_point()});
 
-   void dispatch_manager::bcast_transaction (const packed_transaction& trx) {
-      std::set<connection_ptr> skips;
-      transaction_id_type id = trx.id();
+        fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
+        c->cancel_wait();
+    }
 
-      auto range = received_transactions.equal_range(id);
-      for (auto org = range.first; org != range.second; ++org) {
-         skips.insert(org->second);
-      }
-      received_transactions.erase(range.first, range.second);
+    void dispatch_manager::bcast_transaction (const packed_transaction& trx) {
+        std::set<connection_ptr> skips;
+        transaction_id_type id = trx.id();
 
-      for (auto ref = req_trx.begin(); ref != req_trx.end(); ++ref) {
-         if (*ref == id) {
-            req_trx.erase(ref);
-            break;
-         }
-      }
+        auto range = received_transactions.equal_range(id);
+        for (auto org = range.first; org != range.second; ++org) {
+           skips.insert(org->second);
+        }
+        received_transactions.erase(range.first, range.second);
 
-      if( my_impl->local_txns.get<by_id>().find( id ) != my_impl->local_txns.end( ) ) { //found
-         fc_dlog(logger, "found trxid in local_trxs" );
-         return;
-      }
-      uint32_t packsiz = 0;
-      uint32_t bufsiz = 0;
+        for (auto ref = req_trx.begin(); ref != req_trx.end(); ++ref) {
+            if (*ref == id) {
+                req_trx.erase(ref);
+                break;
+            }
+        }
 
-      time_point_sec trx_expiration = trx.expiration();
+        if( my_impl->local_txns.get<by_id>().find( id ) != my_impl->local_txns.end( ) ) { //found
+            fc_dlog(logger, "found trxid in local_trxs" );
+            return;
+        }
+        uint32_t packsiz = 0;
+        uint32_t bufsiz = 0;
 
-      net_message msg(trx);
-      packsiz = fc::raw::pack_size(msg);
-      bufsiz = packsiz + sizeof(packsiz);
-      vector<char> buff(bufsiz);
-      fc::datastream<char*> ds( buff.data(), bufsiz);
-      ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
-      fc::raw::pack( ds, msg );
-      node_transaction_state nts = {id,
+        time_point_sec trx_expiration = trx.expiration();
+
+        net_message msg(trx);
+        packsiz = fc::raw::pack_size(msg);
+        bufsiz = packsiz + sizeof(packsiz);
+        vector<char> buff(bufsiz);
+        fc::datastream<char*> ds( buff.data(), bufsiz);
+        ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
+        fc::raw::pack( ds, msg );
+        node_transaction_state nts = {id,
                                     trx_expiration,
                                     trx,
                                     std::move(buff),
                                     0, 0, 0};
-      my_impl->local_txns.insert(std::move(nts));
+        my_impl->local_txns.insert(std::move(nts));
 
-      if( !large_msg_notify || bufsiz <= just_send_it_max) {
-         my_impl->send_all( trx, [id, &skips, trx_expiration](connection_ptr c) -> bool {
-               if( skips.find(c) != skips.end() ) {
-                  return false;
-               }
-               const auto& bs = c->trx_state.find(id);
-               bool unknown = bs == c->trx_state.end();
-               if( unknown) {
-                  c->trx_state.insert(transaction_state({id,true,true,0,trx_expiration,time_point() }));
-                  fc_dlog(logger, "sending whole trx to ${n}", ("n",c->peer_name() ) );
-               } else {
-                  update_txn_expiry ute(trx_expiration);
-                  c->trx_state.modify(bs, ute);
-               }
-               return unknown;
+        if( !large_msg_notify || bufsiz <= just_send_it_max) {
+            my_impl->send_all( trx, [id, &skips, trx_expiration](connection_ptr c) -> bool {
+                if( skips.find(c) != skips.end() ) {
+                    return false;
+                }
+                const auto& bs = c->trx_state.find(id);
+                bool unknown = bs == c->trx_state.end();
+                if( unknown) {
+                    c->trx_state.insert(transaction_state({id,true,true,0,trx_expiration,time_point() }));
+                    fc_dlog(logger, "sending whole trx to ${n}", ("n",c->peer_name() ) );
+                } else {
+                    update_txn_expiry ute(trx_expiration);
+                    c->trx_state.modify(bs, ute);
+                }
+                return unknown;
             });
-      }
-      else {
-         notice_message pending_notify;
-         pending_notify.known_trx.mode = normal;
-         pending_notify.known_trx.ids.push_back( id );
-         pending_notify.known_blocks.mode = none;
-         my_impl->send_all(pending_notify, [id, &skips, trx_expiration](connection_ptr c) -> bool {
-               if (skips.find(c) != skips.end() ) {
-                  return false;
-               }
-               const auto& bs = c->trx_state.find(id);
-               bool unknown = bs == c->trx_state.end();
-               if( unknown) {
-                  fc_dlog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
-                  c->trx_state.insert(transaction_state({id,false,true,0,trx_expiration,time_point() }));
-               } else {
-                  update_txn_expiry ute(trx_expiration);
-                  c->trx_state.modify(bs, ute);
-               }
-               return unknown;
+        }
+        else {
+            notice_message pending_notify;
+            pending_notify.known_trx.mode = normal;
+            pending_notify.known_trx.ids.push_back( id );
+            pending_notify.known_blocks.mode = none;
+            my_impl->send_all(pending_notify, [id, &skips, trx_expiration](connection_ptr c) -> bool {
+                if (skips.find(c) != skips.end() ) {
+                    return false;
+                }
+                const auto& bs = c->trx_state.find(id);
+                bool unknown = bs == c->trx_state.end();
+                if( unknown) {
+                    fc_dlog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
+                    c->trx_state.insert(transaction_state({id,false,true,0,trx_expiration,time_point() }));
+                } else {
+                    update_txn_expiry ute(trx_expiration);
+                    c->trx_state.modify(bs, ute);
+                }
+                return unknown;
             });
-      }
+        }
+    }
 
-   }
+    void dispatch_manager::recv_transaction (connection_ptr c, const transaction_id_type& id) {
+        received_transactions.insert(std::make_pair(id, c));
+        if (c &&
+            c->last_req &&
+            c->last_req->req_trx.mode != none &&
+            !c->last_req->req_trx.ids.empty() &&
+            c->last_req->req_trx.ids.back() == id) {
+            c->last_req.reset();
+        }
 
-   void dispatch_manager::recv_transaction (connection_ptr c, const transaction_id_type& id) {
-      received_transactions.insert(std::make_pair(id, c));
-      if (c &&
-          c->last_req &&
-          c->last_req->req_trx.mode != none &&
-          !c->last_req->req_trx.ids.empty() &&
-          c->last_req->req_trx.ids.back() == id) {
-         c->last_req.reset();
-      }
+        fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
+        c->cancel_wait();
+    }
 
-      fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
-      c->cancel_wait();
-   }
+    void dispatch_manager::rejected_transaction (const transaction_id_type& id) {
+        fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
+        auto range = received_transactions.equal_range(id);
+        received_transactions.erase(range.first, range.second);
+    }
 
-   void dispatch_manager::rejected_transaction (const transaction_id_type& id) {
-      fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
-      auto range = received_transactions.equal_range(id);
-      received_transactions.erase(range.first, range.second);
-   }
+    void dispatch_manager::recv_notice (connection_ptr c, const notice_message& msg, bool generated) {
+        request_message req;
+        req.req_trx.mode = none;
+        req.req_blocks.mode = none;
+        bool send_req = false;
+        controller &cc = my_impl->chain_plug->chain();
+        if (msg.known_trx.mode == normal) {
+            req.req_trx.mode = normal;
+            req.req_trx.pending = 0;
+            for( const auto& t : msg.known_trx.ids ) {
+                const auto &tx = my_impl->local_txns.get<by_id>( ).find( t );
 
-   void dispatch_manager::recv_notice (connection_ptr c, const notice_message& msg, bool generated) {
-      request_message req;
-      req.req_trx.mode = none;
-      req.req_blocks.mode = none;
-      bool send_req = false;
-      controller &cc = my_impl->chain_plug->chain();
-      if (msg.known_trx.mode == normal) {
-         req.req_trx.mode = normal;
-         req.req_trx.pending = 0;
-         for( const auto& t : msg.known_trx.ids ) {
-            const auto &tx = my_impl->local_txns.get<by_id>( ).find( t );
+                if( tx == my_impl->local_txns.end( ) ) {
+                    fc_dlog(logger,"did not find ${id}",("id",t));
 
-            if( tx == my_impl->local_txns.end( ) ) {
-               fc_dlog(logger,"did not find ${id}",("id",t));
-
-               //At this point the details of the txn are not known, just its id. This
-               //effectively gives 120 seconds to learn of the details of the txn which
-               //will update the expiry in bcast_transaction
-               c->trx_state.insert( (transaction_state){t,true,true,0,time_point_sec(time_point::now()) + 120,
+                    //At this point the details of the txn are not known, just its id. This
+                    //effectively gives 120 seconds to learn of the details of the txn which
+                    //will update the expiry in bcast_transaction
+                    c->trx_state.insert( (transaction_state){t,true,true,0,time_point_sec(time_point::now()) + 120,
                         time_point()} );
 
-               req.req_trx.ids.push_back( t );
-               req_trx.push_back( t );
+                    req.req_trx.ids.push_back( t );
+                    req_trx.push_back( t );
+                }
+                else {
+                    fc_dlog(logger,"big msg manager found txn id in table, ${id}",("id", t));
+                }
+            }
+            send_req = !req.req_trx.ids.empty();
+            fc_dlog(logger,"big msg manager send_req ids list has ${ids} entries", ("ids", req.req_trx.ids.size()));
+        }
+        else if (msg.known_trx.mode != none) {
+            elog ("passed a notice_message with something other than a normal on none known_trx");
+            return;
+        }
+        if (msg.known_blocks.mode == normal) {
+            req.req_blocks.mode = normal;
+            for( const auto& blkid : msg.known_blocks.ids) {
+                signed_block_ptr b;
+                peer_block_state entry = {blkid,0,true,true,fc::time_point()};
+                try {
+                    b = cc.fetch_block_by_id(blkid);
+                    if(b)
+                        entry.block_num = b->block_num();
+                } catch (const assert_exception &ex) {
+                    ilog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
+                    // keep going, client can ask another peer
+                } catch (...) {
+                    elog( "failed to retrieve block for id");
+                }
+                if (!b) {
+                    send_req = true;
+                    req.req_blocks.ids.push_back( blkid );
+                    entry.requested_time = fc::time_point::now();
+                }
+                c->add_peer_block(entry);
+            }
+        }
+        else if (msg.known_blocks.mode != none) {
+            elog ("passed a notice_message with something other than a normal on none known_blocks");
+            return;
+        }
+        fc_dlog( logger, "send req = ${sr}", ("sr",send_req));
+        if( send_req) {
+            c->enqueue(req);
+            c->fetch_wait();
+            c->last_req = std::move(req);
+        }
+    }
+
+    void dispatch_manager::retry_fetch( connection_ptr c ) {
+        if (!c->last_req) {
+            return;
+        }
+        fc_wlog( logger, "failed to fetch from ${p}",("p",c->peer_name()));
+        transaction_id_type tid;
+        block_id_type bid;
+        bool is_txn = false;
+        if( c->last_req->req_trx.mode == normal && !c->last_req->req_trx.ids.empty() ) {
+            is_txn = true;
+            tid = c->last_req->req_trx.ids.back();
+        }
+        else if( c->last_req->req_blocks.mode == normal && !c->last_req->req_blocks.ids.empty() ) {
+            bid = c->last_req->req_blocks.ids.back();
+        }
+        else {
+            fc_wlog( logger,"no retry, block mpde = ${b} trx mode = ${t}",
+                    ("b",modes_str(c->last_req->req_blocks.mode))("t",modes_str(c->last_req->req_trx.mode)));
+            return;
+        }
+        for (auto conn : my_impl->connections) {
+            if (conn == c || conn->last_req) {
+                continue;
+            }
+            bool sendit = false;
+            if (is_txn) {
+                auto trx = conn->trx_state.get<by_id>().find(tid);
+                sendit = trx != conn->trx_state.end() && trx->is_known_by_peer;
             }
             else {
-               fc_dlog(logger,"big msg manager found txn id in table, ${id}",("id", t));
+                auto blk = conn->blk_state.get<by_id>().find(bid);
+                sendit = blk != conn->blk_state.end() && blk->is_known;
             }
-         }
-         send_req = !req.req_trx.ids.empty();
-         fc_dlog(logger,"big msg manager send_req ids list has ${ids} entries", ("ids", req.req_trx.ids.size()));
-      }
-      else if (msg.known_trx.mode != none) {
-         elog ("passed a notice_message with something other than a normal on none known_trx");
-         return;
-      }
-      if (msg.known_blocks.mode == normal) {
-         req.req_blocks.mode = normal;
-         for( const auto& blkid : msg.known_blocks.ids) {
-            signed_block_ptr b;
-            peer_block_state entry = {blkid,0,true,true,fc::time_point()};
-            try {
-               b = cc.fetch_block_by_id(blkid);
-               if(b)
-                  entry.block_num = b->block_num();
-            } catch (const assert_exception &ex) {
-               ilog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
-               // keep going, client can ask another peer
-            } catch (...) {
-               elog( "failed to retrieve block for id");
+            if (sendit) {
+                conn->enqueue(*c->last_req);
+                conn->fetch_wait();
+                conn->last_req = c->last_req;
+                return;
             }
-            if (!b) {
-               send_req = true;
-               req.req_blocks.ids.push_back( blkid );
-               entry.requested_time = fc::time_point::now();
-            }
-            c->add_peer_block(entry);
-         }
-      }
-      else if (msg.known_blocks.mode != none) {
-         elog ("passed a notice_message with something other than a normal on none known_blocks");
-         return;
-      }
-      fc_dlog( logger, "send req = ${sr}", ("sr",send_req));
-      if( send_req) {
-         c->enqueue(req);
-         c->fetch_wait();
-         c->last_req = std::move(req);
-      }
-   }
+        }
 
-   void dispatch_manager::retry_fetch( connection_ptr c ) {
-      if (!c->last_req) {
-         return;
-      }
-      fc_wlog( logger, "failed to fetch from ${p}",("p",c->peer_name()));
-      transaction_id_type tid;
-      block_id_type bid;
-      bool is_txn = false;
-      if( c->last_req->req_trx.mode == normal && !c->last_req->req_trx.ids.empty() ) {
-         is_txn = true;
-         tid = c->last_req->req_trx.ids.back();
-      }
-      else if( c->last_req->req_blocks.mode == normal && !c->last_req->req_blocks.ids.empty() ) {
-         bid = c->last_req->req_blocks.ids.back();
-      }
-      else {
-         fc_wlog( logger,"no retry, block mpde = ${b} trx mode = ${t}",
-                  ("b",modes_str(c->last_req->req_blocks.mode))("t",modes_str(c->last_req->req_trx.mode)));
-         return;
-      }
-      for (auto conn : my_impl->connections) {
-         if (conn == c || conn->last_req) {
-            continue;
-         }
-         bool sendit = false;
-         if (is_txn) {
-            auto trx = conn->trx_state.get<by_id>().find(tid);
-            sendit = trx != conn->trx_state.end() && trx->is_known_by_peer;
-         }
-         else {
-            auto blk = conn->blk_state.get<by_id>().find(bid);
-            sendit = blk != conn->blk_state.end() && blk->is_known;
-         }
-         if (sendit) {
-            conn->enqueue(*c->last_req);
-            conn->fetch_wait();
-            conn->last_req = c->last_req;
+        // at this point no other peer has it, re-request or do nothing?
+        if( c->connected() ) {
+            c->enqueue(*c->last_req);
+            c->fetch_wait();
+        }
+    }
+
+    //------------------------------------------------------------------------
+
+    void net_plugin_impl::connect( connection_ptr c ) {
+        if( c->no_retry != go_away_reason::no_reason) {
+            fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
             return;
-         }
-      }
+        }
 
-      // at this point no other peer has it, re-request or do nothing?
-      if( c->connected() ) {
-         c->enqueue(*c->last_req);
-         c->fetch_wait();
-      }
-   }
+        auto colon = c->peer_addr.find(':');
 
-   //------------------------------------------------------------------------
-
-   void net_plugin_impl::connect( connection_ptr c ) {
-      if( c->no_retry != go_away_reason::no_reason) {
-         fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
-         return;
-      }
-
-      auto colon = c->peer_addr.find(':');
-
-      if (colon == std::string::npos || colon == 0) {
-         elog ("Invalid peer address. must be \"host:port\": ${p}", ("p",c->peer_addr));
-         for ( auto itr : connections ) {
-            if((*itr).peer_addr == c->peer_addr) {
-               (*itr).reset();
-               close(itr);
-               connections.erase(itr);
-               break;
+        if (colon == std::string::npos || colon == 0) {
+            elog ("Invalid peer address. must be \"host:port\": ${p}", ("p",c->peer_addr));
+            for ( auto itr : connections ) {
+                if((*itr).peer_addr == c->peer_addr) {
+                    (*itr).reset();
+                    close(itr);
+                    connections.erase(itr);
+                    break;
+                }
             }
-         }
-         return;
-      }
+            return;
+        }
 
-      auto host = c->peer_addr.substr( 0, colon );
-      auto port = c->peer_addr.substr( colon + 1);
-      idump((host)(port));
-      tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
-      connection_wptr weak_conn = c;
-      // Note: need to add support for IPv6 too
+        auto host = c->peer_addr.substr( 0, colon );
+        auto port = c->peer_addr.substr( colon + 1);
+        idump((host)(port));
+        tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
+        connection_wptr weak_conn = c;
+        // Note: need to add support for IPv6 too
 
-      resolver->async_resolve( query,
-                               [weak_conn, this]( const boost::system::error_code& err,
-                                          tcp::resolver::iterator endpoint_itr ){
-                                  auto c = weak_conn.lock();
-                                  if (!c) return;
-                                  if( !err ) {
-                                     connect( c, endpoint_itr );
-                                  } else {
-                                     elog( "Unable to resolve ${peer_addr}: ${error}",
-                                           (  "peer_addr", c->peer_name() )("error", err.message() ) );
-                                  }
-                               });
-   }
+        resolver->async_resolve(query,
+                                [weak_conn, this]( const boost::system::error_code& err,
+                                tcp::resolver::iterator endpoint_itr ){
+                                    auto c = weak_conn.lock();
+                                    if (!c) return;
+                                    if( !err ) {
+                                        connect( c, endpoint_itr );
+                                    } else {
+                                        elog( "Unable to resolve ${peer_addr}: ${error}",
+                                             (  "peer_addr", c->peer_name() )("error", err.message() ) );
+                                    }
+                                });
+    }
 
-   void net_plugin_impl::connect( connection_ptr c, tcp::resolver::iterator endpoint_itr ) {
-      if( c->no_retry != go_away_reason::no_reason) {
-         string rsn = reason_str(c->no_retry);
-         return;
-      }
-      auto current_endpoint = *endpoint_itr;
-      ++endpoint_itr;
-      c->connecting = true;
-      connection_wptr weak_conn = c;
-      c->socket->async_connect( current_endpoint, [weak_conn, endpoint_itr, this] ( const boost::system::error_code& err ) {
+    void net_plugin_impl::connect( connection_ptr c, tcp::resolver::iterator endpoint_itr ) {
+        if( c->no_retry != go_away_reason::no_reason) {
+            string rsn = reason_str(c->no_retry);
+            return;
+        }
+        auto current_endpoint = *endpoint_itr;
+        ++endpoint_itr;
+        c->connecting = true;
+        connection_wptr weak_conn = c;
+        c->socket->async_connect( current_endpoint, [weak_conn, endpoint_itr, this] ( const boost::system::error_code& err ) {
             auto c = weak_conn.lock();
             if (!c) return;
             if( !err && c->socket->is_open() ) {
@@ -1485,34 +1483,34 @@ namespace ultrainio {
                   my_impl->close(c);
                }
             }
-         } );
-   }
+        } );
+    }
 
-   bool net_plugin_impl::start_session( connection_ptr con ) {
-      boost::asio::ip::tcp::no_delay nodelay( true );
-      boost::system::error_code ec;
-      con->socket->set_option( nodelay, ec );
-      if (ec) {
-         elog( "connection failed to ${peer}: ${error}",
-               ( "peer", con->peer_name())("error",ec.message()));
-         con->connecting = false;
-         close(con);
-         return false;
-      }
-      else {
-         start_read_message( con );
-         ++started_sessions;
-         return true;
-         // for now, we can just use the application main loop.
-         //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
-         //     con->writeloop_complete = bf::async( [=](){ write_loop con ); } );
-      }
-   }
+    bool net_plugin_impl::start_session( connection_ptr con ) {
+        boost::asio::ip::tcp::no_delay nodelay( true );
+        boost::system::error_code ec;
+        con->socket->set_option( nodelay, ec );
+        if (ec) {
+            elog( "connection failed to ${peer}: ${error}",
+                 ( "peer", con->peer_name())("error",ec.message()));
+            con->connecting = false;
+            close(con);
+            return false;
+        }
+        else {
+            start_read_message( con );
+            ++started_sessions;
+            return true;
+            // for now, we can just use the application main loop.
+            //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
+            //     con->writeloop_complete = bf::async( [=](){ write_loop con ); } );
+        }
+    }
 
 
-   void net_plugin_impl::start_listen_loop( ) {
-      auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
-      acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
+    void net_plugin_impl::start_listen_loop( ) {
+        auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
+        acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
@@ -1612,7 +1610,7 @@ namespace ultrainio {
         sync_block_master->reset();
     }
 
-    bool net_plugin_impl::send_apply(const ultrainio::ReqSyncMsg& msg) {
+    bool net_plugin_impl::send_req_sync(const ultrainio::ReqSyncMsg& msg) {
         sync_block_master->rsp_conns.clear();
         std::vector<connection_ptr> conn_list;
         conn_list.reserve(connections.size());
@@ -2684,9 +2682,9 @@ namespace ultrainio {
        my->send_block(ip_addr, net_message(msg));
    }
 
-   bool net_plugin::send_apply(const ultrainio::ReqSyncMsg& msg) {
-       ilog("send apply msg");
-       return my->send_apply(msg);
+   bool net_plugin::send_req_sync(const ultrainio::ReqSyncMsg& msg) {
+       ilog("send req sync msg");
+       return my->send_req_sync(msg);
    }
 
    void net_plugin::send_last_block_num(const string& ip_addr, const ultrainio::RspLastBlockNumMsg& msg) {

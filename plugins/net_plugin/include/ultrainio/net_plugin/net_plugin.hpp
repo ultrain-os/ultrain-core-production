@@ -33,7 +33,7 @@ namespace ultrainio {
         void   broadcast(const EchoMsg& echo);
         void   broadcast(const AggEchoMsg& aggEchoMsg);
         void   send_block(const string& ip_addr, const SyncBlockMsg& sync_block);
-        bool   send_apply(const ReqSyncMsg& msg);
+        bool   send_req_sync(const ReqSyncMsg& reqSyncMsg);
         void   send_last_block_num(const string& ip_addr, const RspLastBlockNumMsg& last_block_num);
         void   stop_sync_block();
 

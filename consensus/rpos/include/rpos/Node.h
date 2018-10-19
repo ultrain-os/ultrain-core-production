@@ -120,7 +120,7 @@ namespace ultrainio {
 
         void cancelTimer();
 
-        void applyBlockLoop(uint32_t timeout);
+        void syncBlockLoop(uint32_t timeout);
 
         ultrainio::chain::block_id_type getPreviousHash();
 
@@ -151,11 +151,11 @@ namespace ultrainio {
 
         void sendEchoForEmptyBlock();
 
-        void applyBlock();
+        void syncBlock();
 
-        void applyBlockOnce();
+        void syncBlockOnce();
 
-        void applyBlock(bool once);
+        void syncBlock(bool once);
 
         void fastBlock(uint32_t blockNum);
 
