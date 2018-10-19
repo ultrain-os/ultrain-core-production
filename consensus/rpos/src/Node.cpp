@@ -23,7 +23,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="16163a";
+    char version[]="63abdb";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -161,12 +161,13 @@ namespace ultrainio {
 
     void UranusNode::readyLoop(uint32_t timeout) {
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
-        m_timerCanceled = false;
+        m_currentTimerHandlerNo = THN_READY;
+        resetTimerCanceled(THN_READY);
         m_timer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("ready loop timer cancel");
             } else {
-                if (m_timerCanceled) {
+                if (isTimerCanceled(THN_READY)) {
                     ilog("Loop timer has been already canceled.");
                 } else {
                     this->readyToJoin();
@@ -177,12 +178,13 @@ namespace ultrainio {
 
     void UranusNode::applyBlockLoop(uint32_t timeout) {
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
-        m_timerCanceled = false;
+        m_currentTimerHandlerNo = THN_SYNC_BLOCK;
+        resetTimerCanceled(THN_SYNC_BLOCK);
         m_timer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("apply block timer cancel");
             } else {
-                if (m_timerCanceled) {
+                if (isTimerCanceled(THN_SYNC_BLOCK)) {
                     ilog("Loop timer has been already canceled.");
                 } else {
                     this->applyBlock();
@@ -450,12 +452,13 @@ namespace ultrainio {
     void UranusNode::runLoop(uint32_t timeout) {
         dlog("start runLoop timeout = ${timeout}", ("timeout", timeout));
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
-        m_timerCanceled = false;
+        m_currentTimerHandlerNo = THN_RUN;
+        resetTimerCanceled(THN_RUN);
         m_timer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("run loop timer cancel");
             } else {
-                if (m_timerCanceled) {
+                if (isTimerCanceled(THN_RUN)) {
                     ilog("Loop timer has been already canceled.");
                 } else {
                     this->run();
@@ -467,12 +470,13 @@ namespace ultrainio {
     void UranusNode::ba0Loop(uint32_t timeout) {
         dlog("start ba0Loop timeout = ${timeout}", ("timeout", timeout));
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
-        m_timerCanceled = false;
+        m_currentTimerHandlerNo = THN_BA0;
+        resetTimerCanceled(THN_BA0);
         m_timer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("ba0 loop timer cancel");
             } else {
-                if (m_timerCanceled) {
+                if (isTimerCanceled(THN_BA0)) {
                     ilog("Loop timer has been already canceled.");
                 } else {
                     this->ba0Process();
@@ -484,12 +488,13 @@ namespace ultrainio {
     void UranusNode::ba1Loop(uint32_t timeout) {
         dlog("start ba1Loop timeout = ${timeout}", ("timeout", timeout));
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
-        m_timerCanceled = false;
+        m_currentTimerHandlerNo = THN_BA1;
+        resetTimerCanceled(THN_BA1);
         m_timer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("ba1 loop timer cancel");
             } else {
-                if (m_timerCanceled) {
+                if (isTimerCanceled(THN_BA1)) {
                     ilog("Loop timer has been already canceled.");
                 } else {
                     this->ba1Process();
@@ -504,12 +509,13 @@ namespace ultrainio {
 
         dlog("start baxLoop timeout = ${timeout}", ("timeout", timeout));
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
-        m_timerCanceled = false;
+        m_currentTimerHandlerNo = THN_BAX;
+        resetTimerCanceled(THN_BAX);
         m_timer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 dlog("bax loop timer cancel");
             } else {
-                if (m_timerCanceled) {
+                if (isTimerCanceled(THN_BAX)) {
                     ilog("Loop timer has been already canceled.");
                 } else {
                     this->baxProcess();
@@ -627,7 +633,7 @@ namespace ultrainio {
 
     void UranusNode::cancelTimer() {
         m_timer.cancel();
-        m_timerCanceled = true;
+        setTimerCanceled(m_currentTimerHandlerNo);
     }
 
     void UranusNode::sendMessage(const EchoMsg &echo) {
@@ -945,5 +951,17 @@ namespace ultrainio {
         Config::s_maxPhaseSeconds = phaseSecond;
         ilog("maxRoundSecond : ${maxRoundSecond}, maxPhaseSecond : ${maxPhaseSecond}",
                 ("maxRoundSecond", Config::s_maxRoundSeconds)("maxPhaseSecond", Config::s_maxPhaseSeconds));
+    }
+
+    void UranusNode::setTimerCanceled(TimerHandlerNumber thn) {
+        m_timerCanceledBits |= (1 << thn);
+    }
+
+    void UranusNode::resetTimerCanceled(TimerHandlerNumber thn) {
+        m_timerCanceledBits &= (~(1 << thn));
+    }
+
+    bool UranusNode::isTimerCanceled(TimerHandlerNumber thn) const {
+        return m_timerCanceledBits & (1 << thn);
     }
 }

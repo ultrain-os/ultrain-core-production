@@ -21,6 +21,16 @@ namespace ultrainio {
     class Scheduler;
     class NodeInfo;
 
+    enum TimerHandlerNumber {
+        THN_READY = 0,
+        THN_RUN = 1,
+        THN_BA0 = 2,
+        THN_BA1 = 3,
+        THN_BAX = 4,
+        THN_SYNC_BLOCK = 5,
+        THN_MAX = 31
+    };
+
     // used for monitor to record block producing time
     typedef std::function<void ()> monitorCallback;
 
@@ -161,13 +171,20 @@ namespace ultrainio {
 
         uint32_t getRoundInterval();
 
+        void setTimerCanceled(TimerHandlerNumber thn);
+
+        void resetTimerCanceled(TimerHandlerNumber thn);
+
+        bool isTimerCanceled(TimerHandlerNumber thn) const;
+
         static std::shared_ptr<UranusNode> s_self;
         bool m_ready;
         bool m_connected;
         bool m_syncing;
         bool m_syncFailed;
         bool m_isNonProducingNode = false;
-        bool m_timerCanceled = false;
+        TimerHandlerNumber m_currentTimerHandlerNo = THN_MAX;
+        uint32_t m_timerCanceledBits = 0;
         ConsensusPhase m_phase;
         uint32_t m_baxCount;
         boost::asio::deadline_timer m_timer;
