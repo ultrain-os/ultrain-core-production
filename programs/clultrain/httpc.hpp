@@ -87,10 +87,10 @@ namespace ultrainio { namespace client { namespace http {
    const string get_account_func = chain_func_base + "/get_account_info";
    const string get_sourcerate_func = chain_func_base + "/get_sourcerate";
    const string get_table_func = chain_func_base + "/get_table_records";
+   const string get_table_by_scope_func = chain_func_base + "/get_table_by_scope";
    const string get_code_func = chain_func_base + "/get_contract";
    const string get_abi_func = chain_func_base + "/get_abi";
    const string get_raw_code_and_abi_func = chain_func_base + "/get_raw_code_and_abi";
-   const string get_table_by_scope_func = chain_func_base + "/get_table_by_scope";
    const string get_currency_balance_func = chain_func_base + "/get_currency_balance";
    const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
    const string get_producers_func = chain_func_base + "/get_producers";

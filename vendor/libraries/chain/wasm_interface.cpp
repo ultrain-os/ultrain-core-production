@@ -104,9 +104,9 @@ class typescript_action_api : public context_aware_api {
       :context_aware_api(ctx,true), ignore(!ctx.control.contracts_console()) {
       }
 
-      void ts_log_print_s(int ch) {
+      void ts_log_print_s(null_terminated_ptr str) {
           if (!ignore)
-            context.ts_context.log_msg.push_back((char)ch);
+            context.ts_context.log_msg.append(std::string(str));
       }
 
       void ts_log_print_i(int64_t i, int fmt = 10) {
@@ -1493,6 +1493,9 @@ class database_api : public context_aware_api {
       int db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
          return context.db_end_i64( code, scope, table );
       }
+      uint64_t db_iterator_i64( uint64_t code, uint64_t scope, uint64_t table ) {
+         return context.db_iterator_i64( code, scope, table);
+      }
 
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
@@ -2006,6 +2009,7 @@ REGISTER_INTRINSICS( database_api,
    (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
    (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
    (db_end_i64,          int(int64_t,int64_t,int64_t))
+   (db_iterator_i64,     int64_t(int64_t,int64_t,int64_t))
 
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)

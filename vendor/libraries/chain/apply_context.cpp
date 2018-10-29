@@ -608,6 +608,33 @@ int apply_context::db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
    return keyval_cache.cache_table( *tab );
 }
 
+uint64_t apply_context::db_iterator_i64(uint64_t code, uint64_t scope, uint64_t table) {
+   uint64_t result = 0ULL;
+   const auto* tab = find_table( code, scope, table );
+   if( !tab ) return result;
+
+   auto table_end_itr = keyval_cache.cache_table( *tab );
+
+   const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
+   if (t_id != nullptr) {
+       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+       decltype(t_id->id) next_tid(t_id->id._id + 1);
+       auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
+       auto upper = idx.lower_bound(boost::make_tuple(next_tid));
+
+       uint32_t count = std::distance(lower, upper);
+
+       auto first = keyval_cache.add(*lower);
+       std::for_each(++lower, upper, [&](auto& item) {
+         keyval_cache.add(item);
+       });
+
+       result |= count;
+       result = (result << 32) | first;
+   }
+   return result;
+}
+
 uint64_t apply_context::next_global_sequence() {
    const auto& p = control.get_dynamic_global_properties();
    db.modify( p, [&]( auto& dgp ) {

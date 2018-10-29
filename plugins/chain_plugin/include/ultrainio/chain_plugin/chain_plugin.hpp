@@ -256,15 +256,16 @@ public:
    };
    struct get_table_by_scope_result_row {
       name        code;
-      name        scope;
+      uint64_t      scope;
       name        table;
       name        payer;
       uint32_t    count;
    };
    struct get_table_by_scope_result {
       vector<get_table_by_scope_result_row> rows;
-      bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
+      uint64_t      more; ///< fill lower_bound with this value to fetch more rows
    };
+
    get_table_by_scope_result get_table_by_scope( const get_table_by_scope_params& params )const;
 
    struct get_currency_balance_params {

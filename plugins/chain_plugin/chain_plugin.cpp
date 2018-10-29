@@ -1046,7 +1046,8 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
    const auto& idx = d.get_index<chain::table_id_multi_index, chain::by_code_scope_table>();
    decltype(idx.lower_bound(boost::make_tuple(0, 0, 0))) lower;
    decltype(idx.upper_bound(boost::make_tuple(0, 0, 0))) upper;
-    if (p.lower_bound.size()) {
+
+   if (p.lower_bound.size()) {
       uint64_t scope = convert_to_type<uint64_t>(p.lower_bound, "lower_bound scope");
       lower = idx.lower_bound( boost::make_tuple(p.code, scope, p.table));
    } else {
@@ -1069,6 +1070,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
          }
          continue;
       }
+
       result.rows.push_back({itr->code, itr->scope, itr->table, itr->payer, itr->count});
       if (++count == p.limit || fc::time_point::now() > end) {
          ++itr;
@@ -1076,7 +1078,9 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       }
    }
    if (itr != upper) {
-      result.more = true;
+      result.more = itr->scope;
+   } else {
+      result.more = 0;
    }
    return result;
 }

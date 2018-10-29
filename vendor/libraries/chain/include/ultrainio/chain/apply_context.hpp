@@ -551,6 +551,7 @@ class apply_context {
       int  db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
       int  db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
       int  db_end_i64( uint64_t code, uint64_t scope, uint64_t table );
+      uint64_t  db_iterator_i64(uint64_t code, uint64_t scope, uint64_t table);
 
    private:
 
