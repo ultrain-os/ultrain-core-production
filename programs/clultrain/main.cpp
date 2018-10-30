@@ -165,7 +165,8 @@ bool   print_response = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
-
+uint32_t delaysec = 0;
+static constexpr uint32_t default_cons_delaysec = 3*60;//24*3600;//抵押共识权重生效默认延迟一天  测试先使用三分钟
 vector<string> tx_permission;
 
 ultrainio::client::http::http_context context;
@@ -180,7 +181,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
       tx_expiration = fc::seconds(static_cast<uint64_t>(value_s));
       return true;
    };
-
+   delaysec = 0;
    cmd->add_option("-x,--expiration", parse_expiration, localized("set the time in seconds before a transaction expires, defaults to 60s"));
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
@@ -195,6 +196,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
 
    cmd->add_option("--max-cpu-usage-ms", tx_max_cpu_usage, localized("set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)"));
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -293,6 +295,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
 
    trx.max_cpu_usage_ms = tx_max_cpu_usage;
    trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
+   trx.delay_sec = delaysec;
 
    if (!tx_skip_sign) {
       auto required_keys = determine_required_keys(trx);
@@ -1173,7 +1176,9 @@ struct delegate_cons_subcommand {
       delegate_cons->add_option("from", from_str, localized("The account to delegate consensus weight from"))->required();
       delegate_cons->add_option("stake_cons_quantity", stake_cons_amount, localized("The amount of UTR to stake for consensus weight"))->required();
       add_standard_transaction_options(delegate_cons);
-
+      if(delaysec < default_cons_delaysec){
+          delaysec = default_cons_delaysec;
+      }
       delegate_cons->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
@@ -1423,7 +1428,7 @@ void get_account( const string& accountName, bool json_format ) {
    if (!json_format) {
       asset staked;
       asset unstaking;
-
+      asset cons_staked;
       if(res.privileged) std::cout << "privileged: true" << std::endl;
 
       constexpr size_t indent_size = 5;
@@ -1651,18 +1656,6 @@ void get_account( const string& accountName, bool json_format ) {
          }
       }
 
-      if( res.core_liquid_balance.valid() ) {
-         std::cout << res.core_liquid_balance->get_symbol().name() << " balances: " << std::endl;
-         std::cout << indent << std::left << std::setw(11)
-                   << "liquid:" << std::right << std::setw(18) << *res.core_liquid_balance << std::endl;
-         std::cout << indent << std::left << std::setw(11)
-                   << "staked:" << std::right << std::setw(18) << staked << std::endl;
-         std::cout << indent << std::left << std::setw(11)
-                   << "unstaking:" << std::right << std::setw(18) << unstaking << std::endl;
-         std::cout << indent << std::left << std::setw(11) << "total:" << std::right << std::setw(18) << (*res.core_liquid_balance + staked + unstaking) << std::endl;
-         std::cout << std::endl;
-      }
-
       if ( res.voter_info.is_object() ) {
          auto& obj = res.voter_info.get_object();
          string proxy = obj["proxy"].as_string();
@@ -1679,10 +1672,32 @@ void get_account( const string& accountName, bool json_format ) {
                std::cout << std::endl;
             } else {
                std::cout << indent << "<not voted>" << std::endl;
-            }
+            }   
+            string scons_staked= obj["staked"].as_string();
+            if(!scons_staked.empty())
+            {
+                if(scons_staked.length() <= 4)
+                    scons_staked = "0000"+ scons_staked;
+                scons_staked.insert(scons_staked.length()-4,".");
+                cons_staked = to_asset(scons_staked +" UGAS");               
+            }    
          } else {
             std::cout << "proxy:" << indent << proxy << std::endl;
          }
+      }
+
+      if( res.core_liquid_balance.valid() ) {
+         std::cout << res.core_liquid_balance->get_symbol().name() << " balances: " << std::endl;
+         std::cout << indent << std::left << std::setw(11)
+                   << "liquid:" << std::right << std::setw(18) << *res.core_liquid_balance << std::endl;
+         std::cout << indent << std::left << std::setw(11)
+                   << "res_staked:" << std::right << std::setw(18) << staked << std::endl;
+         std::cout << indent << std::left << std::setw(11)
+                   << "cons_staked:" << std::right << std::setw(18) << cons_staked << std::endl;
+         std::cout << indent << std::left << std::setw(11)
+                   << "unstaking:" << std::right << std::setw(18) << unstaking << std::endl;
+         std::cout << indent << std::left << std::setw(11) << "total:" << std::right << std::setw(18) << (*res.core_liquid_balance + staked + unstaking + cons_staked) << std::endl;
+         std::cout << std::endl;
       }
       std::cout << std::endl;
    } else {
