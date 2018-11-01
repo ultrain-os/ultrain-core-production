@@ -183,7 +183,7 @@ namespace ultrainio { namespace chain {
          static auto apply(const T& data, F f) -> std::enable_if_t<is_chainbase_object_v<T>> {
             auto orig = data.id;
             f();
-            EOS_ASSERT(orig == data.id, worldstate_exception,
+            ULTRAIN_ASSERT(orig == data.id, worldstate_exception,
                        "Snapshot for ${type} mutates row member \"id\" which is illegal",
                        ("type",boost::core::demangle( typeid( T ).name() )));
          }

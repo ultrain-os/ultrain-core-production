@@ -35,42 +35,42 @@ variant_worldstate_reader::variant_worldstate_reader(const fc::variant& worldsta
 }
 
 void variant_worldstate_reader::validate() const {
-   EOS_ASSERT(worldstate.is_object(), worldstate_validation_exception,
+   ULTRAIN_ASSERT(worldstate.is_object(), worldstate_validation_exception,
          "Variant worldstate is not an object");
    const fc::variant_object& o = worldstate.get_object();
 
-   EOS_ASSERT(o.contains("version"), worldstate_validation_exception,
+   ULTRAIN_ASSERT(o.contains("version"), worldstate_validation_exception,
          "Variant worldstate has no version");
 
    const auto& version = o["version"];
-   EOS_ASSERT(version.is_integer(), worldstate_validation_exception,
+   ULTRAIN_ASSERT(version.is_integer(), worldstate_validation_exception,
          "Variant worldstate version is not an integer");
 
-   EOS_ASSERT(version.as_uint64() == (uint64_t)current_worldstate_version, worldstate_validation_exception,
+   ULTRAIN_ASSERT(version.as_uint64() == (uint64_t)current_worldstate_version, worldstate_validation_exception,
          "Variant worldstate is an unsuppored version.  Expected : ${expected}, Got: ${actual}",
          ("expected", current_worldstate_version)("actual",o["version"].as_uint64()));
 
-   EOS_ASSERT(o.contains("sections"), worldstate_validation_exception,
+   ULTRAIN_ASSERT(o.contains("sections"), worldstate_validation_exception,
          "Variant worldstate has no sections");
 
    const auto& sections = o["sections"];
-   EOS_ASSERT(sections.is_array(), worldstate_validation_exception, "Variant worldstate sections is not an array");
+   ULTRAIN_ASSERT(sections.is_array(), worldstate_validation_exception, "Variant worldstate sections is not an array");
 
    const auto& section_array = sections.get_array();
    for( const auto& section: section_array ) {
-      EOS_ASSERT(section.is_object(), worldstate_validation_exception, "Variant worldstate section is not an object");
+      ULTRAIN_ASSERT(section.is_object(), worldstate_validation_exception, "Variant worldstate section is not an object");
 
       const auto& so = section.get_object();
-      EOS_ASSERT(so.contains("name"), worldstate_validation_exception,
+      ULTRAIN_ASSERT(so.contains("name"), worldstate_validation_exception,
             "Variant worldstate section has no name");
 
-      EOS_ASSERT(so["name"].is_string(), worldstate_validation_exception,
+      ULTRAIN_ASSERT(so["name"].is_string(), worldstate_validation_exception,
                  "Variant worldstate section name is not a string");
 
-      EOS_ASSERT(so.contains("rows"), worldstate_validation_exception,
+      ULTRAIN_ASSERT(so.contains("rows"), worldstate_validation_exception,
                  "Variant worldstate section has no rows");
 
-      EOS_ASSERT(so["rows"].is_array(), worldstate_validation_exception,
+      ULTRAIN_ASSERT(so["rows"].is_array(), worldstate_validation_exception,
                  "Variant worldstate section rows is not an array");
    }
 }
@@ -95,7 +95,7 @@ void variant_worldstate_reader::set_section( const string& section_name ) {
       }
    }
 
-   EOS_THROW(worldstate_exception, "Variant worldstate has no section named ${n}", ("n", section_name));
+   ULTRAIN_THROW(worldstate_exception, "Variant worldstate has no section named ${n}", ("n", section_name));
 }
 
 bool variant_worldstate_reader::read_row( detail::abstract_worldstate_row_reader& row_reader ) {
@@ -131,7 +131,7 @@ ostream_worldstate_writer::ostream_worldstate_writer(std::ostream& worldstate)
 
 void ostream_worldstate_writer::write_start_section( const std::string& section_name )
 {
-   EOS_ASSERT(section_pos == std::streampos(-1), worldstate_exception, "Attempting to write a new section without closing the previous section");
+   ULTRAIN_ASSERT(section_pos == std::streampos(-1), worldstate_exception, "Attempting to write a new section without closing the previous section");
    section_pos = worldstate.tellp();
    row_count = 0;
 
@@ -208,14 +208,14 @@ void istream_worldstate_reader::validate() const {
       auto expected_totem = ostream_worldstate_writer::magic_number;
       decltype(expected_totem) actual_totem;
       worldstate.read((char*)&actual_totem, sizeof(actual_totem));
-      EOS_ASSERT(actual_totem == expected_totem, worldstate_exception,
+      ULTRAIN_ASSERT(actual_totem == expected_totem, worldstate_exception,
                  "Binary worldstate has unexpected magic number!");
 
       // validate version
       auto expected_version = current_worldstate_version;
       decltype(expected_version) actual_version;
       worldstate.read((char*)&actual_version, sizeof(actual_version));
-      EOS_ASSERT(actual_version == expected_version, worldstate_exception,
+      ULTRAIN_ASSERT(actual_version == expected_version, worldstate_exception,
                  "Binary worldstate is an unsuppored version.  Expected : ${expected}, Got: ${actual}",
                  ("expected", expected_version)("actual", actual_version));
 
@@ -319,7 +319,7 @@ void istream_worldstate_reader::set_section( const string& section_name ) {
       }
    }
 
-   EOS_THROW(worldstate_exception, "Binary worldstate has no section named ${n}", ("n", section_name));
+   ULTRAIN_THROW(worldstate_exception, "Binary worldstate has no section named ${n}", ("n", section_name));
 }
 
 bool istream_worldstate_reader::read_row( detail::abstract_worldstate_row_reader& row_reader ) {
