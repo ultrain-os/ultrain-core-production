@@ -82,4 +82,5 @@ CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::account_object, ultrainio::chain::acc
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::account_sequence_object, ultrainio::chain::account_sequence_index)
 
 
-FC_REFLECT(ultrainio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))
+FC_REFLECT(ultrainio::chain::account_object,(name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(code)(abi))
+FC_REFLECT(ultrainio::chain::account_sequence_object, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence))

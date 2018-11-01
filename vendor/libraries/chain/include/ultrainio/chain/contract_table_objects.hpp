@@ -216,5 +216,14 @@ CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::index256_object, ultrainio::chain::in
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::index_double_object, ultrainio::chain::index_double_index)
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::index_long_double_object, ultrainio::chain::index_long_double_index)
 
-FC_REFLECT(ultrainio::chain::table_id_object, (id)(code)(scope)(table) )
-FC_REFLECT(ultrainio::chain::key_value_object, (id)(t_id)(primary_key)(value)(payer) )
+FC_REFLECT(ultrainio::chain::table_id_object, (code)(scope)(table)(payer)(count) )
+FC_REFLECT(ultrainio::chain::key_value_object, (primary_key)(payer)(value) )
+
+#define REFLECT_SECONDARY(type)\
+  FC_REFLECT(type, (primary_key)(payer)(secondary_key) )
+
+REFLECT_SECONDARY(ultrainio::chain::index64_object)
+REFLECT_SECONDARY(ultrainio::chain::index128_object)
+REFLECT_SECONDARY(ultrainio::chain::index256_object)
+REFLECT_SECONDARY(ultrainio::chain::index_double_object)
+REFLECT_SECONDARY(ultrainio::chain::index_long_double_object)
