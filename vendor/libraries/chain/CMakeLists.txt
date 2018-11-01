@@ -40,6 +40,7 @@ add_library( ultrainio_chain
              webassembly/wavm.cpp
              webassembly/binaryen.cpp
 
+			 worldstate
 #             get_config.cpp
 #             global_property_object.cpp
 #
