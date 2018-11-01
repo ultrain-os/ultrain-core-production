@@ -84,17 +84,6 @@ namespace ultrainio { namespace chain {
       }
    };
 
-   template<typename DataStream>
-   DataStream& operator << ( DataStream& ds, const shared_blob& b ) {
-      fc::raw::pack(ds, static_cast<const shared_string&>(b));
-      return ds;
-   }
-
-   template<typename DataStream>
-   DataStream& operator >> ( DataStream& ds, shared_blob& b ) {
-      fc::raw::unpack(ds, static_cast<shared_string &>(b));
-      return ds;
-   }
 } }
 
 namespace fc {
@@ -131,26 +120,15 @@ namespace fc {
    }
 
    inline
-   void to_variant( const eosio::chain::shared_string& s, variant& v ) {
+   void to_variant( const ultrainio::chain::shared_string& s, variant& v ) {
       v = variant(std::string(s.begin(), s.end()));
    }
 
    inline
-   void from_variant( const variant& v, eosio::chain::shared_string& s ) {
+   void from_variant( const variant& v, ultrainio::chain::shared_string& s ) {
       string _s;
       from_variant(v, _s);
-      s = eosio::chain::shared_string(_s.begin(), _s.end(), s.get_allocator());
-   }
-
-   inline
-   void to_variant( const eosio::chain::shared_blob& b, variant& v ) {
-      v = variant(base64_encode(b.data(), b.size()));
-   }
-
-   inline
-   void from_variant( const variant& v, eosio::chain::shared_blob& b ) {
-      string _s = base64_decode(v.as_string());
-      b = eosio::chain::shared_blob(_s.begin(), _s.end(), b.get_allocator());
+      s = ultrainio::chain::shared_string(_s.begin(), _s.end(), s.get_allocator());
    }
 
    inline
@@ -165,15 +143,15 @@ namespace fc {
    }
 
    template<typename T>
-   void to_variant( const eosio::chain::shared_vector<T>& sv, variant& v ) {
+   void to_variant( const ultrainio::chain::shared_vector<T>& sv, variant& v ) {
       to_variant(std::vector<T>(sv.begin(), sv.end()), v);
    }
 
    template<typename T>
-   void from_variant( const variant& v, eosio::chain::shared_vector<T>& sv ) {
+   void from_variant( const variant& v, ultrainio::chain::shared_vector<T>& sv ) {
       std::vector<T> _v;
       from_variant(v, _v);
-      sv = eosio::chain::shared_vector<T>(_v.begin(), _v.end(), sv.get_allocator());
+      sv = ultrainio::chain::shared_vector<T>(_v.begin(), _v.end(), sv.get_allocator());
    }
 }
 
@@ -207,13 +185,13 @@ DataStream& operator >> ( DataStream& ds, float64_t& v ) {
 
 template<typename DataStream>
 DataStream& operator << ( DataStream& ds, const float128_t& v ) {
-   fc::raw::pack(ds, *reinterpret_cast<const eosio::chain::uint128_t*>(&v));
+   fc::raw::pack(ds, *reinterpret_cast<const ultrainio::chain::uint128_t*>(&v));
    return ds;
 }
 
 template<typename DataStream>
 DataStream& operator >> ( DataStream& ds, float128_t& v ) {
-   fc::raw::unpack(ds, *reinterpret_cast<eosio::chain::uint128_t*>(&v));
+   fc::raw::unpack(ds, *reinterpret_cast<ultrainio::chain::uint128_t*>(&v));
    return ds;
 }
 
