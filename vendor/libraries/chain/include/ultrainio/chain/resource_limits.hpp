@@ -82,3 +82,5 @@ namespace ultrainio { namespace chain { namespace resource_limits {
 } } } /// ultrainio::chain
 
 FC_REFLECT( ultrainio::chain::resource_limits::account_resource_limit, (used)(available)(max) )
+FC_REFLECT( ultrainio::chain::resource_limits::ratio, (numerator)(denominator))
+FC_REFLECT( ultrainio::chain::resource_limits::elastic_limit_parameters, (target)(max)(periods)(max_multiplier)(contract_rate)(expand_rate))

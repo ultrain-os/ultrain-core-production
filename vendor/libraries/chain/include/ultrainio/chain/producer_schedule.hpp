@@ -84,3 +84,4 @@ namespace ultrainio { namespace chain {
 
 FC_REFLECT( ultrainio::chain::producer_key, (producer_name)(block_signing_key) )
 FC_REFLECT( ultrainio::chain::producer_schedule_type, (version)(producers) )
+FC_REFLECT( ultrainio::chain::shared_producer_schedule_type, (version)(producers) )

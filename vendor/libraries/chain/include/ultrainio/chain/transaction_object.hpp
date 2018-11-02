@@ -51,3 +51,4 @@ namespace ultrainio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::transaction_object, ultrainio::chain::transaction_multi_index)
 
+FC_REFLECT(ultrainio::chain::transaction_object, (expiration)(trx_id))

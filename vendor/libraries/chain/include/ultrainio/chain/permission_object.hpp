@@ -110,8 +110,9 @@ namespace ultrainio { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::permission_object, ultrainio::chain::permission_index)
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::permission_usage_object, ultrainio::chain::permission_usage_index)
 
+//TODO: MUST: Need custom the parent
 FC_REFLECT(chainbase::oid<ultrainio::chain::permission_object>, (_id))
-FC_REFLECT(ultrainio::chain::permission_object, (id)(usage_id)(parent)(owner)(name)(last_updated)(auth))
+FC_REFLECT(ultrainio::chain::permission_object, (usage_id)(parent)(owner)(name)(last_updated)(auth))
 
-FC_REFLECT(chainbase::oid<ultrainio::chain::permission_usage_object>, (_id))
-FC_REFLECT(ultrainio::chain::permission_usage_object, (id)(last_used))
+// FC_REFLECT(chainbase::oid<ultrainio::chain::permission_usage_object>, (_id))
+FC_REFLECT(ultrainio::chain::permission_usage_object, (last_used))

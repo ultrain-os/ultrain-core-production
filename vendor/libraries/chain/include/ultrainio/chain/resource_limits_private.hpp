@@ -264,3 +264,10 @@ CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::resource_limits::resource_limits_obje
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::resource_limits::resource_usage_object,         ultrainio::chain::resource_limits::resource_usage_index)
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::resource_limits::resource_limits_config_object, ultrainio::chain::resource_limits::resource_limits_config_index)
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::resource_limits::resource_limits_state_object,  ultrainio::chain::resource_limits::resource_limits_state_index)
+
+//TODO must: pending is need or not
+FC_REFLECT(ultrainio::chain::resource_limits::resource_limits_object, (owner)(pending)(net_weight)(cpu_weight)(ram_bytes))
+FC_REFLECT(ultrainio::chain::resource_limits::resource_usage_object, (owner)(net_usage)(cpu_usage)(ram_usage))
+FC_REFLECT(ultrainio::chain::resource_limits::resource_limits_config_object, (cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window))
+FC_REFLECT(ultrainio::chain::resource_limits::resource_limits_state_object, (average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(virtual_net_limit)(virtual_cpu_limit))
+FC_REFLECT(ultrainio::chain::resource_limits::usage_accumulator, (last_ordinal)(value_ex)(consumed))
