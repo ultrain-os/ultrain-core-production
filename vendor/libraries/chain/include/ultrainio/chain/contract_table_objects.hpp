@@ -160,6 +160,29 @@ namespace ultrainio { namespace chain {
    typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_object  index_long_double_object;
    typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_index   index_long_double_index;
 
+   /**
+    * helper template to map from an index type to the best tag
+    * to use when traversing by table_id
+    */
+
+   template<typename T>
+   struct object_to_table_id_tag;
+
+   #define DECLARE_TABLE_ID_TAG( object, tag ) \
+      template<> \
+      struct object_to_table_id_tag<object> { \
+            using tag_type = tag;\
+   };
+   DECLARE_TABLE_ID_TAG(key_value_object, by_scope_primary)
+   DECLARE_TABLE_ID_TAG(index64_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index128_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index256_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index_double_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index_long_double_object, by_primary)
+
+   template<typename T>
+   using object_to_table_id_tag_t = typename object_to_table_id_tag<T>::tag_type;
+
 namespace config {
    template<>
    struct billable_size<table_id_object> {

@@ -32,6 +32,25 @@ namespace ultrainio { namespace chain {
 using namespace appbase;
 using resource_limits::resource_limits_manager;
 
+using controller_index_set = index_set<
+   account_index,
+   account_sequence_index,
+   global_property_multi_index,
+   dynamic_global_property_multi_index,
+   block_summary_multi_index,
+   transaction_multi_index,
+   generated_transaction_multi_index,
+   table_id_multi_index
+>;
+
+using contract_database_index_set = index_set<
+   key_value_index,
+   index64_index,
+   index128_index,
+   index_double_index,
+   index_long_double_index
+>;
+//   index256_index,
 
 struct pending_state {
    pending_state( database::session&& s )
@@ -322,22 +341,8 @@ struct controller_impl {
    void add_indices() {
       reversible_blocks.add_index<reversible_block_index>();
 
-      db.add_index<account_index>();
-      db.add_index<account_sequence_index>();
-
-      db.add_index<table_id_multi_index>();
-      db.add_index<key_value_index>();
-      db.add_index<index64_index>();
-      db.add_index<index128_index>();
-      db.add_index<index256_index>();
-      db.add_index<index_double_index>();
-      db.add_index<index_long_double_index>();
-
-      db.add_index<global_property_multi_index>();
-      db.add_index<dynamic_global_property_multi_index>();
-      db.add_index<block_summary_multi_index>();
-      db.add_index<transaction_multi_index>();
-      db.add_index<generated_transaction_multi_index>();
+      controller_index_set::add_indices(db);
+      contract_database_index_set::add_indices(db);
 
       authorization.add_indices();
       resource_limits.add_indices();
@@ -353,6 +358,68 @@ struct controller_impl {
                    ("rev", db.revision())("head_block", self.head_block_num()));
                    */
       });
+   }
+
+   void add_contract_tables_to_worldstate( const worldstate_writer_ptr& worldstate ) const {
+      worldstate->write_section("contract_tables", [this]( auto& section ) {
+		 index_utils<table_id_multi_index>::walk(db, [this, &section]( const table_id_object& table_row ){
+					// add a row for the table
+            section.add_row(table_row, db);
+
+// followed by a size row and then N data rows for each type of table
+            contract_database_index_set::walk_indices([this, &section, &table_row]( auto utils ) {
+               using utils_t = decltype(utils);
+               using value_t = typename decltype(utils)::index_t::value_type;
+               using by_table_id = object_to_table_id_tag_t<value_t>;
+
+               auto tid_key = boost::make_tuple(table_row.id);
+               auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
+
+               unsigned_int size = utils_t::template size_range<by_table_id>(db, tid_key, next_tid_key);
+               section.add_row(size, db);
+
+               utils_t::template walk_range<by_table_id>(db, tid_key, next_tid_key, [this, &section]( const auto &row ) {
+                  section.add_row(row, db);
+               });
+            });
+         });
+      });
+   }
+
+   void add_to_worldstate( const worldstate_writer_ptr& worldstate ) const {
+/*
+      worldstate->write_section<chain_worldstate_header>([this]( auto &section ){
+         section.add_row(chain_worldstate_header(), db);
+      });
+
+      worldstate->write_section<genesis_state>([this]( auto &section ){
+         section.add_row(conf.genesis, db);
+      });
+
+      worldstate->write_section<block_state>([this]( auto &section ){
+         section.template add_row<block_header_state>(*fork_db.head(), db);
+      });
+*/
+      controller_index_set::walk_indices([this, &worldstate]( auto utils ){
+         using value_t = typename decltype(utils)::index_t::value_type;
+
+			// skip the table_id_object as its inlined with contract tables section
+         if (std::is_same<value_t, table_id_object>::value) {
+            return;
+         }
+
+         worldstate->write_section<value_t>([this]( auto& section ){
+            decltype(utils)::walk(db, [this, &section]( const auto &row ) {
+               section.add_row(row, db);
+            });
+         });
+      });
+
+      add_contract_tables_to_worldstate(worldstate);
+
+      authorization.add_to_worldstate(worldstate);
+      resource_limits.add_to_worldstate(worldstate);
+
    }
 
    /**
@@ -1696,6 +1763,11 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
 
    return signed_blk->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
+
+void controller::write_worldstate( const worldstate_writer_ptr& worldstate ) const {
+//EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent worldstate with a pending block" );
+   return my->add_to_worldstate(worldstate);
+}
 
 void controller::pop_block() {
    my->pop_block();
