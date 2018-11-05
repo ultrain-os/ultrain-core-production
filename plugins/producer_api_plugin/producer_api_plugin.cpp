@@ -82,6 +82,8 @@ void producer_api_plugin::plugin_startup() {
        //     INVOKE_V_R(producer, remove_greylist_accounts, producer_plugin::greylist_params), 201), 
        //CALL(producer, producer, get_greylist,
        //     INVOKE_R_V(producer, get_greylist), 201),                 
+       CALL(producer, producer, create_snapshot,
+            INVOKE_R_V(producer, create_snapshot), 201),
    });
 }
 
