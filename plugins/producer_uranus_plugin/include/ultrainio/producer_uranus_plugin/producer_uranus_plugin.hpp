@@ -29,6 +29,8 @@ public:
    struct worldstate_information {
       chain::block_id_type head_block_id;
       std::string          worldstate_name;
+      //TODO: just for testing
+	  fc::microseconds     delta;
    };
 
    producer_uranus_plugin();
@@ -70,4 +72,5 @@ private:
 } //ultrainio
 
 FC_REFLECT(ultrainio::producer_uranus_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age));
-FC_REFLECT(ultrainio::producer_uranus_plugin::worldstate_information, (head_block_id)(worldstate_name))
+//TODO: delta for testing
+FC_REFLECT(ultrainio::producer_uranus_plugin::worldstate_information, (head_block_id)(worldstate_name)(delta))

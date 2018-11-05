@@ -449,7 +449,6 @@ struct controller_impl {
 
       authorization.add_to_worldstate(worldstate);
       resource_limits.add_to_worldstate(worldstate);
-
    }
 
     void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {

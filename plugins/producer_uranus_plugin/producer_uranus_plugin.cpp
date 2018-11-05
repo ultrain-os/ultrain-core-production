@@ -668,7 +668,6 @@ producer_uranus_plugin::runtime_options producer_uranus_plugin::get_runtime_opti
 }
 producer_uranus_plugin::worldstate_information producer_uranus_plugin::create_worldstate() const {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-
    auto head_id = chain.head_block_id();
    std::string worldstate_path = (my->_worldstates_dir / fc::format_string("worldstate-${id}.bin", fc::mutable_variant_object()("id", head_id))).generic_string();
 
@@ -677,12 +676,16 @@ producer_uranus_plugin::worldstate_information producer_uranus_plugin::create_wo
 
    auto worldstate_out = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
    auto writer = std::make_shared<ostream_worldstate_writer>(worldstate_out);
+   //TODO:for testing
+   auto begin=fc::time_point::now();
    chain.write_worldstate(writer);
+   //TODO:for testing
+   auto end=fc::time_point::now();
+   auto time_delta=end-begin;
    writer->finalize();
    worldstate_out.flush();
    worldstate_out.close();
-
-   return {head_id, worldstate_path};
+   return {head_id, worldstate_path,time_delta};
 }
 
 static bool parse_genesis(boost::chrono::system_clock::time_point &out_time_point, const char *time_format) {
