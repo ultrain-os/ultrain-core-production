@@ -17,6 +17,7 @@
 
 #include <ultrainio/chain/authorization_manager.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
+#include <ultrainio/chain/chain_worldstate.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -416,8 +417,8 @@ struct controller_impl {
    }
 
    void add_to_worldstate( const worldstate_writer_ptr& worldstate ) const {
-/*
-      worldstate->write_section<chain_worldstate_header>([this]( auto &section ){
+
+	   worldstate->write_section<chain_worldstate_header>([this]( auto &section ){
          section.add_row(chain_worldstate_header(), db);
       });
 
@@ -428,7 +429,7 @@ struct controller_impl {
       worldstate->write_section<block_state>([this]( auto &section ){
          section.template add_row<block_header_state>(*fork_db.head(), db);
       });
-*/
+
       controller_index_set::walk_indices([this, &worldstate]( auto utils ){
          using value_t = typename decltype(utils)::index_t::value_type;
 
@@ -453,23 +454,20 @@ struct controller_impl {
 
     void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
       
-      // worldstate->read_section<chain_snapshot_header>([this]( auto &section ){
-      //    chain_snapshot_header header;
-      //    section.read_row(header, db);
-      //    header.validate();
-      // });
+       worldstate->read_section<chain_worldstate_header>([this]( auto &section ){
+          chain_worldstate_header header;
+          section.read_row(header, db);
+          header.validate();
+       });
 
 
-      // snapshot->read_section<block_state>([this]( auto &section ){
+      // worldstate->read_section<block_state>([this]( auto &section ){
       //    block_header_state head_header_state;
       //    section.read_row(head_header_state, db);
 
       //    auto head_state = std::make_shared<block_state>(head_header_state);
-      //    fork_db.set(head_state);
-      //    fork_db.set_validity(head_state, true);
-      //    fork_db.mark_in_current_chain(head_state, true);
       //    head = head_state;
-      //    snapshot_head_block = head->block_num;
+      //    worldstate_head_block = head->block_num;
       // });
 
       controller_index_set::walk_indices([this, &worldstate]( auto utils ){
