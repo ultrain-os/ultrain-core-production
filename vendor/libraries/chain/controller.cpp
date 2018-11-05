@@ -48,9 +48,9 @@ using contract_database_index_set = index_set<
    index64_index,
    index128_index,
    index_double_index,
-   index_long_double_index
+   index_long_double_index,
+   index256_index
 >;
-//   index256_index,
 
 struct pending_state {
    pending_state( database::session&& s )
@@ -386,6 +386,35 @@ struct controller_impl {
       });
    }
 
+   void read_contract_tables_from_worldstate( const worldstate_reader_ptr& worldstate ) {
+      worldstate->read_section("contract_tables", [this]( auto& section ) {
+         bool more = !section.empty();
+         while (more) {
+            // read the row for the table
+            table_id_object::id_type t_id;
+            index_utils<table_id_multi_index>::create(db, [this, &section, &t_id](auto& row) {
+               section.read_row(row, db);
+               t_id = row.id;
+            });
+
+            // read the size and data rows for each type of table
+            contract_database_index_set::walk_indices([this, &section, &t_id, &more](auto utils) {
+               using utils_t = decltype(utils);
+
+               unsigned_int size;
+               more = section.read_row(size, db);
+
+               for (size_t idx = 0; idx < size.value; idx++) {
+                  utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
+                     row.t_id = t_id;
+                     more = section.read_row(row, db);
+                  });
+               }
+            });
+         }
+      });
+   }
+
    void add_to_worldstate( const worldstate_writer_ptr& worldstate ) const {
 /*
       worldstate->write_section<chain_worldstate_header>([this]( auto &section ){
@@ -421,6 +450,54 @@ struct controller_impl {
       resource_limits.add_to_worldstate(worldstate);
 
    }
+
+    void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
+      
+      // worldstate->read_section<chain_snapshot_header>([this]( auto &section ){
+      //    chain_snapshot_header header;
+      //    section.read_row(header, db);
+      //    header.validate();
+      // });
+
+
+      // snapshot->read_section<block_state>([this]( auto &section ){
+      //    block_header_state head_header_state;
+      //    section.read_row(head_header_state, db);
+
+      //    auto head_state = std::make_shared<block_state>(head_header_state);
+      //    fork_db.set(head_state);
+      //    fork_db.set_validity(head_state, true);
+      //    fork_db.mark_in_current_chain(head_state, true);
+      //    head = head_state;
+      //    snapshot_head_block = head->block_num;
+      // });
+
+      controller_index_set::walk_indices([this, &worldstate]( auto utils ){
+         using value_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the table_id_object as its inlined with contract tables section
+         if (std::is_same<value_t, table_id_object>::value) {
+            return;
+         }
+
+         worldstate->read_section<value_t>([this]( auto& section ) {
+            bool more = !section.empty();
+            while(more) {
+               decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
+                  more = section.read_row(row, db);
+               });
+            }
+         });
+      });
+
+      read_contract_tables_from_worldstate(worldstate);
+
+      authorization.read_from_worldstate(worldstate);
+      resource_limits.read_from_worldstate(worldstate);
+
+      db.set_revision( head->block_num );
+    }
+   
 
    /**
     *  Sets fork database head to the genesis state.
@@ -1767,6 +1844,10 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
 void controller::write_worldstate( const worldstate_writer_ptr& worldstate ) const {
 //EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent worldstate with a pending block" );
    return my->add_to_worldstate(worldstate);
+}
+
+void controller::read_worldstate( const worldstate_reader_ptr& worldstate ) {
+    return my->read_from_worldstate(worldstate);
 }
 
 void controller::pop_block() {

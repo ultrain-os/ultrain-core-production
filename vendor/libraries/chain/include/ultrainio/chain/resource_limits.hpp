@@ -46,6 +46,7 @@ namespace ultrainio { namespace chain { namespace resource_limits {
          void add_indices();
          void initialize_database();
          void add_to_worldstate( const worldstate_writer_ptr& worldstate ) const;
+         void read_from_worldstate(const worldstate_reader_ptr& worldstate);
          void initialize_account( const account_name& account );
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 

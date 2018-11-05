@@ -325,9 +325,9 @@ namespace fc {
 
     template<typename Stream> inline void unpack( Stream& s, shared_string& v )  {
       std::vector<char> tmp; fc::raw::unpack(s,tmp);
+      FC_ASSERT(v.size() == 0);
       if( tmp.size() )
-         v = shared_string(tmp.data(),tmp.data()+tmp.size());
-      else v = shared_string();
+         v.append(tmp.begin(), tmp.end());
     }
 
     // bool
@@ -603,7 +603,33 @@ namespace fc {
       }
     }
 
+    template<typename Stream, typename T, std::size_t S>
+    inline auto pack( Stream& s, const std::array<T, S>& value ) -> std::enable_if_t<is_trivial_array<T>>
+    {
+       s.write((const char*)value.data(), S * sizeof(T));
+    }
 
+    template<typename Stream, typename T, std::size_t S>
+    inline auto pack( Stream& s, const std::array<T, S>& value ) -> std::enable_if_t<!is_trivial_array<T>>
+    {
+       for( std::size_t i = 0; i < S; ++i ) {
+          fc::raw::pack( s, value[i] );
+       }
+    }
+
+    template<typename Stream, typename T, std::size_t S>
+    inline auto unpack( Stream& s, std::array<T, S>& value )  -> std::enable_if_t<is_trivial_array<T>>
+    {
+       s.read((char*)value.data(), S * sizeof(T));
+    }
+
+    template<typename Stream, typename T, std::size_t S>
+    inline auto unpack( Stream& s, std::array<T, S>& value )  -> std::enable_if_t<!is_trivial_array<T>>
+    {
+       for( std::size_t i = 0; i < S; ++i ) {
+          fc::raw::unpack( s, value[i] );
+       }
+    }
 
     template<typename Stream, typename T>
     inline void pack( Stream& s, const T& v ) {
