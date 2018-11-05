@@ -495,7 +495,15 @@ struct controller_impl {
 
       db.set_revision( head->block_num );
     }
-   
+  
+    sha256 calculate_integrity_hash() const {
+      sha256::encoder enc;
+      auto hash_writer = std::make_shared<integrity_hash_worldstate_writer>(enc);
+      add_to_worldstate(hash_writer);
+      hash_writer->finalize();
+
+      return enc.result();
+   }
 
    /**
     *  Sets fork database head to the genesis state.
@@ -1847,6 +1855,10 @@ void controller::write_worldstate( const worldstate_writer_ptr& worldstate ) con
 void controller::read_worldstate( const worldstate_reader_ptr& worldstate ) {
     return my->read_from_worldstate(worldstate);
 }
+
+sha256 controller::calculate_integrity_hash()const { try {
+   return my->calculate_integrity_hash();
+} FC_LOG_AND_RETHROW() }
 
 void controller::pop_block() {
    my->pop_block();

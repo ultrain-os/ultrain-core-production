@@ -198,10 +198,9 @@ namespace ultrainio { namespace chain {
          block_state_ptr fetch_block_state_by_id( block_id_type id )const;
 
          block_id_type get_block_id_for_num( uint32_t block_num )const;
-
-         void write_worldstate( const worldstate_writer_ptr& worldstate )const;
-         
+         void write_worldstate( const worldstate_writer_ptr& worldstate )const;         
          void read_worldstate( const worldstate_reader_ptr& worldstate );
+         sha256 calculate_integrity_hash()const;
 
          void check_contract_list( account_name code )const;
          void check_action_list( account_name code, action_name action )const;
