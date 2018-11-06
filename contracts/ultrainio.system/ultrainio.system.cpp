@@ -192,7 +192,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // delegate_bandwidth.cpp
      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(delegatecons)(undelegatecons)(refund)(refundcons)
      // voting.cpp
-     (regproducer)(unregprod)(voteproducer)(regproxy)
+     (regproducer)(unregprod)
      // producer_pay.cpp
      (onblock)(claimrewards)
 )

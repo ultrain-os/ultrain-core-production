@@ -177,7 +177,7 @@
          {"name":"unstake_cpu_quantity", "type":"asset"}
       ]
     },{
-      "name": "delegatecons", 
+      "name": "delegatecons",
       "base": "",
       "fields": [
          {"name":"from", "type":"account_name"},
@@ -324,33 +324,6 @@
       "base": "",
       "fields": [
         {"name":"max_ram_size",     "type":"uint64"}
-      ]
-    },{
-      "name": "regproxy",
-      "base": "",
-      "fields": [
-        {"name":"proxy",     "type":"account_name"},
-        {"name":"isproxy",   "type":"bool"}
-      ]
-    },{
-      "name": "voteproducer",
-      "base": "",
-      "fields": [
-        {"name":"voter",     "type":"account_name"},
-        {"name":"proxy",     "type":"account_name"},
-        {"name":"producers", "type":"account_name[]"}
-      ]
-    },{
-      "name": "voter_info",
-      "base": "",
-      "fields": [
-        {"name":"owner",                "type":"account_name"},
-        {"name":"proxy",                "type":"account_name"},
-        {"name":"producers",            "type":"account_name[]"},
-        {"name":"staked",               "type":"int64"},
-        {"name":"last_vote_weight",     "type":"float64"},
-        {"name":"proxied_vote_weight",  "type":"float64"},
-        {"name":"is_proxy",             "type":"bool"}
       ]
     },{
       "name": "claimrewards",
@@ -526,14 +499,6 @@
       "type": "unregprod",
       "ricardian_contract": ""
    },{
-      "name": "regproxy",
-      "type": "regproxy",
-      "ricardian_contract": ""
-   },{
-      "name": "voteproducer",
-      "type": "voteproducer",
-      "ricardian_contract": ""
-   },{
       "name": "claimrewards",
       "type": "claimrewards",
       "ricardian_contract": ""
@@ -578,12 +543,6 @@
       "index_type": "i64",
       "key_names" : [],
       "key_types" : []
-    },{
-      "name": "voters",
-      "type": "voter_info",
-      "index_type": "i64",
-      "key_names" : ["owner"],
-      "key_types" : ["account_name"]
     },{
       "name": "userres",
       "type": "user_resources",

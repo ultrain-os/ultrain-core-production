@@ -919,140 +919,6 @@ struct unregister_producer_subcommand {
    }
 };
 
-struct vote_producer_proxy_subcommand {
-   string voter_str;
-   string proxy_str;
-
-   vote_producer_proxy_subcommand(CLI::App* actionRoot) {
-      auto vote_proxy = actionRoot->add_subcommand("proxy", localized("Vote your stake through a proxy"));
-      vote_proxy->add_option("voter", voter_str, localized("The voting account"))->required();
-      vote_proxy->add_option("proxy", proxy_str, localized("The proxy account"))->required();
-      add_standard_transaction_options(vote_proxy);
-
-      vote_proxy->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("voter", voter_str)
-                  ("proxy", proxy_str)
-                  ("producers", std::vector<account_name>{});
-         send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
-      });
-   }
-};
-
-struct vote_producers_subcommand {
-   string voter_str;
-   vector<ultrainio::name> producer_names;
-
-   vote_producers_subcommand(CLI::App* actionRoot) {
-      auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
-      vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
-      vote_producers->add_option("producers", producer_names, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
-      add_standard_transaction_options(vote_producers);
-
-      vote_producers->set_callback([this] {
-
-         std::sort( producer_names.begin(), producer_names.end() );
-
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("voter", voter_str)
-                  ("proxy", "")
-                  ("producers", producer_names);
-         send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
-      });
-   }
-};
-
-struct approve_producer_subcommand {
-   ultrainio::name voter;
-   ultrainio::name producer_name;
-
-   approve_producer_subcommand(CLI::App* actionRoot) {
-      auto approve_producer = actionRoot->add_subcommand("approve", localized("Add one producer to list of voted producers"));
-      approve_producer->add_option("voter", voter, localized("The voting account"))->required();
-      approve_producer->add_option("producer", producer_name, localized("The account to vote for"))->required();
-      add_standard_transaction_options(approve_producer);
-
-      approve_producer->set_callback([this] {
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", name(config::system_account_name).to_string())
-                               ("table", "voters")
-                               ("table_key", "owner")
-                               ("lower_bound", voter.value)
-                               ("limit", 1)
-            );
-            auto res = result.as<ultrainio::chain_apis::read_only::get_table_records_result>();
-            if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
-               std::cerr << "Voter info not found for account " << voter << std::endl;
-               return;
-            }
-            ULTRAIN_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
-            auto prod_vars = res.rows[0]["producers"].get_array();
-            vector<ultrainio::name> prods;
-            for ( auto& x : prod_vars ) {
-               prods.push_back( name(x.as_string()) );
-            }
-            prods.push_back( producer_name );
-            std::sort( prods.begin(), prods.end() );
-            auto it = std::unique( prods.begin(), prods.end() );
-            if (it != prods.end() ) {
-               std::cerr << "Producer \"" << producer_name << "\" is already on the list." << std::endl;
-               return;
-            }
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("voter", voter)
-               ("proxy", "")
-               ("producers", prods);
-            send_actions({create_action({permission_level{voter,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
-      });
-   }
-};
-
-struct unapprove_producer_subcommand {
-   ultrainio::name voter;
-   ultrainio::name producer_name;
-
-   unapprove_producer_subcommand(CLI::App* actionRoot) {
-      auto approve_producer = actionRoot->add_subcommand("unapprove", localized("Remove one producer from list of voted producers"));
-      approve_producer->add_option("voter", voter, localized("The voting account"))->required();
-      approve_producer->add_option("producer", producer_name, localized("The account to remove from voted producers"))->required();
-      add_standard_transaction_options(approve_producer);
-
-      approve_producer->set_callback([this] {
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", name(config::system_account_name).to_string())
-                               ("table", "voters")
-                               ("table_key", "owner")
-                               ("lower_bound", voter.value)
-                               ("limit", 1)
-            );
-            auto res = result.as<ultrainio::chain_apis::read_only::get_table_records_result>();
-            if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
-               std::cerr << "Voter info not found for account " << voter << std::endl;
-               return;
-            }
-            ULTRAIN_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
-            auto prod_vars = res.rows[0]["producers"].get_array();
-            vector<ultrainio::name> prods;
-            for ( auto& x : prod_vars ) {
-               prods.push_back( name(x.as_string()) );
-            }
-            auto it = std::remove( prods.begin(), prods.end(), producer_name );
-            if (it == prods.end() ) {
-               std::cerr << "Cannot remove: producer \"" << producer_name << "\" is not on the list." << std::endl;
-               return;
-            }
-            prods.erase( it, prods.end() ); //should always delete only one element
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("voter", voter)
-               ("proxy", "")
-               ("producers", prods);
-            send_actions({create_action({permission_level{voter,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
-      });
-   }
-};
-
 struct list_producers_subcommand {
    bool print_json = false;
    uint32_t limit = 50;
@@ -1092,7 +958,7 @@ struct list_producers_subcommand {
             {
                 total_unpaid_blocks += tmp.as_uint64();
                 printf("%lu,",tmp.as_uint64());
-            }				
+            }
 			printf("]\n");
 	    }
         std::cout << "total_unpaid_blocks: " << total_unpaid_blocks << std::endl;
@@ -1361,40 +1227,6 @@ struct claimrewards_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("owner", owner);
          send_actions({create_action({permission_level{owner,config::active_name}}, config::system_account_name, NEX(claimrewards), act_payload)});
-      });
-   }
-};
-
-struct regproxy_subcommand {
-   string proxy;
-
-   regproxy_subcommand(CLI::App* actionRoot) {
-      auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register an account as a proxy (for voting)"));
-      register_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
-      add_standard_transaction_options(register_proxy);
-
-      register_proxy->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy)
-                  ("isproxy", true);
-         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, NEX(regproxy), act_payload)});
-      });
-   }
-};
-
-struct unregproxy_subcommand {
-   string proxy;
-
-   unregproxy_subcommand(CLI::App* actionRoot) {
-      auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Unregister an account as a proxy (for voting)"));
-      unregister_proxy->add_option("proxy", proxy, localized("The proxy account to unregister"))->required();
-      add_standard_transaction_options(unregister_proxy);
-
-      unregister_proxy->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy)
-                  ("isproxy", false);
-         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, NEX(regproxy), act_payload)});
       });
    }
 };
@@ -1672,15 +1504,15 @@ void get_account( const string& accountName, bool json_format ) {
                std::cout << std::endl;
             } else {
                std::cout << indent << "<not voted>" << std::endl;
-            }   
+            }
             string scons_staked= obj["staked"].as_string();
             if(!scons_staked.empty())
             {
                 if(scons_staked.length() <= 4)
                     scons_staked = "0000"+ scons_staked;
                 scons_staked.insert(scons_staked.length()-4,".");
-                cons_staked = to_asset(scons_staked +" UGAS");               
-            }    
+                cons_staked = to_asset(scons_staked +" UGAS");
+            }
          } else {
             std::cout << "proxy:" << indent << proxy << std::endl;
          }
@@ -1999,7 +1831,7 @@ int main( int argc, char** argv ) {
    string sourcerateName;
    auto getSourceRate = get->add_subcommand("sourcerate", localized("Retrieve sourcetrans from the blockchain"), false);
    getSourceRate->add_option("name", sourcerateName, localized("The name of the account whose abi should be retrieved"));
-   getSourceRate->set_callback([&]() { 
+   getSourceRate->set_callback([&]() {
     auto json = call(get_sourcerate_func,fc::mutable_variant_object("account_name", accountName));
     std::cout << fc::json::to_pretty_string(json) << std::endl;
 
@@ -2972,13 +2804,6 @@ int main( int argc, char** argv ) {
    auto registerProducer = register_producer_subcommand(system);
    auto unregisterProducer = unregister_producer_subcommand(system);
 
-//   auto voteProducer = system->add_subcommand("voteproducer", localized("Vote for a producer"));
-//   voteProducer->require_subcommand();
-//   auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
-//   auto voteProducers = vote_producers_subcommand(voteProducer);
-//   auto approveProducer = approve_producer_subcommand(voteProducer);
-//   auto unapproveProducer = unapprove_producer_subcommand(voteProducer);
-
    auto listProducers = list_producers_subcommand(system);
 
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
@@ -2994,9 +2819,6 @@ int main( int argc, char** argv ) {
    auto sellram = sellram_subcommand(system);
 
    auto claimRewards = claimrewards_subcommand(system);
-
-   auto regProxy = regproxy_subcommand(system);
-   auto unregProxy = unregproxy_subcommand(system);
 
    auto cancelDelay = canceldelay_subcommand(system);
 

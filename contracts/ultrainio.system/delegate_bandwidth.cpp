@@ -204,7 +204,7 @@ namespace ultrainiosystem {
 
       auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)
       // since tokens_out.amount was asserted to be at least 2 earlier, fee.amount < tokens_out.amount
-      
+
       if( fee > 0 ) {
          INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {account,N(active)},
             { account, N(utrio.ramfee), asset(fee), std::string("sell ram fee") } );
@@ -415,12 +415,12 @@ namespace ultrainiosystem {
                   if ( cons_balance < asset(0) ) {
                      r.cons_amount = -cons_balance;
                      cons_balance = asset(0);
-                  } 
+                  }
                   r.request_time = now();
                });
                need_deferred_trx = true;
             } // else stake increase requested with no existing row in refunds_tbl -> nothing to do with refunds_tbl
-         } 
+         }
 
          if ( need_deferred_trx ) {
             ultrainio::transaction out;
@@ -460,25 +460,6 @@ namespace ultrainiosystem {
                   }
               }
           }
-         auto from_voter = _voters.find(from);
-         if( from_voter == _voters.end() ) {
-            from_voter = _voters.emplace( from, [&]( auto& v ) {
-                  v.owner  = from;
-                  v.staked = total_update.amount;
-               });
-         } else {
-            _voters.modify( from_voter, 0, [&]( auto& v ) {
-                  v.staked += total_update.amount;
-               });
-         }
-         ultrainio_assert( 0 <= from_voter->staked, "stake for voting cannot be negative");
-         if( from == N(b1) ) {
-            validate_b1_vesting( from_voter->staked );
-         }
-
-         if( from_voter->producers.size() || from_voter->proxy ) {
-            update_votes( from, from_voter->proxy, from_voter->producers, false );
-         }
       }
    }
 
