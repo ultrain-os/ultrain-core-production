@@ -14,11 +14,6 @@ namespace ultrainio { namespace chain {
       checksum256_type                 transaction_mroot; /// mroot of cycles_summary
       checksum256_type                 action_mroot; /// mroot of all delivered action receipts
 
-      /** The producer schedule version that should validate this block, this is used to
-       * indicate that the prior block which included new_producers->version has been marked
-       * irreversible and that it the new producer schedule takes effect this block.
-       */
-      optional<producer_schedule_type>  new_producers;
       extensions_type                   header_extensions;
 
       digest_type       digest()const;
@@ -38,6 +33,6 @@ namespace ultrainio { namespace chain {
 FC_REFLECT(ultrainio::chain::block_header,
            (timestamp)(proposer)(proposerProof)(version)
            (previous)(transaction_mroot)(action_mroot)
-           (new_producers)(header_extensions))
+           (header_extensions))
 
 FC_REFLECT_DERIVED(ultrainio::chain::signed_block_header, (ultrainio::chain::block_header), (signature))

@@ -363,9 +363,6 @@ struct controller_impl {
       producer_schedule_type initial_schedule{ 0, {{N(ultrainio), conf.genesis.initial_key}} };
 
       block_header_state genheader;
-      genheader.active_schedule       = initial_schedule;
-      genheader.pending_schedule      = initial_schedule;
-      genheader.pending_schedule_hash = fc::sha256::hash(initial_schedule);
       genheader.header.timestamp      = conf.genesis.initial_timestamp;
       genheader.header.action_mroot   = conf.genesis.compute_chain_id();
       genheader.id                    = genheader.header.id();
@@ -903,7 +900,6 @@ struct controller_impl {
          }
 
          clear_expired_input_transactions();
-         update_producers_authority();
       }
 
       guard_pending.cancel();
@@ -1281,42 +1277,6 @@ struct controller_impl {
       create_block_summary(p->id);
 
    } FC_CAPTURE_AND_RETHROW() }
-
-   void update_producers_authority() {
-      const auto& producers = pending->_pending_block_state->active_schedule.producers;
-
-      auto update_permission = [&]( auto& permission, auto threshold ) {
-         auto auth = authority( threshold, {}, {});
-         for( auto& p : producers ) {
-            auth.accounts.push_back({{p.producer_name, config::active_name}, 1});
-         }
-
-         if( static_cast<authority>(permission.auth) != auth ) { // TODO: use a more efficient way to check that authority has not changed
-            db.modify(permission, [&]( auto& po ) {
-               po.auth = auth;
-            });
-         }
-      };
-
-      uint32_t num_producers = producers.size();
-      auto calculate_threshold = [=]( uint32_t numerator, uint32_t denominator ) {
-         return ( (num_producers * numerator) / denominator ) + 1;
-      };
-
-      update_permission( authorization.get_permission({config::producers_account_name,
-                                                       config::active_name}),
-                         calculate_threshold( 2, 3 ) /* more than two-thirds */                      );
-
-      update_permission( authorization.get_permission({config::producers_account_name,
-                                                       config::majority_producers_permission_name}),
-                         calculate_threshold( 1, 2 ) /* more than one-half */                        );
-
-      update_permission( authorization.get_permission({config::producers_account_name,
-                                                       config::minority_producers_permission_name}),
-                         calculate_threshold( 1, 3 ) /* more than one-third */                       );
-
-      //TODO: Add tests
-   }
 
    void create_block_summary(const block_id_type& id) {
       auto block_num = block_header::num_from_id(id);
@@ -1699,18 +1659,6 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
 
 void controller::pop_block() {
    my->pop_block();
-}
-
-const producer_schedule_type&    controller::active_producers()const {
-   if ( !(my->pending) )
-      return  my->head->active_schedule;
-   return my->pending->_pending_block_state->active_schedule;
-}
-
-const producer_schedule_type&    controller::pending_producers()const {
-   if ( !(my->pending) )
-      return  my->head->pending_schedule;
-   return my->pending->_pending_block_state->pending_schedule;
 }
 
 optional<producer_schedule_type> controller::proposed_producers()const {

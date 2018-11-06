@@ -848,24 +848,6 @@ class softfloat_api : public context_aware_api {
 
 };
 
-class producer_api : public context_aware_api {
-   public:
-      using context_aware_api::context_aware_api;
-
-      int get_active_producers(array_ptr<chain::account_name> producers, size_t buffer_size) {
-         auto active_producers = context.get_active_producers();
-
-         size_t len = active_producers.size();
-         auto s = len * sizeof(chain::account_name);
-         if( buffer_size == 0 ) return s;
-
-         auto copy_size = std::min( buffer_size, s );
-         memcpy( producers, active_producers.data(), copy_size );
-
-         return copy_size;
-      }
-};
-
 class crypto_api : public context_aware_api {
    public:
       explicit crypto_api( apply_context& ctx )
@@ -1968,10 +1950,6 @@ REGISTER_INTRINSICS(privileged_api,
 
 REGISTER_INJECTED_INTRINSICS(transaction_context,
    (checktime,      void())
-);
-
-REGISTER_INTRINSICS(producer_api,
-   (get_active_producers,      int(int, int) )
 );
 
 #define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX) \

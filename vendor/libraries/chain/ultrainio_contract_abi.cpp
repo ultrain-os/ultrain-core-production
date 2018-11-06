@@ -94,7 +94,6 @@ abi_def ultrainio_contract_abi(const abi_def& ultrainio_system_abi)
          {"previous", "block_id_type"},
          {"transaction_mroot", "checksum256"},
          {"action_mroot", "checksum256"},
-         {"new_producers", "producer_schedule?"},
          {"header_extensions", "extension[]"}
       }
    });

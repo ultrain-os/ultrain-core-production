@@ -340,16 +340,6 @@ void apply_context::remove_table( const table_id_object& tid ) {
    db.remove(tid);
 }
 
-vector<account_name> apply_context::get_active_producers() const {
-   const auto& ap = control.active_producers();
-   vector<account_name> accounts; accounts.reserve( ap.producers.size() );
-
-   for(const auto& producer : ap.producers )
-      accounts.push_back(producer.producer_name);
-
-   return accounts;
-}
-
 void apply_context::reset_console() {
    _pending_console_output = std::ostringstream();
    _pending_console_output.setf( std::ios::scientific, std::ios::floatfield );

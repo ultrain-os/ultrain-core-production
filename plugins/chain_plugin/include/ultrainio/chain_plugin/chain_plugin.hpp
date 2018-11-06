@@ -142,7 +142,7 @@ public:
       name account_name;
    };
    get_sourcerate_results get_sourcerate( const get_sourcerate_params& params)const;
- 
+
 
    struct get_contract_results {
       name                   account_name;
@@ -308,17 +308,6 @@ public:
    get_producers_result get_producers( const get_producers_params& params, bool filter_enabled = false)const;
 
    bool is_genesis_finished()const;
-
-   struct get_producer_schedule_params {
-   };
-
-   struct get_producer_schedule_result {
-      fc::variant active;
-      fc::variant pending;
-      fc::variant proposed;
-   };
-
-   get_producer_schedule_result get_producer_schedule( const get_producer_schedule_params& params )const;
 
    struct get_scheduled_transactions_params {
       bool        json = false;
@@ -612,8 +601,6 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_result, (supply
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thresh_activated_stake_time)(more) );
 
-FC_REFLECT_EMPTY( ultrainio::chain_apis::read_only::get_producer_schedule_params )
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_schedule_result, (active)(pending)(proposed) );
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
         (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
                 net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(

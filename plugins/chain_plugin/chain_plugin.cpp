@@ -1236,17 +1236,6 @@ bool read_only::is_genesis_finished() const{
     return genesis_finished;
 }
 
-read_only::get_producer_schedule_result read_only::get_producer_schedule( const read_only::get_producer_schedule_params& p ) const {
-   read_only::get_producer_schedule_result result;
-   to_variant(db.active_producers(), result.active);
-   if(!db.pending_producers().producers.empty())
-      to_variant(db.pending_producers(), result.pending);
-   auto proposed = db.proposed_producers();
-   if(proposed && !proposed->producers.empty())
-      to_variant(*proposed, result.proposed);
-   return result;
-}
-
 template<typename Api>
 struct resolver_factory {
    static auto make(const Api* api, const fc::microseconds& max_serialization_time) {
