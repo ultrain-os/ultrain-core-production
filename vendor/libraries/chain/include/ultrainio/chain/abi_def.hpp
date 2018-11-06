@@ -98,6 +98,7 @@ struct abi_def {
    abi_def() = default;
    abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses, const vector<error_message>& error_msgs)
    :version("ultrainio::abi/1.0")
+   ,proposal("")
    ,types(types)
    ,structs(structs)
    ,actions(actions)
@@ -107,6 +108,7 @@ struct abi_def {
    {}
 
    string                version = "ultrainio::abi/1.0";
+   string                proposal = "";
    vector<type_def>      types;
    vector<struct_def>    structs;
    vector<action_def>    actions;
@@ -128,5 +130,5 @@ FC_REFLECT( ultrainio::chain::action_def                       , (name)(type)(ri
 FC_REFLECT( ultrainio::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
 FC_REFLECT( ultrainio::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( ultrainio::chain::error_message                    , (error_code)(error_msg) )
-FC_REFLECT( ultrainio::chain::abi_def                          , (version)(types)(structs)(actions)(tables)
+FC_REFLECT( ultrainio::chain::abi_def                          , (version)(proposal)(types)(structs)(actions)(tables)
                                                              (ricardian_clauses)(error_messages)(abi_extensions) )

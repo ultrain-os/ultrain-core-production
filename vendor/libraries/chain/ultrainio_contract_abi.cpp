@@ -25,6 +25,10 @@ abi_def ultrainio_contract_abi(const abi_def& ultrainio_system_abi)
       ultrain_abi.version = "ultrainio::abi/1.0";
    }
 
+   if (ultrain_abi.proposal.size() == 0 ) {
+      ultrain_abi.proposal = "none";
+   }
+
    fc::move_append(ultrain_abi.types, common_type_defs());
 
    // transaction
