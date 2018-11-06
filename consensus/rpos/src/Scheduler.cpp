@@ -602,6 +602,13 @@ namespace ultrainio {
             return false;
         }
 
+        const auto c_mroot = voterSysPtr->getCommitteeMroot();
+        if (c_mroot != propose.block.committee_mroot) {
+            elog("verify committee mroot error. own c_mroot : ${m1}, block mroot ${m2}",
+                 ("m1", c_mroot) ("m2", propose.block.committee_mroot));
+            return false;
+        }
+
         Proof proposerProof(propose.block.proposerProof);
         ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
         std::string previousHash(blockId.data());
