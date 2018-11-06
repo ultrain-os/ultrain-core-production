@@ -13,8 +13,8 @@ namespace ultrainio { namespace chain {
       block_id_type                    previous;
       checksum256_type                 transaction_mroot; /// mroot of cycles_summary
       checksum256_type                 action_mroot; /// mroot of all delivered action receipts
-
-      extensions_type                   header_extensions;
+      checksum256_type                 committee_mroot;
+      extensions_type                  header_extensions;
 
       digest_type       digest()const;
       block_id_type     id() const;
@@ -32,7 +32,7 @@ namespace ultrainio { namespace chain {
 
 FC_REFLECT(ultrainio::chain::block_header,
            (timestamp)(proposer)(proposerProof)(version)
-           (previous)(transaction_mroot)(action_mroot)
+           (previous)(transaction_mroot)(action_mroot)(committee_mroot)
            (header_extensions))
 
 FC_REFLECT_DERIVED(ultrainio::chain::signed_block_header, (ultrainio::chain::block_header), (signature))
