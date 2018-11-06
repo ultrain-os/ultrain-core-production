@@ -29,6 +29,7 @@ namespace ultrainio {
         if (!m_committeeStatePtr) {
             m_committeeStatePtr = getCommitteeState();
         }
+        computeCommitteeMroot();
         long totalStake = getTotalStakes();
         ULTRAIN_ASSERT(totalStake != 0, chain::chain_exception, "totalStake is 0");
         m_proposerRatio = Config::kProposerStakeNumber / totalStake;
@@ -45,6 +46,20 @@ namespace ultrainio {
 
     PrivateKey StakeVote::getMyPrivateKey() {
         return s_keyKeeper->getPrivateKey();
+    }
+
+    void StakeVote::computeCommitteeMroot() {
+        if (!m_committeeStatePtr) {
+            m_committeeMroot = chain::checksum256_type();
+            return;
+        }
+        vector<string> accounts;
+        for (const auto& c : m_committeeStatePtr->cinfo) {
+            accounts.push_back(c.accountName);
+        }
+        std::sort(accounts.begin(), accounts.end());
+        m_committeeMroot = chain::digest_type::hash(accounts);
+        dlog("--------- committee mroot is ${mroot}", ("mroot", m_committeeMroot));
     }
 
     bool StakeVote::committeeHasWorked() {

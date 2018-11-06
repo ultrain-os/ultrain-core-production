@@ -212,6 +212,7 @@ namespace ultrainio {
         echo_message_info findEchoMsg(BlockIdType blockId);
 
         void start_memleak_check();
+        chain::checksum256_type getCommitteeMroot(uint32_t block_num);
 
         // data member
         Block m_ba0Block;

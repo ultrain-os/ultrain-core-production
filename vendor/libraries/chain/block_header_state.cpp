@@ -61,6 +61,7 @@ namespace ultrainio { namespace chain {
 
     result.header.action_mroot       = h.action_mroot;
     result.header.transaction_mroot  = h.transaction_mroot;
+    result.header.committee_mroot    = h.committee_mroot;
     result.header.proposer           = h.proposer;
     result.header.proposerProof      = h.proposerProof;
     result.id                        = result.header.id();

@@ -39,6 +39,8 @@ namespace ultrainio {
 
         int getCommitteeMemberNumber() const;
 
+        chain::checksum256_type getCommitteeMroot() { return m_committeeMroot; }
+
         int count(const Proof& proof, int stakes, double p);
 
         PublicKey getPublicKey(const AccountName& account) const;
@@ -61,9 +63,11 @@ namespace ultrainio {
         long getTotalStakes() const;
 
         int reverseBinoCdf(double rand, int stake, double p);
+        void computeCommitteeMroot();
 
         uint32_t m_blockNum = 0;
         std::shared_ptr<CommitteeState> m_committeeStatePtr = nullptr;
+        chain::checksum256_type m_committeeMroot;
         double m_proposerRatio = 0.0;
         double m_voterRatio = 0.0;
     };

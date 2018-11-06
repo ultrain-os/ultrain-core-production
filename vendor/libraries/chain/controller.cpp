@@ -861,7 +861,7 @@ struct controller_impl {
    } /// push_transaction
 
 
-   void start_block( block_timestamp_type when, controller::block_status s ) {
+    void start_block( block_timestamp_type when, chain::checksum256_type committee_mroot, controller::block_status s ) {
       ULTRAIN_ASSERT( !pending, block_validate_exception, "pending block is not available" );
 
       ULTRAIN_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
@@ -877,6 +877,7 @@ struct controller_impl {
 
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
+      pending->_pending_block_state->header.committee_mroot = committee_mroot;
 
       // TODO(yufengshen) : always confirming 1 for now.
       pending->_pending_block_state->set_confirmed(1);
@@ -914,7 +915,7 @@ struct controller_impl {
     void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
          ULTRAIN_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
-         start_block( b->timestamp, s );
+         start_block( b->timestamp, b->committee_mroot, s );
 
          // We have to copy here.
          chain::signed_block_header* hp = &(pending->_pending_block_state->header);
@@ -1228,7 +1229,6 @@ struct controller_impl {
       pending->_pending_block_state->header.transaction_mroot = merkle( move(trx_digests) );
    }
 
-
    void finalize_block()
    {
       ULTRAIN_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
@@ -1462,9 +1462,9 @@ chainbase::database& controller::db()const { return my->db; }
 fork_database& controller::fork_db()const { return my->fork_db; }
 
 
-void controller::start_block( block_timestamp_type when) {
+void controller::start_block( block_timestamp_type when, chain::checksum256_type committee_mroot) {
    validate_db_available_size();
-   my->start_block(when, block_status::incomplete );
+   my->start_block(when, committee_mroot, block_status::incomplete );
 }
 
 void controller::finalize_block() {

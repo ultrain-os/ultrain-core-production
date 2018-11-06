@@ -90,10 +90,12 @@ abi_def ultrainio_contract_abi(const abi_def& ultrainio_system_abi)
       "block_header", "", {
          {"timestamp", "uint32"},
          {"proposer", "account_name"},
-         {"confirmed", "uint16"},
+         {"proposerProof", "string"},
+         {"version", "uint32"},
          {"previous", "block_id_type"},
          {"transaction_mroot", "checksum256"},
          {"action_mroot", "checksum256"},
+         {"committee_mroot", "checksum256"},
          {"header_extensions", "extension[]"}
       }
    });

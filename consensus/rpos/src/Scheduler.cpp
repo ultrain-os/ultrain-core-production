@@ -53,6 +53,7 @@ namespace {
                  ba0_block.timestamp == block->timestamp &&
                  ba0_block.transaction_mroot == block->transaction_mroot &&
                  ba0_block.action_mroot == block->action_mroot &&
+                 ba0_block.committee_mroot == block->committee_mroot &&
                  ba0_block.previous == block->previous);
     }
 }
@@ -67,6 +68,15 @@ namespace ultrainio {
         m_memleakCheck.reset(new boost::asio::steady_timer(app().get_io_service()));
         start_memleak_check();
         m_fast_timestamp = 0;
+    }
+
+    chain::checksum256_type Scheduler::getCommitteeMroot(uint32_t block_num) {
+        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(block_num);
+        if (voterSysPtr) {
+            return voterSysPtr->getCommitteeMroot();
+        } else {
+            return chain::checksum256_type();
+        }
     }
 
     void Scheduler::start_memleak_check() {
@@ -957,7 +967,7 @@ namespace ultrainio {
                         break;
                     }
                 }
-            }FC_LOG_AND_DROP();    
+            }FC_LOG_AND_DROP();
         }
         return count;
     }
@@ -1106,7 +1116,7 @@ namespace ultrainio {
                 auto block_timestamp = chain.get_proper_next_block_timestamp();
                 ilog("initProposeMsg: start block at ${time} and block_timestamp is ${timestamp}",
                      ("time", fc::time_point::now())("timestamp", block_timestamp));
-                chain.start_block(block_timestamp);
+                chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1));
             }
 
             // TODO(yufengshen): We have to cap the block size, cpu/net resource when packing a block.
@@ -1151,11 +1161,14 @@ namespace ultrainio {
             block.transaction_mroot = bh.transaction_mroot;
             block.action_mroot = bh.action_mroot;
             block.transactions = pbs->block->transactions;
+            block.committee_mroot = bh.committee_mroot;
             block.signature = std::string(Signer::sign<BlockHeader>(block, StakeVote::getMyPrivateKey()));
-            ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature}",
+            ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature} committee mroot ${mroot}",
                  ("num", block.transactions.size())
                  ("proposer", std::string(block.proposer))
-                 ("signature", block.signature));
+                 ("signature", block.signature)
+                 ("mroot", block.committee_mroot)
+                 );
             /*
               ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${prv} ${ma} ${mt} ${id}",
               ("t", block.timestamp)
@@ -1441,7 +1454,7 @@ namespace ultrainio {
         //not to run trxs multiple times in same block
         if (m_ba0VerifiedBlkId == id) {
            m_voterPreRunBa0InProgress = true;
-	   ilog("Block ${blk} has been verified before", ("blk", id));
+           ilog("Block ${blk} has been verified before", ("blk", id));
            return true;
         }
 
@@ -1452,7 +1465,7 @@ namespace ultrainio {
         // Here is the hack, we are actually using the template of ba0_block, but we don't use
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
         // e.g. pk, proof, producer.
-        chain.start_block(block.timestamp);
+        chain.start_block(block.timestamp, getCommitteeMroot(chain.head_block_num() + 1));
         chain::block_state_ptr pbs = chain.pending_block_state_hack();
         chain::signed_block_ptr bp = pbs->block;
         chain::signed_block_header *hp = &(pbs->header);
@@ -1531,7 +1544,7 @@ namespace ultrainio {
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
         // e.g. pk, proof, producer.
         try {
-            chain.start_block(block.timestamp);
+            chain.start_block(block.timestamp, getCommitteeMroot(chain.head_block_num() + 1));
             chain::block_state_ptr pbs = chain.pending_block_state_hack();
             chain::signed_block_ptr bp = pbs->block;
             chain::signed_block_header *hp = &(pbs->header);
@@ -1907,8 +1920,7 @@ namespace ultrainio {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.abort_block();
         auto block_timestamp = chain.head_block_time() + fc::milliseconds(10000);
-        chain.start_block(block_timestamp);
-
+        chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1));
         chain.set_action_merkle_hack();
         // empty block does not have trx, so we don't need this?
         chain.set_trx_merkle_hack();
@@ -1920,6 +1932,7 @@ namespace ultrainio {
         blockPtr->previous = bh.previous;
         blockPtr->transaction_mroot = bh.transaction_mroot;
         blockPtr->action_mroot = bh.action_mroot;
+        blockPtr->committee_mroot = bh.committee_mroot;
         // Discard the temp block.
         chain.abort_block();
         return blockPtr;
