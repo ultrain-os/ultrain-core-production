@@ -1129,7 +1129,7 @@ namespace ultrainio {
             ilog("------- run ${count1} ${count2}  ScheduledTrxs:${count3} trxs, taking time ${time}, remaining pending trx ${count4}, remaining unapplied trx ${count5}",
                  ("count1", count1)
                  ("count2", count2)
-                 ("count3)", count3)
+                 ("count3", count3)
                  ("time", fc::time_point::now() - start_timestamp)
                  ("count4", pending_trxs->size())
                  ("count5", unapplied_trxs.size() - count2));
