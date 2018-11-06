@@ -364,7 +364,13 @@ def stepSetSystemContract():
 def stepCreateStakedAccounts():
     for i in range(0, args.num_producers):
         retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1000.0000 UGAS" --stake-cpu "1000.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key))
-    sleep(10)
+    sleep(15)
+
+
+def stepRegProducers():
+    for i in range(1, args.num_producers):
+        retry(args.clultrain + 'system regproducer %s %s https://%s.com 0123 ' % (accounts[i], pk_list[i], accounts[i]))
+    sleep(15)
     for i in range(0, args.num_producers):
         funds = 500000000 / args.num_producers / 2
         # user.111 & user.112 are used for tps pressure test, so they need more staked resources
@@ -378,11 +384,6 @@ def stepCreateStakedAccounts():
             funds += 80000000
         retry(args.clultrain + 'system delegatecons %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
     sleep(18)
-
-def stepRegProducers():
-    for i in range(1, args.num_producers):
-        retry(args.clultrain + 'system regproducer %s %s https://%s.com 0123 ' % (accounts[i], pk_list[i], accounts[i]))
-    sleep(1)
     run(args.clultrain + 'system listproducers')
 
 def stepResign():
