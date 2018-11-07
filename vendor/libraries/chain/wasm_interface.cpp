@@ -2,7 +2,6 @@
 #include <ultrainio/chain/apply_context.hpp>
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/transaction_context.hpp>
-#include <ultrainio/chain/producer_schedule.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <ultrainio/chain/authorization_manager.hpp>

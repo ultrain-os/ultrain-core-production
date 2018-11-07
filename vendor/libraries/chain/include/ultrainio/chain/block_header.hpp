@@ -1,6 +1,5 @@
 #pragma once
 #include <ultrainio/chain/block_timestamp.hpp>
-#include <ultrainio/chain/producer_schedule.hpp>
 
 namespace ultrainio { namespace chain {
 

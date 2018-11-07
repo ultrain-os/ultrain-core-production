@@ -183,8 +183,6 @@ namespace ultrainio { namespace chain {
          void set_action_merkle_hack();
          void set_trx_merkle_hack();
 
-         optional<producer_schedule_type> proposed_producers()const;
-
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;
 

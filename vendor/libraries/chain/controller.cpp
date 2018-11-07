@@ -360,8 +360,6 @@ struct controller_impl {
     */
    void initialize_fork_db() {
       ilog( " Initializing new blockchain with genesis state                  " );
-      producer_schedule_type initial_schedule{ 0, {{N(ultrainio), conf.genesis.initial_key}} };
-
       block_header_state genheader;
       genheader.header.timestamp      = conf.genesis.initial_timestamp;
       genheader.header.action_mroot   = conf.genesis.compute_chain_id();
@@ -879,9 +877,6 @@ struct controller_impl {
       pending->_pending_block_state->in_current_chain = true;
       pending->_pending_block_state->header.committee_mroot = committee_mroot;
 
-      // TODO(yufengshen) : always confirming 1 for now.
-      pending->_pending_block_state->set_confirmed(1);
-
       //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
          try {
@@ -1233,7 +1228,6 @@ struct controller_impl {
    {
       ULTRAIN_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
       try {
-
 
       /*
       ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
@@ -1595,7 +1589,7 @@ time_point controller::pending_block_time()const {
 }
 
 uint32_t controller::last_irreversible_block_num() const {
-   return std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
+   return my->head->irreversible_blocknum;
 }
 
 block_id_type controller::last_irreversible_block_id() const {
@@ -1659,14 +1653,6 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
 
 void controller::pop_block() {
    my->pop_block();
-}
-
-optional<producer_schedule_type> controller::proposed_producers()const {
-   const auto& gpo = get_global_properties();
-   if( !gpo.proposed_schedule_block_num.valid() )
-      return optional<producer_schedule_type>();
-
-   return gpo.proposed_schedule;
 }
 
 bool controller::skip_auth_check()const {
