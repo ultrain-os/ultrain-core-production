@@ -136,7 +136,6 @@ namespace ultrainio { namespace chain {
          void finalize_block();
          void assign_header_to_block();
          void commit_block();
-         void pop_block();
 
          void push_block( const signed_block_ptr& b, block_status s = block_status::complete );
 

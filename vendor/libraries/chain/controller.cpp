@@ -13,7 +13,6 @@
 #include <ultrainio/chain/contract_table_objects.hpp>
 #include <ultrainio/chain/generated_transaction_object.hpp>
 #include <ultrainio/chain/transaction_object.hpp>
-#include <ultrainio/chain/reversible_block_object.hpp>
 
 #include <ultrainio/chain/authorization_manager.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
@@ -53,7 +52,6 @@ struct pending_state {
 struct controller_impl {
    controller&                    self;
    chainbase::database            db;
-   chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
    optional<pending_state>        pending;
    block_state_ptr                head;
@@ -111,25 +109,6 @@ struct controller_impl {
     std::list<transaction_metadata_ptr>    pending_transactions;
     set<digest_type>     pending_transactions_set;
 
-   void pop_block() {
-      auto prev = fork_db.get_block( head->header.previous );
-      ULTRAIN_ASSERT( prev, block_validate_exception, "attempt to pop beyond last irreversible block" );
-
-      if( const auto* b = reversible_blocks.find<reversible_block_object,by_num>(head->block_num) )
-      {
-         reversible_blocks.remove( *b );
-      }
-
-      if ( read_mode == db_read_mode::SPECULATIVE ) {
-         for( const auto& t : head->trxs )
-            unapplied_transactions[t->signed_id] = t;
-      }
-      head = prev;
-      db.undo();
-
-   }
-
-
    void set_apply_handler( account_name receiver, account_name contract, action_name action, apply_handler v ) {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
@@ -139,9 +118,6 @@ struct controller_impl {
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size ),
-    reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
-        cfg.read_only ? database::read_only : database::read_write,
-        cfg.reversible_cache_size ),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -223,13 +199,6 @@ struct controller_impl {
       ULTRAIN_ASSERT( s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head" );
       blog.append(s->block);
 
-      const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
-      auto objitr = ubi.begin();
-      while( objitr != ubi.end() && objitr->blocknum <= s->block_num ) {
-         reversible_blocks.remove( *objitr );
-         objitr = ubi.begin();
-      }
-
       if ( read_mode == db_read_mode::IRREVERSIBLE ) {
          apply_block( s->block, controller::block_status::complete );
          fork_db.mark_in_current_chain( s, true );
@@ -262,15 +231,6 @@ struct controller_impl {
                   std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
                }
             }
-
-            int rev = 0;
-            while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
-               ++rev;
-               self.push_block( obj->get_block(), controller::block_status::validated );
-            }
-
-            std::cerr<< "\n";
-            ilog( "${n} reversible blocks replayed", ("n",rev) );
             auto end = fc::time_point::now();
             ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
                   ("n", head->block_num)("duration", (end-start).count()/1000000)
@@ -281,19 +241,6 @@ struct controller_impl {
          } else if( !end ) {
             blog.reset_to_genesis( conf.genesis, head->block );
          }
-      }
-
-      const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
-      auto objitr = ubi.rbegin();
-      if( objitr != ubi.rend() ) {
-         ULTRAIN_ASSERT( objitr->blocknum == head->block_num, fork_database_exception,
-                    "reversible block database is inconsistent with fork database, replay blockchain",
-                    ("head",head->block_num)("unconfimed", objitr->blocknum)         );
-      } else {
-         auto end = blog.read_head();
-         ULTRAIN_ASSERT( end && end->block_num() == head->block_num, fork_database_exception,
-                    "fork database exists but reversible block database does not, replay blockchain",
-                    ("blog_head",end->block_num())("head",head->block_num)  );
       }
 
       ULTRAIN_ASSERT( db.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
@@ -314,14 +261,11 @@ struct controller_impl {
       pending.reset();
 
       db.flush();
-      reversible_blocks.flush();
 
       http_client = nullptr;
    }
 
    void add_indices() {
-      reversible_blocks.add_index<reversible_block_index>();
-
       db.add_index<account_index>();
       db.add_index<account_sequence_index>();
 
@@ -454,18 +398,11 @@ struct controller_impl {
             head = fork_db.head();
             ULTRAIN_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
 
-      }
-
-  //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
-      //ilog("emit accepted_block block_num = ${block_num}", ("block_num", pending->_pending_block_state->block_num));
-      //emit( self.accepted_block, pending->_pending_block_state );
-
-      if( !replaying ) {
-         reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = pending->_pending_block_state->block_num;
-            ubo.set_block( pending->_pending_block_state->block );
-         });
          }
+
+         //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
+         //ilog("emit accepted_block block_num = ${block_num}", ("block_num", pending->_pending_block_state->block_num));
+         //emit( self.accepted_block, pending->_pending_block_state );
 
          emit( self.accepted_block, pending->_pending_block_state );
       } catch (...) {
@@ -1120,51 +1057,7 @@ struct controller_impl {
       } else if( new_head->id != head->id ) {
          ilog("switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
               ("current_head_id", head->id)("current_head_num", head->block_num)("new_head_id", new_head->id)("new_head_num", new_head->block_num) );
-         auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
-
-         for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
-            fork_db.mark_in_current_chain( *itr , false );
-            pop_block();
-         }
-         ULTRAIN_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                    "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
-
-         for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
-            optional<fc::exception> except;
-            try {
-               apply_block( (*ritr)->block, (*ritr)->validated ? controller::block_status::validated : controller::block_status::complete );
-               head = *ritr;
-               fork_db.mark_in_current_chain( *ritr, true );
-               (*ritr)->validated = true;
-            }
-            catch (const fc::exception& e) { except = e; }
-            if (except) {
-               elog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
-
-               // ritr currently points to the block that threw
-               // if we mark it invalid it will automatically remove all forks built off it.
-               fork_db.set_validity( *ritr, false );
-
-               // pop all blocks from the bad fork
-               // ritr base is a forward itr to the last block successfully applied
-               auto applied_itr = ritr.base();
-               for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
-                  fork_db.mark_in_current_chain( *itr , false );
-                  pop_block();
-               }
-               ULTRAIN_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                          "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
-
-               // re-apply good blocks
-               for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
-                  apply_block( (*ritr)->block, controller::block_status::validated /* we previously validated these blocks*/ );
-                  head = *ritr;
-                  fork_db.mark_in_current_chain( *ritr, true );
-               }
-               throw *except;
-            } // end if exception
-         } /// end for each block in branch
-         ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
+         ULTRAIN_ASSERT(false, chain_exception, "should never switch forks");
       }
    } /// push_block
 
@@ -1460,7 +1353,6 @@ void controller::assign_header_to_block() {
 
 void controller::commit_block() {
    validate_db_available_size();
-   validate_reversible_available_size();
    my->commit_block(true);
 }
 
@@ -1470,7 +1362,6 @@ void controller::abort_block() {
 
 void controller::push_block( const signed_block_ptr& b, block_status s ) {
    validate_db_available_size();
-   validate_reversible_available_size();
    my->push_block( b, s );
 }
 
@@ -1638,10 +1529,6 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
 
    return signed_blk->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
-
-void controller::pop_block() {
-   my->pop_block();
-}
 
 bool controller::skip_auth_check()const {
    return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
@@ -1820,12 +1707,6 @@ void controller::validate_db_available_size() const {
    const auto free = db().get_segment_manager()->get_free_memory();
    const auto guard = my->conf.state_guard_size;
    ULTRAIN_ASSERT(free >= guard, database_guard_exception, "database free: ${f}, guard size: ${g}", ("f", free)("g",guard));
-}
-
-void controller::validate_reversible_available_size() const {
-   const auto free = my->reversible_blocks.get_segment_manager()->get_free_memory();
-   const auto guard = my->conf.reversible_guard_size;
-   ULTRAIN_ASSERT(free >= guard, reversible_guard_exception, "reversible free: ${f}, guard size: ${g}", ("f", free)("g",guard));
 }
 
 bool controller::is_known_unexpired_transaction( const transaction_id_type& id) const {
