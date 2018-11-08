@@ -434,18 +434,6 @@ struct controller_impl {
       active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
       create_native_account( config::null_account_name, empty_authority, empty_authority );
-      create_native_account( config::producers_account_name, empty_authority, active_producers_authority );
-      const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
-      const auto& majority_permission     = authorization.create_permission( config::producers_account_name,
-                                                                             config::majority_producers_permission_name,
-                                                                             active_permission.id,
-                                                                             active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
-      const auto& minority_permission     = authorization.create_permission( config::producers_account_name,
-                                                                             config::minority_producers_permission_name,
-                                                                             majority_permission.id,
-                                                                             active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
    }
 
 

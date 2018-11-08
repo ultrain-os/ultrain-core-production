@@ -29,11 +29,6 @@ const static auto default_state_guard_size      = 128*1024*1024ll;
 
 const static uint64_t system_account_name    = N(ultrainio);
 const static uint64_t null_account_name      = N(utrio.null);
-const static uint64_t producers_account_name = N(utrio.prods);
-
-// Active permission of producers account requires greater than 2/3 of the producers to authorize
-const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
-const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0
 
 const static uint64_t ultrainio_auth_scope       = N(utrio.auth);
 const static uint64_t ultrainio_all_scope        = N(utrio.all);
@@ -106,22 +101,6 @@ const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call 
 
 const static ultrainio::chain::wasm_interface::vm_type default_wasm_runtime = ultrainio::chain::wasm_interface::vm_type::binaryen;
 const static uint32_t   default_abi_serializer_max_time_ms = 15*1000; ///< default deadline for abi serialization methods
-
-/**
- *  The number of sequential blocks produced by a single producer
- */
-const static int producer_repetitions = 12;
-const static int max_producers = 125;
-
-const static size_t maximum_tracked_dpos_confirmations = 1024;     ///<
-static_assert(maximum_tracked_dpos_confirmations >= ((max_producers * 2 / 3) + 1) * producer_repetitions, "Settings never allow for DPOS irreversibility" );
-
-
-/**
- * The number of blocks produced per round is based upon all producers having a chance
- * to produce all of their consecutive blocks.
- */
-//const static int blocks_per_round = producer_count * producer_repetitions;
 
 const static int irreversible_threshold_percent= 70 * percent_1;
 
