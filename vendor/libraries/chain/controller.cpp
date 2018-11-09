@@ -287,18 +287,6 @@ struct controller_impl {
       resource_limits.add_indices();
    }
 
-   void clear_all_undo() {
-      // Rewind the database to the last irreversible block
-      db.with_write_lock([&] {
-         db.undo_all();
-         /*
-         FC_ASSERT(db.revision() == self.head_block_num(),
-                   "Chainbase revision does not match head block num",
-                   ("rev", db.revision())("head_block", self.head_block_num()));
-                   */
-      });
-   }
-
    /**
     *  Sets fork database head to the genesis state.
     */
@@ -374,9 +362,6 @@ struct controller_impl {
       create_native_account( config::system_account_name, system_auth, system_auth, true, true );
 
       auto empty_authority = authority(1, {}, {});
-      auto active_producers_authority = authority(1, {}, {});
-      active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
-
       create_native_account( config::null_account_name, empty_authority, empty_authority );
    }
 
@@ -397,12 +382,7 @@ struct controller_impl {
             emit(self.accepted_block_header, pending->_pending_block_state);
             head = fork_db.head();
             ULTRAIN_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
-
          }
-
-         //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
-         //ilog("emit accepted_block block_num = ${block_num}", ("block_num", pending->_pending_block_state->block_num));
-         //emit( self.accepted_block, pending->_pending_block_state );
 
          emit( self.accepted_block, pending->_pending_block_state );
       } catch (...) {
