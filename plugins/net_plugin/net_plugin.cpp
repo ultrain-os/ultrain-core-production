@@ -32,6 +32,8 @@
 #include <random>
 #include <rpos/MsgMgr.h>
 
+#include <malloc.h>
+
 using namespace ultrainio::chain::plugin_interface::compat;
 
 namespace fc {
@@ -454,6 +456,8 @@ namespace ultrainio {
         explicit connection( socket_ptr s );
         ~connection();
         void initialize();
+
+        static const uint32_t MAX_OUT_QUEUE = 1000;
 
         peer_block_state_index  blk_state;
         transaction_state_index trx_state;
@@ -999,12 +1003,13 @@ namespace ultrainio {
             return;
         }
         std::vector<boost::asio::const_buffer> bufs;
-        while (write_queue.size() > 0) {
+        while (write_queue.size() > 0 && out_queue.size() < MAX_OUT_QUEUE) {
             auto& m = write_queue.front();
             bufs.push_back(boost::asio::buffer(*m.buff));
             out_queue.push_back(m);
             write_queue.pop_front();
         }
+
         boost::asio::async_write(*socket, bufs, [c](boost::system::error_code ec, std::size_t w) {
             try {
                 auto conn = c.lock();
@@ -1026,8 +1031,11 @@ namespace ultrainio {
                     my_impl->close(conn);
                     return;
                 }
-                while (conn->out_queue.size() > 0) {
-                    conn->out_queue.pop_front();
+
+                bool release_memory = conn->out_queue.size() >= MAX_OUT_QUEUE ? true : false;
+                conn->out_queue.clear();
+                if (release_memory) {
+                    malloc_trim(0);
                 }
                 conn->do_queue_write();
             }

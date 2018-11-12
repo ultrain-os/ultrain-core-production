@@ -795,6 +795,9 @@ namespace ultrainio {
         }
 
         if (num <= end_block_num) {
+            if (end_block_num > num + m_maxSyncBlocks) {
+                end_block_num = num + m_maxSyncBlocks;
+            }
             m_syncTaskQueue.emplace_back(peer_addr, num, end_block_num, msg.seqNum);
         }
 
@@ -1834,6 +1837,7 @@ namespace ultrainio {
         uint32_t send_count = 0;
         for (std::list<SyncTask>::iterator it = m_syncTaskQueue.begin(); it != m_syncTaskQueue.end();) {
             sync_block.seqNum = it->seqNum;
+            send_count = 0;
             while (send_count < max_count && it->startBlock <= it->endBlock && it->startBlock <= last_num) {
                 auto b = chain.fetch_block_by_number(it->startBlock);
                 if (b) {
