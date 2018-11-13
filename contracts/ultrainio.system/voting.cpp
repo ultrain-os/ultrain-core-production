@@ -50,14 +50,12 @@ namespace ultrainiosystem {
                info.location     = location;
             });
       } else {
-          int64_t self_stake = 0;
-          bool enable_prods = false;
          _producers.emplace( producer, [&]( producer_info& info ){
                info.owner         = producer;
-               info.total_votes   = self_stake;
+               info.total_votes   = 0LL;
                info.producer_key  = producer_key;
                info.is_active     = true;
-               info.is_enabled    = enable_prods;
+               info.is_enabled    = false;
                info.url           = url;
                info.location      = location;
          });

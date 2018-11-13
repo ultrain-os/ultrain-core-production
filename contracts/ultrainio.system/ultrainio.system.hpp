@@ -70,6 +70,7 @@ namespace ultrainiosystem {
       std::string           producer_key; /// a packed public key object
       bool                  is_active = true;
       bool                  is_enabled = false;
+      bool                  hasactived = false;
       std::string           url;
       uint64_t              unpaid_blocks[num_rate] {};
       uint64_t              last_claim_time = 0;

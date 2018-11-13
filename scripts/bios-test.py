@@ -17,7 +17,9 @@ args = None
 logFile = None
 
 unlockTimeout = 999999999
-
+defaultclu = '/root/workspace%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
+defaultkul = '/root/workspace%s/ultrain-core/build/programs/kultraind/kultraind'
+defaultcontracts_dir = '/root/workspace%s/ultrain-core/build/contracts/'
 systemAccounts = [
     'utrio.bpay',
     'utrio.msig',
@@ -371,14 +373,14 @@ def stepRegProducers():
     for i in range(1, args.num_producers):
         retry(args.clultrain + 'system regproducer %s %s https://%s.com 0123 ' % (accounts[i], pk_list[i], accounts[i]))
     sleep(15)
-    for i in range(0, args.num_producers):
+    for i in range(1, args.num_producers):
         funds = 500000000 / args.num_producers / 2
         # user.111 & user.112 are used for tps pressure test, so they need more staked resources
         if accounts[i] == 'user.111' or accounts[i] == 'user.112':
             funds += 80000000
         retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], (funds*2+5000)))
     sleep(20)
-    for i in range(0, args.num_producers):
+    for i in range(1, args.num_producers):
         funds = 500000000 / args.num_producers / 2
         if accounts[i] == 'user.111' or accounts[i] == 'user.112':
             funds += 80000000
@@ -471,7 +473,7 @@ commands = [
     ('t', 'tokens',         stepCreateTokens,           True,    "Create tokens"),
     ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
-    ('p', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
+    ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
 #    ('P', 'start-prod',     stepStartProducers,         True,    "Start producers"),
 #    ('v', 'vote',           stepVote,                   True,    "Vote for producers"),
 #    ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
@@ -485,9 +487,9 @@ commands = [
 
 parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")
 parser.add_argument('--private-Key', metavar='', help="ULTRAIN Private Key", default='5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H', dest="private_key")
-parser.add_argument('--clultrain', metavar='', help="Clultrain command", default='/root/workspace/yufengshen/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 ')
-parser.add_argument('--kultraind', metavar='', help="Path to kultraind binary", default='/root/workspace/yufengshen/ultrain-core/build/programs/kultraind/kultraind')
-parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default='/root/workspace/yufengshen/ultrain-core/build/contracts/')
+parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '')
+parser.add_argument('--kultraind', metavar='', help="Path to kultraind binary", default=defaultkul % '')
+parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default=defaultcontracts_dir % '')
 parser.add_argument('--genesis', metavar='', help="Path to genesis.json", default="./genesis.json")
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
@@ -495,7 +497,7 @@ parser.add_argument('--symbol', metavar='', help="The utrio.system symbol", defa
 parser.add_argument('--num-producers', metavar='', help="Number of producers to register", type=int, default=6, dest="num_producers")
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
-
+parser.add_argument('-p','--programpath', metavar='', help="set programpath params")
 for (flag, command, function, inAll, help) in commands:
     prefix = ''
     if inAll: prefix += '*'
@@ -506,6 +508,14 @@ for (flag, command, function, inAll, help) in commands:
         parser.add_argument('--' + command, action='store_true', help=help, dest=command)
 
 args = parser.parse_args()
+if args.programpath:
+    args.clultrain = defaultclu % ('/'+args.programpath)
+    args.kultraind = defaultkul % ('/'+args.programpath)
+    args.contracts_dir = defaultcontracts_dir % ('/'+args.programpath)
+
+print(args.clultrain)
+print(args.kultraind)
+print(args.contracts_dir)
 
 #args.clultrain += '--url http://localhost:%d ' % args.http_port
 

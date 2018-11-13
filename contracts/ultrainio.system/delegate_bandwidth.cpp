@@ -442,24 +442,23 @@ namespace ultrainiosystem {
       // update voting power
       {
          asset total_update = stake_cons_delta;
-          auto it = _producers.find(from);
-          if(it != _producers.end()) {
-              auto last_state = it->is_enabled;
-              auto enabled = ((it->total_votes+total_update.amount) >=
-                      _gstate.min_activated_stake/_gstate.min_committee_member);
-              _producers.modify(it, 0 , [&](auto & v) {
-                      v.total_votes += total_update.amount;
-                      v.is_enabled = enabled;
-                      });
-              if(enabled) {
-                  if(!last_state) {
-                    update_activated_stake(it->total_votes);
-                  }
-                  else {
-                    update_activated_stake(total_update.amount);
-                  }
-              }
-          }
+         auto it = _producers.find(from);
+         ultrainio_assert( it != _producers.end(), "Unable to delegate cons, you need to regproducer first" );
+         auto enabled = ((it->total_votes+total_update.amount) >=
+                  _gstate.min_activated_stake/_gstate.min_committee_member);
+         _producers.modify(it, 0 , [&](auto & v) {
+                  v.total_votes += total_update.amount;
+                  v.is_enabled = enabled;
+                  });
+         if(enabled && !it->hasactived) {
+            update_activated_stake(it->total_votes);
+            _producers.modify(it, 0 , [&](auto & v) {
+                     v.hasactived = true;
+                     });
+         }
+         else if(it->hasactived){
+            update_activated_stake(total_update.amount);
+         }
       }
    }
 
