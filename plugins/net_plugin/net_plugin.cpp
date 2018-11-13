@@ -32,7 +32,9 @@
 #include <random>
 #include <rpos/MsgMgr.h>
 
+#if defined( __linux__ )
 #include <malloc.h>
+#endif
 
 using namespace ultrainio::chain::plugin_interface::compat;
 
@@ -1032,11 +1034,15 @@ namespace ultrainio {
                     return;
                 }
 
+#if defined( __linux__ )
                 bool release_memory = conn->out_queue.size() >= MAX_OUT_QUEUE ? true : false;
                 conn->out_queue.clear();
                 if (release_memory) {
                     malloc_trim(0);
                 }
+#else
+                conn->out_queue.clear();
+#endif
                 conn->do_queue_write();
             }
             catch(const std::exception &ex) {
