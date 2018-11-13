@@ -604,7 +604,7 @@ void producer_uranus_plugin::plugin_startup()
    } else {
        // Align to the boundary of 5 seconds.
        unsigned long msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-       int patch = 5000 - (msecs % 5000);
+       int patch = (my->_max_phase_seconds * 1000) - (msecs % (my->_max_phase_seconds * 1000));
        nodePtr->setGenesisTime(boost::chrono::system_clock::now() + boost::chrono::milliseconds(my->_genesis_delay * 1000 + patch));
    }
    nodePtr->setGenesisStartupTime(my->_genesis_startup_time);

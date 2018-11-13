@@ -177,7 +177,7 @@ namespace ultrainio {
     }
 
     void UranusNode::syncBlockLoop(uint32_t timeout) {
-        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_currentTimerHandlerNo = THN_SYNC_BLOCK;
         resetTimerCanceled(THN_SYNC_BLOCK);
         m_timer.async_wait([this](boost::system::error_code ec) {
@@ -460,7 +460,7 @@ namespace ultrainio {
 
     void UranusNode::runLoop(uint32_t timeout) {
         dlog("start runLoop timeout = ${timeout}", ("timeout", timeout));
-        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_currentTimerHandlerNo = THN_RUN;
         resetTimerCanceled(THN_RUN);
         m_timer.async_wait([this](boost::system::error_code ec) {
@@ -478,7 +478,7 @@ namespace ultrainio {
 
     void UranusNode::ba0Loop(uint32_t timeout) {
         dlog("start ba0Loop timeout = ${timeout}", ("timeout", timeout));
-        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_currentTimerHandlerNo = THN_BA0;
         resetTimerCanceled(THN_BA0);
         m_timer.async_wait([this](boost::system::error_code ec) {
@@ -514,7 +514,7 @@ namespace ultrainio {
 
     void UranusNode::ba1Loop(uint32_t timeout) {
         dlog("start ba1Loop timeout = ${timeout}", ("timeout", timeout));
-        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_currentTimerHandlerNo = THN_BA1;
         resetTimerCanceled(THN_BA1);
         m_timer.async_wait([this](boost::system::error_code ec) {
@@ -535,7 +535,7 @@ namespace ultrainio {
         msgkey msg_key;
 
         dlog("start baxLoop timeout = ${timeout}", ("timeout", timeout));
-        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_currentTimerHandlerNo = THN_BAX;
         resetTimerCanceled(THN_BAX);
         m_timer.async_wait([this](boost::system::error_code ec) {
@@ -789,7 +789,7 @@ namespace ultrainio {
 
                 fastBlock(msg_key.blockNum);
             } else {
-                if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
+                if ((getRoundInterval() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
                     //todo process two phase
                     ba1Process();
                 } else {
@@ -803,7 +803,7 @@ namespace ultrainio {
             if (m_schedulerPtr->findEchoCache(msg_key)) {
                 fastBax();
             } else {
-                if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
+                if ((getRoundInterval() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
                     //todo process two phase
                     ba1Process();
                 } else {
@@ -889,7 +889,7 @@ namespace ultrainio {
         if (m_schedulerPtr->findEchoCache(msg_key)) {
             fastBa1();
         } else {
-            if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
+            if ((getRoundInterval() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
                 //todo process two phase
                 ba0Process();
             } else {
@@ -923,13 +923,13 @@ namespace ultrainio {
 
     uint32_t UranusNode::getRoundInterval() {
         boost::chrono::system_clock::time_point current_time = boost::chrono::system_clock::now();
-        boost::chrono::seconds pass_time_to_genesis
-                = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
+        boost::chrono::milliseconds pass_time_to_genesis
+                = boost::chrono::duration_cast<boost::chrono::milliseconds>(current_time - Genesis::s_time);
 
         dlog("getRoundInterval. interval = ${id}.",
-             ("id", Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % Config::s_maxPhaseSeconds)));
+             ("id", 1000 * Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % (1000 * Config::s_maxPhaseSeconds))));
 
-        return Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % Config::s_maxPhaseSeconds);
+        return 1000 * Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % (1000 * Config::s_maxPhaseSeconds));
     }
 
     BlockIdType UranusNode::getPreviousHash() {
