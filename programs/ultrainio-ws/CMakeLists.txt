@@ -1,4 +1,4 @@
-add_executable( ultrainio-ws main.cpp worldstateManager.cpp)
+add_executable( ultrainio-ws main.cpp wsFileManager.cpp)
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()

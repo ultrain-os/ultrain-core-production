@@ -33,7 +33,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 #include <ultrainio/chain/genesis_state.hpp>
-#include "worldstateManager.hpp"
+#include "wsFileManager.hpp"
 
 using namespace std;
 namespace bfs = boost::filesystem;
@@ -54,7 +54,7 @@ void print_vec(const std::vector<char>& vec)
     std::cout << '\n';
 }
 
-void createWs(std::string content, ultrainio::worldstate::worldstateManager& wsManager)
+void createWs(std::string content, ultrainio::ws::wsManager& wsManager)
 {
       std::vector<char> addData;
       addData.insert(addData.begin(), content.begin(), content.end());
@@ -79,7 +79,7 @@ int main (int argc, char *argv[]) {
   try {
     cout << "test" << endl;
 
-    auto wsManager = ultrainio::worldstate::worldstateManager(".");
+    auto wsManager = ultrainio::ws::wsManager(".");
     auto wsList = wsManager.getLocalInfo();
     cout << "ws List size: " << wsList.size() << endl;
 

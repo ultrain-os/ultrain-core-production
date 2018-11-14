@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in ultrain/LICENSE.txt
  */
-#include "worldstateManager.hpp"
+#include "wsFileManager.hpp"
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 #include <fstream>
@@ -13,11 +13,9 @@
 
 namespace bfs = boost::filesystem;
 
-// std::string path = "ws.conf";
-namespace ultrainio { namespace worldstate {
+namespace ultrainio { namespace ws {
 
-
-worldstateFileReader::worldstateFileReader(wsNode& node, std::string dir)
+wsFileReader::wsFileReader(wsNode& node, std::string dir)
 :ws(node)
 ,dirPath(dir)
 {
@@ -25,18 +23,18 @@ worldstateFileReader::worldstateFileReader(wsNode& node, std::string dir)
     fd.open(filePath.c_str(), (std::ios::in | std::ios::binary));
 }
 
-worldstateFileReader::~worldstateFileReader()
+wsFileReader::~wsFileReader()
 {
     if(fd.is_open())
         fd.close();
 }
 
-void worldstateFileReader::destory()
+void wsFileReader::destory()
 {
     delete this;
 }
 
-std::vector<char>  worldstateFileReader::getWsData(uint64_t len, uint64_t startPos)
+std::vector<char>  wsFileReader::getWsData(uint64_t len, uint64_t startPos)
 {
     if(startPos >= ws.totalSize || startPos + len >= ws.totalSize)
         return std::vector<char>();
@@ -48,7 +46,7 @@ std::vector<char>  worldstateFileReader::getWsData(uint64_t len, uint64_t startP
     return retData;
 }
 
-worldstateFileWriter::worldstateFileWriter(std::string hash, uint32_t blockHeight, std::string dir, worldstateManager& m)
+wsFileWriter::wsFileWriter(std::string hash, uint32_t blockHeight, std::string dir, wsManager& m)
 :valid(-1)
 ,fileName()
 ,manager(m),
@@ -63,13 +61,13 @@ isWrite(false)
     isWrite = true;
 }
 
-worldstateFileWriter::~worldstateFileWriter()
+wsFileWriter::~wsFileWriter()
 {
     if(fd.is_open())
         fd.close();
 }
 
-void worldstateFileWriter::destory()
+void wsFileWriter::destory()
 {
     if(fd.is_open())
         fd.close();
@@ -83,7 +81,7 @@ void worldstateFileWriter::destory()
     delete this;
 }
 
-void worldstateFileWriter::writeWsData(std::vector<char>& data, uint64_t len)
+void wsFileWriter::writeWsData(std::vector<char>& data, uint64_t len)
 {
     open_write();
     fd.seekp(ws.totalSize);
@@ -92,7 +90,7 @@ void worldstateFileWriter::writeWsData(std::vector<char>& data, uint64_t len)
     return;
 }
 
-bool worldstateFileWriter::isValid()
+bool wsFileWriter::isValid()
 {
     open_read();
     fc::sha256::encoder enc;
@@ -102,7 +100,7 @@ bool worldstateFileWriter::isValid()
     for(uint64_t i = 0; i < ws.totalSize; i += 1024){
         memset(buffer, 0, sizeof(buffer));
         fd.read(buffer, sizeof(buffer));
-        
+
         int cnt = fd.gcount();
         enc.write(buffer, cnt);
     }
@@ -118,11 +116,11 @@ bool worldstateFileWriter::isValid()
     return false;
 }
 
-void worldstateFileWriter::writeFinished(){
+void wsFileWriter::writeFinished(){
 
 }
 
-void worldstateFileWriter::open_write()
+void wsFileWriter::open_write()
 {
     if(isWrite)
         return;
@@ -134,7 +132,7 @@ void worldstateFileWriter::open_write()
     isWrite = true;
 }
     
-void worldstateFileWriter::open_read()
+void wsFileWriter::open_read()
 {
     if(!isWrite)
         return;
@@ -146,7 +144,7 @@ void worldstateFileWriter::open_read()
     isWrite = false;
 }
 
-worldstateManager::worldstateManager(std::string dir)
+wsManager::wsManager(std::string dir)
 :dirPath(dir)
 {
     if (!bfs::is_directory(dirPath)){
@@ -154,12 +152,12 @@ worldstateManager::worldstateManager(std::string dir)
     }
 }
 
-worldstateManager::~worldstateManager()
+wsManager::~wsManager()
 {
 
 }
 
-std::list<wsNode> worldstateManager::getLocalInfo()
+std::list<wsNode> wsManager::getLocalInfo()
 {
 
     try {
@@ -196,7 +194,7 @@ std::list<wsNode> worldstateManager::getLocalInfo()
    }
 }
 
-void worldstateManager::saveWsInfo(wsNode& node)
+void wsManager::saveWsInfo(wsNode& node)
 {
     std::string confFile = dirPath + "/ws.conf";
     std::fstream wsConfFd = std::fstream(confFile.c_str(), (std::ios::in | std::ios::binary));
@@ -227,7 +225,7 @@ void worldstateManager::saveWsInfo(wsNode& node)
     wsConfFd.close();
 }
 
-worldstateFileReader* worldstateManager::getReader(std::string hash)
+wsFileReader* wsManager::getReader(std::string hash)
 {
     auto listNode = getLocalInfo();
     for(auto &it : listNode){
@@ -235,14 +233,14 @@ worldstateFileReader* worldstateManager::getReader(std::string hash)
             std::string filePath = dirPath + "/" + it.hashString + ".bin";
             if(!bfs::exists(filePath) || !bfs::is_regular_file(filePath))
                 return nullptr;            
-            return new worldstateFileReader(it, dirPath);
+            return new wsFileReader(it, dirPath);
         }
     }
 
     return nullptr;
 }
 
-worldstateFileWriter* worldstateManager::getWriter(std::string hash, uint32_t blockHeight)
+wsFileWriter* wsManager::getWriter(std::string hash, uint32_t blockHeight)
 {
     auto listNode = getLocalInfo();
     for(auto &it : listNode){
@@ -250,7 +248,7 @@ worldstateFileWriter* worldstateManager::getWriter(std::string hash, uint32_t bl
             return nullptr;
         }
     }
-    return new worldstateFileWriter(hash, blockHeight, dirPath, *this);
+    return new wsFileWriter(hash, blockHeight, dirPath, *this);
 }
 
 }}
