@@ -66,7 +66,7 @@ namespace ultrainiosystem {
 
    struct producer_info {
       account_name          owner;
-      int64_t               total_votes = 0;
+      int64_t               total_cons_staked = 0;
       std::string           producer_key; /// a packed public key object
       bool                  is_active = true;
       bool                  is_enabled = false;
@@ -77,48 +77,14 @@ namespace ultrainiosystem {
       uint16_t              location = 0;
 
       uint64_t primary_key()const { return owner;                                   }
-      double   by_votes()const    { return is_active ? -total_votes : total_votes;  }
+      double   by_votes()const    { return is_active ? -total_cons_staked : total_cons_staked;  }
       bool     active()const      { return is_active;                               }
       void     deactivate()       { producer_key = std::string(); is_active = false; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(is_enabled)(url)
+      ULTRAINLIB_SERIALIZE( producer_info, (owner)(total_cons_staked)(producer_key)(is_active)(is_enabled)(url)
                         (unpaid_blocks)(last_claim_time)(location) )
    };
-
-   struct voter_info {
-      account_name                owner = 0; /// the voter
-      account_name                proxy = 0; /// the proxy set by the voter, if any
-      std::vector<account_name>   producers; /// the producers approved by this voter if no proxy set
-      int64_t                     staked = 0;
-
-      /**
-       *  Every time a vote is cast we must first "undo" the last vote weight, before casting the
-       *  new vote weight.  Vote weight is calculated as:
-       *
-       *  stated.amount * 2 ^ ( weeks_since_launch/weeks_per_year)
-       */
-      double                      last_vote_weight = 0; /// the vote weight cast the last time the vote was updated
-
-      /**
-       * Total vote weight delegated to this voter.
-       */
-      double                      proxied_vote_weight= 0; /// the total vote weight delegated to this voter as a proxy
-      bool                        is_proxy = 0; /// whether the voter is a proxy for others
-
-
-      uint32_t                    reserved1 = 0;
-      time                        reserved2 = 0;
-      ultrainio::asset                reserved3;
-
-      uint64_t primary_key()const { return owner; }
-
-      // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(reserved1)(reserved2)(reserved3) )
-   };
-
-   typedef ultrainio::multi_index< N(voters), voter_info>  voters_table;
-
 
    typedef ultrainio::multi_index< N(producers), producer_info,
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
@@ -132,7 +98,6 @@ namespace ultrainiosystem {
 
    class system_contract : public native {
       private:
-         voters_table           _voters;
          producers_table        _producers;
          global_state_singleton _global;
 
@@ -146,7 +111,7 @@ namespace ultrainiosystem {
          // Actions:
          void onblock( block_timestamp timestamp, account_name producer );
                       // const block_header& header ); /// only parse first 3 fields of block header
-
+         void reportblocknumber( account_name producer, uint64_t number);
          // functions defined in delegate_bandwidth.cpp
 
          /**
@@ -177,8 +142,8 @@ namespace ultrainiosystem {
          void undelegatebw( account_name from, account_name receiver,
                             asset unstake_net_quantity, asset unstake_cpu_quantity );
 
-         void delegatecons( account_name from,asset stake_net_quantity);
-         void undelegatecons( account_name from,asset unstake_net_quantity);
+         void delegatecons( account_name from, account_name receiver,asset stake_net_quantity);
+         void undelegatecons( account_name from, account_name receiver,asset unstake_net_quantity);
          /**
           * Increases receiver's ram quota based upon current price and quantity of
           * tokens provided. An inline transfer from receiver to system contract of
@@ -219,6 +184,8 @@ namespace ultrainiosystem {
          void rmvproducer( account_name producer );
 
          void bidname( account_name bidder, account_name newname, asset bid );
+
+         void updateactiveminers(const std::vector<ultrainio::proposeminer_info>& miners );
       private:
          inline void update_activated_stake(int64_t stake);
 
@@ -228,7 +195,7 @@ namespace ultrainiosystem {
          void changebw( account_name from, account_name receiver,
                         asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
 
-         void change_cons( account_name from, asset stake_cons_quantity);
+         void change_cons( account_name from, account_name receiver, asset stake_cons_quantity);
 
          //defined in voting.hpp
          static ultrainio_global_state get_default_parameters();

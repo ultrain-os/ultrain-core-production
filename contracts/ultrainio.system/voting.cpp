@@ -52,7 +52,7 @@ namespace ultrainiosystem {
       } else {
          _producers.emplace( producer, [&]( producer_info& info ){
                info.owner         = producer;
-               info.total_votes   = 0LL;
+               info.total_cons_staked   = 0LL;
                info.producer_key  = producer_key;
                info.is_active     = true;
                info.is_enabled    = false;

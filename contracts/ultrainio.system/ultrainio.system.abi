@@ -25,6 +25,16 @@
         {"name":"permission", "type":"permission_name"}
       ]
     },{
+      "name": "proposeminer_info",
+      "base": "",
+      "fields": [
+        {"name": "account", "type": "account_name"},
+        {"name": "public_key", "type": "string"},
+        {"name": "url", "type": "string"},
+        {"name": "location", "type": "uint16"},
+        {"name": "adddel_miner", "type": "bool"}
+      ]
+    },{
       "name": "key_weight",
       "base": "",
       "fields": [
@@ -38,6 +48,12 @@
         {"name":"bidder",  "type":"account_name"},
         {"name":"newname", "type":"account_name"},
         {"name":"bid", "type":"asset"}
+      ]
+    },{
+      "name": "updateactiveminers",
+      "base": "",
+      "fields": [
+        {"name":"miners", "type":"proposeminer_info[]"}
       ]
     },{
       "name": "permission_level_weight",
@@ -181,6 +197,7 @@
       "base": "",
       "fields": [
          {"name":"from", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
          {"name":"stake_cons_quantity", "type":"asset"}
       ]
     },{
@@ -188,6 +205,7 @@
       "base": "",
       "fields": [
          {"name":"from", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
          {"name":"unstake_cons_quantity", "type":"asset"}
       ]
     },{
@@ -209,7 +227,8 @@
          {"name":"from", "type":"account_name"},
          {"name":"to", "type":"account_name"},
          {"name":"net_weight", "type":"asset"},
-         {"name":"cpu_weight", "type":"asset"}
+         {"name":"cpu_weight", "type":"asset"},
+         {"name":"cons_weight", "type":"asset"}
       ]
     },{
       "name": "user_resources",
@@ -295,7 +314,7 @@
       "base": "",
       "fields": [
          {"name":"owner",           "type":"account_name"},
-         {"name":"total_votes",     "type":"int64"},
+         {"name":"total_cons_staked",     "type":"int64"},
          {"name":"producer_key",    "type":"string"},
          {"name":"is_active",       "type":"bool"},
          {"name":"is_enabled",      "type":"bool"},
@@ -330,6 +349,13 @@
       "base": "",
       "fields": [
         {"name":"owner",   "type":"account_name"}
+      ]
+    },{
+      "name": "reportblocknumber",
+      "base": "",
+      "fields": [
+        {"name":"producer",   "type":"account_name"},
+        {"name":"number",   "type":"uint64"}
       ]
     },{
       "name": "setpriv",
@@ -495,8 +521,16 @@
       "type": "bidname",
       "ricardian_contract": ""
    },{
+      "name": "updateactiveminers",
+      "type": "updateactiveminers",
+      "ricardian_contract": ""
+   },{
       "name": "unregprod",
       "type": "unregprod",
+      "ricardian_contract": ""
+   },{
+      "name": "reportblocknumber",
+      "type": "reportblocknumber",
       "ricardian_contract": ""
    },{
       "name": "claimrewards",

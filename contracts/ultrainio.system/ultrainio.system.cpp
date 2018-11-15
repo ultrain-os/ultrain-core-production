@@ -5,13 +5,13 @@
 #include "delegate_bandwidth.cpp"
 #include "voting.cpp"
 #include "exchange_state.cpp"
+#include <ultrainiolib/action.hpp>
 
 
 namespace ultrainiosystem {
 
    system_contract::system_contract( account_name s )
    :native(s),
-    _voters(_self,_self),
     _producers(_self,_self),
     _global(_self,_self),
     _rammarket(_self,_self)
@@ -133,7 +133,39 @@ namespace ultrainiosystem {
          });
       }
    }
-
+   void system_contract::updateactiveminers(const std::vector<ultrainio::proposeminer_info>&  miners ) {
+      for(auto const& miner:miners){
+         print("updateactiveminers   proposerminer:",name{miner.account}," adddel:",miner.adddel_miner);
+         if(miner.adddel_miner){
+            action(
+               permission_level{ miner.account, N(active) },
+               N(ultrainio), NEX(regproducer),
+               std::make_tuple(miner.account, miner.public_key, miner.url, miner.location)
+            ).send();
+            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.stake),N(active)},
+                                    { N(utrio.stake), miner.account,  asset(833333333333),
+                                    "" } );
+            action(
+               permission_level{ miner.account, N(active) },
+               N(ultrainio), NEX(delegatecons),
+               std::make_tuple(N(utrio.stake),miner.account,asset(833333333333))
+            ).send();
+         }else{
+            auto prod = _producers.find( miner.account );
+            ultrainio_assert( prod != _producers.end(), "remove producer not found" );
+            _producers.modify( prod, 0, [&](auto& p) {
+                  p.deactivate();
+                  p.is_enabled =false;
+               });
+            print("updateactiveminers   del proposerminer:",name{(*prod).owner}," (*produceriter).total_cons_staked:",(*prod).total_cons_staked);
+            action(
+               permission_level{ (*prod).owner, N(active) },
+               N(ultrainio), NEX(undelegatecons),
+               std::make_tuple(N(utrio.stake),(*prod).owner,asset((*prod).total_cons_staked))
+            ).send();
+         }
+      }
+   }
    /**
     *  Called after a new account is created. This code enforces resource-limits rules
     *  for new accounts as well as new account naming conventions.
@@ -188,11 +220,11 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
      // ultrainio.system.cpp
-     (setram)(setparams)(setpriv)(rmvproducer)(bidname)
+     (setram)(setparams)(setpriv)(rmvproducer)(bidname)(updateactiveminers)
      // delegate_bandwidth.cpp
      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(delegatecons)(undelegatecons)(refund)(refundcons)
      // voting.cpp
      (regproducer)(unregprod)
      // producer_pay.cpp
-     (onblock)(claimrewards)
+     (onblock)(reportblocknumber)(claimrewards)
 )

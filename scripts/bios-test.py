@@ -375,16 +375,14 @@ def stepRegProducers():
     sleep(15)
     for i in range(1, args.num_producers):
         funds = 500000000 / args.num_producers / 2
-        # user.111 & user.112 are used for tps pressure test, so they need more staked resources
-        if accounts[i] == 'user.111' or accounts[i] == 'user.112':
-            funds += 80000000
-        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], (funds*2+5000)))
+        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))  
     sleep(20)
     for i in range(1, args.num_producers):
         funds = 500000000 / args.num_producers / 2
+        # user.111 & user.112 are used for tps pressure test, so they need more staked resources
         if accounts[i] == 'user.111' or accounts[i] == 'user.112':
             funds += 80000000
-        retry(args.clultrain + 'system delegatecons %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
+        retry(args.clultrain + 'system delegatecons ultrainio %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
     sleep(18)
     run(args.clultrain + 'system listproducers')
 

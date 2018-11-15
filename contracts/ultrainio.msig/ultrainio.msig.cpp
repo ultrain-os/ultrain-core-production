@@ -1,7 +1,9 @@
 #include <ultrainio.msig/ultrainio.msig.hpp>
 #include <ultrainiolib/action.hpp>
 #include <ultrainiolib/permission.hpp>
-
+#include <ultrainiolib/print.hpp>
+#include <ultrainiolib/types.hpp>
+using ultrainio::action;
 namespace ultrainio {
 
 /*
@@ -132,6 +134,80 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    apptable.erase(apps);
 }
 
+void multisig::votecommittee() {
+   constexpr size_t max_stack_buffer_size = 4096;
+   size_t size = action_data_size();
+   char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+   read_action_data( buffer, size );
+
+   account_name proposer;
+   vector<proposeminer_info> proposeminer;
+   datastream<const char*> ds( buffer, size );
+   ds >> proposer >> proposeminer;
+   int proposeminersize = proposeminer.size();
+   ultrainio_assert( proposeminersize > 0, "propose miner must greater than 0" );
+   require_auth( proposer );
+
+   auto const comp = [this](const proposeminer_info &a, const proposeminer_info &b){
+      if (a.account < b.account)
+            return true;        
+      return false;
+   };
+   std::sort(proposeminer.begin(), proposeminer.end(),comp);
+
+	// auto vector_iterator = std::unique(proposeminer.begin(),proposeminer.end());
+   // ultrainio_assert( vector_iterator == proposeminer.end(), " receiver proposeminer  duplication is not allowed" );
+
+   bool nofindminerflg = false;
+   int  curactiveminer = 3;
+   print("votecommittee proposer:",proposer," minersize:",proposeminer.size());
+   for(auto miner:proposeminer){
+      print("get votecommittee proposeminer vector:", ultrainio::name{miner.account}, miner.public_key, miner.url,"\n");
+   }
+   pendingminers pendingminer( _self, _self );
+   for(auto pendingiter = pendingminer.begin(); pendingiter != pendingminer.end(); pendingiter++)
+   {
+      nofindminerflg = false;
+      if((*pendingiter).proposal_miner.size() == proposeminersize){
+         for(int i = 0;i < proposeminersize;i++)
+         {
+            if(proposeminer[i].account != (*pendingiter).proposal_miner[i]){
+               nofindminerflg = true;
+               break;
+            }
+         }
+         if(!nofindminerflg){
+            auto itr = std::find( (*pendingiter).provided_approvals.begin(), (*pendingiter).provided_approvals.end(), proposer );
+            ultrainio_assert( itr == (*pendingiter).provided_approvals.end(), "proposer already voted" );
+            pendingminer.modify( *pendingiter, 0, [&]( auto& p ) {
+               p.provided_approvals.push_back(proposer);
+            });
+            print("votecommittee nofindminerflg proposer:",proposer," nofindminerflg:",nofindminerflg);
+            if((*pendingiter).provided_approvals.size() >= curactiveminer*2/3){
+               //to do  sendaction   //
+               print("votecommittee sendaction proposer:",proposer," minersize:",proposeminer.size());
+               action(
+                  permission_level{ _self, N(active) },
+                  N(ultrainio), NEX(updateactiveminers),
+                  std::make_tuple(proposeminer)
+               ).send();
+
+            }
+            print("votecommittee proposer:",proposer," minersize:",proposeminer.size());
+            return;
+         }
+      }
+   }
+   pendingminer.emplace( _self, [&]( auto& p ) {
+      p.index++;
+      p.provided_approvals.push_back(proposer);
+      p.proposal_miner.clear();
+      for(auto miner:proposeminer)
+         p.proposal_miner.push_back(miner.account);
+   });
+   print("votecommittee pushback  pendingminer");
+}
+
 } /// namespace ultrainio
 
-ULTRAINIO_ABI( ultrainio::multisig, (propose)(approve)(unapprove)(cancel)(exec) )
+ULTRAINIO_ABI( ultrainio::multisig, (propose)(approve)(unapprove)(cancel)(exec)(votecommittee) )

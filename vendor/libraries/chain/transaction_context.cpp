@@ -354,9 +354,11 @@ namespace ultrainio { namespace chain {
    void transaction_context::checktime()const {
 #if TEST_MODE == 0
       auto now = fc::time_point::now();
+      ilog("checktime deadline now${now}, deadline${deadline},start${start}", ("now", now)("deadline", _deadline)("start", start) );
       if( BOOST_UNLIKELY( now > _deadline ) ) {
          // edump((now-start)(now-pseudo_start));
          if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
+            ilog("checktime deadline exceeded now${now}, deadline${deadline},start${start}", ("now", now)("deadline", _deadline)("start", start) );
             ULTRAIN_THROW( deadline_exception, "deadline exceeded", ("now", now)("deadline", _deadline)("start", start) );
          } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
             ULTRAIN_THROW( block_cpu_usage_exceeded,
