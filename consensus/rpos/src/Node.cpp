@@ -233,6 +233,19 @@ namespace ultrainio {
         }
     }
 
+    void UranusNode::fastProcess() {
+        msgkey msg_key;
+        msg_key.blockNum = getBlockNum();
+        msg_key.phase = kPhaseBA1;
+
+        if (isFastba0(msg_key)) {
+            dlog("fastProcess. fastblock begin. blockNum = ${blockNum}.",("blockNum", getBlockNum()));
+            ba0Process();
+            return;
+        }
+        ba0Loop(getRoundInterval());
+    }
+
     void UranusNode::ba0Process() {
         if (!m_ready) {
             syncBlock();
@@ -481,6 +494,24 @@ namespace ultrainio {
         });
     }
 
+    void UranusNode::fastLoop(uint32_t timeout) {
+        dlog("start fastLoop timeout = ${timeout}", ("timeout", timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
+        m_currentTimerHandlerNo = THN_BA0;
+        resetTimerCanceled(THN_BA0);
+        m_timer.async_wait([this](boost::system::error_code ec) {
+            if (ec.value() == boost::asio::error::operation_aborted) {
+                ilog("fast loop timer cancel");
+            } else {
+                if (isTimerCanceled(THN_BA0)) {
+                    ilog("fast Loop timer has been already canceled.");
+                } else {
+                    this->fastProcess();
+                }
+            }
+        });
+    }
+
     void UranusNode::ba1Loop(uint32_t timeout) {
         dlog("start ba1Loop timeout = ${timeout}", ("timeout", timeout));
         m_timer.expires_from_now(boost::posix_time::seconds(timeout));
@@ -686,7 +717,7 @@ namespace ultrainio {
         }
 
         // BA0=======
-        ba0Loop(getRoundInterval());
+        //ba0Loop(getRoundInterval());
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
 
         dlog("start BA0. blockNum = ${blockNum}. isProposer = ${isProposer} and isVoter = ${isVoter}",
@@ -699,6 +730,13 @@ namespace ultrainio {
         if (voteFlag) {
             vote(getBlockNum(), kPhaseBA0, 0);
         }
+
+        if ((getRoundInterval() > (s_maxTrxMicroSeconds/1000 + 300) && (!MsgMgr::getInstance()->isProposer(getBlockNum()))) {
+            fastLoop(s_maxTrxMicroSeconds/1000 + 300);
+        } else {
+            ba0Loop(getRoundInterval());
+        }
+
         return;
     }
 

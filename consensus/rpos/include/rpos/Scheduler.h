@@ -149,6 +149,8 @@ namespace ultrainio {
 
         bool findEchoCache(const msgkey &msg_key);
 
+        bool isFastba0(const msgkey &msg_key);
+
         bool findProposeCache(const msgkey &msg_key);
 
         uint32_t getLastBlocknum();

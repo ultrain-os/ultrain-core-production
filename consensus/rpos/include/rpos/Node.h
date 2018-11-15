@@ -84,6 +84,8 @@ namespace ultrainio {
 
         void ba0Process();
 
+        void fastProcess();
+
         uint32_t isSyncing();
 
         bool isReady() {return m_ready;}
@@ -97,6 +99,8 @@ namespace ultrainio {
         void ba0Loop(uint32_t timeout);
 
         void ba1Loop(uint32_t timeout);
+
+        void fastLoop(uint32_t timeout);
 
         void baxLoop(uint32_t timeout);
 

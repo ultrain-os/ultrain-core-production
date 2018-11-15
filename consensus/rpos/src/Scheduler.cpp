@@ -1269,6 +1269,17 @@ namespace ultrainio {
         return false;
     }
 
+    bool Scheduler::isFastba0(const msgkey &msg_key) {
+        auto echo_itor = m_cacheEchoMsgMap.find(msg_key);
+        if (echo_itor != m_cacheEchoMsgMap.end()) {
+            if (echo_itor->second.size() > THRESHOLD_SYNCING) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     bool Scheduler::findProposeCache(const msgkey &msg_key) {
         auto echo_itor = m_cacheProposeMsgMap.find(msg_key);
         if (echo_itor != m_cacheProposeMsgMap.end()) {
