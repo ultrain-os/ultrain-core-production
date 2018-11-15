@@ -238,7 +238,7 @@ namespace ultrainio {
         msg_key.blockNum = getBlockNum();
         msg_key.phase = kPhaseBA1;
 
-        if (isFastba0(msg_key)) {
+        if (m_schedulerPtr->isFastba0(msg_key)) {
             dlog("fastProcess. fastblock begin. blockNum = ${blockNum}.",("blockNum", getBlockNum()));
             ba0Process();
             return;
@@ -731,8 +731,8 @@ namespace ultrainio {
             vote(getBlockNum(), kPhaseBA0, 0);
         }
 
-        if ((getRoundInterval() > (s_maxTrxMicroSeconds/1000 + 300) && (!MsgMgr::getInstance()->isProposer(getBlockNum()))) {
-            fastLoop(s_maxTrxMicroSeconds/1000 + 300);
+        if ((getRoundInterval() > (Config::s_maxTrxMicroSeconds/1000 + 300)) && (!MsgMgr::getInstance()->isProposer(getBlockNum()))) {
+            fastLoop(Config::s_maxTrxMicroSeconds/1000 + 300);
         } else {
             ba0Loop(getRoundInterval());
         }
