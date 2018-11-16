@@ -132,6 +132,9 @@ namespace ultrainio {
          */
         void handle_message( connection_ptr c, const time_message &msg);
 
+        void handle_message( connection_ptr c, const FileInfo &msg);
+        void handle_message( connection_ptr c, const FileTransferPacket &msg);
+
         void start_broadcast(const net_message& msg);
 
         void start_conn_timer( );
@@ -1098,6 +1101,14 @@ namespace ultrainio {
       c->rec = 0;
    }
 
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const FileInfo &msg) {
+        ilog("FileInfo msg: ${m}", ("m", msg.fileName));
+    }
+
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const FileTransferPacket &msg) {
+        ilog("FileTransferPacket msg: ${m}", ("m", msg.protoTag));
+    }
+
     void sync_net_plugin_impl::start_monitors() {
         connector_check.reset(new boost::asio::steady_timer( app().get_io_service()));
         start_conn_timer();
@@ -1384,6 +1395,35 @@ namespace ultrainio {
       }
       return result;
    }
+
+    string sync_net_plugin::transfer_file() {
+//        for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
+//            if( (*itr)->peer_addr == host ) {
+//                (*itr)->reset();
+//                my->close(*itr);
+//                my->connections.erase(itr);
+//                return "connection removed";
+//            }
+//        }
+        std::vector<connection_ptr> conn_list;
+        conn_list.reserve(my->connections.size());
+        for (auto& c:my->connections) {
+            if (c->current()) {
+                conn_list.emplace_back(c);
+            }
+        }
+
+        FileInfo file_info_msg;
+        file_info_msg.fileName = "just a test file name";
+        for (auto c:conn_list) {
+            if(c->current()) {
+                ilog ("send file_info_msg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                c->enqueue(net_message(file_info_msg));
+            }
+        }
+        return "transfer file finished";
+    }
+
    connection_ptr sync_net_plugin_impl::find_connection( string host )const {
       for( const auto& c : connections )
          if( c->peer_addr == host ) return c;

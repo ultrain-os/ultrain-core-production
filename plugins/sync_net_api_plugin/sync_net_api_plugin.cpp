@@ -65,20 +65,17 @@ void sync_net_api_plugin::plugin_startup() {
    auto& sync_net_mgr = app().get_plugin<sync_net_plugin>();
 
    app().get_plugin<http_plugin>().add_api({
-    //   CALL(net, net_mgr, set_timeout,
-    //        INVOKE_V_R(net_mgr, set_timeout, int64_t), 200),
-    //   CALL(net, net_mgr, sign_transaction,
-    //        INVOKE_R_R_R_R(net_mgr, sign_transaction, chain::signed_transaction, flat_set<public_key_type>, chain::chain_id_type), 201),
-       CALL(net, sync_net_mgr, connect,
+       CALL(wss, sync_net_mgr, connect,
             INVOKE_R_R(sync_net_mgr, connect, std::string), 201),
-       CALL(net, sync_net_mgr, disconnect,
+       CALL(wss, sync_net_mgr, disconnect,
             INVOKE_R_R(sync_net_mgr, disconnect, std::string), 201),
-       CALL(net, sync_net_mgr, status,
+       CALL(wss, sync_net_mgr, status,
             INVOKE_R_R(sync_net_mgr, status, std::string), 201),
-       CALL(net, sync_net_mgr, connections,
+       CALL(wss, sync_net_mgr, connections,
             INVOKE_R_V(sync_net_mgr, connections), 201),
-    //   CALL(net, net_mgr, open,
-    //        INVOKE_V_R(net_mgr, open, std::string), 200),
+
+       CALL(wss, sync_net_mgr, transfer_file,
+            INVOKE_R_V(sync_net_mgr, transfer_file), 201),
    });
 }
 

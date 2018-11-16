@@ -36,6 +36,8 @@ namespace ultrainio {
         optional<connection_status>  status( const string& endpoint )const;
         vector<connection_status>    connections()const;
 
+        string                       transfer_file();
+
         size_t num_peers() const;
     private:
         std::unique_ptr<class sync_net_plugin_impl> my;
