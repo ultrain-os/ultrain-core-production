@@ -15,9 +15,10 @@ namespace bfs = boost::filesystem;
 
 namespace ultrainio { namespace ws {
 
-wsFileReader::wsFileReader(wsNode& node, std::string dir)
+wsFileReader::wsFileReader(wsNode& node, std::string dir, uint32_t lenPerSlice)
 :ws(node)
 ,dirPath(dir)
+,lenPerSlice(lenPerSlice)
 {
     std::string filePath = dirPath + "/" + node.hashString + ".bin";
     fd.open(filePath.c_str(), (std::ios::in | std::ios::binary));
@@ -34,27 +35,30 @@ void wsFileReader::destory()
     delete this;
 }
 
-std::vector<char>  wsFileReader::getWsData(uint64_t len, uint64_t startPos)
+std::vector<char>  wsFileReader::getWsData(uint32_t sliceId)
 {
-    if(startPos >= ws.totalSize || startPos + len >= ws.totalSize)
+    if(sliceId*lenPerSlice >= ws.totalSize)
         return std::vector<char>();
 
-    fd.seekg(startPos, std::ios::beg);
+    fd.seekg(sliceId*lenPerSlice, std::ios::beg);
     std::vector<char>  retData;
-    retData.resize(len);
-    fd.read(retData.data(), len);
+    retData.resize(lenPerSlice);
+    fd.read(retData.data(), lenPerSlice);
+    retData.resize(fd.gcount());
     return retData;
 }
 
-wsFileWriter::wsFileWriter(std::string hash, uint32_t blockHeight, std::string dir, wsManager& m)
+wsFileWriter::wsFileWriter(std::string hash, uint32_t blockHeight, uint32_t fileSize, uint32_t lenPerSlice, std::string dir, wsFileManager& m)
 :valid(-1)
 ,fileName()
 ,manager(m),
 isWrite(false)
+,writeSize(0)
+,lenPerSlice(lenPerSlice)
 {
     ws.blockHeight = blockHeight;
     ws.hashString = hash;
-    ws.totalSize = 0;
+    ws.totalSize = fileSize;
     fileName = dir + "/" + hash + ".bin";
 
     fd.open(fileName.c_str(), std::ios::out | std::ios::binary);    
@@ -81,23 +85,43 @@ void wsFileWriter::destory()
     delete this;
 }
 
-void wsFileWriter::writeWsData(std::vector<char>& data, uint64_t len)
+void wsFileWriter::writeWsData(uint32_t sliceId, std::vector<char>& data, uint32_t dataLen)
 {
+    if(dataLen % lenPerSlice){//Error, write data was not whole slice
+        std::cerr << "ERROR!!!!!!!Need assert!!!!!" << std::endl;
+        return;
+    }
+
     open_write();
-    fd.seekp(ws.totalSize);
-    fd.write(data.data(), len);
-    ws.totalSize += len;
+    fd.seekp(0, std::ios::end);
+    int count = fd.tellp();
+
+    if (count > 0) {
+        char placeholder[1024] = {0};
+        while(count < sliceId*lenPerSlice){
+            int cnt = sliceId*lenPerSlice - count > sizeof(placeholder) ? sizeof(placeholder) : sliceId*lenPerSlice - count;
+            fd.write(placeholder, cnt);
+            count += cnt;
+        }
+    }
+
+    fd.seekp(sliceId*lenPerSlice, std::ios::beg);
+    fd.write(data.data(), dataLen);
+    writeSize += dataLen;
     return;
 }
 
 bool wsFileWriter::isValid()
 {
+    if(writeSize != ws.totalSize)
+        return false;
+
     open_read();
     fc::sha256::encoder enc;
     char buffer[1024];
     fd.seekg(0, std::ios::beg);
 
-    for(uint64_t i = 0; i < ws.totalSize; i += 1024){
+    for(uint32_t i = 0; i < writeSize; i += 1024){
         memset(buffer, 0, sizeof(buffer));
         fd.read(buffer, sizeof(buffer));
 
@@ -106,10 +130,10 @@ bool wsFileWriter::isValid()
     }
 
     auto result = enc.result();
-    std::cout << "isValid ? " << ws.totalSize << "== " << result.str() << std::endl;
+    std::cout << "isValid ? : "<< ws.hashString == result.str() << " "<< ws.hashString << "== " << result.str() << std::endl;
     if (result.str() == ws.hashString ) {
         valid = 1;
-        return false;
+        return true;
     }
     
     valid = 0;
@@ -144,7 +168,7 @@ void wsFileWriter::open_read()
     isWrite = false;
 }
 
-wsManager::wsManager(std::string dir)
+wsFileManager::wsFileManager(std::string dir)
 :dirPath(dir)
 {
     if (!bfs::is_directory(dirPath)){
@@ -152,12 +176,12 @@ wsManager::wsManager(std::string dir)
     }
 }
 
-wsManager::~wsManager()
+wsFileManager::~wsFileManager()
 {
 
 }
 
-std::list<wsNode> wsManager::getLocalInfo()
+std::list<wsNode> wsFileManager::getLocalInfo()
 {
 
     try {
@@ -179,7 +203,6 @@ std::list<wsNode> wsManager::getLocalInfo()
             cnt--;
             fc::raw::unpack(wsConfFd, node);
             std::string filePath = dirPath + "/" + node.hashString + ".bin";     
-            // std::cout << "wsNode: "<< node.blockHeight << "   "<< node.hashString << "   "<< node.totalSize  << std::endl;
             if(!bfs::exists(filePath) || !bfs::is_regular_file(filePath) || bfs::file_size(filePath) != node.totalSize)
                 continue;
                    
@@ -194,7 +217,7 @@ std::list<wsNode> wsManager::getLocalInfo()
    }
 }
 
-void wsManager::saveWsInfo(wsNode& node)
+void wsFileManager::saveWsInfo(wsNode& node)
 {
     std::string confFile = dirPath + "/ws.conf";
     std::fstream wsConfFd = std::fstream(confFile.c_str(), (std::ios::in | std::ios::binary));
@@ -225,7 +248,7 @@ void wsManager::saveWsInfo(wsNode& node)
     wsConfFd.close();
 }
 
-wsFileReader* wsManager::getReader(std::string hash)
+wsFileReader* wsFileManager::getReader(std::string hash, uint32_t lenPerSlice)
 {
     auto listNode = getLocalInfo();
     for(auto &it : listNode){
@@ -233,14 +256,14 @@ wsFileReader* wsManager::getReader(std::string hash)
             std::string filePath = dirPath + "/" + it.hashString + ".bin";
             if(!bfs::exists(filePath) || !bfs::is_regular_file(filePath))
                 return nullptr;            
-            return new wsFileReader(it, dirPath);
+            return new wsFileReader(it, dirPath, lenPerSlice);
         }
     }
 
     return nullptr;
 }
 
-wsFileWriter* wsManager::getWriter(std::string hash, uint32_t blockHeight)
+wsFileWriter* wsFileManager::getWriter(std::string hash, uint32_t blockHeight, uint32_t fileSize, uint32_t lenPerSlice)
 {
     auto listNode = getLocalInfo();
     for(auto &it : listNode){
@@ -248,7 +271,7 @@ wsFileWriter* wsManager::getWriter(std::string hash, uint32_t blockHeight)
             return nullptr;
         }
     }
-    return new wsFileWriter(hash, blockHeight, dirPath, *this);
+    return new wsFileWriter(hash, blockHeight, fileSize, lenPerSlice, dirPath,  *this);
 }
 
 }}

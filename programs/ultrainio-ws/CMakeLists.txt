@@ -13,7 +13,7 @@ endif()
 target_include_directories(ultrainio-launcher PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(ultrainio-ws
-                      PRIVATE ultrainio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                      PRIVATE ultrainio_chain fc ${CMAKE_DL_LIBS} fc ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
    ultrainio-ws
