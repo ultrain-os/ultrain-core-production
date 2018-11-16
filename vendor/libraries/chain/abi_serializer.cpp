@@ -9,6 +9,7 @@
 #include <ultrainio/chain/transaction.hpp>
 #include <ultrainio/chain/asset.hpp>
 #include <ultrainio/chain/exceptions.hpp>
+#include <ultrainio/chain/block_header.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/varint.hpp>
@@ -97,6 +98,7 @@ namespace ultrainio { namespace chain {
       built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
       built_in_types.emplace("asset",                     pack_unpack<asset>());
       built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
+      built_in_types.emplace("block_header",              pack_unpack<block_header>());
    }
 
    void abi_serializer::set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time) {

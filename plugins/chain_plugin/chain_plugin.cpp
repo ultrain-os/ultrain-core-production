@@ -1073,7 +1073,8 @@ fc::variant read_only::get_block_info(const read_only::get_block_info_params& pa
    return fc::mutable_variant_object(pretty_output.get_object())
            ("id", block->id())
            ("block_num",block->block_num())
-           ("ref_block_prefix", ref_block_prefix);
+           ("ref_block_prefix", ref_block_prefix)
+           ("timevalue", block->timestamp.slot);
 }
 
 fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {

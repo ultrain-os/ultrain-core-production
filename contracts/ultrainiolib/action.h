@@ -166,5 +166,12 @@ extern "C" {
     *  @return the account which specifies the current receiver of the action
     */
    account_name current_receiver();
+
+   /**
+    *  Get the current sender of the action
+    *  @brief Get the current sender of the action
+    *  @return the account which specifies the current sender of the action
+    */
+   account_name current_sender();
    ///@ } actioncapi
 }
