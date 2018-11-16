@@ -39,17 +39,10 @@ namespace ultrainio {
 
        struct handshake_message {
            uint16_t network_version = 0; ///< incremental value above a computed base
-//           chain_id_type chain_id; ///< used to identify chain
            fc::sha256 node_id; ///< used to identify peers and prevent self-connect
-//           chain::public_key_type key; ///< authentication key; may be a producer or peer key, or empty
            tstamp time;
            fc::sha256 token; ///< digest of time to prove we own the private key of the key above
-//           chain::signature_type sig; ///< signature for the digest
            string p2p_address;
-//           uint32_t last_irreversible_block_num = 0;
-//           block_id_type last_irreversible_block_id;
-//           uint32_t head_num = 0;
-//           block_id_type head_id;
            string os;
            string agent;
            int16_t generation;
@@ -79,20 +72,6 @@ namespace ultrainio {
                    return "self connect";
                case duplicate :
                    return "duplicate";
-               case wrong_chain :
-                   return "wrong chain";
-               case wrong_version :
-                   return "wrong version";
-               case forked :
-                   return "chain is forked";
-               case unlinkable :
-                   return "unlinkable block received";
-               case bad_transaction :
-                   return "bad transaction";
-               case validation :
-                   return "invalid block";
-               case authentication :
-                   return "authentication failure";
                case fatal_other :
                    return "some other failure";
                case benign_other :
@@ -155,20 +134,6 @@ namespace ultrainio {
            bool empty() const { return (mode == none || ids.empty()); }
        };
 
-//       struct notice_message {
-//           notice_message() : known_trx(), known_blocks() {}
-//
-////           ordered_txn_ids known_trx;
-//           ordered_blk_ids known_blocks;
-//       };
-//
-//       struct request_message {
-//           request_message() : req_trx(), req_blocks() {}
-//
-////           ordered_txn_ids req_trx;
-//           ordered_blk_ids req_blocks;
-//       };
-
        using net_message = static_variant<handshake_message,
                go_away_message,
                time_message
@@ -182,8 +147,6 @@ FC_REFLECT( ultrainio::wss::handshake_message,
             (os)(agent)(generation) )
 FC_REFLECT( ultrainio::wss::go_away_message, (reason)(node_id) )
 FC_REFLECT( ultrainio::wss::time_message, (org)(rec)(xmt)(dst) )
-//FC_REFLECT( ultrainio::wss::notice_message, (known_trx)(known_blocks) )
-//FC_REFLECT( ultrainio::wss::request_message, (req_trx)(req_blocks) )
 
 /**
  *

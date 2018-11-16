@@ -198,11 +198,11 @@ namespace ultrainio {
     constexpr auto     def_max_clients = 25; // 0 for unlimited clients
     constexpr auto     def_max_nodes_per_host = 1;
     constexpr auto     def_conn_retry_wait = 30;
-    constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
+
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
     constexpr auto     def_sync_fetch_span = 100;
     constexpr uint32_t  def_max_just_send = 1500; // roughly 1 "mtu"
-    constexpr bool     large_msg_notify = false;
+
 
     constexpr auto     message_header_size = 4;
 
@@ -224,7 +224,6 @@ namespace ultrainio {
      *  If there is a change to network protocol or behavior, increment net version to identify
      *  the need for compatibility hooks
      */
-    constexpr uint16_t proto_base = 0;
     constexpr uint16_t proto_explicit_sync = 1;
 
     constexpr uint16_t net_version = proto_explicit_sync;

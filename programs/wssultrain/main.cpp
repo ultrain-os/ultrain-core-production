@@ -6,6 +6,7 @@
 
 #include <ultrainio/http_plugin/http_plugin.hpp>
 #include <ultrainio/sync_net_plugin/sync_net_plugin.hpp>
+#include <ultrainio/sync_net_api_plugin/sync_net_api_plugin.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
@@ -96,7 +97,7 @@ int main( int argc, char** argv ) {
       auto root = fc::app_path();
       app().set_default_data_dir(root / "ultrainio/wssultrain/data" );
       app().set_default_config_dir(root / "ultrainio/wssultrain/config" );
-      if( !appbase::app().initialize<http_plugin, sync_net_plugin>( argc, argv ) )
+      if( !appbase::app().initialize<http_plugin, sync_net_plugin,sync_net_api_plugin>( argc, argv ) )
          return INITIALIZE_FAIL;
       initialize_logging();
       ilog("wssultrain root is ${root}", ("root", root.string()));
