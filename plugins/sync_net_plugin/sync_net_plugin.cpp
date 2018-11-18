@@ -24,6 +24,7 @@
 #include <boost/intrusive/set.hpp>
 
 #include <random>
+#include <fstream>
 
 namespace fc {
     extern std::unordered_map<std::string,logger>& get_logger_map();
@@ -71,9 +72,7 @@ namespace ultrainio {
         uint32_t                         max_client_count = 0;
         uint32_t                         max_nodes_per_host = 1;
         uint32_t                         num_clients = 0;
-
         vector<string>                   supplied_peers;
-
         enum possible_connections : char {
             None = 0,
             Producers = 1 << 0,
@@ -81,28 +80,33 @@ namespace ultrainio {
             Any = 1 << 2
         };
         possible_connections             allowed_connections{None};
-
         connection_ptr find_connection( string host )const;
-
         std::set< connection_ptr >       connections;
         bool                             done = false;
-
         std::unique_ptr<boost::asio::steady_timer> connector_check;
         std::unique_ptr<boost::asio::steady_timer> keepalive_timer;
 
         boost::asio::steady_timer::duration   connector_period;
         boost::asio::steady_timer::duration   resp_expected_period;
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
-
         bool                          network_version_match = false;
         fc::sha256                    node_id;
-
         string                        user_agent_name;
         int                           started_sessions = 0;
-
         std::shared_ptr<tcp::resolver>     resolver;
-
         bool                          use_socket_read_watermark = false;
+
+        std::ifstream src_file;
+        std::ofstream dist_file;
+
+        struct rcv_file_state{
+            std::string  fileName;
+            long double  fileSize;
+            uint32_t     fileSeqNum;
+            std::string  fileHashString;
+            unsigned long  rcvdChunkSeq;
+            unsigned long  rcvdSize;
+        } current_rcv_file_state;
 
         void connect( connection_ptr c );
         void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
@@ -132,7 +136,9 @@ namespace ultrainio {
          */
         void handle_message( connection_ptr c, const time_message &msg);
 
-        void handle_message( connection_ptr c, const FileInfo &msg);
+        void handle_message( connection_ptr c, const ReqLastWsInfoMsg &msg);
+        void handle_message( connection_ptr c, const RspLastWsInfoMsg &msg);
+        void handle_message( connection_ptr c, const ReqWsFileMsg &msg);
         void handle_message( connection_ptr c, const FileTransferPacket &msg);
 
         void start_broadcast(const net_message& msg);
@@ -1101,12 +1107,68 @@ namespace ultrainio {
       c->rec = 0;
    }
 
-    void sync_net_plugin_impl::handle_message(connection_ptr c, const FileInfo &msg) {
-        ilog("FileInfo msg: ${m}", ("m", msg.fileName));
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqLastWsInfoMsg &msg) {
+        ilog("recieved ReqLastWsInfoMsg,start to rsp");
+        RspLastWsInfoMsg rspLastWsInfoMsg;
+        rspLastWsInfoMsg.fileSeqNum = 1;
+        rspLastWsInfoMsg.fileName = "snapshotfile1.bin";
+        rspLastWsInfoMsg.fileSize = 1024;
+        c->enqueue(net_message(rspLastWsInfoMsg));
+    }
+
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const RspLastWsInfoMsg &msg) {
+        ilog("WsInfo seq: ${seq},filename:${fname}", ("m", msg.fileSeqNum)("fname", msg.fileName));
+        //todo: collect all rsp msg, select the right one to send ReqWsFileMsg
+        current_rcv_file_state.fileName = msg.fileName;
+        current_rcv_file_state.fileSize = msg.fileSize;
+        current_rcv_file_state.fileSeqNum = msg.fileSeqNum;
+        current_rcv_file_state.fileHashString = msg.fileHashString;
+        std::string dist_file_name = app().data_dir().string() + "/test.pdf";
+        dist_file.open(dist_file_name, std::ios::binary);
+        if(!dist_file){
+            ilog("handle RspLastWsInfoMsg, failed while opening file " + dist_file_name);
+            return;
+        }
+        ReqWsFileMsg reqWsFileMsg;
+        reqWsFileMsg.fileSeqNum = current_rcv_file_state.fileSeqNum;
+        c->enqueue(net_message(reqWsFileMsg));
+    }
+
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqWsFileMsg &msg) {
+        ilog("recieved ReqLastWsInfoMsg,start to send file");
+        //todo:caculate chunk hash string
+        std::string src_file_name = app().data_dir().string() + "/test.pdf";
+        unsigned long   chunk_seq = 0;
+        FileTransferPacket file_tp_msg;
+
+        src_file.open(src_file_name, std::ios::binary);
+        if(src_file.fail()){
+            ilog("handle ReqWsFileMsg, failed while opening file " + src_file_name);
+            return;
+        }
+        while(!src_file.eof()){
+            src_file.read(file_tp_msg.chunk.data(),MAX_PACKET_DATA_LENGTH);
+            file_tp_msg.chunkLen = file_tp_msg.chunk.size();
+            file_tp_msg.chunkSeq = chunk_seq;
+            c->enqueue(net_message(file_tp_msg));
+            ilog ("send chunk, chunkSeq: ${seq}, chunkLen: ${len}", ("seq", file_tp_msg.chunkSeq)("len",file_tp_msg.chunkLen));
+            chunk_seq++;
+        }
     }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const FileTransferPacket &msg) {
-        ilog("FileTransferPacket msg: ${m}", ("m", msg.protoTag));
+        ilog("recieved FileTransferPacket,start to write chunk");
+        //todo:break point
+        std::string dist_file_name = app().data_dir().string() + "/test.pdf";
+        if(!dist_file){
+            ilog("handle FileTransferPacket, failed while opening file " + dist_file_name);
+            return;
+        }
+        dist_file.write(msg.chunk.data(),msg.chunk.size());
+        current_rcv_file_state.rcvdChunkSeq = msg.chunkSeq;
+        current_rcv_file_state.rcvdSize = dist_file.tellp();
+//        ilog("FileTransferPacket msg seq: ${seq}, size: ${size}, rcvd: ${rcvd}", ("seq", msg.chunkSeq)("size", msg.chunk.size())("rcvd", dist_file.tellp()));
+        ilog("FileTransferPacket msg seq: ${seq}, size: ${size}", ("seq", msg.chunkSeq)("size", msg.chunk.size()));
     }
 
     void sync_net_plugin_impl::start_monitors() {
@@ -1396,32 +1458,15 @@ namespace ultrainio {
       return result;
    }
 
-    string sync_net_plugin::transfer_file() {
-//        for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
-//            if( (*itr)->peer_addr == host ) {
-//                (*itr)->reset();
-//                my->close(*itr);
-//                my->connections.erase(itr);
-//                return "connection removed";
-//            }
-//        }
-        std::vector<connection_ptr> conn_list;
-        conn_list.reserve(my->connections.size());
-        for (auto& c:my->connections) {
-            if (c->current()) {
-                conn_list.emplace_back(c);
-            }
-        }
-
-        FileInfo file_info_msg;
-        file_info_msg.fileName = "just a test file name";
-        for (auto c:conn_list) {
+    string sync_net_plugin::require_file()const {
+        ReqLastWsInfoMsg reqLastWsInfoMsg;
+        for (const auto& c : my->connections) {
             if(c->current()) {
                 ilog ("send file_info_msg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
-                c->enqueue(net_message(file_info_msg));
+                c->enqueue(net_message(reqLastWsInfoMsg));
             }
         }
-        return "transfer file finished";
+        return "start transfer file";
     }
 
    connection_ptr sync_net_plugin_impl::find_connection( string host )const {

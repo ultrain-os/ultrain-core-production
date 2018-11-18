@@ -36,7 +36,7 @@ namespace ultrainio {
         optional<connection_status>  status( const string& endpoint )const;
         vector<connection_status>    connections()const;
 
-        string                       transfer_file();
+        string                       require_file()const;
 
         size_t num_peers() const;
     private:

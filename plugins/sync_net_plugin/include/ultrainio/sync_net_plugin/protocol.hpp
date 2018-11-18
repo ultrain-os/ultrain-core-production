@@ -37,38 +37,6 @@ namespace ultrainio {
 
    namespace wss {
 
-       const unsigned long  MAX_FILE_NAME_LENGTH		=	1024;
-       const unsigned long MAX_PACKET_DATA_LENGTH		=	1024 * 16;
-       const unsigned short FILE_TRANSFER_PROTO_TAG	=	0x67;
-
-       typedef enum
-       {
-           fileHeader = 0,
-           fileChunk  = fileHeader + 1,
-           EndOfFile  = fileChunk + 1
-       }FileTransferPacketTag;
-
-       struct FileInfo
-       {
-           long double  fileNameLength;
-           long double  fileSize;
-           std::string  fileName;
-       };
-
-       struct FileChunk
-       {
-           unsigned long chunkSequence;
-           unsigned long chunkLen;
-           std::array<char, MAX_PACKET_DATA_LENGTH>    chunk;
-       };
-
-       struct FileTransferPacket
-       {
-           unsigned short			protoTag;
-           FileTransferPacketTag    FtPktTag;
-           std::array<char, sizeof(FileChunk)> data;
-       };
-
        struct handshake_message {
            uint16_t network_version = 0; ///< incremental value above a computed base
            fc::sha256 node_id; ///< used to identify peers and prevent self-connect
@@ -79,7 +47,6 @@ namespace ultrainio {
            string agent;
            int16_t generation;
        };
-
 
        enum go_away_reason {
            no_reason, ///< no reason to go away
@@ -166,10 +133,38 @@ namespace ultrainio {
            bool empty() const { return (mode == none || ids.empty()); }
        };
 
+       const unsigned long MAX_PACKET_DATA_LENGTH		=	1024 * 1024;
+
+       struct ReqLastWsInfoMsg {
+           uint32_t seqNum;
+       };
+
+       struct RspLastWsInfoMsg
+       {
+           uint32_t     fileSeqNum;
+           long double  fileSize;
+           std::string  fileName;
+           std::string  fileHashString;
+       };
+
+       struct ReqWsFileMsg {
+           uint32_t fileSeqNum;
+       };
+
+       struct FileTransferPacket
+       {
+           unsigned long    chunkSeq;
+           unsigned long    chunkLen;
+           std::string      chunkHashString;
+           std::array<char, MAX_PACKET_DATA_LENGTH>    chunk;
+       };
+
        using net_message = static_variant<handshake_message,
                go_away_message,
                time_message,
-               FileInfo,
+               ReqLastWsInfoMsg,
+               RspLastWsInfoMsg,
+               ReqWsFileMsg,
                FileTransferPacket>;
    }
 } // namespace ultrainio
@@ -180,7 +175,8 @@ FC_REFLECT( ultrainio::wss::handshake_message,
             (os)(agent)(generation) )
 FC_REFLECT( ultrainio::wss::go_away_message, (reason)(node_id) )
 FC_REFLECT( ultrainio::wss::time_message, (org)(rec)(xmt)(dst) )
-FC_REFLECT( ultrainio::wss::FileInfo, (fileNameLength)(fileSize)(fileName) )
-
-FC_REFLECT( ultrainio::wss::FileTransferPacket, (protoTag)(FtPktTag)(data) )
+FC_REFLECT( ultrainio::wss::ReqLastWsInfoMsg, (seqNum) )
+FC_REFLECT( ultrainio::wss::RspLastWsInfoMsg, (fileSeqNum)(fileSize)(fileName)(fileHashString) )
+FC_REFLECT( ultrainio::wss::ReqWsFileMsg, (fileSeqNum) )
+FC_REFLECT( ultrainio::wss::FileTransferPacket, (chunkSeq)(chunkLen)(chunkHashString)(chunk) )
 

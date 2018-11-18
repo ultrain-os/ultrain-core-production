@@ -74,8 +74,8 @@ void sync_net_api_plugin::plugin_startup() {
        CALL(wss, sync_net_mgr, connections,
             INVOKE_R_V(sync_net_mgr, connections), 201),
 
-       CALL(wss, sync_net_mgr, transfer_file,
-            INVOKE_R_V(sync_net_mgr, transfer_file), 201),
+       CALL(wss, sync_net_mgr, require_file,
+            INVOKE_R_V(sync_net_mgr, require_file), 201),
    });
 }
 
