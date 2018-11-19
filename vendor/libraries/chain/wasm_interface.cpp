@@ -1030,6 +1030,14 @@ class authorization_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
+   void require_on_main_chain() {
+     ULTRAIN_ASSERT( context.control.is_on_main_chain(), should_be_on_main_chain_exception, "should be on main chain");
+   }
+
+   void require_on_side_chain() {
+     ULTRAIN_ASSERT( !context.control.is_on_main_chain(), should_be_on_side_chain_exception, "should be on side chain");
+   }
+
    void require_authorization( const account_name& account ) {
       context.require_authorization( account );
    }
@@ -2041,6 +2049,8 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(authorization_api,
+   (require_on_main_chain,     void()          )
+   (require_on_side_chain,     void()          )
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )

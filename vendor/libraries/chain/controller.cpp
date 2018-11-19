@@ -64,6 +64,7 @@ struct controller_impl {
    std::unique_ptr<fc::http_client>   http_client;
    chain_id_type                  chain_id;
    bool                           replaying = false;
+   bool                           is_on_main_chain = false;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
@@ -126,9 +127,10 @@ struct controller_impl {
     conf( cfg ),
     http_client(new fc::http_client()),
     chain_id( cfg.genesis.compute_chain_id() ),
+    is_on_main_chain(cfg.is_on_main_chain),
     read_mode( cfg.read_mode )
    {
-
+   ilog("is on main chain: ${s1}", ("s1", is_on_main_chain));
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
@@ -1626,6 +1628,10 @@ bool controller::is_producing_block()const {
    if( !my->pending ) return false;
 
    return (my->pending->_block_status == block_status::incomplete);
+}
+
+bool controller::is_on_main_chain()const {
+   return my->is_on_main_chain;
 }
 
 void controller::validate_referenced_accounts( const transaction& trx )const {

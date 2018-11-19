@@ -118,6 +118,7 @@ public:
 
    bfs::path                        blocks_dir;
    bool                             readonly = false;
+   bool                             is_on_main_chain  = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
@@ -218,6 +219,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cli.add_options()
          ("genesis-json", bpo::value<bfs::path>(), "File to read Genesis State from")
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("is-on-main-chain", bpo::bool_switch()->default_value(false),
+          "if the chain is running as main chain")
          ("print-genesis-json", bpo::bool_switch()->default_value(false),
           "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
@@ -447,6 +450,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
          ULTRAIN_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
+      }
+
+      if( options.at( "is-on-main-chain" ).as<bool>()) {
+          my->chain_config->is_on_main_chain = true;
       }
 
       my->chain.emplace( *my->chain_config );

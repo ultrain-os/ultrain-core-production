@@ -289,6 +289,10 @@ namespace ultrainio { namespace chain {
                                     3090008, "The action is not allowed to be linked with minimum permission" )
       FC_DECLARE_DERIVED_EXCEPTION( invalid_parent_permission,           authorization_exception,
                                     3090009, "The parent permission is invalid" )
+      FC_DECLARE_DERIVED_EXCEPTION( should_be_on_main_chain_exception,           authorization_exception,
+                                    3090010, "The node should be configured to be on main chain" )
+      FC_DECLARE_DERIVED_EXCEPTION( should_be_on_side_chain_exception,           authorization_exception,
+                                    3090011, "The node should be configured to be on side chain" )
 
    FC_DECLARE_DERIVED_EXCEPTION( misc_exception, chain_exception,
                                  3100000, "Miscellaneous exception" )
