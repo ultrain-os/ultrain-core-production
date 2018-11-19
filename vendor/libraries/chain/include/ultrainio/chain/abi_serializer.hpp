@@ -32,6 +32,7 @@ struct abi_serializer {
 
    type_name resolve_type(const type_name& t)const;
    bool      is_array(const type_name& type)const;
+   bool      is_map(const type_name& type)const;
    bool      is_optional(const type_name& type)const;
    bool      is_type(const type_name& type, const fc::microseconds& max_serialization_time)const {
       return _is_type(type, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
@@ -95,7 +96,7 @@ private:
 
    map<type_name, type_name>  typedefs;
    map<type_name, struct_def> structs;
-   map<action_name,type_name>        actions;
+   map<action_name,type_name> actions;
    map<name,type_name>        tables;
    map<uint64_t, string>      error_messages;
 
