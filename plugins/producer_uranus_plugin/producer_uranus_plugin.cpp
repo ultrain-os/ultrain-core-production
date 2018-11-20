@@ -10,6 +10,7 @@
 #include <ultrainio/chain/transaction_object.hpp>
 #include <ultrainio/chain/merkle.hpp>
 #include <ultrainio/chain/worldstate.hpp>
+#include <ultrainio/chain/worldstate_file_manager.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>

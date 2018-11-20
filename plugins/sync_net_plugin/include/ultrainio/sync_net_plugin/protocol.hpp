@@ -26,6 +26,7 @@
 
 #include <chrono>
 
+#include <ultrainio/chain/worldstate_file_manager.hpp>
 
 namespace ultrainio {
 
@@ -141,23 +142,28 @@ namespace ultrainio {
 
        struct RspLastWsInfoMsg
        {
-           uint32_t     fileSeqNum;
-           long double  fileSize;
-           std::string  fileName;
-           std::string  fileHashString;
+        //    uint32_t     fileSeqNum;
+        //    long double  fileSize;
+        //    std::string  fileName;
+        //    std::string  fileHashString;
+           ultrainio::chain::ws_info info;
        };
 
        struct ReqWsFileMsg {
-           uint32_t fileSeqNum;
+        //    uint32_t fileSeqNum;
+           uint32_t lenPerSlice;
+           ultrainio::chain::ws_info info;
        };
 
        struct FileTransferPacket
        {
-           unsigned long    chunkSeq;
+        //    unsigned long    chunkSeq;
            unsigned long    chunkLen;
            std::string      chunkHashString;
-           bool             endOfFile = false;
-           std::array<char, MAX_PACKET_DATA_LENGTH>    chunk;
+           uint32_t sliceId;
+           bool endOfFile = false;
+        //    std::array<char, MAX_PACKET_DATA_LENGTH>    chunk;
+            std::vector<char> chunk;
        };
 
        using net_message = static_variant<handshake_message,
@@ -177,7 +183,7 @@ FC_REFLECT( ultrainio::wss::handshake_message,
 FC_REFLECT( ultrainio::wss::go_away_message, (reason)(node_id) )
 FC_REFLECT( ultrainio::wss::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( ultrainio::wss::ReqLastWsInfoMsg, (seqNum) )
-FC_REFLECT( ultrainio::wss::RspLastWsInfoMsg, (fileSeqNum)(fileSize)(fileName)(fileHashString) )
-FC_REFLECT( ultrainio::wss::ReqWsFileMsg, (fileSeqNum) )
-FC_REFLECT( ultrainio::wss::FileTransferPacket, (chunkSeq)(chunkLen)(chunkHashString)(endOfFile)(chunk) )
+FC_REFLECT( ultrainio::wss::RspLastWsInfoMsg, (info) )
+FC_REFLECT( ultrainio::wss::ReqWsFileMsg, (lenPerSlice)(info) )
+FC_REFLECT( ultrainio::wss::FileTransferPacket, (chunkLen)(chunkHashString)(sliceId)(endOfFile)(chunk) )
 

@@ -1,0 +1,88 @@
+/**
+ *  @file
+ *  @copyright defined in ultrain/LICENSE.txt
+ */
+#pragma once
+#include <fc/exception/exception.hpp>
+#include <list>
+#include <string>
+#include <fc/reflect/reflect.hpp>
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <fc/crypto/sha256.hpp>
+#include <ultrainio/chain/types.hpp>
+
+namespace ultrainio { namespace chain {
+    struct ws_info{
+        fc::sha256 chain_id;
+        uint32_t block_height; 
+        std::string  hash_string;//hash of worldstate file
+        uint32_t  file_size;
+        friend bool operator == ( const ws_info& a, const ws_info& b ) {
+            return a.chain_id == b.chain_id && a.block_height == b.block_height && a.hash_string == b.hash_string && a.file_size == b.file_size;
+        }
+    };
+
+    class ws_file_manager;
+    class ws_file_reader
+    {
+        public:
+            std::vector<char> get_data(uint32_t slice_id, bool& isEof);
+            void destory();
+        private:
+            ws_file_reader(ws_info node, std::string dir, uint32_t len_per_slice);
+            ~ws_file_reader();
+        private:
+            ws_info m_info;
+            std::ifstream m_fd;
+            std::string m_dir_path;
+            uint32_t m_len_per_slice;
+            friend class ws_file_manager;
+    };
+
+    class ws_file_writer
+    {
+        public:
+            void write_data(uint32_t slice_id, const std::vector<char>& data, uint32_t data_len);
+            void write_finished();
+            bool is_valid();
+            void destory();
+
+        private:
+            ws_file_writer(ws_info node, uint32_t len_per_slice, std::string dir, ws_file_manager& m);
+            ~ws_file_writer();
+            void open_write();
+            void open_read();
+        private:
+            ws_info m_info;
+            std::fstream m_fd;
+            int m_valid;
+            std::string m_file_name;
+            ws_file_manager& m_manager;
+            bool m_is_write;
+            uint32_t m_write_size;
+            uint32_t m_len_per_slice;
+            friend class ws_file_manager;
+    };
+
+    class ws_file_manager
+    {
+        public:
+            ws_file_manager(std::string dir = std::string());
+            ~ws_file_manager();        
+        public:   
+            std::list<ws_info> get_local_ws_info();
+            ws_file_reader* get_reader(ws_info node, uint32_t len_per_slice);
+            ws_file_writer* get_writer(ws_info node, uint32_t len_per_slice);
+
+            std::string get_file_path_by_info(fc::sha256& chain_id, uint32_t block_height);
+            void save_info(ws_info& node);
+        private:
+            bool load_local_info_file(const std::string file_name, ws_info& node);
+        private:
+            std::string m_dir_path;
+    };
+}}
+
+FC_REFLECT(ultrainio::chain::ws_info, (chain_id)(block_height)(hash_string)(file_size))

@@ -17,7 +17,7 @@
 #include <fc/exception/exception.hpp>
 
 #include <ultrainio/chain/exceptions.hpp>
-
+#include <ultrainio/chain/worldstate_file_manager.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -98,6 +98,8 @@ namespace ultrainio {
 
         std::ifstream src_file;
         std::ofstream dist_file;
+        chain::ws_file_manager ws_manager =chain::ws_file_manager();
+        chain::ws_file_writer* ws_writer = nullptr;
 
         struct rcv_file_state{
             std::string  fileName;
@@ -120,9 +122,9 @@ namespace ultrainio {
         template<typename VerifierFunc>
         void send_all( const net_message &msg, VerifierFunc verify );
 
-        bool is_valid( const handshake_message &msg);
+        bool is_valid( const wss::handshake_message &msg);
 
-        void handle_message( connection_ptr c, const handshake_message &msg);
+        void handle_message( connection_ptr c, const wss::handshake_message &msg);
         void handle_message( connection_ptr c, const go_away_message &msg);
 
         /** \brief Process time_message
@@ -238,7 +240,7 @@ namespace ultrainio {
     constexpr uint16_t net_version = proto_explicit_sync;
 
     struct handshake_initializer {
-        static void populate(handshake_message &hello);
+        static void populate(wss::handshake_message &hello);
     };
 
     class connection : public std::enable_shared_from_this<connection> {
@@ -262,8 +264,8 @@ namespace ultrainio {
         deque<queued_write>     write_queue;
         deque<queued_write>     out_queue;
         fc::sha256              node_id;
-        handshake_message       last_handshake_recv;
-        handshake_message       last_handshake_sent;
+        wss::handshake_message       last_handshake_recv;
+        wss::handshake_message       last_handshake_sent;
         int16_t                 sent_handshake_count = 0;
         bool                    connecting = false;
         uint16_t                protocol_version  = 0;
@@ -457,8 +459,8 @@ namespace ultrainio {
         connecting = false;
         reset();
         sent_handshake_count = 0;
-        last_handshake_recv = handshake_message();
-        last_handshake_sent = handshake_message();
+        last_handshake_recv = wss::handshake_message();
+        last_handshake_sent = wss::handshake_message();
         fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
         cancel_wait();
         pending_message_buffer.reset();
@@ -973,8 +975,8 @@ namespace ultrainio {
       }
    }
 
-   bool sync_net_plugin_impl::is_valid( const handshake_message &msg) {
-      // Do some basic validation of an incoming handshake_message, so things
+   bool sync_net_plugin_impl::is_valid( const wss::handshake_message &msg) {
+      // Do some basic validation of an incoming wss::handshake_message, so things
       // that really aren't handshake messages can be quickly discarded without
       // affecting state.
       bool valid = true;
@@ -989,9 +991,9 @@ namespace ultrainio {
       return valid;
    }
 
-   void sync_net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
-      peer_ilog(c, "received handshake_message");
-      ilog("got a handshake_message from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
+   void sync_net_plugin_impl::handle_message( connection_ptr c, const wss::handshake_message &msg) {
+      peer_ilog(c, "received wss::handshake_message");
+      ilog("got a wss::handshake_message from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
       if (!is_valid(msg)) {
          peer_elog( c, "bad handshake message");
          c->enqueue( go_away_message( fatal_other ));
@@ -1109,81 +1111,84 @@ namespace ultrainio {
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqLastWsInfoMsg &msg) {
         ilog("recieved ReqLastWsInfoMsg,start to rsp");
+         // ws_manager file_manger(app().data_dir().string());
+         auto infoList = ws_manager.get_local_ws_info();
+         ilog("infoList size ${infoList}", ("infoList", infoList.size()));
+
         RspLastWsInfoMsg rspLastWsInfoMsg;
-        rspLastWsInfoMsg.fileSeqNum = 1;
-        rspLastWsInfoMsg.fileName = "snapshotfile1.bin";
-        rspLastWsInfoMsg.fileSize = 1024;
+      //   rspLastWsInfoMsg.fileSeqNum = 1;
+      //   rspLastWsInfoMsg.fileName = "snapshotfile1.bin";
+      //   rspLastWsInfoMsg.fileSize = 1024;
+
+         if(infoList.size() > 0){
+            auto& tmp = infoList.front();
+            for(auto& it : infoList){
+               if(it.block_height > tmp.block_height)
+                  tmp = it;
+            }
+            rspLastWsInfoMsg.info = tmp;
+         } else {
+            rspLastWsInfoMsg.info.block_height = -1;
+         }
+            
         c->enqueue(net_message(rspLastWsInfoMsg));
     }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const RspLastWsInfoMsg &msg) {
-        ilog("WsInfo seq: ${seq},filename:${fname}", ("m", msg.fileSeqNum)("fname", msg.fileName));
-        //todo: collect all rsp msg, select the right one to send ReqWsFileMsg
-        current_rcv_file_state.fileName = msg.fileName;
-        current_rcv_file_state.fileSize = msg.fileSize;
-        current_rcv_file_state.fileSeqNum = msg.fileSeqNum;
-        current_rcv_file_state.fileHashString = msg.fileHashString;
-        std::string dist_file_name = app().data_dir().string() + "/test.pdf";
-        dist_file.open(dist_file_name, std::ios::binary);
-        if(!dist_file){
-            ilog("handle RspLastWsInfoMsg, failed while opening file " + dist_file_name);
+         auto& info = msg.info;
+         if(info.block_height == -1){
+            ilog("RspLastWsInfoMsg: remote no ws");
             return;
-        }
-        ReqWsFileMsg reqWsFileMsg;
-        reqWsFileMsg.fileSeqNum = current_rcv_file_state.fileSeqNum;
-        c->enqueue(net_message(reqWsFileMsg));
+         }
+
+         ilog("WsInfo msg: ${msg}", ("msg", info));
+         ws_writer = ws_manager.get_writer(info, 1024);
+         if(!ws_writer)
+            return;
+
+         ReqWsFileMsg reqWsFileMsg;
+         reqWsFileMsg.lenPerSlice = 1024;
+         reqWsFileMsg.info = info;
+         c->enqueue(net_message(reqWsFileMsg));
     }
 
-    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqWsFileMsg &msg) {
-        ilog("recieved ReqLastWsInfoMsg,start to send file");
-        //todo:caculate chunk hash string
-        std::string src_file_name = app().data_dir().string() + "/test.pdf";
-        unsigned long   chunk_seq = 0;
-        FileTransferPacket file_tp_msg;
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqWsFileMsg &msg) {   
+      ilog("recieved ReqWsFileMsg, ${msg}", ("msg", msg));
+      auto reader = ws_manager.get_reader(msg.info, msg.lenPerSlice);
+      if (!reader){
+         ilog("reader error ");
+         return;
+      }
 
-        src_file.open(src_file_name, std::ios::binary);
-        if(src_file.fail()){
-            ilog("handle ReqWsFileMsg, failed while opening file " + src_file_name);
-            return;
-        }
-        while(!src_file.eof()){
-            src_file.read(file_tp_msg.chunk.data(),MAX_PACKET_DATA_LENGTH);
-            file_tp_msg.chunkLen = file_tp_msg.chunk.size();
-            file_tp_msg.chunkSeq = chunk_seq;
-            if(src_file.eof()){
-                file_tp_msg.endOfFile = true;
-                chunk_seq = 0;
-            }else{
-                chunk_seq++;
-            }
-            c->enqueue(net_message(file_tp_msg));
-            ilog ("send chunk, chunkSeq: ${seq}, chunkLen: ${len}", ("seq", file_tp_msg.chunkSeq)("len",file_tp_msg.chunkLen));
-        }
-        src_file.close();
+      int sliceId = 0;
+      bool isEof = false;
+      FileTransferPacket file_tp_msg;
+      while(!isEof){
+         auto data = reader->get_data(sliceId, isEof);
+         if(data.size() <= 0){
+            ilog("reader error, no data ");
+            break;
+         }
+
+         file_tp_msg.sliceId = sliceId;
+         file_tp_msg.chunk = data;
+         file_tp_msg.chunkLen = data.size();
+         file_tp_msg.endOfFile = isEof;
+         c->enqueue(net_message(file_tp_msg));
+         sliceId++;
+      }
+
+      // ilog("r");
+      reader->destory();
     }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const FileTransferPacket &msg) {
-        ilog("recieved FileTransferPacket,start to write chunk");
-        //todo:break point
-        auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        std::cout  << std::put_time(std::localtime(&t), "%F %T") << std::endl;
-        std::stringstream ss;
-        ss << std::put_time(std::localtime(&t), "%F %T");
-        std::string str = ss.str();
-        std::string dist_file_name = app().data_dir().string() + "/" + str + ".pdf";
-        if(!dist_file){
-            ilog("handle FileTransferPacket, failed while opening file " + dist_file_name);
-            return;
-        }
-        dist_file.write(msg.chunk.data(),msg.chunk.size());
-        current_rcv_file_state.rcvdChunkSeq = msg.chunkSeq;
-        current_rcv_file_state.rcvdSize = dist_file.tellp();
-        if(msg.endOfFile){
-            dist_file.close();
-            ilog("recieved endOfFile and close file");
-        }
-//        ilog("FileTransferPacket msg seq: ${seq}, size: ${size}, rcvd: ${rcvd}", ("seq", msg.chunkSeq)("size", msg.chunk.size())("rcvd", dist_file.tellp()));
-        ilog("FileTransferPacket msg seq: ${seq}, size: ${size}", ("seq", msg.chunkSeq)("size", msg.chunk.size()));
+         ws_writer->write_data(msg.sliceId, msg.chunk, msg.chunkLen);
+         if(msg.endOfFile){
+               auto ret = ws_writer->is_valid();
+               ilog("FileTransferEnd is_valid: ${ret}", ("ret", ret));      
+               ws_writer->destory();        
+         }
     }
 
     void sync_net_plugin_impl::start_monitors() {
@@ -1249,7 +1254,7 @@ namespace ultrainio {
    }
 
    void
-   handshake_initializer::populate( handshake_message &hello) {
+   handshake_initializer::populate( wss::handshake_message &hello) {
       hello.network_version = net_version_base + net_version;
       hello.node_id = my_impl->node_id;
       hello.time = std::chrono::system_clock::now().time_since_epoch().count();

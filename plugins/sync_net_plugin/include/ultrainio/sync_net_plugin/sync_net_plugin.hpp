@@ -5,6 +5,7 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <ultrainio/sync_net_plugin/protocol.hpp>
+#include <ultrainio/chain/worldstate_file_manager.hpp>
 #include <fc/optional.hpp>
 
 namespace ultrainio {

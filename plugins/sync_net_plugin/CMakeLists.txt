@@ -3,7 +3,7 @@ add_library( sync_net_plugin
             sync_net_plugin.cpp
              ${HEADERS} )
 
-target_link_libraries( sync_net_plugin appbase fc )
+target_link_libraries( sync_net_plugin ultrainio_chain appbase fc )
 target_include_directories( sync_net_plugin
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
         "${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/appbase/include"

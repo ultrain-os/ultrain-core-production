@@ -41,6 +41,7 @@ add_library( ultrainio_chain
              webassembly/binaryen.cpp
 
 			 worldstate
+                   worldstate_file_manager
 #             get_config.cpp
 #             global_property_object.cpp
 #
