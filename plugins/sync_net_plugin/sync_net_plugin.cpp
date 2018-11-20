@@ -1150,16 +1150,27 @@ namespace ultrainio {
             src_file.read(file_tp_msg.chunk.data(),MAX_PACKET_DATA_LENGTH);
             file_tp_msg.chunkLen = file_tp_msg.chunk.size();
             file_tp_msg.chunkSeq = chunk_seq;
+            if(src_file.eof()){
+                file_tp_msg.endOfFile = true;
+                chunk_seq = 0;
+            }else{
+                chunk_seq++;
+            }
             c->enqueue(net_message(file_tp_msg));
             ilog ("send chunk, chunkSeq: ${seq}, chunkLen: ${len}", ("seq", file_tp_msg.chunkSeq)("len",file_tp_msg.chunkLen));
-            chunk_seq++;
         }
+        src_file.close();
     }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const FileTransferPacket &msg) {
         ilog("recieved FileTransferPacket,start to write chunk");
         //todo:break point
-        std::string dist_file_name = app().data_dir().string() + "/test.pdf";
+        auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        std::cout  << std::put_time(std::localtime(&t), "%F %T") << std::endl;
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&t), "%F %T");
+        std::string str = ss.str();
+        std::string dist_file_name = app().data_dir().string() + "/" + str + ".pdf";
         if(!dist_file){
             ilog("handle FileTransferPacket, failed while opening file " + dist_file_name);
             return;
@@ -1167,6 +1178,10 @@ namespace ultrainio {
         dist_file.write(msg.chunk.data(),msg.chunk.size());
         current_rcv_file_state.rcvdChunkSeq = msg.chunkSeq;
         current_rcv_file_state.rcvdSize = dist_file.tellp();
+        if(msg.endOfFile){
+            dist_file.close();
+            ilog("recieved endOfFile and close file");
+        }
 //        ilog("FileTransferPacket msg seq: ${seq}, size: ${size}, rcvd: ${rcvd}", ("seq", msg.chunkSeq)("size", msg.chunk.size())("rcvd", dist_file.tellp()));
         ilog("FileTransferPacket msg seq: ${seq}, size: ${size}", ("seq", msg.chunkSeq)("size", msg.chunk.size()));
     }
@@ -1458,7 +1473,7 @@ namespace ultrainio {
       return result;
    }
 
-    string sync_net_plugin::require_file()const {
+    string sync_net_plugin::require_file() {
         ReqLastWsInfoMsg reqLastWsInfoMsg;
         for (const auto& c : my->connections) {
             if(c->current()) {
@@ -1467,6 +1482,14 @@ namespace ultrainio {
             }
         }
         return "start transfer file";
+    }
+
+    string sync_net_plugin::sync_ws(const sync_wss_params& syncWssParams) {
+        ilog ("chain id : ${id}", ("id", syncWssParams.chainId));
+        for(const auto& host : syncWssParams.hosts){
+            ilog ("host : ${host}", ("host", host));
+        }
+        return "get triger and hosts list";
     }
 
    connection_ptr sync_net_plugin_impl::find_connection( string host )const {

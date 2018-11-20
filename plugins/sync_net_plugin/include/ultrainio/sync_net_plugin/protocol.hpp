@@ -156,6 +156,7 @@ namespace ultrainio {
            unsigned long    chunkSeq;
            unsigned long    chunkLen;
            std::string      chunkHashString;
+           bool             endOfFile = false;
            std::array<char, MAX_PACKET_DATA_LENGTH>    chunk;
        };
 
@@ -178,5 +179,5 @@ FC_REFLECT( ultrainio::wss::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( ultrainio::wss::ReqLastWsInfoMsg, (seqNum) )
 FC_REFLECT( ultrainio::wss::RspLastWsInfoMsg, (fileSeqNum)(fileSize)(fileName)(fileHashString) )
 FC_REFLECT( ultrainio::wss::ReqWsFileMsg, (fileSeqNum) )
-FC_REFLECT( ultrainio::wss::FileTransferPacket, (chunkSeq)(chunkLen)(chunkHashString)(chunk) )
+FC_REFLECT( ultrainio::wss::FileTransferPacket, (chunkSeq)(chunkLen)(chunkHashString)(endOfFile)(chunk) )
 

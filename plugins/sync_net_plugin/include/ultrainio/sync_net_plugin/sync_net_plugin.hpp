@@ -17,6 +17,11 @@ namespace ultrainio {
         wss::handshake_message last_handshake;
     };
 
+    struct sync_wss_params {
+        string              chainId;
+        flat_set<string>    hosts;
+    };
+
     class sync_net_plugin : public appbase::plugin<sync_net_plugin>
     {
     public:
@@ -36,7 +41,8 @@ namespace ultrainio {
         optional<connection_status>  status( const string& endpoint )const;
         vector<connection_status>    connections()const;
 
-        string                       require_file()const;
+        string                       require_file();
+        string                       sync_ws(const sync_wss_params& syncWssParams);
 
         size_t num_peers() const;
     private:
@@ -46,3 +52,4 @@ namespace ultrainio {
 }
 
 FC_REFLECT( ultrainio::connection_status, (peer)(connecting)(last_handshake) )
+FC_REFLECT( ultrainio::sync_wss_params, (chainId)(hosts) )
