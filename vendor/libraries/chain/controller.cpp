@@ -27,6 +27,7 @@
 #include <appbase/application.hpp>
 #include <fc/network/url.hpp>
 #include <fc/network/http/http_client.hpp>
+#include <chrono>
 
 namespace ultrainio { namespace chain {
 
@@ -223,6 +224,28 @@ struct controller_impl {
       }
    }
 
+   void create_worldstate(){
+       auto size = db.get_segment_manager()->get_size()-db.get_free_memory()+boost::interprocess::mapped_region::get_page_size();
+       //TODO: romove log
+	   ilog("state ${path}",("path",conf.state_dir));
+       ilog("create worldstate size ${size} path ${path}",("size",size)("path",conf.worldstate_dir));
+
+       chainbase::database* worldstate_db = new chainbase::database(conf.worldstate_dir,database::read_write,size);
+       db.with_write_lock([&](){
+             memcpy(worldstate_db->get_segment_address(),db.get_segment_address(),size);
+       });
+       controller_index_set::add_indices(*worldstate_db);
+       contract_database_index_set::add_indices(*worldstate_db);
+       authorization.add_indices(*worldstate_db);
+       resource_limits.add_indices(*worldstate_db);
+
+       //thread to generate worldstate file
+       boost::thread worldstate([this](const chainbase::database* ws_db){
+             add_to_worldstate(ws_db);
+       },worldstate_db);
+       worldstate.detach();
+   }
+
    void on_irreversible( const block_state_ptr& s ) {
       if( !blog.head() )
          blog.read_head();
@@ -232,6 +255,9 @@ struct controller_impl {
       auto lh_block_num = log_head->block_num();
 
       db.commit( s->block_num );
+
+      if (0 == s->block_num % conf.worldstate_interval)
+         create_worldstate();
 
       if( s->block_num <= lh_block_num ) {
 //         edump((s->block_num)("double call to on_irr"));
@@ -345,8 +371,8 @@ struct controller_impl {
       controller_index_set::add_indices(db);
       contract_database_index_set::add_indices(db);
 
-      authorization.add_indices();
-      resource_limits.add_indices();
+      authorization.add_indices(db);
+      resource_limits.add_indices(db);
    }
 
    void clear_all_undo() {
@@ -361,14 +387,14 @@ struct controller_impl {
       });
    }
 
-   void add_contract_tables_to_worldstate( const worldstate_writer_ptr& worldstate ) const {
-      worldstate->write_section("contract_tables", [this]( auto& section ) {
-		 index_utils<table_id_multi_index>::walk(db, [this, &section]( const table_id_object& table_row ){
+   void add_contract_tables_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const {
+      worldstate->write_section("contract_tables", [this, &worldstate_db]( auto& section ) {
+		 index_utils<table_id_multi_index>::walk(worldstate_db, [this, &worldstate_db, &section]( const table_id_object& table_row ){
 					// add a row for the table
-            section.add_row(table_row, db);
+            section.add_row(table_row, worldstate_db);
 
 // followed by a size row and then N data rows for each type of table
-            contract_database_index_set::walk_indices([this, &section, &table_row]( auto utils ) {
+            contract_database_index_set::walk_indices([this, &worldstate_db, &section, &table_row]( auto utils ) {
                using utils_t = decltype(utils);
                using value_t = typename decltype(utils)::index_t::value_type;
                using by_table_id = object_to_table_id_tag_t<value_t>;
@@ -376,11 +402,11 @@ struct controller_impl {
                auto tid_key = boost::make_tuple(table_row.id);
                auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
 
-               unsigned_int size = utils_t::template size_range<by_table_id>(db, tid_key, next_tid_key);
-               section.add_row(size, db);
+               unsigned_int size = utils_t::template size_range<by_table_id>(worldstate_db, tid_key, next_tid_key);
+               section.add_row(size, worldstate_db);
 
-               utils_t::template walk_range<by_table_id>(db, tid_key, next_tid_key, [this, &section]( const auto &row ) {
-                  section.add_row(row, db);
+               utils_t::template walk_range<by_table_id>(worldstate_db, tid_key, next_tid_key, [this, &worldstate_db, &section]( const auto &row ) {
+                  section.add_row(row, worldstate_db);
                });
             });
          });
@@ -416,21 +442,30 @@ struct controller_impl {
       });
    }
 
-   void add_to_worldstate( const worldstate_writer_ptr& worldstate ) const {
+   void add_to_worldstate(const chainbase::database* const worldstate_db) const {
+       //worldstate file name
+	   auto block_num = head->block_num;
+	   std::string worldstate_path = (conf.worldstate_dir / fc::format_string("worldstate-${id}.bin", fc::mutable_variant_object()("id", block_num))).generic_string();
 
-	   worldstate->write_section<chain_worldstate_header>([this]( auto &section ){
-         section.add_row(chain_worldstate_header(), db);
+       //TODO: remove log
+       ilog("worldstate path: ${path}",("path",worldstate_path));
+	   auto worldstate_out = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
+	   auto worldstate = std::make_shared<ostream_worldstate_writer>(worldstate_out);
+
+	   //generate worldstate
+	   worldstate->write_section<chain_worldstate_header>([this,worldstate_db]( auto &section ){
+         section.add_row(chain_worldstate_header(), *worldstate_db);
       });
 
-      worldstate->write_section<genesis_state>([this]( auto &section ){
-         section.add_row(conf.genesis, db);
+      worldstate->write_section<genesis_state>([this,worldstate_db]( auto &section ){
+         section.add_row(conf.genesis, *worldstate_db);
       });
 
-      worldstate->write_section<block_state>([this]( auto &section ){
-         section.template add_row<block_header_state>(*fork_db.head(), db);
+      worldstate->write_section<block_state>([this,worldstate_db]( auto &section ){
+         section.template add_row<block_header_state>(*fork_db.head(), *worldstate_db);
       });
 
-      controller_index_set::walk_indices([this, &worldstate]( auto utils ){
+      controller_index_set::walk_indices([this,&worldstate_db, worldstate]( auto utils ){
          using value_t = typename decltype(utils)::index_t::value_type;
 
 			// skip the table_id_object as its inlined with contract tables section
@@ -438,17 +473,26 @@ struct controller_impl {
             return;
          }
 
-         worldstate->write_section<value_t>([this]( auto& section ){
-            decltype(utils)::walk(db, [this, &section]( const auto &row ) {
-               section.add_row(row, db);
+         worldstate->write_section<value_t>([this,worldstate_db]( auto& section ){
+            decltype(utils)::walk(*worldstate_db, [this,worldstate_db, &section]( const auto &row ) {
+               section.add_row(row, *worldstate_db);
             });
          });
       });
 
-      add_contract_tables_to_worldstate(worldstate);
+      add_contract_tables_to_worldstate(worldstate,*worldstate_db);
 
-      authorization.add_to_worldstate(worldstate);
-      resource_limits.add_to_worldstate(worldstate);
+      authorization.add_to_worldstate(worldstate,*worldstate_db);
+      resource_limits.add_to_worldstate(worldstate,*worldstate_db);
+
+	  //flush worldstate file
+	  worldstate->finalize();
+	  worldstate_out.flush();
+	  worldstate_out.close();
+
+	  //TODO:remove worldstate_db, use unique_ptr to wrap
+      delete worldstate_db;
+	  ilog("dylan finish");
    }
 
     void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
@@ -498,7 +542,7 @@ struct controller_impl {
     sha256 calculate_integrity_hash() const {
       sha256::encoder enc;
       auto hash_writer = std::make_shared<integrity_hash_worldstate_writer>(enc);
-      add_to_worldstate(hash_writer);
+//      add_to_worldstate(hash_writer);
       hash_writer->finalize();
 
       return enc.result();
@@ -1846,9 +1890,9 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
    return signed_blk->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
-void controller::write_worldstate( const worldstate_writer_ptr& worldstate ) const {
+void controller::write_worldstate() const {
 //EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent worldstate with a pending block" );
-   return my->add_to_worldstate(worldstate);
+   return my->create_worldstate();
 }
 
 void controller::read_worldstate( const worldstate_reader_ptr& worldstate ) {

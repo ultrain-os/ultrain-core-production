@@ -406,7 +406,7 @@ void producer_uranus_plugin::set_program_options(
          ("genesis-pk", bpo::value<std::string>()->notifier([this](std::string g) { my->_genesis_pk = g; }), "genesis public key, set by test mode usually")
          ("max-round-seconds", bpo::value<int32_t>()->default_value(Config::s_maxRoundSeconds), "max round second, set by test mode usually")
          ("max-phase-seconds", bpo::value<int32_t>()->default_value(Config::s_maxPhaseSeconds), "max phase second, set by test mode usually")
-         ("worldstates-dir", bpo::value<bfs::path>()->default_value("worldstates"),"the location of the worldstates directory (absolute path or relative to application data dir)")
+         ("worldstates-dir", bpo::value<bfs::path>()->default_value("worldstate"),"the location of the worldstates directory (absolute path or relative to application data dir)")
          ;
    config_file_options.add(producer_options);
 }
@@ -666,26 +666,18 @@ producer_uranus_plugin::runtime_options producer_uranus_plugin::get_runtime_opti
       my->_max_irreversible_block_age_us.count() < 0 ? -1 : my->_max_irreversible_block_age_us.count() / 1'000'000
    };
 }
-producer_uranus_plugin::worldstate_information producer_uranus_plugin::create_worldstate() const {
+
+//TODO:just for test, will remove after code testing
+fc::microseconds producer_uranus_plugin::generate_worldstate() const {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-   auto head_id = chain.head_block_id();
-   std::string worldstate_path = (my->_worldstates_dir / fc::format_string("worldstate-${id}.bin", fc::mutable_variant_object()("id", head_id))).generic_string();
 
-   //FC_ASSERT( !fc::is_regular_file(worldstate_path), worldstate_exists_exception,
-   //         "worldstate named ${name} already exists", ("name", worldstate_path));
-
-   auto worldstate_out = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
-   auto writer = std::make_shared<ostream_worldstate_writer>(worldstate_out);
    //TODO:for testing
    auto begin=fc::time_point::now();
-   chain.write_worldstate(writer);
+   chain.write_worldstate();
    //TODO:for testing
    auto end=fc::time_point::now();
    auto time_delta=end-begin;
-   writer->finalize();
-   worldstate_out.flush();
-   worldstate_out.close();
-   return {head_id, worldstate_path,time_delta};
+   return {time_delta};
 }
 
 static bool parse_genesis(boost::chrono::system_clock::time_point &out_time_point, const char *time_format) {

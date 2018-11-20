@@ -26,13 +26,6 @@ public:
       fc::optional<int32_t> max_irreversible_block_age;
    };
 
-   struct worldstate_information {
-      chain::block_id_type head_block_id;
-      std::string          worldstate_name;
-      //TODO: just for testing
-	  fc::microseconds     delta;
-   };
-
    producer_uranus_plugin();
    virtual ~producer_uranus_plugin();
 
@@ -62,7 +55,7 @@ public:
    void update_runtime_options(const runtime_options& options);
    runtime_options get_runtime_options() const;
 
-   worldstate_information create_worldstate() const;
+   fc::microseconds generate_worldstate() const;
 
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
@@ -72,5 +65,3 @@ private:
 } //ultrainio
 
 FC_REFLECT(ultrainio::producer_uranus_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age));
-//TODO: delta for testing
-FC_REFLECT(ultrainio::producer_uranus_plugin::worldstate_information, (head_block_id)(worldstate_name)(delta))

@@ -23,8 +23,8 @@ namespace ultrainio { namespace chain {
    authorization_manager::authorization_manager(controller& c, database& d)
    :_control(c),_db(d){}
 
-   void authorization_manager::add_indices() {
-      authorization_index_set::add_indices(_db);
+   void authorization_manager::add_indices(chainbase::database& db) {
+      authorization_index_set::add_indices(db);
    }
 
    void authorization_manager::initialize_database() {
@@ -91,8 +91,8 @@ namespace ultrainio { namespace chain {
       };
    }
 
-   void authorization_manager::add_to_worldstate( const worldstate_writer_ptr& worldstate ) const {
-      authorization_index_set::walk_indices([this, &worldstate]( auto utils ){
+   void authorization_manager::add_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const {
+      authorization_index_set::walk_indices([this, &worldstate_db, &worldstate]( auto utils ){
          using section_t = typename decltype(utils)::index_t::value_type;
 
          // skip the permission_usage_index as its inlined with permission_index
@@ -100,9 +100,9 @@ namespace ultrainio { namespace chain {
             return;
          }
 
-         worldstate->write_section<section_t>([this]( auto& section ){
-            decltype(utils)::walk(_db, [this, &section]( const auto &row ) {
-               section.add_row(row, _db);
+         worldstate->write_section<section_t>([this, &worldstate_db]( auto& section ){
+            decltype(utils)::walk(worldstate_db, [this, &worldstate_db, &section]( const auto &row ) {
+               section.add_row(row, worldstate_db);
             });
          });
       });
