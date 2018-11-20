@@ -360,6 +360,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if( options.count( "chain-state-db-guard-size-mb" ))
          my->chain_config->state_guard_size = options.at( "chain-state-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
 
+      my->chain_config->worldstate_dir = app().data_dir() / config::default_worldstate_dir_name;
+
       if( options.count( "reversible-blocks-db-size-mb" ))
          my->chain_config->reversible_cache_size =
                options.at( "reversible-blocks-db-size-mb" ).as<uint64_t>() * 1024 * 1024;

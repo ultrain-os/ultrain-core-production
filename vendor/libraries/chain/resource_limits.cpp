@@ -45,8 +45,8 @@ void resource_limits_state_object::update_virtual_net_limit( const resource_limi
    virtual_net_limit = update_elastic_limit(virtual_net_limit, average_block_net_usage.average(), cfg.net_limit_parameters);
 }
 
-void resource_limits_manager::add_indices() {
-   resource_index_set::add_indices(_db);
+void resource_limits_manager::add_indices(chainbase::database& db) {
+   resource_index_set::add_indices(db);
 }
 
 void resource_limits_manager::initialize_database() {
@@ -63,11 +63,11 @@ void resource_limits_manager::initialize_database() {
    });
 }
 
-void resource_limits_manager::add_to_worldstate( const worldstate_writer_ptr& worldstate ) const {
-   resource_index_set::walk_indices([this, &worldstate]( auto utils ){
-      worldstate->write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){
-         decltype(utils)::walk(_db, [this, &section]( const auto &row ) {
-         section.add_row(row, _db);
+void resource_limits_manager::add_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db ) const {
+   resource_index_set::walk_indices([this, &worldstate_db, &worldstate]( auto utils ){
+      worldstate->write_section<typename decltype(utils)::index_t::value_type>([this, &worldstate_db]( auto& section ){
+         decltype(utils)::walk(worldstate_db, [this, &worldstate_db, &section]( const auto &row ) {
+         section.add_row(row, worldstate_db);
          });
       });
    });

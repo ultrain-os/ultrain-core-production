@@ -54,6 +54,8 @@ namespace ultrainio { namespace chain {
             path                     state_dir              =  chain::config::default_state_dir_name;
             uint64_t                 state_size             =  chain::config::default_state_size;
             uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
+            path                     worldstate_dir         =  chain::config::default_worldstate_dir_name;
+            uint64_t                 worldstate_interval    =  chain::config::default_worldstate_interval;
             uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
             uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
             bool                     read_only              =  false;
@@ -198,7 +200,7 @@ namespace ultrainio { namespace chain {
          block_state_ptr fetch_block_state_by_id( block_id_type id )const;
 
          block_id_type get_block_id_for_num( uint32_t block_num )const;
-         void write_worldstate( const worldstate_writer_ptr& worldstate )const;         
+         void write_worldstate()const;
          void read_worldstate( const worldstate_reader_ptr& worldstate );
          sha256 calculate_integrity_hash()const;
 
@@ -295,6 +297,7 @@ FC_REFLECT( ultrainio::chain::controller::config,
             (blocks_dir)
             (state_dir)
             (state_size)
+            (worldstate_dir)
             (reversible_cache_size)
             (read_only)
             (force_all_checks)
