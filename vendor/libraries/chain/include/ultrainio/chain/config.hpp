@@ -99,7 +99,7 @@ const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multip
 
 const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call checktime from hashing intrinsic once per this number of bytes
 
-const static ultrainio::chain::wasm_interface::vm_type default_wasm_runtime = ultrainio::chain::wasm_interface::vm_type::binaryen;
+const static ultrainio::chain::wasm_interface::vm_type default_wasm_runtime = ultrainio::chain::wasm_interface::vm_type::wabt;
 const static uint32_t   default_abi_serializer_max_time_ms = 15*1000; ///< default deadline for abi serialization methods
 
 const static int irreversible_threshold_percent= 70 * percent_1;

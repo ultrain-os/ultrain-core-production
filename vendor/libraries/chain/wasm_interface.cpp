@@ -56,6 +56,10 @@ namespace ultrainio { namespace chain {
       my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
    }
 
+   void wasm_interface::exit() {
+      my->runtime_interface->immediately_exit_currently_running_module();
+   }
+
    wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
    wasm_runtime_interface::~wasm_runtime_interface() {}
 
@@ -268,6 +272,7 @@ class typescript_crypto_api : public context_aware_api {
          fc::ripemd160 hash = encode<fc::ripemd160::encoder>( data, datalen );
          memcpy(hash_val, hash.data(), hash.data_size());
       }
+
 };
 #endif
 
