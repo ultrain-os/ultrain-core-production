@@ -11,7 +11,7 @@ contract-return-string-length = 1024
 contract-emit-string-length = 1024
 
 #insert_genesis-time
-genesis-time = 2018-11-20 19:44:00
+genesis-time = 2018-11-21 18:27:00
 
 #insert_peers
 
