@@ -144,7 +144,7 @@ namespace ultrainio {
 
         bool ret = m_schedulerPtr->preRunBa0BlockStep();
         if (ret) {
-            preRunBa0BlockLoop(1);
+            preRunBa0BlockLoop(200 * Config::s_maxPhaseSeconds);
         }
     }
 
@@ -284,7 +284,7 @@ namespace ultrainio {
         if (!MsgMgr::getInstance()->isVoter(getBlockNum(), m_phase, m_baxCount) && !m_isNonProducingNode) {
             bool ret = m_schedulerPtr->preRunBa0BlockStart();
             if (ret) {
-                preRunBa0BlockLoop(1);
+                preRunBa0BlockLoop(200 * Config::s_maxPhaseSeconds);
             }
         }
     }
@@ -932,7 +932,7 @@ namespace ultrainio {
 
     void UranusNode::setGenesisStartupTime(int32_t minutes) {
         Genesis::s_genesisStartupTime = minutes;
-        Genesis::s_genesisStartupBlockNum = Genesis:: s_genesisStartupTime * Config::kAverageBlockPerMinutes;
+        Genesis::s_genesisStartupBlockNum = Genesis:: s_genesisStartupTime * 60/Config::s_maxRoundSeconds;
         ilog("Genesis startup time : ${minutes} minutes, startup block num : ${number}",
                 ("minutes",Genesis::s_genesisStartupTime)("number", Genesis::s_genesisStartupBlockNum));
     }
@@ -947,6 +947,12 @@ namespace ultrainio {
         Config::s_maxPhaseSeconds = phaseSecond;
         ilog("maxRoundSecond : ${maxRoundSecond}, maxPhaseSecond : ${maxPhaseSecond}",
                 ("maxRoundSecond", Config::s_maxRoundSeconds)("maxPhaseSecond", Config::s_maxPhaseSeconds));
+    }
+    void UranusNode::setTrxsSecond(int32_t trxssecond) {
+        Config::s_maxTrxMicroSeconds = trxssecond;
+
+        ilog("s_maxTrxMicroSeconds : ${s_maxTrxMicroSeconds}",
+             ("s_maxTrxMicroSeconds", Config::s_maxTrxMicroSeconds));
     }
 
     void UranusNode::setTimerCanceled(TimerHandlerNumber thn) {

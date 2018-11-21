@@ -969,7 +969,7 @@ namespace ultrainio {
                 } else {
                     count++;
                     m_initTrxCount++;
-                    if (m_initTrxCount % 500 == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                    if (m_initTrxCount % (Config::s_maxPhaseSeconds * 100) == 0 && fc::time_point::now() > hard_cpu_deadline) {
                         ilog("-----runScheduledTrxs code exec exceeds the hard cpu deadline, break");
                         break;
                     }
@@ -1033,7 +1033,7 @@ namespace ultrainio {
 
                 m_initTrxCount++;
                 count++;
-                if (m_initTrxCount % 500 == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                if (m_initTrxCount % (Config::s_maxPhaseSeconds * 100) == 0 && fc::time_point::now() > hard_cpu_deadline) {
                     ilog("----- code exec exceeds the hard cpu deadline, break");
                     break;
                 }
@@ -1105,7 +1105,7 @@ namespace ultrainio {
 
                 m_initTrxCount++;
                 count++;
-                if (m_initTrxCount % 500 == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                if (m_initTrxCount % (Config::s_maxPhaseSeconds * 100) == 0 && fc::time_point::now() > hard_cpu_deadline) {
                     ilog("----- code exec exceeds the hard cpu deadline, break");
                     break;
                 }
@@ -1121,6 +1121,8 @@ namespace ultrainio {
         auto &block = propose_msg->block;
         auto start_timestamp = fc::time_point::now();
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
+        size_t count2 = 0,count3 = 0;
+  //      uint32_t trx_run_time = 3'000'000 * (Config::s_maxPhaseSeconds/5 +0.1*(Config::s_maxPhaseSeconds%5));
         try {
             if (!chain.pending_block_state()) {
                 auto block_timestamp = chain.get_proper_next_block_timestamp();
@@ -1141,10 +1143,16 @@ namespace ultrainio {
             // of pending trxs that are all from the same user but the user has used up his cpu resources
             // and keep failing the trx execution; so we still need the hard cpu deadline to handle this.
             fc::time_point hard_cpu_deadline =
-                fc::time_point::now() + fc::microseconds(chain::config::default_max_block_cpu_usage * 1.3);
+                fc::time_point::now() + fc::microseconds(Config::s_maxTrxMicroSeconds);/*can change in conig file*/
             size_t count1 = runPendingTrxs(pending_trxs, hard_cpu_deadline, block_time);
-            size_t count2 = runUnappliedTrxs(unapplied_trxs, hard_cpu_deadline, block_time);
-            size_t count3 = runScheduledTrxs(scheduled_trxs, hard_cpu_deadline, block_time);
+            if(fc::time_point::now() < hard_cpu_deadline)
+            {
+                 count2 = runUnappliedTrxs(unapplied_trxs, hard_cpu_deadline, block_time);
+            }
+            if(fc::time_point::now() < hard_cpu_deadline)
+            {
+                 count3 = runScheduledTrxs(scheduled_trxs, hard_cpu_deadline, block_time);
+            }
 
             ilog("------- run ${count1} ${count2}  ScheduledTrxs:${count3} trxs, taking time ${time}, remaining pending trx ${count4}, remaining unapplied trx ${count5}",
                  ("count1", count1)
@@ -1587,7 +1595,7 @@ namespace ultrainio {
         ilog("------ Continue pre-running ba0 block from ${count}", ("count", m_currentPreRunBa0TrxIndex));
         try {
             for (; m_currentPreRunBa0TrxIndex < b.transactions.size() &&
-                   trx_count <= 1000; m_currentPreRunBa0TrxIndex++, trx_count++) {
+                   trx_count <= (200 * Config::s_maxPhaseSeconds); m_currentPreRunBa0TrxIndex++, trx_count++) {
                 const auto &receipt = b.transactions[m_currentPreRunBa0TrxIndex];
                 chain::transaction_trace_ptr trace;
                 // Malicious producer setting wrong cpu_usage_us.
@@ -1930,7 +1938,9 @@ namespace ultrainio {
     std::shared_ptr<Block> Scheduler::generateEmptyBlock() {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.abort_block();
-        auto block_timestamp = chain.head_block_time() + fc::milliseconds(10000);
+        // get_proper_next_block_timestamp() probably can't be used here, we have to be
+        // deterministic about the empty block's timestamp.
+        auto block_timestamp = chain.head_block_time() + fc::milliseconds(chain::config::block_interval_ms);
         chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1));
         chain.set_action_merkle_hack();
         // empty block does not have trx, so we don't need this?

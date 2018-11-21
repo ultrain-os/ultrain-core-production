@@ -22,6 +22,8 @@ namespace ultrainio {
         static const double VOTER_STAKES_NUMBER;
         static const int DEFAULT_THRESHOLD;
         static const int MAX_LATER_NUMBER;
+
+        static int s_maxTrxMicroSeconds;
     };
 
     // TODO(qinxiaofen) should add into Config class

@@ -43,7 +43,7 @@ namespace ultrainio { namespace chain {
          }
 
          operator fc::time_point() const {
-            int64_t msec = slot * (int64_t)IntervalMs;
+            int64_t msec = slot * (int64_t)(config::block_interval_ms);
             msec += EpochMs;
             return fc::time_point(fc::milliseconds(msec));
          }
@@ -64,16 +64,16 @@ namespace ultrainio { namespace chain {
       void set_time_point(const fc::time_point& t) {
          auto micro_since_epoch = t.time_since_epoch();
          auto msec_since_epoch  = micro_since_epoch.count() / 1000;
-         slot = ( msec_since_epoch - EpochMs ) / IntervalMs;
+	 slot = ( msec_since_epoch - EpochMs ) / (config::block_interval_ms);
       }
 
       void set_time_point(const fc::time_point_sec& t) {
          uint64_t  sec_since_epoch = t.sec_since_epoch();
-         slot = (sec_since_epoch * 1000 - EpochMs) / IntervalMs;
+         slot = (sec_since_epoch * 1000 - EpochMs) / (config::block_interval_ms);
       }
    }; // block_timestamp
 
-   typedef block_timestamp<config::block_interval_ms,config::block_timestamp_epoch> block_timestamp_type; 
+   typedef block_timestamp<config::non_para,config::block_timestamp_epoch> block_timestamp_type;
 
 } } /// ultrainio::chain
 

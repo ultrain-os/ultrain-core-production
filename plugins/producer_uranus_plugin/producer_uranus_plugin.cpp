@@ -123,7 +123,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       int32_t  _genesis_startup_time               = Genesis::s_genesisStartupTime;
       int32_t  _max_round_seconds                  = Config::s_maxRoundSeconds;
       int32_t  _max_phase_seconds                  = Config::s_maxPhaseSeconds;
-
+      int32_t  _max_trxs_seconds                  = Config::s_maxTrxMicroSeconds;
       using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
       std::set<chain::account_name>                             _producers;
@@ -404,6 +404,7 @@ void producer_uranus_plugin::set_program_options(
          ("genesis-pk", bpo::value<std::string>()->notifier([this](std::string g) { my->_genesis_pk = g; }), "genesis public key, set by test mode usually")
          ("max-round-seconds", bpo::value<int32_t>()->default_value(Config::s_maxRoundSeconds), "max round second, set by test mode usually")
          ("max-phase-seconds", bpo::value<int32_t>()->default_value(Config::s_maxPhaseSeconds), "max phase second, set by test mode usually")
+         ("max-trxs-microseconds", bpo::value<int32_t>()->default_value(Config::s_maxTrxMicroSeconds), "max trxs microseconds in initpropose,set by test mode usually")
          ;
    config_file_options.add(producer_options);
 }
@@ -524,7 +525,9 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    my->_genesis_startup_time = options.at("genesis-startup-time").as<int32_t>();
    my->_max_round_seconds = options.at("max-round-seconds").as<int32_t>();
    my->_max_phase_seconds = options.at("max-phase-seconds").as<int32_t>();
-
+   my->_max_trxs_seconds = options.at("max-trxs-microseconds").as<int32_t>();
+   ultrainio::chain::config::block_interval_ms = my->_max_round_seconds * 1000;
+        ultrainio::chain::config::block_interval_us =  my->_max_round_seconds * 1000000;
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
@@ -609,6 +612,7 @@ void producer_uranus_plugin::plugin_startup()
        nodePtr->setGenesisPk(my->_genesis_pk);
    }
    nodePtr->setRoundAndPhaseSecond(my->_max_round_seconds, my->_max_phase_seconds);
+   nodePtr->setTrxsSecond(my->_max_trxs_seconds);
    nodePtr->init();
    nodePtr->readyToJoin();
    ilog("producer plugin:  plugin_startup() end");

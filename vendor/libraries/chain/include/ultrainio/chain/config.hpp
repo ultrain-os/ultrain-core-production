@@ -38,8 +38,10 @@ const static uint64_t owner_name  = N(owner);
 const static uint64_t ultrainio_any_name = N(utrio.any);
 const static uint64_t ultrainio_code_name = N(utrio.code);
 
-const static int      block_interval_ms = 10 * 1000;
-const static int      block_interval_us = block_interval_ms*1000;
+extern int      block_interval_ms;
+extern int      block_interval_us;
+const static int non_para = 20000;/*temp,just for print right*/
+
 const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
 
 /** Percentages are fixed point with a denominator of 10,000 */

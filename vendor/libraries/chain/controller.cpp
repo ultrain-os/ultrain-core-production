@@ -30,8 +30,8 @@ namespace ultrainio { namespace chain {
 
 using namespace appbase;
 using resource_limits::resource_limits_manager;
-
-
+int chain::config::block_interval_ms = 10*1000;
+int chain::config::block_interval_us = 10*1000*1000;
 struct pending_state {
    pending_state( database::session&& s )
    :_db_session( move(s) ){}

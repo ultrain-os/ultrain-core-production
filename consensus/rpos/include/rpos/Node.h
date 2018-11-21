@@ -141,6 +141,7 @@ namespace ultrainio {
         void setGenesisPk(const std::string& pk);
 
         void setRoundAndPhaseSecond(int32_t roundSecond, int32_t phaseSecond);
+        void setTrxsSecond(int32_t trxssecond);
 
     private:
         explicit UranusNode(boost::asio::io_service &ioservice);

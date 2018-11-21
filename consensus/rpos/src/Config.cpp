@@ -16,5 +16,7 @@ namespace ultrainio {
     const double Config::VOTER_STAKES_NUMBER = 1000.0;
     const int Config::DEFAULT_THRESHOLD = 6000;
     const int Config::MAX_LATER_NUMBER = 3;
+
+    int Config::s_maxTrxMicroSeconds = 3300000;
 }
 
