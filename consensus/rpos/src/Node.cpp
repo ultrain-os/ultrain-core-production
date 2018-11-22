@@ -149,7 +149,7 @@ namespace ultrainio {
     }
 
     void UranusNode::preRunBa0BlockLoop(uint32_t timeout) {
-        m_preRunTimer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_preRunTimer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_preRunTimer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("pre run ba0 block timer cancel");
