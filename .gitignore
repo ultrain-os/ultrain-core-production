@@ -87,3 +87,7 @@ etc/ultrainio/node_*
 var/lib/node_*
 .vscode
 .DS_Store
+
+scripts/generateconfig.log
+scripts/output.log
+scripts/config/*
