@@ -49,7 +49,9 @@ namespace ultrainio { namespace chain {
     result.header.transaction_mroot  = h.transaction_mroot;
     result.header.committee_mroot    = h.committee_mroot;
     result.header.proposer           = h.proposer;
+#ifdef CONSENSUS_VRF
     result.header.proposerProof      = h.proposerProof;
+#endif
     result.id                        = result.header.id();
     /*
     ilog("----block_header_state::next ${time} ${pro} ${bn} ${prev} ${tx_mroot} ${action_mroot} ${hash}  ${ver} ${producer}",
@@ -59,7 +61,12 @@ namespace ultrainio { namespace chain {
 	 ("producer", (bool)(result.header.new_producers))
 	 ("hash",result.header.id()));
 
+#ifdef CONSENSUS_VRF
     fprintf(stdout, "ppk %s ppf %s\n", result.header.proposerPk.c_str(), result.header.proposerProof.c_str());
+#else
+    fprintf(stdout, "ppk %s\n", result.header.proposerPk.c_str());
+#endif
+
     fflush(stdout);
     */
 

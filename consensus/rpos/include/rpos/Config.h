@@ -12,15 +12,32 @@ namespace ultrainio {
 
         static const int kDeadlineCnt;
 
+#ifdef CONSENSUS_VRF
         static const double kProposerStakeNumber;
+
+        static const double kVoterStakeNumber;
+#else
+        static const int kDesiredProposerNumber;
+
+        static const int kDesiredVoterNumber;
+#endif
+
+        static const double kProposerStakeNumber;
+
+        static const double kVoterStakeNumber;
+
+        static const double kSendEchoThresholdRatio;
+
+        static const double kNextRoundThresholdRatio;
+
+        static const double kEmptyBlockThresholdRatio;
+
+        static const double kEmptyBlock2ThresholdRatio;
 
         static int s_maxRoundSeconds;
 
         static int s_maxPhaseSeconds;
 
-        // TODO(qinxiaofen) code style
-        static const double VOTER_STAKES_NUMBER;
-        static const int DEFAULT_THRESHOLD;
         static const int MAX_LATER_NUMBER;
 
         static int s_maxTrxMicroSeconds;
@@ -28,9 +45,5 @@ namespace ultrainio {
 
     // TODO(qinxiaofen) should add into Config class
 #define INVALID_BLOCK_NUM          0xFFFFFFFF
-#define THRESHOLD_SEND_ECHO        330
-#define THRESHOLD_NEXT_ROUND       670
 #define THRESHOLD_SYNCING          1
-#define THRESHOLD_EMPTY_BLOCK      888
-#define THRESHOLD_EMPTY_BLOCK2     750
 }

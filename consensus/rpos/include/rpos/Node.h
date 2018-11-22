@@ -15,11 +15,11 @@
 #include <crypto/Ed25519.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
-#include <rpos/StakeVote.h>
 
 namespace ultrainio {
     class Scheduler;
     class NodeInfo;
+    class StakeVoteBase;
 
     enum TimerHandlerNumber {
         THN_READY = 0,

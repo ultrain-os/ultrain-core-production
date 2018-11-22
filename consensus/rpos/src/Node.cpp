@@ -14,6 +14,7 @@
 #include <rpos/MsgMgr.h>
 #include <rpos/Scheduler.h>
 #include <rpos/NodeInfo.h>
+#include <rpos/StakeVoteBase.h>
 
 // eos net
 #include <appbase/application.hpp>
@@ -66,7 +67,7 @@ namespace ultrainio {
     }
 
     void UranusNode::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account) {
-        StakeVote::getKeyKeeper()->setMyInfoAsCommitteeKey(sk, account);
+        StakeVoteBase::getKeyKeeper()->setMyInfoAsCommitteeKey(sk, account);
     }
 
     bool UranusNode::getNonProducingNode() const {
@@ -643,7 +644,7 @@ namespace ultrainio {
         if (sync_msg.startBlockNum == sync_msg.endBlockNum && sync_msg.endBlockNum == getLastBlocknum() + 1) {
             ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local.",
                  ("s", sync_msg.startBlockNum)("e", sync_msg.endBlockNum)("last", getLastBlocknum()));
-            if (StakeVote::committeeHasWorked()) {
+            if (StakeVoteBase::committeeHasWorked()) {
                 runLoop(getRoundInterval());
             } else {
                 ilog("Committee has not worked.");
@@ -958,7 +959,7 @@ namespace ultrainio {
     }
 
     int UranusNode::getCommitteeMemberNumber() {
-        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(this->getBlockNum());
+        std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getVoterSys(this->getBlockNum());
         return voterSysPtr->getCommitteeMemberNumber();
     }
 
