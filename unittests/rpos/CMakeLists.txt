@@ -45,3 +45,19 @@ add_executable( blockmessage_unittest
 target_link_libraries( blockmessage_unittest ultrainio_rpos )
 
 add_test(NAME blockmessage_unittest COMMAND blockmessage_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+### FisherYates
+add_executable( fisheryates_unittest
+        FisherYatesTest.cpp)
+
+target_link_libraries( fisheryates_unittest ultrainio_rpos )
+
+add_test(NAME fisheryates_unittest COMMAND fisheryates_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+### Random
+add_executable( rolerandom_unittest
+        RoleRandomTest.cpp)
+
+target_link_libraries( rolerandom_unittest ultrainio_rpos )
+
+add_test(NAME rolerandom_unittest COMMAND rolerandom_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
