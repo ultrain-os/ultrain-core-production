@@ -1702,13 +1702,12 @@ namespace ultrainio {
                 MsgMgr::getInstance()->insert(agg_echo);
             }
         }
-        MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
         ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}",
              ("timestamp", block->timestamp)
              ("num", block->block_num())
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
-
+        MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
     }
 
     void Scheduler::clearTrxQueue() {

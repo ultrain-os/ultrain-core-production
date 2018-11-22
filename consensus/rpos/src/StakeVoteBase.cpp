@@ -197,7 +197,7 @@ namespace ultrainio {
                 for( const auto& r : result.rows ) {
                     cinfo.accountName = r["owner"].as_string();
                     cinfo.pk = r["producer_key"].as_string();
-                    cinfo.stakesCount = r["total_votes"].as_int64();
+                    cinfo.stakesCount = r["total_cons_staked"].as_int64();
                     statePtr->cinfo.push_back(cinfo);
                 }
                 ilog("#########################there are ${p} committee member enabled", ("p", result.rows.size()));
