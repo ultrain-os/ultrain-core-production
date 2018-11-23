@@ -15,11 +15,11 @@
 #include <crypto/Ed25519.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
-#include <rpos/StakeVote.h>
 
 namespace ultrainio {
     class Scheduler;
     class NodeInfo;
+    class StakeVoteBase;
 
     enum TimerHandlerNumber {
         THN_READY = 0,
@@ -84,6 +84,8 @@ namespace ultrainio {
 
         void ba0Process();
 
+        void fastProcess();
+
         uint32_t isSyncing();
 
         bool isReady() {return m_ready;}
@@ -97,6 +99,8 @@ namespace ultrainio {
         void ba0Loop(uint32_t timeout);
 
         void ba1Loop(uint32_t timeout);
+
+        void fastLoop(uint32_t timeout);
 
         void baxLoop(uint32_t timeout);
 
@@ -141,6 +145,7 @@ namespace ultrainio {
         void setGenesisPk(const std::string& pk);
 
         void setRoundAndPhaseSecond(int32_t roundSecond, int32_t phaseSecond);
+        void setTrxsSecond(int32_t trxssecond);
 
     private:
         explicit UranusNode(boost::asio::io_service &ioservice);

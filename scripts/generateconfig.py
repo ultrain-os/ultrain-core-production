@@ -121,6 +121,7 @@ def write_config_file():
             print(hostip,con.ip,con.id)
             insert_peer(fname,hosts[dockerinfo][0].ip)
             index_key+=1
+        os.system("rm -f  template.txt")
 
 def readfile(fname):
 	fileold = open(fname, "r")

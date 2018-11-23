@@ -25,7 +25,9 @@ namespace ultrainio {
     struct block_header {
       block_timestamp_type             timestamp;
       account_name                     proposer;
+#ifdef CONSENSUS_VRF
       std::string                      proposerProof;
+#endif
       uint32_t                         version = 0;
       block_id_type                    previous;
       checksum256                      transaction_mroot; /// mroot of cycles_summary
@@ -33,8 +35,13 @@ namespace ultrainio {
       checksum256                      committee_mroot;
       extensions_type                  header_extensions;
 
+#ifdef CONSENSUS_VRF
       ULTRAINLIB_SERIALIZE( block_header, (timestamp)(proposer)(proposerProof)(version)(previous)
-                                          (transaction_mroot)(action_mroot)(committee_mroot)(header_extensions) ) //(header_extensions) 
+                                          (transaction_mroot)(action_mroot)(committee_mroot)(header_extensions) )
+#else
+      ULTRAINLIB_SERIALIZE( block_header, (timestamp)(proposer)(version)(previous)
+                                          (transaction_mroot)(action_mroot)(committee_mroot)(header_extensions) )
+#endif
 
       checksum256     digest() const {
           bytes block_stream = pack(*this);

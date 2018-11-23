@@ -158,16 +158,19 @@ namespace ultrainio {
         bool                             done = false;
         unique_ptr< dispatch_manager >   dispatcher;
         unique_ptr< sync_block_manager > sync_block_master;
+        int                        max_waittime_getsyncblocknum ;
+        int                        max_waittime_getsyncblock ;
 
         unique_ptr<boost::asio::steady_timer> connector_check;
         unique_ptr<boost::asio::steady_timer> transaction_check;
         unique_ptr<boost::asio::steady_timer> keepalive_timer;
+        unique_ptr<boost::asio::steady_timer> sizeprint_timer;
 
         boost::asio::steady_timer::duration   connector_period;
         boost::asio::steady_timer::duration   txn_exp_period;
         boost::asio::steady_timer::duration   resp_expected_period;
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
-
+        boost::asio::steady_timer::duration  sizeprint_period{std::chrono::seconds{30}};
         const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
         bool                          network_version_match = false;
@@ -191,7 +194,9 @@ namespace ultrainio {
         bool start_session( connection_ptr c );
         void start_listen_loop( );
         void start_read_message( connection_ptr c);
-
+        void get_con_buffer_size(connection_ptr c);
+        void print_queue_size( );
+        void start_sizeprint_timer( );
         void close( connection_ptr c );
         size_t count_open_sockets() const;
 
@@ -331,7 +336,8 @@ namespace ultrainio {
     constexpr bool     large_msg_notify = false;
 
     constexpr auto     message_header_size = 4;
-
+    constexpr auto     src_block_waitting = 3;
+    constexpr auto     sync_conn_waitting = 12;
     /**
      *  For a while, network version was a 16 bit value equal to the second set of 16 bits
      *  of the current build's git commit id. We are now replacing that with an integer protocol
@@ -614,9 +620,9 @@ namespace ultrainio {
         ultrainio::ReqSyncMsg            sync_block_msg;
         uint32_t                         end_block_num;
         bool                             selecting_src = false;
-        boost::asio::steady_timer::duration   src_block_period{std::chrono::seconds{3}};
+        boost::asio::steady_timer::duration   src_block_period;
         unique_ptr<boost::asio::steady_timer> src_block_check;
-        boost::asio::steady_timer::duration   conn_timeout{std::chrono::seconds{12}};
+        boost::asio::steady_timer::duration   conn_timeout;
         unique_ptr<boost::asio::steady_timer> conn_check;
         std::default_random_engine            rand_engine;
 
@@ -630,6 +636,8 @@ namespace ultrainio {
         }
 
         void reset() {
+            int waittime_src_block = app().get_plugin<net_plugin>().get_waittime_sysblocknum();
+            int waiting_conn_timeout = app().get_plugin<net_plugin>().get_waittime_sysblock();
             last_received_block = 0;
             last_checked_block = 0;
             rsp_conns.clear();
@@ -637,11 +645,12 @@ namespace ultrainio {
             memset(&sync_block_msg, 0, sizeof(sync_block_msg));
             end_block_num = 0;
             selecting_src = false;
-            src_block_period = {std::chrono::seconds{3}};
+            src_block_period = {std::chrono::seconds{waittime_src_block}};
+
             if (src_block_check) {
                 src_block_check->cancel();
             }
-            conn_timeout = {std::chrono::seconds{12}};
+            conn_timeout = {std::chrono::seconds{waiting_conn_timeout}};
             if (conn_check) {
                 conn_check->cancel();
             }
@@ -2214,7 +2223,42 @@ namespace ultrainio {
           dispatcher->rejected_transaction(tid);
       });
    }
+    void net_plugin_impl::get_con_buffer_size(connection_ptr conn)
+    {
+        int size_send = 0;
+        int size_write = 0;
+        boost::asio::socket_base::receive_buffer_size option1;
+        boost::asio::socket_base::send_buffer_size option;
 
+        conn->socket->get_option(option);
+        size_send = option.value();
+        conn->socket->get_option(option1);
+        size_write = option1.value();
+
+        ilog("peer ${peer} socket_s_size ${send_size} socket_r_size ${size_write} pbsize ${pensize} onwait ${onwait} wqsz ${wqsize} oqsz ${ot_size}",
+                ("peer",conn->peer_name())("send_size",size_send)("size_write",size_write)("pensize",conn->pending_message_buffer.total_bytes())("onwait",conn->pending_message_buffer.bytes_to_read())("wqsize",conn->write_queue.size())("ot_size",conn->out_queue.size()));
+
+
+    }
+    void net_plugin_impl:: print_queue_size( ) {
+        auto it = connections.begin();
+        while(it != connections.end()) {
+            if( (*it)->socket && (*it)->socket->is_open() && !(*it)->connecting) {
+
+                get_con_buffer_size(*it);
+
+            }
+            ++it;
+        }
+    }
+    void net_plugin_impl::start_sizeprint_timer( ) {
+        sizeprint_timer->expires_from_now( sizeprint_period);
+        sizeprint_timer->async_wait( [this](boost::system::error_code ec) {
+
+            print_queue_size();
+            start_sizeprint_timer();
+        });
+    }
    void net_plugin_impl::start_conn_timer( ) {
       connector_check->expires_from_now( connector_period);
       connector_check->async_wait( [this](boost::system::error_code ec) {
@@ -2259,8 +2303,10 @@ namespace ultrainio {
    void net_plugin_impl::start_monitors() {
       connector_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       transaction_check.reset(new boost::asio::steady_timer( app().get_io_service()));
+       sizeprint_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
       start_txn_timer();
+      start_sizeprint_timer();
    }
 
    void net_plugin_impl::expire_txns() {
@@ -2516,6 +2562,9 @@ namespace ultrainio {
            "   _port  \tremote port number of peer\n\n"
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
+        ("max-waitblocknum-seconds", bpo::value<int>()->default_value(src_block_waitting), "Max time wait for answers from peers about blockNum:src_block_period")
+        ("max-waitbloack-seconds",bpo::value<int>()->default_value(sync_conn_waitting), "Max time wait for block from selected peer:conn_timeout")
+
         ;
    }
 
@@ -2530,7 +2579,8 @@ namespace ultrainio {
          peer_log_format = options.at( "peer-log-format" ).as<string>();
 
          my->network_version_match = options.at( "network-version-match" ).as<bool>();
-
+         my->max_waittime_getsyncblocknum = options.at( "max-waitblocknum-seconds" ).as<int>();
+         my->max_waittime_getsyncblock = options.at( "max-waitbloack-seconds" ).as<int>();
          my->dispatcher.reset( new dispatch_manager );
          my->sync_block_master.reset( new sync_block_manager );
 
@@ -2675,7 +2725,14 @@ namespace ultrainio {
       }
       FC_CAPTURE_AND_RETHROW()
    }
-
+    int  net_plugin::get_waittime_sysblocknum()
+    {
+        return  my->max_waittime_getsyncblocknum ;
+    }
+    int  net_plugin::get_waittime_sysblock()
+    {
+        return my->max_waittime_getsyncblock ;
+    }
    void net_plugin::broadcast(const ProposeMsg& propose) {
       ilog("broadcast propose msg. blockHash : ${blockHash}", ("blockHash", propose.block.id()));
       my->start_broadcast(net_message(propose));

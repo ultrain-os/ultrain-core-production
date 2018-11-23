@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import numpy
 import os
 import random
 import re
@@ -365,7 +364,7 @@ def stepSetSystemContract():
 
 def stepCreateStakedAccounts():
     for i in range(0, args.num_producers):
-        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1000.0000 UGAS" --stake-cpu "1000.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key))
+        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "5000.0000 UGAS" --stake-cpu "5000.0000 UGAS" --buy-ram "5000.000 UGAS" ' % (accounts[i], args.public_key))
     sleep(15)
 
 

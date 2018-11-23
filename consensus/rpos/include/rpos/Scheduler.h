@@ -23,17 +23,20 @@ namespace ultrainio {
         std::vector<std::string> proofPool;
         std::vector<std::string> sigPool;
         std::vector<uint32_t>    timePool;
-        int totalVoter;
         bool hasSend;
 
         echo_message_info() :
-                echo(), accountPool(), proofPool(), sigPool(), timePool(), totalVoter(0), hasSend(false) {}
+                echo(), accountPool(), proofPool(), sigPool(), timePool(), hasSend(false) {}
 
         bool empty() {
             if (accountPool.size() <= 0) {
                 return true;
             }
             return false;
+        }
+
+        int getTotalVoterWeight() {
+            return accountPool.size();
         }
     };
 
@@ -73,13 +76,12 @@ namespace ultrainio {
         void reset();
 
         bool isMinPropose(const ProposeMsg &propose_msg);
-        bool isMin2FEcho(int totalVoter, uint32_t phasecnt);
+        bool isMin2FEcho(int totalVoterWeight, uint32_t phasecnt);
         bool isMinFEcho(const echo_message_info &info);
         bool isMinFEcho(const echo_message_info &info, const echo_msg_buff &msgbuff);
         bool isMinEcho(const echo_message_info &info);
         bool isMinEcho(const echo_message_info &info, const echo_msg_buff &msgbuff);
         Block produceTentativeBlock();
-        bool isProcessNow();
         bool initProposeMsg(ProposeMsg *propose_msg);
 
         bool isLaterMsg(const EchoMsg &echo);
@@ -135,8 +137,6 @@ namespace ultrainio {
 
         bool processBeforeMsg(const EchoMsg &echo);
 
-        bool isBeforeMsgAndProcess(const EchoMsg &echo);
-
         uint32_t isSyncing();
 
         bool isChangePhase();
@@ -148,6 +148,8 @@ namespace ultrainio {
         void fastProcessCache(const msgkey &msg_key);
 
         bool findEchoCache(const msgkey &msg_key);
+
+        bool isFastba0(const msgkey &msg_key);
 
         bool findProposeCache(const msgkey &msg_key);
 

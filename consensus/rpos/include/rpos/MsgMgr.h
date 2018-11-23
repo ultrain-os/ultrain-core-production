@@ -8,9 +8,10 @@
 #include <crypto/Ed25519.h>
 #include <rpos/BlockMsg.h>
 #include <rpos/Proof.h>
-#include <rpos/StakeVote.h>
 
 namespace ultrainio {
+    class StakeVoteBase;
+
     enum MessageStatus {
         kSuccess = 0,
         kDuplicate,
@@ -42,22 +43,14 @@ namespace ultrainio {
 
         void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
 
-        Proof getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount);
-
-        Proof getProposerProof(uint32_t blockNum);
-
         bool isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount);
 
         bool isProposer(uint32_t blockNum);
 
-        std::shared_ptr<StakeVote> getVoterSys(uint32_t blockNum);
+        std::shared_ptr<StakeVoteBase> getVoterSys(uint32_t blockNum);
 
     private:
         MsgMgr() = default;
-
-        int getProposerVoterCount(uint32_t blockNum);
-
-        int getVoterVoterCount(uint32_t blockNum, ConsensusPhase phase, int baxCount);
 
         BlockMessagePtr initIfNeed(uint32_t blockNum);
 

@@ -4,10 +4,8 @@
 
 #include <rpos/Config.h>
 #include <rpos/Node.h>
-#include <rpos/Proof.h>
-#include <rpos/Seed.h>
+#include <rpos/StakeVoteBase.h>
 #include <rpos/Validator.h>
-#include <rpos/Vrf.h>
 
 namespace ultrainio {
     using namespace std;
@@ -21,20 +19,6 @@ namespace ultrainio {
         }
         return s_self;
     }
-
-//    void MessageManager::insert(const EchoMsg& echoMsg) {
-//        uint32_t blockNum = echoMsg.blockHeader.block_num();
-//        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-//        assert(blockMessagePtr->blockNum == blockNum);
-//        blockMessagePtr->insert(echoMsg);
-//    }
-//
-//    void MessageManager::insert(const ProposeMsg& proposeMsg) {
-//        uint32_t blockNum = proposeMsg.block.block_num();
-//        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-//        assert(blockMessagePtr->blockNum == blockNum);
-//        blockMessagePtr->insert(proposeMsg);
-//    }
 
     void MsgMgr::insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr) {
         ULTRAIN_ASSERT(aggEchoMsgPtr, chain::chain_exception, "agg echo msg pointer is null");
@@ -83,7 +67,7 @@ namespace ultrainio {
         if (myBlockNum - Config::MAX_LATER_NUMBER > blockNum) {
             return kObsolete;
         }
-        if (StakeVote::getMyAccount() == aggEchoMsg.account) {
+        if (StakeVoteBase::getMyAccount() == aggEchoMsg.account) {
             ilog("loopback AggEchoMsg");
             return kDuplicate;
         }
@@ -96,8 +80,8 @@ namespace ultrainio {
         }
         blockMessagePtr->m_aggEchoMsgV.push_back(aggEchoMsg);
         if (blockNum == myBlockNum) {
-            std::shared_ptr<StakeVote> voterSysPtr = getVoterSys(blockNum);
-            PublicKey publicKey = voterSysPtr->getPublicKey(aggEchoMsg.account);
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
+            PublicKey publicKey = stakeVotePtr->getPublicKey(aggEchoMsg.account);
             ULTRAIN_ASSERT(publicKey.isValid(), chain::chain_exception, "public key is not valid");
             if (!publicKey.isValid()) {
                 return kAccountError;
@@ -106,27 +90,14 @@ namespace ultrainio {
                 elog("verify AggEchoMsg error. account : ${account}", ("account", std::string(aggEchoMsg.account)));
                 return kSignatureError;
             }
-            Proof proof(aggEchoMsg.myProposerProof);
-            ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
-            std::string previousHash(blockId.data());
-            Seed seed(previousHash, blockNum, kPhaseBA0, 0);
-            if (!Vrf::verify(publicKey, proof, seed, Vrf::kProposer)) {
-                elog("verify AggEchoMsg proof error. account : ${account}", ("account", std::string(aggEchoMsg.account)));
-                return kFaultProposer;
-            }
-
-            int stakes = voterSysPtr->getStakes(aggEchoMsg.account, UranusNode::getInstance()->getNonProducingNode());
-            double p = voterSysPtr->getProposerRatio();
-            if (voterSysPtr->count(proof, stakes, p) <= 0) {
-                elog("send AggEchoMsg by non Proposer. account : ${account}", ("account", std::string(aggEchoMsg.account)));
+            if (!stakeVotePtr->isProposer(aggEchoMsg.account, UranusNode::getInstance()->getNonProducingNode())) {
+                elog("is not proposer to send AggEchoMsg. account : ${account}", ("account", std::string(aggEchoMsg.account)));
                 return kFaultProposer;
             }
             for (size_t i = 0; i < aggEchoMsg.accountPool.size(); i++) {
                 EchoMsg echoMsg;
                 echoMsg.blockId = aggEchoMsg.blockId;
-                echoMsg.proposerPriority = aggEchoMsg.proposerPriority;
                 echoMsg.account = aggEchoMsg.accountPool[i];
-                echoMsg.proof = aggEchoMsg.proofPool[i];
                 echoMsg.signature = aggEchoMsg.sigPool[i];
                 echoMsg.timestamp = aggEchoMsg.timePool[i];
                 echoMsg.phase = aggEchoMsg.phase;
@@ -137,32 +108,14 @@ namespace ultrainio {
         return kSuccess;
     }
 
-    Proof MsgMgr::getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->getVoterProof(phase, baxCount);
-    }
-
-    Proof MsgMgr::getProposerProof(uint32_t blockNum) {
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->m_proposerProof;
-    }
-
-    int MsgMgr::getProposerVoterCount(uint32_t blockNum) {
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->m_voterCountAsProposer;
-    }
-
-    int MsgMgr::getVoterVoterCount(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->getVoterVoterCount(phase, baxCount);
-    }
-
     bool MsgMgr::isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        return getVoterVoterCount(blockNum, phase, baxCount) > 0;
+        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
+        return blockMessagePtr->isVoter(phase, baxCount);
     }
 
     bool MsgMgr::isProposer(uint32_t blockNum) {
-        return getProposerVoterCount(blockNum);
+        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
+        return blockMessagePtr->isProposer();
     }
 
     void MsgMgr::clearSomeBlockMessage(uint32_t blockNum) {
@@ -176,7 +129,7 @@ namespace ultrainio {
         }
     }
 
-    std::shared_ptr<StakeVote> MsgMgr::getVoterSys(uint32_t blockNum) {
+    std::shared_ptr<StakeVoteBase> MsgMgr::getVoterSys(uint32_t blockNum) {
         BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
         return blockMessagePtr->getVoterSys();
     }
