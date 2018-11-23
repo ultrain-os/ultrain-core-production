@@ -225,15 +225,19 @@ struct controller_impl {
    }
 
    void create_worldstate(){
-       auto size = db.get_segment_manager()->get_size()-db.get_free_memory()+boost::interprocess::mapped_region::get_page_size();
+       auto size = db.get_segment_manager()->get_size()-db.get_free_memory()+10*boost::interprocess::mapped_region::get_page_size();
        //TODO: romove log
 	   ilog("state ${path}",("path",conf.state_dir));
        ilog("create worldstate size ${size} path ${path}",("size",size)("path",conf.worldstate_dir));
 
        chainbase::database* worldstate_db = new chainbase::database(conf.worldstate_dir,database::read_write,size);
+//TODO: test memcpy time
+       auto begin=fc::time_point::now();
        db.with_write_lock([&](){
              memcpy(worldstate_db->get_segment_address(),db.get_segment_address(),size);
        });
+       auto end=fc::time_point::now();
+	   ilog("#######world state memcpy time: ${time}",("time",end-begin));
        controller_index_set::add_indices(*worldstate_db);
        contract_database_index_set::add_indices(*worldstate_db);
        authorization.add_indices(*worldstate_db);
@@ -444,7 +448,8 @@ struct controller_impl {
 
    void add_to_worldstate(const chainbase::database* const worldstate_db) const {
        //worldstate file name
-	   auto block_num = head->block_num;
+       auto begin=fc::time_point::now();
+       auto block_num = head->block_num;
 	   std::string worldstate_path = (conf.worldstate_dir / fc::format_string("worldstate-${id}.bin", fc::mutable_variant_object()("id", block_num))).generic_string();
 
        //TODO: remove log
@@ -492,7 +497,10 @@ struct controller_impl {
 
 	  //TODO:remove worldstate_db, use unique_ptr to wrap
       delete worldstate_db;
-	  ilog("dylan finish");
+	  fc::remove_all(conf.worldstate_dir / "shared_memory.bin");
+	  fc::remove_all(conf.worldstate_dir / "shared_memory.meta");
+      auto end=fc::time_point::now();
+	  ilog("#######world thread thread1 finish, time ${time}",("time",end-begin));
    }
 
     void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
