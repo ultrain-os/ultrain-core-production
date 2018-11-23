@@ -21,6 +21,7 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
+#include <gmp.h>
 
 namespace ultrainio { namespace chain {
    using namespace webassembly;
@@ -852,6 +853,70 @@ class softfloat_api : public context_aware_api {
 
 };
 
+class big_int_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void big_int_pow_mod(array_ptr<char> rop, size_t rop_len,
+                  null_terminated_ptr Msg,
+                  null_terminated_ptr Key,
+                  null_terminated_ptr N,int base) {
+            mpz_t n,msg,key,res;
+            mpz_init(res);
+            ULTRAIN_ASSERT(0==mpz_init_set_str(n,N.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            ULTRAIN_ASSERT(0==mpz_init_set_str(msg,Msg.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            ULTRAIN_ASSERT(0==mpz_init_set_str(key,Key.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            mpz_powm(res,msg,key,n);
+            // should check rop_len with res.length
+            ULTRAIN_ASSERT(mpz_get_str(rop.value,base,res)!=NULL,crypto_api_exception,"Error! Result can't convert to string");
+            mpz_clears(msg,key,n,res,NULL);
+      }
+
+      /**
+       *rop=gcd(p,q)
+      */
+      void big_int_gcd(array_ptr<char> rop, size_t rop_len, null_terminated_ptr p, null_terminated_ptr q,int base) {
+            mpz_t P,Q,Res;
+            mpz_init(Res);
+            ULTRAIN_ASSERT(0==mpz_init_set_str(P,p.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            ULTRAIN_ASSERT(0==mpz_init_set_str(Q,q.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            mpz_gcd(Res,P,Q);
+            ULTRAIN_ASSERT(mpz_get_str(rop.value,base,Res)!=NULL,crypto_api_exception,"Error! Result can't convert to string");
+            mpz_clears(Res,P,Q,NULL);
+      }
+
+      /**
+       *rop=gcd(p,q)
+      */
+      int big_int_cmp(null_terminated_ptr p, null_terminated_ptr q,int base) {
+            mpz_t P,Q;
+            ULTRAIN_ASSERT(0==mpz_init_set_str(P,p.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            ULTRAIN_ASSERT(0==mpz_init_set_str(Q,q.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            int i = mpz_cmp(P,Q);
+            mpz_clears(P,Q,NULL);
+            return i;
+      }
+
+      void big_int_mul(array_ptr<char> rop, size_t rop_len, null_terminated_ptr p, null_terminated_ptr q,int base){
+            mpz_t P,Q,Res;
+            mpz_init(Res);
+            ULTRAIN_ASSERT(0==mpz_init_set_str(P,p,base),crypto_api_exception,"Error! Input string can't convert to number");
+            ULTRAIN_ASSERT(0==mpz_init_set_str(Q,q,base),crypto_api_exception,"Error! Input string can't convert to number");
+            mpz_mul(Res,P,Q);
+            ULTRAIN_ASSERT(mpz_get_str(rop,base,Res)!=NULL,crypto_api_exception,"Error! Result can't convert to string");
+            mpz_clears(Res,P,Q,NULL);
+      }
+      /**
+       * 判断是否质数，返回1为质数，0不为质数,2可能为质数。 reps代表可能性，一般15-50。返回1代表此数不为质数的可能性小于4^(-reps)
+       */
+      int big_int_probab_prime(null_terminated_ptr p,int reps,int base){
+            mpz_t P;
+            ULTRAIN_ASSERT(0==mpz_init_set_str(P,p,base),crypto_api_exception,"Error! Input string can't convert to number");
+            int i = mpz_probab_prime_p(P,reps);
+            mpz_clears(P,NULL);
+            return i;
+      }
+};
 class crypto_api : public context_aware_api {
    public:
       explicit crypto_api( apply_context& ctx )
@@ -2163,6 +2228,14 @@ REGISTER_INJECTED_INTRINSICS(softfloat_api,
       (_ultrainio_i64_to_f64,     double(int64_t)       )
       (_ultrainio_ui32_to_f64,    double(int32_t)       )
       (_ultrainio_ui64_to_f64,    double(int64_t)       )
+);
+
+REGISTER_INTRINSICS(big_int_api,
+      (big_int_cmp,         int(int, int, int) )
+      (big_int_pow_mod,     void(int, int, int, int, int, int))
+      (big_int_gcd,         void(int, int, int, int, int))
+      (big_int_mul,         void(int, int, int, int, int))
+      (big_int_probab_prime,int(int, int, int))
 );
 
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
