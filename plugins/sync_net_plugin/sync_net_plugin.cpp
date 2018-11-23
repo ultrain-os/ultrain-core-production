@@ -211,7 +211,6 @@ namespace ultrainio {
     constexpr auto     def_conn_retry_wait = 30;
 
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
-    constexpr auto     def_sync_fetch_span = 100;
     constexpr uint32_t  def_max_just_send = 1500; // roughly 1 "mtu"
 
 
@@ -1103,8 +1102,9 @@ namespace ultrainio {
       c->offset = (double(c->rec - c->org) + double(msg.xmt - c->dst)) / 2;
       double NsecPerUsec{1000};
 
-      if(logger.is_enabled(fc::log_level::all))
-         logger.log(FC_LOG_MESSAGE(all, "Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec)));
+//      if(logger.is_enabled(fc::log_level::all))
+//         logger.log(FC_LOG_MESSAGE(all, "Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec)));
+       ilog("Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec));
       c->org = 0;
       c->rec = 0;
    }
@@ -1283,32 +1283,17 @@ namespace ultrainio {
    void sync_net_plugin::set_program_options( options_description& /*cli*/, options_description& cfg )
    {
       cfg.add_options()
-         ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The actual host:port used to listen for incoming p2p connections.")
-         ( "p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
+         ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9987" ), "The actual host:port used to listen for incoming p2p connections.")
          ( "p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
-         ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
-         ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-           "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
-         ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
          ( "max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "maximum sizes of transaction or block messages that are sent without first sending a notice")
          ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
-         ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
-           "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
-           "Available Variables:\n"
-           "   _name  \tself-reported name\n\n"
-           "   _id    \tself-reported ID (64 hex characters)\n\n"
-           "   _sid   \tfirst 8 characters of _peer.id\n\n"
-           "   _ip    \tremote IP address of peer\n\n"
-           "   _port  \tremote port number of peer\n\n"
-           "   _lip   \tlocal IP address connected to peer\n\n"
-           "   _lport \tlocal port number connected to peer\n\n")
         ;
    }
 

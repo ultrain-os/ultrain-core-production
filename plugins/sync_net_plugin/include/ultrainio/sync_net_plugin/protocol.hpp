@@ -166,6 +166,10 @@ namespace ultrainio {
             std::vector<char> chunk;
        };
 
+       struct ReqTestTimeMsg {
+           std::chrono::system_clock::time_point reqTime;
+       };
+
        using net_message = static_variant<handshake_message,
                go_away_message,
                time_message,
