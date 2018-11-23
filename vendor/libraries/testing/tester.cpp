@@ -125,6 +125,7 @@ namespace ultrainio { namespace testing {
 
    void base_tester::open() {
       control.reset( new controller(cfg) );
+      control->add_indices();
       control->startup();
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){

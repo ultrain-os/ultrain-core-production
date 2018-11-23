@@ -29,6 +29,8 @@
 #include <fc/network/http/http_client.hpp>
 #include <chrono>
 
+#include <ultrainio/chain/worldstate_file_manager.hpp>
+
 namespace ultrainio { namespace chain {
 
 using namespace appbase;
@@ -228,7 +230,7 @@ struct controller_impl {
        auto size = db.get_segment_manager()->get_size()-db.get_free_memory()+10*boost::interprocess::mapped_region::get_page_size();
        //TODO: romove log
 	   ilog("state ${path}",("path",conf.state_dir));
-       ilog("create worldstate size ${size} path ${path}",("size",size)("path",conf.worldstate_dir));
+      ilog("create worldstate size ${size} path ${path}",("size",size)("path",conf.worldstate_dir));
 
        chainbase::database* worldstate_db = new chainbase::database(conf.worldstate_dir,database::read_write,size);
 //TODO: test memcpy time
@@ -289,7 +291,37 @@ struct controller_impl {
       emit( self.irreversible_block, s );
    }
 
-   void init() {
+   void replay() 
+   {
+      auto blog_head = blog.read_head();
+      replaying = true;
+      ilog( "existing block log, attempting to replay ${n} blocks", ("n",blog_head->block_num()) );
+
+      auto start = fc::time_point::now();
+      while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
+      self.push_block( next, controller::block_status::irreversible );
+      if( next->block_num() % 100 == 0 ) {
+         std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+      }
+      }
+
+      int rev = 0;
+      while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
+      ++rev;
+      self.push_block( obj->get_block(), controller::block_status::validated );
+      }
+
+      std::cerr<< "\n";
+      ilog( "${n} reversible blocks replayed", ("n",rev) );
+      auto end = fc::time_point::now();
+      ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
+         ("n", head->block_num)("duration", (end-start).count()/1000000)
+         ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
+      std::cerr<< "\n";
+      replaying = false;
+   }
+
+   void init(const worldstate_reader_ptr& worldstate) {
 
       /**
       *  The fork database needs an initial block_state to be set before
@@ -297,37 +329,27 @@ struct controller_impl {
       *  in the database (whose head block state should be irreversible) or
       *  it would be the genesis state.
       */
-      if( !head ) {
+      if (worldstate) {
+         ULTRAIN_ASSERT(!head, fork_database_exception, "");
+         worldstate->validate();
+
+         read_from_worldstate(worldstate);
+
+         auto end = blog.read_head();
+         if( !end ) {
+            blog.reset_to_genesis(conf.genesis, signed_block_ptr());
+         } else if ( end->block_num() > head->block_num) {
+            replay();
+         } else {
+            ULTRAIN_ASSERT(end->block_num() == head->block_num, fork_database_exception,
+                       "Block log is provided with worldstate but does not contain the head block from the worldstate");
+         }
+      } else if( !head ) {
          initialize_fork_db(); // set head to genesis state
 
          auto end = blog.read_head();
          if( end && end->block_num() > 1 ) {
-            replaying = true;
-            ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
-
-            auto start = fc::time_point::now();
-            while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-               self.push_block( next, controller::block_status::irreversible );
-               if( next->block_num() % 100 == 0 ) {
-                  std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
-               }
-            }
-
-            int rev = 0;
-            while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
-               ++rev;
-               self.push_block( obj->get_block(), controller::block_status::validated );
-            }
-
-            std::cerr<< "\n";
-            ilog( "${n} reversible blocks replayed", ("n",rev) );
-            auto end = fc::time_point::now();
-            ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-                  ("n", head->block_num)("duration", (end-start).count()/1000000)
-                  ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
-            std::cerr<< "\n";
-            replaying = false;
-
+            replay();
          } else if( !end ) {
             blog.reset_to_genesis( conf.genesis, head->block );
          }
@@ -356,6 +378,11 @@ struct controller_impl {
       }
       while( db.revision() > head->block_num ) {
          db.undo();
+      }
+
+      if( worldstate ) {
+         // const auto hash = calculate_integrity_hash();
+         // ilog( "database initialized with hash: ${hash}", ("hash", hash) );
       }
 
    }
@@ -448,12 +475,11 @@ struct controller_impl {
 
    void add_to_worldstate(const chainbase::database* const worldstate_db) const {
        //worldstate file name
-       auto begin=fc::time_point::now();
-       auto block_num = head->block_num;
-	   std::string worldstate_path = (conf.worldstate_dir / fc::format_string("worldstate-${id}.bin", fc::mutable_variant_object()("id", block_num))).generic_string();
+	   auto block_num = head->block_num;
 
-       //TODO: remove log
-       ilog("worldstate path: ${path}",("path",worldstate_path));
+      std::string worldstate_path = (conf.worldstate_dir / fc::format_string("worldstate-${id}.bin", fc::mutable_variant_object()("id", block_num))).generic_string();
+        //TODO: remove log
+       ilog("worldstate path: ${path}",("path", worldstate_path));
 	   auto worldstate_out = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
 	   auto worldstate = std::make_shared<ostream_worldstate_writer>(worldstate_out);
 
@@ -497,10 +523,8 @@ struct controller_impl {
 
 	  //TODO:remove worldstate_db, use unique_ptr to wrap
       delete worldstate_db;
-	  fc::remove_all(conf.worldstate_dir / "shared_memory.bin");
-	  fc::remove_all(conf.worldstate_dir / "shared_memory.meta");
-      auto end=fc::time_point::now();
-	  ilog("#######world thread thread1 finish, time ${time}",("time",end-begin));
+
+	  ilog("dylan finish");
    }
 
     void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
@@ -1685,17 +1709,16 @@ controller::~controller() {
    my->fork_db.close();
 }
 
-
-void controller::startup() {
-
-   // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
+void controller::add_indices() {
    my->add_indices();
+}
 
+void controller::startup( const worldstate_reader_ptr& worldstate ) {
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init();
+   my->init(worldstate);
 }
 
 chainbase::database& controller::db()const { return my->db; }
@@ -1899,7 +1922,7 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 void controller::write_worldstate() const {
-//EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent worldstate with a pending block" );
+//ULTRAIN_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent worldstate with a pending block" );
    return my->create_worldstate();
 }
 

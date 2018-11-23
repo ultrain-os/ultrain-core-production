@@ -85,7 +85,8 @@ namespace ultrainio { namespace chain {
          controller( const config& cfg );
          ~controller();
 
-         void startup();
+         void add_indices();
+         void startup(const worldstate_reader_ptr& worldstate = nullptr );
 
          /**
           * Starts a new pending block session upon which new transactions can

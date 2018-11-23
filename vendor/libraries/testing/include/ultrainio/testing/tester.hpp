@@ -336,6 +336,7 @@ namespace ultrainio { namespace testing {
 
 
          validating_node = std::make_unique<controller>(vcfg);
+         validating_node->add_indices();
          validating_node->startup();
 
          init(true);
@@ -350,6 +351,7 @@ namespace ultrainio { namespace testing {
          vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
 
          validating_node = std::make_unique<controller>(vcfg);
+         validating_node->add_indices();
          validating_node->startup();
 
          init(config);
@@ -385,6 +387,7 @@ namespace ultrainio { namespace testing {
 
         validating_node.reset();
         validating_node = std::make_unique<controller>(vcfg);
+        validating_node->add_indices();
         validating_node->startup();
 
         return ok;

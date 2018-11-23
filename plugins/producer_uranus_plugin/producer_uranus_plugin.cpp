@@ -10,7 +10,6 @@
 #include <ultrainio/chain/transaction_object.hpp>
 #include <ultrainio/chain/merkle.hpp>
 #include <ultrainio/chain/worldstate.hpp>
-#include <ultrainio/chain/worldstate_file_manager.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -678,6 +677,10 @@ fc::microseconds producer_uranus_plugin::generate_worldstate() const {
    //TODO:for testing
    auto end=fc::time_point::now();
    auto time_delta=end-begin;
+
+   ilog("*****************************************");
+   ilog("generate_worldstate test time: ${time_delta}", ("time_delta", time_delta));
+   ilog("*****************************************");
    return {time_delta};
 }
 
