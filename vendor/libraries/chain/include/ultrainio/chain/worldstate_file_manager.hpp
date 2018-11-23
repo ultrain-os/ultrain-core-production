@@ -75,7 +75,7 @@ namespace ultrainio { namespace chain {
             std::list<ws_info> get_local_ws_info();
             ws_file_reader* get_reader(ws_info node, uint32_t len_per_slice);
             ws_file_writer* get_writer(ws_info node, uint32_t len_per_slice);
-
+            fc::sha256 calculate_file_hash(std::string file_name);
             std::string get_file_path_by_info(fc::sha256& chain_id, uint32_t block_height);
             void save_info(ws_info& node);
         private:
