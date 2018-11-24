@@ -477,9 +477,17 @@ struct controller_impl {
        //worldstate file name
 	   auto block_num = head->block_num;
 
-      std::string worldstate_path = (conf.worldstate_dir / fc::format_string("worldstate-${id}.bin", fc::mutable_variant_object()("id", block_num))).generic_string();
-        //TODO: remove log
-       ilog("worldstate path: ${path}",("path", worldstate_path));
+      ws_file_manager ws_manager;
+      ws_info info;
+      info.chain_id = self.get_chain_id();
+      info.block_height = self.head_block_num();
+
+      std::string worldstate_path = ws_manager.get_file_path_by_info(info.chain_id, info.block_height);
+
+      // std::string worldstate_path = (conf.worldstate_dir / fc::format_string("worldstate-${id}.bin", fc::mutable_variant_object()("id", block_num))).generic_string();
+        
+      //TODO: remove log
+      ilog("worldstate path: ${path}",("path", worldstate_path));
 	   auto worldstate_out = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
 	   auto worldstate = std::make_shared<ostream_worldstate_writer>(worldstate_out);
 
@@ -523,6 +531,13 @@ struct controller_impl {
 
 	  //TODO:remove worldstate_db, use unique_ptr to wrap
       delete worldstate_db;
+      ilog("add_to_worldstate  write finished" );
+      auto begin=fc::time_point::now();  
+      info.file_size = bfs::file_size(worldstate_path);
+      info.hash_string = ws_manager.calculate_file_hash(worldstate_path).str();
+      ws_manager.save_info(info);
+      auto end=fc::time_point::now();
+      ilog("#######world state file hash and save info time: ${time}",("time",end-begin));
 
 	  ilog("dylan finish");
    }

@@ -148,19 +148,8 @@ bool ws_file_writer::is_valid()
         return false;
 
     open_read();
-    fc::sha256::encoder enc;
-    char buffer[1024];
-    m_fd.seekg(0, std::ios::beg);
+    auto result = m_manager.calculate_file_hash(m_file_name);
 
-    for(uint32_t i = 0; i < m_write_size; i += 1024){
-        memset(buffer, 0, sizeof(buffer));
-        m_fd.read(buffer, sizeof(buffer));
-
-        int cnt = m_fd.gcount();
-        enc.write(buffer, cnt);
-    }
-
-    auto result = enc.result();
     // ilog("isValid ${result} ==? ${hash_string}",  ("result", result.str())("hash_string", m_info.hash_string));
     if (result.str() == m_info.hash_string ) {
         m_valid = 1;
@@ -203,7 +192,7 @@ ws_file_manager::ws_file_manager(std::string dir)
 :m_dir_path(dir)
 {
     if(m_dir_path.empty()){
-        m_dir_path = (fc::app_path() / "nodultrain/data/worldstates").string();
+        m_dir_path = (fc::app_path() / "ultrainio/nodultrain/data/worldstate").string();
     }
     
     if (!bfs::is_directory(m_dir_path)){
@@ -241,7 +230,6 @@ std::list<ws_info> ws_file_manager::get_local_ws_info()
 
         std::string file_format = ".info";
         for (bfs::directory_iterator iter(m_dir_path); iter != bfs::directory_iterator(); ++iter){
-            ilog("getLocalInfo: path ${chain_id}", ("chain_id",iter->path().string()));
             if (!bfs::is_regular_file(iter->status()) || bfs::extension(iter->path().string()) != file_format)
                 continue;            
 
@@ -303,6 +291,25 @@ ws_file_writer* ws_file_manager::get_writer(ws_info node, uint32_t len_per_slice
         }
     }
     return new ws_file_writer(node, len_per_slice, m_dir_path,  *this);
+}
+
+fc::sha256 ws_file_manager::calculate_file_hash(std::string file_name)
+{
+    std::ifstream fd(file_name.c_str(), std::ios::in | std::ios::binary);    
+    fc::sha256::encoder enc;
+    char buffer[1024];
+    fd.seekg(0, std::ios::beg);
+
+    auto size = bfs::file_size(file_name);
+    for(uint32_t i = 0; i < size; i += 1024){
+        memset(buffer, 0, sizeof(buffer));
+        fd.read(buffer, sizeof(buffer));
+
+        int cnt = fd.gcount();
+        enc.write(buffer, cnt);
+    }
+
+    return enc.result();
 }
 
 }}
