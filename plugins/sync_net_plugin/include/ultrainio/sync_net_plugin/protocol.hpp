@@ -166,8 +166,19 @@ namespace ultrainio {
             std::vector<char> chunk;
        };
 
+       struct TimeInfo{
+           tstamp reqTime;
+           tstamp rspTime;
+       };
+
        struct ReqTestTimeMsg {
-           std::chrono::system_clock::time_point reqTime;
+           TimeInfo timeInfo;
+           std::array<char, MAX_PACKET_DATA_LENGTH>    chunk;
+       };
+
+       struct RspTestTimeMsg {
+           TimeInfo timeInfo;
+           std::array<char, MAX_PACKET_DATA_LENGTH>    chunk;
        };
 
        using net_message = static_variant<handshake_message,
@@ -176,7 +187,9 @@ namespace ultrainio {
                ReqLastWsInfoMsg,
                RspLastWsInfoMsg,
                ReqWsFileMsg,
-               FileTransferPacket>;
+               FileTransferPacket,
+               ReqTestTimeMsg,
+               RspTestTimeMsg>;
    }
 } // namespace ultrainio
 
@@ -190,4 +203,7 @@ FC_REFLECT( ultrainio::wss::ReqLastWsInfoMsg, (seqNum) )
 FC_REFLECT( ultrainio::wss::RspLastWsInfoMsg, (info) )
 FC_REFLECT( ultrainio::wss::ReqWsFileMsg, (lenPerSlice)(info) )
 FC_REFLECT( ultrainio::wss::FileTransferPacket, (chunkLen)(chunkHashString)(sliceId)(endOfFile)(chunk) )
+FC_REFLECT( ultrainio::wss::TimeInfo, (reqTime)(rspTime) )
+FC_REFLECT( ultrainio::wss::ReqTestTimeMsg, (timeInfo)(chunk) )
+FC_REFLECT( ultrainio::wss::RspTestTimeMsg, (timeInfo)(chunk) )
 

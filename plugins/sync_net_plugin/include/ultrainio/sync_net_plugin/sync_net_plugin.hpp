@@ -44,6 +44,7 @@ namespace ultrainio {
 
         string                       require_file();
         string                       sync_ws(const sync_wss_params& syncWssParams);
+        string                       test_latancy();
 
         size_t num_peers() const;
     private:

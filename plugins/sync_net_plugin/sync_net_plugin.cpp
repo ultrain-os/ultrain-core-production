@@ -143,6 +143,9 @@ namespace ultrainio {
         void handle_message( connection_ptr c, const ReqWsFileMsg &msg);
         void handle_message( connection_ptr c, const FileTransferPacket &msg);
 
+        void handle_message(connection_ptr c, const ReqTestTimeMsg &msg);
+        void handle_message(connection_ptr c, const RspTestTimeMsg &msg);
+
         void start_broadcast(const net_message& msg);
 
         void start_conn_timer( );
@@ -1104,7 +1107,7 @@ namespace ultrainio {
 
 //      if(logger.is_enabled(fc::log_level::all))
 //         logger.log(FC_LOG_MESSAGE(all, "Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec)));
-       ilog("Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec));
+//       ilog("Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec));
       c->org = 0;
       c->rec = 0;
    }
@@ -1189,6 +1192,23 @@ namespace ultrainio {
                ilog("FileTransferEnd is_valid: ${ret}", ("ret", ret));      
                ws_writer->destory();        
          }
+    }
+
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqTestTimeMsg &msg) {
+        RspTestTimeMsg rspTestTimeMsg;
+        rspTestTimeMsg.timeInfo.reqTime = msg.timeInfo.reqTime;
+        rspTestTimeMsg.timeInfo.rspTime = c->get_time();
+        c->enqueue(net_message(rspTestTimeMsg));
+        ilog("rcved ReqTestTimeMsg and send rspTestTimeMsg");
+    }
+
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const RspTestTimeMsg &msg) {
+        tstamp rcvTime = c->get_time();
+        double NsecPerSec{1000000000};
+        auto randToSecond = (double(msg.timeInfo.rspTime - msg.timeInfo.reqTime))/NsecPerSec;
+        auto randBackSecond = (double(rcvTime - msg.timeInfo.rspTime))/NsecPerSec;
+        auto randWholeSecond = double(rcvTime - msg.timeInfo.reqTime)/NsecPerSec;
+        ilog("toTime: ${t}(s),backTime: ${b}(s),wholeTime: ${w}(s),", ("t", randToSecond)("b", randBackSecond)("w", randWholeSecond));
     }
 
     void sync_net_plugin_impl::start_monitors() {
@@ -1305,7 +1325,7 @@ namespace ultrainio {
    void sync_net_plugin::plugin_initialize( const variables_map& options ) {
       ilog("Initialize net plugin");
       try {
-         peer_log_format = options.at( "peer-log-format" ).as<string>();
+//         peer_log_format = options.at( "peer-log-format" ).as<string>();
 
          my->network_version_match = options.at( "network-version-match" ).as<bool>();
 
@@ -1480,6 +1500,18 @@ namespace ultrainio {
             ilog ("host : ${host}", ("host", host));
         }
         return "get triger and hosts list";
+    }
+
+    string sync_net_plugin::test_latancy() {
+        ReqTestTimeMsg reqTestTimeMsg;
+        for (const auto& c : my->connections) {
+            if(c->current()) {
+                reqTestTimeMsg.timeInfo.reqTime = c->get_time();
+                ilog ("send reqTestTimeMsg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                c->enqueue(net_message(reqTestTimeMsg));
+            }
+        }
+        return "start test latancy";
     }
 
    connection_ptr sync_net_plugin_impl::find_connection( string host )const {
