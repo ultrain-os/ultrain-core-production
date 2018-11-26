@@ -32,6 +32,12 @@ systemAccounts = [
     'hello',
 ]
 
+initialAccounts = [
+    'root',
+    'roottest',
+    'rootapp',
+]
+
 accountsToResign = [
     'utrio.bpay',
     'utrio.msig',
@@ -299,6 +305,7 @@ def sleep(t):
 
 def importKeys():
     run(args.clultrain + 'wallet import --private-key ' + args.private_key)
+    run(args.clultrain + 'wallet import --private-key ' + args.initacc_sk)
 
 def updateAuth(account, permission, parent, controller):
     run(args.clultrain + 'push action ultrainio updateauth' + jsonArg({
@@ -364,7 +371,7 @@ def stepSetSystemContract():
 
 def stepCreateStakedAccounts():
     for i in range(0, args.num_producers):
-        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "5000.0000 UGAS" --stake-cpu "5000.0000 UGAS" --buy-ram "5000.000 UGAS" ' % (accounts[i], args.public_key))
+        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "50000.0000 UGAS" --stake-cpu "50000.0000 UGAS" --buy-ram "50000.000 UGAS" ' % (accounts[i], args.public_key))
     sleep(15)
 
 
@@ -384,6 +391,13 @@ def stepRegProducers():
         retry(args.clultrain + 'system delegatecons ultrainio %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
     sleep(18)
     run(args.clultrain + 'system listproducers')
+
+def stepCreateinitAccounts():
+    for a in initialAccounts:
+        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "100000.0000 UGAS" --stake-cpu "100000.0000 UGAS" --buy-ram "100000.000 UGAS" ' % (a, args.initacc_pk))
+    sleep(10)
+    for a in initialAccounts:
+        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"53000000.0000"))
 
 def stepResign():
     resign('ultrainio', 'utrio.null')
@@ -469,12 +483,10 @@ commands = [
     ('c', 'contracts',      stepInstallSystemContracts, True,    "Install system contracts (token, msig)"),
     ('t', 'tokens',         stepCreateTokens,           True,    "Create tokens"),
     ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
+    ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
-#    ('P', 'start-prod',     stepStartProducers,         True,    "Start producers"),
-#    ('v', 'vote',           stepVote,                   True,    "Vote for producers"),
 #    ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
-#    ('x', 'proxy',          stepProxyVotes,             True,    "Proxy votes"),
      ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
 #    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
@@ -484,6 +496,8 @@ commands = [
 
 parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")
 parser.add_argument('--private-Key', metavar='', help="ULTRAIN Private Key", default='5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H', dest="private_key")
+parser.add_argument('--initacc-pk', metavar='', help="ULTRAIN Public Key", default='UTR6XRzZpgATJaTtyeSKqGhZ6rH9yYn69f5fkLpjVx6y2mEv5iQTn', dest="initacc_pk")
+parser.add_argument('--initacc-sk', metavar='', help="ULTRAIN Private Key", default='5KZ7mnSHiKN8VaJF7aYf3ymCRKyfr4NiTiqKC5KLxkyM56KdQEP', dest="initacc_sk")
 parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '')
 parser.add_argument('--kultraind', metavar='', help="Path to kultraind binary", default=defaultkul % '')
 parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default=defaultcontracts_dir % '')
