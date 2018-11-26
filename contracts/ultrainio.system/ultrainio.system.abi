@@ -320,6 +320,7 @@
          {"name":"is_enabled",      "type":"bool"},
          {"name":"url",             "type":"string"},
          {"name":"unpaid_blocks",   "type":"uint64[]"},
+         {"name":"total_produce_block",   "type":"uint64"},
          {"name":"last_claim_time", "type":"uint64"},
          {"name":"location",        "type":"uint16"}
       ]

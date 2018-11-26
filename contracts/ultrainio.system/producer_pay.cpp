@@ -51,6 +51,7 @@ namespace ultrainiosystem {
          _gstate.total_unpaid_blocks[interval]++;
          _producers.modify( prod, 0, [&](auto& p ) {
                p.unpaid_blocks[interval]++;
+               p.total_produce_block++;
          });
       }
 
@@ -96,6 +97,7 @@ namespace ultrainiosystem {
          _gstate.total_unpaid_blocks[interval]+= number;
          _producers.modify( prod, 0, [&](auto& p ) {
                p.unpaid_blocks[interval]+= number;
+               p.total_produce_block++;
          });
       }
    }

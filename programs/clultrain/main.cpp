@@ -945,7 +945,7 @@ struct list_producers_subcommand {
          if ( !weight )
             weight = 1;
         uint64_t total_unpaid_blocks = 0;
-         printf("%-13s %-54s %-59s %-15s %s %s\n", "Producer", "Producer key", "Url", "Scaled votes", "is_enabled","unpaid blocks");
+         printf("%-13s %-54s %-59s %-15s %s %s    %s\n", "Producer", "Producer key", "Url", "Consensus weight", "is_enabled","unpaid blocks","total blocks");
          for ( auto& row : result.rows ){
             printf("%-13.13s %-54.54s %-59.59s %15ld %u ",
                    row["owner"].as_string().c_str(),
@@ -959,7 +959,8 @@ struct list_producers_subcommand {
                 total_unpaid_blocks += tmp.as_uint64();
                 printf("%lu,",tmp.as_uint64());
             }
-			printf("]\n");
+            printf("]");
+            printf("    %lu\n",row["total_produce_block"].as_uint64());
 	    }
         std::cout << "total_unpaid_blocks: " << total_unpaid_blocks << std::endl;
          if ( !result.more.empty() )
@@ -1237,6 +1238,24 @@ struct claimrewards_subcommand {
    }
 };
 
+struct reportblock_subcommand {
+   std::string producer;
+   uint64_t number = 0;
+   reportblock_subcommand(CLI::App* actionRoot) {
+      auto reportblock = actionRoot->add_subcommand("reportblock", localized("report block producer"));
+      reportblock->add_option("producer", producer, localized("The account to report block for"))->required();
+      reportblock->add_option("number", number, localized("The numbler to report block for"))->required();
+      add_standard_transaction_options(reportblock);
+
+      reportblock->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("producer", producer)
+                  ("number", number);
+         send_actions({create_action({permission_level{N(ultrainio),config::active_name}}, config::system_account_name, NEX(reportblocknumber), act_payload)});
+      });
+   }
+};
+
 struct canceldelay_subcommand {
    string canceling_account;
    string canceling_permission;
@@ -1451,17 +1470,18 @@ void get_account( const string& accountName, bool json_format ) {
          std::cout << "consensus bandwidth:" << std::endl;
          auto& obj = res.producer_info.get_object();
          uint64_t total_cons_staked = obj["total_cons_staked"].as_uint64();
-         cons_staked = asset(total_cons_staked);
+         asset total_cons = asset(total_cons_staked);
          if( res.self_delegated_bandwidth.is_object() ) {
             asset cons_own = asset::from_string( res.self_delegated_bandwidth.get_object()["cons_weight"].as_string() );
-            auto cons_others = cons_staked - cons_own;
+            staked += cons_own;
+            auto cons_others = total_cons - cons_own;
 
             std::cout << indent << "staked:" << std::setw(20) << cons_own
                       << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
                       << indent << "delegated:" << std::setw(17) << cons_others
                       << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
          } else {
-            auto cons_others = cons_staked;
+            auto cons_others = total_cons;
             std::cout << indent << "delegated:" << std::setw(17) << cons_others
                       << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
          }
@@ -1520,12 +1540,10 @@ void get_account( const string& accountName, bool json_format ) {
          std::cout << indent << std::left << std::setw(11)
                    << "liquid:" << std::right << std::setw(18) << *res.core_liquid_balance << std::endl;
          std::cout << indent << std::left << std::setw(11)
-                   << "res_staked:" << std::right << std::setw(18) << staked << std::endl;
-         std::cout << indent << std::left << std::setw(11)
-                   << "cons_staked:" << std::right << std::setw(18) << cons_staked << std::endl;
+                   << "staked:" << std::right << std::setw(18) << staked << std::endl;
          std::cout << indent << std::left << std::setw(11)
                    << "unstaking:" << std::right << std::setw(18) << unstaking << std::endl;
-         std::cout << indent << std::left << std::setw(11) << "total:" << std::right << std::setw(18) << (*res.core_liquid_balance + staked + unstaking + cons_staked) << std::endl;
+         std::cout << indent << std::left << std::setw(11) << "total:" << std::right << std::setw(18) << (*res.core_liquid_balance + staked + unstaking) << std::endl;
          std::cout << std::endl;
       }
       std::cout << std::endl;
@@ -2850,7 +2868,7 @@ int main( int argc, char** argv ) {
    auto sellram = sellram_subcommand(system);
 
    auto claimRewards = claimrewards_subcommand(system);
-
+   auto reportblock = reportblock_subcommand(system);
    auto cancelDelay = canceldelay_subcommand(system);
 
    try {

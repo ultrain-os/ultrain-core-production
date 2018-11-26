@@ -73,6 +73,7 @@ namespace ultrainiosystem {
       bool                  hasactived = false;
       std::string           url;
       uint64_t              unpaid_blocks[num_rate] {};
+      uint64_t              total_produce_block;
       uint64_t              last_claim_time = 0;
       uint16_t              location = 0;
 
@@ -83,7 +84,7 @@ namespace ultrainiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE( producer_info, (owner)(total_cons_staked)(producer_key)(is_active)(is_enabled)(url)
-                        (unpaid_blocks)(last_claim_time)(location) )
+                        (unpaid_blocks)(total_produce_block)(last_claim_time)(location) )
    };
 
    typedef ultrainio::multi_index< N(producers), producer_info,
