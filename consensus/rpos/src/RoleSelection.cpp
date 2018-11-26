@@ -7,10 +7,9 @@
 #include <rpos/RoleRandom.h>
 
 namespace ultrainio {
-    RoleSelection::RoleSelection(const std::vector<std::string>& committeeV, const BlockIdType& rand) {
+    RoleSelection::RoleSelection(const std::vector<std::string>& committeeV, const RoleRandom& rand) {
         ULTRAIN_ASSERT(committeeV.size() > 0, chain::chain_exception, "committee size");
-        RoleRandom r(rand);
-        FisherYates fys(r.toInt(), committeeV.size());
+        FisherYates fys(rand.toInt(), committeeV.size());
         std::vector<int> c = fys.shuffle();
         for (int i = 0; i < committeeV.size() && i < Config::kDesiredVoterNumber; i++) {
             int index = c[i];

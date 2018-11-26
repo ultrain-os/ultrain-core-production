@@ -12,8 +12,9 @@ namespace ultrainio {
         for (int i = 0; i < m_size; i++) {
             v[i] = i;
         }
-        for (int i = m_size - 1; i > 0; --i) {
-            int next = findNext(m_rand, i + 1);
+        for (int i = 0; i < m_size - 1; i++) {
+            int next = findNext(m_rand, m_size - i);
+            next += i;
             std::swap(v[i], v[next]);
         }
         return v;

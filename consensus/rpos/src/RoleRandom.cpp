@@ -3,7 +3,7 @@
 namespace ultrainio {
     RoleRandom::RoleRandom(const BlockIdType& r) : m_rand(r) {};
 
-    uint32_t RoleRandom::toInt() {
+    uint32_t RoleRandom::toInt() const {
         uint32_t rand = 0;
         size_t startIndex = 24; // 24 * 8 = 192
         size_t byteNum = 4;

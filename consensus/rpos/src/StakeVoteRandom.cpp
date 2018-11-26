@@ -1,10 +1,11 @@
 #include "rpos/StakeVoteRandom.h"
 
 #include <rpos/Config.h>
+#include <rpos/RoleRandom.h>
 #include <rpos/RoleSelection.h>
 
 namespace ultrainio {
-    StakeVoteRandom::StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr, const BlockIdType& rand)
+    StakeVoteRandom::StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand)
             : StakeVoteBase(blockNum, committeeStatePtr) {
         if (!isGenesisPeriod()) {
             // init with new committeeState
@@ -12,7 +13,7 @@ namespace ultrainio {
         }
     }
 
-    void StakeVoteRandom::initRoleSelection(std::shared_ptr<CommitteeState> committeeStatePtr, const BlockIdType& rand) {
+    void StakeVoteRandom::initRoleSelection(std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand) {
         ULTRAIN_ASSERT(committeeStatePtr != nullptr, chain::chain_exception, "committeeStatePtr is null");
         std::vector<std::string> committeeV;
         for (auto committeeInfo : committeeStatePtr->cinfo) {
