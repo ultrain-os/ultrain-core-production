@@ -15,7 +15,9 @@ namespace ultrainio { namespace chain {
     if( when != block_timestamp_type() ) {
        ULTRAIN_ASSERT( when > header.timestamp, block_validate_exception, "next block must be in the future" );
     } else {
-       (when = header.timestamp).slot++;
+       //(when = header.timestamp).slot++;
+         when = header.timestamp;
+	 when.abstime += config::block_interval_ms/1000;
     }
     result.header.timestamp                                = when;
     result.header.previous                                 = id;
@@ -78,3 +80,15 @@ namespace ultrainio { namespace chain {
   }
 
 } } /// namespace ultrainio::chain
+
+
+namespace fc{
+	void to_variant(const ultrainio::chain::block_timestamp&t,fc::variant&v){
+		to_variant((fc::time_point)t,v);
+	}
+
+
+	void from_variant(const fc::variant&v,ultrainio::chain::block_timestamp&t){
+		t=v.as<fc::time_point>();
+	}
+}
