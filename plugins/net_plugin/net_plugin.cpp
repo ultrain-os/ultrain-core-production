@@ -130,16 +130,28 @@ namespace ultrainio {
         >
     > node_transaction_index;
 
+    enum msg_priority{
+        msg_priority_rpos,
+        msg_priority_trx
+    };
+
+    struct passive_peer{
+        shared_ptr<tcp::acceptor>  acceptor;
+        shared_ptr<tcp::resolver>  resolver;
+        tcp::endpoint              listen_endpoint;
+        string                     p2p_address;
+    };
+
     class net_plugin_impl {
     public:
-        unique_ptr<tcp::acceptor>        acceptor;
-        tcp::endpoint                    listen_endpoint;
-        string                           p2p_address;
+        passive_peer                     rpos_listener;
+        passive_peer                     trx_listener;
         uint32_t                         max_client_count = 0;
-        uint32_t                         max_nodes_per_host = 1;
+        uint32_t                         max_nodes_per_host = 2;
         uint32_t                         num_clients = 0;
 
-        vector<string>                   supplied_peers;
+        vector<string>                   rpos_active_peers;
+        vector<string>                   trx_active_peers;
         vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
         std::map<chain::public_key_type,
                  chain::private_key_type> private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
@@ -152,7 +164,7 @@ namespace ultrainio {
         };
         possible_connections             allowed_connections{None};
 
-        connection_ptr find_connection( string host )const;
+        connection_ptr find_connection(const string& host )const;
 
         std::set< connection_ptr >       connections;
         bool                             done = false;
@@ -170,7 +182,7 @@ namespace ultrainio {
         boost::asio::steady_timer::duration   txn_exp_period;
         boost::asio::steady_timer::duration   resp_expected_period;
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
-        boost::asio::steady_timer::duration  sizeprint_period{std::chrono::seconds{30}};
+        boost::asio::steady_timer::duration   sizeprint_period{std::chrono::seconds{30}};
         const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
         bool                          network_version_match = false;
@@ -183,16 +195,15 @@ namespace ultrainio {
 
         node_transaction_index        local_txns;
 
-        shared_ptr<tcp::resolver>     resolver;
-
         bool                          use_socket_read_watermark = false;
 
         channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
+        string connect( const string& endpoint, msg_priority p = msg_priority_trx);
         void connect( connection_ptr c );
         void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
         bool start_session( connection_ptr c );
-        void start_listen_loop( );
+        void start_listen_loop(shared_ptr<tcp::acceptor> acceptor, msg_priority p);
         void start_read_message( connection_ptr c);
         void get_con_buffer_size(connection_ptr c);
         void print_queue_size( );
@@ -210,8 +221,10 @@ namespace ultrainio {
         void applied_transaction(const transaction_trace_ptr&);
 
         void transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>&);
-
         bool is_valid( const handshake_message &msg);
+
+        shared_ptr<tcp::resolver> get_resolver(msg_priority p) const;
+        shared_ptr<tcp::acceptor> get_acceptor(msg_priority p) const;
 
         void handle_message( connection_ptr c, const handshake_message &msg);
         void handle_message( connection_ptr c, const chain_size_message &msg);
@@ -327,7 +340,7 @@ namespace ultrainio {
     constexpr auto     def_send_buffer_size_mb = 4;
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
     constexpr auto     def_max_clients = 25; // 0 for unlimited clients
-    constexpr auto     def_max_nodes_per_host = 1;
+    constexpr auto     def_max_nodes_per_host = 2; 
     constexpr auto     def_conn_retry_wait = 30;
     constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
@@ -454,14 +467,14 @@ namespace ultrainio {
     };
 
     struct handshake_initializer {
-        static void populate(handshake_message &hello);
+        static void populate(handshake_message &hello, msg_priority p);
     };
 
     class connection : public std::enable_shared_from_this<connection> {
     public:
-        explicit connection( string endpoint );
+        explicit connection(string endpoint, msg_priority pri);
 
-        explicit connection( socket_ptr s );
+        explicit connection(socket_ptr s, msg_priority pri);
         ~connection();
         void initialize();
 
@@ -471,7 +484,7 @@ namespace ultrainio {
         transaction_state_index trx_state;
         socket_ptr              socket;
 
-        fc::message_buffer<1024*1024>    pending_message_buffer;
+        fc::message_buffer<4*1024*1024>    pending_message_buffer;
         fc::optional<std::size_t>        outstanding_read_bytes;
         vector<char>            blk_buffer;
 
@@ -479,6 +492,7 @@ namespace ultrainio {
             std::shared_ptr<vector<char>> buff;
             std::function<void(boost::system::error_code, std::size_t)> callback;
         };
+        msg_priority            priority;
         deque<queued_write>     write_queue;
         deque<queued_write>     out_queue;
         fc::sha256              node_id;
@@ -490,11 +504,11 @@ namespace ultrainio {
         string                  peer_addr;
         unique_ptr<boost::asio::steady_timer> response_expected;
         optional<request_message> pending_fetch;
-        go_away_reason         no_retry = no_reason;
-        block_id_type          fork_head;
-        uint32_t               fork_head_num = 0;
+        go_away_reason          no_retry = no_reason;
+        block_id_type           fork_head;
+        uint32_t                fork_head_num = 0;
         optional<request_message> last_req;
-        RspLastBlockNumMsg       last_block_info;
+        RspLastBlockNumMsg      last_block_info;
 
         connection_status get_status()const {
             connection_status stat;
@@ -821,10 +835,11 @@ namespace ultrainio {
 
     //---------------------------------------------------------------------------
 
-    connection::connection( string endpoint )
+    connection::connection(string endpoint, msg_priority pri)
         : blk_state(),
         trx_state(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
+        priority(pri),
         node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
@@ -844,10 +859,11 @@ namespace ultrainio {
         initialize();
     }
 
-    connection::connection( socket_ptr s )
+    connection::connection(socket_ptr s, msg_priority pri)
         : blk_state(),
         trx_state(),
-        socket( s ),
+        socket(s),
+        priority(pri),
         node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
@@ -964,7 +980,7 @@ namespace ultrainio {
 
     void connection::send_handshake( ) {
         ilog("send_handshake to peer : ${peer}", ("peer", this->peer_name()));
-        handshake_initializer::populate(last_handshake_sent);
+        handshake_initializer::populate(last_handshake_sent, this->priority);
         last_handshake_sent.generation = ++sent_handshake_count;
         fc_dlog(logger, "Sending handshake generation ${g} to ${ep}",
                 ("g",last_handshake_sent.generation)("ep", peer_name()));
@@ -1436,6 +1452,18 @@ namespace ultrainio {
 
     //------------------------------------------------------------------------
 
+    string net_plugin_impl::connect(const string& host, msg_priority p) {
+        if (find_connection(host))
+            return "already connected";
+
+        connection_ptr c = std::make_shared<connection>(host, p);
+        fc_dlog(logger,"adding new connection to the list");
+        connections.insert( c );
+        fc_dlog(logger,"calling active connector");
+        connect( c );
+        return "added connection";
+    }
+ 
     void net_plugin_impl::connect( connection_ptr c ) {
         if( c->no_retry != go_away_reason::no_reason) {
             fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
@@ -1464,7 +1492,7 @@ namespace ultrainio {
         connection_wptr weak_conn = c;
         // Note: need to add support for IPv6 too
 
-        resolver->async_resolve(query,
+        get_resolver(c->priority)->async_resolve(query,
                                 [weak_conn, this]( const boost::system::error_code& err,
                                 tcp::resolver::iterator endpoint_itr ){
                                     auto c = weak_conn.lock();
@@ -1530,10 +1558,9 @@ namespace ultrainio {
         }
     }
 
-
-    void net_plugin_impl::start_listen_loop( ) {
+    void net_plugin_impl::start_listen_loop(shared_ptr<tcp::acceptor> acceptor, msg_priority p) {
         auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
-        acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
+        acceptor->async_accept( *socket, [acceptor,socket,this,p]( boost::system::error_code ec ) {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
@@ -1559,7 +1586,7 @@ namespace ultrainio {
                   }
                   if( from_addr < max_nodes_per_host && (max_client_count == 0 || num_clients < max_client_count )) {
                      ++num_clients;
-                     connection_ptr c = std::make_shared<connection>( socket );
+                     connection_ptr c = std::make_shared<connection>(socket, p);
                      connections.insert( c );
                      start_session( c );
 
@@ -1591,7 +1618,7 @@ namespace ultrainio {
                      return;
                }
             }
-            start_listen_loop();
+            start_listen_loop(acceptor, p);
          });
    }
 
@@ -1793,55 +1820,69 @@ namespace ultrainio {
       }
    }
 
-   size_t net_plugin_impl::count_open_sockets() const
-   {
-      size_t count = 0;
-      for( auto &c : connections) {
-         if(c->socket->is_open())
-            ++count;
-      }
-      return count;
-   }
+    size_t net_plugin_impl::count_open_sockets() const
+    {
+        size_t count = 0;
+        for( auto &c : connections) {
+            if(c->socket->is_open())
+                ++count;
+        }
+        return count;
+    }
 
+    template<typename VerifierFunc>
+    void net_plugin_impl::send_all( const net_message &msg, VerifierFunc verify) {
+        for( auto &c : connections) {
+            if( c->current() && verify( c)) {
+                c->enqueue( msg );
+            }
+        }
+    }
 
-   template<typename VerifierFunc>
-   void net_plugin_impl::send_all( const net_message &msg, VerifierFunc verify) {
-      for( auto &c : connections) {
-         if( c->current() && verify( c)) {
-            c->enqueue( msg );
-         }
-      }
-   }
+    bool net_plugin_impl::is_valid( const handshake_message &msg) {
+        // Do some basic validation of an incoming handshake_message, so things
+        // that really aren't handshake messages can be quickly discarded without
+        // affecting state.
+        bool valid = true;
+        if (msg.last_irreversible_block_num > msg.head_num) {
+            wlog("Handshake message validation: last irreversible block (${i}) is greater than head block (${h})",
+                 ("i", msg.last_irreversible_block_num)("h", msg.head_num));
+            valid = false;
+        }
+        if (msg.p2p_address.empty()) {
+            wlog("Handshake message validation: p2p_address is null string");
+            valid = false;
+        }
+        if (msg.os.empty()) {
+            wlog("Handshake message validation: os field is null string");
+            valid = false;
+        }
+        if ((msg.sig != chain::signature_type() || msg.token != sha256()) && (msg.token != fc::sha256::hash(msg.time))) {
+            wlog("Handshake message validation: token field invalid");
+            valid = false;
+        }
+        return valid;
+    }
 
-   bool net_plugin_impl::is_valid( const handshake_message &msg) {
-      // Do some basic validation of an incoming handshake_message, so things
-      // that really aren't handshake messages can be quickly discarded without
-      // affecting state.
-      bool valid = true;
-      if (msg.last_irreversible_block_num > msg.head_num) {
-         wlog("Handshake message validation: last irreversible block (${i}) is greater than head block (${h})",
-              ("i", msg.last_irreversible_block_num)("h", msg.head_num));
-         valid = false;
-      }
-      if (msg.p2p_address.empty()) {
-         wlog("Handshake message validation: p2p_address is null string");
-         valid = false;
-      }
-      if (msg.os.empty()) {
-         wlog("Handshake message validation: os field is null string");
-         valid = false;
-      }
-      if ((msg.sig != chain::signature_type() || msg.token != sha256()) && (msg.token != fc::sha256::hash(msg.time))) {
-         wlog("Handshake message validation: token field invalid");
-         valid = false;
-      }
-      return valid;
-   }
+    shared_ptr<tcp::resolver> net_plugin_impl::get_resolver(msg_priority p) const {
+        if (p == msg_priority_rpos) {
+            return rpos_listener.resolver;
+        } else {
+            return trx_listener.resolver;
+        }
+    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const chain_size_message &msg) {
-      peer_ilog(c, "received chain_size_message");
+    shared_ptr<tcp::acceptor> net_plugin_impl::get_acceptor(msg_priority p) const {
+        if (p == msg_priority_rpos) {
+            return rpos_listener.acceptor;
+        } else {
+            return trx_listener.acceptor;
+        }
+    }
 
-   }
+    void net_plugin_impl::handle_message( connection_ptr c, const chain_size_message &msg) {
+        peer_ilog(c, "received chain_size_message");
+    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
       peer_ilog(c, "received handshake_message");
@@ -2303,7 +2344,7 @@ namespace ultrainio {
    void net_plugin_impl::start_monitors() {
       connector_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       transaction_check.reset(new boost::asio::steady_timer( app().get_io_service()));
-       sizeprint_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
+      sizeprint_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
       start_txn_timer();
       start_sizeprint_timer();
@@ -2477,7 +2518,7 @@ namespace ultrainio {
    }
 
    void
-   handshake_initializer::populate( handshake_message &hello) {
+   handshake_initializer::populate( handshake_message &hello, msg_priority p) {
       hello.network_version = net_version_base + net_version;
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
@@ -2488,7 +2529,14 @@ namespace ultrainio {
       // If we couldn't sign, don't send a token.
       if(hello.sig == chain::signature_type())
          hello.token = sha256();
-      hello.p2p_address = my_impl->p2p_address + " - " + hello.node_id.str().substr(0,7);
+
+      if (p == msg_priority_rpos) {
+         hello.p2p_address = my_impl->rpos_listener.p2p_address + " - " + hello.node_id.str().substr(0,7);
+      }
+      else {
+         hello.p2p_address = my_impl->trx_listener.p2p_address + " - " + hello.node_id.str().substr(0,7);
+      }
+
 #if defined( __APPLE__ )
       hello.os = "osx";
 #elif defined( __linux__ )
@@ -2539,6 +2587,9 @@ namespace ultrainio {
          ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The actual host:port used to listen for incoming p2p connections.")
          ( "p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
          ( "p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
+         ( "rpos-p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9875" ), "The actual host:port used to listen for incoming rpos p2p connections.")
+         ( "rpos-p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to rpos-p2p-listen-endpoint.")
+         ( "rpos-p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple rpos-p2p-peer-address options as needed to compose a network.")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
@@ -2593,23 +2644,24 @@ namespace ultrainio {
          my->num_clients = 0;
          my->started_sessions = 0;
 
-         my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
+         my->trx_listener.resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
+         string& trx_p2p_address = my->trx_listener.p2p_address;
          if( options.count( "p2p-listen-endpoint" )) {
-            my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
-            auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
-            auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
+            trx_p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
+            auto host = trx_p2p_address.substr( 0, trx_p2p_address.find( ':' ));
+            auto port = trx_p2p_address.substr( host.size() + 1, trx_p2p_address.size());
             idump((host)( port ));
             tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
             // Note: need to add support for IPv6 too?
 
-            my->listen_endpoint = *my->resolver->resolve( query );
-
-            my->acceptor.reset( new tcp::acceptor( app().get_io_service()));
+            my->trx_listener.listen_endpoint = *my->trx_listener.resolver->resolve( query );
+            my->trx_listener.acceptor.reset( new tcp::acceptor( app().get_io_service()));
          }
+
          if( options.count( "p2p-server-address" )) {
-            my->p2p_address = options.at( "p2p-server-address" ).as<string>();
+            trx_p2p_address = options.at( "p2p-server-address" ).as<string>();
          } else {
-            if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
+            if( my->trx_listener.listen_endpoint.address().to_v4() == address_v4::any()) {
                boost::system::error_code ec;
                auto host = host_name( ec );
                if( ec.value() != boost::system::errc::success ) {
@@ -2618,14 +2670,49 @@ namespace ultrainio {
                                       "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
 
                }
-               auto port = my->p2p_address.substr( my->p2p_address.find( ':' ), my->p2p_address.size());
-               my->p2p_address = host + port;
+               auto port = trx_p2p_address.substr(trx_p2p_address.find( ':' ), trx_p2p_address.size());
+               trx_p2p_address = host + port;
+            }
+         }
+
+         my->rpos_listener.resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
+         string& rpos_p2p_address = my->rpos_listener.p2p_address;
+         if( options.count( "rpos-p2p-listen-endpoint" )) {
+            rpos_p2p_address = options.at( "rpos-p2p-listen-endpoint" ).as<string>();
+            auto host = rpos_p2p_address.substr( 0, rpos_p2p_address.find( ':' ));
+            auto port = rpos_p2p_address.substr( host.size() + 1, rpos_p2p_address.size());
+            idump((host)( port ));
+            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
+            // Note: need to add support for IPv6 too?
+
+            my->rpos_listener.listen_endpoint = *my->rpos_listener.resolver->resolve( query );
+            my->rpos_listener.acceptor.reset( new tcp::acceptor( app().get_io_service()));
+         }
+
+         if( options.count( "rpos-p2p-server-address" )) {
+            rpos_p2p_address = options.at( "rpos-p2p-server-address" ).as<string>();
+         } else {
+            if( my->rpos_listener.listen_endpoint.address().to_v4() == address_v4::any()) {
+               boost::system::error_code ec;
+               auto host = host_name( ec );
+               if( ec.value() != boost::system::errc::success ) {
+
+                  FC_THROW_EXCEPTION( fc::invalid_arg_exception,
+                                      "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
+
+               }
+               auto port = rpos_p2p_address.substr(rpos_p2p_address.find( ':' ), rpos_p2p_address.size());
+               rpos_p2p_address = host + port;
             }
          }
 
          if( options.count( "p2p-peer-address" )) {
-            my->supplied_peers = options.at( "p2p-peer-address" ).as<vector<string> >();
+            my->trx_active_peers = options.at( "p2p-peer-address" ).as<vector<string> >();
          }
+         if( options.count( "rpos-p2p-peer-address" )) {
+            my->rpos_active_peers = options.at( "rpos-p2p-peer-address" ).as<vector<string> >();
+         }
+
          if( options.count( "agent-name" )) {
             my->user_agent_name = options.at( "agent-name" ).as<string>();
          }
@@ -2676,14 +2763,24 @@ namespace ultrainio {
    }
 
    void net_plugin::plugin_startup() {
-      if( my->acceptor ) {
-         my->acceptor->open(my->listen_endpoint.protocol());
-         my->acceptor->set_option(tcp::acceptor::reuse_address(true));
-         my->acceptor->bind(my->listen_endpoint);
-         my->acceptor->listen();
-         ilog("starting listener, max clients is ${mc}",("mc",my->max_client_count));
-         my->start_listen_loop();
+      if (my->trx_listener.acceptor) {
+         my->trx_listener.acceptor->open(my->trx_listener.listen_endpoint.protocol());
+         my->trx_listener.acceptor->set_option(tcp::acceptor::reuse_address(true));
+         my->trx_listener.acceptor->bind(my->trx_listener.listen_endpoint);
+         my->trx_listener.acceptor->listen();
+         ilog("starting trx listener, max clients is ${mc}",("mc",my->max_client_count));
+         my->start_listen_loop(my->trx_listener.acceptor, msg_priority_trx);
       }
+
+      if (my->rpos_listener.acceptor) {
+         my->rpos_listener.acceptor->open(my->rpos_listener.listen_endpoint.protocol());
+         my->rpos_listener.acceptor->set_option(tcp::acceptor::reuse_address(true));
+         my->rpos_listener.acceptor->bind(my->rpos_listener.listen_endpoint);
+         my->rpos_listener.acceptor->listen();
+         ilog("starting rpos listener, max clients is ${mc}",("mc",my->max_client_count));
+         my->start_listen_loop(my->rpos_listener.acceptor, msg_priority_rpos);
+      }
+
       {
          chain::controller&cc = my->chain_plug->chain();
          cc.accepted_block_header.connect( boost::bind(&net_plugin_impl::accepted_block_header, my.get(), _1));
@@ -2697,34 +2794,52 @@ namespace ultrainio {
 
       my->start_monitors();
 
-      for( auto seed_node : my->supplied_peers ) {
-         connect( seed_node );
+      for (auto seed_node : my->trx_active_peers) {
+         my->connect(seed_node, msg_priority_trx);
+      }
+
+      for (auto seed_node : my->rpos_active_peers) {
+         my->connect(seed_node, msg_priority_rpos);
       }
 
       if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
          logger = fc::get_logger_map()[logger_name];
    }
 
-   void net_plugin::plugin_shutdown() {
-      try {
-         ilog( "shutdown.." );
-         my->done = true;
-         if( my->acceptor ) {
-            ilog( "close acceptor" );
-            my->acceptor->close();
+    void net_plugin::plugin_shutdown() {
+        try {
+            ilog( "shutdown.." );
+            my->done = true;
+            if (my->rpos_listener.acceptor) {
+                ilog("close rpos acceptor");
+                my->rpos_listener.acceptor->close();
+                auto cons = my->connections;
+                for (auto con : cons) {
+                    if (con->priority == msg_priority_rpos) {
+                        my->close(con);
+                    }
+                }
 
-            ilog( "close ${s} connections",( "s",my->connections.size()) );
-            auto cons = my->connections;
-            for( auto con : cons ) {
-               my->close( con);
+                my->rpos_listener.acceptor = nullptr;
             }
 
-            my->acceptor.reset(nullptr);
-         }
-         ilog( "exit shutdown" );
-      }
-      FC_CAPTURE_AND_RETHROW()
-   }
+            if (my->trx_listener.acceptor) {
+                ilog("trx rpos acceptor");
+                my->trx_listener.acceptor->close();
+                auto cons = my->connections;
+                for (auto con : cons) {
+                    if (con->priority == msg_priority_trx) {
+                        my->close(con);
+                    }
+                }
+ 
+                my->trx_listener.acceptor = nullptr;
+            }
+            ilog( "exit shutdown" );
+        }
+        FC_CAPTURE_AND_RETHROW()
+    }
+
     int  net_plugin::get_waittime_sysblocknum()
     {
         return  my->max_waittime_getsyncblocknum ;
@@ -2775,16 +2890,8 @@ namespace ultrainio {
    /**
     *  Used to trigger a new connection from RPC API
     */
-   string net_plugin::connect( const string& host ) {
-      if( my->find_connection( host ) )
-         return "already connected";
-
-      connection_ptr c = std::make_shared<connection>(host);
-      fc_dlog(logger,"adding new connection to the list");
-      my->connections.insert( c );
-      fc_dlog(logger,"calling active connector");
-      my->connect( c );
-      return "added connection";
+   string net_plugin::connect(const string& host) {
+      return my->connect(host);
    }
 
    string net_plugin::disconnect( const string& host ) {
@@ -2799,32 +2906,33 @@ namespace ultrainio {
       return "no known connection for host";
    }
 
-   optional<connection_status> net_plugin::status( const string& host )const {
-      auto con = my->find_connection( host );
-      if( con )
-         return con->get_status();
-      return optional<connection_status>();
-   }
+    optional<connection_status> net_plugin::status( const string& host )const {
+        auto con = my->find_connection( host );
+        if( con )
+            return con->get_status();
+        return optional<connection_status>();
+    }
 
-   vector<connection_status> net_plugin::connections()const {
-      vector<connection_status> result;
-      result.reserve( my->connections.size() );
-      for( const auto& c : my->connections ) {
-         result.push_back( c->get_status() );
-      }
-      return result;
-   }
-   connection_ptr net_plugin_impl::find_connection( string host )const {
-      for( const auto& c : connections )
-         if( c->peer_addr == host ) return c;
-      return connection_ptr();
-   }
+    vector<connection_status> net_plugin::connections()const {
+        vector<connection_status> result;
+        result.reserve( my->connections.size() );
+        for( const auto& c : my->connections ) {
+            result.push_back( c->get_status() );
+        }
+        return result;
+    }
 
-   uint16_t net_plugin_impl::to_protocol_version (uint16_t v) {
-      if (v >= net_version_base) {
-         v -= net_version_base;
-         return (v > net_version_range) ? 0 : v;
-      }
-      return 0;
-   }
+    connection_ptr net_plugin_impl::find_connection(const string& host )const {
+        for( const auto& c : connections )
+            if( c->peer_addr == host ) return c;
+        return connection_ptr();
+    }
+
+    uint16_t net_plugin_impl::to_protocol_version (uint16_t v) {
+        if (v >= net_version_base) {
+            v -= net_version_base;
+            return (v > net_version_range) ? 0 : v;
+        }
+        return 0;
+    }
 }
