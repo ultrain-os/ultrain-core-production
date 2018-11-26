@@ -3,11 +3,12 @@
 #include <rpos/StakeVoteBase.h>
 
 namespace ultrainio {
+    class RoleRandom;
     class RoleSelection;
 
     class StakeVoteRandom : public StakeVoteBase {
     public:
-        StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr, const BlockIdType& rand);
+        StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand);
 
         virtual int proposerPriority(const AccountName& account);
     protected:
@@ -26,7 +27,7 @@ namespace ultrainio {
         virtual int realGetProposerNumber() const;
 
     private:
-        void initRoleSelection(std::shared_ptr<CommitteeState> committeeStatePtr, const BlockIdType& rand);
+        void initRoleSelection(std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand);
         std::shared_ptr<RoleSelection> m_roleSelectionPtr = nullptr;
     };
 }

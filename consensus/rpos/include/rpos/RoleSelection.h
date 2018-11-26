@@ -6,9 +6,11 @@
 #include <core/Redefined.h>
 
 namespace ultrainio {
+    class RoleRandom;
+
     class RoleSelection {
     public:
-        RoleSelection(const std::vector<std::string>& committeeV, const BlockIdType& rand);
+        RoleSelection(const std::vector<std::string>& committeeV, const RoleRandom& rand);
 
         bool isProposer(const std::string& account);
 
