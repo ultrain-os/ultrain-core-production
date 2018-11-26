@@ -253,7 +253,7 @@ namespace ultrainio {
         void handle_message( connection_ptr c, const ultrainio::SyncStopMsg& msg);
         void handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg);
 
-        void start_broadcast(const net_message& msg);
+        void start_broadcast(const net_message& msg, msg_priority p);
         void send_block(const string& ip_addr, const net_message& msg);
         bool send_req_sync(const ultrainio::ReqSyncMsg& msg);
         void send_last_block_num(const string& ip_addr, const net_message& msg);
@@ -479,6 +479,7 @@ namespace ultrainio {
         void initialize();
 
         static const uint32_t MAX_OUT_QUEUE = 1000;
+        static const uint32_t MAX_WRITE_QUEUE = 1000000;
 
         peer_block_state_index  blk_state;
         transaction_state_index trx_state;
@@ -1015,7 +1016,13 @@ namespace ultrainio {
     void connection::queue_write(std::shared_ptr<vector<char>> buff,
                                  bool trigger_send,
                                  std::function<void(boost::system::error_code, std::size_t)> callback) {
-        write_queue.push_back({buff, callback});
+        if (this->priority != msg_priority_rpos && write_queue.size() >= MAX_WRITE_QUEUE) {
+            elog("non-rpos write queue is full");
+            return;
+        } else {
+            write_queue.push_back({buff, callback});
+        }
+
         if(out_queue.empty() && trigger_send)
             do_queue_write();
     }
@@ -1622,9 +1629,9 @@ namespace ultrainio {
          });
    }
 
-   void net_plugin_impl::start_broadcast(const net_message& msg) {
+   void net_plugin_impl::start_broadcast(const net_message& msg, msg_priority p) {
        for(auto &c : connections) {
-           if(c->current()) {
+           if (c->current() && p == c->priority) {
                ilog ("send to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
                c->enqueue(msg);
            }
@@ -1633,7 +1640,7 @@ namespace ultrainio {
 
     void net_plugin_impl::send_block(const string& ip_addr, const net_message& msg) {
         for(auto &c : connections) {
-            if((c->current()) && (c->socket->remote_endpoint().address().to_v4().to_string() == ip_addr)) {
+            if (c->priority == msg_priority_trx && (c->current()) && (c->socket->remote_endpoint().address().to_v4().to_string() == ip_addr)) {
                 ilog ("send block to peer : ${peer_name}, enqueue", ("peer_name", c->peer_name()));
                 c->enqueue(msg);
                 break;
@@ -1643,7 +1650,7 @@ namespace ultrainio {
 
     void net_plugin_impl::send_last_block_num(const string& ip_addr, const net_message& msg) {
         for (auto &c : connections) {
-          if (c->current() && (c->socket->remote_endpoint().address().to_v4().to_string() == ip_addr)) {
+          if (c->priority == msg_priority_trx && c->current() && (c->socket->remote_endpoint().address().to_v4().to_string() == ip_addr)) {
             ilog("send last block num to peer: ${p}", ("p", c->peer_name()));
             c->enqueue(msg);
             break;
@@ -1665,7 +1672,7 @@ namespace ultrainio {
         std::vector<connection_ptr> conn_list;
         conn_list.reserve(connections.size());
         for (auto& c:connections) {
-            if (c->current()) {
+            if (c->priority == msg_priority_trx && c->current()) {
                 c->last_block_info.blockNum = 0;
                 c->last_block_info.blockHash = "";
                 c->last_block_info.prevBlockHash = "";
@@ -1833,7 +1840,7 @@ namespace ultrainio {
     template<typename VerifierFunc>
     void net_plugin_impl::send_all( const net_message &msg, VerifierFunc verify) {
         for( auto &c : connections) {
-            if( c->current() && verify( c)) {
+            if( c->priority == msg_priority_trx && c->current() && verify( c)) {
                 c->enqueue( msg );
             }
         }
@@ -2136,7 +2143,7 @@ namespace ultrainio {
             ("phase", (uint32_t)msg.phase)("baxcount",msg.baxCount)("account", std::string(msg.account)));
        if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
-               if (conn != c) {
+               if (conn != c && conn->priority == msg_priority_rpos) {
                    conn->enqueue(net_message(msg));
                }
            }
@@ -2148,7 +2155,7 @@ namespace ultrainio {
             ("p", c->peer_name())("id", msg.block.id())("num", msg.block.block_num()));
        if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
-               if (conn != c) {
+               if (conn != c && conn->priority == msg_priority_rpos) {
                    conn->enqueue(net_message(msg));
                }
            }
@@ -2160,7 +2167,7 @@ namespace ultrainio {
             ("p", c->peer_name())("id", msg.blockId)("num", BlockHeader::num_from_id(msg.blockId))("account", std::string(msg.account)));
        if (MsgMgr::getInstance()->handleMessage(msg) == kSuccess) {
            for (auto &conn : connections) {
-               if (conn != c) {
+               if (conn != c && conn->priority == msg_priority_rpos) {
                    conn->enqueue(net_message(msg));
                }
            }
@@ -2850,17 +2857,17 @@ namespace ultrainio {
     }
    void net_plugin::broadcast(const ProposeMsg& propose) {
       ilog("broadcast propose msg. blockHash : ${blockHash}", ("blockHash", propose.block.id()));
-      my->start_broadcast(net_message(propose));
+      my->start_broadcast(net_message(propose), msg_priority_rpos);
    }
 
    void net_plugin::broadcast(const EchoMsg& echo) {
       ilog("broadcast echo");
-      my->start_broadcast(net_message(echo));
+      my->start_broadcast(net_message(echo), msg_priority_rpos);
    }
 
     void net_plugin::broadcast(const AggEchoMsg& aggEchoMsg) {
         ilog("broadcast AggEchoMsg");
-        my->start_broadcast(net_message(aggEchoMsg));
+        my->start_broadcast(net_message(aggEchoMsg), msg_priority_rpos);
     }
 
    void net_plugin::send_block(const string& ip_addr, const ultrainio::SyncBlockMsg& msg) {
