@@ -498,13 +498,13 @@ namespace ultrainio {
     void UranusNode::fastLoop(uint32_t timeout) {
         dlog("start fastLoop timeout = ${timeout}", ("timeout", timeout));
         m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
-        m_currentTimerHandlerNo = THN_BA0;
-        resetTimerCanceled(THN_BA0);
+        m_currentTimerHandlerNo = THN_FAST_CHECK;
+        resetTimerCanceled(THN_FAST_CHECK);
         m_timer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("fast loop timer cancel");
             } else {
-                if (isTimerCanceled(THN_BA0)) {
+                if (isTimerCanceled(THN_FAST_CHECK)) {
                     ilog("fast Loop timer has been already canceled.");
                 } else {
                     this->fastProcess();
