@@ -28,6 +28,7 @@ namespace ultrainio {
         THN_BA1 = 3,
         THN_BAX = 4,
         THN_SYNC_BLOCK = 5,
+        THN_FAST_CHECK = 6,
         THN_MAX = 31
     };
 
