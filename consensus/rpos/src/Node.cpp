@@ -502,10 +502,10 @@ namespace ultrainio {
         resetTimerCanceled(THN_FAST_CHECK);
         m_timer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
-                ilog("fast loop timer cancel");
+                ilog("fast check timer cancel");
             } else {
                 if (isTimerCanceled(THN_FAST_CHECK)) {
-                    ilog("fast Loop timer has been already canceled.");
+                    ilog("fast check timer has been already canceled.");
                 } else {
                     this->fastProcess();
                 }
