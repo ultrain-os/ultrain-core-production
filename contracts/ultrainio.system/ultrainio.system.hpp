@@ -94,7 +94,7 @@ namespace ultrainiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(hasactived)(url)
-                        (unpaid_blocks)(last_claim_time)(location) )
+                        (unpaid_blocks)(total_produce_block)(last_claim_time)(location) )
    };
 
    typedef ultrainio::multi_index< N(producers), producer_info,

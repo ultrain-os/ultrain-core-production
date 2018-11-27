@@ -128,13 +128,6 @@ namespace ultrainio {
          static block_timestamp maximum() { return block_timestamp( 0xffff ); }
          static block_timestamp min() { return block_timestamp(0); }
 
-         block_timestamp next() const {
-            ultrainio_assert( std::numeric_limits<uint32_t>::max() - abstime >= 1, "block timestamp overflow" );
-            auto result = block_timestamp(*this);
-            result.abstime += block_interval_ms / 1000;
-            return result;
-         }
-
          time_point to_time_point() const {
             return (time_point)(*this);
          }

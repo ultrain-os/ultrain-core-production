@@ -56,7 +56,7 @@ namespace ultrainiosystem {
       }
 
 
-      if( (timestamp.abstime - _gstate.last_name_close.abstime) > 24*3600 ) {
+      if( (timestamp.abstime - _gstate.last_name_close.abstime) > seconds_per_day ) {
           name_bid_table bids(_self,_self);
           auto idx = bids.get_index<N(highbid)>();
           auto highest = idx.begin();
