@@ -84,6 +84,7 @@ let u3Sub = createU3(configSub);
 // });
 
 var path = '/root/.local/share/ultrainio/nodultrain/config.ini';
+path = "config.ini";
 
 var configIni = ini.parse(fs.readFileSync(path,'utf-8'));
 
@@ -97,7 +98,7 @@ console.log(configIni["my-account-as-committee"]);
 console.log(configIni["my-sk-as-committee"]);
 
 //修改config.ini文件
-// fs.writeFileSync('./config.ini',ini.stringify(configIni,{section:''}));
+fs.writeFileSync('./config.ini',ini.stringify(configIni,{section:''}));
 
 
 var myAccountAsCommittee = configIni["my-account-as-committee"];
