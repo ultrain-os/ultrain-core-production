@@ -24,7 +24,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="df6c52";
+    char version[]="6b3254";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -708,8 +708,6 @@ namespace ultrainio {
         msgkey msg_key;
 
         reset();
-        // Whenever we are back to BA0, clear the pre run status.
-        m_schedulerPtr->clearPreRunStatus();
 
         m_phase = kPhaseBA0;
         m_baxCount = 0;

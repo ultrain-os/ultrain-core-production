@@ -148,6 +148,7 @@ namespace ultrainio {
         uint32_t blockNum = getLastBlocknum();
         m_ba0Block = Block();
         m_ba0VerifiedBlkId = BlockIdType();
+        clearPreRunStatus();
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
         clearMsgCache(m_cacheProposeMsgMap, blockNum);
@@ -1418,7 +1419,7 @@ namespace ultrainio {
 
         if (isBlank(id)) {
             return false;
-	}
+        }
 
         auto existing = chain.fetch_block_by_id(id);
         if (existing) {
