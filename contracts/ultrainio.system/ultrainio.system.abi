@@ -53,10 +53,11 @@
         {"name":"bid", "type":"asset"}
       ]
     },{
-      "name": "updateactiveminers",
+      "name": "votecommittee",
       "base": "",
       "fields": [
-        {"name":"miners", "type":"proposeminer_info[]"}
+         {"name":"proposer", "type":"account_name"},
+         {"name":"proposeminer", "type":"proposeminer_info[]"}
       ]
     },{
       "name": "regminer",
@@ -601,8 +602,8 @@
       "type": "bidname",
       "ricardian_contract": ""
    },{
-      "name": "updateactiveminers",
-      "type": "updateactiveminers",
+      "name": "votecommittee",
+      "type": "votecommittee",
       "ricardian_contract": ""
    },{
       "name": "regminer",

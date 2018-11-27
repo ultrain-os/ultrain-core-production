@@ -969,6 +969,32 @@ struct list_producers_subcommand {
    }
 };
 
+struct votecommittee_subcommand {
+   string requested_perm;
+   string proposer;
+   votecommittee_subcommand(CLI::App* actionRoot) {
+      auto propose_action = actionRoot->add_subcommand("votecommittee", localized("Propose action"));
+      add_standard_transaction_options(propose_action);
+      propose_action->add_option("proposer", proposer, localized("proposer name"))->required();
+      propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+      propose_action->set_callback([&] {
+         fc::variant requested_perm_var;
+         try {
+            requested_perm_var = json_from_file_or_string(requested_perm);
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+         vector<proposeminer_info> reqperm;
+         try {
+            reqperm = requested_perm_var.as<vector<proposeminer_info>>();
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
+
+         auto args = fc::mutable_variant_object()
+            ("proposer", proposer )
+            ("proposeminer", requested_perm_var);
+         send_actions({chain::action{{permission_level{proposer,config::active_name}}, config::system_account_name, "votecommittee", variant_to_bin( N(ultrainio), NEX(votecommittee), args ) }});
+      });
+   }
+};
+
 struct delegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
@@ -2781,40 +2807,6 @@ int main( int argc, char** argv ) {
       }
    );
 
-
-   propose_action = msig->add_subcommand("votecommittee", localized("Propose action"));
-   add_standard_transaction_options(propose_action);
-   propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
-   propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
-   propose_action->set_callback([&] {
-      fc::variant requested_perm_var;
-      try {
-         requested_perm_var = json_from_file_or_string(requested_perm);
-      } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
-      vector<proposeminer_info> reqperm;
-      try {
-         reqperm = requested_perm_var.as<vector<proposeminer_info>>();
-      } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
-
-      auto accountPermissions = get_account_permissions(tx_permission);
-      if (accountPermissions.empty()) {
-         if (!proposer.empty()) {
-            accountPermissions = vector<permission_level>{{proposer, config::active_name}};
-         } else {
-            ULTRAIN_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <proposer> or -p)");
-         }
-      }
-      if (proposer.empty()) {
-         proposer = name(accountPermissions.at(0).actor).to_string();
-      }
-//         ("proposal_miner", proposal_miner_var)
-      auto args = fc::mutable_variant_object()
-         ("proposer", proposer )
-         ("proposeminer", requested_perm_var);
-      printf("yanhuichao send_actions votecommittee test");
-      send_actions({chain::action{accountPermissions, "utrio.msig", "votecommittee", variant_to_bin( N(utrio.msig), NEX(votecommittee), args ) }});
-   });
-
    // sudo subcommand
    auto sudo = app.add_subcommand("sudo", localized("Sudo contract commands"), false);
    sudo->require_subcommand();
@@ -2854,7 +2846,7 @@ int main( int argc, char** argv ) {
    auto unregisterProducer = unregister_producer_subcommand(system);
 
    auto listProducers = list_producers_subcommand(system);
-
+   auto votecommittee = votecommittee_subcommand(system);
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
    auto delegatecons = delegate_cons_subcommand(system);

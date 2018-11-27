@@ -11,6 +11,7 @@
 #include <ultrainiolib/singleton.hpp>
 #include <ultrainio.system/exchange_state.hpp>
 #include <ultrainiolib/block_header.hpp>
+#include <ultrainiolib/ultrainio.hpp>
 #include <string>
 
 namespace ultrainiosystem {
@@ -96,6 +97,14 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(hasactived)(url)
                         (unpaid_blocks)(total_produce_block)(last_claim_time)(location) )
    };
+
+   struct pendingminer {
+            uint64_t                   index = 0;
+            std::vector<account_name>       proposal_miner;
+            std::vector<account_name>       provided_approvals;
+            auto primary_key()const { return index; }
+         };
+   typedef ultrainio::multi_index<N(pendingminer),pendingminer> pendingminers;
 
    typedef ultrainio::multi_index< N(producers), producer_info,
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
@@ -248,6 +257,8 @@ namespace ultrainiosystem {
                                uint32_t relayer_deposit,
                                const std::string& ip,
                                uint64_t chain_name); */
+
+         void votecommittee();
       private:
          inline void update_activated_stake(int64_t stake);
 

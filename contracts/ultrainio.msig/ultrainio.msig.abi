@@ -18,16 +18,6 @@
         {"name": "permission", "type": "permission_name"}
       ]
     },{
-      "name": "proposeminer_info",
-      "base": "",
-      "fields": [
-        {"name": "account", "type": "account_name"},
-        {"name": "public_key", "type": "string"},
-        {"name": "url", "type": "string"},
-        {"name": "location", "type": "uint64"},
-        {"name": "adddel_miner", "type": "bool"}
-      ]
-    },{
       "name": "action",
       "base": "",
       "fields": [
@@ -104,13 +94,6 @@
         {"name":"executer", "type":"account_name"}
       ]
     },{
-      "name": "votecommittee",
-      "base": "",
-      "fields": [
-         {"name":"proposer", "type":"account_name"},
-         {"name":"proposeminer", "type":"proposeminer_info[]"}
-      ]
-    },{
       "name": "proposal",
       "base": "",
       "fields": [
@@ -146,10 +129,6 @@
     }, {
       "name": "exec",
       "type": "exec",
-      "ricardian_contract": ""
-    }, {
-      "name": "votecommittee",
-      "type": "votecommittee",
       "ricardian_contract": ""
     }
 

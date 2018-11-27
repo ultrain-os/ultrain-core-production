@@ -144,14 +144,14 @@ namespace ultrainiosystem {
                N(ultrainio), NEX(regproducer),
                std::make_tuple(miner.account, miner.public_key, miner.url, miner.location)
             ).send();
-            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.stake),N(active)},
-                                    { N(utrio.stake), miner.account,  asset(833333333333),
-                                    "" } );
             action(
-               permission_level{ miner.account, N(active) },
+               permission_level{ N(utrio.stake), N(active) },
                N(ultrainio), NEX(delegatecons),
                std::make_tuple(N(utrio.stake),miner.account,asset(833333333333))
             ).send();
+            // INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(ultrainio), N(active)},
+            //     { N(utrio.stake),miner.account,asset(833333333333)} );
+
          }else{
             auto prod = _producers.find( miner.account );
             ultrainio_assert( prod != _producers.end(), "remove producer not found" );
@@ -161,12 +161,83 @@ namespace ultrainiosystem {
                });
             print("updateactiveminers   del proposerminer:",name{(*prod).owner}," (*produceriter).total_cons_staked:",(*prod).total_cons_staked);
             action(
-               permission_level{ (*prod).owner, N(active) },
+               permission_level{ N(utrio.stake), N(active) },
                N(ultrainio), NEX(undelegatecons),
                std::make_tuple(N(utrio.stake),(*prod).owner,asset((*prod).total_cons_staked))
             ).send();
          }
       }
+   }
+   void system_contract::votecommittee() {
+      constexpr size_t max_stack_buffer_size = 4096;
+      size_t size = action_data_size();
+      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      read_action_data( buffer, size );
+      account_name proposer;
+      vector<proposeminer_info> proposeminer;
+      datastream<const char*> ds( buffer, size );
+      ds >> proposer >> proposeminer;
+      int proposeminersize = proposeminer.size();
+      ultrainio_assert( proposeminersize > 0, "propose miner must greater than 0" );
+      require_auth( proposer );
+
+      auto const comp = [this](const proposeminer_info &a, const proposeminer_info &b){
+         if (a.account < b.account)
+               return true;
+         return false;
+      };
+      std::sort(proposeminer.begin(), proposeminer.end(),comp);
+
+      bool nofindminerflg = false;
+      int  curactiveminer = 0;
+      for(auto itr = _producers.begin(); itr != _producers.end(); ++itr, ++curactiveminer);
+      print("votecommittee curactiveminer size:", curactiveminer," proposer:",proposer," minersize:",proposeminer.size());
+      for(auto miner:proposeminer){
+         print("get votecommittee proposeminer vector:", ultrainio::name{miner.account}, miner.public_key, miner.adddel_miner,"\n");
+      }
+      pendingminers pendingminer( _self, _self );
+      for(auto pendingiter = pendingminer.begin(); pendingiter != pendingminer.end(); pendingiter++)
+      {
+         nofindminerflg = false;
+         if((*pendingiter).proposal_miner.size() == proposeminersize){
+            for(int i = 0;i < proposeminersize;i++)
+            {
+               if(proposeminer[i].account != (*pendingiter).proposal_miner[i]){
+                  nofindminerflg = true;
+                  break;
+               }
+            }
+            if(!nofindminerflg){
+               auto itr = std::find( (*pendingiter).provided_approvals.begin(), (*pendingiter).provided_approvals.end(), proposer );
+               ultrainio_assert( itr == (*pendingiter).provided_approvals.end(), "proposer already voted" );
+               pendingminer.modify( *pendingiter, 0, [&]( auto& p ) {
+                  p.provided_approvals.push_back(proposer);
+               });
+               print("votecommittee nofindminerflg proposer:",proposer," nofindminerflg:",nofindminerflg);
+               if((*pendingiter).provided_approvals.size() >= curactiveminer*2/3){
+                  //to do  sendaction   //
+                  print("votecommittee sendaction proposer:",proposer," minersize:",proposeminer.size());
+
+                  // INLINE_ACTION_SENDER(ultrainiosystem::system_contract, updateactiveminers)( N(ultrainio), {N(ultrainio), N(active)},
+                  // { proposeminer} );
+                  updateactiveminers(proposeminer);
+                  pendingminer.modify( *pendingiter, 0, [&]( auto& p ) {
+                     p.provided_approvals.clear();
+                  });
+               }
+               print("votecommittee proposer:",proposer," minersize:",proposeminer.size());
+               return;
+            }
+         }
+      }
+      pendingminer.emplace( _self, [&]( auto& p ) {
+         p.index++;
+         p.provided_approvals.push_back(proposer);
+         p.proposal_miner.clear();
+         for(auto miner:proposeminer)
+            p.proposal_miner.push_back(miner.account);
+      });
+      print("votecommittee pushback  pendingminer");
    }
    /**
     *  Called after a new account is created. This code enforces resource-limits rules
@@ -222,7 +293,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
      // ultrainio.system.cpp
-     (setram)(setparams)(setpriv)(rmvproducer)(bidname)(updateactiveminers)
+     (setram)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)
      // delegate_bandwidth.cpp
      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(delegatecons)(undelegatecons)(refund)(refundcons)
      // voting.cpp
