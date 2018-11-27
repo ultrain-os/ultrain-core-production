@@ -150,7 +150,7 @@ namespace ultrainio {
          bool   operator ==( const block_timestamp& t )const   { return abstime == t.abstime; }
          bool   operator !=( const block_timestamp& t )const   { return abstime != t.abstime; }
          uint32_t abstime;
-         static constexpr int64_t block_timestamp_epoch = 946684800000ll;  // epoch is year 2000
+         static constexpr int64_t block_timestamp_epoch = 1514764800000ll; // epoch is year 2018.
 
          ULTRAINLIB_SERIALIZE( block_timestamp, (abstime) )
       private:

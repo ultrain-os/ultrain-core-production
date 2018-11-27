@@ -40,9 +40,8 @@ const static uint64_t ultrainio_code_name = N(utrio.code);
 
 extern int      block_interval_ms;
 extern int      block_interval_us;
-const static int non_para = 20000;/*temp,just for print right*/
 
-const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
+const static uint64_t block_timestamp_epoch = 1514764800000ll; // epoch is year 2000.
 
 /** Percentages are fixed point with a denominator of 10,000 */
 const static int percent_100 = 10000;
@@ -64,7 +63,7 @@ const static uint32_t   rate_limiting_precision        = 1000*1000;
 const static uint32_t   default_max_propose_trx_count                 = 12000;
 const static uint32_t   default_max_pending_trx_count                 = 50000;
 const static uint32_t   default_max_unapplied_trx_count               = 50000;
-// 500K is the block limit, so that ~20 proposer would be 10M traffic at maximal for about 3~4s
+
 const static uint32_t   default_max_block_net_usage                 = 1024 * 1024 * 2;
 const static uint32_t   default_target_block_net_usage_pct           = 10 * percent_1; /// we target 1000 TPS
 const static uint32_t   default_max_transaction_net_usage            = default_max_block_net_usage / 2;
@@ -74,7 +73,7 @@ const static uint32_t   default_context_free_discount_net_usage_num  = 20; // TO
 const static uint32_t   default_context_free_discount_net_usage_den  = 100;
 const static uint32_t   transaction_id_net_usage                     = 32; // 32 bytes for the size of a transaction id
 
-// max block cpu is about 3s
+// TODO: this should be derived from consensus period.
 const static uint32_t   default_max_block_cpu_usage                 = 3'000'000; /// max block cpu usage in microseconds
 const static uint32_t   default_target_block_cpu_usage_pct          = 10 * percent_1;
 // max single trx cpu is about 500ms ?

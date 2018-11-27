@@ -12,10 +12,7 @@ namespace ultrainio { namespace chain {
 
    /**
    * This class is used in the block headers to represent the block time
-   * It is a parameterised class that takes an Epoch in milliseconds and
-   * and an interval in milliseconds and computes the number of abstimes.
    **/
-   //template<uint16_t IntervalMs, uint64_t EpochMs>
    class block_timestamp {
       public:
          explicit block_timestamp( uint32_t s=0 ) :abstime(s){}
@@ -32,7 +29,7 @@ namespace ultrainio { namespace chain {
          static block_timestamp min() { return block_timestamp(0); }
 
          block_timestamp next() const {
-            ULTRAIN_ASSERT( std::numeric_limits<uint32_t>::max() - abstime >= 1, fc::overflow_exception, "block timestamp overflow" );
+            ULTRAIN_ASSERT( std::numeric_limits<uint32_t>::max() - abstime >= 1, fc::overflow_exception, "block timestamp overflow" )
             auto result = block_timestamp(*this);
             result.abstime += config::block_interval_ms / 1000;
             return result;
@@ -44,7 +41,7 @@ namespace ultrainio { namespace chain {
 
          operator fc::time_point() const {
             int64_t msec = abstime * 1000ll;
-	    msec += config::block_timestamp_epoch;
+            msec += config::block_timestamp_epoch;
             return fc::time_point(fc::milliseconds(msec));
          }
 
@@ -64,18 +61,16 @@ namespace ultrainio { namespace chain {
       void set_time_point(const fc::time_point& t) {
          auto micro_since_epoch = t.time_since_epoch();
          auto msec_since_epoch  = micro_since_epoch.count() / 1000;
-	 abstime = ( msec_since_epoch - config::block_timestamp_epoch ) / 1000;
+         abstime = ( msec_since_epoch - config::block_timestamp_epoch ) / 1000;
       }
 
       void set_time_point(const fc::time_point_sec& t) {
          uint64_t  sec_since_epoch = t.sec_since_epoch();
-        // abstime = (sec_since_epoch * 1000 - config::block_timestamp_epoch) / (config::block_interval_ms);
          abstime = (sec_since_epoch * 1000 - config::block_timestamp_epoch) / 1000 ;
       }
    }; // block_timestamp
 
- // typedef block_timestamp<config::non_para,config::block_timestamp_epoch> block_timestamp_type;
-typedef block_timestamp block_timestamp_type;
+  typedef block_timestamp block_timestamp_type;
 } } /// ultrainio::chain
 
 
@@ -87,7 +82,7 @@ namespace fc {
   void to_variant(const ultrainio::chain::block_timestamp& t, fc::variant& v);
 
  //template<uint16_t IntervalMs, uint64_t EpochMs>
-  void from_variant(const fc::variant& v, ultrainio::chain::block_timestamp& t); 
+  void from_variant(const fc::variant& v, ultrainio::chain::block_timestamp& t);
 }
 
 #ifdef _MSC_VER
