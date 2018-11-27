@@ -10,7 +10,7 @@
 #include <ultrainiolib/privileged.hpp>
 #include <ultrainiolib/singleton.hpp>
 #include <ultrainio.system/exchange_state.hpp>
-
+#include <ultrainiolib/block_header.hpp>
 #include <string>
 
 namespace ultrainiosystem {
@@ -21,6 +21,8 @@ namespace ultrainiosystem {
    using ultrainio::block_timestamp;
 
    const int num_rate = 7;
+   const uint64_t master_chain_name = 1;
+   const uint64_t pending_chain_name = 0;
 
    struct name_bid {
      account_name            newname;
@@ -64,10 +66,15 @@ namespace ultrainiosystem {
                                 (total_producer_vote_weight)(last_name_close) )
    };
 
-   struct producer_info {
+   struct role_base {
       account_name          owner;
+      std::string           producer_key; /// a packed public key objec
+
+      ULTRAINLIB_SERIALIZE(role_base, (owner)(producer_key) )
+    };
+
+   struct producer_info : public role_base {
       int64_t               total_cons_staked = 0;
-      std::string           producer_key; /// a packed public key object
       bool                  is_active = true;
       bool                  is_enabled = false;
       bool                  hasactived = false;
@@ -75,16 +82,19 @@ namespace ultrainiosystem {
       uint64_t              unpaid_blocks[num_rate] {};
       uint64_t              total_produce_block;
       uint64_t              last_claim_time = 0;
-      uint16_t              location = 0;
+      uint64_t              location = 0;
 
       uint64_t primary_key()const { return owner;                                   }
       double   by_votes()const    { return is_active ? -total_cons_staked : total_cons_staked;  }
       bool     active()const      { return is_active;                               }
       void     deactivate()       { producer_key = std::string(); is_active = false; }
+      bool     is_on_master_chain() const  {return location == master_chain_name;}
+      bool     is_on_pending_chian() const  {return location == pending_chain_name;}
+      bool     is_on_subchain() const      {return location != master_chain_name && location != pending_chain_name;}
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( producer_info, (owner)(total_cons_staked)(producer_key)(is_active)(is_enabled)(url)
-                        (unpaid_blocks)(total_produce_block)(last_claim_time)(location) )
+      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(hasactived)(url)
+                        (unpaid_blocks)(last_claim_time)(location) )
    };
 
    typedef ultrainio::multi_index< N(producers), producer_info,
@@ -92,6 +102,31 @@ namespace ultrainiosystem {
                                >  producers_table;
 
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
+
+    struct subchain_base {
+        uint64_t               chain_name;
+        int64_t                min_active_stake;
+        uint32_t               min_committee_member_num;
+        account_name           root_name;
+        std::string            root_pk;
+        std::vector<role_base>  committee_members;  //all producers with enough deposit
+        uint64_t               total_deposit;
+        block_id_type          head_block_id;
+        uint32_t               head_block_num;
+    };
+    typedef ultrainio::singleton<N(pendingchain), subchain_base> pengding_subchain;
+
+    struct subchain : public subchain_base {
+        checksum256        chain_id;
+        std::string        genesis_info;
+        std::string        network_topology;   //ignore it now, todo, will re-design it after dynamic p2p network feature implemented
+        uint32_t           relayer_stake_threshold;
+        std::vector<role_base>  relayer_candidates; //relayer only with deposit， not in committee list
+        std::vector<role_base>  relayer_list;       // choosen from accounts with enough deposit (both producer and non-producer)
+
+        auto primary_key()const { return chain_name; }
+    };
+    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
@@ -104,6 +139,8 @@ namespace ultrainiosystem {
 
          ultrainio_global_state     _gstate;
          rammarket              _rammarket;
+         pengding_subchain     _pending_subchain;
+         subchains_table       _subchains;
 
       public:
          system_contract( account_name s );
@@ -112,7 +149,6 @@ namespace ultrainiosystem {
          // Actions:
          void onblock( block_timestamp timestamp, account_name producer );
                       // const block_header& header ); /// only parse first 3 fields of block header
-         void reportblocknumber( account_name producer, uint64_t number);
          // functions defined in delegate_bandwidth.cpp
 
          /**
@@ -169,7 +205,7 @@ namespace ultrainiosystem {
 
          // functions defined in voting.cpp
 
-         void regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint16_t location );
+         void regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint64_t location );
 
          void unregprod( const account_name producer );
 
@@ -187,6 +223,27 @@ namespace ultrainiosystem {
          void bidname( account_name bidder, account_name newname, asset bid );
 
          void updateactiveminers(const std::vector<ultrainio::proposeminer_info>& miners );
+
+        // functions defined in scheduler.cpp
+         void regsubchain(uint64_t chain_name,
+                          account_name root_user_name,
+                          const std::string& root_user_pk,
+                          uint32_t sub_chain_deposit,
+                          uint32_t node_num);
+
+         void acceptheader (uint64_t chain_name,
+                            const ultrainio::block_header& header);
+//                          const std::string& aggregatedEcho,
+//                          const std::vector<uint32_t>& echo_weight_vector,
+//                          const std::vector<std::string>& echo_account_vector);
+
+         //Register to ba a relayer candidate of a subchain, only for those accounts which are not in the committee list of this subchain.
+         //All committee members are also be relayer candidates automatically
+/*         void register_relayer(const std::string& miner_pk,
+                               account_name relayer_account_name,
+                               uint32_t relayer_deposit,
+                               const std::string& ip,
+                               uint64_t chain_name); */
       private:
          inline void update_activated_stake(int64_t stake);
 
@@ -201,6 +258,19 @@ namespace ultrainiosystem {
          //defined in voting.hpp
          static ultrainio_global_state get_default_parameters();
 
+         //defined in producer_pay.cpp
+         void reportblocknumber( account_name producer, uint64_t number);
+
+         //defined in scheduler.cpp
+         void start_pending_chain();
+
+         void add_to_pendingchain(account_name producer, const std::string& public_key);
+
+         void remove_from_pendingchain(account_name producer);
+
+         void add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key);
+
+         void remove_from_subchain(uint64_t chain_name, account_name producer);
    };
 
 } /// ultrainiosystem

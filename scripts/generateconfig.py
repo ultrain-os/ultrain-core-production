@@ -156,7 +156,7 @@ def insert_leader_sk(fname):
 
 def insert_non_producing(fname):
 	content = readfile(fname)
-	newcontent = "is-non-producing-node = 1\n"
+	newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.4:8877\n"
 	print(newcontent)
 	index_line = content.index("#insert_if_producing-node\n")
 	content.insert(index_line+1, newcontent)

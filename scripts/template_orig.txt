@@ -1,4 +1,4 @@
-http-server-address = 127.0.0.1:8888
+#http-server-address = 127.0.0.1:8888
 
 p2p-listen-endpoint = 0.0.0.0:9876
 

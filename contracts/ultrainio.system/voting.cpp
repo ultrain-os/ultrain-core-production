@@ -34,7 +34,7 @@ namespace ultrainiosystem {
     *  @pre authority of producer to register
     *
     */
-    void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint16_t location ) {
+    void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint64_t location ) {
       ultrainio_assert( url.size() < 512, "url too long" );
       // key is hex encoded
       ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
@@ -70,6 +70,13 @@ namespace ultrainiosystem {
       _producers.modify( prod, 0, [&]( producer_info& info ){
             info.deactivate();
       });
+/*
+      if(prod.is_on_pending_chian()) {
+          remove_from_pendingchain(producer);
+      }
+      else if(prod.is_on_subchain()) {
+          //todo
+      } */
    }
 
    inline void system_contract::update_activated_stake(int64_t stake) {

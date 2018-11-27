@@ -459,7 +459,7 @@ namespace ultrainiosystem {
          }
       }
 
-      // update voting power
+      // if on master chain, update voting power; else add to pending chain or subchain.
       {
          asset total_update = stake_cons_delta;
          auto it = _producers.find(receiver);
@@ -470,14 +470,32 @@ namespace ultrainiosystem {
                   v.total_cons_staked += total_update.amount;
                   v.is_enabled = enabled;
                   });
-         if(enabled && !it->hasactived) {
-            update_activated_stake(it->total_cons_staked);
-            _producers.modify(it, 0 , [&](auto & v) {
-                     v.hasactived = true;
+         if(it->is_on_master_chain()) {
+             if(enabled && !it->hasactived) {
+                 update_activated_stake(it->total_cons_staked);
+                 _producers.modify(it, 0 , [&](auto & v) {
+                         v.hasactived = true;
                      });
+             }
+             else if(it->hasactived){
+                 update_activated_stake(total_update.amount);
+             }
          }
-         else if(it->hasactived){
-            update_activated_stake(total_update.amount);
+         else if (enabled) {
+             if(it->is_on_pending_chian()) {
+                 add_to_pendingchain(it->owner, it->producer_key);
+             }
+             else {
+                 add_to_subchain(it->location, it->owner, it->producer_key);
+             }
+         }
+         else {
+             if(it->is_on_pending_chian()) {
+                 remove_from_pendingchain(it->owner);
+             }
+             else {
+                 remove_from_subchain(it->location, it->owner);
+             }
          }
       }
    }

@@ -5,6 +5,7 @@
 #include "delegate_bandwidth.cpp"
 #include "voting.cpp"
 #include "exchange_state.cpp"
+#include "scheduler.cpp"
 #include <ultrainiolib/action.hpp>
 
 
@@ -14,8 +15,9 @@ namespace ultrainiosystem {
    :native(s),
     _producers(_self,_self),
     _global(_self,_self),
-    _rammarket(_self,_self)
-   {
+    _rammarket(_self,_self),
+    _pending_subchain(_self,_self),
+    _subchains(_self,_self) {
       //print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
 
@@ -226,5 +228,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // voting.cpp
      (regproducer)(unregprod)
      // producer_pay.cpp
-     (onblock)(reportblocknumber)(claimrewards)
+     (onblock)(claimrewards)
+     // scheduler.cpp
+     (regsubchain)(acceptheader)
 )
