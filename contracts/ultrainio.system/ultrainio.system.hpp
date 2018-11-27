@@ -22,8 +22,8 @@ namespace ultrainiosystem {
    using ultrainio::block_timestamp;
 
    const int num_rate = 7;
-   const uint64_t master_chain_name = 1;
-   const uint64_t pending_chain_name = 0;
+   const uint64_t master_chain_name = 0;
+   const uint64_t pending_chain_name = std::numeric_limits<uint64_t>::max();
 
    struct name_bid {
      account_name            newname;
