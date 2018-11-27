@@ -164,7 +164,7 @@ def insert_non_producing(fname):
 
 def insert_peer(fname,peer):
 	content = readfile(fname)
-	newcontent = "p2p-peer-address =  %s:9876\n" % peer
+        newcontent = "p2p-peer-address = %s:9876\nrpos-p2p-peer-address = %s:9875\n" % (peer,peer)
 	print(newcontent)
 	index_line = content.index("#insert_peers\n")
 	content.insert(index_line+1, newcontent)

@@ -1066,15 +1066,7 @@ namespace ultrainio {
                     return;
                 }
 
-#if defined( __linux__ )
-                bool release_memory = conn->out_queue.size() >= MAX_OUT_QUEUE ? true : false;
                 conn->out_queue.clear();
-                if (release_memory) {
-                    malloc_trim(0);
-                }
-#else
-                conn->out_queue.clear();
-#endif
                 conn->do_queue_write();
             }
             catch(const std::exception &ex) {
@@ -2380,6 +2372,14 @@ namespace ultrainio {
          auto &stale_blk = c->blk_state.get<by_block_num>();
          stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(bn) );
       }
+
+#if defined( __linux__ )
+      static uint32_t malloc_trim_count = 0;
+      malloc_trim_count++;
+      if (malloc_trim_count % 25 == 0) { // transaction expire timer = 12s, malloc timer = 3min
+        malloc_trim(0);
+      }
+#endif
    }
 
    void net_plugin_impl::connection_monitor( ) {
