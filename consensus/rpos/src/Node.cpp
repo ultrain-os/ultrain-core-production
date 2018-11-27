@@ -708,6 +708,9 @@ namespace ultrainio {
         msgkey msg_key;
 
         reset();
+        // Whenever we are back to BA0, clear the pre run status.
+        m_schedulerPtr->clearPreRunStatus();
+
         m_phase = kPhaseBA0;
         m_baxCount = 0;
 
