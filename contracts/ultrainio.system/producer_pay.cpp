@@ -1,6 +1,7 @@
 #include "ultrainio.system.hpp"
 
 #include <ultrainio.token/ultrainio.token.hpp>
+#include <ultrainiolib/system.h>
 #include <ultrainiolib/transaction.h>
 
 namespace ultrainiosystem {
@@ -11,15 +12,6 @@ namespace ultrainiosystem {
    const uint32_t rate3                 = 150;
    const uint32_t rate4                 = 200;
    const uint32_t rate[num_rate]        = {rate1,rate2,rate3,rate4,rate3,rate2,rate1};
-
-   const uint32_t seconds_per_block     = 10;
-   const uint32_t blocks_per_year       = 52*7*24*3600/seconds_per_block;   // half seconds per year
-   const uint32_t seconds_per_year      = 52*7*24*3600;
-   const uint32_t blocks_per_day        = 24 * 3600/seconds_per_block;
-   const uint32_t blocks_per_hour       = 3600/seconds_per_block;
-   const uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
-   const uint64_t useconds_per_year     = seconds_per_year*1000000ll;
-
 
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
       using namespace ultrainio;
@@ -43,6 +35,10 @@ namespace ultrainiosystem {
             return;
          }
       }
+
+      const uint32_t seconds_per_block     = block_interval_seconds();
+      uint32_t blocks_per_year       = seconds_per_year / seconds_per_block;
+
 	  auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
 	     int temp = 2*(tapos_block_num()-(int)_gstate.start_block)/(int)blocks_per_year;
@@ -90,6 +86,10 @@ namespace ultrainiosystem {
             return;
          }
       }
+
+      const uint32_t seconds_per_block     = block_interval_seconds();
+      uint32_t blocks_per_year       = seconds_per_year / seconds_per_block;
+
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
 	     int temp = 2*(tapos_block_num()-(int)_gstate.start_block)/(int)blocks_per_year;

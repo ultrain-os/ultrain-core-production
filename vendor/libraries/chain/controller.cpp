@@ -1453,6 +1453,10 @@ time_point controller::pending_block_time()const {
    return my->pending->_pending_block_state->header.timestamp;
 }
 
+uint32_t controller::block_interval_seconds()const {
+    return chain::config::block_interval_ms / 1000;
+}
+
 uint32_t controller::last_irreversible_block_num() const {
    return my->head->irreversible_blocknum;
 }

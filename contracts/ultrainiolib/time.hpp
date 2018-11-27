@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string>
 #include <ultrainiolib/ultrainio.hpp>
+#include <ultrainiolib/system.h>
 
 namespace ultrainio {
   class microseconds {
@@ -149,12 +150,11 @@ namespace ultrainio {
          bool   operator ==( const block_timestamp& t )const   { return abstime == t.abstime; }
          bool   operator !=( const block_timestamp& t )const   { return abstime != t.abstime; }
          uint32_t abstime;
-         static constexpr int32_t block_interval_ms = 10 * 1000;
          static constexpr int64_t block_timestamp_epoch = 946684800000ll;  // epoch is year 2000
 
          ULTRAINLIB_SERIALIZE( block_timestamp, (abstime) )
       private:
-      
+
 
       void set_time_point(const time_point& t) {
          int64_t micro_since_epoch = t.time_since_epoch().count();
@@ -167,6 +167,6 @@ namespace ultrainio {
          abstime = uint32_t((sec_since_epoch * 1000 - block_timestamp_epoch) / 1000);
       }
    }; // block_timestamp
-   typedef block_timestamp block_timestamp_type; 
+   typedef block_timestamp block_timestamp_type;
 
 } // namespace ultrainio

@@ -176,6 +176,7 @@ namespace ultrainio { namespace chain {
 
          time_point      pending_block_time()const;
          block_state_ptr pending_block_state()const;
+         uint32_t block_interval_seconds()const;
 
          block_timestamp_type get_proper_next_block_timestamp() const;
          // This is a hack ...

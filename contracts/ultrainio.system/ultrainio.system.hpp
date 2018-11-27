@@ -129,7 +129,11 @@ namespace ultrainiosystem {
     typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
-   static constexpr uint32_t     seconds_per_day = 24 * 3600;
+   static constexpr uint32_t seconds_per_day       = 24 * 3600;
+   static constexpr uint32_t seconds_per_year      = 52*7*24*3600;
+   static constexpr uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
+   static constexpr uint64_t useconds_per_year     = seconds_per_year*1000000ll;
+
    static constexpr uint64_t     system_token_symbol = CORE_SYMBOL;
 
    class system_contract : public native {

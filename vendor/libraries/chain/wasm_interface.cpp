@@ -1151,6 +1151,10 @@ class system_api : public context_aware_api {
          return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
       }
 
+      uint32_t block_interval_seconds() {
+         return context.control.block_interval_seconds();
+      }
+
       int emit_event(array_ptr<const char> event_name, size_t event_name_size, array_ptr<const char> msg, size_t msg_size ) {
          if (event_name_size > 64) return -1; // event name is too long.
          if (msg_size > emit_length) return -2; // event message is too long.
@@ -2098,6 +2102,7 @@ REGISTER_INTRINSICS(permission_api,
 REGISTER_INTRINSICS(system_api,
    (current_time, int64_t()       )
    (publication_time,   int64_t() )
+   (block_interval_seconds, int() )
    (emit_event, int(int, int, int, int) )
    (set_result_str,        void(int)      )
    (set_result_int,        void(int64_t) )
