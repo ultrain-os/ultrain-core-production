@@ -56,7 +56,7 @@ namespace ultrainiosystem {
       }
 
 
-      if( (timestamp.slot - _gstate.last_name_close.slot) > blocks_per_day ) {
+      if( (timestamp.abstime - _gstate.last_name_close.abstime) > 24*3600 ) {
           name_bid_table bids(_self,_self);
           auto idx = bids.get_index<N(highbid)>();
           auto highest = idx.begin();
@@ -77,7 +77,7 @@ namespace ultrainiosystem {
    void system_contract::reportblocknumber( account_name producer, uint64_t number) {
       using namespace ultrainio;
 
-      require_auth(N(ultrainio));
+      //require_auth(N(ultrainio));
       /** until activated stake crosses this threshold no new rewards are paid */
       if( _gstate.total_activated_stake < _gstate.min_activated_stake )
          return;

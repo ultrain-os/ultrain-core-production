@@ -24,7 +24,7 @@
         {"name": "account", "type": "account_name"},
         {"name": "public_key", "type": "string"},
         {"name": "url", "type": "string"},
-        {"name": "location", "type": "uint16"},
+        {"name": "location", "type": "uint64"},
         {"name": "adddel_miner", "type": "bool"}
       ]
     },{

@@ -18,7 +18,7 @@ namespace ultrainio { namespace chain {
       account_name    account;
       std::string     public_key;
       std::string     url;
-      uint16_t        location;
+      uint64_t        location;
       bool            adddel_miner;
    };
 

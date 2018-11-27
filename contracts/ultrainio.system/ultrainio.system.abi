@@ -15,6 +15,9 @@
    },{
       "new_type_name": "weight_type",
       "type": "uint16"
+   },{
+      "new_type_name": "block_id_type",
+      "type": "checksum256"
    }],
    "____comment": "ultrainio.bios structs: set_account_limits, setpriv, set_global_limits, producer_key, set_producers, require_auth are provided so abi available for deserialization in future.",
    "structs": [{
@@ -31,7 +34,7 @@
         {"name": "account", "type": "account_name"},
         {"name": "public_key", "type": "string"},
         {"name": "url", "type": "string"},
-        {"name": "location", "type": "uint16"},
+        {"name": "location", "type": "uint64"},
         {"name": "adddel_miner", "type": "bool"}
       ]
     },{
@@ -54,6 +57,51 @@
       "base": "",
       "fields": [
         {"name":"miners", "type":"proposeminer_info[]"}
+      ]
+    },{
+      "name": "regminer",
+      "base": "",
+      "fields": [
+        {"name": "producer",                    "type": "account_name"},
+        {"name": "miner_pk",                    "type": "string"},
+        {"name": "miner_url",                   "type": "string"}
+       ]
+    },{
+      "name": "regsubchain",
+      "base": "",
+      "fields": [
+        {"name": "chain_name",                 "type": "uint64"},
+        {"name": "root_user_name",             "type": "account_name"},
+        {"name": "root_user_pk",               "type": "string"},
+        {"name": "sub_chain_deposit",          "type": "uint32"},
+        {"name": "node_num",                   "type": "uint32"}
+       ]
+    },{
+        "name": "extension",
+        "base": "",
+        "fields": [
+           {"name": "type",           "type": "uint16" },
+           {"name": "data",           "type": "bytes"}
+        ]
+    },{
+      "name": "block_header",
+      "base": "",
+      "fields": [
+        {"name": "timestamp",         "type": "block_timestamp_type"},
+        {"name": "proposer",          "type": "account_name"},
+        {"name": "version",           "type": "uint32"},
+        {"name": "previous",          "type": "checksum256"},
+        {"name": "transaction_mroot", "type": "checksum256"},
+        {"name": "action_mroot",      "type": "checksum256"},
+        {"name": "committee_mroot",   "type": "checksum256"},
+        {"name": "header_extensions", "type": "extension[]"}
+     ]
+    },{
+      "name": "acceptheader",
+      "base": "",
+      "fields": [
+        {"name": "chain_name",          "type": "uint64"},
+        {"name": "header",              "type": "block_header"}
       ]
     },{
       "name": "permission_level_weight",
@@ -310,20 +358,51 @@
          {"name":"last_name_close",               "type":"block_timestamp_type"}
       ]
     },{
-      "name": "producer_info",
+      "name": "role_base",
       "base": "",
       "fields": [
          {"name":"owner",           "type":"account_name"},
+         {"name":"producer_key",    "type":"string"}
+      ]
+    },{
+      "name": "producer_info",
+      "base": "role_base",
+      "fields": [
          {"name":"total_cons_staked",     "type":"int64"},
-         {"name":"producer_key",    "type":"string"},
          {"name":"is_active",       "type":"bool"},
          {"name":"is_enabled",      "type":"bool"},
+         {"name":"hasactived",      "type":"bool"},
          {"name":"url",             "type":"string"},
          {"name":"unpaid_blocks",   "type":"uint64[]"},
          {"name":"total_produce_block",   "type":"uint64"},
          {"name":"last_claim_time", "type":"uint64"},
-         {"name":"location",        "type":"uint16"}
+         {"name":"location",        "type":"uint64"}
       ]
+    },{
+      "name": "subchain_base",
+      "base": "",
+      "fields": [
+        {"name": "chain_name",                    "type": "uint64"},
+        {"name": "min_active_stake",              "type": "int64"},
+        {"name": "min_committee_member_num",      "type": "uint32"},
+        {"name": "root_name",                     "type": "account_name"},
+        {"name": "root_pk",                       "type": "string"},
+        {"name": "committee_members",             "type": "role_base[]"},
+        {"name": "total_deposit",                 "type": "uint64"},
+        {"name": "head_block_id",                 "type": "block_id_type"},
+        {"name": "head_block_num",                "type": "uint32"}
+       ]
+    },{
+     "name": "subchain",
+      "base": "subchain_base",
+      "fields": [
+        {"name": "chain_id",                      "type": "checksum256"},
+        {"name": "genesis_info",                  "type": "string"},
+        {"name": "network_topology",              "type": "string"},
+        {"name": "relayer_stake_threshold",       "type": "uint32"},
+        {"name": "relayer_candidates",            "type": "role_base[]"},
+        {"name": "relayer_list",                  "type": "role_base[]"}
+       ]
     },{
       "name": "regproducer",
       "base": "",
@@ -331,7 +410,7 @@
         {"name":"producer",     "type":"account_name"},
         {"name":"producer_key", "type":"string"},
         {"name":"url",          "type":"string"},
-        {"name":"location",     "type":"uint16"}
+        {"name":"location",     "type":"uint64"}
       ]
     },{
       "name": "unregprod",
@@ -526,6 +605,18 @@
       "type": "updateactiveminers",
       "ricardian_contract": ""
    },{
+      "name": "regminer",
+      "type": "regminer",
+      "ricardian_contract": ""
+   },{
+      "name": "regsubchain",
+      "type": "regsubchain",
+      "ricardian_contract": ""
+   },{
+      "name": "acceptheader",
+      "type": "acceptheader",
+      "ricardian_contract": ""
+   },{
       "name": "unregprod",
       "type": "unregprod",
       "ricardian_contract": ""
@@ -614,6 +705,18 @@
        "index_type": "i64",
        "key_names" : ["newname"],
        "key_types" : ["account_name"]
+    },{
+      "name": "pendingchain",
+      "type": "subchain_base",
+      "index_type": "i64",
+      "key_names": [],
+      "key_types": []
+    },{
+      "name": "subchains",
+      "type": "subchain",
+      "index_type": "i64",
+      "key_names": ["chain_name"],
+      "key_types": ["uint64"]
     }
    ],
    "ricardian_clauses": [],
