@@ -29,7 +29,9 @@ namespace ultrainio { namespace chain {
          static block_timestamp min() { return block_timestamp(0); }
 
          block_timestamp next() const {
-            ULTRAIN_ASSERT( std::numeric_limits<uint32_t>::max() - abstime >= 1, fc::overflow_exception, "block timestamp overflow" )
+            ULTRAIN_ASSERT( std::numeric_limits<uint32_t>::max() - abstime > (config::block_interval_ms / 1000),
+                            fc::overflow_exception,
+                            "block timestamp overflow" );
             auto result = block_timestamp(*this);
             result.abstime += config::block_interval_ms / 1000;
             return result;
@@ -78,10 +80,7 @@ namespace ultrainio { namespace chain {
 FC_REFLECT(ultrainio::chain::block_timestamp_type, (abstime))
 
 namespace fc {
-  //template<uint16_t IntervalMs, uint64_t EpochMs>
   void to_variant(const ultrainio::chain::block_timestamp& t, fc::variant& v);
-
- //template<uint16_t IntervalMs, uint64_t EpochMs>
   void from_variant(const fc::variant& v, ultrainio::chain::block_timestamp& t);
 }
 

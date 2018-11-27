@@ -111,8 +111,6 @@ namespace ultrainio {
 
    /**
    * This class is used in the block headers to represent the block time
-   * It is a parameterised class that takes an Epoch in milliseconds and
-   * and an interval in milliseconds and computes the number of slots.
    **/
    class block_timestamp {
       public:

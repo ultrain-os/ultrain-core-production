@@ -13,9 +13,6 @@ namespace ultrainio { namespace chain { namespace config {
 typedef __uint128_t uint128_t;
 
 const static auto default_blocks_dir_name    = "blocks";
-const static auto reversible_blocks_dir_name = "reversible";
-const static auto default_reversible_cache_size = 340*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
-const static auto default_reversible_guard_size = 2*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
 
 const static auto default_state_dir_name     = "state";
 const static auto forkdb_filename            = "forkdb.dat";
@@ -102,8 +99,6 @@ const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call 
 
 const static ultrainio::chain::wasm_interface::vm_type default_wasm_runtime = ultrainio::chain::wasm_interface::vm_type::wabt;
 const static uint32_t   default_abi_serializer_max_time_ms = 15*1000; ///< default deadline for abi serialization methods
-
-const static int irreversible_threshold_percent= 70 * percent_1;
 
 const static uint64_t billable_alignment = 16;
 
