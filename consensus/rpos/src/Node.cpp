@@ -624,7 +624,7 @@ namespace ultrainio {
             return true;
         } else {
             if ((m_phase == kPhaseBAX) && (msg.block_num() == getLastBlocknum())) {
-                dlog("handleMessage. close bax, blockNum = ${blockNum}.", ("blockNum", getLastBlocknum()));
+                dlog("handleMessage blockmsg. close bax, blockNum = ${blockNum}.", ("blockNum", getLastBlocknum()));
                 reset();
             }
         }
@@ -641,7 +641,9 @@ namespace ultrainio {
         m_ready = true;
         m_syncing = false;
 
-        if (sync_msg.startBlockNum == sync_msg.endBlockNum && sync_msg.endBlockNum == getLastBlocknum() + 1) {
+        if ((sync_msg.startBlockNum == sync_msg.endBlockNum)
+            && (sync_msg.endBlockNum == getLastBlocknum() + 1)
+            && (m_phase == kPhaseInit)) {
             ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local.",
                  ("s", sync_msg.startBlockNum)("e", sync_msg.endBlockNum)("last", getLastBlocknum()));
             if (StakeVoteBase::committeeHasWorked()) {
