@@ -945,13 +945,13 @@ struct list_producers_subcommand {
          if ( !weight )
             weight = 1;
         uint64_t total_unpaid_blocks = 0;
-         printf("%-13s %-54s %-59s %-15s %s %s\n", "Producer", "Producer key", "Url", "Scaled votes", "is_enabled","unpaid blocks");
+         printf("%-13s %-54s %-59s %-15s %s %s    %s\n", "Producer", "Producer key", "Url", "Consensus weight", "is_enabled","unpaid blocks","total blocks");
          for ( auto& row : result.rows ){
             printf("%-13.13s %-54.54s %-59.59s %15ld %u ",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
-                   row["total_votes"].as_int64(),
+                   row["total_cons_staked"].as_int64(),
                    row["is_enabled"].as_bool());
 			printf("         [");
             for (auto tmp : row["unpaid_blocks"].get_array())
@@ -959,11 +959,38 @@ struct list_producers_subcommand {
                 total_unpaid_blocks += tmp.as_uint64();
                 printf("%lu,",tmp.as_uint64());
             }
-			printf("]\n");
+            printf("]");
+            printf("    %lu\n",row["total_produce_block"].as_uint64());
 	    }
         std::cout << "total_unpaid_blocks: " << total_unpaid_blocks << std::endl;
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;
+      });
+   }
+};
+
+struct votecommittee_subcommand {
+   string requested_perm;
+   string proposer;
+   votecommittee_subcommand(CLI::App* actionRoot) {
+      auto propose_action = actionRoot->add_subcommand("votecommittee", localized("Propose action"));
+      add_standard_transaction_options(propose_action);
+      propose_action->add_option("proposer", proposer, localized("proposer name"))->required();
+      propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+      propose_action->set_callback([&] {
+         fc::variant requested_perm_var;
+         try {
+            requested_perm_var = json_from_file_or_string(requested_perm);
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+         vector<proposeminer_info> reqperm;
+         try {
+            reqperm = requested_perm_var.as<vector<proposeminer_info>>();
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
+
+         auto args = fc::mutable_variant_object()
+            ("proposer", proposer )
+            ("proposeminer", requested_perm_var);
+         send_actions({chain::action{{permission_level{proposer,config::active_name}}, config::system_account_name, "votecommittee", variant_to_bin( N(ultrainio), NEX(votecommittee), args ) }});
       });
    }
 };
@@ -1035,11 +1062,13 @@ struct undelegate_bandwidth_subcommand {
 
 struct delegate_cons_subcommand {
    string from_str;
+   string receiver_str;
    string stake_cons_amount;
 
    delegate_cons_subcommand(CLI::App* actionRoot) {
       auto delegate_cons = actionRoot->add_subcommand("delegatecons", localized("Delegate consensus weight "));
       delegate_cons->add_option("from", from_str, localized("The account to delegate consensus weight from"))->required();
+      delegate_cons->add_option("receiver", receiver_str, localized("The account to undelegate consensus weight bandwidth from"))->required();
       delegate_cons->add_option("stake_cons_quantity", stake_cons_amount, localized("The amount of UTR to stake for consensus weight"))->required();
       add_standard_transaction_options(delegate_cons);
       if(delaysec < default_cons_delaysec){
@@ -1048,6 +1077,7 @@ struct delegate_cons_subcommand {
       delegate_cons->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
+                  ("receiver", receiver_str)
                   ("stake_cons_quantity", to_asset(stake_cons_amount));
          std::vector<chain::action> acts{create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(delegatecons), act_payload)};
          send_actions(std::move(acts));
@@ -1057,17 +1087,20 @@ struct delegate_cons_subcommand {
 
 struct undelegate_cons_subcommand {
    string from_str;
+   string receiver_str;
    string unstake_cons_amount;
 
    undelegate_cons_subcommand(CLI::App* actionRoot) {
       auto undelegate_cons = actionRoot->add_subcommand("undelegatecons", localized("Undelegate consensus weight bandwidth"));
       undelegate_cons->add_option("from", from_str, localized("The account undelegating consensus weight bandwidth"))->required();
+      undelegate_cons->add_option("receiver", receiver_str, localized("The account to undelegate consensus weight bandwidth from"))->required();
       undelegate_cons->add_option("unstake_cons_quantity", unstake_cons_amount, localized("The amount of UTR to undelegate for network bandwidth"))->required();
       add_standard_transaction_options(undelegate_cons);
 
       undelegate_cons->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
+                  ("receiver", receiver_str)
                   ("unstake_cons_quantity", to_asset(unstake_cons_amount));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(undelegatecons), act_payload)});
       });
@@ -1227,6 +1260,24 @@ struct claimrewards_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("owner", owner);
          send_actions({create_action({permission_level{owner,config::active_name}}, config::system_account_name, NEX(claimrewards), act_payload)});
+      });
+   }
+};
+
+struct reportblock_subcommand {
+   std::string producer;
+   uint64_t number = 0;
+   reportblock_subcommand(CLI::App* actionRoot) {
+      auto reportblock = actionRoot->add_subcommand("reportblock", localized("report block producer"));
+      reportblock->add_option("producer", producer, localized("The account to report block for"))->required();
+      reportblock->add_option("number", number, localized("The numbler to report block for"))->required();
+      add_standard_transaction_options(reportblock);
+
+      reportblock->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("producer", producer)
+                  ("number", number);
+         send_actions({create_action({permission_level{N(ultrainio),config::active_name}}, config::system_account_name, NEX(reportblocknumber), act_payload)});
       });
    }
 };
@@ -1441,10 +1492,32 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.max ) << "\n";
       std::cout << std::endl;
 
+      if ( res.producer_info.is_object() ) {
+         std::cout << "consensus bandwidth:" << std::endl;
+         auto& obj = res.producer_info.get_object();
+         uint64_t total_cons_staked = obj["total_cons_staked"].as_uint64();
+         asset total_cons = asset(total_cons_staked);
+         if( res.self_delegated_bandwidth.is_object() ) {
+            asset cons_own = asset::from_string( res.self_delegated_bandwidth.get_object()["cons_weight"].as_string() );
+            staked += cons_own;
+            auto cons_others = total_cons - cons_own;
+
+            std::cout << indent << "staked:" << std::setw(20) << cons_own
+                      << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
+                      << indent << "delegated:" << std::setw(17) << cons_others
+                      << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+         } else {
+            auto cons_others = total_cons;
+            std::cout << indent << "delegated:" << std::setw(17) << cons_others
+                      << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+         }
+         std::cout << std::endl;
+      }
+
       if( res.refund_request.is_object() ) {
          auto obj = res.refund_request.get_object();
          auto request_time = fc::time_point_sec::from_iso_string( obj["request_time"].as_string() );
-         fc::time_point refund_time = request_time + fc::days(3);
+         fc::time_point refund_time = request_time + fc::minutes(3);
          auto now = res.head_block_time;
          asset net = asset::from_string( obj["net_amount"].as_string() );
          asset cpu = asset::from_string( obj["cpu_amount"].as_string() );
@@ -1488,47 +1561,15 @@ void get_account( const string& accountName, bool json_format ) {
          }
       }
 
-      if ( res.voter_info.is_object() ) {
-         auto& obj = res.voter_info.get_object();
-         string proxy = obj["proxy"].as_string();
-         if ( proxy.empty() ) {
-            auto& prods = obj["producers"].get_array();
-            std::cout << "producers:";
-            if ( !prods.empty() ) {
-               for ( int i = 0; i < prods.size(); ++i ) {
-                  if ( i%3 == 0 ) {
-                     std::cout << std::endl << indent;
-                  }
-                  std::cout << std::setw(16) << std::left << prods[i].as_string();
-               }
-               std::cout << std::endl;
-            } else {
-               std::cout << indent << "<not voted>" << std::endl;
-            }
-            string scons_staked= obj["staked"].as_string();
-            if(!scons_staked.empty())
-            {
-                if(scons_staked.length() <= 4)
-                    scons_staked = "0000"+ scons_staked;
-                scons_staked.insert(scons_staked.length()-4,".");
-                cons_staked = to_asset(scons_staked +" UGAS");
-            }
-         } else {
-            std::cout << "proxy:" << indent << proxy << std::endl;
-         }
-      }
-
       if( res.core_liquid_balance.valid() ) {
          std::cout << res.core_liquid_balance->get_symbol().name() << " balances: " << std::endl;
          std::cout << indent << std::left << std::setw(11)
                    << "liquid:" << std::right << std::setw(18) << *res.core_liquid_balance << std::endl;
          std::cout << indent << std::left << std::setw(11)
-                   << "res_staked:" << std::right << std::setw(18) << staked << std::endl;
-         std::cout << indent << std::left << std::setw(11)
-                   << "cons_staked:" << std::right << std::setw(18) << cons_staked << std::endl;
+                   << "staked:" << std::right << std::setw(18) << staked << std::endl;
          std::cout << indent << std::left << std::setw(11)
                    << "unstaking:" << std::right << std::setw(18) << unstaking << std::endl;
-         std::cout << indent << std::left << std::setw(11) << "total:" << std::right << std::setw(18) << (*res.core_liquid_balance + staked + unstaking + cons_staked) << std::endl;
+         std::cout << indent << std::left << std::setw(11) << "total:" << std::right << std::setw(18) << (*res.core_liquid_balance + staked + unstaking) << std::endl;
          std::cout << std::endl;
       }
       std::cout << std::endl;
@@ -2805,7 +2846,7 @@ int main( int argc, char** argv ) {
    auto unregisterProducer = unregister_producer_subcommand(system);
 
    auto listProducers = list_producers_subcommand(system);
-
+   auto votecommittee = votecommittee_subcommand(system);
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
    auto delegatecons = delegate_cons_subcommand(system);
@@ -2819,7 +2860,7 @@ int main( int argc, char** argv ) {
    auto sellram = sellram_subcommand(system);
 
    auto claimRewards = claimrewards_subcommand(system);
-
+   auto reportblock = reportblock_subcommand(system);
    auto cancelDelay = canceldelay_subcommand(system);
 
    try {

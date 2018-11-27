@@ -80,6 +80,8 @@ extern "C" {
 
    int emit_event(const char*, int, const char*, int);
 
+   uint32_t block_interval_seconds();
+
    /**
     *  Returns the time in seconds from 1970 of the block including this action
     *  @brief Get time (rounded down to the nearest second) of the current block (i.e. the block including this action)

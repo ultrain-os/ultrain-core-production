@@ -90,7 +90,6 @@ namespace ultrainio { namespace chain {
     *   |- abi_exception
     *   |- contract_exception
     *   |- producer_exception
-    *   |- reversible_blocks_exception
     *   |- block_log_exception
     *   |- resource_limit_exception
     *   |- mongo_db_exception
@@ -235,8 +234,6 @@ namespace ultrainio { namespace chain {
 
       FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception, guard_exception,
                                     3060101, "Database usage is at unsafe levels" )
-      FC_DECLARE_DERIVED_EXCEPTION( reversible_guard_exception, guard_exception,
-                                    3060102, "Reversible block log usage is at unsafe levels" )
 
    FC_DECLARE_DERIVED_EXCEPTION( wasm_exception, chain_exception,
                                  3070000, "WASM Exception" )
@@ -292,6 +289,10 @@ namespace ultrainio { namespace chain {
                                     3090008, "The action is not allowed to be linked with minimum permission" )
       FC_DECLARE_DERIVED_EXCEPTION( invalid_parent_permission,           authorization_exception,
                                     3090009, "The parent permission is invalid" )
+      FC_DECLARE_DERIVED_EXCEPTION( should_be_on_main_chain_exception,           authorization_exception,
+                                    3090010, "The node should be configured to be on main chain" )
+      FC_DECLARE_DERIVED_EXCEPTION( should_be_on_side_chain_exception,           authorization_exception,
+                                    3090011, "The node should be configured to be on side chain" )
 
    FC_DECLARE_DERIVED_EXCEPTION( misc_exception, chain_exception,
                                  3100000, "Miscellaneous exception" )
@@ -302,8 +303,6 @@ namespace ultrainio { namespace chain {
                                     3100002, "Unknown block" )
       FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,          misc_exception,
                                     3100003, "Unknown transaction" )
-      FC_DECLARE_DERIVED_EXCEPTION( fixed_reversible_db_exception,          misc_exception,
-                                    3100004, "Corrupted reversible block database was fixed" )
       FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,        misc_exception,
                                     3100005, "Extracted genesis state from blocks.log" )
       FC_DECLARE_DERIVED_EXCEPTION( subjective_block_production_exception,  misc_exception,
@@ -451,15 +450,6 @@ namespace ultrainio { namespace chain {
                                     3170004, "Producer schedule exception" )
       FC_DECLARE_DERIVED_EXCEPTION( producer_not_in_schedule,      producer_exception,
                                     3170006, "The producer is not part of current schedule" )
-
-   FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,           chain_exception,
-                                 3180000, "Reversible Blocks exception" )
-      FC_DECLARE_DERIVED_EXCEPTION( invalid_reversible_blocks_dir,             reversible_blocks_exception,
-                                    3180001, "Invalid reversible blocks directory" )
-      FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_backup_dir_exist,          reversible_blocks_exception,
-                                    3180002, "Backup directory for reversible blocks already existg" )
-      FC_DECLARE_DERIVED_EXCEPTION( gap_in_reversible_blocks_db,          reversible_blocks_exception,
-                                    3180003, "Gap in the reversible blocks database" )
 
    FC_DECLARE_DERIVED_EXCEPTION( block_log_exception, chain_exception,
                                  3190000, "Block log exception" )

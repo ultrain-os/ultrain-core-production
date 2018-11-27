@@ -34,7 +34,7 @@ namespace ultrainiosystem {
     *  @pre authority of producer to register
     *
     */
-    void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint16_t location ) {
+    void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint64_t location ) {
       ultrainio_assert( url.size() < 512, "url too long" );
       // key is hex encoded
       ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
@@ -50,14 +50,12 @@ namespace ultrainiosystem {
                info.location     = location;
             });
       } else {
-          int64_t self_stake = 0;
-          bool enable_prods = false;
          _producers.emplace( producer, [&]( producer_info& info ){
                info.owner         = producer;
-               info.total_votes   = self_stake;
+               info.total_cons_staked   = 0LL;
                info.producer_key  = producer_key;
                info.is_active     = true;
-               info.is_enabled    = enable_prods;
+               info.is_enabled    = false;
                info.url           = url;
                info.location      = location;
          });
@@ -72,6 +70,13 @@ namespace ultrainiosystem {
       _producers.modify( prod, 0, [&]( producer_info& info ){
             info.deactivate();
       });
+/*
+      if(prod.is_on_pending_chian()) {
+          remove_from_pendingchain(producer);
+      }
+      else if(prod.is_on_subchain()) {
+          //todo
+      } */
    }
 
    inline void system_contract::update_activated_stake(int64_t stake) {

@@ -12,13 +12,10 @@ namespace ultrainio { namespace chain {
 
    /**
    * This class is used in the block headers to represent the block time
-   * It is a parameterised class that takes an Epoch in milliseconds and
-   * and an interval in milliseconds and computes the number of slots.
    **/
-   template<uint16_t IntervalMs, uint64_t EpochMs>
    class block_timestamp {
       public:
-         explicit block_timestamp( uint32_t s=0 ) :slot(s){}
+         explicit block_timestamp( uint32_t s=0 ) :abstime(s){}
 
          block_timestamp(const fc::time_point& t) {
             set_time_point(t);
@@ -32,9 +29,11 @@ namespace ultrainio { namespace chain {
          static block_timestamp min() { return block_timestamp(0); }
 
          block_timestamp next() const {
-            ULTRAIN_ASSERT( std::numeric_limits<uint32_t>::max() - slot >= 1, fc::overflow_exception, "block timestamp overflow" );
+            ULTRAIN_ASSERT( std::numeric_limits<uint32_t>::max() - abstime > (config::block_interval_ms / 1000),
+                            fc::overflow_exception,
+                            "block timestamp overflow" );
             auto result = block_timestamp(*this);
-            result.slot += 1;
+            result.abstime += config::block_interval_ms / 1000;
             return result;
          }
 
@@ -43,8 +42,8 @@ namespace ultrainio { namespace chain {
          }
 
          operator fc::time_point() const {
-            int64_t msec = slot * (int64_t)IntervalMs;
-            msec += EpochMs;
+            int64_t msec = abstime * 1000ll;
+            msec += config::block_timestamp_epoch;
             return fc::time_point(fc::milliseconds(msec));
          }
 
@@ -52,45 +51,37 @@ namespace ultrainio { namespace chain {
             set_time_point(t);
          }
 
-         bool   operator > ( const block_timestamp& t )const   { return slot >  t.slot; }
-         bool   operator >=( const block_timestamp& t )const   { return slot >= t.slot; }
-         bool   operator < ( const block_timestamp& t )const   { return slot <  t.slot; }
-         bool   operator <=( const block_timestamp& t )const   { return slot <= t.slot; }
-         bool   operator ==( const block_timestamp& t )const   { return slot == t.slot; }
-         bool   operator !=( const block_timestamp& t )const   { return slot != t.slot; }
-         uint32_t slot;
+         bool   operator > ( const block_timestamp& t )const   { return abstime >  t.abstime; }
+         bool   operator >=( const block_timestamp& t )const   { return abstime >= t.abstime; }
+         bool   operator < ( const block_timestamp& t )const   { return abstime <  t.abstime; }
+         bool   operator <=( const block_timestamp& t )const   { return abstime <= t.abstime; }
+         bool   operator ==( const block_timestamp& t )const   { return abstime == t.abstime; }
+         bool   operator !=( const block_timestamp& t )const   { return abstime != t.abstime; }
+         uint32_t abstime;
 
       private:
       void set_time_point(const fc::time_point& t) {
          auto micro_since_epoch = t.time_since_epoch();
          auto msec_since_epoch  = micro_since_epoch.count() / 1000;
-         slot = ( msec_since_epoch - EpochMs ) / IntervalMs;
+         abstime = ( msec_since_epoch - config::block_timestamp_epoch ) / 1000;
       }
 
       void set_time_point(const fc::time_point_sec& t) {
          uint64_t  sec_since_epoch = t.sec_since_epoch();
-         slot = (sec_since_epoch * 1000 - EpochMs) / IntervalMs;
+         abstime = (sec_since_epoch * 1000 - config::block_timestamp_epoch) / 1000 ;
       }
    }; // block_timestamp
 
-   typedef block_timestamp<config::block_interval_ms,config::block_timestamp_epoch> block_timestamp_type; 
-
+  typedef block_timestamp block_timestamp_type;
 } } /// ultrainio::chain
 
 
 #include <fc/reflect/reflect.hpp>
-FC_REFLECT(ultrainio::chain::block_timestamp_type, (slot))
+FC_REFLECT(ultrainio::chain::block_timestamp_type, (abstime))
 
 namespace fc {
-  template<uint16_t IntervalMs, uint64_t EpochMs>
-  void to_variant(const ultrainio::chain::block_timestamp<IntervalMs,EpochMs>& t, fc::variant& v) {
-     to_variant( (fc::time_point)t, v);
-  }
-
-  template<uint16_t IntervalMs, uint64_t EpochMs>
-  void from_variant(const fc::variant& v, ultrainio::chain::block_timestamp<IntervalMs,EpochMs>& t) {
-     t = v.as<fc::time_point>();
-  }
+  void to_variant(const ultrainio::chain::block_timestamp& t, fc::variant& v);
+  void from_variant(const fc::variant& v, ultrainio::chain::block_timestamp& t);
 }
 
 #ifdef _MSC_VER

@@ -1,7 +1,9 @@
 #include <ultrainio.msig/ultrainio.msig.hpp>
 #include <ultrainiolib/action.hpp>
 #include <ultrainiolib/permission.hpp>
-
+#include <ultrainiolib/print.hpp>
+#include <ultrainiolib/types.hpp>
+using ultrainio::action;
 namespace ultrainio {
 
 /*

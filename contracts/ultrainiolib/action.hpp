@@ -134,6 +134,38 @@ namespace ultrainio {
    };
 
    /**
+    * proposeminer_info  vote
+    *
+    * @brief Packed representation of proposeminer_info  vote
+    */
+   struct proposeminer_info {
+      /**
+       * Construct a new proposeminer info object
+       *
+       * @brief Construct a new proposeminer info object
+       * @param a - Name of the account who proposal pending miner
+       * @param p - Name of the public keys
+       * @param u - Name of the url
+       */
+      proposeminer_info( account_name a, std::string p, std::string u, uint16_t l,bool adddel ):account(a),public_key(p),url(u),location(l),adddel_miner(adddel){}
+
+      /**
+       * Default Constructor
+       *
+       * @brief Construct a new proposeminer info object
+       */
+      proposeminer_info(){}
+
+      account_name      account;
+      std::string       public_key;
+      std::string       url;
+      uint64_t          location;
+      bool              adddel_miner;
+
+      ULTRAINLIB_SERIALIZE( proposeminer_info, (account)(public_key)(url)(location)(adddel_miner) )
+   };
+
+   /**
     * Require the specified authorization for this action. If this action doesn't contain the specified auth, it will fail.
     *
     * @brief Require the specified authorization for this action

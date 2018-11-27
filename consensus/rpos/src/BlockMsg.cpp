@@ -3,7 +3,8 @@
 #include <crypto/PrivateKey.h>
 #include <rpos/Node.h>
 #include <rpos/Seed.h>
-#include <rpos/StakeVote.h>
+#include <rpos/StakeVoteBase.h>
+#include <rpos/StakeVoteFactory.h>
 #include <rpos/Vrf.h>
 
 namespace ultrainio {
@@ -22,45 +23,30 @@ namespace ultrainio {
         return itor->second;
     }
 
-    void BlockMsg::insert(const EchoMsg& echoMsg) {
-        ConsensusPhase phase = echoMsg.phase;
-        uint32_t baxCount = echoMsg.baxCount;
-        PhaseMsgPtr phaseMessagePtr = initIfNeed(phase, baxCount);
-        ULTRAIN_ASSERT(phaseMessagePtr->m_phase == phase && phaseMessagePtr->m_baxCount == baxCount,
-                chain::chain_exception, "phase or baxCount not equal");
-        phaseMessagePtr->insert(echoMsg);
-    }
-
     void BlockMsg::insert(const ProposeMsg& proposeMsg) {
         m_proposeMsgList.push_back(proposeMsg);
     }
 
     void BlockMsg::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         ULTRAIN_ASSERT(blockNum == m_blockNum, chain::chain_exception, "blockNum is equal");
-        if (!m_proposerProof.isValid()) {
+        if (!m_stakeVote) {
             ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
             std::string previousHash(blockId.data());
             // #### This line has to run first, all the following caculation depends on this line. ###
-            m_voterSystem = StakeVote::create(blockNum, nullptr);
-            Seed proposerSeed(previousHash, blockNum, kPhaseBA0, 0);
-            PrivateKey privateKey = StakeVote::getMyPrivateKey();
-            m_proposerProof = Vrf::vrf(privateKey, proposerSeed, Vrf::kProposer);
-            int stakes = m_voterSystem->getStakes(StakeVote::getMyAccount(), UranusNode::getInstance()->getNonProducingNode());
-            double proposerRatio = m_voterSystem->getProposerRatio();
-            m_voterCountAsProposer = m_voterSystem->count(m_proposerProof, stakes, proposerRatio);
+            m_stakeVote = StakeVoteFactory::createRandom(blockNum, nullptr, blockId);
+            m_isProposer = m_stakeVote->isProposer(StakeVoteBase::getMyAccount(), UranusNode::getInstance()->getNonProducingNode());
         }
         PhaseMsgPtr phaseMessagePtr = initIfNeed(phase, baxCount);
         phaseMessagePtr->moveToNewStep(blockNum, phase, baxCount);
     }
 
-    Proof BlockMsg::getVoterProof(ConsensusPhase phase, int baxCount) {
-        PhaseMsgPtr phaseMessagePtr = initIfNeed(phase, baxCount);
-        return phaseMessagePtr->m_proof;
+    bool BlockMsg::isProposer() const {
+        return m_isProposer;
     }
 
-    int BlockMsg::getVoterVoterCount(ConsensusPhase phase, int baxCount) {
+    bool BlockMsg::isVoter(ConsensusPhase phase, int baxCount) {
         PhaseMsgPtr phaseMessagePtr = initIfNeed(phase, baxCount);
-        return phaseMessagePtr->m_voterCountAsVoter;
+        return phaseMessagePtr->isVoter();
     }
 
     bool BlockMsg::newRound(ConsensusPhase phase, int baxCount) {
@@ -70,8 +56,8 @@ namespace ultrainio {
         return false;
     }
 
-    std::shared_ptr<StakeVote> BlockMsg::getVoterSys() {
-        ULTRAIN_ASSERT(m_voterSystem, chain::chain_exception, "m_voterSystem is nullptr");
-        return m_voterSystem;
+    std::shared_ptr<StakeVoteBase> BlockMsg::getVoterSys() {
+        ULTRAIN_ASSERT(m_stakeVote, chain::chain_exception, "m_stakeVote is nullptr");
+        return m_stakeVote;
     }
 }

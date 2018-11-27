@@ -45,13 +45,6 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE( authority, (threshold)(delay_sec)(keys)(accounts) )
    };
 
-   struct block_header {
-      uint32_t                                  timestamp;
-      account_name                              proposer;
-      // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE(block_header, (timestamp)(proposer))
-   };
-
    /*
     * Method parameters commented out to prevent generation of code that parses input data.
     */

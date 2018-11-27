@@ -14,34 +14,26 @@ target_link_libraries( proof_unittest ultrainio_rpos )
 
 add_test(NAME proof_unittest COMMAND proof_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-### StakeVote
-#add_executable( votersystem_unittest
-#        VoterSystemTest.cpp)
+### FisherYates
+add_executable( fisheryates_unittest
+        FisherYatesTest.cpp)
 
-#target_link_libraries( votersystem_unittest ultrainio_rpos )
+target_link_libraries( fisheryates_unittest ultrainio_rpos )
 
-#add_test(NAME votersystem_unittest COMMAND votersystem_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME fisheryates_unittest COMMAND fisheryates_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-### MessageManager
-add_executable( messagemanager_unittest
-        MessageManagerTest.cpp)
+### RoleRandom
+add_executable( rolerandom_unittest
+        RoleRandomTest.cpp)
 
-target_link_libraries( messagemanager_unittest ultrainio_rpos )
+target_link_libraries( rolerandom_unittest ultrainio_rpos )
 
-add_test(NAME messagemanager_unittest COMMAND messagemanager_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME rolerandom_unittest COMMAND rolerandom_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-### PhaseMessage
-add_executable( phasemessage_unittest
-        PhaseMessageTest.cpp)
+### RoleSelection
+add_executable( roleselection_unittest
+        RoleSelectionTest.cpp)
 
-target_link_libraries( phasemessage_unittest ultrainio_rpos )
+target_link_libraries( roleselection_unittest ultrainio_rpos )
 
-add_test(NAME phasemessage_unittest COMMAND phasemessage_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-### BlockMessage
-add_executable( blockmessage_unittest
-        BlockMessageTest.cpp)
-
-target_link_libraries( blockmessage_unittest ultrainio_rpos )
-
-add_test(NAME blockmessage_unittest COMMAND blockmessage_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME roleselection_unittest COMMAND roleselection_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

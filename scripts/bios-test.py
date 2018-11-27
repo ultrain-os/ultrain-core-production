@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import numpy
 import os
 import random
 import re
@@ -17,7 +16,9 @@ args = None
 logFile = None
 
 unlockTimeout = 999999999
-
+defaultclu = '/root/workspace%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
+defaultkul = '/root/workspace%s/ultrain-core/build/programs/kultraind/kultraind'
+defaultcontracts_dir = '/root/workspace%s/ultrain-core/build/contracts/'
 systemAccounts = [
     'utrio.bpay',
     'utrio.msig',
@@ -29,6 +30,12 @@ systemAccounts = [
     'utrio.token',
     'utrio.vpay',
     'hello',
+]
+
+initialAccounts = [
+    'root',
+    'roottest',
+    'rootapp',
 ]
 
 accountsToResign = [
@@ -298,6 +305,7 @@ def sleep(t):
 
 def importKeys():
     run(args.clultrain + 'wallet import --private-key ' + args.private_key)
+    run(args.clultrain + 'wallet import --private-key ' + args.initacc_sk)
 
 def updateAuth(account, permission, parent, controller):
     run(args.clultrain + 'push action ultrainio updateauth' + jsonArg({
@@ -363,28 +371,35 @@ def stepSetSystemContract():
 
 def stepCreateStakedAccounts():
     for i in range(0, args.num_producers):
-        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1000.0000 UGAS" --stake-cpu "1000.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key))
+        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "50000.0000 UGAS" --stake-cpu "50000.0000 UGAS" --buy-ram "50000.000 UGAS" ' % (accounts[i], args.public_key))
     sleep(15)
 
 
 def stepRegProducers():
     for i in range(1, args.num_producers):
-        retry(args.clultrain + 'system regproducer %s %s https://%s.com 0123 ' % (accounts[i], pk_list[i], accounts[i]))
+        retry(args.clultrain + 'system regproducer %s %s https://%s.com 1 ' % (accounts[i], pk_list[i], accounts[i]))
     sleep(15)
-    for i in range(0, args.num_producers):
-        funds = 500000000 / args.num_producers / 2
-        # user.111 & user.112 are used for tps pressure test, so they need more staked resources
-        if accounts[i] == 'user.111' or accounts[i] == 'user.112':
-            funds += 80000000
-        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], (funds*2+5000)))
+    funds = 500000000 / args.num_producers / 2
+    for i in range(1, args.num_producers):
+        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))  
     sleep(20)
-    for i in range(0, args.num_producers):
-        funds = 500000000 / args.num_producers / 2
-        if accounts[i] == 'user.111' or accounts[i] == 'user.112':
-            funds += 80000000
-        retry(args.clultrain + 'system delegatecons %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
-    sleep(18)
+    for i in range(1, args.num_producers):
+        retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
+    sleep(20)
     run(args.clultrain + 'system listproducers')
+
+def stpDelegateTestAcc():
+    subaccounts = accounts[1:3]
+    for testacc in subaccounts:
+        retry(args.clultrain + 'system delegatebw --transfer ultrainio %s "50000.0000 UGAS"  "50000.0000 UGAS"'  % testacc)
+        retry(args.clultrain + 'system buyram  ultrainio  %s  "50000.0000 UGAS"  '  % testacc)
+
+def stepCreateinitAccounts():
+    for a in initialAccounts:
+        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1000.0000 UGAS" --stake-cpu "1000.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (a, args.initacc_pk))
+    sleep(10)
+    for a in initialAccounts:
+        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"53000000.0000"))
 
 def stepResign():
     resign('ultrainio', 'utrio.null')
@@ -470,12 +485,11 @@ commands = [
     ('c', 'contracts',      stepInstallSystemContracts, True,    "Install system contracts (token, msig)"),
     ('t', 'tokens',         stepCreateTokens,           True,    "Create tokens"),
     ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
+    ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
-    ('p', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
-#    ('P', 'start-prod',     stepStartProducers,         True,    "Start producers"),
-#    ('v', 'vote',           stepVote,                   True,    "Vote for producers"),
+    ('d', 'deletatetest',   stpDelegateTestAcc,         True,    "Conduct transfer test for user.111 and user.112 multi-agent resources"),
+    ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
 #    ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
-#    ('x', 'proxy',          stepProxyVotes,             True,    "Proxy votes"),
      ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
 #    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
@@ -485,9 +499,11 @@ commands = [
 
 parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")
 parser.add_argument('--private-Key', metavar='', help="ULTRAIN Private Key", default='5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H', dest="private_key")
-parser.add_argument('--clultrain', metavar='', help="Clultrain command", default='/root/workspace/yufengshen/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 ')
-parser.add_argument('--kultraind', metavar='', help="Path to kultraind binary", default='/root/workspace/yufengshen/ultrain-core/build/programs/kultraind/kultraind')
-parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default='/root/workspace/yufengshen/ultrain-core/build/contracts/')
+parser.add_argument('--initacc-pk', metavar='', help="ULTRAIN Public Key", default='UTR6XRzZpgATJaTtyeSKqGhZ6rH9yYn69f5fkLpjVx6y2mEv5iQTn', dest="initacc_pk")
+parser.add_argument('--initacc-sk', metavar='', help="ULTRAIN Private Key", default='5KZ7mnSHiKN8VaJF7aYf3ymCRKyfr4NiTiqKC5KLxkyM56KdQEP', dest="initacc_sk")
+parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '')
+parser.add_argument('--kultraind', metavar='', help="Path to kultraind binary", default=defaultkul % '')
+parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default=defaultcontracts_dir % '')
 parser.add_argument('--genesis', metavar='', help="Path to genesis.json", default="./genesis.json")
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
@@ -495,7 +511,7 @@ parser.add_argument('--symbol', metavar='', help="The utrio.system symbol", defa
 parser.add_argument('--num-producers', metavar='', help="Number of producers to register", type=int, default=6, dest="num_producers")
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
-
+parser.add_argument('-p','--programpath', metavar='', help="set programpath params")
 for (flag, command, function, inAll, help) in commands:
     prefix = ''
     if inAll: prefix += '*'
@@ -506,6 +522,14 @@ for (flag, command, function, inAll, help) in commands:
         parser.add_argument('--' + command, action='store_true', help=help, dest=command)
 
 args = parser.parse_args()
+if args.programpath:
+    args.clultrain = defaultclu % ('/'+args.programpath)
+    args.kultraind = defaultkul % ('/'+args.programpath)
+    args.contracts_dir = defaultcontracts_dir % ('/'+args.programpath)
+
+print(args.clultrain)
+print(args.kultraind)
+print(args.contracts_dir)
 
 #args.clultrain += '--url http://localhost:%d ' % args.http_port
 

@@ -13,9 +13,6 @@ namespace ultrainio { namespace chain { namespace config {
 typedef __uint128_t uint128_t;
 
 const static auto default_blocks_dir_name    = "blocks";
-const static auto reversible_blocks_dir_name = "reversible";
-const static auto default_reversible_cache_size = 340*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
-const static auto default_reversible_guard_size = 2*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
 
 const static auto default_state_dir_name     = "state";
 const static auto forkdb_filename            = "forkdb.dat";
@@ -29,11 +26,6 @@ const static auto default_state_guard_size      = 128*1024*1024ll;
 
 const static uint64_t system_account_name    = N(ultrainio);
 const static uint64_t null_account_name      = N(utrio.null);
-const static uint64_t producers_account_name = N(utrio.prods);
-
-// Active permission of producers account requires greater than 2/3 of the producers to authorize
-const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
-const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0
 
 const static uint64_t ultrainio_auth_scope       = N(utrio.auth);
 const static uint64_t ultrainio_all_scope        = N(utrio.all);
@@ -43,9 +35,10 @@ const static uint64_t owner_name  = N(owner);
 const static uint64_t ultrainio_any_name = N(utrio.any);
 const static uint64_t ultrainio_code_name = N(utrio.code);
 
-const static int      block_interval_ms = 10 * 1000;
-const static int      block_interval_us = block_interval_ms*1000;
-const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
+extern int      block_interval_ms;
+extern int      block_interval_us;
+
+const static uint64_t block_timestamp_epoch = 1514764800000ll; // epoch is year 2000.
 
 /** Percentages are fixed point with a denominator of 10,000 */
 const static int percent_100 = 10000;
@@ -67,7 +60,7 @@ const static uint32_t   rate_limiting_precision        = 1000*1000;
 const static uint32_t   default_max_propose_trx_count                 = 12000;
 const static uint32_t   default_max_pending_trx_count                 = 50000;
 const static uint32_t   default_max_unapplied_trx_count               = 50000;
-// 500K is the block limit, so that ~20 proposer would be 10M traffic at maximal for about 3~4s
+
 const static uint32_t   default_max_block_net_usage                 = 1024 * 1024 * 2;
 const static uint32_t   default_target_block_net_usage_pct           = 10 * percent_1; /// we target 1000 TPS
 const static uint32_t   default_max_transaction_net_usage            = default_max_block_net_usage / 2;
@@ -77,7 +70,7 @@ const static uint32_t   default_context_free_discount_net_usage_num  = 20; // TO
 const static uint32_t   default_context_free_discount_net_usage_den  = 100;
 const static uint32_t   transaction_id_net_usage                     = 32; // 32 bytes for the size of a transaction id
 
-// max block cpu is about 3s
+// TODO: this should be derived from consensus period.
 const static uint32_t   default_max_block_cpu_usage                 = 3'000'000; /// max block cpu usage in microseconds
 const static uint32_t   default_target_block_cpu_usage_pct          = 10 * percent_1;
 // max single trx cpu is about 500ms ?
@@ -104,26 +97,8 @@ const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multip
 
 const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call checktime from hashing intrinsic once per this number of bytes
 
-const static ultrainio::chain::wasm_interface::vm_type default_wasm_runtime = ultrainio::chain::wasm_interface::vm_type::binaryen;
+const static ultrainio::chain::wasm_interface::vm_type default_wasm_runtime = ultrainio::chain::wasm_interface::vm_type::wabt;
 const static uint32_t   default_abi_serializer_max_time_ms = 15*1000; ///< default deadline for abi serialization methods
-
-/**
- *  The number of sequential blocks produced by a single producer
- */
-const static int producer_repetitions = 12;
-const static int max_producers = 125;
-
-const static size_t maximum_tracked_dpos_confirmations = 1024;     ///<
-static_assert(maximum_tracked_dpos_confirmations >= ((max_producers * 2 / 3) + 1) * producer_repetitions, "Settings never allow for DPOS irreversibility" );
-
-
-/**
- * The number of blocks produced per round is based upon all producers having a chance
- * to produce all of their consecutive blocks.
- */
-//const static int blocks_per_round = producer_count * producer_repetitions;
-
-const static int irreversible_threshold_percent= 70 * percent_1;
 
 const static uint64_t billable_alignment = 16;
 

@@ -1,6 +1,7 @@
 #include "ultrainio.system.hpp"
 
 #include <ultrainio.token/ultrainio.token.hpp>
+#include <ultrainiolib/system.h>
 #include <ultrainiolib/transaction.h>
 
 namespace ultrainiosystem {
@@ -11,15 +12,6 @@ namespace ultrainiosystem {
    const uint32_t rate3                 = 150;
    const uint32_t rate4                 = 200;
    const uint32_t rate[num_rate]        = {rate1,rate2,rate3,rate4,rate3,rate2,rate1};
-
-   const uint32_t seconds_per_block     = 10;
-   const uint32_t blocks_per_year       = 52*7*24*3600/seconds_per_block;   // half seconds per year
-   const uint32_t seconds_per_year      = 52*7*24*3600;
-   const uint32_t blocks_per_day        = 24 * 3600/seconds_per_block;
-   const uint32_t blocks_per_hour       = 3600/seconds_per_block;
-   const uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
-   const uint64_t useconds_per_year     = seconds_per_year*1000000ll;
-
 
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
       using namespace ultrainio;
@@ -43,6 +35,10 @@ namespace ultrainiosystem {
             return;
          }
       }
+
+      const uint32_t seconds_per_block     = block_interval_seconds();
+      uint32_t blocks_per_year       = seconds_per_year / seconds_per_block;
+
 	  auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
 	     int temp = 2*(tapos_block_num()-(int)_gstate.start_block)/(int)blocks_per_year;
@@ -51,11 +47,12 @@ namespace ultrainiosystem {
          _gstate.total_unpaid_blocks[interval]++;
          _producers.modify( prod, 0, [&](auto& p ) {
                p.unpaid_blocks[interval]++;
+               p.total_produce_block++;
          });
       }
 
 
-      if( (timestamp.slot - _gstate.last_name_close.slot) > blocks_per_day ) {
+      if( (timestamp.abstime - _gstate.last_name_close.abstime) > seconds_per_day ) {
           name_bid_table bids(_self,_self);
           auto idx = bids.get_index<N(highbid)>();
           auto highest = idx.begin();
@@ -71,6 +68,38 @@ namespace ultrainiosystem {
           }
       }
 
+   }
+
+   void system_contract::reportblocknumber( account_name producer, uint64_t number) {
+      using namespace ultrainio;
+
+      //require_auth(N(ultrainio));
+      /** until activated stake crosses this threshold no new rewards are paid */
+      if( _gstate.total_activated_stake < _gstate.min_activated_stake )
+         return;
+      if ( !_gstate.start_block){
+         uint32_t i {};
+         for(auto itr = _producers.begin(); i <= _gstate.min_committee_member_number && itr != _producers.end(); ++itr, ++i){}
+		 if( i > _gstate.min_committee_member_number){
+			_gstate.start_block=(uint64_t)tapos_block_num();
+         }else{
+            return;
+         }
+      }
+
+      const uint32_t seconds_per_block     = block_interval_seconds();
+      uint32_t blocks_per_year       = seconds_per_year / seconds_per_block;
+
+      auto prod = _producers.find(producer);
+      if ( prod != _producers.end() ) {
+	     int temp = 2*(tapos_block_num()-(int)_gstate.start_block)/(int)blocks_per_year;
+         const int interval = temp < num_rate ? temp:(num_rate-1);
+         _gstate.total_unpaid_blocks[interval]+= number;
+         _producers.modify( prod, 0, [&](auto& p ) {
+               p.unpaid_blocks[interval]+= number;
+               p.total_produce_block++;
+         });
+      }
    }
 
    using namespace ultrainio;
@@ -91,9 +120,9 @@ namespace ultrainiosystem {
       int64_t new_tokens = 0;
       print("claimrewards gloable:\n[");
       for(int i=0;i<num_rate;++i){
-	 print("{",i,", ",_gstate.total_unpaid_blocks[i],"},");
-	 new_tokens += static_cast<int64_t>(_gstate.total_unpaid_blocks[i]*rate[i]);
-	 _gstate.total_unpaid_blocks[i] = 0;
+         print("{",i,", ",_gstate.total_unpaid_blocks[i],"},");
+         new_tokens += static_cast<int64_t>(_gstate.total_unpaid_blocks[i]*rate[i]);
+         _gstate.total_unpaid_blocks[i] = 0;
       }
       new_tokens*=p10;
       print("]\nclaimrewards new_tokens:",new_tokens,"\n");
@@ -103,16 +132,16 @@ namespace ultrainiosystem {
       int64_t producer_per_block_pay = 0;
       print("claimrewards proudcer:\n[");
       for(int i=0;i<num_rate;++i){
-	 print("{",i,", ",prod.unpaid_blocks[i],"},");
-	 producer_per_block_pay += static_cast<int64_t>(prod.unpaid_blocks[i]*rate[i]);
+         print("{",i,", ",prod.unpaid_blocks[i],"},");
+         producer_per_block_pay += static_cast<int64_t>(prod.unpaid_blocks[i]*rate[i]);
       }
       producer_per_block_pay*=p10;
       print("]\nclaimrewards producer_pay:",producer_per_block_pay,"\n");
       _producers.modify( prod, 0, [&](auto& p) {
-          p.last_claim_time = ct;
-          for(int i=0;i<num_rate;++i) {
-	     p.unpaid_blocks[i] = 0;
-	  }
+         p.last_claim_time = ct;
+         for(int i=0;i<num_rate;++i) {
+         p.unpaid_blocks[i] = 0;
+	   }
       });
 
       if( producer_per_block_pay > 0 ) {

@@ -7,6 +7,7 @@
 #include <functional>
 #include <tuple>
 #include <string>
+#include <vector>
 
 namespace ultrainio {
 

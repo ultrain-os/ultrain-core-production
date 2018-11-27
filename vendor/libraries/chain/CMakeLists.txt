@@ -39,6 +39,7 @@ add_library( ultrainio_chain
 
              webassembly/wavm.cpp
              webassembly/binaryen.cpp
+	     webassembly/wabt.cpp
 
 #             get_config.cpp
 #             global_property_object.cpp
@@ -52,13 +53,15 @@ add_library( ultrainio_chain
 
 add_dependencies(ultrainio_chain  ultrainio.token)
 target_link_libraries( ultrainio_chain ultrain_utilities fc chainbase appbase chain_plugin Logging IR WAST WASM Runtime
-      wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins
+      wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins wabt
                      )
 target_include_directories( ultrainio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/binaryen/src"
                                    "${CMAKE_BINARY_DIR}/contracts"
+				   "${CMAKE_SOURCE_DIR}/vendor/libraries/wabt"
+                                   "${CMAKE_BINARY_DIR}/vendor/libraries/wabt"
                             )
 
 install( TARGETS ultrainio_chain

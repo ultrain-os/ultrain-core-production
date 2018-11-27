@@ -15,23 +15,16 @@ namespace ultrainio { namespace chain {
     if( when != block_timestamp_type() ) {
        ULTRAIN_ASSERT( when > header.timestamp, block_validate_exception, "next block must be in the future" );
     } else {
-       (when = header.timestamp).slot++;
+       //(when = header.timestamp).slot++;
+         when = header.timestamp;
+	 when.abstime += config::block_interval_ms/1000;
     }
     result.header.timestamp                                = when;
     result.header.previous                                 = id;
     // TODO(yufengshen) : Clean this one.
     account_name producer_name = "ultrainio";
-    //    result.block_signing_key                               = prokey.block_signing_key;
     result.block_num                                       = block_num + 1;
-    result.blockroot_merkle = blockroot_merkle;
-    result.blockroot_merkle.append( id );
-
-    auto block_mroot = result.blockroot_merkle.get_root();
-
-    // TODO(yufengshen): Check this
-    result.dpos_proposed_irreversible_blocknum   = block_num;
-    result.bft_irreversible_blocknum             = block_num;
-    result.dpos_irreversible_blocknum            = block_num;
+    result.irreversible_blocknum            = block_num;
 
     return result;
   } /// generate_next
@@ -51,19 +44,16 @@ namespace ultrainio { namespace chain {
     ULTRAIN_ASSERT( h.previous == id, unlinkable_block_exception, "block must link to current state" );
     auto result = generate_next( h.timestamp );
 
-    // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mismatch block merkle root" );
-
      /// below this point is state changes that cannot be validated with headers alone, but never-the-less,
      /// must result in header state changes
-
-    // TODO(yufengshen) : always confirming 1 for now.
-    result.set_confirmed(1);
 
     result.header.action_mroot       = h.action_mroot;
     result.header.transaction_mroot  = h.transaction_mroot;
     result.header.committee_mroot    = h.committee_mroot;
     result.header.proposer           = h.proposer;
+#ifdef CONSENSUS_VRF
     result.header.proposerProof      = h.proposerProof;
+#endif
     result.id                        = result.header.id();
     /*
     ilog("----block_header_state::next ${time} ${pro} ${bn} ${prev} ${tx_mroot} ${action_mroot} ${hash}  ${ver} ${producer}",
@@ -73,54 +63,32 @@ namespace ultrainio { namespace chain {
 	 ("producer", (bool)(result.header.new_producers))
 	 ("hash",result.header.id()));
 
+#ifdef CONSENSUS_VRF
     fprintf(stdout, "ppk %s ppf %s\n", result.header.proposerPk.c_str(), result.header.proposerProof.c_str());
+#else
+    fprintf(stdout, "ppk %s\n", result.header.proposerPk.c_str());
+#endif
+
     fflush(stdout);
     */
-    // TODO - yufengshen - we should check this
-    //    if( !trust ) {
-    //       FC_ASSERT( result.block_signing_key == result.signee(), "block not signed by expected key",
-    //                  ("result.block_signing_key", result.block_signing_key)("signee", result.signee() ) );
-    //    }
 
     return result;
   } /// next
 
-  void block_header_state::set_confirmed( uint16_t num_prev_blocks ) {
-     /*
-     idump((num_prev_blocks)(confirm_count.size()));
-
-     for( uint32_t i = 0; i < confirm_count.size(); ++i ) {
-        std::cerr << "confirm_count["<<i<<"] = " << int(confirm_count[i]) << "\n";
-     }
-     */
-
-     int32_t i = (int32_t)(confirm_count.size() - 1);
-     uint32_t blocks_to_confirm = num_prev_blocks + 1; /// confirm the head block too
-     while( i >= 0 && blocks_to_confirm ) {
-        --confirm_count[i];
-        //idump((confirm_count[i]));
-        if( confirm_count[i] == 0 )
-        {
-           uint32_t block_num_for_i = block_num - (uint32_t)(confirm_count.size() - 1 - i);
-           dpos_proposed_irreversible_blocknum = block_num_for_i;
-           //idump((dpos2_lib)(block_num)(dpos_irreversible_blocknum));
-
-           if (i == confirm_count.size() - 1) {
-              confirm_count.resize(0);
-           } else {
-              memmove( &confirm_count[0], &confirm_count[i + 1], confirm_count.size() - i  - 1);
-              confirm_count.resize( confirm_count.size() - i - 1 );
-           }
-
-           return;
-        }
-        --i;
-        --blocks_to_confirm;
-     }
-  }
-
   digest_type   block_header_state::sig_digest()const {
-      return digest_type::hash(std::make_pair(header.digest(), blockroot_merkle.get_root()));
+      return header.digest();
   }
 
 } } /// namespace ultrainio::chain
+
+
+namespace fc{
+	void to_variant(const ultrainio::chain::block_timestamp&t,fc::variant&v){
+		to_variant((fc::time_point)t,v);
+	}
+
+
+	void from_variant(const fc::variant&v,ultrainio::chain::block_timestamp&t){
+		t=v.as<fc::time_point>();
+	}
+}

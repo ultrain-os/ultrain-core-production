@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string>
 #include <ultrainiolib/ultrainio.hpp>
+#include <ultrainiolib/system.h>
 
 namespace ultrainio {
   class microseconds {
@@ -110,12 +111,10 @@ namespace ultrainio {
 
    /**
    * This class is used in the block headers to represent the block time
-   * It is a parameterised class that takes an Epoch in milliseconds and
-   * and an interval in milliseconds and computes the number of slots.
    **/
    class block_timestamp {
       public:
-         explicit block_timestamp( uint32_t s=0 ) :slot(s){}
+         explicit block_timestamp( uint32_t s=0 ) :abstime(s){}
 
          block_timestamp(const time_point& t) {
             set_time_point(t);
@@ -128,19 +127,12 @@ namespace ultrainio {
          static block_timestamp maximum() { return block_timestamp( 0xffff ); }
          static block_timestamp min() { return block_timestamp(0); }
 
-         block_timestamp next() const {
-            ultrainio_assert( std::numeric_limits<uint32_t>::max() - slot >= 1, "block timestamp overflow" );
-            auto result = block_timestamp(*this);
-            result.slot += 1;
-            return result;
-         }
-
          time_point to_time_point() const {
             return (time_point)(*this);
          }
 
          operator time_point() const {
-            int64_t msec = slot * (int64_t)block_interval_ms;
+            int64_t msec = abstime * 1000ll;
             msec += block_timestamp_epoch;
             return time_point(milliseconds(msec));
          }
@@ -149,31 +141,30 @@ namespace ultrainio {
             set_time_point(t);
          }
 
-         bool   operator > ( const block_timestamp& t )const   { return slot >  t.slot; }
-         bool   operator >=( const block_timestamp& t )const   { return slot >= t.slot; }
-         bool   operator < ( const block_timestamp& t )const   { return slot <  t.slot; }
-         bool   operator <=( const block_timestamp& t )const   { return slot <= t.slot; }
-         bool   operator ==( const block_timestamp& t )const   { return slot == t.slot; }
-         bool   operator !=( const block_timestamp& t )const   { return slot != t.slot; }
-         uint32_t slot;
-         static constexpr int32_t block_interval_ms = 10 * 1000;
-         static constexpr int64_t block_timestamp_epoch = 946684800000ll;  // epoch is year 2000
+         bool   operator > ( const block_timestamp& t )const   { return abstime >  t.abstime; }
+         bool   operator >=( const block_timestamp& t )const   { return abstime >= t.abstime; }
+         bool   operator < ( const block_timestamp& t )const   { return abstime <  t.abstime; }
+         bool   operator <=( const block_timestamp& t )const   { return abstime <= t.abstime; }
+         bool   operator ==( const block_timestamp& t )const   { return abstime == t.abstime; }
+         bool   operator !=( const block_timestamp& t )const   { return abstime != t.abstime; }
+         uint32_t abstime;
+         static constexpr int64_t block_timestamp_epoch = 1514764800000ll; // epoch is year 2018.
 
-         ULTRAINLIB_SERIALIZE( block_timestamp, (slot) )
+         ULTRAINLIB_SERIALIZE( block_timestamp, (abstime) )
       private:
-      
+
 
       void set_time_point(const time_point& t) {
          int64_t micro_since_epoch = t.time_since_epoch().count();
          int64_t msec_since_epoch  = micro_since_epoch / 1000;
-         slot = uint32_t(( msec_since_epoch - block_timestamp_epoch ) / int64_t(block_interval_ms));
+         abstime = uint32_t(( msec_since_epoch - block_timestamp_epoch ) / 1000);
       }
 
       void set_time_point(const time_point_sec& t) {
          int64_t  sec_since_epoch = t.sec_since_epoch();
-         slot = uint32_t((sec_since_epoch * 1000 - block_timestamp_epoch) / block_interval_ms);
+         abstime = uint32_t((sec_since_epoch * 1000 - block_timestamp_epoch) / 1000);
       }
    }; // block_timestamp
-   typedef block_timestamp block_timestamp_type; 
+   typedef block_timestamp block_timestamp_type;
 
 } // namespace ultrainio
