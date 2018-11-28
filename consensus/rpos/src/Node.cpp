@@ -83,7 +83,7 @@ namespace ultrainio {
 
     void UranusNode::readyToConnect() {
         m_connected = true;
-        readyLoop(6 * Config::s_maxRoundSeconds);
+        readyLoop(50);
     }
 
     bool UranusNode::getSyncingStatus() const {
@@ -105,9 +105,9 @@ namespace ultrainio {
         boost::chrono::seconds pass_time_to_genesis;
 
         if (!m_connected) {
-            //readyToConnect();
-            //return;
-            m_connected = true;
+            readyToConnect();
+            return;
+            //m_connected = true;
         }
 
         std::time_t t = boost::chrono::system_clock::to_time_t(current_time);
