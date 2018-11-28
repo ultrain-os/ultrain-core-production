@@ -1621,32 +1621,40 @@ namespace ultrainio {
          });
    }
 
-   void net_plugin_impl::start_broadcast(const net_message& msg, msg_priority p) {
-       for(auto &c : connections) {
-           if (c->current() && p == c->priority) {
-               ilog ("send to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
-               c->enqueue(msg);
-           }
-       }
-   }
+    void net_plugin_impl::start_broadcast(const net_message& msg, msg_priority p) {
+        for(auto &c : connections) {
+            if (c->current() && p == c->priority) {
+                ilog ("send to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                c->enqueue(msg);
+            }
+        }
+    }
 
     void net_plugin_impl::send_block(const string& ip_addr, const net_message& msg) {
         for(auto &c : connections) {
-            if (c->priority == msg_priority_trx && (c->current()) && (c->socket->remote_endpoint().address().to_v4().to_string() == ip_addr)) {
-                ilog ("send block to peer : ${peer_name}, enqueue", ("peer_name", c->peer_name()));
-                c->enqueue(msg);
-                break;
+            if (c->priority == msg_priority_trx && c->current()) {
+                boost::system::error_code ec;
+                auto endpoint = c->socket->remote_endpoint(ec);
+                if (!ec && endpoint.address().to_v4().to_string() == ip_addr) {
+                    ilog ("send block to peer : ${peer_name}, enqueue", ("peer_name", c->peer_name()));
+                    c->enqueue(msg);
+                    break;
+                }
             }
         }
     }
 
     void net_plugin_impl::send_last_block_num(const string& ip_addr, const net_message& msg) {
         for (auto &c : connections) {
-          if (c->priority == msg_priority_trx && c->current() && (c->socket->remote_endpoint().address().to_v4().to_string() == ip_addr)) {
-            ilog("send last block num to peer: ${p}", ("p", c->peer_name()));
-            c->enqueue(msg);
-            break;
-          }
+            if (c->priority == msg_priority_trx && c->current()) {
+                boost::system::error_code ec;
+                auto endpoint = c->socket->remote_endpoint(ec);
+                if (!ec && endpoint.address().to_v4().to_string() == ip_addr) {
+                    ilog("send last block num to peer: ${p}", ("p", c->peer_name()));
+                    c->enqueue(msg);
+                    break;
+                }
+            }
         }
     }
 
@@ -2168,7 +2176,14 @@ namespace ultrainio {
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg) {
         ilog("receive req last block num msg!!! from peer ${p}", ("p", c->peer_name()));
-        app().get_plugin<producer_uranus_plugin>().handle_message(c->socket->remote_endpoint().address().to_v4().to_string(), msg);
+
+        boost::system::error_code ec;
+        auto endpoint = c->socket->remote_endpoint(ec);
+        if (!ec) {
+            app().get_plugin<producer_uranus_plugin>().handle_message(endpoint.address().to_v4().to_string(), msg);
+        } else {
+            elog("connection is broken, error code: ${ec}", ("ec", ec.value()));
+        }
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg) {
@@ -2201,7 +2216,13 @@ namespace ultrainio {
         ilog("receive req sync msg!!! message from ${p} addr:${addr} blockNum = ${blockNum}",
              ("p", c->peer_name())("addr", c->peer_addr)("blockNum", msg.endBlockNum));
 
-        app().get_plugin<producer_uranus_plugin>().handle_message(c->socket->remote_endpoint().address().to_v4().to_string(), msg);
+        boost::system::error_code ec;
+        auto endpoint = c->socket->remote_endpoint(ec);
+        if (!ec) {
+            app().get_plugin<producer_uranus_plugin>().handle_message(endpoint.address().to_v4().to_string(), msg);
+        } else {
+            elog("connection is broken, error code: ${ec}", ("ec", ec.value()));
+        }
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg) {
@@ -2232,7 +2253,13 @@ namespace ultrainio {
         ilog("receive sync stop msg!!! message from ${p} addr:${addr} seqNum = ${sn}",
              ("p", c->peer_name())("addr", c->peer_addr)("sn", msg.seqNum));
 
-        app().get_plugin<producer_uranus_plugin>().handle_message(c->socket->remote_endpoint().address().to_v4().to_string(), msg);
+        boost::system::error_code ec;
+        auto endpoint = c->socket->remote_endpoint(ec);
+        if (!ec) {
+            app().get_plugin<producer_uranus_plugin>().handle_message(endpoint.address().to_v4().to_string(), msg);
+        } else {
+            elog("connection is broken, error code: ${ec}", ("ec", ec.value()));
+        }
     }
 
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
