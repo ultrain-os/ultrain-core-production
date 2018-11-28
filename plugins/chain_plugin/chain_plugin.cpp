@@ -950,7 +950,6 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    ULTRAIN_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
    const auto& d = db.db();
-   const auto lower = name{p.lower_bound};
 
    static const uint8_t secondary_index_num = 0;
    const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), N(ultrainio), N(producers)));
@@ -958,46 +957,30 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    ULTRAIN_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
 
    const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
-   const auto& secondary_index = d.get_index<index_double_index>().indices();
-   const auto& secondary_index_by_primary = secondary_index.get<by_primary>();
-   const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
+   decltype(table_id->id) next_tid(table_id->id._id + 1);
+   auto lower = kv_index.lower_bound(boost::make_tuple(table_id->id));
+   auto upper = kv_index.lower_bound(boost::make_tuple(next_tid));
+
 
    read_only::get_producers_result result;
    const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
    vector<char> data;
 
-   auto it = [&]{
-      if(lower.value == 0)
-         return secondary_index_by_secondary.lower_bound(
-            boost::make_tuple(secondary_table_id->id, to_softfloat64(std::numeric_limits<double>::lowest()), 0));
-      else
-         return secondary_index.project<by_secondary>(
-            secondary_index_by_primary.lower_bound(
-               boost::make_tuple(secondary_table_id->id, lower.value)));
-   }();
-   it = secondary_index_by_secondary.begin();
+   std::for_each(lower,upper, [&](const key_value_object& obj) {
+        copy_inline_row(obj, data);
+        auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
+        if(filter_enabled && !(producer["is_enabled"].as_bool())) {
+            return;
+        }
+        if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {
+            return;
+        }
+        if (p.json)
+           result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
+        else
+           result.rows.emplace_back(fc::variant(data));
+   });
 
-   for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
-      //TODO add an option to make the stop time and size limit valid according to requirement
-#if 0
-      if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
-         result.more = name{it->primary_key}.to_string();
-         break;
-      }
-#endif
-      copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
-      auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
-      if(filter_enabled && !(producer["is_enabled"].as_bool())) {
-          continue;
-      }
-      if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {
-          continue;
-      }
-      if (p.json)
-         result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
-      else
-         result.rows.emplace_back(fc::variant(data));
-   }
    auto gstate = get_global_row(d, abi, abis, abi_serializer_max_time);
    ilog("global ${gl}", ("gl", gstate));
 

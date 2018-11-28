@@ -191,6 +191,8 @@ namespace ultrainio {
         auto statePtr(std::make_shared<CommitteeState>());
         params.json=true;
         params.lower_bound="";
+        params.show_chain_num = 0;
+        params.is_filter_chain = true;
         try {
             auto result = ro_api.get_producers(params, true);
             if(!result.rows.empty()) {
