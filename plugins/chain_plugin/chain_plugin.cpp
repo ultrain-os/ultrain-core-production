@@ -990,6 +990,9 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       if(filter_enabled && !(producer["is_enabled"].as_bool())) {
           continue;
       }
+      if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {
+          continue;
+      }
       if (p.json)
          result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
       else
