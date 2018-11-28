@@ -540,6 +540,9 @@ struct controller_impl {
       info.file_size = bfs::file_size(worldstate_path);
       info.hash_string = ws_manager.calculate_file_hash(worldstate_path).str();
       ws_manager.save_info(info);
+
+      fc::remove_all(conf.worldstate_dir / "shared_memory.bin");
+      fc::remove_all(conf.worldstate_dir / "shared_memory.meta");
    }
 
    void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
