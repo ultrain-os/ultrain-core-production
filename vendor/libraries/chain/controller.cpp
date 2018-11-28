@@ -31,8 +31,8 @@ namespace ultrainio { namespace chain {
 using namespace appbase;
 using resource_limits::resource_limits_manager;
 // these are the default numbers, and it could be changed during startup.
-int chain::config::block_interval_ms = 10*1000;
-int chain::config::block_interval_us = 10*1000*1000;
+//int chain::config::block_interval_ms = 10*1000;
+//int chain::config::block_interval_us = 10*1000*1000;
 struct pending_state {
    pending_state( database::session&& s )
    :_db_session( move(s) ){}
@@ -351,7 +351,8 @@ struct controller_impl {
       db.modify( tapos_block_summary, [&]( auto& bs ) {
         bs.block_id = head->id;
       });
-
+      conf.genesis.initial_configuration.max_block_cpu_usage = config::default_max_block_cpu_usage;
+      conf.genesis.initial_configuration.max_transaction_cpu_usage = config::default_max_transaction_cpu_usage;
       conf.genesis.initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
         gpo.configuration = conf.genesis.initial_configuration;
@@ -1112,6 +1113,7 @@ struct controller_impl {
       const auto& chain_config = self.get_global_properties().configuration;
       uint32_t max_virtual_mult = 1000;
       uint64_t CPU_TARGET = ULTRAIN_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
+      ilog("set_block_parameters chain_config.max_block_cpu_usage:${c},chain_config.max_block_net_usage:${n},", ("c", chain_config.max_block_cpu_usage)("n", chain_config.max_block_net_usage));
       resource_limits.set_block_parameters(
          { CPU_TARGET, chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}},
          {ULTRAIN_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}}
