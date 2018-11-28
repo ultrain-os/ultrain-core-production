@@ -292,7 +292,7 @@ public:
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
    struct get_subchain_committee_params {
-      uint16_t         chain_name;  //todo, will change it to name type later
+      uint64_t         chain_name;  //todo, will change it to name type later
    };
 
    struct get_subchain_committee_result {
@@ -301,6 +301,9 @@ public:
    };
 
    vector<get_subchain_committee_result> get_subchain_committee(const get_subchain_committee_params& p) const;
+
+   using get_subchain_block_num_params = get_subchain_committee_params;
+   uint32_t get_subchain_block_num(const get_subchain_block_num_params& p) const;
 
    struct get_producers_params {
       bool        json = false;

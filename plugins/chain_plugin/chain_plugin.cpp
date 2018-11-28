@@ -876,57 +876,57 @@ vector<read_only::get_subchain_committee_result> read_only::get_subchain_committ
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
    ULTRAIN_ASSERT(p.chain_name != 1, chain::contract_table_query_exception, "Could not query committee list of master chain.");
 
-   name table = N(pendingchain);
-   if(p.chain_name != 0) {
-      table = N(subchains);
-   }
+   name table = N(subchains);
    auto index_type = get_table_type( abi, table );
 
    vector<get_subchain_committee_result> result;
-   if(p.chain_name == 0) {
-       walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
-           vector<char> data;
-           copy_inline_row(obj, data);
-           ULTRAIN_ASSERT( data.size() >= sizeof(subchain_base), chain::asset_type_exception, "Invalid pending chain data on table");
+   walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+//       ULTRAIN_ASSERT( obj.value.size() >= sizeof(ultrainio::chain::subchain), chain::asset_type_exception, "Invalid subchain data on table");
 
-           subchain_base pending_chain;
-           fc::datastream<const char *> ds(data.data(), data.size());
-           fc::raw::unpack(ds, pending_chain);
+       ultrainio::chain::subchain subchain_data;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, subchain_data);
 
-           std::vector<role_base>::iterator ite = pending_chain.committee_members.begin();
-           for (; ite != pending_chain.committee_members.end(); ++ite) {
-               read_only::get_subchain_committee_result tmp;
-               tmp.owner = ite->owner.to_string();
-               tmp.miner_pk = ite->producer_key;
-               result.push_back(tmp);
-           }
+       if(p.chain_name == subchain_data.chain_name) {
+          std::vector<role_base>::iterator ite = subchain_data.committee_members.begin();
+          for (; ite != subchain_data.committee_members.end(); ++ite) {
+              read_only::get_subchain_committee_result tmp;
+              tmp.owner = ite->owner.to_string();
+              tmp.miner_pk = ite->producer_key;
+              result.push_back(tmp);
+          }
+          return false;
+      }
+      else {
+          return true;
+      }
+   });
+
+   return result;
+}
+
+uint32_t read_only::get_subchain_block_num(const read_only::get_subchain_block_num_params& p) const {
+const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+   ULTRAIN_ASSERT(p.chain_name != 1, chain::contract_table_query_exception, "Could not query committee list of master chain.");
+
+   name table = N(subchains);
+   auto index_type = get_table_type( abi, table );
+
+   uint32_t result = std::numeric_limits<uint32_t>::max();
+   walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+   //    ULTRAIN_ASSERT( obj.value.size() >= sizeof(subchain), chain::asset_type_exception, "Invalid subchain data on table");
+
+       subchain subchain_data;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, subchain_data);
+       if(p.chain_name == subchain_data.chain_name) {
+           result = subchain_data.head_block_num;
            return false;
-       });
-   }
-   else {
-       walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
-           ULTRAIN_ASSERT( obj.value.size() >= sizeof(subchain), chain::asset_type_exception, "Invalid subchain data on table");
-
-           subchain subchain_data;
-           fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-           fc::raw::unpack(ds, subchain_data);
-
-           if(p.chain_name == subchain_data.chain_name) {
-               std::vector<role_base>::iterator ite = subchain_data.committee_members.begin();
-               for (; ite != subchain_data.committee_members.end(); ++ite) {
-                   read_only::get_subchain_committee_result tmp;
-                   tmp.owner = ite->owner.to_string();
-                   tmp.miner_pk = ite->producer_key;
-                   result.push_back(tmp);
-               }
-               return false;
-           }
-           else {
-               return true;
-           }
-       });
-   }
-
+       }
+       else {
+           return true;
+       }
+   });
    return result;
 }
 // TODO: move this and similar functions to a header. Copied from wasm_interface.cpp.
