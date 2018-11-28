@@ -1,30 +1,30 @@
 #include "crypto/PrivateKey.h"
 
 #include <base/Hex.h>
-#include <crypto/Ed25519.h>
+#include <crypto/Bls.h>
 
 namespace ultrainio {
-    PrivateKey PrivateKey::generate() {
-        uint8_t pk[Ed25519::PUBLIC_KEY_LEN];
-        uint8_t sk[Ed25519::PRIVATE_KEY_LEN];
-        Ed25519::keypair(pk, sk);
-        return PrivateKey(sk, Ed25519::PRIVATE_KEY_LEN);
+    bool PrivateKey::generate(PrivateKey& sk, PublicKey& pk) {
+        std::shared_ptr<Bls> blsPtr = Bls::getDefault();
+        unsigned char skStr[Bls::BLS_PRI_KEY_LENGTH];
+        unsigned char pkStr[Bls::BLS_PUB_KEY_LENGTH];
+        blsPtr->keygen(skStr, Bls::BLS_PRI_KEY_LENGTH, pkStr, Bls::BLS_PUB_KEY_LENGTH);
+        sk = PrivateKey(skStr, Bls::BLS_PRI_KEY_LENGTH);
+        pk = PublicKey(pkStr, Bls::BLS_PUB_KEY_LENGTH);
+        return true;
     }
 
     bool PrivateKey::verifyKeyPair(const PublicKey& publicKey, const PrivateKey& privateKey) {
-        Digest digest("");
         if (!privateKey.isValid() || !publicKey.isValid()) {
             return false;
         }
-        return publicKey.verify(privateKey.sign(digest), digest);
+        return privateKey.getPublicKey() == publicKey;
     }
 
     PrivateKey::PrivateKey(const std::string& key) : m_key(key) {
-        m_publicKey = PublicKey(std::string(m_key, Ed25519::PRIVATE_KEY_HEX_LEN - Ed25519::PUBLIC_KEY_HEX_LEN));
     }
 
-    PrivateKey::PrivateKey(uint8_t* rawKey, size_t len) : m_key(Hex::toHex(rawKey, len)) {
-        m_publicKey = PublicKey(std::string(m_key, Ed25519::PRIVATE_KEY_HEX_LEN - Ed25519::PUBLIC_KEY_HEX_LEN));
+    PrivateKey::PrivateKey(unsigned char* rawKey, size_t len) : m_key(Hex::toHex<unsigned char>(rawKey, len)) {
     }
 
     PrivateKey::operator std::string() const {
@@ -33,30 +33,43 @@ namespace ultrainio {
 
     Signature PrivateKey::sign(const Digest& digest) const {
         std::string digestStr = std::string(digest);
-        uint8_t rawKey[Ed25519::PRIVATE_KEY_LEN];
-        if (!getRaw(rawKey, Ed25519::SIGNATURE_LEN)) {
+        unsigned char rawKey[Bls::BLS_PRI_KEY_LENGTH];
+        if (!getRaw(rawKey, Bls::BLS_PRI_KEY_LENGTH)) {
             return Signature();
         }
-        uint8_t sig[Ed25519::SIGNATURE_LEN];
-        if (!Ed25519::sign(sig, (const uint8_t*)digestStr.c_str(), digestStr.length(), rawKey)) {
+        unsigned char signature[Bls::BLS_SIGNATURE_LENGTH];
+        std::shared_ptr<Bls> blsPtr = Bls::getDefault();
+        if (!blsPtr->signature(rawKey, (void*)digestStr.c_str(), digestStr.length(), signature, Bls::BLS_SIGNATURE_LENGTH)) {
             return Signature();
         }
-        return Signature(sig, Ed25519::SIGNATURE_LEN);
+        return Signature(signature, Bls::BLS_SIGNATURE_LENGTH);
     }
 
-    bool PrivateKey::getRaw(uint8_t* rawKey, size_t len) const {
-        return Hex::fromHex(m_key, rawKey, len) == Ed25519::PRIVATE_KEY_LEN;
+    bool PrivateKey::getRaw(unsigned char* rawKey, size_t len) const {
+        if (len < Bls::BLS_PRI_KEY_LENGTH) {
+            return false;
+        }
+        return Hex::fromHex<unsigned char>(m_key, rawKey, len) == Bls::BLS_PRI_KEY_LENGTH;
     }
 
     // maybe more condition check
     bool PrivateKey::isValid() const {
-        if (m_key.length() == Ed25519::PRIVATE_KEY_HEX_LEN && m_publicKey.isValid()) {
+        if (m_key.length() == 2 * Bls::BLS_PRI_KEY_LENGTH) {
             return true;
         }
         return false;
     }
 
     PublicKey PrivateKey::getPublicKey() const {
-        return m_publicKey;
+        std::shared_ptr<Bls> blsPtr = Bls::getDefault();
+        unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
+        if (!getRaw(sk, Bls::BLS_PRI_KEY_LENGTH)) {
+            return PublicKey();
+        }
+        unsigned char pk[Bls::BLS_PUB_KEY_LENGTH];
+        if (blsPtr->getPk(pk, Bls::BLS_PUB_KEY_LENGTH, sk, Bls::BLS_PRI_KEY_LENGTH)) {
+            return PublicKey(pk, Bls::BLS_PUB_KEY_LENGTH);
+        }
+        return PublicKey();
     }
 }

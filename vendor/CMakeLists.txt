@@ -1,5 +1,4 @@
 add_subdirectory( binaryen )
-add_subdirectory( boringssl )
 add_subdirectory( libraries )
 add_subdirectory( pbc )
 add_subdirectory( googletest )

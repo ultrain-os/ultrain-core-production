@@ -5,7 +5,6 @@
 
 #include <core/Message.h>
 #include <core/Redefined.h>
-#include <crypto/Ed25519.h>
 #include <rpos/BlockMsg.h>
 #include <rpos/Proof.h>
 
