@@ -124,7 +124,7 @@ namespace ultrainio {
         return realIsVoter(account);
     }
 
-    int StakeVoteBase::getProposerNumber() const {
+    uint32_t StakeVoteBase::getProposerNumber() const {
         if (isGenesisPeriod()) {
             return 1;
         }
@@ -212,7 +212,7 @@ namespace ultrainio {
         return statePtr;
     }
 
-    int StakeVoteBase::proposerPriority(const AccountName& account) {
+    uint32_t StakeVoteBase::proposerPriority(const AccountName& account) {
         ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
     }
 
@@ -240,7 +240,7 @@ namespace ultrainio {
         ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
     }
 
-    int StakeVoteBase::realGetProposerNumber() const {
+    uint32_t StakeVoteBase::realGetProposerNumber() const {
         ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
     }
 }
