@@ -44,7 +44,7 @@ namespace ultrainio { namespace chain {
 
          uint64_t append(const signed_block_ptr& b);
          void flush();
-         uint64_t reset_to_genesis( const genesis_state& gs, const signed_block_ptr& genesis_block );
+         uint64_t reset_to_genesis( const genesis_state& gs, const signed_block_ptr& genesis_block, uint32_t first_block_num = 1 );
 
          std::pair<signed_block_ptr, uint64_t> read_block(uint64_t file_pos)const;
          signed_block_ptr read_block_by_num(uint32_t block_num)const;
@@ -58,10 +58,12 @@ namespace ultrainio { namespace chain {
          uint64_t get_block_pos(uint32_t block_num) const;
          signed_block_ptr        read_head()const;
          const signed_block_ptr& head()const;
+	 uint32_t                first_block_num() const;
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 
-         static const uint32_t supported_version;
+         static const uint32_t min_supported_version;
+         static const uint32_t max_supported_version;
 
          static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = 0 );
 
