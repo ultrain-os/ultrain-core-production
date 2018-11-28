@@ -2648,7 +2648,7 @@ namespace ultrainio {
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
         ("max-waitblocknum-seconds", bpo::value<int>()->default_value(src_block_waitting), "Max time wait for answers from peers about blockNum:src_block_period")
-        ("max-waitbloack-seconds",bpo::value<int>()->default_value(sync_conn_waitting), "Max time wait for block from selected peer:conn_timeout")
+        ("max-waitblock-seconds",bpo::value<int>()->default_value(sync_conn_waitting), "Max time wait for block from selected peer:conn_timeout")
 
         ;
    }
@@ -2665,7 +2665,7 @@ namespace ultrainio {
 
          my->network_version_match = options.at( "network-version-match" ).as<bool>();
          my->max_waittime_getsyncblocknum = options.at( "max-waitblocknum-seconds" ).as<int>();
-         my->max_waittime_getsyncblock = options.at( "max-waitbloack-seconds" ).as<int>();
+         my->max_waittime_getsyncblock = options.at( "max-waitblock-seconds" ).as<int>();
          my->dispatcher.reset( new dispatch_manager );
          my->sync_block_master.reset( new sync_block_manager );
 

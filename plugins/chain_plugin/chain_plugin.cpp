@@ -236,7 +236,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database and block log")
          ("truncate-at-block", bpo::value<uint32_t>()->default_value(0),
           "stop hard replay / block log recovery at this block number (if set to non-zero number)")
-         ;
+	 ("max_block_cpu_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_cpu_usage),
+	  "max_block_cpu_usage,used in resource ,in genesis param,etc")
+	 ("max_block_net_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_net_usage),
+	  "max_block_net_usage,used in resource ,in genesis param,etc")
+		;
 
 }
 
@@ -277,7 +281,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                ("root_key", genesis_state::ultrainio_root_key));
          throw;
       }
-
+     ultrainio::chain::config::default_max_block_cpu_usage = options.at("max_block_cpu_usage").as<uint32_t>();
+     ultrainio::chain::config::default_max_transaction_cpu_usage = ultrainio::chain::config::default_max_block_cpu_usage / 2;
+     ultrainio::chain::config::default_max_block_net_usage = options.at("max_block_net_usage").as<uint32_t>();
+     ultrainio::chain::config::default_max_transaction_net_usage = ultrainio::chain::config::default_max_block_net_usage / 2;
+     ilog("default ${default_max_block_cpu_usage}",("default_max_block_cpu_usage",ultrainio::chain::config::default_max_block_cpu_usage));
       my->chain_config = controller::config();
 
       LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );

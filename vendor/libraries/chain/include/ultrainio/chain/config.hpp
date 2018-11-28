@@ -60,10 +60,11 @@ const static uint32_t   rate_limiting_precision        = 1000*1000;
 const static uint32_t   default_max_propose_trx_count                 = 12000;
 const static uint32_t   default_max_pending_trx_count                 = 50000;
 const static uint32_t   default_max_unapplied_trx_count               = 50000;
-
-const static uint32_t   default_max_block_net_usage                 = 1024 * 1024 * 2;
+extern uint32_t default_max_block_net_usage;
+extern uint32_t default_max_transaction_net_usage;
+//const static uint32_t   default_max_block_net_usage                 = 1024 * 1024 * 2;
 const static uint32_t   default_target_block_net_usage_pct           = 10 * percent_1; /// we target 1000 TPS
-const static uint32_t   default_max_transaction_net_usage            = default_max_block_net_usage / 2;
+//const static uint32_t   default_max_transaction_net_usage            = default_max_block_net_usage / 2;
 const static uint32_t   default_base_per_transaction_net_usage       = 12;  // 12 bytes (11 bytes for worst case of transaction_receipt_header + 1 byte for static_variant tag)
 const static uint32_t   default_net_usage_leeway                     = 500; // TODO: is this reasonable?
 const static uint32_t   default_context_free_discount_net_usage_num  = 20; // TODO: is this reasonable?

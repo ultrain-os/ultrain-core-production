@@ -135,6 +135,7 @@ struct controller_impl {
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
+    ilog("genesis ${block_cpu}",("block_cpu",cfg.genesis.initial_configuration.max_block_cpu_usage));
    SET_APP_HANDLER( ultrainio, ultrainio, newaccount );
    SET_APP_HANDLER( ultrainio, ultrainio, setcode );
    SET_APP_HANDLER( ultrainio, ultrainio, setabi );
@@ -302,7 +303,7 @@ struct controller_impl {
       genheader.block_num             = genheader.header.block_num();
 
       ilog("genesis block id = ${id}", ("id", genheader.id));
-
+       ilog("genesis1 ${block_cpu}",("block_cpu",conf.genesis.initial_configuration.max_block_cpu_usage));
       head = std::make_shared<block_state>( genheader );
       head->block = std::make_shared<signed_block>(genheader.header);
       fork_db.set( head );
@@ -351,8 +352,7 @@ struct controller_impl {
       db.modify( tapos_block_summary, [&]( auto& bs ) {
         bs.block_id = head->id;
       });
-      conf.genesis.initial_configuration.max_block_cpu_usage = config::default_max_block_cpu_usage;
-      conf.genesis.initial_configuration.max_transaction_cpu_usage = config::default_max_transaction_cpu_usage;
+      //TODO:all options to one unique pulgin,early than other plugins
       conf.genesis.initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
         gpo.configuration = conf.genesis.initial_configuration;
