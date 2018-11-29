@@ -394,7 +394,7 @@ def stepRegProducers():
 def stpDelegateTestAcc():
     subaccounts = accounts[1:3]
     for testacc in subaccounts:
-        retry(args.clultrain + 'system delegatebw --transfer ultrainio %s "50000.0000 UGAS"  "50000.0000 UGAS"'  % testacc)
+        retry(args.clultrain + 'system delegatebw --transfer ultrainio %s "500000.0000 UGAS"  "500000.0000 UGAS"'  % testacc)
         retry(args.clultrain + 'system buyram  ultrainio  %s  "50000.0000 UGAS"  '  % testacc)
 
 def stepCreateinitAccounts():
