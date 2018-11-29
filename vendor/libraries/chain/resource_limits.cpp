@@ -111,8 +111,8 @@ void resource_limits_manager::update_account_usage(const flat_set<account_name>&
    for( const auto& a : accounts ) {
       const auto& usage = _db.get<resource_usage_object,by_owner>( a );
       _db.modify( usage, [&]( auto& bu ){
-          bu.net_usage.add( 0, time_slot, config.account_net_usage_average_window );
-          bu.cpu_usage.add( 0, time_slot, config.account_cpu_usage_average_window );
+          bu.net_usage.add( 0, time_slot/(config::block_interval_ms / 1000), config.account_net_usage_average_window );
+          bu.cpu_usage.add( 0, time_slot/(config::block_interval_ms / 1000), config.account_cpu_usage_average_window );
       });
    }
 }
@@ -130,8 +130,8 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
       get_account_limits( a, unused, net_weight, cpu_weight );
 
       _db.modify( usage, [&]( auto& bu ){
-          bu.net_usage.add( net_usage, time_slot, config.account_net_usage_average_window );
-          bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
+          bu.net_usage.add( net_usage, time_slot/(config::block_interval_ms / 1000), config.account_net_usage_average_window );
+          bu.cpu_usage.add( cpu_usage, time_slot/(config::block_interval_ms / 1000), config.account_cpu_usage_average_window );
       });
 
       if( cpu_weight >= 0 && state.total_cpu_weight > 0 ) {

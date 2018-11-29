@@ -88,6 +88,29 @@ class apply_context {
 
                return _iterator_to_object.size() - 1;
             }
+            /*
+             * to purge a table from cache
+             */
+            void purge_table_cache(table_id_object::id_type tid) {
+               auto viter_obj = std::remove_if(_iterator_to_object.begin(), _iterator_to_object.end(), [&](auto& obj) {
+                  return obj->t_id._id == tid._id;
+               });
+               _iterator_to_object.erase(viter_obj, _iterator_to_object.end());
+
+               for (auto it = _object_to_iterator.begin(); it != _object_to_iterator.end(); ) {
+                  if (it->first->t_id._id == tid._id) it = _object_to_iterator.erase(it);
+                  else ++it;
+               }
+
+               auto cacheitr = _table_cache.find(tid);
+               if (cacheitr != _table_cache.end()) _table_cache.erase(cacheitr);
+
+               auto enditr = std::find_if(_end_iterator_to_table.begin(), _end_iterator_to_table.end(), [&](auto& ptobj) {
+                  return ptobj->id._id == tid._id;
+               });
+               if (enditr != _end_iterator_to_table.end())
+                  _end_iterator_to_table.erase(enditr);
+            }
 
          private:
             map<table_id_object::id_type, pair<const table_id_object*, int>> _table_cache;
@@ -552,6 +575,7 @@ class apply_context {
       int  db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
       int  db_end_i64( uint64_t code, uint64_t scope, uint64_t table );
       uint64_t  db_iterator_i64(uint64_t code, uint64_t scope, uint64_t table);
+      int  db_drop_i64(uint64_t code, uint64_t scope, uint64_t table);
 
    private:
 

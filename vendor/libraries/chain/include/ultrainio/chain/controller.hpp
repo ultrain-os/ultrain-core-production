@@ -56,8 +56,6 @@ namespace ultrainio { namespace chain {
             uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
             path                     worldstate_dir         =  chain::config::default_worldstate_dir_name;
             uint64_t                 worldstate_interval    =  chain::config::default_worldstate_interval;
-            uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
-            uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
             bool                     contracts_console      =  false;
@@ -66,6 +64,7 @@ namespace ultrainio { namespace chain {
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
             db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
+            bool                     is_on_main_chain = false;
 
             flat_set<account_name>   resource_greylist;
 
@@ -92,7 +91,7 @@ namespace ultrainio { namespace chain {
           * Starts a new pending block session upon which new transactions can
           * be pushed.
           */
-         void start_block( block_timestamp_type time = block_timestamp_type() );
+         void start_block( block_timestamp_type time, chain::checksum256_type);
 
          void abort_block();
          void set_emit_signal();
@@ -140,7 +139,6 @@ namespace ultrainio { namespace chain {
          void finalize_block();
          void assign_header_to_block();
          void commit_block();
-         void pop_block();
 
          void push_block( const signed_block_ptr& b, block_status s = block_status::complete );
 
@@ -180,16 +178,13 @@ namespace ultrainio { namespace chain {
 
          time_point      pending_block_time()const;
          block_state_ptr pending_block_state()const;
+         uint32_t block_interval_seconds()const;
 
          block_timestamp_type get_proper_next_block_timestamp() const;
          // This is a hack ...
          block_state_ptr pending_block_state_hack();
          void set_action_merkle_hack();
          void set_trx_merkle_hack();
-
-         const producer_schedule_type&    active_producers()const;
-         const producer_schedule_type&    pending_producers()const;
-         optional<producer_schedule_type> proposed_producers()const;
 
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;
@@ -209,6 +204,7 @@ namespace ultrainio { namespace chain {
          void check_action_list( account_name code, action_name action )const;
          void check_key_list( const public_key_type& key )const;
          bool is_producing_block()const;
+         bool is_on_main_chain()const;
 
          void add_resource_greylist(const account_name &name);
          void remove_resource_greylist(const account_name &name);
@@ -299,7 +295,6 @@ FC_REFLECT( ultrainio::chain::controller::config,
             (state_dir)
             (state_size)
             (worldstate_dir)
-            (reversible_cache_size)
             (read_only)
             (force_all_checks)
             (contracts_console)

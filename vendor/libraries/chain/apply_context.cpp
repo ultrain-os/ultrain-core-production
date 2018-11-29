@@ -340,16 +340,6 @@ void apply_context::remove_table( const table_id_object& tid ) {
    db.remove(tid);
 }
 
-vector<account_name> apply_context::get_active_producers() const {
-   const auto& ap = control.active_producers();
-   vector<account_name> accounts; accounts.reserve( ap.producers.size() );
-
-   for(const auto& producer : ap.producers )
-      accounts.push_back(producer.producer_name);
-
-   return accounts;
-}
-
 void apply_context::reset_console() {
    _pending_console_output = std::ostringstream();
    _pending_console_output.setf( std::ios::scientific, std::ios::floatfield );
@@ -633,6 +623,30 @@ uint64_t apply_context::db_iterator_i64(uint64_t code, uint64_t scope, uint64_t 
        result = (result << 32) | first;
    }
    return result;
+}
+
+int apply_context::db_drop_i64(uint64_t code, uint64_t scope, uint64_t table) {
+   const auto* table_obj = find_table( code, scope, table );
+   if( !table_obj ) return -1;
+   ULTRAIN_ASSERT( table_obj->code == receiver, table_access_violation, "db access violation" );
+
+   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+   decltype(table_obj->id) next_tid(table_obj->id._id + 1);
+   auto lower = idx.lower_bound(boost::make_tuple(table_obj->id));
+   auto upper = idx.lower_bound(boost::make_tuple(next_tid));
+
+   if (lower == upper) return 0;
+
+   int64_t usage_delta = 0LL;
+   std::for_each(lower, upper, [&](const key_value_object& obj) {
+      usage_delta += (obj.value.size() + config::billable_size_v<key_value_object>);
+   });
+
+   keyval_cache.purge_table_cache(table_obj->id);
+   update_db_usage( table_obj->payer,  -(usage_delta) );
+   remove_table(*table_obj);
+
+   return 0;
 }
 
 uint64_t apply_context::next_global_sequence() {

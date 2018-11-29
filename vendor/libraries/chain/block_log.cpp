@@ -285,7 +285,7 @@ namespace ultrainio { namespace chain {
          uint64_t pos = get_block_pos(block_num);
          if (pos != npos) {
             b = read_block(pos).first;
-            ULTRAIN_ASSERT(b->block_num() == block_num, reversible_blocks_exception,
+            ULTRAIN_ASSERT(b->block_num() == block_num, block_log_exception,
                       "Wrong block was read from block log.", ("returned", b->block_num())("expected", block_num));
          }
          return b;

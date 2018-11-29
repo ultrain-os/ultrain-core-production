@@ -13,7 +13,6 @@
 #include <ultrainio/chain/contract_table_objects.hpp>
 #include <ultrainio/chain/generated_transaction_object.hpp>
 #include <ultrainio/chain/transaction_object.hpp>
-#include <ultrainio/chain/reversible_block_object.hpp>
 
 #include <ultrainio/chain/authorization_manager.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
@@ -56,6 +55,9 @@ using contract_database_index_set = index_set<
    index256_index
 >;
 
+// these are the default numbers, and it could be changed during startup.
+//int chain::config::block_interval_ms = 10*1000;
+//int chain::config::block_interval_us = 10*1000*1000;
 struct pending_state {
    pending_state( database::session&& s )
    :_db_session( move(s) ){}
@@ -76,7 +78,6 @@ struct pending_state {
 struct controller_impl {
    controller&                    self;
    chainbase::database            db;
-   chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
    optional<pending_state>        pending;
    block_state_ptr                head;
@@ -89,6 +90,7 @@ struct controller_impl {
    std::unique_ptr<fc::http_client>   http_client;
    chain_id_type                  chain_id;
    bool                           replaying = false;
+   bool                           is_on_main_chain = false;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
@@ -135,25 +137,6 @@ struct controller_impl {
     std::list<transaction_metadata_ptr>    pending_transactions;
     set<digest_type>     pending_transactions_set;
 
-   void pop_block() {
-      auto prev = fork_db.get_block( head->header.previous );
-      ULTRAIN_ASSERT( prev, block_validate_exception, "attempt to pop beyond last irreversible block" );
-
-      if( const auto* b = reversible_blocks.find<reversible_block_object,by_num>(head->block_num) )
-      {
-         reversible_blocks.remove( *b );
-      }
-
-      if ( read_mode == db_read_mode::SPECULATIVE ) {
-         for( const auto& t : head->trxs )
-            unapplied_transactions[t->signed_id] = t;
-      }
-      head = prev;
-      db.undo();
-
-   }
-
-
    void set_apply_handler( account_name receiver, account_name contract, action_name action, apply_handler v ) {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
@@ -163,9 +146,6 @@ struct controller_impl {
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size ),
-    reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
-        cfg.read_only ? database::read_only : database::read_write,
-        cfg.reversible_cache_size ),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -174,12 +154,14 @@ struct controller_impl {
     conf( cfg ),
     http_client(new fc::http_client()),
     chain_id( cfg.genesis.compute_chain_id() ),
+    is_on_main_chain(cfg.is_on_main_chain),
     read_mode( cfg.read_mode )
    {
-
+   ilog("is on main chain: ${s1}", ("s1", is_on_main_chain));
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
+    ilog("genesis ${block_cpu}",("block_cpu",cfg.genesis.initial_configuration.max_block_cpu_usage));
    SET_APP_HANDLER( ultrainio, ultrainio, newaccount );
    SET_APP_HANDLER( ultrainio, ultrainio, setcode );
    SET_APP_HANDLER( ultrainio, ultrainio, setabi );
@@ -277,13 +259,6 @@ struct controller_impl {
          blog.append(s->block);
       }
 
-      const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
-      auto objitr = ubi.begin();
-      while( objitr != ubi.end() && objitr->blocknum <= s->block_num ) {
-         reversible_blocks.remove( *objitr );
-         objitr = ubi.begin();
-      }
-
       // the "head" block when a worldstate is loaded is virtual and has no block data, all of its effects
       // should already have been loaded from the worldstate so, it cannot be applied
       if (s->block) {
@@ -315,20 +290,12 @@ struct controller_impl {
 
       auto start = fc::time_point::now();
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-      self.push_block( next, controller::block_status::irreversible );
-      if( next->block_num() % 100 == 0 ) {
-         std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
-      }
-      }
-
-      int rev = 0;
-      while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
-      ++rev;
-      self.push_block( obj->get_block(), controller::block_status::validated );
+         self.push_block( next, controller::block_status::irreversible );
+         if( next->block_num() % 100 == 0 ) {
+            std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+         }
       }
 
-      std::cerr<< "\n";
-      ilog( "${n} reversible blocks replayed", ("n",rev) );
       auto end = fc::time_point::now();
       ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
          ("n", head->block_num)("duration", (end-start).count()/1000000)
@@ -371,19 +338,6 @@ struct controller_impl {
          }
       }
 
-      const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
-      auto objitr = ubi.rbegin();
-      if( objitr != ubi.rend() ) {
-         ULTRAIN_ASSERT( objitr->blocknum == head->block_num, fork_database_exception,
-                    "reversible block database is inconsistent with fork database, replay blockchain",
-                    ("head",head->block_num)("unconfimed", objitr->blocknum)         );
-      } else {
-         auto end = blog.read_head();
-         ULTRAIN_ASSERT( !end || end->block_num() == head->block_num, fork_database_exception,
-                    "fork database exists but reversible block database does not, replay blockchain",
-                    ("blog_head",end->block_num())("head",head->block_num)  );
-      }
-
       ULTRAIN_ASSERT( db.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
                  ("db",db.revision())("head",head->block_num) );
 
@@ -401,31 +355,16 @@ struct controller_impl {
       pending.reset();
 
       db.flush();
-      reversible_blocks.flush();
 
       http_client = nullptr;
    }
 
    void add_indices() {
-      reversible_blocks.add_index<reversible_block_index>();
-
       controller_index_set::add_indices(db);
       contract_database_index_set::add_indices(db);
 
       authorization.add_indices(db);
       resource_limits.add_indices(db);
-   }
-
-   void clear_all_undo() {
-      // Rewind the database to the last irreversible block
-      db.with_write_lock([&] {
-         db.undo_all();
-         /*
-         FC_ASSERT(db.revision() == self.head_block_num(),
-                   "Chainbase revision does not match head block num",
-                   ("rev", db.revision())("head_block", self.head_block_num()));
-                   */
-      });
    }
 
    void add_contract_tables_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const {
@@ -605,19 +544,14 @@ struct controller_impl {
     */
    void initialize_fork_db() {
       ilog( " Initializing new blockchain with genesis state                  " );
-      producer_schedule_type initial_schedule{ 0, {{N(ultrainio), conf.genesis.initial_key}} };
-
       block_header_state genheader;
-      genheader.active_schedule       = initial_schedule;
-      genheader.pending_schedule      = initial_schedule;
-      genheader.pending_schedule_hash = fc::sha256::hash(initial_schedule);
       genheader.header.timestamp      = conf.genesis.initial_timestamp;
       genheader.header.action_mroot   = conf.genesis.compute_chain_id();
       genheader.id                    = genheader.header.id();
       genheader.block_num             = genheader.header.block_num();
 
       ilog("genesis block id = ${id}", ("id", genheader.id));
-
+       ilog("genesis1 ${block_cpu}",("block_cpu",conf.genesis.initial_configuration.max_block_cpu_usage));
       head = std::make_shared<block_state>( genheader );
       head->block = std::make_shared<signed_block>(genheader.header);
       fork_db.set( head );
@@ -666,7 +600,7 @@ struct controller_impl {
       db.modify( tapos_block_summary, [&]( auto& bs ) {
         bs.block_id = head->id;
       });
-
+      //TODO:all options to one unique pulgin,early than other plugins
       conf.genesis.initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
         gpo.configuration = conf.genesis.initial_configuration;
@@ -680,22 +614,7 @@ struct controller_impl {
       create_native_account( config::system_account_name, system_auth, system_auth, true, true );
 
       auto empty_authority = authority(1, {}, {});
-      auto active_producers_authority = authority(1, {}, {});
-      active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
-
       create_native_account( config::null_account_name, empty_authority, empty_authority );
-      create_native_account( config::producers_account_name, empty_authority, active_producers_authority );
-      const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
-      const auto& majority_permission     = authorization.create_permission( config::producers_account_name,
-                                                                             config::majority_producers_permission_name,
-                                                                             active_permission.id,
-                                                                             active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
-      const auto& minority_permission     = authorization.create_permission( config::producers_account_name,
-                                                                             config::minority_producers_permission_name,
-                                                                             majority_permission.id,
-                                                                             active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
    }
 
 
@@ -719,19 +638,7 @@ struct controller_impl {
             if (0 == head->block_num % conf.worldstate_interval) {
                create_worldstate();
             }
-      }
-
-  //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
-      //ilog("emit accepted_block block_num = ${block_num}", ("block_num", pending->_pending_block_state->block_num));
-      //emit( self.accepted_block, pending->_pending_block_state );
-
-      if( !replaying ) {
-         reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = pending->_pending_block_state->block_num;
-            ubo.set_block( pending->_pending_block_state->block );
-         });
          }
-
          emit( self.accepted_block, pending->_pending_block_state );
       } catch (...) {
          // dont bother resetting pending, instead abort the block
@@ -961,7 +868,7 @@ struct controller_impl {
 
          if( !explicit_billed_cpu_time ) {
             auto& rl = self.get_mutable_resource_limits_manager();
-            rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
+            rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).abstime );
             int64_t account_cpu_limit = 0;
             std::tie( std::ignore, account_cpu_limit, std::ignore ) = trx_context.max_bandwidth_billed_accounts_can_pay( true );
 
@@ -971,7 +878,7 @@ struct controller_impl {
          }
 
          resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
-                                                block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
+                                                block_timestamp_type(self.pending_block_time()).abstime ); // Should never fail
 
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
          emit( self.applied_transaction, trace );
@@ -1112,7 +1019,7 @@ struct controller_impl {
    } /// push_transaction
 
 
-   void start_block( block_timestamp_type when, controller::block_status s ) {
+    void start_block( block_timestamp_type when, chain::checksum256_type committee_mroot, controller::block_status s ) {
       ULTRAIN_ASSERT( !pending, block_validate_exception, "pending block is not available" );
 
       ULTRAIN_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
@@ -1128,9 +1035,7 @@ struct controller_impl {
 
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
-
-      // TODO(yufengshen) : always confirming 1 for now.
-      pending->_pending_block_state->set_confirmed(1);
+      pending->_pending_block_state->header.committee_mroot = committee_mroot;
 
       //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
@@ -1151,7 +1056,6 @@ struct controller_impl {
          }
 
          clear_expired_input_transactions();
-         update_producers_authority();
       }
 
       guard_pending.cancel();
@@ -1166,13 +1070,14 @@ struct controller_impl {
     void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
          ULTRAIN_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
-         start_block( b->timestamp, s );
+         start_block( b->timestamp, b->committee_mroot, s );
 
          // We have to copy here.
          chain::signed_block_header* hp = &(pending->_pending_block_state->header);
          hp->proposer = b->proposer;
+#ifdef CONSENSUS_VRF
          hp->proposerProof = b->proposerProof;
-
+#endif
          transaction_trace_ptr trace;
 
          for( const auto& receipt : b->transactions ) {
@@ -1389,51 +1294,7 @@ struct controller_impl {
       } else if( new_head->id != head->id ) {
          ilog("switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
               ("current_head_id", head->id)("current_head_num", head->block_num)("new_head_id", new_head->id)("new_head_num", new_head->block_num) );
-         auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
-
-         for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
-            fork_db.mark_in_current_chain( *itr , false );
-            pop_block();
-         }
-         ULTRAIN_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                    "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
-
-         for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
-            optional<fc::exception> except;
-            try {
-               apply_block( (*ritr)->block, (*ritr)->validated ? controller::block_status::validated : controller::block_status::complete );
-               head = *ritr;
-               fork_db.mark_in_current_chain( *ritr, true );
-               (*ritr)->validated = true;
-            }
-            catch (const fc::exception& e) { except = e; }
-            if (except) {
-               elog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
-
-               // ritr currently points to the block that threw
-               // if we mark it invalid it will automatically remove all forks built off it.
-               fork_db.set_validity( *ritr, false );
-
-               // pop all blocks from the bad fork
-               // ritr base is a forward itr to the last block successfully applied
-               auto applied_itr = ritr.base();
-               for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
-                  fork_db.mark_in_current_chain( *itr , false );
-                  pop_block();
-               }
-               ULTRAIN_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                          "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
-
-               // re-apply good blocks
-               for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
-                  apply_block( (*ritr)->block, controller::block_status::validated /* we previously validated these blocks*/ );
-                  head = *ritr;
-                  fork_db.mark_in_current_chain( *ritr, true );
-               }
-               throw *except;
-            } // end if exception
-         } /// end for each block in branch
-         ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
+         ULTRAIN_ASSERT(false, chain_exception, "should never switch forks");
       }
    } /// push_block
 
@@ -1481,12 +1342,10 @@ struct controller_impl {
       pending->_pending_block_state->header.transaction_mroot = merkle( move(trx_digests) );
    }
 
-
    void finalize_block()
    {
       ULTRAIN_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
       try {
-
 
       /*
       ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
@@ -1503,8 +1362,9 @@ struct controller_impl {
       // Update resource limits:
       resource_limits.process_account_limit_updates();
       const auto& chain_config = self.get_global_properties().configuration;
-      uint32_t max_virtual_mult = 1000;
+      uint32_t max_virtual_mult = 1;//1000;  //virtual resources are not currently used
       uint64_t CPU_TARGET = ULTRAIN_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
+      //ilog("set_block_parameters chain_config.max_block_cpu_usage:${c},chain_config.max_block_net_usage:${n},", ("c", chain_config.max_block_cpu_usage)("n", chain_config.max_block_net_usage));
       resource_limits.set_block_parameters(
          { CPU_TARGET, chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}},
          {ULTRAIN_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}}
@@ -1520,7 +1380,9 @@ struct controller_impl {
       ilog("----------finalize block current header is ${t} ${p} ${pk} ${pf} ${v} ${prv} ${ma} ${mt} ${id}",
 	   ("t", p->header.timestamp)
 	   ("pk", p->header.proposerPk)
+#ifdef CONSENSUS_VRF
 	   ("pf", p->header.proposerProof)
+#endif
 	   ("v", p->header.version)
 	   ("prv", p->header.previous)
 	   ("ma", p->header.transaction_mroot)
@@ -1530,42 +1392,6 @@ struct controller_impl {
       create_block_summary(p->id);
 
    } FC_CAPTURE_AND_RETHROW() }
-
-   void update_producers_authority() {
-      const auto& producers = pending->_pending_block_state->active_schedule.producers;
-
-      auto update_permission = [&]( auto& permission, auto threshold ) {
-         auto auth = authority( threshold, {}, {});
-         for( auto& p : producers ) {
-            auth.accounts.push_back({{p.producer_name, config::active_name}, 1});
-         }
-
-         if( static_cast<authority>(permission.auth) != auth ) { // TODO: use a more efficient way to check that authority has not changed
-            db.modify(permission, [&]( auto& po ) {
-               po.auth = auth;
-            });
-         }
-      };
-
-      uint32_t num_producers = producers.size();
-      auto calculate_threshold = [=]( uint32_t numerator, uint32_t denominator ) {
-         return ( (num_producers * numerator) / denominator ) + 1;
-      };
-
-      update_permission( authorization.get_permission({config::producers_account_name,
-                                                       config::active_name}),
-                         calculate_threshold( 2, 3 ) /* more than two-thirds */                      );
-
-      update_permission( authorization.get_permission({config::producers_account_name,
-                                                       config::majority_producers_permission_name}),
-                         calculate_threshold( 1, 2 ) /* more than one-half */                        );
-
-      update_permission( authorization.get_permission({config::producers_account_name,
-                                                       config::minority_producers_permission_name}),
-                         calculate_threshold( 1, 3 ) /* more than one-third */                       );
-
-      //TODO: Add tests
-   }
 
    void create_block_summary(const block_id_type& id) {
       auto block_num = block_header::num_from_id(id);
@@ -1750,9 +1576,9 @@ chainbase::database& controller::db()const { return my->db; }
 fork_database& controller::fork_db()const { return my->fork_db; }
 
 
-void controller::start_block( block_timestamp_type when) {
+void controller::start_block( block_timestamp_type when, chain::checksum256_type committee_mroot) {
    validate_db_available_size();
-   my->start_block(when, block_status::incomplete );
+   my->start_block(when, committee_mroot, block_status::incomplete );
 }
 
 void controller::finalize_block() {
@@ -1766,7 +1592,6 @@ void controller::assign_header_to_block() {
 
 void controller::commit_block() {
    validate_db_available_size();
-   validate_reversible_available_size();
    my->commit_block(true);
 }
 
@@ -1776,7 +1601,6 @@ void controller::abort_block() {
 
 void controller::push_block( const signed_block_ptr& b, block_status s ) {
    validate_db_available_size();
-   validate_reversible_available_size();
    my->push_block( b, s );
 }
 
@@ -1882,8 +1706,12 @@ time_point controller::pending_block_time()const {
    return my->pending->_pending_block_state->header.timestamp;
 }
 
+uint32_t controller::block_interval_seconds()const {
+    return chain::config::block_interval_ms / 1000;
+}
+
 uint32_t controller::last_irreversible_block_num() const {
-   return std::max(std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum), my->worldstate_head_block);
+   return std::max(my->head->irreversible_blocknum, my->worldstate_head_block);
 }
 
 block_id_type controller::last_irreversible_block_id() const {
@@ -1957,30 +1785,6 @@ void controller::read_worldstate( const worldstate_reader_ptr& worldstate ) {
 sha256 controller::calculate_integrity_hash()const { try {
    return my->calculate_integrity_hash();
 } FC_LOG_AND_RETHROW() }
-
-void controller::pop_block() {
-   my->pop_block();
-}
-
-const producer_schedule_type&    controller::active_producers()const {
-   if ( !(my->pending) )
-      return  my->head->active_schedule;
-   return my->pending->_pending_block_state->active_schedule;
-}
-
-const producer_schedule_type&    controller::pending_producers()const {
-   if ( !(my->pending) )
-      return  my->head->pending_schedule;
-   return my->pending->_pending_block_state->pending_schedule;
-}
-
-optional<producer_schedule_type> controller::proposed_producers()const {
-   const auto& gpo = get_global_properties();
-   if( !gpo.proposed_schedule_block_num.valid() )
-      return optional<producer_schedule_type>();
-
-   return gpo.proposed_schedule;
-}
 
 bool controller::skip_auth_check()const {
    return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
@@ -2100,6 +1904,10 @@ bool controller::is_producing_block()const {
    return (my->pending->_block_status == block_status::incomplete);
 }
 
+bool controller::is_on_main_chain()const {
+   return my->is_on_main_chain;
+}
+
 void controller::validate_referenced_accounts( const transaction& trx )const {
    for( const auto& a : trx.context_free_actions ) {
       auto* code = my->db.find<account_object, by_name>(a.account);
@@ -2159,12 +1967,6 @@ void controller::validate_db_available_size() const {
    const auto free = db().get_segment_manager()->get_free_memory();
    const auto guard = my->conf.state_guard_size;
    ULTRAIN_ASSERT(free >= guard, database_guard_exception, "database free: ${f}, guard size: ${g}", ("f", free)("g",guard));
-}
-
-void controller::validate_reversible_available_size() const {
-   const auto free = my->reversible_blocks.get_segment_manager()->get_free_memory();
-   const auto guard = my->conf.reversible_guard_size;
-   ULTRAIN_ASSERT(free >= guard, reversible_guard_exception, "reversible free: ${f}, guard size: ${g}", ("f", free)("g",guard));
 }
 
 bool controller::is_known_unexpired_transaction( const transaction_id_type& id) const {

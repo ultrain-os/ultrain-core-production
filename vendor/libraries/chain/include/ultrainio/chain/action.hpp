@@ -14,6 +14,14 @@ namespace ultrainio { namespace chain {
       permission_name permission;
    };
 
+   struct proposeminer_info {
+      account_name    account;
+      std::string     public_key;
+      std::string     url;
+      uint64_t        location;
+      bool            adddel_miner;
+   };
+
    inline bool operator== (const permission_level& lhs, const permission_level& rhs) {
       return std::tie(lhs.actor, lhs.permission) == std::tie(rhs.actor, rhs.permission);
    }
@@ -100,4 +108,5 @@ namespace ultrainio { namespace chain {
 } } /// namespace ultrainio::chain
 
 FC_REFLECT( ultrainio::chain::permission_level, (actor)(permission) )
+FC_REFLECT( ultrainio::chain::proposeminer_info, (account)(public_key)(url)(location)(adddel_miner) )
 FC_REFLECT( ultrainio::chain::action, (account)(name)(authorization)(data) )

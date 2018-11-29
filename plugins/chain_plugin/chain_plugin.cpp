@@ -12,9 +12,9 @@
 #include <ultrainio/chain/types.hpp>
 #include <ultrainio/chain/wasm_interface.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
-#include <ultrainio/chain/reversible_block_object.hpp>
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/generated_transaction_object.hpp>
+#include <ultrainio/chain/subchain_object.hpp>
 
 #include <ultrainio/chain/ultrainio_contract.hpp>
 
@@ -121,6 +121,7 @@ public:
 
    bfs::path                        blocks_dir;
    bool                             readonly = false;
+   bool                             is_on_main_chain  = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
@@ -182,8 +183,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
-         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MiB) of the reversible blocks database")
-         ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -209,7 +208,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("contract-emit-string-length", bpo::value<uint64_t>()->default_value(config::default_contract_emit_length),
           "Contract emit string length limits the string length of serialized EventObject.")
           #endif
-         ;
+         ("max_block_cpu_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_cpu_usage),
+           "max_block_cpu_usage,used in resource ,in genesis param,etc")
+         ("max_block_net_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_net_usage),
+                "max_block_net_usage,used in resource ,in genesis param,etc")	  
+    	 ;
 
 // TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -224,12 +227,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cli.add_options()
          ("genesis-json", bpo::value<bfs::path>(), "File to read Genesis State from")
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("is-on-main-chain", bpo::bool_switch()->default_value(false),
+          "if the chain is running as main chain")
          ("print-genesis-json", bpo::bool_switch()->default_value(false),
           "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
           "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
-         ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
-          "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
           "do not skip any checks that can be skipped while replaying irreversible blocks")
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -240,11 +243,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database and block log")
          ("truncate-at-block", bpo::value<uint32_t>()->default_value(0),
           "stop hard replay / block log recovery at this block number (if set to non-zero number)")
-         ("import-reversible-blocks", bpo::value<bfs::path>(),
-          "replace reversible block database with blocks imported from specified file and then exit")
-         ("export-reversible-blocks", bpo::value<bfs::path>(),
-           "export reversible block database in portable format into specified file and then exit")
-         ;
+		;
 
 }
 
@@ -285,7 +284,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                ("root_key", genesis_state::ultrainio_root_key));
          throw;
       }
-
+     ultrainio::chain::config::default_max_block_cpu_usage = options.at("max_block_cpu_usage").as<uint32_t>();
+     ultrainio::chain::config::default_max_transaction_cpu_usage = ultrainio::chain::config::default_max_block_cpu_usage / 2;
+     ultrainio::chain::config::default_max_block_net_usage = options.at("max_block_net_usage").as<uint32_t>();
+     ultrainio::chain::config::default_max_transaction_net_usage = ultrainio::chain::config::default_max_block_net_usage / 2;
+     ilog("default ${default_max_block_cpu_usage}",("default_max_block_cpu_usage",ultrainio::chain::config::default_max_block_cpu_usage));
       my->chain_config = controller::config();
 
       LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );
@@ -363,15 +366,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if( options.count( "chain-state-db-guard-size-mb" ))
          my->chain_config->state_guard_size = options.at( "chain-state-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
 
-      my->chain_config->worldstate_dir = app().data_dir() / config::default_worldstate_dir_name;
-
-      if( options.count( "reversible-blocks-db-size-mb" ))
-         my->chain_config->reversible_cache_size =
-               options.at( "reversible-blocks-db-size-mb" ).as<uint64_t>() * 1024 * 1024;
-
-      if( options.count( "reversible-blocks-db-guard-size-mb" ))
-         my->chain_config->reversible_guard_size = options.at( "reversible-blocks-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
-
       if( my->wasm_runtime )
          my->chain_config->wasm_runtime = *my->wasm_runtime;
 
@@ -406,21 +400,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          ULTRAIN_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
       }
 
-      if( options.count("export-reversible-blocks") ) {
-         auto p = options.at( "export-reversible-blocks" ).as<bfs::path>();
-
-         if( p.is_relative()) {
-            p = bfs::current_path() / p;
-         }
-
-         if( export_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name, p ) )
-            ilog( "Saved all blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
-         else
-            ilog( "Saved recovered blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
-
-         ULTRAIN_THROW( node_management_success, "exported reversible blocks" );
-      }
-
       if( options.at( "delete-all-blocks" ).as<bool>()) {
          ilog( "Deleting state database and blocks" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
@@ -431,58 +410,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          ilog( "Hard replay requested: deleting state database" );
          fc::remove_all( my->chain_config->state_dir );
          auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
-         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
-             options.at( "fix-reversible-blocks" ).as<bool>()) {
-            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
-            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
-                                            my->chain_config->reversible_cache_size,
-                                            my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
-                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
-               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name,
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.meta",
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.meta" );
-            }
-         }
       } else if( options.at( "replay-blockchain" ).as<bool>()) {
          ilog( "Replay requested: deleting state database" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
             wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
          fc::remove_all( my->chain_config->state_dir );
-         if( options.at( "fix-reversible-blocks" ).as<bool>()) {
-            if( !recover_reversible_blocks( my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
-                                            my->chain_config->reversible_cache_size )) {
-               ilog( "Reversible blocks database was not corrupted." );
-            }
-         }
-      } else if( options.at( "fix-reversible-blocks" ).as<bool>()) {
-         if( !recover_reversible_blocks( my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
-                                         my->chain_config->reversible_cache_size,
-                                         optional<fc::path>(),
-                                         options.at( "truncate-at-block" ).as<uint32_t>())) {
-            ilog( "Reversible blocks database verified to not be corrupted. Now exiting..." );
-         } else {
-            ilog( "Exiting after fixing reversible blocks database..." );
-         }
-         ULTRAIN_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
       } else if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 ) {
          wlog( "The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain." );
-      } else if( options.count("import-reversible-blocks") ) {
-         auto reversible_blocks_file = options.at("import-reversible-blocks").as<bfs::path>();
-         ilog("Importing reversible blocks from '${file}'", ("file", reversible_blocks_file.generic_string()) );
-         fc::remove_all( my->chain_config->blocks_dir/config::reversible_blocks_dir_name );
-
-         import_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
-                                   my->chain_config->reversible_cache_size, reversible_blocks_file );
-
-         ULTRAIN_THROW( node_management_success, "imported reversible blocks" );
-      }
-
-      if( options.count("import-reversible-blocks") ) {
-         wlog("The --import-reversible-blocks option should be used by itself.");
       }
 
       if (options.count( "worldstate" )) {
@@ -560,6 +494,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
          ULTRAIN_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
+      }
+
+      if( options.at( "is-on-main-chain" ).as<bool>()) {
+          my->chain_config->is_on_main_chain = true;
       }
 
       my->chain.emplace( *my->chain_config );
@@ -683,206 +621,6 @@ bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
    return b && b->id() == block_id;
 }
 
-bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t cache_size,
-                                              optional<fc::path> new_db_dir, uint32_t truncate_at_block ) {
-   try {
-      chainbase::database reversible( db_dir, database::read_only); // Test if dirty
-      // If it reaches here, then the reversible database is not dirty
-
-      if( truncate_at_block == 0 )
-         return false;
-
-      reversible.add_index<reversible_block_index>();
-      const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
-
-      auto itr = ubi.rbegin();
-      if( itr != ubi.rend() && itr->blocknum <= truncate_at_block )
-         return false; // Because we are not going to be truncating the reversible database at all.
-   } catch( const std::runtime_error& ) {
-   } catch( ... ) {
-      throw;
-   }
-   // Reversible block database is dirty. So back it up (unless already moved) and then create a new one.
-
-   auto reversible_dir = fc::canonical( db_dir );
-   if( reversible_dir.filename().generic_string() == "." ) {
-      reversible_dir = reversible_dir.parent_path();
-   }
-   fc::path backup_dir;
-
-   auto now = fc::time_point::now();
-
-   if( new_db_dir ) {
-      backup_dir = reversible_dir;
-      reversible_dir = *new_db_dir;
-   } else {
-      auto reversible_dir_name = reversible_dir.filename().generic_string();
-      ULTRAIN_ASSERT( reversible_dir_name != ".", invalid_reversible_blocks_dir, "Invalid path to reversible directory" );
-      backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append( now );
-
-      ULTRAIN_ASSERT( !fc::exists(backup_dir),
-                  reversible_blocks_backup_dir_exist,
-                 "Cannot move existing reversible directory to already existing directory '${backup_dir}'",
-                 ("backup_dir", backup_dir) );
-
-      fc::rename( reversible_dir, backup_dir );
-      ilog( "Moved existing reversible directory to backup location: '${new_db_dir}'", ("new_db_dir", backup_dir) );
-   }
-
-   fc::create_directories( reversible_dir );
-
-   ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
-
-   chainbase::database  old_reversible( backup_dir, database::read_only, 0, true );
-   chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
-   std::fstream         reversible_blocks;
-   reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( now ) ).generic_string().c_str(),
-                           std::ios::out | std::ios::binary );
-
-   uint32_t num = 0;
-   uint32_t start = 0;
-   uint32_t end = 0;
-   old_reversible.add_index<reversible_block_index>();
-   new_reversible.add_index<reversible_block_index>();
-   const auto& ubi = old_reversible.get_index<reversible_block_index,by_num>();
-   auto itr = ubi.begin();
-   if( itr != ubi.end() ) {
-      start = itr->blocknum;
-      end = start - 1;
-   }
-   if( truncate_at_block > 0 && start > truncate_at_block ) {
-      ilog( "Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", truncate_at_block)("start", start) );
-      return true;
-   }
-   try {
-      for( ; itr != ubi.end(); ++itr ) {
-         ULTRAIN_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
-                     "gap in reversible block database between ${end} and ${blocknum}",
-                     ("end", end)("blocknum", itr->blocknum)
-                   );
-         reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
-         new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = itr->blocknum;
-            ubo.set_block( itr->get_block() ); // get_block and set_block rather than copying the packed data acts as additional validation
-         });
-         end = itr->blocknum;
-         ++num;
-         if( end == truncate_at_block )
-            break;
-      }
-   } catch( const gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
-   } catch( ... ) {}
-
-   if( end == truncate_at_block )
-      ilog( "Stopped recovery of reversible blocks early at specified block number: ${stop}", ("stop", truncate_at_block) );
-
-   if( num == 0 )
-      ilog( "There were no recoverable blocks in the reversible block database" );
-   else if( num == 1 )
-      ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
-   else
-      ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
-            ("num", num)("start", start)("end", end) );
-
-   return true;
-}
-
-bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
-                                             uint32_t cache_size,
-                                             const fc::path& reversible_blocks_file ) {
-   std::fstream         reversible_blocks;
-   chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
-   reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::in | std::ios::binary );
-
-   reversible_blocks.seekg( 0, std::ios::end );
-   uint64_t end_pos = reversible_blocks.tellg();
-   reversible_blocks.seekg( 0 );
-
-   uint32_t num = 0;
-   uint32_t start = 0;
-   uint32_t end = 0;
-   new_reversible.add_index<reversible_block_index>();
-   try {
-      while( reversible_blocks.tellg() < end_pos ) {
-         signed_block tmp;
-         fc::raw::unpack(reversible_blocks, tmp);
-         num = tmp.block_num();
-
-         if( start == 0 ) {
-            start = num;
-         } else {
-            ULTRAIN_ASSERT( num == end + 1, gap_in_reversible_blocks_db,
-                        "gap in reversible block database between ${end} and ${num}",
-                        ("end", end)("num", num)
-                      );
-         }
-
-         new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
-            ubo.blocknum = num;
-            ubo.set_block( std::make_shared<signed_block>(tmp) );
-         });
-         end = num;
-      }
-   } catch( gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
-      FC_RETHROW_EXCEPTION( e, warn, "rethrow" );
-   } catch( ... ) {}
-
-   ilog( "Imported blocks ${start} to ${end}", ("start", start)("end", end));
-
-   if( num == 0 || end != num )
-      return false;
-
-   return true;
-}
-
-bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
-                                             const fc::path& reversible_blocks_file ) {
-   chainbase::database  reversible( reversible_dir, database::read_only, 0, true );
-   std::fstream         reversible_blocks;
-   reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::out | std::ios::binary );
-
-   uint32_t num = 0;
-   uint32_t start = 0;
-   uint32_t end = 0;
-   reversible.add_index<reversible_block_index>();
-   const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
-   auto itr = ubi.begin();
-   if( itr != ubi.end() ) {
-      start = itr->blocknum;
-      end = start - 1;
-   }
-   try {
-      for( ; itr != ubi.end(); ++itr ) {
-         ULTRAIN_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
-                     "gap in reversible block database between ${end} and ${blocknum}",
-                     ("end", end)("blocknum", itr->blocknum)
-                   );
-         signed_block tmp;
-         fc::datastream<const char *> ds( itr->packedblock.data(), itr->packedblock.size() );
-         fc::raw::unpack(ds, tmp); // Verify that packed block has not been corrupted.
-         reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
-         end = itr->blocknum;
-         ++num;
-      }
-   } catch( const gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
-   } catch( ... ) {}
-
-   if( num == 0 ) {
-      ilog( "There were no recoverable blocks in the reversible block database" );
-      return false;
-   }
-   else if( num == 1 )
-      ilog( "Exported 1 block from reversible block database: block ${start}", ("start", start) );
-   else
-      ilog( "Exported ${num} blocks from reversible block database: blocks ${start} to ${end}",
-            ("num", num)("start", start)("end", end) );
-
-   return (end >= start) && ((end - start + 1) == num);
-}
-
 controller::config& chain_plugin::chain_config() {
    // will trigger optional assert if called before/after plugin_initialize()
    return *my->chain_config;
@@ -904,11 +642,7 @@ void chain_plugin::log_guard_exception(const chain::guard_exception&e ) const {
    if (e.code() == chain::database_guard_exception::code_value) {
       elog("Database has reached an unsafe level of usage, shutting down to avoid corrupting the database.  "
            "Please increase the value set for \"chain-state-db-size-mb\" and restart the process!");
-   } else if (e.code() == chain::reversible_guard_exception::code_value) {
-      elog("Reversible block database has reached an unsafe level of usage, shutting down to avoid corrupting the database.  "
-           "Please increase the value set for \"reversible-blocks-db-size-mb\" and restart the process!");
    }
-
    dlog("Details: ${details}", ("details", e.to_detail_string()));
 }
 
@@ -1181,6 +915,63 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    return results;
 }
 
+vector<read_only::get_subchain_committee_result> read_only::get_subchain_committee( const read_only::get_subchain_committee_params& p )const {
+   const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+   ULTRAIN_ASSERT(p.chain_name != 1, chain::contract_table_query_exception, "Could not query committee list of master chain.");
+
+   name table = N(subchains);
+   auto index_type = get_table_type( abi, table );
+
+   vector<get_subchain_committee_result> result;
+   walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+//       ULTRAIN_ASSERT( obj.value.size() >= sizeof(ultrainio::chain::subchain), chain::asset_type_exception, "Invalid subchain data on table");
+
+       ultrainio::chain::subchain subchain_data;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, subchain_data);
+
+       if(p.chain_name == subchain_data.chain_name) {
+          std::vector<role_base>::iterator ite = subchain_data.committee_members.begin();
+          for (; ite != subchain_data.committee_members.end(); ++ite) {
+              read_only::get_subchain_committee_result tmp;
+              tmp.owner = ite->owner.to_string();
+              tmp.miner_pk = ite->producer_key;
+              result.push_back(tmp);
+          }
+          return false;
+      }
+      else {
+          return true;
+      }
+   });
+
+   return result;
+}
+
+uint32_t read_only::get_subchain_block_num(const read_only::get_subchain_block_num_params& p) const {
+const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+   ULTRAIN_ASSERT(p.chain_name != 1, chain::contract_table_query_exception, "Could not query committee list of master chain.");
+
+   name table = N(subchains);
+   auto index_type = get_table_type( abi, table );
+
+   uint32_t result = std::numeric_limits<uint32_t>::max();
+   walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+   //    ULTRAIN_ASSERT( obj.value.size() >= sizeof(subchain), chain::asset_type_exception, "Invalid subchain data on table");
+
+       subchain subchain_data;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, subchain_data);
+       if(p.chain_name == subchain_data.chain_name) {
+           result = subchain_data.head_block_num;
+           return false;
+       }
+       else {
+           return true;
+       }
+   });
+   return result;
+}
 // TODO: move this and similar functions to a header. Copied from wasm_interface.cpp.
 // TODO: fix strict aliasing violation
 static float64_t to_softfloat64( double d ) {
@@ -1210,7 +1001,6 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    ULTRAIN_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
    const auto& d = db.db();
-   const auto lower = name{p.lower_bound};
 
    static const uint8_t secondary_index_num = 0;
    const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), N(ultrainio), N(producers)));
@@ -1218,43 +1008,30 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    ULTRAIN_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
 
    const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
-   const auto& secondary_index = d.get_index<index_double_index>().indices();
-   const auto& secondary_index_by_primary = secondary_index.get<by_primary>();
-   const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
+   decltype(table_id->id) next_tid(table_id->id._id + 1);
+   auto lower = kv_index.lower_bound(boost::make_tuple(table_id->id));
+   auto upper = kv_index.lower_bound(boost::make_tuple(next_tid));
+
 
    read_only::get_producers_result result;
    const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
    vector<char> data;
 
-   auto it = [&]{
-      if(lower.value == 0)
-         return secondary_index_by_secondary.lower_bound(
-            boost::make_tuple(secondary_table_id->id, to_softfloat64(std::numeric_limits<double>::lowest()), 0));
-      else
-         return secondary_index.project<by_secondary>(
-            secondary_index_by_primary.lower_bound(
-               boost::make_tuple(secondary_table_id->id, lower.value)));
-   }();
-   it = secondary_index_by_secondary.begin();
+   std::for_each(lower,upper, [&](const key_value_object& obj) {
+        copy_inline_row(obj, data);
+        auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
+        if(filter_enabled && !(producer["is_enabled"].as_bool())) {
+            return;
+        }
+        if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {
+            return;
+        }
+        if (p.json)
+           result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
+        else
+           result.rows.emplace_back(fc::variant(data));
+   });
 
-   for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
-      //TODO add an option to make the stop time and size limit valid according to requirement
-#if 0
-      if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
-         result.more = name{it->primary_key}.to_string();
-         break;
-      }
-#endif
-      copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
-      auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
-      if(filter_enabled && !(producer["is_enabled"].as_bool())) {
-          continue;
-      }
-      if (p.json)
-         result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
-      else
-         result.rows.emplace_back(fc::variant(data));
-   }
    auto gstate = get_global_row(d, abi, abis, abi_serializer_max_time);
    ilog("global ${gl}", ("gl", gstate));
 
@@ -1279,17 +1056,6 @@ bool read_only::is_genesis_finished() const{
         }
     }
     return genesis_finished;
-}
-
-read_only::get_producer_schedule_result read_only::get_producer_schedule( const read_only::get_producer_schedule_params& p ) const {
-   read_only::get_producer_schedule_result result;
-   to_variant(db.active_producers(), result.active);
-   if(!db.pending_producers().producers.empty())
-      to_variant(db.pending_producers(), result.pending);
-   auto proposed = db.proposed_producers();
-   if(proposed && !proposed->producers.empty())
-      to_variant(*proposed, result.proposed);
-   return result;
 }
 
 template<typename Api>
@@ -1409,7 +1175,8 @@ fc::variant read_only::get_block_info(const read_only::get_block_info_params& pa
    return fc::mutable_variant_object(pretty_output.get_object())
            ("id", block->id())
            ("block_num",block->block_num())
-           ("ref_block_prefix", ref_block_prefix);
+           ("ref_block_prefix", ref_block_prefix)
+           ("timevalue", block->timestamp.abstime);
 }
 
 fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
@@ -1428,7 +1195,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
       } ULTRAIN_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
    }
 
-   ULTRAIN_ASSERT( b, unknown_block_exception, "Could not find reversible block: ${block}", ("block", params.block_num_or_id));
+   ULTRAIN_ASSERT( b, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
    fc::variant vo;
    fc::to_variant( static_cast<const block_header_state&>(*b), vo );
@@ -1698,14 +1465,14 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(producers) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer_max_time );
+            result.producer_info = abis.binary_to_variant( "producer_info", data, abi_serializer_max_time );
          }
       }
    }

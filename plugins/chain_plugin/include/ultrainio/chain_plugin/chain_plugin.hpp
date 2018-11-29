@@ -126,7 +126,7 @@ public:
       fc::variant                self_delegated_bandwidth;
       fc::variant                refund_request;
       fc::variant                refund_cons;
-      fc::variant                voter_info;
+      fc::variant                producer_info;
    };
 
    struct get_account_info_params {
@@ -142,7 +142,7 @@ public:
       name account_name;
    };
    get_sourcerate_results get_sourcerate( const get_sourcerate_params& params)const;
- 
+
 
    struct get_contract_results {
       name                   account_name;
@@ -291,10 +291,26 @@ public:
 
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
+   struct get_subchain_committee_params {
+      uint64_t         chain_name;  //todo, will change it to name type later
+   };
+
+   struct get_subchain_committee_result {
+      std::string     owner;
+      std::string     miner_pk;
+   };
+
+   vector<get_subchain_committee_result> get_subchain_committee(const get_subchain_committee_params& p) const;
+
+   using get_subchain_block_num_params = get_subchain_committee_params;
+   uint32_t get_subchain_block_num(const get_subchain_block_num_params& p) const;
+
    struct get_producers_params {
       bool        json = false;
       string      lower_bound;
       uint32_t    limit = 50;
+      bool        is_filter_chain = true;
+      uint64_t    show_chain_num = 0;
    };
 
    struct get_producers_result {
@@ -308,17 +324,6 @@ public:
    get_producers_result get_producers( const get_producers_params& params, bool filter_enabled = false)const;
 
    bool is_genesis_finished()const;
-
-   struct get_producer_schedule_params {
-   };
-
-   struct get_producer_schedule_result {
-      fc::variant active;
-      fc::variant pending;
-      fc::variant proposed;
-   };
-
-   get_producer_schedule_result get_producer_schedule( const get_producer_schedule_params& params )const;
 
    struct get_scheduled_transactions_params {
       bool        json = false;
@@ -608,16 +613,16 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_table_by_scope_result, (rows)(
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
+FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_params, (chain_name));
+FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk) );
 
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thresh_activated_stake_time)(more) );
 
-FC_REFLECT_EMPTY( ultrainio::chain_apis::read_only::get_producer_schedule_params )
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_schedule_result, (active)(pending)(proposed) );
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
         (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
                 net_limit)(cpu_limit)(ram_usage)(permissions)(total_resources)(
-                self_delegated_bandwidth)(refund_request)(refund_cons)(voter_info))
+                self_delegated_bandwidth)(refund_request)(refund_cons)(producer_info))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_sourcerate_results,(net_rate)(cpu_rate))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_result, (transactions)(more) );

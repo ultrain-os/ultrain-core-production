@@ -32,8 +32,7 @@ namespace ultrainio { namespace chain {
          >,
          ordered_non_unique< tag<by_lib_block_num>,
             composite_key< block_header_state,
-                member<block_header_state,uint32_t,&block_header_state::dpos_irreversible_blocknum>,
-                member<block_header_state,uint32_t,&block_header_state::bft_irreversible_blocknum>,
+                member<block_header_state,uint32_t,&block_header_state::irreversible_blocknum>,
                 member<block_header_state,uint32_t,&block_header_state::block_num>
             >,
             composite_key_compare< std::greater<uint32_t>, std::greater<uint32_t>, std::greater<uint32_t> >
@@ -95,7 +94,7 @@ namespace ultrainio { namespace chain {
       /// we cannot normally prune the lib if it is the head block because
       /// the next block needs to build off of the head block. We are exiting
       /// now so we can prune this block as irreversible before exiting.
-      auto lib    = my->head->dpos_irreversible_blocknum;
+      auto lib    = my->head->irreversible_blocknum;
       auto oldest = *my->index.get<by_block_num>().begin();
       if( oldest->block_num <= lib ) {
          prune( oldest );
@@ -129,7 +128,7 @@ namespace ultrainio { namespace chain {
 
       my->head = *my->index.get<by_lib_block_num>().begin();
 
-      auto lib    = my->head->dpos_irreversible_blocknum;
+      auto lib    = my->head->irreversible_blocknum;
       auto oldest = *my->index.get<by_block_num>().begin();
 
       if( oldest->block_num < lib ) {
@@ -286,53 +285,6 @@ namespace ultrainio { namespace chain {
       if( nitr == numidx.end() || (*nitr)->block_num != n || (*nitr)->in_current_chain != true )
          return block_state_ptr();
       return *nitr;
-   }
-
-   /**
-    *  This method will set this block as being BFT irreversible and will update
-    *  all blocks which build off of it to have the same bft_irb if their existing
-    *  bft irb is less than this block num.
-    *
-    *  This will require a search over all forks
-    */
-   void fork_database::set_bft_irreversible( block_id_type id ) {
-      auto& idx = my->index.get<by_block_id>();
-      auto itr = idx.find(id);
-      uint32_t block_num = (*itr)->block_num;
-      idx.modify( itr, [&]( auto& bsp ) {
-           bsp->bft_irreversible_blocknum = bsp->block_num;
-      });
-
-      /** to prevent stack-overflow, we perform a bredth-first traversal of the
-       * fork database. At each stage we iterate over the leafs from the prior stage
-       * and find all nodes that link their previous. If we update the bft lib then we
-       * add it to a queue for the next layer.  This lambda takes one layer and returns
-       * all block ids that need to be iterated over for next layer.
-       */
-      auto update = [&]( const vector<block_id_type>& in ) {
-         vector<block_id_type> updated;
-
-         for( const auto& i : in ) {
-            auto& pidx = my->index.get<by_prev>();
-            auto pitr  = pidx.lower_bound( i );
-            auto epitr = pidx.upper_bound( i );
-            while( pitr != epitr ) {
-               pidx.modify( pitr, [&]( auto& bsp ) {
-                 if( bsp->bft_irreversible_blocknum < block_num ) {
-                    bsp->bft_irreversible_blocknum = block_num;
-                    updated.push_back( bsp->id );
-                 }
-               });
-               ++pitr;
-            }
-         }
-         return updated;
-      };
-
-      vector<block_id_type> queue{id};
-      while( queue.size() ) {
-         queue = update( queue );
-      }
    }
 
 } } /// ultrainio::chain

@@ -14,6 +14,7 @@
 #include <rpos/MsgMgr.h>
 #include <rpos/Scheduler.h>
 #include <rpos/NodeInfo.h>
+#include <rpos/StakeVoteBase.h>
 
 // eos net
 #include <appbase/application.hpp>
@@ -23,7 +24,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="e57815";
+    char version[]="03cc71";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -66,7 +67,7 @@ namespace ultrainio {
     }
 
     void UranusNode::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account) {
-        StakeVote::getKeyKeeper()->setMyInfoAsCommitteeKey(sk, account);
+        StakeVoteBase::getKeyKeeper()->setMyInfoAsCommitteeKey(sk, account);
     }
 
     bool UranusNode::getNonProducingNode() const {
@@ -82,7 +83,7 @@ namespace ultrainio {
 
     void UranusNode::readyToConnect() {
         m_connected = true;
-        readyLoop(6 * Config::s_maxRoundSeconds);
+        readyLoop(50);
     }
 
     bool UranusNode::getSyncingStatus() const {
@@ -104,9 +105,9 @@ namespace ultrainio {
         boost::chrono::seconds pass_time_to_genesis;
 
         if (!m_connected) {
-            //readyToConnect();
-            //return;
-            m_connected = true;
+            readyToConnect();
+            return;
+            //m_connected = true;
         }
 
         std::time_t t = boost::chrono::system_clock::to_time_t(current_time);
@@ -144,12 +145,12 @@ namespace ultrainio {
 
         bool ret = m_schedulerPtr->preRunBa0BlockStep();
         if (ret) {
-            preRunBa0BlockLoop(1);
+            preRunBa0BlockLoop(200 * Config::s_maxPhaseSeconds);
         }
     }
 
     void UranusNode::preRunBa0BlockLoop(uint32_t timeout) {
-        m_preRunTimer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_preRunTimer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_preRunTimer.async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("pre run ba0 block timer cancel");
@@ -177,7 +178,7 @@ namespace ultrainio {
     }
 
     void UranusNode::syncBlockLoop(uint32_t timeout) {
-        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_currentTimerHandlerNo = THN_SYNC_BLOCK;
         resetTimerCanceled(THN_SYNC_BLOCK);
         m_timer.async_wait([this](boost::system::error_code ec) {
@@ -233,6 +234,19 @@ namespace ultrainio {
         }
     }
 
+    void UranusNode::fastProcess() {
+        msgkey msg_key;
+        msg_key.blockNum = getBlockNum();
+        msg_key.phase = kPhaseBA1;
+
+        if (m_schedulerPtr->isFastba0(msg_key)) {
+            dlog("fastProcess. fastblock begin. blockNum = ${blockNum}.",("blockNum", getBlockNum()));
+            ba0Process();
+            return;
+        }
+        ba0Loop(getRoundInterval());
+    }
+
     void UranusNode::ba0Process() {
         if (!m_ready) {
             syncBlock();
@@ -284,7 +298,7 @@ namespace ultrainio {
         if (!MsgMgr::getInstance()->isVoter(getBlockNum(), m_phase, m_baxCount) && !m_isNonProducingNode) {
             bool ret = m_schedulerPtr->preRunBa0BlockStart();
             if (ret) {
-                preRunBa0BlockLoop(1);
+                preRunBa0BlockLoop(200 * Config::s_maxPhaseSeconds);
             }
         }
     }
@@ -447,7 +461,7 @@ namespace ultrainio {
 
     void UranusNode::runLoop(uint32_t timeout) {
         dlog("start runLoop timeout = ${timeout}", ("timeout", timeout));
-        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_currentTimerHandlerNo = THN_RUN;
         resetTimerCanceled(THN_RUN);
         m_timer.async_wait([this](boost::system::error_code ec) {
@@ -465,7 +479,7 @@ namespace ultrainio {
 
     void UranusNode::ba0Loop(uint32_t timeout) {
         dlog("start ba0Loop timeout = ${timeout}", ("timeout", timeout));
-        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_currentTimerHandlerNo = THN_BA0;
         resetTimerCanceled(THN_BA0);
         m_timer.async_wait([this](boost::system::error_code ec) {
@@ -481,9 +495,27 @@ namespace ultrainio {
         });
     }
 
+    void UranusNode::fastLoop(uint32_t timeout) {
+        dlog("start fastLoop timeout = ${timeout}", ("timeout", timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
+        m_currentTimerHandlerNo = THN_FAST_CHECK;
+        resetTimerCanceled(THN_FAST_CHECK);
+        m_timer.async_wait([this](boost::system::error_code ec) {
+            if (ec.value() == boost::asio::error::operation_aborted) {
+                ilog("fast check timer cancel");
+            } else {
+                if (isTimerCanceled(THN_FAST_CHECK)) {
+                    ilog("fast check timer has been already canceled.");
+                } else {
+                    this->fastProcess();
+                }
+            }
+        });
+    }
+
     void UranusNode::ba1Loop(uint32_t timeout) {
         dlog("start ba1Loop timeout = ${timeout}", ("timeout", timeout));
-        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_currentTimerHandlerNo = THN_BA1;
         resetTimerCanceled(THN_BA1);
         m_timer.async_wait([this](boost::system::error_code ec) {
@@ -504,7 +536,7 @@ namespace ultrainio {
         msgkey msg_key;
 
         dlog("start baxLoop timeout = ${timeout}", ("timeout", timeout));
-        m_timer.expires_from_now(boost::posix_time::seconds(timeout));
+        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         m_currentTimerHandlerNo = THN_BAX;
         resetTimerCanceled(THN_BAX);
         m_timer.async_wait([this](boost::system::error_code ec) {
@@ -592,7 +624,7 @@ namespace ultrainio {
             return true;
         } else {
             if ((m_phase == kPhaseBAX) && (msg.block_num() == getLastBlocknum())) {
-                dlog("handleMessage. close bax, blockNum = ${blockNum}.", ("blockNum", getLastBlocknum()));
+                dlog("handleMessage blockmsg. close bax, blockNum = ${blockNum}.", ("blockNum", getLastBlocknum()));
                 reset();
             }
         }
@@ -609,10 +641,12 @@ namespace ultrainio {
         m_ready = true;
         m_syncing = false;
 
-        if (sync_msg.startBlockNum == sync_msg.endBlockNum && sync_msg.endBlockNum == getLastBlocknum() + 1) {
+        if ((sync_msg.startBlockNum == sync_msg.endBlockNum)
+            && (sync_msg.endBlockNum == getLastBlocknum() + 1)
+            && (m_phase == kPhaseInit)) {
             ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local.",
                  ("s", sync_msg.startBlockNum)("e", sync_msg.endBlockNum)("last", getLastBlocknum()));
-            if (StakeVote::committeeHasWorked()) {
+            if (StakeVoteBase::committeeHasWorked()) {
                 runLoop(getRoundInterval());
             } else {
                 ilog("Committee has not worked.");
@@ -676,6 +710,7 @@ namespace ultrainio {
         msgkey msg_key;
 
         reset();
+
         m_phase = kPhaseBA0;
         m_baxCount = 0;
 
@@ -686,7 +721,7 @@ namespace ultrainio {
         }
 
         // BA0=======
-        ba0Loop(getRoundInterval());
+        //ba0Loop(getRoundInterval());
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
 
         dlog("start BA0. blockNum = ${blockNum}. isProposer = ${isProposer} and isVoter = ${isVoter}",
@@ -699,6 +734,13 @@ namespace ultrainio {
         if (voteFlag) {
             vote(getBlockNum(), kPhaseBA0, 0);
         }
+
+        if ((getRoundInterval() > (Config::s_maxTrxMicroSeconds/1000 + 300)) && (!MsgMgr::getInstance()->isProposer(getBlockNum()))) {
+            fastLoop(Config::s_maxTrxMicroSeconds/1000 + 300);
+        } else {
+            ba0Loop(getRoundInterval());
+        }
+
         return;
     }
 
@@ -751,7 +793,7 @@ namespace ultrainio {
 
                 fastBlock(msg_key.blockNum);
             } else {
-                if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
+                if ((getRoundInterval() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
                     //todo process two phase
                     ba1Process();
                 } else {
@@ -765,7 +807,7 @@ namespace ultrainio {
             if (m_schedulerPtr->findEchoCache(msg_key)) {
                 fastBax();
             } else {
-                if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
+                if ((getRoundInterval() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
                     //todo process two phase
                     ba1Process();
                 } else {
@@ -851,7 +893,7 @@ namespace ultrainio {
         if (m_schedulerPtr->findEchoCache(msg_key)) {
             fastBa1();
         } else {
-            if ((getRoundInterval() == Config::s_maxPhaseSeconds) && (isProcessNow())) {
+            if ((getRoundInterval() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
                 //todo process two phase
                 ba0Process();
             } else {
@@ -885,13 +927,13 @@ namespace ultrainio {
 
     uint32_t UranusNode::getRoundInterval() {
         boost::chrono::system_clock::time_point current_time = boost::chrono::system_clock::now();
-        boost::chrono::seconds pass_time_to_genesis
-                = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
+        boost::chrono::milliseconds pass_time_to_genesis
+                = boost::chrono::duration_cast<boost::chrono::milliseconds>(current_time - Genesis::s_time);
 
         dlog("getRoundInterval. interval = ${id}.",
-             ("id", Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % Config::s_maxPhaseSeconds)));
+             ("id", 1000 * Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % (1000 * Config::s_maxPhaseSeconds))));
 
-        return Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % Config::s_maxPhaseSeconds);
+        return 1000 * Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % (1000 * Config::s_maxPhaseSeconds));
     }
 
     BlockIdType UranusNode::getPreviousHash() {
@@ -920,7 +962,7 @@ namespace ultrainio {
     }
 
     int UranusNode::getCommitteeMemberNumber() {
-        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(this->getBlockNum());
+        std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getVoterSys(this->getBlockNum());
         return voterSysPtr->getCommitteeMemberNumber();
     }
 
@@ -932,7 +974,7 @@ namespace ultrainio {
 
     void UranusNode::setGenesisStartupTime(int32_t minutes) {
         Genesis::s_genesisStartupTime = minutes;
-        Genesis::s_genesisStartupBlockNum = Genesis:: s_genesisStartupTime * Config::kAverageBlockPerMinutes;
+        Genesis::s_genesisStartupBlockNum = Genesis:: s_genesisStartupTime * 60/Config::s_maxRoundSeconds;
         ilog("Genesis startup time : ${minutes} minutes, startup block num : ${number}",
                 ("minutes",Genesis::s_genesisStartupTime)("number", Genesis::s_genesisStartupBlockNum));
     }
@@ -947,6 +989,12 @@ namespace ultrainio {
         Config::s_maxPhaseSeconds = phaseSecond;
         ilog("maxRoundSecond : ${maxRoundSecond}, maxPhaseSecond : ${maxPhaseSecond}",
                 ("maxRoundSecond", Config::s_maxRoundSeconds)("maxPhaseSecond", Config::s_maxPhaseSeconds));
+    }
+    void UranusNode::setTrxsSecond(int32_t trxssecond) {
+        Config::s_maxTrxMicroSeconds = trxssecond;
+
+        ilog("s_maxTrxMicroSeconds : ${s_maxTrxMicroSeconds}",
+             ("s_maxTrxMicroSeconds", Config::s_maxTrxMicroSeconds));
     }
 
     void UranusNode::setTimerCanceled(TimerHandlerNumber thn) {

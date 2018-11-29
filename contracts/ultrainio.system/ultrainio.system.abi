@@ -15,6 +15,9 @@
    },{
       "new_type_name": "weight_type",
       "type": "uint16"
+   },{
+      "new_type_name": "block_id_type",
+      "type": "checksum256"
    }],
    "____comment": "ultrainio.bios structs: set_account_limits, setpriv, set_global_limits, producer_key, set_producers, require_auth are provided so abi available for deserialization in future.",
    "structs": [{
@@ -23,6 +26,16 @@
       "fields": [
         {"name":"actor",      "type":"account_name"},
         {"name":"permission", "type":"permission_name"}
+      ]
+    },{
+      "name": "proposeminer_info",
+      "base": "",
+      "fields": [
+        {"name": "account", "type": "account_name"},
+        {"name": "public_key", "type": "string"},
+        {"name": "url", "type": "string"},
+        {"name": "location", "type": "uint64"},
+        {"name": "adddel_miner", "type": "bool"}
       ]
     },{
       "name": "key_weight",
@@ -38,6 +51,47 @@
         {"name":"bidder",  "type":"account_name"},
         {"name":"newname", "type":"account_name"},
         {"name":"bid", "type":"asset"}
+      ]
+    },{
+      "name": "votecommittee",
+      "base": "",
+      "fields": [
+         {"name":"proposer", "type":"account_name"},
+         {"name":"proposeminer", "type":"proposeminer_info[]"}
+      ]
+    },{
+      "name": "regsubchain",
+      "base": "",
+      "fields": [
+        {"name": "chain_name",                 "type": "uint64"},
+        {"name": "chain_type",                 "type": "uint16"}
+       ]
+    },{
+        "name": "extension",
+        "base": "",
+        "fields": [
+           {"name": "type",           "type": "uint16" },
+           {"name": "data",           "type": "bytes"}
+        ]
+    },{
+      "name": "block_header",
+      "base": "",
+      "fields": [
+        {"name": "timestamp",         "type": "block_timestamp_type"},
+        {"name": "proposer",          "type": "account_name"},
+        {"name": "version",           "type": "uint32"},
+        {"name": "previous",          "type": "checksum256"},
+        {"name": "transaction_mroot", "type": "checksum256"},
+        {"name": "action_mroot",      "type": "checksum256"},
+        {"name": "committee_mroot",   "type": "checksum256"},
+        {"name": "header_extensions", "type": "extension[]"}
+     ]
+    },{
+      "name": "acceptheader",
+      "base": "",
+      "fields": [
+        {"name": "chain_name",          "type": "uint64"},
+        {"name": "header",              "type": "block_header"}
       ]
     },{
       "name": "permission_level_weight",
@@ -177,10 +231,11 @@
          {"name":"unstake_cpu_quantity", "type":"asset"}
       ]
     },{
-      "name": "delegatecons", 
+      "name": "delegatecons",
       "base": "",
       "fields": [
          {"name":"from", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
          {"name":"stake_cons_quantity", "type":"asset"}
       ]
     },{
@@ -188,6 +243,7 @@
       "base": "",
       "fields": [
          {"name":"from", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
          {"name":"unstake_cons_quantity", "type":"asset"}
       ]
     },{
@@ -209,7 +265,8 @@
          {"name":"from", "type":"account_name"},
          {"name":"to", "type":"account_name"},
          {"name":"net_weight", "type":"asset"},
-         {"name":"cpu_weight", "type":"asset"}
+         {"name":"cpu_weight", "type":"asset"},
+         {"name":"cons_weight", "type":"asset"}
       ]
     },{
       "name": "user_resources",
@@ -291,19 +348,42 @@
          {"name":"last_name_close",               "type":"block_timestamp_type"}
       ]
     },{
-      "name": "producer_info",
+      "name": "role_base",
       "base": "",
       "fields": [
          {"name":"owner",           "type":"account_name"},
-         {"name":"total_votes",     "type":"int64"},
-         {"name":"producer_key",    "type":"string"},
+         {"name":"producer_key",    "type":"string"}
+      ]
+    },{
+      "name": "producer_info",
+      "base": "role_base",
+      "fields": [
+         {"name":"total_cons_staked",     "type":"int64"},
          {"name":"is_active",       "type":"bool"},
          {"name":"is_enabled",      "type":"bool"},
+         {"name":"hasactived",      "type":"bool"},
          {"name":"url",             "type":"string"},
          {"name":"unpaid_blocks",   "type":"uint64[]"},
+         {"name":"total_produce_block",   "type":"uint64"},
          {"name":"last_claim_time", "type":"uint64"},
-         {"name":"location",        "type":"uint16"}
+         {"name":"location",        "type":"uint64"}
       ]
+    },{
+     "name": "subchain",
+      "base": "",
+      "fields": [
+        {"name": "chain_name",                    "type": "uint64"},
+        {"name": "chain_type",                    "type": "uint16"},
+        {"name": "is_active",                     "type": "bool"},
+        {"name": "committee_members",             "type": "role_base[]"},
+        {"name": "head_block_id",                 "type": "block_id_type"},
+        {"name": "head_block_num",                "type": "uint32"}
+        {"name": "chain_id",                      "type": "checksum256"},
+        {"name": "genesis_info",                  "type": "string"},
+        {"name": "network_topology",              "type": "string"},
+        {"name": "relayer_candidates",            "type": "role_base[]"},
+        {"name": "relayer_list",                  "type": "role_base[]"}
+       ]
     },{
       "name": "regproducer",
       "base": "",
@@ -311,7 +391,7 @@
         {"name":"producer",     "type":"account_name"},
         {"name":"producer_key", "type":"string"},
         {"name":"url",          "type":"string"},
-        {"name":"location",     "type":"uint16"}
+        {"name":"location",     "type":"uint64"}
       ]
     },{
       "name": "unregprod",
@@ -326,37 +406,17 @@
         {"name":"max_ram_size",     "type":"uint64"}
       ]
     },{
-      "name": "regproxy",
-      "base": "",
-      "fields": [
-        {"name":"proxy",     "type":"account_name"},
-        {"name":"isproxy",   "type":"bool"}
-      ]
-    },{
-      "name": "voteproducer",
-      "base": "",
-      "fields": [
-        {"name":"voter",     "type":"account_name"},
-        {"name":"proxy",     "type":"account_name"},
-        {"name":"producers", "type":"account_name[]"}
-      ]
-    },{
-      "name": "voter_info",
-      "base": "",
-      "fields": [
-        {"name":"owner",                "type":"account_name"},
-        {"name":"proxy",                "type":"account_name"},
-        {"name":"producers",            "type":"account_name[]"},
-        {"name":"staked",               "type":"int64"},
-        {"name":"last_vote_weight",     "type":"float64"},
-        {"name":"proxied_vote_weight",  "type":"float64"},
-        {"name":"is_proxy",             "type":"bool"}
-      ]
-    },{
       "name": "claimrewards",
       "base": "",
       "fields": [
         {"name":"owner",   "type":"account_name"}
+      ]
+    },{
+      "name": "reportblocknumber",
+      "base": "",
+      "fields": [
+        {"name":"producer",   "type":"account_name"},
+        {"name":"number",   "type":"uint64"}
       ]
     },{
       "name": "setpriv",
@@ -522,16 +582,24 @@
       "type": "bidname",
       "ricardian_contract": ""
    },{
+      "name": "votecommittee",
+      "type": "votecommittee",
+      "ricardian_contract": ""
+   },{
+      "name": "regsubchain",
+      "type": "regsubchain",
+      "ricardian_contract": ""
+   },{
+      "name": "acceptheader",
+      "type": "acceptheader",
+      "ricardian_contract": ""
+   },{
       "name": "unregprod",
       "type": "unregprod",
       "ricardian_contract": ""
    },{
-      "name": "regproxy",
-      "type": "regproxy",
-      "ricardian_contract": ""
-   },{
-      "name": "voteproducer",
-      "type": "voteproducer",
+      "name": "reportblocknumber",
+      "type": "reportblocknumber",
       "ricardian_contract": ""
    },{
       "name": "claimrewards",
@@ -579,12 +647,6 @@
       "key_names" : [],
       "key_types" : []
     },{
-      "name": "voters",
-      "type": "voter_info",
-      "index_type": "i64",
-      "key_names" : ["owner"],
-      "key_types" : ["account_name"]
-    },{
       "name": "userres",
       "type": "user_resources",
       "index_type": "i64",
@@ -620,6 +682,12 @@
        "index_type": "i64",
        "key_names" : ["newname"],
        "key_types" : ["account_name"]
+    },{
+      "name": "subchains",
+      "type": "subchain",
+      "index_type": "i64",
+      "key_names": ["chain_name"],
+      "key_types": ["uint64"]
     }
    ],
    "ricardian_clauses": [],

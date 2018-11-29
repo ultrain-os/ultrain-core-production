@@ -2,7 +2,6 @@
 #include <ultrainio/chain/apply_context.hpp>
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/transaction_context.hpp>
-#include <ultrainio/chain/producer_schedule.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <ultrainio/chain/authorization_manager.hpp>
@@ -22,6 +21,7 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
+#include <gmp.h>
 
 namespace ultrainio { namespace chain {
    using namespace webassembly;
@@ -55,6 +55,10 @@ namespace ultrainio { namespace chain {
 
    void wasm_interface::apply( const digest_type& code_id, const shared_string& code, apply_context& context ) {
       my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
+   }
+
+   void wasm_interface::exit() {
+      my->runtime_interface->immediately_exit_currently_running_module();
    }
 
    wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
@@ -269,6 +273,7 @@ class typescript_crypto_api : public context_aware_api {
          fc::ripemd160 hash = encode<fc::ripemd160::encoder>( data, datalen );
          memcpy(hash_val, hash.data(), hash.data_size());
       }
+
 };
 #endif
 
@@ -848,24 +853,70 @@ class softfloat_api : public context_aware_api {
 
 };
 
-class producer_api : public context_aware_api {
+class big_int_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int get_active_producers(array_ptr<chain::account_name> producers, size_t buffer_size) {
-         auto active_producers = context.get_active_producers();
+      void big_int_pow_mod(array_ptr<char> rop, size_t rop_len,
+                  null_terminated_ptr Msg,
+                  null_terminated_ptr Key,
+                  null_terminated_ptr N,int base) {
+            mpz_t n,msg,key,res;
+            mpz_init(res);
+            ULTRAIN_ASSERT(0==mpz_init_set_str(n,N.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            ULTRAIN_ASSERT(0==mpz_init_set_str(msg,Msg.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            ULTRAIN_ASSERT(0==mpz_init_set_str(key,Key.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            mpz_powm(res,msg,key,n);
+            // should check rop_len with res.length
+            ULTRAIN_ASSERT(mpz_get_str(rop.value,base,res)!=NULL,crypto_api_exception,"Error! Result can't convert to string");
+            mpz_clears(msg,key,n,res,NULL);
+      }
 
-         size_t len = active_producers.size();
-         auto s = len * sizeof(chain::account_name);
-         if( buffer_size == 0 ) return s;
+      /**
+       *rop=gcd(p,q)
+      */
+      void big_int_gcd(array_ptr<char> rop, size_t rop_len, null_terminated_ptr p, null_terminated_ptr q,int base) {
+            mpz_t P,Q,Res;
+            mpz_init(Res);
+            ULTRAIN_ASSERT(0==mpz_init_set_str(P,p.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            ULTRAIN_ASSERT(0==mpz_init_set_str(Q,q.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            mpz_gcd(Res,P,Q);
+            ULTRAIN_ASSERT(mpz_get_str(rop.value,base,Res)!=NULL,crypto_api_exception,"Error! Result can't convert to string");
+            mpz_clears(Res,P,Q,NULL);
+      }
 
-         auto copy_size = std::min( buffer_size, s );
-         memcpy( producers, active_producers.data(), copy_size );
+      /**
+       *rop=gcd(p,q)
+      */
+      int big_int_cmp(null_terminated_ptr p, null_terminated_ptr q,int base) {
+            mpz_t P,Q;
+            ULTRAIN_ASSERT(0==mpz_init_set_str(P,p.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            ULTRAIN_ASSERT(0==mpz_init_set_str(Q,q.value,base),crypto_api_exception,"Error! Input string can't convert to number");
+            int i = mpz_cmp(P,Q);
+            mpz_clears(P,Q,NULL);
+            return i;
+      }
 
-         return copy_size;
+      void big_int_mul(array_ptr<char> rop, size_t rop_len, null_terminated_ptr p, null_terminated_ptr q,int base){
+            mpz_t P,Q,Res;
+            mpz_init(Res);
+            ULTRAIN_ASSERT(0==mpz_init_set_str(P,p,base),crypto_api_exception,"Error! Input string can't convert to number");
+            ULTRAIN_ASSERT(0==mpz_init_set_str(Q,q,base),crypto_api_exception,"Error! Input string can't convert to number");
+            mpz_mul(Res,P,Q);
+            ULTRAIN_ASSERT(mpz_get_str(rop,base,Res)!=NULL,crypto_api_exception,"Error! Result can't convert to string");
+            mpz_clears(Res,P,Q,NULL);
+      }
+      /**
+       * 判断是否质数，返回1为质数，0不为质数,2可能为质数。 reps代表可能性，一般15-50。返回1代表此数不为质数的可能性小于4^(-reps)
+       */
+      int big_int_probab_prime(null_terminated_ptr p,int reps,int base){
+            mpz_t P;
+            ULTRAIN_ASSERT(0==mpz_init_set_str(P,p,base),crypto_api_exception,"Error! Input string can't convert to number");
+            int i = mpz_probab_prime_p(P,reps);
+            mpz_clears(P,NULL);
+            return i;
       }
 };
-
 class crypto_api : public context_aware_api {
    public:
       explicit crypto_api( apply_context& ctx )
@@ -1049,6 +1100,14 @@ class authorization_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
+   void require_on_main_chain() {
+     ULTRAIN_ASSERT( context.control.is_on_main_chain(), should_be_on_main_chain_exception, "should be on main chain");
+   }
+
+   void require_on_side_chain() {
+     ULTRAIN_ASSERT( !context.control.is_on_main_chain(), should_be_on_side_chain_exception, "should be on side chain");
+   }
+
    void require_authorization( const account_name& account ) {
       context.require_authorization( account );
    }
@@ -1090,6 +1149,10 @@ class system_api : public context_aware_api {
 
       uint64_t publication_time() {
          return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
+      }
+
+      uint32_t block_interval_seconds() {
+         return context.control.block_interval_seconds();
       }
 
       int emit_event(array_ptr<const char> event_name, size_t event_name_size, array_ptr<const char> msg, size_t msg_size ) {
@@ -1495,6 +1558,10 @@ class database_api : public context_aware_api {
       }
       uint64_t db_iterator_i64( uint64_t code, uint64_t scope, uint64_t table ) {
          return context.db_iterator_i64( code, scope, table);
+      }
+
+      int db_drop_i64( uint64_t code, uint64_t scope, uint64_t table ) {
+         return context.db_drop_i64( code, scope, table);
       }
 
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
@@ -1970,10 +2037,6 @@ REGISTER_INJECTED_INTRINSICS(transaction_context,
    (checktime,      void())
 );
 
-REGISTER_INTRINSICS(producer_api,
-   (get_active_producers,      int(int, int) )
-);
-
 #define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX) \
    (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int))\
    (db_##IDX##_remove,         void(int))\
@@ -2010,6 +2073,7 @@ REGISTER_INTRINSICS( database_api,
    (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
    (db_end_i64,          int(int64_t,int64_t,int64_t))
    (db_iterator_i64,     int64_t(int64_t,int64_t,int64_t))
+   (db_drop_i64,         int(int64_t,int64_t,int64_t))
 
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
@@ -2043,6 +2107,7 @@ REGISTER_INTRINSICS(permission_api,
 REGISTER_INTRINSICS(system_api,
    (current_time, int64_t()       )
    (publication_time,   int64_t() )
+   (block_interval_seconds, int() )
    (emit_event, int(int, int, int, int) )
    (set_result_str,        void(int)      )
    (set_result_int,        void(int64_t) )
@@ -2064,6 +2129,8 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(authorization_api,
+   (require_on_main_chain,     void()          )
+   (require_on_side_chain,     void()          )
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
@@ -2171,6 +2238,14 @@ REGISTER_INJECTED_INTRINSICS(softfloat_api,
       (_ultrainio_i64_to_f64,     double(int64_t)       )
       (_ultrainio_ui32_to_f64,    double(int32_t)       )
       (_ultrainio_ui64_to_f64,    double(int64_t)       )
+);
+
+REGISTER_INTRINSICS(big_int_api,
+      (big_int_cmp,         int(int, int, int) )
+      (big_int_pow_mod,     void(int, int, int, int, int, int))
+      (big_int_gcd,         void(int, int, int, int, int))
+      (big_int_mul,         void(int, int, int, int, int))
+      (big_int_probab_prime,int(int, int, int))
 );
 
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {

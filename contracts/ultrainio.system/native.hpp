@@ -45,20 +45,6 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE( authority, (threshold)(delay_sec)(keys)(accounts) )
    };
 
-   struct block_header {
-      uint32_t                                  timestamp;
-      account_name                              proposer;
-      block_id_type                             previous;
-      checksum256                               transaction_mroot;
-      checksum256                               action_mroot;
-      ultrainio::optional<ultrainio::producer_schedule> new_producers;
-
-      // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE(block_header, (timestamp)(proposer)(previous)(transaction_mroot)(action_mroot)
-                                         (new_producers))
-   };
-
-
    /*
     * Method parameters commented out to prevent generation of code that parses input data.
     */

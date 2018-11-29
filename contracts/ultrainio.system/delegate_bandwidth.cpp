@@ -28,8 +28,7 @@ namespace ultrainiosystem {
    using std::map;
    using std::pair;
 
-   static constexpr time refund_delay = 3*24*3600;
-   static constexpr time refund_expiration_time = 3600;
+   static constexpr time refund_delay = 3*60;//3*24*3600;
 
    struct user_resources {
       account_name  owner;
@@ -52,11 +51,11 @@ namespace ultrainiosystem {
       account_name  to;
       asset         net_weight;
       asset         cpu_weight;
-
+      asset         cons_weight;
       uint64_t  primary_key()const { return to; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight) )
+      ULTRAINLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)(cons_weight) )
 
    };
    struct refund_cons {
@@ -204,7 +203,7 @@ namespace ultrainiosystem {
 
       auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)
       // since tokens_out.amount was asserted to be at least 2 earlier, fee.amount < tokens_out.amount
-      
+
       if( fee > 0 ) {
          INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {account,N(active)},
             { account, N(utrio.ramfee), asset(fee), std::string("sell ram fee") } );
@@ -253,7 +252,7 @@ namespace ultrainiosystem {
          }
          ultrainio_assert( asset(0) <= itr->net_weight, "insufficient staked net bandwidth" );
          ultrainio_assert( asset(0) <= itr->cpu_weight, "insufficient staked cpu bandwidth" );
-         if ( itr->net_weight == asset(0) && itr->cpu_weight == asset(0) ) {
+         if ( itr->net_weight == asset(0) && itr->cpu_weight == asset(0) && itr->cons_weight == asset(0)) {
             del_tbl.erase( itr );
          }
       } // itr can be invalid, should go out of scope
@@ -367,11 +366,32 @@ namespace ultrainiosystem {
       }
    }
 
-   void system_contract::change_cons( account_name from, asset stake_cons_delta)
+   void system_contract::change_cons( account_name from, account_name receiver, asset stake_cons_delta)
    {
       require_auth( from );
       ultrainio_assert( stake_cons_delta != asset(0), "should stake non-zero amount" );
 
+      // update consensus stake delegated from "from" to "receiver"
+      {
+         del_bandwidth_table     del_tbl( _self, from);
+         auto itr = del_tbl.find( receiver );
+         if( itr == del_tbl.end() ) {
+            itr = del_tbl.emplace( from, [&]( auto& dbo ){
+                  dbo.from          = from;
+                  dbo.to            = receiver;
+                  dbo.cons_weight    = stake_cons_delta;
+               });
+         }
+         else {
+            del_tbl.modify( itr, 0, [&]( auto& dbo ){
+                  dbo.cons_weight    += stake_cons_delta;
+               });
+         }
+         ultrainio_assert( asset(0) <= itr->cons_weight, "insufficient staked consensous bandwidth" );
+         if ( itr->net_weight == asset(0) && itr->cpu_weight == asset(0) && itr->cons_weight == asset(0)) {
+            del_tbl.erase( itr );
+         }
+      } // itr can be invalid, should go out of scope
       account_name source_stake_from = from;
       // create refund_cons or update from existing refund_cons
       if ( N(utrio.stake) != source_stake_from ) { //for ultrainio both transfer and refund make no sense
@@ -415,12 +435,12 @@ namespace ultrainiosystem {
                   if ( cons_balance < asset(0) ) {
                      r.cons_amount = -cons_balance;
                      cons_balance = asset(0);
-                  } 
+                  }
                   r.request_time = now();
                });
                need_deferred_trx = true;
             } // else stake increase requested with no existing row in refunds_tbl -> nothing to do with refunds_tbl
-         } 
+         }
 
          if ( need_deferred_trx ) {
             ultrainio::transaction out;
@@ -439,45 +459,43 @@ namespace ultrainiosystem {
          }
       }
 
-      // update voting power
+      // if on master chain, update voting power; else add to pending chain or subchain.
       {
          asset total_update = stake_cons_delta;
-          auto it = _producers.find(from);
-          if(it != _producers.end()) {
-              auto last_state = it->is_enabled;
-              auto enabled = ((it->total_votes+total_update.amount) >=
-                      _gstate.min_activated_stake/_gstate.min_committee_member);
-              _producers.modify(it, 0 , [&](auto & v) {
-                      v.total_votes += total_update.amount;
-                      v.is_enabled = enabled;
-                      });
-              if(enabled) {
-                  if(!last_state) {
-                    update_activated_stake(it->total_votes);
-                  }
-                  else {
-                    update_activated_stake(total_update.amount);
-                  }
-              }
-          }
-         auto from_voter = _voters.find(from);
-         if( from_voter == _voters.end() ) {
-            from_voter = _voters.emplace( from, [&]( auto& v ) {
-                  v.owner  = from;
-                  v.staked = total_update.amount;
-               });
-         } else {
-            _voters.modify( from_voter, 0, [&]( auto& v ) {
-                  v.staked += total_update.amount;
-               });
+         auto it = _producers.find(receiver);
+         ultrainio_assert( it != _producers.end(), "Unable to delegate cons, you need to regproducer first" );
+         auto enabled = ((it->total_cons_staked+total_update.amount) >=
+                  _gstate.min_activated_stake/_gstate.min_committee_member);
+         _producers.modify(it, 0 , [&](auto & v) {
+                  v.total_cons_staked += total_update.amount;
+                  v.is_enabled = enabled;
+                  });
+         if(it->is_on_master_chain()) {
+             if(enabled && !it->hasactived) {
+                 update_activated_stake(it->total_cons_staked);
+                 _producers.modify(it, 0 , [&](auto & v) {
+                         v.hasactived = true;
+                     });
+             }
+             else if(it->hasactived){
+                 update_activated_stake(total_update.amount);
+             }
          }
-         ultrainio_assert( 0 <= from_voter->staked, "stake for voting cannot be negative");
-         if( from == N(b1) ) {
-            validate_b1_vesting( from_voter->staked );
+         else if (enabled) {
+             if(it->is_in_pending_queue()) {
+                 add_to_pending_queue(it->owner, it->producer_key);
+             }
+             else {
+                 add_to_subchain(it->location, it->owner, it->producer_key);
+             }
          }
-
-         if( from_voter->producers.size() || from_voter->proxy ) {
-            update_votes( from, from_voter->proxy, from_voter->producers, false );
+         else {
+             if(it->is_in_pending_queue()) {
+                 remove_from_pending_queue(it->owner);
+             }
+             else {
+                 remove_from_subchain(it->location, it->owner);
+             }
          }
       }
    }
@@ -506,19 +524,19 @@ namespace ultrainiosystem {
       changebw( from, receiver, -unstake_net_quantity, -unstake_cpu_quantity, false);
    } // undelegatebw
 
-void system_contract::delegatecons( account_name from,asset stake_cons_quantity)
+void system_contract::delegatecons( account_name from, account_name receiver,asset stake_cons_quantity)
    {
       ultrainio_assert( stake_cons_quantity >= asset(0), "must stake a positive amount" );
-      change_cons( from, stake_cons_quantity);
+      change_cons( from, receiver, stake_cons_quantity);
    } // delegatecons
 
-   void system_contract::undelegatecons( account_name from,asset unstake_cons_quantity)
+   void system_contract::undelegatecons( account_name from, account_name receiver,asset unstake_cons_quantity)
    {
       ultrainio_assert( asset() <= unstake_cons_quantity, "must unstake a positive amount" );
       ultrainio_assert( _gstate.total_activated_stake >= _gstate.min_activated_stake,
                     "cannot undelegate cons until the chain is activated (at least 15% of all tokens participate in voting)" );
 
-      change_cons( from, -unstake_cons_quantity);
+      change_cons( from, receiver, -unstake_cons_quantity);
    } // undelegatecons
 
    void system_contract::refund( const account_name owner ) {

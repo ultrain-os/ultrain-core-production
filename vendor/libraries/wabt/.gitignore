@@ -1,0 +1,5 @@
+/bin
+/out
+/fuzz-out
+/emscripten
+*.pyc

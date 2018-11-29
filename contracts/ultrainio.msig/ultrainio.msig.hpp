@@ -31,6 +31,7 @@ namespace ultrainio {
             auto primary_key()const { return proposal_name.value; }
          };
          typedef ultrainio::multi_index<N(approvals),approvals_info> approvals;
+
    };
 
 } /// namespace ultrainio

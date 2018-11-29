@@ -108,8 +108,6 @@ int main(int argc, char** argv)
       app().exec();
    } catch( const extract_genesis_state_exception& e ) {
       return EXTRACTED_GENESIS;
-   } catch( const fixed_reversible_db_exception& e ) {
-      return FIXED_REVERSIBLE;
    } catch( const node_management_success& e ) {
       return NODE_MANAGEMENT_SUCCESS;
    } catch( const fc::exception& e ) {

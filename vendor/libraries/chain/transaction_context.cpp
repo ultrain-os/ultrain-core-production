@@ -132,7 +132,7 @@ namespace ultrainio { namespace chain {
       validate_ram_usage.reserve( bill_to_accounts.size() );
 
       // Update usage values of accounts to reflect new time
-      rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot );
+      rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).abstime );
 
       // Calculate the highest network usage and CPU time that all of the billed accounts can afford to be billed
       int64_t account_net_limit = 0;
@@ -320,7 +320,7 @@ namespace ultrainio { namespace chain {
       validate_cpu_usage_to_bill( billed_cpu_time_us );
 
       rl.add_transaction_usage( bill_to_accounts, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
-                                block_timestamp_type(control.pending_block_time()).slot ); // Should never fail
+                                block_timestamp_type(control.pending_block_time()).abstime ); // Should never fail
    }
 
    void transaction_context::squash() {
@@ -354,9 +354,11 @@ namespace ultrainio { namespace chain {
    void transaction_context::checktime()const {
 #if TEST_MODE == 0
       auto now = fc::time_point::now();
+      //      ilog("checktime deadline now${now}, deadline${deadline},start${start}", ("now", now)("deadline", _deadline)("start", start) );
       if( BOOST_UNLIKELY( now > _deadline ) ) {
          // edump((now-start)(now-pseudo_start));
          if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
+             //    ilog("checktime deadline exceeded now${now}, deadline${deadline},start${start}", ("now", now)("deadline", _deadline)("start", start) );
             ULTRAIN_THROW( deadline_exception, "deadline exceeded", ("now", now)("deadline", _deadline)("start", start) );
          } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
             ULTRAIN_THROW( block_cpu_usage_exceeded,
@@ -444,7 +446,7 @@ namespace ultrainio { namespace chain {
    }
 
    std::tuple<int64_t, int64_t, bool> transaction_context::max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits )const {
-      // Assumes rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot ) was already called prior
+      // Assumes rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).abstime ) was already called prior
 
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
       auto& rl = control.get_mutable_resource_limits_manager();

@@ -28,6 +28,7 @@
 #include <rpos/Node.h>
 #include <rpos/Seed.h>
 #include <rpos/Signer.h>
+#include <rpos/StakeVoteBase.h>
 #include <rpos/Validator.h>
 #include <rpos/Vrf.h>
 
@@ -49,10 +50,10 @@ namespace {
     bool IsBa0TheRightBlock(const ultrainio::chain::signed_block &ba0_block,
                             const ultrainio::chain::signed_block_ptr &block) {
         return  (ba0_block.proposer == block->proposer &&
-                 ba0_block.proposerProof == block->proposerProof &&
                  ba0_block.timestamp == block->timestamp &&
                  ba0_block.transaction_mroot == block->transaction_mroot &&
                  ba0_block.action_mroot == block->action_mroot &&
+                 ba0_block.committee_mroot == block->committee_mroot &&
                  ba0_block.previous == block->previous);
     }
 }
@@ -67,6 +68,15 @@ namespace ultrainio {
         m_memleakCheck.reset(new boost::asio::steady_timer(app().get_io_service()));
         start_memleak_check();
         m_fast_timestamp = 0;
+    }
+
+    chain::checksum256_type Scheduler::getCommitteeMroot(uint32_t block_num) {
+        std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getVoterSys(block_num);
+        if (voterSysPtr) {
+            return voterSysPtr->getCommitteeMroot();
+        } else {
+            return chain::checksum256_type();
+        }
     }
 
     void Scheduler::start_memleak_check() {
@@ -138,6 +148,7 @@ namespace ultrainio {
         uint32_t blockNum = getLastBlocknum();
         m_ba0Block = Block();
         m_ba0VerifiedBlkId = BlockIdType();
+        clearPreRunStatus();
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
         clearMsgCache(m_cacheProposeMsgMap, blockNum);
@@ -150,31 +161,22 @@ namespace ultrainio {
     }
 
     bool Scheduler::insert(const EchoMsg &echo) {
-        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(echo.blockId));
-        int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
-        double voterRatio = voterSysPtr->getVoterRatio();
 
         auto itor = m_echoMsgMap.find(echo.blockId);
         if (itor != m_echoMsgMap.end()) {
             auto pkItor = std::find(itor->second.accountPool.begin(), itor->second.accountPool.end(), echo.account);
             if (pkItor == itor->second.accountPool.end()) {
                 itor->second.accountPool.push_back(echo.account);
-                itor->second.proofPool.push_back(echo.proof);
                 itor->second.sigPool.push_back(echo.signature);
                 itor->second.timePool.push_back(echo.timestamp);
-                Proof proof(echo.proof);
-                itor->second.totalVoter += voterSysPtr->count(proof, stakes, voterRatio);
             }
         } else {
             echo_message_info echoMessageInfo;
             echoMessageInfo.echo = echo;
             echoMessageInfo.accountPool.push_back(echo.account);
-            echoMessageInfo.proofPool.push_back(echo.proof);
             echoMessageInfo.sigPool.push_back(echo.signature);
             echoMessageInfo.timePool.push_back(echo.timestamp);
             echoMessageInfo.hasSend = true;
-            Proof proof(echo.proof);
-            echoMessageInfo.totalVoter = voterSysPtr->count(proof, stakes, voterRatio);
             m_echoMsgMap.insert(make_pair(echo.blockId, echoMessageInfo));
         }
         return true;
@@ -311,7 +313,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::isBeforeMsg(const EchoMsg &echo) {
-        AccountName myAccount = StakeVote::getMyAccount();
+        AccountName myAccount = StakeVoteBase::getMyAccount();
 
         if (myAccount == echo.account) {
             elog("loopback echo. account : ${account}", ("account", std::string(myAccount)));
@@ -376,21 +378,15 @@ namespace ultrainio {
     }
 
     bool Scheduler::updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response) {
-        std::shared_ptr<StakeVote> voterSysPtr = nullptr;
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
         ilog("update echo blockId: ${id}", ("id", echo.blockId));
         auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
         if (pkItor == info.accountPool.end()) {
             info.accountPool.push_back(echo.account);
-            info.proofPool.push_back(echo.proof);
             info.sigPool.push_back(echo.signature);
             info.timePool.push_back(echo.timestamp);
-            voterSysPtr = MsgMgr::getInstance()->getVoterSys(blockNum);
-            int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
-            double voterRatio = voterSysPtr->getVoterRatio();
-            Proof proof(echo.proof);
-            info.totalVoter += voterSysPtr->count(proof, stakes, voterRatio);
-            if (response && info.totalVoter >= THRESHOLD_SEND_ECHO && !info.hasSend
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(blockNum);
+            if (response && info.accountPool.size() >= stakeVotePtr->getSendEchoThreshold() && !info.hasSend
                 && UranusNode::getInstance()->getPhase() == kPhaseBA0 && isMinFEcho(info)) {
                 if (MsgMgr::getInstance()->isVoter(UranusNode::getInstance()->getBlockNum(), echo.phase,
                                                            echo.baxCount)) {
@@ -408,17 +404,9 @@ namespace ultrainio {
         return false;
     }
 
-    bool Scheduler::isBeforeMsgAndProcess(const EchoMsg &echo) {
-        if (isBeforeMsg(echo)) {
-            return processBeforeMsg(echo);
-        }
-
-        return false;
-    }
-
     uint32_t Scheduler::isSyncing() {
         uint32_t maxBlockNum = UranusNode::getInstance()->getBlockNum();
-        AccountName myAccount = StakeVote::getMyAccount();
+        AccountName myAccount = StakeVoteBase::getMyAccount();
 
         if (m_cacheEchoMsgMap.empty()) {
             return INVALID_BLOCK_NUM;
@@ -464,7 +452,8 @@ namespace ultrainio {
     }
 
     bool Scheduler::isChangePhase() {
-        AccountName myAccount = StakeVote::getMyAccount();
+        AccountName myAccount = StakeVoteBase::getMyAccount();
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
 
         if (m_cacheEchoMsgMap.empty()) {
             return false;
@@ -493,7 +482,7 @@ namespace ultrainio {
                 }
 
                 for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
-                    if (echo_itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
+                    if (echo_itor->second.accountPool.size() >= stakeVotePtr->getSendEchoThreshold()) {
                         return true;
                     }
                 }
@@ -523,7 +512,7 @@ namespace ultrainio {
 
     bool Scheduler::isValid(const EchoMsg &echo) {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
-        AccountName myAccount = StakeVote::getMyAccount();
+        AccountName myAccount = StakeVoteBase::getMyAccount();
         if (myAccount == echo.account) {
             elog("loopback echo. account : ${account}", ("account", std::string(myAccount)));
             return false;
@@ -534,27 +523,16 @@ namespace ultrainio {
             return false;
         }
 
-        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(blockNum);
-        PublicKey publicKey = voterSysPtr->getPublicKey(echo.account);
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(blockNum);
+        PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
         if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
             elog("validator echo error. account : ${account} pk : ${pk} signature : ${signature}",
                     ("account", std::string(echo.account))("pk", std::string(publicKey))("signature", echo.signature));
             return false;
         }
 
-        Proof proof(echo.proof);
-        ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
-        std::string previousHash(blockId.data());
-        Seed seed(previousHash, blockNum, echo.phase, echo.baxCount);
-        if (!Vrf::verify(publicKey, proof, seed, Vrf::kVoter)) {
-            elog("proof verify error. account : ${account}", ("account", std::string(echo.account)));
-            return false;
-        }
-
-        int stakes = voterSysPtr->getStakes(echo.account, UranusNode::getInstance()->getNonProducingNode());
-        double p = voterSysPtr->getVoterRatio();
-        if (voterSysPtr->count(proof, stakes, p) <= 0) {
-            elog("send echo by non voter. account : ${account}", ("account", std::string(echo.account)));
+        if (!stakeVotePtr->isVoter(echo.account, UranusNode::getInstance()->getNonProducingNode())) {
+            elog("send echo by no voter. account : ${account}", ("account", std::string(echo.account)));
             return false;
         }
         return true;
@@ -579,31 +557,27 @@ namespace ultrainio {
     }
 
     bool Scheduler::isValid(const ProposeMsg &propose) {
-        AccountName myAccount = StakeVote::getMyAccount();
+        AccountName myAccount = StakeVoteBase::getMyAccount();
         if (myAccount == propose.block.proposer) {
             elog("invalid propose. msg loopback. account : ${account}", ("account", std::string(myAccount)));
             return false;
         }
 
-        std::shared_ptr<StakeVote> voterSysPtr = MsgMgr::getInstance()->getVoterSys(propose.block.block_num());
-        PublicKey publicKey = voterSysPtr->getPublicKey(propose.block.proposer);
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(propose.block.block_num());
+        PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
         if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
             elog("validator proposer error. proposer : ${proposer}", ("proposer", std::string(propose.block.proposer)));
             return false;
         }
 
-        Proof proposerProof(propose.block.proposerProof);
-        ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
-        std::string previousHash(blockId.data());
-        Seed seed(previousHash, propose.block.block_num(), kPhaseBA0, 0);
-        if (!Vrf::verify(publicKey, proposerProof, seed, Vrf::kProposer)) {
-            elog("proof verify error. proof : ${proof}", ("proof", propose.block.proposerProof));
+        const auto c_mroot = stakeVotePtr->getCommitteeMroot();
+        if (c_mroot != propose.block.committee_mroot) {
+            elog("verify committee mroot error. own c_mroot : ${m1}, block mroot ${m2}",
+                 ("m1", c_mroot) ("m2", propose.block.committee_mroot));
             return false;
         }
 
-        int stakes = voterSysPtr->getStakes(propose.block.proposer, UranusNode::getInstance()->getNonProducingNode());
-        double p = voterSysPtr->getProposerRatio();
-        if (voterSysPtr->count(proposerProof, stakes, p) <= 0) {
+        if (!stakeVotePtr->isProposer(propose.block.proposer, UranusNode::getInstance()->getNonProducingNode())) {
             elog("send propose by non proposer. account : ${account}", ("account", std::string(propose.block.proposer)));
             return false;
         }
@@ -778,6 +752,9 @@ namespace ultrainio {
         }
 
         if (num <= end_block_num) {
+            if (end_block_num > num + m_maxSyncBlocks) {
+                end_block_num = num + m_maxSyncBlocks;
+            }
             m_syncTaskQueue.emplace_back(peer_addr, num, end_block_num, msg.seqNum);
         }
 
@@ -850,16 +827,18 @@ namespace ultrainio {
         return true;
     }
 
-    bool Scheduler::isMin2FEcho(int totalVoter, uint32_t phasecnt) {
-        if ((totalVoter >= THRESHOLD_EMPTY_BLOCK) && (phasecnt >= Config::kMaxBaxCount)) {
+    bool Scheduler::isMin2FEcho(int totalVoterWeight, uint32_t phasecnt) {
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
+        if ((totalVoterWeight >= stakeVotePtr->getEmptyBlockThreshold()) && (phasecnt >= Config::kMaxBaxCount)) {
             return true;
         }
 
-        if ((totalVoter >= THRESHOLD_NEXT_ROUND) && (phasecnt < Config::kMaxBaxCount)) {
+        if ((totalVoterWeight >= stakeVotePtr->getNextRoundThreshold()) && (phasecnt < Config::kMaxBaxCount)) {
             return true;
         }
 
-        if ((totalVoter >= THRESHOLD_EMPTY_BLOCK2) && (phasecnt >= Config::kDeadlineCnt)) {
+        if ((totalVoterWeight >= stakeVotePtr->getEmptyBlock2Threshold()) && (phasecnt >= Config::kDeadlineCnt)) {
             return true;
         }
 
@@ -867,11 +846,11 @@ namespace ultrainio {
     }
 
     bool Scheduler::isMinPropose(const ProposeMsg &proposeMsg) {
-        Proof proof(proposeMsg.block.proposerProof);
-        uint32_t priority = proof.getPriority();
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(proposeMsg.block.block_num());
+        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
+        uint32_t priority = stakeVotePtr->proposerPriority(proposeMsg.block.proposer);
         for (auto itor = m_proposerMsgMap.begin(); itor != m_proposerMsgMap.end(); ++itor) {
-            Proof itorProof(itor->second.block.proposerProof);
-            if (itorProof.getPriority() < priority) {
+            if (stakeVotePtr->proposerPriority(itor->second.block.proposer) < priority) {
                 return false;
             }
         }
@@ -879,10 +858,12 @@ namespace ultrainio {
     }
 
     bool Scheduler::isMinFEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
-        uint32_t priority = info.echo.proposerPriority;
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
+        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
         for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
-            if (itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
-                if (itor->second.echo.proposerPriority < priority) {
+            if (itor->second.accountPool.size() >= stakeVotePtr->getSendEchoThreshold()) {
+                if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
                     return false;
                 }
             }
@@ -891,10 +872,12 @@ namespace ultrainio {
     }
 
     bool Scheduler::isMinFEcho(const echo_message_info &info) {
-        uint32_t priority = info.echo.proposerPriority;
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
+        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
-            if (itor->second.totalVoter >= THRESHOLD_SEND_ECHO) {
-                if (itor->second.echo.proposerPriority < priority) {
+            if (itor->second.accountPool.size() >= stakeVotePtr->getSendEchoThreshold()) {
+                if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
                     return false;
                 }
             }
@@ -903,9 +886,11 @@ namespace ultrainio {
     }
 
     bool Scheduler::isMinEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
-        uint32_t priority = info.echo.proposerPriority;
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
+        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
         for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
-            if (itor->second.echo.proposerPriority < priority) {
+            if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
                 return false;
             }
         }
@@ -913,9 +898,11 @@ namespace ultrainio {
     }
 
     bool Scheduler::isMinEcho(const echo_message_info &info) {
-        uint32_t priority = info.echo.proposerPriority;
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
+        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
-            if (itor->second.echo.proposerPriority < priority) {
+            if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
                 return false;
             }
         }
@@ -949,7 +936,7 @@ namespace ultrainio {
                 } else {
                     count++;
                     m_initTrxCount++;
-                    if (m_initTrxCount % 500 == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                    if (m_initTrxCount % (Config::s_maxPhaseSeconds * 100) == 0 && fc::time_point::now() > hard_cpu_deadline) {
                         ilog("-----runScheduledTrxs code exec exceeds the hard cpu deadline, break");
                         break;
                     }
@@ -957,7 +944,7 @@ namespace ultrainio {
                         break;
                     }
                 }
-            }FC_LOG_AND_DROP();    
+            }FC_LOG_AND_DROP();
         }
         return count;
     }
@@ -1013,7 +1000,7 @@ namespace ultrainio {
 
                 m_initTrxCount++;
                 count++;
-                if (m_initTrxCount % 500 == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                if (m_initTrxCount % (Config::s_maxPhaseSeconds * 100) == 0 && fc::time_point::now() > hard_cpu_deadline) {
                     ilog("----- code exec exceeds the hard cpu deadline, break");
                     break;
                 }
@@ -1085,7 +1072,7 @@ namespace ultrainio {
 
                 m_initTrxCount++;
                 count++;
-                if (m_initTrxCount % 500 == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                if (m_initTrxCount % (Config::s_maxPhaseSeconds * 100) == 0 && fc::time_point::now() > hard_cpu_deadline) {
                     ilog("----- code exec exceeds the hard cpu deadline, break");
                     break;
                 }
@@ -1101,12 +1088,14 @@ namespace ultrainio {
         auto &block = propose_msg->block;
         auto start_timestamp = fc::time_point::now();
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
+        size_t count2 = 0,count3 = 0;
+  //      uint32_t trx_run_time = 3'000'000 * (Config::s_maxPhaseSeconds/5 +0.1*(Config::s_maxPhaseSeconds%5));
         try {
             if (!chain.pending_block_state()) {
                 auto block_timestamp = chain.get_proper_next_block_timestamp();
                 ilog("initProposeMsg: start block at ${time} and block_timestamp is ${timestamp}",
                      ("time", fc::time_point::now())("timestamp", block_timestamp));
-                chain.start_block(block_timestamp);
+                chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1));
             }
 
             // TODO(yufengshen): We have to cap the block size, cpu/net resource when packing a block.
@@ -1121,15 +1110,21 @@ namespace ultrainio {
             // of pending trxs that are all from the same user but the user has used up his cpu resources
             // and keep failing the trx execution; so we still need the hard cpu deadline to handle this.
             fc::time_point hard_cpu_deadline =
-                fc::time_point::now() + fc::microseconds(chain::config::default_max_block_cpu_usage * 1.3);
+                fc::time_point::now() + fc::microseconds(Config::s_maxTrxMicroSeconds);/*can change in conig file*/
             size_t count1 = runPendingTrxs(pending_trxs, hard_cpu_deadline, block_time);
-            size_t count2 = runUnappliedTrxs(unapplied_trxs, hard_cpu_deadline, block_time);
-            size_t count3 = runScheduledTrxs(scheduled_trxs, hard_cpu_deadline, block_time);
+            if(fc::time_point::now() < hard_cpu_deadline)
+            {
+                 count2 = runUnappliedTrxs(unapplied_trxs, hard_cpu_deadline, block_time);
+            }
+            if(fc::time_point::now() < hard_cpu_deadline)
+            {
+                 count3 = runScheduledTrxs(scheduled_trxs, hard_cpu_deadline, block_time);
+            }
 
             ilog("------- run ${count1} ${count2}  ScheduledTrxs:${count3} trxs, taking time ${time}, remaining pending trx ${count4}, remaining unapplied trx ${count5}",
                  ("count1", count1)
                  ("count2", count2)
-                 ("count3)", count3)
+                 ("count3", count3)
                  ("time", fc::time_point::now() - start_timestamp)
                  ("count4", pending_trxs->size())
                  ("count5", unapplied_trxs.size() - count2));
@@ -1144,18 +1139,20 @@ namespace ultrainio {
             FC_ASSERT(pbs, "pending_block_state does not exist but it should, another plugin may have corrupted it");
             const auto &bh = pbs->header;
             block.timestamp = bh.timestamp;
-            block.proposer = StakeVote::getMyAccount();
-            block.proposerProof = std::string(MsgMgr::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()));
+            block.proposer = StakeVoteBase::getMyAccount();
             block.version = 0;
             block.previous = bh.previous;
             block.transaction_mroot = bh.transaction_mroot;
             block.action_mroot = bh.action_mroot;
             block.transactions = pbs->block->transactions;
-            block.signature = std::string(Signer::sign<BlockHeader>(block, StakeVote::getMyPrivateKey()));
-            ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature}",
+            block.committee_mroot = bh.committee_mroot;
+            block.signature = std::string(Signer::sign<BlockHeader>(block, StakeVoteBase::getMyPrivateKey()));
+            ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature} committee mroot ${mroot}",
                  ("num", block.transactions.size())
                  ("proposer", std::string(block.proposer))
-                 ("signature", block.signature));
+                 ("signature", block.signature)
+                 ("mroot", block.committee_mroot)
+                 );
             /*
               ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${prv} ${ma} ${mt} ${id}",
               ("t", block.timestamp)
@@ -1238,6 +1235,17 @@ namespace ultrainio {
         return false;
     }
 
+    bool Scheduler::isFastba0(const msgkey &msg_key) {
+        auto echo_itor = m_cacheEchoMsgMap.find(msg_key);
+        if (echo_itor != m_cacheEchoMsgMap.end()) {
+            if (echo_itor->second.size() > THRESHOLD_SYNCING) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     bool Scheduler::findProposeCache(const msgkey &msg_key) {
         auto echo_itor = m_cacheProposeMsgMap.find(msg_key);
         if (echo_itor != m_cacheProposeMsgMap.end()) {
@@ -1247,8 +1255,10 @@ namespace ultrainio {
     }
 
     Block Scheduler::produceBaxBlock() {
-        uint32_t min_priority = std::numeric_limits<uint32_t>::max();
         echo_message_info *echo_info = nullptr;
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
+        uint32_t min_priority = stakeVotePtr->getProposerNumber();
 
         dlog("produceBaxBlock begin.");
 
@@ -1266,10 +1276,10 @@ namespace ultrainio {
             for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
 //                if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (map_itor->first.phase < Config::kMaxBaxCount))
 //                    || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (map_itor->first.phase >= Config::kMaxBaxCount))) {
-                if (isMin2FEcho(echo_itor->second.totalVoter, map_itor->first.phase)) {
+                if (isMin2FEcho(echo_itor->second.getTotalVoterWeight(), map_itor->first.phase)) {
                     dlog("found >= 2f + 1 echo. blocknum = ${blocknum} phase = ${phase}",
                          ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
-                    uint32_t priority = echo_itor->second.echo.proposerPriority;
+                    uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer);
                     if (min_priority >= priority) {
                         dlog("min proof change.");
                         echo_info = &(echo_itor->second);
@@ -1290,7 +1300,7 @@ namespace ultrainio {
             }
             auto propose_itor = m_proposerMsgMap.find(echo_info->echo.blockId);
             if (propose_itor != m_proposerMsgMap.end()
-                    && Proof(propose_itor->second.block.proposerProof).getPriority() == min_priority) {
+                    && stakeVotePtr->proposerPriority(propose_itor->second.block.proposer) == min_priority) {
                 dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase}",
                      ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
                 return propose_itor->second.block;
@@ -1307,21 +1317,24 @@ namespace ultrainio {
      * empty block or normal block when ba0 while other phase may return blank, empty, normal block.
      */
     Block Scheduler::produceTentativeBlock() {
-        uint32_t minPriority = std::numeric_limits<uint32_t>::max();
         BlockIdType minBlockId = BlockIdType();
         uint32_t phase = UranusNode::getInstance()->getPhase();
         phase += UranusNode::getInstance()->getBaxCount();
 
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
+        uint32_t minPriority = stakeVotePtr->getProposerNumber();
+
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
             dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} block_hash : ${block_hash}",
                  ("phase", (uint32_t) echo_itor->second.echo.phase)("size", echo_itor->second.accountPool.size())(
-                         "totalVoter", echo_itor->second.totalVoter)("block_hash", echo_itor->second.echo.blockId));
+                         "totalVoter", echo_itor->second.getTotalVoterWeight())("block_hash", echo_itor->second.echo.blockId));
 
 //            if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (phase < Config::kMaxBaxCount))
 //                || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (phase >= Config::kMaxBaxCount))) {
-            if (isMin2FEcho(echo_itor->second.totalVoter, phase)) {
+            if (isMin2FEcho(echo_itor->second.getTotalVoterWeight(), phase)) {
                 dlog("found >= 2f + 1 echo, phase+cnt = ${phase}",("phase",phase));
-                uint32_t priority = echo_itor->second.echo.proposerPriority;
+                uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer);
                 if (minPriority >= priority) {
                     minBlockId = echo_itor->second.echo.blockId;
                     minPriority = priority;
@@ -1357,37 +1370,16 @@ namespace ultrainio {
         return blankBlock();
     }
 
-    bool Scheduler::isProcessNow() {
-        uint32_t minPriority = std::numeric_limits<uint32_t>::max();
-        BlockIdType minBlockId = BlockIdType();
-        for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
-            if (echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
-                ilog("isProcessNow.found >= 2f + 1 echo");
-                uint32_t priority = echo_itor->second.echo.proposerPriority;
-                if (minPriority >= priority) {
-                    minBlockId = echo_itor->second.echo.blockId;
-                    minPriority = priority;
-                    break;
-                }
-            }
-        }
-
-        if (minBlockId == BlockIdType()) { // not found > 2f + 1 echo
-            dlog("isProcessNow.can not find >= 2f + 1");
-            return false;
-        }
-
-        return true;
-    }
-
     echo_message_info Scheduler::findEchoMsg(BlockIdType blockId) {
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(blockId));
+        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         auto itor = m_echoMsgMap.find(blockId);
-        if (itor != m_echoMsgMap.end() && itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
+        if (itor != m_echoMsgMap.end() && itor->second.accountPool.size() >= stakeVotePtr->getNextRoundThreshold()) {
             return itor->second;
         }
         for (auto allPhaseItor = m_echoMsgAllPhase.begin(); allPhaseItor != m_echoMsgAllPhase.end(); ++allPhaseItor) {
             auto itor = allPhaseItor->second.find(blockId);
-            if (itor != allPhaseItor->second.end() && itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) {
+            if (itor != allPhaseItor->second.end() && itor->second.accountPool.size() >= stakeVotePtr->getNextRoundThreshold()) {
                 return itor->second;
             }
         }
@@ -1402,16 +1394,13 @@ namespace ultrainio {
         }
         std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
         aggEchoMsgPtr->blockId = blockId;
-        aggEchoMsgPtr->account = StakeVote::getMyAccount();
-        aggEchoMsgPtr->myProposerProof = std::string(MsgMgr::getInstance()->getProposerProof(blockPtr->block_num()));
-        aggEchoMsgPtr->proposerPriority = echoMessageInfo.echo.proposerPriority;
+        aggEchoMsgPtr->account = StakeVoteBase::getMyAccount();
         aggEchoMsgPtr->accountPool = echoMessageInfo.accountPool;
-        aggEchoMsgPtr->proofPool = echoMessageInfo.proofPool;
         aggEchoMsgPtr->sigPool = echoMessageInfo.sigPool;
         aggEchoMsgPtr->timePool = echoMessageInfo.timePool;
         aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
         aggEchoMsgPtr->baxCount = UranusNode::getInstance()->getBaxCount();
-        aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, StakeVote::getMyPrivateKey()));
+        aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, StakeVoteBase::getMyPrivateKey()));
         return aggEchoMsgPtr;
     }
 
@@ -1430,7 +1419,7 @@ namespace ultrainio {
 
         if (isBlank(id)) {
             return false;
-	}
+        }
 
         auto existing = chain.fetch_block_by_id(id);
         if (existing) {
@@ -1441,7 +1430,7 @@ namespace ultrainio {
         //not to run trxs multiple times in same block
         if (m_ba0VerifiedBlkId == id) {
            m_voterPreRunBa0InProgress = true;
-	   ilog("Block ${blk} has been verified before", ("blk", id));
+           ilog("Block ${blk} has been verified before", ("blk", id));
            return true;
         }
 
@@ -1452,15 +1441,13 @@ namespace ultrainio {
         // Here is the hack, we are actually using the template of ba0_block, but we don't use
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
         // e.g. pk, proof, producer.
-        chain.start_block(block.timestamp);
+        chain.start_block(block.timestamp, getCommitteeMroot(chain.head_block_num() + 1));
         chain::block_state_ptr pbs = chain.pending_block_state_hack();
         chain::signed_block_ptr bp = pbs->block;
         chain::signed_block_header *hp = &(pbs->header);
         // TODO(yufengshen): Move all this into start_block() to remove dup codes.
         bp->proposer = block.proposer;
-        bp->proposerProof = block.proposerProof;
         hp->proposer = block.proposer;
-        hp->proposerProof = block.proposerProof;
         auto start_timestamp = fc::time_point::now();
         try {
             for (int i = 0; i < block.transactions.size(); i++) {
@@ -1531,14 +1518,12 @@ namespace ultrainio {
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
         // e.g. pk, proof, producer.
         try {
-            chain.start_block(block.timestamp);
+            chain.start_block(block.timestamp, getCommitteeMroot(chain.head_block_num() + 1));
             chain::block_state_ptr pbs = chain.pending_block_state_hack();
             chain::signed_block_ptr bp = pbs->block;
             chain::signed_block_header *hp = &(pbs->header);
             bp->proposer = block.proposer;
-            bp->proposerProof = block.proposerProof;
             hp->proposer = block.proposer;
-            hp->proposerProof = block.proposerProof;
             m_currentPreRunBa0TrxIndex = 0;
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
@@ -1564,7 +1549,7 @@ namespace ultrainio {
         ilog("------ Continue pre-running ba0 block from ${count}", ("count", m_currentPreRunBa0TrxIndex));
         try {
             for (; m_currentPreRunBa0TrxIndex < b.transactions.size() &&
-                   trx_count <= 1000; m_currentPreRunBa0TrxIndex++, trx_count++) {
+                   trx_count <= (200 * Config::s_maxPhaseSeconds); m_currentPreRunBa0TrxIndex++, trx_count++) {
                 const auto &receipt = b.transactions[m_currentPreRunBa0TrxIndex];
                 chain::transaction_trace_ptr trace;
                 // Malicious producer setting wrong cpu_usage_us.
@@ -1718,13 +1703,12 @@ namespace ultrainio {
                 MsgMgr::getInstance()->insert(agg_echo);
             }
         }
-        MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
         ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}",
              ("timestamp", block->timestamp)
              ("num", block->block_num())
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
-
+        MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
     }
 
     void Scheduler::clearTrxQueue() {
@@ -1814,7 +1798,7 @@ namespace ultrainio {
         uint32_t send_count = 0;
         for (std::list<SyncTask>::iterator it = m_syncTaskQueue.begin(); it != m_syncTaskQueue.end();) {
             sync_block.seqNum = it->seqNum;
-	    send_count = 0;
+            send_count = 0;
             while (send_count < max_count && it->startBlock <= it->endBlock && it->startBlock <= last_num) {
                 auto b = chain.fetch_block_by_number(it->startBlock);
                 if (b) {
@@ -1907,9 +1891,10 @@ namespace ultrainio {
     std::shared_ptr<Block> Scheduler::generateEmptyBlock() {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.abort_block();
-        auto block_timestamp = chain.head_block_time() + fc::milliseconds(10000);
-        chain.start_block(block_timestamp);
-
+        // get_proper_next_block_timestamp() probably can't be used here, we have to be
+        // deterministic about the empty block's timestamp.
+        auto block_timestamp = chain.head_block_time() + fc::milliseconds(chain::config::block_interval_ms);
+        chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1));
         chain.set_action_merkle_hack();
         // empty block does not have trx, so we don't need this?
         chain.set_trx_merkle_hack();
@@ -1921,6 +1906,7 @@ namespace ultrainio {
         blockPtr->previous = bh.previous;
         blockPtr->transaction_mroot = bh.transaction_mroot;
         blockPtr->action_mroot = bh.action_mroot;
+        blockPtr->committee_mroot = bh.committee_mroot;
         // Discard the temp block.
         chain.abort_block();
         return blockPtr;

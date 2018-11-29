@@ -182,15 +182,15 @@ namespace ultrainio { namespace chain { namespace resource_limits {
       OBJECT_CTOR(resource_limits_config_object);
       id_type id;
 
-      static_assert( config::block_interval_ms > 0, "config::block_interval_ms must be positive" );
+    /*  static_assert( config::block_interval_ms > 0, "config::block_interval_ms must be positive" );
       static_assert( config::block_cpu_usage_average_window_ms >= config::block_interval_ms,
                      "config::block_cpu_usage_average_window_ms cannot be less than config::block_interval_ms" );
       static_assert( config::block_size_average_window_ms >= config::block_interval_ms,
-                     "config::block_size_average_window_ms cannot be less than config::block_interval_ms" );
+                     "config::block_size_average_window_ms cannot be less than config::block_interval_ms" );*/
 
 
-      elastic_limit_parameters cpu_limit_parameters = {ULTRAIN_PERCENT(config::default_max_block_cpu_usage, config::default_target_block_cpu_usage_pct), config::default_max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
-      elastic_limit_parameters net_limit_parameters = {ULTRAIN_PERCENT(config::default_max_block_net_usage, config::default_target_block_net_usage_pct), config::default_max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
+      elastic_limit_parameters cpu_limit_parameters = {ULTRAIN_PERCENT(config::default_max_block_cpu_usage, config::default_target_block_cpu_usage_pct), config::default_max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1, {99, 100}, {1000, 999}};
+      elastic_limit_parameters net_limit_parameters = {ULTRAIN_PERCENT(config::default_max_block_net_usage, config::default_target_block_net_usage_pct), config::default_max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1, {99, 100}, {1000, 999}};
 
       uint32_t account_cpu_usage_average_window = config::account_cpu_usage_average_window_ms / config::block_interval_ms;
       uint32_t account_net_usage_average_window = config::account_net_usage_average_window_ms / config::block_interval_ms;

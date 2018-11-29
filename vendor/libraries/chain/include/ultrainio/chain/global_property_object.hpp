@@ -9,7 +9,6 @@
 #include <ultrainio/chain/types.hpp>
 #include <ultrainio/chain/block_timestamp.hpp>
 #include <ultrainio/chain/chain_config.hpp>
-#include <ultrainio/chain/producer_schedule.hpp>
 #include <ultrainio/chain/incremental_merkle.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
@@ -26,15 +25,11 @@ namespace ultrainio { namespace chain {
     */
    class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
    {
-      OBJECT_CTOR(global_property_object, (proposed_schedule))
+      OBJECT_CTOR(global_property_object)
 
       id_type                           id;
-      optional<block_num_type>          proposed_schedule_block_num;
-      shared_producer_schedule_type     proposed_schedule;
       chain_config                      configuration;
    };
-
-
 
    /**
     * @class dynamic_global_property_object
@@ -82,5 +77,5 @@ FC_REFLECT(ultrainio::chain::dynamic_global_property_object,
           )
 
 FC_REFLECT(ultrainio::chain::global_property_object,
-           (proposed_schedule_block_num)(proposed_schedule)(configuration)
+          (configuration)
           )

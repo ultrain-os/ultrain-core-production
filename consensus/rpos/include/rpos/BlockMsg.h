@@ -10,28 +10,26 @@
 #include <rpos/Proof.h>
 
 namespace ultrainio {
-    class StakeVote;
+    class StakeVoteBase;
 
     class BlockMsg {
     public:
         static bool newRound(ConsensusPhase phase, int baxCount);
         BlockMsg(uint32_t blockNum);
-        void insert(const EchoMsg& echoMsg);
         void insert(const ProposeMsg& proposeMsg);
         void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
-        Proof getVoterProof(ConsensusPhase phase, int baxCount);
-        int getVoterVoterCount(ConsensusPhase phase, int baxCount);
-        std::shared_ptr<StakeVote> getVoterSys();
+        bool isProposer() const;
+        bool isVoter(ConsensusPhase phase, int baxCount);
+        std::shared_ptr<StakeVoteBase> getVoterSys();
     private:
         PhaseMsgPtr initIfNeed(ConsensusPhase phase, int baxCount);
         std::vector<ProposeMsg> m_proposeMsgList;
         std::map<int, PhaseMsgPtr> m_phaseMessageMap; // key = phase + bax_count
         uint32_t m_blockNum = 0;
-        int m_voterCountAsProposer = 0;
-        Proof m_proposerProof;
+        bool m_isProposer = false;
         std::shared_ptr<AggEchoMsg> m_myAggEchoMsgPtr;
         std::vector<AggEchoMsg> m_aggEchoMsgV;
-        std::shared_ptr<StakeVote> m_voterSystem = nullptr;
+        std::shared_ptr<StakeVoteBase> m_stakeVote = nullptr;
 
         friend class MsgMgr;
 

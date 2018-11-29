@@ -1,3 +1,4 @@
 #!/bin/bash
+ULTRAIN_PATH=$1
 rm -f /log/${HOSTNAME}.log
-nohup /root/workspace/yufengshen/_runultrain.py /root/workspace/yufengshen/ultrain-core/build/ $1 &>> /log/${HOSTNAME}.log  &
+nohup $ULTRAIN_PATH/ultrain-core/scripts/_runultrain.py $ULTRAIN_PATH/ultrain-core/build &>> /log/${HOSTNAME}.log  &

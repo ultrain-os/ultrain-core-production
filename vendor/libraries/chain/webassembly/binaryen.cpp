@@ -103,4 +103,8 @@ std::unique_ptr<wasm_instantiated_module_interface> binaryen_runtime::instantiat
    }
 }
 
+void binaryen_runtime::immediately_exit_currently_running_module() {
+   throw wasm_exit();
+}
+
 }}}}

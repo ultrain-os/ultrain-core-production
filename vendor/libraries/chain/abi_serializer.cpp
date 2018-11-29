@@ -9,9 +9,12 @@
 #include <ultrainio/chain/transaction.hpp>
 #include <ultrainio/chain/asset.hpp>
 #include <ultrainio/chain/exceptions.hpp>
+#include <ultrainio/chain/block_header.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/varint.hpp>
+#include <fc/io/json.hpp>
+#include <boost/algorithm/string.hpp>
 
 using namespace boost;
 
@@ -33,14 +36,14 @@ namespace ultrainio { namespace chain {
    auto pack_unpack() {
       return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
          []( fc::datastream<const char*>& stream, bool is_array, bool is_optional) -> fc::variant  {
-            if( is_array )
+             if( is_array )
                return variant_from_stream<vector<T>>(stream);
             else if ( is_optional )
                return variant_from_stream<optional<T>>(stream);
             return variant_from_stream<T>(stream);
          },
          []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional ){
-            if( is_array )
+             if( is_array )
                fc::raw::pack( ds, var.as<vector<T>>() );
             else if ( is_optional )
                fc::raw::pack( ds, var.as<optional<T>>() );
@@ -81,7 +84,7 @@ namespace ultrainio { namespace chain {
       built_in_types.emplace("block_timestamp_type",      pack_unpack<block_timestamp_type>());
 
       built_in_types.emplace("name",                      pack_unpack<name>());
-      built_in_types.emplace("name_ex",               pack_unpack<name_ex>());
+      built_in_types.emplace("name_ex",                   pack_unpack<name_ex>());
 
       built_in_types.emplace("bytes",                     pack_unpack<bytes>());
       built_in_types.emplace("string",                    pack_unpack<string>());
@@ -97,6 +100,7 @@ namespace ultrainio { namespace chain {
       built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
       built_in_types.emplace("asset",                     pack_unpack<asset>());
       built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
+      built_in_types.emplace("block_header",              pack_unpack<block_header>());
    }
 
    void abi_serializer::set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time) {
@@ -161,6 +165,10 @@ namespace ultrainio { namespace chain {
       return structs.find(resolve_type(type)) != structs.end();
    }
 
+   bool abi_serializer::is_map(const type_name& type) const {
+       return ends_with(string(type), "{}");
+   }
+
    bool abi_serializer::is_array(const type_name& type)const {
       return ends_with(string(type), "[]");
    }
@@ -171,6 +179,8 @@ namespace ultrainio { namespace chain {
 
    type_name abi_serializer::fundamental_type(const type_name& type)const {
       if( is_array(type) ) {
+         return type_name(string(type).substr(0, type.size()-2));
+      } else if (is_map(type) ) {
          return type_name(string(type).substr(0, type.size()-2));
       } else if ( is_optional(type) ) {
          return type_name(string(type).substr(0, type.size()-1));
@@ -183,6 +193,13 @@ namespace ultrainio { namespace chain {
       ULTRAIN_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       if( ++recursion_depth > max_recursion_depth) return false;
       auto type = fundamental_type(rtype);
+      if (is_map(rtype)) {
+          std::vector<std::string> v;
+          boost::split(v, type, boost::is_any_of(","));
+          return (v.size() != 2) ?  false :
+           _is_type(v.at(0), recursion_depth, deadline, max_serialization_time)
+           && _is_type(v.at(1), recursion_depth, deadline, max_serialization_time);
+      }
       if( built_in_types.find(type) != built_in_types.end() ) return true;
       if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, recursion_depth, deadline, max_serialization_time);
       if( structs.find(type) != structs.end() ) return true;
@@ -221,10 +238,10 @@ namespace ultrainio { namespace chain {
                current = base;
             }
          }
-         for( const auto& field : s.second.fields ) { try {
+            for( const auto& field : s.second.fields ) { try {
             ULTRAIN_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
             ULTRAIN_ASSERT(_is_type(field.type, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",field.type) );
-         } FC_CAPTURE_AND_RETHROW( (field) ) }
+          } FC_CAPTURE_AND_RETHROW( (field) ) }
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& a : actions ) { try {
         ULTRAIN_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
@@ -275,7 +292,21 @@ namespace ultrainio { namespace chain {
       if( btype != built_in_types.end() ) {
          return btype->second.first(stream, is_array(rtype), is_optional(rtype));
       }
-      if ( is_array(rtype) ) {
+
+      if ( is_map(rtype)) {
+          uint32_t size;
+          fc::raw::unpack(stream, size);
+          std::vector<std::string> v;
+          boost:split(v, ftype, boost::is_any_of(","));
+          mutable_variant_object resmap;
+          ULTRAIN_ASSERT(v.size() == 2, invalid_type_inside_abi, "Invalid packed map" );
+          for (decltype(size) i = 0; i < size; i++) {
+            auto key = _binary_to_variant(v.at(0), stream, recursion_depth, deadline, max_serialization_time);
+            auto value = _binary_to_variant(v.at(1), stream, recursion_depth, deadline, max_serialization_time);
+            resmap.set(json::to_string(key), value);
+          }
+          return resmap;
+      }else if ( is_array(rtype) ) {
         fc::unsigned_int size;
         fc::raw::unpack(stream, size);
         vector<fc::variant> vars;
@@ -316,7 +347,6 @@ namespace ultrainio { namespace chain {
       ULTRAIN_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
       ULTRAIN_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       auto rtype = resolve_type(type);
-
       auto btype = built_in_types.find(fundamental_type(rtype));
       if( btype != built_in_types.end() ) {
          btype->second.second(var, ds, is_array(rtype), is_optional(rtype));

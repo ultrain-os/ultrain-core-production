@@ -69,7 +69,6 @@ namespace ultrainio { namespace chain {
          signal<void(block_state_ptr)> irreversible;
 
       private:
-         void set_bft_irreversible( block_id_type id );
          unique_ptr<fork_database_impl> my;
    };
 

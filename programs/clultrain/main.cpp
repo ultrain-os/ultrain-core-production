@@ -919,153 +919,23 @@ struct unregister_producer_subcommand {
    }
 };
 
-struct vote_producer_proxy_subcommand {
-   string voter_str;
-   string proxy_str;
-
-   vote_producer_proxy_subcommand(CLI::App* actionRoot) {
-      auto vote_proxy = actionRoot->add_subcommand("proxy", localized("Vote your stake through a proxy"));
-      vote_proxy->add_option("voter", voter_str, localized("The voting account"))->required();
-      vote_proxy->add_option("proxy", proxy_str, localized("The proxy account"))->required();
-      add_standard_transaction_options(vote_proxy);
-
-      vote_proxy->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("voter", voter_str)
-                  ("proxy", proxy_str)
-                  ("producers", std::vector<account_name>{});
-         send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
-      });
-   }
-};
-
-struct vote_producers_subcommand {
-   string voter_str;
-   vector<ultrainio::name> producer_names;
-
-   vote_producers_subcommand(CLI::App* actionRoot) {
-      auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
-      vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
-      vote_producers->add_option("producers", producer_names, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
-      add_standard_transaction_options(vote_producers);
-
-      vote_producers->set_callback([this] {
-
-         std::sort( producer_names.begin(), producer_names.end() );
-
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("voter", voter_str)
-                  ("proxy", "")
-                  ("producers", producer_names);
-         send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
-      });
-   }
-};
-
-struct approve_producer_subcommand {
-   ultrainio::name voter;
-   ultrainio::name producer_name;
-
-   approve_producer_subcommand(CLI::App* actionRoot) {
-      auto approve_producer = actionRoot->add_subcommand("approve", localized("Add one producer to list of voted producers"));
-      approve_producer->add_option("voter", voter, localized("The voting account"))->required();
-      approve_producer->add_option("producer", producer_name, localized("The account to vote for"))->required();
-      add_standard_transaction_options(approve_producer);
-
-      approve_producer->set_callback([this] {
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", name(config::system_account_name).to_string())
-                               ("table", "voters")
-                               ("table_key", "owner")
-                               ("lower_bound", voter.value)
-                               ("limit", 1)
-            );
-            auto res = result.as<ultrainio::chain_apis::read_only::get_table_records_result>();
-            if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
-               std::cerr << "Voter info not found for account " << voter << std::endl;
-               return;
-            }
-            ULTRAIN_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
-            auto prod_vars = res.rows[0]["producers"].get_array();
-            vector<ultrainio::name> prods;
-            for ( auto& x : prod_vars ) {
-               prods.push_back( name(x.as_string()) );
-            }
-            prods.push_back( producer_name );
-            std::sort( prods.begin(), prods.end() );
-            auto it = std::unique( prods.begin(), prods.end() );
-            if (it != prods.end() ) {
-               std::cerr << "Producer \"" << producer_name << "\" is already on the list." << std::endl;
-               return;
-            }
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("voter", voter)
-               ("proxy", "")
-               ("producers", prods);
-            send_actions({create_action({permission_level{voter,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
-      });
-   }
-};
-
-struct unapprove_producer_subcommand {
-   ultrainio::name voter;
-   ultrainio::name producer_name;
-
-   unapprove_producer_subcommand(CLI::App* actionRoot) {
-      auto approve_producer = actionRoot->add_subcommand("unapprove", localized("Remove one producer from list of voted producers"));
-      approve_producer->add_option("voter", voter, localized("The voting account"))->required();
-      approve_producer->add_option("producer", producer_name, localized("The account to remove from voted producers"))->required();
-      add_standard_transaction_options(approve_producer);
-
-      approve_producer->set_callback([this] {
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", name(config::system_account_name).to_string())
-                               ("table", "voters")
-                               ("table_key", "owner")
-                               ("lower_bound", voter.value)
-                               ("limit", 1)
-            );
-            auto res = result.as<ultrainio::chain_apis::read_only::get_table_records_result>();
-            if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
-               std::cerr << "Voter info not found for account " << voter << std::endl;
-               return;
-            }
-            ULTRAIN_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
-            auto prod_vars = res.rows[0]["producers"].get_array();
-            vector<ultrainio::name> prods;
-            for ( auto& x : prod_vars ) {
-               prods.push_back( name(x.as_string()) );
-            }
-            auto it = std::remove( prods.begin(), prods.end(), producer_name );
-            if (it == prods.end() ) {
-               std::cerr << "Cannot remove: producer \"" << producer_name << "\" is not on the list." << std::endl;
-               return;
-            }
-            prods.erase( it, prods.end() ); //should always delete only one element
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("voter", voter)
-               ("proxy", "")
-               ("producers", prods);
-            send_actions({create_action({permission_level{voter,config::active_name}}, config::system_account_name, NEX(voteproducer), act_payload)});
-      });
-   }
-};
-
 struct list_producers_subcommand {
    bool print_json = false;
    uint32_t limit = 50;
    std::string lower;
+   bool   is_filter_chain = false;
+   uint64_t  show_chain_num = 0;
 
    list_producers_subcommand(CLI::App* actionRoot) {
       auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
       list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format"));
       list_producers->add_option("-l,--limit", limit, localized("The maximum number of rows to return"));
       list_producers->add_option("-L,--lower", lower, localized("lower bound value of key, defaults to first"));
+      list_producers->add_option("-f,--filterchain", is_filter_chain, localized("The maximum number of rows to return"));
+      list_producers->add_option("-s,--showchainnum", show_chain_num, localized("lower bound value of key, defaults to first"));
       list_producers->set_callback([this] {
          auto rawResult = call(get_producers_func, fc::mutable_variant_object
-            ("json", true)("lower_bound", lower)("limit", limit));
+            ("json", true)("lower_bound", lower)("limit", limit)("is_filter_chain", is_filter_chain)("show_chain_num", show_chain_num));
          if ( print_json ) {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;
@@ -1079,25 +949,53 @@ struct list_producers_subcommand {
          if ( !weight )
             weight = 1;
         uint64_t total_unpaid_blocks = 0;
-         printf("%-13s %-54s %-59s %-15s %s %s\n", "Producer", "Producer key", "Url", "Scaled votes", "is_enabled","unpaid blocks");
+         printf("%-13s %-54s  %-16s  %-10s  %-8s  %-20.20s    %-12s\n", "Producer", "Producer key", "Consensus weight", "is_enabled", "location","unpaid blocks","total blocks");
          for ( auto& row : result.rows ){
-            printf("%-13.13s %-54.54s %-59.59s %15ld %u ",
+            printf("%-13.13s %-54.54s  %-16ld  %-10u  %-8lu",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
-                   row["url"].as_string().c_str(),
-                   row["total_votes"].as_int64(),
-                   row["is_enabled"].as_bool());
-			printf("         [");
+                   row["total_cons_staked"].as_int64(),
+                   row["is_enabled"].as_bool(),
+                   row["location"].as_uint64()
+                   );
+			printf("  [");
             for (auto tmp : row["unpaid_blocks"].get_array())
             {
                 total_unpaid_blocks += tmp.as_uint64();
                 printf("%lu,",tmp.as_uint64());
-            }				
-			printf("]\n");
+            }
+            printf("]");
+            printf("        %-12lu\n",row["total_produce_block"].as_uint64());
 	    }
         std::cout << "total_unpaid_blocks: " << total_unpaid_blocks << std::endl;
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;
+      });
+   }
+};
+
+struct votecommittee_subcommand {
+   string requested_perm;
+   string proposer;
+   votecommittee_subcommand(CLI::App* actionRoot) {
+      auto propose_action = actionRoot->add_subcommand("votecommittee", localized("Propose action"));
+      add_standard_transaction_options(propose_action);
+      propose_action->add_option("proposer", proposer, localized("proposer name"))->required();
+      propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+      propose_action->set_callback([&] {
+         fc::variant requested_perm_var;
+         try {
+            requested_perm_var = json_from_file_or_string(requested_perm);
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+         vector<proposeminer_info> reqperm;
+         try {
+            reqperm = requested_perm_var.as<vector<proposeminer_info>>();
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
+
+         auto args = fc::mutable_variant_object()
+            ("proposer", proposer )
+            ("proposeminer", requested_perm_var);
+         send_actions({chain::action{{permission_level{proposer,config::active_name}}, config::system_account_name, "votecommittee", variant_to_bin( N(ultrainio), NEX(votecommittee), args ) }});
       });
    }
 };
@@ -1169,11 +1067,13 @@ struct undelegate_bandwidth_subcommand {
 
 struct delegate_cons_subcommand {
    string from_str;
+   string receiver_str;
    string stake_cons_amount;
 
    delegate_cons_subcommand(CLI::App* actionRoot) {
       auto delegate_cons = actionRoot->add_subcommand("delegatecons", localized("Delegate consensus weight "));
       delegate_cons->add_option("from", from_str, localized("The account to delegate consensus weight from"))->required();
+      delegate_cons->add_option("receiver", receiver_str, localized("The account to undelegate consensus weight bandwidth from"))->required();
       delegate_cons->add_option("stake_cons_quantity", stake_cons_amount, localized("The amount of UTR to stake for consensus weight"))->required();
       add_standard_transaction_options(delegate_cons);
       if(delaysec < default_cons_delaysec){
@@ -1182,6 +1082,7 @@ struct delegate_cons_subcommand {
       delegate_cons->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
+                  ("receiver", receiver_str)
                   ("stake_cons_quantity", to_asset(stake_cons_amount));
          std::vector<chain::action> acts{create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(delegatecons), act_payload)};
          send_actions(std::move(acts));
@@ -1191,17 +1092,20 @@ struct delegate_cons_subcommand {
 
 struct undelegate_cons_subcommand {
    string from_str;
+   string receiver_str;
    string unstake_cons_amount;
 
    undelegate_cons_subcommand(CLI::App* actionRoot) {
       auto undelegate_cons = actionRoot->add_subcommand("undelegatecons", localized("Undelegate consensus weight bandwidth"));
       undelegate_cons->add_option("from", from_str, localized("The account undelegating consensus weight bandwidth"))->required();
+      undelegate_cons->add_option("receiver", receiver_str, localized("The account to undelegate consensus weight bandwidth from"))->required();
       undelegate_cons->add_option("unstake_cons_quantity", unstake_cons_amount, localized("The amount of UTR to undelegate for network bandwidth"))->required();
       add_standard_transaction_options(undelegate_cons);
 
       undelegate_cons->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
+                  ("receiver", receiver_str)
                   ("unstake_cons_quantity", to_asset(unstake_cons_amount));
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(undelegatecons), act_payload)});
       });
@@ -1365,36 +1269,20 @@ struct claimrewards_subcommand {
    }
 };
 
-struct regproxy_subcommand {
-   string proxy;
+struct reportblock_subcommand {
+   std::string producer;
+   uint64_t number = 0;
+   reportblock_subcommand(CLI::App* actionRoot) {
+      auto reportblock = actionRoot->add_subcommand("reportblock", localized("report block producer"));
+      reportblock->add_option("producer", producer, localized("The account to report block for"))->required();
+      reportblock->add_option("number", number, localized("The numbler to report block for"))->required();
+      add_standard_transaction_options(reportblock);
 
-   regproxy_subcommand(CLI::App* actionRoot) {
-      auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register an account as a proxy (for voting)"));
-      register_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
-      add_standard_transaction_options(register_proxy);
-
-      register_proxy->set_callback([this] {
+      reportblock->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy)
-                  ("isproxy", true);
-         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, NEX(regproxy), act_payload)});
-      });
-   }
-};
-
-struct unregproxy_subcommand {
-   string proxy;
-
-   unregproxy_subcommand(CLI::App* actionRoot) {
-      auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Unregister an account as a proxy (for voting)"));
-      unregister_proxy->add_option("proxy", proxy, localized("The proxy account to unregister"))->required();
-      add_standard_transaction_options(unregister_proxy);
-
-      unregister_proxy->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy)
-                  ("isproxy", false);
-         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, NEX(regproxy), act_payload)});
+                  ("producer", producer)
+                  ("number", number);
+         send_actions({create_action({permission_level{N(ultrainio),config::active_name}}, config::system_account_name, NEX(reportblocknumber), act_payload)});
       });
    }
 };
@@ -1609,10 +1497,32 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << indent << std::left << std::setw(11) << "limit:"     << std::right << std::setw(18) << to_pretty_time( res.cpu_limit.max ) << "\n";
       std::cout << std::endl;
 
+      if ( res.producer_info.is_object() ) {
+         std::cout << "consensus bandwidth:" << std::endl;
+         auto& obj = res.producer_info.get_object();
+         uint64_t total_cons_staked = obj["total_cons_staked"].as_uint64();
+         asset total_cons = asset(total_cons_staked);
+         if( res.self_delegated_bandwidth.is_object() ) {
+            asset cons_own = asset::from_string( res.self_delegated_bandwidth.get_object()["cons_weight"].as_string() );
+            staked += cons_own;
+            auto cons_others = total_cons - cons_own;
+
+            std::cout << indent << "staked:" << std::setw(20) << cons_own
+                      << std::string(11, ' ') << "(total stake delegated from account to self)" << std::endl
+                      << indent << "delegated:" << std::setw(17) << cons_others
+                      << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+         } else {
+            auto cons_others = total_cons;
+            std::cout << indent << "delegated:" << std::setw(17) << cons_others
+                      << std::string(11, ' ') << "(total staked delegated to account from others)" << std::endl;
+         }
+         std::cout << std::endl;
+      }
+
       if( res.refund_request.is_object() ) {
          auto obj = res.refund_request.get_object();
          auto request_time = fc::time_point_sec::from_iso_string( obj["request_time"].as_string() );
-         fc::time_point refund_time = request_time + fc::days(3);
+         fc::time_point refund_time = request_time + fc::minutes(3);
          auto now = res.head_block_time;
          asset net = asset::from_string( obj["net_amount"].as_string() );
          asset cpu = asset::from_string( obj["cpu_amount"].as_string() );
@@ -1656,47 +1566,15 @@ void get_account( const string& accountName, bool json_format ) {
          }
       }
 
-      if ( res.voter_info.is_object() ) {
-         auto& obj = res.voter_info.get_object();
-         string proxy = obj["proxy"].as_string();
-         if ( proxy.empty() ) {
-            auto& prods = obj["producers"].get_array();
-            std::cout << "producers:";
-            if ( !prods.empty() ) {
-               for ( int i = 0; i < prods.size(); ++i ) {
-                  if ( i%3 == 0 ) {
-                     std::cout << std::endl << indent;
-                  }
-                  std::cout << std::setw(16) << std::left << prods[i].as_string();
-               }
-               std::cout << std::endl;
-            } else {
-               std::cout << indent << "<not voted>" << std::endl;
-            }   
-            string scons_staked= obj["staked"].as_string();
-            if(!scons_staked.empty())
-            {
-                if(scons_staked.length() <= 4)
-                    scons_staked = "0000"+ scons_staked;
-                scons_staked.insert(scons_staked.length()-4,".");
-                cons_staked = to_asset(scons_staked +" UGAS");               
-            }    
-         } else {
-            std::cout << "proxy:" << indent << proxy << std::endl;
-         }
-      }
-
       if( res.core_liquid_balance.valid() ) {
          std::cout << res.core_liquid_balance->get_symbol().name() << " balances: " << std::endl;
          std::cout << indent << std::left << std::setw(11)
                    << "liquid:" << std::right << std::setw(18) << *res.core_liquid_balance << std::endl;
          std::cout << indent << std::left << std::setw(11)
-                   << "res_staked:" << std::right << std::setw(18) << staked << std::endl;
-         std::cout << indent << std::left << std::setw(11)
-                   << "cons_staked:" << std::right << std::setw(18) << cons_staked << std::endl;
+                   << "staked:" << std::right << std::setw(18) << staked << std::endl;
          std::cout << indent << std::left << std::setw(11)
                    << "unstaking:" << std::right << std::setw(18) << unstaking << std::endl;
-         std::cout << indent << std::left << std::setw(11) << "total:" << std::right << std::setw(18) << (*res.core_liquid_balance + staked + unstaking + cons_staked) << std::endl;
+         std::cout << indent << std::left << std::setw(11) << "total:" << std::right << std::setw(18) << (*res.core_liquid_balance + staked + unstaking) << std::endl;
          std::cout << std::endl;
       }
       std::cout << std::endl;
@@ -1999,7 +1877,7 @@ int main( int argc, char** argv ) {
    string sourcerateName;
    auto getSourceRate = get->add_subcommand("sourcerate", localized("Retrieve sourcetrans from the blockchain"), false);
    getSourceRate->add_option("name", sourcerateName, localized("The name of the account whose abi should be retrieved"));
-   getSourceRate->set_callback([&]() { 
+   getSourceRate->set_callback([&]() {
     auto json = call(get_sourcerate_func,fc::mutable_variant_object("account_name", accountName));
     std::cout << fc::json::to_pretty_string(json) << std::endl;
 
@@ -2972,15 +2850,8 @@ int main( int argc, char** argv ) {
    auto registerProducer = register_producer_subcommand(system);
    auto unregisterProducer = unregister_producer_subcommand(system);
 
-//   auto voteProducer = system->add_subcommand("voteproducer", localized("Vote for a producer"));
-//   voteProducer->require_subcommand();
-//   auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
-//   auto voteProducers = vote_producers_subcommand(voteProducer);
-//   auto approveProducer = approve_producer_subcommand(voteProducer);
-//   auto unapproveProducer = unapprove_producer_subcommand(voteProducer);
-
    auto listProducers = list_producers_subcommand(system);
-
+   auto votecommittee = votecommittee_subcommand(system);
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
    auto delegatecons = delegate_cons_subcommand(system);
@@ -2994,10 +2865,7 @@ int main( int argc, char** argv ) {
    auto sellram = sellram_subcommand(system);
 
    auto claimRewards = claimrewards_subcommand(system);
-
-   auto regProxy = regproxy_subcommand(system);
-   auto unregProxy = unregproxy_subcommand(system);
-
+   auto reportblock = reportblock_subcommand(system);
    auto cancelDelay = canceldelay_subcommand(system);
 
    try {
