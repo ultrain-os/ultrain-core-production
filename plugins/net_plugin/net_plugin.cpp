@@ -479,7 +479,7 @@ namespace ultrainio {
         void initialize();
 
         static const uint32_t MAX_OUT_QUEUE = 1000;
-        static const uint32_t MAX_WRITE_QUEUE = 1000000;
+        static const uint32_t MAX_WRITE_QUEUE = 100000;
 
         peer_block_state_index  blk_state;
         transaction_state_index trx_state;
@@ -1621,32 +1621,40 @@ namespace ultrainio {
          });
    }
 
-   void net_plugin_impl::start_broadcast(const net_message& msg, msg_priority p) {
-       for(auto &c : connections) {
-           if (c->current() && p == c->priority) {
-               ilog ("send to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
-               c->enqueue(msg);
-           }
-       }
-   }
+    void net_plugin_impl::start_broadcast(const net_message& msg, msg_priority p) {
+        for(auto &c : connections) {
+            if (c->current() && p == c->priority) {
+                ilog ("send to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                c->enqueue(msg);
+            }
+        }
+    }
 
     void net_plugin_impl::send_block(const string& ip_addr, const net_message& msg) {
         for(auto &c : connections) {
-            if (c->priority == msg_priority_trx && (c->current()) && (c->socket->remote_endpoint().address().to_v4().to_string() == ip_addr)) {
-                ilog ("send block to peer : ${peer_name}, enqueue", ("peer_name", c->peer_name()));
-                c->enqueue(msg);
-                break;
+            if (c->priority == msg_priority_trx && c->current()) {
+                boost::system::error_code ec;
+                auto endpoint = c->socket->remote_endpoint(ec);
+                if (!ec && endpoint.address().to_v4().to_string() == ip_addr) {
+                    ilog ("send block to peer : ${peer_name}, enqueue", ("peer_name", c->peer_name()));
+                    c->enqueue(msg);
+                    break;
+                }
             }
         }
     }
 
     void net_plugin_impl::send_last_block_num(const string& ip_addr, const net_message& msg) {
         for (auto &c : connections) {
-          if (c->priority == msg_priority_trx && c->current() && (c->socket->remote_endpoint().address().to_v4().to_string() == ip_addr)) {
-            ilog("send last block num to peer: ${p}", ("p", c->peer_name()));
-            c->enqueue(msg);
-            break;
-          }
+            if (c->priority == msg_priority_trx && c->current()) {
+                boost::system::error_code ec;
+                auto endpoint = c->socket->remote_endpoint(ec);
+                if (!ec && endpoint.address().to_v4().to_string() == ip_addr) {
+                    ilog("send last block num to peer: ${p}", ("p", c->peer_name()));
+                    c->enqueue(msg);
+                    break;
+                }
+            }
         }
     }
 
@@ -2168,7 +2176,14 @@ namespace ultrainio {
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg) {
         ilog("receive req last block num msg!!! from peer ${p}", ("p", c->peer_name()));
-        app().get_plugin<producer_uranus_plugin>().handle_message(c->socket->remote_endpoint().address().to_v4().to_string(), msg);
+
+        boost::system::error_code ec;
+        auto endpoint = c->socket->remote_endpoint(ec);
+        if (!ec) {
+            app().get_plugin<producer_uranus_plugin>().handle_message(endpoint.address().to_v4().to_string(), msg);
+        } else {
+            elog("connection is broken, error code: ${ec}", ("ec", ec.value()));
+        }
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg) {
@@ -2201,7 +2216,13 @@ namespace ultrainio {
         ilog("receive req sync msg!!! message from ${p} addr:${addr} blockNum = ${blockNum}",
              ("p", c->peer_name())("addr", c->peer_addr)("blockNum", msg.endBlockNum));
 
-        app().get_plugin<producer_uranus_plugin>().handle_message(c->socket->remote_endpoint().address().to_v4().to_string(), msg);
+        boost::system::error_code ec;
+        auto endpoint = c->socket->remote_endpoint(ec);
+        if (!ec) {
+            app().get_plugin<producer_uranus_plugin>().handle_message(endpoint.address().to_v4().to_string(), msg);
+        } else {
+            elog("connection is broken, error code: ${ec}", ("ec", ec.value()));
+        }
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg) {
@@ -2232,7 +2253,13 @@ namespace ultrainio {
         ilog("receive sync stop msg!!! message from ${p} addr:${addr} seqNum = ${sn}",
              ("p", c->peer_name())("addr", c->peer_addr)("sn", msg.seqNum));
 
-        app().get_plugin<producer_uranus_plugin>().handle_message(c->socket->remote_endpoint().address().to_v4().to_string(), msg);
+        boost::system::error_code ec;
+        auto endpoint = c->socket->remote_endpoint(ec);
+        if (!ec) {
+            app().get_plugin<producer_uranus_plugin>().handle_message(endpoint.address().to_v4().to_string(), msg);
+        } else {
+            elog("connection is broken, error code: ${ec}", ("ec", ec.value()));
+        }
     }
 
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
@@ -2591,10 +2618,10 @@ namespace ultrainio {
    void net_plugin::set_program_options( options_description& /*cli*/, options_description& cfg )
    {
       cfg.add_options()
-         ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The actual host:port used to listen for incoming p2p connections.")
+         ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:20122" ), "The actual host:port used to listen for incoming p2p connections.")
          ( "p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
          ( "p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
-         ( "rpos-p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9875" ), "The actual host:port used to listen for incoming rpos p2p connections.")
+         ( "rpos-p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:20123" ), "The actual host:port used to listen for incoming rpos p2p connections.")
          ( "rpos-p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to rpos-p2p-listen-endpoint.")
          ( "rpos-p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple rpos-p2p-peer-address options as needed to compose a network.")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
@@ -2621,7 +2648,7 @@ namespace ultrainio {
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
         ("max-waitblocknum-seconds", bpo::value<int>()->default_value(src_block_waitting), "Max time wait for answers from peers about blockNum:src_block_period")
-        ("max-waitbloack-seconds",bpo::value<int>()->default_value(sync_conn_waitting), "Max time wait for block from selected peer:conn_timeout")
+        ("max-waitblock-seconds",bpo::value<int>()->default_value(sync_conn_waitting), "Max time wait for block from selected peer:conn_timeout")
 
         ;
    }
@@ -2638,7 +2665,7 @@ namespace ultrainio {
 
          my->network_version_match = options.at( "network-version-match" ).as<bool>();
          my->max_waittime_getsyncblocknum = options.at( "max-waitblocknum-seconds" ).as<int>();
-         my->max_waittime_getsyncblock = options.at( "max-waitbloack-seconds" ).as<int>();
+         my->max_waittime_getsyncblock = options.at( "max-waitblock-seconds" ).as<int>();
          my->dispatcher.reset( new dispatch_manager );
          my->sync_block_master.reset( new sync_block_manager );
 

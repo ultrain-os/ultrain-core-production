@@ -8,8 +8,6 @@ const ini = require('ini');
 
 const { createU3, format } = U3;
 
-let rpcUrl = "http://127.0.0.1:8888/v1/chain/get_subchain_committee";
-
 let config = {
     // httpEndpoint:'http://172.16.10.4:8888',
     // httpEndpoint_history: 'http://172.16.10.4:3000',
@@ -84,6 +82,7 @@ let u3Sub = createU3(configSub);
 // });
 
 var path = '/root/.local/share/ultrainio/nodultrain/config.ini';
+path = "config.ini";
 
 var configIni = ini.parse(fs.readFileSync(path,'utf-8'));
 
@@ -97,7 +96,7 @@ console.log(configIni["my-account-as-committee"]);
 console.log(configIni["my-sk-as-committee"]);
 
 //修改config.ini文件
-// fs.writeFileSync('./config.ini',ini.stringify(configIni,{section:''}));
+fs.writeFileSync('./config.ini',ini.stringify(configIni,{section:''}));
 
 
 var myAccountAsCommittee = configIni["my-account-as-committee"];
@@ -239,97 +238,10 @@ pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction
     });
 }
 
-const getData = async() => {
-
-    let result = await u3.getAccountInfo({
-        "account_name": "wxjhust12345"
-    });
-    console.log("u3.getAccountInfo result is:", result);
-
-
-    result = await u3.getContract({
-        // "block_id": "000523f0200dbaf61f5415a7078e57c3c87df0e4450226ae4a654e68a3c34f74"
-        "account_name": "wxjhust12345"
-    });
-    console.log("u3.getContract result is:", result);
-
-    result = await u3.getSourcerate({
-        "account_name": "wxjhust12345"
-    });
-    console.log("u3.getSourcerate result is:", result);
-
-    result = await u3.getRawCodeAndAbi({
-        "account_name": "wxjhust12345"
-    });
-    console.log("u3.getRawCodeAndAbi result is:", result);
-
-    result = await u3.getAllAccounts({
-        'page': 1,
-        'pageSize': 10,
-        'queryParams': {},
-        'sortParams': { _id: -1 }
-    });
-    console.log("u3.getAllAccounts result is:", result);
-
-    // result = await u3.getAllBlocks({
-    //     'page': 1,
-    //     'pageSize': 10,
-    //     'queryParams': {},
-    //     'sortParams': { _id: -1 }
-    // });
-    // console.log("u3.getAllBlocks result is:", result);
-
-    result = await u3.getAllTxs({
-        'page': 1,
-        'pageSize': 10,
-        'queryParams': {},
-        'sortParams': { _id: -1 }
-    });
-    console.log("u3.getAllTxs result is:", result);
-
-    result = await u3.getBlocksByContract({
-        'block_num': 1,
-        'account': "ultrainio",
-        'contract': "utrio.token",
-        'contract_method': "transfer"
-    });
-    console.log("u3.getBlocksByContract result is:", result);
-
-    result = await u3.getContractByName({
-        'name': 'utrio.token'
-    });
-    console.log("u3.getContractByName result is:", result);
-
-    result = await u3.getContracts({
-        'page': 1,
-        'pageSize': 10,
-        'queryParams': {},
-        'sortParams': { _id: -1 }
-    });
-    console.log("u3.getContracts result is:", result);
-
-
-    result = await u3.getExistAccount(
-        'ultrainio'
-    );
-    console.log("u3.getExistAccount result is:", result);
-
-    result = await u3.getTxByTxId('f71c0a90c40dbb2b5a8bb107c18c9c91305dcb89685ffdf43fde56fd9e685a5f'
-    );
-    console.log("u3.getTxByTxId result is:", result);
-
-
-    result = await u3.getTxsByBlockNum(1, 10, {block_num: 111,}, {_id: -1});
-    console.log("u3.getTxsByBlockNum result is:", result);
-
-    result = await u3.search("wxjhust12345");
-    console.log("u3.search result is:", result);
-}
 
 
 var schedule = require('node-schedule');
 
-var blockNum = 1;
 function scheduleCronstyle(){
     schedule.scheduleJob('*/3 * * * * *', function(){
         console.log('scheduleCronstyle:' + new Date());
@@ -339,8 +251,6 @@ function scheduleCronstyle(){
 
     });
 }
-
-
 
 
 // getData();
@@ -353,20 +263,16 @@ const getBlocks = async () => {
     //
     // console.log("===============u3.resultJson.results.results[0].block result is:", resultJson.results);
 
-    while(true) {
-        let result = await u3.getBlockInfo(blockNum.toString());
+    let blockNum = await u3.getSubchainBlockNum({"chain_name":"11"});
+    console.log("u3.getSubchainBlockNum  blockNum="+blockNum);
+
+        let result = await u3Sub.getBlockInfo(blockNum);
 
         if (result) {
-            blockNum++;
-            console.log("u3.getBlockInfo result is:", result);
-
+            console.log("u3Sub.getBlockInfo result is:", result);
             pushHeaderToTestnet(result.timevalue, 'genesis', result.version, result.previous, result.transaction_mroot, result.action_mroot, result.committee_mroot, result.header_extensions)
 
-        } else {
-            console.log("u3.getBlockInfo result is null,break", result);
-            break;
         }
-    }
 
 
 
@@ -399,21 +305,21 @@ const getBlocks = async () => {
 }
 const getSubchainCommittee = async () => {
     console.log("缓存的jsonArray="+jsonArray);
-    // let result = await u3.getSubchainCommittee({"chain_name":"0"});
+    let result = await u3.getSubchainCommittee({"chain_name":"11"});
 
-    let result = [];
+    // let result = [];
+    //
+    // result.push({owner: "genesis"+Math.round(Math.random()*10), miner_pk: "369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"});
+    // result.push({owner: "genesis"+Math.round(Math.random()*10), miner_pk: "369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"});
+    // result.push({owner: "genesis"+Math.round(Math.random()*10), miner_pk: "369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"});
 
-    result.push({owner: "genesis"+Math.round(Math.random()*10), miner_pk: "369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"});
-    result.push({owner: "genesis"+Math.round(Math.random()*10), miner_pk: "369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"});
-    result.push({owner: "genesis"+Math.round(Math.random()*10), miner_pk: "369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"});
-
-    for(var i in result) {
-        if (result[i]) {
-            console.log("result[i]=", result[i].owner);
-            console.log("result[i]=", result[i].miner_pk);
-
-        }
-    }
+    // for(var i in result) {
+    //     if (result[i]) {
+    //         console.log("result[i]=", result[i].owner);
+    //         console.log("result[i]=", result[i].miner_pk);
+    //
+    //     }
+    // }
 
     invokeSystemContract(result);
 
@@ -452,8 +358,6 @@ const getSubchainCommittee = async () => {
 
 
 // getBlocks();
-scheduleCronstyle();
-
-
+// scheduleCronstyle();
 
 

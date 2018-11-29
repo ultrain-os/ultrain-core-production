@@ -32,5 +32,5 @@ namespace ultrainio {
 
     int StakeVoteVrf::realGetEmptyBlock2Threshold() const;
 
-    int StakeVoteVrf::realGetProposerNumber() const;
+    uint32_t StakeVoteVrf::realGetProposerNumber() const;
 }

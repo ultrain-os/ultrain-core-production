@@ -482,16 +482,16 @@ namespace ultrainiosystem {
              }
          }
          else if (enabled) {
-             if(it->is_on_pending_chian()) {
-                 add_to_pendingchain(it->owner, it->producer_key);
+             if(it->is_in_pending_queue()) {
+                 add_to_pending_queue(it->owner, it->producer_key);
              }
              else {
                  add_to_subchain(it->location, it->owner, it->producer_key);
              }
          }
          else {
-             if(it->is_on_pending_chian()) {
-                 remove_from_pendingchain(it->owner);
+             if(it->is_in_pending_queue()) {
+                 remove_from_pending_queue(it->owner);
              }
              else {
                  remove_from_subchain(it->location, it->owner);

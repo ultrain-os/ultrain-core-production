@@ -205,7 +205,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("contract-emit-string-length", bpo::value<uint64_t>()->default_value(config::default_contract_emit_length),
           "Contract emit string length limits the string length of serialized EventObject.")
           #endif
-         ;
+         ("max_block_cpu_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_cpu_usage),
+           "max_block_cpu_usage,used in resource ,in genesis param,etc")
+         ("max_block_net_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_net_usage),
+                "max_block_net_usage,used in resource ,in genesis param,etc")	  
+    	 ;
 
 // TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -236,7 +240,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database and block log")
          ("truncate-at-block", bpo::value<uint32_t>()->default_value(0),
           "stop hard replay / block log recovery at this block number (if set to non-zero number)")
-         ;
+		;
 
 }
 
@@ -277,7 +281,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                ("root_key", genesis_state::ultrainio_root_key));
          throw;
       }
-
+     ultrainio::chain::config::default_max_block_cpu_usage = options.at("max_block_cpu_usage").as<uint32_t>();
+     ultrainio::chain::config::default_max_transaction_cpu_usage = ultrainio::chain::config::default_max_block_cpu_usage / 2;
+     ultrainio::chain::config::default_max_block_net_usage = options.at("max_block_net_usage").as<uint32_t>();
+     ultrainio::chain::config::default_max_transaction_net_usage = ultrainio::chain::config::default_max_block_net_usage / 2;
+     ilog("default ${default_max_block_cpu_usage}",("default_max_block_cpu_usage",ultrainio::chain::config::default_max_block_cpu_usage));
       my->chain_config = controller::config();
 
       LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );
@@ -868,57 +876,57 @@ vector<read_only::get_subchain_committee_result> read_only::get_subchain_committ
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
    ULTRAIN_ASSERT(p.chain_name != 1, chain::contract_table_query_exception, "Could not query committee list of master chain.");
 
-   name table = N(pendingchain);
-   if(p.chain_name != 0) {
-      table = N(subchains);
-   }
+   name table = N(subchains);
    auto index_type = get_table_type( abi, table );
 
    vector<get_subchain_committee_result> result;
-   if(p.chain_name == 0) {
-       walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
-           vector<char> data;
-           copy_inline_row(obj, data);
-           ULTRAIN_ASSERT( data.size() >= sizeof(subchain_base), chain::asset_type_exception, "Invalid pending chain data on table");
+   walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+//       ULTRAIN_ASSERT( obj.value.size() >= sizeof(ultrainio::chain::subchain), chain::asset_type_exception, "Invalid subchain data on table");
 
-           subchain_base pending_chain;
-           fc::datastream<const char *> ds(data.data(), data.size());
-           fc::raw::unpack(ds, pending_chain);
+       ultrainio::chain::subchain subchain_data;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, subchain_data);
 
-           std::vector<role_base>::iterator ite = pending_chain.committee_members.begin();
-           for (; ite != pending_chain.committee_members.end(); ++ite) {
-               read_only::get_subchain_committee_result tmp;
-               tmp.owner = ite->owner.to_string();
-               tmp.miner_pk = ite->producer_key;
-               result.push_back(tmp);
-           }
+       if(p.chain_name == subchain_data.chain_name) {
+          std::vector<role_base>::iterator ite = subchain_data.committee_members.begin();
+          for (; ite != subchain_data.committee_members.end(); ++ite) {
+              read_only::get_subchain_committee_result tmp;
+              tmp.owner = ite->owner.to_string();
+              tmp.miner_pk = ite->producer_key;
+              result.push_back(tmp);
+          }
+          return false;
+      }
+      else {
+          return true;
+      }
+   });
+
+   return result;
+}
+
+uint32_t read_only::get_subchain_block_num(const read_only::get_subchain_block_num_params& p) const {
+const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+   ULTRAIN_ASSERT(p.chain_name != 1, chain::contract_table_query_exception, "Could not query committee list of master chain.");
+
+   name table = N(subchains);
+   auto index_type = get_table_type( abi, table );
+
+   uint32_t result = std::numeric_limits<uint32_t>::max();
+   walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+   //    ULTRAIN_ASSERT( obj.value.size() >= sizeof(subchain), chain::asset_type_exception, "Invalid subchain data on table");
+
+       subchain subchain_data;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, subchain_data);
+       if(p.chain_name == subchain_data.chain_name) {
+           result = subchain_data.head_block_num;
            return false;
-       });
-   }
-   else {
-       walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
-           ULTRAIN_ASSERT( obj.value.size() >= sizeof(subchain), chain::asset_type_exception, "Invalid subchain data on table");
-
-           subchain subchain_data;
-           fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-           fc::raw::unpack(ds, subchain_data);
-
-           if(p.chain_name == subchain_data.chain_name) {
-               std::vector<role_base>::iterator ite = subchain_data.committee_members.begin();
-               for (; ite != subchain_data.committee_members.end(); ++ite) {
-                   read_only::get_subchain_committee_result tmp;
-                   tmp.owner = ite->owner.to_string();
-                   tmp.miner_pk = ite->producer_key;
-                   result.push_back(tmp);
-               }
-               return false;
-           }
-           else {
-               return true;
-           }
-       });
-   }
-
+       }
+       else {
+           return true;
+       }
+   });
    return result;
 }
 // TODO: move this and similar functions to a header. Copied from wasm_interface.cpp.
@@ -950,7 +958,6 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    ULTRAIN_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
    const auto& d = db.db();
-   const auto lower = name{p.lower_bound};
 
    static const uint8_t secondary_index_num = 0;
    const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), N(ultrainio), N(producers)));
@@ -958,43 +965,30 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    ULTRAIN_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
 
    const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
-   const auto& secondary_index = d.get_index<index_double_index>().indices();
-   const auto& secondary_index_by_primary = secondary_index.get<by_primary>();
-   const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
+   decltype(table_id->id) next_tid(table_id->id._id + 1);
+   auto lower = kv_index.lower_bound(boost::make_tuple(table_id->id));
+   auto upper = kv_index.lower_bound(boost::make_tuple(next_tid));
+
 
    read_only::get_producers_result result;
    const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
    vector<char> data;
 
-   auto it = [&]{
-      if(lower.value == 0)
-         return secondary_index_by_secondary.lower_bound(
-            boost::make_tuple(secondary_table_id->id, to_softfloat64(std::numeric_limits<double>::lowest()), 0));
-      else
-         return secondary_index.project<by_secondary>(
-            secondary_index_by_primary.lower_bound(
-               boost::make_tuple(secondary_table_id->id, lower.value)));
-   }();
-   it = secondary_index_by_secondary.begin();
+   std::for_each(lower,upper, [&](const key_value_object& obj) {
+        copy_inline_row(obj, data);
+        auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
+        if(filter_enabled && !(producer["is_enabled"].as_bool())) {
+            return;
+        }
+        if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {
+            return;
+        }
+        if (p.json)
+           result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
+        else
+           result.rows.emplace_back(fc::variant(data));
+   });
 
-   for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
-      //TODO add an option to make the stop time and size limit valid according to requirement
-#if 0
-      if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
-         result.more = name{it->primary_key}.to_string();
-         break;
-      }
-#endif
-      copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
-      auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
-      if(filter_enabled && !(producer["is_enabled"].as_bool())) {
-          continue;
-      }
-      if (p.json)
-         result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
-      else
-         result.rows.emplace_back(fc::variant(data));
-   }
    auto gstate = get_global_row(d, abi, abis, abi_serializer_max_time);
    ilog("global ${gl}", ("gl", gstate));
 

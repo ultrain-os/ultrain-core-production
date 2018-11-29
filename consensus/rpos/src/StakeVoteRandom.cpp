@@ -22,7 +22,7 @@ namespace ultrainio {
         m_roleSelectionPtr = std::make_shared<RoleSelection>(committeeV, rand);
     }
 
-    int StakeVoteRandom::proposerPriority(const AccountName& account) {
+    uint32_t StakeVoteRandom::proposerPriority(const AccountName& account) {
         if (isGenesisPeriod()) {
             if (isGenesisLeader(account)) {
                 return 0;
@@ -56,7 +56,7 @@ namespace ultrainio {
         return Config::kEmptyBlock2ThresholdRatio * m_roleSelectionPtr->voterNumber() + 1;
     }
 
-    int StakeVoteRandom::realGetProposerNumber() const {
+    uint32_t StakeVoteRandom::realGetProposerNumber() const {
         return m_roleSelectionPtr->proposerNumber();
     }
 }

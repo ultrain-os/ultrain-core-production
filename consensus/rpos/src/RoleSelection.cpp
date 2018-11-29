@@ -28,8 +28,8 @@ namespace ultrainio {
         return std::find(m_voterV.begin(), m_voterV.end(), account) != m_voterV.end();
     }
 
-    int RoleSelection::proposerPriority(const std::string& account) {
-        for (int i = 0; i < m_proposerV.size(); i++) {
+    uint32_t RoleSelection::proposerPriority(const std::string& account) {
+        for (uint32_t i = 0; i < m_proposerV.size(); i++) {
             if (account == m_proposerV[i]) {
                 return i;
             }
@@ -37,7 +37,7 @@ namespace ultrainio {
         return m_proposerV.size();
     }
 
-    int RoleSelection::proposerNumber() const {
+    uint32_t RoleSelection::proposerNumber() const {
         return m_proposerV.size();
     }
 

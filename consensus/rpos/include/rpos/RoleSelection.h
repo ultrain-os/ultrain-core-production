@@ -16,9 +16,9 @@ namespace ultrainio {
 
         bool isVoter(const std::string& account);
 
-        int proposerPriority(const std::string& account);
+        uint32_t proposerPriority(const std::string& account);
 
-        int proposerNumber() const;
+        uint32_t proposerNumber() const;
 
         int voterNumber() const;
     private:

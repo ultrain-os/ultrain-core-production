@@ -9,6 +9,8 @@
 namespace ultrainio { namespace chain {
 
    void chain_config::validate()const {
+       ilog("max_transaction_cpu_usage ${max_transaction_cpu_usage} max_block_cpu_usage ${max_block_cpu_usage} default ${default_max_block_cpu_usage}",
+		       ("max_transaction_cpu_usage",max_transaction_cpu_usage)("max_block_cpu_usage",max_block_cpu_usage)("default_max_block_cpu_usage",config::default_max_block_cpu_usage));
       ULTRAIN_ASSERT( target_block_net_usage_pct <= config::percent_100, action_validate_exception,
                   "target block net usage percentage cannot exceed 100%" );
       ULTRAIN_ASSERT( target_block_net_usage_pct >= config::percent_1/10, action_validate_exception,

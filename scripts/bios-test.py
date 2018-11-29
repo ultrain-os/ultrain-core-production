@@ -34,8 +34,11 @@ systemAccounts = [
 
 initialAccounts = [
     'root',
-    'roottest',
-    'rootapp',
+    'root1',
+    'root2',
+    'root3',
+    'root4',
+    'root5',
 ]
 
 accountsToResign = [
@@ -399,7 +402,7 @@ def stepCreateinitAccounts():
         retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1000.0000 UGAS" --stake-cpu "1000.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (a, args.initacc_pk))
     sleep(10)
     for a in initialAccounts:
-        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"53000000.0000"))
+        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
 
 def stepResign():
     resign('ultrainio', 'utrio.null')
