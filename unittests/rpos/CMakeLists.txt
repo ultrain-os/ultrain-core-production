@@ -37,3 +37,11 @@ add_executable( roleselection_unittest
 target_link_libraries( roleselection_unittest ultrainio_rpos )
 
 add_test(NAME roleselection_unittest COMMAND roleselection_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+### PunishMgr
+add_executable( punishmgr_unittest
+        PunishMgrTest.cpp)
+
+target_link_libraries( punishmgr_unittest ultrainio_rpos )
+
+add_test(NAME punishmgr_unittest COMMAND punishmgr_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
