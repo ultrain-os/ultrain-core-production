@@ -544,8 +544,7 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
      } else {
          my->_worldstates_dir = wd;
      }
- // EOS_ASSERT( fc::is_directory(my->_worldstates_dir), worldstate_directory_not_found_exception,
-//"No such directory '${dir}'", ("dir", my->_worldstates_dir.generic_string()) );
+     FC_ASSERT( fc::is_directory(my->_worldstates_dir) );
    }
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){

@@ -22,10 +22,10 @@ struct chain_worldstate_header {
    void validate() const {
       auto min = minimum_compatible_version;
       auto max = current_version;
-//      EOS_ASSERT(version >= min && version <= max,
-//              worldstate_validation_exception,
-//              "Unsupported version of chain worldstate: ${version}. Supported version must be between ${min} and ${max} inclusive.",
-//              ("version",version)("min",min)("max",max));
+      ULTRAIN_ASSERT(version >= min && version <= max,
+              worldstate_validation_exception,
+              "Unsupported version of chain worldstate: ${version}. Supported version must be between ${min} and ${max} inclusive.",
+              ("version",version)("min",min)("max",max));
    }
 };
 

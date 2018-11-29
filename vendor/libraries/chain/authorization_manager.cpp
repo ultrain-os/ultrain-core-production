@@ -63,19 +63,19 @@ namespace ultrainio { namespace chain {
 
             value.parent = 0;
             if (value.id == 0) {
-               //EOS_ASSERT(row.parent == permission_name(), worldstate_exception, "Unexpected parent name on reserved permission 0");
-               //EOS_ASSERT(row.name == permission_name(), worldstate_exception, "Unexpected permission name on reserved permission 0");
-               //EOS_ASSERT(row.owner == name(), worldstate_exception, "Unexpected owner name on reserved permission 0");
-               //EOS_ASSERT(row.auth.accounts.size() == 0,  worldstate_exception, "Unexpected auth accounts on reserved permission 0");
-               //EOS_ASSERT(row.auth.keys.size() == 0,  worldstate_exception, "Unexpected auth keys on reserved permission 0");
-               //EOS_ASSERT(row.auth.waits.size() == 0,  worldstate_exception, "Unexpected auth waits on reserved permission 0");
-               //EOS_ASSERT(row.auth.threshold == 0,  worldstate_exception, "Unexpected auth threshold on reserved permission 0");
-               //EOS_ASSERT(row.last_updated == time_point(),  worldstate_exception, "Unexpected auth last updated on reserved permission 0");
+               ULTRAIN_ASSERT(row.parent == permission_name(), worldstate_exception, "Unexpected parent name on reserved permission 0");
+               ULTRAIN_ASSERT(row.name == permission_name(), worldstate_exception, "Unexpected permission name on reserved permission 0");
+               ULTRAIN_ASSERT(row.owner == name(), worldstate_exception, "Unexpected owner name on reserved permission 0");
+               ULTRAIN_ASSERT(row.auth.accounts.size() == 0,  worldstate_exception, "Unexpected auth accounts on reserved permission 0");
+               ULTRAIN_ASSERT(row.auth.keys.size() == 0,  worldstate_exception, "Unexpected auth keys on reserved permission 0");
+               ULTRAIN_ASSERT(row.auth.waits.size() == 0,  worldstate_exception, "Unexpected auth waits on reserved permission 0");
+               ULTRAIN_ASSERT(row.auth.threshold == 0,  worldstate_exception, "Unexpected auth threshold on reserved permission 0");
+               ULTRAIN_ASSERT(row.last_updated == time_point(),  worldstate_exception, "Unexpected auth last updated on reserved permission 0");
                value.parent = 0;
             } else if ( row.parent != permission_name()){
                const auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(row.owner, row.parent));
 
-               //EOS_ASSERT(parent.id != 0, worldstate_exception, "Unexpected mapping to reserved permission 0");
+               ULTRAIN_ASSERT(parent.id != 0, worldstate_exception, "Unexpected mapping to reserved permission 0");
                value.parent = parent.id;
             }
             if (value.id != 0) {
