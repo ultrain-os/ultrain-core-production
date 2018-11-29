@@ -40,7 +40,8 @@ add_library( ultrainio_chain
              webassembly/wavm.cpp
              webassembly/binaryen.cpp
 	     webassembly/wabt.cpp
-
+             config.cpp
+	     block_timestamp.cpp
 #             get_config.cpp
 #             global_property_object.cpp
 #

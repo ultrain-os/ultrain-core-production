@@ -38,7 +38,7 @@ namespace ultrainio {
 
         int getEmptyBlock2Threshold() const;
 
-        int getProposerNumber() const;
+        uint32_t getProposerNumber() const;
 
         int getCommitteeMemberNumber() const;
 
@@ -46,7 +46,7 @@ namespace ultrainio {
 
         chain::checksum256_type getCommitteeMroot() { return m_committeeMroot; }
 
-        virtual int proposerPriority(const AccountName& account);
+        virtual uint32_t proposerPriority(const AccountName& account);
     protected:
         StakeVoteBase(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
 
@@ -62,7 +62,7 @@ namespace ultrainio {
 
         virtual int realGetEmptyBlock2Threshold() const;
 
-        virtual int realGetProposerNumber() const;
+        virtual uint32_t realGetProposerNumber() const;
 
         std::shared_ptr<CommitteeState> m_committeeStatePtr = nullptr;
 

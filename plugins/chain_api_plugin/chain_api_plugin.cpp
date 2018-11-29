@@ -91,6 +91,7 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_currency_balance, 200),
       CHAIN_RO_CALL(get_currency_stats, 200),
       CHAIN_RO_CALL(get_subchain_committee, 200),
+      CHAIN_RO_CALL(get_subchain_block_num, 200),
       CHAIN_RO_CALL(get_producers, 200),
       CHAIN_RO_CALL(get_scheduled_transactions, 200),
       CHAIN_RO_CALL(abi_json2bin, 200),

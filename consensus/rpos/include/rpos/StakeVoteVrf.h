@@ -20,7 +20,7 @@ namespace ultrainio {
 
         virtual int realGetEmptyBlock2Threshold() const;
 
-        virtual int realGetProposerNumber() const;
+        virtual uint32_t realGetProposerNumber() const;
 
     private:
         long getTotalStakes() const;

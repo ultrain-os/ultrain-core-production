@@ -292,7 +292,7 @@ public:
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
    struct get_subchain_committee_params {
-      uint16_t         chain_name;  //todo, will change it to name type later
+      uint64_t         chain_name;  //todo, will change it to name type later
    };
 
    struct get_subchain_committee_result {
@@ -302,10 +302,15 @@ public:
 
    vector<get_subchain_committee_result> get_subchain_committee(const get_subchain_committee_params& p) const;
 
+   using get_subchain_block_num_params = get_subchain_committee_params;
+   uint32_t get_subchain_block_num(const get_subchain_block_num_params& p) const;
+
    struct get_producers_params {
       bool        json = false;
       string      lower_bound;
       uint32_t    limit = 50;
+      bool        is_filter_chain = true;
+      uint64_t    show_chain_num = 0;
    };
 
    struct get_producers_result {
@@ -611,7 +616,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_result, (supply
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_params, (chain_name));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk) );
 
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thresh_activated_stake_time)(more) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,

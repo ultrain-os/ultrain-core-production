@@ -1,6 +1,7 @@
 #http-server-address = 127.0.0.1:8888
 
-p2p-listen-endpoint = 0.0.0.0:9876
+p2p-listen-endpoint = 0.0.0.0:20122
+rpos-p2p-listen-endpoint = 0.0.0.0:20123
 
 monitor-server-endpoint = http://172.16.10.7:8078
 

@@ -23,7 +23,7 @@ namespace ultrainiosystem {
 
    const int num_rate = 7;
    const uint64_t master_chain_name = 0;
-   const uint64_t pending_chain_name = std::numeric_limits<uint64_t>::max();
+   const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
 
    struct name_bid {
      account_name            newname;
@@ -72,7 +72,7 @@ namespace ultrainiosystem {
       std::string           producer_key; /// a packed public key objec
 
       ULTRAINLIB_SERIALIZE(role_base, (owner)(producer_key) )
-    };
+   };
 
    struct producer_info : public role_base {
       int64_t               total_cons_staked = 0;
@@ -90,8 +90,8 @@ namespace ultrainiosystem {
       bool     active()const      { return is_active;                               }
       void     deactivate()       { producer_key = std::string(); is_active = false; }
       bool     is_on_master_chain() const  {return location == master_chain_name;}
-      bool     is_on_pending_chian() const  {return location == pending_chain_name;}
-      bool     is_on_subchain() const      {return location != master_chain_name && location != pending_chain_name;}
+      bool     is_in_pending_queue() const  {return location == pending_queue;}
+      bool     is_on_subchain() const      {return location != master_chain_name && location != pending_queue;}
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(hasactived)(url)
@@ -112,30 +112,25 @@ namespace ultrainiosystem {
 
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
 
-    struct subchain_base {
-        uint64_t               chain_name;
-        int64_t                min_active_stake;
-        uint32_t               min_committee_member_num;
-        account_name           root_name;
-        std::string            root_pk;
-        std::vector<role_base>  committee_members;  //all producers with enough deposit
-        uint64_t               total_deposit;
-        block_id_type          head_block_id;
-        uint32_t               head_block_num;
-    };
-    typedef ultrainio::singleton<N(pendingchain), subchain_base> pengding_subchain;
+   struct subchain {
+       uint64_t                chain_name;
+       uint16_t                chain_type;
+       bool                    is_active;
+       std::vector<role_base>  committee_members;  //all producers with enough deposit
+       block_id_type           head_block_id;
+       uint32_t                head_block_num;
+       checksum256             chain_id;
+       std::string             genesis_info;
+       std::string             network_topology;   //ignore it now, todo, will re-design it after dynamic p2p network feature implemented
+       std::vector<role_base>  relayer_candidates; //relayer only with deposit， not in committee list
+       std::vector<role_base>  relayer_list;       // choosen from accounts with enough deposit (both producer and non-producer)
 
-    struct subchain : public subchain_base {
-        checksum256        chain_id;
-        std::string        genesis_info;
-        std::string        network_topology;   //ignore it now, todo, will re-design it after dynamic p2p network feature implemented
-        uint32_t           relayer_stake_threshold;
-        std::vector<role_base>  relayer_candidates; //relayer only with deposit， not in committee list
-        std::vector<role_base>  relayer_list;       // choosen from accounts with enough deposit (both producer and non-producer)
+       auto primary_key()const { return chain_name; }
 
-        auto primary_key()const { return chain_name; }
-    };
-    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
+       ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(is_active)(committee_members)(head_block_id)(head_block_num)(chain_id)
+                                      (genesis_info)(network_topology)(relayer_candidates)(relayer_list) )
+   };
+   typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
@@ -152,7 +147,6 @@ namespace ultrainiosystem {
 
          ultrainio_global_state     _gstate;
          rammarket              _rammarket;
-         pengding_subchain     _pending_subchain;
          subchains_table       _subchains;
 
       public:
@@ -238,11 +232,7 @@ namespace ultrainiosystem {
          void updateactiveminers(const std::vector<ultrainio::proposeminer_info>& miners );
 
         // functions defined in scheduler.cpp
-         void regsubchain(uint64_t chain_name,
-                          account_name root_user_name,
-                          const std::string& root_user_pk,
-                          uint32_t sub_chain_deposit,
-                          uint32_t node_num);
+         void regsubchain(uint64_t chain_name, uint16_t chain_type);
 
          void acceptheader (uint64_t chain_name,
                             const ultrainio::block_header& header);
@@ -277,11 +267,9 @@ namespace ultrainiosystem {
          void reportblocknumber( account_name producer, uint64_t number);
 
          //defined in scheduler.cpp
-         void start_pending_chain();
+         void add_to_pending_queue(account_name producer, const std::string& public_key);
 
-         void add_to_pendingchain(account_name producer, const std::string& public_key);
-
-         void remove_from_pendingchain(account_name producer);
+         void remove_from_pending_queue(account_name producer);
 
          void add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key);
 

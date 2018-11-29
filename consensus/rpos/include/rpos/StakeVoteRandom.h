@@ -10,7 +10,7 @@ namespace ultrainio {
     public:
         StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand);
 
-        virtual int proposerPriority(const AccountName& account);
+        virtual uint32_t proposerPriority(const AccountName& account);
     protected:
         virtual bool realIsProposer(const AccountName& account);
 
@@ -24,7 +24,7 @@ namespace ultrainio {
 
         virtual int realGetEmptyBlock2Threshold() const;
 
-        virtual int realGetProposerNumber() const;
+        virtual uint32_t realGetProposerNumber() const;
 
     private:
         void initRoleSelection(std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand);

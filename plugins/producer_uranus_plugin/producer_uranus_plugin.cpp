@@ -527,7 +527,7 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    my->_max_phase_seconds = options.at("max-phase-seconds").as<int32_t>();
    my->_max_trxs_seconds = options.at("max-trxs-microseconds").as<int32_t>();
    ultrainio::chain::config::block_interval_ms = my->_max_round_seconds * 1000;
-        ultrainio::chain::config::block_interval_us =  my->_max_round_seconds * 1000000;
+   ultrainio::chain::config::block_interval_us =  my->_max_round_seconds * 1000000;
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){

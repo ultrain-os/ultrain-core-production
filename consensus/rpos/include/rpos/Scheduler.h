@@ -234,7 +234,7 @@ namespace ultrainio {
         const uint32_t m_maxSyncClients = 10;
         const uint32_t m_maxPacketsOnce = 80;
         const uint32_t m_maxSyncBlocks = 1000;
-        boost::asio::steady_timer::duration m_syncTaskPeriod{std::chrono::seconds{1}};
+        boost::asio::steady_timer::duration m_syncTaskPeriod{std::chrono::seconds{2}};
         std::unique_ptr<boost::asio::steady_timer> m_syncTaskTimer;
         boost::asio::steady_timer::duration m_memleakCheckPeriod{std::chrono::seconds{10}};
         std::unique_ptr<boost::asio::steady_timer> m_memleakCheck;

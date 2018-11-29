@@ -148,6 +148,7 @@ namespace ultrainio {
         uint32_t blockNum = getLastBlocknum();
         m_ba0Block = Block();
         m_ba0VerifiedBlkId = BlockIdType();
+        clearPreRunStatus();
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
         clearMsgCache(m_cacheProposeMsgMap, blockNum);
@@ -847,7 +848,7 @@ namespace ultrainio {
     bool Scheduler::isMinPropose(const ProposeMsg &proposeMsg) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(proposeMsg.block.block_num());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        int priority = stakeVotePtr->proposerPriority(proposeMsg.block.proposer);
+        uint32_t priority = stakeVotePtr->proposerPriority(proposeMsg.block.proposer);
         for (auto itor = m_proposerMsgMap.begin(); itor != m_proposerMsgMap.end(); ++itor) {
             if (stakeVotePtr->proposerPriority(itor->second.block.proposer) < priority) {
                 return false;
@@ -859,7 +860,7 @@ namespace ultrainio {
     bool Scheduler::isMinFEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        int priority = stakeVotePtr->proposerPriority(info.echo.proposer);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
         for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
             if (itor->second.accountPool.size() >= stakeVotePtr->getSendEchoThreshold()) {
                 if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
@@ -873,7 +874,7 @@ namespace ultrainio {
     bool Scheduler::isMinFEcho(const echo_message_info &info) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        int priority = stakeVotePtr->proposerPriority(info.echo.proposer);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
             if (itor->second.accountPool.size() >= stakeVotePtr->getSendEchoThreshold()) {
                 if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
@@ -887,7 +888,7 @@ namespace ultrainio {
     bool Scheduler::isMinEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        int priority = stakeVotePtr->proposerPriority(info.echo.proposer);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
         for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
             if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
                 return false;
@@ -899,7 +900,7 @@ namespace ultrainio {
     bool Scheduler::isMinEcho(const echo_message_info &info) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        int priority = stakeVotePtr->proposerPriority(info.echo.proposer);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
             if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
                 return false;
@@ -1257,7 +1258,7 @@ namespace ultrainio {
         echo_message_info *echo_info = nullptr;
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        int min_priority = stakeVotePtr->getProposerNumber();
+        uint32_t min_priority = stakeVotePtr->getProposerNumber();
 
         dlog("produceBaxBlock begin.");
 
@@ -1278,7 +1279,7 @@ namespace ultrainio {
                 if (isMin2FEcho(echo_itor->second.getTotalVoterWeight(), map_itor->first.phase)) {
                     dlog("found >= 2f + 1 echo. blocknum = ${blocknum} phase = ${phase}",
                          ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
-                    int priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer);
+                    uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer);
                     if (min_priority >= priority) {
                         dlog("min proof change.");
                         echo_info = &(echo_itor->second);
@@ -1322,7 +1323,7 @@ namespace ultrainio {
 
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        int minPriority = stakeVotePtr->getProposerNumber();
+        uint32_t minPriority = stakeVotePtr->getProposerNumber();
 
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
             dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} block_hash : ${block_hash}",
@@ -1333,7 +1334,7 @@ namespace ultrainio {
 //                || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (phase >= Config::kMaxBaxCount))) {
             if (isMin2FEcho(echo_itor->second.getTotalVoterWeight(), phase)) {
                 dlog("found >= 2f + 1 echo, phase+cnt = ${phase}",("phase",phase));
-                int priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer);
+                uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer);
                 if (minPriority >= priority) {
                     minBlockId = echo_itor->second.echo.blockId;
                     minPriority = priority;
@@ -1418,7 +1419,7 @@ namespace ultrainio {
 
         if (isBlank(id)) {
             return false;
-	}
+        }
 
         auto existing = chain.fetch_block_by_id(id);
         if (existing) {
