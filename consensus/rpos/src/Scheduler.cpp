@@ -407,7 +407,6 @@ namespace ultrainio {
     uint32_t Scheduler::isSyncing() {
         uint32_t maxBlockNum = UranusNode::getInstance()->getBlockNum();
         AccountName myAccount = StakeVoteBase::getMyAccount();
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
 
         if (m_cacheEchoMsgMap.empty()) {
             return INVALID_BLOCK_NUM;
@@ -441,7 +440,7 @@ namespace ultrainio {
                 }
 
                 for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
-                    if (echo_itor->second.accountPool.size() >= stakeVotePtr->getSendEchoThreshold()) {
+                    if (echo_itor->second.accountPool.size() >= THRESHOLD_SYNCING) {
                         maxBlockNum = vector_itor->first.blockNum;
                         return maxBlockNum;
                     }
@@ -1238,10 +1237,8 @@ namespace ultrainio {
 
     bool Scheduler::isFastba0(const msgkey &msg_key) {
         auto echo_itor = m_cacheEchoMsgMap.find(msg_key);
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
-
         if (echo_itor != m_cacheEchoMsgMap.end()) {
-            if (echo_itor->second.size() > stakeVotePtr->getSendEchoThreshold()) {
+            if (echo_itor->second.size() > THRESHOLD_SYNCING) {
                 return true;
             }
         }
