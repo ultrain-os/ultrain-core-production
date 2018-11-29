@@ -55,6 +55,35 @@ namespace fc { namespace crypto {
    public_key::public_key(const std::string& base58str)
    :_storage(parse_base58(base58str))
    {}
+   /*static*/
+   std::string public_key::base58_to_hex(const std::string& base58str){
+      constexpr auto legacy_prefix = config::public_key_legacy_prefix;
+      using default_type = typename public_key::storage_type::template type_at<0>;
+      using data_type = default_type::data_type;
+      using wrapper = checksummed_data<data_type>;
+      std::string sub_str;
+      if(prefix_matches(legacy_prefix, base58str) && base58str.find('_') == std::string::npos ) {
+         sub_str = base58str.substr(const_strlen(legacy_prefix));
+      } else {
+         constexpr auto prefix = config::public_key_base_prefix;
+         const auto pivot = base58str.find('_');
+         FC_ASSERT(pivot != std::string::npos, "No delimiter in string, cannot determine data type: ${str}", ("str", base58str));
+         const auto prefix_str = base58str.substr(0, pivot);
+         FC_ASSERT(prefix == prefix_str, "Public Key has invalid prefix: ${str}", ("str", base58str)("prefix_str", prefix_str));
+         sub_str = base58str.substr(pivot + 1);
+         FC_ASSERT(!sub_str.empty(), "Public Key has no data: ${str}", ("str", base58str));
+      }
+
+      auto bin = fc::from_base58(sub_str);
+      FC_ASSERT(bin.size() == sizeof(data_type) + sizeof(uint32_t), "");
+      auto wrapped = fc::raw::unpack<wrapper>(bin);
+      FC_ASSERT(wrapper::calculate_checksum(wrapped.data) == wrapped.check);
+      std::stringstream ss;
+      for (int i = 0; i < wrapped.data.size(); ++i) {
+         ss << std::hex << std::setw(2) << std::setfill('0') << (static_cast<int>(wrapped.data.data[i]) & 0xff);
+      }
+      return ss.str();
+   }
 
    struct is_valid_visitor : public fc::visitor<bool> {
       template< typename KeyType >

@@ -274,6 +274,27 @@ class typescript_crypto_api : public context_aware_api {
          memcpy(hash_val, hash.data(), hash.data_size());
       }
 
+      int ts_public_key_of_account(const account_name& account, array_ptr<char> pubkey_val, size_t pubkey_len, null_terminated_ptr key_type) {
+         if (!context.is_account( account )) return -1;
+
+         const auto& permissions = context.db.get_index<permission_index,by_owner>();
+         auto perm = permissions.lower_bound( boost::make_tuple( account ) );
+         if ( perm != permissions.end() && perm->owner == account && perm->auth.keys.size() > 0 ) {
+             std::string pubkey = (std::string)(perm->auth.keys[0].key);
+            if (std::string(key_type) == "wif") {
+               if (pubkey_len < pubkey.size()) return -1;
+               memcpy(pubkey_val, pubkey.data(), pubkey.size());
+               return pubkey.size();
+            } else if (std::string(key_type) == "hex") {
+               std::string hexstr = fc::crypto::public_key::base58_to_hex(pubkey);
+               if (pubkey_len < hexstr.size()) return -1;
+               memcpy(pubkey_val, hexstr.c_str(), hexstr.size());
+               return hexstr.size();
+            }
+         }
+
+         return -1;
+      }
 };
 #endif
 
@@ -1969,6 +1990,7 @@ REGISTER_INTRINSICS(typescript_crypto_api,
    (ts_sha256,                 void(int, int, int, int)           )
    (ts_sha512,                 void(int, int, int, int)           )
    (ts_ripemd160,              void(int, int, int, int)           )
+   (ts_public_key_of_account,  int(int64_t, int, int, int)        )
 );
 #endif
 
