@@ -403,6 +403,8 @@ void handle_mongo_exception( const std::string& desc, int line_num ) {
 
             // create new account
             if( !accounts.insert_one( make_document( kvp( "name", newaccount.name.to_string()),
+                                                     kvp( "owner", string(newaccount.owner.keys[0].key)),
+                                                     kvp( "active", string(newaccount.active.keys[0].key)),
                                                      kvp( "createdAt", b_date{now} )))) {
                elog( "Failed to insert account ${n}", ("n", newaccount.name));
             }
