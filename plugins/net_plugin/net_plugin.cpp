@@ -479,7 +479,7 @@ namespace ultrainio {
         void initialize();
 
         static const uint32_t MAX_OUT_QUEUE = 1000;
-        static const uint32_t MAX_WRITE_QUEUE = 1000000;
+        static const uint32_t MAX_WRITE_QUEUE = 100000;
 
         peer_block_state_index  blk_state;
         transaction_state_index trx_state;
@@ -2618,10 +2618,10 @@ namespace ultrainio {
    void net_plugin::set_program_options( options_description& /*cli*/, options_description& cfg )
    {
       cfg.add_options()
-         ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The actual host:port used to listen for incoming p2p connections.")
+         ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:20122" ), "The actual host:port used to listen for incoming p2p connections.")
          ( "p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
          ( "p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
-         ( "rpos-p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9875" ), "The actual host:port used to listen for incoming rpos p2p connections.")
+         ( "rpos-p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:20123" ), "The actual host:port used to listen for incoming rpos p2p connections.")
          ( "rpos-p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to rpos-p2p-listen-endpoint.")
          ( "rpos-p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple rpos-p2p-peer-address options as needed to compose a network.")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
