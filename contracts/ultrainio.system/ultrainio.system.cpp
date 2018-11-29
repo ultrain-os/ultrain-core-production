@@ -16,6 +16,7 @@ namespace ultrainiosystem {
     _producers(_self,_self),
     _global(_self,_self),
     _rammarket(_self,_self),
+    _pending_que(_self, _self),
     _subchains(_self,_self) {
       //print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
@@ -300,5 +301,5 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // producer_pay.cpp
      (onblock)(claimrewards)
      // scheduler.cpp
-     (regsubchain)(acceptheader)
+     (regsubchain)(acceptheader)(clearblock)
 )

@@ -176,7 +176,7 @@ namespace ultrainio {
             m_ba0BlockTime.replace(pos - 2, 0, std::string("-"));
             m_ba0BlockTime.replace(pos - 4, 0, std::string("-"));
 
-            m_ba0BlockTime = "";
+            m_ba1BlockTime = "";
         }
 
         void ba1BlockProducingTime() {

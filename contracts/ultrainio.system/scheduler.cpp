@@ -8,6 +8,7 @@ namespace ultrainiosystem {
     /// @abi action
     void system_contract::regsubchain(uint64_t chain_name, uint16_t chain_type) {
         require_auth(N(ultrainio));
+        ultrainio_assert(chain_name == default_chain_name, "subchian cannot named as default.");
         auto itor = _subchains.find(chain_name);
         ultrainio_assert(itor == _subchains.end(), "There has been a subchian with this name.");
 
@@ -56,15 +57,27 @@ namespace ultrainiosystem {
         else if (block_number == ite_chain->head_block_num) {
             //todo, fork chain block, how to handle?
         }
-        else if (block_number > ite_chain->head_block_num) {
+        else if (block_number > ite_chain->head_block_num + 1) {
             ultrainio_assert(false, "block number is greater than current block.");
         }
         else if (block_number < ite_chain->head_block_num) {
             ultrainio_assert(false, "block number is less than current block.");
         }
         else {
+            //right block num, but wrong previous hash
             ultrainio_assert(false, "block header verification failed.");
         }
+    }
+
+    void system_contract::clearblock(uint64_t chain_name) {
+        require_auth(N(ultrainio));
+        auto ite_chain = _subchains.find(chain_name);
+        ultrainio_assert(ite_chain != _subchains.end(), "This subchian is not existed.");
+        //todo, check if the subchain is avtive?
+        _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+            _subchain.head_block_id     = block_id_type();
+            _subchain.head_block_num    = 0;
+        });
     }
 /*
     void system_contract::register_relayer(const std::string& miner_pk,
@@ -78,51 +91,81 @@ namespace ultrainiosystem {
     void system_contract::add_to_pending_queue(account_name producer, const std::string& public_key) {
         auto itor = _producers.find(producer);
         ultrainio_assert(itor != _producers.end(), "need to register as a producer first");
-/*
-        if(!_pending_queue.exists()) {
-            //todo, create a new pending chain?
-        }
 
-        auto _pending = _pending_subchain.get();
-        auto ite = _pending.committee_members.begin();
-        for(; ite != _pending.committee_members.end(); ++ite) {
-            if(ite->owner == producer) {
-                break;
-            }
+        std::vector<role_base>* p_que;
+        if(!_pending_que.exists()) {
+            std::vector<role_base> temp_que;
+            p_que = &temp_que;
         }
-        if(ite != _pending.committee_members.end() ) {
-            return; //don't use assert
+        else {
+            auto _pending = _pending_que.get();
+            auto ite = _pending.begin();
+            for(; ite != _pending.end(); ++ite) {
+                if(ite->owner == producer) {
+                    break;
+                }
+            }
+            if(ite != _pending.end() ) {
+                return; //don't use assert
+            }
+            p_que = &_pending;
         }
         role_base temp_node;
         temp_node.owner = producer;
         temp_node.producer_key   = public_key;
-        _pending.committee_members.push_back(temp_node);
-        if(_pending.committee_members.size() >= _pending.min_committee_member_num) {
-            start_pending_chain();
+        p_que->push_back(temp_node);
+        //loop all inactive subchain, start it if miners sum meet its requirement.
+        auto ite_subchain = _subchains.begin();
+        for(; ite_subchain != _subchains.end(); ++ite_subchain) {
+            if(!ite_subchain->is_active && ite_subchain->get_subchain_min_miner_num() <= p_que->size()) {
+                break;
+            }
         }
-        else {
-            _pending_subchain.set(_pending, producer);
-        }*/
+        if(ite_subchain != _subchains.end()) {
+            _subchains.modify(ite_subchain, N(ultrainio), [&](subchain& info) {
+                //move miners from pending que to this sub chian
+                uint32_t i = 0;
+                auto ite_miner = p_que->begin();
+                for(; ite_miner != p_que->end() && i <= info.get_subchain_min_miner_num(); ++i) {
+                    //update location of producer
+                    auto ite_producer = _producers.find(ite_miner->owner);
+                    ultrainio_assert( ite_producer != _producers.end(), "Cannot find producer in database." );
+                    _producers.modify(ite_producer, 0 , [&](auto & v) {
+                        v.location = info.chain_name;
+                    });
+                    //move to subchain
+                    info.committee_members.push_back(*ite_miner);
+                    ite_miner = p_que->erase(ite_miner);
+                }
+                info.is_active = true;
+            });
+        }
+
+        _pending_que.set(*p_que, producer);
     }
 
     void system_contract::remove_from_pending_queue(account_name producer) {
-/*
-        ultrainio_assert(_pending_subchain.exists(), "no pending subchain exsited.");
+        ultrainio_assert(_pending_que.exists(), "no pending queue exsited.");
 
-        auto _pending = _pending_subchain.get();
-        auto ite = _pending.committee_members.begin();
-        for(; ite != _pending.committee_members.end(); ++ite) {
+        auto _pending = _pending_que.get();
+        auto ite = _pending.begin();
+        for(; ite != _pending.end(); ++ite) {
             if(ite->owner == producer) {
                 break;
             }
         }
-        ultrainio_assert(ite != _pending.committee_members.end(), "this producer is not in the pending subchian.");
-        _pending.committee_members.erase(ite);
-        _pending_subchain.set(_pending, producer);
-*/
+        if(ite == _pending.end()) {
+            return; //don't use assert
+        }
+        _pending.erase(ite);
+        _pending_que.set(_pending, producer);
     }
 
     void system_contract::add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key) {
+        if(chain_name == default_chain_name) {
+            //todo, loop all stable subchain, add to the one with least miners 
+            return;
+        }
         auto ite_chain = _subchains.find(chain_name);
         ultrainio_assert(ite_chain != _subchains.end(), "The specific chain is not existed." );
 

@@ -24,6 +24,7 @@ namespace ultrainiosystem {
    const int num_rate = 7;
    const uint64_t master_chain_name = 0;
    const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
+   const uint64_t default_chain_name = N(default);  //default chain, will be assigned by system.
 
    struct name_bid {
      account_name            newname;
@@ -112,6 +113,8 @@ namespace ultrainiosystem {
 
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
 
+   typedef ultrainio::singleton<N(pendingque), std::vector<role_base>> pending_queue_singleton;
+
    struct subchain {
        uint64_t                chain_name;
        uint16_t                chain_type;
@@ -126,6 +129,10 @@ namespace ultrainiosystem {
        std::vector<role_base>  relayer_list;       // choosen from accounts with enough deposit (both producer and non-producer)
 
        auto primary_key()const { return chain_name; }
+
+       uint32_t get_subchain_min_miner_num() const { return chain_type == 1 ? 10 : 7;}
+
+       uint32_t get_subchain_max_miner_num() const {return chain_type == 2 ? 12 : 10000;};
 
        ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(is_active)(committee_members)(head_block_id)(head_block_num)(chain_id)
                                       (genesis_info)(network_topology)(relayer_candidates)(relayer_list) )
@@ -145,9 +152,10 @@ namespace ultrainiosystem {
          producers_table        _producers;
          global_state_singleton _global;
 
-         ultrainio_global_state     _gstate;
-         rammarket              _rammarket;
-         subchains_table       _subchains;
+         ultrainio_global_state   _gstate;
+         rammarket                _rammarket;
+         pending_queue_singleton  _pending_que;
+         subchains_table          _subchains;
 
       public:
          system_contract( account_name s );
@@ -240,6 +248,7 @@ namespace ultrainiosystem {
 //                          const std::vector<uint32_t>& echo_weight_vector,
 //                          const std::vector<std::string>& echo_account_vector);
 
+         void clearblock(uint64_t chain_name);
          //Register to ba a relayer candidate of a subchain, only for those accounts which are not in the committee list of this subchain.
          //All committee members are also be relayer candidates automatically
 /*         void register_relayer(const std::string& miner_pk,
