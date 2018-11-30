@@ -303,6 +303,11 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
 
           auto id = trx->id();
 
+          if (UranusNode::getInstance() && UranusNode::getInstance()->getSyncingStatus()) {
+              send_response(std::static_pointer_cast<fc::exception>(std::make_shared<node_is_syncing>(FC_LOG_MESSAGE(error, "trx discarded, node is in block syncing status") )));
+              return;
+          }
+
           if( fc::time_point(trx->expiration()) < block_time ) {
               //ilog("-------pre-run expired trx");
               send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)) )));
