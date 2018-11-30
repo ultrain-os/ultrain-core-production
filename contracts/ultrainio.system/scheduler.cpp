@@ -8,7 +8,7 @@ namespace ultrainiosystem {
     /// @abi action
     void system_contract::regsubchain(uint64_t chain_name, uint16_t chain_type) {
         require_auth(N(ultrainio));
-        ultrainio_assert(chain_name == default_chain_name, "subchian cannot named as default.");
+        ultrainio_assert(chain_name != default_chain_name, "subchian cannot named as default.");
         auto itor = _subchains.find(chain_name);
         ultrainio_assert(itor == _subchains.end(), "There has been a subchian with this name.");
 
