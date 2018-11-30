@@ -551,7 +551,10 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    });
 
 } FC_LOG_AND_RETHROW() }
-
+int  producer_uranus_plugin::get_round_interval()
+{
+	    return  my->_max_round_seconds;
+}
 bool producer_uranus_plugin::handle_message(const EchoMsg& echo) {
    return UranusNode::getInstance()->handleMessage(echo);
 }

@@ -205,7 +205,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("contract-emit-string-length", bpo::value<uint64_t>()->default_value(config::default_contract_emit_length),
           "Contract emit string length limits the string length of serialized EventObject.")
           #endif
-         ;
+         ("max_block_cpu_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_cpu_usage),
+           "max_block_cpu_usage,used in resource ,in genesis param,etc")
+         ("max_block_net_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_net_usage),
+                "max_block_net_usage,used in resource ,in genesis param,etc")	  
+    	 ;
 
 // TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -236,10 +240,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain state database and block log")
          ("truncate-at-block", bpo::value<uint32_t>()->default_value(0),
           "stop hard replay / block log recovery at this block number (if set to non-zero number)")
-	 ("max_block_cpu_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_cpu_usage),
-	  "max_block_cpu_usage,used in resource ,in genesis param,etc")
-	 ("max_block_net_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_net_usage),
-	  "max_block_net_usage,used in resource ,in genesis param,etc")
 		;
 
 }

@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/rpos/*.h")
 add_library( ultrainio_rpos
         src/BlockMsg.cpp
         src/Config.cpp
+        src/EvilType.cpp
         src/FisherYates.cpp
         src/Genesis.cpp
         src/MsgBuilder.cpp
@@ -10,6 +11,7 @@ add_library( ultrainio_rpos
         src/NodeInfo.cpp
         src/PhaseMsg.cpp
         src/Proof.cpp
+        src/PunishMgr.cpp
         src/RoleRandom.cpp
         src/RoleSelection.cpp
         src/Scheduler.cpp

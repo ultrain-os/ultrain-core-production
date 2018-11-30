@@ -216,6 +216,10 @@ namespace ultrainio {
         void start_memleak_check();
         chain::checksum256_type getCommitteeMroot(uint32_t block_num);
 
+        bool hasMultiSignPropose(const ProposeMsg& propose);
+
+        bool hasMultiVotePropose(const EchoMsg& echo);
+
         // data member
         Block m_ba0Block;
         BlockIdType m_ba0VerifiedBlkId = BlockIdType();
@@ -224,6 +228,7 @@ namespace ultrainio {
         int m_initTrxCount = 0;
         std::map<chain::block_id_type, ProposeMsg> m_proposerMsgMap;
         std::map<chain::block_id_type, echo_message_info> m_echoMsgMap;
+        std::map<AccountName, chain::block_id_type> m_committeeVoteBlock;
         std::map<msgkey, std::vector<ProposeMsg>> m_cacheProposeMsgMap;
         std::map<msgkey, std::vector<EchoMsg>> m_cacheEchoMsgMap;
         std::map<msgkey, echo_msg_buff> m_echoMsgAllPhase;

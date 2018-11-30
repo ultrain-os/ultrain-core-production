@@ -177,12 +177,14 @@ namespace ultrainio {
         unique_ptr<boost::asio::steady_timer> transaction_check;
         unique_ptr<boost::asio::steady_timer> keepalive_timer;
         unique_ptr<boost::asio::steady_timer> sizeprint_timer;
+        unique_ptr<boost::asio::steady_timer> speedmonitor_timer;
 
         boost::asio::steady_timer::duration   connector_period;
         boost::asio::steady_timer::duration   txn_exp_period;
         boost::asio::steady_timer::duration   resp_expected_period;
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
         boost::asio::steady_timer::duration   sizeprint_period{std::chrono::seconds{30}};
+        boost::asio::steady_timer::duration   speedmonitor_period;
         const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
         bool                          network_version_match = false;
@@ -208,7 +210,9 @@ namespace ultrainio {
         void get_con_buffer_size(connection_ptr c);
         void print_queue_size( );
         void start_sizeprint_timer( );
-        void close( connection_ptr c );
+	void reset_speedlimit_monitor( );
+        void start_speedlimit_monitor_timer();
+	void close( connection_ptr c );
         size_t count_open_sockets() const;
 
         template<typename VerifierFunc>
@@ -510,7 +514,10 @@ namespace ultrainio {
         uint32_t                fork_head_num = 0;
         optional<request_message> last_req;
         RspLastBlockNumMsg      last_block_info;
-
+        uint32_t pack_count_rpos = 0;
+	uint32_t pack_count_trxs = 0;
+	uint32_t pack_count_drop_rpos = 0;
+	uint32_t pack_count_drop_trxs = 0; 
         connection_status get_status()const {
             connection_status stat;
             stat.peer = peer_addr;
@@ -621,7 +628,27 @@ namespace ultrainio {
 
         template <typename T> void operator()(const T &msg) const
         {
-            impl.handle_message( c, msg);
+           auto listen_port_local = c->socket->local_endpoint().port();
+	   auto listen_port_remote = c->socket->remote_endpoint().port();
+	   if((listen_port_local == 20122)||(listen_port_remote == 20122))
+	   {
+	      c->pack_count_trxs++;
+	      if(c->pack_count_trxs > (2000 * app().get_plugin<producer_uranus_plugin>().get_round_interval()))
+	      {
+		      c->pack_count_drop_trxs++;
+		      return ;
+	      }
+	   }
+	   else if((listen_port_local ==20123)||(listen_port_remote == 20123))
+	   {
+	      c->pack_count_rpos++;
+	      if(c->pack_count_rpos > 1000 )
+	      {
+		      c->pack_count_drop_rpos++;
+		      return ;
+	      }
+	   }
+	   impl.handle_message( c, msg);
         }
     };
 
@@ -2326,6 +2353,33 @@ namespace ultrainio {
             start_sizeprint_timer();
         });
     }
+    void net_plugin_impl::reset_speedlimit_monitor( )
+    {
+        auto it = connections.begin();
+	while(it != connections.end()) {
+	 if( (*it)->socket && (*it)->socket->is_open() && !(*it)->connecting) 
+	 {
+		 ilog("peer ${peer} count_rpos ${count_rpos} count_trx ${count_trxs} count_drop_rpos ${drop_rpos} drop_trxs ${drop_trxs}",
+				 ("peer",(*it)->peer_name())
+				 ("count_rpos",(*it)->pack_count_rpos)
+				 ("count_trxs",(*it)->pack_count_trxs)
+				 ("drop_rpos",(*it)->pack_count_drop_rpos)
+				 ("drop_trxs",(*it)->pack_count_drop_trxs));
+		 (*it)->pack_count_rpos=0;
+		 (*it)->pack_count_trxs=0;
+	 }
+	 ++it;
+	}
+    }
+    void net_plugin_impl::start_speedlimit_monitor_timer( ) 
+    {
+
+        speedmonitor_timer->expires_from_now( speedmonitor_period);
+        speedmonitor_timer->async_wait( [this](boost::system::error_code ec) {
+	       reset_speedlimit_monitor();
+	       start_speedlimit_monitor_timer();
+        });
+    }
    void net_plugin_impl::start_conn_timer( ) {
       connector_check->expires_from_now( connector_period);
       connector_check->async_wait( [this](boost::system::error_code ec) {
@@ -2371,9 +2425,14 @@ namespace ultrainio {
       connector_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       transaction_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       sizeprint_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
+      speedmonitor_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
       start_txn_timer();
       start_sizeprint_timer();
+      int round_interval = app().get_plugin<producer_uranus_plugin>().get_round_interval();
+      speedmonitor_period = {std::chrono::seconds{round_interval}};
+
+      start_speedlimit_monitor_timer();
    }
 
    void net_plugin_impl::expire_txns() {
