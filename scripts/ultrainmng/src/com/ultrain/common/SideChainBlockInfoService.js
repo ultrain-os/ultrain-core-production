@@ -76,7 +76,7 @@ let configSub = {
 let u3 = createU3({ ...config, sign: true, broadcast: true });
 let u3NotPush = createU3({ sign: false, broadcast: false });
 
-let u3Sub = createU3({ ...configSub, sign: false, broadcast: false });
+let u3Sub = createU3({ ...configSub, sign: true, broadcast: true });
 
 // // 异步打开文件
 // console.log("准备打开文件！");
