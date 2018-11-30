@@ -37,7 +37,7 @@ namespace ultrainiosystem {
     void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint64_t location ) {
       ultrainio_assert( url.size() < 512, "url too long" );
       // key is hex encoded
-      ultrainio_assert( producer_key.size() == 256, "public key should be of size 64" );
+      ultrainio_assert( producer_key.size() == 256, "public key should be of size 256" );
       require_auth( producer );
 
       auto prod = _producers.find( producer );

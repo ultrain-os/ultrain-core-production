@@ -35,7 +35,7 @@ namespace ultrainiosystem {
         if(block_proposer != N() && block_proposer != N(genesis)) {
             auto itor = ite_chain->committee_members.begin();
             for(; itor != ite_chain->committee_members.end(); ++itor) {
-                if(itor->owner == block_proposer && itor->producer_key.size() == 64) {
+                if(itor->owner == block_proposer) {
                     break;
                 }
             }
