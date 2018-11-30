@@ -5,7 +5,7 @@ namespace ultrainio {
 
     const int Config::kMaxBaxCount = 20;
 
-    const int Config::kDeadlineCnt = 100;
+    const int Config::kDeadlineCnt = 60;
 
 #ifdef CONSENSUS_VRF
     const double Config::kProposerStakeNumber = 7.0;
