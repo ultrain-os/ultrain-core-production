@@ -48,8 +48,8 @@ let configSub = {
     // httpEndpoint: 'http://40.117.73.83:8888',
     // httpEndpoint_history: 'http://40.117.73.83:3000',
     // keyProvider: ['5KATDC5YqmSTfy99BWqRugriDmeaTAqpwZxXV8jQafdwJqTaqF4'], // WIF string or array of keys..
-    httpEndpoint: 'http://127.0.0.1:8888',
-    httpEndpoint_history: 'http://127.0.0.1:3000',
+    httpEndpoint: 'http://172.16.10.5:8899',
+    httpEndpoint_history: 'http://172.16.10.5:3000',
     keyProvider: ['5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H'], // WIF string or array of keys..
 
     chainId: '0eaaff4003d4e08a541332c62827c0ac5d96766c712316afe7ade6f99b8d70fe', // 32 byte (64 char) hex string
@@ -87,7 +87,7 @@ let u3Sub = createU3({ ...configSub, sign: false, broadcast: false });
 // });
 
 var path = '/root/.local/share/ultrainio/nodultrain/config/config.ini';
-// path = "config.ini";
+path = "config.ini";
 
 var configIni = ini.parse(fs.readFileSync(path,'utf-8'));
 
@@ -210,7 +210,7 @@ function invokeSystemContract( resultJson) {
     }
 
     //列表更新
-    jsonArray = resultJson;
+    // jsonArray = resultJson;
 }
 
 pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction_mroot, action_mroot, committee_mroot, header_extensions) => {
