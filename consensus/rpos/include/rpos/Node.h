@@ -87,7 +87,7 @@ namespace ultrainio {
 
         void fastProcess();
 
-        uint32_t isSyncing();
+        uint32_t isNeedSync();
 
         bool isReady() {return m_ready;}
 

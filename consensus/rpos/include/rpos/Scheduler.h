@@ -137,7 +137,7 @@ namespace ultrainio {
 
         bool processBeforeMsg(const EchoMsg &echo);
 
-        uint32_t isSyncing();
+        uint32_t isNeedSync();
 
         bool isChangePhase();
 

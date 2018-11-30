@@ -392,8 +392,8 @@ namespace ultrainio {
         run();
     }
 
-    uint32_t UranusNode::isSyncing() {
-        return m_schedulerPtr->isSyncing();
+    uint32_t UranusNode::isNeedSync() {
+        return m_schedulerPtr->isNeedSync();
     }
 
     void UranusNode::baxProcess() {
@@ -439,7 +439,7 @@ namespace ultrainio {
         } else {
             elog("baxProcess.phase bax finish. block is blank.");
 
-            if (INVALID_BLOCK_NUM != isSyncing()) {
+            if (INVALID_BLOCK_NUM != isNeedSync()) {
                 dlog("baxProcess. syncing begin. m_baxCount = ${count}.", ("count", m_baxCount));
                 syncBlockOnce();
             }

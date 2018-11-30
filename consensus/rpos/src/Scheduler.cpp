@@ -407,7 +407,7 @@ namespace ultrainio {
         return false;
     }
 
-    uint32_t Scheduler::isSyncing() {
+    uint32_t Scheduler::isNeedSync() {
         uint32_t maxBlockNum = UranusNode::getInstance()->getBlockNum();
         AccountName myAccount = StakeVoteBase::getMyAccount();
 
