@@ -50,7 +50,7 @@ namespace ultrainio { namespace chain { namespace plugin_interface {
       namespace methods {
          // synchronously push a block/trx to a single provider
          using block_sync            = method_decl<chain_plugin_interface, void(const signed_block_ptr&), first_provider_policy>;
-         using transaction_async     = method_decl<chain_plugin_interface, void(const packed_transaction_ptr&, bool, next_function<transaction_trace_ptr>), first_provider_policy>;
+         using transaction_async     = method_decl<chain_plugin_interface, void(const packed_transaction_ptr&, bool, bool, next_function<transaction_trace_ptr>), first_provider_policy>;
       }
    }
 

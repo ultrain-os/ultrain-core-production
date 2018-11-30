@@ -334,7 +334,8 @@ def randomTransfer():
     subaccounts = accounts[1:args.num_producers]
     for i in subaccounts:
         for j in subaccounts:
-            simple_run(args.clultrain + 'transfer -f %s %s "0.%s UGAS" ' %(i, j, random.randint(1, 999)))
+            if i != j:
+                simple_run(args.clultrain + 'transfer -f %s %s "0.%s UGAS" ' %(i, j, random.randint(1, 999)))
 #    sleep(2)
 
 def startWallet():
@@ -384,7 +385,7 @@ def stepRegProducers():
     sleep(15)
     funds = 500000000 / args.num_producers / 2
     for i in range(1, args.num_producers):
-        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))  
+        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
     sleep(20)
     for i in range(1, args.num_producers):
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))

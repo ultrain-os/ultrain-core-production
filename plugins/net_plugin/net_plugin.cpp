@@ -344,7 +344,7 @@ namespace ultrainio {
     constexpr auto     def_send_buffer_size_mb = 4;
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
     constexpr auto     def_max_clients = 25; // 0 for unlimited clients
-    constexpr auto     def_max_nodes_per_host = 2; 
+    constexpr auto     def_max_nodes_per_host = 2;
     constexpr auto     def_conn_retry_wait = 30;
     constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
@@ -517,7 +517,7 @@ namespace ultrainio {
         uint32_t pack_count_rpos = 0;
 	uint32_t pack_count_trxs = 0;
 	uint32_t pack_count_drop_rpos = 0;
-	uint32_t pack_count_drop_trxs = 0; 
+	uint32_t pack_count_drop_trxs = 0;
         connection_status get_status()const {
             connection_status stat;
             stat.peer = peer_addr;
@@ -1489,7 +1489,7 @@ namespace ultrainio {
         connect( c );
         return "added connection";
     }
- 
+
     void net_plugin_impl::connect( connection_ptr c ) {
         if( c->no_retry != go_away_reason::no_reason) {
             fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
@@ -2300,11 +2300,19 @@ namespace ultrainio {
       }
       dispatcher->recv_transaction(c, tid);
       //uint64_t code = 0;
-      chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+      chain_plug->accept_transaction(msg, true, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
           if (result.contains<fc::exception_ptr>()) {
               auto e_ptr = result.get<fc::exception_ptr>();
-              if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value)
+              // Non-producing node does not pre-run network borne trx but still broadcasts it.
+              if (e_ptr->code() == discard_network_trx_for_non_producing_node::code_value) {
+                  dispatcher->bcast_transaction(msg);
+                  //elog("discard_network_trx_for_non_producing_node::code_value)");
+                  return;
+              } else if (e_ptr->code() != tx_duplicate::code_value &&
+                         e_ptr->code() != expired_tx_exception::code_value &&
+                         e_ptr->code() != node_is_syncing::code_value) {
                   elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
+              }
           } else {
               auto trace = result.get<transaction_trace_ptr>();
               if (!trace->except) {
@@ -2357,7 +2365,7 @@ namespace ultrainio {
     {
         auto it = connections.begin();
 	while(it != connections.end()) {
-	 if( (*it)->socket && (*it)->socket->is_open() && !(*it)->connecting) 
+	 if( (*it)->socket && (*it)->socket->is_open() && !(*it)->connecting)
 	 {
 		 ilog("peer ${peer} count_rpos ${count_rpos} count_trx ${count_trxs} count_drop_rpos ${drop_rpos} drop_trxs ${drop_trxs}",
 				 ("peer",(*it)->peer_name())
@@ -2371,7 +2379,7 @@ namespace ultrainio {
 	 ++it;
 	}
     }
-    void net_plugin_impl::start_speedlimit_monitor_timer( ) 
+    void net_plugin_impl::start_speedlimit_monitor_timer( )
     {
 
         speedmonitor_timer->expires_from_now( speedmonitor_period);
@@ -2925,7 +2933,7 @@ namespace ultrainio {
                         my->close(con);
                     }
                 }
- 
+
                 my->trx_listener.acceptor = nullptr;
             }
             ilog( "exit shutdown" );
@@ -2969,7 +2977,7 @@ namespace ultrainio {
    void net_plugin::send_last_block_num(const string& ip_addr, const ultrainio::RspLastBlockNumMsg& msg) {
        ilog("send last block num:${n} hash:${h} prev hash:${ph}", ("n", msg.blockNum)("h", msg.blockHash)("ph", msg.prevBlockHash));
        my->send_last_block_num(ip_addr, net_message(msg));
-   } 
+   }
 
    void net_plugin::stop_sync_block() {
        ilog("stop sync block");
