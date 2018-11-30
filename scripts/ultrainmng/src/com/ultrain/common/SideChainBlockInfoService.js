@@ -89,7 +89,7 @@ let u3Sub = createU3({ ...configSub, sign: true, broadcast: true });
 // });
 
 var path = '/root/.local/share/ultrainio/nodultrain/config/config.ini';
-path = "config.ini";
+// path = "config.ini";
 
 var configIni = ini.parse(fs.readFileSync(path,'utf-8'));
 
@@ -211,12 +211,12 @@ function invokeSystemContract( resultJson) {
                 })
             })
         });
+        //列表更新
+        jsonArray = resultJson;
     } catch (e) {
         console.log("u3 push tx error...",e)
     }
 
-    //列表更新
-    jsonArray = resultJson;
 }
 
 pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction_mroot, action_mroot, committee_mroot, header_extensions) => {
@@ -274,7 +274,7 @@ pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction
         }
     };
 
-    contractInteract('ultrainio', "acceptheader", params, "user.111", config.keyProvider[0] );
+    contractInteract('ultrainio', "acceptheader", params, myAccountAsCommittee, config.keyProvider[0] );
 }
 
 
