@@ -190,6 +190,10 @@ function invokeSystemContract( resultJson) {
 
     result = buildCommittee(jsonArray, resultJson, 0, result);
 
+    if(result.length==0) {
+        return;
+    }
+
     try {
 
         u3Sub.contract('ultrainio').then(actions => {
