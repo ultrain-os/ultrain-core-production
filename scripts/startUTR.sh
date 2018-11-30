@@ -18,4 +18,6 @@ docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} ba
 docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "$cmd $ULTRAIN_PATH"
 cmd="nohup $ULTRAIN_PATH/ultrain-core/scripts/logrotate.sh &"
 docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "$cmd"
+
+docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "npm install && /opt/node/lib/node_modules/pm2/bin/pm2 start $ULTRAIN_PATH/ultrain-core/scripts/ultrainmng/src/com/ultrain/common/SideChainBlockInfoService.js"
 #docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec {} bash -c "rm -rf /root/.local/share/ultrainio/nodultrain/ "
