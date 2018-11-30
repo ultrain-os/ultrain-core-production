@@ -212,7 +212,7 @@ function invokeSystemContract( resultJson) {
     }
 
     //列表更新
-    // jsonArray = resultJson;
+    jsonArray = resultJson;
 }
 
 pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction_mroot, action_mroot, committee_mroot, header_extensions) => {
