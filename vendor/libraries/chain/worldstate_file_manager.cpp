@@ -192,7 +192,7 @@ ws_file_manager::ws_file_manager(std::string dir)
 :m_dir_path(dir)
 {
     if(m_dir_path.empty()){
-        m_dir_path = (fc::app_path() / "ultrainio/nodultrain/data/worldstate").string();
+        m_dir_path = (fc::app_path() / "ultrainio/wssultrain/data/worldstate").string();
     }
     
     if (!bfs::is_directory(m_dir_path)){
