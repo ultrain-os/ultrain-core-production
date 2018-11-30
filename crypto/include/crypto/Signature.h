@@ -7,14 +7,14 @@ namespace ultrainio {
     public:
         Signature();
         explicit Signature(const std::string& s);
-        Signature(const uint8_t* s, size_t len);
+        Signature(const unsigned char* s, size_t len);
         Signature(const Signature& rhs) = default;
         Signature&operator = (const Signature& rhs) = default;
         explicit operator std::string() const;
         bool isValid() const;
 
     private:
-        bool getRaw(uint8_t* rawKey, size_t len) const;
+        bool getRaw(unsigned char* rawKey, size_t len) const;
         std::string m_sig;
 
         friend class PublicKey;

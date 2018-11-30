@@ -12,7 +12,7 @@ namespace ultrainio {
 
         explicit PublicKey(const std::string& key);
 
-        PublicKey(uint8_t* rawKey, size_t len);
+        PublicKey(unsigned char* rawKey, size_t len);
 
         PublicKey(const PublicKey& rhs) = default;
 
@@ -27,7 +27,7 @@ namespace ultrainio {
         bool isValid() const;
 
     private:
-        bool getRaw(uint8_t* rawKey, size_t len) const;
+        bool getRaw(unsigned char* rawKey, size_t len) const;
         std::string m_key;
     };
 }
