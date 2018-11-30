@@ -87,7 +87,7 @@ let u3Sub = createU3({ ...configSub, sign: false, broadcast: false });
 // });
 
 var path = '/root/.local/share/ultrainio/nodultrain/config.ini';
-path = "config.ini";
+// path = "config.ini";
 
 var configIni = ini.parse(fs.readFileSync(path,'utf-8'));
 
