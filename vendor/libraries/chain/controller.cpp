@@ -210,7 +210,7 @@ struct controller_impl {
    }
 
    void create_worldstate(){
-       auto size = db.get_segment_manager()->get_size()-db.get_free_memory()+10*boost::interprocess::mapped_region::get_page_size();
+       auto size = db.get_segment_manager()->get_size();
        ilog("create worldstate size ${size} path ${path}",("size",size)("path",conf.worldstate_dir));
 
        chainbase::database* worldstate_db = new chainbase::database(conf.worldstate_dir,database::read_write,size);
