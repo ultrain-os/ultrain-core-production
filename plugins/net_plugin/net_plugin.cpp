@@ -633,7 +633,7 @@ namespace ultrainio {
 	   if((listen_port_local == 20122)||(listen_port_remote == 20122))
 	   {
 	      c->pack_count_trxs++;
-	      if(c->pack_count_trxs > (2000 * app().get_plugin<producer_uranus_plugin>().get_round_interval()))
+	      if(c->pack_count_trxs > (10000 * app().get_plugin<producer_uranus_plugin>().get_round_interval()))
 	      {
 		      c->pack_count_drop_trxs++;
 		      return ;
@@ -642,7 +642,7 @@ namespace ultrainio {
 	   else if((listen_port_local ==20123)||(listen_port_remote == 20123))
 	   {
 	      c->pack_count_rpos++;
-	      if(c->pack_count_rpos > 1000 )
+	      if(c->pack_count_rpos > (10000 * app().get_plugin<producer_uranus_plugin>().get_round_interval()) )
 	      {
 		      c->pack_count_drop_rpos++;
 		      return ;
