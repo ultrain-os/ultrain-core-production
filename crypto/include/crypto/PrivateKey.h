@@ -7,9 +7,10 @@
 #include <crypto/Signature.h>
 
 namespace ultrainio {
+    // ed25519
     class PrivateKey {
     public:
-        static bool generate(PrivateKey& sk, PublicKey& pk);
+        static PrivateKey generate();
 
         static bool verifyKeyPair(const PublicKey& publicKey, const PrivateKey& privateKey);
 
@@ -17,7 +18,7 @@ namespace ultrainio {
         // hex string
         explicit PrivateKey(const std::string& key);
 
-        PrivateKey(unsigned char* rawKey, size_t len);
+        PrivateKey(uint8_t* rawKey, size_t len);
 
         PrivateKey(const PrivateKey& rhs) = default;
 
@@ -27,13 +28,15 @@ namespace ultrainio {
 
         Signature sign(const Digest& digest) const;
 
+        // valid when PrivateKey produced by PrivateKey::generate now
         PublicKey getPublicKey() const;
 
         bool isValid() const;
 
     private:
-        bool getRaw(unsigned char* rawKey, size_t len) const;
+        bool getRaw(uint8_t* rawKey, size_t len) const;
 
         std::string m_key;
+        PublicKey m_publicKey;
     };
 }

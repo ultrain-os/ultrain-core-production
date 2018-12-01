@@ -17,9 +17,8 @@ using namespace std;
 BOOST_AUTO_TEST_SUITE(signer_validator_test_suite)
 
     BOOST_AUTO_TEST_CASE(normal) {
-        PrivateKey privateKey;
-        PublicKey publicKey;
-        PrivateKey::generate(privateKey, publicKey);
+        PrivateKey privateKey = PrivateKey::generate();
+        PublicKey publicKey = privateKey.getPublicKey();
         Block block;
         block.version = 1;
         block.proposer = N("ultr_genesis");

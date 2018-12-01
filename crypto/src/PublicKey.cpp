@@ -1,12 +1,12 @@
-#include <crypto/PublicKey.h>
+#include "crypto/PublicKey.h"
 
 #include <base/Hex.h>
-#include <crypto/Bls.h>
+#include <crypto/Ed25519.h>
 
 namespace ultrainio {
     PublicKey::PublicKey(const std::string& key) : m_key(key) {}
 
-    PublicKey::PublicKey(unsigned char* rawKey, size_t len) : m_key(Hex::toHex<unsigned char>(rawKey, len)) {}
+    PublicKey::PublicKey(uint8_t* rawKey, size_t len) : m_key(Hex::toHex(rawKey, len)) {}
 
     bool PublicKey::operator == (const PublicKey& rhs) const {
         return m_key == rhs.m_key;
@@ -20,30 +20,27 @@ namespace ultrainio {
         if (!isValid()) {
             return false;
         }
-        unsigned char pk[Bls::BLS_PUB_KEY_LENGTH];
-        if (!getRaw(pk, Bls::BLS_PUB_KEY_LENGTH)) {
+        uint8_t pk[Ed25519::PUBLIC_KEY_LEN];
+        if (!getRaw(pk, Ed25519::PUBLIC_KEY_LEN)) {
             return false;
         }
-        unsigned char sigStr[Bls::BLS_SIGNATURE_LENGTH];
-        if (!signature.getRaw(sigStr, Bls::BLS_SIGNATURE_LENGTH)) {
+        uint8_t sigUint8[Ed25519::SIGNATURE_LEN];
+        if (!signature.getRaw(sigUint8, Ed25519::SIGNATURE_LEN)) {
             return false;
         }
         std::string h = std::string(digest);
-        if (Bls::getDefault()->verify(pk, sigStr, (void*)h.c_str(), h.length())) {
+        if (Ed25519::verify((const uint8_t*)h.c_str(), h.length(), sigUint8, pk)) {
             return true;
         }
         return false;
     }
 
-    bool PublicKey::getRaw(unsigned char* rawKey, size_t len) const {
-        if (len < Bls::BLS_PUB_KEY_LENGTH) {
-            return false;
-        }
-        return Hex::fromHex<unsigned char>(m_key, rawKey, len) == Bls::BLS_PUB_KEY_LENGTH;
+    bool PublicKey::getRaw(uint8_t* rawKey, size_t len) const {
+        return Hex::fromHex(m_key, rawKey, len) == Ed25519::PUBLIC_KEY_LEN;
     }
 
     bool PublicKey::isValid() const {
-        if (m_key.length() == 2 * Bls::BLS_PUB_KEY_LENGTH) {
+        if (m_key.length() == Ed25519::PUBLIC_KEY_HEX_LEN) {
             return true;
         }
         return false;

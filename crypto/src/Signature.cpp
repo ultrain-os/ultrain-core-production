@@ -1,27 +1,24 @@
 #include "crypto/Signature.h"
 
 #include <base/Hex.h>
-#include <crypto/Bls.h>
+#include <crypto/Ed25519.h>
 
 namespace ultrainio {
     Signature::Signature() {}
 
     Signature::Signature(const std::string& sig) : m_sig(sig) {}
 
-    Signature::Signature(const unsigned char* sig, size_t len) : m_sig(Hex::toHex<unsigned char>(sig, len)) {}
+    Signature::Signature(const uint8_t* sig, size_t len) : m_sig(Hex::toHex(sig, len)) {}
 
     Signature::operator std::string() const {
         return m_sig;
     }
 
     bool Signature::isValid() const {
-        return m_sig.length() == 2 * Bls::BLS_SIGNATURE_LENGTH;
+        return m_sig.length() == Ed25519::SIGNATURE_HEX_LEN;
     }
 
-    bool Signature::getRaw(unsigned char* rawKey, size_t len) const {
-        if (len < Bls::BLS_SIGNATURE_LENGTH) {
-            return false;
-        }
-        return Hex::fromHex<unsigned char>(m_sig, rawKey, len) == Bls::BLS_SIGNATURE_LENGTH;
+    bool Signature::getRaw(uint8_t* rawKey, size_t len) const {
+        return Hex::fromHex(m_sig, rawKey, len) == Ed25519::SIGNATURE_LEN;
     }
 }

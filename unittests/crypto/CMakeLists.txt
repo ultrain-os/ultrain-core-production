@@ -1,15 +1,6 @@
-#bls
-add_executable( bls_test
-        BlsTest.cpp)
+add_executable( key_test
+        KeyTest.cpp)
 
-target_link_libraries( bls_test ultrainio_crypto )
+target_link_libraries( key_test ultrainio_rpos )
 
-add_test(NAME bls_test COMMAND bls_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-#private/public key
-add_executable( pripubkey_test
-        PriPubKeyTest.cpp)
-
-target_link_libraries( pripubkey_test ultrainio_crypto )
-
-add_test(NAME pripubkey_test COMMAND pripubkey_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME key_test COMMAND key_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

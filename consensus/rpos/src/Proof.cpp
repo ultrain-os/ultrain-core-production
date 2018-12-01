@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <limits>
 
-#include <crypto/Bls.h>
+#include <crypto/Ed25519.h>
 
 namespace ultrainio {
     Proof::Proof(const Signature& signature) : m_sign(signature) {}
@@ -23,8 +23,8 @@ namespace ultrainio {
         if (!isValid()) {
             return std::numeric_limits<uint32_t>::max();
         }
-        unsigned char raw[Bls::BLS_SIGNATURE_LENGTH];
-        if (!m_sign.getRaw(raw, Bls::BLS_SIGNATURE_LENGTH)) {
+        uint8_t raw[Ed25519::SIGNATURE_LEN];
+        if (!m_sign.getRaw(raw, Ed25519::SIGNATURE_LEN)) {
             return std::numeric_limits<uint32_t>::max();
         }
 
