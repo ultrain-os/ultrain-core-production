@@ -70,6 +70,8 @@ namespace ultrainio {
 
         bool isGenesisLeader(const AccountName& account) const;
 
+        bool committeeHasWorked2() const;
+
     private:
         static std::shared_ptr<NodeInfo> s_keyKeeper;
 
@@ -79,9 +81,6 @@ namespace ultrainio {
         PublicKey findInCommitteeMemberList(const AccountName& account) const;
 
         void computeCommitteeMroot();
-
-        // TODO should remove committeeHasWorked
-        bool committeeHasWorked2() const;
 
         uint32_t m_blockNum = 0;
         chain::checksum256_type m_committeeMroot;

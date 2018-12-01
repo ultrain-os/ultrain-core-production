@@ -215,34 +215,34 @@ namespace ultrainio {
     }
 
     uint32_t StakeVoteBase::proposerPriority(const AccountName& account) {
-        ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
     bool StakeVoteBase::realIsProposer(const AccountName& account) {
-        ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
     bool StakeVoteBase::realIsVoter(const AccountName& account) {
-        ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
     int StakeVoteBase::realGetSendEchoThreshold() const {
-        ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
     int StakeVoteBase::realGetNextRoundThreshold() const {
-        ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
     int StakeVoteBase::realGetEmptyBlockThreshold() const {
-        ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
     int StakeVoteBase::realGetEmptyBlock2Threshold() const {
-        ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
     uint32_t StakeVoteBase::realGetProposerNumber() const {
-        ULTRAIN_ASSERT(false, chain::chain_exception, "no be there");
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 }
