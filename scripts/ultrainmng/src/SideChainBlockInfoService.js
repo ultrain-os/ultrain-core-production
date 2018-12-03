@@ -175,7 +175,7 @@ const getSubChainId = async () => {
  * @returns {Promise<*>}
  */
 async function getRemoteIpAddress() {
-    url="";
+    url="http://47.52.43.102:3335/api/remoteEndpoint";
     const rs = await axios.get(url);
 
     return rs.data;
