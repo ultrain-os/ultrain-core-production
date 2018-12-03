@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./src/com/ultrain/common/SideChainBlockInfoService.js"
+    "start": "node ./src/SideChainBlockInfoService.js"
   },
   "dependencies": {
     "async": "^2.6.1",

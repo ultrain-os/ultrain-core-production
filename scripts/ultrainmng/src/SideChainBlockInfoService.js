@@ -96,7 +96,9 @@ var u3Sub;// = createU3({ ...configSub, sign: true, broadcast: true });
  * 读写相关的配置
  */
 function initConfig() {
-    var configIniLocal = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
+    // var configIniLocal = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
+    const filePath  =   path.join(process.cwd(),'config.ini');
+    var configIniLocal = ini.parse(fs.readFileSync(filePath, 'utf-8'));
 
     configIniLocal.name = 'helloworld';
     configIniLocal.version = '2,0.0';
@@ -169,6 +171,7 @@ const getSubChainId = async () => {
  * @returns {Promise<*>}
  */
 async function getRemoteIpAddress() {
+    url="";
     const rs = await axios.get(url);
 
     return rs.data;
