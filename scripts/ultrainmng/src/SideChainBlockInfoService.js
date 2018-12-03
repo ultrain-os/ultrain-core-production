@@ -59,7 +59,7 @@ let configSub = {
     // httpEndpoint: 'http://40.117.73.83:8888',
     // httpEndpoint_history: 'http://40.117.73.83:3000',
     // keyProvider: ['5KATDC5YqmSTfy99BWqRugriDmeaTAqpwZxXV8jQafdwJqTaqF4'], // WIF string or array of keys..
-    // httpEndpoint: 'http://172.16.10.5:8899',
+    // httpEndpoint: 'http://172.16.10.5:8877',
     // httpEndpoint_history: 'http://172.16.10.5:3000',
     // httpEndpoint: 'http://172.16.10.4:8877',
     // httpEndpoint_history: 'http://172.16.10.4:3000',
