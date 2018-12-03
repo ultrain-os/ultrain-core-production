@@ -87,6 +87,16 @@ namespace ultrainiosystem {
             _subchain.head_block_id     = block_id_type();
             _subchain.head_block_num    = 0;
         });
+        auto ite = _producers.begin();
+        for(; ite != _producers.end(); ++ite) {
+            if(ite->location == chain_name) {
+                _producers.modify(ite, N(ultrainio), [&](auto & p) {
+                    for(uint32_t i = 0; i < num_rate; ++i) {
+                        p.unpaid_blocks[i] = 0;
+                    }
+                });
+            }
+        }
     }
 /*
     void system_contract::register_relayer(const std::string& miner_pk,

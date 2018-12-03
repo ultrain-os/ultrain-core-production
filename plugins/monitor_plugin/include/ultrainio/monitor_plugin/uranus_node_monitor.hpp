@@ -31,6 +31,7 @@ namespace ultrainio {
 
     struct periodic_report_dynamic_data {
         std::string  nodeIp;
+        std::string  minerName;
         uint32_t     blockNum;
         std::string  phase;
         uint32_t     baxCount;
@@ -99,6 +100,7 @@ namespace ultrainio {
             periodic_report_dynamic_data reportData;
             std::shared_ptr<UranusNode> pNode = m_pNode.lock();
             if (pNode) {
+                reportData.minerName         = std::string(StakeVoteBase::getMyAccount());
                 reportData.phase             = phaseStr[static_cast<int32_t>(pNode->m_phase)];
                 reportData.baxCount          = pNode->m_baxCount;
                 reportData.syncing           = pNode->m_syncing;
@@ -211,7 +213,7 @@ namespace ultrainio {
     };
 }
 
-FC_REFLECT( ultrainio::periodic_report_dynamic_data, (nodeIp)(blockNum)(phase)(baxCount)(transactionNum)(blockProposer)(syncing)
+FC_REFLECT( ultrainio::periodic_report_dynamic_data, (nodeIp)(minerName)(blockNum)(phase)(baxCount)(transactionNum)(blockProposer)(syncing)
                                                      (syncFailed)(connected)(ready)(blockHash)(previousBlockHash)(ba0BlockTime)
                                                      (ba1BlockTime)(cpu)(memory)(virtualMemory)(activePeers) )
 FC_REFLECT( ultrainio::periodic_report_static_data, (nodeIp)(version)(nonProducingNode)(genesisLeaderPk)(publicKey)
