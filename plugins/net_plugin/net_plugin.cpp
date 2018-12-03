@@ -344,7 +344,7 @@ namespace ultrainio {
     constexpr auto     def_send_buffer_size_mb = 4;
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
     constexpr auto     def_max_clients = 25; // 0 for unlimited clients
-    constexpr auto     def_max_nodes_per_host = 2; 
+    constexpr auto     def_max_nodes_per_host = 2;
     constexpr auto     def_conn_retry_wait = 30;
     constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
@@ -514,10 +514,8 @@ namespace ultrainio {
         uint32_t                fork_head_num = 0;
         optional<request_message> last_req;
         RspLastBlockNumMsg      last_block_info;
-        uint32_t pack_count_rpos = 0;
-	uint32_t pack_count_trxs = 0;
-	uint32_t pack_count_drop_rpos = 0;
-	uint32_t pack_count_drop_trxs = 0; 
+        uint32_t pack_count_rcv = 0;
+        uint32_t pack_count_drop = 0;
         connection_status get_status()const {
             connection_status stat;
             stat.peer = peer_addr;
@@ -592,7 +590,7 @@ namespace ultrainio {
          * encountered unpacking or processing the message.
          */
         bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
-
+        bool check_pack_speed_exceed();
         bool add_peer_block(const peer_block_state &pbs);
 
         fc::optional<fc::variant_object> _logger_variant;
@@ -628,26 +626,6 @@ namespace ultrainio {
 
         template <typename T> void operator()(const T &msg) const
         {
-           auto listen_port_local = c->socket->local_endpoint().port();
-	   auto listen_port_remote = c->socket->remote_endpoint().port();
-	   if((listen_port_local == 20122)||(listen_port_remote == 20122))
-	   {
-	      c->pack_count_trxs++;
-	      if(c->pack_count_trxs > (10000 * app().get_plugin<producer_uranus_plugin>().get_round_interval()))
-	      {
-		      c->pack_count_drop_trxs++;
-		      return ;
-	      }
-	   }
-	   else if((listen_port_local ==20123)||(listen_port_remote == 20123))
-	   {
-	      c->pack_count_rpos++;
-	      if(c->pack_count_rpos > (10000 * app().get_plugin<producer_uranus_plugin>().get_round_interval()) )
-	      {
-		      c->pack_count_drop_rpos++;
-		      return ;
-	      }
-	   }
 	   impl.handle_message( c, msg);
         }
     };
@@ -1192,6 +1170,16 @@ namespace ultrainio {
         }
     }
 
+    bool connection::check_pack_speed_exceed() {
+        static int count_threhold = 10000 * app().get_plugin<producer_uranus_plugin>().get_round_interval();
+        pack_count_rcv ++;
+        if(pack_count_rcv > count_threhold)
+        {
+            pack_count_drop++;
+            return true;
+        }
+        return false;
+    }
     bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
         try {
             // If it is a SyncBlockMsg, then save the raw message for the cache
@@ -1209,6 +1197,11 @@ namespace ultrainio {
                 blk_buffer.resize(message_length);
                 auto index = pending_message_buffer.read_index();
                 pending_message_buffer.peek(blk_buffer.data(), message_length, index);
+            }
+            bool isexceed = check_pack_speed_exceed();
+            if(isexceed)
+            {
+                return true;
             }
             auto ds = pending_message_buffer.create_datastream();
             net_message msg;
@@ -1489,7 +1482,7 @@ namespace ultrainio {
         connect( c );
         return "added connection";
     }
- 
+
     void net_plugin_impl::connect( connection_ptr c ) {
         if( c->no_retry != go_away_reason::no_reason) {
             fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
@@ -2300,11 +2293,19 @@ namespace ultrainio {
       }
       dispatcher->recv_transaction(c, tid);
       //uint64_t code = 0;
-      chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+      chain_plug->accept_transaction(msg, true, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
           if (result.contains<fc::exception_ptr>()) {
               auto e_ptr = result.get<fc::exception_ptr>();
-              if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value)
+              // Non-producing node does not pre-run network borne trx but still broadcasts it.
+              if (e_ptr->code() == discard_network_trx_for_non_producing_node::code_value) {
+                  dispatcher->bcast_transaction(msg);
+                  //elog("discard_network_trx_for_non_producing_node::code_value)");
+                  return;
+              } else if (e_ptr->code() != tx_duplicate::code_value &&
+                         e_ptr->code() != expired_tx_exception::code_value &&
+                         e_ptr->code() != node_is_syncing::code_value) {
                   elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
+              }
           } else {
               auto trace = result.get<transaction_trace_ptr>();
               if (!trace->except) {
@@ -2355,23 +2356,18 @@ namespace ultrainio {
     }
     void net_plugin_impl::reset_speedlimit_monitor( )
     {
-        auto it = connections.begin();
-	while(it != connections.end()) {
-	 if( (*it)->socket && (*it)->socket->is_open() && !(*it)->connecting) 
-	 {
-		 ilog("peer ${peer} count_rpos ${count_rpos} count_trx ${count_trxs} count_drop_rpos ${drop_rpos} drop_trxs ${drop_trxs}",
-				 ("peer",(*it)->peer_name())
-				 ("count_rpos",(*it)->pack_count_rpos)
-				 ("count_trxs",(*it)->pack_count_trxs)
-				 ("drop_rpos",(*it)->pack_count_drop_rpos)
-				 ("drop_trxs",(*it)->pack_count_drop_trxs));
-		 (*it)->pack_count_rpos=0;
-		 (*it)->pack_count_trxs=0;
-	 }
-	 ++it;
-	}
+        for(auto &c : connections) {
+            if(c->current()){
+                ilog("${p} peer ${peer} rpos count_rcv ${counnt_rcv} count_drop ${count_drop} ",
+                        ("p",c->priority==msg_priority_rpos ? "rpos":"trx")
+                        ("peer",c->peer_name())
+                        ("counnt_rcv",c->pack_count_rcv)
+                        ("count_drop",c->pack_count_drop));
+                c->pack_count_rcv=0;
+            }
+        }
     }
-    void net_plugin_impl::start_speedlimit_monitor_timer( ) 
+    void net_plugin_impl::start_speedlimit_monitor_timer( )
     {
 
         speedmonitor_timer->expires_from_now( speedmonitor_period);
@@ -2925,7 +2921,7 @@ namespace ultrainio {
                         my->close(con);
                     }
                 }
- 
+
                 my->trx_listener.acceptor = nullptr;
             }
             ilog( "exit shutdown" );
@@ -2969,7 +2965,7 @@ namespace ultrainio {
    void net_plugin::send_last_block_num(const string& ip_addr, const ultrainio::RspLastBlockNumMsg& msg) {
        ilog("send last block num:${n} hash:${h} prev hash:${ph}", ("n", msg.blockNum)("h", msg.blockHash)("ph", msg.prevBlockHash));
        my->send_last_block_num(ip_addr, net_message(msg));
-   } 
+   }
 
    void net_plugin::stop_sync_block() {
        ilog("stop sync block");

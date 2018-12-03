@@ -95,7 +95,7 @@ struct txn_test_gen_plugin_impl {
    static void push_next_transaction(const std::shared_ptr<std::vector<signed_transaction>>& trxs, size_t index, const std::function<void(const fc::exception_ptr&)>& next ) {
       //ilog("push_next_transaction: trxs->size=${p} index=${m}", ("p", trxs->size())("m", index));
       chain_plugin& cp = app().get_plugin<chain_plugin>();
-      cp.accept_transaction( packed_transaction(trxs->at(index), packed_transaction::zlib), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
+      cp.accept_transaction( packed_transaction(trxs->at(index), packed_transaction::zlib), false, [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
       //      cp.accept_transaction( packed_transaction(trxs->at(index)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
 	  if (index + 1 < trxs->size()) {
 	      push_next_transaction(trxs, index + 1, next);

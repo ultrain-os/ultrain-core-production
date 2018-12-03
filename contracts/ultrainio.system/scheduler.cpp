@@ -8,7 +8,7 @@ namespace ultrainiosystem {
     /// @abi action
     void system_contract::regsubchain(uint64_t chain_name, uint16_t chain_type) {
         require_auth(N(ultrainio));
-        ultrainio_assert(chain_name == default_chain_name, "subchian cannot named as default.");
+        ultrainio_assert(chain_name != default_chain_name, "subchian cannot named as default.");
         auto itor = _subchains.find(chain_name);
         ultrainio_assert(itor == _subchains.end(), "There has been a subchian with this name.");
 
@@ -30,13 +30,20 @@ namespace ultrainiosystem {
         ultrainio_assert(ite_chain != _subchains.end(), "This subchian is not existed.");
         //todo, check if the subchain is avtive?
         account_name block_proposer = header.proposer;
-        auto itor = ite_chain->committee_members.begin();
-        for(; itor != ite_chain->committee_members.end(); ++itor) {
-            if(itor->owner == block_proposer && itor->producer_key.size() == 64) {
-                break;
+
+        bool need_report = true;
+        if(block_proposer != N() && block_proposer != N(genesis)) {
+            auto itor = ite_chain->committee_members.begin();
+            for(; itor != ite_chain->committee_members.end(); ++itor) {
+                if(itor->owner == block_proposer) {
+                    break;
+                }
             }
+            ultrainio_assert(itor != ite_chain->committee_members.end(), "block proposer is not in committee list of this subchian.");
         }
-        ultrainio_assert(itor != ite_chain->committee_members.end(), "block proposer is not in committee list of this subchian.");
+        else {
+            need_report = false; //Don't pay for null block and all blocks produced by genesis
+        }
         //todo, check signatures.
 
         //compare previous with pre block's id.
@@ -48,7 +55,9 @@ namespace ultrainiosystem {
                   _subchain.head_block_num    = block_number;
               });
               //record proposer for rewards
-              reportblocknumber(block_proposer, 1);
+              if(need_report) {
+                  reportblocknumber(block_proposer, 1);
+              }
         }
         else if (ite_chain->head_block_id == header.id() && block_number == ite_chain->head_block_num) {
             //this block has been submited by other relayer
@@ -56,6 +65,7 @@ namespace ultrainiosystem {
         }
         else if (block_number == ite_chain->head_block_num) {
             //todo, fork chain block, how to handle?
+            ultrainio_assert(false, "fork chian block.");
         }
         else if (block_number > ite_chain->head_block_num + 1) {
             ultrainio_assert(false, "block number is greater than current block.");
@@ -64,7 +74,6 @@ namespace ultrainiosystem {
             ultrainio_assert(false, "block number is less than current block.");
         }
         else {
-            //right block num, but wrong previous hash
             ultrainio_assert(false, "block header verification failed.");
         }
     }

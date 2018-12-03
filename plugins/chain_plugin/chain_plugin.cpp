@@ -208,7 +208,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("max_block_cpu_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_cpu_usage),
            "max_block_cpu_usage,used in resource ,in genesis param,etc")
          ("max_block_net_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_net_usage),
-                "max_block_net_usage,used in resource ,in genesis param,etc")	  
+                "max_block_net_usage,used in resource ,in genesis param,etc")
     	 ;
 
 // TODO: rate limiting
@@ -569,8 +569,10 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
 
-void chain_plugin::accept_transaction(const chain::packed_transaction& trx, next_function<chain::transaction_trace_ptr> next) {
-   my->incoming_transaction_async_method(std::make_shared<packed_transaction>(trx), false, std::forward<decltype(next)>(next));
+void chain_plugin::accept_transaction(const chain::packed_transaction& trx,
+                                      bool from_network,
+                                      next_function<chain::transaction_trace_ptr> next) {
+    my->incoming_transaction_async_method(std::make_shared<packed_transaction>(trx), std::forward<bool>(from_network), false, std::forward<decltype(next)>(next));
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -1177,7 +1179,7 @@ void read_write::push_tx(const read_write::push_tx_params& params, next_function
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
       } ULTRAIN_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      app().get_method<incoming::methods::transaction_async>()(pretty_input, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
+         app().get_method<incoming::methods::transaction_async>()(pretty_input, false, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
          if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());
          } else {

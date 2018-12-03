@@ -214,7 +214,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
 
       std::vector<std::tuple<packed_transaction_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
 
-      void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+      void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool from_network, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
           // We do pre-run here only for returning results asap to the transaction caller.
           chain::controller& chain = app().get_plugin<chain_plugin>().chain();
 
@@ -302,6 +302,11 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
                                };
 
           auto id = trx->id();
+
+          if (from_network) {
+              send_response(std::static_pointer_cast<fc::exception>(std::make_shared<discard_network_trx_for_non_producing_node>(FC_LOG_MESSAGE(error, "network trx discarded for this is non-producing node") )));
+              return;
+          }
 
           if (UranusNode::getInstance() && UranusNode::getInstance()->getSyncingStatus()) {
               send_response(std::static_pointer_cast<fc::exception>(std::make_shared<node_is_syncing>(FC_LOG_MESSAGE(error, "trx discarded, node is in block syncing status") )));
@@ -543,7 +548,7 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
 
    my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const packed_transaction_ptr& trx){
       try {
-         my->on_incoming_transaction_async(trx, false, [](const auto&){});
+         my->on_incoming_transaction_async(trx, false, false, [](const auto&){});
       } FC_LOG_AND_DROP();
    });
 
@@ -551,8 +556,8 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
       my->on_incoming_block(block);
    });
 
-   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider([this](const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
-      return my->on_incoming_transaction_async(trx, persist_until_expired, next );
+   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider([this](const packed_transaction_ptr& trx, bool from_network, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
+      return my->on_incoming_transaction_async(trx, from_network, persist_until_expired, next );
    });
 
 } FC_LOG_AND_RETHROW() }

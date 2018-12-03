@@ -196,6 +196,8 @@ namespace ultrainio { namespace chain {
                                     3040014, "Unknown transaction compression" )
       FC_DECLARE_DERIVED_EXCEPTION( node_is_syncing, transaction_exception,
                                     3040015, "Discard trx cause node is syncing blocks" )
+      FC_DECLARE_DERIVED_EXCEPTION( discard_network_trx_for_non_producing_node, transaction_exception,
+                                    3040016, "Discard network trx for_non_producing_node" )
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
                                     3050000, "Action validate exception" )
