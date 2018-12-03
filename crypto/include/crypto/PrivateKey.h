@@ -10,7 +10,7 @@ namespace ultrainio {
     // ed25519
     class PrivateKey {
     public:
-        static PrivateKey generate();
+        static bool generate(PublicKey& publicKey, PrivateKey& privateKey);
 
         static bool verifyKeyPair(const PublicKey& publicKey, const PrivateKey& privateKey);
 
@@ -28,7 +28,6 @@ namespace ultrainio {
 
         Signature sign(const Digest& digest) const;
 
-        // valid when PrivateKey produced by PrivateKey::generate now
         PublicKey getPublicKey() const;
 
         bool isValid() const;
@@ -37,6 +36,5 @@ namespace ultrainio {
         bool getRaw(uint8_t* rawKey, size_t len) const;
 
         std::string m_key;
-        PublicKey m_publicKey;
     };
 }

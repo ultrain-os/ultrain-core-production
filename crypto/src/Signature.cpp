@@ -1,7 +1,6 @@
 #include "crypto/Signature.h"
 
 #include <base/Hex.h>
-#include <crypto/Ed25519.h>
 
 namespace ultrainio {
     Signature::Signature() {}
@@ -15,10 +14,15 @@ namespace ultrainio {
     }
 
     bool Signature::isValid() const {
-        return m_sig.length() == Ed25519::SIGNATURE_HEX_LEN;
+        // loose check
+        return m_sig.length() != 0;
     }
 
     bool Signature::getRaw(uint8_t* rawKey, size_t len) const {
-        return Hex::fromHex(m_sig, rawKey, len) == Ed25519::SIGNATURE_LEN;
+        if (rawKey == nullptr || len <= 0) {
+            return false;
+        }
+        Hex::fromHex<uint8_t>(m_sig, rawKey, len);
+        return true;
     }
 }

@@ -14,15 +14,17 @@ using namespace std;
 // Private/Public Key
 BOOST_AUTO_TEST_SUITE(key_test_suite)
     BOOST_AUTO_TEST_CASE(generate) {
-        PrivateKey privateKey = PrivateKey::generate();
-        PublicKey publicKey = privateKey.getPublicKey();
+        PrivateKey privateKey;
+        PublicKey publicKey;
+        PrivateKey::generate(publicKey, privateKey);
         BOOST_CHECK(privateKey.isValid());
         BOOST_CHECK(publicKey.isValid());
     }
 
     BOOST_AUTO_TEST_CASE(sign) {
-        PrivateKey privateKey = PrivateKey::generate();
-        PublicKey publicKey = privateKey.getPublicKey();
+        PrivateKey privateKey;
+        PublicKey publicKey;
+        PrivateKey::generate(publicKey, privateKey);
         Digest digest(std::string("hash test"));
         Signature signature = privateKey.sign(digest);
         BOOST_CHECK(signature.isValid());
@@ -30,20 +32,24 @@ BOOST_AUTO_TEST_SUITE(key_test_suite)
     }
 
     BOOST_AUTO_TEST_CASE(verify) {
-        PrivateKey privateKey = PrivateKey::generate();
-        PublicKey publicKey = privateKey.getPublicKey();
-        PrivateKey sk1 = PrivateKey::generate();
-        PublicKey pk1 = sk1.getPublicKey();
+        PrivateKey privateKey;
+        PublicKey publicKey;
+        PrivateKey::generate(publicKey, privateKey);
+        PrivateKey sk1;
+        PublicKey pk1;
+        PrivateKey::generate(pk1, sk1);
         Digest digest(std::string("hash test"));
         Signature signature = privateKey.sign(digest);
         BOOST_CHECK(!pk1.verify(signature, digest));
     }
 
     BOOST_AUTO_TEST_CASE(verifyKeyPair) {
-        PrivateKey privateKey = PrivateKey::generate();
-        PublicKey publicKey = privateKey.getPublicKey();
-        PrivateKey sk1 = PrivateKey::generate();
-        PublicKey pk1 = sk1.getPublicKey();
+        PrivateKey privateKey;
+        PublicKey publicKey;
+        PrivateKey::generate(publicKey, privateKey);
+        PrivateKey sk1;
+        PublicKey pk1;
+        PrivateKey::generate(pk1, sk1);
         BOOST_CHECK(PrivateKey::verifyKeyPair(publicKey, privateKey));
         BOOST_CHECK(PrivateKey::verifyKeyPair(pk1, sk1));
 
@@ -52,9 +58,13 @@ BOOST_AUTO_TEST_SUITE(key_test_suite)
 
         std::string priHexStr(privateKey);
         std::string pubHexStr(publicKey);
-        cout << "pri : " << priHexStr << endl;
-        cout << "pub : " << pubHexStr << endl;
         BOOST_CHECK(PrivateKey::verifyKeyPair(PrivateKey(priHexStr).getPublicKey(), PrivateKey(priHexStr)));
+    }
+
+    BOOST_AUTO_TEST_CASE(verifyKeyPair_genesis) {
+        PrivateKey privateKey("5079f570cde7801c70a19fb2c7e292d09923218f2684c8a1121c2da7a02a5dc3369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35");
+        PublicKey publicKey("369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35");
+        BOOST_CHECK(PrivateKey::verifyKeyPair(publicKey, privateKey));
     }
 
 BOOST_AUTO_TEST_SUITE_END()
