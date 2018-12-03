@@ -118,6 +118,7 @@ function initConfig() {
     url= configIniTarget["url"];
     url="http://47.52.43.102:3335/api/remoteEndpoint";
     chain_name=configIniTarget["chain_name"];
+    chain_name="11";
 
     //修改config.ini文件
     // fs.writeFileSync('./config.ini', ini.stringify(configIniLocal, {section: ''}));
