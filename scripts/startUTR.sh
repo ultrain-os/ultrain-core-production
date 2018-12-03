@@ -9,7 +9,7 @@ do echo $i;
 docker inspect $i -f '{{.Config.Hostname}}';
 docker inspect $i -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}';#'{{.NetworkSettings.IPAddress}}' # '{{.NetworkSettings.Networks.globalnet.IPAddress}}';
 done > config/IPs/dockerinfo.txt
-python generateconfig.py  &>> generateconfig.log  &
+python generateconfig.py $3 &>> generateconfig.log  &
 docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "mkdir -p /root/.local/share/ultrainio/nodultrain/config"
 docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "cp $ULTRAIN_PATH/ultrain-core/scripts/config/config/{}.ini /root/.local/share/ultrainio/nodultrain/config/config.ini"
 cmd="$ULTRAIN_PATH/ultrain-core/scripts/_runultrain.sh "

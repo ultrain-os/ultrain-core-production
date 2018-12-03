@@ -1,11 +1,13 @@
 #!/usr/local/bin/python2
-
+import argparse
 import os
 import datetime
 import time
 import random
 import copy
-
+parser = argparse.ArgumentParser()
+parser.add_argument('-m', '--masterchain', action='store_true', help="set current master chain")
+args = parser.parse_args()
 class Host(object):
 
 	def __init__(self, ip, constainers):
@@ -58,13 +60,13 @@ sk_list = ["5079f570cde7801c70a19fb2c7e292d09923218f2684c8a1121c2da7a02a5dc3369c
 
 accounts = [
 "genesis",
-"user.111",
-"user.112",
-"user.113",
-"user.114",
-"user.115",
-"user.121",
-"user.122",
+".111",
+".112",
+".113",
+".114",
+".115",
+".121",
+".122",
 ]
 dockerinfo = "dockerinfo"
 def select_sort(lists):
@@ -92,10 +94,17 @@ def load_parameters():
         containers.append(container)
     hosts[dockerinfo] = select_sort(containers)
 
+    adjustaccounts = ["genesis",]
+    if args.masterchain:
+        for a in accounts[1:]:
+            adjustaccounts.append("master"+a)
+    else:
+        for a in accounts[1:]:
+            adjustaccounts.append("user"+a)
+    allAccounts = adjustaccounts
     allIDs = allIDs + IDs
     allNames = allNames + Names
     allIPs = allIPs + IPs
-    allAccounts = accounts
     allPriKeys = sk_list 
     allPubKeys = pk_list 
 
