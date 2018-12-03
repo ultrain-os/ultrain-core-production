@@ -308,7 +308,6 @@ pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction
 async function scheduleCronstyle(){
     writeConfig();
      var ip = await  getRemoteIpAddress();
-     ip="172.16.10.4";
     console.log("before config.httpEndpoint=", config.httpEndpoint+":8877");
     config.httpEndpoint = "http://"+ip+":8877";
      console.log("after config.httpEndpoint=", config.httpEndpoint);
