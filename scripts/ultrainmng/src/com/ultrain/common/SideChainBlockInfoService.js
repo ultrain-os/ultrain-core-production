@@ -1,14 +1,20 @@
 // import {getActionsByAccount} from "u3.js/src";
 
 const { U3 } = require('u3.js');
-
-path = require('path');
+const axios = require('axios')
+const path = require('path');
 const fs = require('fs');
 const ini = require('ini');
-
+const schedule = require('node-schedule');
 const { createU3, format } = U3;
 
-let config = {
+
+var myAccountAsCommittee = "";
+var mySkAsCommittee = "";
+var jsonArray = [];
+
+
+var config = {
     // httpEndpoint:'http://172.16.10.4:8888',
     // httpEndpoint_history: 'http://172.16.10.4:3000',
     // keyProvider: ['5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H'], // WIF string or array of keys..
@@ -17,11 +23,11 @@ let config = {
     // httpEndpoint: 'http://40.117.73.83:8888',
     // httpEndpoint_history: 'http://40.117.73.83:3000',
     // keyProvider: ['5KATDC5YqmSTfy99BWqRugriDmeaTAqpwZxXV8jQafdwJqTaqF4'], // WIF string or array of keys..
-    httpEndpoint: 'http://172.16.10.4:8877',
-    httpEndpoint_history: 'http://172.16.10.4:3000',
+    httpEndpoint: "",
+    httpEndpoint_history: "",
     keyProvider: ['5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H'], // WIF string or array of keys..
 
-    chainId: '0eaaff4003d4e08a541332c62827c0ac5d96766c712316afe7ade6f99b8d70fe', // 32 byte (64 char) hex string
+    chainId: 'x', // 32 byte (64 char) hex string
     // chainId: '2616bfbc21e11d60d10cb798f00893c2befba10e2338b7277bb3865d2e658f58', // 32 byte (64 char) hex string
     expireInSeconds: 60,
     broadcast: true,
@@ -38,6 +44,7 @@ let config = {
     symbol: 'UGAS'
 
 };
+
 
 let configSub = {
     // httpEndpoint:'http://172.16.10.4:8888',
@@ -50,11 +57,13 @@ let configSub = {
     // keyProvider: ['5KATDC5YqmSTfy99BWqRugriDmeaTAqpwZxXV8jQafdwJqTaqF4'], // WIF string or array of keys..
     // httpEndpoint: 'http://172.16.10.5:8899',
     // httpEndpoint_history: 'http://172.16.10.5:3000',
+    // httpEndpoint: 'http://172.16.10.4:8877',
+    // httpEndpoint_history: 'http://172.16.10.4:3000',
     httpEndpoint: 'http://127.0.0.1:8888',
     httpEndpoint_history: 'http://127.0.0.1:3000',
     keyProvider: ['5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H'], // WIF string or array of keys..
 
-    chainId: '0eaaff4003d4e08a541332c62827c0ac5d96766c712316afe7ade6f99b8d70fe', // 32 byte (64 char) hex string
+    chainId: "x", // 32 byte (64 char) hex string
     // chainId: '2616bfbc21e11d60d10cb798f00893c2befba10e2338b7277bb3865d2e658f58', // 32 byte (64 char) hex string
     expireInSeconds: 60,
     broadcast: true,
@@ -72,43 +81,39 @@ let configSub = {
 
 };
 
+
 // let u3 = createU3(config);
-let u3 = createU3({ ...config, sign: true, broadcast: true });
-let u3NotPush = createU3({ sign: false, broadcast: false });
-
-let u3Sub = createU3({ ...configSub, sign: true, broadcast: true });
-
-// // 异步打开文件
-// console.log("准备打开文件！");
-// fs.readFile('CommandRun.js', {flag: 'r+', encoding: 'utf8'}, function(err, fd) {
-//     if (err) {
-//         return console.error(err);
-//     }
-//     console.log("文件打开成功！"+ fd.toString());
-//
-// });
-
-var path = '/root/.local/share/ultrainio/nodultrain/config/config.ini';
-// path = "config.ini";
-
-var configIni = ini.parse(fs.readFileSync(path,'utf-8'));
-
-configIni.name = 'helloworld';
-configIni.version = '2,0.0';
-
-console.log(configIni);
-console.log(configIni.key);
-console.log(configIni.aaa);
-console.log(configIni["my-account-as-committee"]);
-console.log(configIni["my-sk-as-committee"]);
-
-//修改config.ini文件
-fs.writeFileSync('./config.ini',ini.stringify(configIni,{section:''}));
+var u3;
+//= createU3({ ...config, sign: true, broadcast: true });
+var u3Sub;// = createU3({ ...configSub, sign: true, broadcast: true });
 
 
-var myAccountAsCommittee = configIni["my-account-as-committee"];
-var mySkAsCommittee = configIni["my-account-as-committee"];
+/**
+ * 读写相关的配置
+ */
+function writeConfig() {
+    var configIniLocal = ini.parse(fs.readFileSync('./config.ini','utf-8'));
 
+    configIniLocal.name = 'helloworld';
+    configIniLocal.version = '2,0.0';
+    // configIniLocal.httpEndpointMain=
+
+    //读取指定config.ini里面的文件路径，只需要修改文件路径即可
+    var configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path,'utf-8'));
+
+    console.log(configIniTarget["my-account-as-committee"]);
+    console.log(configIniTarget["my-sk-as-committee"]);
+    myAccountAsCommittee = configIniTarget["my-account-as-committee"];
+    mySkAsCommittee = configIniTarget["my-account-as-committee"];
+
+    //修改config.ini文件
+    fs.writeFileSync('./config.ini',ini.stringify(configIniLocal,{section:''}));
+}
+
+
+/**
+ * 转账
+ */
 function transferToUltrainio() {
     u3.contract('utrio.token').then(actions => {
         actions.transfer('user.111', 'user.112', '1.0000 UGAS', 'transfer memo').then((unsigned_transaction) => {
@@ -127,8 +132,49 @@ function transferToUltrainio() {
     });
 }
 
-var jsonArray = [];
+/**
+ * 获取主网主链Chain Id
+ * @returns {Promise<*>}
+ */
+const getMainChainId = async () => {
 
+    var u3 = createU3({ ...config, sign: true, broadcast: true });
+    var blockInfo = await u3.getBlockInfo("1");
+    console.log("block info  blockInfo.action_mroot=",blockInfo.action_mroot);
+    return blockInfo.action_mroot;
+}
+
+/**
+ * 获取子网子链Chain Id
+ * @returns {Promise<*>}
+ */
+const getSubChainId = async () => {
+
+    var u3Sub = createU3({ ...configSub, sign: true, broadcast: true });
+    var blockInfo = await u3Sub.getBlockInfo("1");
+    console.log("block info  blockInfo.action_mroot=",blockInfo.action_mroot);
+    return blockInfo.action_mroot;
+}
+
+/**
+ * 根据官网数据获取主网ip地址
+ * @returns {Promise<*>}
+ */
+async function getRemoteIpAddress() {
+    const url = 'https://developer.ultrain.io/api/remoteEndpoint';
+    const rs = await axios.get(url);
+
+    return rs.data;
+}
+
+/**
+ * 构建Committee
+ * @param resultJson
+ * @param jsonArray
+ * @param add
+ * @param result
+ * @returns {*}
+ */
 function buildCommittee(resultJson, jsonArray, add, result) {
     /**
      *
@@ -182,6 +228,11 @@ function buildCommittee(resultJson, jsonArray, add, result) {
     return result;
 }
 
+/**
+ * 调用系统合约更改子链committee
+ *
+ */
+
 function invokeSystemContract( resultJson) {
 
     var result = [];
@@ -219,45 +270,15 @@ function invokeSystemContract( resultJson) {
 
 }
 
+/**
+ *
+ * 把子链的header push到主网上
+ *
+ * 参数chain_name
+ *
+ */
 pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction_mroot, action_mroot, committee_mroot, header_extensions) => {
     console.log("=======" + timestamp + "," + proposer + "," + version + "," + previous + "," + transaction_mroot + "," + action_mroot + "," + committee_mroot + "," + header_extensions)
-
-    // try{
-    //
-    //     await u3.contract('ultrainio').then(async actions => {
-    //     let unsigned_transaction = await actions.acceptheader(format.encodeName('11'), {
-    //             "timestamp": timestamp,
-    //             "proposer": proposer,
-    //             // "proposerProof": proposerProof,
-    //             "version": version,
-    //             "previous": previous,
-    //             "transaction_mroot": transaction_mroot,
-    //             "action_mroot": action_mroot,
-    //             "committee_mroot": committee_mroot,
-    //             "header_extensions": [],
-    //         },
-    //         {
-    //             authorization: [`user.111@active`]
-    //         })
-    //
-    //     console.log("=======================unsigned_transaction============" + unsigned_transaction)
-    //
-    //     u3NotPush.sign(unsigned_transaction, config.keyProvider[0], config.chainId).then((signature) => {
-    //         if (signature) {
-    //             let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
-    //             console.log("=======================invoke============" + signedTransaction);
-    //
-    //             u3.pushTx(signedTransaction).then((processedTransaction) => {
-    //                 console.log(processedTransaction);
-    //                 // assert.equal(processedTransaction.transaction_id, unsigned_transaction.transaction_id);
-    //             });
-    //         }
-    //     })
-    // });
-    // }
-    // catch(e){
-    //     console.log('error..',e);
-    // }
 
     const params = {
         chain_name: 11,
@@ -278,10 +299,36 @@ pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction
 }
 
 
+/**
+ *
+ * 定时任务调度，3s获取一次
+ *
+ *
+ */
+async function scheduleCronstyle(){
+    writeConfig();
+     var ip = await  getRemoteIpAddress();
+     ip="172.16.10.4";
+    console.log("before config.httpEndpoint=", config.httpEndpoint+":8877");
+    config.httpEndpoint = "http://"+ip+":8877";
+     console.log("after config.httpEndpoint=", config.httpEndpoint);
 
-var schedule = require('node-schedule');
+    console.log("config.chainId=",config.chainId);
 
-function scheduleCronstyle(){
+    config.chainId = await getMainChainId();
+
+    console.log("config.chainId=",config.chainId);
+
+    console.log("configSub.chainId=",configSub.chainId);
+
+    configSub.chainId = await getSubChainId();
+
+    console.log("configSub.chainId=",configSub.chainId);
+
+    // let u3 = createU3(config);
+    u3 = createU3({ ...config, sign: true, broadcast: true });
+    u3Sub = createU3({ ...configSub, sign: true, broadcast: true });
+
     schedule.scheduleJob('*/3 * * * * *', function(){
         console.log('scheduleCronstyle:' + new Date());
         getBlocks();
@@ -291,12 +338,12 @@ function scheduleCronstyle(){
     });
 }
 
-
-// getData();
-// transferToUltrainio();
-
-// invokeSystemContract();
-
+/**
+ * 获取主网 子链block数据当前已提交的blockNum，然后去获取子链下一个blockNum
+ *
+ * chain_name 需要配置
+ * @returns {Promise<void>}
+ */
 const getBlocks = async () => {
     // let resultJson = await u3.getAllBlocksHeader(1, 2, {}, {_id: -1});
     //
@@ -318,95 +365,31 @@ const getBlocks = async () => {
 
         }
 
-
-
-
-    // result = resultJson.results;
-    // let blocks = result[0].block;
-    //
-    // for(var i in result) {
-    //     if(result[i]) {
-    //         console.log("result[i]=",result[i]);
-    //         console.log("===================u3.getBlockInfo result.proposer is:",result[i].block.proposer);
-    //         console.log("===================u3.getBlockInfo result.timestamp is:",result[i].block.timestamp);
-    //         console.log("===================u3.getBlockInfo result.proposerProof is:",result[i].block.proposerProof);
-    //         console.log("===================u3.getBlockInfo result.version is:",result[i].block.version);
-    //         console.log("===================u3.getBlockInfo result.previous is:",result[i].block.previous);
-    //         console.log("===================u3.getBlockInfo result.transaction_mroot is:",result[i].block.transaction_mroot);
-    //         console.log("===================u3.getBlockInfo result.action_mroot is:",result[i].block.action_mroot);
-    //         console.log("===================u3.getBlockInfo result.header_extensions is:",result[i].block.header_extensions);
-    //         console.log("===================u3.getBlockInfo result.block_num is:",result[i].block_num);
-    //         console.log("===================u3.getBlockInfo result.ref_block_prefix is:",result[i].ref_block_prefix);
-    //
-    //         // pushHeaderToTestnet(new Date(result[i].timestamp).getTime()/1000, result[i].proposerProof, result[i].version, result[i].previous, result[i].transaction_mroot, result[i].action_mroot)
-    //
-    //         pushHeaderToTestnet(result[i].timevalue, 'genesis', result[i].version, result[i].previous, result[i].transaction_mroot, result[i].action_mroot, result[i].committee_mroot, result[i].header_extensions)
-    //
-    //
-    //     }
-    // }
-
 }
+
+/**
+ * 获取主网子链的committee
+ * @returns {Promise<void>}
+ */
 const getSubchainCommittee = async () => {
     console.log("缓存的jsonArray="+jsonArray);
     let result = await u3.getSubchainCommittee({"chain_name":"11"});
 
-    // let result = [];
-    //
-    // result.push({owner: "genesis"+Math.round(Math.random()*10), miner_pk: "369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"});
-    // result.push({owner: "genesis"+Math.round(Math.random()*10), miner_pk: "369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"});
-    // result.push({owner: "genesis"+Math.round(Math.random()*10), miner_pk: "369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"});
-
-    // for(var i in result) {
-    //     if (result[i]) {
-    //         console.log("result[i]=", result[i].owner);
-    //         console.log("result[i]=", result[i].miner_pk);
-    //
-    //     }
-    // }
 
     invokeSystemContract(result);
 
 }
 
 
-
-// let u3.getActionsByAccount({
-//     'page': 1,
-//     'pageSize': 10,
-//     'queryParams': {account:'ultrainio'},
-//     'sortParams': { _id: -1 }
-// }).then((result) => {
-//     console.log("u3.getActionsByAccount result is:", result);
-// })
-
-
-
-
-// const name = 'abc';
-// let params = {
-//     creator: 'ultrainio',
-//     name: name,
-//     owner: pubkey,
-//     active: pubkey,
-//     updateable: 0,
-//     ram_bytes: 6666,
-//     stake_net_quantity: '1.0000 UGAS',
-//     stake_cpu_quantity: '1.0000 UGAS',
-//     transfer: 0
-// };
-//
-// let result = await u3.createUser(params);
-
-
-
-
-// getBlocks();
-scheduleCronstyle();
-
-
-// transferToUltrainio();
-
+/**
+ * 调用智能合约的入口方法
+ * @param contractName
+ * @param actionName
+ * @param params
+ * @param accountName
+ * @param privateKey
+ * @returns {Promise<void>}
+ */
 async function contractInteract(contractName, actionName, params, accountName,  privateKey) {
     try {
         const keyProvider = [privateKey];
@@ -428,3 +411,7 @@ async function contractInteract(contractName, actionName, params, accountName,  
         console.error(err);
     }
 }
+
+
+//程序主入口
+scheduleCronstyle();
