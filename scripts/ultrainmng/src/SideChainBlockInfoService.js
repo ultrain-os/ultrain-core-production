@@ -96,9 +96,9 @@ var u3Sub;// = createU3({ ...configSub, sign: true, broadcast: true });
  * 读写相关的配置
  */
 function initConfig() {
-    // var configIniLocal = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
-    const filePath  =   path.join(process.cwd(),'config.ini');
-    var configIniLocal = ini.parse(fs.readFileSync(filePath, 'utf-8'));
+    var configIniLocal = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
+    // const filePath  =   path.join(process.cwd(),'config.ini');
+    // var configIniLocal = ini.parse(fs.readFileSync(filePath, 'utf-8'));
 
     configIniLocal.name = 'helloworld';
     configIniLocal.version = '2,0.0';
@@ -112,8 +112,11 @@ function initConfig() {
     myAccountAsCommittee = configIniTarget["my-account-as-committee"];
     mySkAsCommittee = configIniTarget["my-account-as-committee"];
     prefix = configIniTarget["prefix"];
+    prefix="http://";
     endpoint = configIniTarget["endpoint"];
+    endpoint=":8888";
     url= configIniTarget["url"];
+    url="http://47.52.43.102:3335/api/remoteEndpoint";
     chain_name=configIniTarget["chain_name"];
 
     //修改config.ini文件
