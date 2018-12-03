@@ -1,17 +1,21 @@
 // import {getActionsByAccount} from "u3.js/src";
 
-const { U3 } = require('u3.js');
+const {U3} = require('u3.js');
 const axios = require('axios')
 const path = require('path');
 const fs = require('fs');
 const ini = require('ini');
 const schedule = require('node-schedule');
-const { createU3, format } = U3;
+const {createU3, format} = U3;
 
 
 var myAccountAsCommittee = "";
 var mySkAsCommittee = "";
 var jsonArray = [];
+var prefix = "";
+var endpoint = "";
+var url="";
+var chain_name="";
 
 
 var config = {
@@ -91,23 +95,27 @@ var u3Sub;// = createU3({ ...configSub, sign: true, broadcast: true });
 /**
  * 读写相关的配置
  */
-function writeConfig() {
-    var configIniLocal = ini.parse(fs.readFileSync('./config.ini','utf-8'));
+function initConfig() {
+    var configIniLocal = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
 
     configIniLocal.name = 'helloworld';
     configIniLocal.version = '2,0.0';
     // configIniLocal.httpEndpointMain=
 
     //读取指定config.ini里面的文件路径，只需要修改文件路径即可
-    var configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path,'utf-8'));
+    var configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path, 'utf-8'));
 
     console.log(configIniTarget["my-account-as-committee"]);
     console.log(configIniTarget["my-sk-as-committee"]);
     myAccountAsCommittee = configIniTarget["my-account-as-committee"];
     mySkAsCommittee = configIniTarget["my-account-as-committee"];
+    prefix = configIniTarget["prefix"];
+    endpoint = configIniTarget["endpoint"];
+    url= configIniTarget["url"];
+    chain_name=configIniTarget["chain_name"];
 
     //修改config.ini文件
-    fs.writeFileSync('./config.ini',ini.stringify(configIniLocal,{section:''}));
+    // fs.writeFileSync('./config.ini', ini.stringify(configIniLocal, {section: ''}));
 }
 
 
@@ -138,9 +146,9 @@ function transferToUltrainio() {
  */
 const getMainChainId = async () => {
 
-    var u3 = createU3({ ...config, sign: true, broadcast: true });
+    var u3 = createU3({...config, sign: true, broadcast: true});
     var blockInfo = await u3.getBlockInfo("1");
-    console.log("block info  blockInfo.action_mroot=",blockInfo.action_mroot);
+    console.log("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
     return blockInfo.action_mroot;
 }
 
@@ -150,9 +158,9 @@ const getMainChainId = async () => {
  */
 const getSubChainId = async () => {
 
-    var u3Sub = createU3({ ...configSub, sign: true, broadcast: true });
+    var u3Sub = createU3({...configSub, sign: true, broadcast: true});
     var blockInfo = await u3Sub.getBlockInfo("1");
-    console.log("block info  blockInfo.action_mroot=",blockInfo.action_mroot);
+    console.log("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
     return blockInfo.action_mroot;
 }
 
@@ -161,7 +169,6 @@ const getSubChainId = async () => {
  * @returns {Promise<*>}
  */
 async function getRemoteIpAddress() {
-    const url = 'https://developer.ultrain.io/api/remoteEndpoint';
     const rs = await axios.get(url);
 
     return rs.data;
@@ -192,33 +199,45 @@ function buildCommittee(resultJson, jsonArray, add, result) {
 
      * **/
 
-    for(var i in resultJson) {
+    for (var i in resultJson) {
 
         if (resultJson[i]) {
             console.log("result[i]=", resultJson[i].owner);
             console.log("result[i]=", resultJson[i].miner_pk);
 
-            if(jsonArray.length == 0) {
-                result.push({account: resultJson[i].owner, public_key: resultJson[i].miner_pk, url: "https://user.115.com", location:0, adddel_miner:add});
+            if (jsonArray.length == 0) {
+                result.push({
+                    account: resultJson[i].owner,
+                    public_key: resultJson[i].miner_pk,
+                    url: "https://user.115.com",
+                    location: 0,
+                    adddel_miner: add
+                });
                 continue;
             }
 
             var isInJsonArray = false;
-            for(var i2 in jsonArray) {
+            for (var i2 in jsonArray) {
 
                 if (jsonArray[i2]) {
-                    if(jsonArray[i2].owner == resultJson[i].owner) {
+                    if (jsonArray[i2].owner == resultJson[i].owner) {
                         isInJsonArray = true;
                         break;
                     }
                 }
             }
 
-            if(isInJsonArray) {
+            if (isInJsonArray) {
                 continue;
             }
 
-            result.push({account: resultJson[i].owner, public_key: resultJson[i].miner_pk, url: "https://user.115.com", location:0, adddel_miner:add});
+            result.push({
+                account: resultJson[i].owner,
+                public_key: resultJson[i].miner_pk,
+                url: "https://user.115.com",
+                location: 0,
+                adddel_miner: add
+            });
         }
     }
 
@@ -233,7 +252,7 @@ function buildCommittee(resultJson, jsonArray, add, result) {
  *
  */
 
-function invokeSystemContract( resultJson) {
+function invokeSystemContract(resultJson) {
 
     var result = [];
 
@@ -241,7 +260,7 @@ function invokeSystemContract( resultJson) {
 
     result = buildCommittee(jsonArray, resultJson, 0, result);
 
-    if(result.length==0) {
+    if (result.length == 0) {
         return;
     }
 
@@ -265,7 +284,7 @@ function invokeSystemContract( resultJson) {
         //列表更新
         jsonArray = resultJson;
     } catch (e) {
-        console.log("u3 push tx error...",e)
+        console.log("u3 push tx error...", e)
     }
 
 }
@@ -281,7 +300,7 @@ pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction
     console.log("=======" + timestamp + "," + proposer + "," + version + "," + previous + "," + transaction_mroot + "," + action_mroot + "," + committee_mroot + "," + header_extensions)
 
     const params = {
-        chain_name: 11,
+        chain_name: parseInt(chain_name, 10),
         header: {
             "timestamp": timestamp,
             "proposer": proposer,
@@ -295,7 +314,7 @@ pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction
         }
     };
 
-    contractInteract('ultrainio', "acceptheader", params, myAccountAsCommittee, config.keyProvider[0] );
+    contractInteract('ultrainio', "acceptheader", params, myAccountAsCommittee, config.keyProvider[0]);
 }
 
 
@@ -305,31 +324,34 @@ pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction
  *
  *
  */
-async function scheduleCronstyle(){
-    writeConfig();
-     var ip = await  getRemoteIpAddress();
-    console.log("before config.httpEndpoint=", config.httpEndpoint+":8877");
-    config.httpEndpoint = "http://"+ip+":8877";
-     console.log("after config.httpEndpoint=", config.httpEndpoint);
+async function scheduleCronstyle() {
+    initConfig();
 
-    console.log("config.chainId=",config.chainId);
+    var ip = await getRemoteIpAddress();
+
+    console.log("before config.httpEndpoint=", config.httpEndpoint + ":8877");
+    config.httpEndpoint = prefix + ip + endpoint;
+    console.log("after config.httpEndpoint=", config.httpEndpoint);
+
+    console.log("config.chainId=", config.chainId);
 
     config.chainId = await getMainChainId();
 
-    console.log("config.chainId=",config.chainId);
+    console.log("config.chainId=", config.chainId);
 
-    console.log("configSub.chainId=",configSub.chainId);
+    console.log("configSub.chainId=", configSub.chainId);
 
     configSub.chainId = await getSubChainId();
 
-    console.log("configSub.chainId=",configSub.chainId);
+    console.log("configSub.chainId=", configSub.chainId);
 
     // let u3 = createU3(config);
-    u3 = createU3({ ...config, sign: true, broadcast: true });
-    u3Sub = createU3({ ...configSub, sign: true, broadcast: true });
+    u3 = createU3({...config, sign: true, broadcast: true});
+    u3Sub = createU3({...configSub, sign: true, broadcast: true});
 
-    schedule.scheduleJob('*/3 * * * * *', function(){
+    schedule.scheduleJob('*/3 * * * * *', function () {
         console.log('scheduleCronstyle:' + new Date());
+
         getBlocks();
 
         getSubchainCommittee();
@@ -348,21 +370,21 @@ const getBlocks = async () => {
     //
     // console.log("===============u3.resultJson.results.results[0].block result is:", resultJson.results);
 
-    let blockNum = await u3.getSubchainBlockNum({"chain_name":"11"});
-    console.log("u3.getSubchainBlockNum  blockNum="+blockNum);
+    let blockNum = await u3.getSubchainBlockNum({"chain_name": chain_name});
+    console.log("u3.getSubchainBlockNum  blockNum=" + blockNum);
 
-    let blockNumInt = parseInt( blockNum, 10 )+1;
-    if(blockNumInt<2) {
+    let blockNumInt = parseInt(blockNum, 10) + 1;
+    if (blockNumInt < 2) {
         blockNumInt = 2;
     }
 
-        let result = await u3Sub.getBlockInfo((blockNumInt).toString() );
+    let result = await u3Sub.getBlockInfo((blockNumInt).toString());
 
-        if (result) {
-            console.log("u3Sub.getBlockInfo result is:", result);
-            pushHeaderToTestnet(result.timevalue, result.proposer, result.version, result.previous, result.transaction_mroot, result.action_mroot, result.committee_mroot, result.header_extensions)
+    if (result) {
+        console.log("u3Sub.getBlockInfo result is:", result);
+        pushHeaderToTestnet(result.timevalue, result.proposer, result.version, result.previous, result.transaction_mroot, result.action_mroot, result.committee_mroot, result.header_extensions)
 
-        }
+    }
 
 }
 
@@ -371,8 +393,8 @@ const getBlocks = async () => {
  * @returns {Promise<void>}
  */
 const getSubchainCommittee = async () => {
-    console.log("缓存的jsonArray="+jsonArray);
-    let result = await u3.getSubchainCommittee({"chain_name":"11"});
+    console.log("缓存的jsonArray=" + jsonArray);
+    let result = await u3.getSubchainCommittee({"chain_name": chain_name});
 
 
     invokeSystemContract(result);
@@ -389,13 +411,14 @@ const getSubchainCommittee = async () => {
  * @param privateKey
  * @returns {Promise<void>}
  */
-async function contractInteract(contractName, actionName, params, accountName,  privateKey) {
+async function contractInteract(contractName, actionName, params, accountName, privateKey) {
     try {
         const keyProvider = [privateKey];
-        const u3 = createU3({ ...config, keyProvider });
+        const u3 = createU3({...config, keyProvider});
 
         const contract = await u3.contract(contractName);
-        console.log(contract);
+        console.log("contract",contract);
+        console.log("params=",params);
         if (!contract) {
             throw new Error("can't found contract");
         }
