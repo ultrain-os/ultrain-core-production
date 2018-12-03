@@ -4,11 +4,13 @@
 #include <crypto/Ed25519.h>
 
 namespace ultrainio {
-    PrivateKey PrivateKey::generate() {
+    bool PrivateKey::generate(PublicKey& publicKey, PrivateKey& privateKey) {
         uint8_t pk[Ed25519::PUBLIC_KEY_LEN];
         uint8_t sk[Ed25519::PRIVATE_KEY_LEN];
         Ed25519::keypair(pk, sk);
-        return PrivateKey(sk, Ed25519::PRIVATE_KEY_LEN);
+        privateKey = PrivateKey(sk, Ed25519::PRIVATE_KEY_LEN);
+        publicKey = PublicKey(pk, Ed25519::PUBLIC_KEY_LEN);
+        return true;
     }
 
     bool PrivateKey::verifyKeyPair(const PublicKey& publicKey, const PrivateKey& privateKey) {
@@ -20,11 +22,9 @@ namespace ultrainio {
     }
 
     PrivateKey::PrivateKey(const std::string& key) : m_key(key) {
-        m_publicKey = PublicKey(std::string(m_key, Ed25519::PRIVATE_KEY_HEX_LEN - Ed25519::PUBLIC_KEY_HEX_LEN));
     }
 
-    PrivateKey::PrivateKey(uint8_t* rawKey, size_t len) : m_key(Hex::toHex(rawKey, len)) {
-        m_publicKey = PublicKey(std::string(m_key, Ed25519::PRIVATE_KEY_HEX_LEN - Ed25519::PUBLIC_KEY_HEX_LEN));
+    PrivateKey::PrivateKey(uint8_t* rawKey, size_t len) : m_key(Hex::toHex<uint8_t>(rawKey, len)) {
     }
 
     PrivateKey::operator std::string() const {
@@ -45,18 +45,18 @@ namespace ultrainio {
     }
 
     bool PrivateKey::getRaw(uint8_t* rawKey, size_t len) const {
-        return Hex::fromHex(m_key, rawKey, len) == Ed25519::PRIVATE_KEY_LEN;
+        return Hex::fromHex<uint8_t>(m_key, rawKey, len) == Ed25519::PRIVATE_KEY_LEN;
     }
 
     // maybe more condition check
     bool PrivateKey::isValid() const {
-        if (m_key.length() == Ed25519::PRIVATE_KEY_HEX_LEN && m_publicKey.isValid()) {
+        if (m_key.length() == Ed25519::PRIVATE_KEY_HEX_LEN) {
             return true;
         }
         return false;
     }
 
     PublicKey PrivateKey::getPublicKey() const {
-        return m_publicKey;
+        return PublicKey(std::string(m_key, Ed25519::PRIVATE_KEY_HEX_LEN - Ed25519::PUBLIC_KEY_HEX_LEN));
     }
 }

@@ -6,10 +6,45 @@
 namespace ultrainio {
     class Hex {
     public:
-        static std::string toHex(const uint8_t* c, size_t len);
-        static size_t fromHex(const std::string& hexStr, uint8_t* data, size_t len);
+        template <class T>
+        static std::string toHex(const T* c, size_t len) {
+            std::string r;
+            const char* hexStr="0123456789abcdef";
+            r.resize(len * 2);
+            for (size_t i = 0; i < len; i++) {
+                r[i*2] = hexStr[(c[i]>>4)];
+                r[i*2 + 1] = hexStr[(c[i] & 0x0f)];
+            }
+            return r;
+        }
+
+        template <class T>
+        static size_t fromHex(const std::string& hexStr, T* out, size_t len) {
+            std::string::const_iterator i = hexStr.begin();
+            T* outPos = out;
+            T* outEnd = outPos + len;
+            while( i != hexStr.end() && outEnd != outPos ) {
+                *outPos = Hex::fromHex<T>( *i ) << 4;
+                ++i;
+                if( i != hexStr.end() )  {
+                    *outPos |= Hex::fromHex<T>( *i );
+                    ++i;
+                }
+                ++outPos;
+            }
+            return outPos - out;
+        }
 
     private:
-        static uint8_t fromHex(char c);
+        template <class T>
+        static T fromHex(char c) {
+            if( c >= '0' && c <= '9' )
+                return c - '0';
+            if( c >= 'a' && c <= 'f' )
+                return c - 'a' + 10;
+            if( c >= 'A' && c <= 'F' )
+                return c - 'A' + 10;
+            return 0;
+        }
     };
 }

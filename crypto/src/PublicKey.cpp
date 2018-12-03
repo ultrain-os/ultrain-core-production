@@ -6,7 +6,7 @@
 namespace ultrainio {
     PublicKey::PublicKey(const std::string& key) : m_key(key) {}
 
-    PublicKey::PublicKey(uint8_t* rawKey, size_t len) : m_key(Hex::toHex(rawKey, len)) {}
+    PublicKey::PublicKey(uint8_t* rawKey, size_t len) : m_key(Hex::toHex<uint8_t>(rawKey, len)) {}
 
     bool PublicKey::operator == (const PublicKey& rhs) const {
         return m_key == rhs.m_key;
@@ -36,7 +36,7 @@ namespace ultrainio {
     }
 
     bool PublicKey::getRaw(uint8_t* rawKey, size_t len) const {
-        return Hex::fromHex(m_key, rawKey, len) == Ed25519::PUBLIC_KEY_LEN;
+        return Hex::fromHex<uint8_t>(m_key, rawKey, len) == Ed25519::PUBLIC_KEY_LEN;
     }
 
     bool PublicKey::isValid() const {
