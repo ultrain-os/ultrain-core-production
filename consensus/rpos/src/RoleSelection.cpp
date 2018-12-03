@@ -15,6 +15,7 @@ namespace ultrainio {
             int index = c[i];
             if (i < Config::kDesiredProposerNumber) {
                 m_proposerV.push_back(committeeV[index]);
+                ilog("proposer[${i}] = ${proposer}", ("i", i)("proposer", committeeV[index]));
             }
             m_voterV.push_back(committeeV[index]);
         }
