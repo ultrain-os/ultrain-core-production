@@ -1,7 +1,7 @@
-add_executable( bls_test
-        BlsTest.cpp)
+add_executable( bls_performance_test
+        BlsPerformanceTest.cpp)
 
-target_link_libraries( bls_test ultrainio_crypto )
+target_link_libraries( bls_performance_test ultrainio_crypto )
 
 #Ed25519 performance test
 add_executable( ed25519_performance_test

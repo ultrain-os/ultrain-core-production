@@ -19,6 +19,8 @@ contract-emit-string-length = 1024
 
 #insert_my_keys
 
+# print contract's output to console (ultrainio::chain_plugin)
+contracts-console = 1
 plugin = ultrainio::chain_plugin
 plugin = ultrainio::chain_api_plugin
 plugin = ultrainio::http_plugin

@@ -4,7 +4,7 @@
 #include <iostream>
 
 #include <core/Message.h>
-#include <crypto/Ed25519.h>
+#include <crypto/Bls.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
 #include <rpos/Proof.h>
@@ -18,8 +18,9 @@ using namespace std;
 BOOST_AUTO_TEST_SUITE(proof_test_suite)
 
     BOOST_AUTO_TEST_CASE(normal_flow) {
-        PrivateKey privateKey = PrivateKey::generate();
-        PublicKey publicKey = privateKey.getPublicKey();
+        PrivateKey privateKey;
+        PublicKey publicKey;
+        PrivateKey::generate(publicKey, privateKey);
         Seed seed(std::string("preHash"), 40, static_cast<ConsensusPhase>(1), 0);
         Proof proof = Vrf::vrf(privateKey, seed, Vrf::kProposer);
 
@@ -37,7 +38,7 @@ BOOST_AUTO_TEST_SUITE(proof_test_suite)
         BOOST_CHECK(faultProof.getPriority() == faultProof.getPriority());
         BOOST_CHECK(!Vrf::verify(publicKey, faultProof, seed, Vrf::kProposer));
         string faultHexStr1;
-        for (int i = 0; i < Ed25519::SIGNATURE_HEX_LEN; i++) {
+        for (int i = 0; i < Bls::BLS_SIGNATURE_LENGTH; i++) {
             faultHexStr1 += "0";
         }
         Proof faultProof1(faultHexStr1);
