@@ -1198,14 +1198,15 @@ namespace ultrainio {
                 auto index = pending_message_buffer.read_index();
                 pending_message_buffer.peek(blk_buffer.data(), message_length, index);
             }
+            auto ds = pending_message_buffer.create_datastream();
+            net_message msg;
+            fc::raw::unpack(ds, msg);
             bool isexceed = check_pack_speed_exceed();
             if(isexceed)
             {
                 return true;
             }
-            auto ds = pending_message_buffer.create_datastream();
-            net_message msg;
-            fc::raw::unpack(ds, msg);
+
             msgHandler m(impl, shared_from_this() );
             msg.visit(m);
         } catch(  const fc::exception& e ) {
