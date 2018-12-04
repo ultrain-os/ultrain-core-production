@@ -22,6 +22,11 @@ namespace ultrainio { namespace chain {
       bool            adddel_miner;
    };
 
+   struct provided_proposer {
+      account_name    account;
+      uint64_t        last_vote_time;
+   };
+
    inline bool operator== (const permission_level& lhs, const permission_level& rhs) {
       return std::tie(lhs.actor, lhs.permission) == std::tie(rhs.actor, rhs.permission);
    }

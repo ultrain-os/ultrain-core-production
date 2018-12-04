@@ -164,6 +164,30 @@ namespace ultrainio {
 
       ULTRAINLIB_SERIALIZE( proposeminer_info, (account)(public_key)(url)(location)(adddel_miner) )
    };
+   /**
+    * provided_proposer  info
+    *
+    * @brief Packed representation of provided_proposer
+    */
+   struct provided_proposer {
+
+      provided_proposer( account_name a, uint64_t l):account(a),last_vote_time(l){}
+
+      /**
+       * Default Constructor
+       *
+       * @brief Construct a new provided_proposer info object
+       */
+      provided_proposer(){}
+
+      account_name      account;
+      uint64_t          last_vote_time = 0;
+      bool operator==(const provided_proposer& c) const
+      {
+         return c.account == account;
+      }
+      ULTRAINLIB_SERIALIZE( provided_proposer, (account)(last_vote_time) )
+   };
 
    /**
     * Require the specified authorization for this action. If this action doesn't contain the specified auth, it will fail.

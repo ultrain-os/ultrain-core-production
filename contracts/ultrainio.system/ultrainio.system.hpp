@@ -100,11 +100,11 @@ namespace ultrainiosystem {
    };
 
    struct pendingminer {
-            uint64_t                   index = 0;
+            account_name                               proposer;
             std::vector<ultrainio::proposeminer_info>  proposal_miner;
-            std::vector<account_name>       provided_approvals;
-            auto primary_key()const { return index; }
-            ULTRAINLIB_SERIALIZE(pendingminer, (index)(proposal_miner)(provided_approvals) )
+            std::vector<ultrainio::provided_proposer>  provided_approvals;
+            auto primary_key()const { return proposer; }
+            ULTRAINLIB_SERIALIZE(pendingminer, (proposer)(proposal_miner)(provided_approvals) )
          };
    typedef ultrainio::multi_index<N(pendingminer),pendingminer> pendingminers;
 
@@ -141,9 +141,11 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
+   static constexpr int64_t  consweight_per_subaccount = 1000'000'0000;
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
    static constexpr uint32_t seconds_per_year      = 52*7*24*3600;
    static constexpr uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
+   static constexpr uint64_t useconds_per_halfhour = 30 * 60 * uint64_t(1000000);
    static constexpr uint64_t useconds_per_year     = seconds_per_year*1000000ll;
 
    static constexpr uint64_t     system_token_symbol = CORE_SYMBOL;
