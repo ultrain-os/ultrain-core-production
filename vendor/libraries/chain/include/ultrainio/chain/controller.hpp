@@ -96,6 +96,7 @@ namespace ultrainio { namespace chain {
          void abort_block();
          void set_emit_signal();
          void clear_emit_signal();
+         void can_create_worldstate();
 
          /**
           *  These transactions were previously pushed by have since been unapplied, recalling push_transaction

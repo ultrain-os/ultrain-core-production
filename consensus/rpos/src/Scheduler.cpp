@@ -1683,6 +1683,9 @@ namespace ultrainio {
                 chain.set_emit_signal();
                 chain.start_receive_event();
             }
+            if (!UranusNode::getInstance()->getSyncingStatus()) {
+                chain.can_create_worldstate();
+            }
             chain.push_block(block);
             if (UranusNode::getInstance()->getNonProducingNode()) {
                 chain.clear_emit_signal();
