@@ -218,21 +218,25 @@ struct controller_impl {
        if( conf.worldstate_dir.is_relative())
             tmp_path = app().data_dir() / conf.worldstate_dir.string();
        else
-            tmp_path = conf.worldstate_dir;
+            tmp_path = conf.worldstate_dir;      
+       tmp_path = tmp_path / path(boost::filesystem::unique_path());
 
        ilog("create worldstate size ${size} path ${path}",("size",size)("path", tmp_path.string()));
        chainbase::database* worldstate_db = new chainbase::database(tmp_path, database::read_write,size);
        db.with_write_lock([&](){
              memcpy(worldstate_db->get_segment_address(),db.get_segment_address(),size);
        });
-       controller_index_set::add_indices(*worldstate_db);
-       contract_database_index_set::add_indices(*worldstate_db);
-       authorization.add_indices(*worldstate_db);
-       resource_limits.add_indices(*worldstate_db);
-
+       
        //thread to generate worldstate file
-       boost::thread worldstate([this](const chainbase::database* ws_db){
-             add_to_worldstate(ws_db);
+       boost::thread worldstate([this, tmp_path](chainbase::database* ws_db){
+            //add indices
+            controller_index_set::add_indices(*ws_db);
+            contract_database_index_set::add_indices(*ws_db);
+            authorization.add_indices(*ws_db);
+            resource_limits.add_indices(*ws_db);
+            add_to_worldstate(ws_db);
+
+            fc::remove_all(tmp_path);
        },worldstate_db);
        worldstate.detach();
 
@@ -491,9 +495,6 @@ struct controller_impl {
       info.file_size = bfs::file_size(worldstate_path);
       info.hash_string = ws_manager.calculate_file_hash(worldstate_path).str();
       ws_manager.save_info(info);
-
-      fc::remove_all(conf.worldstate_dir / "shared_memory.bin");
-      fc::remove_all(conf.worldstate_dir / "shared_memory.meta");
       ilog("********************************** add_to_worldstate ws info: ${info}", ("info", info));
    }
 
