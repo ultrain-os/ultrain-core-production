@@ -215,6 +215,7 @@ async function getRemoteIpAddress(url) {
 async function getProducerLists() {
     const params = {"json": "true" ,"lower_bound": "0" , "limit": 100 };
     const rs = await axios.post("http://127.0.0.1:8888/v1/chain/get_producers", params);
+    // const rs = await axios.post("http://172.16.10.5:8899/v1/chain/get_producers", params);
 
     var result=[];
 
@@ -224,10 +225,8 @@ async function getProducerLists() {
         var row = rows[i];
         if(row.is_active == 1) {
             result.push({
-                account: row.owner,
-                public_key: "",
-                url: "https://user.115.com",
-                location: 0,
+                owner: row.owner,
+                miner_pk: "",
             });
         }
     }
