@@ -179,7 +179,8 @@ namespace ultrainiosystem {
       uint32_t proposeminersize = proposeminer.size();
       ultrainio_assert( proposeminer.size() == 1, "The number of proposeminer changes cannot exceed one" );
       require_auth( proposer );
-
+      auto propos = _producers.find( proposer );
+      ultrainio_assert( propos != _producers.end() && propos->is_enabled, "enabled producer not found this proposer" );
       auto const comp = [this](const proposeminer_info &a, const proposeminer_info &b){
          if (a.account < b.account)
                return true;
@@ -260,7 +261,6 @@ namespace ultrainiosystem {
                p.proposal_miner.push_back(miner);
          });
       }
-
       print("votecommittee pushback  pendingminer");
    }
    /**
