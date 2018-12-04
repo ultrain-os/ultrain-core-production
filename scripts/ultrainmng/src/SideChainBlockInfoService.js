@@ -12,21 +12,22 @@ const {createU3, format} = U3;
 var myAccountAsCommittee = "";
 var mySkAsCommittee = "";
 var jsonArray = [];
-var url="";
-var chain_name="";
+var url = "";
+var chain_name = "";
 
 const logger = {
-    log: function (msg) {
-        // console.info(msg);
+    log: function () {
+        // console.info.apply(console,arguments)
 
     },
-    error: function (msg) {
+    error: function () {
+        console.error.apply(console,arguments)
         // console.error(msg);
 
     },
-    debug: function (msg) {
+    debug: function () {
 
-        // console.debug(msg);
+        // console.debug.apply(console,arguments)
 
     }
 }
@@ -72,12 +73,12 @@ let configSub = {
     // httpEndpoint: 'http://40.117.73.83:8888',
     // httpEndpoint_history: 'http://40.117.73.83:3000',
     // keyProvider: ['5KATDC5YqmSTfy99BWqRugriDmeaTAqpwZxXV8jQafdwJqTaqF4'], // WIF string or array of keys..
-    httpEndpoint: 'http://172.16.10.5:8877',
-    httpEndpoint_history: 'http://172.16.10.5:3000',
+    // httpEndpoint: 'http://172.16.10.5:8877',
+    // httpEndpoint_history: 'http://172.16.10.5:3000',
     // httpEndpoint: 'http://172.16.10.4:8877',
     // httpEndpoint_history: 'http://172.16.10.4:3000',
-    // httpEndpoint: 'http://127.0.0.1:8888',
-    // httpEndpoint_history: 'http://127.0.0.1:3000',
+    httpEndpoint: 'http://127.0.0.1:8888',
+    httpEndpoint_history: 'http://127.0.0.1:3000',
     keyProvider: ['5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H'], // WIF string or array of keys..
 
     chainId: "x", // 32 byte (64 char) hex string
@@ -126,18 +127,24 @@ async function initConfig() {
 
     config.httpEndpoint = `${configIniTarget.prefix}${ip}${configIniTarget.endpoint}`;
 
-    //
-    config.chainId = await getMainChainId();
-    logger.debug("config.chainId=", config.chainId);
-    configSub.chainId = await getSubChainId();
-    //
-    logger.debug("configSub.chainId=", configSub.chainId);
+    try{
+        //
+        config.chainId = await getMainChainId();
+        logger.debug("config.chainId=", config.chainId);
+        configSub.chainId = await getSubChainId();
+        //
+        logger.debug("configSub.chainId=", configSub.chainId);
+    }catch (e) {
+        logger.error("target node crashed, check main node or sub node", e)
+
+    }
+
 
 
     myAccountAsCommittee = configIniTarget["my-account-as-committee"];
     mySkAsCommittee = configIniTarget["my-account-as-committee"];
     // url= configIniTarget["url"];
-    chain_name=configIniTarget["chain_name"];
+    chain_name = configIniTarget["chain_name"];
 
     // prefix="http://";
     // endpoint=":8888";
@@ -354,6 +361,7 @@ pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction
  *
  */
 async function scheduleCronstyle() {
+
     await initConfig();
 
     u3 = createU3({...config, sign: true, broadcast: true});
@@ -362,9 +370,16 @@ async function scheduleCronstyle() {
     schedule.scheduleJob('*/3 * * * * *', function () {
         logger.debug('scheduleCronstyle:' + new Date());
 
-        getBlocks();
+        try {
 
-        getSubchainCommittee();
+            getBlocks();
+
+            getSubchainCommittee();
+
+        } catch (e) {
+            logger.error("throw exceptions=", e)
+        }
+
 
     });
 }
