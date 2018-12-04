@@ -12,11 +12,24 @@ const {createU3, format} = U3;
 var myAccountAsCommittee = "";
 var mySkAsCommittee = "";
 var jsonArray = [];
-var prefix = "";
-var endpoint = "";
 var url="";
 var chain_name="";
 
+const logger = {
+    log: function (msg) {
+        // console.info(msg);
+
+    },
+    error: function (msg) {
+        // console.error(msg);
+
+    },
+    debug: function (msg) {
+
+        // console.debug(msg);
+
+    }
+}
 
 var config = {
     // httpEndpoint:'http://172.16.10.4:8888',
@@ -37,12 +50,12 @@ var config = {
     broadcast: true,
     sign: true,
 
-    debug: true,
+    debug: false,
     verbose: false,
     logger: {
-        log: console.log,
-        error: console.error,
-        debug: console.log
+        log: logger.log,
+        error: logger.error,
+        debug: logger.debug
     },
     binaryen: require('binaryen'),
     symbol: 'UGAS'
@@ -59,12 +72,12 @@ let configSub = {
     // httpEndpoint: 'http://40.117.73.83:8888',
     // httpEndpoint_history: 'http://40.117.73.83:3000',
     // keyProvider: ['5KATDC5YqmSTfy99BWqRugriDmeaTAqpwZxXV8jQafdwJqTaqF4'], // WIF string or array of keys..
-    // httpEndpoint: 'http://172.16.10.5:8877',
-    // httpEndpoint_history: 'http://172.16.10.5:3000',
+    httpEndpoint: 'http://172.16.10.5:8877',
+    httpEndpoint_history: 'http://172.16.10.5:3000',
     // httpEndpoint: 'http://172.16.10.4:8877',
     // httpEndpoint_history: 'http://172.16.10.4:3000',
-    httpEndpoint: 'http://127.0.0.1:8888',
-    httpEndpoint_history: 'http://127.0.0.1:3000',
+    // httpEndpoint: 'http://127.0.0.1:8888',
+    // httpEndpoint_history: 'http://127.0.0.1:3000',
     keyProvider: ['5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H'], // WIF string or array of keys..
 
     chainId: "x", // 32 byte (64 char) hex string
@@ -73,12 +86,12 @@ let configSub = {
     broadcast: true,
     sign: true,
 
-    debug: true,
+    debug: false,
     verbose: false,
     logger: {
-        log: console.log,
-        error: console.error,
-        debug: console.log
+        log: logger.log,
+        error: logger.error,
+        debug: logger.debug
     },
     binaryen: require('binaryen'),
     symbol: 'UGAS'
@@ -95,7 +108,7 @@ var u3Sub;// = createU3({ ...configSub, sign: true, broadcast: true });
 /**
  * 读写相关的配置
  */
-function initConfig() {
+async function initConfig() {
     var configIniLocal = ini.parse(fs.readFileSync('./config.ini', 'utf-8'));
     // const filePath  =   path.join(process.cwd(),'config.ini');
     // var configIniLocal = ini.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -106,19 +119,30 @@ function initConfig() {
 
     //读取指定config.ini里面的文件路径，只需要修改文件路径即可
     var configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path, 'utf-8'));
+    console.log('configIniTarget=', configIniTarget);
+    // getRemoteIpAddress
+    const ip = await getRemoteIpAddress(configIniTarget.url);
+    console.log('getRemoteIpAddress=', ip);
 
-    console.log(configIniTarget["my-account-as-committee"]);
-    console.log(configIniTarget["my-sk-as-committee"]);
+    config.httpEndpoint = `${configIniTarget.prefix}${ip}${configIniTarget.endpoint}`;
+
+    //
+    config.chainId = await getMainChainId();
+    logger.debug("config.chainId=", config.chainId);
+    configSub.chainId = await getSubChainId();
+    //
+    logger.debug("configSub.chainId=", configSub.chainId);
+
+
     myAccountAsCommittee = configIniTarget["my-account-as-committee"];
     mySkAsCommittee = configIniTarget["my-account-as-committee"];
-    prefix = configIniTarget["prefix"];
-    prefix="http://";
-    endpoint = configIniTarget["endpoint"];
-    endpoint=":8888";
-    url= configIniTarget["url"];
-    url="http://47.52.43.102:3335/api/remoteEndpoint";
+    // url= configIniTarget["url"];
     chain_name=configIniTarget["chain_name"];
-    chain_name="11";
+
+    // prefix="http://";
+    // endpoint=":8888";
+    // url="http://47.52.43.102:3335/api/remoteEndpoint";
+    // chain_name="11";
 
     //修改config.ini文件
     // fs.writeFileSync('./config.ini', ini.stringify(configIniLocal, {section: ''}));
@@ -134,10 +158,10 @@ function transferToUltrainio() {
             u3.sign(unsigned_transaction, config.keyProvider[0], config.chainId).then((signature) => {
                 if (signature) {
                     let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
-                    console.log(signedTransaction);
+                    logger.debug(signedTransaction);
 
                     u3.pushTx(signedTransaction).then((processedTransaction) => {
-                        console.log(processedTransaction);
+                        logger.debug(processedTransaction);
                         // assert.equal(processedTransaction.transaction_id, unsigned_transaction.transaction_id);
                     });
                 }
@@ -154,7 +178,7 @@ const getMainChainId = async () => {
 
     var u3 = createU3({...config, sign: true, broadcast: true});
     var blockInfo = await u3.getBlockInfo("1");
-    console.log("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
+    logger.debug("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
     return blockInfo.action_mroot;
 }
 
@@ -166,7 +190,7 @@ const getSubChainId = async () => {
 
     var u3Sub = createU3({...configSub, sign: true, broadcast: true});
     var blockInfo = await u3Sub.getBlockInfo("1");
-    console.log("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
+    logger.debug("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
     return blockInfo.action_mroot;
 }
 
@@ -174,10 +198,8 @@ const getSubChainId = async () => {
  * 根据官网数据获取主网ip地址
  * @returns {Promise<*>}
  */
-async function getRemoteIpAddress() {
-    url="http://47.52.43.102:3335/api/remoteEndpoint";
+async function getRemoteIpAddress(url) {
     const rs = await axios.get(url);
-
     return rs.data;
 }
 
@@ -209,8 +231,8 @@ function buildCommittee(resultJson, jsonArray, add, result) {
     for (var i in resultJson) {
 
         if (resultJson[i]) {
-            console.log("result[i]=", resultJson[i].owner);
-            console.log("result[i]=", resultJson[i].miner_pk);
+            logger.debug("result[i]=", resultJson[i].owner);
+            logger.debug("result[i]=", resultJson[i].miner_pk);
 
             if (jsonArray.length == 0) {
                 result.push({
@@ -248,8 +270,8 @@ function buildCommittee(resultJson, jsonArray, add, result) {
         }
     }
 
-    console.log("result array=", result);
-    console.log("result array=", result.length);
+    logger.debug("result array=", result);
+    logger.debug("result array=", result.length);
 
     return result;
 }
@@ -278,10 +300,10 @@ function invokeSystemContract(resultJson) {
                 u3Sub.sign(unsigned_transaction, mySkAsCommittee, config.chainId).then((signature) => {
                     if (signature) {
                         let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
-                        console.log(signedTransaction);
+                        logger.debug(signedTransaction);
 
                         u3Sub.pushTx(signedTransaction).then((processedTransaction) => {
-                            console.log(processedTransaction);
+                            logger.debug(processedTransaction);
                             // assert.equal(processedTransaction.transaction_id, unsigned_transaction.transaction_id);
                         });
                     }
@@ -291,7 +313,7 @@ function invokeSystemContract(resultJson) {
         //列表更新
         jsonArray = resultJson;
     } catch (e) {
-        console.log("u3 push tx error...", e)
+        logger.error("u3 push tx error...", e)
     }
 
 }
@@ -304,7 +326,7 @@ function invokeSystemContract(resultJson) {
  *
  */
 pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction_mroot, action_mroot, committee_mroot, header_extensions) => {
-    console.log("=======" + timestamp + "," + proposer + "," + version + "," + previous + "," + transaction_mroot + "," + action_mroot + "," + committee_mroot + "," + header_extensions)
+    logger.debug("=======" + timestamp + "," + proposer + "," + version + "," + previous + "," + transaction_mroot + "," + action_mroot + "," + committee_mroot + "," + header_extensions)
 
     const params = {
         chain_name: parseInt(chain_name, 10),
@@ -332,32 +354,13 @@ pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction
  *
  */
 async function scheduleCronstyle() {
-    initConfig();
+    await initConfig();
 
-    var ip = await getRemoteIpAddress();
-
-    console.log("before config.httpEndpoint=", config.httpEndpoint + ":8877");
-    config.httpEndpoint = prefix + ip + endpoint;
-    console.log("after config.httpEndpoint=", config.httpEndpoint);
-
-    console.log("config.chainId=", config.chainId);
-
-    config.chainId = await getMainChainId();
-
-    console.log("config.chainId=", config.chainId);
-
-    console.log("configSub.chainId=", configSub.chainId);
-
-    configSub.chainId = await getSubChainId();
-
-    console.log("configSub.chainId=", configSub.chainId);
-
-    // let u3 = createU3(config);
     u3 = createU3({...config, sign: true, broadcast: true});
     u3Sub = createU3({...configSub, sign: true, broadcast: true});
 
     schedule.scheduleJob('*/3 * * * * *', function () {
-        console.log('scheduleCronstyle:' + new Date());
+        logger.debug('scheduleCronstyle:' + new Date());
 
         getBlocks();
 
@@ -375,10 +378,10 @@ async function scheduleCronstyle() {
 const getBlocks = async () => {
     // let resultJson = await u3.getAllBlocksHeader(1, 2, {}, {_id: -1});
     //
-    // console.log("===============u3.resultJson.results.results[0].block result is:", resultJson.results);
+    // logger.debug("===============u3.resultJson.results.results[0].block result is:", resultJson.results);
 
     let blockNum = await u3.getSubchainBlockNum({"chain_name": chain_name});
-    console.log("u3.getSubchainBlockNum  blockNum=" + blockNum);
+    logger.debug("u3.getSubchainBlockNum  blockNum=" + blockNum);
 
     let blockNumInt = parseInt(blockNum, 10) + 1;
     if (blockNumInt < 2) {
@@ -388,7 +391,7 @@ const getBlocks = async () => {
     let result = await u3Sub.getBlockInfo((blockNumInt).toString());
 
     if (result) {
-        console.log("u3Sub.getBlockInfo result is:", result);
+        logger.debug("u3Sub.getBlockInfo result is:", result);
         pushHeaderToTestnet(result.timevalue, result.proposer, result.version, result.previous, result.transaction_mroot, result.action_mroot, result.committee_mroot, result.header_extensions)
 
     }
@@ -400,7 +403,7 @@ const getBlocks = async () => {
  * @returns {Promise<void>}
  */
 const getSubchainCommittee = async () => {
-    console.log("缓存的jsonArray=" + jsonArray);
+    logger.debug("缓存的jsonArray=" + jsonArray);
     let result = await u3.getSubchainCommittee({"chain_name": chain_name});
 
 
@@ -424,8 +427,6 @@ async function contractInteract(contractName, actionName, params, accountName, p
         const u3 = createU3({...config, keyProvider});
 
         const contract = await u3.contract(contractName);
-        console.log("contract",contract);
-        console.log("params=",params);
         if (!contract) {
             throw new Error("can't found contract");
         }
@@ -435,9 +436,9 @@ async function contractInteract(contractName, actionName, params, accountName, p
         const data = await contract[actionName](params, {
             authorization: [`${accountName}@active`],
         });
-        console.log('success')
+        logger.debug('success')
     } catch (err) {
-        console.error(err);
+        logger.error(err);
     }
 }
 
