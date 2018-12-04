@@ -38,6 +38,13 @@
         {"name": "adddel_miner", "type": "bool"}
       ]
     },{
+      "name": "provided_proposer",
+      "base": "",
+      "fields": [
+        {"name": "account", "type": "account_name"},
+        {"name": "last_vote_time", "type": "uint64"}
+      ]
+    },{
       "name": "key_weight",
       "base": "",
       "fields": [
