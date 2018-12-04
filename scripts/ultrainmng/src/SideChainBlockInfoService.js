@@ -213,9 +213,9 @@ async function getRemoteIpAddress(url) {
     return rs.data;
 }
 async function getProducerLists() {
-    // const rs = await axios.get("http://127.0.0.1:8888/v1/chain/get_producers");
     const params = {"json": "true" ,"lower_bound": "0" , "limit": 100 };
-    const rs = await axios.post("http://172.16.10.5:8899/v1/chain/get_producers", params);
+    const rs = await axios.get("http://127.0.0.1:8888/v1/chain/get_producers", params);
+    // const rs = await axios.post("http://172.16.10.5:8899/v1/chain/get_producers", params);
 
     var result=[];
 
