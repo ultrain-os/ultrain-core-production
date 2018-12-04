@@ -212,9 +212,16 @@ struct controller_impl {
 
    void create_worldstate(){
        auto size = db.get_segment_manager()->get_size();
-       ilog("create worldstate size ${size} path ${path}",("size",size)("path",conf.worldstate_dir));
+       
+       auto begin=fc::time_point::now();
+       path tmp_path;
+       if( conf.worldstate_dir.is_relative())
+            tmp_path = app().data_dir() / conf.worldstate_dir.string();
+       else
+            tmp_path = conf.worldstate_dir;
 
-       chainbase::database* worldstate_db = new chainbase::database(conf.worldstate_dir,database::read_write,size);
+       ilog("create worldstate size ${size} path ${path}",("size",size)("path", tmp_path.string()));
+       chainbase::database* worldstate_db = new chainbase::database(tmp_path, database::read_write,size);
        db.with_write_lock([&](){
              memcpy(worldstate_db->get_segment_address(),db.get_segment_address(),size);
        });
@@ -228,6 +235,10 @@ struct controller_impl {
              add_to_worldstate(ws_db);
        },worldstate_db);
        worldstate.detach();
+
+      auto end=fc::time_point::now();
+      auto time_delta=end-begin;
+      ilog("********************************** create_worldstate time: ${time_delta}", ("time_delta", time_delta));
    }
 
    void on_irreversible( const block_state_ptr& s ) {
@@ -483,6 +494,7 @@ struct controller_impl {
 
       fc::remove_all(conf.worldstate_dir / "shared_memory.bin");
       fc::remove_all(conf.worldstate_dir / "shared_memory.meta");
+      ilog("********************************** add_to_worldstate ws info: ${info}", ("info", info));
    }
 
    void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
