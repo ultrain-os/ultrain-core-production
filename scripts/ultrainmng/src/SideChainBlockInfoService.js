@@ -473,7 +473,7 @@ const getBlocks = async () => {
  */
 const getSubchainCommittee = async () => {
     //获取本地producer列表
-    jsonArray = getProducerLists();
+    jsonArray = await getProducerLists();
 
     logger.debug("从本地获取的的jsonArray=" + jsonArray);
 
