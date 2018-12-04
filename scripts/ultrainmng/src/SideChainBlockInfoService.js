@@ -212,6 +212,28 @@ async function getRemoteIpAddress(url) {
     const rs = await axios.get(url);
     return rs.data;
 }
+async function getProducerLists() {
+    const rs = await axios.get("http://127.0.0.1:8888/v1/chain/get_producers");
+
+    var result=[];
+
+    var rows = rs.rows;
+
+    for (var i in rows) {
+        var row = rows[i];
+        if(row.is_active == 1) {
+            result.push({
+                account: row.owner,
+                public_key: "",
+                url: "https://user.115.com",
+                location: 0,
+            });
+        }
+    }
+
+    logger.debug("getProducerLists result=", result);
+    return result;
+}
 
 /**
  * 构建Committee
@@ -303,13 +325,10 @@ function invokeSystemContract(resultJson) {
         return;
     }
 
-    if(jsonArray.length != 0 && result.length>1) {
+    if(result.length>1) {
         logger.error("error, Committee members is too many")
         return;
     }
-
-    logger.debug("jsonArray.length  =", jsonArray.length );
-    logger.debug("result.length  =", result.length );
 
     try {
 
@@ -329,7 +348,7 @@ function invokeSystemContract(resultJson) {
             })
         });
         //列表更新
-        jsonArray = resultJson;
+        // jsonArray = resultJson;
     } catch (e) {
         logger.error("u3 push tx error...", e)
     }
@@ -453,7 +472,12 @@ const getBlocks = async () => {
  * @returns {Promise<void>}
  */
 const getSubchainCommittee = async () => {
-    logger.debug("缓存的jsonArray=" + jsonArray);
+    //获取本地producer列表
+    jsonArray = await getProducerLists();
+
+    logger.debug("从本地获取的的jsonArray=" + jsonArray);
+
+
     let result = await u3.getSubchainCommittee({"chain_name": chain_name});
 
 
