@@ -583,12 +583,12 @@ namespace ultrainio {
         return m_schedulerPtr->handleMessage(propose);
     }
 
-    bool UranusNode::handleMessage(const std::string &peer_addr, const ReqSyncMsg &msg) {
-        return m_schedulerPtr->handleMessage(peer_addr, msg);
+    bool UranusNode::handleMessage(const fc::sha256 &nodeId, const ReqSyncMsg &msg) {
+        return m_schedulerPtr->handleMessage(nodeId, msg);
     }
 
-    bool UranusNode::handleMessage(const string &peer_addr, const ReqLastBlockNumMsg &msg) {
-        return m_schedulerPtr->handleMessage(peer_addr, msg);
+    bool UranusNode::handleMessage(const fc::sha256 &nodeId, const ReqLastBlockNumMsg &msg) {
+        return m_schedulerPtr->handleMessage(nodeId, msg);
     }
 
     uint32_t UranusNode::getLastBlocknum() {
@@ -632,8 +632,8 @@ namespace ultrainio {
         return true;
     }
 
-    bool UranusNode::handleMessage(const string &peer_addr, const SyncStopMsg& msg) {
-        return m_schedulerPtr->handleMessage(peer_addr, msg);
+    bool UranusNode::handleMessage(const fc::sha256 &nodeId, const SyncStopMsg& msg) {
+        return m_schedulerPtr->handleMessage(nodeId, msg);
     }
 
     bool UranusNode::syncFail(const ultrainio::ReqSyncMsg& sync_msg) {
@@ -674,8 +674,8 @@ namespace ultrainio {
         app().get_plugin<net_plugin>().broadcast(propose);
     }
 
-    void UranusNode::sendMessage(const string &peer_addr, const SyncBlockMsg &msg) {
-        app().get_plugin<net_plugin>().send_block(peer_addr, msg);
+    void UranusNode::sendMessage(const fc::sha256 &nodeId, const SyncBlockMsg &msg) {
+        app().get_plugin<net_plugin>().send_block(nodeId, msg);
     }
 
     void UranusNode::sendMessage(const AggEchoMsg& aggEchoMsg) {
@@ -686,8 +686,8 @@ namespace ultrainio {
         return app().get_plugin<net_plugin>().send_req_sync(msg);
     }
 
-    void UranusNode::sendMessage(const std::string &peer_addr, const RspLastBlockNumMsg &msg) {
-        app().get_plugin<net_plugin>().send_last_block_num(peer_addr, msg);
+    void UranusNode::sendMessage(const fc::sha256 &nodeId, const RspLastBlockNumMsg &msg) {
+        app().get_plugin<net_plugin>().send_last_block_num(nodeId, msg);
     }
 
     bool UranusNode::isFastBlock() {
