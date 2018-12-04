@@ -1657,6 +1657,18 @@ class transaction_api : public context_aware_api {
          fc::uint128_t sender_id(val>>64, uint64_t(val) );
          return context.cancel_deferred_transaction( (unsigned __int128)sender_id );
       }
+
+      int get_transaction_id(array_ptr<char> data, size_t data_len) {
+         transaction_id_type id = context.trx_context.id;
+         std::string hash = id.str();
+         int copied = std::min(data_len, hash.size());
+         memcpy(data, hash.c_str(), copied);
+         return copied;
+      }
+
+      int get_transaction_published_time() {
+         return context.trx_context.published.sec_since_epoch();
+      }
 };
 
 
@@ -2188,6 +2200,8 @@ REGISTER_INTRINSICS(transaction_api,
    (send_context_free_inline,  void(int, int)               )
    (send_deferred,             void(int, int64_t, int, int, int32_t) )
    (cancel_deferred,           int(int)                     )
+   (get_transaction_id,        int(int, int)                )
+   (get_transaction_published_time, int()                   )
 );
 
 REGISTER_INTRINSICS(context_free_api,
