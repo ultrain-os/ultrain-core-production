@@ -407,23 +407,22 @@ namespace ultrainio {
         return false;
     }
 
-    uint32_t Scheduler::isNeedSync() {
+    bool Scheduler::isNeedSync() {
+        if (m_cacheEchoMsgMap.empty()) {
+            return false;
+        }
+
+        if (UranusNode::getInstance()->isSyncing()) {
+            elog("node is syncing.");
+            return false;
+        }
+
         uint32_t maxBlockNum = UranusNode::getInstance()->getBlockNum();
         AccountName myAccount = StakeVoteBase::getMyAccount();
-
-        if (m_cacheEchoMsgMap.empty()) {
-            return INVALID_BLOCK_NUM;
-        }
-
-        if (UranusNode::getInstance()->getSyncingStatus()) {
-            elog("node is syncing.");
-            return INVALID_BLOCK_NUM;
-        }
 
         for (auto vector_itor = m_cacheEchoMsgMap.begin(); vector_itor != m_cacheEchoMsgMap.end(); ++vector_itor) {
             if (vector_itor->first.blockNum > maxBlockNum) {
                 echo_msg_buff echo_msg_map;
-                //echo_message_info echo_info;
 
                 for (auto &echo : vector_itor->second) {
                     if (myAccount == echo.account) {
@@ -445,22 +444,22 @@ namespace ultrainio {
                 for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
                     if (echo_itor->second.accountPool.size() >= THRESHOLD_SYNCING) {
                         maxBlockNum = vector_itor->first.blockNum;
-                        return maxBlockNum;
+                        return true;
                     }
                 }
             }
         }
 
-        return INVALID_BLOCK_NUM;
+        return false;
     }
 
     bool Scheduler::isChangePhase() {
-        AccountName myAccount = StakeVoteBase::getMyAccount();
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
-
         if (m_cacheEchoMsgMap.empty()) {
             return false;
         }
+
+        AccountName myAccount = StakeVoteBase::getMyAccount();
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
 
         for (auto vector_itor = m_cacheEchoMsgMap.begin(); vector_itor != m_cacheEchoMsgMap.end(); ++vector_itor) {
             if ((vector_itor->first.blockNum == UranusNode::getInstance()->getBlockNum())
@@ -681,7 +680,7 @@ namespace ultrainio {
             return false;
         }
 
-        if ((UranusNode::getInstance()->getSyncingStatus()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
+        if ((UranusNode::getInstance()->isSyncing()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
             dlog("receive propose msg. node is syncing. blockhash = ${blockhash}", ("blockhash", propose.block.id()));
             return true;
         }
@@ -737,7 +736,7 @@ namespace ultrainio {
             return false;
         }
 
-        if ((UranusNode::getInstance()->getSyncingStatus()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
+        if ((UranusNode::getInstance()->isSyncing()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
             dlog("receive echo msg. node is syncing. blockhash = ${blockhash} echo'account = ${account}",
                  ("blockhash", echo.blockId)("account", std::string(echo.account)));
             return true;
@@ -777,7 +776,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::handleMessage(const fc::sha256 &nodeId, const ReqSyncMsg &msg) {
-        if (UranusNode::getInstance()->getSyncingStatus()) {
+        if (UranusNode::getInstance()->isSyncing()) {
             return true;
         }
 
@@ -854,7 +853,7 @@ namespace ultrainio {
             if (block.previous == b->id()) {
                 // TODO(yufengshen) -- Do not copy here, should have shared_ptr at the first place.
                 produceBlock(std::make_shared<chain::signed_block>(block), true);
-                dlog("apply block finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
+                dlog("sync block finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
                      ("block_num", getLastBlocknum())("hash", block.id())("head_hash", block.previous));
                 return true;
             } else {
@@ -1647,12 +1646,6 @@ namespace ultrainio {
     void Scheduler::produceBlock(const chain::signed_block_ptr &block, bool force_push_whole_block) {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         uint32_t last_num = getLastBlocknum();
-
-        dlog("produceBlock. m_proposerMsgMap = ${size}", ("size", m_proposerMsgMap.size()));
-        dlog("produceBlock. m_echoMsgMap = ${size}", ("size", m_echoMsgMap.size()));
-        dlog("produceBlock. m_cacheProposeMsgMap = ${size}", ("size", m_cacheProposeMsgMap.size()));
-        dlog("produceBlock. m_cacheEchoMsgMap = ${size}", ("size", m_cacheEchoMsgMap.size()));
-        dlog("produceBlock. m_echoMsgAllPhase = ${size}", ("size", m_echoMsgAllPhase.size()));
 
         dlog("produceBlock. last block num in local chain:${last}", ("last", last_num));
         auto blk = chain.fetch_block_by_number(last_num);

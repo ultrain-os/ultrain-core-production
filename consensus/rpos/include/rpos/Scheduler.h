@@ -137,7 +137,7 @@ namespace ultrainio {
 
         bool processBeforeMsg(const EchoMsg &echo);
 
-        uint32_t isNeedSync();
+        bool isNeedSync();
 
         bool isChangePhase();
 
@@ -178,8 +178,10 @@ namespace ultrainio {
 
         void clearOldCachedEchoMsg();
 
+        // is invalid block
         bool isBlank(const BlockIdType& blockId);
 
+        // is block without trxs
         bool isEmpty(const BlockIdType& blockId);
 
         Block blankBlock();
@@ -214,6 +216,7 @@ namespace ultrainio {
         echo_message_info findEchoMsg(BlockIdType blockId);
 
         void start_memleak_check();
+
         chain::checksum256_type getCommitteeMroot(uint32_t block_num);
 
         bool hasMultiSignPropose(const ProposeMsg& propose);

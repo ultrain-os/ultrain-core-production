@@ -51,7 +51,7 @@ namespace ultrainio {
 
         uint32_t getBaxCount() const;
 
-        bool getSyncingStatus() const;
+        bool isSyncing() const;
 
         void init();
 
@@ -87,7 +87,7 @@ namespace ultrainio {
 
         void fastProcess();
 
-        uint32_t isNeedSync();
+        bool isNeedSync();
 
         bool isReady() {return m_ready;}
 
@@ -157,11 +157,7 @@ namespace ultrainio {
 
         void sendEchoForEmptyBlock();
 
-        void syncBlock();
-
-        void syncBlockOnce();
-
-        void syncBlock(bool once);
+        void syncBlock(bool once = false);
 
         void fastBlock(uint32_t blockNum);
 

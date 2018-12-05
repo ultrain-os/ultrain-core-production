@@ -86,7 +86,7 @@ namespace ultrainio {
         readyLoop(50);
     }
 
-    bool UranusNode::getSyncingStatus() const {
+    bool UranusNode::isSyncing() const {
         return m_syncing;
     }
 
@@ -192,14 +192,6 @@ namespace ultrainio {
                 }
             }
         });
-    }
-
-    void UranusNode::syncBlockOnce() {
-        syncBlock(true);
-    }
-
-    void UranusNode::syncBlock() {
-        syncBlock(false);
     }
 
     void UranusNode::syncBlock(bool once) {
@@ -370,12 +362,9 @@ namespace ultrainio {
 
         std::shared_ptr<Block> blockPtr = std::make_shared<chain::signed_block>();
         if (!isBlank(ba1Block.id())) {
-            //UltrainLog::display_block(ba1_block);
             *blockPtr = ba1Block;
         } else {
             elog("ba1Process ba1 finish. block is blank. phase ba2 begin.");
-            //init();
-            //readyToJoin();
             m_phase = kPhaseBA1;
             baxLoop(getRoundInterval());
             return;
@@ -392,7 +381,7 @@ namespace ultrainio {
         run();
     }
 
-    uint32_t UranusNode::isNeedSync() {
+    bool UranusNode::isNeedSync() {
         return m_schedulerPtr->isNeedSync();
     }
 
@@ -439,9 +428,9 @@ namespace ultrainio {
         } else {
             elog("baxProcess.phase bax finish. block is blank.");
 
-            if (INVALID_BLOCK_NUM != isNeedSync()) {
+            if (isNeedSync()) {
                 dlog("baxProcess. syncing begin. m_baxCount = ${count}.", ("count", m_baxCount));
-                syncBlockOnce();
+                syncBlock(true);
             }
 
             uint32_t blockNum = getBlockNum();

@@ -308,7 +308,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
               return;
           }
 
-          if (UranusNode::getInstance() && UranusNode::getInstance()->getSyncingStatus()) {
+          if (UranusNode::getInstance() && UranusNode::getInstance()->isSyncing()) {
               send_response(std::static_pointer_cast<fc::exception>(std::make_shared<node_is_syncing>(FC_LOG_MESSAGE(error, "trx discarded, node is in block syncing status") )));
               return;
           }
