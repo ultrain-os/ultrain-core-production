@@ -573,20 +573,20 @@ bool producer_uranus_plugin::handle_message(const ProposeMsg& propose) {
    return UranusNode::getInstance()->handleMessage(propose);
 }
 
-bool producer_uranus_plugin::handle_message(string peer_addr, const ReqSyncMsg& msg) {
-   return UranusNode::getInstance()->handleMessage(peer_addr,msg);
+bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const ReqSyncMsg& msg) {
+   return UranusNode::getInstance()->handleMessage(node_id, msg);
 }
 
 bool producer_uranus_plugin::handle_message(const Block& block, bool last_block) {
    return UranusNode::getInstance()->handleMessage(block, last_block);
 }
 
-bool producer_uranus_plugin::handle_message(const string& peer_addr, const ReqLastBlockNumMsg& msg) {
-  return UranusNode::getInstance()->handleMessage(peer_addr, msg);
+bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const ReqLastBlockNumMsg& msg) {
+  return UranusNode::getInstance()->handleMessage(node_id, msg);
 }
 
-bool producer_uranus_plugin::handle_message(const string& peer_addr, const SyncStopMsg& msg) {
-  return UranusNode::getInstance()->handleMessage(peer_addr, msg);
+bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const SyncStopMsg& msg) {
+  return UranusNode::getInstance()->handleMessage(node_id, msg);
 }
 
 bool producer_uranus_plugin::sync_fail(const ultrainio::ReqSyncMsg& sync_msg) {

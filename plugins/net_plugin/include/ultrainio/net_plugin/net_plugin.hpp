@@ -32,9 +32,9 @@ namespace ultrainio {
         void   broadcast(const ProposeMsg& propose);
         void   broadcast(const EchoMsg& echo);
         void   broadcast(const AggEchoMsg& aggEchoMsg);
-        void   send_block(const string& ip_addr, const SyncBlockMsg& sync_block);
+        void   send_block(const fc::sha256 &node_id, const SyncBlockMsg& sync_block);
         bool   send_req_sync(const ReqSyncMsg& reqSyncMsg);
-        void   send_last_block_num(const string& ip_addr, const RspLastBlockNumMsg& last_block_num);
+        void   send_last_block_num(const fc::sha256 &node_id, const RspLastBlockNumMsg& last_block_num);
         void   stop_sync_block();
 
         string                       connect( const string& endpoint );

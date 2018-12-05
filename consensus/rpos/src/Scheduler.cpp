@@ -776,20 +776,20 @@ namespace ultrainio {
         return false;
     }
 
-    bool Scheduler::handleMessage(const string &peer_addr, const ReqSyncMsg &msg) {
+    bool Scheduler::handleMessage(const fc::sha256 &nodeId, const ReqSyncMsg &msg) {
         if (UranusNode::getInstance()->getSyncingStatus()) {
             return true;
         }
 
-        if (peer_addr.empty() || m_syncTaskQueue.size() >= m_maxSyncClients) {
-            ilog("peer addr is empty or sync task queue is full. peer addr:${p} queue size:${qz}",
-                 ("p", peer_addr)("qz", m_syncTaskQueue.size()));
+        if (nodeId == fc::sha256() || m_syncTaskQueue.size() >= m_maxSyncClients) {
+            ilog("peer node id is empty or sync task queue is full. node id:${n} queue size:${qz}",
+                 ("n", nodeId)("qz", m_syncTaskQueue.size()));
             return false;
         }
 
         for (std::list<SyncTask>::iterator l_it = m_syncTaskQueue.begin(); l_it != m_syncTaskQueue.end(); ++l_it) {
-            if (l_it->peerAddr == peer_addr) {
-                ilog("peer addr ${p} has been already in sync queue.", ("p", peer_addr));
+            if (l_it->nodeId == nodeId) {
+                ilog("peer node ${node} has been already in sync queue.", ("node", nodeId));
                 return false;
             }
         }
@@ -806,7 +806,7 @@ namespace ultrainio {
             auto b = chain.fetch_block_by_number(num);
             if (b) {
                 sync_block.block = *b;
-                UranusNode::getInstance()->sendMessage(peer_addr, sync_block);
+                UranusNode::getInstance()->sendMessage(nodeId, sync_block);
             } else if (num == end_block_num) { // try to send last block next time
                 break;
             } // else: skip the block if not exist
@@ -816,13 +816,13 @@ namespace ultrainio {
             if (end_block_num > num + m_maxSyncBlocks) {
                 end_block_num = num + m_maxSyncBlocks;
             }
-            m_syncTaskQueue.emplace_back(peer_addr, num, end_block_num, msg.seqNum);
+            m_syncTaskQueue.emplace_back(nodeId, num, end_block_num, msg.seqNum);
         }
 
         return true;
     }
 
-    bool Scheduler::handleMessage(const string &peer_addr, const ReqLastBlockNumMsg &msg) {
+    bool Scheduler::handleMessage(const fc::sha256 &nodeId, const ReqLastBlockNumMsg &msg) {
         RspLastBlockNumMsg rsp_msg;
         rsp_msg.seqNum = msg.seqNum;
         rsp_msg.blockNum = getLastBlocknum();
@@ -836,7 +836,7 @@ namespace ultrainio {
             rsp_msg.blockNum = INVALID_BLOCK_NUM;
         }
 
-        UranusNode::getInstance()->sendMessage(peer_addr, rsp_msg);
+        UranusNode::getInstance()->sendMessage(nodeId, rsp_msg);
         return true;
     }
 
@@ -869,14 +869,14 @@ namespace ultrainio {
         return false;
     }
 
-    bool Scheduler::handleMessage(const string &peer_addr, const SyncStopMsg &msg) {
-        ilog("Stop sync msg to ${pa}, seqNum: ${sn}", ("pa", peer_addr)("sn", msg.seqNum));
+    bool Scheduler::handleMessage(const fc::sha256& nodeId, const SyncStopMsg &msg) {
+        ilog("Stop sync msg to ${node}, seqNum: ${sn}", ("node", nodeId)("sn", msg.seqNum));
         if (m_syncTaskQueue.empty()) {
             return true;
         }
 
         for (std::list<SyncTask>::iterator it = m_syncTaskQueue.begin(); it != m_syncTaskQueue.end(); ++it) {
-            if (it->peerAddr == peer_addr) {
+            if (it->nodeId == nodeId) {
                 if (it->seqNum != msg.seqNum) {
                     elog("seqNum in task:${snt} != seqNum in msg:${snm}, but we still stop sync msg.", ("snt", it->seqNum)("snm", msg.seqNum));
                 }
@@ -1864,7 +1864,7 @@ namespace ultrainio {
                 auto b = chain.fetch_block_by_number(it->startBlock);
                 if (b) {
                     sync_block.block = *b;
-                    UranusNode::getInstance()->sendMessage(it->peerAddr, sync_block);
+                    UranusNode::getInstance()->sendMessage(it->nodeId, sync_block);
                 } else if (it->startBlock == last_num) { // try to send last block next time
                     break;
                 } // else: skip the block if not exist

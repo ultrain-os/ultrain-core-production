@@ -71,11 +71,11 @@ namespace ultrainio {
 
         void sendMessage(const ProposeMsg &propose);
 
-        void sendMessage(const std::string &peer_addr, const SyncBlockMsg &msg);
+        void sendMessage(const fc::sha256 &nodeId, const SyncBlockMsg &msg);
 
         bool sendMessage(const ReqSyncMsg &msg);
 
-        void sendMessage(const std::string &peer_addr, const RspLastBlockNumMsg &msg);
+        void sendMessage(const fc::sha256 &nodeId, const RspLastBlockNumMsg &msg);
 
         void sendMessage(const AggEchoMsg& aggEchoMsg);
 
@@ -109,13 +109,13 @@ namespace ultrainio {
 
         bool handleMessage(const ProposeMsg &propose);
 
-        bool handleMessage(const std::string &peer_addr, const ReqSyncMsg &msg);
+        bool handleMessage(const fc::sha256 &nodeId, const ReqSyncMsg &msg);
 
-        bool handleMessage(const std::string &peer_addr, const ReqLastBlockNumMsg &msg);
+        bool handleMessage(const fc::sha256 &nodeId, const ReqLastBlockNumMsg &msg);
 
         bool handleMessage(const Block &block, bool last_block);
 
-        bool handleMessage(const std::string &peer_addr, const SyncStopMsg &msg);
+        bool handleMessage(const fc::sha256 &nodeId, const SyncStopMsg &msg);
 
         uint32_t getLastBlocknum();
 

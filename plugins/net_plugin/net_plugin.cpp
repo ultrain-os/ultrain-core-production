@@ -258,9 +258,9 @@ namespace ultrainio {
         void handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg);
 
         void start_broadcast(const net_message& msg, msg_priority p);
-        void send_block(const string& ip_addr, const net_message& msg);
+        void send_block(const fc::sha256& node_id, const net_message& msg);
         bool send_req_sync(const ultrainio::ReqSyncMsg& msg);
-        void send_last_block_num(const string& ip_addr, const net_message& msg);
+        void send_last_block_num(const fc::sha256& node_id, const net_message& msg);
         void stop_sync_block();
 
         void start_conn_timer( );
@@ -344,7 +344,7 @@ namespace ultrainio {
     constexpr auto     def_send_buffer_size_mb = 4;
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
     constexpr auto     def_max_clients = 25; // 0 for unlimited clients
-    constexpr auto     def_max_nodes_per_host = 2;
+    constexpr auto     def_max_nodes_per_host = 10;
     constexpr auto     def_conn_retry_wait = 30;
     constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
@@ -1651,12 +1651,10 @@ namespace ultrainio {
         }
     }
 
-    void net_plugin_impl::send_block(const string& ip_addr, const net_message& msg) {
+    void net_plugin_impl::send_block(const fc::sha256& node_id, const net_message& msg) {
         for(auto &c : connections) {
             if (c->priority == msg_priority_trx && c->current()) {
-                boost::system::error_code ec;
-                auto endpoint = c->socket->remote_endpoint(ec);
-                if (!ec && endpoint.address().to_v4().to_string() == ip_addr) {
+                if (c->node_id == node_id) {
                     ilog ("send block to peer : ${peer_name}, enqueue", ("peer_name", c->peer_name()));
                     c->enqueue(msg);
                     break;
@@ -1665,12 +1663,10 @@ namespace ultrainio {
         }
     }
 
-    void net_plugin_impl::send_last_block_num(const string& ip_addr, const net_message& msg) {
+    void net_plugin_impl::send_last_block_num(const fc::sha256& node_id, const net_message& msg) {
         for (auto &c : connections) {
             if (c->priority == msg_priority_trx && c->current()) {
-                boost::system::error_code ec;
-                auto endpoint = c->socket->remote_endpoint(ec);
-                if (!ec && endpoint.address().to_v4().to_string() == ip_addr) {
+                if (c->node_id == node_id) {
                     ilog("send last block num to peer: ${p}", ("p", c->peer_name()));
                     c->enqueue(msg);
                     break;
@@ -2197,14 +2193,7 @@ namespace ultrainio {
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg) {
         ilog("receive req last block num msg!!! from peer ${p}", ("p", c->peer_name()));
-
-        boost::system::error_code ec;
-        auto endpoint = c->socket->remote_endpoint(ec);
-        if (!ec) {
-            app().get_plugin<producer_uranus_plugin>().handle_message(endpoint.address().to_v4().to_string(), msg);
-        } else {
-            elog("connection is broken, error code: ${ec}", ("ec", ec.value()));
-        }
+        app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg) {
@@ -2236,14 +2225,7 @@ namespace ultrainio {
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg) {
         ilog("receive req sync msg!!! message from ${p} addr:${addr} blockNum = ${blockNum}",
              ("p", c->peer_name())("addr", c->peer_addr)("blockNum", msg.endBlockNum));
-
-        boost::system::error_code ec;
-        auto endpoint = c->socket->remote_endpoint(ec);
-        if (!ec) {
-            app().get_plugin<producer_uranus_plugin>().handle_message(endpoint.address().to_v4().to_string(), msg);
-        } else {
-            elog("connection is broken, error code: ${ec}", ("ec", ec.value()));
-        }
+        app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg) {
@@ -2273,14 +2255,7 @@ namespace ultrainio {
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncStopMsg &msg) {
         ilog("receive sync stop msg!!! message from ${p} addr:${addr} seqNum = ${sn}",
              ("p", c->peer_name())("addr", c->peer_addr)("sn", msg.seqNum));
-
-        boost::system::error_code ec;
-        auto endpoint = c->socket->remote_endpoint(ec);
-        if (!ec) {
-            app().get_plugin<producer_uranus_plugin>().handle_message(endpoint.address().to_v4().to_string(), msg);
-        } else {
-            elog("connection is broken, error code: ${ec}", ("ec", ec.value()));
-        }
+        app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
     }
 
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
@@ -2953,9 +2928,9 @@ namespace ultrainio {
         my->start_broadcast(net_message(aggEchoMsg), msg_priority_rpos);
     }
 
-   void net_plugin::send_block(const string& ip_addr, const ultrainio::SyncBlockMsg& msg) {
-       ilog("send block msg to addr:${pa} block num:${n} seq num:${sn}", ("pa", ip_addr)("n", msg.block.block_num())("sn", msg.seqNum));
-       my->send_block(ip_addr, net_message(msg));
+   void net_plugin::send_block(const fc::sha256& node_id, const ultrainio::SyncBlockMsg& msg) {
+       ilog("send block msg to node:${node} block num:${n} seq num:${sn}", ("node", node_id)("n", msg.block.block_num())("sn", msg.seqNum));
+       my->send_block(node_id, net_message(msg));
    }
 
    bool net_plugin::send_req_sync(const ultrainio::ReqSyncMsg& msg) {
@@ -2963,9 +2938,9 @@ namespace ultrainio {
        return my->send_req_sync(msg);
    }
 
-   void net_plugin::send_last_block_num(const string& ip_addr, const ultrainio::RspLastBlockNumMsg& msg) {
+   void net_plugin::send_last_block_num(const fc::sha256& node_id, const ultrainio::RspLastBlockNumMsg& msg) {
        ilog("send last block num:${n} hash:${h} prev hash:${ph}", ("n", msg.blockNum)("h", msg.blockHash)("ph", msg.prevBlockHash));
-       my->send_last_block_num(ip_addr, net_message(msg));
+       my->send_last_block_num(node_id, net_message(msg));
    }
 
    void net_plugin::stop_sync_block() {

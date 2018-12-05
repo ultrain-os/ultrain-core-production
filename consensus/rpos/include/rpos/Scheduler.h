@@ -55,12 +55,12 @@ namespace ultrainio {
     };
 
     struct SyncTask {
-        std::string peerAddr;
+        fc::sha256 nodeId;
         uint32_t startBlock;
         uint32_t endBlock;
         uint32_t seqNum;
 
-        SyncTask(const std::string &_peerAddr, uint32_t _startBlock, uint32_t _endBlock, uint32_t _seqNum) : peerAddr(_peerAddr) {
+        SyncTask(const fc::sha256 &_nodeId, uint32_t _startBlock, uint32_t _endBlock, uint32_t _seqNum) : nodeId(_nodeId) {
             startBlock = _startBlock;
             endBlock = _endBlock;
             seqNum = _seqNum;
@@ -108,13 +108,13 @@ namespace ultrainio {
 
         bool handleMessage(const ProposeMsg &propose);
 
-        bool handleMessage(const std::string &peer_addr, const ReqSyncMsg &msg);
+        bool handleMessage(const fc::sha256 &nodeId, const ReqSyncMsg &msg);
 
-        bool handleMessage(const std::string &peer_addr, const ReqLastBlockNumMsg &msg);
+        bool handleMessage(const fc::sha256 &nodeId, const ReqLastBlockNumMsg &msg);
 
         bool handleMessage(const Block &msg);
 
-        bool handleMessage(const std::string &peer_addr, const SyncStopMsg &msg);
+        bool handleMessage(const fc::sha256 &nodeId, const SyncStopMsg &msg);
 
         void resetEcho();
 
