@@ -6,6 +6,7 @@
 
 #include <ultrainio/chain/abi_serializer.hpp>
 #include <ultrainio/chain/account_object.hpp>
+#include <fc/network/url.hpp>
 
 namespace chainbase {
    class database;
@@ -235,6 +236,7 @@ namespace ultrainio { namespace chain {
          signal<void(const transaction_metadata_ptr&)> accepted_transaction;
          signal<void(const transaction_trace_ptr&)>    applied_transaction;
          signal<void(const int&)>                      bad_alloc;
+         signal<bool(const url& dest, const variant& payload, const time_point&)> http_async_post;
 
          /*
          signal<void()>                                  pre_apply_block;

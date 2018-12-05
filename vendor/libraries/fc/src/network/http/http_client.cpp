@@ -376,7 +376,7 @@ http_client::http_client()
 }
 
 void http_client::post(const url& dest, const variant& payload, const fc::time_point& deadline) {
-   return _my->post(dest, payload, deadline);
+   _my->post(dest, payload, deadline);
 }
 
 variant http_client::post_sync(const url& dest, const variant& payload, const fc::time_point& deadline) {

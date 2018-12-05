@@ -230,14 +230,14 @@ fc::variant call( const std::string& url,
 
 template<typename T>
 fc::variant call( const std::string& path,
-                  const T& v ) { return call( url, path, fc::variant(v) ); }
+                  const T& v ) { return call( ::url, path, fc::variant(v) ); }
 
 template<>
 fc::variant call( const std::string& url,
-                  const std::string& path) { return call( url, path, fc::variant() ); }
+                  const std::string& path) { return call( ::url, path, fc::variant() ); }
 
 ultrainio::chain_apis::read_only::get_info_results get_info() {
-   return call(url, get_info_func).as<ultrainio::chain_apis::read_only::get_info_results>();
+   return call(::url, get_info_func).as<ultrainio::chain_apis::read_only::get_info_results>();
 }
 
 string generate_nonce_string() {
@@ -1608,7 +1608,7 @@ int main( int argc, char** argv ) {
    app.add_option( "--wallet-host", obsoleted_option_host_port, localized("the host where kultraind is running") )->group("hidden");
    app.add_option( "--wallet-port", obsoleted_option_host_port, localized("the port where kultraind is running") )->group("hidden");
 
-   app.add_option( "-u,--url", url, localized("the http/https URL where nodultrain is running"), true );
+   app.add_option( "-u,--url", ::url, localized("the http/https URL where nodultrain is running"), true );
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where kultraind is running"), true );
 
    app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
@@ -2265,27 +2265,27 @@ int main( int argc, char** argv ) {
    auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"), false);
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
    connect->set_callback([&] {
-      const auto& v = call(url, net_connect, new_host);
+      const auto& v = call(::url, net_connect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"), false);
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
    disconnect->set_callback([&] {
-      const auto& v = call(url, net_disconnect, new_host);
+      const auto& v = call(::url, net_disconnect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto status = net->add_subcommand("status", localized("status of existing connection"), false);
    status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
    status->set_callback([&] {
-      const auto& v = call(url, net_status, new_host);
+      const auto& v = call(::url, net_status, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto connections = net->add_subcommand("peers", localized("status of all existing peers"), false);
    connections->set_callback([&] {
-      const auto& v = call(url, net_connections, new_host);
+      const auto& v = call(::url, net_connections, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 

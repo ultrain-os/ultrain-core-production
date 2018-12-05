@@ -13,31 +13,33 @@
 namespace fc {
 
 class http_client {
-   public:
-      http_client();
-      ~http_client();
+public:
+    http_client();
+    ~http_client();
 
-      void post(const url& dest, const variant& payload, const time_point& deadline = time_point::maximum());
-      template<typename T>
-      void post(const url& dest, const T& payload, const time_point& deadline = time_point::maximum()) {
-         variant payload_v;
-         to_variant(payload, payload_v);
-         post(dest, payload_v, deadline);
-      }
+    // async post http msg
+    void post(const url& dest, const variant& payload, const time_point& deadline = time_point::maximum());
+    template<typename T>
+    void post(const url& dest, const T& payload, const time_point& deadline = time_point::maximum()) {
+        variant payload_v;
+        to_variant(payload, payload_v);
+        post(dest, payload_v, deadline);
+    }
 
-      variant post_sync(const url& dest, const variant& payload, const time_point& deadline = time_point::maximum());
-      template<typename T>
-      variant post_sync(const url& dest, const T& payload, const time_point& deadline = time_point::maximum()) {
-         variant payload_v;
-         to_variant(payload, payload_v);
-         return post_sync(dest, payload_v, deadline);
-      }
+    // sync post http msg
+    variant post_sync(const url& dest, const variant& payload, const time_point& deadline = time_point::maximum());
+    template<typename T>
+    variant post_sync(const url& dest, const T& payload, const time_point& deadline = time_point::maximum()) {
+        variant payload_v;
+        to_variant(payload, payload_v);
+        return post_sync(dest, payload_v, deadline);
+    }
 
-      void add_cert(const std::string& cert_pem_string);
-      void set_verify_peers(bool enabled);
+    void add_cert(const std::string& cert_pem_string);
+    void set_verify_peers(bool enabled);
 
 private:
-   std::unique_ptr<class http_client_impl> _my;
+    std::unique_ptr<class http_client_impl> _my;
 };
 
 }

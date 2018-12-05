@@ -469,7 +469,7 @@ make_kultraind_signature_provider(const std::shared_ptr<producer_uranus_plugin_i
          fc::variant params;
          fc::to_variant(std::make_pair(digest, pubkey), params);
          auto deadline = impl->_kultraind_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->_kultraind_provider_timeout_us : fc::time_point::maximum();
-         return app().get_plugin<http_client_plugin>().get_client().post_sync(kultraind_url, params, deadline).as<chain::signature_type>();
+         return app().get_plugin<http_client_plugin>().post_sync(kultraind_url, params, deadline).as<chain::signature_type>();
       } else {
          return signature_type();
       }

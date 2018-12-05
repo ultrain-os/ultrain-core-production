@@ -23,8 +23,6 @@
 
 #include <ultrainio/chain/ultrainio_contract.hpp>
 #include <appbase/application.hpp>
-#include <fc/network/url.hpp>
-#include <fc/network/http/http_client.hpp>
 
 namespace ultrainio { namespace chain {
 
@@ -62,7 +60,6 @@ struct controller_impl {
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
    controller::config             conf;
-   std::unique_ptr<fc::http_client>   http_client;
    chain_id_type                  chain_id;
    bool                           replaying = false;
    bool                           is_on_main_chain = false;
@@ -126,7 +123,6 @@ struct controller_impl {
     resource_limits( db ),
     authorization( s, db ),
     conf( cfg ),
-    http_client(new fc::http_client()),
     chain_id( cfg.genesis.compute_chain_id() ),
     is_on_main_chain(cfg.is_on_main_chain),
     read_mode( cfg.read_mode )
@@ -265,8 +261,6 @@ struct controller_impl {
       pending.reset();
 
       db.flush();
-
-      http_client = nullptr;
    }
 
    void add_indices() {
@@ -984,15 +978,6 @@ struct controller_impl {
    // push event to client who registered
    void notify_event()
    {
-      /*auto it = event_list.begin();
-      while (it != event_list.end()) {
-         if (self.head_block_num() > (*it).head_block_num + event_lifetime) {// lifetime expired
-            it = event_list.erase(it);
-            continue;
-         }
-         ++it;
-      }*/
-
       for (auto it = event_list.begin(); it != event_list.end(); ++it) {
          auto it_cmp = std::next(it);
          while (it_cmp != event_list.end()) {
@@ -1014,11 +999,9 @@ struct controller_impl {
                fc::variant params;
                fc::to_variant(std::make_pair((*it).event_name, (*it).message), params);
                auto event_url = fc::url(post_url);
-               try {
-                  ilog("post event: ${e} to url: ${url}", ("e", (*it).event_name)("url", post_url));
-                  http_client->post(event_url, params, fc::time_point::now() + fc::microseconds(1000000));
-               }
-               catch(...) {// TODO: We skip exception when no response happends, but need to process some type of exception if we can
+               ilog("post event: ${e} to url: ${url}", ("e", (*it).event_name)("url", post_url));
+               if (!self.http_async_post(event_url, params, fc::time_point::now() + fc::microseconds(1000000))) {
+                  elog("async post event failed.");
                }
             }
          }
