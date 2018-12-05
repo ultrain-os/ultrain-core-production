@@ -11,6 +11,7 @@
 #include <sstream>
 #include <fc/crypto/sha256.hpp>
 #include <fc/io/json.hpp>
+#include <appbase/application.hpp>
 
 namespace bfs = boost::filesystem;
 
@@ -190,6 +191,7 @@ void ws_file_writer::open_read()
 
 ws_file_manager::ws_file_manager(std::string dir)
 :m_dir_path(dir)
+,m_max_ws_count(0)
 {
     if(m_dir_path.empty()){
         m_dir_path = (fc::app_path() / "ultrainio/wssultrain/data/worldstate").string();
@@ -213,6 +215,7 @@ bool ws_file_manager::load_local_info_file(const std::string file_name, ws_info&
         return true;
     } catch (...) {
         elog("Error, load ws info error");
+        return false;
     }
     return true;
 }
@@ -310,6 +313,52 @@ fc::sha256 ws_file_manager::calculate_file_hash(std::string file_name)
     }
 
     return enc.result();
+}
+
+void ws_file_manager::set_local_max_count(uint32_t number)
+{
+    m_max_ws_count = number;
+    if (m_ws_delete_check) {
+        m_ws_delete_check->cancel();
+    }
+
+    m_ws_delete_period = {std::chrono::seconds{30}};
+    m_ws_delete_check.reset(new boost::asio::steady_timer(appbase::app().get_io_service()));
+    start_delete_timer();
+}
+
+void ws_file_manager::start_delete_timer()
+{    
+    m_ws_delete_check->expires_from_now(m_ws_delete_period);
+    m_ws_delete_check->async_wait([this](boost::system::error_code ec) {
+        if (ec.value() == boost::asio::error::operation_aborted) { //cancelled
+            ilog("delete timer cancelled");
+            return;
+        } 
+
+        auto node_list = get_local_ws_info();
+        if (node_list.size() > m_max_ws_count){
+            node_list.sort([](const ws_info &a, const ws_info &b){
+                return a.block_height > b.block_height;
+            });
+
+            auto count = m_max_ws_count;
+            for(auto &node : node_list){
+                if(count > 0){
+                    count--;
+                    continue;
+                }
+
+                std::string name = to_file_name(node.chain_id, node.block_height);
+                std::string ws_file_name  = m_dir_path + "/" +  name + ".ws";
+                std::string info_file_name  = m_dir_path + "/" +  name + ".info";
+                fc::remove(path(info_file_name));
+                fc::remove(path(ws_file_name));
+            }
+        }
+        start_delete_timer();
+        ilog("delete timer end");
+    });
 }
 
 }}

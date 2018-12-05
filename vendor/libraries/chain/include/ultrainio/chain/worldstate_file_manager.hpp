@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <boost/asio/steady_timer.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <ultrainio/chain/types.hpp>
 
@@ -78,10 +79,15 @@ namespace ultrainio { namespace chain {
             fc::sha256 calculate_file_hash(std::string file_name);
             std::string get_file_path_by_info(fc::sha256& chain_id, uint32_t block_height);
             void save_info(ws_info& node);
+            void set_local_max_count(uint32_t number);
         private:
             bool load_local_info_file(const std::string file_name, ws_info& node);
+            void start_delete_timer();
         private:
             std::string m_dir_path;
+            uint32_t m_max_ws_count;
+            boost::asio::steady_timer::duration   m_ws_delete_period;
+            unique_ptr<boost::asio::steady_timer> m_ws_delete_check;
     };
 }}
 

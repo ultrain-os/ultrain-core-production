@@ -98,7 +98,7 @@ namespace ultrainio {
 
         std::ifstream src_file;
         std::ofstream dist_file;
-        chain::ws_file_manager ws_manager =chain::ws_file_manager();
+        chain::ws_file_manager ws_manager;
         chain::ws_file_writer* ws_writer = nullptr;
 
         struct rcv_file_state{
@@ -1103,7 +1103,7 @@ namespace ultrainio {
          }
 
       c->offset = (double(c->rec - c->org) + double(msg.xmt - c->dst)) / 2;
-      double NsecPerUsec{1000};
+      // double NsecPerUsec{1000};
 
 //      if(logger.is_enabled(fc::log_level::all))
 //         logger.log(FC_LOG_MESSAGE(all, "Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec)));
@@ -1406,7 +1406,7 @@ namespace ultrainio {
       }
 
       my->start_monitors();
-
+      // my->ws_manager.set_local_max_count(5);
       for( auto seed_node : my->supplied_peers ) {
          connect( seed_node );
       }

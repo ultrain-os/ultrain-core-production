@@ -222,27 +222,39 @@ struct controller_impl {
        tmp_path = tmp_path / path(boost::filesystem::unique_path());
 
        ilog("create worldstate size ${size} path ${path}",("size",size)("path", tmp_path.string()));
-       chainbase::database* worldstate_db = new chainbase::database(tmp_path, database::read_write,size);
-       db.with_write_lock([&](){
-             memcpy(worldstate_db->get_segment_address(),db.get_segment_address(),size);
-       });
+       ilog("create worldstate free size ${size} ",("size",db.get_segment_manager()->get_free_memory()));
+       ilog("create worldstate block height ${size} ",("size",self.head_block_num()));
        
+       chainbase::database* worldstate_db = new chainbase::database(tmp_path, database::read_write,size);
+       auto begin1 = fc::time_point::now();
+       db.with_write_lock([&](){
+            auto begin=fc::time_point::now();
+            memcpy(worldstate_db->get_segment_address(),db.get_segment_address(),size);
+            auto end=fc::time_point::now();
+            auto time_delta=end-begin;
+            ilog("create_worldstate cp memory time: ${time_delta}", ("time_delta", time_delta));
+       });
+       auto begin2 = fc::time_point::now();
        //thread to generate worldstate file
        boost::thread worldstate([this, tmp_path](chainbase::database* ws_db){
             //add indices
+            auto begin=fc::time_point::now();
             controller_index_set::add_indices(*ws_db);
             contract_database_index_set::add_indices(*ws_db);
             authorization.add_indices(*ws_db);
             resource_limits.add_indices(*ws_db);
             add_to_worldstate(ws_db);
-
+            auto end = fc::time_point::now();
             fc::remove_all(tmp_path);
+            auto end1 = fc::time_point::now();
+            ilog("add_to_worldstate create_ws_time  remove_chainbase_time: ${time}  ${time1}", ("time", end - begin)("time1", end1 - end));
        },worldstate_db);
        worldstate.detach();
 
       auto end=fc::time_point::now();
       auto time_delta=end-begin;
-      ilog("********************************** create_worldstate time: ${time_delta}", ("time_delta", time_delta));
+      ilog("********************************** create_worldstate total_time new_chainbase_time cp_memory_time new_thread_time : ${time_delta} ${time1} ${time2} ${time3}", 
+         ("time_delta", time_delta)("time1", begin1 - begin)("time2", begin2 - begin1)("time3", end - begin2));
    }
 
    void on_irreversible( const block_state_ptr& s ) {
