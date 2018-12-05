@@ -246,7 +246,7 @@ namespace ultrainiosystem {
          void regsubchain(uint64_t chain_name, uint16_t chain_type);
 
          void acceptheader (uint64_t chain_name,
-                            const ultrainio::block_header& header);
+                            const std::vector<ultrainio::block_header>& headers);
 //                          const std::string& aggregatedEcho,
 //                          const std::vector<uint32_t>& echo_weight_vector,
 //                          const std::vector<std::string>& echo_account_vector);

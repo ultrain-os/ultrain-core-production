@@ -98,7 +98,7 @@
       "base": "",
       "fields": [
         {"name": "chain_name",          "type": "uint64"},
-        {"name": "header",              "type": "block_header"}
+        {"name": "headers",             "type": "block_header[]"}
       ]
     },{
       "name": "clearblock",
