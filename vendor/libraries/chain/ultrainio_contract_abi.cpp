@@ -141,6 +141,7 @@ abi_def ultrainio_contract_abi(const abi_def& ultrainio_system_abi)
          {"name", "account_name"},
          {"owner", "authority"},
          {"active", "authority"},
+         {"updateable", "bool"}
       }
    });
 

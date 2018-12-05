@@ -136,7 +136,8 @@
         {"name":"creator", "type":"account_name"},
         {"name":"name",    "type":"account_name"},
         {"name":"owner",   "type":"authority"},
-        {"name":"active",  "type":"authority"}
+        {"name":"active",  "type":"authority"},
+        {"name":"updateable",  "type":"bool"}
       ]
     },{
       "name": "setcode",
