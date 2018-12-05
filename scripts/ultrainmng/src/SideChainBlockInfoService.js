@@ -121,14 +121,15 @@ async function initConfig() {
     //读取指定config.ini里面的文件路径，只需要修改文件路径即可
     var configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path, 'utf-8'));
     logger.debug('configIniTarget=', configIniTarget);
+
     // getRemoteIpAddress
-    const ip = await getRemoteIpAddress(configIniTarget.url);
+    const ip = await getRemoteIpAddress(configIniLocal.url);
     logger.debug('getRemoteIpAddress=', ip);
 
-    config.httpEndpoint = `${configIniTarget.prefix}${ip}${configIniTarget.endpoint}`;
+    config.httpEndpoint = `${configIniLocal.prefix}${ip}${configIniLocal.endpoint}`;
 
-    config.keyProvider = [configIniTarget["my-sk-as-account"]];
-    configSub.keyProvider = [configIniTarget["my-sk-as-account"]];
+    config.keyProvider = [configIniLocal["my-sk-as-account"]];
+    configSub.keyProvider = [configIniLocal["my-sk-as-account"]];
 
     // config.httpEndpoint="http://172.16.10.4:8877";
 
@@ -145,9 +146,9 @@ async function initConfig() {
     }
 
     myAccountAsCommittee = configIniTarget["my-account-as-committee"];
-    mySkAsCommittee = configIniTarget["my-account-as-committee"];
+    mySkAsCommittee = configIniTarget["my-sk-as-committee"];
     // url= configIniTarget["url"];
-    chain_name = configIniTarget["chain_name"];
+    chain_name = configIniLocal["chain_name"];
 
     // prefix="http://";
     // endpoint=":8888";
@@ -335,7 +336,7 @@ function invokeSystemContract(resultJson) {
 
         u3Sub.contract('ultrainio').then(actions => {
             actions.votecommittee(myAccountAsCommittee, result).then((unsigned_transaction) => {
-                u3Sub.sign(unsigned_transaction, mySkAsCommittee, config.chainId).then((signature) => {
+                u3Sub.sign(unsigned_transaction, /*mySkAsCommittee*/ config.keyProvider, config.chainId).then((signature) => {
                     if (signature) {
                         let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
                         logger.debug(signedTransaction);
