@@ -1,4 +1,9 @@
-#bls
+FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
+        chrono
+        unit_test_framework
+        iostreams)
+
+# bls
 add_executable( bls_test
         BlsTest.cpp)
 

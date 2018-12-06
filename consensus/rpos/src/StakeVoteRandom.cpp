@@ -34,6 +34,10 @@ namespace ultrainio {
         return m_roleSelectionPtr->proposerPriority(std::string(account));
     }
 
+    void StakeVoteRandom::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+        // TODO(qinxiaofen) voter should be diff each phase
+    }
+
     bool StakeVoteRandom::realIsProposer(const AccountName& account) {
         if (!m_roleSelectionPtr) {
             return false;
@@ -41,11 +45,11 @@ namespace ultrainio {
         return m_roleSelectionPtr->isProposer(std::string(account));
     }
 
-    bool StakeVoteRandom::realIsVoter(const AccountName& account) {
+    bool StakeVoteRandom::realIsVoter(const AccountName& account, ConsensusPhase phase, int baxCount) {
         if (!m_roleSelectionPtr) {
             return false;
         }
-        return m_roleSelectionPtr->isVoter(std::string(account));
+        return m_roleSelectionPtr->isVoter(std::string(account), phase, baxCount);
     }
 
     int StakeVoteRandom::realGetSendEchoThreshold() const {

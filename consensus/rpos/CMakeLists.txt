@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/rpos/*.h")
+
 add_library( ultrainio_rpos
-        src/BlockMsg.cpp
+        src/BlockMsgPool.cpp
         src/Config.cpp
         src/EvilType.cpp
         src/FisherYates.cpp
@@ -9,7 +10,6 @@ add_library( ultrainio_rpos
         src/MsgMgr.cpp
         src/Node.cpp
         src/NodeInfo.cpp
-        src/PhaseMsg.cpp
         src/Proof.cpp
         src/PunishMgr.cpp
         src/RoleRandom.cpp
@@ -19,6 +19,7 @@ add_library( ultrainio_rpos
         src/StakeVoteBase.cpp
         src/StakeVoteFactory.cpp
         src/StakeVoteRandom.cpp
+        src/StakeVoteVrf.cpp
         src/Vrf.cpp
         ${HEADERS} )
 

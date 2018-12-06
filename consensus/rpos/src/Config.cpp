@@ -7,15 +7,13 @@ namespace ultrainio {
 
     const int Config::kDeadlineCnt = 60;
 
-#ifdef CONSENSUS_VRF
     const double Config::kProposerStakeNumber = 7.0;
 
     const double Config::kVoterStakeNumber = 1000.0;
-#else
+
     const int Config::kDesiredProposerNumber = 2;
 
     const int Config::kDesiredVoterNumber = 100;
-#endif
 
     const double Config::kSendEchoThresholdRatio = 0.33;
 

@@ -23,10 +23,17 @@ namespace ultrainio {
         std::vector<std::string> proofPool;
         std::vector<std::string> sigPool;
         std::vector<uint32_t>    timePool;
+#ifdef CONSENSUS_VRF
+        int totalVoter;
+#endif
         bool hasSend;
 
         echo_message_info() :
-                echo(), accountPool(), proofPool(), sigPool(), timePool(), hasSend(false) {}
+                echo(), accountPool(), proofPool(), sigPool(), timePool(),
+#ifdef CONSENSUS_VRF
+                totalVoter(0),
+#endif
+                hasSend(false) {}
 
         bool empty() {
             if (accountPool.size() <= 0) {
@@ -35,8 +42,12 @@ namespace ultrainio {
             return false;
         }
 
-        int getTotalVoterWeight() {
+        int getTotalVoterWeight() const {
+#ifdef CONSENSUS_VRF
+            return totalVoter;
+#else
             return accountPool.size();
+#endif
         }
     };
 

@@ -25,7 +25,7 @@ namespace ultrainio {
         return std::find(m_proposerV.begin(), m_proposerV.end(), account) != m_proposerV.end();
     }
 
-    bool RoleSelection::isVoter(const std::string& account) {
+    bool RoleSelection::isVoter(const std::string& account, ConsensusPhase phase, int baxCount) {
         return std::find(m_voterV.begin(), m_voterV.end(), account) != m_voterV.end();
     }
 

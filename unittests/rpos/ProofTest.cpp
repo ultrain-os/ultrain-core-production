@@ -32,7 +32,6 @@ BOOST_AUTO_TEST_SUITE(proof_test_suite)
         BOOST_CHECK(Proof(hexProofStr).getPriority() == proof.getPriority());
 
         string faultHexStr(hexProofStr.data(), hexProofStr.length() - 8);
-        BOOST_CHECK(!Proof(faultHexStr).isValid());
         faultHexStr += "00000000"; // 8
         Proof faultProof(faultHexStr);
         BOOST_CHECK(faultProof.getPriority() == faultProof.getPriority());

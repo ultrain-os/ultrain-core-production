@@ -11,10 +11,12 @@ namespace ultrainio {
         StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand);
 
         virtual uint32_t proposerPriority(const AccountName& account);
+
+        virtual void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
     protected:
         virtual bool realIsProposer(const AccountName& account);
 
-        virtual bool realIsVoter(const AccountName& account);
+        virtual bool realIsVoter(const AccountName& account, ConsensusPhase phase, int baxCount);
 
         virtual int realGetSendEchoThreshold() const;
 

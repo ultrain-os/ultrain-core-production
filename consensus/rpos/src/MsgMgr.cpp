@@ -22,36 +22,36 @@ namespace ultrainio {
 
     void MsgMgr::insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr) {
         ULTRAIN_ASSERT(aggEchoMsgPtr, chain::chain_exception, "agg echo msg pointer is null");
-        BlockMessagePtr blockMessagePtr = initIfNeed(BlockHeader::num_from_id(aggEchoMsgPtr->blockId));
-        blockMessagePtr->m_myAggEchoMsgPtr = aggEchoMsgPtr;
+        BlockMsgPoolPtr blockMsgPoolPtr = getBlockMsgPool(BlockHeader::num_from_id(aggEchoMsgPtr->blockId));
+        blockMsgPoolPtr->m_myAggEchoMsgPtr = aggEchoMsgPtr;
     }
 
     std::shared_ptr<AggEchoMsg> MsgMgr::getMyAggEchoMsg(uint32_t blockNum) {
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        if (!blockMessagePtr) {
+        BlockMsgPoolPtr blockMsgPoolPtr = getBlockMsgPool(blockNum);
+        if (!blockMsgPoolPtr) {
             return nullptr;
         }
-        return blockMessagePtr->m_myAggEchoMsgPtr;
+        return blockMsgPoolPtr->m_myAggEchoMsgPtr;
     }
 
     void MsgMgr::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         ilog("moveToNewStep blockNum = ${blockNum}, phase = ${phase}, baxCount = ${baxCount}",
                 ("blockNum", blockNum)("phase", static_cast<int>(phase))("baxCount", baxCount));
-        BlockMessagePtr blockMessagePtr = nullptr;
-        if (BlockMsg::newRound(phase, baxCount)) {
+        BlockMsgPoolPtr blockMsgPoolPtr = nullptr;
+        if (StakeVoteBase::newRound(phase, baxCount)) {
             clearSomeBlockMessage(blockNum);
         }
-        blockMessagePtr = initIfNeed(blockNum);
-        blockMessagePtr->moveToNewStep(blockNum, phase, baxCount);
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
+        stakeVotePtr->moveToNewStep(blockNum, phase, baxCount);
     }
 
-    BlockMessagePtr MsgMgr::initIfNeed(uint32_t blockNum) {
+    BlockMsgPoolPtr MsgMgr::getBlockMsgPool(uint32_t blockNum) {
         ULTRAIN_ASSERT(blockNum > 1, chain::chain_exception, "blockNum should > 1");
-        auto itor = blockMessageMap.find(blockNum);
-        if (itor == blockMessageMap.end()) {
-            BlockMessagePtr blockMessagePtr = std::make_shared<BlockMsg>(blockNum);
-            blockMessageMap.insert(make_pair(blockNum, blockMessagePtr));
-            return blockMessagePtr;
+        auto itor = m_blockMsgPoolMap.find(blockNum);
+        if (itor == m_blockMsgPoolMap.end()) {
+            BlockMsgPoolPtr blockMsgPoolPtr = std::make_shared<BlockMsgPool>(blockNum);
+            m_blockMsgPoolMap.insert(make_pair(blockNum, blockMsgPoolPtr));
+            return blockMsgPoolPtr;
         }
         return itor->second;
     }
@@ -71,14 +71,14 @@ namespace ultrainio {
             ilog("loopback AggEchoMsg");
             return kDuplicate;
         }
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        for (auto itor = blockMessagePtr->m_aggEchoMsgV.begin(); itor != blockMessagePtr->m_aggEchoMsgV.end(); itor++) {
+        BlockMsgPoolPtr blockMsgPoolPtr = getBlockMsgPool(blockNum);
+        for (auto itor = blockMsgPoolPtr->m_aggEchoMsgV.begin(); itor != blockMsgPoolPtr->m_aggEchoMsgV.end(); itor++) {
             if (itor->account == aggEchoMsg.account) {
                 ilog("duplicate AggEchoMsg");
                 return kDuplicate;
             }
         }
-        blockMessagePtr->m_aggEchoMsgV.push_back(aggEchoMsg);
+        blockMsgPoolPtr->m_aggEchoMsgV.push_back(aggEchoMsg);
         if (blockNum == myBlockNum) {
             std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
             PublicKey publicKey = stakeVotePtr->getPublicKey(aggEchoMsg.account);
@@ -90,13 +90,33 @@ namespace ultrainio {
                 elog("verify AggEchoMsg error. account : ${account}", ("account", std::string(aggEchoMsg.account)));
                 return kSignatureError;
             }
+#ifdef CONSENSUS_VRF
+            Proof proof(aggEchoMsg.myProposerProof);
+            BlockIdType blockId = UranusNode::getInstance()->getPreviousHash();
+            std::string previousHash(blockId.data());
+            Seed seed(previousHash, blockNum, kPhaseBA0, 0);
+            if (!Vrf::verify(publicKey, proof, seed, Vrf::kProposer)) {
+                elog("verify AggEchoMsg proof error. account : ${account}", ("account", std::string(aggEchoMsg.account)));
+                return kFaultProposer;
+            }
+
+            if (!stakeVotePtr->isProposer(aggEchoMsg.account, proof, UranusNode::getInstance()->getNonProducingNode())) {
+                elog("send AggEchoMsg by non Proposer. account : ${account}", ("account", std::string(aggEchoMsg.account)));
+                return kFaultProposer;
+            }
+#else
             if (!stakeVotePtr->isProposer(aggEchoMsg.account, UranusNode::getInstance()->getNonProducingNode())) {
                 elog("is not proposer to send AggEchoMsg. account : ${account}", ("account", std::string(aggEchoMsg.account)));
                 return kFaultProposer;
             }
+#endif
             for (size_t i = 0; i < aggEchoMsg.accountPool.size(); i++) {
                 EchoMsg echoMsg;
                 echoMsg.blockId = aggEchoMsg.blockId;
+#ifdef CONSENSUS_VRF
+                echoMsg.proposerPriority = aggEchoMsg.proposerPriority;
+                echoMsg.proof = aggEchoMsg.proofPool[i];
+#endif
                 echoMsg.account = aggEchoMsg.accountPool[i];
                 echoMsg.signature = aggEchoMsg.sigPool[i];
                 echoMsg.timestamp = aggEchoMsg.timePool[i];
@@ -108,21 +128,45 @@ namespace ultrainio {
         return kSuccess;
     }
 
+#ifdef CONSENSUS_VRF
+    Proof MsgMgr::getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
+        ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
+        return stakeVotePtr->getVoterProof(blockNum, phase, baxCount);
+    }
+
+    Proof MsgMgr::getProposerProof(uint32_t blockNum) {
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
+        ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
+        return stakeVotePtr->getProposerProof(blockNum);
+    }
+#endif
+
     bool MsgMgr::isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->isVoter(phase, baxCount);
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
+        ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
+#ifdef CONSENSUS_VRF
+        return stakeVotePtr->isVoter(StakeVoteBase::getMyAccount(), stakeVotePtr->getVoterProof(blockNum, phase, baxCount), UranusNode::getInstance()->getNonProducingNode());
+#else
+        return stakeVotePtr->isVoter(StakeVoteBase::getMyAccount(), phase, baxCount, UranusNode::getInstance()->getNonProducingNode());
+#endif
     }
 
     bool MsgMgr::isProposer(uint32_t blockNum) {
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->isProposer();
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
+        ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
+#ifdef CONSENSUS_VRF
+        return stakeVotePtr->isProposer(StakeVoteBase::getMyAccount(), stakeVotePtr->getProposerProof(blockNum), UranusNode::getInstance()->getNonProducingNode());
+#else
+        return stakeVotePtr->isProposer(StakeVoteBase::getMyAccount(), UranusNode::getInstance()->getNonProducingNode());
+#endif
     }
 
     void MsgMgr::clearSomeBlockMessage(uint32_t blockNum) {
-        for (auto itor = blockMessageMap.begin(); itor != blockMessageMap.end();) {
+        for (auto itor = m_blockMsgPoolMap.begin(); itor != m_blockMsgPoolMap.end();) {
             if (blockNum - Config::MAX_LATER_NUMBER > itor->first) {
                 ilog("clear block msg for blockNum = ${blockNum}", ("blockNum", itor->first));
-                blockMessageMap.erase(itor++);
+                m_blockMsgPoolMap.erase(itor++);
             } else {
                 itor++;
             }
@@ -130,7 +174,7 @@ namespace ultrainio {
     }
 
     std::shared_ptr<StakeVoteBase> MsgMgr::getVoterSys(uint32_t blockNum) {
-        BlockMessagePtr blockMessagePtr = initIfNeed(blockNum);
-        return blockMessagePtr->getVoterSys();
+        BlockMsgPoolPtr blockMsgPoolPtr = getBlockMsgPool(blockNum);
+        return blockMsgPoolPtr->getVoterSys();
     }
 }

@@ -6,7 +6,7 @@
 #include <core/Message.h>
 #include <core/Redefined.h>
 #include <crypto/Ed25519.h>
-#include <rpos/BlockMsg.h>
+#include <rpos/BlockMsgPool.h>
 #include <rpos/Proof.h>
 
 namespace ultrainio {
@@ -31,10 +31,6 @@ namespace ultrainio {
         MsgMgr& operator = (const MsgMgr&) = delete;
         MsgMgr(const MsgMgr&) = delete;
 
-        //void insert(const EchoMsg& echoMsg);
-
-        //void insert(const ProposeMsg& proposeMsg);
-
         int handleMessage(const AggEchoMsg& aggEchoMsg);
 
         void insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr);
@@ -47,17 +43,22 @@ namespace ultrainio {
 
         bool isProposer(uint32_t blockNum);
 
+#ifdef CONSENSUS_VRF
+        Proof getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount);
+
+        Proof getProposerProof(uint32_t blockNum);
+#endif
         std::shared_ptr<StakeVoteBase> getVoterSys(uint32_t blockNum);
 
     private:
         MsgMgr() = default;
 
-        BlockMessagePtr initIfNeed(uint32_t blockNum);
+        BlockMsgPoolPtr getBlockMsgPool(uint32_t blockNum);
 
         void clearSomeBlockMessage(uint32_t blockNum);
 
         static std::shared_ptr<MsgMgr> s_self;
-        std::map<int, BlockMessagePtr> blockMessageMap; // key - blockNum
+        std::map<int, BlockMsgPoolPtr> m_blockMsgPoolMap; // key - blockNum
 
         // Only for debug purpose.
         friend class Scheduler;

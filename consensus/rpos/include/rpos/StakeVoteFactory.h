@@ -11,5 +11,7 @@ namespace ultrainio {
     public:
         static std::shared_ptr<StakeVoteBase> createRandom(uint32_t blockNum,
                 std::shared_ptr<CommitteeState> committeeStatePtr, const BlockIdType& rand);
+        static std::shared_ptr<StakeVoteBase> createVrf(uint32_t blockNum,
+                std::shared_ptr<CommitteeState> committeeStatePtr);
     };
 }

@@ -12,19 +12,13 @@ namespace ultrainio {
 
         static const int kDeadlineCnt;
 
-#ifdef CONSENSUS_VRF
         static const double kProposerStakeNumber;
 
         static const double kVoterStakeNumber;
-#else
+
         static const int kDesiredProposerNumber;
 
         static const int kDesiredVoterNumber;
-#endif
-
-        static const double kProposerStakeNumber;
-
-        static const double kVoterStakeNumber;
 
         static const double kSendEchoThresholdRatio;
 
