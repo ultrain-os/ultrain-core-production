@@ -234,7 +234,7 @@ fc::variant call( const std::string& path,
 
 template<>
 fc::variant call( const std::string& url,
-                  const std::string& path) { return call( ::url, path, fc::variant() ); }
+                  const std::string& path) { return call( url, path, fc::variant() ); }
 
 ultrainio::chain_apis::read_only::get_info_results get_info() {
    return call(::url, get_info_func).as<ultrainio::chain_apis::read_only::get_info_results>();
