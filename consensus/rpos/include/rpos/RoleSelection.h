@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include <core/Message.h>
 #include <core/Redefined.h>
 
 namespace ultrainio {
@@ -14,7 +15,7 @@ namespace ultrainio {
 
         bool isProposer(const std::string& account);
 
-        bool isVoter(const std::string& account);
+        bool isVoter(const std::string& account, ConsensusPhase phase, int baxCount);
 
         uint32_t proposerPriority(const std::string& account);
 

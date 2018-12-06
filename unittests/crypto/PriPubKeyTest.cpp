@@ -67,4 +67,17 @@ BOOST_AUTO_TEST_SUITE(key_test_suite)
         BOOST_CHECK(PrivateKey::verifyKeyPair(publicKey, privateKey));
     }
 
+    BOOST_AUTO_TEST_CASE(operator_case) {
+        PrivateKey sk;
+        PublicKey pk;
+        PrivateKey::generate(pk, sk);
+        std::string pkHexStr = std::string(pk);
+        PublicKey pk1(pkHexStr);
+        BOOST_CHECK(pk == pk1);
+        PrivateKey sk2;
+        PublicKey pk2;
+        PrivateKey::generate(pk2, sk2);
+        BOOST_CHECK(pk != pk2);
+    }
+
 BOOST_AUTO_TEST_SUITE_END()

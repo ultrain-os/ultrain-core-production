@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_SUITE(fisheryates_unittest)
         BOOST_CHECK(selection.voterNumber() == committeeSize);
 
         BOOST_CHECK(selection.isProposer(committee[0]));
-        BOOST_CHECK(selection.isVoter(committee[0]));
+        BOOST_CHECK(selection.isVoter(committee[0], kPhaseBA0, 0));
     }
 
     BOOST_AUTO_TEST_CASE(proposer_plus_one_committee_member) {
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_SUITE(fisheryates_unittest)
         int voterNumber = 0;
         int proposerNumber = 0;
         for (int i = 0; i < committeeSize; i++) {
-            if (selection.isVoter(committee[i])) {
+            if (selection.isVoter(committee[i], kPhaseBA0, 0)) {
                 voterNumber++;
             }
             if (selection.isProposer(committee[i])) {

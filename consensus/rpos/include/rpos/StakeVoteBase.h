@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include <core/Message.h>
 #include <core/Redefined.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
@@ -13,6 +14,7 @@ namespace ultrainio {
     // forward declare
     struct CommitteeState;
     class PublicKey;
+    class Proof;
     class NodeInfo;
 
     class StakeVoteBase {
@@ -26,9 +28,19 @@ namespace ultrainio {
 
         static bool committeeHasWorked();
 
+        static bool newRound(ConsensusPhase phase, int baxCount);
+
+        // StakeVoteRandom
         bool isProposer(const AccountName& account, bool myIsNonProducingNode);
 
-        bool isVoter(const AccountName& account, bool myIsNonProducingNode);
+        // StakeVoteRandom
+        bool isVoter(const AccountName& account, ConsensusPhase phase, int baxCount, bool myIsNonProducingNode);
+
+        // StakeVoteVrf
+        bool isProposer(const AccountName& account, const Proof& proof, bool myIsNonProducingNode);
+
+        // StakeVoteVrf
+        bool isVoter(const AccountName& account, const Proof& proof, bool myIsNonProducingNode);
 
         int getSendEchoThreshold() const;
 
@@ -46,13 +58,29 @@ namespace ultrainio {
 
         chain::checksum256_type getCommitteeMroot() { return m_committeeMroot; }
 
+        virtual Proof getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount);
+
+        virtual Proof getProposerProof(uint32_t blockNum);
+
+        // StakeVoteVrf
+        virtual int calSelectedStake(const Proof& proof); // for Voter only
+
+        // StakeVoteRandom
         virtual uint32_t proposerPriority(const AccountName& account);
+
+        virtual void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
     protected:
         StakeVoteBase(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
 
         virtual bool realIsProposer(const AccountName& account);
 
-        virtual bool realIsVoter(const AccountName& account);
+        virtual bool realIsVoter(const AccountName& account, ConsensusPhase phase, int baxCount);
+
+        // StakeVoteVrf
+        virtual bool realIsProposer(const AccountName& account, const Proof& proof);
+
+        // StakeVoteVrf
+        virtual bool realIsVoter(const AccountName& account, const Proof& proof);
 
         virtual int realGetSendEchoThreshold() const;
 
@@ -72,17 +100,18 @@ namespace ultrainio {
 
         bool committeeHasWorked2() const;
 
+        PublicKey findInCommitteeMemberList(const AccountName& account) const;
+
+        uint32_t m_blockNum = 0;
+
     private:
         static std::shared_ptr<NodeInfo> s_keyKeeper;
 
         // get committee state from world state
         static std::shared_ptr<CommitteeState> getCommitteeState();
 
-        PublicKey findInCommitteeMemberList(const AccountName& account) const;
-
         void computeCommitteeMroot();
 
-        uint32_t m_blockNum = 0;
         chain::checksum256_type m_committeeMroot;
     };
 }

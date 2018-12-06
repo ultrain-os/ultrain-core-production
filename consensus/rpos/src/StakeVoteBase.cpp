@@ -17,6 +17,20 @@ using std::string;
 using namespace appbase;
 
 namespace ultrainio {
+
+#define GENESIS_ROLE_CHECK(account,isNonProducer)                                           \
+            AccountName myAccount = getMyAccount();                                         \
+            if (isNonProducer && account == myAccount) {                                    \
+                return false;                                                               \
+            }                                                                               \
+            if (isGenesisPeriod()) {                                                        \
+                if (isGenesisLeader(account)) {                                             \
+                    return true;                                                            \
+                } else {                                                                    \
+                    return false;                                                           \
+                }                                                                           \
+            }
+
     std::shared_ptr<NodeInfo> StakeVoteBase::s_keyKeeper = std::make_shared<NodeInfo>();
 
     StakeVoteBase::StakeVoteBase(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr)
@@ -38,6 +52,13 @@ namespace ultrainio {
 
     PrivateKey StakeVoteBase::getMyPrivateKey() {
         return s_keyKeeper->getPrivateKey();
+    }
+
+    bool StakeVoteBase::newRound(ConsensusPhase phase, int baxCount) {
+        if (kPhaseBA0 == phase && 0 == baxCount) {
+            return true;
+        }
+        return false;
     }
 
     void StakeVoteBase::computeCommitteeMroot() {
@@ -95,33 +116,31 @@ namespace ultrainio {
     }
 
     bool StakeVoteBase::isProposer(const AccountName& account, bool myIsNonProducingNode) {
-        AccountName myAccount = getMyAccount();
-        if (myIsNonProducingNode && account == myAccount) { // non producer
-            return false;
-        }
-        if (isGenesisPeriod()) {
-            if (isGenesisLeader(account)) {
-                return true; // genesis node
-            } else {
-                return false;
-            }
-        }
+        GENESIS_ROLE_CHECK(account, myIsNonProducingNode);
         return realIsProposer(account);
     }
 
-    bool StakeVoteBase::isVoter(const AccountName& account, bool myIsNonProducingNode) {
-        AccountName myAccount = getMyAccount();
-        if (myIsNonProducingNode && account == myAccount) { // non producer
-            return false;
-        }
-        if (isGenesisPeriod()) {
-            if (isGenesisLeader(account)) {
-                return true; // genesis node
-            } else {
-                return false;
-            }
-        }
-        return realIsVoter(account);
+    bool StakeVoteBase::isVoter(const AccountName& account, ConsensusPhase phase, int baxCount, bool myIsNonProducingNode) {
+        GENESIS_ROLE_CHECK(account, myIsNonProducingNode);
+        return realIsVoter(account, phase, baxCount);
+    }
+
+    bool StakeVoteBase::isProposer(const AccountName& account, const Proof& proof, bool myIsNonProducingNode) {
+        GENESIS_ROLE_CHECK(account, myIsNonProducingNode);
+        return realIsProposer(account, proof);
+    }
+
+    bool StakeVoteBase::isVoter(const AccountName& account, const Proof& proof, bool myIsNonProducingNode) {
+        GENESIS_ROLE_CHECK(account, myIsNonProducingNode);
+        return realIsVoter(account, proof);
+    }
+
+    int StakeVoteBase::calSelectedStake(const Proof& proof) {
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
+    }
+
+    void StakeVoteBase::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
     uint32_t StakeVoteBase::getProposerNumber() const {
@@ -218,11 +237,19 @@ namespace ultrainio {
         ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
+    Proof StakeVoteBase::getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
+    }
+
+    Proof StakeVoteBase::getProposerProof(uint32_t blockNum) {
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
+    }
+
     bool StakeVoteBase::realIsProposer(const AccountName& account) {
         ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
-    bool StakeVoteBase::realIsVoter(const AccountName& account) {
+    bool StakeVoteBase::realIsVoter(const AccountName& account, ConsensusPhase phase, int baxCount) {
         ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 
@@ -243,6 +270,14 @@ namespace ultrainio {
     }
 
     uint32_t StakeVoteBase::realGetProposerNumber() const {
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
+    }
+
+    bool StakeVoteBase::realIsProposer(const AccountName& account, const Proof& proof) {
+        ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
+    }
+
+    bool StakeVoteBase::realIsVoter(const AccountName& account, const Proof& proof) {
         ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 }
