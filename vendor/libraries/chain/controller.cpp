@@ -220,35 +220,53 @@ struct controller_impl {
        else
             tmp_path = conf.worldstate_dir;      
        tmp_path = tmp_path / path(boost::filesystem::unique_path());
+      
+       block_state fork_head = *fork_db.head();
+       uint32_t block_height = fork_head.block_num;
 
        ilog("create worldstate size ${size} path ${path}",("size",size)("path", tmp_path.string()));
        ilog("create worldstate free size ${size} ",("size",db.get_segment_manager()->get_free_memory()));
-       ilog("create worldstate block height ${size} ",("size",self.head_block_num()));
+       ilog("create worldstate block height ${size} ",("size", block_height));
        
-       chainbase::database* worldstate_db = new chainbase::database(tmp_path, database::read_write,size);
+       //chainbase::database* worldstate_db = new chainbase::database(tmp_path, database::read_write,size);
+       char* buffer = new char[size];
        auto begin1 = fc::time_point::now();
        db.with_write_lock([&](){
             auto begin=fc::time_point::now();
-            memcpy(worldstate_db->get_segment_address(),db.get_segment_address(),size);
+            memcpy(buffer, db.get_segment_address(),size);
             auto end=fc::time_point::now();
             auto time_delta=end-begin;
             ilog("create_worldstate cp memory time: ${time_delta}", ("time_delta", time_delta));
-       });
+       });      
+       
        auto begin2 = fc::time_point::now();
+
        //thread to generate worldstate file
-       boost::thread worldstate([this, tmp_path](chainbase::database* ws_db){
-            //add indices
+       boost::thread worldstate([this, tmp_path, buffer, size, block_height, fork_head](void* ptr){
+            //create new chainbase
             auto begin=fc::time_point::now();
+            chainbase::database* ws_db = new chainbase::database(tmp_path, database::read_write,size);
+            auto begin1=fc::time_point::now();
+            memcpy(ws_db->get_segment_address(), buffer,size);
+
+            //add indices            
+            auto begin2=fc::time_point::now();
             controller_index_set::add_indices(*ws_db);
             contract_database_index_set::add_indices(*ws_db);
             authorization.add_indices(*ws_db);
             resource_limits.add_indices(*ws_db);
-            add_to_worldstate(ws_db);
+
+            add_to_worldstate(ws_db, block_height, fork_head);
+
+            //clear
             auto end = fc::time_point::now();
             fc::remove_all(tmp_path);
+            delete[] buffer;
+            delete ws_db;
+
             auto end1 = fc::time_point::now();
-            ilog("add_to_worldstate create_ws_time  remove_chainbase_time: ${time}  ${time1}", ("time", end - begin)("time1", end1 - end));
-       },worldstate_db);
+            ilog("add_to_worldstate create_ws_time  remove_chainbase_time: ${time0} ${time00} ${time}  ${time1}", ("time0", begin1 - begin)("time00", begin2 - begin1)("time", end - begin2)("time1", end1 - end));
+       }, nullptr);
        worldstate.detach();
 
       auto end=fc::time_point::now();
@@ -450,14 +468,11 @@ struct controller_impl {
       });
    }
 
-   void add_to_worldstate(const chainbase::database* const worldstate_db) const {
-      //worldstate file name
-      auto block_num = head->block_num;
-
+   void add_to_worldstate(const chainbase::database* const worldstate_db, uint32_t block_height, const block_state& fork_head) const{
       ws_file_manager ws_manager;
       ws_info info;
       info.chain_id = self.get_chain_id();
-      info.block_height = self.head_block_num();
+      info.block_height = block_height;
 
       std::string worldstate_path = ws_manager.get_file_path_by_info(info.chain_id, info.block_height);
         
@@ -473,8 +488,8 @@ struct controller_impl {
          section.add_row(conf.genesis, *worldstate_db);
       });
 
-      worldstate->write_section<block_state>([this,worldstate_db]( auto &section ){
-         section.template add_row<block_header_state>(*fork_db.head(), *worldstate_db);
+      worldstate->write_section<block_state>([this,worldstate_db, fork_head]( auto &section ){
+         section.template add_row<block_header_state>(fork_head, *worldstate_db);
       });
 
       controller_index_set::walk_indices([this,&worldstate_db, worldstate]( auto utils ){
@@ -503,7 +518,6 @@ struct controller_impl {
       worldstate_out.close();
 
       //TODO:remove worldstate_db, use unique_ptr to wrap
-      delete worldstate_db;
       info.file_size = bfs::file_size(worldstate_path);
       info.hash_string = ws_manager.calculate_file_hash(worldstate_path).str();
       ws_manager.save_info(info);
@@ -661,11 +675,11 @@ struct controller_impl {
             head = fork_db.head();
             ULTRAIN_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
             //normal block production
-            if (0 == head->block_num % conf.worldstate_interval) {
+            if (0 == fork_db.head()->block_num % conf.worldstate_interval) {
                create_worldstate();
             }
          } else { // block syncing and listner branch, worldstate allowed for listner but not for syncing
-             if ( (0 == head->block_num % conf.worldstate_interval) && (worldstate_allowed) ) {
+             if ( (0 == fork_db.head()->block_num % conf.worldstate_interval) && (worldstate_allowed) ) {
                create_worldstate();
              }
          }
@@ -1316,7 +1330,7 @@ struct controller_impl {
       if( new_head->header.previous == head->id ) {
          try {
             apply_block( new_head->block, s );
-            fork_db.mark_in_current_chain( new_head, true );
+            fork_db.mark_in_current_chain( new_head, true );//
             fork_db.set_validity( new_head, true );
             head = new_head;
          } catch ( const fc::exception& e ) {
