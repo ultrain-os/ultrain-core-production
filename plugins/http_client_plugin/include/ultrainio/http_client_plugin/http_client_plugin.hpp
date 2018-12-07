@@ -6,7 +6,7 @@
 #include <appbase/application.hpp>
 #include <fc/network/http/http_client.hpp>
 #include <mutex>
-#include <ultrainio/chain_plugin/chain_plugin.hpp>
+//#include <ultrainio/chain_plugin/chain_plugin.hpp>
 
 
 namespace ultrainio {
@@ -35,7 +35,7 @@ namespace ultrainio {
         http_client_plugin();
         virtual ~http_client_plugin();
 
-        APPBASE_PLUGIN_REQUIRES((chain_plugin))
+        APPBASE_PLUGIN_REQUIRES()
         virtual void set_program_options(options_description&, options_description& cfg) override;
 
         void plugin_initialize(const variables_map& options);
@@ -43,20 +43,20 @@ namespace ultrainio {
         void plugin_shutdown();
         void schedule();
 
-        // When the msg_queue is full, return false, else true
-        bool enqueue(const fc::url& dest, const variant& payload, const time_point& deadline);
-
         // async post http msg
+	// it is thread safe
         bool post(const fc::url& dest, const variant& payload, const time_point& deadline = time_point::maximum()) {
             return enqueue(dest, payload, deadline);
         }
 
         // async post http msg, this method is identical to post(), but we need it to connect to chain::controller
+        // it is thread safe
         bool post_async(const fc::url& dest, const variant& payload, const time_point& deadline = time_point::maximum()) {
             return enqueue(dest, payload, deadline);
         }
 
         // async post http msg with template T as payload
+        // it is thread safe
         template<typename T>
         bool post(const url& dest, const T& payload, const time_point& deadline = time_point::maximum()) {
             variant payload_v;
@@ -65,19 +65,20 @@ namespace ultrainio {
         }
 
         // sync post http msg with template T as payload
+        // is is not thread safe
         template<typename T>
         variant post_sync(const fc::url& dest, const T& payload, const time_point& deadline = time_point::maximum()) {
-            return my->post_sync(dest, payload, deadline);
+            return sync_client->post_sync(dest, payload, deadline);
         }
 
-        /*http_client& get_client() {
-           return *my;
-        }*/
-
     private:
-        std::unique_ptr<http_client> my;
+        std::unique_ptr<http_client> sync_client;
+        std::unique_ptr<http_client> async_client;
         std::list<async_http_msg> msg_queue;
         std::list<async_http_msg> send_msg_queue;
         std::mutex msg_queue_lock;
+
+        // When the msg_queue is full, return false, else true
+        bool enqueue(const fc::url& dest, const variant& payload, const time_point& deadline);
     };
 }

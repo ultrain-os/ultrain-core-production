@@ -13,7 +13,7 @@
 
 namespace ultrainio {
 
-http_client_plugin::http_client_plugin():my(new http_client()){}
+http_client_plugin::http_client_plugin():sync_client(new http_client()), async_client(new http_client()){}
 http_client_plugin::~http_client_plugin(){}
 
 void http_client_plugin::set_program_options(options_description&, options_description& cfg) {
@@ -46,14 +46,16 @@ void http_client_plugin::plugin_initialize(const variables_map& options) {
                 }
 
                 try {
-                    my->add_cert( pem_str );
+                    sync_client->add_cert( pem_str );
+                    async_client->add_cert( pem_str );
                 } catch ( const fc::exception& e ) {
                     elog( "Failed to read PEM : ${e} \n${pem}\n", ("pem", pem_str)( "e", e.to_detail_string()));
                 }
             }
         }
 
-        my->set_verify_peers( options.at( "https-client-validate-peers" ).as<bool>());
+        sync_client->set_verify_peers( options.at( "https-client-validate-peers" ).as<bool>());
+        async_client->set_verify_peers( options.at( "https-client-validate-peers" ).as<bool>());
     } FC_LOG_AND_RETHROW()
 }
 
@@ -94,7 +96,7 @@ void http_client_plugin::schedule() {
             msg_queue_lock.unlock();
             for (auto it = send_msg_queue.begin(); it != send_msg_queue.end(); ++it) {
                 try {
-                    my->post(it->dest, it->payload, it->deadline);
+                    async_client->post(it->dest, it->payload, it->deadline);
                 } catch (...) { // TODO: We skip exception when no response happends, but need to process some type of exception if we can
                 }
             }
