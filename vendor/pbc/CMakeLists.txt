@@ -1,4 +1,5 @@
 file(GLOB HEADERS "include/*.h" )
+
 add_library( ultrainio_pbc
         arith/field.c
         arith/z.c
@@ -35,6 +36,8 @@ add_library( ultrainio_pbc
         ecc/g_param.c
         ${HEADERS} )
 
+find_package(GMP REQUIRED)
+
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR} )
-target_link_libraries( ultrainio_pbc gmp m )
-target_include_directories( ultrainio_pbc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+target_link_libraries( ultrainio_pbc ${GMP_LIBRARIES} m )
+target_include_directories( ultrainio_pbc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" ${GMP_INCLUDE_DIR} )
