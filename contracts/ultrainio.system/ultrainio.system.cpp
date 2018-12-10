@@ -265,17 +265,28 @@ namespace ultrainiosystem {
    }
 
    void system_contract::add_subchain_account(const std::vector<ultrainio::proposeaccount_info>&  accounts ) {
+      auto const getHexvalue = [](const char ch)->int{
+         if(ch >= '0' && ch <= '9')
+            return (ch-'0');
+         if(ch >= 'a' && ch <= 'f')
+            return ((ch-'a')+10);
+      };
       for(auto const& newacc:accounts){
          ultrainiosystem::key_weight keyweight;
          char  keydata[512];
          memset(keydata,0,sizeof(keydata));
          frombase58_recover_key(newacc.owner_key.c_str(), keydata,0);
+         unsigned int j = 0;
          for ( uint32_t i=0; i < strlen(keydata); i++ ){
-            keyweight.key.data[i] = keydata[i];
-            print("updateactiveaccounts publickey i:" , i," data:",keydata[i]);
+            if(i%2 == 1)
+            {
+               keyweight.key.data[j] = (getHexvalue(keydata[i-1])*16 + getHexvalue(keydata[i])) & 0xff;
+               j++;
+            }
+            //print("updateactiveaccounts publickey i:" , i," data:",keydata[i]," value:",getHexvalue(keydata[i])," j:",j," jdata:",keyweight.key.data[j]);
          }
          //memcpy(keyweight.key.data, keydata, keyweight.key.data.size());
-         keyweight.key.type =0;
+         keyweight.key.type = 0;
          print("updateactiveaccounts proposerminer:",name{newacc.account}," ownerkey:",newacc.owner_key," size:",strlen(keydata));
          ultrainiosystem::authority               ownerkey  = { .threshold = 1, .keys = { keyweight }, .accounts = {}, .waits = {} };
          ultrainiosystem::authority               activekey = { .threshold = 1, .keys = { keyweight }, .accounts = {}, .waits = {} };
