@@ -67,7 +67,6 @@ namespace ultrainio {
     Scheduler::Scheduler() : m_ba0Block(), m_proposerMsgMap(), m_echoMsgMap(),
                                            m_cacheProposeMsgMap(), m_cacheEchoMsgMap(),
                                            m_echoMsgAllPhase() {
-        m_syncTaskPeriod = {std::chrono::seconds{1}};
         m_syncTaskTimer.reset(new boost::asio::steady_timer(app().get_io_service()));
         m_memleakCheck.reset(new boost::asio::steady_timer(app().get_io_service()));
         start_memleak_check();

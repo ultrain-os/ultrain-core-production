@@ -170,8 +170,8 @@ namespace ultrainio {
         bool                             done = false;
         unique_ptr< dispatch_manager >   dispatcher;
         unique_ptr< sync_block_manager > sync_block_master;
-        int                        max_waittime_getsyncblocknum ;
-        int                        max_waittime_getsyncblock ;
+        int                        max_waitblocknum_seconds;
+        int                        max_waitblock_seconds ;
 
         unique_ptr<boost::asio::steady_timer> connector_check;
         unique_ptr<boost::asio::steady_timer> transaction_check;
@@ -210,9 +210,9 @@ namespace ultrainio {
         void get_con_buffer_size(connection_ptr c);
         void print_queue_size( );
         void start_sizeprint_timer( );
-	void reset_speedlimit_monitor( );
+        void reset_speedlimit_monitor( );
         void start_speedlimit_monitor_timer();
-	void close( connection_ptr c );
+        void close( connection_ptr c );
         size_t count_open_sockets() const;
 
         template<typename VerifierFunc>
@@ -353,8 +353,6 @@ namespace ultrainio {
     constexpr bool     large_msg_notify = false;
 
     constexpr auto     message_header_size = 4;
-    constexpr auto     src_block_waitting = 3;
-    constexpr auto     sync_conn_waitting = 12;
     /**
      *  For a while, network version was a 16 bit value equal to the second set of 16 bits
      *  of the current build's git commit id. We are now replacing that with an integer protocol
@@ -626,7 +624,7 @@ namespace ultrainio {
 
         template <typename T> void operator()(const T &msg) const
         {
-	   impl.handle_message( c, msg);
+            impl.handle_message( c, msg);
         }
     };
 
@@ -646,18 +644,18 @@ namespace ultrainio {
         unique_ptr<boost::asio::steady_timer> conn_check;
         std::default_random_engine            rand_engine;
 
-        sync_block_manager() {
+        sync_block_manager(int src_check_timeout, int conn_check_timeout) {
             seq_num = 0;
             reset();
+            src_block_period = {std::chrono::seconds{src_check_timeout}};
             src_block_check.reset(new boost::asio::steady_timer(app().get_io_service()));
+            conn_timeout = {std::chrono::seconds{conn_check_timeout}};
             conn_check.reset(new boost::asio::steady_timer(app().get_io_service()));
             std::random_device rd;
             rand_engine.seed(rd());
         }
 
         void reset() {
-            int waittime_src_block = app().get_plugin<net_plugin>().get_waittime_sysblocknum();
-            int waiting_conn_timeout = app().get_plugin<net_plugin>().get_waittime_sysblock();
             last_received_block = 0;
             last_checked_block = 0;
             rsp_conns.clear();
@@ -665,12 +663,11 @@ namespace ultrainio {
             memset(&sync_block_msg, 0, sizeof(sync_block_msg));
             end_block_num = 0;
             selecting_src = false;
-            src_block_period = {std::chrono::seconds{waittime_src_block}};
 
             if (src_block_check) {
                 src_block_check->cancel();
             }
-            conn_timeout = {std::chrono::seconds{waiting_conn_timeout}};
+
             if (conn_check) {
                 conn_check->cancel();
             }
@@ -2678,8 +2675,8 @@ namespace ultrainio {
            "   _port  \tremote port number of peer\n\n"
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
-        ("max-waitblocknum-seconds", bpo::value<int>()->default_value(src_block_waitting), "Max time wait for answers from peers about blockNum:src_block_period")
-        ("max-waitblock-seconds",bpo::value<int>()->default_value(sync_conn_waitting), "Max time wait for block from selected peer:conn_timeout")
+        ("max-waitblocknum-seconds", bpo::value<int>()->default_value(3), "Time duration for selecting sync block source.")
+        ("max-waitblock-seconds",bpo::value<int>()->default_value(12), "Check period for connecting during syncing block.")
 
         ;
    }
@@ -2695,10 +2692,10 @@ namespace ultrainio {
          peer_log_format = options.at( "peer-log-format" ).as<string>();
 
          my->network_version_match = options.at( "network-version-match" ).as<bool>();
-         my->max_waittime_getsyncblocknum = options.at( "max-waitblocknum-seconds" ).as<int>();
-         my->max_waittime_getsyncblock = options.at( "max-waitblock-seconds" ).as<int>();
+         my->max_waitblocknum_seconds = options.at( "max-waitblocknum-seconds" ).as<int>();
+         my->max_waitblock_seconds = options.at( "max-waitblock-seconds" ).as<int>();
          my->dispatcher.reset( new dispatch_manager );
-         my->sync_block_master.reset( new sync_block_manager );
+         my->sync_block_master.reset( new sync_block_manager(my->max_waitblocknum_seconds, my->max_waitblock_seconds) );
 
          my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
          my->txn_exp_period = def_txn_expire_wait;
@@ -2905,14 +2902,6 @@ namespace ultrainio {
         FC_CAPTURE_AND_RETHROW()
     }
 
-    int  net_plugin::get_waittime_sysblocknum()
-    {
-        return  my->max_waittime_getsyncblocknum ;
-    }
-    int  net_plugin::get_waittime_sysblock()
-    {
-        return my->max_waittime_getsyncblock ;
-    }
    void net_plugin::broadcast(const ProposeMsg& propose) {
       ilog("broadcast propose msg. blockHash : ${blockHash}", ("blockHash", propose.block.id()));
       my->start_broadcast(net_message(propose), msg_priority_rpos);

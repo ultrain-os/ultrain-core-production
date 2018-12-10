@@ -43,8 +43,6 @@ namespace ultrainio {
         vector<connection_status>    connections()const;
 
         size_t num_peers() const;
-        int get_waittime_sysblocknum();
-        int get_waittime_sysblock();
     private:
         std::unique_ptr<class net_plugin_impl> my;
     };
