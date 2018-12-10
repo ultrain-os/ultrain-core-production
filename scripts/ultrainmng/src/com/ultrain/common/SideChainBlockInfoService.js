@@ -21,7 +21,8 @@ let config = {
     httpEndpoint_history: 'http://172.16.10.4:3000',
     keyProvider: ['5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H'], // WIF string or array of keys..
 
-    chainId: '2616bfbc21e11d60d10cb798f00893c2befba10e2338b7277bb3865d2e658f58', // 32 byte (64 char) hex string
+    chainId: '0eaaff4003d4e08a541332c62827c0ac5d96766c712316afe7ade6f99b8d70fe', // 32 byte (64 char) hex string
+    // chainId: '2616bfbc21e11d60d10cb798f00893c2befba10e2338b7277bb3865d2e658f58', // 32 byte (64 char) hex string
     expireInSeconds: 60,
     broadcast: true,
     sign: true,
@@ -47,11 +48,14 @@ let configSub = {
     // httpEndpoint: 'http://40.117.73.83:8888',
     // httpEndpoint_history: 'http://40.117.73.83:3000',
     // keyProvider: ['5KATDC5YqmSTfy99BWqRugriDmeaTAqpwZxXV8jQafdwJqTaqF4'], // WIF string or array of keys..
-    httpEndpoint: 'http://172.16.10.8:8877',
-    httpEndpoint_history: 'http://172.16.10.4:3000',
+    // httpEndpoint: 'http://172.16.10.5:8899',
+    // httpEndpoint_history: 'http://172.16.10.5:3000',
+    httpEndpoint: 'http://127.0.0.1:8888',
+    httpEndpoint_history: 'http://127.0.0.1:3000',
     keyProvider: ['5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H'], // WIF string or array of keys..
 
-    chainId: '2616bfbc21e11d60d10cb798f00893c2befba10e2338b7277bb3865d2e658f58', // 32 byte (64 char) hex string
+    chainId: '0eaaff4003d4e08a541332c62827c0ac5d96766c712316afe7ade6f99b8d70fe', // 32 byte (64 char) hex string
+    // chainId: '2616bfbc21e11d60d10cb798f00893c2befba10e2338b7277bb3865d2e658f58', // 32 byte (64 char) hex string
     expireInSeconds: 60,
     broadcast: true,
     sign: true,
@@ -68,8 +72,11 @@ let configSub = {
 
 };
 
-let u3 = createU3(config);
-let u3Sub = createU3(configSub);
+// let u3 = createU3(config);
+let u3 = createU3({ ...config, sign: true, broadcast: true });
+let u3NotPush = createU3({ sign: false, broadcast: false });
+
+let u3Sub = createU3({ ...configSub, sign: true, broadcast: true });
 
 // // 异步打开文件
 // console.log("准备打开文件！");
@@ -81,8 +88,8 @@ let u3Sub = createU3(configSub);
 //
 // });
 
-var path = '/root/.local/share/ultrainio/nodultrain/config.ini';
-path = "config.ini";
+var path = '/root/.local/share/ultrainio/nodultrain/config/config.ini';
+// path = "config.ini";
 
 var configIni = ini.parse(fs.readFileSync(path,'utf-8'));
 
@@ -104,7 +111,7 @@ var mySkAsCommittee = configIni["my-account-as-committee"];
 
 function transferToUltrainio() {
     u3.contract('utrio.token').then(actions => {
-        actions.transfer('wxjhust12345', 'ultrainio', '1.0000 UGAS', 'transfer memo').then((unsigned_transaction) => {
+        actions.transfer('user.111', 'user.112', '1.0000 UGAS', 'transfer memo').then((unsigned_transaction) => {
             u3.sign(unsigned_transaction, config.keyProvider[0], config.chainId).then((signature) => {
                 if (signature) {
                     let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
@@ -183,59 +190,91 @@ function invokeSystemContract( resultJson) {
 
     result = buildCommittee(jsonArray, resultJson, 0, result);
 
-    u3Sub.contract('ultrainio').then(actions => {
-        actions.votecommittee(myAccountAsCommittee, result).then((unsigned_transaction) => {
-            u3.sign(unsigned_transaction, mySkAsCommittee, config.chainId).then((signature) => {
-                if (signature) {
-                    let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
-                    console.log(signedTransaction);
+    if(result.length==0) {
+        return;
+    }
 
-                    u3.pushTx(signedTransaction).then((processedTransaction) => {
-                        console.log(processedTransaction);
-                        // assert.equal(processedTransaction.transaction_id, unsigned_transaction.transaction_id);
-                    });
-                }
+    try {
+
+        u3Sub.contract('ultrainio').then(actions => {
+            actions.votecommittee(myAccountAsCommittee, result).then((unsigned_transaction) => {
+                u3Sub.sign(unsigned_transaction, mySkAsCommittee, config.chainId).then((signature) => {
+                    if (signature) {
+                        let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
+                        console.log(signedTransaction);
+
+                        u3Sub.pushTx(signedTransaction).then((processedTransaction) => {
+                            console.log(processedTransaction);
+                            // assert.equal(processedTransaction.transaction_id, unsigned_transaction.transaction_id);
+                        });
+                    }
+                })
             })
-        })
-    });
+        });
+        //列表更新
+        jsonArray = resultJson;
+    } catch (e) {
+        console.log("u3 push tx error...",e)
+    }
 
-    //列表更新
-    jsonArray = resultJson;
 }
 
 pushHeaderToTestnet = async (timestamp, proposer, version, previous, transaction_mroot, action_mroot, committee_mroot, header_extensions) => {
     console.log("=======" + timestamp + "," + proposer + "," + version + "," + previous + "," + transaction_mroot + "," + action_mroot + "," + committee_mroot + "," + header_extensions)
 
-    await u3.contract('ultrainio').then(async actions => {
-        let unsigned_transaction = await actions.acceptheader(format.encodeName('111'), {
-                "timestamp": timestamp,
-                "proposer": proposer,
-                // "proposerProof": proposerProof,
-                "version": version,
-                "previous": previous,
-                "transaction_mroot": transaction_mroot,
-                "action_mroot": action_mroot,
-                "committee_mroot": committee_mroot,
-                "header_extensions": [],
-            },
-            {
-                authorization: [`genesis@active`]
-            })
+    // try{
+    //
+    //     await u3.contract('ultrainio').then(async actions => {
+    //     let unsigned_transaction = await actions.acceptheader(format.encodeName('11'), {
+    //             "timestamp": timestamp,
+    //             "proposer": proposer,
+    //             // "proposerProof": proposerProof,
+    //             "version": version,
+    //             "previous": previous,
+    //             "transaction_mroot": transaction_mroot,
+    //             "action_mroot": action_mroot,
+    //             "committee_mroot": committee_mroot,
+    //             "header_extensions": [],
+    //         },
+    //         {
+    //             authorization: [`user.111@active`]
+    //         })
+    //
+    //     console.log("=======================unsigned_transaction============" + unsigned_transaction)
+    //
+    //     u3NotPush.sign(unsigned_transaction, config.keyProvider[0], config.chainId).then((signature) => {
+    //         if (signature) {
+    //             let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
+    //             console.log("=======================invoke============" + signedTransaction);
+    //
+    //             u3.pushTx(signedTransaction).then((processedTransaction) => {
+    //                 console.log(processedTransaction);
+    //                 // assert.equal(processedTransaction.transaction_id, unsigned_transaction.transaction_id);
+    //             });
+    //         }
+    //     })
+    // });
+    // }
+    // catch(e){
+    //     console.log('error..',e);
+    // }
 
-        console.log("=======================unsigned_transaction============" + unsigned_transaction)
+    const params = {
+        chain_name: 11,
+        header: {
+            "timestamp": timestamp,
+            "proposer": proposer,
+            // "proposerProof": proposerProof,
+            "version": version,
+            "previous": previous,
+            "transaction_mroot": transaction_mroot,
+            "action_mroot": action_mroot,
+            "committee_mroot": committee_mroot,
+            "header_extensions": [],
+        }
+    };
 
-        u3.sign(unsigned_transaction, config.keyProvider[0], config.chainId).then((signature) => {
-            if (signature) {
-                let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
-                console.log("=======================invoke============" + signedTransaction);
-
-                u3.pushTx(signedTransaction).then((processedTransaction) => {
-                    console.log(processedTransaction);
-                    // assert.equal(processedTransaction.transaction_id, unsigned_transaction.transaction_id);
-                });
-            }
-        })
-    });
+    contractInteract('ultrainio', "acceptheader", params, myAccountAsCommittee, config.keyProvider[0] );
 }
 
 
@@ -266,11 +305,16 @@ const getBlocks = async () => {
     let blockNum = await u3.getSubchainBlockNum({"chain_name":"11"});
     console.log("u3.getSubchainBlockNum  blockNum="+blockNum);
 
-        let result = await u3Sub.getBlockInfo(blockNum);
+    let blockNumInt = parseInt( blockNum, 10 )+1;
+    if(blockNumInt<2) {
+        blockNumInt = 2;
+    }
+
+        let result = await u3Sub.getBlockInfo((blockNumInt).toString() );
 
         if (result) {
             console.log("u3Sub.getBlockInfo result is:", result);
-            pushHeaderToTestnet(result.timevalue, 'genesis', result.version, result.previous, result.transaction_mroot, result.action_mroot, result.committee_mroot, result.header_extensions)
+            pushHeaderToTestnet(result.timevalue, result.proposer, result.version, result.previous, result.transaction_mroot, result.action_mroot, result.committee_mroot, result.header_extensions)
 
         }
 
@@ -358,6 +402,29 @@ const getSubchainCommittee = async () => {
 
 
 // getBlocks();
-// scheduleCronstyle();
+scheduleCronstyle();
 
 
+// transferToUltrainio();
+
+async function contractInteract(contractName, actionName, params, accountName,  privateKey) {
+    try {
+        const keyProvider = [privateKey];
+        const u3 = createU3({ ...config, keyProvider });
+
+        const contract = await u3.contract(contractName);
+        console.log(contract);
+        if (!contract) {
+            throw new Error("can't found contract");
+        }
+        if (!contract[actionName] || typeof contract[actionName] !== 'function') {
+            throw new Error("action doesn't exist");
+        }
+        const data = await contract[actionName](params, {
+            authorization: [`${accountName}@active`],
+        });
+        console.log('success')
+    } catch (err) {
+        console.error(err);
+    }
+}

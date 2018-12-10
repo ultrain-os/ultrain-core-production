@@ -48,7 +48,7 @@ public:
    bool handle_message(const string& peer_addr, const SyncStopMsg& msg);
    bool sync_fail(const ultrainio::ReqSyncMsg& sync_msg);
    bool sync_cancel();
-
+   int  get_round_interval();
    void pause();
    void resume();
    bool paused() const;

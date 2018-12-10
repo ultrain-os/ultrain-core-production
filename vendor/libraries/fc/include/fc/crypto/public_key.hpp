@@ -28,6 +28,7 @@ namespace fc { namespace crypto {
 
          public_key( const signature& c, const sha256& digest, bool check_canonical = true );
 
+         static std::string base58_to_hex(const std::string& base58str);
          bool valid()const;
 
          // serialize to/from string

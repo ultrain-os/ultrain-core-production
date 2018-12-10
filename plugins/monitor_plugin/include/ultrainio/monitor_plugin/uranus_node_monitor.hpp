@@ -154,6 +154,16 @@ namespace ultrainio {
                 staticConfig.publicKey         = std::string(StakeVoteBase::getMyPrivateKey().getPublicKey());
                 staticConfig.privateKey        = std::string(StakeVoteBase::getMyPrivateKey());
                 staticConfig.account           = std::string(StakeVoteBase::getMyAccount());
+
+                if(staticConfig.genesisLeaderPk.size() > 128) {
+                    staticConfig.genesisLeaderPk = staticConfig.genesisLeaderPk.substr(staticConfig.genesisLeaderPk.size() - 128);
+                }
+                if(staticConfig.publicKey.size() > 128) {
+                    staticConfig.publicKey = staticConfig.publicKey.substr(staticConfig.publicKey.size() - 128);
+                }
+                if(staticConfig.privateKey.size() > 128) {
+                    staticConfig.privateKey = staticConfig.privateKey.substr(staticConfig.privateKey.size() - 128);
+                }
             }
             return staticConfig;
         }
@@ -176,7 +186,7 @@ namespace ultrainio {
             m_ba0BlockTime.replace(pos - 2, 0, std::string("-"));
             m_ba0BlockTime.replace(pos - 4, 0, std::string("-"));
 
-            m_ba0BlockTime = "";
+            m_ba1BlockTime = "";
         }
 
         void ba1BlockProducingTime() {

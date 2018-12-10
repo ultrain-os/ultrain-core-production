@@ -94,6 +94,12 @@
         {"name": "header",              "type": "block_header"}
       ]
     },{
+      "name": "clearblock",
+      "base": "",
+      "fields": [
+        {"name": "chain_name",          "type": "uint64"}
+      ]
+    },{
       "name": "permission_level_weight",
       "base": "",
       "fields": [
@@ -594,6 +600,10 @@
       "type": "acceptheader",
       "ricardian_contract": ""
    },{
+      "name": "clearblock",
+      "type": "clearblock",
+      "ricardian_contract": ""
+   },{
       "name": "unregprod",
       "type": "unregprod",
       "ricardian_contract": ""
@@ -682,6 +692,12 @@
        "index_type": "i64",
        "key_names" : ["newname"],
        "key_types" : ["account_name"]
+    },{
+      "name": "pendingque",
+      "type": "role_base[]",
+      "index_type": "i64",
+      "key_names": [],
+      "key_types": []
     },{
       "name": "subchains",
       "type": "subchain",

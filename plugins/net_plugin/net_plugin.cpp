@@ -177,12 +177,14 @@ namespace ultrainio {
         unique_ptr<boost::asio::steady_timer> transaction_check;
         unique_ptr<boost::asio::steady_timer> keepalive_timer;
         unique_ptr<boost::asio::steady_timer> sizeprint_timer;
+        unique_ptr<boost::asio::steady_timer> speedmonitor_timer;
 
         boost::asio::steady_timer::duration   connector_period;
         boost::asio::steady_timer::duration   txn_exp_period;
         boost::asio::steady_timer::duration   resp_expected_period;
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
         boost::asio::steady_timer::duration   sizeprint_period{std::chrono::seconds{30}};
+        boost::asio::steady_timer::duration   speedmonitor_period;
         const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
         bool                          network_version_match = false;
@@ -208,7 +210,9 @@ namespace ultrainio {
         void get_con_buffer_size(connection_ptr c);
         void print_queue_size( );
         void start_sizeprint_timer( );
-        void close( connection_ptr c );
+	void reset_speedlimit_monitor( );
+        void start_speedlimit_monitor_timer();
+	void close( connection_ptr c );
         size_t count_open_sockets() const;
 
         template<typename VerifierFunc>
@@ -340,7 +344,7 @@ namespace ultrainio {
     constexpr auto     def_send_buffer_size_mb = 4;
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
     constexpr auto     def_max_clients = 25; // 0 for unlimited clients
-    constexpr auto     def_max_nodes_per_host = 2; 
+    constexpr auto     def_max_nodes_per_host = 2;
     constexpr auto     def_conn_retry_wait = 30;
     constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
@@ -510,7 +514,8 @@ namespace ultrainio {
         uint32_t                fork_head_num = 0;
         optional<request_message> last_req;
         RspLastBlockNumMsg      last_block_info;
-
+        uint32_t pack_count_rcv = 0;
+        uint32_t pack_count_drop = 0;
         connection_status get_status()const {
             connection_status stat;
             stat.peer = peer_addr;
@@ -585,7 +590,7 @@ namespace ultrainio {
          * encountered unpacking or processing the message.
          */
         bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
-
+        bool check_pack_speed_exceed();
         bool add_peer_block(const peer_block_state &pbs);
 
         fc::optional<fc::variant_object> _logger_variant;
@@ -621,7 +626,7 @@ namespace ultrainio {
 
         template <typename T> void operator()(const T &msg) const
         {
-            impl.handle_message( c, msg);
+	   impl.handle_message( c, msg);
         }
     };
 
@@ -1165,6 +1170,16 @@ namespace ultrainio {
         }
     }
 
+    bool connection::check_pack_speed_exceed() {
+        static int count_threhold = 10000 * app().get_plugin<producer_uranus_plugin>().get_round_interval();
+        pack_count_rcv ++;
+        if(pack_count_rcv > count_threhold)
+        {
+            pack_count_drop++;
+            return true;
+        }
+        return false;
+    }
     bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
         try {
             // If it is a SyncBlockMsg, then save the raw message for the cache
@@ -1182,6 +1197,11 @@ namespace ultrainio {
                 blk_buffer.resize(message_length);
                 auto index = pending_message_buffer.read_index();
                 pending_message_buffer.peek(blk_buffer.data(), message_length, index);
+            }
+            bool isexceed = check_pack_speed_exceed();
+            if(isexceed)
+            {
+                return true;
             }
             auto ds = pending_message_buffer.create_datastream();
             net_message msg;
@@ -1462,7 +1482,7 @@ namespace ultrainio {
         connect( c );
         return "added connection";
     }
- 
+
     void net_plugin_impl::connect( connection_ptr c ) {
         if( c->no_retry != go_away_reason::no_reason) {
             fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
@@ -2273,11 +2293,19 @@ namespace ultrainio {
       }
       dispatcher->recv_transaction(c, tid);
       //uint64_t code = 0;
-      chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+      chain_plug->accept_transaction(msg, true, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
           if (result.contains<fc::exception_ptr>()) {
               auto e_ptr = result.get<fc::exception_ptr>();
-              if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value)
+              // Non-producing node does not pre-run network borne trx but still broadcasts it.
+              if (e_ptr->code() == discard_network_trx_for_non_producing_node::code_value) {
+                  dispatcher->bcast_transaction(msg);
+                  //elog("discard_network_trx_for_non_producing_node::code_value)");
+                  return;
+              } else if (e_ptr->code() != tx_duplicate::code_value &&
+                         e_ptr->code() != expired_tx_exception::code_value &&
+                         e_ptr->code() != node_is_syncing::code_value) {
                   elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
+              }
           } else {
               auto trace = result.get<transaction_trace_ptr>();
               if (!trace->except) {
@@ -2326,6 +2354,28 @@ namespace ultrainio {
             start_sizeprint_timer();
         });
     }
+    void net_plugin_impl::reset_speedlimit_monitor( )
+    {
+        for(auto &c : connections) {
+            if(c->current()){
+                ilog("${p} peer ${peer} rpos count_rcv ${counnt_rcv} count_drop ${count_drop} ",
+                        ("p",c->priority==msg_priority_rpos ? "rpos":"trx")
+                        ("peer",c->peer_name())
+                        ("counnt_rcv",c->pack_count_rcv)
+                        ("count_drop",c->pack_count_drop));
+                c->pack_count_rcv=0;
+            }
+        }
+    }
+    void net_plugin_impl::start_speedlimit_monitor_timer( )
+    {
+
+        speedmonitor_timer->expires_from_now( speedmonitor_period);
+        speedmonitor_timer->async_wait( [this](boost::system::error_code ec) {
+	       reset_speedlimit_monitor();
+	       start_speedlimit_monitor_timer();
+        });
+    }
    void net_plugin_impl::start_conn_timer( ) {
       connector_check->expires_from_now( connector_period);
       connector_check->async_wait( [this](boost::system::error_code ec) {
@@ -2371,9 +2421,14 @@ namespace ultrainio {
       connector_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       transaction_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       sizeprint_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
+      speedmonitor_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
       start_txn_timer();
       start_sizeprint_timer();
+      int round_interval = app().get_plugin<producer_uranus_plugin>().get_round_interval();
+      speedmonitor_period = {std::chrono::seconds{round_interval}};
+
+      start_speedlimit_monitor_timer();
    }
 
    void net_plugin_impl::expire_txns() {
@@ -2866,7 +2921,7 @@ namespace ultrainio {
                         my->close(con);
                     }
                 }
- 
+
                 my->trx_listener.acceptor = nullptr;
             }
             ilog( "exit shutdown" );
@@ -2910,7 +2965,7 @@ namespace ultrainio {
    void net_plugin::send_last_block_num(const string& ip_addr, const ultrainio::RspLastBlockNumMsg& msg) {
        ilog("send last block num:${n} hash:${h} prev hash:${ph}", ("n", msg.blockNum)("h", msg.blockHash)("ph", msg.prevBlockHash));
        my->send_last_block_num(ip_addr, net_message(msg));
-   } 
+   }
 
    void net_plugin::stop_sync_block() {
        ilog("stop sync block");

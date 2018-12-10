@@ -26,6 +26,7 @@
 #include <rpos/MsgBuilder.h>
 #include <rpos/MsgMgr.h>
 #include <rpos/Node.h>
+#include <rpos/PunishMgr.h>
 #include <rpos/Seed.h>
 #include <rpos/Signer.h>
 #include <rpos/StakeVoteBase.h>
@@ -151,6 +152,7 @@ namespace ultrainio {
         clearPreRunStatus();
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
+        m_committeeVoteBlock.clear();
         clearMsgCache(m_cacheProposeMsgMap, blockNum);
         clearMsgCache(m_cacheEchoMsgMap, blockNum);
         clearMsgCache(m_echoMsgAllPhase, blockNum);
@@ -158,6 +160,7 @@ namespace ultrainio {
 
     void Scheduler::resetEcho() {
         m_echoMsgMap.clear();
+        m_committeeVoteBlock.clear();
     }
 
     bool Scheduler::insert(const EchoMsg &echo) {
@@ -404,7 +407,7 @@ namespace ultrainio {
         return false;
     }
 
-    uint32_t Scheduler::isSyncing() {
+    uint32_t Scheduler::isNeedSync() {
         uint32_t maxBlockNum = UranusNode::getInstance()->getBlockNum();
         AccountName myAccount = StakeVoteBase::getMyAccount();
 
@@ -563,6 +566,12 @@ namespace ultrainio {
             return false;
         }
 
+        if (propose.block.previous != getPreviousBlockhash()) {
+            elog("block ${blockId} 's previous hash ${previous} not equal current head : ${head}",
+                    ("blockId", propose.block.id())("previous", propose.block.previous)("head", getPreviousBlockhash()));
+            return false;
+        }
+
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(propose.block.block_num());
         PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
         if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
@@ -593,6 +602,19 @@ namespace ultrainio {
             return false;
         }
 
+        std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
+        if (punishMgrPtr->isPunished(propose.block.proposer)) {
+            ilog("${account} has been punished", ("account", std::string(propose.block.proposer)));
+            return false;
+        }
+
+        if (hasMultiSignPropose(propose)) {
+            ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
+            punishMgrPtr->punish(propose.block.proposer, EvilType::kSignMultiPropose);
+            // return false in fastHandleMessage
+            return false;
+        }
+
         auto itor = m_proposerMsgMap.find(propose.block.id());
         if (itor == m_proposerMsgMap.end()) {
             if (isMinPropose(propose)) {
@@ -614,6 +636,19 @@ namespace ultrainio {
 
         if (m_fast_timestamp < echo.timestamp) {
             m_fast_timestamp = echo.timestamp;
+        }
+
+        std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
+        if (punishMgrPtr->isPunished(echo.account)) {
+            ilog("${account} has been punished", ("account", std::string(echo.account)));
+            return false;
+        }
+
+        if (hasMultiVotePropose(echo)) {
+            ilog("${account} vote multiple propose", ("account", std::string(echo.account)));
+            punishMgrPtr->punish(echo.account, EvilType::kVoteMultiPropose);
+            // return false in fastHandleMessage
+            return false;
         }
 
         auto itor = m_echoMsgMap.find(echo.blockId);
@@ -648,6 +683,19 @@ namespace ultrainio {
 
         if ((UranusNode::getInstance()->getSyncingStatus()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
             dlog("receive propose msg. node is syncing. blockhash = ${blockhash}", ("blockhash", propose.block.id()));
+            return true;
+        }
+
+        std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
+        if (punishMgrPtr->isPunished(propose.block.proposer)) {
+            ilog("${account} has been punished", ("account", std::string(propose.block.proposer)));
+            return false;
+        }
+
+        if (hasMultiSignPropose(propose)) {
+            ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
+            punishMgrPtr->punish(propose.block.proposer, EvilType::kSignMultiPropose);
+            //TODO should broadcast the propose message when the punish info not in world state, so return true
             return true;
         }
 
@@ -692,6 +740,19 @@ namespace ultrainio {
         if ((UranusNode::getInstance()->getSyncingStatus()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
             dlog("receive echo msg. node is syncing. blockhash = ${blockhash} echo'account = ${account}",
                  ("blockhash", echo.blockId)("account", std::string(echo.account)));
+            return true;
+        }
+
+        std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
+        if (punishMgrPtr->isPunished(echo.account)) {
+            ilog("${account} has been punished", ("account", std::string(echo.account)));
+            return false;
+        }
+
+        if (hasMultiVotePropose(echo)) {
+            ilog("${account} vote multiple propose", ("account", std::string(echo.account)));
+            punishMgrPtr->punish(echo.account, EvilType::kVoteMultiPropose);
+            // TODO broadcast it now
             return true;
         }
 
@@ -1947,5 +2008,31 @@ namespace ultrainio {
     bool Scheduler::isDuplicate(const ProposeMsg& proposeMsg) {
         auto itor = m_proposerMsgMap.find(proposeMsg.block.id());
         return itor != m_proposerMsgMap.end();
+    }
+
+    bool Scheduler::hasMultiSignPropose(const ProposeMsg& propose) {
+        auto itor = m_proposerMsgMap.begin();
+        for (auto itor = m_proposerMsgMap.begin(); itor != m_proposerMsgMap.end(); itor++) {
+            if (itor->second.block.proposer == propose.block.proposer && itor->second.block.id() != propose.block.id()) {
+                m_proposerMsgMap.erase(itor);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool Scheduler::hasMultiVotePropose(const EchoMsg& echo) {
+        if (emptyBlock().id() == echo.blockId || echo.phase < kPhaseBA1) {
+            return false;
+        }
+        auto itor = m_committeeVoteBlock.find(echo.account);
+        if (itor != m_committeeVoteBlock.end()) {
+            if (itor->second != echo.blockId) {
+                return true;
+            }
+        } else {
+            m_committeeVoteBlock.insert(make_pair(echo.account, echo.blockId));
+        }
+        return false;
     }
 }  // namespace ultrainio

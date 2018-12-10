@@ -7,7 +7,7 @@ fi
 for i in `docker ps  --filter  name=$NAME | grep $NAME  | awk '{print $1}'`;
 do echo $i;
 docker inspect $i -f '{{.Config.Hostname}}';
-docker inspect $i -f '{{.NetworkSettings.IPAddress}}' # '{{.NetworkSettings.Networks.globalnet.IPAddress}}';
+docker inspect $i -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}';#'{{.NetworkSettings.IPAddress}}' # '{{.NetworkSettings.Networks.globalnet.IPAddress}}';
 done > config/IPs/dockerinfo.txt
 python generateconfig.py  &>> generateconfig.log  &
 docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "mkdir -p /root/.local/share/ultrainio/nodultrain/config"
@@ -18,4 +18,6 @@ docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} ba
 docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "$cmd $ULTRAIN_PATH"
 cmd="nohup $ULTRAIN_PATH/ultrain-core/scripts/logrotate.sh &"
 docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "$cmd"
+
+docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "npm install && /opt/node/lib/node_modules/pm2/bin/pm2 start $ULTRAIN_PATH/ultrain-core/scripts/ultrainmng/src/com/ultrain/common/SideChainBlockInfoService.js"
 #docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec {} bash -c "rm -rf /root/.local/share/ultrainio/nodultrain/ "
