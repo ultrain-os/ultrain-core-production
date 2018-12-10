@@ -242,6 +242,15 @@
          {"name":"quant", "type":"asset"}
       ]
     },{
+      "name": "resourcelease",
+      "base": "",
+      "fields": [
+         {"name":"from", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
+         {"name":"combosize", "type":"int64"},
+         {"name":"transfer", "type":"bool"}
+      ]
+    },{
       "name": "delegatebw",
       "base": "",
       "fields": [
@@ -303,6 +312,8 @@
       "base": "",
       "fields": [
          {"name":"owner", "type":"account_name"},
+         {"name":"request_time", "type":"time_point_sec"},
+         {"name":"expire_time", "type":"time_point_sec"},
          {"name":"net_weight", "type":"asset"},
          {"name":"cpu_weight", "type":"asset"},
          {"name":"ram_bytes", "type":"uint64"}
@@ -332,6 +343,16 @@
          {"name":"owner", "type":"account_name"},
          {"name":"request_time", "type":"time_point_sec"},
          {"name":"cons_amount", "type":"asset"}
+      ]
+    },{
+      "name": "resources_expire",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"},
+         {"name":"request_time", "type":"time_point_sec"},
+         {"name":"net_amount", "type":"asset"},
+         {"name":"cpu_amount", "type":"asset"},
+         {"name":"ram_amount", "type":"asset"}
       ]
     },{
       "name": "blockchain_parameters",
@@ -576,6 +597,10 @@
       "type": "sellram",
       "ricardian_contract": ""
    },{
+      "name": "resourcelease",
+      "type": "resourcelease",
+      "ricardian_contract": ""
+   },{
       "name": "delegatebw",
       "type": "delegatebw",
       "ricardian_contract": ""
@@ -711,6 +736,12 @@
     },{
       "name": "refundscons",
       "type": "refund_cons",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "resexpire",
+      "type": "resources_expire",
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]

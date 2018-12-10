@@ -32,6 +32,8 @@ namespace ultrainiosystem {
 
    struct user_resources {
       account_name  owner;
+      time          request_time;
+      time          expire_time;
       asset         net_weight;
       asset         cpu_weight;
       int64_t       ram_bytes = 0;
@@ -39,7 +41,7 @@ namespace ultrainiosystem {
       uint64_t primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( user_resources, (owner)(net_weight)(cpu_weight)(ram_bytes) )
+      ULTRAINLIB_SERIALIZE( user_resources, (owner)(request_time)(expire_time)(net_weight)(cpu_weight)(ram_bytes) )
    };
 
 
@@ -80,6 +82,19 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE( refund_request, (owner)(request_time)(net_amount)(cpu_amount) )
    };
 
+   struct resources_expire {
+      account_name  owner;
+      time          request_time;
+      ultrainio::asset  net_amount;
+      ultrainio::asset  cpu_amount;
+      ultrainio::asset  ram_amount;
+
+      uint64_t  primary_key()const { return owner; }
+
+      // explicit serialization macro is not necessary, used here only to improve compilation time
+      ULTRAINLIB_SERIALIZE( resources_expire, (owner)(request_time)(net_amount)(cpu_amount)(ram_amount) )
+   };
+
 
    /**
     *  These tables are designed to be constructed in the scope of the relevant user, this
@@ -89,7 +104,7 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_table;
    typedef ultrainio::multi_index< N(refunds), refund_request>      refunds_table;
    typedef ultrainio::multi_index< N(refundscons), refund_cons>      refunds_cons_table;
-
+   typedef ultrainio::multi_index< N(resexpire), resources_expire>      resources_expire_table;
 
 
    /**
@@ -498,6 +513,59 @@ namespace ultrainiosystem {
              }
          }
       }
+   }
+   void system_contract::resourcelease( account_name from, account_name receiver,
+                          int64_t combosize, bool transfer ){
+      //ultrainio_assert( combosize > 0, "must stake a positive resources package  amount" );
+      auto max_availableused_size = _gstate.max_resources_size - _gstate.total_resources_staked;
+      std::string availableuserstr = "resources package available amount:"+ std::to_string(max_availableused_size);
+      ultrainio_assert( combosize <= max_availableused_size, availableuserstr.c_str() );
+      asset stake_net_delta = asset(combosize*10000);
+      asset stake_cpu_delta = asset(combosize*10000);
+      int64_t bytes = (_gstate.max_ram_size-2ll*1024*1024*1024)/_gstate.max_resources_size*(combosize);
+      //ultrainio_assert( bytes > 0, "ram must reserve a positive amount" );
+
+      _gstate.total_ram_bytes_reserved += bytes;
+      _gstate.total_resources_staked += combosize;
+      //ultrainio_assert( !transfer || from != receiver, "cannot use transfer flag if delegating to self" );
+      //cpu net
+      require_auth( from );
+      ultrainio_assert( std::abs( (stake_net_delta + stake_cpu_delta).amount )
+                     >= std::max( std::abs( stake_net_delta.amount ), std::abs( stake_cpu_delta.amount ) ),
+                    "net and cpu deltas cannot be opposite signs" );
+
+      account_name source_stake_from = from;
+      // update totals of "receiver"
+      {
+         user_resources_table   totals_tbl( _self, receiver );
+         auto tot_itr = totals_tbl.find( receiver );
+         if( tot_itr ==  totals_tbl.end() ) {
+            tot_itr = totals_tbl.emplace( from, [&]( auto& tot ) {
+                  tot.owner = receiver;
+                  tot.request_time = now();
+                  tot.net_weight    = stake_net_delta;
+                  tot.cpu_weight    = stake_cpu_delta;
+                  if(bytes > 0)
+                        tot.ram_bytes     = int64_t(bytes);
+               });
+         } else {
+            totals_tbl.modify( tot_itr, from == receiver ? from : 0, [&]( auto& tot ) {
+                  tot.request_time = now();
+                  tot.net_weight    += stake_net_delta;
+                  tot.cpu_weight    += stake_cpu_delta;
+                  if(bytes > 0)
+                     tot.ram_bytes     += int64_t(bytes);
+               });
+         }
+         ultrainio_assert( asset(0) <= tot_itr->net_weight, "insufficient staked total net bandwidth" );
+         ultrainio_assert( asset(0) <= tot_itr->cpu_weight, "insufficient staked total cpu bandwidth" );
+         ultrainio_assert( 0 <= tot_itr->ram_bytes, "insufficient staked total  ram bandwidth" );
+         set_resource_limits( receiver, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
+         print("current resource limit net_weight:",tot_itr->net_weight.amount," cpu:",tot_itr->cpu_weight.amount," ram:",tot_itr->ram_bytes);
+         if ( tot_itr->net_weight == asset(0) && tot_itr->cpu_weight == asset(0)  && tot_itr->ram_bytes == 0 ) {
+            totals_tbl.erase( tot_itr );
+         }
+      } // tot_itr can be invalid, should go out of scope
    }
 
    void system_contract::delegatebw( account_name from, account_name receiver,

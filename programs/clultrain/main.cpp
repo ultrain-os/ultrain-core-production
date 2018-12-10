@@ -1026,6 +1026,31 @@ struct voteaccount_subcommand {
    }
 };
 
+struct buy_respackage_subcommand {
+   string from_str;
+   string receiver_str;
+   int    combosize;
+   bool transfer = false;
+   buy_respackage_subcommand(CLI::App* actionRoot) {
+      auto delegate_bandwidth = actionRoot->add_subcommand("resourcelease", localized("buy resources packages"));
+      delegate_bandwidth->add_option("from", from_str, localized("The account to delegate bandwidth from"))->required();
+      delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the resources packages"))->required();
+      delegate_bandwidth->add_option("combosize", combosize, localized("The amount of  buy for resources packages"))->required();
+      delegate_bandwidth->add_flag("--transfer", transfer, localized("right to unstake UGAS to receiver"));
+      add_standard_transaction_options(delegate_bandwidth);
+
+      delegate_bandwidth->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("from", from_str)
+                  ("receiver", receiver_str)
+                  ("combosize", combosize)
+                  ("transfer", transfer);
+         std::vector<chain::action> acts{create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(resourcelease), act_payload)};
+         send_actions(std::move(acts));
+      });
+   }
+};
+
 struct delegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
@@ -2879,6 +2904,7 @@ int main( int argc, char** argv ) {
    auto listProducers = list_producers_subcommand(system);
    auto votecommittee = votecommittee_subcommand(system);
    auto voteaccount = voteaccount_subcommand(system);
+   auto buyresourcespackage = buy_respackage_subcommand(system);
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
    auto delegatecons = delegate_cons_subcommand(system);

@@ -591,8 +591,12 @@ def stepSetSystemContract():
 
 def stepCreateStakedAccounts():
     for i in range(0, args.num_producers):
-        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1000.0000 UGAS" --stake-cpu "1000.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], account_pk_list[i]))
-    sleep(15)
+        retry(args.clultrain + 'create account ultrainio %s %s ' % (accounts[i], account_pk_list[i]))
+    sleep(5)
+    for i in range(0, args.num_producers):
+        retry(args.clultrain + 'system resourcelease ultrainio %s  "1" ' % (accounts[i]))
+        #retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1.0000 UGAS" --stake-cpu "1.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key))
+    sleep(5)
 
 
 def stepRegProducers():
@@ -611,8 +615,8 @@ def stepRegProducers():
 def stpDelegateTestAcc():
     subaccounts = accounts[1:3]
     for testacc in subaccounts:
-        retry(args.clultrain + 'system delegatebw --transfer ultrainio %s "500000.0000 UGAS"  "500000.0000 UGAS"'  % testacc)
-        retry(args.clultrain + 'system buyram  ultrainio  %s  "50000.0000 UGAS"  '  % testacc)
+        retry(args.clultrain + 'system resourcelease utrio.stake %s  "4000" ' % testacc)
+
 
 def stepCreateinitAccounts():
     for a in initialAccounts:

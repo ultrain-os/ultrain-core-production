@@ -59,6 +59,9 @@ namespace ultrainiosystem {
       uint64_t             thresh_activated_stake_time = 0;
       double               total_producer_vote_weight = 0; /// the sum of all producer votes
       block_timestamp      last_name_close;
+      uint16_t             max_resources_size = 10000;    //set the resource combo to 10000
+      uint16_t             total_resources_staked = 0;
+      uint64_t             defer_trx_nextid = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
@@ -177,6 +180,8 @@ namespace ultrainiosystem {
                       // const block_header& header ); /// only parse first 3 fields of block header
          // functions defined in delegate_bandwidth.cpp
 
+         void resourcelease( account_name from, account_name receiver,
+                          int64_t combosize, bool transfer );
          /**
           *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'.
           *  If transfer == true, then 'receiver' can unstake to their account
