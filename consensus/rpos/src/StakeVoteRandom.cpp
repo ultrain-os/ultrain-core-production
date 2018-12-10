@@ -28,7 +28,7 @@ namespace ultrainio {
             if (isGenesisLeader(account)) {
                 return 0;
             }
-            ULTRAIN_ASSERT(false, chain::chain_exception, "handle no proposer message at genesis period.");
+            ULTRAIN_ASSERT(false, chain::chain_exception, "handle no proposer message at genesis period. account : ${account}", ("account", std::string(account)));
         }
         ULTRAIN_ASSERT(m_roleSelectionPtr != nullptr, chain::chain_exception, "m_roleSelectionPtr is null");
         return m_roleSelectionPtr->proposerPriority(std::string(account));
