@@ -547,7 +547,7 @@ def resign(account, controller):
     run(args.clultrain + 'get account ' + account)
 
 def randomTransfer():
-    subaccounts = accounts[1:args.num_producers]
+    subaccounts = accounts[1:3] #args.num_producers
     for i in subaccounts:
         for j in subaccounts:
             if i != j:

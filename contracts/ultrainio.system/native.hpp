@@ -28,21 +28,25 @@ namespace ultrainiosystem {
    };
 
    struct key_weight {
-      public_key   key;
-      weight_type  weight;
+      ultrainio::public_key  key;
+      weight_type        weight;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE( key_weight, (key)(weight) )
    };
-
+   struct wait_weight {
+      uint32_t     wait_sec;
+      weight_type  weight;
+       // explicit serialization macro is not necessary, used here only to improve compilation time
+      ULTRAINLIB_SERIALIZE( wait_weight, (wait_sec)(weight) )
+   };
    struct authority {
-      uint32_t                              threshold;
-      uint32_t                              delay_sec;
+      uint32_t                              threshold = 0;
       std::vector<key_weight>               keys;
       std::vector<permission_level_weight>  accounts;
-
+      std::vector<wait_weight>              waits;
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( authority, (threshold)(delay_sec)(keys)(accounts) )
+      ULTRAINLIB_SERIALIZE( authority, (threshold)(keys)(accounts)(waits) )
    };
 
    /*

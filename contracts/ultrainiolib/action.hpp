@@ -190,6 +190,35 @@ namespace ultrainio {
    };
 
    /**
+    * proposeaccount_info  vote
+    *
+    * @brief Packed representation of proposeaccount_info  vote
+    */
+   struct proposeaccount_info {
+      /**
+       * Construct a new proposeaccount_info object
+       *
+       * @brief Construct a proposeaccount_info object
+       * @param a - Name of the account who proposal pending miner
+       * @param ok - Name of the owner keys
+       * @param ak - Name of the active keys
+       */
+      proposeaccount_info( account_name a, std::string ok, std::string ak, uint16_t l ):account(a),owner_key(ok),active_key(ak),location(l){}
+
+      /**
+       * Default Constructor
+       *
+       * @brief Construct a new proposeaccount_info object
+       */
+      proposeaccount_info(){}
+
+      account_name      account;
+      std::string       owner_key;
+      std::string       active_key;
+      uint64_t          location;
+      ULTRAINLIB_SERIALIZE( proposeaccount_info, (account)(owner_key)(active_key)(location) )
+   };
+   /**
     * Require the specified authorization for this action. If this action doesn't contain the specified auth, it will fail.
     *
     * @brief Require the specified authorization for this action

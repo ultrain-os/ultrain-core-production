@@ -38,6 +38,15 @@
         {"name": "adddel_miner", "type": "bool"}
       ]
     },{
+      "name": "proposeaccount_info",
+      "base": "",
+      "fields": [
+        {"name": "account", "type": "account_name"},
+        {"name": "owner_key", "type": "string"},
+        {"name": "active_key", "type": "string"},
+        {"name": "location", "type": "uint64"}
+      ]
+    },{
       "name": "provided_proposer",
       "base": "",
       "fields": [
@@ -65,6 +74,13 @@
       "fields": [
          {"name":"proposer", "type":"account_name"},
          {"name":"proposeminer", "type":"proposeminer_info[]"}
+      ]
+    },{
+      "name": "voteaccount",
+      "base": "",
+      "fields": [
+         {"name":"proposer", "type":"account_name"},
+         {"name":"proposeaccount", "type":"proposeaccount_info[]"}
       ]
     },{
       "name": "regsubchain",
@@ -598,6 +614,10 @@
    },{
       "name": "votecommittee",
       "type": "votecommittee",
+      "ricardian_contract": ""
+   },{
+      "name": "voteaccount",
+      "type": "voteaccount",
       "ricardian_contract": ""
    },{
       "name": "regsubchain",

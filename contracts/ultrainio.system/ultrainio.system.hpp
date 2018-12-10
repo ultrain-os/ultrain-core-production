@@ -106,7 +106,15 @@ namespace ultrainiosystem {
             auto primary_key()const { return proposer; }
             ULTRAINLIB_SERIALIZE(pendingminer, (proposer)(proposal_miner)(provided_approvals) )
          };
+   struct pendingacc {
+         account_name                               proposer;
+         std::vector<ultrainio::proposeaccount_info>  proposal_account;
+         std::vector<ultrainio::provided_proposer>  provided_approvals;
+         auto primary_key()const { return proposer; }
+         ULTRAINLIB_SERIALIZE(pendingacc, (proposer)(proposal_account)(provided_approvals) )
+      };
    typedef ultrainio::multi_index<N(pendingminer),pendingminer> pendingminers;
+   typedef ultrainio::multi_index<N(pendingacc),pendingacc> pendingaccounts;
 
    typedef ultrainio::multi_index< N(producers), producer_info,
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
@@ -242,6 +250,7 @@ namespace ultrainiosystem {
 
          void updateactiveminers(const std::vector<ultrainio::proposeminer_info>& miners );
 
+         void add_subchain_account(const std::vector<ultrainio::proposeaccount_info>& miners );
         // functions defined in scheduler.cpp
          void regsubchain(uint64_t chain_name, uint16_t chain_type);
 
@@ -261,6 +270,8 @@ namespace ultrainiosystem {
                                uint64_t chain_name); */
 
          void votecommittee();
+
+         void voteaccount();
       private:
          inline void update_activated_stake(int64_t stake);
 

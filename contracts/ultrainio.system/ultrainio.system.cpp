@@ -263,6 +263,125 @@ namespace ultrainiosystem {
       }
       print("votecommittee pushback  pendingminer");
    }
+
+   void system_contract::add_subchain_account(const std::vector<ultrainio::proposeaccount_info>&  accounts ) {
+      for(auto const& newacc:accounts){
+         ultrainiosystem::key_weight keyweight;
+         char  keydata[512];
+         memset(keydata,0,sizeof(keydata));
+         frombase58_recover_key(newacc.owner_key.c_str(), keydata,0);
+         for ( uint32_t i=0; i < strlen(keydata); i++ ){
+            keyweight.key.data[i] = keydata[i];
+            print("updateactiveaccounts publickey i:" , i," data:",keydata[i]);
+         }
+         //memcpy(keyweight.key.data, keydata, keyweight.key.data.size());
+         keyweight.key.type =0;
+         print("updateactiveaccounts proposerminer:",name{newacc.account}," ownerkey:",newacc.owner_key," size:",strlen(keydata));
+         ultrainiosystem::authority               ownerkey  = { .threshold = 1, .keys = { keyweight }, .accounts = {}, .waits = {} };
+         ultrainiosystem::authority               activekey = { .threshold = 1, .keys = { keyweight }, .accounts = {}, .waits = {} };
+         action(
+            permission_level{ N(ultrainio), N(active) },
+            N(ultrainio), NEX(newaccount),
+            std::make_tuple(N(ultrainio),newacc.account, ownerkey, activekey, true)
+         ).send();
+      }
+   }
+void system_contract::voteaccount() {
+      constexpr size_t max_stack_buffer_size = 4096;
+      size_t size = action_data_size();
+      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      read_action_data( buffer, size );
+      account_name proposer;
+      vector<proposeaccount_info> proposeaccount;
+      datastream<const char*> ds( buffer, size );
+      ds >> proposer >> proposeaccount;
+      uint32_t proposeaccountsize = proposeaccount.size();
+      ultrainio_assert( proposeaccount.size() == 1, "The number of proposeaccount changes cannot exceed one" );
+      require_auth( proposer );
+      auto propos = _producers.find( proposer );
+      ultrainio_assert( propos != _producers.end() && propos->is_enabled, "enabled producer not found this proposer" );
+      auto const comp = [this](const proposeaccount_info &a, const proposeaccount_info &b){
+         if (a.account < b.account)
+               return true;
+         return false;
+      };
+      std::sort(proposeaccount.begin(), proposeaccount.end(),comp);
+
+      bool nofindaccountflg = false;
+      uint32_t  curactiveaccount = 0;
+      for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
+         if(itr->is_enabled)
+            ++curactiveaccount;
+      }
+      print("voteaccount curactiveproducers size:", curactiveaccount," proposer:",ultrainio::name{proposer}," accountsize:",proposeaccount.size()," changeproducerflg:",curactiveaccount*2/3>proposeaccount.size(),"\n");
+
+      for(auto account:proposeaccount){
+         print("get voteaccount proposeaccount vector:", ultrainio::name{account.account}, account.owner_key);
+      }
+      pendingaccounts pendingaccount( _self, _self );
+      provided_proposer  provideapprve(proposer,current_time());
+      for(auto pendingiter = pendingaccount.begin(); pendingiter != pendingaccount.end(); pendingiter++)
+      {
+         nofindaccountflg = false;
+         if((*pendingiter).proposal_account.size() == proposeaccountsize){
+            for(uint32_t i = 0;i < proposeaccountsize;i++)
+            {
+               if((proposeaccount[i].account != (*pendingiter).proposal_account[i].account) ||
+                 (proposeaccount[i].owner_key != (*pendingiter).proposal_account[i].owner_key)  ||
+                 (proposeaccount[i].active_key != (*pendingiter).proposal_account[i].active_key) ){
+                  nofindaccountflg = true;
+                  break;
+               }
+            }
+            if(!nofindaccountflg){
+               auto itr = std::find( (*pendingiter).provided_approvals.begin(), (*pendingiter).provided_approvals.end(), provideapprve );
+               if(itr != (*pendingiter).provided_approvals.end())
+               {
+                  if((provideapprve.last_vote_time - itr->last_vote_time) < useconds_per_halfhour){
+                     print("\nvoteaccount nofindaccountflg proposer already voted proposer :",ultrainio::name{proposer}," provideapprve.last_vote_time:",provideapprve.last_vote_time," itr->last_vote_time:",itr->last_vote_time);
+                     ultrainio_assert( false, "proposer already voted" );
+                  }
+                  pendingaccount.modify( *pendingiter, 0, [&]( auto& p ) {
+                     p.provided_approvals.erase(itr);
+                  });
+               }
+               pendingaccount.modify( *pendingiter, 0, [&]( auto& p ) {
+                  p.provided_approvals.push_back(provideapprve);
+               });
+               print("\nvoteaccount nofindaccountflg proposer:",ultrainio::name{proposer}," proposernumberflg:",(*pendingiter).provided_approvals.size() >= curactiveaccount*2/3," provideapprve.last_vote_time:",provideapprve.last_vote_time," curproposernum:",(*pendingiter).provided_approvals.size());
+               if((*pendingiter).provided_approvals.size() >= curactiveaccount*2/3){
+                  add_subchain_account(proposeaccount);
+                  pendingaccount.modify( *pendingiter, 0, [&]( auto& p ) {
+                     p.provided_approvals.clear();
+                     p.proposal_account.clear();
+                  });
+                  const auto& pending = pendingaccount.get( (*pendingiter).proposer, "the current proposal cannot be found" );
+                  pendingaccount.erase( pending );
+               }
+               return;
+            }
+         }
+      }
+      auto prod = pendingaccount.find( proposer );
+      if ( prod != pendingaccount.end() ) {
+         pendingaccount.modify( prod, _self, [&]( auto& p ) {
+            p.provided_approvals.clear();
+            p.provided_approvals.push_back(provideapprve);
+            p.proposal_account.clear();
+            for(auto account:proposeaccount)
+               p.proposal_account.push_back(account);
+         });
+      } else {
+         pendingaccount.emplace( _self, [&]( auto& p ) {
+            p.proposer = proposer;
+            p.provided_approvals.push_back(provideapprve);
+            for(auto account:proposeaccount)
+               p.proposal_account.push_back(account);
+         });
+      }
+      print("voteaccount pushback  pendingaccount");
+   }
+
    /**
     *  Called after a new account is created. This code enforces resource-limits rules
     *  for new accounts as well as new account naming conventions.
@@ -317,7 +436,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
      // ultrainio.system.cpp
-     (setram)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)
+     (setram)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)
      // delegate_bandwidth.cpp
      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(delegatecons)(undelegatecons)(refund)(refundcons)
      // voting.cpp

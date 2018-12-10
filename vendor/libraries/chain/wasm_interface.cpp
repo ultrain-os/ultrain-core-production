@@ -960,7 +960,11 @@ class crypto_api : public context_aware_api {
          auto check = fc::crypto::public_key( s, digest, false );
          ULTRAIN_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
       }
-
+      void frombase58_recover_key(const char * pubkey,
+                        array_ptr<char> pub, size_t publen ) {
+         std::string hexstr = fc::crypto::public_key::base58_to_hex(pubkey);
+         memcpy(pub, hexstr.c_str(), hexstr.size());
+      }
       int recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
@@ -2118,6 +2122,7 @@ REGISTER_INTRINSICS( database_api,
 
 REGISTER_INTRINSICS(crypto_api,
    (assert_recover_key,     void(int, int, int, int, int) )
+   (frombase58_recover_key, void(int,int,int )            )
    (recover_key,            int(int, int, int, int, int)  )
    (assert_sha256,          void(int, int, int)           )
    (assert_sha1,            void(int, int, int)           )

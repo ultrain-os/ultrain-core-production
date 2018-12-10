@@ -235,6 +235,28 @@ int recover_key( const checksum256* digest, const char* sig, size_t siglen, char
  */
 void assert_recover_key( const checksum256* digest, const char* sig, size_t siglen, const char* pub, size_t publen );
 
+
+/**
+ *  Tests a given public key with the generated key from digest and the signature.
+ *  @brief Tests a given public key with the generated key from digest and the signature.
+ *
+ *  @param pubkey - What the key will be generated from
+ *  @param pubkey_val - Signature
+ *
+ *  @pre **assert recovery key** of `pub` equals the key generated from the `digest` parameter
+ *  @post Executes next statement. If was not `true`, hard return.
+ *
+ *  Example:
+*
+ *  @code
+ *  std::string& pubkey;
+ *  std::array<char,33> pubkey_val;
+ *  frombase58_recover_key(pubkey, pubkey_val)
+ *  // If the given public key does not match with the generated key from digest and the signature, anything below will never fire.
+ *  ultrainio::print("pub key matches the pub key generated from digest");
+ *  @endcode
+ */
+void frombase58_recover_key(const char* pubkey, char* pubkey_val,int size) ;
 /// }@cryptocapi
 
 }
