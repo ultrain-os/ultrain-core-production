@@ -88,7 +88,7 @@ namespace ultrainiosystem {
       uint64_t              total_produce_block;
       uint64_t              last_claim_time = 0;
       uint64_t              location = 0;
-
+      uint64_t              last_operate_blocknum = 0;
       uint64_t primary_key()const { return owner;                                   }
       double   by_votes()const    { return is_active ? -total_cons_staked : total_cons_staked;  }
       bool     active()const      { return is_active;                               }
@@ -99,7 +99,7 @@ namespace ultrainiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(hasactived)(url)
-                        (unpaid_blocks)(total_produce_block)(last_claim_time)(location) )
+                        (unpaid_blocks)(total_produce_block)(last_claim_time)(location)(last_operate_blocknum) )
    };
 
    struct pendingminer {

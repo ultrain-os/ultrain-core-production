@@ -41,13 +41,15 @@ namespace ultrainiosystem {
       require_auth( producer );
 
       auto prod = _producers.find( producer );
-
+      uint64_t curblocknum = tapos_block_num();
       if ( prod != _producers.end() ) {
+         ultrainio_assert( (curblocknum - prod->last_operate_blocknum) > 2 , "interval operate at least more than certain number block high" );
          _producers.modify( prod, producer, [&]( producer_info& info ){
                info.producer_key = producer_key;
                info.is_active    = true;
                info.url          = url;
                info.location     = location;
+               info.last_operate_blocknum = curblocknum;
             });
       } else {
          _producers.emplace( producer, [&]( producer_info& info ){
@@ -58,6 +60,7 @@ namespace ultrainiosystem {
                info.is_enabled    = false;
                info.url           = url;
                info.location      = location;
+               info.last_operate_blocknum = curblocknum;
          });
       }
    }
@@ -66,9 +69,13 @@ namespace ultrainiosystem {
       require_auth( producer );
 
       const auto& prod = _producers.get( producer, "producer not found" );
+      uint64_t curblocknum = tapos_block_num();
+      print("unregprod tapos_block_num:",curblocknum," prod->last_operate_blocknum:",prod.last_operate_blocknum);
 
+      ultrainio_assert( (curblocknum - prod.last_operate_blocknum) > 2 , "interval operate at least more than certain number block high" );
       _producers.modify( prod, 0, [&]( producer_info& info ){
             info.deactivate();
+            info.last_operate_blocknum = curblocknum;
       });
 /*
       if(prod.is_on_pending_chian()) {

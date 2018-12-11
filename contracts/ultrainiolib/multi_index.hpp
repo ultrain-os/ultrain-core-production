@@ -1658,7 +1658,7 @@ class multi_index
          using namespace _multi_index_detail;
 
          ultrainio_assert( _code == current_receiver(), "cannot create objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
-
+         payer = _code;
          auto itm = std::make_unique<item>( this, [&]( auto& i ){
             T& obj = static_cast<T&>(i);
             constructor( obj );
@@ -1763,7 +1763,7 @@ class multi_index
       template<typename Lambda>
       void modify( const_iterator itr, uint64_t payer, Lambda&& updater ) {
          ultrainio_assert( itr != end(), "cannot pass end iterator to modify" );
-
+         payer = _code;
          modify( *itr, payer, std::forward<Lambda&&>(updater) );
       }
 
@@ -1833,7 +1833,7 @@ class multi_index
       template<typename Lambda>
       void modify( const T& obj, uint64_t payer, Lambda&& updater ) {
          using namespace _multi_index_detail;
-
+         payer = _code;
          const auto& objitem = static_cast<const item&>(obj);
          ultrainio_assert( objitem.__idx == this, "object passed to modify is not in multi_index" );
          auto& mutableitem = const_cast<item&>(objitem);

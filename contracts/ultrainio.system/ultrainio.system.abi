@@ -417,7 +417,8 @@
          {"name":"unpaid_blocks",   "type":"uint64[]"},
          {"name":"total_produce_block",   "type":"uint64"},
          {"name":"last_claim_time", "type":"uint64"},
-         {"name":"location",        "type":"uint64"}
+         {"name":"location",        "type":"uint64"},
+         {"name":"last_operate_blocknum", "type":"uint64"}
       ]
     },{
      "name": "subchain",

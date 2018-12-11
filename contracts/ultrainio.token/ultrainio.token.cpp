@@ -6,7 +6,7 @@
 #include "ultrainio.token.hpp"
 
 namespace ultrainio {
-
+const int  operatefee = 10;
 void token::create( account_name issuer,
                     asset        maximum_supply )
 {
@@ -80,7 +80,8 @@ void token::transfer( account_name from,
     ultrainio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
 
 
-    sub_balance( from, quantity );
+    sub_balance( from, quantity+asset(operatefee) );
+    add_balance( to, asset(operatefee), N(utrio.stake) );
     add_balance( to, quantity, from );
 }
 

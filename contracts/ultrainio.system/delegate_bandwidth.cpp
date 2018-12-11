@@ -385,7 +385,7 @@ namespace ultrainiosystem {
    {
       require_auth( from );
       ultrainio_assert( stake_cons_delta != asset(0), "should stake non-zero amount" );
-
+      ultrainio_assert( stake_cons_delta.amount >= 1000000 || stake_cons_delta.amount <= -1000000 , "should stake at least 100 amount" );
       // update consensus stake delegated from "from" to "receiver"
       {
          del_bandwidth_table     del_tbl( _self, from);
@@ -479,11 +479,17 @@ namespace ultrainiosystem {
          asset total_update = stake_cons_delta;
          auto it = _producers.find(receiver);
          ultrainio_assert( it != _producers.end(), "Unable to delegate cons, you need to regproducer first" );
+         uint64_t curblocknum = tapos_block_num();
+         if(stake_cons_delta.amount < 0){
+            print("undelegatecons from:",name{from}," receiver:",name{receiver}," tapos_block_num:",curblocknum," it->last_operate_blocknum:",it->last_operate_blocknum);//
+            ultrainio_assert( (curblocknum - it->last_operate_blocknum) > 10 , "should stake at least more than certain number block high" );
+         }
          auto enabled = ((it->total_cons_staked+total_update.amount) >=
                   _gstate.min_activated_stake/_gstate.min_committee_member);
          _producers.modify(it, 0 , [&](auto & v) {
                   v.total_cons_staked += total_update.amount;
                   v.is_enabled = enabled;
+                  v.last_operate_blocknum = curblocknum;
                   });
          if(it->is_on_master_chain()) {
              if(enabled && !it->hasactived) {

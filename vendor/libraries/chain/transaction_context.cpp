@@ -80,12 +80,14 @@ namespace ultrainio { namespace chain {
 
       // Record accounts to be billed for network and CPU usage
       for( const auto& act : trx.actions ) {
-         for( const auto& auth : act.authorization ) {
-            bill_to_accounts.insert( auth.actor );
-#if BILL == 1
-            check_billed_account(ro_api, auth.actor, least_amount);
-#endif
-         }
+         bill_to_accounts.insert( act.account );
+//          for( const auto& auth : act.authorization ) {
+//             //bill_to_accounts.insert( auth.actor );
+//             ilog("transaction_context:: insert auth.actor${auth.actor}", ("auth.actor", auth.actor));
+// #if BILL == 1
+//             check_billed_account(ro_api, auth.actor, least_amount);
+// #endif
+//          }
       }
 
       net_limit = rl.get_block_net_limit();
