@@ -302,6 +302,8 @@ namespace ultrainiosystem {
          void add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key);
 
          void remove_from_subchain(uint64_t chain_name, account_name producer);
+
+         void getKeydata(const std::string& pubkey,std::array<char,33> & data);
    };
 
 } /// ultrainiosystem

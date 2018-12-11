@@ -263,33 +263,42 @@ namespace ultrainiosystem {
       }
       print("votecommittee pushback  pendingminer");
    }
-
-   void system_contract::add_subchain_account(const std::vector<ultrainio::proposeaccount_info>&  accounts ) {
+   void system_contract::getKeydata(const std::string& pubkey,std::array<char,33> & data){
       auto const getHexvalue = [](const char ch)->int{
          if(ch >= '0' && ch <= '9')
             return (ch-'0');
          if(ch >= 'a' && ch <= 'f')
             return ((ch-'a')+10);
       };
-      for(auto const& newacc:accounts){
-         ultrainiosystem::key_weight keyweight;
-         char  keydata[512];
-         memset(keydata,0,sizeof(keydata));
-         frombase58_recover_key(newacc.owner_key.c_str(), keydata,0);
-         unsigned int j = 0;
-         for ( uint32_t i=0; i < strlen(keydata); i++ ){
-            if(i%2 == 1)
-            {
-               keyweight.key.data[j] = (getHexvalue(keydata[i-1])*16 + getHexvalue(keydata[i])) & 0xff;
-               j++;
-            }
-            //print("updateactiveaccounts publickey i:" , i," data:",keydata[i]," value:",getHexvalue(keydata[i])," j:",j," jdata:",keyweight.key.data[j]);
+      char  keydata[512];
+      memset(keydata,0,sizeof(keydata));
+      frombase58_recover_key(pubkey.c_str(), keydata,0);
+      unsigned int j = 0;
+      for ( uint32_t i=0; i < strlen(keydata); i++ ){
+         if(i%2 == 1)
+         {
+            data[j] = (getHexvalue(keydata[i-1])*16 + getHexvalue(keydata[i])) & 0xff;
+            j++;
          }
-         //memcpy(keyweight.key.data, keydata, keyweight.key.data.size());
-         keyweight.key.type = 0;
-         print("updateactiveaccounts proposerminer:",name{newacc.account}," ownerkey:",newacc.owner_key," size:",strlen(keydata));
-         ultrainiosystem::authority               ownerkey  = { .threshold = 1, .keys = { keyweight }, .accounts = {}, .waits = {} };
-         ultrainiosystem::authority               activekey = { .threshold = 1, .keys = { keyweight }, .accounts = {}, .waits = {} };
+         //print("updateactiveaccounts publickey i:" , i," data:",keydata[i]," value:",getHexvalue(keydata[i])," j:",j," jdata:",data[j]);
+      }
+   }
+   void system_contract::add_subchain_account(const std::vector<ultrainio::proposeaccount_info>&  accounts ) {
+      for(auto const& newacc:accounts){
+         ultrainiosystem::key_weight ownerkeyweight;
+         std::array<char,33> ownerdata;
+         getKeydata(newacc.owner_key,ownerdata);
+         ownerkeyweight.key.data = ownerdata;
+         ownerkeyweight.key.type = 0;
+         ultrainiosystem::authority    ownerkey  = { .threshold = 1, .keys = { ownerkeyweight }, .accounts = {}, .waits = {} };
+
+         ultrainiosystem::key_weight activekeyweight;
+         std::array<char,33> activedata;
+         getKeydata(newacc.active_key,activedata);
+         activekeyweight.key.data = activedata;
+         activekeyweight.key.type = 0;
+         ultrainiosystem::authority     activekey = { .threshold = 1, .keys = { activekeyweight }, .accounts = {}, .waits = {} };
+         print("updateactiveaccounts proposerminer:",name{newacc.account}," ownerkey:",newacc.owner_key," ownerkey:",newacc.active_key);
          action(
             permission_level{ N(ultrainio), N(active) },
             N(ultrainio), NEX(newaccount),
