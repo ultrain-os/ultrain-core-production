@@ -566,10 +566,10 @@ namespace ultrainio {
             elog("send echo by no voter. account : ${account}", ("account", std::string(echo.account)));
             return false;
         }
-        if (!stakeVotePtr->isProposer(echo.proposer, UranusNode::getInstance()->getNonProducingNode())) {
-            elog("echo an propose message, proposed by no proposer. account : ${account}", ("account", std::string(echo.proposer)));
-            return false;
-        }
+//        if (!stakeVotePtr->isProposer(echo.proposer, UranusNode::getInstance()->getNonProducingNode())) {
+//            elog("echo an propose message, proposed by no proposer. account : ${account}", ("account", std::string(echo.proposer)));
+//            return false;
+//        }
 #endif
         return true;
     }
