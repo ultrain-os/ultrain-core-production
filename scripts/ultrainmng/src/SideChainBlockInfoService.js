@@ -14,31 +14,31 @@ var mySkAsCommittee = "";
 var jsonArray = [];
 var chain_name = "";
 
+var local="";
+
 const logger = {
     log: function () {
-        // console.info.apply(console,arguments)
+        if(local="true") {
+            console.info.apply(console,arguments)
+        }
 
     },
     error: function () {
-        console.error.apply(console,arguments)
+        // if(local="true") {
+            console.error.apply(console,arguments)
+        // }
         // console.error(msg);
 
     },
     debug: function () {
-        // console.debug.apply(console,arguments)
+        if(local="true") {
+            console.debug.apply(console,arguments)
+        }
 
     }
 }
 
 var config = {
-    // httpEndpoint:'http://172.16.10.4:8888',
-    // httpEndpoint_history: 'http://172.16.10.4:3000',
-    // keyProvider: ['5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H'], // WIF string or array of keys..
-
-
-    // httpEndpoint: 'http://40.117.73.83:8888',
-    // httpEndpoint_history: 'http://40.117.73.83:3000',
-    // keyProvider: ['5KATDC5YqmSTfy99BWqRugriDmeaTAqpwZxXV8jQafdwJqTaqF4'], // WIF string or array of keys..
     httpEndpoint: "",
     httpEndpoint_history: "",
     keyProvider: [], // WIF string or array of keys..
@@ -63,22 +63,8 @@ var config = {
 
 
 let configSub = {
-    // httpEndpoint:'http://54.153.110.51:8888',
-    // httpEndpoint_history: 'http://54.153.110.51:3000',
-    // httpEndpoint:'http://172.16.10.4:8888',
-    // httpEndpoint_history: 'http://172.16.10.4:3000',
-    // keyProvider: ['5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H'], // WIF string or array of keys..
-
-
-    // httpEndpoint: 'http://40.117.73.83:8888',
-    // httpEndpoint_history: 'http://40.117.73.83:3000',
-    // keyProvider: ['5KATDC5YqmSTfy99BWqRugriDmeaTAqpwZxXV8jQafdwJqTaqF4'], // WIF string or array of keys..
-    // httpEndpoint: 'http://172.16.10.5:8899',
-    // httpEndpoint_history: 'http://172.16.10.5:3000',
-    // httpEndpoint: 'http://172.16.10.4:8877',
-    // httpEndpoint_history: 'http://172.16.10.4:3000',
-    httpEndpoint: 'http://127.0.0.1:8888',
-    httpEndpoint_history: 'http://127.0.0.1:3000',
+    httpEndpoint: '',
+    httpEndpoint_history: '',
     keyProvider: [], // WIF string or array of keys..
 
     chainId: "", // 32 byte (64 char) hex string
@@ -128,10 +114,28 @@ async function initConfig() {
 
     config.httpEndpoint = `${configIniLocal.prefix}${ip}${configIniLocal.endpoint}`;
 
-    config.keyProvider = [configIniLocal["my-sk-as-account"]];
-    configSub.keyProvider = [configIniLocal["my-sk-as-account"]];
+    local = configIniLocal["local"];
 
-    // config.httpEndpoint="http://172.16.10.4:8877";
+    if(local) {
+        config.httpEndpoint="http://172.16.10.4:8877";
+        chain_name = configIniLocal["chain_name"];
+
+        myAccountAsCommittee = configIniLocal["my-account-as-committee"];
+        mySkAsCommittee = configIniLocal["my-sk-as-committee"];
+
+        config.keyProvider = [configIniLocal["my-sk-as-account"]];
+        configSub.keyProvider = [configIniLocal["my-sk-as-account"]];
+
+        configSub.httpEndpoint="http://172.16.10.5:8877";
+    } else {
+        myAccountAsCommittee = configIniTarget["my-account-as-committee"];
+        mySkAsCommittee = configIniTarget["my-sk-as-committee"];
+
+        config.keyProvider = [configIniTarget["my-sk-as-account"]];
+        configSub.keyProvider = [configIniTarget["my-sk-as-account"]];
+
+        configSub.httpEndpoint="http://127.0.0.1:8888";
+    }
 
     try{
         //
@@ -145,10 +149,7 @@ async function initConfig() {
 
     }
 
-    myAccountAsCommittee = configIniTarget["my-account-as-committee"];
-    mySkAsCommittee = configIniTarget["my-sk-as-committee"];
     // url= configIniTarget["url"];
-    chain_name = configIniLocal["chain_name"];
 
     // prefix="http://";
     // endpoint=":8888";
@@ -213,9 +214,14 @@ async function getRemoteIpAddress(url) {
     const rs = await axios.get(url);
     return rs.data;
 }
+
+/**
+ * 获取本地producer列表
+ * @returns {Promise<Array>}
+ */
 async function getProducerLists() {
     const params = {"json": "true" ,"lower_bound": "0" , "limit": 100 };
-    const rs = await axios.post("http://127.0.0.1:8888/v1/chain/get_producers", params);
+    const rs = await axios.post(configSub.httpEndpoint+"/v1/chain/get_producers", params);
     // const rs = await axios.post("http://172.16.10.5:8899/v1/chain/get_producers", params);
 
     var result=[];
@@ -336,7 +342,7 @@ function invokeSystemContract(resultJson) {
 
         u3Sub.contract('ultrainio').then(actions => {
             actions.votecommittee(myAccountAsCommittee, result).then((unsigned_transaction) => {
-                u3Sub.sign(unsigned_transaction, /*mySkAsCommittee*/ config.keyProvider, config.chainId).then((signature) => {
+                u3Sub.sign(unsigned_transaction, /*mySkAsCommittee*/config.keyProvider[0], config.chainId).then((signature) => {
                     if (signature) {
                         let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
                         logger.debug(signedTransaction);
@@ -361,7 +367,7 @@ function invokeSystemContract(resultJson) {
  *
  * 把子链的header push到主网上
  *
- * 参数chain_name
+ * 参数results
  *
  */
 pushHeaderToTestnet = async (results) => {
@@ -372,15 +378,75 @@ pushHeaderToTestnet = async (results) => {
         headers: results
     };
 
-    contractInteract('ultrainio', "acceptheader", params, myAccountAsCommittee, config.keyProvider[0]);
+    contractInteract(config,'ultrainio', "acceptheader", params, myAccountAsCommittee, config.keyProvider[0]);
+}
+
+/**
+ * 根据user 获取chain name
+ * @param user
+ * @returns {Promise<*|number|Location|string|WorkerLocation>}
+ */
+async function initChainName(user) {
+
+    let result = await u3.getProducerInfo({"owner": user});
+
+    logger.debug(result);
+
+    return result.location;
+
+}
+
+/**
+ *
+ * 获取用户名、用户公钥
+ *
+ * 参数chain_name
+ *
+ */
+getUserBulletin = async () => {
+
+    let result = await u3.getUserBulletin({"chain_name":  parseInt(chain_name, 10)});
+
+    return result;
+
+}
+
+/**
+ * 新增账户
+ * @param results
+ * @returns {Promise<void>}
+ */
+async function voteAccount(results) {
+
+    let infos = await getUserBulletin();
+
+    logger.debug("=======voteAccount params=" , results);
+    logger.debug("=======voteAccount info=" , infos);
+
+    for (var i in infos) {
+        var info = infos[i];
+
+        const params = {
+            proposer: myAccountAsCommittee,
+            proposeaccount: [{
+                account: info.owner,
+                owner_key: info.owner_pk,
+                active_key: info.active_pk,
+                location: 0
+            }]
+        };
+
+        contractInteract(configSub,'ultrainio', "voteaccount", params, myAccountAsCommittee, config.keyProvider[0]);
+    }
+
 }
 
 
 /**
  *
- * 定时任务调度，3s获取一次
+ * 定时任务调度，10s获取一次
  *
- *
+ *vo
  */
 async function scheduleCronstyle() {
 
@@ -389,6 +455,8 @@ async function scheduleCronstyle() {
     u3 = createU3({...config, sign: true, broadcast: true});
     u3Sub = createU3({...configSub, sign: true, broadcast: true});
 
+    chain_name = await  initChainName(myAccountAsCommittee);
+
     schedule.scheduleJob('*/10 * * * * *', function () {
         logger.debug('scheduleCronstyle:' + new Date());
 
@@ -396,6 +464,8 @@ async function scheduleCronstyle() {
             getBlocks();
 
             getSubchainCommittee();
+
+            voteAccount();
 
         } catch (e) {
             logger.error("throw exceptions=", e)
@@ -427,7 +497,7 @@ const getBlocks = async () => {
 
         logger.debug("head block num=",subBlockNumMax);
 
-        let blockNum = await u3.getSubchainBlockNum({"chain_name": chain_name});
+        let blockNum = await u3.getSubchainBlockNum({"chain_name": chain_name.toString()});
         logger.debug("u3.getSubchainBlockNum  blockNum=" + blockNum);
 
         //初始化block Num
@@ -480,7 +550,7 @@ const getSubchainCommittee = async () => {
     logger.debug("从本地获取的的jsonArray=" + jsonArray);
 
 
-    let result = await u3.getSubchainCommittee({"chain_name": chain_name});
+    let result = await u3.getSubchainCommittee({"chain_name": chain_name.toString()});
 
 
     invokeSystemContract(result);
@@ -490,6 +560,7 @@ const getSubchainCommittee = async () => {
 
 /**
  * 调用智能合约的入口方法
+ * @param config 配置文件
  * @param contractName
  * @param actionName
  * @param params
@@ -497,7 +568,7 @@ const getSubchainCommittee = async () => {
  * @param privateKey
  * @returns {Promise<void>}
  */
-async function contractInteract(contractName, actionName, params, accountName, privateKey) {
+async function contractInteract(config,contractName, actionName, params, accountName, privateKey) {
     try {
         const keyProvider = [privateKey];
         const u3 = createU3({...config, keyProvider});
@@ -518,7 +589,6 @@ async function contractInteract(contractName, actionName, params, accountName, p
         logger.error(err);
     }
 }
-
 
 //程序主入口
 scheduleCronstyle();
