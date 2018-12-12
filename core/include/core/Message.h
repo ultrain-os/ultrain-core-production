@@ -85,6 +85,8 @@ namespace ultrainio {
         std::vector<std::string> proofPool;
         // the proof of the node which send AggEchoMsg
         std::string myProposerProof;
+#else
+        AccountName proposer;
 #endif
     };
 
@@ -109,6 +111,6 @@ FC_REFLECT( ultrainio::SyncStopMsg, (seqNum))
 FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockId)(accountPool)(sigPool)(timePool)(phase)(baxCount)
                                            (account)(proposerPriority)(proofPool)(myProposerProof))
 #else
-FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockId)(accountPool)(sigPool)(timePool)(phase)(baxCount)(account))
+FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockId)(accountPool)(sigPool)(timePool)(phase)(baxCount)(account)(proposer))
 #endif
 FC_REFLECT_DERIVED( ultrainio::AggEchoMsg, (ultrainio::UnsignedAggEchoMsg), (signature))

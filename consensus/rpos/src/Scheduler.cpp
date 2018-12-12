@@ -1584,12 +1584,14 @@ namespace ultrainio {
         aggEchoMsgPtr->myProposerProof = std::string(MsgMgr::getInstance()->getProposerProof(blockPtr->block_num()));
         aggEchoMsgPtr->proposerPriority = echoMessageInfo.echo.proposerPriority;
         aggEchoMsgPtr->proofPool = echoMessageInfo.proofPool;
+#else
+        aggEchoMsgPtr->proposer = echoMessageInfo.echo.proposer;
 #endif
         aggEchoMsgPtr->accountPool = echoMessageInfo.accountPool;
         aggEchoMsgPtr->sigPool = echoMessageInfo.sigPool;
         aggEchoMsgPtr->timePool = echoMessageInfo.timePool;
-        aggEchoMsgPtr->phase = UranusNode::getInstance()->getPhase();
-        aggEchoMsgPtr->baxCount = UranusNode::getInstance()->getBaxCount();
+        aggEchoMsgPtr->phase = echoMessageInfo.echo.phase;
+        aggEchoMsgPtr->baxCount = echoMessageInfo.echo.baxCount;
         aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, StakeVoteBase::getMyPrivateKey()));
         return aggEchoMsgPtr;
     }

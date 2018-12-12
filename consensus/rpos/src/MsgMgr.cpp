@@ -82,6 +82,7 @@ namespace ultrainio {
         }
         blockMsgPoolPtr->m_aggEchoMsgV.push_back(aggEchoMsg);
         if (blockNum == myBlockNum) {
+            ilog("handle each echo!");
             std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
             PublicKey publicKey = stakeVotePtr->getPublicKey(aggEchoMsg.account);
             ULTRAIN_ASSERT(publicKey.isValid(), chain::chain_exception, "public key is not valid");
@@ -118,6 +119,8 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
                 echoMsg.proposerPriority = aggEchoMsg.proposerPriority;
                 echoMsg.proof = aggEchoMsg.proofPool[i];
+#else
+                echoMsg.proposer = aggEchoMsg.proposer;
 #endif
                 echoMsg.account = aggEchoMsg.accountPool[i];
                 echoMsg.signature = aggEchoMsg.sigPool[i];
