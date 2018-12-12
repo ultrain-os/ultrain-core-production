@@ -3,7 +3,7 @@
 namespace ultrainiosystem {
 
 
-    const uint32_t relayer_deposit_threshold = 100000;
+    //const uint32_t relayer_deposit_threshold = 100000;
 
     /// @abi action
     void system_contract::regsubchain(uint64_t chain_name, uint16_t chain_type) {
@@ -18,7 +18,6 @@ namespace ultrainiosystem {
             new_subchain.is_active         = false;
             new_subchain.head_block_id     = block_id_type();
             new_subchain.head_block_num    = 0;
-            new_subchain.chain_id          = checksum256();
         });
     }
 
@@ -81,12 +80,19 @@ namespace ultrainiosystem {
         }
     }
 
-    void system_contract::clearblock(uint64_t chain_name) {
+    void system_contract::clearchain(uint64_t chain_name, bool users_only) {
         require_auth(N(ultrainio));
         auto ite_chain = _subchains.find(chain_name);
         ultrainio_assert(ite_chain != _subchains.end(), "This subchian is not existed.");
         //todo, check if the subchain is avtive?
+        if(users_only) {
+            _subchains.modify(ite_chain, 0, [&]( auto& _subchain ) {
+                _subchain.users.clear();
+            });
+            return;
+        }
         _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+            _subchain.users.clear();
             _subchain.head_block_id     = block_id_type();
             _subchain.head_block_num    = 0;
         });
@@ -97,9 +103,33 @@ namespace ultrainiosystem {
                     for(uint32_t i = 0; i < num_rate; ++i) {
                         p.unpaid_blocks[i] = 0;
                     }
+                    p.total_produce_block = 0;
                 });
             }
         }
+    }
+
+    void system_contract::empoweruser(account_name user, const std::string& owner_pk, const std::string& active_pk, uint64_t chain_name) {
+        require_auth(user);
+        auto ite_chain = _subchains.find(chain_name);
+        ultrainio_assert(ite_chain != _subchains.end(), "This subchian is not existed.");
+        ultrainio_assert(owner_pk.size() == 53, "owner public key should be of size 53");
+        ultrainio_assert(active_pk.size() == 53, "avtive public key should be of size 53");
+        //todo, check whether this subchain is active.
+
+        user_info tempuser;
+        tempuser.user_name = user;
+        tempuser.owner_key = owner_pk;
+        tempuser.active_key = active_pk;
+        tempuser.emp_time = current_time();
+        tempuser.block_num = (uint32_t)tapos_block_num();
+
+        _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _chain ) {
+            for(const auto& _user : _chain.users) {
+                ultrainio_assert(_user.user_name != user, "User has existed in this subchain.");
+            }
+            _chain.users.push_back(tempuser);
+        });
     }
 /*
     void system_contract::register_relayer(const std::string& miner_pk,
@@ -186,6 +216,7 @@ namespace ultrainiosystem {
     void system_contract::add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key) {
         if(chain_name == default_chain_name) {
             //todo, loop all stable subchain, add to the one with least miners 
+            //todo, update location of producer
             return;
         }
         auto ite_chain = _subchains.find(chain_name);

@@ -95,9 +95,9 @@ public:
    };
    get_info_results get_chain_info(const get_chain_info_params&) const;
 
-   struct producer_info {
-      name                       producer_name;
-   };
+//   struct producer_info {
+//      name                       producer_name;
+//   };
 
    using account_resource_limit = chain::resource_limits::account_resource_limit;
 
@@ -304,6 +304,28 @@ public:
 
    using get_subchain_block_num_params = get_subchain_committee_params;
    uint32_t get_subchain_block_num(const get_subchain_block_num_params& p) const;
+
+   struct get_producer_info_params {
+       account_name   owner;
+   };
+
+   struct get_producer_info_result {
+       uint64_t      location;
+       uint64_t      from_location;
+       uint32_t      quit_before_num;
+   };
+
+   get_producer_info_result get_producer_info(const get_producer_info_params& p) const;
+
+   using get_user_bulletin_params = get_subchain_committee_params;
+   struct get_user_bulletin_result {
+       std::string     owner;
+       std::string     owner_pk;
+       std::string     active_pk;
+       fc::time_point  issue_date;
+   };
+
+   std::vector<get_user_bulletin_result> get_user_bulletin(const get_user_bulletin_params& p) const;
 
    struct get_producers_params {
       bool        json = false;
@@ -617,6 +639,9 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_params, (code)(
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_params, (chain_name));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(from_location)(quit_before_num) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thresh_activated_stake_time)(more) );
@@ -636,7 +661,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_contract_params, (account_name
 FC_REFLECT( ultrainio::chain_apis::read_only::get_abi_params, (account_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_raw_code_and_abi_params, (account_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_raw_code_and_abi_results, (account_name)(wasm)(abi) )
-FC_REFLECT( ultrainio::chain_apis::read_only::producer_info, (producer_name) )
+//FC_REFLECT( ultrainio::chain_apis::read_only::producer_info, (producer_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::abi_json2bin_params, (code)(action)(args) )
 FC_REFLECT( ultrainio::chain_apis::read_only::abi_json2bin_result, (binargs) )
 FC_REFLECT( ultrainio::chain_apis::read_only::abi_bin2json_params, (code)(action)(binargs) )

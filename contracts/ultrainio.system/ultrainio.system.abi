@@ -117,10 +117,20 @@
         {"name": "headers",             "type": "block_header[]"}
       ]
     },{
-      "name": "clearblock",
+      "name": "clearchain",
       "base": "",
       "fields": [
-        {"name": "chain_name",          "type": "uint64"}
+        {"name": "chain_name",          "type": "uint64"},
+        {"name": "users_only",          "type": "bool"}
+      ]
+    },{
+      "name": "empoweruser",
+      "base": "",
+      "fields": [
+        {"name": "user",          "type": "account_name"},
+        {"name": "owner_pk",      "type": "string"},
+        {"name": "active_pk",     "type": "string"},
+        {"name": "chain_name",    "type": "uint64"}
       ]
     },{
       "name": "permission_level_weight",
@@ -421,6 +431,16 @@
          {"name":"last_operate_blocknum", "type":"uint64"}
       ]
     },{
+     "name": "user_info",
+      "base": "",
+      "fields": [
+        {"name": "user_name",                     "type": "account_name"},
+        {"name": "owner_key",                     "type": "string"},
+        {"name": "active_key",                    "type": "string"},
+        {"name": "emp_time",                      "type": "uint64"},
+        {"name": "block_num",                     "type": "uint32"}
+       ]
+    },{
      "name": "subchain",
       "base": "",
       "fields": [
@@ -429,12 +449,8 @@
         {"name": "is_active",                     "type": "bool"},
         {"name": "committee_members",             "type": "role_base[]"},
         {"name": "head_block_id",                 "type": "block_id_type"},
-        {"name": "head_block_num",                "type": "uint32"}
-        {"name": "chain_id",                      "type": "checksum256"},
-        {"name": "genesis_info",                  "type": "string"},
-        {"name": "network_topology",              "type": "string"},
-        {"name": "relayer_candidates",            "type": "role_base[]"},
-        {"name": "relayer_list",                  "type": "role_base[]"}
+        {"name": "head_block_num",                "type": "uint32"},
+        {"name": "users",                         "type": "user_info[]"}
        ]
     },{
       "name": "regproducer",
@@ -654,8 +670,12 @@
       "type": "acceptheader",
       "ricardian_contract": ""
    },{
-      "name": "clearblock",
-      "type": "clearblock",
+      "name": "clearchain",
+      "type": "clearchain",
+      "ricardian_contract": ""
+   },{
+      "name": "empoweruser",
+      "type": "empoweruser",
       "ricardian_contract": ""
    },{
       "name": "unregprod",

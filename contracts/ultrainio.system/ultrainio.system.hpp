@@ -127,6 +127,14 @@ namespace ultrainiosystem {
 
    typedef ultrainio::singleton<N(pendingque), std::vector<role_base>> pending_queue_singleton;
 
+   struct user_info {
+      account_name      user_name;
+      std::string       owner_key;
+      std::string       active_key;
+      uint64_t          emp_time;
+      uint32_t          block_num; ////block num in master chain when this info added
+   };
+
    struct subchain {
        uint64_t                chain_name;
        uint16_t                chain_type;
@@ -134,23 +142,32 @@ namespace ultrainiosystem {
        std::vector<role_base>  committee_members;  //all producers with enough deposit
        block_id_type           head_block_id;
        uint32_t                head_block_num;
-       checksum256             chain_id;
-       std::string             genesis_info;
-       std::string             network_topology;   //ignore it now, todo, will re-design it after dynamic p2p network feature implemented
-       std::vector<role_base>  relayer_candidates; //relayer only with deposit， not in committee list
-       std::vector<role_base>  relayer_list;       // choosen from accounts with enough deposit (both producer and non-producer)
+       std::vector<user_info>  users;
+//       checksum256             chain_id;
+//       std::string             genesis_info;
+//       std::string             network_topology;   //ignore it now, todo, will re-design it after dynamic p2p network feature implemented
+//       std::vector<role_base>  relayer_candidates; //relayer only with deposit， not in committee list
+//       std::vector<role_base>  relayer_list;       // choosen from accounts with enough deposit (both producer and non-producer)
 
        auto primary_key()const { return chain_name; }
 
        uint32_t get_subchain_min_miner_num() const { return chain_type == 1 ? 10 : 7;}
 
-       uint32_t get_subchain_max_miner_num() const {return chain_type == 2 ? 12 : 10000;};
+       uint32_t get_subchain_max_miner_num() const {return chain_type == 2 ? 12 : 10000;}
 
-       ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(is_active)(committee_members)(head_block_id)(head_block_num)(chain_id)
-                                      (genesis_info)(network_topology)(relayer_candidates)(relayer_list) )
+       ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(is_active)(committee_members)(head_block_id)(head_block_num)(users) )
+                                      //(chain_id)(genesis_info)(network_topology)(relayer_candidates)(relayer_list) )
    };
    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
+/*
+   struct empower_info {
+      uint64_t          chain_name;
+      std::vector<user_info>  users;
 
+      auto primary_key()const { return chain_name; }
+   };
+   typedef ultrainio::multi_index<N(users), empower_info> user_table;
+*/
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr int64_t  consweight_per_subaccount = 1000'000'0000;
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
@@ -170,6 +187,7 @@ namespace ultrainiosystem {
          rammarket                _rammarket;
          pending_queue_singleton  _pending_que;
          subchains_table          _subchains;
+//         user_table               _users;
 
       public:
          system_contract( account_name s );
@@ -265,7 +283,8 @@ namespace ultrainiosystem {
 //                          const std::vector<uint32_t>& echo_weight_vector,
 //                          const std::vector<std::string>& echo_account_vector);
 
-         void clearblock(uint64_t chain_name);
+         void clearchain(uint64_t chain_name, bool users_only);
+         void empoweruser(account_name user, const std::string& owner_pk, const std::string& active_pk, uint64_t chain_name);
          //Register to ba a relayer candidate of a subchain, only for those accounts which are not in the committee list of this subchain.
          //All committee members are also be relayer candidates automatically
 /*         void register_relayer(const std::string& miner_pk,

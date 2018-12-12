@@ -14,7 +14,7 @@
 #include <ultrainio/chain/resource_limits.hpp>
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/generated_transaction_object.hpp>
-#include <ultrainio/chain/subchain_object.hpp>
+#include <ultrainio/chain/ultrainio_object.hpp>
 
 #include <ultrainio/chain/ultrainio_contract.hpp>
 
@@ -876,7 +876,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
 
 vector<read_only::get_subchain_committee_result> read_only::get_subchain_committee( const read_only::get_subchain_committee_params& p )const {
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
-   ULTRAIN_ASSERT(p.chain_name != 1, chain::contract_table_query_exception, "Could not query committee list of master chain.");
+   ULTRAIN_ASSERT(p.chain_name != master_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
 
    name table = N(subchains);
    auto index_type = get_table_type( abi, table );
@@ -908,8 +908,8 @@ vector<read_only::get_subchain_committee_result> read_only::get_subchain_committ
 }
 
 uint32_t read_only::get_subchain_block_num(const read_only::get_subchain_block_num_params& p) const {
-const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
-   ULTRAIN_ASSERT(p.chain_name != 1, chain::contract_table_query_exception, "Could not query committee list of master chain.");
+   const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+   ULTRAIN_ASSERT(p.chain_name != master_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
 
    name table = N(subchains);
    auto index_type = get_table_type( abi, table );
@@ -931,6 +931,66 @@ const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
    });
    return result;
 }
+
+read_only::get_producer_info_result read_only::get_producer_info(const read_only::get_producer_info_params& p) const {
+    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+
+    name table = N(producers);
+    auto index_type = get_table_type( abi, table );
+    read_only::get_producer_info_result result;
+    result.location = std::numeric_limits<uint64_t>::max();
+    result.from_location = std::numeric_limits<uint64_t>::max();
+    walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+       producer_info producer_data;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, producer_data);
+       if(p.owner == producer_data.owner) {
+           result.location = producer_data.location;
+           result.from_location = 0; //todo, replace it after VM data updated.
+           return false;
+       }
+       else {
+           return true;
+       }
+    });
+    result.quit_before_num = 0; // todo, quey it from table
+    return result;
+}
+
+std::vector<read_only::get_user_bulletin_result> read_only::get_user_bulletin(const read_only::get_user_bulletin_params& p) const {
+    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+
+    name table = N(subchains);
+    auto index_type = get_table_type( abi, table );
+    std::vector<read_only::get_user_bulletin_result> result;
+    walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+       subchain subchain_data;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, subchain_data);
+       if(p.chain_name == subchain_data.chain_name) {
+           auto headblock = db.head_block_num();
+           for(int32_t index = subchain_data.users.size() - 1; index >= 0; --index) {
+               if(headblock - subchain_data.users[index].block_num <= 180) {
+                   read_only::get_user_bulletin_result tmpuser;
+                   tmpuser.owner = subchain_data.users[index].user_name.to_string();
+                   tmpuser.owner_pk = subchain_data.users[index].owner_key;
+                   tmpuser.active_pk = subchain_data.users[index].active_key;
+                   tmpuser.issue_date = fc::time_point(microseconds(subchain_data.users[index].emp_time));
+                   result.push_back(tmpuser);
+               }
+               else {
+                   break;
+               }
+           }
+           return false;
+       }
+       else {
+           return true;
+       }
+    });
+    return result;
+}
+
 // TODO: move this and similar functions to a header. Copied from wasm_interface.cpp.
 // TODO: fix strict aliasing violation
 static float64_t to_softfloat64( double d ) {

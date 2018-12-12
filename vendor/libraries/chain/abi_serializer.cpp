@@ -297,7 +297,7 @@ namespace ultrainio { namespace chain {
           uint32_t size;
           fc::raw::unpack(stream, size);
           std::vector<std::string> v;
-          boost:split(v, ftype, boost::is_any_of(","));
+          boost::split(v, ftype, boost::is_any_of(","));
           mutable_variant_object resmap;
           ULTRAIN_ASSERT(v.size() == 2, invalid_type_inside_abi, "Invalid packed map" );
           for (decltype(size) i = 0; i < size; i++) {

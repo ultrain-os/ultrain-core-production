@@ -44,6 +44,28 @@ namespace ultrainiosystem {
       uint64_t curblocknum = tapos_block_num();
       if ( prod != _producers.end() ) {
          ultrainio_assert( (curblocknum - prod->last_operate_blocknum) > 2 , "interval operate at least more than certain number block high" );
+         //if location changes
+         if(prod->is_enabled && prod->location != location) {
+             ultrainio_assert(!prod->is_in_pending_queue(), "cannot move producers in pending queue");
+             ultrainio_assert(!prod->is_on_master_chain(), "cannot move producers from master chain");
+             if(prod->is_on_subchain()) {
+                 remove_from_subchain(prod->location, prod->owner);
+             }
+             if(location != master_chain_name && location != pending_queue) {
+                 add_to_subchain(location, prod->owner, prod->producer_key);
+             }
+             else if(location == pending_queue) {
+                 add_to_pending_queue(prod->owner, prod->producer_key);
+             }
+             else {
+                 if(!prod->hasactived) {
+                     update_activated_stake(prod->total_cons_staked);
+                     _producers.modify(prod, 0 , [&](auto & v) {
+                         v.hasactived = true;
+                     });
+                 }
+             }
+         }
          _producers.modify( prod, producer, [&]( producer_info& info ){
                info.producer_key = producer_key;
                info.is_active    = true;
