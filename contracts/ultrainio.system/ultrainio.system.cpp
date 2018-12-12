@@ -316,7 +316,7 @@ void system_contract::voteaccount() {
       datastream<const char*> ds( buffer, size );
       ds >> proposer >> proposeaccount;
       uint32_t proposeaccountsize = proposeaccount.size();
-      ultrainio_assert( proposeaccount.size() == 1, "The number of proposeaccount changes cannot exceed one" );
+      ultrainio_assert( proposeaccount.size() > 0, "The number of proposeaccount changes greater than zero" );
       require_auth( proposer );
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_enabled, "enabled producer not found this proposer" );
