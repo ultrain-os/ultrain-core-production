@@ -37,7 +37,7 @@ SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.so")
 IF(NOT APPLE)
  # Linux or other unix
  SET(rt_library rt )
- SET(pthread_library pthread)
+ #SET(pthread_library pthread)
 ENDIF(NOT APPLE)
 
 IF(NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
@@ -100,6 +100,7 @@ set( fc_sources
      src/crypto/public_key.cpp
      src/crypto/private_key.cpp
      src/crypto/signature.cpp
+     src/crypto/random.cpp
      src/network/ip.cpp
      src/network/resolve.cpp
      src/network/udp_socket.cpp

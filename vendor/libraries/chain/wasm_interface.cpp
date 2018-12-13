@@ -14,6 +14,7 @@
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
+#include <fc/crypto/random.hpp>
 #include <fc/io/raw.hpp>
 
 #include <softfloat.hpp>
@@ -300,6 +301,10 @@ class typescript_crypto_api : public context_aware_api {
          }
 
          return -1;
+      }
+
+      int ts_verify_with_pk(null_terminated_ptr pk_str, null_terminated_ptr pk_proof, null_terminated_ptr message) {
+          return fc::verify_with_pk(pk_str.value, pk_proof.value, message.value) ? 1 : 0;
       }
 };
 #endif
@@ -2017,6 +2022,7 @@ REGISTER_INTRINSICS(typescript_crypto_api,
    (ts_ripemd160,              void(int, int, int, int)           )
    (ts_public_key_of_account,  int(int64_t, int, int, int)        )
    (ts_read_db_record,         int(int64_t, int64_t, int64_t, int64_t, int , int) )
+   (ts_verify_with_pk,         int(int, int, int)                 )
 );
 #endif
 

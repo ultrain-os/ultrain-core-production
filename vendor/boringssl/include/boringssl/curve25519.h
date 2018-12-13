@@ -37,20 +37,20 @@ extern "C" {
 
 // ED25519_keypair sets |out_public_key| and |out_private_key| to a freshly
 // generated, public–private key pair.
-void ED25519_keypair(uint8_t out_public_key[32],
+void ED25519_keypair_u(uint8_t out_public_key[32],
                                     uint8_t out_private_key[64]);
 
 // ED25519_sign sets |out_sig| to be a signature of |message_len| bytes from
 // |message| using |private_key|. It returns one on success or zero on
 // error.
-int ED25519_sign(uint8_t out_sig[64], const uint8_t *message,
+int ED25519_sign_u(uint8_t out_sig[64], const uint8_t *message,
                                 size_t message_len,
                                 const uint8_t private_key[64]);
 
 // ED25519_verify returns one iff |signature| is a valid signature, by
 // |public_key| of |message_len| bytes from |message|. It returns zero
 // otherwise.
-int ED25519_verify(const uint8_t *message, size_t message_len,
+int ED25519_verify_u(const uint8_t *message, size_t message_len,
                                   const uint8_t signature[64],
                                   const uint8_t public_key[32]);
 
@@ -59,7 +59,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 // happen to be the first 32 bytes of a private key) so this function is for
 // interoperating with systems that may store just a seed instead of a full
 // private key.
-void ED25519_keypair_from_seed(uint8_t out_public_key[32],
+void ED25519_keypair_from_seed_u(uint8_t out_public_key[32],
                                               uint8_t out_private_key[64],
                                               const uint8_t seed[32]);
 
