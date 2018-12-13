@@ -674,14 +674,14 @@ struct controller_impl {
             emit(self.accepted_block_header, pending->_pending_block_state);
             head = fork_db.head();
             ULTRAIN_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
-            //normal block production
-            if (0 == fork_db.head()->block_num % conf.worldstate_interval) {
-               create_worldstate();
-            }
-         } else { // block syncing and listner branch, worldstate allowed for listner but not for syncing
-             if ( (0 == fork_db.head()->block_num % conf.worldstate_interval) && (worldstate_allowed) ) {
-               create_worldstate();
-             }
+            worldstate_allowed = true;
+         }
+
+         // block syncing and listner branch, worldstate allowed for listner but not for syncing
+         if ( (conf.worldstate_control)
+               && (0 == fork_db.head()->block_num % conf.worldstate_interval)
+               && (worldstate_allowed) ) {
+            create_worldstate();
          }
          worldstate_allowed = false;
 
