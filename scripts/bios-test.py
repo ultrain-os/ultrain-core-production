@@ -29,6 +29,7 @@ systemAccounts = [
     'utrio.stake',
     'utrio.token',
     'utrio.vpay',
+    'utrio.fee',
     'hello',
 ]
 
@@ -592,11 +593,11 @@ def stepSetSystemContract():
 def stepCreateStakedAccounts():
     for i in range(0, args.num_producers):
         retry(args.clultrain + 'create account ultrainio %s %s ' % (accounts[i], account_pk_list[i]))
-    sleep(5)
-    for i in range(0, args.num_producers):
-        retry(args.clultrain + 'system resourcelease ultrainio %s  "1" ' % (accounts[i]))
-        #retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1.0000 UGAS" --stake-cpu "1.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key))
-    sleep(5)
+    sleep(10)
+   #  for i in range(0, args.num_producers):
+   #      retry(args.clultrain + 'system resourcelease ultrainio %s  1 100' % (accounts[i]))
+   #      #retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1.0000 UGAS" --stake-cpu "1.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key))
+   #  sleep(5)
 
 
 def stepRegProducers():
@@ -615,12 +616,12 @@ def stepRegProducers():
 def stpDelegateTestAcc():
     subaccounts = accounts[1:3]
     for testacc in subaccounts:
-        retry(args.clultrain + 'system resourcelease utrio.stake %s  "4000" ' % testacc)
+        retry(args.clultrain + 'system resourcelease ultrainio %s  4000 0' % testacc)
 
 
 def stepCreateinitAccounts():
     for a in initialAccounts:
-        retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1000.0000 UGAS" --stake-cpu "1000.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (a, args.initacc_pk))
+        retry(args.clultrain + ' create account ultrainio %s %s ' % (a, args.initacc_pk))
     sleep(10)
     for a in initialAccounts:
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
@@ -711,7 +712,7 @@ commands = [
     ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
     ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
-    ('d', 'deletatetest',   stpDelegateTestAcc,         True,    "Conduct transfer test for *.111 and *.112 multi-agent resources"),
+    ('d', 'deletatetest',   stpDelegateTestAcc,         False,    "Conduct transfer test for *.111 and *.112 multi-agent resources"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
 #    ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
      ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
