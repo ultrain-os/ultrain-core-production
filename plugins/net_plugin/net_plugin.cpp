@@ -502,6 +502,8 @@ namespace ultrainio {
         handshake_message       last_handshake_recv;
         handshake_message       last_handshake_sent;
         int16_t                 sent_handshake_count = 0;
+        bool                    ticker_rcv = false;
+        uint32_t                ticker_no_rcv_count = 0;
         bool                    connecting = false;
         uint16_t                protocol_version  = 0;
         string                  peer_addr;
@@ -2031,6 +2033,10 @@ namespace ultrainio {
        * the message, but it can't be helped.
        */
       //ilog("received time");
+      if(c->current())
+      {
+           c->ticker_rcv = true;
+      }
       msg.dst = c->get_time();
 
       // If the transmit timestamp is zero, the peer is horribly broken.
@@ -2383,6 +2389,26 @@ namespace ultrainio {
                wlog ("Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()));
             }
             for (auto &c : connections ) {
+               if(c->current())
+               {
+                  if(!c->ticker_rcv)
+                  {
+                      ilog("ticker no rcv");
+                      c->ticker_no_rcv_count++;
+                      if(c->ticker_no_rcv_count >= 5)
+                      {
+                         ilog("ticker checked");
+                         c->ticker_rcv = false;
+                         c->ticker_no_rcv_count = 0;
+                         close(c);
+                      }
+                   }
+                   else
+                   {
+                       c->ticker_rcv = false;
+                       c->ticker_no_rcv_count = 0;
+                   }
+               }
                if (c->socket->is_open()) {
                   c->send_time();
                }
