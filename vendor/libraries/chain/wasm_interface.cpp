@@ -274,6 +274,12 @@ class typescript_crypto_api : public context_aware_api {
          memcpy(hash_val, hash.data(), hash.data_size());
       }
 
+      int ts_read_db_record(uint64_t code, uint64_t table, uint64_t scope, uint64_t primary, array_ptr<char> value, size_t value_len) {
+         // just read a record, do not check permission
+         int itr = context.db_find_i64(code, scope, table, primary);
+         if (itr < 0) return -1;
+         return context.db_get_i64(itr, value, value_len);
+      }
       int ts_public_key_of_account(const account_name& account, array_ptr<char> pubkey_val, size_t pubkey_len, null_terminated_ptr key_type) {
          if (!context.is_account( account )) return -1;
 
@@ -2007,6 +2013,7 @@ REGISTER_INTRINSICS(typescript_crypto_api,
    (ts_sha512,                 void(int, int, int, int)           )
    (ts_ripemd160,              void(int, int, int, int)           )
    (ts_public_key_of_account,  int(int64_t, int, int, int)        )
+   (ts_read_db_record,         int(int64_t, int64_t, int64_t, int64_t, int , int) )
 );
 #endif
 
@@ -2296,6 +2303,8 @@ std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
       runtime = ultrainio::chain::wasm_interface::vm_type::wavm;
    else if (s == "binaryen")
       runtime = ultrainio::chain::wasm_interface::vm_type::binaryen;
+   else if (s == "wabt")
+      runtime = ultrainio::chain::wasm_interface::vm_type::wabt;
    else
       in.setstate(std::ios_base::failbit);
    return in;
