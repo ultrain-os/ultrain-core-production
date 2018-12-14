@@ -6,7 +6,8 @@
 #include "ultrainio.token.hpp"
 
 namespace ultrainio {
-const int  operatefee = 10;
+const int  interval_sec = 10;
+const int  operatefee = 100;
 void token::create( account_name issuer,
                     asset        maximum_supply )
 {
@@ -80,8 +81,7 @@ void token::transfer( account_name from,
     ultrainio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
 
 
-    sub_balance( from, quantity+asset(operatefee) );
-    add_balance( to, asset(operatefee), N(utrio.stake) );
+    sub_balance( from, quantity );
     add_balance( to, quantity, from );
 }
 
@@ -89,14 +89,26 @@ void token::sub_balance( account_name owner, asset value ) {
    accounts from_acnts( _self, owner );
 
    const auto& from = from_acnts.get( value.symbol.name(), "no balance object found" );
-   ultrainio_assert( from.balance.amount >= value.amount, "overdrawn balance" );
+   auto ct = now();
+   asset fee(0);
+   if((ct - from.last_time < interval_sec) && (owner != N(ultrainio))){
+      if(value.amount >= 100000)
+         fee = value/1000;
+      else
+         fee = asset(operatefee);
+      ultrainio_assert( fee.amount > 0, "fee must a positive value" );
+      add_balance( N(utrio.fee), fee, 0);
+      value += fee;
+   }
 
+   ultrainio_assert( from.balance.amount >= value.amount, "overdrawn balance" );
 
    if( from.balance.amount == value.amount ) {
       from_acnts.erase( from );
    } else {
       from_acnts.modify( from, owner, [&]( auto& a ) {
           a.balance -= value;
+          a.last_time = ct;
       });
    }
 }
@@ -108,6 +120,7 @@ void token::add_balance( account_name owner, asset value, account_name ram_payer
    if( to == to_acnts.end() ) {
       to_acnts.emplace( ram_payer, [&]( auto& a ){
         a.balance = value;
+        a.last_time = now();
       });
    } else {
       to_acnts.modify( to, 0, [&]( auto& a ) {

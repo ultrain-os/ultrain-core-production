@@ -32,7 +32,8 @@
       "name": "account",
       "base": "",
       "fields": [
-        {"name":"balance", "type":"asset"}
+        {"name":"balance", "type":"asset"},
+        {"name":"last_time", "type":"time_point_sec"}
       ]
     },{
       "name": "currency_stats",

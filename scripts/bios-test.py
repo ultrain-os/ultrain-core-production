@@ -572,7 +572,7 @@ def stepStartWallet():
 
 def createSystemAccounts():
     for a in systemAccounts:
-        run(args.clultrain + 'create account ultrainio ' + a + ' ' + args.public_key)
+        run(args.clultrain + 'create account -u ultrainio ' + a + ' ' + args.public_key)
 
 def stepInstallSystemContracts():
     retry(args.clultrain + 'set contract utrio.token ' + args.contracts_dir + 'ultrainio.token/')
