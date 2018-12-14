@@ -927,6 +927,8 @@ namespace ultrainio {
             my_impl->dispatcher->retry_fetch (shared_from_this());
         }
         reset();
+        ticker_rcv = false;
+        ticker_no_rcv_count = 0;
         sent_handshake_count = 0;
         last_handshake_recv = handshake_message();
         last_handshake_sent = handshake_message();
@@ -2033,7 +2035,7 @@ namespace ultrainio {
        * the message, but it can't be helped.
        */
       //ilog("received time");
-      if(c->current())
+      if((c->priority == msg_priority_rpos) &&  c->current())
       {
            c->ticker_rcv = true;
       }
@@ -2389,7 +2391,7 @@ namespace ultrainio {
                wlog ("Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()));
             }
             for (auto &c : connections ) {
-               if(c->current())
+               if((c->priority == msg_priority_rpos) && c->current())
                {
                   if(!c->ticker_rcv)
                   {
