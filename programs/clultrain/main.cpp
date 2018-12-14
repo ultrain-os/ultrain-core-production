@@ -1445,13 +1445,24 @@ void get_account( const string& accountName, bool json_format ) {
          return ss.str();
       };
 
-
+      if ( res.resources_lease.is_object() ) {
+         std::cout << std::endl;
+         std::cout << "resource lease: " << std::endl;
+         auto leasenum = res.resources_lease.get_object()["lease_num"].as_int64();
+         auto start_time = res.resources_lease.get_object()["start_time"].as_string();
+         auto end_time = res.resources_lease.get_object()["end_time"].as_string();
+         std::cout << std::fixed << setprecision(3);
+         std::cout << indent << std::left << std::setw(11) << "lease_num:"      << std::right << std::setw(13) << leasenum << "\n";
+         std::cout << indent << std::left << std::setw(11) << "start_time:" << std::right << std::setw(18) << start_time << "\n";
+         std::cout << indent << std::left << std::setw(11) << "end_time:"     << std::right << std::setw(18) << end_time << "\n";
+         std::cout << std::endl;
+      }
 
       std::cout << "memory: " << std::endl
                 << indent << "quota: " << std::setw(15) << to_pretty_net(res.ram_quota) << "  used: " << std::setw(15) << to_pretty_net(res.ram_usage) << std::endl << std::endl;
 
       std::cout << "net bandwidth: " << std::endl;
-      if ( res.total_resources.is_object() ) {
+      if (false){//( res.total_resources.is_object() ) {
          auto net_total = to_asset(res.total_resources.get_object()["net_weight"].as_string());
 
          if( net_total.get_symbol() != unstaking.get_symbol() ) {
@@ -1521,7 +1532,7 @@ void get_account( const string& accountName, bool json_format ) {
 
       std::cout << "cpu bandwidth:" << std::endl;
 
-      if ( res.total_resources.is_object() ) {
+      if (false){ //( res.total_resources.is_object() ) {
          auto cpu_total = to_asset(res.total_resources.get_object()["cpu_weight"].as_string());
 
          if( res.self_delegated_bandwidth.is_object() ) {
@@ -2897,7 +2908,7 @@ int main( int argc, char** argv ) {
    auto system = app.add_subcommand("system", localized("Send ultrainio.system contract action to the blockchain."), false);
    system->require_subcommand();
 
-   auto createAccountSystem = create_account_subcommand( system, false /*simple*/ );
+   //auto createAccountSystem = create_account_subcommand( system, false /*simple*/ );
    auto registerProducer = register_producer_subcommand(system);
    auto unregisterProducer = unregister_producer_subcommand(system);
 
@@ -2905,8 +2916,8 @@ int main( int argc, char** argv ) {
    auto votecommittee = votecommittee_subcommand(system);
    auto voteaccount = voteaccount_subcommand(system);
    auto buyresourcespackage = buy_respackage_subcommand(system);
-   auto delegateBandWidth = delegate_bandwidth_subcommand(system);
-   auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
+   //auto delegateBandWidth = delegate_bandwidth_subcommand(system);
+   //auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
    auto delegatecons = delegate_cons_subcommand(system);
    auto undelegatecons = undelegate_cons_subcommand(system);
 
@@ -2914,8 +2925,8 @@ int main( int argc, char** argv ) {
    auto bidname = bidname_subcommand(system);
    auto bidnameinfo = bidname_info_subcommand(system);
 
-   auto biyram = buyram_subcommand(system);
-   auto sellram = sellram_subcommand(system);
+   //auto biyram = buyram_subcommand(system);
+   //auto sellram = sellram_subcommand(system);
 
    auto claimRewards = claimrewards_subcommand(system);
    auto reportblock = reportblock_subcommand(system);

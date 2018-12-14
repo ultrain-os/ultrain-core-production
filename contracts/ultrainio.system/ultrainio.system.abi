@@ -229,29 +229,6 @@
         {"name":"sent_trx",  "type":"bytes"}
       ]
     },{
-      "name": "buyrambytes",
-      "base": "",
-      "fields": [
-         {"name":"payer", "type":"account_name"},
-         {"name":"receiver", "type":"account_name"},
-         {"name":"bytes", "type":"uint32"}
-      ]
-    },{
-      "name": "sellram",
-      "base": "",
-      "fields": [
-         {"name":"account", "type":"account_name"},
-         {"name":"bytes", "type":"uint64"}
-      ]
-    },{
-      "name": "buyram",
-      "base": "",
-      "fields": [
-         {"name":"payer", "type":"account_name"},
-         {"name":"receiver", "type":"account_name"},
-         {"name":"quant", "type":"asset"}
-      ]
-    },{
       "name": "resourcelease",
       "base": "",
       "fields": [
@@ -259,25 +236,6 @@
          {"name":"receiver", "type":"account_name"},
          {"name":"combosize", "type":"int64"},
          {"name":"days", "type":"int64"}
-      ]
-    },{
-      "name": "delegatebw",
-      "base": "",
-      "fields": [
-         {"name":"from", "type":"account_name"},
-         {"name":"receiver", "type":"account_name"},
-         {"name":"stake_net_quantity", "type":"asset"},
-         {"name":"stake_cpu_quantity", "type":"asset"},
-         {"name":"transfer", "type":"bool"}
-      ]
-    },{
-      "name": "undelegatebw",
-      "base": "",
-      "fields": [
-         {"name":"from", "type":"account_name"},
-         {"name":"receiver", "type":"account_name"},
-         {"name":"unstake_net_quantity", "type":"asset"},
-         {"name":"unstake_cpu_quantity", "type":"asset"}
       ]
     },{
       "name": "delegatecons",
@@ -599,28 +557,8 @@
      "type": "onerror",
      "ricardian_contract": ""
    },{
-      "name": "buyrambytes",
-      "type": "buyrambytes",
-      "ricardian_contract": ""
-   },{
-      "name": "buyram",
-      "type": "buyram",
-      "ricardian_contract": ""
-   },{
-      "name": "sellram",
-      "type": "sellram",
-      "ricardian_contract": ""
-   },{
       "name": "resourcelease",
       "type": "resourcelease",
-      "ricardian_contract": ""
-   },{
-      "name": "delegatebw",
-      "type": "delegatebw",
-      "ricardian_contract": ""
-   },{
-      "name": "undelegatebw",
-      "type": "undelegatebw",
       "ricardian_contract": ""
    },{
       "name": "delegatecons",

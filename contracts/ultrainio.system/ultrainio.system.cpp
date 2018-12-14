@@ -458,7 +458,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // ultrainio.system.cpp
      (setram)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)
      // delegate_bandwidth.cpp
-     (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(delegatecons)(undelegatecons)(refund)(refundcons)(resourcelease)
+     (delegatecons)(undelegatecons)(refund)(refundcons)(resourcelease)
      // voting.cpp
      (regproducer)(unregprod)
      // producer_pay.cpp

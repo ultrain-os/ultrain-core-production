@@ -379,8 +379,10 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    int64_t cpu_weight, x, y;
    get_account_limits( name, x, y, cpu_weight );
 
-   if( cpu_weight < 0 || state.total_cpu_weight == 0 ) {
+   if( cpu_weight < 0 ) {
       return { -1, -1, -1 };
+   }else if( state.total_cpu_weight == 0 ){
+      return { 0, 0, 0 };
    }
 
    account_resource_limit arl;
@@ -417,8 +419,10 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    int64_t net_weight, x, y;
    get_account_limits( name, x, net_weight, y );
 
-   if( net_weight < 0 || state.total_net_weight == 0) {
+   if( net_weight < 0 ) {
       return { -1, -1, -1 };
+   }else if( state.total_net_weight == 0 ){
+      return { 0, 0, 0 };
    }
 
    account_resource_limit arl;
