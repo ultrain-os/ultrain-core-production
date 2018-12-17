@@ -30,14 +30,25 @@ namespace ultrainio { namespace chain {
       uint32_t          block_num; ////block num in master chain when this info added
    };
 
+   struct changed_committee {
+       std::vector<role_base> deprecated_members;
+       std::vector<role_base> new_added_members;
+       uint32_t               block_num = 0;  //block num of master chain when this change was comfirmed,
+                                              //0 indicate all changed info has not bee confirmed.
+   };
+
     struct subchain {
-       uint64_t                chain_name;
-       uint16_t                chain_type;
-       bool                    is_active;
-       std::vector<role_base>  committee_members;  //all producers with enough deposit
-       block_id_type           head_block_id;
-       uint32_t                head_block_num;
-       std::vector<user_info>  users;
+       uint64_t                  chain_name;
+       uint16_t                  chain_type;
+       bool                      is_active;
+       bool                      is_synced;
+       std::vector<role_base>    committee_members;  //all producers with enough deposit
+       std::vector<role_base>    deprecated_committee;
+       std::vector<account_name> unactivated_committee;
+       changed_committee         changed_info;
+       block_id_type             head_block_id;
+       uint32_t                  head_block_num;
+       std::vector<user_info>    users;
 //       checksum256_type        chain_id;
 //       std::string             genesis_info;
 //       std::string             network_topology;   //ignore it now, todo, will re-design it after dynamic p2p network feature implemented
@@ -51,5 +62,7 @@ FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::producer_info, (ultrainio::chain::role_base), (total_cons_staked)(is_active)(is_enabled)
                     (hasactived)(url)(unpaid_blocks)(total_produce_block)(last_claim_time)(location))
 FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(block_num) )
-FC_REFLECT(ultrainio::chain::subchain, (chain_name)(chain_type)(is_active)(committee_members)(head_block_id)(head_block_num)(users) )
+FC_REFLECT(ultrainio::chain::changed_committee, (deprecated_members)(new_added_members)(block_num) )
+FC_REFLECT(ultrainio::chain::subchain, (chain_name)(chain_type)(is_active)(is_synced)(committee_members)(deprecated_committee)
+                                       (unactivated_committee)(changed_info)(head_block_id)(head_block_num)(users) )
            //(chain_id)(genesis_info)(network_topology)(relayer_candidates)(relayer_list) )

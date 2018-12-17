@@ -16,6 +16,7 @@ namespace ultrainiosystem {
             new_subchain.chain_name        = chain_name;
             new_subchain.chain_type        = chain_type;
             new_subchain.is_active         = false;
+            new_subchain.is_synced         = false;
             new_subchain.head_block_id     = block_id_type();
             new_subchain.head_block_num    = 0;
         });
@@ -28,19 +29,59 @@ namespace ultrainiosystem {
         ultrainio_assert(headers.size() <= 10, "Too many blocks are reported.");
         auto ite_chain = _subchains.find(chain_name);
         ultrainio_assert(ite_chain != _subchains.end(), "This subchian is not existed.");
+        bool synced = headers.size() == 10 ? false : true;  //10 blocks is the max sum when reporting
         //todo, check if the subchain is avtive?
         for(uint32_t idx = 0; idx < headers.size(); ++idx) {
             account_name block_proposer = headers[idx].proposer;
+            auto prod = _producers.find(block_proposer);
+            ultrainio_assert(prod != _producers.end(), "The prososer is not a valid producer");
 
+            bool found_prod = false;
             bool need_report = true;
             if(block_proposer != N() && block_proposer != N(genesis)) {
                 auto itor = ite_chain->committee_members.begin();
                 for(; itor != ite_chain->committee_members.end(); ++itor) {
                     if(itor->owner == block_proposer) {
+                        found_prod = true;
                         break;
                     }
                 }
-                ultrainio_assert(itor != ite_chain->committee_members.end(), "block proposer is not in committee list of this subchian.");
+                //found producer and it's a new added member of last update, means the update works in subchain
+                if(found_prod && !ite_chain->unactivated_committee.empty()) {
+                    auto new_prod = ite_chain->unactivated_committee.begin();
+                    for(; new_prod != ite_chain->unactivated_committee.end(); ++new_prod) {
+                        if(*new_prod == block_proposer) {
+                            //new committee works, clear deprecated and unactivated list
+                            _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+                                _subchain.deprecated_committee.clear();
+                                _subchain.unactivated_committee.clear();
+                                _subchain.deprecated_committee.shrink_to_fit();
+                                _subchain.unactivated_committee.shrink_to_fit();
+                            });
+                            break;
+                        }
+                    }
+                }
+                else if(!found_prod && ite_chain->deprecated_committee.empty() ) {
+                    auto cur_block_num = tapos_block_num();
+                    for(auto ite_prod = ite_chain->deprecated_committee.begin(); ite_prod != ite_chain->deprecated_committee.end(); ++ite_prod) {
+                        if(ite_prod->owner == block_proposer) {
+                            //todo, check quit num in produer table for the case about moving producer
+                            //no reword if it's 1 hour after last committee change confirmation.
+                            //todo, the time threshold is set to 1 hour temporarily, can be adjusted to a proper value later
+                            if(cur_block_num % 720 > 360) {
+                                need_report = false;
+                            }
+                            found_prod = true;
+                            break;
+                        }
+                    }
+                }
+
+                if(!found_prod) {
+                    //no reward for the producer. Here is not suggested to use assert
+                    need_report = false;
+                }
             }
             else {
                 need_report = false; //Don't pay for null block and all blocks produced by genesis
@@ -52,6 +93,7 @@ namespace ultrainiosystem {
             if(ite_chain->head_block_num == 0 ||
                (ite_chain->head_block_id == headers[idx].previous && block_number == ite_chain->head_block_num + 1)) {
                   _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+                      _subchain.is_synced         = synced;
                       _subchain.head_block_id     = headers[idx].id();
                       _subchain.head_block_num    = block_number;
                   });
@@ -88,11 +130,13 @@ namespace ultrainiosystem {
         if(users_only) {
             _subchains.modify(ite_chain, 0, [&]( auto& _subchain ) {
                 _subchain.users.clear();
+                _subchain.users.shrink_to_fit();
             });
             return;
         }
         _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
             _subchain.users.clear();
+            _subchain.users.shrink_to_fit();
             _subchain.head_block_id     = block_id_type();
             _subchain.head_block_num    = 0;
         });
@@ -233,8 +277,6 @@ namespace ultrainiosystem {
             temp_node.producer_key   = public_key;
             info.committee_members.push_back(temp_node);
         } );
-
-        //todo, modify dest_location in DB _producers.
     }
 
     void system_contract::remove_from_subchain(uint64_t chain_name, account_name producer) {
@@ -253,5 +295,41 @@ namespace ultrainiosystem {
             }
             ultrainio_assert(found, "The producer is not existed on this subchain.");
         } );
+    }
+
+    void system_contract::activate_committee_update() {
+        if(tapos_block_num()%720 != 0) {
+            return;  //do this operation every 2 hours == 720 block.
+        }
+        auto ite_chain = _subchains.begin();
+        for(; ite_chain != _subchains.end(); ++ite_chain) {
+            if(!ite_chain->deprecated_committee.empty() || !ite_chain->unactivated_committee.empty() ||
+                !ite_chain->changed_info.deprecated_members.empty() || !ite_chain->changed_info.new_added_members.empty()) {
+                _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+                    if(_subchain.is_synced) {
+                        _subchain.deprecated_committee.swap(_subchain.changed_info.deprecated_members);
+                    }
+                    else {
+                        _subchain.deprecated_committee.reserve(_subchain.deprecated_committee.size() + _subchain.changed_info.deprecated_members.size());
+                        _subchain.deprecated_committee.insert(_subchain.deprecated_committee.end(),
+                                                              std::make_move_iterator(_subchain.changed_info.deprecated_members.begin()),
+                                                              std::make_move_iterator(_subchain.changed_info.deprecated_members.end()));
+                    }
+                    _subchain.changed_info.deprecated_members.clear();
+
+                    _subchain.unactivated_committee.clear();
+                    auto new_member = _subchain.changed_info.new_added_members.begin();
+                    for(; new_member != _subchain.changed_info.new_added_members.end(); ++new_member) {
+                        _subchain.unactivated_committee.emplace_back(new_member->owner);
+                    }
+                    _subchain.changed_info.new_added_members.clear();
+
+                    _subchain.deprecated_committee.shrink_to_fit();
+                    _subchain.unactivated_committee.shrink_to_fit();
+                    _subchain.changed_info.deprecated_members.shrink_to_fit();
+                    _subchain.changed_info.new_added_members.shrink_to_fit();
+                });
+            }
+        }
     }
 } //namespace ultrainiosystem
