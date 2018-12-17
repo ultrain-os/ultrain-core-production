@@ -2034,7 +2034,7 @@ namespace ultrainio {
       /* We've already lost however many microseconds it took to dispatch
        * the message, but it can't be helped.
        */
-      //ilog("received time");
+      ilog("received time ${peer}",("peer",c->peer_name()));
       if((c->priority == msg_priority_rpos) &&  c->current())
       {
            c->ticker_rcv = true;
@@ -2395,7 +2395,7 @@ namespace ultrainio {
                {
                   if(!c->ticker_rcv)
                   {
-                      ilog("ticker no rcv");
+                      ilog("ticker no rcv times ${no_rcv_count} ${peer}",("no_rcv_count",c->ticker_no_rcv_count)("peer",c->peer_name()));
                       c->ticker_no_rcv_count++;
                       if(c->ticker_no_rcv_count >= 5)
                       {
