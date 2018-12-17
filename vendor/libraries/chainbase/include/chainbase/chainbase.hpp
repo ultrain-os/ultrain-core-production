@@ -27,9 +27,6 @@
 #include <stdexcept>
 #include <typeindex>
 #include <typeinfo>
-#ifndef CHAINBASE_CHECK_LOCKING
-  #define CHAINBASE_CHECK_LOCKING
-#endif
 
 #ifndef CHAINBASE_NUM_RW_LOCKS
    #define CHAINBASE_NUM_RW_LOCKS 10
@@ -244,7 +241,7 @@ namespace chainbase {
 
             if( _is_cached )
                _cache.back().new_values.emplace( std::pair< typename value_type::id_type, const value_type& >( (*insert_result.first).id, *insert_result.first ) );
-            else if( !_indices_backup.emplace( constructor, _indices_backup.get_allocator() ).second )
+            else if( !_indices_backup.emplace( *insert_result.first ).second )
                    BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
             ++_next_id;
             on_create( *insert_result.first );
@@ -278,7 +275,6 @@ namespace chainbase {
 
          void remove( const value_type& obj ) {
             on_remove( obj );
-            _indices.erase( _indices.iterator_to( obj ) );
             if( _is_cached ){
                 auto& head = _cache.back();
                 if( !head.new_values.erase(obj.id) ){
@@ -287,6 +283,7 @@ namespace chainbase {
                 }
             }else
                 _indices_backup.erase( _indices_backup.find( obj.id ) );
+            _indices.erase( _indices.iterator_to( obj ) );
          }
 
          template<typename CompatibleKey>
