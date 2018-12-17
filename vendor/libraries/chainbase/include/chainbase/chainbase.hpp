@@ -28,10 +28,6 @@
 #include <typeindex>
 #include <typeinfo>
 
-#ifndef CHAINBASE_CHECK_LOCKING
-  #define CHAINBASE_CHECK_LOCKING
-#endif
-
 #ifndef CHAINBASE_NUM_RW_LOCKS
    #define CHAINBASE_NUM_RW_LOCKS 10
 #endif
