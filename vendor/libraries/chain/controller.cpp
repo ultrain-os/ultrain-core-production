@@ -228,8 +228,9 @@ struct controller_impl {
        ilog("create worldstate free size ${size} ",("size",db.get_segment_manager()->get_free_memory()));
        ilog("create worldstate block height ${size} ",("size", block_height));
        
-       //chainbase::database* worldstate_db = new chainbase::database(tmp_path, database::read_write,size);
-       char* buffer = new char[size];
+       char* buffer = nullptr;
+       try { buffer = new char[size]; } catch( ... ) {elog("worldstate error: alloc error, return"); return;}
+
        auto begin1 = fc::time_point::now();
        db.with_write_lock([&](){
             auto begin=fc::time_point::now();
@@ -243,29 +244,60 @@ struct controller_impl {
 
        //thread to generate worldstate file
        boost::thread worldstate([this, tmp_path, buffer, size, block_height, fork_head](void* ptr){
-            //create new chainbase
-            auto begin=fc::time_point::now();
-            chainbase::database* ws_db = new chainbase::database(tmp_path, database::read_write,size);
-            auto begin1=fc::time_point::now();
-            memcpy(ws_db->get_segment_address(), buffer,size);
+            chainbase::database* ws_db = nullptr;
+            try {
+               //create new chainbase
+               auto begin=fc::time_point::now();
+               try {
+                  ws_db = new chainbase::database(tmp_path, database::read_write,size);
+               } catch( ... ) {
+                  elog("worldstate thread error: new chainbase::database exception, return");
+                  delete[] buffer;
+                  return;
+               }
 
-            //add indices            
-            auto begin2=fc::time_point::now();
-            controller_index_set::add_indices(*ws_db);
-            contract_database_index_set::add_indices(*ws_db);
-            authorization.add_indices(*ws_db);
-            resource_limits.add_indices(*ws_db);
+               auto begin1=fc::time_point::now();
+               memcpy(ws_db->get_segment_address(), buffer,size);
 
-            add_to_worldstate(ws_db, block_height, fork_head);
+               //add indices
+               auto begin2=fc::time_point::now();
+               controller_index_set::add_indices(*ws_db);
+               contract_database_index_set::add_indices(*ws_db);
+               authorization.add_indices(*ws_db);
+               resource_limits.add_indices(*ws_db);
 
-            //clear
-            auto end = fc::time_point::now();
-            fc::remove_all(tmp_path);
-            delete[] buffer;
-            delete ws_db;
+               add_to_worldstate(ws_db, block_height, fork_head);
 
-            auto end1 = fc::time_point::now();
-            ilog("add_to_worldstate create_ws_time  remove_chainbase_time: ${time0} ${time00} ${time}  ${time1}", ("time0", begin1 - begin)("time00", begin2 - begin1)("time", end - begin2)("time1", end1 - end));
+               //clear
+               auto end = fc::time_point::now();
+               fc::remove_all(tmp_path);
+            
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+
+               auto end1 = fc::time_point::now();
+               ilog("add_to_worldstate create_ws_time  remove_chainbase_time: ${time0} ${time00} ${time}  ${time1}", ("time0", begin1 - begin)("time00", begin2 - begin1)("time", end - begin2)("time1", end1 - end));
+            } catch( const boost::interprocess::bad_alloc& e ) {
+               elog("worldstate thread error: bad alloc");
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+            } catch( const boost::exception& e ) {
+               elog("worldstate thread error: ${e}", ("e",boost::diagnostic_information(e)));
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+            } catch( const std::runtime_error& e ) {
+               elog( "worldstate thread error: ${e}", ("e",e.what()));
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+            } catch( const std::exception& e ) {
+               elog("worldstate thread error: ${e}", ("e",e.what()));
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+            } catch( ... ) {
+               elog("worldstate thread error: unknown exception");
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+            }
        }, nullptr);
        worldstate.detach();
 
