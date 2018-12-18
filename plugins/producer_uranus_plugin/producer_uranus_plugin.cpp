@@ -120,7 +120,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       std::string _genesis_pk                      = Genesis::s_genesisPk;
       bool     _pause_production                   = false;
       bool     _is_non_producing_node              = false;
-      int32_t  _genesis_delay;
+      //int32_t  _genesis_delay;
       int32_t  _genesis_startup_time               = Genesis::s_genesisStartupTime;
       int32_t  _max_round_seconds                  = Config::s_maxRoundSeconds;
       int32_t  _max_phase_seconds                  = Config::s_maxPhaseSeconds;
@@ -412,8 +412,6 @@ void producer_uranus_plugin::set_program_options(
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a kultraind provider for signing")
          ("my-sk-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_sk_as_committee = g; }), "sk as committer member")
          ("my-account-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_account_as_committee = g; }), "account as committer member")
-         ("genesis-delay", boost::program_options::value<int32_t>()->default_value(60), "genesis delay")
-         ("genesis-time", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_genesis_time = g; }), "genesis time")
          ("genesis-startup-time", bpo::value<int32_t>()->default_value(Genesis::s_genesisStartupTime), "genesis startup time, set by test mode usually")
          ("genesis-pk", bpo::value<std::string>()->notifier([this](std::string g) { my->_genesis_pk = g; }), "genesis public key, set by test mode usually")
          ("max-round-seconds", bpo::value<int32_t>()->default_value(Config::s_maxRoundSeconds), "max round second, set by test mode usually")
@@ -536,13 +534,17 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    // TODO(yufenshen): temp hack.
    //   my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
    my->_max_transaction_time_ms = 200;
-   my->_genesis_delay = options.at("genesis-delay").as<int32_t>();
+   //my->_genesis_delay = options.at("genesis-delay").as<int32_t>();
    my->_genesis_startup_time = options.at("genesis-startup-time").as<int32_t>();
    my->_max_round_seconds = options.at("max-round-seconds").as<int32_t>();
    my->_max_phase_seconds = options.at("max-phase-seconds").as<int32_t>();
    my->_max_trxs_seconds = options.at("max-trxs-microseconds").as<int32_t>();
    ultrainio::chain::config::block_interval_ms = my->_max_round_seconds * 1000;
    ultrainio::chain::config::block_interval_us =  my->_max_round_seconds * 1000000;
+   if(options.count("genesis-time"))
+   {
+       my->_genesis_time = options.at("genesis-time").as<std::string>();
+   }
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
    if( options.count( "worldstates-dir" )) {
       auto wd = options.at( "worldstates-dir" ).as<bfs::path>();
@@ -626,18 +628,20 @@ void producer_uranus_plugin::plugin_startup()
    // set before committee key
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
    nodePtr->setMyInfoAsCommitteeKey(my->_my_sk_as_committee, my->_my_account_as_committee);
-
+   ULTRAIN_ASSERT( !my->_genesis_time.empty(),
+           plugin_config_exception,
+           "Genesis-time can not be empty,should be set in config.ini.");
    if (!my->_genesis_time.empty()) {
        boost::chrono::system_clock::time_point tp;
        FC_ASSERT(parse_genesis(tp, my->_genesis_time.data()),
                  "parse_genesis error ${t}", ("t",my->_genesis_time));
        nodePtr->setGenesisTime(tp);
-   } else {
+   } /*else {
        // Align to the boundary of 5 seconds.
        unsigned long msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
        int patch = (my->_max_phase_seconds * 1000) - (msecs % (my->_max_phase_seconds * 1000));
        nodePtr->setGenesisTime(boost::chrono::system_clock::now() + boost::chrono::milliseconds(my->_genesis_delay * 1000 + patch));
-   }
+   }*/
    nodePtr->setGenesisStartupTime(my->_genesis_startup_time);
    if (!my->_genesis_pk.empty()) {
        nodePtr->setGenesisPk(my->_genesis_pk);

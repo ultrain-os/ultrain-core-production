@@ -133,6 +133,7 @@ public:
    fc::optional<vm_type>            wasm_runtime;
    fc::microseconds                 abi_serializer_max_time_ms;
    fc::optional<bfs::path>          worldstate_path;
+   std::string _genesis_time = std::string();
 
    // retained references to channels for easy publication
    channels::pre_accepted_block::channel_type&     pre_accepted_block_channel;
@@ -213,7 +214,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "max_block_cpu_usage,used in resource ,in genesis param,etc")
          ("max_block_net_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_net_usage),
                 "max_block_net_usage,used in resource ,in genesis param,etc")
-    	 ;
+    	 ("genesis-time",bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ;
 
 // TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -273,7 +275,23 @@ fc::time_point calculate_genesis_timestamp( string tstr ) {
    ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", genesis_timestamp) );
    return genesis_timestamp;
 }
+void parse_genesis_timestamp(string& genesis) 
+{
+    std::tm t;
 
+    ULTRAIN_ASSERT( 6 == std::sscanf(genesis.data(), "%d-%d-%d %d:%d:%d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min,
+                &t.tm_sec),
+            plugin_config_exception,
+            "Genesis-time format error,should be YYYY-MM-DD HH:MM:SS.");
+
+    std::string::size_type pos = 0;
+    std::string::size_type srclen = sizeof(" ");
+    if( (pos=genesis.find(" ", pos)) != std::string::npos )
+    {
+        genesis.replace( pos, srclen, "T" );
+    }
+
+}
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
@@ -291,7 +309,17 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
      ultrainio::chain::config::default_max_transaction_net_usage = ultrainio::chain::config::default_max_block_net_usage / 2;
      ilog("default ${default_max_block_cpu_usage}",("default_max_block_cpu_usage",ultrainio::chain::config::default_max_block_cpu_usage));
       my->chain_config = controller::config();
-
+      if(options.count("genesis-time"))
+      {
+          my->_genesis_time = options.at( "genesis-time" ).as<string>();
+      }
+      ULTRAIN_ASSERT( !my->_genesis_time.empty(),
+              plugin_config_exception,
+              "Genesis-time can not be empty,should be set in config.ini."); 
+      fc::time_point genesis_timestamp;
+      parse_genesis_timestamp(my->_genesis_time);
+     // my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(my->_genesis_time);
+      genesis_timestamp =  calculate_genesis_timestamp(my->_genesis_time);
       LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );
       LOAD_VALUE_SET( options, "actor-blacklist", my->chain_config->actor_blacklist );
       LOAD_VALUE_SET( options, "contract-whitelist", my->chain_config->contract_whitelist );
@@ -485,14 +513,28 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
                   options.at( "genesis-timestamp" ).as<string>());
 
-            wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
-         } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
-            my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
-         } else {
-            wlog( "Starting up fresh blockchain with default genesis state." );
-         }
+         wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
+      } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+         my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+         ULTRAIN_ASSERT( genesis_timestamp == my->chain_config->genesis.initial_timestamp,
+                 plugin_config_exception,
+                 "Genesis timestamp in data diff with which in config,ini" );
+      } else {
+         wlog( "Starting up fresh blockchain with default genesis state." );
+         my->chain_config->genesis.initial_timestamp = genesis_timestamp;
       }
-
+      my->chain_config->genesis.initial_phase = options.at("max-phase-seconds").as<int32_t>();
+      my->chain_config->genesis.initial_round = options.at("max-round-seconds").as<int32_t>();
+      my->chain_config->genesis.initial_syncing_source_timeout = options.at( "max-waitblocknum-seconds" ).as<int>();
+      my->chain_config->genesis.initial_syncing_block_timeout = options.at( "max-waitblock-seconds" ).as<int>();
+      my->chain_config->genesis.initial_max_trxs_time = options.at("max-trxs-microseconds").as<int32_t>();
+      ilog("genesis of chain in config: time ${genesis} phase ${initial_phase} round ${initial_round} syncing${source_timeout} ${block_timeout} trx ${trxs}",
+              ("genesis",my->_genesis_time)
+              ("initial_phase",my->chain_config->genesis.initial_phase)
+              ("initial_round",my->chain_config->genesis.initial_round)
+              ("source_timeout",my->chain_config->genesis.initial_syncing_source_timeout)
+              ("block_timeout",my->chain_config->genesis.initial_syncing_block_timeout)
+              ("trxs",my->chain_config->genesis.initial_max_trxs_time));
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
          ULTRAIN_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );

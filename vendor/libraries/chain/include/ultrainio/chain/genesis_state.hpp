@@ -44,6 +44,11 @@ struct genesis_state {
 
    time_point                               initial_timestamp;
    public_key_type                          initial_key;
+   int32_t                                  initial_phase;/*max-phase-seconds */
+   int32_t                                  initial_round;//max-round-seconds
+   int                                      initial_syncing_source_timeout;//max-waitblocknum-seconds
+   int                                      initial_syncing_block_timeout;//max-waitbloack-seconds
+   int32_t                                  initial_max_trxs_time;//max-trxs-microseconds
 
    /**
     * Get the chain_id corresponding to this genesis state.
@@ -57,4 +62,4 @@ struct genesis_state {
 
 
 FC_REFLECT(ultrainio::chain::genesis_state,
-           (initial_timestamp)(initial_key)(initial_configuration))
+           (initial_timestamp)(initial_key)(initial_configuration)(initial_phase)(initial_round)(initial_syncing_source_timeout)(initial_syncing_block_timeout)(initial_max_trxs_time))
