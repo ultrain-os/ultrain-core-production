@@ -2399,10 +2399,10 @@ namespace ultrainio {
                       c->ticker_no_rcv_count++;
                       if(c->ticker_no_rcv_count >= 5)
                       {
-                         ilog("ticker checked");
+                       /*  ilog("ticker checked");
                          c->ticker_rcv = false;
                          c->ticker_no_rcv_count = 0;
-                         close(c);
+                         close(c);*/
                       }
                    }
                    else
