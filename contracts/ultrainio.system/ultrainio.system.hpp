@@ -62,13 +62,14 @@ namespace ultrainiosystem {
       uint16_t             max_resources_size = 10000;    //set the resource combo to 10000
       uint16_t             total_resources_staked = 0;
       uint64_t             defer_trx_nextid = 0;
+      time                 last_check_resexpiretime = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
                                 (max_ram_size)(min_activated_stake)(min_committee_member)(min_committee_member_number)
                                 (total_ram_bytes_reserved)(total_ram_stake)(start_block)(last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
-                                (total_producer_vote_weight)(last_name_close) )
+                                (total_producer_vote_weight)(last_name_close)(max_resources_size)(total_resources_staked)(defer_trx_nextid)(last_check_resexpiretime) )
    };
 
    struct role_base {
@@ -170,6 +171,19 @@ namespace ultrainiosystem {
                                       //(chain_id)(genesis_info)(network_topology)(relayer_candidates)(relayer_list) )
    };
    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
+
+   struct resources_lease {
+      account_name   owner;
+      int64_t        lease_num = 0;
+      time           start_time = 0;
+      time           end_time;
+
+      uint64_t  primary_key()const { return owner; }
+
+      // explicit serialization macro is not necessary, used here only to improve compilation time
+      ULTRAINLIB_SERIALIZE( resources_lease, (owner)(lease_num)(start_time)(end_time) )
+   };
+   typedef ultrainio::multi_index< N(reslease), resources_lease>      resources_lease_table;
 /*
    struct empower_info {
       uint64_t          chain_name;
@@ -198,6 +212,7 @@ namespace ultrainiosystem {
          rammarket                _rammarket;
          pending_queue_singleton  _pending_que;
          subchains_table          _subchains;
+         resources_lease_table    _reslease_tbl;
 //         user_table               _users;
 
       public:
@@ -336,6 +351,8 @@ namespace ultrainiosystem {
          void activate_committee_update(); //called in onblock, loop for all subchains and activate their committee update
 
          void getKeydata(const std::string& pubkey,std::array<char,33> & data);
+
+         void checkresexpire();
    };
 
 } /// ultrainiosystem

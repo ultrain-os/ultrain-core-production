@@ -80,17 +80,6 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE( refund_request, (owner)(request_time)(net_amount)(cpu_amount) )
    };
 
-   struct resources_lease {
-      account_name   owner;
-      int64_t        lease_num = 0;
-      time           start_time = 0;
-      time           end_time;
-
-      uint64_t  primary_key()const { return owner; }
-
-      // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( resources_lease, (owner)(lease_num)(start_time)(end_time) )
-   };
 
 
    /**
@@ -101,7 +90,6 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_table;
    typedef ultrainio::multi_index< N(refunds), refund_request>      refunds_table;
    typedef ultrainio::multi_index< N(refundscons), refund_cons>      refunds_cons_table;
-   typedef ultrainio::multi_index< N(reslease), resources_lease>      resources_lease_table;
 
 
    /**
@@ -533,14 +521,13 @@ namespace ultrainiosystem {
 
       // update totals of "receiver"
       {
-         resources_lease_table   reslease_tbl( _self, receiver );
          int64_t cuttingfee = 0;
-         auto reslease_itr = reslease_tbl.find( receiver );
-         if( reslease_itr ==  reslease_tbl.end() ) {
+         auto reslease_itr = _reslease_tbl.find( receiver );
+         if( reslease_itr ==  _reslease_tbl.end() ) {
             ultrainio_assert( (combosize > 0) && (days > 0), "resource lease buy days and numbler must > 0" );
             cuttingfee = days*combosize;
             _gstate.total_resources_staked += combosize;
-            reslease_itr = reslease_tbl.emplace( from, [&]( auto& tot ) {
+            reslease_itr = _reslease_tbl.emplace( from, [&]( auto& tot ) {
                   tot.owner = receiver;
                   tot.lease_num = combosize;
                   tot.start_time = now();
@@ -563,39 +550,19 @@ namespace ultrainiosystem {
                }
                cuttingfee = days*reslease_itr->lease_num;
             }
-            reslease_tbl.modify( reslease_itr, 0, [&]( auto& tot ) {
+            _reslease_tbl.modify( reslease_itr, 0, [&]( auto& tot ) {
                   tot.lease_num += combosize;
                   tot.end_time  += days*seconds_per_day;
                });
          }
          ultrainio_assert(cuttingfee > 0, "resource lease cuttingfee is not normal" );
          INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
-                                             { from, N(utrio.fee), asset(1000000*cuttingfee), std::string("buy resource lease") } );
+                                             { from, N(utrio.fee), asset((int64_t)ceil((double)10000*640*cuttingfee/0.3/365)), std::string("buy resource lease") } );
 
-         user_resources_table   totals_tbl( _self, receiver );
-         auto tot_itr = totals_tbl.find( receiver );
-         if( tot_itr ==  totals_tbl.end() ) {
-            tot_itr = totals_tbl.emplace( from, [&]( auto& tot ) {
-                  tot.owner = receiver;
-                  tot.net_weight    = stake_net_delta;
-                  tot.cpu_weight    = stake_cpu_delta;
-                  tot.ram_bytes     = bytes;
-               });
-         } else {
-            totals_tbl.modify( tot_itr, 0, [&]( auto& tot ) {
-                  tot.net_weight    += stake_net_delta;
-                  tot.cpu_weight    += stake_cpu_delta;
-                  tot.ram_bytes     += bytes;
-               });
-         }
-         ultrainio_assert( asset(0) <= tot_itr->net_weight, "insufficient staked total net bandwidth" );
-         ultrainio_assert( asset(0) <= tot_itr->cpu_weight, "insufficient staked total cpu bandwidth" );
-         ultrainio_assert( 0 <= tot_itr->ram_bytes, "insufficient staked total  ram bandwidth" );
-         set_resource_limits( receiver, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
-         print("current resource limit net_weight:",tot_itr->net_weight.amount," cpu:",tot_itr->cpu_weight.amount," ram:",tot_itr->ram_bytes);
-         if ( tot_itr->net_weight == asset(0) && tot_itr->cpu_weight == asset(0)  && tot_itr->ram_bytes == 0 ) {
-            totals_tbl.erase( tot_itr );
-         }
+         ultrainio_assert( 0 < reslease_itr->lease_num, "insufficient resource lease" );
+         set_resource_limits( receiver, bytes*reslease_itr->lease_num, stake_net_delta.amount*reslease_itr->lease_num, stake_cpu_delta.amount*reslease_itr->lease_num );
+         print("current resource limit net_weight:",stake_net_delta.amount*reslease_itr->lease_num," cpu:",stake_cpu_delta.amount*reslease_itr->lease_num," ram:",bytes*reslease_itr->lease_num);
+
       } // tot_itr can be invalid, should go out of scope
    }
 
@@ -670,6 +637,34 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
                                                     { N(utrio.stake), req->owner, req->cons_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
+   }
+
+   void system_contract::checkresexpire(){
+      time curtime = now();
+      if(_gstate.last_check_resexpiretime < curtime && (curtime - _gstate.last_check_resexpiretime) > seconds_per_day){
+         _gstate.last_check_resexpiretime = curtime;
+         std::vector<account_name> delreslease(0);
+         for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); leaseiter++){
+            if(leaseiter->end_time < curtime){
+               int64_t ram_bytes = 0;
+               get_account_ram_usage( leaseiter->owner, &ram_bytes );
+               print("checkresexpire account:",name{leaseiter->owner}," ram_used:",ram_bytes," start_time:",leaseiter->start_time," end_time:",leaseiter->end_time);
+               set_resource_limits( leaseiter->owner, ram_bytes, 0, 0 );
+               ultrainio_assert( _gstate.total_resources_staked >= leaseiter->lease_num,
+                    "Abnormal number of resource mortgages " );
+               _gstate.total_resources_staked -= leaseiter->lease_num;
+               delreslease.push_back(leaseiter->owner);
+            }
+         }
+         if(delreslease.size() > 0){
+            for(auto const account:delreslease){
+               auto res = _reslease_tbl.find( account );
+               if(res != _reslease_tbl.end()){
+                  _reslease_tbl.erase(res);
+               }
+            }
+         }
+      }
    }
 
 } //namespace ultrainiosystem

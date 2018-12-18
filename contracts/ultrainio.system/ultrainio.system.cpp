@@ -17,7 +17,8 @@ namespace ultrainiosystem {
     _global(_self,_self),
     _rammarket(_self,_self),
     _pending_que(_self, _self),
-    _subchains(_self,_self) {
+    _subchains(_self,_self),
+    _reslease_tbl( _self,_self ) {
       //print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
 

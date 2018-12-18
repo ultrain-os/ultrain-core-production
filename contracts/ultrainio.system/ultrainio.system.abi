@@ -361,7 +361,11 @@
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"thresh_activated_stake_time",   "type":"uint64"},
          {"name":"total_producer_vote_weight",    "type":"float64"},
-         {"name":"last_name_close",               "type":"block_timestamp_type"}
+         {"name":"last_name_close",               "type":"block_timestamp_type"},
+         {"name":"max_resources_size",            "type":"uint16"},
+         {"name":"total_resources_staked",        "type":"uint16"},
+         {"name":"defer_trx_nextid",              "type":"uint64"},
+         {"name":"last_check_resexpiretime",      "type":"time_point_sec"}
       ]
     },{
       "name": "role_base",

@@ -28,6 +28,7 @@ extern "C" {
     */
    void get_resource_limits( account_name account, int64_t* ram_bytes, int64_t* net_weight, int64_t* cpu_weight );
 
+   void get_account_ram_usage( account_name account, int64_t* ram_bytes );
    /**
     * @brief Set the resource limits of an account
     * Set the resource limits of an account
