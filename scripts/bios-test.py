@@ -30,7 +30,6 @@ systemAccounts = [
     'utrio.token',
     'utrio.vpay',
     'utrio.fee',
-    'hello',
 ]
 
 initialAccounts = [
@@ -585,7 +584,6 @@ def stepCreateTokens():
     sleep(15)
 
 def stepSetSystemContract():
-    retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
     retry(args.clultrain + 'set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/')
     retry(args.clultrain + 'push action ultrainio setpriv' + jsonArg(['utrio.msig', 1]) + '-p ultrainio@active')
     sleep(15)
@@ -594,6 +592,7 @@ def stepCreateStakedAccounts():
     for i in range(0, args.num_producers):
         retry(args.clultrain + 'create account ultrainio %s %s ' % (accounts[i], account_pk_list[i]))
     sleep(10)
+    retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
    #  for i in range(0, args.num_producers):
    #      retry(args.clultrain + 'system resourcelease ultrainio %s  1 100' % (accounts[i]))
    #      #retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1.0000 UGAS" --stake-cpu "1.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key))
@@ -622,9 +621,11 @@ def stpDelegateTestAcc():
 def stepCreateinitAccounts():
     for a in initialAccounts:
         retry(args.clultrain + ' create account ultrainio %s %s ' % (a, args.initacc_pk))
+    retry(args.clultrain + ' create account ultrainio hello %s ' % args.initacc_pk)
     sleep(10)
     for a in initialAccounts:
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
+    retry(args.clultrain + 'system resourcelease ultrainio  hello  6000 10')
 
 def stepResign():
     resign('ultrainio', 'utrio.null')
