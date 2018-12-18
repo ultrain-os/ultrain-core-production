@@ -43,6 +43,7 @@ namespace ultrainio {
         bool         ready;
         std::string  blockHash;
         std::string  previousBlockHash;
+        bool         isProposer;
         std::string  ba0BlockTime;
         std::string  ba1BlockTime;
         float        cpu;
@@ -60,6 +61,11 @@ namespace ultrainio {
         std::string  privateKey;
         std::string  account;
         std::vector<string> configuredPeers;
+    };
+
+    struct role_in_block {
+        uint32_t     blockNum = 0;
+        bool         isProposer = false;
     };
 
     class UranusNodeMonitor
@@ -114,6 +120,15 @@ namespace ultrainio {
                 reportData.previousBlockHash = chain.head_block_state()->prev().str();
                 reportData.transactionNum    = chain.head_block_state()->block->transactions.size(); //trxs.size();
                 reportData.blockProposer     = std::string(chain.head_block_state()->block->proposer);
+                if(reportData.blockNum == m_isProposer[0].blockNum) {
+                    reportData.isProposer    = m_isProposer[0].isProposer;
+                }
+                else if(reportData.blockNum == m_isProposer[1].blockNum) {
+                    reportData.isProposer    = m_isProposer[1].isProposer;
+                }
+                else {
+                    reportData.isProposer    = false;
+                }
                 reportData.ba0BlockTime      = m_ba0BlockTime;
                 reportData.ba1BlockTime      = m_ba1BlockTime;
                 reportData.memory            = m_perfMonitor.get_proc_mem();
@@ -175,6 +190,7 @@ namespace ultrainio {
             if (pNode) {
                 pNode->ba0Callback = std::bind(&UranusNodeMonitor::ba0BlockProducingTime, this);
                 pNode->ba1Callback = std::bind(&UranusNodeMonitor::ba1BlockProducingTime, this);
+                pNode->setIsProposer = std::bind(&UranusNodeMonitor::isProposerInBa0, this, std::placeholders::_1);
             }
         }
 
@@ -191,6 +207,18 @@ namespace ultrainio {
             m_ba1BlockTime = "";
         }
 
+        void isProposerInBa0(bool isProposer) {
+            uint32_t consensus_block_num = appbase::app().get_plugin<chain_plugin>().chain().head_block_num() + 1;
+            if(m_isProposer[1].blockNum == consensus_block_num) {
+                return;
+            }
+
+            m_isProposer[0].blockNum = m_isProposer[1].blockNum;
+            m_isProposer[0].isProposer = m_isProposer[1].isProposer;
+            m_isProposer[1].blockNum = appbase::app().get_plugin<chain_plugin>().chain().head_block_num() + 1;
+            m_isProposer[1].isProposer = isProposer;
+        }
+
         void ba1BlockProducingTime() {
             m_ba1BlockTime = boost::posix_time::to_iso_string(boost::posix_time::second_clock::local_time());
 
@@ -205,6 +233,7 @@ namespace ultrainio {
     private:
         std::weak_ptr<UranusNode> m_pNode;
         std::string phaseStr[4];
+        role_in_block m_isProposer[2];//last block(head block) and current block(in consensus)
         std::string m_ba0BlockTime;
         std::string m_ba1BlockTime;
         PerformanceMonitor m_perfMonitor;
@@ -214,7 +243,7 @@ namespace ultrainio {
 }
 
 FC_REFLECT( ultrainio::periodic_report_dynamic_data, (nodeIp)(minerName)(blockNum)(phase)(baxCount)(transactionNum)(blockProposer)(syncing)
-                                                     (syncFailed)(connected)(ready)(blockHash)(previousBlockHash)(ba0BlockTime)
+                                                     (syncFailed)(connected)(ready)(blockHash)(previousBlockHash)(isProposer)(ba0BlockTime)
                                                      (ba1BlockTime)(cpu)(memory)(virtualMemory)(activePeers) )
 FC_REFLECT( ultrainio::periodic_report_static_data, (nodeIp)(version)(nonProducingNode)(genesisLeaderPk)(publicKey)
                                                     (privateKey)(account)(configuredPeers) )

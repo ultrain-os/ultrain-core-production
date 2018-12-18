@@ -24,7 +24,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="0cb671";
+    char version[]="8edbe5";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -718,9 +718,14 @@ namespace ultrainio {
         //ba0Loop(getRoundInterval());
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
 
+        bool isProposer = MsgMgr::getInstance()->isProposer(getBlockNum());
         dlog("start BA0. blockNum = ${blockNum}. isProposer = ${isProposer} and isVoter = ${isVoter}",
-             ("blockNum", getBlockNum())("isProposer", MsgMgr::getInstance()->isProposer(getBlockNum()))
+             ("blockNum", getBlockNum())("isProposer", isProposer)
                      ("isVoter", MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)));
+        //monitor: report if this node is a proposer of this block at phase ba0.
+        if(setIsProposer != nullptr) {
+            setIsProposer(isProposer);
+        }
         msg_key.blockNum = getBlockNum();
         msg_key.phase = m_phase;
         m_schedulerPtr->processCache(msg_key);

@@ -34,6 +34,7 @@ namespace ultrainio {
 
     // used for monitor to record block producing time
     typedef std::function<void ()> monitorCallback;
+    typedef std::function<void (bool)> monitorSetCallback;
 
     class UranusNode : public std::enable_shared_from_this<UranusNode> {
     public:
@@ -195,5 +196,6 @@ namespace ultrainio {
         friend class UranusNodeMonitor;
         monitorCallback ba0Callback = nullptr;
         monitorCallback ba1Callback = nullptr;
+        monitorSetCallback setIsProposer = nullptr;
     };
 }
