@@ -19,9 +19,9 @@ namespace ultrainio {
 
     const double Config::kNextRoundThresholdRatio = 0.67;
 
-    const double Config::kEmptyBlockThresholdRatio = 0.88;
+    const double Config::kEmptyBlockThresholdRatio = 0.80;
 
-    const double Config::kEmptyBlock2ThresholdRatio = 0.75;
+    const double Config::kEmptyBlock2ThresholdRatio = 0.70;
 
     int Config::s_maxRoundSeconds = 10;
 
