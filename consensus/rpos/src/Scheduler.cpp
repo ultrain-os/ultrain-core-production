@@ -1403,7 +1403,7 @@ namespace ultrainio {
     bool Scheduler::isFastba0(const msgkey &msg_key) {
         auto echo_itor = m_cacheEchoMsgMap.find(msg_key);
         if (echo_itor != m_cacheEchoMsgMap.end()) {
-            if (echo_itor->second.size() > THRESHOLD_SYNCING) {
+            if (echo_itor->second.size() > THRESHOLD_FASTBA0) {
                 return true;
             }
         }
