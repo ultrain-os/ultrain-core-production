@@ -137,7 +137,7 @@ private:
    std::chrono::seconds timeout = std::chrono::seconds::max(); ///< how long to wait before calling lock_all()
    mutable timepoint_t timeout_time = timepoint_t::max(); ///< when to call lock_all()
    boost::filesystem::path dir = ".";
-   std::string ultrainio_key = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
+   std::string ultrainio_key = "";
 };
 
 } // namespace wallet
