@@ -569,7 +569,7 @@ struct controller_impl {
           section.read_row(head_header_state, db);
 
           auto head_state = std::make_shared<block_state>(head_header_state);
-	  head_state->block = std::make_shared<signed_block>(head_header_state.header);
+          head_state->block = std::make_shared<signed_block>(head_header_state.header);
           fork_db.set(head_state);
           fork_db.set_validity(head_state, true);
           fork_db.mark_in_current_chain(head_state, true);
@@ -706,7 +706,6 @@ struct controller_impl {
             emit(self.accepted_block_header, pending->_pending_block_state);
             head = fork_db.head();
             ULTRAIN_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
-            worldstate_allowed = true;
          }
 
          // block syncing and listner branch, worldstate allowed for listner but not for syncing
@@ -715,7 +714,6 @@ struct controller_impl {
                && (worldstate_allowed) ) {
             create_worldstate();
          }
-         worldstate_allowed = false;
 
          emit( self.accepted_block, pending->_pending_block_state );
       } catch (...) {
@@ -1595,11 +1593,14 @@ void controller::clear_emit_signal()
 {
     my->emit_signal = false;
 }
-void controller::can_create_worldstate()
+void controller::enable_worldstate_creation()
 {
     my->worldstate_allowed = true;
 }
-
+void controller::disable_worldstate_creation()
+{
+    my->worldstate_allowed = false;
+}
 const resource_limits_manager&   controller::get_resource_limits_manager()const
 {
    return my->resource_limits;

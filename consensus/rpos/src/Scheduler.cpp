@@ -1673,6 +1673,12 @@ namespace ultrainio {
         const auto &pbs = chain.pending_block_state();
         bool needs_push_whole_block = true;
 
+        if (UranusNode::getInstance()->getSyncingStatus()) {
+            chain.disable_worldstate_creation();
+        } else {
+            chain.enable_worldstate_creation();
+        }
+
         if (pbs && m_voterPreRunBa0InProgress && !force_push_whole_block) {
             ULTRAIN_ASSERT(m_currentPreRunBa0TrxIndex == -1,
                            chain::chain_exception,
@@ -1743,9 +1749,6 @@ namespace ultrainio {
             if (UranusNode::getInstance()->getNonProducingNode()) {
                 chain.set_emit_signal();
                 chain.start_receive_event();
-            }
-            if (!UranusNode::getInstance()->getSyncingStatus()) {
-                chain.can_create_worldstate();
             }
             chain.push_block(block);
             if (UranusNode::getInstance()->getNonProducingNode()) {
