@@ -620,8 +620,8 @@ def stpDelegateTestAcc():
 
 def stepCreateinitAccounts():
     for a in initialAccounts:
-        retry(args.clultrain + ' create account ultrainio %s %s ' % (a, args.initacc_pk))
-    retry(args.clultrain + ' create account ultrainio hello %s ' % args.initacc_pk)
+        retry(args.clultrain + ' create account -u ultrainio %s %s ' % (a, args.initacc_pk))
+    retry(args.clultrain + ' create account -u ultrainio hello %s ' % args.initacc_pk)
     sleep(10)
     for a in initialAccounts:
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
