@@ -352,7 +352,7 @@ void ws_file_manager::start_delete_timer()
                 std::string name = to_file_name(node.chain_id, node.block_height);
                 std::string ws_file_name  = m_dir_path + "/" +  name + ".ws";
                 std::string info_file_name  = m_dir_path + "/" +  name + ".info";
-                fc::remove(path(info_file_name));
+                // fc::remove(path(info_file_name));
                 fc::remove(path(ws_file_name));
             }
         }

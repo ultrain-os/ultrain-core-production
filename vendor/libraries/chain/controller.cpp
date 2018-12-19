@@ -213,7 +213,7 @@ struct controller_impl {
    void create_worldstate(){
        auto size = db.get_segment_manager()->get_size();
        
-       auto begin=fc::time_point::now();
+       auto begin = fc::time_point::now();
        path tmp_path;
        if( conf.worldstate_dir.is_relative())
             tmp_path = app().data_dir() / conf.worldstate_dir.string();
@@ -224,59 +224,54 @@ struct controller_impl {
        block_state fork_head = *fork_db.head();
        uint32_t block_height = fork_head.block_num;
 
-       ilog("create worldstate size ${size} path ${path}",("size",size)("path", tmp_path.string()));
-       ilog("create worldstate free size ${size} ",("size",db.get_segment_manager()->get_free_memory()));
-       ilog("create worldstate block height ${size} ",("size", block_height));
-       
-       char* buffer = nullptr;
-       try { buffer = new char[size]; } catch( ... ) {elog("worldstate error: alloc error, return"); return;}
+       ilog("create worldstate, block_height: ${height}, db size: ${size}, db free size: ${free_size}, tmp chainbase path: ${path}", 
+         ("height",block_height)("size",size)("free_size", db.get_segment_manager()->get_free_memory())("path", tmp_path.string()));
 
-       auto begin1 = fc::time_point::now();
+       char* buffer = nullptr;
+       try { buffer = new char[size]; } catch( ... ) { elog("worldstate error: alloc error, return"); return; }
+
        db.with_write_lock([&](){
             auto begin=fc::time_point::now();
             memcpy(buffer, db.get_segment_address(),size);
             auto end=fc::time_point::now();
-            auto time_delta=end-begin;
-            ilog("create_worldstate cp memory time: ${time_delta}", ("time_delta", time_delta));
+            ilog("create_worldstate cp memory cost time: ${time_delta}", ("time_delta", end - begin));
        });      
-       
-       auto begin2 = fc::time_point::now();
+      
 
        //thread to generate worldstate file
        boost::thread worldstate([this, tmp_path, buffer, size, block_height, fork_head](void* ptr){
             chainbase::database* ws_db = nullptr;
             try {
                //create new chainbase
-               auto begin=fc::time_point::now();
+               auto begin = fc::time_point::now();
                try {
                   ws_db = new chainbase::database(tmp_path, database::read_write,size);
                } catch( ... ) {
-                  elog("worldstate thread error: new chainbase::database exception, return");
+                  elog("worldstate thread error: alloc chainbase::database exception, return");
                   delete[] buffer;
                   return;
                }
 
-               auto begin1=fc::time_point::now();
                memcpy(ws_db->get_segment_address(), buffer,size);
+               auto time1 = fc::time_point::now();
 
                //add indices
-               auto begin2=fc::time_point::now();
                controller_index_set::add_indices(*ws_db);
                contract_database_index_set::add_indices(*ws_db);
                authorization.add_indices(*ws_db);
                resource_limits.add_indices(*ws_db);
-
                add_to_worldstate(ws_db, block_height, fork_head);
 
+               auto time2 = fc::time_point::now();
+               
                //clear
-               auto end = fc::time_point::now();
-               fc::remove_all(tmp_path);
-            
+               fc::remove_all(tmp_path);            
                if (buffer) delete[] buffer;
                if (ws_db) delete ws_db;
 
-               auto end1 = fc::time_point::now();
-               ilog("add_to_worldstate create_ws_time  remove_chainbase_time: ${time0} ${time00} ${time}  ${time1}", ("time0", begin1 - begin)("time00", begin2 - begin1)("time", end - begin2)("time1", end1 - end));
+               auto end = fc::time_point::now();
+               ilog("create worldstate thread, alloc new chainbase time: ${time0}, create ws file time: ${time1}, clear time: ${time2}, total time:  ${time3}",
+                   ("time0", time1 - begin)("time1", time2 - time1)("time2", end - time2)("time3", end - begin));
             } catch( const boost::interprocess::bad_alloc& e ) {
                elog("worldstate thread error: bad alloc");
                if (buffer) delete[] buffer;
@@ -303,8 +298,7 @@ struct controller_impl {
 
       auto end=fc::time_point::now();
       auto time_delta=end-begin;
-      ilog("********************************** create_worldstate total_time new_chainbase_time cp_memory_time new_thread_time : ${time_delta} ${time1} ${time2} ${time3}", 
-         ("time_delta", time_delta)("time1", begin1 - begin)("time2", begin2 - begin1)("time3", end - begin2));
+      ilog("create_worldstate total_time cost time: ${time_delta}", ("time_delta", time_delta));
    }
 
    void on_irreversible( const block_state_ptr& s ) {
@@ -549,11 +543,11 @@ struct controller_impl {
       worldstate_out.flush();
       worldstate_out.close();
 
-      //TODO:remove worldstate_db, use unique_ptr to wrap
+      //save worldstate file 
       info.file_size = bfs::file_size(worldstate_path);
       info.hash_string = ws_manager.calculate_file_hash(worldstate_path).str();
       ws_manager.save_info(info);
-      ilog("********************************** add_to_worldstate ws info: ${info}", ("info", info));
+      ilog("add_to_worldstate ws info: ${info}", ("info", info));
    }
 
    void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
@@ -600,12 +594,13 @@ struct controller_impl {
       resource_limits.read_from_worldstate(worldstate);
 
       db.set_revision( head->block_num );
+      ilog("read_from_worldstate, block_num: ${block_num}", ("block_num", head->block_num));
     }
   
     sha256 calculate_integrity_hash() const {
       sha256::encoder enc;
       auto hash_writer = std::make_shared<integrity_hash_worldstate_writer>(enc);
-//      add_to_worldstate(hash_writer);
+      //add_to_worldstate(hash_writer);
       hash_writer->finalize();
 
       return enc.result();

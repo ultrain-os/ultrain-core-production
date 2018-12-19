@@ -1406,7 +1406,7 @@ namespace ultrainio {
       }
 
       my->start_monitors();
-      // my->ws_manager.set_local_max_count(5);
+      my->ws_manager.set_local_max_count(5);
       for( auto seed_node : my->supplied_peers ) {
          connect( seed_node );
       }
