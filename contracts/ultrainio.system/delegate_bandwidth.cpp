@@ -512,12 +512,8 @@ namespace ultrainiosystem {
       auto max_availableused_size = _gstate.max_resources_size - _gstate.total_resources_staked;
       std::string availableuserstr = "resources lease package available amount:"+ std::to_string(max_availableused_size);
       ultrainio_assert( combosize <= max_availableused_size, availableuserstr.c_str() );
-      asset stake_net_delta = asset(combosize*10000);
-      asset stake_cpu_delta = asset(combosize*10000);
-      int64_t bytes = (_gstate.max_ram_size-2ll*1024*1024*1024)/_gstate.max_resources_size*(combosize);
-      ultrainio_assert( bytes >= 0, "ram must reserve a positive amount" );
+      uint64_t bytes = (_gstate.max_ram_size-2ll*1024*1024*1024)/_gstate.max_resources_size;
       ultrainio_assert( days >= 0 && days <=365*30, "resource lease buy days must reserve a positive and less than 30 years" );
-      _gstate.total_ram_bytes_reserved += (uint64_t)bytes;
 
       // update totals of "receiver"
       {
@@ -533,6 +529,7 @@ namespace ultrainiosystem {
                   tot.start_time = now();
                   tot.end_time = tot.start_time + (uint32_t)days*seconds_per_day;
                });
+            _gstate.total_ram_bytes_reserved += (uint64_t)combosize*bytes;
          } else {
             ultrainio_assert(((combosize > 0) && (days == 0))||((combosize == 0) && (days > 0)), "resource lease days and numbler can't increase them at the same time" );
             if(combosize > 0)
@@ -542,12 +539,10 @@ namespace ultrainiosystem {
                   ultrainio_assert(false, "resource lease endtime already expired" );
                }
                cuttingfee = (reslease_itr->end_time - now())/seconds_per_day*combosize;
-            }
-            if(days > 0)
+               _gstate.total_ram_bytes_reserved += (uint64_t)combosize*bytes;
+            } else if(days > 0)
             {
-               if(reslease_itr->lease_num <= 0){
-                  ultrainio_assert(false, "resource lease number is not normal" );
-               }
+               ultrainio_assert(reslease_itr->lease_num > 0, "resource lease number is not normal" );
                cuttingfee = days*reslease_itr->lease_num;
             }
             _reslease_tbl.modify( reslease_itr, 0, [&]( auto& tot ) {
@@ -560,8 +555,8 @@ namespace ultrainiosystem {
                                              { from, N(utrio.fee), asset((int64_t)ceil((double)10000*640*cuttingfee/0.3/365)), std::string("buy resource lease") } );
 
          ultrainio_assert( 0 < reslease_itr->lease_num, "insufficient resource lease" );
-         set_resource_limits( receiver, bytes*reslease_itr->lease_num, stake_net_delta.amount*reslease_itr->lease_num, stake_cpu_delta.amount*reslease_itr->lease_num );
-         print("current resource limit net_weight:",stake_net_delta.amount*reslease_itr->lease_num," cpu:",stake_cpu_delta.amount*reslease_itr->lease_num," ram:",bytes*reslease_itr->lease_num);
+         set_resource_limits( receiver, bytes*reslease_itr->lease_num, reslease_itr->lease_num, reslease_itr->lease_num );
+         print("current resource limit net_weight:",reslease_itr->lease_num," cpu:",reslease_itr->lease_num," ram:",bytes*reslease_itr->lease_num);
 
       } // tot_itr can be invalid, should go out of scope
    }
@@ -643,25 +638,20 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
       time curtime = now();
       if(_gstate.last_check_resexpiretime < curtime && (curtime - _gstate.last_check_resexpiretime) > seconds_per_day){
          _gstate.last_check_resexpiretime = curtime;
-         std::vector<account_name> delreslease(0);
-         for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); leaseiter++){
-            if(leaseiter->end_time < curtime){
+         for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ){
+            if(leaseiter->end_time <= curtime){
                int64_t ram_bytes = 0;
                get_account_ram_usage( leaseiter->owner, &ram_bytes );
                print("checkresexpire account:",name{leaseiter->owner}," ram_used:",ram_bytes," start_time:",leaseiter->start_time," end_time:",leaseiter->end_time);
                set_resource_limits( leaseiter->owner, ram_bytes, 0, 0 );
-               ultrainio_assert( _gstate.total_resources_staked >= leaseiter->lease_num,
-                    "Abnormal number of resource mortgages " );
-               _gstate.total_resources_staked -= leaseiter->lease_num;
-               delreslease.push_back(leaseiter->owner);
-            }
-         }
-         if(delreslease.size() > 0){
-            for(auto const account:delreslease){
-               auto res = _reslease_tbl.find( account );
-               if(res != _reslease_tbl.end()){
-                  _reslease_tbl.erase(res);
-               }
+               if(_gstate.total_resources_staked >= leaseiter->lease_num)
+                  _gstate.total_resources_staked -= leaseiter->lease_num;
+               uint64_t bytes = (_gstate.max_ram_size-2ll*1024*1024*1024)/_gstate.max_resources_size;
+               if(_gstate.total_ram_bytes_reserved >= ((uint64_t)leaseiter->lease_num*bytes - ram_bytes))
+                  _gstate.total_ram_bytes_reserved =_gstate.total_ram_bytes_reserved - (uint64_t)leaseiter->lease_num*bytes + ram_bytes;
+               leaseiter = _reslease_tbl.erase(leaseiter);
+            } else {
+               ++leaseiter;
             }
          }
       }
