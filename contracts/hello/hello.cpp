@@ -7,7 +7,7 @@ class hello : public ultrainio::contract {
 
       /// @abi action
       void hi( account_name user ) {
-         print( "Hello, ", name{user} );
+         //print( "Hello, ", name{user} );
 
          set_result_str("Hi-Successed.");
       }
