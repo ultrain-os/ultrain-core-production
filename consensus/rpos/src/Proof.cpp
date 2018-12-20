@@ -4,6 +4,7 @@
 #include <limits>
 
 #include <crypto/Ed25519.h>
+#include <rpos/Utils.h>
 
 namespace ultrainio {
     Proof::Proof(const Signature& signature) : m_sign(signature) {}
@@ -29,16 +30,7 @@ namespace ultrainio {
         }
 
         // get a 32-bit uint32_t number, get 192 - 224 bit
-        uint32_t priority = 0;
-        size_t startIndex = 24; // 24 * 8 = 192
-        size_t byteNum = 4;
-        for (size_t i = 0; i < byteNum; i++) {
-            priority += raw[startIndex + i];
-            if (i != byteNum - 1) {
-                priority = priority << 8;
-            }
-        }
-        return priority;
+        return Utils::toInt(raw, Ed25519::SIGNATURE_LEN, 24);
     }
 
     bool Proof::isValid() const {

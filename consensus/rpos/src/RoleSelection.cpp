@@ -9,11 +9,11 @@
 namespace ultrainio {
     RoleSelection::RoleSelection(const std::vector<std::string>& committeeV, const RoleRandom& rand) {
         ULTRAIN_ASSERT(committeeV.size() > 0, chain::chain_exception, "committee size");
-        FisherYates fys(rand.toInt(), committeeV.size());
+        FisherYates fys(rand.getRand(), committeeV.size());
         std::vector<int> c = fys.shuffle();
         for (int i = 0; i < committeeV.size() && i < Config::kDesiredVoterNumber; i++) {
             int index = c[i];
-            if (i < Config::kDesiredProposerNumber) {
+            if (i < Config::kDesiredProposerNumber && rand.getPhase() == kPhaseBA0 && rand.getBaxCount() == 0) {
                 m_proposerV.push_back(committeeV[index]);
                 ilog("proposer[${i}] = ${proposer}", ("i", i)("proposer", committeeV[index]));
             }
@@ -25,7 +25,7 @@ namespace ultrainio {
         return std::find(m_proposerV.begin(), m_proposerV.end(), account) != m_proposerV.end();
     }
 
-    bool RoleSelection::isVoter(const std::string& account, ConsensusPhase phase, int baxCount) {
+    bool RoleSelection::isVoter(const std::string& account) {
         return std::find(m_voterV.begin(), m_voterV.end(), account) != m_voterV.end();
     }
 

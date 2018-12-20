@@ -1,19 +1,25 @@
 #include "rpos/RoleRandom.h"
 
-namespace ultrainio {
-    RoleRandom::RoleRandom(const BlockIdType& r) : m_rand(r) {};
+#include <fc/crypto/sha256.hpp>
+#include <rpos/Utils.h>
 
-    uint32_t RoleRandom::toInt() const {
-        uint32_t rand = 0;
-        size_t startIndex = 24; // 24 * 8 = 192
-        size_t byteNum = 4;
-        uint8_t* raw = (uint8_t*)m_rand.data();
-        for (size_t i = 0; i < byteNum; i++) {
-            rand += raw[startIndex + i];
-            if (i != byteNum - 1) {
-                rand = rand << 8;
-            }
-        }
-        return rand;
+namespace ultrainio {
+    RoleRandom::RoleRandom(const BlockIdType& preHash, uint32_t blockNum, const ConsensusPhase& phase, int baxCount)
+            : m_phase(phase), m_baxCount(baxCount) {
+        std::string seed = std::string(preHash) + std::to_string(blockNum) + std::to_string(static_cast<uint32_t>(phase)) + std::to_string(baxCount);
+        m_rand = fc::sha256::hash(seed);
+    };
+
+    fc::sha256 RoleRandom::getRand() const {
+        return m_rand;
     }
+
+    ConsensusPhase RoleRandom::getPhase() const {
+        return m_phase;
+    }
+
+    int RoleRandom::getBaxCount() const {
+        return m_baxCount;
+    }
+
 }

@@ -14,4 +14,5 @@ namespace ultrainio {
     using ExtensionsType = chain::extensions_type;
     using BlockIdType = chain::block_id_type;
     using AccountName = chain::account_name;
+    using SHA256 = fc::sha256;
 }

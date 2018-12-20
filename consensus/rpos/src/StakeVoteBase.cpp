@@ -233,7 +233,7 @@ namespace ultrainio {
         return statePtr;
     }
 
-    uint32_t StakeVoteBase::proposerPriority(const AccountName& account) {
+    uint32_t StakeVoteBase::proposerPriority(const AccountName& account, ConsensusPhase phase, int baxCount) {
         ULTRAIN_ASSERT(false, chain::chain_exception, "should be implemented by subclass");
     }
 

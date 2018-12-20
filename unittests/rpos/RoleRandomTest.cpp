@@ -10,19 +10,23 @@ using namespace ultrainio;
 BOOST_AUTO_TEST_SUITE(rolerandom_unittest)
 
     BOOST_AUTO_TEST_CASE(toint) {
-        BlockIdType seed1(std::string("0000052af4157bf7f13c9f08305d6510053dbb58b1c33d0ea38a3e302c6e3287"));
-        RoleRandom r1(seed1);
-        std::cout << "toInt : " << r1.toInt() << std::endl;
+        BlockIdType seed(std::string("0000052af4157bf7f13c9f08305d6510053dbb58b1c33d0ea38a3e302c6e3287"));
+        RoleRandom r1(seed, 1000);
+        RoleRandom r2(seed, 1000);
+        BOOST_CHECK(r1.getRand() == r2.getRand());
 
-        BlockIdType seed2(std::string("0000052af4157bf7f13c9f08305d6510053dbb58b1c33d0ea38a3e302c6e3287"));
-        RoleRandom r2(seed2);
-        std::cout << "toInt : " << r2.toInt() << std::endl;
-        BOOST_CHECK(r1.toInt() == r2.toInt());
+        RoleRandom r3(seed, 1001);
+        BOOST_CHECK(r2.getRand() != r3.getRand());
 
-        BlockIdType seed3(std::string("0000053f0153ff452cee9fec6d9c10d19e81937a3f17e9c3c58f4c4da746cf46"));
-        RoleRandom r3(seed3);
-        std::cout << "toInt : " << r3.toInt() << std::endl;
-        BOOST_CHECK(r2.toInt() != r3.toInt());
+        RoleRandom r4(seed, 1000, kPhaseBA1);
+        BOOST_CHECK(r2.getRand() != r4.getRand());
+
+        RoleRandom r5(seed, 1000, kPhaseBA0, 1);
+        BOOST_CHECK(r2.getRand() != r5.getRand());
+
+        BlockIdType seed1(std::string("0000052af4157bf7f13c9f08305d6510053dbb58b1c33d0ea38a3e302c6e1111"));
+        RoleRandom r6(seed1, 1000);
+        BOOST_CHECK(r2.getRand() != r6.getRand());
     }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -66,7 +66,7 @@ namespace ultrainio {
         virtual int calSelectedStake(const Proof& proof); // for Voter only
 
         // StakeVoteRandom
-        virtual uint32_t proposerPriority(const AccountName& account);
+        virtual uint32_t proposerPriority(const AccountName& account, ConsensusPhase phase, int baxCount);
 
         virtual void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
     protected:

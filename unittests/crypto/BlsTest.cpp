@@ -11,7 +11,7 @@ using namespace std;
 
 BOOST_AUTO_TEST_SUITE(bls_test_suite)
     BOOST_AUTO_TEST_CASE(aggragate) {
-        const char* ultrain = "ultrain";
+        std::string ultrain("ultrain");
         std::shared_ptr<Bls> blsPtr = Bls::getDefault();
 
         // keygen
@@ -21,8 +21,8 @@ BOOST_AUTO_TEST_SUITE(bls_test_suite)
 
         // sign
         unsigned char sig[Bls::BLS_SIGNATURE_LENGTH];
-        blsPtr->signature(sk, (void*)ultrain, 7, sig, Bls::BLS_SIGNATURE_LENGTH);
-        BOOST_CHECK(blsPtr->verify(pk, sig, (void*)ultrain, 7) == true);
+        blsPtr->signature(sk, (void*)ultrain.c_str(), 7, sig, Bls::BLS_SIGNATURE_LENGTH);
+        BOOST_CHECK(blsPtr->verify(pk, sig, (void*)ultrain.c_str(), 7) == true);
 
         //
         unsigned char sk1[Bls::BLS_PRI_KEY_LENGTH];
@@ -30,8 +30,8 @@ BOOST_AUTO_TEST_SUITE(bls_test_suite)
         blsPtr->keygen(sk1, Bls::BLS_PRI_KEY_LENGTH, pk1, Bls::BLS_PUB_KEY_LENGTH);
 
         unsigned char sig1[Bls::BLS_SIGNATURE_LENGTH];
-        blsPtr->signature(sk1, (void*)ultrain, 7, sig1, Bls::BLS_SIGNATURE_LENGTH);
-        BOOST_CHECK(blsPtr->verify(pk1, sig1, (void*)ultrain, 7) == true);
+        blsPtr->signature(sk1, (void*)ultrain.c_str(), 7, sig1, Bls::BLS_SIGNATURE_LENGTH);
+        BOOST_CHECK(blsPtr->verify(pk1, sig1, (void*)ultrain.c_str(), 7) == true);
 
         //
         unsigned char sk2[Bls::BLS_PRI_KEY_LENGTH];
@@ -39,8 +39,8 @@ BOOST_AUTO_TEST_SUITE(bls_test_suite)
         blsPtr->keygen(sk2, Bls::BLS_PRI_KEY_LENGTH, pk2, Bls::BLS_PUB_KEY_LENGTH);
 
         unsigned char sig2[Bls::BLS_SIGNATURE_LENGTH];
-        blsPtr->signature(sk2, (void*)ultrain, 7, sig2, Bls::BLS_SIGNATURE_LENGTH);
-        BOOST_CHECK(blsPtr->verify(pk2, sig2, (void*)ultrain, 7) == true);
+        blsPtr->signature(sk2, (void*)ultrain.c_str(), 7, sig2, Bls::BLS_SIGNATURE_LENGTH);
+        BOOST_CHECK(blsPtr->verify(pk2, sig2, (void*)ultrain.c_str(), 7) == true);
 
         unsigned char* pks[3];
         unsigned char* sigs[3];
@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_SUITE(bls_test_suite)
         vec[0] = 1;
         vec[1] = 2;
         vec[2] = 3;
-        BOOST_CHECK(blsPtr->aggVerify(pks, sigs, vec, 3, (void*)ultrain, 7) == true);
+        BOOST_CHECK(blsPtr->aggVerify(pks, sigs, vec, 3, (void*)ultrain.c_str(), 7) == true);
     }
 
     BOOST_AUTO_TEST_CASE(diff_g) {

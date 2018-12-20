@@ -20,6 +20,7 @@ add_library( ultrainio_rpos
         src/StakeVoteFactory.cpp
         src/StakeVoteRandom.cpp
         src/StakeVoteVrf.cpp
+        src/Utils.cpp
         src/Vrf.cpp
         ${HEADERS} )
 

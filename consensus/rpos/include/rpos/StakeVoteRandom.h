@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <rpos/StakeVoteBase.h>
 
 namespace ultrainio {
@@ -10,7 +11,7 @@ namespace ultrainio {
     public:
         StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand);
 
-        virtual uint32_t proposerPriority(const AccountName& account);
+        virtual uint32_t proposerPriority(const AccountName& account, ConsensusPhase phase, int baxCount);
 
         virtual void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
     protected:
@@ -30,6 +31,10 @@ namespace ultrainio {
 
     private:
         void initRoleSelection(std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand);
-        std::shared_ptr<RoleSelection> m_roleSelectionPtr = nullptr;
+        std::shared_ptr<RoleSelection> getRoleSelection(ConsensusPhase phase, int baxCount) const;
+        std::shared_ptr<RoleSelection> getRoleSelectionInitIfNull(ConsensusPhase phase, int baxCount);
+
+        std::map<int, std::shared_ptr<RoleSelection> > m_roleSelectionMap; // key = phase + baxCount
+        std::vector<std::string> m_committeeV;
     };
 }

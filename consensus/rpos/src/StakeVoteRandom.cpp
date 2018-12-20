@@ -1,6 +1,7 @@
 #include "rpos/StakeVoteRandom.h"
 
 #include <rpos/Config.h>
+#include <rpos/Node.h>
 #include <rpos/RoleRandom.h>
 #include <rpos/RoleSelection.h>
 
@@ -16,64 +17,83 @@ namespace ultrainio {
     }
 
     void StakeVoteRandom::initRoleSelection(std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand) {
-        std::vector<std::string> committeeV;
         for (auto committeeInfo : committeeStatePtr->cinfo) {
-            committeeV.push_back(committeeInfo.accountName);
+            m_committeeV.push_back(committeeInfo.accountName);
         }
-        m_roleSelectionPtr = std::make_shared<RoleSelection>(committeeV, rand);
+        std::shared_ptr<RoleSelection> roleSelectionPtr = std::make_shared<RoleSelection>(m_committeeV, rand);
+        m_roleSelectionMap.insert(std::make_pair(kPhaseBA0 + 0, roleSelectionPtr));
     }
 
-    uint32_t StakeVoteRandom::proposerPriority(const AccountName& account) {
+    uint32_t StakeVoteRandom::proposerPriority(const AccountName& account, ConsensusPhase phase, int baxCount) {
         if (isGenesisPeriod()) {
             if (isGenesisLeader(account)) {
                 return 0;
             }
             ULTRAIN_ASSERT(false, chain::chain_exception, "handle no proposer message at genesis period. account : ${account}", ("account", std::string(account)));
         }
-        ULTRAIN_ASSERT(m_roleSelectionPtr != nullptr, chain::chain_exception, "m_roleSelectionPtr is null");
-        return m_roleSelectionPtr->proposerPriority(std::string(account));
+        std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelectionInitIfNull(phase, baxCount);
+        return roleSelectionPtr->proposerPriority(std::string(account));
+    }
+
+    std::shared_ptr<RoleSelection> StakeVoteRandom::getRoleSelection(ConsensusPhase phase, int baxCount) const {
+        auto itor = m_roleSelectionMap.find(phase + baxCount);
+        if (itor != m_roleSelectionMap.end()) {
+            return itor->second;
+        }
+        return nullptr;
+    }
+
+    std::shared_ptr<RoleSelection> StakeVoteRandom::getRoleSelectionInitIfNull(ConsensusPhase phase, int baxCount) {
+        std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(phase, baxCount);
+        if (!roleSelectionPtr) {
+            RoleRandom rand(UranusNode::getInstance()->getPreviousHash(), m_blockNum, phase, baxCount);
+            roleSelectionPtr = std::make_shared<RoleSelection>(m_committeeV, rand);
+            m_roleSelectionMap.insert(std::make_pair(phase + baxCount, roleSelectionPtr));
+        }
+        return roleSelectionPtr;
     }
 
     void StakeVoteRandom::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        // TODO(qinxiaofen) voter should be diff each phase
+        ULTRAIN_ASSERT(m_blockNum == blockNum, chain::chain_exception, "blockNum not equal");
+        if (m_committeeV.size() > 0) {
+            getRoleSelectionInitIfNull(phase, baxCount); // do init
+        }
     }
 
     bool StakeVoteRandom::realIsProposer(const AccountName& account) {
-        if (!m_roleSelectionPtr) {
-            return false;
-        }
-        return m_roleSelectionPtr->isProposer(std::string(account));
+        std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        ULTRAIN_ASSERT(roleSelectionPtr, chain::chain_exception, "RoleSelection is nullptr");
+        return roleSelectionPtr->isProposer(std::string(account));
     }
 
     bool StakeVoteRandom::realIsVoter(const AccountName& account, ConsensusPhase phase, int baxCount) {
-        if (!m_roleSelectionPtr) {
-            return false;
-        }
-        return m_roleSelectionPtr->isVoter(std::string(account), phase, baxCount);
+        std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelectionInitIfNull(phase, baxCount);
+        ULTRAIN_ASSERT(roleSelectionPtr, chain::chain_exception, "RoleSelection is nullptr");
+        return roleSelectionPtr->isVoter(std::string(account));
     }
 
     int StakeVoteRandom::realGetSendEchoThreshold() const {
-        ULTRAIN_ASSERT(m_roleSelectionPtr != nullptr, chain::chain_exception, "m_roleSelectionPtr is null");
-        return Config::kSendEchoThresholdRatio * m_roleSelectionPtr->voterNumber() + 1;
+        const std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        return Config::kSendEchoThresholdRatio * roleSelectionPtr->voterNumber() + 1;
     }
 
     int StakeVoteRandom::realGetNextRoundThreshold() const {
-        ULTRAIN_ASSERT(m_roleSelectionPtr != nullptr, chain::chain_exception, "m_roleSelectionPtr is null");
-        return Config::kNextRoundThresholdRatio * m_roleSelectionPtr->voterNumber() + 1;
+        const std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        return Config::kNextRoundThresholdRatio * roleSelectionPtr->voterNumber() + 1;
     }
 
     int StakeVoteRandom::realGetEmptyBlockThreshold() const {
-        ULTRAIN_ASSERT(m_roleSelectionPtr != nullptr, chain::chain_exception, "m_roleSelectionPtr is null");
-        return Config::kEmptyBlockThresholdRatio * m_roleSelectionPtr->voterNumber() + 1;
+        const std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        return Config::kEmptyBlockThresholdRatio * roleSelectionPtr->voterNumber() + 1;
     }
 
     int StakeVoteRandom::realGetEmptyBlock2Threshold() const {
-        ULTRAIN_ASSERT(m_roleSelectionPtr != nullptr, chain::chain_exception, "m_roleSelectionPtr is null");
-        return Config::kEmptyBlock2ThresholdRatio * m_roleSelectionPtr->voterNumber() + 1;
+        const std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        return Config::kEmptyBlock2ThresholdRatio * roleSelectionPtr->voterNumber() + 1;
     }
 
     uint32_t StakeVoteRandom::realGetProposerNumber() const {
-        ULTRAIN_ASSERT(m_roleSelectionPtr != nullptr, chain::chain_exception, "m_roleSelectionPtr is null");
-        return m_roleSelectionPtr->proposerNumber();
+        const std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        return roleSelectionPtr->proposerNumber();
     }
 }

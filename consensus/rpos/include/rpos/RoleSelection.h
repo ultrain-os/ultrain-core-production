@@ -15,7 +15,7 @@ namespace ultrainio {
 
         bool isProposer(const std::string& account);
 
-        bool isVoter(const std::string& account, ConsensusPhase phase, int baxCount);
+        bool isVoter(const std::string& account);
 
         uint32_t proposerPriority(const std::string& account);
 

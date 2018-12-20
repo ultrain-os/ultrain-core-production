@@ -1,15 +1,21 @@
 #pragma once
 
+#include <core/Message.h>
 #include <core/Redefined.h>
 
 namespace ultrainio {
     class RoleRandom {
     public:
-        RoleRandom(const BlockIdType& r);
+        RoleRandom(const BlockIdType& preHash, uint32_t blockNum, const ConsensusPhase& phase = kPhaseBA0, int baxCount = 0);
 
-        uint32_t toInt() const;
+        fc::sha256 getRand() const;
 
+        ConsensusPhase getPhase() const;
+
+        int getBaxCount() const;
     private:
-        BlockIdType m_rand;
+        ConsensusPhase m_phase;
+        int m_baxCount;
+        fc::sha256 m_rand;
     };
 }

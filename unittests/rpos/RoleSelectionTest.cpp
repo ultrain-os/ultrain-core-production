@@ -14,7 +14,7 @@ BOOST_AUTO_TEST_SUITE(fisheryates_unittest)
 
     BOOST_AUTO_TEST_CASE(lot_of_committee_member) {
         BlockIdType seed(std::string("0000052af4157bf7f13c9f08305d6510053dbb58b1c33d0ea38a3e302c6e3287"));
-        RoleRandom r(seed);
+        RoleRandom r(seed, 1000);
         int committeeSize = 200;
         std::vector<std::string> committee = genCommitteeV(committeeSize);
         RoleSelection selection(committee, r);
@@ -24,7 +24,7 @@ BOOST_AUTO_TEST_SUITE(fisheryates_unittest)
 
     BOOST_AUTO_TEST_CASE(one_committee_member) {
         BlockIdType seed(std::string("0000052af4157bf7f13c9f08305d6510053dbb58b1c33d0ea38a3e302c6e3287"));
-        RoleRandom r(seed);
+        RoleRandom r(seed, 1000);
         int committeeSize = 1;
         std::vector<std::string> committee = genCommitteeV(committeeSize);
         RoleSelection selection(committee, r);
@@ -32,12 +32,12 @@ BOOST_AUTO_TEST_SUITE(fisheryates_unittest)
         BOOST_CHECK(selection.voterNumber() == committeeSize);
 
         BOOST_CHECK(selection.isProposer(committee[0]));
-        BOOST_CHECK(selection.isVoter(committee[0], kPhaseBA0, 0));
+        BOOST_CHECK(selection.isVoter(committee[0]));
     }
 
     BOOST_AUTO_TEST_CASE(proposer_plus_one_committee_member) {
         BlockIdType seed(std::string("0000052af4157bf7f13c9f08305d6510053dbb58b1c33d0ea38a3e302c6e3287"));
-        RoleRandom r(seed);
+        RoleRandom r(seed, 1000);
         int committeeSize = Config::kDesiredProposerNumber + 1;
         std::vector<std::string> committee = genCommitteeV(committeeSize);
         BOOST_CHECK(committee.size() == committeeSize);
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_SUITE(fisheryates_unittest)
         int voterNumber = 0;
         int proposerNumber = 0;
         for (int i = 0; i < committeeSize; i++) {
-            if (selection.isVoter(committee[i], kPhaseBA0, 0)) {
+            if (selection.isVoter(committee[i])) {
                 voterNumber++;
             }
             if (selection.isProposer(committee[i])) {

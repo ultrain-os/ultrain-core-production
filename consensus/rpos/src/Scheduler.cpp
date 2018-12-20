@@ -967,9 +967,9 @@ namespace ultrainio {
 #else
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(proposeMsg.block.block_num());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        uint32_t priority = stakeVotePtr->proposerPriority(proposeMsg.block.proposer);
+        uint32_t priority = stakeVotePtr->proposerPriority(proposeMsg.block.proposer, kPhaseBA0, 0);
         for (auto itor = m_proposerMsgMap.begin(); itor != m_proposerMsgMap.end(); ++itor) {
-            if (stakeVotePtr->proposerPriority(itor->second.block.proposer) < priority) {
+            if (stakeVotePtr->proposerPriority(itor->second.block.proposer, kPhaseBA0, 0) < priority) {
                 return false;
             }
         }
@@ -991,10 +991,10 @@ namespace ultrainio {
             }
         }
 #else
-        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer, kPhaseBA0, 0);
         for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
             if (itor->second.getTotalVoterWeight() >= stakeVotePtr->getSendEchoThreshold()) {
-                if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
+                if (stakeVotePtr->proposerPriority(itor->second.echo.proposer, kPhaseBA0, 0) < priority) {
                     return false;
                 }
             }
@@ -1017,10 +1017,10 @@ namespace ultrainio {
             }
         }
 #else
-        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer, kPhaseBA0, 0);
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
             if (itor->second.getTotalVoterWeight() >= stakeVotePtr->getSendEchoThreshold()) {
-                if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
+                if (stakeVotePtr->proposerPriority(itor->second.echo.proposer, kPhaseBA0, 0) < priority) {
                     return false;
                 }
             }
@@ -1040,9 +1040,9 @@ namespace ultrainio {
 #else
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer, kPhaseBA0, 0);
         for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
-            if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
+            if (stakeVotePtr->proposerPriority(itor->second.echo.proposer, kPhaseBA0, 0) < priority) {
                 return false;
             }
         }
@@ -1061,9 +1061,9 @@ namespace ultrainio {
 #else
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer, kPhaseBA0, 0);
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
-            if (stakeVotePtr->proposerPriority(itor->second.echo.proposer) < priority) {
+            if (stakeVotePtr->proposerPriority(itor->second.echo.proposer, kPhaseBA0, 0) < priority) {
                 return false;
             }
         }
@@ -1451,7 +1451,7 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
                     uint32_t priority = echo_itor->second.echo.proposerPriority;
 #else
-                    uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer);
+                    uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer, kPhaseBA0, 0);
 #endif
                     if (min_priority >= priority) {
                         dlog("min proof change.");
@@ -1476,7 +1476,7 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
                     && Proof(propose_itor->second.block.proposerProof).getPriority() == min_priority) {
 #else
-                    && stakeVotePtr->proposerPriority(propose_itor->second.block.proposer) == min_priority) {
+                    && stakeVotePtr->proposerPriority(propose_itor->second.block.proposer, kPhaseBA0, 0) == min_priority) {
 #endif
                 dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase}",
                      ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
@@ -1518,7 +1518,7 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
                 uint32_t priority = echo_itor->second.echo.proposerPriority;
 #else
-                uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer);
+                uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer, kPhaseBA0, 0);
 #endif
                 if (minPriority >= priority) {
                     minBlockId = echo_itor->second.echo.blockId;
