@@ -178,6 +178,7 @@ namespace ultrainio {
         unique_ptr<boost::asio::steady_timer> keepalive_timer;
         unique_ptr<boost::asio::steady_timer> sizeprint_timer;
         unique_ptr<boost::asio::steady_timer> speedmonitor_timer;
+        unique_ptr<boost::asio::steady_timer> block_handler_check;
 
         boost::asio::steady_timer::duration   connector_period;
         boost::asio::steady_timer::duration   txn_exp_period;
@@ -185,6 +186,7 @@ namespace ultrainio {
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
         boost::asio::steady_timer::duration   sizeprint_period{std::chrono::seconds{30}};
         boost::asio::steady_timer::duration   speedmonitor_period;
+        boost::asio::steady_timer::duration   block_handler_period{std::chrono::seconds{1}};
         const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
         bool                          network_version_match = false;
@@ -265,6 +267,7 @@ namespace ultrainio {
 
         void start_conn_timer( );
         void start_txn_timer( );
+        void start_block_handler_timer( );
         void start_monitors( );
 
         void expire_txns( );
@@ -639,6 +642,7 @@ namespace ultrainio {
         connection_ptr                   sync_conn;
         ultrainio::ReqSyncMsg            sync_block_msg;
         uint32_t                         end_block_num;
+        std::list<Block>                 block_msg_queue;
         bool                             selecting_src = false;
         boost::asio::steady_timer::duration   src_block_period;
         unique_ptr<boost::asio::steady_timer> src_block_check;
@@ -665,6 +669,7 @@ namespace ultrainio {
             memset(&sync_block_msg, 0, sizeof(sync_block_msg));
             end_block_num = 0;
             selecting_src = false;
+            block_msg_queue.clear();
 
             if (src_block_check) {
                 src_block_check->cancel();
@@ -811,6 +816,31 @@ namespace ultrainio {
             sync_conn = con;
             rsp_conns.clear();
             start_conn_check_timer();
+        }
+
+        void handle_block() {
+            if (block_msg_queue.empty()) {
+                return;
+            }
+
+            fc::time_point dead_line = fc::time_point::now() + fc::microseconds(1000000);
+            ilog("start handle blocks.");
+            while(!block_msg_queue.empty()) {
+                auto& b = block_msg_queue.front();
+                bool is_last_block = (b.block_num() == end_block_num);
+                app().get_plugin<producer_uranus_plugin>().handle_message(b, is_last_block);
+                if (is_last_block) {
+                    ilog("is last block reset");
+                    reset();
+                } else {
+                    block_msg_queue.pop_front();
+                }
+
+                if (fc::time_point::now() > dead_line) {
+                    ilog("It gets dead line.");
+                    break;
+                }
+            }
         }
     };
 
@@ -2247,13 +2277,7 @@ namespace ultrainio {
 
         if (sync_block_master->end_block_num > 0) {
             sync_block_master->last_received_block = msg.block.block_num();
-            bool is_last_block = (msg.block.block_num() == sync_block_master->end_block_num);
-
-            app().get_plugin<producer_uranus_plugin>().handle_message(msg.block, is_last_block);
-            if (is_last_block) {
-                ilog("is last block reset");
-                sync_block_master->reset();
-            }
+            sync_block_master->block_msg_queue.emplace_back(msg.block);
         }
     }
 
@@ -2350,25 +2374,36 @@ namespace ultrainio {
     }
     void net_plugin_impl::start_speedlimit_monitor_timer( )
     {
-
         speedmonitor_timer->expires_from_now( speedmonitor_period);
         speedmonitor_timer->async_wait( [this](boost::system::error_code ec) {
 	       reset_speedlimit_monitor();
 	       start_speedlimit_monitor_timer();
         });
     }
-   void net_plugin_impl::start_conn_timer( ) {
-      connector_check->expires_from_now( connector_period);
-      connector_check->async_wait( [this](boost::system::error_code ec) {
+    void net_plugin_impl::start_conn_timer( ) {
+        connector_check->expires_from_now( connector_period);
+        connector_check->async_wait( [this](boost::system::error_code ec) {
             if( !ec) {
-               connection_monitor( );
+                connection_monitor( );
             }
             else {
-               elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
-               start_conn_timer( );
+                elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
+                start_conn_timer( );
             }
-         });
-   }
+        });
+    }
+
+    void net_plugin_impl::start_block_handler_timer( ) {
+        block_handler_check->expires_from_now(block_handler_period);
+        block_handler_check->async_wait( [this](boost::system::error_code ec) {
+            if (ec.value() == boost::asio::error::operation_aborted) {
+                ilog("block handler timer is canceled.");
+            } else {
+                sync_block_master->handle_block();
+                start_block_handler_timer(); // We must restart timer after handle_block()
+            }
+        });
+    }
 
    void net_plugin_impl::start_txn_timer() {
       transaction_check->expires_from_now( txn_exp_period);
@@ -2423,6 +2458,7 @@ namespace ultrainio {
       transaction_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       sizeprint_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       speedmonitor_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
+      block_handler_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
       start_txn_timer();
       start_sizeprint_timer();
@@ -2430,6 +2466,7 @@ namespace ultrainio {
       speedmonitor_period = {std::chrono::seconds{round_interval}};
 
       start_speedlimit_monitor_timer();
+      start_block_handler_timer();
    }
 
    void net_plugin_impl::expire_txns() {
@@ -2472,7 +2509,7 @@ namespace ultrainio {
          if( !(*it)->socket->is_open() && !(*it)->connecting) {
             if( (*it)->peer_addr.length() > 0) {
                connect(*it);
-            }
+            } 
             else {
                it = connections.erase(it);
                continue;
