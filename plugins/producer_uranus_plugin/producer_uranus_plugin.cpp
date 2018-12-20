@@ -623,6 +623,7 @@ void producer_uranus_plugin::plugin_startup()
    ilog("producer plugin:  plugin_startup() begin");
 
    std::shared_ptr<UranusNode> nodePtr = UranusNode::initAndGetInstance(app().get_io_service());
+   // set before committee key
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
    nodePtr->setMyInfoAsCommitteeKey(my->_my_sk_as_committee, my->_my_account_as_committee);
 

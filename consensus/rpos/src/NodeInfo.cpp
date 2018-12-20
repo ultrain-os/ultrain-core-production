@@ -1,5 +1,6 @@
 #include <rpos/Genesis.h>
-#include "rpos/NodeInfo.h"
+#include <rpos/Node.h>
+#include <rpos/NodeInfo.h>
 
 namespace ultrainio {
 
@@ -11,6 +12,10 @@ namespace ultrainio {
             ULTRAIN_ASSERT(m_privateKey.getPublicKey() == PublicKey(Genesis::s_genesisPk),
                     chain::chain_exception,
                     "genesis key pair invalid");
+        }
+        if (UranusNode::getInstance()->getNonProducingNode()) {
+            ilog("Non Producer Node");
+            return;
         }
         ULTRAIN_ASSERT(PrivateKey::verifyKeyPair(m_privateKey.getPublicKey(), m_privateKey),
                        chain::chain_exception,
