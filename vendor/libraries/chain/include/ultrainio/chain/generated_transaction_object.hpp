@@ -115,3 +115,4 @@ namespace ultrainio { namespace chain {
 } } // ultrainio::chain
 
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::generated_transaction_object, ultrainio::chain::generated_transaction_multi_index)
+FC_REFLECT(ultrainio::chain::generated_transaction_object, (trx_id)(sender)(sender_id)(payer)(delay_until)(expiration)(published)(packed_trx))

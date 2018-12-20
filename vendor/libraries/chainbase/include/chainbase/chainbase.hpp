@@ -676,13 +676,13 @@ namespace chainbase {
 
          void require_read_lock( const char* method, const char* tname )const
          {
-            if( BOOST_UNLIKELY( _enable_require_locking & _read_only & (_read_lock_count <= 0) ) )
+            if( BOOST_UNLIKELY( _enable_require_locking & _read_only & (_read_lock_count > 0) ) )
                require_lock_fail(method, "read", tname);
          }
 
          void require_write_lock( const char* method, const char* tname )
          {
-            if( BOOST_UNLIKELY( _enable_require_locking & (_write_lock_count <= 0) ) )
+            if( BOOST_UNLIKELY( _enable_require_locking & (_write_lock_count > 0) ) )
                require_lock_fail(method, "write", tname);
          }
 #endif
@@ -780,6 +780,10 @@ namespace chainbase {
 
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
             return _segment->get_segment_manager();
+         }
+
+         void* get_segment_address() {
+            return _segment->get_address();
          }
 
          size_t get_free_memory()const
@@ -967,7 +971,7 @@ namespace chainbase {
 
          bfs::path                                                   _data_dir;
 
-         int32_t                                                     _read_lock_count = 0;
+         mutable int32_t                                             _read_lock_count = 0;
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
 

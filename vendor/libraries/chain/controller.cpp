@@ -16,6 +16,7 @@
 
 #include <ultrainio/chain/authorization_manager.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
+#include <ultrainio/chain/chain_worldstate.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -23,11 +24,37 @@
 
 #include <ultrainio/chain/ultrainio_contract.hpp>
 #include <appbase/application.hpp>
+#include <fc/network/url.hpp>
+#include <fc/network/http/http_client.hpp>
+#include <chrono>
+
+#include <ultrainio/chain/worldstate_file_manager.hpp>
 
 namespace ultrainio { namespace chain {
 
 using namespace appbase;
 using resource_limits::resource_limits_manager;
+
+using controller_index_set = index_set<
+   account_index,
+   account_sequence_index,
+   global_property_multi_index,
+   dynamic_global_property_multi_index,
+   block_summary_multi_index,
+   transaction_multi_index,
+   generated_transaction_multi_index,
+   table_id_multi_index
+>;
+
+using contract_database_index_set = index_set<
+   key_value_index,
+   index64_index,
+   index128_index,
+   index_double_index,
+   index_long_double_index,
+   index256_index
+>;
+
 // these are the default numbers, and it could be changed during startup.
 //int chain::config::block_interval_ms = 10*1000;
 //int chain::config::block_interval_us = 10*1000*1000;
@@ -55,6 +82,7 @@ struct controller_impl {
    optional<pending_state>        pending;
    block_state_ptr                head;
    bool                           emit_signal = false;
+   bool                           worldstate_allowed = false;
    fork_database                  fork_db;
    wasm_interface                 wasmif;
    resource_limits_manager        resource_limits;
@@ -70,6 +98,7 @@ struct controller_impl {
    bool                           can_accept_event_register = true;
    bool                           can_receive_event = false;
    const uint32_t                 event_lifetime = 20; ///< 20 blocks' time, which = 10 seconds by default configuration
+   uint32_t                       worldstate_head_block = 0;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -179,36 +208,173 @@ struct controller_impl {
       }
    }
 
+   void create_worldstate(){
+       auto size = db.get_segment_manager()->get_size();
+       
+       auto begin = fc::time_point::now();
+       path tmp_path;
+       if( conf.worldstate_dir.is_relative())
+            tmp_path = app().data_dir() / conf.worldstate_dir.string();
+       else
+            tmp_path = conf.worldstate_dir;      
+       tmp_path = tmp_path / path(boost::filesystem::unique_path());
+      
+       block_state fork_head = *fork_db.head();
+       uint32_t block_height = fork_head.block_num;
+
+       ilog("create worldstate, block_height: ${height}, db size: ${size}, db free size: ${free_size}, tmp chainbase path: ${path}", 
+         ("height",block_height)("size",size)("free_size", db.get_segment_manager()->get_free_memory())("path", tmp_path.string()));
+
+       char* buffer = nullptr;
+       try { buffer = new char[size]; } catch( ... ) { elog("worldstate error: alloc error, return"); return; }
+
+       db.with_write_lock([&](){
+            auto begin=fc::time_point::now();
+            memcpy(buffer, db.get_segment_address(),size);
+            auto end=fc::time_point::now();
+            ilog("create_worldstate cp memory cost time: ${time_delta}", ("time_delta", end - begin));
+       });      
+      
+
+       //thread to generate worldstate file
+       boost::thread worldstate([this, tmp_path, buffer, size, block_height, fork_head](void* ptr){
+            chainbase::database* ws_db = nullptr;
+            try {
+               //create new chainbase
+               auto begin = fc::time_point::now();
+               try {
+                  ws_db = new chainbase::database(tmp_path, database::read_write,size);
+               } catch( ... ) {
+                  elog("worldstate thread error: alloc chainbase::database exception, return");
+                  delete[] buffer;
+                  return;
+               }
+
+               memcpy(ws_db->get_segment_address(), buffer,size);
+               auto time1 = fc::time_point::now();
+
+               //add indices
+               controller_index_set::add_indices(*ws_db);
+               contract_database_index_set::add_indices(*ws_db);
+               authorization.add_indices(*ws_db);
+               resource_limits.add_indices(*ws_db);
+               add_to_worldstate(ws_db, block_height, fork_head);
+
+               auto time2 = fc::time_point::now();
+               
+               //clear
+               fc::remove_all(tmp_path);            
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+
+               auto end = fc::time_point::now();
+               ilog("create worldstate thread, alloc new chainbase time: ${time0}, create ws file time: ${time1}, clear time: ${time2}, total time:  ${time3}",
+                   ("time0", time1 - begin)("time1", time2 - time1)("time2", end - time2)("time3", end - begin));
+            } catch( const boost::interprocess::bad_alloc& e ) {
+               elog("worldstate thread error: bad alloc");
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+            } catch( const boost::exception& e ) {
+               elog("worldstate thread error: ${e}", ("e",boost::diagnostic_information(e)));
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+            } catch( const std::runtime_error& e ) {
+               elog( "worldstate thread error: ${e}", ("e",e.what()));
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+            } catch( const std::exception& e ) {
+               elog("worldstate thread error: ${e}", ("e",e.what()));
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+            } catch( ... ) {
+               elog("worldstate thread error: unknown exception");
+               if (buffer) delete[] buffer;
+               if (ws_db) delete ws_db;
+            }
+       }, nullptr);
+       worldstate.detach();
+
+      auto end=fc::time_point::now();
+      auto time_delta=end-begin;
+      ilog("create_worldstate total_time cost time: ${time_delta}", ("time_delta", time_delta));
+   }
+
    void on_irreversible( const block_state_ptr& s ) {
       if( !blog.head() )
          blog.read_head();
 
       const auto& log_head = blog.head();
-      ULTRAIN_ASSERT( log_head, block_log_exception, "block log head can not be found" );
-      auto lh_block_num = log_head->block_num();
+      bool append_to_blog = false;
+      if (!log_head) {
+         if (s->block) {
+            //after restore from worldstate, the block is set with the header info, but we do not need save it to blog
+            if(s->block_num >= blog.first_block_num()) {
+               append_to_blog = true;
+	    }
+         } else {
+            ULTRAIN_ASSERT(s->block_num == blog.first_block_num() - 1, block_log_exception, "block log has no blocks and is not properly set up to start after the worldstate");
+         }
+      } else {
+         auto lh_block_num = log_head->block_num();
+         if (s->block_num > lh_block_num) {
+            ULTRAIN_ASSERT(s->block_num - 1 == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num", s->block_num)("lh_block_num", lh_block_num));
+            ULTRAIN_ASSERT(s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head");
+            append_to_blog = true;
+         }
+      }
 
       db.commit( s->block_num );
 
-      if( s->block_num <= lh_block_num ) {
-//         edump((s->block_num)("double call to on_irr"));
-//         edump((s->block_num)(s->block->previous)(log_head->id()));
-         return;
+      if( append_to_blog ) {
+         blog.append(s->block);
       }
 
-      ULTRAIN_ASSERT( s->block_num - 1  == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num) );
-      ULTRAIN_ASSERT( s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head" );
-      blog.append(s->block);
+      // the "head" block when a worldstate is loaded is virtual and has no block data, all of its effects
+      // should already have been loaded from the worldstate so, it cannot be applied
+      if (s->block) {
+         if (read_mode == db_read_mode::IRREVERSIBLE) {
+            // when applying a worldstate, head may not be present
+            // when not applying a worldstate, make sure this is the next block
+            if (!head || s->block_num == head->block_num + 1) {
+               apply_block(s->block, controller::block_status::complete);
+               head = s;
+            } else {
+               // otherwise, assert the one odd case where initializing a chain
+               // from genesis creates and applies the first block automatically.
+               // when syncing from another chain, this is pushed in again
+               ULTRAIN_ASSERT(!head || head->block_num == 1, block_validate_exception, "Attempting to re-apply an irreversible block that was not the implied genesis block");
+            }
 
-      if ( read_mode == db_read_mode::IRREVERSIBLE ) {
-         apply_block( s->block, controller::block_status::complete );
-         fork_db.mark_in_current_chain( s, true );
-         fork_db.set_validity( s, true );
-         head = s;
+            fork_db.mark_in_current_chain(head, true);
+            fork_db.set_validity(head, true);
+         }
+         emit(self.irreversible_block, s);
       }
-      emit( self.irreversible_block, s );
    }
 
-   void init() {
+   void replay() 
+   {
+      auto blog_head = blog.read_head();
+      replaying = true;
+      ilog( "existing block log, attempting to replay ${n} blocks", ("n",blog_head->block_num()) );
+
+      auto start = fc::time_point::now();
+      while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
+         self.push_block( next, controller::block_status::irreversible );
+         if( next->block_num() % 100 == 0 ) {
+            std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+         }
+      }
+
+      auto end = fc::time_point::now();
+      ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
+         ("n", head->block_num)("duration", (end-start).count()/1000000)
+         ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
+      std::cerr<< "\n";
+      replaying = false;
+   }
+
+   void init(const worldstate_reader_ptr& worldstate) {
 
       /**
       *  The fork database needs an initial block_state to be set before
@@ -216,28 +382,27 @@ struct controller_impl {
       *  in the database (whose head block state should be irreversible) or
       *  it would be the genesis state.
       */
-      if( !head ) {
+      if (worldstate) {
+         ULTRAIN_ASSERT(!head, fork_database_exception, "");
+         worldstate->validate();
+
+         read_from_worldstate(worldstate);
+
+         auto end = blog.read_head();
+         if( !end ) {
+            blog.reset_to_genesis(conf.genesis, signed_block_ptr(), head->block_num + 1);
+         } else if ( end->block_num() > head->block_num) {
+            replay();
+         } else {
+            ULTRAIN_ASSERT(end->block_num() == head->block_num, fork_database_exception,
+                       "Block log is provided with worldstate but does not contain the head block from the worldstate");
+         }
+      } else if( !head ) {
          initialize_fork_db(); // set head to genesis state
 
          auto end = blog.read_head();
          if( end && end->block_num() > 1 ) {
-            replaying = true;
-            ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
-
-            auto start = fc::time_point::now();
-            while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-               self.push_block( next, controller::block_status::irreversible );
-               if( next->block_num() % 100 == 0 ) {
-                  std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
-               }
-            }
-            auto end = fc::time_point::now();
-            ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-                  ("n", head->block_num)("duration", (end-start).count()/1000000)
-                  ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
-            std::cerr<< "\n";
-            replaying = false;
-
+            replay();
          } else if( !end ) {
             blog.reset_to_genesis( conf.genesis, head->block );
          }
@@ -254,7 +419,6 @@ struct controller_impl {
       while( db.revision() > head->block_num ) {
          db.undo();
       }
-
    }
 
    ~controller_impl() {
@@ -264,25 +428,178 @@ struct controller_impl {
    }
 
    void add_indices() {
-      db.add_index<account_index>();
-      db.add_index<account_sequence_index>();
+      controller_index_set::add_indices(db);
+      contract_database_index_set::add_indices(db);
 
-      db.add_index<table_id_multi_index>();
-      db.add_index<key_value_index>();
-      db.add_index<index64_index>();
-      db.add_index<index128_index>();
-      db.add_index<index256_index>();
-      db.add_index<index_double_index>();
-      db.add_index<index_long_double_index>();
+      authorization.add_indices(db);
+      resource_limits.add_indices(db);
+   }
 
-      db.add_index<global_property_multi_index>();
-      db.add_index<dynamic_global_property_multi_index>();
-      db.add_index<block_summary_multi_index>();
-      db.add_index<transaction_multi_index>();
-      db.add_index<generated_transaction_multi_index>();
+   void add_contract_tables_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const {
+      worldstate->write_section("contract_tables", [this, &worldstate_db]( auto& section ) {
+         index_utils<table_id_multi_index>::walk(worldstate_db, [this, &worldstate_db, &section]( const table_id_object& table_row ){
+            // add a row for the table
+            section.add_row(table_row, worldstate_db);
 
-      authorization.add_indices();
-      resource_limits.add_indices();
+            // followed by a size row and then N data rows for each type of table
+            contract_database_index_set::walk_indices([this, &worldstate_db, &section, &table_row]( auto utils ) {
+               using utils_t = decltype(utils);
+               using value_t = typename decltype(utils)::index_t::value_type;
+               using by_table_id = object_to_table_id_tag_t<value_t>;
+
+               auto tid_key = boost::make_tuple(table_row.id);
+               auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
+
+               unsigned_int size = utils_t::template size_range<by_table_id>(worldstate_db, tid_key, next_tid_key);
+               section.add_row(size, worldstate_db);
+
+               utils_t::template walk_range<by_table_id>(worldstate_db, tid_key, next_tid_key, [this, &worldstate_db, &section]( const auto &row ) {
+                  section.add_row(row, worldstate_db);
+               });
+            });
+         });
+      });
+   }
+
+   void read_contract_tables_from_worldstate( const worldstate_reader_ptr& worldstate ) {
+      worldstate->read_section("contract_tables", [this]( auto& section ) {
+         bool more = !section.empty();
+         while (more) {
+            // read the row for the table
+            table_id_object::id_type t_id;
+            index_utils<table_id_multi_index>::create(db, [this, &section, &t_id](auto& row) {
+               section.read_row(row, db);
+               t_id = row.id;
+            });
+
+            // read the size and data rows for each type of table
+            contract_database_index_set::walk_indices([this, &section, &t_id, &more](auto utils) {
+               using utils_t = decltype(utils);
+
+               unsigned_int size;
+               more = section.read_row(size, db);
+
+               for (size_t idx = 0; idx < size.value; idx++) {
+                  utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
+                     row.t_id = t_id;
+                     more = section.read_row(row, db);
+                  });
+               }
+            });
+         }
+      });
+   }
+
+   void add_to_worldstate(const chainbase::database* const worldstate_db, uint32_t block_height, const block_state& fork_head) const{
+      ws_file_manager ws_manager;
+      ws_info info;
+      info.chain_id = self.get_chain_id();
+      info.block_height = block_height;
+
+      std::string worldstate_path = ws_manager.get_file_path_by_info(info.chain_id, info.block_height);
+        
+      auto worldstate_out = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
+      auto worldstate = std::make_shared<ostream_worldstate_writer>(worldstate_out);
+
+      //generate worldstate
+      worldstate->write_section<chain_worldstate_header>([this,worldstate_db]( auto &section ){
+         section.add_row(chain_worldstate_header(), *worldstate_db);
+      });
+
+      worldstate->write_section<genesis_state>([this,worldstate_db]( auto &section ){
+         section.add_row(conf.genesis, *worldstate_db);
+      });
+
+      worldstate->write_section<block_state>([this,worldstate_db, fork_head]( auto &section ){
+         section.template add_row<block_header_state>(fork_head, *worldstate_db);
+      });
+
+      controller_index_set::walk_indices([this,&worldstate_db, worldstate]( auto utils ){
+         using value_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the table_id_object as its inlined with contract tables section
+         if (std::is_same<value_t, table_id_object>::value) {
+            return;
+         }
+
+         worldstate->write_section<value_t>([this,worldstate_db]( auto& section ){
+            decltype(utils)::walk(*worldstate_db, [this,worldstate_db, &section]( const auto &row ) {
+               section.add_row(row, *worldstate_db);
+            });
+         });
+      });
+
+      add_contract_tables_to_worldstate(worldstate,*worldstate_db);
+
+      authorization.add_to_worldstate(worldstate,*worldstate_db);
+      resource_limits.add_to_worldstate(worldstate,*worldstate_db);
+
+      //flush worldstate file
+      worldstate->finalize();
+      worldstate_out.flush();
+      worldstate_out.close();
+
+      //save worldstate file 
+      info.file_size = bfs::file_size(worldstate_path);
+      info.hash_string = ws_manager.calculate_file_hash(worldstate_path).str();
+      ws_manager.save_info(info);
+      ilog("add_to_worldstate ws info: ${info}", ("info", info));
+   }
+
+   void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
+      
+      worldstate->read_section<chain_worldstate_header>([this]( auto &section ){
+         chain_worldstate_header header;
+         section.read_row(header, db);
+         header.validate();
+      });
+
+      worldstate->read_section<block_state>([this]( auto &section ){
+          block_header_state head_header_state;
+          section.read_row(head_header_state, db);
+
+          auto head_state = std::make_shared<block_state>(head_header_state);
+          head_state->block = std::make_shared<signed_block>(head_header_state.header);
+          fork_db.set(head_state);
+          fork_db.set_validity(head_state, true);
+          fork_db.mark_in_current_chain(head_state, true);
+          head = head_state;
+          worldstate_head_block = head->block_num;
+      });
+
+      controller_index_set::walk_indices([this, &worldstate]( auto utils ){
+         using value_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the table_id_object as its inlined with contract tables section
+         if (std::is_same<value_t, table_id_object>::value) {
+            return;
+         }
+
+         worldstate->read_section<value_t>([this]( auto& section ) {
+            bool more = !section.empty();
+            while(more) {
+               decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
+                  more = section.read_row(row, db);
+               });
+            }
+         });
+      });
+
+      read_contract_tables_from_worldstate(worldstate);
+      authorization.read_from_worldstate(worldstate);
+      resource_limits.read_from_worldstate(worldstate);
+
+      db.set_revision( head->block_num );
+      ilog("read_from_worldstate, block_num: ${block_num}", ("block_num", head->block_num));
+    }
+  
+    sha256 calculate_integrity_hash() const {
+      sha256::encoder enc;
+      auto hash_writer = std::make_shared<integrity_hash_worldstate_writer>(enc);
+      //add_to_worldstate(hash_writer);
+      hash_writer->finalize();
+
+      return enc.result();
    }
 
    /**
@@ -380,6 +697,13 @@ struct controller_impl {
             emit(self.accepted_block_header, pending->_pending_block_state);
             head = fork_db.head();
             ULTRAIN_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
+         }
+
+         // block syncing and listner branch, worldstate allowed for listner but not for syncing
+         if ( (conf.worldstate_control)
+               && (0 == fork_db.head()->block_num % conf.worldstate_interval)
+               && (worldstate_allowed) ) {
+            create_worldstate();
          }
 
          emit( self.accepted_block, pending->_pending_block_state );
@@ -1016,7 +1340,7 @@ struct controller_impl {
       if( new_head->header.previous == head->id ) {
          try {
             apply_block( new_head->block, s );
-            fork_db.mark_in_current_chain( new_head, true );
+            fork_db.mark_in_current_chain( new_head, true );//
             fork_db.set_validity( new_head, true );
             head = new_head;
          } catch ( const fc::exception& e ) {
@@ -1249,7 +1573,14 @@ void controller::clear_emit_signal()
 {
     my->emit_signal = false;
 }
-
+void controller::enable_worldstate_creation()
+{
+    my->worldstate_allowed = true;
+}
+void controller::disable_worldstate_creation()
+{
+    my->worldstate_allowed = false;
+}
 const resource_limits_manager&   controller::get_resource_limits_manager()const
 {
    return my->resource_limits;
@@ -1291,17 +1622,16 @@ controller::~controller() {
    my->fork_db.close();
 }
 
-
-void controller::startup() {
-
-   // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
+void controller::add_indices() {
    my->add_indices();
+}
 
+void controller::startup( const worldstate_reader_ptr& worldstate ) {
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init();
+   my->init(worldstate);
 }
 
 chainbase::database& controller::db()const { return my->db; }
@@ -1444,7 +1774,7 @@ uint32_t controller::block_interval_seconds()const {
 }
 
 uint32_t controller::last_irreversible_block_num() const {
-   return my->head->irreversible_blocknum;
+   return std::max(my->head->irreversible_blocknum, my->worldstate_head_block);
 }
 
 block_id_type controller::last_irreversible_block_id() const {
@@ -1505,6 +1835,19 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
 
    return signed_blk->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
+
+void controller::write_worldstate() const {
+//ULTRAIN_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent worldstate with a pending block" );
+   return my->create_worldstate();
+}
+
+void controller::read_worldstate( const worldstate_reader_ptr& worldstate ) {
+    return my->read_from_worldstate(worldstate);
+}
+
+sha256 controller::calculate_integrity_hash()const { try {
+   return my->calculate_integrity_hash();
+} FC_LOG_AND_RETHROW() }
 
 bool controller::skip_auth_check()const {
    return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;

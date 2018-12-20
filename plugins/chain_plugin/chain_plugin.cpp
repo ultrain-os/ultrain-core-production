@@ -21,6 +21,8 @@
 #include <ultrainio/utilities/key_conversion.hpp>
 #include <ultrainio/utilities/common.hpp>
 #include <ultrainio/chain/wast_to_wasm.hpp>
+#include <ultrainio/chain/worldstate_file_manager.hpp>
+#include <ultrainio/chain/worldstate.hpp>
 
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>
@@ -130,7 +132,7 @@ public:
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
    fc::microseconds                 abi_serializer_max_time_ms;
-
+   fc::optional<bfs::path>          worldstate_path;
 
    // retained references to channels for easy publication
    channels::pre_accepted_block::channel_type&     pre_accepted_block_channel;
@@ -174,6 +176,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cfg.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
+         ("worldstate", bpo::value<bfs::path>(), "File to read Worldstate State from")
+         ("worldstate-control", bpo::bool_switch()->default_value(false), "Enable worldstate generation")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("wasm-runtime", bpo::value<ultrainio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
@@ -366,6 +370,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if( my->wasm_runtime )
          my->chain_config->wasm_runtime = *my->wasm_runtime;
 
+      my->chain_config->worldstate_control = options.at( "worldstate-control" ).as<bool>();
       my->chain_config->force_all_checks = options.at( "force-all-checks" ).as<bool>();
       my->chain_config->contracts_console = options.at( "contracts-console" ).as<bool>();
 
@@ -416,44 +421,76 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          wlog( "The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain." );
       }
 
-      if( options.count( "genesis-json" )) {
-         ULTRAIN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
-                     plugin_config_exception,
-                    "Genesis state can only be set on a fresh blockchain." );
+      if (options.count( "worldstate" )) {
+         my->worldstate_path = options.at( "worldstate" ).as<bfs::path>();
+         ULTRAIN_ASSERT( fc::exists(*my->worldstate_path), plugin_config_exception,
+                     "Cannot load worldstate, ${name} does not exist", ("name", my->worldstate_path->generic_string()) );
 
-         auto genesis_file = options.at( "genesis-json" ).as<bfs::path>();
-         if( genesis_file.is_relative()) {
-            genesis_file = bfs::current_path() / genesis_file;
+         // recover genesis information from the worldstate
+         auto infile = std::ifstream(my->worldstate_path->generic_string(), (std::ios::in | std::ios::binary));
+         auto reader = std::make_shared<istream_worldstate_reader>(infile);
+         reader->validate();
+         reader->read_section<genesis_state>([this]( auto &section ){
+            section.read_row(my->chain_config->genesis);
+         });
+         infile.close();
+
+         ULTRAIN_ASSERT( options.count( "genesis-json" ) == 0 &&  options.count( "genesis-timestamp" ) == 0,
+                 plugin_config_exception,
+                 "--worldstate is incompatible with --genesis-json and --genesis-timestamp as the worldstate contains genesis information");
+
+         auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
+         ULTRAIN_ASSERT( !fc::exists(shared_mem_path),
+                 plugin_config_exception,
+                 "worldstate can only be used to initialize an empty database." );
+
+         if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+            auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
+            ULTRAIN_ASSERT( log_genesis.compute_chain_id() == my->chain_config->genesis.compute_chain_id(),
+                    plugin_config_exception,
+                    "Genesis information in blocks.log does not match genesis information in the worldstate");
          }
 
-         ULTRAIN_ASSERT( fc::is_regular_file( genesis_file ),
-                     plugin_config_exception,
-                    "Specified genesis file '${genesis}' does not exist.",
-                    ("genesis", genesis_file.generic_string()));
+      } else {
+         if( options.count( "genesis-json" )) {
+            ULTRAIN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                        plugin_config_exception,
+                     "Genesis state can only be set on a fresh blockchain." );
 
-         my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
+            auto genesis_file = options.at( "genesis-json" ).as<bfs::path>();
+            if( genesis_file.is_relative()) {
+               genesis_file = bfs::current_path() / genesis_file;
+            }
 
-         ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+            ULTRAIN_ASSERT( fc::is_regular_file( genesis_file ),
+                        plugin_config_exception,
+                     "Specified genesis file '${genesis}' does not exist.",
+                     ("genesis", genesis_file.generic_string()));
 
-         if( options.count( "genesis-timestamp" )) {
+            my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
+
+            ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+
+            if( options.count( "genesis-timestamp" )) {
+               my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
+                     options.at( "genesis-timestamp" ).as<string>());
+            }
+
+            wlog( "Starting up fresh blockchain with provided genesis state." );
+         } else if( options.count( "genesis-timestamp" )) {
+            ULTRAIN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                        plugin_config_exception,
+                     "Genesis state can only be set on a fresh blockchain." );
+
             my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
                   options.at( "genesis-timestamp" ).as<string>());
+
+            wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
+         } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+            my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+         } else {
+            wlog( "Starting up fresh blockchain with default genesis state." );
          }
-
-         wlog( "Starting up fresh blockchain with provided genesis state." );
-      } else if( options.count( "genesis-timestamp" )) {
-         ULTRAIN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
-                     plugin_config_exception,
-                    "Genesis state can only be set on a fresh blockchain." );
-
-         my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
-               options.at( "genesis-timestamp" ).as<string>());
-
-         wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
-      } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
-         my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
-      } else {
-         wlog( "Starting up fresh blockchain with default genesis state." );
       }
 
       if ( options.count("read-mode") ) {
@@ -525,6 +562,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                my->applied_transaction_channel.publish( trace );
             } );
 
+      my->chain->add_indices();
    } FC_LOG_AND_RETHROW()
 
 }
@@ -532,7 +570,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup()
 { try {
    try {
-      my->chain->startup();
+      if (my->worldstate_path) {
+         auto infile = std::ifstream(my->worldstate_path->generic_string(), (std::ios::in | std::ios::binary));
+         auto reader = std::make_shared<istream_worldstate_reader>(infile);
+         my->chain->startup(reader);
+         infile.close();
+      } else {
+         my->chain->startup();
+      }
    } catch (const database_guard_exception& e) {
       log_guard_exception(e);
       // make sure to properly close the db

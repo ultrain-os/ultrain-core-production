@@ -7,6 +7,13 @@
 
 namespace ultrainio { namespace chain { namespace resource_limits {
 
+using resource_index_set = index_set<
+   resource_limits_index,
+   resource_usage_index,
+   resource_limits_state_index,
+   resource_limits_config_index
+>;
+
 static_assert( config::rate_limiting_precision > 0, "config::rate_limiting_precision must be positive" );
 
 static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_usage, const elastic_limit_parameters& params) {
@@ -38,11 +45,8 @@ void resource_limits_state_object::update_virtual_net_limit( const resource_limi
    virtual_net_limit = update_elastic_limit(virtual_net_limit, average_block_net_usage.average(), cfg.net_limit_parameters);
 }
 
-void resource_limits_manager::add_indices() {
-   _db.add_index<resource_limits_index>();
-   _db.add_index<resource_usage_index>();
-   _db.add_index<resource_limits_state_index>();
-   _db.add_index<resource_limits_config_index>();
+void resource_limits_manager::add_indices(chainbase::database& db) {
+   resource_index_set::add_indices(db);
 }
 
 void resource_limits_manager::initialize_database() {
@@ -56,6 +60,29 @@ void resource_limits_manager::initialize_database() {
       // start the chain off in a way that it is "congested" aka slow-start
       state.virtual_cpu_limit = config.cpu_limit_parameters.max;
       state.virtual_net_limit = config.net_limit_parameters.max;
+   });
+}
+
+void resource_limits_manager::add_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db ) const {
+   resource_index_set::walk_indices([this, &worldstate_db, &worldstate]( auto utils ){
+      worldstate->write_section<typename decltype(utils)::index_t::value_type>([this, &worldstate_db]( auto& section ){
+         decltype(utils)::walk(worldstate_db, [this, &worldstate_db, &section]( const auto &row ) {
+         section.add_row(row, worldstate_db);
+         });
+      });
+   });
+}
+
+void resource_limits_manager::read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
+   resource_index_set::walk_indices([this, &worldstate]( auto utils ){
+      worldstate->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
+         bool more = !section.empty();
+         while(more) {
+            decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
+               more = section.read_row(row, _db);
+            });
+         }
+      });
    });
 }
 

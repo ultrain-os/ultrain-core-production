@@ -79,4 +79,4 @@ namespace ultrainio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::permission_link_object, ultrainio::chain::permission_link_index)
 
-FC_REFLECT(ultrainio::chain::permission_link_object, (id)(account)(code)(message_type)(required_permission))
+FC_REFLECT(ultrainio::chain::permission_link_object, (account)(code)(message_type)(required_permission))

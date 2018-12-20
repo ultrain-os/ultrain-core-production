@@ -39,6 +39,10 @@ add_library( ultrainio_chain
 
              webassembly/wavm.cpp
              webassembly/binaryen.cpp
+
+             worldstate
+             worldstate_file_manager
+
 	     webassembly/wabt.cpp
              config.cpp
 	     block_timestamp.cpp

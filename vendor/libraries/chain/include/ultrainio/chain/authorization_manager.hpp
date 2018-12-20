@@ -6,6 +6,7 @@
 
 #include <ultrainio/chain/types.hpp>
 #include <ultrainio/chain/permission_object.hpp>
+#include <ultrainio/chain/worldstate.hpp>
 
 #include <utility>
 #include <functional>
@@ -25,8 +26,11 @@ namespace ultrainio { namespace chain {
 
          explicit authorization_manager(controller& c, chainbase::database& d);
 
-         void add_indices();
+         void add_indices(chainbase::database& db);
          void initialize_database();
+
+         void add_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const;
+         void read_from_worldstate( const worldstate_reader_ptr& worldstate );
 
          const permission_object& create_permission( account_name account,
                                                      permission_name name,

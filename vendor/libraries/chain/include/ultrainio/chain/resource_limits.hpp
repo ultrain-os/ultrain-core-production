@@ -1,6 +1,7 @@
 #pragma once
 #include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/types.hpp>
+#include <ultrainio/chain/worldstate.hpp>
 #include <chainbase/chainbase.hpp>
 #include <set>
 #define TEST_MODE 0
@@ -42,8 +43,10 @@ namespace ultrainio { namespace chain { namespace resource_limits {
          {
          }
 
-         void add_indices();
+         void add_indices(chainbase::database& db);
          void initialize_database();
+         void add_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db ) const;
+         void read_from_worldstate(const worldstate_reader_ptr& worldstate);
          void initialize_account( const account_name& account );
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
@@ -82,3 +85,5 @@ namespace ultrainio { namespace chain { namespace resource_limits {
 } } } /// ultrainio::chain
 
 FC_REFLECT( ultrainio::chain::resource_limits::account_resource_limit, (used)(available)(max) )
+FC_REFLECT( ultrainio::chain::resource_limits::ratio, (numerator)(denominator))
+FC_REFLECT( ultrainio::chain::resource_limits::elastic_limit_parameters, (target)(max)(periods)(max_multiplier)(contract_rate)(expand_rate))

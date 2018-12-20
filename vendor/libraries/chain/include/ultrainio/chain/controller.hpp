@@ -7,6 +7,7 @@
 #include <ultrainio/chain/abi_serializer.hpp>
 #include <ultrainio/chain/account_object.hpp>
 #include <fc/network/url.hpp>
+#include <ultrainio/chain/worldstate.hpp>
 
 namespace chainbase {
    class database;
@@ -54,6 +55,9 @@ namespace ultrainio { namespace chain {
             path                     state_dir              =  chain::config::default_state_dir_name;
             uint64_t                 state_size             =  chain::config::default_state_size;
             uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
+            path                     worldstate_dir         =  chain::config::default_worldstate_dir_name;
+            uint64_t                 worldstate_interval    =  chain::config::default_worldstate_interval;
+            bool                     worldstate_control     =  false;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
             bool                     contracts_console      =  false;
@@ -82,7 +86,8 @@ namespace ultrainio { namespace chain {
          controller( const config& cfg );
          ~controller();
 
-         void startup();
+         void add_indices();
+         void startup(const worldstate_reader_ptr& worldstate = nullptr );
 
          /**
           * Starts a new pending block session upon which new transactions can
@@ -93,6 +98,8 @@ namespace ultrainio { namespace chain {
          void abort_block();
          void set_emit_signal();
          void clear_emit_signal();
+         void enable_worldstate_creation();
+         void disable_worldstate_creation();
 
          /**
           *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
@@ -193,6 +200,9 @@ namespace ultrainio { namespace chain {
          block_state_ptr fetch_block_state_by_id( block_id_type id )const;
 
          block_id_type get_block_id_for_num( uint32_t block_num )const;
+         void write_worldstate()const;
+         void read_worldstate( const worldstate_reader_ptr& worldstate );
+         sha256 calculate_integrity_hash()const;
 
          void check_contract_list( account_name code )const;
          void check_action_list( account_name code, action_name action )const;
@@ -289,6 +299,8 @@ FC_REFLECT( ultrainio::chain::controller::config,
             (blocks_dir)
             (state_dir)
             (state_size)
+            (worldstate_dir)
+            (worldstate_control)
             (read_only)
             (force_all_checks)
             (contracts_console)

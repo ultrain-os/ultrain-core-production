@@ -14,19 +14,120 @@
 #include <ultrainio/chain/generated_transaction_object.hpp>
 
 namespace ultrainio { namespace chain {
+   using authorization_index_set = index_set<
+      permission_index,
+      permission_usage_index,
+      permission_link_index
+   >;
 
    authorization_manager::authorization_manager(controller& c, database& d)
    :_control(c),_db(d){}
 
-   void authorization_manager::add_indices() {
-      _db.add_index<permission_index>();
-      _db.add_index<permission_usage_index>();
-      _db.add_index<permission_link_index>();
+   void authorization_manager::add_indices(chainbase::database& db) {
+      authorization_index_set::add_indices(db);
    }
 
    void authorization_manager::initialize_database() {
       _db.create<permission_object>([](auto&){}); /// reserve perm 0 (used else where)
    }
+
+   namespace detail {
+      template<>
+      struct worldstate_row_traits<permission_object> {
+         using value_type = permission_object;
+         using worldstate_type = worldstate_permission_object;
+
+         static worldstate_permission_object to_worldstate_row(const permission_object& value, const chainbase::database& db) {
+            worldstate_permission_object res;
+            res.name = value.name;
+            res.owner = value.owner;
+            res.last_updated = value.last_updated;
+            res.auth = value.auth.to_authority();
+
+           // lookup parent name
+            const auto& parent = db.get(value.parent);
+            res.parent = parent.name;
+
+           // lookup the usage object
+            const auto& usage = db.get<permission_usage_object>(value.usage_id);
+            res.last_used = usage.last_used;
+
+            return res;
+         }
+
+         static void from_worldstate_row(worldstate_permission_object&& row, permission_object& value, chainbase::database& db) {
+            value.name = row.name;
+            value.owner = row.owner;
+            value.last_updated = row.last_updated;
+            value.auth = row.auth;
+
+            value.parent = 0;
+            if (value.id == 0) {
+               ULTRAIN_ASSERT(row.parent == permission_name(), worldstate_exception, "Unexpected parent name on reserved permission 0");
+               ULTRAIN_ASSERT(row.name == permission_name(), worldstate_exception, "Unexpected permission name on reserved permission 0");
+               ULTRAIN_ASSERT(row.owner == name(), worldstate_exception, "Unexpected owner name on reserved permission 0");
+               ULTRAIN_ASSERT(row.auth.accounts.size() == 0,  worldstate_exception, "Unexpected auth accounts on reserved permission 0");
+               ULTRAIN_ASSERT(row.auth.keys.size() == 0,  worldstate_exception, "Unexpected auth keys on reserved permission 0");
+               ULTRAIN_ASSERT(row.auth.waits.size() == 0,  worldstate_exception, "Unexpected auth waits on reserved permission 0");
+               ULTRAIN_ASSERT(row.auth.threshold == 0,  worldstate_exception, "Unexpected auth threshold on reserved permission 0");
+               ULTRAIN_ASSERT(row.last_updated == time_point(),  worldstate_exception, "Unexpected auth last updated on reserved permission 0");
+               value.parent = 0;
+            } else if ( row.parent != permission_name()){
+               const auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(row.owner, row.parent));
+
+               ULTRAIN_ASSERT(parent.id != 0, worldstate_exception, "Unexpected mapping to reserved permission 0");
+               value.parent = parent.id;
+            }
+            if (value.id != 0) {
+               // create the usage object
+               const auto& usage = db.create<permission_usage_object>([&](auto& p) {
+                  p.last_used = row.last_used;
+               });
+               value.usage_id = usage.id;
+            } else {
+               value.usage_id = 0;
+            }
+         }
+      };
+   }
+
+   void authorization_manager::add_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const {
+      authorization_index_set::walk_indices([this, &worldstate_db, &worldstate]( auto utils ){
+         using section_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the permission_usage_index as its inlined with permission_index
+         if (std::is_same<section_t, permission_usage_object>::value) {
+            return;
+         }
+
+         worldstate->write_section<section_t>([this, &worldstate_db]( auto& section ){
+            decltype(utils)::walk(worldstate_db, [this, &worldstate_db, &section]( const auto &row ) {
+               section.add_row(row, worldstate_db);
+            });
+         });
+      });
+   }
+
+   void authorization_manager::read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
+      authorization_index_set::walk_indices([this, &worldstate]( auto utils ){
+         using section_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the permission_usage_index as its inlined with permission_index
+         if (std::is_same<section_t, permission_usage_object>::value) {
+            return;
+         }
+
+         worldstate->read_section<section_t>([this]( auto& section ) {
+            bool more = !section.empty();
+            while(more) {
+               decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
+                  more = section.read_row(row, _db);
+               });
+            }
+         });
+      });
+   }
+
 
    const permission_object& authorization_manager::create_permission( account_name account,
                                                                       permission_name name,

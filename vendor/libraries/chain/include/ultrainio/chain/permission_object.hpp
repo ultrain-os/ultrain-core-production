@@ -70,6 +70,18 @@ namespace ultrainio { namespace chain {
       }
    };
 
+   /*
+    * special cased to abstract the foreign keys for usage and the optimization of using OID for the parent
+    */
+   struct worldstate_permission_object {
+      permission_name   parent; ///< parent permission
+      account_name      owner; ///< the account this permission belongs to
+      permission_name   name; ///< human-readable name for the permission
+      time_point        last_updated; ///< the last time this authority was updated
+      time_point        last_used; ///< when this permission was last used
+      authority         auth; ///< authority required to execute this permission
+   };
+
    struct by_parent;
    struct by_owner;
    struct by_name;
@@ -110,8 +122,10 @@ namespace ultrainio { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::permission_object, ultrainio::chain::permission_index)
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::permission_usage_object, ultrainio::chain::permission_usage_index)
 
+//TODO: MUST: Need custom the parent
 FC_REFLECT(chainbase::oid<ultrainio::chain::permission_object>, (_id))
-FC_REFLECT(ultrainio::chain::permission_object, (id)(usage_id)(parent)(owner)(name)(last_updated)(auth))
+FC_REFLECT(ultrainio::chain::permission_object, (usage_id)(parent)(owner)(name)(last_updated)(auth))
+FC_REFLECT(ultrainio::chain::worldstate_permission_object, (parent)(owner)(name)(last_updated)(last_used)(auth))
 
-FC_REFLECT(chainbase::oid<ultrainio::chain::permission_usage_object>, (_id))
-FC_REFLECT(ultrainio::chain::permission_usage_object, (id)(last_used))
+// FC_REFLECT(chainbase::oid<ultrainio::chain::permission_usage_object>, (_id))
+FC_REFLECT(ultrainio::chain::permission_usage_object, (last_used))

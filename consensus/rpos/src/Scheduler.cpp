@@ -1806,6 +1806,12 @@ namespace ultrainio {
         const auto &pbs = chain.pending_block_state();
         bool needs_push_whole_block = true;
 
+        if (UranusNode::getInstance()->isSyncing()) {
+            chain.disable_worldstate_creation();
+        } else {
+            chain.enable_worldstate_creation();
+        }
+
         if (pbs && m_voterPreRunBa0InProgress && !force_push_whole_block) {
             ULTRAIN_ASSERT(m_currentPreRunBa0TrxIndex == -1,
                            chain::chain_exception,

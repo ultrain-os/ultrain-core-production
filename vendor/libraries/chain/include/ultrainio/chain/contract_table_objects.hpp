@@ -160,6 +160,29 @@ namespace ultrainio { namespace chain {
    typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_object  index_long_double_object;
    typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_index   index_long_double_index;
 
+   /**
+    * helper template to map from an index type to the best tag
+    * to use when traversing by table_id
+    */
+
+   template<typename T>
+   struct object_to_table_id_tag;
+
+   #define DECLARE_TABLE_ID_TAG( object, tag ) \
+      template<> \
+      struct object_to_table_id_tag<object> { \
+            using tag_type = tag;\
+   };
+   DECLARE_TABLE_ID_TAG(key_value_object, by_scope_primary)
+   DECLARE_TABLE_ID_TAG(index64_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index128_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index256_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index_double_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index_long_double_object, by_primary)
+
+   template<typename T>
+   using object_to_table_id_tag_t = typename object_to_table_id_tag<T>::tag_type;
+
 namespace config {
    template<>
    struct billable_size<table_id_object> {
@@ -216,5 +239,14 @@ CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::index256_object, ultrainio::chain::in
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::index_double_object, ultrainio::chain::index_double_index)
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::index_long_double_object, ultrainio::chain::index_long_double_index)
 
-FC_REFLECT(ultrainio::chain::table_id_object, (id)(code)(scope)(table) )
-FC_REFLECT(ultrainio::chain::key_value_object, (id)(t_id)(primary_key)(value)(payer) )
+FC_REFLECT(ultrainio::chain::table_id_object, (code)(scope)(table)(payer)(count) )
+FC_REFLECT(ultrainio::chain::key_value_object, (primary_key)(payer)(value) )
+
+#define REFLECT_SECONDARY(type)\
+  FC_REFLECT(type, (primary_key)(payer)(secondary_key) )
+
+REFLECT_SECONDARY(ultrainio::chain::index64_object)
+REFLECT_SECONDARY(ultrainio::chain::index128_object)
+REFLECT_SECONDARY(ultrainio::chain::index256_object)
+REFLECT_SECONDARY(ultrainio::chain::index_double_object)
+REFLECT_SECONDARY(ultrainio::chain::index_long_double_object)

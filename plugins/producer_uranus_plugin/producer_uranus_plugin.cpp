@@ -9,6 +9,7 @@
 #include <ultrainio/chain/resource_limits.hpp>
 #include <ultrainio/chain/transaction_object.hpp>
 #include <ultrainio/chain/merkle.hpp>
+#include <ultrainio/chain/worldstate.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -163,6 +164,9 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
        * cancelled but wasn't able to be.
        */
       uint32_t _timer_corelation_id = 0;
+
+      // path to write the worldstates to
+      bfs::path _worldstates_dir;
 
       void on_irreversible_block( const signed_block_ptr& lib ) {
          _irreversible_block_time = lib->timestamp.to_time_point();
@@ -414,6 +418,7 @@ void producer_uranus_plugin::set_program_options(
          ("genesis-pk", bpo::value<std::string>()->notifier([this](std::string g) { my->_genesis_pk = g; }), "genesis public key, set by test mode usually")
          ("max-round-seconds", bpo::value<int32_t>()->default_value(Config::s_maxRoundSeconds), "max round second, set by test mode usually")
          ("max-phase-seconds", bpo::value<int32_t>()->default_value(Config::s_maxPhaseSeconds), "max phase second, set by test mode usually")
+         ("worldstates-dir", bpo::value<bfs::path>()->default_value("worldstate"),"the location of the worldstates directory (absolute path or relative to application data dir)")
          ("max-trxs-microseconds", bpo::value<int32_t>()->default_value(Config::s_maxTrxMicroSeconds), "max trxs microseconds in initpropose,set by test mode usually")
          ;
    config_file_options.add(producer_options);
@@ -539,6 +544,18 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    ultrainio::chain::config::block_interval_ms = my->_max_round_seconds * 1000;
    ultrainio::chain::config::block_interval_us =  my->_max_round_seconds * 1000000;
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
+   if( options.count( "worldstates-dir" )) {
+      auto wd = options.at( "worldstates-dir" ).as<bfs::path>();
+      if( wd.is_relative()) {
+         my->_worldstates_dir = app().data_dir() / wd;
+         if (!fc::exists(my->_worldstates_dir)) {
+            fc::create_directories(my->_worldstates_dir);
+         }
+     } else {
+         my->_worldstates_dir = wd;
+     }
+     FC_ASSERT( fc::is_directory(my->_worldstates_dir) );
+   }
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
       try {
@@ -666,6 +683,23 @@ producer_uranus_plugin::runtime_options producer_uranus_plugin::get_runtime_opti
       my->_max_transaction_time_ms,
       my->_max_irreversible_block_age_us.count() < 0 ? -1 : my->_max_irreversible_block_age_us.count() / 1'000'000
    };
+}
+
+//TODO:just for test, will remove after code testing
+fc::microseconds producer_uranus_plugin::generate_worldstate() const {
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+
+   //TODO:for testing
+   auto begin=fc::time_point::now();
+   chain.write_worldstate();
+   //TODO:for testing
+   auto end=fc::time_point::now();
+   auto time_delta=end-begin;
+
+   ilog("*****************************************");
+   ilog("generate_worldstate test time: ${time_delta}", ("time_delta", time_delta));
+   ilog("*****************************************");
+   return {time_delta};
 }
 
 static bool parse_genesis(boost::chrono::system_clock::time_point &out_time_point, const char *time_format) {

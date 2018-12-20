@@ -2,8 +2,9 @@
  *  @file
  *  @copyright defined in ultrain/LICENSE.txt
  */
-#include <ultrainio/producer_api_plugin/producer_api_plugin.hpp>
+#include <ultrainio/sync_net_api_plugin/sync_net_api_plugin.hpp>
 #include <ultrainio/chain/exceptions.hpp>
+#include <ultrainio/chain/transaction.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -11,16 +12,14 @@
 #include <chrono>
 
 namespace ultrainio { namespace detail {
-  struct producer_api_plugin_response {
-     std::string result;
-  };
+  struct sync_net_api_plugin_empty {};
 }}
 
-FC_REFLECT(ultrainio::detail::producer_api_plugin_response, (result));
+FC_REFLECT(ultrainio::detail::sync_net_api_plugin_empty, );
 
 namespace ultrainio {
 
-static appbase::abstract_plugin& _producer_api_plugin = app().register_plugin<producer_api_plugin>();
+static appbase::abstract_plugin& _sync_net_api_plugin = app().register_plugin<sync_net_api_plugin>();
 
 using namespace ultrainio;
 
@@ -48,58 +47,55 @@ using namespace ultrainio;
 
 #define INVOKE_V_R(api_handle, call_name, in_param) \
      api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
-     ultrainio::detail::producer_api_plugin_response result{"ok"};
+     ultrainio::detail::sync_net_api_plugin_empty result;
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-     ultrainio::detail::producer_api_plugin_response result{"ok"};
+     ultrainio::detail::sync_net_api_plugin_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle.call_name(); \
-     ultrainio::detail::producer_api_plugin_response result{"ok"};
+     ultrainio::detail::sync_net_api_plugin_empty result;
 
 
-void producer_api_plugin::plugin_startup() {
-   ilog("starting producer_api_plugin");
+void sync_net_api_plugin::plugin_startup() {
+   ilog("starting sync_net_api_plugin");
    // lifetime of plugin is lifetime of application
-   auto& producer = app().get_plugin<producer_uranus_plugin>();
+   auto& sync_net_mgr = app().get_plugin<sync_net_plugin>();
 
    app().get_plugin<http_plugin>().add_api({
-       CALL(producer, producer, pause,
-            INVOKE_V_V(producer, pause), 201),
-       CALL(producer, producer, resume,
-            INVOKE_V_V(producer, resume), 201),
-       CALL(producer, producer, paused,
-            INVOKE_R_V(producer, paused), 201),
-       CALL(producer, producer, get_runtime_options,
-            INVOKE_R_V(producer, get_runtime_options), 201),
-       CALL(producer, producer, update_runtime_options,
-            INVOKE_V_R(producer, update_runtime_options, producer_uranus_plugin::runtime_options), 201),
-       //CALL(producer, producer, add_greylist_accounts,
-       //     INVOKE_V_R(producer, add_greylist_accounts, producer_plugin::greylist_params), 201),
-       //CALL(producer, producer, remove_greylist_accounts,
-       //     INVOKE_V_R(producer, remove_greylist_accounts, producer_plugin::greylist_params), 201), 
-       //CALL(producer, producer, get_greylist,
-       //     INVOKE_R_V(producer, get_greylist), 201),                 
-       CALL(producer, producer, generate_worldstate,
-            INVOKE_R_V(producer, generate_worldstate), 201),
+       CALL(wss, sync_net_mgr, connect,
+            INVOKE_R_R(sync_net_mgr, connect, std::string), 201),
+       CALL(wss, sync_net_mgr, disconnect,
+            INVOKE_R_R(sync_net_mgr, disconnect, std::string), 201),
+       CALL(wss, sync_net_mgr, status,
+            INVOKE_R_R(sync_net_mgr, status, std::string), 201),
+       CALL(wss, sync_net_mgr, connections,
+            INVOKE_R_V(sync_net_mgr, connections), 201),
+
+       CALL(wss, sync_net_mgr, require_file,
+            INVOKE_R_V(sync_net_mgr, require_file), 201),
+       CALL(wss, sync_net_mgr, sync_ws,
+            INVOKE_R_R(sync_net_mgr, sync_ws, sync_wss_params), 201),
+       CALL(wss, sync_net_mgr, test_latancy,
+            INVOKE_R_V(sync_net_mgr, test_latancy), 201),
    });
 }
 
-void producer_api_plugin::plugin_initialize(const variables_map& options) {
+void sync_net_api_plugin::plugin_initialize(const variables_map& options) {
+    ilog("Initialize sync net api plugin");
    try {
       const auto& _http_plugin = app().get_plugin<http_plugin>();
       if( !_http_plugin.is_on_loopback()) {
-         wlog( "\n"
+         ilog( "\n"
                "**********SECURITY WARNING**********\n"
                "*                                  *\n"
-               "* --        Producer API        -- *\n"
+               "* --        Sync Net API            -- *\n"
                "* - EXPOSED to the LOCAL NETWORK - *\n"
                "* - USE ONLY ON SECURE NETWORKS! - *\n"
                "*                                  *\n"
                "************************************\n" );
-
       }
    } FC_LOG_AND_RETHROW()
 }

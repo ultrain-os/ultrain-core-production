@@ -515,4 +515,9 @@ namespace ultrainio { namespace chain {
                                     3250002, "Can't register event on producing node.")
       FC_DECLARE_DERIVED_EXCEPTION( event_unregister_error, event_exception,
                                     3250003, "Wrong account or unregistered url" )
+
+      FC_DECLARE_DERIVED_EXCEPTION( worldstate_exception,    chain_exception,
+                                    3260000, "Worldstate exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( worldstate_validation_exception,   worldstate_exception,
+                                    3260001, "Worldstate Validation Exception" )
 } } // ultrainio::chain
