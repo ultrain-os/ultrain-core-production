@@ -1320,24 +1320,6 @@ struct claimrewards_subcommand {
    }
 };
 
-struct reportblock_subcommand {
-   std::string producer;
-   uint64_t number = 0;
-   reportblock_subcommand(CLI::App* actionRoot) {
-      auto reportblock = actionRoot->add_subcommand("reportblock", localized("report block producer"));
-      reportblock->add_option("producer", producer, localized("The account to report block for"))->required();
-      reportblock->add_option("number", number, localized("The numbler to report block for"))->required();
-      add_standard_transaction_options(reportblock);
-
-      reportblock->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("producer", producer)
-                  ("number", number);
-         send_actions({create_action({permission_level{N(ultrainio),config::active_name}}, config::system_account_name, NEX(reportblocknumber), act_payload)});
-      });
-   }
-};
-
 struct canceldelay_subcommand {
    string canceling_account;
    string canceling_permission;
@@ -2929,7 +2911,6 @@ int main( int argc, char** argv ) {
    //auto sellram = sellram_subcommand(system);
 
    auto claimRewards = claimrewards_subcommand(system);
-   auto reportblock = reportblock_subcommand(system);
    auto cancelDelay = canceldelay_subcommand(system);
 
    try {

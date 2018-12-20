@@ -451,13 +451,6 @@
         {"name":"owner",   "type":"account_name"}
       ]
     },{
-      "name": "reportblocknumber",
-      "base": "",
-      "fields": [
-        {"name":"producer",   "type":"account_name"},
-        {"name":"number",   "type":"uint64"}
-      ]
-    },{
       "name": "setpriv",
       "base": "",
       "fields": [
@@ -631,10 +624,6 @@
    },{
       "name": "unregprod",
       "type": "unregprod",
-      "ricardian_contract": ""
-   },{
-      "name": "reportblocknumber",
-      "type": "reportblocknumber",
       "ricardian_contract": ""
    },{
       "name": "claimrewards",
