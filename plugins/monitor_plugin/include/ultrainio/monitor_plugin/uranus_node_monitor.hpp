@@ -33,6 +33,7 @@ namespace ultrainio {
         std::string  nodeIp;
         std::string  minerName;
         uint32_t     blockNum;
+        uint32_t     dbFreeMem;
         std::string  phase;
         uint32_t     baxCount;
         uint32_t     transactionNum;
@@ -60,6 +61,7 @@ namespace ultrainio {
         std::string  publicKey;
         std::string  privateKey;
         std::string  account;
+        uint32_t     dbTotalMem;
         std::vector<string> configuredPeers;
     };
 
@@ -115,6 +117,7 @@ namespace ultrainio {
                 reportData.ready             = pNode->m_ready;
 
                 const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
+                reportData.dbFreeMem         = chain.db().get_segment_manager()->get_free_memory();
                 reportData.blockNum          = chain.head_block_num();
                 reportData.blockHash         = chain.head_block_id().str();
                 reportData.previousBlockHash = chain.head_block_state()->prev().str();
@@ -171,6 +174,9 @@ namespace ultrainio {
                 staticConfig.publicKey         = std::string(StakeVoteBase::getMyPrivateKey().getPublicKey());
                 staticConfig.privateKey        = std::string(StakeVoteBase::getMyPrivateKey());
                 staticConfig.account           = std::string(StakeVoteBase::getMyAccount());
+
+                const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
+                staticConfig.dbTotalMem        = chain.db().get_segment_manager()->get_size();
 
                 if(staticConfig.genesisLeaderPk.size() > 128) {
                     staticConfig.genesisLeaderPk = staticConfig.genesisLeaderPk.substr(staticConfig.genesisLeaderPk.size() - 128);
@@ -242,8 +248,8 @@ namespace ultrainio {
     };
 }
 
-FC_REFLECT( ultrainio::periodic_report_dynamic_data, (nodeIp)(minerName)(blockNum)(phase)(baxCount)(transactionNum)(blockProposer)(syncing)
+FC_REFLECT( ultrainio::periodic_report_dynamic_data, (nodeIp)(minerName)(blockNum)(dbFreeMem)(phase)(baxCount)(transactionNum)(blockProposer)(syncing)
                                                      (syncFailed)(connected)(ready)(blockHash)(previousBlockHash)(isProposer)(ba0BlockTime)
                                                      (ba1BlockTime)(cpu)(memory)(virtualMemory)(activePeers) )
 FC_REFLECT( ultrainio::periodic_report_static_data, (nodeIp)(version)(nonProducingNode)(genesisLeaderPk)(publicKey)
-                                                    (privateKey)(account)(configuredPeers) )
+                                                    (privateKey)(account)(dbTotalMem)(configuredPeers) )
