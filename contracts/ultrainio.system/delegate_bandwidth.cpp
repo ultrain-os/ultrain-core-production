@@ -28,7 +28,7 @@ namespace ultrainiosystem {
    using std::map;
    using std::pair;
 
-   static constexpr time refund_delay = 3*60;//3*24*3600;
+   static constexpr time refund_delay = 3*24*3600;
 
    struct user_resources {
       account_name  owner;
@@ -467,7 +467,9 @@ namespace ultrainiosystem {
          uint64_t curblocknum = tapos_block_num();
          if(stake_cons_delta.amount < 0){
             print("undelegatecons from:",name{from}," receiver:",name{receiver}," tapos_block_num:",curblocknum," it->last_operate_blocknum:",it->last_operate_blocknum);//
-            ultrainio_assert( (curblocknum - it->last_operate_blocknum) > 10 , "should stake at least more than certain number block high" );
+            const uint32_t seconds_per_block     = block_interval_seconds();
+            uint32_t blocks_per_threemonths       = seconds_per_year / seconds_per_block / 4;
+            ultrainio_assert( (curblocknum - it->last_operate_blocknum) > blocks_per_threemonths , "should stake at least more than three months" );
          }
          auto enabled = ((it->total_cons_staked+total_update.amount) >=
                   _gstate.min_activated_stake/_gstate.min_committee_member);
