@@ -274,8 +274,6 @@ namespace ultrainio {
                     ilog("Size of vector in m_cacheEchoMsgMap exceeds ${mcs}", ("mcs", m_maxCommitteeSize));
                 }
             }
-            dlog("next phase echo msg. blockNum = ${id}, phase = ${phase},baxcount = ${baxcount}",
-                 ("id", key.blockNum)("phase", (uint32_t) echo.phase)("baxcount",echo.baxCount));
             return true;
         }
         return false;
@@ -317,7 +315,6 @@ namespace ultrainio {
                     wlog("Size of vector in cacheProposeMsgMap exceeds ${mcs}", ("mcs", m_maxCommitteeSize));
                 }
             }
-            dlog("next phase propose msg. blockNum = ${id}", ("id", key.blockNum));
             return true;
         }
         return false;
