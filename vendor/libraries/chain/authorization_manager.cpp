@@ -45,11 +45,11 @@ namespace ultrainio { namespace chain {
             res.auth = value.auth.to_authority();
 
            // lookup parent name
-            const auto& parent = db.get(value.parent);
+            const auto& parent = *(db.get_index<permission_index>().backup_indices().find(value.parent));
             res.parent = parent.name;
 
            // lookup the usage object
-            const auto& usage = db.get<permission_usage_object>(value.usage_id);
+            const auto& usage = *(db.get_index<permission_usage_index>().backup_indices().find(value.usage_id));
             res.last_used = usage.last_used;
 
             return res;

@@ -527,7 +527,7 @@ namespace chainbase {
                      it->second= item.second;
                      continue;
                   }
-                  assert( prev_cache.removed_values.find(item.second.id) == prev_cache.removed_values.end() );
+                  assert( prev_cache.removed_ids.find(item.second.id) == prev_cache.removed_ids.end() );
                   prev_cache.modify_values.emplace( std::move(item) );
                }
 
