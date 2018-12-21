@@ -595,12 +595,12 @@ def stepCreateStakedAccounts():
 
 def stepRegProducers():
     for i in range(1, args.num_producers):
+        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
+    sleep(15)
+    for i in range(1, args.num_producers):
         retry(args.clultrain + 'system regproducer %s %s https://%s.com 0 ' % (accounts[i], pk_list[i], accounts[i]))
     sleep(15)
     funds = 500000000 / args.num_producers / 2
-    for i in range(1, args.num_producers):
-        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
-    sleep(20)
     for i in range(1, args.num_producers):
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
     sleep(20)
