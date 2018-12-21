@@ -692,7 +692,7 @@ namespace ultrainio {
         if ((m_schedulerPtr->findProposeCache(msg_key))
             && (m_schedulerPtr->findEchoCache(msg_key))) {
             msg_key.phase = kPhaseBA1;
-            if (m_schedulerPtr->findEchoCache(msg_key)) {
+            if (m_schedulerPtr->isFastba0(msg_key)) {
                 return true;
             }
         }
