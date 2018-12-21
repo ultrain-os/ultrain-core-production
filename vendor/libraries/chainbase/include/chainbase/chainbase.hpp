@@ -352,7 +352,7 @@ namespace chainbase {
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
                if( _cache.size() && !_cache_on ) { _is_cached = false;flush(true);}//bug
-               if( enable_cache() ) _cache.emplace_back( _indices_backup.get_allocator() );
+               if( _is_cached ) _cache.emplace_back( _indices_backup.get_allocator() );
                return session( *this, _revision );
             } else {
                return session( *this, -1 );
