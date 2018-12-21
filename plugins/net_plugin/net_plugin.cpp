@@ -2227,7 +2227,7 @@ namespace ultrainio {
    }
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg) {
-        ilog("receive req last block num msg!!! from peer ${p}", ("p", c->peer_name()));
+        ilog("receive req last block num msg!!! from peer ${p} seq: ${s}", ("p", c->peer_name())("s", msg.seqNum));
         app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
     }
 
@@ -2363,7 +2363,7 @@ namespace ultrainio {
     {
         for(auto &c : connections) {
             if(c->current()){
-                ilog("${p} peer ${peer} rpos count_rcv ${counnt_rcv} count_drop ${count_drop} ",
+                ilog("${p} peer ${peer} count_rcv ${counnt_rcv} count_drop ${count_drop} ",
                         ("p",c->priority==msg_priority_rpos ? "rpos":"trx")
                         ("peer",c->peer_name())
                         ("counnt_rcv",c->pack_count_rcv)
