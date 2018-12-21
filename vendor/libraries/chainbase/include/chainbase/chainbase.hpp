@@ -269,7 +269,9 @@ namespace chainbase {
                 }
                 head.modify_values.emplace( std::pair< typename value_type::id_type, const value_type& >( obj.id, obj ) );
             }else
-                if( !_indices_backup.modify( _indices_backup.find( obj.id ), m ))
+                if( !_indices_backup.modify( _indices_backup.find( obj.id ), [&]( value_type& v ) {
+                                           v = obj;
+                  } ))
                     BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
          }
 
