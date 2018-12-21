@@ -217,7 +217,8 @@ struct controller_impl {
        db.set_cache();
        //thread to generate worldstate file
        boost::thread worldstate([this,fork_head,block_height](){
-               add_to_worldstate(this->db, block_height, fork_head);
+               add_to_worldstate(db, block_height, fork_head);
+               db.cancel_cache();
        });
        worldstate.detach();
    }
@@ -469,7 +470,6 @@ struct controller_impl {
       info.hash_string = ws_manager.calculate_file_hash(worldstate_path).str();
       ws_manager.save_info(info);
       ilog("********************************** add_to_worldstate ws info: ${info}", ("info", info));
-      worldstate_db.cancel_cache();
    }
 
    void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {

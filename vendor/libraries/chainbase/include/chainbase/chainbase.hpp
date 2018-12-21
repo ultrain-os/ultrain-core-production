@@ -595,7 +595,7 @@ namespace chainbase {
                while( _cache.size() )
                   process_cache();
             else
-               while( _cache.size() > 1 )
+               while( _cache.size() > 5 )
                  process_cache();
          }
 
