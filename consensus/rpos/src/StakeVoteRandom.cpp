@@ -61,7 +61,7 @@ namespace ultrainio {
     }
 
     bool StakeVoteRandom::realIsProposer(const AccountName& account) {
-        std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelectionInitIfNull(kPhaseBA0, 0);
         ULTRAIN_ASSERT(roleSelectionPtr, chain::chain_exception, "RoleSelection is nullptr");
         return roleSelectionPtr->isProposer(std::string(account));
     }
