@@ -74,26 +74,31 @@ namespace ultrainio {
 
     int StakeVoteRandom::realGetSendEchoThreshold() const {
         const std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        ULTRAIN_ASSERT(roleSelectionPtr, chain::chain_exception, "RoleSelection is nullptr");
         return Config::kSendEchoThresholdRatio * roleSelectionPtr->voterNumber() + 1;
     }
 
     int StakeVoteRandom::realGetNextRoundThreshold() const {
         const std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        ULTRAIN_ASSERT(roleSelectionPtr, chain::chain_exception, "RoleSelection is nullptr");
         return Config::kNextRoundThresholdRatio * roleSelectionPtr->voterNumber() + 1;
     }
 
     int StakeVoteRandom::realGetEmptyBlockThreshold() const {
         const std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        ULTRAIN_ASSERT(roleSelectionPtr, chain::chain_exception, "RoleSelection is nullptr");
         return Config::kEmptyBlockThresholdRatio * roleSelectionPtr->voterNumber() + 1;
     }
 
     int StakeVoteRandom::realGetEmptyBlock2Threshold() const {
         const std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        ULTRAIN_ASSERT(roleSelectionPtr, chain::chain_exception, "RoleSelection is nullptr");
         return Config::kEmptyBlock2ThresholdRatio * roleSelectionPtr->voterNumber() + 1;
     }
 
     uint32_t StakeVoteRandom::realGetProposerNumber() const {
         const std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(kPhaseBA0, 0);
+        ULTRAIN_ASSERT(roleSelectionPtr, chain::chain_exception, "RoleSelection is nullptr");
         return roleSelectionPtr->proposerNumber();
     }
 }
