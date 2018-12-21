@@ -239,7 +239,7 @@ namespace chainbase {
                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
             }
 
-            if( _is_cached )
+            if( enable_cache() )
                _cache.back().new_values.emplace( std::pair< typename value_type::id_type, const value_type& >( (*insert_result.first).id, *insert_result.first ) );
             else if( !_indices_backup.emplace( *insert_result.first ).second )
                    BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
@@ -253,7 +253,7 @@ namespace chainbase {
             on_modify( obj );
             auto ok = _indices.modify( _indices.iterator_to( obj ), m );
             if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
-            if( _is_cached ){
+            if( enable_cache() ){
                 auto& head = _cache.back();
                 auto it = head.new_values.find(obj.id);
                 if( it != head.new_values.end() )
@@ -277,7 +277,7 @@ namespace chainbase {
 
          void remove( const value_type& obj ) {
             on_remove( obj );
-            if( _is_cached ){
+            if( enable_cache() ){
                 auto& head = _cache.back();
                 if( !head.new_values.erase(obj.id) ){
                     head.modify_values.erase(obj.id);
@@ -352,7 +352,7 @@ namespace chainbase {
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
                if( _cache.size() && !_cache_on ) { _is_cached = false;flush(true);}//bug
-               if( _is_cached ) _cache.emplace_back( _indices_backup.get_allocator() );
+               if( enable_cache() ) _cache.emplace_back( _indices_backup.get_allocator() );
                return session( *this, _revision );
             } else {
                return session( *this, -1 );
@@ -368,7 +368,7 @@ namespace chainbase {
          void undo() {
             if( !enabled() ) return;
 
-            if( _is_cached ) _cache.pop_back();
+            if( enable_cache() ) _cache.pop_back();
 
             const auto& head = _stack.back();
 
@@ -376,7 +376,7 @@ namespace chainbase {
                auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
                   v = item.second;
                });
-               if( !_is_cached ) {
+               if( !enable_cache() ) {
                    ok = _indices_backup.modify( _indices_backup.find( item.second.id ), [&]( value_type& v ) {
                                             v = std::move( item.second );
                                     }) && ok;
@@ -387,13 +387,13 @@ namespace chainbase {
             for( auto id : head.new_ids )
             {
                _indices.erase( _indices.find( id ) );
-               if( !_is_cached ) _indices_backup.erase( _indices_backup.find( id ) );
+               if( !enable_cache() ) _indices_backup.erase( _indices_backup.find( id ) );
             }
             _next_id = head.old_next_id;
 
             for( auto& item : head.removed_values ) {
                bool ok = _indices.emplace( item.second ).second;
-               if( !_is_cached ) 
+               if( !enable_cache() )
                    ok = _indices_backup.emplace( std::move( item.second ) ).second && ok;
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not restore object, most likely a uniqueness constraint was violated" ) );
             }
@@ -509,7 +509,7 @@ namespace chainbase {
             _stack.pop_back();
             --_revision;
 
-            if( _is_cached ){
+            if( enable_cache() ){
                auto& cache = _cache.back();
                auto& prev_cache = _cache[_cache.size()-2];
 
@@ -632,6 +632,8 @@ namespace chainbase {
 
       private:
          bool enabled()const { return _stack.size(); }
+
+         bool enable_cache() const { return _cache.size()&&_is_cached; }
 
          void on_modify( const value_type& v ) {
             if( !enabled() ) return;
