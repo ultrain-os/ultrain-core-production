@@ -61,12 +61,18 @@ namespace ultrainio {
     }
 
     bool StakeVoteRandom::realIsProposer(const AccountName& account) {
+        if (m_committeeV.size() <= 0) {
+            return false;
+        }
         std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelectionInitIfNull(kPhaseBA0, 0);
         ULTRAIN_ASSERT(roleSelectionPtr, chain::chain_exception, "RoleSelection is nullptr");
         return roleSelectionPtr->isProposer(std::string(account));
     }
 
     bool StakeVoteRandom::realIsVoter(const AccountName& account, ConsensusPhase phase, int baxCount) {
+        if (m_committeeV.size() <= 0) {
+            return false;
+        }
         std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelectionInitIfNull(phase, baxCount);
         ULTRAIN_ASSERT(roleSelectionPtr, chain::chain_exception, "RoleSelection is nullptr");
         return roleSelectionPtr->isVoter(std::string(account));
