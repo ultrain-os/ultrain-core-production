@@ -479,7 +479,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                     "Genesis information in blocks.log does not match genesis information in the worldstate");
          }
 
-      } else {
+      } else 
+      {
          if( options.count( "genesis-json" )) {
             ULTRAIN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
                         plugin_config_exception,
@@ -506,22 +507,23 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
             wlog( "Starting up fresh blockchain with provided genesis state." );
          } else if( options.count( "genesis-timestamp" )) {
-            ULTRAIN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
-                        plugin_config_exception,
+             ULTRAIN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                     plugin_config_exception,
                      "Genesis state can only be set on a fresh blockchain." );
 
-            my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
-                  options.at( "genesis-timestamp" ).as<string>());
+             my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
+                     options.at( "genesis-timestamp" ).as<string>());
 
-         wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
-      } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
-         my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
-         ULTRAIN_ASSERT( genesis_timestamp == my->chain_config->genesis.initial_timestamp,
-                 plugin_config_exception,
-                 "Genesis timestamp in data diff with which in config,ini" );
-      } else {
-         wlog( "Starting up fresh blockchain with default genesis state." );
-         my->chain_config->genesis.initial_timestamp = genesis_timestamp;
+             wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
+         } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+             my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+             ULTRAIN_ASSERT( genesis_timestamp == my->chain_config->genesis.initial_timestamp,
+                     plugin_config_exception,
+                     "Genesis timestamp in data diff with which in config,ini" );
+         } else {
+             wlog( "Starting up fresh blockchain with default genesis state." );
+             my->chain_config->genesis.initial_timestamp = genesis_timestamp;
+         }
       }
       my->chain_config->genesis.initial_phase = options.at("max-phase-seconds").as<int32_t>();
       my->chain_config->genesis.initial_round = options.at("max-round-seconds").as<int32_t>();
