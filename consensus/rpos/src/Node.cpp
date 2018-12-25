@@ -129,7 +129,8 @@ namespace ultrainio {
             run();
         } else {
             pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
-            if (pass_time_to_genesis.count() == 0) {
+            // run when genesis in startup period
+            if (pass_time_to_genesis.count() == 0 || StakeVoteBase::isGenesisLeaderAndInGenesisPeriod()) {
                 m_ready = true;
                 run();
             } else {

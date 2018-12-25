@@ -75,10 +75,22 @@ namespace ultrainio {
         dlog("--------- committee mroot is ${mroot}", ("mroot", m_committeeMroot));
     }
 
+    // static
     bool StakeVoteBase::committeeHasWorked() {
-        wlog("be caution to call this");
         static const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         return ro_api.is_genesis_finished();
+    }
+
+    // static
+    bool StakeVoteBase::isGenesisLeaderAndInGenesisPeriod() {
+        boost::chrono::minutes genesisElapsed
+                = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - Genesis::s_time);
+        if ((genesisElapsed < boost::chrono::minutes(Genesis::s_genesisStartupTime))
+                && StakeVoteBase::getMyAccount() == AccountName(Genesis::kGenesisAccount)
+                && !committeeHasWorked()) {
+            return true;
+        }
+        return false;
     }
 
     bool StakeVoteBase::committeeHasWorked2() const {

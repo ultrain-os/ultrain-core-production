@@ -28,6 +28,8 @@ namespace ultrainio {
 
         static bool committeeHasWorked();
 
+        static bool isGenesisLeaderAndInGenesisPeriod();
+
         static bool newRound(ConsensusPhase phase, int baxCount);
 
         // StakeVoteRandom
