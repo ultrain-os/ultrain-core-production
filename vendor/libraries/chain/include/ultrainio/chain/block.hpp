@@ -64,6 +64,24 @@ namespace ultrainio { namespace chain {
    };
    using signed_block_ptr = std::shared_ptr<signed_block>;
 
+   // block record struct in database
+   struct block_db_record : public signed_block_header {
+      using signed_block_header::signed_block_header;
+      block_db_record(const signed_block& block):signed_block_header(block),
+                                              block_extensions(block.block_extensions){
+         for (auto& t : block.transactions) {
+            if (t.trx.contains<transaction_id_type>()) {
+               trx_ids.emplace_back(t.trx.get<transaction_id_type>());
+            } else {
+               trx_ids.emplace_back(t.trx.get<packed_transaction>().id());
+            }
+         }
+      }
+
+      vector<transaction_id_type>   trx_ids;
+      extensions_type               block_extensions;
+   };
+
    struct producer_confirmation {
       block_id_type   block_id;
       digest_type     block_digest;
@@ -79,3 +97,4 @@ FC_REFLECT_ENUM( ultrainio::chain::transaction_receipt::status_enum,
 FC_REFLECT(ultrainio::chain::transaction_receipt_header, (status)(cpu_usage_us)(net_usage_words) )
 FC_REFLECT_DERIVED(ultrainio::chain::transaction_receipt, (ultrainio::chain::transaction_receipt_header), (trx) )
 FC_REFLECT_DERIVED(ultrainio::chain::signed_block, (ultrainio::chain::signed_block_header), (transactions)(block_extensions) )
+FC_REFLECT_DERIVED(ultrainio::chain::block_db_record, (ultrainio::chain::signed_block_header), (trx_ids)(block_extensions) )

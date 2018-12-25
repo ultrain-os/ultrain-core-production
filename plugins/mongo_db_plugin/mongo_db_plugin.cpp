@@ -922,7 +922,9 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
                     kvp( "block_id", block_id_str ),
                     kvp( "irreversible", b_bool{false} ));
 
-   auto v = to_variant_with_abi( *bs->block );
+   chain::block_db_record bdr(*bs->block);
+   ilog("save block, num: ${n}", ("n", block_num));
+   auto v = to_variant_with_abi( bdr );
    json = fc::json::to_string( v );
    try {
       const auto& value = bsoncxx::from_json( json );
