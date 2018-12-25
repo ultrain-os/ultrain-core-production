@@ -29,7 +29,7 @@ fc::variant call( const std::string& url,
    try {
        vector<string> headers; //pass an empty header vector
        auto sp = std::make_unique<ultrainio::client::http::connection_param>(context, parse_url(url) + path,  false, headers);
-       return ultrainio::client::http::do_http_call( *sp, fc::variant(v), true, false );
+       return ultrainio::client::http::do_http_call( *sp, fc::variant(v), false, false );
    }
    catch(client::http::connection_exception& e) {
        std::cerr << e.to_detail_string() << std::endl;

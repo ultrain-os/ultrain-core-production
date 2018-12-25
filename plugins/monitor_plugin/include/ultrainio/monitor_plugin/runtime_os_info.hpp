@@ -175,7 +175,7 @@ public:
       uint64_t totalSize = 0;
 #if defined( __linux__ )
       struct statfs diskInfo;
-      statfs("/root/workspace/log/", &diskInfo);
+      statfs("/", &diskInfo);
       auto all = diskInfo.f_blocks - diskInfo.f_bfree + diskInfo.f_bavail;
       totalSize = ((diskInfo.f_bsize >> 10) * all) >> 10; //unit: MB
 #endif
@@ -186,7 +186,7 @@ public:
       uint64_t usedSize = 0;
 #if defined( __linux__ )
       struct statfs diskInfo;
-      statfs("/root/workspace/log/", &diskInfo);
+      statfs("/", &diskInfo);
       auto usedBlocks = diskInfo.f_blocks - diskInfo.f_bfree;
       usedSize = ((diskInfo.f_bsize >> 10) * usedBlocks) >> 10; //unit: MB
 #endif
