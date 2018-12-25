@@ -50,6 +50,7 @@ namespace ultrainio {
         float        cpu;
         uint32_t     memory;          // kB
         uint32_t     virtualMemory;   // kB
+        uint64_t     usedStorage;
         std::vector<string> activePeers;
     };
 
@@ -62,6 +63,7 @@ namespace ultrainio {
         std::string  privateKey;
         std::string  account;
         uint32_t     dbTotalMem;
+        uint64_t     storageSize;
         std::vector<string> configuredPeers;
     };
 
@@ -74,10 +76,10 @@ namespace ultrainio {
     {
     public:
         UranusNodeMonitor(std::weak_ptr<UranusNode> pNode):m_pNode(pNode) {
-            phaseStr[0] = "kPhaseInit";
-            phaseStr[1] = "kPhaseBA0";
-            phaseStr[2] = "kPhaseBA1";
-            phaseStr[3] = "kPhaseBAX";
+            phaseStr[0] = "Init";
+            phaseStr[1] = "BA0";
+            phaseStr[2] = "BA1";
+            phaseStr[3] = "BAX";
             setCallbackInNode();
         }
 
@@ -136,6 +138,7 @@ namespace ultrainio {
                 reportData.ba1BlockTime      = m_ba1BlockTime;
                 reportData.memory            = m_perfMonitor.get_proc_mem();
                 reportData.virtualMemory     = m_perfMonitor.get_proc_virtualmem();
+                reportData.usedStorage       = m_perfMonitor.get_storage_usage_size();
 
                 uint64_t currentTotalCpu     = m_perfMonitor.get_cpu_total_occupy();
                 uint64_t currentMyCpu        = m_perfMonitor.get_cpu_proc_occupy();
@@ -177,6 +180,7 @@ namespace ultrainio {
 
                 const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
                 staticConfig.dbTotalMem        = chain.db().get_segment_manager()->get_size();
+                staticConfig.storageSize       = m_perfMonitor.get_storage_total_size();
 
                 if(staticConfig.genesisLeaderPk.size() > 128) {
                     staticConfig.genesisLeaderPk = staticConfig.genesisLeaderPk.substr(staticConfig.genesisLeaderPk.size() - 128);
@@ -221,7 +225,7 @@ namespace ultrainio {
 
             m_isProposer[0].blockNum = m_isProposer[1].blockNum;
             m_isProposer[0].isProposer = m_isProposer[1].isProposer;
-            m_isProposer[1].blockNum = appbase::app().get_plugin<chain_plugin>().chain().head_block_num() + 1;
+            m_isProposer[1].blockNum = consensus_block_num;
             m_isProposer[1].isProposer = isProposer;
         }
 
@@ -250,6 +254,6 @@ namespace ultrainio {
 
 FC_REFLECT( ultrainio::periodic_report_dynamic_data, (nodeIp)(minerName)(blockNum)(dbFreeMem)(phase)(baxCount)(transactionNum)(blockProposer)(syncing)
                                                      (syncFailed)(connected)(ready)(blockHash)(previousBlockHash)(isProposer)(ba0BlockTime)
-                                                     (ba1BlockTime)(cpu)(memory)(virtualMemory)(activePeers) )
+                                                     (ba1BlockTime)(cpu)(memory)(virtualMemory)(usedStorage)(activePeers) )
 FC_REFLECT( ultrainio::periodic_report_static_data, (nodeIp)(version)(nonProducingNode)(genesisLeaderPk)(publicKey)
-                                                    (privateKey)(account)(dbTotalMem)(configuredPeers) )
+                                                    (privateKey)(account)(dbTotalMem)(storageSize)(configuredPeers) )

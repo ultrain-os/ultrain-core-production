@@ -2,6 +2,7 @@
 
 #if defined( __linux__ )
 #include <unistd.h>
+#include <sys/statfs.h>
 //#include <sys/time.h>
 #endif
 
@@ -168,6 +169,28 @@ public:
 #endif
 
       return vmsize;
+  }
+
+  uint64_t get_storage_total_size() const {
+      uint64_t totalSize = 0;
+#if defined( __linux__ )
+      struct statfs diskInfo;
+      statfs("/root/workspace/log/", &diskInfo);
+      auto all = diskInfo.f_blocks - diskInfo.f_bfree + diskInfo.f_bavail;
+      totalSize = ((diskInfo.f_bsize >> 10) * all) >> 10; //unit: MB
+#endif
+      return totalSize;
+  }
+
+  uint64_t get_storage_usage_size() const {
+      uint64_t usedSize = 0;
+#if defined( __linux__ )
+      struct statfs diskInfo;
+      statfs("/root/workspace/log/", &diskInfo);
+      auto usedBlocks = diskInfo.f_blocks - diskInfo.f_bfree;
+      usedSize = ((diskInfo.f_bsize >> 10) * usedBlocks) >> 10; //unit: MB
+#endif
+     return usedSize;
   }
 
 private:

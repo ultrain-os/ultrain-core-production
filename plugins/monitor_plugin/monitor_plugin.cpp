@@ -9,6 +9,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
+#include <thread>
 #include "httpc_only_send.hpp"
 
 using namespace ultrainio::client::http;
@@ -28,7 +29,7 @@ fc::variant call( const std::string& url,
    try {
        vector<string> headers; //pass an empty header vector
        auto sp = std::make_unique<ultrainio::client::http::connection_param>(context, parse_url(url) + path,  false, headers);
-       return ultrainio::client::http::do_http_call( *sp, fc::variant(v), false, false );
+       return ultrainio::client::http::do_http_call( *sp, fc::variant(v), true, false );
    }
    catch(client::http::connection_exception& e) {
        std::cerr << e.to_detail_string() << std::endl;
@@ -87,7 +88,9 @@ void monitor_plugin_impl::startMonitorTaskTimer() {
             ilog("report task timer be canceled.");
         } else {
             auto start_timestamp = fc::time_point::now();
-            processReportTask();
+            boost::function0<void> foo =  boost::bind(&monitor_plugin_impl::processReportTask, this);
+            std::thread thrd(foo);
+            thrd.detach();
             startMonitorTaskTimer();
             ilog("report task taking time ${time}", ("time", fc::time_point::now() - start_timestamp));
         }
