@@ -1735,6 +1735,10 @@ namespace ultrainio {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
         const auto& cfg = chain.get_global_properties().configuration;
         const auto &pbs = chain.pending_block_state();
+        if (!m_voterPreRunBa0InProgress) {
+            return false;
+        }
+
         if (!pbs) {
             ilog("------- NO PBS in preRunBa0BlockStep, abort");
             return false;
