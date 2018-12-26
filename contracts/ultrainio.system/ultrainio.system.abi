@@ -250,8 +250,7 @@
       "base": "",
       "fields": [
          {"name":"from", "type":"account_name"},
-         {"name":"receiver", "type":"account_name"},
-         {"name":"unstake_cons_quantity", "type":"asset"}
+         {"name":"receiver", "type":"account_name"}
       ]
     },{
       "name": "refundcons",

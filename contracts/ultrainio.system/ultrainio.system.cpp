@@ -163,7 +163,7 @@ namespace ultrainiosystem {
             print("updateactiveminers   del proposerminer:",ultrainio::name{(*prod).owner}," (*produceriter).total_cons_staked:",(*prod).total_cons_staked);
             if((*prod).total_cons_staked > 0){
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, undelegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
-                  { N(utrio.stake),(*prod).owner,asset((*prod).total_cons_staked)} );
+                  { N(utrio.stake),(*prod).owner} );
             }
          }
       }

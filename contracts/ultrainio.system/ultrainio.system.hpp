@@ -255,7 +255,7 @@ namespace ultrainiosystem {
                             asset unstake_net_quantity, asset unstake_cpu_quantity );
 
          void delegatecons( account_name from, account_name receiver,asset stake_net_quantity);
-         void undelegatecons( account_name from, account_name receiver,asset unstake_net_quantity);
+         void undelegatecons( account_name from, account_name receiver);
          /**
           * Increases receiver's ram quota based upon current price and quantity of
           * tokens provided. An inline transfer from receiver to system contract of

@@ -370,7 +370,7 @@ namespace ultrainiosystem {
    {
       require_auth( from );
       ultrainio_assert( stake_cons_delta != asset(0), "should stake non-zero amount" );
-      ultrainio_assert( stake_cons_delta.amount >= 1000000 || stake_cons_delta.amount <= -1000000 , "should stake at least 100 amount" );
+      ultrainio_assert( stake_cons_delta.amount >= 1000000 || stake_cons_delta.amount < 0 , "should stake at least 100 amount" );
       // update consensus stake delegated from "from" to "receiver"
       {
          del_bandwidth_table     del_tbl( _self, from);
@@ -384,9 +384,15 @@ namespace ultrainiosystem {
          }
          else {
             del_tbl.modify( itr, 0, [&]( auto& dbo ){
-                  dbo.cons_weight    += stake_cons_delta;
+                  if(stake_cons_delta.amount < 0)
+                  {
+                    stake_cons_delta = asset(0) - dbo.cons_weight;
+                    dbo.cons_weight = asset(0);
+                  }else{
+                     dbo.cons_weight    += stake_cons_delta;
                });
          }
+         ultrainio_assert( from == receiver ||(name{from}.to_string().find( "utrio." ) == 0) , "Ordinary account cannot be others delegatecons/undelegatecons" );
          ultrainio_assert( asset(0) <= itr->cons_weight, "insufficient staked consensous bandwidth" );
          if ( itr->net_weight == asset(0) && itr->cpu_weight == asset(0) && itr->cons_weight == asset(0)) {
             del_tbl.erase( itr );
@@ -447,7 +453,7 @@ namespace ultrainiosystem {
             out.actions.emplace_back( permission_level{ from, N(active) }, _self, NEX(refundcons), from );
             out.delay_sec = refund_delay;
             cancel_deferred( from ); // TODO: Remove this line when replacing deferred trxs is fixed
-            out.send( from, from, true );
+            out.send( from, _self, true );
          } else {
             cancel_deferred( from );
          }
@@ -537,10 +543,10 @@ namespace ultrainiosystem {
             if(combosize > 0)
             {
                _gstate.total_resources_staked += combosize;
-               if(reslease_itr->end_time < now()){
-                  ultrainio_assert(false, "resource lease endtime already expired" );
-               }
-               cuttingfee = (reslease_itr->end_time - now())/seconds_per_day*combosize;
+               ultrainio_assert(reslease_itr->end_time > now(), "resource lease endtime already expired" );
+               double remain_time = (reslease_itr->end_time - now())/(double)seconds_per_day;
+               cuttingfee = ceil(remain_time)*combosize;
+               print("resourcelease remain_time:",remain_time," cuttingfee:",cuttingfee);
                _gstate.total_ram_bytes_reserved += (uint64_t)combosize*bytes;
             } else if(days > 0)
             {
@@ -593,13 +599,12 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
       change_cons( from, receiver, stake_cons_quantity);
    } // delegatecons
 
-   void system_contract::undelegatecons( account_name from, account_name receiver,asset unstake_cons_quantity)
+   void system_contract::undelegatecons( account_name from, account_name receiver)
    {
-      ultrainio_assert( asset() <= unstake_cons_quantity, "must unstake a positive amount" );
       ultrainio_assert( _gstate.total_activated_stake >= _gstate.min_activated_stake,
                     "cannot undelegate cons until the chain is activated (at least 15% of all tokens participate in voting)" );
 
-      change_cons( from, receiver, -unstake_cons_quantity);
+      change_cons( from, receiver, asset(-1));
    } // undelegatecons
 
    void system_contract::refund( const account_name owner ) {

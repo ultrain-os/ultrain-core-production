@@ -1144,20 +1144,17 @@ struct delegate_cons_subcommand {
 struct undelegate_cons_subcommand {
    string from_str;
    string receiver_str;
-   string unstake_cons_amount;
 
    undelegate_cons_subcommand(CLI::App* actionRoot) {
       auto undelegate_cons = actionRoot->add_subcommand("undelegatecons", localized("Undelegate consensus weight bandwidth"));
       undelegate_cons->add_option("from", from_str, localized("The account undelegating consensus weight bandwidth"))->required();
       undelegate_cons->add_option("receiver", receiver_str, localized("The account to undelegate consensus weight bandwidth from"))->required();
-      undelegate_cons->add_option("unstake_cons_quantity", unstake_cons_amount, localized("The amount of UTR to undelegate for network bandwidth"))->required();
       add_standard_transaction_options(undelegate_cons);
 
       undelegate_cons->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
-                  ("receiver", receiver_str)
-                  ("unstake_cons_quantity", to_asset(unstake_cons_amount));
+                  ("receiver", receiver_str);
          send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(undelegatecons), act_payload)});
       });
    }
