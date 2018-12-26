@@ -390,6 +390,7 @@ namespace ultrainiosystem {
                     dbo.cons_weight = asset(0);
                   }else{
                      dbo.cons_weight    += stake_cons_delta;
+                  }
                });
          }
          ultrainio_assert( from == receiver ||(name{from}.to_string().find( "utrio." ) == 0) , "Ordinary account cannot be others delegatecons/undelegatecons" );
