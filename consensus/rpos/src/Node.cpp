@@ -230,16 +230,12 @@ namespace ultrainio {
     void UranusNode::fastProcess() {
         msgkey msg_key;
         msg_key.blockNum = getBlockNum();
-        msg_key.phase = kPhaseBA0;
+        msg_key.phase = kPhaseBA1;
 
-        if ((m_schedulerPtr->findProposeCache(msg_key))
-            && (m_schedulerPtr->findEchoCache(msg_key))) {
-            msg_key.phase = kPhaseBA1;
-            if (m_schedulerPtr->isFastba0(msg_key)) {
-                dlog("fastProcess. fastblock begin. blockNum = ${blockNum}.",("blockNum", getBlockNum()));
-                ba0Process();
-                return;
-            }
+        if (m_schedulerPtr->isFastba0(msg_key)) {
+            dlog("fastProcess. fastblock begin. blockNum = ${blockNum}.",("blockNum", getBlockNum()));
+            ba0Process();
+            return;
         }
 
         ba0Loop(getRoundInterval());
