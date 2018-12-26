@@ -7,11 +7,7 @@
 namespace ultrainiosystem {
 
    const int64_t  min_pervote_daily_pay = 100'0000;
-   const uint32_t rate1                 = 50;
-   const uint32_t rate2                 = 100;
-   const uint32_t rate3                 = 150;
-   const uint32_t rate4                 = 200;
-   const uint32_t rate[num_rate]        = {rate1,rate2,rate3,rate4,rate3,rate2,rate1};
+   uint32_t reward_preblock = 3;
 
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
       using namespace ultrainio;
@@ -41,12 +37,9 @@ namespace ultrainiosystem {
 
 	  auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
-	     int temp = 2*(tapos_block_num()-(int)_gstate.start_block)/(int)blocks_per_year;
-     	 //int temp = 12*(tapos_block_num()-(int)_gstate.start_block)/(int)blocks_per_hour;
-         const int interval = temp < num_rate ? temp:(num_rate-1);
-         _gstate.total_unpaid_blocks[interval]++;
+         _gstate.total_unpaid_blocks++;
          _producers.modify( prod, 0, [&](auto& p ) {
-               p.unpaid_blocks[interval]++;
+               p.unpaid_blocks++;
                p.total_produce_block++;
          });
       }
@@ -92,11 +85,9 @@ namespace ultrainiosystem {
 
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
-	     int temp = 2*(tapos_block_num()-(int)_gstate.start_block)/(int)blocks_per_year;
-         const int interval = temp < num_rate ? temp:(num_rate-1);
-         _gstate.total_unpaid_blocks[interval]+= number;
+         _gstate.total_unpaid_blocks += number;
          _producers.modify( prod, 0, [&](auto& p ) {
-               p.unpaid_blocks[interval]+= number;
+               p.unpaid_blocks += number;
                p.total_produce_block++;
          });
       }
@@ -118,35 +109,32 @@ namespace ultrainiosystem {
 
       uint64_t p10 = symbol_type(system_token_symbol).precision();
       int64_t new_tokens = 0;
-      print("claimrewards gloable:\n[");
-      for(int i=0;i<num_rate;++i){
-         print("{",i,", ",_gstate.total_unpaid_blocks[i],"},");
-         new_tokens += static_cast<int64_t>(_gstate.total_unpaid_blocks[i]*rate[i]);
-         _gstate.total_unpaid_blocks[i] = 0;
-      }
+      new_tokens = static_cast<int64_t>(_gstate.total_unpaid_blocks*reward_preblock);
+      _gstate.total_unpaid_blocks = 0;
       new_tokens*=p10;
-      print("]\nclaimrewards new_tokens:",new_tokens,"\n");
-      INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
-                                                    {N(ultrainio), asset(new_tokens), std::string("issue tokens for claimrewards")} );
-
-      int64_t producer_per_block_pay = 0;
-      print("claimrewards proudcer:\n[");
-      for(int i=0;i<num_rate;++i){
-         print("{",i,", ",prod.unpaid_blocks[i],"},");
-         producer_per_block_pay += static_cast<int64_t>(prod.unpaid_blocks[i]*rate[i]);
+      asset fee_tokens = ultrainio::token(N(utrio.token)).get_balance(N(utrio.fee),symbol_type(CORE_SYMBOL).name());
+      print("\nclaimrewards new_tokens:",new_tokens," fee_tokens:",fee_tokens.amount,"\n");
+      if(fee_tokens.amount < new_tokens){
+         INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
+                                                      {N(ultrainio), asset(new_tokens), std::string("issue tokens for claimrewards")} );
       }
+      int64_t producer_per_block_pay = 0;
+      producer_per_block_pay += static_cast<int64_t>(prod.unpaid_blocks*reward_preblock);
       producer_per_block_pay*=p10;
-      print("]\nclaimrewards producer_pay:",producer_per_block_pay,"\n");
+      print("\nclaimrewards producer_pay:",producer_per_block_pay,"\n");
       _producers.modify( prod, 0, [&](auto& p) {
          p.last_claim_time = ct;
-         for(int i=0;i<num_rate;++i) {
-         p.unpaid_blocks[i] = 0;
-	   }
+         p.unpaid_blocks = 0;
       });
 
       if( producer_per_block_pay > 0 ) {
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(ultrainio),N(active)},
-                                                       { N(ultrainio), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
+         uint64_t pay_account;
+         if(fee_tokens.amount < producer_per_block_pay)
+            pay_account = N(ultrainio);
+         else
+            pay_account = N(utrio.fee);
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {pay_account,N(active)},
+                                                       { pay_account, owner, asset(producer_per_block_pay), std::string("producer block pay") } );
       }
    }
 

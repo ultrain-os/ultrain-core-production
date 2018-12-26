@@ -21,7 +21,6 @@ namespace ultrainiosystem {
    using ultrainio::const_mem_fun;
    using ultrainio::block_timestamp;
 
-   const int num_rate = 7;
    const uint64_t master_chain_name = 0;
    const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
    const uint64_t default_chain_name = N(default);  //default chain, will be assigned by system.
@@ -54,7 +53,7 @@ namespace ultrainiosystem {
       uint64_t             last_pervote_bucket_fill = 0;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
-      uint64_t             total_unpaid_blocks[num_rate] {}; /// all blocks which have been produced but not paid
+      uint64_t             total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
       uint64_t             thresh_activated_stake_time = 0;
       double               total_producer_vote_weight = 0; /// the sum of all producer votes
@@ -85,7 +84,7 @@ namespace ultrainiosystem {
       bool                  is_enabled = false;
       bool                  hasactived = false;
       std::string           url;
-      uint64_t              unpaid_blocks[num_rate] {};
+      uint64_t              unpaid_blocks = 0;
       uint64_t              total_produce_block;
       uint64_t              last_claim_time = 0;
       uint64_t              location = 0;

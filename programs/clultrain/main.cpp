@@ -948,26 +948,24 @@ struct list_producers_subcommand {
          auto weight = result.thresh_activated_stake_time;
          if ( !weight )
             weight = 1;
-        uint64_t total_unpaid_blocks = 0;
-         printf("%-13s %-54s  %-16s  %-10s  %-8s  %-20.20s    %-12s\n", "Producer", "Producer key", "Consensus weight", "is_enabled", "location","unpaid blocks","total blocks");
+         uint64_t total_unpaid_blocks = 0;
+         uint64_t total_produce_blocks = 0;
+         printf("%-13s %-54s  %-16s  %-10s  %-8s  %-13s  %-12s\n", "Producer", "Producer key", "Consensus weight", "is_enabled", "location","unpaid blocks","total blocks");
          for ( auto& row : result.rows ){
-            printf("%-13.13s %-54.54s  %-16ld  %-10u  %-8lu",
+            printf("%-13.13s %-54.54s  %-16ld  %-10u  %-8lu  %-13lu  %-12lu\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["total_cons_staked"].as_int64(),
                    row["is_enabled"].as_bool(),
-                   row["location"].as_uint64()
+                   row["location"].as_uint64(),
+                   row["unpaid_blocks"].as_uint64(),
+                   row["total_produce_block"].as_uint64()
                    );
-			printf("  [");
-            for (auto tmp : row["unpaid_blocks"].get_array())
-            {
-                total_unpaid_blocks += tmp.as_uint64();
-                printf("%lu,",tmp.as_uint64());
-            }
-            printf("]");
-            printf("        %-12lu\n",row["total_produce_block"].as_uint64());
+            total_unpaid_blocks += row["unpaid_blocks"].as_uint64();
+            total_produce_blocks += row["total_produce_block"].as_uint64();
 	    }
-        std::cout << "total_unpaid_blocks: " << total_unpaid_blocks << std::endl;
+        std::cout << "total_unpaid_blocks: " << total_unpaid_blocks <<std::endl;
+        std::cout << "total_produce_blocks: " << total_produce_blocks << std::endl;
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;
       });

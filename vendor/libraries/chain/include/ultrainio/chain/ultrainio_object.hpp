@@ -2,7 +2,6 @@
 
 namespace ultrainio { namespace chain {
 
-    const int num_rate = 7;
     const uint64_t master_chain_name = 0;
 
     struct role_base {
@@ -16,7 +15,7 @@ namespace ultrainio { namespace chain {
       bool                  is_enabled = false;
       bool                  hasactived = false;
       std::string           url;
-      uint64_t              unpaid_blocks[num_rate] {};
+      uint64_t              unpaid_blocks = 0;
       uint64_t              total_produce_block = 0;
       uint64_t              last_claim_time = 0;
       uint64_t              location = 0;
