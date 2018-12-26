@@ -52,6 +52,7 @@ class monitor_plugin_impl {
     monitor_plugin_impl();
     ~monitor_plugin_impl() = default;
 
+    void shutdown();
     void startMonitorTaskTimer();
 
     void sendStaticConfigInfo();
@@ -63,6 +64,7 @@ class monitor_plugin_impl {
     bool            needReportTask = true;
     uint32_t        reportInterval;
     vector<string>  supplied_peers;
+    std::thread     m_report_thrd;
 
     monitor_apis::monitor_only m_monitorHandler;
 
@@ -77,6 +79,15 @@ monitor_plugin_impl::monitor_plugin_impl() : firstLoop(true) {
     m_reportTaskTimer.reset(new boost::asio::steady_timer(app().get_io_service()));
 }
 
+void monitor_plugin_impl::shutdown() {
+    if(m_reportTaskTimer) {
+        m_reportTaskTimer->cancel();
+    }
+    if(m_report_thrd.joinable()) {
+        m_report_thrd.join();
+    }
+}
+
 void monitor_plugin_impl::startMonitorTaskTimer() {
     if(!needReportTask)
         return;
@@ -88,9 +99,7 @@ void monitor_plugin_impl::startMonitorTaskTimer() {
             ilog("report task timer be canceled.");
         } else {
             auto start_timestamp = fc::time_point::now();
-            boost::function0<void> foo =  boost::bind(&monitor_plugin_impl::processReportTask, this);
-            std::thread thrd(foo);
-            thrd.detach();
+            processReportTask();
             startMonitorTaskTimer();
             ilog("report task taking time ${time}", ("time", fc::time_point::now() - start_timestamp));
         }
@@ -104,9 +113,18 @@ void monitor_plugin_impl::processReportTask() {
       firstLoop = false;
     }
 
-    periodic_report_dynamic_data rst = m_monitorHandler.getPeriodicReortData();
-    rst.nodeIp = self_endpoint.address().to_v4().to_string();
-    call(monitor_central_server, call_path_dynamic, rst);
+    std::shared_ptr<periodic_report_dynamic_data> dynamicData = std::make_shared<periodic_report_dynamic_data>();
+    m_monitorHandler.getDynamicNodeData(*dynamicData);
+    auto foo = [dynamicData, this](){
+                   this->m_monitorHandler.getDynamicOsData(*dynamicData);
+                   dynamicData->nodeIp = this->self_endpoint.address().to_v4().to_string();
+                   call(this->monitor_central_server, this->call_path_dynamic, *dynamicData);
+               };
+    std::thread thrd(foo);
+    m_report_thrd.swap(thrd);
+    if(thrd.joinable()) {
+        thrd.join();
+    }
   }
   catch(chain::node_not_found_exception& e) {
     auto exceptionInfo = std::string("exception happened, node not initialized.");
@@ -179,6 +197,7 @@ void monitor_plugin::plugin_startup() {
 
 void monitor_plugin::plugin_shutdown() {
    // OK, that's enough magic
+   my->shutdown();
 }
 
 monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const {
@@ -229,12 +248,20 @@ monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const {
         return {controllerMonitor.findEchoApMsgByKey(params)};
      }
 
-     periodic_report_dynamic_data monitor_only::getPeriodicReortData() {
+     void monitor_only::getDynamicNodeData(periodic_report_dynamic_data& reportData) {
         if(nullptr == m_nodeMonitor) {
             auto nodePtr = getNodePtr();
             m_nodeMonitor = std::make_shared<UranusNodeMonitor>(nodePtr);
         }
-        return m_nodeMonitor->getReortData();
+        m_nodeMonitor->getNodeData(reportData);
+     }
+
+     void monitor_only::getDynamicOsData(periodic_report_dynamic_data& reportData) {
+        if(nullptr == m_nodeMonitor) {
+            auto nodePtr = getNodePtr();
+            m_nodeMonitor = std::make_shared<UranusNodeMonitor>(nodePtr);
+        }
+        m_nodeMonitor->getOsData(reportData);
      }
 
      periodic_report_static_data monitor_only::getStaticConfigInfo() {

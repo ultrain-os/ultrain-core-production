@@ -75,7 +75,7 @@ namespace ultrainio {
     class UranusNodeMonitor
     {
     public:
-        UranusNodeMonitor(std::weak_ptr<UranusNode> pNode):m_pNode(pNode) {
+        UranusNodeMonitor(std::weak_ptr<UranusNode> pNode):m_pNode(pNode),m_lastTotalCpu(0),m_lastMyCpu(0) {
             phaseStr[0] = "Init";
             phaseStr[1] = "BA0";
             phaseStr[2] = "BA1";
@@ -106,8 +106,7 @@ namespace ultrainio {
             return tempNodeInfo;
         }
 
-        periodic_report_dynamic_data getReortData() {
-            periodic_report_dynamic_data reportData;
+        void getNodeData(periodic_report_dynamic_data& reportData) {
             std::shared_ptr<UranusNode> pNode = m_pNode.lock();
             if (pNode) {
                 reportData.minerName         = std::string(StakeVoteBase::getMyAccount());
@@ -136,25 +135,6 @@ namespace ultrainio {
                 }
                 reportData.ba0BlockTime      = m_ba0BlockTime;
                 reportData.ba1BlockTime      = m_ba1BlockTime;
-                reportData.memory            = m_perfMonitor.get_proc_mem();
-                reportData.virtualMemory     = m_perfMonitor.get_proc_virtualmem();
-                reportData.usedStorage       = m_perfMonitor.get_storage_usage_size();
-
-                uint64_t currentTotalCpu     = m_perfMonitor.get_cpu_total_occupy();
-                uint64_t currentMyCpu        = m_perfMonitor.get_cpu_proc_occupy();
-                if(m_lastTotalCpu == 0 && m_lastMyCpu == 0) {
-                    reportData.cpu = 0;
-                }
-                else {
-                    if(currentTotalCpu - m_lastTotalCpu > 0) {
-                        reportData.cpu = 100.0f * float(currentMyCpu - m_lastMyCpu) / float(currentTotalCpu - m_lastTotalCpu);
-                    }
-                    else {
-                        reportData.cpu = 0;
-                    }
-                }
-                m_lastTotalCpu = currentTotalCpu;
-                m_lastMyCpu = currentMyCpu;
 
                 vector<connection_status> connectionsStatus = appbase::app().get_plugin<net_plugin>().connections();
                 for (const auto& connectStatus : connectionsStatus) {
@@ -163,8 +143,28 @@ namespace ultrainio {
                     }
                 }
             }
+        }
 
-            return reportData;
+        void getOsData(periodic_report_dynamic_data& reportData) {
+            reportData.memory            = m_perfMonitor.get_proc_mem();
+            reportData.virtualMemory     = m_perfMonitor.get_proc_virtualmem();
+            reportData.usedStorage       = m_perfMonitor.get_storage_usage_size();
+
+            uint64_t currentTotalCpu     = m_perfMonitor.get_cpu_total_occupy();
+            uint64_t currentMyCpu        = m_perfMonitor.get_cpu_proc_occupy();
+            if(m_lastTotalCpu == 0 && m_lastMyCpu == 0) {
+                reportData.cpu = 0;
+            }
+            else {
+                if(currentTotalCpu - m_lastTotalCpu > 0) {
+                    reportData.cpu = 100.0f * float(currentMyCpu - m_lastMyCpu) / float(currentTotalCpu - m_lastTotalCpu);
+                }
+                else {
+                    reportData.cpu = 0;
+                }
+            }
+            m_lastTotalCpu = currentTotalCpu;
+            m_lastMyCpu = currentMyCpu;
         }
 
         periodic_report_static_data getStaticConfigInfo() const {
