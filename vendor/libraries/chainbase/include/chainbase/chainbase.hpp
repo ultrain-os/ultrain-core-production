@@ -239,11 +239,8 @@ namespace chainbase {
                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
             }
 
-            if( enable_cache() )
-               _cache.back().new_values.emplace( std::pair< typename value_type::id_type, const value_type& >( (*insert_result.first).id, *insert_result.first ) );
-            else if( !_indices_backup.emplace( *insert_result.first ).second )
-                   BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
             ++_next_id;
+            backup_create(*insert_result.first);
             on_create( *insert_result.first );
             return *insert_result.first;
          }
@@ -253,38 +250,12 @@ namespace chainbase {
             on_modify( obj );
             auto ok = _indices.modify( _indices.iterator_to( obj ), m );
             if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
-            if( enable_cache() ){
-                auto& head = _cache.back();
-                auto it = head.new_values.find(obj.id);
-                if( it != head.new_values.end() )
-                {
-                    it->second=obj;
-                    return;
-                }
-                it = head.modify_values.find(obj.id);
-                if( it != head.modify_values.end() )
-                {
-                    it->second=obj;
-                    return;
-                }
-                head.modify_values.emplace( std::pair< typename value_type::id_type, const value_type& >( obj.id, obj ) );
-            }else
-                if( !_indices_backup.modify( _indices_backup.find( obj.id ), [&]( value_type& v ) {
-                                           v = obj;
-                  } ))
-                    BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
+            backup_modify( obj );
          }
 
          void remove( const value_type& obj ) {
             on_remove( obj );
-            if( enable_cache() ){
-                auto& head = _cache.back();
-                if( !head.new_values.erase(obj.id) ){
-                    head.modify_values.erase(obj.id);
-                    head.removed_ids.insert(obj.id);
-                }
-            }else
-                _indices_backup.erase( _indices_backup.find( obj.id ) );
+            backup_remove( obj );
             _indices.erase( _indices.iterator_to( obj ) );
          }
 
@@ -351,8 +322,16 @@ namespace chainbase {
                _stack.emplace_back( _indices.get_allocator() );
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
-               if( _cache.size() && !_cache_on ) { _is_cached = false;flush(true);}//bug
-               if( _is_cached ) _cache.emplace_back( _indices_backup.get_allocator() );
+               if( _cache_on)
+               {
+                   _is_cached=true;
+                   _cache.emplace_back( _indices_backup.get_allocator() );
+               }else if(_is_cached)
+               {
+                   _is_cached = false;
+                   flush(true);
+               }
+
                return session( *this, _revision );
             } else {
                return session( *this, -1 );
@@ -368,7 +347,7 @@ namespace chainbase {
          void undo() {
             if( !enabled() ) return;
 
-            if( enable_cache() ) _cache.pop_back();
+            if( _is_cached && _cache.size() ) _cache.pop_back();
 
             const auto& head = _stack.back();
 
@@ -376,7 +355,7 @@ namespace chainbase {
                auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
                   v = item.second;
                });
-               if( !enable_cache() ) {
+               if( !_is_cached ) {
                    ok = _indices_backup.modify( _indices_backup.find( item.second.id ), [&]( value_type& v ) {
                                             v = std::move( item.second );
                                     }) && ok;
@@ -387,13 +366,13 @@ namespace chainbase {
             for( auto id : head.new_ids )
             {
                _indices.erase( _indices.find( id ) );
-               if( !enable_cache() ) _indices_backup.erase( _indices_backup.find( id ) );
+               if( !_is_cached ) _indices_backup.erase( _indices_backup.find( id ) );
             }
             _next_id = head.old_next_id;
 
             for( auto& item : head.removed_values ) {
                bool ok = _indices.emplace( item.second ).second;
-               if( !enable_cache() )
+               if( !_is_cached )
                    ok = _indices_backup.emplace( std::move( item.second ) ).second && ok;
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not restore object, most likely a uniqueness constraint was violated" ) );
             }
@@ -408,6 +387,55 @@ namespace chainbase {
           *
           *  This method does not change the state of the index, only the state of the undo buffer.
           */
+         void squash_cache(){
+             if( !_is_cached || ( _cache.size()<2 ) ) return;
+
+             auto& cache = _cache.back();
+             auto& prev_cache = _cache[_cache.size()-2];
+
+             for( const auto& item : cache.modify_values )
+             {
+                 auto it = prev_cache.new_values.find( item.second.id );
+                 if( it != prev_cache.new_values.end() )
+                 {
+                     it->second= item.second;
+                     continue;
+                 }
+                 it = prev_cache.modify_values.find( item.second.id );
+                 if( it != prev_cache.modify_values.end() )
+                 {
+                     it->second= item.second;
+                     continue;
+                 }
+                 assert( prev_cache.removed_ids.find(item.second.id) == prev_cache.removed_ids.end() );
+                 prev_cache.modify_values.emplace( std::move(item) );
+             }
+
+             for( auto& item : cache.new_values )
+                 prev_cache.new_values.emplace( std::move(item));
+
+             for( auto id: cache.removed_ids )
+             {
+                 auto it = prev_cache.new_values.find(id);
+                 if(  it != prev_cache.new_values.end() )
+                 {
+                     prev_cache.new_values.erase(id);
+                     continue;
+                 }
+                 it = prev_cache.modify_values.find(id);
+                 if( it != prev_cache.modify_values.end() )
+                 {
+                     prev_cache.removed_ids.emplace( id );
+                     prev_cache.modify_values.erase(id);
+                     continue;
+                 }
+                 assert( prev_cache.removed_ids.find( id ) == prev_cache.removed_ids.end() );
+                 prev_cache.removed_ids.emplace( id );
+             }
+             _cache.pop_back();
+
+         }
+
          void squash()
          {
             if( !enabled() ) return;
@@ -509,51 +537,7 @@ namespace chainbase {
             _stack.pop_back();
             --_revision;
 
-            if( enable_cache() ){
-               auto& cache = _cache.back();
-               auto& prev_cache = _cache[_cache.size()-2];
-
-               for( const auto& item : cache.modify_values )
-               {
-                  auto it = prev_cache.new_values.find( item.second.id );
-                  if( it != prev_cache.new_values.end() )
-                  {
-                     it->second= item.second;
-                     continue;
-                  }
-                  it = prev_cache.modify_values.find( item.second.id );
-                  if( it != prev_cache.modify_values.end() )
-                  {
-                     it->second= item.second;
-                     continue;
-                  }
-                  assert( prev_cache.removed_ids.find(item.second.id) == prev_cache.removed_ids.end() );
-                  prev_cache.modify_values.emplace( std::move(item) );
-               }
-
-               for( auto& item : cache.new_values )
-                  prev_cache.new_values.emplace( std::move(item));
-
-               for( auto id: cache.removed_ids )
-               {
-                  auto it = prev_cache.new_values.find(id);
-                  if(  it != prev_cache.new_values.end() )
-                  {
-                      prev_cache.new_values.erase(id);
-                      continue;
-                  }
-                  it = prev_cache.modify_values.find(id);
-                  if( it != prev_cache.modify_values.end() )
-                  {
-                      prev_cache.removed_ids.emplace( id );
-                      prev_cache.modify_values.erase(id);
-                      continue;
-                  }
-                  assert( prev_cache.removed_ids.find( id ) == prev_cache.removed_ids.end() );
-                  prev_cache.removed_ids.emplace( id );
-               }
-               _cache.pop_back();
-            }
+            squash_cache();
          }
 
          /**
@@ -600,7 +584,6 @@ namespace chainbase {
          }
 
          void set_cache(){
-            _is_cached = true;
             _cache_on  = true;
          }
 
@@ -632,8 +615,6 @@ namespace chainbase {
 
       private:
          bool enabled()const { return _stack.size(); }
-
-         bool enable_cache() const { return _cache.size()&&_is_cached; }
 
          void on_modify( const value_type& v ) {
             if( !enabled() ) return;
@@ -678,6 +659,52 @@ namespace chainbase {
 
             head.new_ids.insert( v.id );
          }
+
+         void backup_remove( const value_type& v ) {
+            if( _is_cached ){
+                if (!_cache.size()) return;
+                auto& head = _cache.back();
+                if( !head.new_values.erase(v.id) ){
+                    head.modify_values.erase(v.id);
+                    head.removed_ids.insert(v.id);
+                }
+            }else
+                _indices_backup.erase( _indices_backup.find( v.id ) );
+         }
+
+         void backup_modify( const value_type& v ) {
+            if( _is_cached ){
+                if (!_cache.size()) return;
+                auto& head = _cache.back();
+                auto it = head.new_values.find(v.id);
+                if( it != head.new_values.end() )
+                {
+                    it->second=v;
+                    return;
+                }
+                it = head.modify_values.find(v.id);
+                if( it != head.modify_values.end() )
+                {
+                    it->second=v;
+                    return;
+                }
+                head.modify_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
+            }else
+                if( !_indices_backup.modify( _indices_backup.find( v.id ), [&]( value_type& obj ) {
+                            obj = v;
+                            } ))
+                    BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
+         }
+
+         void backup_create( const value_type& v ) {
+            if( _is_cached ){
+                if (!_cache.size()) return;
+                _cache.back().new_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
+            }
+            else if( !_indices_backup.emplace( v ).second )
+                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
+         }
+
 
          boost::interprocess::deque< undo_state_type, allocator<undo_state_type> > _stack;
          boost::interprocess::deque< cache_state_type, allocator<cache_state_type> > _cache;
