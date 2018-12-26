@@ -98,10 +98,10 @@ void monitor_plugin_impl::startMonitorTaskTimer() {
         if (ec.value() == boost::asio::error::operation_aborted) {
             ilog("report task timer be canceled.");
         } else {
-            auto start_timestamp = fc::time_point::now();
+            //auto start_timestamp = fc::time_point::now();
             processReportTask();
             startMonitorTaskTimer();
-            ilog("report task taking time ${time}", ("time", fc::time_point::now() - start_timestamp));
+            //ilog("report task taking time ${time}", ("time", fc::time_point::now() - start_timestamp));
         }
     });
 }

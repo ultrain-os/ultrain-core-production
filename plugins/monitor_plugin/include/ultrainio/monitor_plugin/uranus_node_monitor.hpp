@@ -118,7 +118,7 @@ namespace ultrainio {
                 reportData.ready             = pNode->m_ready;
 
                 const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
-                reportData.dbFreeMem         = chain.db().get_segment_manager()->get_free_memory();
+                reportData.dbFreeMem         = chain.db().get_segment_manager()->get_free_memory() >> 20; //unit: M
                 reportData.blockNum          = chain.head_block_num();
                 reportData.blockHash         = chain.head_block_id().str();
                 reportData.previousBlockHash = chain.head_block_state()->prev().str();
@@ -179,7 +179,7 @@ namespace ultrainio {
                 staticConfig.account           = std::string(StakeVoteBase::getMyAccount());
 
                 const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
-                staticConfig.dbTotalMem        = chain.db().get_segment_manager()->get_size();
+                staticConfig.dbTotalMem        = (chain.db().get_segment_manager()->get_size() >> 20) + 1; //unit: M
                 staticConfig.storageSize       = m_perfMonitor.get_storage_total_size();
 
                 if(staticConfig.genesisLeaderPk.size() > 128) {
