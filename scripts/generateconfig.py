@@ -335,7 +335,8 @@ def write_config_file():
             if not os.path.isfile(fname):  # file does not exist
                         cmd = "cp template.txt " + fname
                         os.system(cmd)
-            insert_keys(fname, index_key)
+            if con.name[len(con.name)-1::len(con.name)] != '7':
+                insert_keys(fname, index_key)
             if con.name[len(con.name)-1::len(con.name)] == '7':
                 insert_non_producing(fname)
             print(hostip,con.ip,con.id)
