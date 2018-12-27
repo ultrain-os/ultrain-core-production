@@ -1,6 +1,7 @@
 #include <ultrainio.msig/ultrainio.msig.hpp>
 #include <ultrainiolib/action.hpp>
 #include <ultrainiolib/permission.hpp>
+#include <ultrainio.token/ultrainio.token.hpp>
 
 namespace ultrainio {
 
@@ -47,6 +48,13 @@ void multisig::propose() {
                                                );
    ultrainio_assert( res > 0, "transaction authorization failed" );
 
+   uint32_t feeNum = (size * 100000) / 1024; //10UGAS/K, 10UGAS = asset(100000)
+   if(feeNum < 1000) {
+       feeNum = 1000;
+   }
+   INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {proposer,N(active)},
+                        { proposer, N(utrio.ramfee), asset(feeNum), std::string("ram fee") } );
+
    proptable.emplace( proposer, [&]( auto& prop ) {
       prop.proposal_name       = proposal_name;
       prop.packed_transaction  = bytes( buffer+trx_pos, buffer+size );
@@ -68,6 +76,8 @@ void multisig::approve( account_name proposer, name proposal_name, permission_le
    auto itr = std::find( apps.requested_approvals.begin(), apps.requested_approvals.end(), level );
    ultrainio_assert( itr != apps.requested_approvals.end(), "approval is not on the list of requested approvals" );
 
+   INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {level.actor,N(active)},
+                        { level.actor, N(utrio.ramfee), asset(1000), std::string("ram fee") } );
    apptable.modify( apps, proposer, [&]( auto& a ) {
       a.provided_approvals.push_back( level );
       a.requested_approvals.erase( itr );
@@ -82,6 +92,8 @@ void multisig::unapprove( account_name proposer, name proposal_name, permission_
    auto itr = std::find( apps.provided_approvals.begin(), apps.provided_approvals.end(), level );
    ultrainio_assert( itr != apps.provided_approvals.end(), "no approval previously granted" );
 
+   INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {level.actor,N(active)},
+                        { level.actor, N(utrio.ramfee), asset(1000), std::string("ram fee") } );
    apptable.modify( apps, proposer, [&]( auto& a ) {
       a.requested_approvals.push_back(level);
       a.provided_approvals.erase(itr);
@@ -97,6 +109,9 @@ void multisig::cancel( account_name proposer, name proposal_name, account_name c
    if( canceler != proposer ) {
       ultrainio_assert( unpack<transaction_header>( prop.packed_transaction ).expiration < ultrainio::time_point_sec(now()), "cannot cancel until expiration" );
    }
+
+   INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {canceler,N(active)},
+                        { canceler, N(utrio.ramfee), asset(1000), std::string("ram fee") } );
 
    approvals apptable(  _self, proposer );
    auto& apps = apptable.get( proposal_name, "proposal not found" );
@@ -125,6 +140,8 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
                                                  packed_provided_approvals.data(), packed_provided_approvals.size()
                                                );
    ultrainio_assert( res > 0, "transaction authorization failed" );
+   INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {executer,N(active)},
+                           { executer, N(utrio.ramfee), asset(1000), std::string("ram fee") } );
 
    send_deferred( (uint128_t(proposer) << 64) | proposal_name, executer, prop.packed_transaction.data(), prop.packed_transaction.size() );
 
