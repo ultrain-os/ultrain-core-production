@@ -1172,16 +1172,8 @@ class authorization_api : public context_aware_api {
 
 class system_api : public context_aware_api {
    public:
-//      using context_aware_api::context_aware_api;
-      explicit system_api( apply_context& ctx ) : context_aware_api(ctx,true) {
-          emit_length = 128;
-          return_length = 128;
+     using context_aware_api::context_aware_api;
 
-          #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
-             emit_length = ctx.control.get_contract_emit_length();
-             return_length = ctx.control.get_contract_return_length();
-          #endif
-      }
       uint64_t current_time() {
          return static_cast<uint64_t>( context.control.pending_block_time().time_since_epoch().count() );
       }
@@ -1193,53 +1185,20 @@ class system_api : public context_aware_api {
       uint32_t block_interval_seconds() {
          return context.control.block_interval_seconds();
       }
-
-      int emit_event(array_ptr<const char> event_name, size_t event_name_size, array_ptr<const char> msg, size_t msg_size ) {
-         if (event_name_size > 64) return -1; // event name is too long.
-         if (msg_size > emit_length) return -2; // event message is too long.
-
-         if (context.has_event_listener) {
-            context.control.push_event(context.receiver, context.trx_context.id, event_name, event_name_size, msg, msg_size);
-         }
-
-         return 0;
-      }
-
-      void set_result_str(null_terminated_ptr str) {
-          if (context.trace.return_value.size() > return_length) return;
-
-          int leftSize = return_length - context.trace.return_value.size();
-
-          std::string r(str);
-          int srcSize = r.size();
-          r = r.substr(0, std::min(srcSize, leftSize));
-
-          context.trace.return_value += r;
-      }
-
-      void set_result_int(int64_t val) {
-          if (context.trace.return_value.size() > return_length) return;
-
-          int leftSize = return_length - context.trace.return_value.size();
-
-          std::string r = std::to_string(val);
-          int srcSize = r.size();
-          r = r.substr(0, std::min(srcSize, leftSize));
-
-          context.trace.return_value += r;
-      }
-
-
-    private:
-         uint64_t return_length;
-         uint64_t emit_length;
-
 };
 
 class context_free_system_api :  public context_aware_api {
 public:
    explicit context_free_system_api( apply_context& ctx )
-   :context_aware_api(ctx,true){}
+   :context_aware_api(ctx,true){
+      emit_length = 128;
+      return_length = 128;
+
+      #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
+         emit_length = ctx.control.get_contract_emit_length();
+         return_length = ctx.control.get_contract_return_length();
+      #endif
+   }
 
    void abort() {
       edump(("abort() called"));
@@ -1274,6 +1233,45 @@ public:
    void ultrainio_exit(int32_t code) {
       throw wasm_exit{code};
    }
+
+   int emit_event(array_ptr<const char> event_name, size_t event_name_size, array_ptr<const char> msg, size_t msg_size ) {
+      if (event_name_size > 64) return -1; // event name is too long.
+      if (msg_size > emit_length) return -2; // event message is too long.
+
+      if (context.has_event_listener) {
+         context.control.push_event(context.receiver, context.trx_context.id, event_name, event_name_size, msg, msg_size);
+      }
+
+      return 0;
+   }
+
+   void set_result_str(null_terminated_ptr str) {
+         if (context.trace.return_value.size() > return_length) return;
+
+         int leftSize = return_length - context.trace.return_value.size();
+
+         std::string r(str);
+         int srcSize = r.size();
+         r = r.substr(0, std::min(srcSize, leftSize));
+
+         context.trace.return_value += r;
+   }
+
+   void set_result_int(int64_t val) {
+         if (context.trace.return_value.size() > return_length) return;
+
+         int leftSize = return_length - context.trace.return_value.size();
+
+         std::string r = std::to_string(val);
+         int srcSize = r.size();
+         r = r.substr(0, std::min(srcSize, leftSize));
+
+         context.trace.return_value += r;
+   }
+
+   private:
+      uint64_t return_length;
+      uint64_t emit_length;
 
 };
 
@@ -2164,9 +2162,6 @@ REGISTER_INTRINSICS(system_api,
    (current_time, int64_t()       )
    (publication_time,   int64_t() )
    (block_interval_seconds, int() )
-   (emit_event, int(int, int, int, int) )
-   (set_result_str,        void(int)      )
-   (set_result_int,        void(int64_t) )
 );
 
 REGISTER_INTRINSICS(context_free_system_api,
@@ -2175,6 +2170,9 @@ REGISTER_INTRINSICS(context_free_system_api,
    (ultrainio_assert_message, void(int, int, int) )
    (ultrainio_assert_code,    void(int, int64_t)  )
    (ultrainio_exit,           void(int)           )
+   (emit_event,              int(int, int, int, int) )
+   (set_result_str,          void(int)      )
+   (set_result_int,          void(int64_t) )
 );
 
 REGISTER_INTRINSICS(action_api,
