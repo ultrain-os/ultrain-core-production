@@ -10,6 +10,7 @@
 #include <ultrainio/chain/account_object.hpp>
 #include <ultrainio/chain/global_property_object.hpp>
 #include <boost/container/flat_set.hpp>
+#include <boost/iterator/reverse_iterator.hpp>
 
 using boost::container::flat_set;
 
@@ -638,7 +639,8 @@ int apply_context::db_drop_i64(uint64_t code, uint64_t scope, uint64_t table) {
    if (lower == upper) return 0;
 
    int64_t usage_delta = 0LL;
-   std::for_each(lower, upper, [&](const key_value_object& obj) {
+   std::for_each(boost::make_reverse_iterator(upper),
+                 boost::make_reverse_iterator(lower), [&](const key_value_object& obj) {
       usage_delta = (obj.value.size() + config::billable_size_v<key_value_object>);
       update_db_usage( obj.payer,  -(usage_delta) );
       db.remove(obj);
