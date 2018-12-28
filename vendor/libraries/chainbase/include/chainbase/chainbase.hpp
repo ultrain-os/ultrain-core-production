@@ -355,10 +355,13 @@ namespace chainbase {
                auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
                   v = item.second;
                });
+               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
+
+               if ( !_backup_on ) continue;
                if( !_is_cached ) {
                    ok = _indices_backup.modify( _indices_backup.find( item.second.id ), [&]( value_type& v ) {
                                             v = std::move( item.second );
-                                    }) && ok;
+                                    });
                }
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
             }
@@ -366,14 +369,19 @@ namespace chainbase {
             for( auto id : head.new_ids )
             {
                _indices.erase( _indices.find( id ) );
+
+               if ( !_backup_on ) continue;
                if( !_is_cached ) _indices_backup.erase( _indices_backup.find( id ) );
             }
             _next_id = head.old_next_id;
 
             for( auto& item : head.removed_values ) {
                bool ok = _indices.emplace( item.second ).second;
+               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not restore object, most likely a uniqueness constraint was violated" ) );
+
+               if ( !_backup_on ) continue;
                if( !_is_cached )
-                   ok = _indices_backup.emplace( std::move( item.second ) ).second && ok;
+                   ok = _indices_backup.emplace( std::move( item.second ) ).second;
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not restore object, most likely a uniqueness constraint was violated" ) );
             }
 
@@ -388,6 +396,7 @@ namespace chainbase {
           *  This method does not change the state of the index, only the state of the undo buffer.
           */
          void squash_cache(){
+             if ( !_backup_on ) return;
              if( !_is_cached || ( _cache.size()<2 ) ) return;
 
              auto& cache = _cache.back();
@@ -553,6 +562,7 @@ namespace chainbase {
 
          void process_cache()
          {
+            if ( !_backup_on ) return;
             auto& head= _cache.front();
             for(auto& item :head.new_values)
             {
@@ -583,12 +593,18 @@ namespace chainbase {
                  process_cache();
          }
 
+         void set_backup(bool on = false ){
+            _backup_on = on;
+         }
+
          void set_cache(){
+            if ( !_backup_on ) return;
             _cache_on  = true;
          }
 
          void cancel_cache(){
-             flush();
+            if ( !_backup_on ) return;
+            flush();
             _cache_on  = false;
          }
          /**
@@ -661,18 +677,20 @@ namespace chainbase {
          }
 
          void backup_remove( const value_type& v ) {
+            if ( !_backup_on ) return;
             if( _is_cached ){
-                if (!_cache.size()) return;
-                auto& head = _cache.back();
-                if( !head.new_values.erase(v.id) ){
-                    head.modify_values.erase(v.id);
-                    head.removed_ids.insert(v.id);
-                }
+               if (!_cache.size()) return;
+               auto& head = _cache.back();
+               if( !head.new_values.erase(v.id) ){
+                  head.modify_values.erase(v.id);
+                  head.removed_ids.insert(v.id);
+               }
             }else
-                _indices_backup.erase( _indices_backup.find( v.id ) );
+               _indices_backup.erase( _indices_backup.find( v.id ) );
          }
 
          void backup_modify( const value_type& v ) {
+            if ( !_backup_on ) return;
             if( _is_cached ){
                 if (!_cache.size()) return;
                 auto& head = _cache.back();
@@ -697,6 +715,7 @@ namespace chainbase {
          }
 
          void backup_create( const value_type& v ) {
+            if ( !_backup_on ) return;
             if( _is_cached ){
                 if (!_cache.size()) return;
                 _cache.back().new_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
@@ -714,7 +733,7 @@ namespace chainbase {
           *
           *  Commit will discard all revisions prior to the committed revision.
           */
-         bool                            _is_cached = false, _cache_on = false;
+         bool                            _backup_on = false, _is_cached = false, _cache_on = false;
          int64_t                         _revision = 0;
          typename value_type::id_type    _next_id = 0;
          index_type                      _indices,_indices_backup;
@@ -757,6 +776,7 @@ namespace chainbase {
          virtual void    undo()const = 0;
          virtual void    squash()const = 0;
          virtual void    commit( int64_t revision )const = 0;
+         virtual void    set_backup(bool on)const = 0;
          virtual void    set_cache()const = 0;
          virtual void    cancel_cache()const = 0;
          virtual void    undo_all()const = 0;
@@ -785,6 +805,7 @@ namespace chainbase {
          virtual void     undo()const  override { _base.undo(); }
          virtual void     squash()const  override { _base.squash(); }
          virtual void     commit( int64_t revision )const  override { _base.commit(revision); }
+         virtual void     set_backup(bool on)const override { _base.set_backup(on); }
          virtual void     set_cache()const override { _base.set_cache(); }
          virtual void     cancel_cache()const override { _base.cancel_cache(); }
          virtual void     undo_all() const override {_base.undo_all(); }
@@ -926,6 +947,7 @@ namespace chainbase {
          void squash();
          void commit( int64_t revision );
          void undo_all();
+         void set_backup(bool on = false);
          void set_cache();
          void cancel_cache() const;
 

@@ -359,6 +359,8 @@ struct controller_impl {
 
       authorization.add_indices(db);
       resource_limits.add_indices(db);
+
+      db.set_backup(conf.worldstate_control);
    }
 
    void add_contract_tables_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const {

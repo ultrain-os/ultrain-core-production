@@ -262,6 +262,12 @@ namespace chainbase {
       }
    }
 
+   void database::set_backup(bool on)
+   {
+      for( auto& item : _index_list )
+           item->set_backup(on);
+   }
+
    void database::set_cache()
    {
        for( auto& item : _index_list )
