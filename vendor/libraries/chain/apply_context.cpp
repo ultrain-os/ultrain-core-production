@@ -638,13 +638,13 @@ int apply_context::db_drop_i64(uint64_t code, uint64_t scope, uint64_t table) {
 
    if (lower == upper) return 0;
 
-   int64_t usage_delta = 0LL;
-   std::for_each(boost::make_reverse_iterator(upper),
-                 boost::make_reverse_iterator(lower), [&](const key_value_object& obj) {
-      usage_delta = (obj.value.size() + config::billable_size_v<key_value_object>);
+   auto count = std::distance(lower, upper);
+   for (const auto& it = boost::make_reverse_iterator(upper); count > 0; --count) {
+      const key_value_object& obj = *it;
+      int64_t usage_delta = (obj.value.size() + config::billable_size_v<key_value_object>);
       update_db_usage( obj.payer,  -(usage_delta) );
       db.remove(obj);
-   });
+   };
 
    keyval_cache.purge_table_cache(table_obj->id);
    remove_table(*table_obj);
