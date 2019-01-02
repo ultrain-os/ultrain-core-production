@@ -301,6 +301,11 @@ namespace ultrainio {
       bytes                      data;
 
       /**
+       * Action ability, 0 for Normal, 1 for PureView
+       */
+      uint8_t                    ability;
+
+      /**
        * Default Constructor
        *
        * @brief Construct a new action object
@@ -321,6 +326,7 @@ namespace ultrainio {
          name          = Action::get_name();
          authorization = move(auth);
          data          = pack(value);
+         ability       = 0;
       }
 
       /**
@@ -337,6 +343,7 @@ namespace ultrainio {
          account       = Action::get_account();
          name          = Action::get_name();
          data          = pack(value);
+         ability       = 0;
       }
 
 
@@ -352,6 +359,7 @@ namespace ultrainio {
          account       = Action::get_account();
          name          = Action::get_name();
          data          = pack(value);
+         ability       = 0;
       }
 
       /**
@@ -366,7 +374,7 @@ namespace ultrainio {
        */
       template<typename T>
       action( const permission_level& auth, account_name a, action_name n, T&& value )
-      :account(a), name(n), authorization(1,auth), data(pack(std::forward<T>(value))) {}
+      :account(a), name(n), authorization(1,auth), data(pack(std::forward<T>(value))), ability(0) {}
 
       /**
        * Construct a new action object with the given action struct
@@ -380,9 +388,9 @@ namespace ultrainio {
        */
       template<typename T>
       action( vector<permission_level> auths, account_name a, action_name n, T&& value )
-      :account(a), name(n), authorization(std::move(auths)), data(pack(std::forward<T>(value))) {}
+      :account(a), name(n), authorization(std::move(auths)), data(pack(std::forward<T>(value))), ability(0) {}
 
-      ULTRAINLIB_SERIALIZE( action, (account)(name)(authorization)(data) )
+      ULTRAINLIB_SERIALIZE( action, (account)(name)(authorization)(data)(ability) )
 
       /**
        * Send the action as inline action

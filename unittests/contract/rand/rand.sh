@@ -52,8 +52,8 @@ case "$1" in
 		i=`expr $i + 1`
 		printf "\n\n"
 	done
-	;;
 	sleep 10
+	;;
   "e") #vote
 	# delegate permission to send bonus
 	# ./clultrain set account permission abc123 active '{"threshold":1,"keys": [{"key":"UTR6FjKthwDnnh6o2T9n4DDb19X1vsrafJibEiCPDX6YP1QmZS7Bu","weight": 1}],"accounts": [{"permission":{"actor":"abc123","permission":"utrio.code"},"weight":1}]}' owner -p abc123

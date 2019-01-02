@@ -166,7 +166,24 @@ void apply_context::require_recipient( account_name recipient ) {
    }
 }
 
-
+void apply_context::update_action_ability(action& a) {
+   auto* code = control.db().find<account_object, by_name>(a.account);
+   ULTRAIN_ASSERT( code != nullptr, action_validate_exception,
+               "inline action's code account ${account} does not exist", ("account", a.account) );
+   // if current action is a pureview action, then all inline or deferred action must be pureview.
+   if (act.ability == action::PureView) {
+      a.ability = action::PureView;
+   } else {
+      const auto& actionDefs = code->get_abi().actions;
+      const auto& t = std::find_if(actionDefs.begin(), actionDefs.end(), [&](const action_def& ad) {
+         return a.name == ad.name;
+      });
+      ULTRAIN_ASSERT( t != actionDefs.end(), action_validate_exception,
+                     "account ${account} does not define action '${action}'",
+                     ("account", a.account)("action", a.name) );
+      a.ability = (t->ability == "normal") ? (action::Normal) : (action::PureView);
+   }
+}
 /**
  *  This will execute an action after checking the authorization. Inline transactions are
  *  implicitly authorized by the current receiver (running code). This method has significant
@@ -183,9 +200,7 @@ void apply_context::require_recipient( account_name recipient ) {
  *   can better understand the security risk.
  */
 void apply_context::execute_inline( action&& a ) {
-   auto* code = control.db().find<account_object, by_name>(a.account);
-   ULTRAIN_ASSERT( code != nullptr, action_validate_exception,
-               "inline action's code account ${account} does not exist", ("account", a.account) );
+   update_action_ability(a);
    // NOTE(liangqin.fan): trx_context.enforce_whiteblacklist is always true in current implementation.
    bool enforce_actor_whitelist_blacklist = /*trx_context.enforce_whiteblacklist &&*/ control.is_producing_block();
    flat_set<account_name> actors;
@@ -257,10 +272,7 @@ void apply_context::execute_inline( action&& a ) {
 }
 
 void apply_context::execute_context_free_inline( action&& a ) {
-   auto* code = control.db().find<account_object, by_name>(a.account);
-   ULTRAIN_ASSERT( code != nullptr, action_validate_exception,
-               "inline action's code account ${account} does not exist", ("account", a.account) );
-
+   update_action_ability(a);
    ULTRAIN_ASSERT( a.authorization.size() == 0, action_validate_exception,
                "context-free actions cannot have authorizations" );
 
@@ -471,6 +483,11 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    memcpy( buffer, trx.context_free_data[index].data(), copy_size );
 
    return copy_size;
+}
+
+void apply_context::check_rw_db_ability() const {
+   // dlog("check_rw_db_ability: receiver = ${receiver}, action.account = ${account}, action.name = ${name}, action.ability = ${ability}", ("receiver", receiver)("account", act.account)("name", act.name)("ability", act.ability));
+   ULTRAIN_ASSERT( act.ability == action::Normal, table_access_violation, "pureview action can not store, modify or erase item(s) from table.");
 }
 
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {

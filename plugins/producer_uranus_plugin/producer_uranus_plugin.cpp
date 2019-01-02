@@ -338,7 +338,8 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
           //         }
 
           try {
-              auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
+              auto ptrx = std::make_shared<transaction_metadata>(*trx);
+              auto trace = chain.push_transaction(ptrx, deadline);
               if (trace->except) {
                   if (failure_is_subjective(*trace->except)) {
                       ilog("---------Failure is subjective, abort block--------");

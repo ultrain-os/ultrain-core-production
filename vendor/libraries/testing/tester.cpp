@@ -176,7 +176,7 @@ namespace ultrainio { namespace testing {
 
       if( !skip_pending_trxs ) {
          auto unapplied_trxs = control->get_unapplied_transactions();
-         for (const auto& trx : unapplied_trxs ) {
+         for (auto& trx : unapplied_trxs ) {
             auto trace = control->push_transaction(trx, fc::time_point::maximum());
             if(trace->except) {
                trace->except->dynamic_rethrow_exception();
@@ -329,7 +329,8 @@ namespace ultrainio { namespace testing {
    { try {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx), deadline, billed_cpu_time_us );
+      auto ptrx = std::make_shared<transaction_metadata>(trx);
+      auto r = control->push_transaction( ptrx, deadline, billed_cpu_time_us );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
@@ -347,8 +348,8 @@ namespace ultrainio { namespace testing {
       if( fc::raw::pack_size(trx) > 1000 ) {
          c = packed_transaction::zlib;
       }
-
-      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx,c), deadline, billed_cpu_time_us );
+      auto ptrx = std::make_shared<transaction_metadata>(trx,c);
+      auto r = control->push_transaction( ptrx, deadline, billed_cpu_time_us );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;

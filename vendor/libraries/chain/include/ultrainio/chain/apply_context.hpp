@@ -527,6 +527,8 @@ class apply_context {
        */
       bool has_recipient(account_name account)const;
 
+      void check_rw_db_ability() const;
+
    /// Console methods:
    public:
 
@@ -595,7 +597,7 @@ class apply_context {
 
       void validate_referenced_accounts( const transaction& t )const;
       void validate_expiration( const transaction& t )const;
-
+      void update_action_ability(action& a);
 
    /// Fields:
    public:

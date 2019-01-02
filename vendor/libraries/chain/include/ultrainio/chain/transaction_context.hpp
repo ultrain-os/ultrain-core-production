@@ -11,7 +11,7 @@ namespace ultrainio { namespace chain {
       public:
 
          transaction_context( controller& c,
-                              const signed_transaction& t,
+                              signed_transaction& t,
                               const transaction_id_type& trx_id,
                               fc::time_point start = fc::time_point::now() );
 
@@ -23,6 +23,7 @@ namespace ultrainio { namespace chain {
 
          void init_for_deferred_trx( fc::time_point published );
 
+         void preset_action_ability();
          void exec();
          void finalize();
          void squash();
@@ -61,7 +62,7 @@ namespace ultrainio { namespace chain {
       public:
 
          controller&                   control;
-         const signed_transaction&     trx;
+         signed_transaction&           trx;
          transaction_id_type           id;
          chainbase::database::session  undo_session;
          transaction_trace_ptr         trace;

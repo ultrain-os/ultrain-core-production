@@ -298,7 +298,7 @@ struct controller_impl {
       }
    }
 
-   void replay() 
+   void replay()
    {
       auto blog_head = blog.read_head();
       replaying = true;
@@ -446,7 +446,6 @@ struct controller_impl {
       info.block_height = block_height;
 
       std::string worldstate_path = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height);
-        
       auto worldstate_out = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
       auto worldstate = std::make_shared<ostream_worldstate_writer>(worldstate_out);
 
@@ -488,7 +487,7 @@ struct controller_impl {
       worldstate_out.flush();
       worldstate_out.close();
 
-      //save worldstate file 
+      //save worldstate file
       info.file_size = bfs::file_size(worldstate_path);
       info.hash_string = ws_manager_ptr->calculate_file_hash(worldstate_path).str();
       ws_manager_ptr->save_info(info);
@@ -496,7 +495,7 @@ struct controller_impl {
    }
 
    void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
-      
+
       worldstate->read_section<chain_worldstate_header>([this]( auto &section ){
          chain_worldstate_header header;
          section.read_row(header, db);
@@ -541,7 +540,7 @@ struct controller_impl {
       db.set_revision( head->block_num );
       ilog("read_from_worldstate, block_num: ${block_num}", ("block_num", head->block_num));
     }
-  
+
     sha256 calculate_integrity_hash() const {
       sha256::encoder enc;
       auto hash_writer = std::make_shared<integrity_hash_worldstate_writer>(enc);
@@ -828,6 +827,7 @@ struct controller_impl {
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_deferred_trx( gtrx.published );
+         trx_context.preset_action_ability();
          trx_context.exec();
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
@@ -926,7 +926,7 @@ struct controller_impl {
     *  determine whether to execute it now or to delay it. Lastly it inserts a transaction receipt into
     *  the pending block.
     */
-   transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx,
+   transaction_trace_ptr push_transaction( transaction_metadata_ptr& trx,
                                            fc::time_point deadline,
                                            bool implicit,
                                            uint32_t billed_cpu_time_us,
@@ -975,6 +975,7 @@ struct controller_impl {
             }
 #endif
             auto event_restore = make_event_restore_point();
+            trx_context.preset_action_ability();
             trx_context.exec();
             trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
@@ -1650,7 +1651,7 @@ void controller::stop_receive_event() {
    my->stop_receive_event();
 }
 
-transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+transaction_trace_ptr controller::push_transaction( transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
    validate_db_available_size();
    return my->push_transaction(trx, deadline, false, billed_cpu_time_us, billed_cpu_time_us > 0 );
 }
@@ -1837,7 +1838,7 @@ const account_object& controller::get_account( account_name name )const
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
-vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
+vector<transaction_metadata_ptr> controller::get_unapplied_transactions() {
    vector<transaction_metadata_ptr> result;
    if ( my->read_mode == db_read_mode::SPECULATIVE ) {
       result.reserve(my->unapplied_transactions.size());
@@ -1886,7 +1887,7 @@ void controller::clear_unapplied_transaction() {
    my->unapplied_transactions.clear();
 }
 
-vector<transaction_id_type> controller::get_scheduled_transactions() const {
+vector<transaction_id_type> controller::get_scheduled_transactions() {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
 
    vector<transaction_id_type> result;

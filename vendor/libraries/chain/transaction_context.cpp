@@ -20,7 +20,7 @@
 namespace ultrainio { namespace chain {
 
    transaction_context::transaction_context( controller& c,
-                                             const signed_transaction& t,
+                                             signed_transaction& t,
                                              const transaction_id_type& trx_id,
                                              fc::time_point s )
    :control(c)
@@ -226,6 +226,35 @@ namespace ultrainio { namespace chain {
       trace->scheduled = true;
       apply_context_free = false;
       init( 0 );
+   }
+
+   void transaction_context::preset_action_ability() {
+      auto set_ability_func = [this](action& a) {
+         // assume it is a system action, so preset it action::Normal
+         a.ability = action::Normal;
+
+         auto* code = control.db().find<account_object, by_name>(a.account);
+         if (code != nullptr) {
+            const auto& actionDefs = code->get_abi().actions;
+            const auto& t = std::find_if(actionDefs.begin(), actionDefs.end(), [&](const action_def& ad) {
+               return a.name == ad.name;
+            });
+
+            if (t != actionDefs.end()) {
+               a.ability = (t->ability == "normal") ? (action::Normal) : (action::PureView);
+            }
+         }
+      };
+
+      if( apply_context_free ) {
+         for( auto& act : trx.context_free_actions ) {
+            set_ability_func(act);
+         }
+      }
+
+      for( auto& act : trx.actions ) {
+         set_ability_func(act);
+      }
    }
 
    void transaction_context::exec() {

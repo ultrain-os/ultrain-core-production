@@ -110,7 +110,7 @@ namespace ultrainio { namespace chain {
           *
           *  @return vector of transactions which have been unapplied
           */
-         vector<transaction_metadata_ptr> get_unapplied_transactions() const;
+         vector<transaction_metadata_ptr> get_unapplied_transactions();
          std::list<transaction_metadata_ptr>* get_pending_transactions();
          void drop_pending_transaction_from_set(const transaction_metadata_ptr& trx);
          void clear_unapplied_transaction();
@@ -127,12 +127,12 @@ namespace ultrainio { namespace chain {
           *
           * @return
           */
-         vector<transaction_id_type> get_scheduled_transactions() const;
+         vector<transaction_id_type> get_scheduled_transactions();
 
          /**
           *
           */
-         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+         transaction_trace_ptr push_transaction( transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database

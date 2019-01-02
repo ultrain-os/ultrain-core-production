@@ -1068,7 +1068,7 @@ namespace ultrainio {
         return true;
     }
 
-    size_t Scheduler::runScheduledTrxs(const std::vector<chain::transaction_id_type> &trxs,
+    size_t Scheduler::runScheduledTrxs(std::vector<chain::transaction_id_type> &trxs,
                                               fc::time_point hard_cpu_deadline,
                                               fc::time_point block_time) {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
@@ -1108,7 +1108,7 @@ namespace ultrainio {
         return count;
     }
 
-    size_t Scheduler::runUnappliedTrxs(const std::vector<chain::transaction_metadata_ptr> &trxs,
+    size_t Scheduler::runUnappliedTrxs(std::vector<chain::transaction_metadata_ptr> &trxs,
                                               fc::time_point hard_cpu_deadline,
                                               fc::time_point block_time) {
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
@@ -1116,7 +1116,7 @@ namespace ultrainio {
         const auto& max_trx_cpu = cfg.max_transaction_cpu_usage;
         ilog("------- start running unapplied ${num} trxs", ("num", trxs.size()));
         size_t count = 0;
-        for (const auto &trx : trxs) {
+        for (auto &trx : trxs) {
             if (!trx) {
                 chain.drop_unapplied_transaction(trx);
                 ilog("-----------initProposeMsg null trx");
@@ -1181,7 +1181,7 @@ namespace ultrainio {
         // TODO(yufengshen) : also scheduled trxs.
         size_t count = 0;
         while (!trxs->empty()) {
-            const auto &trx = trxs->front();
+            auto &trx = trxs->front();
             if (!trx) {
                 chain.drop_unapplied_transaction(trx);
                 trxs->pop_front();
@@ -1260,8 +1260,8 @@ namespace ultrainio {
             // TODO(yufengshen): We have to cap the block size, cpu/net resource when packing a block.
             // Refer to the subjective and exhausted design.
             std::list<chain::transaction_metadata_ptr> *pending_trxs = chain.get_pending_transactions();
-            const auto &unapplied_trxs = chain.get_unapplied_transactions();
-            const auto &scheduled_trxs = chain.get_scheduled_transactions();
+            auto unapplied_trxs = chain.get_unapplied_transactions();
+            auto scheduled_trxs = chain.get_scheduled_transactions();
 
             m_initTrxCount = 0;
             auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
