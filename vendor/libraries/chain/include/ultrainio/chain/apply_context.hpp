@@ -537,6 +537,8 @@ class apply_context {
        */
       bool has_recipient(account_name account)const;
 
+      void check_rw_db_ability() const;
+
    /// Console methods:
    public:
 

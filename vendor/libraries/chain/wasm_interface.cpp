@@ -1444,12 +1444,15 @@ class console_api : public context_aware_api {
 
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
+         context.check_rw_db_ability(); \
          return context.IDX.store( scope, table, payer, id, secondary );\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
+         context.check_rw_db_ability(); \
          return context.IDX.update( iterator, payer, secondary );\
       }\
       void db_##IDX##_remove( int iterator ) {\
+         context.check_rw_db_ability(); \
          return context.IDX.remove( iterator );\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
@@ -1480,6 +1483,7 @@ class console_api : public context_aware_api {
                     db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
+         context.check_rw_db_ability(); \
          return context.IDX.store(scope, table, payer, id, data.value);\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len ) {\
@@ -1487,9 +1491,11 @@ class console_api : public context_aware_api {
                     db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
+         context.check_rw_db_ability(); \
          return context.IDX.update(iterator, payer, data.value);\
       }\
       void db_##IDX##_remove( int iterator ) {\
+         context.check_rw_db_ability(); \
          return context.IDX.remove(iterator);\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
@@ -1533,13 +1539,16 @@ class console_api : public context_aware_api {
 #define DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
          ULTRAIN_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         context.check_rw_db_ability(); \
          return context.IDX.store( scope, table, payer, id, secondary );\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
          ULTRAIN_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         context.check_rw_db_ability(); \
          return context.IDX.update( iterator, payer, secondary );\
       }\
       void db_##IDX##_remove( int iterator ) {\
+         context.check_rw_db_ability(); \
          return context.IDX.remove( iterator );\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
@@ -1572,12 +1581,15 @@ class database_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const char> buffer, size_t buffer_size ) {
+         context.check_rw_db_ability();
          return context.db_store_i64( scope, table, payer, id, buffer, buffer_size );
       }
       void db_update_i64( int itr, uint64_t payer, array_ptr<const char> buffer, size_t buffer_size ) {
+         context.check_rw_db_ability();
          context.db_update_i64( itr, payer, buffer, buffer_size );
       }
       void db_remove_i64( int itr ) {
+         context.check_rw_db_ability();
          context.db_remove_i64( itr );
       }
       int db_get_i64( int itr, array_ptr<char> buffer, size_t buffer_size ) {
@@ -1606,6 +1618,7 @@ class database_api : public context_aware_api {
       }
 
       int db_drop_i64( uint64_t code, uint64_t scope, uint64_t table ) {
+         context.check_rw_db_ability();
          return context.db_drop_i64( code, scope, table);
       }
 

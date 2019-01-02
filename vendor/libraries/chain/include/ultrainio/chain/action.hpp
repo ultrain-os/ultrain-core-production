@@ -77,10 +77,12 @@ namespace ultrainio { namespace chain {
     *  were properly declared when it executes.
     */
    struct action {
-      account_name               account;
-      action_name                name;
-      vector<permission_level>   authorization;
-      bytes                      data;
+      enum AbilityType { Normal = 0, PureView = 1 };
+      account_name                           account;
+      action_name                            name;
+      vector<permission_level>               authorization;
+      bytes                                  data;
+      fc::enum_type<uint8_t, AbilityType>    ability;
 
       action(){}
 
@@ -90,6 +92,7 @@ namespace ultrainio { namespace chain {
          name        = T::get_name();
          authorization = move(auth);
          data.assign(value.data(), value.data() + value.size());
+         ability     = AbilityType::Normal;
       }
 
       template<typename T, std::enable_if_t<!std::is_base_of<bytes, T>::value, int> = 1>
@@ -98,10 +101,11 @@ namespace ultrainio { namespace chain {
          name        = T::get_name();
          authorization = move(auth);
          data        = fc::raw::pack(value);
+         ability     = AbilityType::Normal;
       }
 
-      action( vector<permission_level> auth, account_name account, action_name name, const bytes& data )
-            : account(account), name(name), authorization(move(auth)), data(data) {
+      action( vector<permission_level> auth, account_name account, action_name name, const bytes& data, action::AbilityType ablty = action::Normal )
+            : account(account), name(name), authorization(move(auth)), data(data), ability(ablty) {
       }
 
       template<typename T>
@@ -118,8 +122,9 @@ namespace ultrainio { namespace chain {
 
 } } /// namespace ultrainio::chain
 
+FC_REFLECT_ENUM( ultrainio::chain::action::AbilityType, (Normal)(PureView) )
 FC_REFLECT( ultrainio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( ultrainio::chain::proposeminer_info, (account)(public_key)(url)(location)(adddel_miner) )
 FC_REFLECT( ultrainio::chain::provided_proposer, (account)(last_vote_time) )
 FC_REFLECT( ultrainio::chain::proposeaccount_info, (account)(owner_key)(active_key)(location) )
-FC_REFLECT( ultrainio::chain::action, (account)(name)(authorization)(data) )
+FC_REFLECT( ultrainio::chain::action, (account)(name)(authorization)(data)(ability) )
