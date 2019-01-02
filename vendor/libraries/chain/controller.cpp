@@ -209,94 +209,35 @@ struct controller_impl {
    }
 
    void create_worldstate(){
-       auto size = db.get_segment_manager()->get_size();
-       
-       auto begin = fc::time_point::now();
-       path tmp_path;
-       if( conf.worldstate_dir.is_relative())
-            tmp_path = app().data_dir() / conf.worldstate_dir.string();
-       else
-            tmp_path = conf.worldstate_dir;      
-       tmp_path = tmp_path / path(boost::filesystem::unique_path());
-      
-       block_state fork_head = *fork_db.head();
-       uint32_t block_height = fork_head.block_num;
+      auto begin = fc::time_point::now();
+      block_state fork_head = *fork_db.head();
+      uint32_t block_height = fork_head.block_num;
+      db.set_cache();
 
-       ilog("create worldstate, block_height: ${height}, db size: ${size}, db free size: ${free_size}, tmp chainbase path: ${path}", 
-         ("height",block_height)("size",size)("free_size", db.get_segment_manager()->get_free_memory())("path", tmp_path.string()));
-
-       char* buffer = nullptr;
-       try { buffer = new char[size]; } catch( ... ) { elog("worldstate error: alloc error, return"); return; }
-
-       db.with_write_lock([&](){
-            auto begin=fc::time_point::now();
-            memcpy(buffer, db.get_segment_address(),size);
-            auto end=fc::time_point::now();
-            ilog("create_worldstate cp memory cost time: ${time_delta}", ("time_delta", end - begin));
-       });      
-      
-
-       //thread to generate worldstate file
-       boost::thread worldstate([this, tmp_path, buffer, size, block_height, fork_head](void* ptr){
-            chainbase::database* ws_db = nullptr;
-            try {
-               //create new chainbase
-               auto begin = fc::time_point::now();
-               try {
-                  ws_db = new chainbase::database(tmp_path, database::read_write,size);
-               } catch( ... ) {
-                  elog("worldstate thread error: alloc chainbase::database exception, return");
-                  delete[] buffer;
-                  return;
-               }
-
-               memcpy(ws_db->get_segment_address(), buffer,size);
-               auto time1 = fc::time_point::now();
-
-               //add indices
-               controller_index_set::add_indices(*ws_db);
-               contract_database_index_set::add_indices(*ws_db);
-               authorization.add_indices(*ws_db);
-               resource_limits.add_indices(*ws_db);
-               add_to_worldstate(ws_db, block_height, fork_head);
-
-               auto time2 = fc::time_point::now();
-               
-               //clear
-               fc::remove_all(tmp_path);            
-               if (buffer) delete[] buffer;
-               if (ws_db) delete ws_db;
-
-               auto end = fc::time_point::now();
-               ilog("create worldstate thread, alloc new chainbase time: ${time0}, create ws file time: ${time1}, clear time: ${time2}, total time:  ${time3}",
-                   ("time0", time1 - begin)("time1", time2 - time1)("time2", end - time2)("time3", end - begin));
-            } catch( const boost::interprocess::bad_alloc& e ) {
-               elog("worldstate thread error: bad alloc");
-               if (buffer) delete[] buffer;
-               if (ws_db) delete ws_db;
-            } catch( const boost::exception& e ) {
-               elog("worldstate thread error: ${e}", ("e",boost::diagnostic_information(e)));
-               if (buffer) delete[] buffer;
-               if (ws_db) delete ws_db;
-            } catch( const std::runtime_error& e ) {
-               elog( "worldstate thread error: ${e}", ("e",e.what()));
-               if (buffer) delete[] buffer;
-               if (ws_db) delete ws_db;
-            } catch( const std::exception& e ) {
-               elog("worldstate thread error: ${e}", ("e",e.what()));
-               if (buffer) delete[] buffer;
-               if (ws_db) delete ws_db;
-            } catch( ... ) {
-               elog("worldstate thread error: unknown exception");
-               if (buffer) delete[] buffer;
-               if (ws_db) delete ws_db;
-            }
-       }, nullptr);
-       worldstate.detach();
+      //thread to generate worldstate file
+      boost::thread worldstate([this,fork_head,block_height](){
+         auto begin = fc::time_point::now();
+         try {
+            add_to_worldstate(db, block_height, fork_head);
+            db.cancel_cache();
+         } catch( const boost::interprocess::bad_alloc& e ) {
+            elog("worldstate thread error: bad alloc");
+         } catch( const boost::exception& e ) {
+            elog("worldstate thread error: ${e}", ("e",boost::diagnostic_information(e)));
+         } catch( const std::runtime_error& e ) {
+            elog( "worldstate thread error: ${e}", ("e",e.what()));
+         } catch( const std::exception& e ) {
+            elog("worldstate thread error: ${e}", ("e",e.what()));
+         } catch( ... ) {
+            elog("worldstate thread error: unknown exception");
+         }
+         auto end = fc::time_point::now();
+         ilog("worldstate thread end, cost time: ${time}", ("time", end - begin));
+      });
+      worldstate.detach();
 
       auto end=fc::time_point::now();
-      auto time_delta=end-begin;
-      ilog("create_worldstate total_time cost time: ${time_delta}", ("time_delta", time_delta));
+      ilog("create_worldstate total_time cost time: ${time_delta}", ("time_delta", end - begin));
    }
 
    void on_irreversible( const block_state_ptr& s ) {
@@ -433,6 +374,8 @@ struct controller_impl {
 
       authorization.add_indices(db);
       resource_limits.add_indices(db);
+
+      db.set_backup(conf.worldstate_control);
    }
 
    void add_contract_tables_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const {
@@ -490,7 +433,7 @@ struct controller_impl {
       });
    }
 
-   void add_to_worldstate(const chainbase::database* const worldstate_db, uint32_t block_height, const block_state& fork_head) const{
+   void add_to_worldstate(const chainbase::database& worldstate_db, uint32_t block_height, const block_state& fork_head) const{
       ws_file_manager ws_manager;
       ws_info info;
       info.chain_id = self.get_chain_id();
@@ -502,16 +445,16 @@ struct controller_impl {
       auto worldstate = std::make_shared<ostream_worldstate_writer>(worldstate_out);
 
       //generate worldstate
-      worldstate->write_section<chain_worldstate_header>([this,worldstate_db]( auto &section ){
-         section.add_row(chain_worldstate_header(), *worldstate_db);
+      worldstate->write_section<chain_worldstate_header>([this,&worldstate_db]( auto &section ){
+         section.add_row(chain_worldstate_header(), worldstate_db);
       });
 
-      worldstate->write_section<genesis_state>([this,worldstate_db]( auto &section ){
-         section.add_row(conf.genesis, *worldstate_db);
+      worldstate->write_section<genesis_state>([this,&worldstate_db]( auto &section ){
+         section.add_row(conf.genesis, worldstate_db);
       });
 
-      worldstate->write_section<block_state>([this,worldstate_db, fork_head]( auto &section ){
-         section.template add_row<block_header_state>(fork_head, *worldstate_db);
+      worldstate->write_section<block_state>([this,&worldstate_db, fork_head]( auto &section ){
+         section.template add_row<block_header_state>(fork_head, worldstate_db);
       });
 
       controller_index_set::walk_indices([this,&worldstate_db, worldstate]( auto utils ){
@@ -522,17 +465,17 @@ struct controller_impl {
             return;
          }
 
-         worldstate->write_section<value_t>([this,worldstate_db]( auto& section ){
-            decltype(utils)::walk(*worldstate_db, [this,worldstate_db, &section]( const auto &row ) {
-               section.add_row(row, *worldstate_db);
+         worldstate->write_section<value_t>([this,&worldstate_db]( auto& section ){
+            decltype(utils)::walk(worldstate_db, [this,&worldstate_db, &section]( const auto &row ) {
+               section.add_row(row, worldstate_db);
             });
          });
       });
 
-      add_contract_tables_to_worldstate(worldstate,*worldstate_db);
+      add_contract_tables_to_worldstate(worldstate,worldstate_db);
 
-      authorization.add_to_worldstate(worldstate,*worldstate_db);
-      resource_limits.add_to_worldstate(worldstate,*worldstate_db);
+      authorization.add_to_worldstate(worldstate,worldstate_db);
+      resource_limits.add_to_worldstate(worldstate,worldstate_db);
 
       //flush worldstate file
       worldstate->finalize();

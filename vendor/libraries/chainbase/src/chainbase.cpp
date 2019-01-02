@@ -238,6 +238,24 @@ namespace chainbase {
       }
    }
 
+   void database::set_backup(bool on)
+   {
+      for( auto& item : _index_list )
+           item->set_backup(on);
+   }
+
+   void database::set_cache()
+   {
+       for( auto& item : _index_list )
+           item->set_cache();
+   }
+
+   void database::cancel_cache() const
+   {
+       for( auto& item : _index_list )
+           item->cancel_cache();
+   }
+
    void database::undo_all()
    {
       for( auto& item : _index_list )

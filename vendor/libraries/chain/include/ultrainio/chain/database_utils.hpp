@@ -20,7 +20,7 @@ namespace ultrainio { namespace chain {
 
          template<typename F>
          static void walk( const chainbase::database& db, F function ) {
-            auto const& index = db.get_index<Index>().indices();
+            auto const& index = db.get_index<Index>().backup_indices();
             const auto& first = index.begin();
             const auto& last = index.end();
             for (auto itr = first; itr != last; ++itr) {
@@ -30,7 +30,7 @@ namespace ultrainio { namespace chain {
 
          template<typename Secondary, typename Key, typename F>
          static void walk_range( const chainbase::database& db, const Key& begin_key, const Key& end_key, F function ) {
-            const auto& idx = db.get_index<Index, Secondary>();
+            const auto& idx = db.get_index<Index>().backup_indices().template get<Secondary>();
             auto begin_itr = idx.lower_bound(begin_key);
             auto end_itr = idx.lower_bound(end_key);
             for (auto itr = begin_itr; itr != end_itr; ++itr) {
@@ -40,7 +40,7 @@ namespace ultrainio { namespace chain {
 
          template<typename Secondary, typename Key>
          static size_t size_range( const chainbase::database& db, const Key& begin_key, const Key& end_key ) {
-            const auto& idx = db.get_index<Index, Secondary>();
+            const auto& idx = db.get_index<Index>().backup_indices().template get<Secondary>();
             auto begin_itr = idx.lower_bound(begin_key);
             auto end_itr = idx.lower_bound(end_key);
             size_t res = 0;
