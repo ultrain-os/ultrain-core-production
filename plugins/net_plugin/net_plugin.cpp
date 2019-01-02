@@ -1232,6 +1232,10 @@ namespace ultrainio {
             auto ds = pending_message_buffer.create_datastream();
             net_message msg;
             fc::raw::unpack(ds, msg);
+            if(msg_priority_rpos == priority)
+            {
+                ticker_rcv = true;
+            }
             bool isexceed = check_pack_speed_exceed();
             if(isexceed)
             {
@@ -2434,10 +2438,10 @@ namespace ultrainio {
                       c->ticker_no_rcv_count++;
                       if(c->ticker_no_rcv_count >= 5)
                       {
-                       /*  ilog("ticker checked");
+                         ilog("ticker checked");
                          c->ticker_rcv = false;
                          c->ticker_no_rcv_count = 0;
-                         close(c);*/
+                         close(c);
                       }
                    }
                    else
