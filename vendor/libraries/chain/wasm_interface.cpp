@@ -138,6 +138,14 @@ class typescript_action_api : public context_aware_api {
     void ultrain_assert_native(int condition) {
         FC_ASSERT(condition != 0, "ultrain_assert");
    }
+
+   void ts_send_deferred( uint64_t sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing) {
+         try {
+            transaction trx;
+            fc::raw::unpack<transaction>(data, data_len, trx);
+            context.schedule_deferred_transaction((uint128_t)sender_id, payer, std::move(trx), replace_existing);
+         } FC_RETHROW_EXCEPTIONS(warn, "data as hex: ${data}", ("data", fc::to_hex(data, data_len)))
+      }
 };
 
 class typescript_block_api : public context_aware_api {
@@ -1997,6 +2005,7 @@ REGISTER_INTRINSICS(typescript_action_api,
   (ts_log_print_i,              void(int64_t, int)     )
   (ts_log_done,               void()          )
   (ultrain_assert_native,    void(int))
+  (ts_send_deferred,             void(int64_t, int64_t, int, int, int32_t) )
 );
 
 REGISTER_INTRINSICS(typescript_block_api,

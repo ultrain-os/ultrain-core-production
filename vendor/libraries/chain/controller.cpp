@@ -1565,6 +1565,10 @@ controller::~controller() {
    my->fork_db.close();
 }
 
+void controller::check_actor_list( const flat_set<account_name>& actors )const {
+   my->check_actor_list(actors);
+}
+
 void controller::add_indices() {
    my->add_indices();
 }
