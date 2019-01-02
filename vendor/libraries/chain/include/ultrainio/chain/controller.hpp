@@ -204,6 +204,7 @@ namespace ultrainio { namespace chain {
          void read_worldstate( const worldstate_reader_ptr& worldstate );
          sha256 calculate_integrity_hash()const;
 
+         void check_actor_list( const flat_set<account_name>& actors )const;
          void check_contract_list( account_name code )const;
          void check_action_list( account_name code, action_name action )const;
          void check_key_list( const public_key_type& key )const;

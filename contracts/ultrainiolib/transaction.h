@@ -54,6 +54,7 @@ extern "C" {
      *  @param replace_existing - f this is `0` then if the provided sender_id is already in use by an in-flight transaction from this contract, which will be a failing assert. If `1` then transaction will atomically cancel/replace the inflight transaction
      */
      void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size, uint32_t replace_existing = 0);
+     void ts_send_deferred(uint64_t sender_id, account_name payer, const char *serialized_transaction, size_t size, uint32_t replace_existing = 0);
 
     /**
      *  Cancels a deferred transaction.

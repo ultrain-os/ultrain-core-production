@@ -47,6 +47,11 @@ namespace ultrainio {
          send_deferred(sender_id, payer, serialize.data(), serialize.size(), replace_existing);
       }
 
+      void ts_send(const uint64_t& sender_id, account_name payer, bool replace_existing = false) const {
+         auto serialize = pack(*this);
+         ts_send_deferred(sender_id, payer, serialize.data(), serialize.size(), replace_existing);
+      }
+
       vector<action>  context_free_actions;
       vector<action>  actions;
       extensions_type transaction_extensions;
