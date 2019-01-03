@@ -590,7 +590,7 @@ async function contractInteract(config,contractName, actionName, params, account
         logger.debug('contractInteract success :',actionName);
     } catch (err) {
         logger.debug('contractInteract error :',actionName);
-        logger.error(err);
+        logger.error('contractInteract error :',err);
     }
 }
 
