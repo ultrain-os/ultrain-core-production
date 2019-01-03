@@ -126,7 +126,8 @@ async function initConfig() {
         config.keyProvider = [configIniLocal["my-sk-as-account"]];
         configSub.keyProvider = [configIniLocal["my-sk-as-account"]];
 
-        configSub.httpEndpoint="http://172.16.10.5:8877";
+        // configSub.httpEndpoint="http://172.16.10.5:8877";
+        configSub.httpEndpoint="http://127.0.0.1:8888";
     } else {
         myAccountAsCommittee = configIniTarget["my-account-as-committee"];
         mySkAsCommittee = configIniTarget["my-sk-as-committee"];
