@@ -437,6 +437,7 @@ async function voteAccount(results) {
             }]
         };
 
+        logger.debug("=======voteAccount to subchain:",info);
         contractInteract(configSub,'ultrainio', "voteaccount", params, myAccountAsCommittee, config.keyProvider[0]);
     }
 
