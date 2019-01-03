@@ -2315,9 +2315,6 @@ namespace ultrainio {
                          e_ptr->code() != node_is_syncing::code_value) {
                   elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
               }
-          } else if (msg.get_transaction().actions_are_pureview()) {
-            fc_dlog(logger, "chain accept pureview transaction.");
-            return;
           } else {
               auto trace = result.get<transaction_trace_ptr>();
               if (!trace->except) {

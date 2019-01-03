@@ -73,18 +73,6 @@ namespace ultrainio { namespace chain {
          return account_name();
       }
 
-      // only if all of the actions' ability is action::PureView,
-      // this transaction is a pure view tx, otherwise false.
-      bool actions_are_pureview() const {
-         auto isNormalAction = [](const action& act) {
-            return act.ability == action::Normal;
-         };
-         auto itr1 = std::find_if(context_free_actions.begin(), context_free_actions.end(), isNormalAction);
-         if (itr1 != context_free_actions.end()) return false;
-
-         auto itr2 = std::find_if(actions.begin(), actions.end(), isNormalAction);
-         return itr2 == actions.end();
-      }
    };
 
    struct signed_transaction : public transaction
