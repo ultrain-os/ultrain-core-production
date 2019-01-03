@@ -439,6 +439,7 @@ async function voteAccount(results) {
 
         logger.debug("=======voteAccount to subchain:",info);
         contractInteract(configSub,'ultrainio', "voteaccount", params, myAccountAsCommittee, config.keyProvider[0]);
+        logger.debug("=======voteAccount to subchain end",info);
     }
 
 }
@@ -586,7 +587,7 @@ async function contractInteract(config,contractName, actionName, params, account
         const data = await contract[actionName](params, {
             authorization: [`${accountName}@active`],
         });
-        logger.debug('success')
+        logger.debug('contractInteract success :',actionName);
     } catch (err) {
         logger.error(err);
     }
