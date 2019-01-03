@@ -52,13 +52,14 @@ struct struct_def {
 
 struct action_def {
    action_def() = default;
-   action_def(const action_name& name, const type_name& type, const string& ricardian_contract)
-   :name(name), type(type), ricardian_contract(ricardian_contract)
+   action_def(const action_name& name, const type_name& type, const string& ricardian_contract, const string& ability = "normal")
+   :name(name), type(type), ricardian_contract(ricardian_contract), ability(ability)
    {}
 
    action_name name;
    type_name   type;
    string      ricardian_contract;
+   string      ability = "normal";
 };
 
 struct table_def {

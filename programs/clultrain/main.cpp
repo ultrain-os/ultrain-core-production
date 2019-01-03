@@ -347,7 +347,7 @@ void print_action( const fc::variant& at ) {
    }
 }
 
-bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
+std::vector<char>& get_account_abi(const account_name& account) {
    static unordered_map<account_name, std::vector<char> > abi_cache;
    auto it = abi_cache.find( account );
    if ( it == abi_cache.end() ) {
@@ -355,7 +355,11 @@ bytes variant_to_bin( const account_name& account, const action_name& action, co
       std::tie( it, std::ignore ) = abi_cache.emplace( account, result["abi"].as_blob().data );
       //we also received result["wasm"], but we don't use it
    }
-   const std::vector<char>& abi_v = it->second;
+   return it->second;
+}
+
+bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
+   const std::vector<char>& abi_v = get_account_abi(account);
 
    abi_def abi;
    if( abi_serializer::to_abi(abi_v, abi) ) {
@@ -366,6 +370,19 @@ bytes variant_to_bin( const account_name& account, const action_name& action, co
    } else {
       FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
    }
+}
+
+action::AbilityType get_action_ability(const account_name& account, const action_name& action) {
+   const std::vector<char>& abi_v = get_account_abi(account);
+
+   abi_def abi;
+   if( abi_serializer::to_abi(abi_v, abi) ) {
+      abi_serializer abis( abi, fc::seconds(10) );
+      action::AbilityType ability = abis.get_action_ability(action);
+      return ability;
+   }
+
+   return action::Normal;
 }
 
 fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
@@ -477,7 +494,7 @@ chain::action create_newaccount(const name& creator, const name& newaccount, pub
 }
 
 chain::action create_action(const vector<permission_level>& authorization, const account_name& code, const action_name& act, const fc::variant& args) {
-   return chain::action{authorization, code, act, variant_to_bin(code, act, args)};
+   return chain::action{ authorization, code, act, variant_to_bin(code, act, args), get_action_ability(code, act) };
 }
 
 chain::action create_buyram(const name& creator, const name& newaccount, const asset& quantity) {
@@ -2545,7 +2562,7 @@ int main( int argc, char** argv ) {
       }
       auto accountPermissions = get_account_permissions(tx_permission);
 
-      send_actions({chain::action{accountPermissions, contract_account, action, variant_to_bin( contract_account, action, action_args_var ) }});
+      send_actions({chain::action{accountPermissions, contract_account, action, variant_to_bin( contract_account, action, action_args_var ), get_action_ability(contract_account, action) }});
    });
 
    // push transaction

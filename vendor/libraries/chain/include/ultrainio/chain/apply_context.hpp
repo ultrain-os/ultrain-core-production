@@ -537,6 +537,8 @@ class apply_context {
        */
       bool has_recipient(account_name account)const;
 
+      void check_rw_db_ability() const;
+
    /// Console methods:
    public:
 
@@ -576,9 +578,12 @@ class apply_context {
       int  db_end_i64( uint64_t code, uint64_t scope, uint64_t table );
       uint64_t  db_iterator_i64(uint64_t code, uint64_t scope, uint64_t table);
       int  db_drop_i64(uint64_t code, uint64_t scope, uint64_t table);
+      int  db_drop_table(uint64_t code);
 
    private:
 
+      template<typename INDEX_TYPE, typename OBJECT_TYPE>
+      int db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id);
       const table_id_object* find_table( name code, name scope, name table );
       const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
       void                   remove_table( const table_id_object& tid );

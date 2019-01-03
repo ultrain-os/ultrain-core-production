@@ -125,8 +125,9 @@ namespace ultrainio { namespace chain {
          typedefs[td.new_type_name] = td.type;
       }
 
-      for( const auto& a : abi.actions )
-         actions[a.name] = a.type;
+      // for( const auto& a : abi.actions )
+      //    actions[a.name] = a.type;
+      actions.assign(abi.actions.begin(), abi.actions.end());
 
       for( const auto& t : abi.tables )
          tables[t.name] = t.type;
@@ -250,7 +251,7 @@ namespace ultrainio { namespace chain {
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& a : actions ) { try {
         ULTRAIN_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-        ULTRAIN_ASSERT(_is_type(a.second, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",a.second) );
+        ULTRAIN_ASSERT(_is_type(a.type, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",a.type) );
       } FC_CAPTURE_AND_RETHROW( (a)  ) }
 
       for( const auto& t : tables ) { try {
@@ -321,7 +322,7 @@ namespace ultrainio { namespace chain {
            vars.emplace_back(std::move(v));
         }
         ULTRAIN_ASSERT( vars.size() == size.value,
-                    unpack_exception, 
+                    unpack_exception,
                     "packed size does not match unpacked array size, packed size ${p} actual size ${a}",
                     ("p", size)("a", vars.size()) );
         return fc::variant( std::move(vars) );
@@ -414,10 +415,26 @@ namespace ultrainio { namespace chain {
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
    type_name abi_serializer::get_action_type(action_name action)const {
-      auto itr = actions.find(action);
-      if( itr != actions.end() ) return itr->second;
+      auto itr = std::find_if(actions.begin(), actions.end(), [&](const action_def& ad) {
+         return ad.name == action;
+      });
+      if( itr != actions.end() ) return itr->type;
       return type_name();
    }
+
+   action::AbilityType abi_serializer::get_action_ability(action_name action)const {
+      auto itr = std::find_if(actions.begin(), actions.end(), [&](const action_def& ad) {
+         return ad.name == action;
+      });
+
+      if( itr != actions.end() ) {
+         if (itr->ability == "normal") return action::Normal;
+         else if (itr->ability == "pureview") return action::PureView;
+      }
+
+      return action::Normal;
+   }
+
    type_name abi_serializer::get_table_type(name action)const {
       auto itr = tables.find(action);
       if( itr != tables.end() ) return itr->second;
