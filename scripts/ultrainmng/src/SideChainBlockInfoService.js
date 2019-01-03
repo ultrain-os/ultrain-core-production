@@ -96,7 +96,7 @@ var u3Sub;// = createU3({ ...configSub, sign: true, broadcast: true });
  * 读写相关的配置
  */
 async function initConfig() {
-    var configIniLocal = ini.parse(fs.readFileSync('../config.ini', 'utf-8'));
+    var configIniLocal = ini.parse(fs.readFileSync('/root/workspace/ultrain-core/scripts/ultrainmng/config.ini', 'utf-8'));
     // const filePath  =   path.join(process.cwd(),'config.ini');
     // var configIniLocal = ini.parse(fs.readFileSync(filePath, 'utf-8'));
 
