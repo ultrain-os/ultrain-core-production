@@ -1608,6 +1608,9 @@ class database_api : public context_aware_api {
       int db_drop_i64( uint64_t code, uint64_t scope, uint64_t table ) {
          return context.db_drop_i64( code, scope, table);
       }
+      int db_drop_table( uint64_t code ) {
+         return context.db_drop_table( code );
+      }
 
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
@@ -2136,6 +2139,7 @@ REGISTER_INTRINSICS( database_api,
    (db_end_i64,          int(int64_t,int64_t,int64_t))
    (db_iterator_i64,     int64_t(int64_t,int64_t,int64_t))
    (db_drop_i64,         int(int64_t,int64_t,int64_t))
+   (db_drop_table,       int(int64_t))
 
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)

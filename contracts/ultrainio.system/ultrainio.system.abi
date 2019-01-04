@@ -166,6 +166,12 @@
         {"name":"updateable",  "type":"bool"}
       ]
     },{
+      "name": "deletetable",
+      "base": "",
+      "fields": [
+        {"name":"code", "type":"account_name"}
+      ]
+    },{
       "name": "setcode",
       "base": "",
       "fields": [
@@ -525,6 +531,10 @@
    "actions": [{
      "name": "newaccount",
      "type": "newaccount",
+     "ricardian_contract": ""
+   },{
+     "name": "deletetable",
+     "type": "deletetable",
      "ricardian_contract": ""
    },{
      "name": "setcode",

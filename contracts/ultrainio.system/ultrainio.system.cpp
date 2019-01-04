@@ -450,12 +450,17 @@ void system_contract::voteaccount() {
       set_resource_limits( newact, 0, 0, 0 );
    }
 
+   void native::deletetable( account_name code ) {
+      require_auth(_self);
+      print(" native::deletetable contract account:" ,name{code} );
+      db_drop_table(code);
+   }
 } /// ultrainio.system
 
 
 ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
-     (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
+     (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
      (setram)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)
      // delegate_bandwidth.cpp

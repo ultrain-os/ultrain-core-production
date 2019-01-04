@@ -936,5 +936,19 @@ int32_t db_idx_long_double_upperbound(account_name code, account_name scope, tab
   */
 int32_t db_idx_long_double_end(account_name code, account_name scope, table_name table);
 
+/**
+  *
+  *  drop all table from code  tablename
+  *
+  *  @brief drop a table from code scope  tablename
+  *  @param code - code to the contract name
+  *
+  *  Example:
+  *
+  *  @code
+  *  int  db_drop_table(uint64_t code) ;
+  *  @endcode
+  */
+int  db_drop_table(uint64_t code);
 ///@} databasec
 }
