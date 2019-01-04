@@ -788,7 +788,6 @@ int apply_context::db_drop_table(uint64_t code) {
        db_drop_secondary_index<index_double_index,index_double_object>(&table_obj);
        db_drop_secondary_index<index_long_double_index,index_long_double_object>(&table_obj);
        remove_table(table_obj);
-       db.remove(table_obj);
        table_lower = table_idx.lower_bound(boost::make_tuple(code, 0, 0));
    }
    return 0;
