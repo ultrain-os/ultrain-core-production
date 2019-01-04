@@ -8,31 +8,49 @@ const ini = require('ini');
 const schedule = require('node-schedule');
 const {createU3, format} = U3;
 
-
+/**
+ * 全局变量定义
+ * @type {string}
+ */
+//节点登录的委员会用户信息
 var myAccountAsCommittee = "";
+//用户私钥
 var mySkAsCommittee = "";
+//子链上所有producers的本地备份，做对比用
 var jsonArray = [];
+//子链名称
 var chain_name = "";
-
+//是否为本地配置
 var local="";
 
-const logger = {
+/**
+ * 日志信息
+ */
+var logger= require("./config/logconfig");
+/**
+ * 日志配置相关
+ * @type {{debug: logger.debug, log: logger.log, error: logger.error}}
+ */
+const loggerConfig = {
     log: function () {
         if(local="true") {
-            console.info.apply(console,arguments)
+            //console.info.apply(console,arguments)
+            logger.info(arguments);
         }
 
     },
     error: function () {
         // if(local="true") {
-            console.error.apply(console,arguments)
+            //console.error.apply(console,arguments)
         // }
         // console.error(msg);
+        logger.error(arguments);
 
     },
     debug: function () {
         if(local="true") {
-            console.debug.apply(console,arguments)
+            //console.debug.apply(console,arguments)
+            logger.debug(arguments);
         }
 
     }
@@ -52,9 +70,9 @@ var config = {
     debug: false,
     verbose: false,
     logger: {
-        log: logger.log,
-        error: logger.error,
-        debug: logger.debug
+        log: loggerConfig.log,
+        error: loggerConfig.error,
+        debug: loggerConfig.debug
     },
     binaryen: require('binaryen'),
     symbol: 'UGAS'
@@ -76,9 +94,9 @@ let configSub = {
     debug: false,
     verbose: false,
     logger: {
-        log: logger.log,
-        error: logger.error,
-        debug: logger.debug
+        log: loggerConfig.log,
+        error: loggerConfig.error,
+        debug: loggerConfig.debug
     },
     binaryen: require('binaryen'),
     symbol: 'UGAS'
