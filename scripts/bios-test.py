@@ -30,6 +30,7 @@ systemAccounts = [
     'utrio.token',
     'utrio.vpay',
     'utrio.fee',
+    'utrio.rand',
 ]
 
 initialAccounts = [
@@ -159,15 +160,6 @@ accounts = [
 ".511",
 ".512",
 ]
-
-#pk_list = ["b3f88e7694995cf2d46fb9bbe172b1e9d2ae8ea372ec26c01a6603bd415dc64d",
-#           "e2e7339522395916f941c49b3d58dfc4c0c61e0e3910fcf568b3c2ce2005e32b",
-#           "92f7b32418e79b2a4ba716f6745c361381411f0537376e438b2399486ed0c8dc",
-#           "4141e8c7a4780df3cf840ed556d52108b08a3bc2ead12bece6bc06b9d9487eb2",
-#           "933c5ceddf3d27af114351112c131f1bb4001a6a6669449365b204441db181a3",
-#           "6fadc36ba297d6db53ec0a094c27a32ee266ab17a63cfa149609edfe881c7118",
-#           "4ae81777689da3f6c6972effa4857cd32ddd3466fef42cb281babc0198546faa"
-#           ]
 
 pk_list = ["369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35",
 "b7e0a16fdca44d4ece1b14d8e7e6207402a6447115ca7d2d7edb08958e6d8ed5",
@@ -577,6 +569,7 @@ def createSystemAccounts():
 def stepInstallSystemContracts():
     retry(args.clultrain + 'set contract utrio.token ' + args.contracts_dir + 'ultrainio.token/')
     retry(args.clultrain + 'set contract utrio.msig ' + args.contracts_dir + 'ultrainio.msig/')
+    retry(args.clultrain + 'set contract utrio.rand ' + args.contracts_dir + 'ultrainio.rand/')
     sleep(20)
 
 def stepCreateTokens():
@@ -627,6 +620,8 @@ def stepCreateinitAccounts():
     for a in initialAccounts:
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
     retry(args.clultrain + 'system resourcelease ultrainio  hello  6000 10')
+    retry(args.clultrain + 'transfer ultrainio utrio.rand "10000 UGAS" ')
+    retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
 
 def stepResign():
     resign('ultrainio', 'utrio.null')

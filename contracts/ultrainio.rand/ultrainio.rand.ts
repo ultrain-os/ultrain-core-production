@@ -11,7 +11,7 @@ import { Log } from "ultrain-ts-lib/src/log";
 class Candidate implements Serializable {
     @primaryid
     name: account_name = 0;
-    vrf_pk: string ="";
+    vrf_pk: string = "";
     age: u32 = 0;
 }
 
@@ -20,7 +20,6 @@ class Vote implements Serializable {
     name: account_name = 0;
     val: u64 = 0;
 }
-
 
 //table + scope for external query
 const canditable = "candidate";
@@ -39,7 +38,7 @@ const MIN_AGE :u64=2; //minimum age to be candidate
 // two tables for two different data types
 @database(Vote, "vote")
 @database(Candidate, "candidate")
-class randgen extends Contract {
+class rand extends Contract {
 
     candidateDB: DBManager<Candidate>;
     votedDB: DBManager<Vote>;
@@ -49,24 +48,23 @@ class randgen extends Contract {
         // cadidateDB for internal use, with external interface defined
         // data type contains primary_key
         this.candidateDB = new DBManager<Candidate>(NAME(canditable), this.receiver, NAME(candiscope));
-        // this.candidateDB2 = new DBManager<Candidate>(NAME(canditable), this.receiver, NAME(candiscope2)); //define same DB, same table with another scope
-        this.votedDB = new DBManager<Vote>(NAME(votetable), this.receiver, NAME(votescope));  
+        this.votedDB = new DBManager<Vote>(NAME(votetable), this.receiver, NAME(votescope));
 
         // create permanent variable if first time
-        if (!this.votedDB.exists(NAME("start_blocknum"))) { //first time
-                let c = new Vote();
-                c.name = NAME("start_blocknum");
-                c.val = Block.number;
-                this.votedDB.emplace(Action.sender, c);
+        if (!this.votedDB.exists(NAME("blocknum"))) { //first time
+            let c = new Vote();
+            c.name = NAME("blocknum");
+            c.val = Block.number;
+            this.votedDB.emplace(Action.sender, c);
         
-                c.name = NAME("seed");
-                c.val = 2346;
-                this.votedDB.emplace(Action.sender, c);
+            c.name = NAME("seed");
+            c.val = 2346;
+            this.votedDB.emplace(Action.sender, c);
         
-                c.name = NAME("rand");
-                c.val = 0;
-                this.votedDB.emplace(Action.sender, c);
-            }
+            c.name = NAME("rand");
+            c.val = 0;
+            this.votedDB.emplace(Action.sender, c);
+        }
         //TODO: auto-elimination of late signers
     }
 
@@ -81,19 +79,15 @@ class randgen extends Contract {
     // all candidate can register with deposit and pk
     @action
     addCandidate(): void {
-        Log.s("start to remove: ").flush();
+        Log.s("addCandidate: ").s(RNAME(Action.sender)).flush();
         //ultrain_assert(!this.candidateDB.exists(Action.sender), "cannot add existing candidate.");
 
         let c = new Candidate();
-        Log.s("start to remove: ").flush();
         c.name = Action.sender;
         c.age = Block.number;
         // c.vrf_pk = "";
-        Log.s("start to remove: ").flush();
         this.candidateDB.emplace(this.receiver, c);
-        Log.s("start to remove: ").flush();
         Asset.transfer(Action.sender, this.receiver, new Asset(DEPOSIT_AMOUNT), "deposit money"); //return deposit
-        Log.s("start to remove: ").flush();
     }
 
     //TODO: punish candidate
@@ -103,8 +97,9 @@ class randgen extends Contract {
     removeCandidate(): void {
         ultrain_assert(this.candidateDB.exists(Action.sender), "cannot remove non-existing candidate.");
         this.candidateDB.erase(Action.sender);
-        if (this.votedDB.exists(Action.sender))
+        if (this.votedDB.exists(Action.sender)) {
             this.votedDB.erase(Action.sender);
+        }
         Asset.transfer(this.receiver, Action.sender, new Asset(DEPOSIT_AMOUNT), "return deposited money"); //return deposit
     }
 
@@ -114,13 +109,13 @@ class randgen extends Contract {
         ultrain_assert(this.candidateDB.exists(Action.sender), "you should be a candidate firstly.");
 
         let c = new Vote();
-        this.votedDB.get(NAME("start_blocknum"), c);
+        this.votedDB.get(NAME("blocknum"), c);
         //trigger a new epoch
-        if ((Block.number - c.val) >=EPOCH) {
-            let new_start_blockNum=c.val;
-            while (new_start_blockNum < (Block.number-EPOCH)) // catch up to the recent start block, in case no vote tx
-                 new_start_blockNum = new_start_blockNum + EPOCH;
-
+        if ((Block.number - c.val) >= EPOCH) {
+            let new_start_blockNum = c.val;
+            while (new_start_blockNum + EPOCH < Block.number) { // catch up to the recent start block, in case no vote tx
+                new_start_blockNum = new_start_blockNum + EPOCH;
+            }
             //seed = rand
             this.votedDB.get(NAME("rand"), c);
             let new_seed = c.val;
@@ -130,7 +125,7 @@ class randgen extends Contract {
             // this.voters = []; // clear voted array
 
             //refill data
-            c.name = NAME("start_blocknum");
+            c.name = NAME("blocknum");
             c.val = new_start_blockNum;
             this.votedDB.emplace(Action.sender, c);
 
@@ -148,26 +143,22 @@ class randgen extends Contract {
         //query and verify with pk
         let cdd = new Candidate();
 
-        // need to be old enough
-        // if (Block.number - c.age < EPOCH)
-        //  ultrain_assert(false, "this account need to wait for the next round.");
-
         this.candidateDB.get(Action.sender, cdd);
 
         //query compressed pk point with account name, then verify proof
-	let ZERO = "0";
+        let ZERO = "0";
         this.votedDB.get(NAME("seed"), c);
         let cStr = intToString(c.val);
-        ZERO=ZERO.repeat(64-cStr.length);
+        ZERO = ZERO.repeat(64-cStr.length);
 
-        let pkStr=Account.publicKeyOf(Action.sender, 'hex');
-        ultrain_assert(verify_with_pk(pkStr, pk_proof, cStr.concat(ZERO)), "please provide a valid VRF proof."+ pkStr + " " +pk_proof +" " +cStr.concat(ZERO));
+        let pkStr = Account.publicKeyOf(Action.sender, 'hex');
+        ultrain_assert(verify_with_pk(pkStr, pk_proof, cStr.concat(ZERO)), "please provide a valid VRF proof." + pkStr + " " + pk_proof + " " + cStr.concat(ZERO));
 
         // aggregate rand
         //use hash proof
         let sha256 = new SHA256();
-        let hash = sha256.hash(pk_proof.substring(0,66)); // proof = (r_33byte, c_16_byte, s_32byte)
-        let vrf:u64 = <u64> parseInt(hash.substring(0,14), 16); // convert hex_6digits string to u64
+        let hash = sha256.hash(pk_proof.substring(0, 66)); // proof = (r_33byte, c_16_byte, s_32byte)
+        let vrf:u64 = <u64> parseInt(hash.substring(0, 14), 16); // convert hex_6digits string to u64
 
         this.votedDB.get(NAME("rand"), c);
         c.val = c.val ^ vrf; 
@@ -179,7 +170,7 @@ class randgen extends Contract {
         this.votedDB.emplace(Action.sender, c);
         Asset.transfer(this.receiver, Action.sender, new Asset(BONUS), "bonus money"); //give bonus
 
-        Return(" Rand: "+intToString(rand)+" Block.number: "+intToString(Block.number));
+        Return(" Rand: " + intToString(rand) + " Block.number: " + intToString(Block.number));
     }
 
     //for external users, cross-contract calling
@@ -188,12 +179,12 @@ class randgen extends Contract {
     @action
     query(): void {
         let c = new Vote();
-        this.votedDB.get(NAME("start_blocknum"), c);
+        this.votedDB.get(NAME("blocknum"), c);
         //trigger a new epoch
-        if ((Block.number - c.val) >=EPOCH) 
+        if ((Block.number - c.val) >= EPOCH)
             this.votedDB.get(NAME("rand"), c);
         else
             this.votedDB.get(NAME("seed"), c);
-	Return(" Rand: "+intToString(c.val)+" Block.number: "+intToString(Block.number));
+	    Return(" Rand: " + intToString(c.val) + " Block.number: " + intToString(Block.number));
     }
 }
