@@ -14,9 +14,10 @@ readarray -t ult_pkLst < pk.lst; readarray -t ult_skLst < sk.lst; readarray -t u
 
 wallet_url="--wallet-url http://127.0.0.1:6666"
 
-# bash run.sh caccount;
-# bash run.sh e1
-# bash run.sh v
+# bash rand.sh i
+# bash rand.sh c
+# bash rand.sh r
+# bash rand.sh e
 
 VOTER_NUM=${#ult_accountLst[@]}
 case "$1" in
