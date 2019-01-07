@@ -7,32 +7,45 @@ const fs = require('fs');
 const ini = require('ini');
 const schedule = require('node-schedule');
 const {createU3, format} = U3;
+const utils = require("./common/utils")
 
-
+/**
+ * 全局变量定义
+ * @type {string}
+ */
+//节点登录的委员会用户信息
 var myAccountAsCommittee = "";
+//用户私钥
 var mySkAsCommittee = "";
+//子链上所有producers的本地备份，做对比用
 var jsonArray = [];
+//子链名称
 var chain_name = "";
+//是否为本地内网环境测试
+var localtest = false;
 
-var local="";
-
-const logger = {
+/**
+ * 日志信息
+ */
+var logger = require("./config/logconfig");
+/**
+ * 日志配置相关
+ * @type {{debug: logger.debug, log: logger.log, error: logger.error}}
+ */
+const loggerConfig = {
     log: function () {
-        if(local="true") {
-            console.info.apply(console,arguments)
+        if (localtest = "true") {
+            logger.info(arguments);
         }
 
     },
     error: function () {
-        // if(local="true") {
-            console.error.apply(console,arguments)
-        // }
-        // console.error(msg);
+        logger.error(arguments);
 
     },
     debug: function () {
-        if(local="true") {
-            console.debug.apply(console,arguments)
+        if (localtest = "true") {
+            logger.debug(arguments);
         }
 
     }
@@ -52,9 +65,9 @@ var config = {
     debug: false,
     verbose: false,
     logger: {
-        log: logger.log,
-        error: logger.error,
-        debug: logger.debug
+        log: loggerConfig.log,
+        error: loggerConfig.error,
+        debug: loggerConfig.debug
     },
     binaryen: require('binaryen'),
     symbol: 'UGAS'
@@ -76,9 +89,9 @@ let configSub = {
     debug: false,
     verbose: false,
     logger: {
-        log: logger.log,
-        error: logger.error,
-        debug: logger.debug
+        log: loggerConfig.log,
+        error: loggerConfig.error,
+        debug: loggerConfig.debug
     },
     binaryen: require('binaryen'),
     symbol: 'UGAS'
@@ -96,69 +109,78 @@ var u3Sub;// = createU3({ ...configSub, sign: true, broadcast: true });
  * 读写相关的配置
  */
 async function initConfig() {
-    var configIniLocal = ini.parse(fs.readFileSync('/root/workspace/ultrain-core/scripts/ultrainmng/config.ini', 'utf-8'));
-    // const filePath  =   path.join(process.cwd(),'config.ini');
-    // var configIniLocal = ini.parse(fs.readFileSync(filePath, 'utf-8'));
 
-    configIniLocal.name = 'helloworld';
-    configIniLocal.version = '2,0.0';
-    // configIniLocal.httpEndpointMain=
+    logger.debug("start to init config file");
 
-    //读取指定config.ini里面的文件路径，只需要修改文件路径即可
+    /**
+     * 读取管家程序自己的config文件来读取
+     */
+    var configIniLocal = ini.parse(fs.readFileSync(path.join(__dirname, "../config.ini"), 'utf-8'));
+
+    //读取nodultrain程序中的config.ini
     var configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path, 'utf-8'));
     logger.debug('configIniTarget=', configIniTarget);
 
-    // getRemoteIpAddress
+    //获取主链请求的http地址-默认使用
     const ip = await getRemoteIpAddress(configIniLocal.url);
     logger.debug('getRemoteIpAddress=', ip);
-
     config.httpEndpoint = `${configIniLocal.prefix}${ip}${configIniLocal.endpoint}`;
 
-    local = configIniLocal["local"];
+    //子链请求地址配置
+    configSub.httpEndpoint = configIniLocal.subchainHttpEndpoint;
 
-    if(local) {
-        config.httpEndpoint="http://172.16.10.4:8877";
-        chain_name = configIniLocal["chain_name"];
+    /**
+     * 获取配置中localtest配置
+     */
+    localtest = configIniLocal["localtest"];
+    logger.debug("env: (localtest:" + localtest + ")");
 
-        myAccountAsCommittee = configIniLocal["my-account-as-committee"];
-        mySkAsCommittee = configIniLocal["my-sk-as-committee"];
 
-        config.keyProvider = [configIniLocal["my-sk-as-account"]];
-        configSub.keyProvider = [configIniLocal["my-sk-as-account"]];
+    /**
+     * 通过nodultrain的配置信息获取主子链的用户信息
+     */
+    myAccountAsCommittee = configIniTarget["my-account-as-committee"];
+    mySkAsCommittee = configIniTarget["my-sk-as-committee"];
+    config.keyProvider = [configIniTarget["my-sk-as-account"]];
+    configSub.keyProvider = [configIniTarget["my-sk-as-account"]];
 
-        // configSub.httpEndpoint="http://172.16.10.5:8877";
-        configSub.httpEndpoint="http://127.0.0.1:8888";
-    } else {
-        myAccountAsCommittee = configIniTarget["my-account-as-committee"];
-        mySkAsCommittee = configIniTarget["my-sk-as-committee"];
-
-        config.keyProvider = [configIniTarget["my-sk-as-account"]];
-        configSub.keyProvider = [configIniTarget["my-sk-as-account"]];
-
-        configSub.httpEndpoint="http://127.0.0.1:8888";
+    /**
+     * 如果localtest为true，表明当前是本地测试状态，更新主链url等信息
+     */
+    if (localtest) {
+        if (utils.isNotNull(configIniLocal["mainchainHttpEndpoint"])) {
+            logger.debug("local mainchain httpEndpoint is enabled :"+configIniLocal["mainchainHttpEndpoint"]);
+            config.httpEndpoint = configIniLocal["mainchainHttpEndpoint"];
+        }
+        // config.httpEndpoint = "http://172.16.10.4:8877";
+        if (utils.isNotNull(configIniLocal["chain_name"])) {
+            chain_name = configIniLocal["chain_name"];
+        }
+        /**
+         * 账号信息需要同时否不为空才进行替换
+         */
+        if (utils.isAllNotNull(configIniLocal["my-account-as-committee"], configIniLocal["my-sk-as-committee"], configIniLocal["my-sk-as-account"])) {
+            logger.debug("local account config is enabled :"+configIniLocal["my-account-as-committee"]);
+            myAccountAsCommittee = configIniLocal["my-account-as-committee"];
+            mySkAsCommittee = configIniLocal["my-sk-as-committee"];
+            config.keyProvider = [configIniLocal["my-sk-as-account"]];
+            configSub.keyProvider = [configIniLocal["my-sk-as-account"]];
+        }
     }
 
-    try{
+    try {
         //
         config.chainId = await getMainChainId();
         logger.debug("config.chainId=", config.chainId);
 
         configSub.chainId = await getSubChainId();
         logger.debug("configSub.chainId=", configSub.chainId);
-    }catch (e) {
+    } catch (e) {
         logger.error("target node crashed, check main node or sub node", e)
 
     }
 
-    // url= configIniTarget["url"];
-
-    // prefix="http://";
-    // endpoint=":8888";
-    // url="http://47.52.43.102:3335/api/remoteEndpoint";
-    // chain_name="11";
-
-    //修改config.ini文件
-    // fs.writeFileSync('./config.ini', ini.stringify(configIniLocal, {section: ''}));
+    logger.debug("finish init config file");
 }
 
 
@@ -221,17 +243,17 @@ async function getRemoteIpAddress(url) {
  * @returns {Promise<Array>}
  */
 async function getProducerLists() {
-    const params = {"json": "true" ,"lower_bound": "0" , "limit": 100 };
-    const rs = await axios.post(configSub.httpEndpoint+"/v1/chain/get_producers", params);
+    const params = {"json": "true", "lower_bound": "0", "limit": 100};
+    const rs = await axios.post(configSub.httpEndpoint + "/v1/chain/get_producers", params);
     // const rs = await axios.post("http://172.16.10.5:8899/v1/chain/get_producers", params);
 
-    var result=[];
+    var result = [];
 
     var rows = rs.data.rows;
 
     for (var i in rows) {
         var row = rows[i];
-        if(row.is_active == 1) {
+        if (row.is_active == 1) {
             result.push({
                 owner: row.owner,
                 miner_pk: "",
@@ -242,6 +264,7 @@ async function getProducerLists() {
     logger.debug("getProducerLists result=", result);
     return result;
 }
+
 //curl  http://127.0.0.1:8888/v1/chain/get_producers   -d '{"json":"true","lower_bound":"0","limit":100}'
 
 /**
@@ -334,7 +357,7 @@ function invokeSystemContract(resultJson) {
         return;
     }
 
-    if(result.length>1) {
+    if (result.length > 1) {
         logger.error("error, Committee members is too many")
         return;
     }
@@ -379,7 +402,7 @@ pushHeaderToTestnet = async (results) => {
         headers: results
     };
 
-    contractInteract(config,'ultrainio', "acceptheader", params, myAccountAsCommittee, config.keyProvider[0]);
+    contractInteract(config, 'ultrainio', "acceptheader", params, myAccountAsCommittee, config.keyProvider[0]);
 }
 
 /**
@@ -406,7 +429,7 @@ async function initChainName(user) {
  */
 getUserBulletin = async () => {
 
-    let result = await u3.getUserBulletin({"chain_name":  parseInt(chain_name, 10)});
+    let result = await u3.getUserBulletin({"chain_name": parseInt(chain_name, 10)});
 
     return result;
 
@@ -421,8 +444,8 @@ async function voteAccount(results) {
 
     let infos = await getUserBulletin();
 
-    logger.debug("=======voteAccount params=" , results);
-    logger.debug("=======voteAccount info=" , infos);
+    logger.debug("=======voteAccount params=", results);
+    logger.debug("=======voteAccount info=", infos);
 
     for (var i in infos) {
         var info = infos[i];
@@ -437,9 +460,9 @@ async function voteAccount(results) {
             }]
         };
 
-        logger.debug("=======voteAccount to subchain:",info);
-        contractInteract(configSub,'ultrainio', "voteaccount", params, myAccountAsCommittee, config.keyProvider[0]);
-        logger.debug("=======voteAccount to subchain end",info);
+        logger.debug("=======voteAccount to subchain:", info);
+        contractInteract(configSub, 'ultrainio', "voteaccount", params, myAccountAsCommittee, config.keyProvider[0]);
+        logger.debug("=======voteAccount to subchain end", info);
     }
 
 }
@@ -453,12 +476,14 @@ async function voteAccount(results) {
  */
 async function scheduleCronstyle() {
 
+    logger.info("ultrainmng start to work...")
+
     await initConfig();
 
     u3 = createU3({...config, sign: true, broadcast: true});
     u3Sub = createU3({...configSub, sign: true, broadcast: true});
 
-    chain_name = await  initChainName(myAccountAsCommittee);
+    chain_name = await initChainName(myAccountAsCommittee);
 
     schedule.scheduleJob('*/10 * * * * *', function () {
         logger.debug('scheduleCronstyle:' + new Date());
@@ -488,17 +513,17 @@ const getBlocks = async () => {
     // let resultJson = await u3.getAllBlocksHeader(1, 2, {}, {_id: -1});
     //
     // logger.debug("===============u3.resultJson.results.results[0].block result is:", resultJson.results);
-    u3Sub.getChainInfo(async(error, info) => {
-        if(error) {
+    u3Sub.getChainInfo(async (error, info) => {
+        if (error) {
             logger.error(error);
             return;
         }
 
-        logger.debug("u3.getChainInfo =",info);
+        logger.debug("u3.getChainInfo =", info);
 
         var subBlockNumMax = info.head_block_num;
 
-        logger.debug("head block num=",subBlockNumMax);
+        logger.debug("head block num=", subBlockNumMax);
 
         let blockNum = await u3.getSubchainBlockNum({"chain_name": chain_name.toString()});
         logger.debug("u3.getSubchainBlockNum  blockNum=" + blockNum);
@@ -506,14 +531,14 @@ const getBlocks = async () => {
         //初始化block Num
         let blockNumInt = parseInt(blockNum, 10) + 1;
 
-        if(subBlockNumMax-blockNumInt>=10) {
-            subBlockNumMax=blockNumInt+10;
+        if (subBlockNumMax - blockNumInt >= 10) {
+            subBlockNumMax = blockNumInt + 10;
         }
 
         let results = [];
-        for(var i = blockNumInt; i<subBlockNumMax; i++) {
+        for (var i = blockNumInt; i < subBlockNumMax; i++) {
             let result = await u3Sub.getBlockInfo((i).toString());
-            logger.debug("result=",result);
+            logger.debug("result=", result);
 
             results.push({
                 "timestamp": result.timevalue,
@@ -537,7 +562,6 @@ const getBlocks = async () => {
         }
 
     });
-
 
 
 }
@@ -571,13 +595,13 @@ const getSubchainCommittee = async () => {
  * @param privateKey
  * @returns {Promise<void>}
  */
-async function contractInteract(config,contractName, actionName, params, accountName, privateKey) {
+async function contractInteract(config, contractName, actionName, params, accountName, privateKey) {
     try {
         const keyProvider = [privateKey];
         const u3 = createU3({...config, keyProvider});
 
         const contract = await u3.contract(contractName);
-        logger.debug("contract=",JSON.stringify(contract.fc.abi.structs));
+        logger.debug("contract=", JSON.stringify(contract.fc.abi.structs));
         if (!contract) {
             throw new Error("can't found contract");
         }
@@ -587,10 +611,10 @@ async function contractInteract(config,contractName, actionName, params, account
         const data = await contract[actionName](params, {
             authorization: [`${accountName}@active`],
         });
-        logger.debug('contractInteract success :',actionName);
+        logger.debug('contractInteract success :', actionName);
     } catch (err) {
-        logger.debug('contractInteract error :',actionName);
-        logger.error('contractInteract error :',err);
+        logger.debug('contractInteract error :', actionName);
+        logger.error('contractInteract error :', err);
     }
 }
 
