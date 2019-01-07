@@ -224,7 +224,7 @@ namespace ultrainiosystem {
          // functions defined in delegate_bandwidth.cpp
 
          void resourcelease( account_name from, account_name receiver,
-                          int64_t combosize, int64_t days);
+                          int64_t combosize, int64_t days, uint64_t location = 0);
          /**
           *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'.
           *  If transfer == true, then 'receiver' can unstake to their account

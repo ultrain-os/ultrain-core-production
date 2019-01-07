@@ -515,7 +515,7 @@ namespace ultrainiosystem {
       }
    }
    void system_contract::resourcelease( account_name from, account_name receiver,
-                          int64_t combosize, int64_t days){
+                          int64_t combosize, int64_t days, uint64_t location){
       require_auth( from );
       ultrainio_assert( combosize >= 0, "must stake a positive resources package  amount" );
       auto max_availableused_size = _gstate.max_resources_size - _gstate.total_resources_staked;

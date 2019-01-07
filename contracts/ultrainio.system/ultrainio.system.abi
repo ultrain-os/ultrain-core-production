@@ -241,7 +241,8 @@
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
          {"name":"combosize", "type":"int64"},
-         {"name":"days", "type":"int64"}
+         {"name":"days", "type":"int64"},
+         {"name":"location", "type":"uint64"}
       ]
     },{
       "name": "delegatecons",
