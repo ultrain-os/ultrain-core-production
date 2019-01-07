@@ -7,7 +7,7 @@ const fs = require('fs');
 const ini = require('ini');
 const schedule = require('node-schedule');
 const {createU3, format} = U3;
-const utils = require("./common/utils")
+const utils = require("./common/util/utils")
 
 /**
  * 全局变量定义
