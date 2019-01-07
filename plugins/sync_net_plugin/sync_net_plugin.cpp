@@ -1483,7 +1483,7 @@ namespace ultrainio {
       return result;
    }
 
-    string sync_net_plugin::require_file() {
+    string sync_net_plugin::require_ws() {
         ReqLastWsInfoMsg reqLastWsInfoMsg;
         for (const auto& c : my->connections) {
             if(c->current()) {
@@ -1502,6 +1502,19 @@ namespace ultrainio {
         return "get triger and hosts list";
     }
 
+    string sync_net_plugin::require_block(uint32_t begin,uint32_t end) {
+
+        return "start transfer block";
+    }
+
+    string sync_net_plugin::sync_block(uint32_t block_height) {
+
+        return "get block";
+    }
+
+    string sync_net_plugin::poll_status(string id){
+        return ;
+    }
     string sync_net_plugin::test_latancy() {
         ReqTestTimeMsg reqTestTimeMsg;
         for (const auto& c : my->connections) {

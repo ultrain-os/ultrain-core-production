@@ -42,8 +42,11 @@ namespace ultrainio {
         optional<connection_status>  status( const string& endpoint )const;
         vector<connection_status>    connections()const;
 
-        string                       require_file();
+        string                       require_ws();
         string                       sync_ws(const sync_wss_params& syncWssParams);
+        string                       require_block(uint32_t begin,uint32_t end);
+        string                       sync_block(uint32_t block_height);
+        string                       poll_status(string id);
         string                       test_latancy();
 
         size_t num_peers() const;
