@@ -750,6 +750,8 @@ int apply_context::db_drop_i64(uint64_t code, uint64_t scope, uint64_t table) {
 }
 int apply_context::db_drop_table(uint64_t code) {
    const auto&  table_idx = db.get_index<table_id_multi_index , by_code_scope_table>();
+   account_name systemname(config::system_account_name);
+   ULTRAIN_ASSERT( systemname == receiver, table_access_violation, "db access violation" );
    auto table_lower = table_idx.lower_bound(boost::make_tuple(code, 0, 0));
    auto table_upper = table_idx.lower_bound(boost::make_tuple(code+1, 0, 0));
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
