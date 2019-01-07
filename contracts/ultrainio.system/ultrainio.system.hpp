@@ -321,6 +321,8 @@ namespace ultrainiosystem {
          void votecommittee();
 
          void voteaccount();
+
+         void recycleresource(const account_name owner ,uint64_t lease_num);
       private:
          inline void update_activated_stake(int64_t stake);
 

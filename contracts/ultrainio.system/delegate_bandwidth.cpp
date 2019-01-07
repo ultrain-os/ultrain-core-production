@@ -470,7 +470,7 @@ namespace ultrainiosystem {
       {
          asset total_update = stake_cons_delta;
          auto it = _producers.find(receiver);
-         ultrainio_assert( it != _producers.end(), "Unable to delegate cons, you need to regproducer first" );
+         ultrainio_assert( (it != _producers.end()) && it->is_active, "Unable to delegate cons, you need to regproducer" );
          uint64_t curblocknum = tapos_block_num();
          if(stake_cons_delta.amount < 0){
             print("undelegatecons from:",name{from}," receiver:",name{receiver}," tapos_block_num:",curblocknum," it->last_operate_blocknum:",it->last_operate_blocknum);//
@@ -641,22 +641,56 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
 
       refunds_tbl.erase( req );
    }
+   void system_contract::recycleresource(const account_name owner ,uint64_t lease_num) {
+      require_auth( _self );
+      int64_t ram_bytes = 0;
+      get_account_ram_usage( owner, &ram_bytes );
+      print("checkresexpire  recycleresource account:",name{owner}," ram_used:",ram_bytes);
+      set_resource_limits( owner, ram_bytes, 0, 0 );
+      if(_gstate.total_resources_staked >= lease_num)
+         _gstate.total_resources_staked -= lease_num;
+      uint64_t bytes = (_gstate.max_ram_size-2ll*1024*1024*1024)/_gstate.max_resources_size;
+      if(_gstate.total_ram_bytes_reserved >= (lease_num*bytes - ram_bytes))
+         _gstate.total_ram_bytes_reserved =_gstate.total_ram_bytes_reserved - lease_num*bytes + ram_bytes;
+   }
 
    void system_contract::checkresexpire(){
       time curtime = now();
-      if(_gstate.last_check_resexpiretime < curtime && (curtime - _gstate.last_check_resexpiretime) > seconds_per_day){
+      if(_gstate.last_check_resexpiretime == 0)
+         _gstate.last_check_resexpiretime = now();
+      if(_gstate.last_check_resexpiretime < curtime && (curtime - _gstate.last_check_resexpiretime) >= seconds_per_day){
          _gstate.last_check_resexpiretime = curtime;
          for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ){
             if(leaseiter->end_time <= curtime){
-               int64_t ram_bytes = 0;
-               get_account_ram_usage( leaseiter->owner, &ram_bytes );
-               print("checkresexpire account:",name{leaseiter->owner}," ram_used:",ram_bytes," start_time:",leaseiter->start_time," end_time:",leaseiter->end_time);
-               set_resource_limits( leaseiter->owner, ram_bytes, 0, 0 );
-               if(_gstate.total_resources_staked >= leaseiter->lease_num)
-                  _gstate.total_resources_staked -= leaseiter->lease_num;
-               uint64_t bytes = (_gstate.max_ram_size-2ll*1024*1024*1024)/_gstate.max_resources_size;
-               if(_gstate.total_ram_bytes_reserved >= ((uint64_t)leaseiter->lease_num*bytes - ram_bytes))
-                  _gstate.total_ram_bytes_reserved =_gstate.total_ram_bytes_reserved - (uint64_t)leaseiter->lease_num*bytes + ram_bytes;
+               print("checkresexpire reslease name:",name{leaseiter->owner}, " leaseiter->end_time:",leaseiter->end_time," curtime:",curtime);
+               //drop contract account table
+               db_drop_table(leaseiter->owner);
+               //clear contract account code
+               ultrainio::transaction codetrans;
+               codetrans.actions.emplace_back( permission_level{ leaseiter->owner, N(active) }, _self, NEX(setcode), std::make_tuple(leaseiter->owner, 0, 0, bytes()) );
+               codetrans.actions[0].authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
+               codetrans.delay_sec = 1;
+               uint128_t trxid = now() + leaseiter->owner + N(setcode);
+               cancel_deferred(trxid);
+               codetrans.send( trxid, _self, true );
+               print("checkresexpire set code:",current_time()," trxid:",trxid);
+               //clear contract account abi
+               ultrainio::transaction abitrans;
+               abitrans.actions.emplace_back( permission_level{ leaseiter->owner, N(active) }, _self, NEX(setabi), std::make_tuple(leaseiter->owner, bytes()) );
+               abitrans.actions[0].authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
+               abitrans.delay_sec = 1;
+               trxid = now() +leaseiter->owner + N(setabi);
+               cancel_deferred(trxid);
+               abitrans.send( trxid, _self, true );
+               print("checkresexpire set abi:",current_time()," trxid:",trxid);
+               //recycle resource
+               ultrainio::transaction recyclerestrans;
+               recyclerestrans.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(recycleresource), std::make_tuple(leaseiter->owner, leaseiter->lease_num) );
+               recyclerestrans.delay_sec = 3;
+               trxid = now() +leaseiter->owner + N(recycleres);
+               cancel_deferred(trxid);
+               recyclerestrans.send( trxid, _self, true );
+               print("checkresexpire recycleres:",current_time()," trxid:",trxid);
                leaseiter = _reslease_tbl.erase(leaseiter);
             } else {
                ++leaseiter;

@@ -147,7 +147,10 @@ void apply_ultrainio_setcode(apply_context& context) {
     // if account has been deployed, then check updateable or not.
     if (account.code.size() > 0) {
         // std::cout << "set code account updateable : " << account.updateable << std::endl;
-        FC_ASSERT(account.updateable, "contract account has deployed and it is not updateable.");
+         if(context.has_authorization(N(ultrainio)))
+            context.require_authorization(N(ultrainio));
+         else
+            FC_ASSERT(account.updateable, "contract account has deployed and it is not updateable.");
     }
 
    int64_t code_size = (int64_t)act.code.size();
@@ -187,7 +190,10 @@ void apply_ultrainio_setabi(apply_context& context) {
     // if account has been deployed, then check updateable or not.
     if (account.abi.size() > 0) {
         // std::cout << "set abi account updateable : " << account.updateable << std::endl;
-        FC_ASSERT(account.updateable, "contract account has deployed and it is not updateable.");
+         if(context.has_authorization(N(ultrainio)))
+            context.require_authorization(N(ultrainio));
+         else
+            FC_ASSERT(account.updateable, "contract account has deployed and it is not updateable.");
     }
 
    int64_t abi_size = act.abi.size();

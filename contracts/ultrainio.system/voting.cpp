@@ -97,6 +97,7 @@ namespace ultrainiosystem {
       ultrainio_assert( (curblocknum - prod.last_operate_blocknum) > 2 , "interval operate at least more than certain number block high" );
       _producers.modify( prod, 0, [&]( producer_info& info ){
             info.deactivate();
+            info.is_enabled = false;
             info.last_operate_blocknum = curblocknum;
       });
 /*
