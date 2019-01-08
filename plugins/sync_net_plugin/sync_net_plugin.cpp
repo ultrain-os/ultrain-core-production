@@ -1512,9 +1512,10 @@ namespace ultrainio {
         return "get block";
     }
 
-    string sync_net_plugin::poll_status(string id){
-        return ;
+    string sync_net_plugin::ws_status(string id){
+        return "get ws state";
     }
+
     string sync_net_plugin::test_latancy() {
         ReqTestTimeMsg reqTestTimeMsg;
         for (const auto& c : my->connections) {
