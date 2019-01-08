@@ -23,6 +23,12 @@ namespace ultrainio {
         flat_set<string>    hosts;
     };
 
+    struct status_code {
+        int32_t             code;
+        string              des;
+        string              host;
+    };
+
     class sync_net_plugin : public appbase::plugin<sync_net_plugin>
     {
     public:
@@ -42,11 +48,11 @@ namespace ultrainio {
         optional<connection_status>  status( const string& endpoint )const;
         vector<connection_status>    connections()const;
 
-        string                       require_ws();
+        string                       require_ws(uint32_t height, std::string hash);
         string                       sync_ws(const sync_wss_params& syncWssParams);
         string                       require_block(uint32_t begin,uint32_t end);
         string                       sync_block(uint32_t block_height);
-        string                       ws_status(string id);
+        status_code                  ws_status(string id, int32_t simulator=-1);
         string                       test_latancy();
 
         size_t num_peers() const;
@@ -58,3 +64,4 @@ namespace ultrainio {
 
 FC_REFLECT( ultrainio::connection_status, (peer)(connecting)(last_handshake) )
 FC_REFLECT( ultrainio::sync_wss_params, (chainId)(hosts) )
+FC_REFLECT( ultrainio::status_code,(code)(des)(host))

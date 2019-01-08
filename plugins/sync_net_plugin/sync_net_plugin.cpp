@@ -1483,7 +1483,7 @@ namespace ultrainio {
       return result;
    }
 
-    string sync_net_plugin::require_ws() {
+    string sync_net_plugin::require_ws(uint32_t height,string hash) {
         ReqLastWsInfoMsg reqLastWsInfoMsg;
         for (const auto& c : my->connections) {
             if(c->current()) {
@@ -1512,8 +1512,19 @@ namespace ultrainio {
         return "get block";
     }
 
-    string sync_net_plugin::ws_status(string id){
-        return "get ws state";
+    status_code sync_net_plugin::ws_status(string id,int32_t simulator){
+        switch (simulator) {
+             case 0:
+                 return {0,"success","127.0.0.1"};
+             case 1:
+                 return {1,"ongoing","127.0.0.1"};
+             case 2:
+                 return {2,"endpoint unreachable","127.0.0.1"};
+             case 3:
+                 return {3,"hash not match","127.0.0.1"};
+             default :
+                 return {0,"success","127.0.0.1"};
+        } 
     }
 
     string sync_net_plugin::test_latancy() {
