@@ -1021,6 +1021,9 @@ uint32_t read_only::get_subchain_block_num(const read_only::get_subchain_block_n
    return result;
 }
 
+std::string read_only::get_subchain_ws_hash(const read_only::get_subchain_ws_hash_params& p) const {
+        return "hash";
+}
 read_only::get_producer_info_result read_only::get_producer_info(const read_only::get_producer_info_params& p) const {
     const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
 

@@ -306,6 +306,13 @@ public:
    using get_subchain_block_num_params = get_subchain_committee_params;
    uint32_t get_subchain_block_num(const get_subchain_block_num_params& p) const;
 
+   struct get_subchain_ws_hash_params {
+      uint64_t         chain_name;  //todo, will change it to name type later
+      uint32_t         height;
+   };
+
+   std::string get_subchain_ws_hash(const get_subchain_ws_hash_params& p) const;
+
    struct get_producer_info_params {
        account_name   owner;
    };
@@ -640,6 +647,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_params, (code)(
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_params, (chain_name));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_ws_hash_params, (chain_name)(height) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(from_location)(quit_before_num) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );
