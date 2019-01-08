@@ -1,7 +1,7 @@
 const http = require('http');
 var querystring = require('querystring');
 const axios = require('axios')
-var logger = require("../config/logconfig");
+var logger = require("../config/logConfig");
 var IniFile = require('../common/util/iniFile');
 var Constants = require('../common/constant/constants');
 

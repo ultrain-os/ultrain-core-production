@@ -1,7 +1,7 @@
 const http = require('http');
 var querystring = require('querystring');
 const axios = require('axios')
-var logger = require("../config/logconfig");
+var logger = require("../config/logConfig");
 var IniFile = require('../common/util/iniFile');
 var Constants = require('../common/constant/constants');
 
@@ -44,7 +44,8 @@ WSS.requestData = async function (path, params) {
         if (rs.status == 200) {
             return rs.data;
         } else {
-            //logger.error("request wss service error:" + rs);
+            logger.error("request wss service error:" + rs);
+            console.log(rs);
             return null;
         }
     } catch (e) {
@@ -67,7 +68,7 @@ WSS.syncWorldstate = async function (hash, height) {
  * @returns {Promise<*>}
  */
 WSS.pollingWSState = async function () {
-    return await this.requestData("/wss/state", "[\"ws\"]");
+    return await this.requestData("/wss/ws_status", "[\"ws\"]");
 }
 
 /**
@@ -85,9 +86,18 @@ WSS.syncBlocks = async function (begin, end) {
  * @returns {Promise<*>}
  */
 WSS.pollingBlockState = async function () {
-    return await this.requestData("/wss/state", "[\"block\"]");
+    return await this.requestData("/wss/ws_status", "[\"block\"]");
 }
 
+
+/**
+ * 检查ws是否是正常状态
+ * @returns {Promise<*>}
+ */
+WSS.checkAlive = async function () {
+    let res =  await this.requestData("/wss/ws_status", "[\"\",1]");
+    logger.error("ws status:"+res);
+}
 
 /**
  * 更新世界状态配置文件
@@ -100,6 +110,7 @@ WSS.updateConfig = function (chainId, seedIp) {
         var iniFile = new IniFile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
         iniFile.setValue("chainId", chainId);
         iniFile.setValue("seedIP", seedIp);
+        iniFile.setValue("http-server-address","127.0.0.1:"+this.port);
         iniFile.writefile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
         return true;
     } catch (e) {

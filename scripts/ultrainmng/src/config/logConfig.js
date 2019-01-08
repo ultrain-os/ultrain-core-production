@@ -3,25 +3,26 @@ var path = require('path');
 var os = require('os');
 
 /**
- * log文件ming（前缀+系统名+时间）
+ * log文件mng（前缀+系统名+时间）
  * @type {string}
  */
-var filename = "/log/mng/mng-"+os.hostname()+"-";
+var dir = "/log/mng/";
+var filename = "mng-"+os.hostname()+"-";
 /**
- * log整体配置（单文件最大300M)
+ * log整体配置
  * @type {{categories: {default: {level: string, appenders: string[]}}, appenders: {console: {type: string}, default: {filename: string, "maxLogSize ": number, alwaysIncludePattern: boolean, pattern: string, type: string}}}}
  */
-var logconfig = {
+var logConfig = {
     "appenders": {
         "console": {
             "type": "console"
         },
         "default": {
             "type": "dateFile",
-            "filename": filename,
+            "filename": dir+filename,
             "pattern": "yyyy-MM-dd.log",
             "alwaysIncludePattern": true,
-            "maxLogSize ": 314572800
+            "maxLogSize ": 314572800 //单文件最大300M
         }
     },
     "categories": {
@@ -34,7 +35,7 @@ var logconfig = {
         }
     }
 };
-log4js.configure(logconfig);
+log4js.configure(logConfig);
 var logger = require('log4js').getLogger("sidechain");
 
 module.exports = logger

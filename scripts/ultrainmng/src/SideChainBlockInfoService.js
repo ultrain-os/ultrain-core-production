@@ -27,29 +27,8 @@ var localtest = false;
 /**
  * 日志信息
  */
-var logger = require("./config/logconfig");
-/**
- * 日志配置相关
- * @type {{debug: logger.debug, log: logger.log, error: logger.error}}
- */
-const loggerConfig = {
-    log: function () {
-        if (localtest = "true") {
-            logger.info(arguments);
-        }
-
-    },
-    error: function () {
-        logger.error(arguments);
-
-    },
-    debug: function () {
-        if (localtest = "true") {
-            logger.debug(arguments);
-        }
-
-    }
-}
+var logger = require("./config/logConfig");
+var logUtil = require("./common/util/logUtil")
 
 var config = {
     httpEndpoint: "",
@@ -65,9 +44,9 @@ var config = {
     debug: false,
     verbose: false,
     logger: {
-        log: loggerConfig.log,
-        error: loggerConfig.error,
-        debug: loggerConfig.debug
+        log: logUtil.log,
+        error: logUtil.error,
+        debug: logUtil.debug
     },
     binaryen: require('binaryen'),
     symbol: 'UGAS'
@@ -89,9 +68,9 @@ let configSub = {
     debug: false,
     verbose: false,
     logger: {
-        log: loggerConfig.log,
-        error: loggerConfig.error,
-        debug: loggerConfig.debug
+        log: logUtil.log,
+        error: logUtil.error,
+        debug: logUtil.debug
     },
     binaryen: require('binaryen'),
     symbol: 'UGAS'
@@ -479,6 +458,7 @@ async function scheduleCronstyle() {
     logger.info("ultrainmng start to work...")
 
     await initConfig();
+
 
     u3 = createU3({...config, sign: true, broadcast: true});
     u3Sub = createU3({...configSub, sign: true, broadcast: true});

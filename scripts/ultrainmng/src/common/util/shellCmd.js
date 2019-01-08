@@ -1,5 +1,5 @@
 var process = require('child_process');
-var logger = require("../../config/logconfig");
+var logger = require("../../config/logConfig");
 var Constants = require('../constant/constants');
 var async = require('async');
 var deasync = require('deasync');
