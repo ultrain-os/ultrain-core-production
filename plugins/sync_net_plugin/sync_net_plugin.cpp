@@ -1539,6 +1539,18 @@ namespace ultrainio {
         return "start test latancy";
     }
 
+   chain::ws_info sync_net_plugin::latest_wsinfo(){
+       auto node_list=my->ws_manager.get_local_ws_info();
+       if (node_list.empty()) {
+           return chain::ws_info{};
+       }
+       node_list.sort([](const chain::ws_info &a, const chain::ws_info &b){
+           return a.block_height > b.block_height;
+       });
+
+       return node_list.front();
+   }
+
    connection_ptr sync_net_plugin_impl::find_connection( string host )const {
       for( const auto& c : connections )
          if( c->peer_addr == host ) return c;

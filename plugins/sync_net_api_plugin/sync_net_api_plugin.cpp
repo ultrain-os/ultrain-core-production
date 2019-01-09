@@ -89,6 +89,9 @@ void sync_net_api_plugin::plugin_startup() {
             INVOKE_R_R_R(sync_net_mgr, ws_status, std::string, uint32_t), 201),
        CALL(wss, sync_net_mgr, test_latancy,
             INVOKE_R_V(sync_net_mgr, test_latancy), 201),
+
+       CALL(wss, sync_net_mgr, latest_wsinfo,
+            INVOKE_R_V(sync_net_mgr, latest_wsinfo), 201),
    });
 }
 

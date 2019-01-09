@@ -55,6 +55,8 @@ namespace ultrainio {
         status_code                  ws_status(string id, int32_t simulator=-1);
         string                       test_latancy();
 
+        chain::ws_info                      latest_wsinfo();
+
         size_t num_peers() const;
     private:
         std::unique_ptr<class sync_net_plugin_impl> my;
