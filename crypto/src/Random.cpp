@@ -10,7 +10,9 @@
 #include <openssl/evp.h>
 #include <openssl/obj_mac.h>
 
-namespace fc {
+#include <fc/exception/exception.hpp>
+
+namespace ultrainio {
 
 /**
  * EC VRF suite.
@@ -51,6 +53,18 @@ static ecvrf_suite *ecvrf_p256(void)
 
     memcpy(result, &tmp, sizeof(ecvrf_suite));
     return result;
+}
+
+/**
+ * Free EC VRF implementation.
+ */
+static void ecvfr_free(struct ecvrf_suite *suite) {
+    if (!suite) {
+        return;
+    }
+
+    EC_GROUP_free(suite->group);
+    free(suite);
 }
 
 /**
@@ -327,38 +341,34 @@ static bool ECVRF_verify(
 bool verify_with_pk(char* pk_str, char* proof_str, char* message)
 {
     // initialize vrf environment
-    ecvrf_suite *vrf = NULL;
-    EC_POINT *pubkey = NULL;
-    printf("verity_with_pk: %s\n%s\n%s\n", pk_str, proof_str, message);
+    ilog("verify_with_pk: pk = ${pk_str}, proof_str = ${proof_str}, message = ${message}",
+            ("pk_str", std::string(pk_str, 66))("proof_str", std::string(proof_str, 162))("message", (std::string(message, 64))));
 
-    vrf = ecvrf_p256();
+    ecvrf_suite* vrf = ecvrf_p256();
     if (!vrf) {
-        printf("init vrf error");
+        ilog("init vrf error");
         return false;
     }
 
     uint8_t pk_arr[33];
     str2arr(pk_arr, pk_str, sizeof(pk_arr));
-    pubkey = EC_POINT_new(vrf->group);
+    EC_POINT* pubkey = EC_POINT_new(vrf->group);
     if (EC_POINT_oct2point(vrf->group, pubkey, pk_arr, sizeof(pk_arr), NULL) != 1) {
-        printf("failed to create public key\n");
+        ilog("failed to create public key");
         return false;
     }
 
     uint8_t proof[81];
     str2arr(proof, proof_str, vrf->proof_size);
-    if (!proof) {
-        printf("failed to read proof\n");
-        return false;
-    }
 
     uint8_t msg_arr[32];
     str2arr(msg_arr, message, sizeof(msg_arr));
 
     bool valid = ECVRF_verify(vrf, pubkey, msg_arr, sizeof(msg_arr), proof, vrf->proof_size);
-    printf("valid = %s\n", valid ? "true" : "false");
+    ilog("valid = ${valid}\n", ("valid", valid));
 
     EC_POINT_clear_free(pubkey);
+    ecvfr_free(vrf);
     return valid;
 }
 

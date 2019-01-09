@@ -14,7 +14,6 @@
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
-#include <fc/crypto/random.hpp>
 #include <fc/io/raw.hpp>
 
 #include <softfloat.hpp>
@@ -23,6 +22,7 @@
 #include <boost/bind.hpp>
 #include <fstream>
 #include <gmp.h>
+#include <crypto/Random.h>
 
 namespace ultrainio { namespace chain {
    using namespace webassembly;
@@ -312,7 +312,7 @@ class typescript_crypto_api : public context_aware_api {
       }
 
       int ts_verify_with_pk(null_terminated_ptr pk_str, null_terminated_ptr pk_proof, null_terminated_ptr message) {
-          return fc::verify_with_pk(pk_str.value, pk_proof.value, message.value) ? 1 : 0;
+          return ultrainio::verify_with_pk(pk_str.value, pk_proof.value, message.value) ? 1 : 0;
       }
 };
 #endif

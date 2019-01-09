@@ -100,7 +100,6 @@ set( fc_sources
      src/crypto/public_key.cpp
      src/crypto/private_key.cpp
      src/crypto/signature.cpp
-     src/crypto/random.cpp
      src/network/ip.cpp
      src/network/resolve.cpp
      src/network/udp_socket.cpp

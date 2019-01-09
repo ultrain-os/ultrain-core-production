@@ -5,6 +5,7 @@ add_library( ultrainio_crypto
         src/Ed25519.cpp
         src/PrivateKey.cpp
         src/PublicKey.cpp
+        src/Random.cpp
         src/Signature.cpp
         ${HEADERS} )
 

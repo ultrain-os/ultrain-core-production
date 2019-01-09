@@ -103,32 +103,27 @@
     {
       "ricardian_contract": "",
       "name": "clearDB",
-      "type": "clearDB",
-      "ability": "normal"
+      "type": "clearDB"
     },
     {
       "ricardian_contract": "",
       "name": "transfer",
-      "type": "transfer",
-      "ability": "normal"
+      "type": "transfer"
     },
     {
       "ricardian_contract": "",
       "name": "removeCandidate",
-      "type": "removeCandidate",
-      "ability": "normal"
+      "type": "removeCandidate"
     },
     {
       "ricardian_contract": "",
       "name": "vote",
-      "type": "vote",
-      "ability": "normal"
+      "type": "vote"
     },
     {
       "ricardian_contract": "",
       "name": "query",
-      "type": "query",
-      "ability": "normal"
+      "type": "query"
     }
   ],
   "tables": [
