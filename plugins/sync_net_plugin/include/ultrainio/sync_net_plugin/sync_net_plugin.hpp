@@ -48,7 +48,7 @@ namespace ultrainio {
         optional<connection_status>  status( const string& endpoint )const;
         vector<connection_status>    connections()const;
 
-        string                       require_ws(uint32_t height, std::string hash);
+        string                       require_ws(const chain::ws_info& info);
         string                       sync_ws(const sync_wss_params& syncWssParams);
         string                       require_block(uint32_t begin,uint32_t end);
         string                       sync_block(uint32_t block_height);

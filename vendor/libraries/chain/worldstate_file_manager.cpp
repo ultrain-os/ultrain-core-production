@@ -65,27 +65,40 @@ ws_file_reader::ws_file_reader(ws_info node, std::string dir, uint32_t len_per_s
 
 ws_file_reader::~ws_file_reader()
 {
+    destory();
     if(m_fd.is_open())
         m_fd.close();
 }
 
 void ws_file_reader::destory()
 {
-    delete this;
+    ilog("ws_file_reader destory ${info}", ("info", m_info));
+    // delete this;
 }
 
 std::vector<char> ws_file_reader::get_data(uint32_t slice_id, bool& isEof)
 {
-    if(slice_id*m_len_per_slice >= m_info.file_size)
+    if(slice_id*m_len_per_slice >= m_info.file_size) {
         return std::vector<char>();
+    }
 
-    m_fd.seekg(slice_id*m_len_per_slice, std::ios::beg);
-    std::vector<char>  ret_data;
-    ret_data.resize(m_len_per_slice);
-    m_fd.read(ret_data.data(), m_len_per_slice);
-    ret_data.resize(m_fd.gcount());
-    isEof = m_fd.eof();
-    return ret_data;
+    try {
+        std::vector<char>  ret_data;
+        int readCnt = 0;
+        m_fd.seekg(slice_id*m_len_per_slice, std::ios::beg);
+        
+        ret_data.resize(m_len_per_slice);
+        m_fd.read(ret_data.data(), m_len_per_slice);
+        readCnt = m_fd.gcount();
+        ret_data.resize(readCnt);
+        isEof = m_fd.eof();
+        if(isEof)
+            m_fd.clear();
+        return ret_data;
+    } catch (...){
+        elog("Error, ws_file_reader error");
+        return std::vector<char>(); 
+    }
 }
 
 ws_file_writer::ws_file_writer(ws_info node, uint32_t len_per_slice, std::string dir, ws_file_manager& m)
@@ -104,6 +117,7 @@ m_is_write(false)
 
 ws_file_writer::~ws_file_writer()
 {
+    destory();
     if(m_fd.is_open())
         m_fd.close();
 }
@@ -119,7 +133,7 @@ void ws_file_writer::destory()
         m_manager.save_info(m_info);
     }
 
-    delete this;
+    // delete this;
 }
 
 void ws_file_writer::write_data(uint32_t slice_id, const std::vector<char>& data, uint32_t data_len)
@@ -191,7 +205,7 @@ void ws_file_writer::open_read()
 
 ws_file_manager::ws_file_manager(std::string dir)
 :m_dir_path(dir)
-,m_max_ws_count(0)
+,m_max_ws_count(-1)
 {
     if(m_dir_path.empty()){
         m_dir_path = (fc::app_path() / "ultrainio/wssultrain/data/worldstate").string();
@@ -245,18 +259,18 @@ std::list<ws_info> ws_file_manager::get_local_ws_info()
             if(!from_file_name(iter->path().string(), chain_id, block_height))
                 continue;
 
-            ilog("getLocalInfo: ${chain_id} ${block_height}", ("chain_id",chain_id)("block_height",block_height));
+            // ilog("getLocalInfo: ${chain_id} ${block_height}", ("chain_id",chain_id)("block_height",block_height));
             if(chain_id != node.chain_id || block_height != node.block_height)
                 continue;
 
             std::string ws_file_name  = m_dir_path + "/" +  to_file_name(node.chain_id, node.block_height) + ".ws";
-            ilog("ws_file_name: ${ws_file_name}", ("ws_file_name", ws_file_name));
+            // ilog("ws_file_name: ${ws_file_name}", ("ws_file_name", ws_file_name));
             if(!bfs::exists(ws_file_name) || !bfs::is_regular_file(ws_file_name) || bfs::file_size(ws_file_name) != node.file_size)
                 continue;
 
             fc::variant var;
             fc::to_variant(node, var); 
-            ilog("getLocalInfo: ${var}", ("var", var));
+            // ilog("getLocalInfo: ${var}", ("var", var));
             retList.push_back(node); 
         }
         return retList;
@@ -273,19 +287,27 @@ void ws_file_manager::save_info(ws_info& node)
     fc::json::save_to_file(node, info_file_name, true);
 }
 
-ws_file_reader* ws_file_manager::get_reader(ws_info node, uint32_t len_per_slice)
+std::shared_ptr<ws_file_reader> ws_file_manager::get_reader(ws_info node, uint32_t len_per_slice)
 {
+    auto it = m_reader_map.find(node);
+    if (it != m_reader_map.end()) {
+        m_is_reader_activate_map[node] = true;
+        return it->second;
+    }
+
     auto node_list = get_local_ws_info();
     for(auto &it : node_list){
         if(it == node){
-            return new ws_file_reader(node, m_dir_path, len_per_slice);       
+            m_reader_map[node] = std::make_shared<ws_file_reader>(node, m_dir_path, len_per_slice);
+            m_is_reader_activate_map[node] = true;
+            return m_reader_map[node];       
         }
     }
 
     return nullptr;
 }
 
-ws_file_writer* ws_file_manager::get_writer(ws_info node, uint32_t len_per_slice)
+std::shared_ptr<ws_file_writer>  ws_file_manager::get_writer(ws_info node, uint32_t len_per_slice)
 {
     auto node_list = get_local_ws_info();
     for(auto &it : node_list){
@@ -293,7 +315,7 @@ ws_file_writer* ws_file_manager::get_writer(ws_info node, uint32_t len_per_slice
             return nullptr;
         }
     }
-    return new ws_file_writer(node, len_per_slice, m_dir_path,  *this);
+    return std::make_shared<ws_file_writer>(node, len_per_slice, m_dir_path,  *this);
 }
 
 fc::sha256 ws_file_manager::calculate_file_hash(std::string file_name)
@@ -315,7 +337,7 @@ fc::sha256 ws_file_manager::calculate_file_hash(std::string file_name)
     return enc.result();
 }
 
-void ws_file_manager::set_local_max_count(uint32_t number)
+void ws_file_manager::set_local_max_count(int number)
 {
     m_max_ws_count = number;
     if (m_ws_delete_check) {
@@ -331,6 +353,7 @@ void ws_file_manager::start_delete_timer()
 {    
     m_ws_delete_check->expires_from_now(m_ws_delete_period);
     m_ws_delete_check->async_wait([this](boost::system::error_code ec) {
+        ilog("delete timer start");
         if (ec.value() == boost::asio::error::operation_aborted) { //cancelled
             ilog("delete timer cancelled");
             return;
@@ -348,6 +371,26 @@ void ws_file_manager::start_delete_timer()
                     count--;
                     continue;
                 }
+
+                auto reader_itor = m_reader_map.find(node);
+                auto is_activate_itor = m_is_reader_activate_map.find(node);
+                bool is_need_keep = false;
+                if (is_activate_itor != m_is_reader_activate_map.end() && m_is_reader_activate_map[node] == true){
+                    is_need_keep = true;
+                    //set to false, erase from map in next timeout
+                    m_is_reader_activate_map[node] = false;
+                }
+
+                if (reader_itor != m_reader_map.end() && is_need_keep == false) {
+                    m_is_reader_activate_map.erase(node);
+                    m_reader_map.erase(node);
+                }
+
+                if (m_max_ws_count == -1) //not set max count, keep all files
+                    continue;
+
+                if (is_need_keep)
+                    continue;
 
                 std::string name = to_file_name(node.chain_id, node.block_height);
                 std::string ws_file_name  = m_dir_path + "/" +  name + ".ws";
