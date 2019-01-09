@@ -201,7 +201,7 @@ namespace ultrainiosystem {
          print("get votecommittee proposeminer vector:", ultrainio::name{miner.account}, miner.public_key, miner.adddel_miner);
       }
       pendingminers pendingminer( _self, _self );
-      provided_proposer  provideapprve(proposer,current_time());
+      provided_proposer  provideapprve(proposer,current_time(),0);
       for(auto pendingiter = pendingminer.begin(); pendingiter != pendingminer.end(); pendingiter++)
       {
          nofindminerflg = false;
@@ -340,7 +340,7 @@ void system_contract::voteaccount() {
          print("get voteaccount proposeaccount vector:", ultrainio::name{account.account}, account.owner_key);
       }
       pendingaccounts pendingaccount( _self, _self );
-      provided_proposer  provideapprve(proposer,current_time());
+      provided_proposer  provideapprve(proposer,current_time(),0);
       for(auto pendingiter = pendingaccount.begin(); pendingiter != pendingaccount.end(); pendingiter++)
       {
          nofindaccountflg = false;
@@ -403,6 +403,87 @@ void system_contract::voteaccount() {
       print("voteaccount pushback  pendingaccount");
    }
 
+void system_contract::voteresourcelease() {
+      size_t size = action_data_size();
+      char* buffer = (char*)alloca(size);
+      read_action_data( buffer, size );
+      account_name proposer;
+
+      vector<proposeresource_info> proposeresource;
+      datastream<const char*> ds( buffer, size );
+      ds >> proposer >> proposeresource;
+      ultrainio_assert( proposeresource.size() > 0, "The number of proposeresource changes greater than zero" );
+      require_auth( proposer );
+      auto propos = _producers.find( proposer );
+      ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+
+      uint32_t  enableprodnum = 0;
+      for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
+         if(itr->is_enabled && itr->is_on_master_chain())
+            ++enableprodnum;
+      }
+      print("voteresourcelease enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," proposeresource_info size:",proposeresource.size(),"\n");
+      pendingresource pendingres( _self, _self );
+      for(auto resinfo : proposeresource){
+         resinfo.approve_num = 1;
+         provided_proposer  provideapprve(proposer,current_time(),0);
+         auto pendingiter = pendingres.find( resinfo.account );
+         if ( pendingiter != pendingres.end() ) {
+            pendingres.modify( pendingiter, _self, [&]( auto& p ) {
+               auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
+               if(itr != p.provided_approvals.end())
+               {
+                  if((provideapprve.last_vote_time - itr->last_vote_time) < useconds_per_halfhour){
+                        print("\nvoteresourcelease proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
+                        ultrainio_assert( false, "proposer already voted" );
+                  }
+                  p.provided_approvals.erase(itr);
+               }
+            });
+            int32_t curproposeresnum = -1;
+            uint32_t proposeaccountsize = (*pendingiter).proposal_resource.size();
+            for(uint32_t i = 0;i < proposeaccountsize;i++)
+            {
+               if((resinfo.account == (*pendingiter).proposal_resource[i].account) &&
+                  (resinfo.lease_num == (*pendingiter).proposal_resource[i].lease_num)  &&
+                  (resinfo.days == (*pendingiter).proposal_resource[i].days)  &&
+                  (resinfo.location == (*pendingiter).proposal_resource[i].location) ){
+                  curproposeresnum = i;
+                  break;
+               }
+            }
+            if(curproposeresnum >= 0){
+               pendingres.modify( pendingiter, 0, [&]( auto& p ) {
+                  p.proposal_resource[curproposeresnum].approve_num++;
+                  provideapprve.resource_index = (uint64_t)curproposeresnum;
+                  p.provided_approvals.push_back(provideapprve);
+               });
+
+               if((*pendingiter).proposal_resource[curproposeresnum].approve_num > enableprodnum*2/3){
+                  INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
+                  { N(ultrainio),resinfo.account,resinfo.lease_num, resinfo.days,0} );
+                  pendingres.modify( pendingiter, 0, [&]( auto& p ) {
+                     p.provided_approvals.clear();
+                     p.proposal_resource.clear();
+                  });
+                  pendingres.erase( pendingiter );
+               }
+            }else{
+               pendingres.modify( pendingiter, 0, [&]( auto& p ) {
+                  p.proposal_resource.push_back(resinfo);
+                  provideapprve.resource_index = p.proposal_resource.size() - 1;
+                  p.provided_approvals.push_back(provideapprve);
+               });
+            }
+         }else{
+            pendingres.emplace( _self, [&]( auto& p ) {
+               p.owner = resinfo.account;
+               p.provided_approvals.push_back(provideapprve);
+               p.proposal_resource.push_back(resinfo);
+            });
+         }
+      }
+   }
    /**
     *  Called after a new account is created. This code enforces resource-limits rules
     *  for new accounts as well as new account naming conventions.
@@ -462,7 +543,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
-     (setram)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)
+     (setram)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate_bandwidth.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
      // voting.cpp

@@ -116,9 +116,16 @@ namespace ultrainiosystem {
          auto primary_key()const { return proposer; }
          ULTRAINLIB_SERIALIZE(pendingacc, (proposer)(proposal_account)(provided_approvals) )
       };
+   struct pending_res {
+         account_name                               owner;
+         std::vector<ultrainio::proposeresource_info>  proposal_resource;
+         std::vector<ultrainio::provided_proposer>  provided_approvals;
+         auto primary_key()const { return owner; }
+         ULTRAINLIB_SERIALIZE(pending_res, (owner)(proposal_resource)(provided_approvals) )
+      };
    typedef ultrainio::multi_index<N(pendingminer),pendingminer> pendingminers;
    typedef ultrainio::multi_index<N(pendingacc),pendingacc> pendingaccounts;
-
+   typedef ultrainio::multi_index<N(pendingres),pending_res> pendingresource;
    typedef ultrainio::multi_index< N(producers), producer_info,
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
                                >  producers_table;
@@ -321,6 +328,8 @@ namespace ultrainiosystem {
          void votecommittee();
 
          void voteaccount();
+
+         void voteresourcelease();
 
          void recycleresource(const account_name owner ,uint64_t lease_num);
       private:

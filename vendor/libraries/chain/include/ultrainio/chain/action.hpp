@@ -25,6 +25,7 @@ namespace ultrainio { namespace chain {
    struct provided_proposer {
       account_name    account;
       uint64_t        last_vote_time;
+      uint64_t        resource_index;
    };
 
    struct proposeaccount_info {
@@ -32,6 +33,14 @@ namespace ultrainio { namespace chain {
       std::string     owner_key;
       std::string     active_key;
       uint64_t        location;
+   };
+
+   struct proposeresource_info {
+      account_name      account;
+      uint64_t          lease_num;
+      uint64_t          days;
+      uint64_t          location;
+      int64_t           approve_num;
    };
    inline bool operator== (const permission_level& lhs, const permission_level& rhs) {
       return std::tie(lhs.actor, lhs.permission) == std::tie(rhs.actor, rhs.permission);
@@ -120,6 +129,7 @@ namespace ultrainio { namespace chain {
 
 FC_REFLECT( ultrainio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( ultrainio::chain::proposeminer_info, (account)(public_key)(url)(location)(adddel_miner) )
-FC_REFLECT( ultrainio::chain::provided_proposer, (account)(last_vote_time) )
+FC_REFLECT( ultrainio::chain::provided_proposer, (account)(last_vote_time)(resource_index) )
 FC_REFLECT( ultrainio::chain::proposeaccount_info, (account)(owner_key)(active_key)(location) )
+FC_REFLECT( ultrainio::chain::proposeresource_info, (account)(lease_num)(days)(location)(approve_num) )
 FC_REFLECT( ultrainio::chain::action, (account)(name)(authorization)(data) )

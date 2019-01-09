@@ -171,7 +171,7 @@ namespace ultrainio {
     */
    struct provided_proposer {
 
-      provided_proposer( account_name a, uint64_t l):account(a),last_vote_time(l){}
+      provided_proposer( account_name a, uint64_t l, uint64_t r):account(a),last_vote_time(l),resource_index(r){}
 
       /**
        * Default Constructor
@@ -182,11 +182,12 @@ namespace ultrainio {
 
       account_name      account;
       uint64_t          last_vote_time = 0;
+      uint64_t          resource_index = 0;
       bool operator==(const provided_proposer& c) const
       {
          return c.account == account;
       }
-      ULTRAINLIB_SERIALIZE( provided_proposer, (account)(last_vote_time) )
+      ULTRAINLIB_SERIALIZE( provided_proposer, (account)(last_vote_time)(resource_index) )
    };
 
    /**
@@ -217,6 +218,37 @@ namespace ultrainio {
       std::string       active_key;
       uint64_t          location;
       ULTRAINLIB_SERIALIZE( proposeaccount_info, (account)(owner_key)(active_key)(location) )
+   };
+
+   /**
+    * proposeresource_info  vote
+    *
+    * @brief Packed representation of proposeresource_info  vote
+    */
+   struct proposeresource_info {
+      /**
+       * Construct a new proposeresource_info object
+       *
+       * @brief Construct a proposeresource_info object
+       * @param a - Name of the account who proposal pending miner
+       * @param ok - Name of the owner keys
+       * @param ak - Name of the active keys
+       */
+      proposeresource_info( account_name a, uint64_t lease, uint64_t d, uint16_t l, int64_t num ):account(a),lease_num(lease),days(d),location(l),approve_num(num){}
+
+      /**
+       * Default Constructor
+       *
+       * @brief Construct a new proposeresource_info object
+       */
+      proposeresource_info(){}
+
+      account_name      account;
+      uint64_t          lease_num;
+      uint64_t          days;
+      uint64_t          location;
+      int64_t           approve_num;
+      ULTRAINLIB_SERIALIZE( proposeresource_info, (account)(lease_num)(days)(location)(approve_num) )
    };
    /**
     * Require the specified authorization for this action. If this action doesn't contain the specified auth, it will fail.

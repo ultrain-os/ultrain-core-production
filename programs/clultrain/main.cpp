@@ -1024,6 +1024,32 @@ struct voteaccount_subcommand {
    }
 };
 
+struct voteresource_subcommand {
+   string requested_perm;
+   string proposer;
+   voteresource_subcommand(CLI::App* actionRoot) {
+      auto propose_action = actionRoot->add_subcommand("voteresourcelease", localized("vote side chain resourcelease action"));
+      add_standard_transaction_options(propose_action);
+      propose_action->add_option("proposer", proposer, localized("proposer name"))->required();
+      propose_action->add_option("proposeresource", requested_perm, localized("The JSON string or filename defining resourceleaseinfo"))->required();
+      propose_action->set_callback([&] {
+         fc::variant requested_perm_var;
+         try {
+            requested_perm_var = json_from_file_or_string(requested_perm);
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse resourceleaseinfo JSON '${data}'", ("data",requested_perm))
+         vector<proposeresource_info> reqperm;
+         try {
+            reqperm = requested_perm_var.as<vector<proposeresource_info>>();
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested resourceleaseinfo format: '${data}'", ("data",requested_perm_var));
+
+         auto args = fc::mutable_variant_object()
+            ("proposer", proposer )
+            ("proposeresource", requested_perm_var);
+         send_actions({chain::action{{permission_level{proposer,config::active_name}}, config::system_account_name, "voteresourcelease", variant_to_bin( N(ultrainio), NEX(voteresourcelease), args ) }});
+      });
+   }
+};
+
 struct buy_respackage_subcommand {
    string from_str;
    string receiver_str;
@@ -2895,6 +2921,7 @@ int main( int argc, char** argv ) {
    auto listProducers = list_producers_subcommand(system);
    auto votecommittee = votecommittee_subcommand(system);
    auto voteaccount = voteaccount_subcommand(system);
+   auto voteresource = voteresource_subcommand(system);
    auto buyresourcespackage = buy_respackage_subcommand(system);
    //auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    //auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);
