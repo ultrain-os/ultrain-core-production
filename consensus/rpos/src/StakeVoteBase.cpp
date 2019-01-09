@@ -216,8 +216,8 @@ namespace ultrainio {
     }
 
     std::shared_ptr<CommitteeState> StakeVoteBase::getCommitteeState() {
-        static const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-        static struct chain_apis::read_only::get_producers_params params;
+        const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+        struct chain_apis::read_only::get_producers_params params;
         CommitteeInfo cinfo;
         auto statePtr(std::make_shared<CommitteeState>());
         params.json=true;

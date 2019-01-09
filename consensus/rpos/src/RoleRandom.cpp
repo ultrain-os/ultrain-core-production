@@ -4,9 +4,9 @@
 #include <rpos/Utils.h>
 
 namespace ultrainio {
-    RoleRandom::RoleRandom(const BlockIdType& preHash, uint32_t blockNum, const ConsensusPhase& phase, int baxCount)
+    RoleRandom::RoleRandom(const std::string& sysRandom, uint32_t blockNum, const ConsensusPhase& phase, int baxCount)
             : m_phase(phase), m_baxCount(baxCount) {
-        std::string seed = std::string(preHash) + std::to_string(blockNum) + std::to_string(static_cast<uint32_t>(phase)) + std::to_string(baxCount);
+        std::string seed = sysRandom + std::to_string(blockNum) + std::to_string(static_cast<uint32_t>(phase)) + std::to_string(baxCount);
         m_rand = fc::sha256::hash(seed);
     };
 

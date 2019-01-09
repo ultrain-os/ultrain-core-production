@@ -54,19 +54,6 @@ static ecvrf_suite *ecvrf_p256(void)
 }
 
 /**
- * Free EC VRF implementation.
- */
-static void ecvfr_free(struct ecvrf_suite *suite)
-{
-    if (!suite) {
-        return;
-    }
-
-    EC_GROUP_free(suite->group);
-    free(suite);
-}
-
-/**
  * Get number of bytes that fit given number of bits.
  *
  * ceil(div(bits/8))
@@ -74,42 +61,6 @@ static void ecvfr_free(struct ecvrf_suite *suite)
 static int bits_in_bytes(int bits)
 {
     return (bits + 7) / 8;
-}
-
-/**
- * Encode unsigned integer on a fixed width.
- */
-static void bn2bin(const BIGNUM *num, uint8_t *buf, size_t size)
-{
-    size_t need = BN_num_bytes(num);
-    assert(need <= size);
-
-    size_t pad = size - need;
-    if (pad > 0) {
-        memset(buf, 0, pad);
-    }
-
-    int ret = BN_bn2bin(num, buf + pad);
-    assert(ret == need);
-}
-
-/**
- * BN_mod_mul without context.
- *
- * OpenSSL BN_mod_mul segfaults without BN_CTX.
- */
-static int bn_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m)
-{
-    BN_CTX *ctx = BN_CTX_new();
-    if (!ctx) {
-        return 0;
-    }
-
-    int ret = BN_mod_mul(r, a, b, m, ctx);
-
-    BN_CTX_free(ctx);
-
-    return ret;
 }
 
 /**
@@ -165,24 +116,6 @@ void str2arr(uint8_t* val, char* string, size_t len) {
         sscanf(pos, "%2hhx", &val[count]);
         pos += 2;
     }
-
-    // printf("0x");
-    // for(size_t count = 0; count < len; count++)
-    //     printf("%02x", val[count]);
-    // printf("\n");
-
-    // return 0;
-}
-
-// print array to hexstring
-// https://stackoverflow.com/questions/6357031/how-do-you-convert-a-byte-array-to-a-hexadecimal-string-in-c
-void arr2str(uint8_t* buf, uint8_t len) {
-    for (int i = 0; i < len; i++) //sizeof(buf)
-    {
-        // if (i > 0) printf(":");
-        printf("%02X", buf[i]);
-    }
-    printf(";");
 }
 
 /**
@@ -295,103 +228,6 @@ static BIGNUM *ECVRF_hash_points(const ecvrf_suite *vrf, const EC_POINT **points
 }
 
 /**
- * Construct ECVRF proof.
- *
- * @param[in]  group
- * @param[in]  pubkey
- * @param[in]  privkey
- * @param[in]  data
- * @param[in]  size
- * @param[out] proof
- * @param[in]  proof_size
- */
-static bool ECVRF_prove(
-    const ecvrf_suite *vrf, const EC_POINT *pubkey, const BIGNUM *privkey,
-    const uint8_t *data, size_t size,
-    uint8_t *proof, size_t proof_size)
-{
-    // TODO: check input constraints
-
-    bool result = false;
-
-    const EC_POINT *generator = EC_GROUP_get0_generator(vrf->group);
-    assert(generator);
-    const BIGNUM *order = EC_GROUP_get0_order(vrf->group);
-    assert(order);
-
-    EC_POINT *hash = NULL;
-    EC_POINT *gamma = NULL;
-    EC_POINT *g_k = NULL;
-    EC_POINT *h_k = NULL;
-    BIGNUM *nonce = NULL;
-    BIGNUM *c = NULL;
-    BIGNUM *cx = NULL;
-    BIGNUM *s = NULL;
-    do {
-        hash = ECVRF_hash_to_curve1(vrf, pubkey, data, size);
-        if (!hash) {
-            break;
-        }
-
-        gamma = EC_POINT_new(vrf->group);
-        if (EC_POINT_mul(vrf->group, gamma, NULL, hash, privkey, NULL) != 1) {
-            break;
-        }
-
-        nonce = BN_new();
-        if (BN_rand_range(nonce, order) != 1) {
-            break;
-        }
-
-        g_k = EC_POINT_new(vrf->group);
-        if (EC_POINT_mul(vrf->group, g_k, NULL, generator, nonce, NULL) != 1) {
-            break;
-        }
-
-        h_k = EC_POINT_new(vrf->group);
-        if (EC_POINT_mul(vrf->group, h_k, NULL, hash, nonce, NULL) != 1) {
-            break;
-        }
-
-        const EC_POINT *points[] = { generator, hash, pubkey, gamma, g_k, h_k };
-        c = ECVRF_hash_points(vrf, points, sizeof(points) / sizeof(EC_POINT *));
-        if (!c) {
-            break;
-        }
-
-        cx = BN_new();
-        if (bn_mod_mul(cx, c, privkey, order) != 1) {
-            break;
-        }
-
-        s = BN_new();
-        if (BN_mod_sub(s, nonce, cx, order, NULL) != 1) {
-            break;
-        }
-
-        // write result
-        int wrote = EC_POINT_point2oct(vrf->group, gamma, POINT_CONVERSION_COMPRESSED, proof, vrf->ecp_size, NULL);
-        assert(wrote == vrf->ecp_size);
-        (void)wrote;
-        bn2bin(c, proof + vrf->ecp_size, vrf->c_size);
-        bn2bin(s, proof + vrf->ecp_size + vrf->c_size, vrf->s_size);
-
-        result = true;
-    } while(false);
-// fail:
-    EC_POINT_clear_free(hash);
-    EC_POINT_clear_free(gamma);
-    EC_POINT_clear_free(g_k);
-    EC_POINT_clear_free(h_k);
-    BN_clear_free(nonce);
-    BN_clear_free(c);
-    BN_clear_free(cx);
-    BN_clear_free(s);
-
-    return result;
-}
-
-/**
  * ECVRF proof decoding.
  */
 static bool ECVRF_decode_proof(
@@ -433,44 +269,6 @@ static bool ECVRF_decode_proof(
     *s_ptr = s;
 
     return true;
-}
-
-//sec 5.2 in IETF vrf-goldbe
-// TODO: refer ECVRF_hash_to_curve1 to improve security
-bool ECVRF_proof2hash(const ecvrf_suite *vrf, const EC_POINT *gamma)
-{
-    EC_POINT *result = EC_POINT_new(vrf->group);
-    // https://www.openssl.org/docs/man1.1.0/crypto/EC_GROUP_dup.html
-    // EC_GROUP_get_cofactor(vrf->group, cofactor, BN_CTX_new());
-    const BIGNUM *cofactor = EC_GROUP_get0_cofactor(vrf->group);
-    assert(cofactor);
-
-    EC_POINT_mul(vrf->group, result, NULL, gamma, cofactor, NULL);
-
-    // point2oct
-    int degree = bits_in_bytes(EC_GROUP_get_degree(vrf->group));
-    uint8_t _pubkey[degree + 1];
-    // EC_POINT_point2oct(vrf->group, pubkey,POINT_CONVERSION_UNCOMPRESSED,  pk_arr, sizeof(pk_arr), NULL);
-    if (EC_POINT_point2oct(vrf->group, result, POINT_CONVERSION_COMPRESSED, _pubkey, sizeof(_pubkey), NULL) != sizeof(_pubkey)) {
-        printf("fail to convert point to oct!"); // need to use POINT_CONVERSION_COMPRESSED here
-        return 0;
-    }
-
-    EVP_MD_CTX *md_template = EVP_MD_CTX_new();
-    if (!md_template) {
-        printf("fail to initialize md_template!");
-        return 0;
-    }
-    uint8_t hash[EVP_MAX_MD_SIZE] = {0};
-    unsigned hash_size = sizeof(hash);
-
-    EVP_DigestInit_ex(md_template, vrf->hash, NULL);
-    EVP_DigestUpdate(md_template, _pubkey, sizeof(_pubkey));
-    EVP_DigestFinal_ex(md_template, hash, &hash_size);
-
-    // printf("\nbeta=\n");
-    arr2str(hash, 32); //only output 32-byte, as the next seed
-    return 1;
 }
 
 static bool ECVRF_verify(
@@ -526,26 +324,16 @@ static bool ECVRF_verify(
     return valid;
 }
 
-static void hex_dump(const uint8_t *data, size_t size)
-{
-    for (size_t i = 0; i < size; i++) {
-        bool last = i + 1 == size;
-        printf("%02x%c", (unsigned int)data[i], last ? '\n' : ':');
-    }
-}
-
 bool verify_with_pk(char* pk_str, char* proof_str, char* message)
 {
     // initialize vrf environment
     ecvrf_suite *vrf = NULL;
     EC_POINT *pubkey = NULL;
-    BIGNUM *privkey = NULL;
-    // uint8_t *proof = NULL;
     printf("verity_with_pk: %s\n%s\n%s\n", pk_str, proof_str, message);
 
     vrf = ecvrf_p256();
     if (!vrf) {
-        // fprintf(stderr, "failed to create VRF context\n");
+        printf("init vrf error");
         return false;
     }
 
@@ -553,17 +341,14 @@ bool verify_with_pk(char* pk_str, char* proof_str, char* message)
     str2arr(pk_arr, pk_str, sizeof(pk_arr));
     pubkey = EC_POINT_new(vrf->group);
     if (EC_POINT_oct2point(vrf->group, pubkey, pk_arr, sizeof(pk_arr), NULL) != 1) {
-        fprintf(stderr, "failed to create public key\n");
+        printf("failed to create public key\n");
         return false;
     }
 
-    uint8_t proof[81]; // vrf->proof_size=81
-    // proof = calloc(vrf->proof_size, 1);
-    // printf("%ld\n", vrf->proof_size);
+    uint8_t proof[81];
     str2arr(proof, proof_str, vrf->proof_size);
-    // return 1;
     if (!proof) {
-        fprintf(stderr, "failed to read proof\n");
+        printf("failed to read proof\n");
         return false;
     }
 
@@ -575,7 +360,6 @@ bool verify_with_pk(char* pk_str, char* proof_str, char* message)
 
     EC_POINT_clear_free(pubkey);
     return valid;
-    // result = EXIT_SUCCESS;
 }
 
 } // end of namespace

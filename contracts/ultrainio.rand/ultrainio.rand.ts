@@ -148,11 +148,13 @@ class rand extends Contract {
         //query compressed pk point with account name, then verify proof
         let ZERO = "0";
         this.votedDB.get(NAME("seed"), c);
-        let cStr = intToString(c.val);
-        ZERO = ZERO.repeat(64-cStr.length);
+        let m = intToString(c.val);
+        ZERO = ZERO.repeat(64 - m.length);
+        m = m.concat(ZERO);
 
         let pkStr = Account.publicKeyOf(Action.sender, 'hex');
-        ultrain_assert(verify_with_pk(pkStr, pk_proof, cStr.concat(ZERO)), "please provide a valid VRF proof." + pkStr + " " + pk_proof + " " + cStr.concat(ZERO));
+        Log.s("message : ").s(m).flush();
+        ultrain_assert(verify_with_pk(pkStr, pk_proof, m), "please provide a valid VRF proof." + pkStr + " " + pk_proof + " " + m);
 
         // aggregate rand
         //use hash proof

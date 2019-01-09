@@ -6,8 +6,8 @@
 
 namespace ultrainio {
     std::shared_ptr<StakeVoteBase> StakeVoteFactory::createRandom(uint32_t blockNum,
-            std::shared_ptr<CommitteeState> committeeStatePtr, const BlockIdType &rand) {
-        StakeVoteBase* stakeVotePtr = new StakeVoteRandom(blockNum, committeeStatePtr, RoleRandom(rand, blockNum));
+            std::shared_ptr<CommitteeState> committeeStatePtr) {
+        StakeVoteBase* stakeVotePtr = new StakeVoteRandom(blockNum, committeeStatePtr);
         return std::shared_ptr<StakeVoteBase>(stakeVotePtr);
     }
 

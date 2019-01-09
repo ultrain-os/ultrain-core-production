@@ -110,7 +110,7 @@ namespace ultrainio {
         static std::shared_ptr<NodeInfo> s_keyKeeper;
 
         // get committee state from world state
-        static std::shared_ptr<CommitteeState> getCommitteeState();
+        std::shared_ptr<CommitteeState> getCommitteeState();
 
         void computeCommitteeMroot();
 

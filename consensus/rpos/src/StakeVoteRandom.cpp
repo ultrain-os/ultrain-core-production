@@ -5,12 +5,18 @@
 #include <rpos/RoleRandom.h>
 #include <rpos/RoleSelection.h>
 
+#include <ultrainio/chain_plugin/chain_plugin.hpp>
+
+using namespace appbase;
+
 namespace ultrainio {
-    StakeVoteRandom::StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand)
+    StakeVoteRandom::StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr)
             : StakeVoteBase(blockNum, committeeStatePtr) {
         if (!isGenesisPeriod()) {
             // double check committee is work. And m_committeeStatePtr may be null when new node join network
             if (committeeHasWorked2()) {
+                m_random = getSysRandom();
+                RoleRandom rand(m_random, m_blockNum);
                 initRoleSelection(m_committeeStatePtr, rand);
             }
         }
@@ -25,6 +31,20 @@ namespace ultrainio {
         }
         std::shared_ptr<RoleSelection> roleSelectionPtr = std::make_shared<RoleSelection>(m_committeeV, rand);
         m_roleSelectionMap.insert(std::make_pair(kPhaseBA0 + 0, roleSelectionPtr));
+    }
+
+    std::string StakeVoteRandom::getSysRandom() {
+        try {
+            const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+            struct chain_apis::read_only::get_random_params params;
+            params.blocknum = m_blockNum;
+            auto result = ro_api.get_random(params);
+            ilog("read random m_blockNum = ${m_blockNum} rand = ${rand}", ("m_blockNum", m_blockNum)("rand", result.random));
+            return result.random;
+        } catch (fc::exception& e) {
+            ilog("There may be no rand : ${e}", ("e", e.to_string()));
+        }
+        return std::string("ultrain");
     }
 
     uint32_t StakeVoteRandom::proposerPriority(const AccountName& account, ConsensusPhase phase, int baxCount) {
@@ -49,7 +69,7 @@ namespace ultrainio {
     std::shared_ptr<RoleSelection> StakeVoteRandom::getRoleSelectionInitIfNull(ConsensusPhase phase, int baxCount) {
         std::shared_ptr<RoleSelection> roleSelectionPtr = getRoleSelection(phase, baxCount);
         if (!roleSelectionPtr) {
-            RoleRandom rand(UranusNode::getInstance()->getPreviousHash(), m_blockNum, phase, baxCount);
+            RoleRandom rand(m_random, m_blockNum, phase, baxCount);
             roleSelectionPtr = std::make_shared<RoleSelection>(m_committeeV, rand);
             m_roleSelectionMap.insert(std::make_pair(phase + baxCount, roleSelectionPtr));
         }

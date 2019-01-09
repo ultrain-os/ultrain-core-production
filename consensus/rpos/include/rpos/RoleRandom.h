@@ -6,7 +6,7 @@
 namespace ultrainio {
     class RoleRandom {
     public:
-        RoleRandom(const BlockIdType& preHash, uint32_t blockNum, const ConsensusPhase& phase = kPhaseBA0, int baxCount = 0);
+        RoleRandom(const std::string& sysRandom, uint32_t blockNum, const ConsensusPhase& phase = kPhaseBA0, int baxCount = 0);
 
         fc::sha256 getRand() const;
 

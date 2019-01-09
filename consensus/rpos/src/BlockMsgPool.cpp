@@ -12,8 +12,7 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
         m_stakeVote = StakeVoteFactory::createVrf(m_blockNum, nullptr);
 #else
-        ultrainio::chain::block_id_type blockId = UranusNode::getInstance()->getPreviousHash();
-        m_stakeVote = StakeVoteFactory::createRandom(m_blockNum, nullptr, blockId);
+        m_stakeVote = StakeVoteFactory::createRandom(m_blockNum, nullptr);
 #endif
     }
 

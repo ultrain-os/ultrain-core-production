@@ -1152,6 +1152,52 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    return result;
 }
 
+static fc::variant get_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms, const name& key) {
+    const auto table_type = get_table_type(abi, N(vote));
+    ULTRAIN_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table vote", ("type",table_type));
+
+    const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(utrio.rand), N(s.vote), N(vote)));
+    if (table_id == nullptr) {
+        return fc::variants();
+    }
+
+    const auto& kv_index = db.get_index<key_value_index, by_scope_primary>();
+    const auto it = kv_index.find(boost::make_tuple(table_id->id, key));
+    if (it == kv_index.end()) {
+        return fc::variants();
+    }
+
+    vector<char> data;
+    read_only::copy_inline_row(*it, data);
+    return abis.binary_to_variant(abis.get_table_type(N(vote)), data, abi_serializer_max_time_ms);
+}
+
+read_only::get_random_result read_only::get_random(const read_only::get_random_params& p) const {
+    const abi_def abi = ultrainio::chain_apis::get_abi(db, N(utrio.rand));
+    const auto table_type = get_table_type(abi, N(vote));
+    const abi_serializer abis{ abi, abi_serializer_max_time };
+    ULTRAIN_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table vote", ("type",table_type));
+
+    get_random_result result;
+    const auto& d = db.db();
+    auto block_num_entry = get_row(d, abi, abis, abi_serializer_max_time, N(blocknum));
+    ilog("blocknum entry : ${entry}", ("entry", block_num_entry));
+    if (block_num_entry.is_null()) {
+        return result;
+    }
+    uint64_t block_num = block_num_entry["val"].as_uint64();
+    if (p.blocknum - block_num >= 3) {
+        auto rand_entry = get_row(d, abi, abis, abi_serializer_max_time, N(rand));
+        ilog("block_num : ${block_num} rand entry : ${entry}", ("entry", rand_entry)("block_num", p.blocknum));
+        result.random = rand_entry["val"].as_string();
+    } else {
+        auto seed_entry = get_row(d, abi, abis, abi_serializer_max_time, N(seed));
+        ilog("block_num : ${block_num} seed entry : ${entry}", ("entry", seed_entry)("block_num", p.blocknum));
+        result.random = seed_entry["val"].as_string();
+    }
+    return result;
+}
+
 bool read_only::is_genesis_finished() const{
     static bool genesis_finished {};
     if (!genesis_finished){

@@ -190,13 +190,14 @@
  (data (i32.const 2752) "\"\00\00\00y\00o\00u\00 \00s\00h\00o\00u\00l\00d\00 \00b\00e\00 \00a\00 \00c\00a\00n\00d\00i\00d\00a\00t\00e\00 \00f\00i\00r\00s\00t\00l\00y\00.\00")
  (data (i32.const 2824) "\16\00\00\00y\00o\00u\00 \00h\00a\00s\00 \00a\00l\00r\00e\00a\00d\00y\00 \00v\00o\00t\00e\00d\00.\00")
  (data (i32.const 2872) "\03\00\00\00h\00e\00x\00")
- (data (i32.const 2888) "!\00\00\00p\00l\00e\00a\00s\00e\00 \00p\00r\00o\00v\00i\00d\00e\00 \00a\00 \00v\00a\00l\00i\00d\00 \00V\00R\00F\00 \00p\00r\00o\00o\00f\00.\00")
- (data (i32.const 2960) "7\00\00\00o\00b\00j\00e\00c\00t\00 \00p\00a\00s\00s\00e\00d\00 \00t\00o\00 \00m\00o\00d\00i\00f\00y\00 \00i\00s\00 \00n\00o\00t\00 \00f\00o\00u\00n\00d\00 \00i\00n\00 \00t\00h\00i\00s\00 \00D\00B\00M\00a\00n\00a\00g\00e\00r\00.\00")
- (data (i32.const 3080) "4\00\00\00c\00a\00n\00 \00n\00o\00t\00 \00m\00o\00d\00i\00f\00y\00 \00o\00b\00j\00e\00c\00t\00s\00 \00i\00n\00 \00t\00a\00b\00l\00e\00 \00o\00f\00 \00a\00n\00o\00t\00h\00e\00r\00 \00c\00o\00n\00t\00r\00a\00c\00t\00.\00")
- (data (i32.const 3192) "\0b\00\00\00b\00o\00n\00u\00s\00 \00m\00o\00n\00e\00y\00")
- (data (i32.const 3224) "\07\00\00\00 \00R\00a\00n\00d\00:\00 \00")
- (data (i32.const 3248) "\0f\00\00\00 \00B\00l\00o\00c\00k\00.\00n\00u\00m\00b\00e\00r\00:\00 \00")
- (data (i32.const 3288) "\05\00\00\00q\00u\00e\00r\00y\00")
+ (data (i32.const 2888) "\n\00\00\00m\00e\00s\00s\00a\00g\00e\00 \00:\00 \00")
+ (data (i32.const 2912) "!\00\00\00p\00l\00e\00a\00s\00e\00 \00p\00r\00o\00v\00i\00d\00e\00 \00a\00 \00v\00a\00l\00i\00d\00 \00V\00R\00F\00 \00p\00r\00o\00o\00f\00.\00")
+ (data (i32.const 2984) "7\00\00\00o\00b\00j\00e\00c\00t\00 \00p\00a\00s\00s\00e\00d\00 \00t\00o\00 \00m\00o\00d\00i\00f\00y\00 \00i\00s\00 \00n\00o\00t\00 \00f\00o\00u\00n\00d\00 \00i\00n\00 \00t\00h\00i\00s\00 \00D\00B\00M\00a\00n\00a\00g\00e\00r\00.\00")
+ (data (i32.const 3104) "4\00\00\00c\00a\00n\00 \00n\00o\00t\00 \00m\00o\00d\00i\00f\00y\00 \00o\00b\00j\00e\00c\00t\00s\00 \00i\00n\00 \00t\00a\00b\00l\00e\00 \00o\00f\00 \00a\00n\00o\00t\00h\00e\00r\00 \00c\00o\00n\00t\00r\00a\00c\00t\00.\00")
+ (data (i32.const 3216) "\0b\00\00\00b\00o\00n\00u\00s\00 \00m\00o\00n\00e\00y\00")
+ (data (i32.const 3248) "\07\00\00\00 \00R\00a\00n\00d\00:\00 \00")
+ (data (i32.const 3272) "\0f\00\00\00 \00B\00l\00o\00c\00k\00.\00n\00u\00m\00b\00e\00r\00:\00 \00")
+ (data (i32.const 3312) "\05\00\00\00q\00u\00e\00r\00y\00")
  (table $0 1 anyfunc)
  (elem (i32.const 0) $null)
  (global $~lib/internal/allocator/AL_BITS i32 (i32.const 3))
@@ -268,7 +269,7 @@
  (global $~lib/internal/string/CharCode.o i32 (i32.const 111))
  (global $~lib/internal/string/CharCode.x i32 (i32.const 120))
  (global $~lib/internal/string/CharCode.z i32 (i32.const 122))
- (global $HEAP_BASE i32 (i32.const 3304))
+ (global $HEAP_BASE i32 (i32.const 3328))
  (export "memory" (memory $0))
  (export "table" (table $0))
  (export "apply" (func $contract/ultrainio.rand/apply))
@@ -6888,13 +6889,13 @@
   get_local $3
   i32.const 0
   i32.ge_s
-  i32.const 2960
+  i32.const 2984
   call $~lib/env/ultrain_assert
   get_local $0
   i64.load offset=8
   call $~lib/env/current_receiver
   i64.eq
-  i32.const 3080
+  i32.const 3104
   call $~lib/env/ultrain_assert
   get_local $2
   call $~lib/datastream/DataStream.measure<Vote>
@@ -7090,17 +7091,25 @@
   i32.sub
   call $~lib/string/String#repeat
   set_local $6
+  get_local $7
+  get_local $6
+  call $~lib/string/String#concat
+  set_local $7
   call $~lib/ultrain-ts-lib/src/action/Action.get:sender
   i32.const 2872
   call $~lib/ultrain-ts-lib/src/account/Account.publicKeyOf
   set_local $8
-  get_local $8
-  get_local $1
-  get_local $7
-  get_local $6
-  call $~lib/string/String#concat
-  call $~lib/ultrain-ts-lib/src/crypto/verify_with_pk
+  get_global $~lib/ultrain-ts-lib/src/log/Log
   i32.const 2888
+  call $~lib/ultrain-ts-lib/src/log/Logger#s
+  get_local $7
+  call $~lib/ultrain-ts-lib/src/log/Logger#s
+  call $~lib/ultrain-ts-lib/src/log/Logger#flush
+  get_local $8
+  get_local $1
+  get_local $7
+  call $~lib/ultrain-ts-lib/src/crypto/verify_with_pk
+  i32.const 2912
   get_local $8
   call $~lib/string/String.__concat
   i32.const 8
@@ -7110,8 +7119,6 @@
   i32.const 8
   call $~lib/string/String.__concat
   get_local $7
-  get_local $6
-  call $~lib/string/String#concat
   call $~lib/string/String.__concat
   call $~lib/env/ultrain_assert
   i32.const 0
@@ -7172,14 +7179,14 @@
   get_global $contract/ultrainio.rand/BONUS
   i64.const 357577479428
   call $~lib/ultrain-ts-lib/src/asset/Asset#constructor
-  i32.const 3192
+  i32.const 3216
   call $~lib/ultrain-ts-lib/src/asset/Asset.transfer
-  i32.const 3224
+  i32.const 3248
   get_local $3
   i32.const 0
   call $~lib/ultrain-ts-lib/src/utils/intToString
   call $~lib/string/String.__concat
-  i32.const 3248
+  i32.const 3272
   call $~lib/string/String.__concat
   call $~lib/ultrain-ts-lib/src/block/Block.get:number
   i64.extend_u/i32
@@ -7234,13 +7241,13 @@
    call $~lib/dbmanager/DBManager<Vote>#get
    drop
   end
-  i32.const 3224
+  i32.const 3248
   get_local $1
   i64.load offset=8
   i32.const 0
   call $~lib/ultrain-ts-lib/src/utils/intToString
   call $~lib/string/String.__concat
-  i32.const 3248
+  i32.const 3272
   call $~lib/string/String.__concat
   call $~lib/ultrain-ts-lib/src/block/Block.get:number
   i64.extend_u/i32
@@ -7306,7 +7313,7 @@
     call $contract/ultrainio.rand/rand#vote
    end
    get_local $4
-   i32.const 3288
+   i32.const 3312
    call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
    if
     get_local $4

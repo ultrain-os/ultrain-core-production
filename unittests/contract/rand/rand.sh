@@ -29,7 +29,7 @@ case "$1" in
 		sleep 1
 		$clDir/clultrain --wallet-url http://127.0.0.1:6666 transfer ultrainio ${ult_accountLst[$i]} "300000.0000 UGAS";
 		sleep 1
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 system resourcelease ${ult_accountLst[$i]} ${ult_accountLst[$i]} 10
+		$clDir/clultrain --wallet-url http://127.0.0.1:6666 system resourcelease ${ult_accountLst[$i]} ${ult_accountLst[$i]} 10 100
 		i=`expr $i + 1`
 		printf "\n\n"
 	done
@@ -67,7 +67,7 @@ case "$1" in
 	# delegate permission to send bonus
 	# ./clultrain set account permission abc123 active '{"threshold":1,"keys": [{"key":"UTR6FjKthwDnnh6o2T9n4DDb19X1vsrafJibEiCPDX6YP1QmZS7Bu","weight": 1}],"accounts": [{"permission":{"actor":"abc123","permission":"utrio.code"},"weight":1}]}' owner -p abc123
 
-	i=0;j=1; VOTE_TIMES=3; VOTER_NUM=5;
+	i=0;j=1; VOTE_TIMES=20; VOTER_NUM=16;
 	while [ $j -lt $VOTE_TIMES ];do
 		while [ $i -lt $VOTER_NUM ];do
 			printf "\n\n"
@@ -88,9 +88,10 @@ case "$1" in
 			# cannot parse $ in '', only in ""
 			$clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand vote '["'"${data1[1]}"'" "'"${data1[2]}"'"]' -p ${ult_accountLst[$i]}
 			i=`expr $i + 1`
+			sleep 0.5
 		done
 		i=0
-		sleep 30;
+		sleep 15;
 		j=`expr $j + 1`;
 	done
     ;;

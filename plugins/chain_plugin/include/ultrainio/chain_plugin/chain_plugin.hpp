@@ -325,6 +325,16 @@ public:
 
    get_producer_info_result get_producer_info(const get_producer_info_params& p) const;
 
+   struct get_random_params {
+       uint64_t blocknum = 0; // block number
+   };
+
+   struct get_random_result {
+       std::string random = "";
+   };
+
+   get_random_result get_random(const get_random_params& p) const;
+
    using get_user_bulletin_params = get_subchain_committee_params;
    struct get_user_bulletin_result {
        std::string     owner;
@@ -651,6 +661,9 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_ws_hash_params, (chai
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(from_location)(quit_before_num) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );
+
+FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thresh_activated_stake_time)(more) );

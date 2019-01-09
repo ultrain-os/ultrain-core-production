@@ -9,7 +9,7 @@ namespace ultrainio {
 
     class StakeVoteRandom : public StakeVoteBase {
     public:
-        StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand);
+        StakeVoteRandom(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
 
         virtual uint32_t proposerPriority(const AccountName& account, ConsensusPhase phase, int baxCount);
 
@@ -31,10 +31,12 @@ namespace ultrainio {
 
     private:
         void initRoleSelection(std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand);
+        std::string getSysRandom();
         std::shared_ptr<RoleSelection> getRoleSelection(ConsensusPhase phase, int baxCount) const;
         std::shared_ptr<RoleSelection> getRoleSelectionInitIfNull(ConsensusPhase phase, int baxCount);
 
         std::map<int, std::shared_ptr<RoleSelection> > m_roleSelectionMap; // key = phase + baxCount
         std::vector<std::string> m_committeeV;
+        std::string m_random;
     };
 }
