@@ -1,3 +1,5 @@
+var logger = require("../../config/logConfig");
+var sleep = require('sleep')
 /**
  * 判断是否为空
  * @param data
@@ -46,9 +48,24 @@ function isAllNull() {
     return true;
 }
 
+
+/**
+ *
+ * @param e
+ * @returns {*}
+ */
+function logNetworkError(e) {
+    if (isNotNull(e.code)) {
+        return e.code;
+    }
+
+    return e;
+}
+
 module.exports = {
     isNull,
     isNotNull,
     isAllNull,
-    isAllNotNull
+    isAllNotNull,
+    logNetworkError
 }

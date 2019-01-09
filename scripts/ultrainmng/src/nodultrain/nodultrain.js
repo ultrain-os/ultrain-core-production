@@ -29,6 +29,24 @@ NodUltrain.updateConfig = function (filepath, monitorServer) {
     }
 }
 
+/**
+ * 关闭nod
+ * @returns {Promise<boolean>}
+ */
+NodUltrain.stop = async function () {
+    await ShellCmd.execCmd(Constants.cmdConstants.KILL_NODULTRAIN);
+    return true;
+}
+
+/**
+ * 启动nod
+ * @returns {Promise<boolean>}
+ */
+NodUltrain.start = async function () {
+    await ShellCmd.execCmd(Constants.cmdConstants.START_NODULTRAIN);
+    return true;
+}
+
 
 
 module.exports = NodUltrain;
