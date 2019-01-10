@@ -74,6 +74,8 @@ namespace ultrainio {
     protected:
         StakeVoteBase(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr);
 
+        virtual ~StakeVoteBase();
+
         virtual bool realIsProposer(const AccountName& account);
 
         virtual bool realIsVoter(const AccountName& account, ConsensusPhase phase, int baxCount);

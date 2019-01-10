@@ -42,6 +42,9 @@ namespace ultrainio {
         ULTRAIN_ASSERT(getCommitteeMemberNumber() != 0, chain::chain_exception, "totalStake is 0");
     }
 
+    StakeVoteBase::~StakeVoteBase() {
+    }
+
     std::shared_ptr<NodeInfo> StakeVoteBase::getKeyKeeper() {
         return s_keyKeeper;
     }
