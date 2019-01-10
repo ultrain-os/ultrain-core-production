@@ -620,7 +620,7 @@ def stepCreateinitAccounts():
     for a in initialAccounts:
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
         retry(args.clultrain + 'system resourcelease ultrainio  %s  10 100' % a)
-    retry(args.clultrain + 'system resourcelease ultrainio  hello  6000 10')
+    retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100')
     retry(args.clultrain + 'transfer ultrainio utrio.rand "10000 UGAS" ')
     retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
 

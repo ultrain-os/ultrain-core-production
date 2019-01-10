@@ -557,6 +557,13 @@ void system_contract::voteresourcelease() {
 
       set_resource_limits( newact, 0, 0, 0 );
    }
+   void native::updateauth( account_name     account/*,
+                  permission_name  permission,
+                  permission_name  parent,
+                  const authority& data*/ ){
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {account,N(active)},
+            { account, N(utrio.fee), asset(10000), std::string("update auth") } );
+      }
 
    void native::deletetable( account_name code ) {
       require_auth(_self);
