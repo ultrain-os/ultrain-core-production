@@ -118,11 +118,11 @@ void apply_ultrainio_newaccount(apply_context& context) {
    context.control.get_mutable_resource_limits_manager().initialize_account(create.name);
 
    int64_t ram_delta = config::overhead_per_account_ram_bytes;
-   //ram_delta += 2*config::billable_size_v<permission_object>;
-   //ram_delta += owner_permission.auth.get_billable_size();
-   //ram_delta += active_permission.auth.get_billable_size();
+   ram_delta += 2*config::billable_size_v<permission_object>;
+   ram_delta += owner_permission.auth.get_billable_size();
+   ram_delta += active_permission.auth.get_billable_size();
 
-   context.trx_context.add_ram_usage(create.name, ram_delta);
+   context.trx_context.add_ram_usage(create.creator, ram_delta);
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
