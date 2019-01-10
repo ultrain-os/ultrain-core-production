@@ -24,5 +24,7 @@ add_library( ultrainio_rpos
         src/Vrf.cpp
         ${HEADERS} )
 
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=delete-non-virtual-dtor" )
+
 target_link_libraries( ultrainio_rpos appbase net_plugin ultrainio_core ultrainio_crypto )
 target_include_directories( ultrainio_rpos PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
