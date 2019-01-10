@@ -696,6 +696,38 @@ def stepTransfer():
     while True:
         randomTransfer()
 
+def stepunregproducersTest():
+    cur_accounts= [
+
+    ]
+    for a in cur_accounts:
+        retry(args.clultrain + 'system unregprod %s  ' % a)
+def stepregproducersTest():
+    cur_accounts= [
+
+    ]
+    miner_pk_list = [
+
+    ]
+    acc_pk_list = [
+
+    ]
+    pklen = len(miner_pk_list)
+    for i in range(0, pklen):
+        j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":cur_accounts[i]})).text)
+        if ("account_name" in j):
+            continue
+        retry(args.clultrain + 'create account -u ultrainio %s %s ' % (cur_accounts[i], acc_pk_list[i]))
+    sleep(10)
+    for a in cur_accounts:
+        retry(args.clultrain + 'transfer ultrainio %s  "100.0000 UGAS"' % a)
+    sleep(10)
+    for i in range(0, pklen):
+        retry(args.clultrain + 'system regproducer %s %s https://%s.com 0 ' % (cur_accounts[i], miner_pk_list[i], cur_accounts[i]))
+    sleep(10)
+    for i in range(0, pklen):
+        retry(args.clultrain + 'system delegatecons utrio.stake %s  "1000000.0000 UGAS" ' % (cur_accounts[i]))
+
 # Command Line Arguments
 
 parser = argparse.ArgumentParser()
@@ -717,7 +749,9 @@ commands = [
 #    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
 #    ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
-    ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction")
+    ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction"),
+    ('u', 'unregproducers',  stepunregproducersTest,    False,    "stepunregproducersTest"),
+    ('r', 'regproducers',  stepregproducersTest,    False,    "stepregproducersTest"),
 ]
 
 parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")
