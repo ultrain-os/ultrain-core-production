@@ -36,6 +36,16 @@ var logConfig = {
     }
 };
 log4js.configure(logConfig);
-var logger = require('log4js').getLogger("sidechain");
 
-module.exports = logger
+/**
+ *
+ * @param categoty
+ * @returns {Logger}
+ */
+var getLogger = function(categoty) {
+    return require('log4js').getLogger(categoty);
+}
+
+module.exports = {
+    getLogger
+}

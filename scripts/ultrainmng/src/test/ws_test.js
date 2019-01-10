@@ -13,7 +13,6 @@ var sleep = require('sleep')
  * @returns {Promise<void>}
  */
 async function interactWithWorldState() {
-
         /**
          * 关闭
          */
@@ -30,7 +29,7 @@ async function interactWithWorldState() {
          */
         let chainId = "11";
         let seedIp = "11.11.11.11"
-        result = await WorldState.start(chainId, seedIp, 5000);
+        result = await WorldState.start(chainId, seedIp, 3000);
         if (result) {
             console.log("wss start successed");
         } else {

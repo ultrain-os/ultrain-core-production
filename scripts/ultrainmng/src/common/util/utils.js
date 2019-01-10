@@ -1,5 +1,4 @@
-var logger = require("../../config/logConfig");
-var sleep = require('sleep')
+
 /**
  * 判断是否为空
  * @param data
