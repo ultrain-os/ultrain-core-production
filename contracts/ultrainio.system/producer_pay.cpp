@@ -59,6 +59,7 @@ namespace ultrainiosystem {
       }
       checkresexpire();
       cleanvotetable();
+      activate_committee_update();
    }
 
    void system_contract::reportblocknumber( account_name producer, uint64_t number) {

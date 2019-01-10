@@ -238,7 +238,7 @@ namespace ultrainio {
        * @param l - location
        * @param num - approve_num
        */
-      proposeresource_info( account_name a, uint64_t lease, uint64_t d, uint16_t l, int64_t num ):account(a),lease_num(lease),days(d),location(l),approve_num(num){}
+      proposeresource_info( account_name a, uint64_t lease, time e, uint16_t l, int64_t num ):account(a),lease_num(lease),end_time(e),location(l),approve_num(num){}
 
       /**
        * Default Constructor
@@ -249,10 +249,10 @@ namespace ultrainio {
 
       account_name      account;
       uint64_t          lease_num;
-      uint64_t          days;
+      time              end_time;
       uint64_t          location;
       int64_t           approve_num;
-      ULTRAINLIB_SERIALIZE( proposeresource_info, (account)(lease_num)(days)(location)(approve_num) )
+      ULTRAINLIB_SERIALIZE( proposeresource_info, (account)(lease_num)(end_time)(location)(approve_num) )
    };
    /**
     * Require the specified authorization for this action. If this action doesn't contain the specified auth, it will fail.

@@ -14,7 +14,7 @@
 #include <ultrainio/chain/resource_limits.hpp>
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/generated_transaction_object.hpp>
-#include <ultrainio/chain/ultrainio_object.hpp>
+//#include <ultrainio/chain/ultrainio_object.hpp>
 
 #include <ultrainio/chain/ultrainio_contract.hpp>
 
@@ -996,6 +996,21 @@ vector<read_only::get_subchain_committee_result> read_only::get_subchain_committ
    return result;
 }
 
+vector<ultrainio::chain::resources_lease> read_only::get_subchain_resource(const read_only::get_subchain_resource_params& p) const {
+vector<ultrainio::chain::resources_lease> results;
+    ULTRAIN_ASSERT(p.chain_name != master_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
+    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+    auto index_type = get_table_type( abi, N(reslease) );
+    walk_key_value_table(N(ultrainio), p.chain_name, N(reslease), [&](const key_value_object& obj) {
+        resources_lease resLease;
+        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+        fc::raw::unpack(ds, resLease);
+        results.push_back(resLease);
+        return true;
+    } );
+return results;
+}
+
 uint32_t read_only::get_subchain_block_num(const read_only::get_subchain_block_num_params& p) const {
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
    ULTRAIN_ASSERT(p.chain_name != master_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
@@ -1046,6 +1061,7 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
        }
     });
     result.quit_before_num = 0; // todo, quey it from table
+    result.chain_id = db.get_chain_id();
     return result;
 }
 

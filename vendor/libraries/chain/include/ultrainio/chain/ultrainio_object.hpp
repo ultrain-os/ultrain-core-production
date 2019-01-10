@@ -21,6 +21,13 @@ namespace ultrainio { namespace chain {
       uint64_t              location = 0;
    };
 
+   struct chain_resource {
+       uint16_t             max_resources_size = 10000;
+       uint16_t             total_resources_staked = 0;
+       uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
+       uint64_t             total_ram_bytes_reserved = 0;
+   };
+
    struct user_info {
       account_name      user_name;
       std::string       owner_key;
@@ -29,22 +36,27 @@ namespace ultrainio { namespace chain {
       uint32_t          block_num; ////block num in master chain when this info added
    };
 
-   struct changed_committee {
-       std::vector<role_base> deprecated_members;
+   struct changing_committee {
+       std::vector<role_base> removed_members;
        std::vector<role_base> new_added_members;
-       uint32_t               block_num = 0;  //block num of master chain when this change was comfirmed,
-                                              //0 indicate all changed info has not bee confirmed.
+   };
+
+   struct updated_committee {
+       std::vector<role_base>    deprecated_committee;
+       std::vector<account_name> unactivated_committee;
+       uint32_t                  take_effect_at_block; //block num of master chain when the committee update takes effect
    };
 
     struct subchain {
        uint64_t                  chain_name;
        uint16_t                  chain_type;
+       time_point_sec            genesis_time;
+       chain_resource            global_resource;
        bool                      is_active;
        bool                      is_synced;
        std::vector<role_base>    committee_members;  //all producers with enough deposit
-       std::vector<role_base>    deprecated_committee;
-       std::vector<account_name> unactivated_committee;
-       changed_committee         changed_info;
+       updated_committee         updated_info;
+       changing_committee        changing_info;
        block_id_type             head_block_id;
        uint32_t                  head_block_num;
        std::vector<user_info>    users;
@@ -55,13 +67,23 @@ namespace ultrainio { namespace chain {
 //       std::vector<role_base>  relayer_list;       // choosen from accounts with enough deposit (both producer and non-producer)
     };
 
+    struct resources_lease {
+      account_name             owner;
+      int64_t                  lease_num;
+      time_point_sec           start_time;
+      time_point_sec           end_time;
+    };
+
 }} // namespace ultrainio::chain
 
 FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::producer_info, (ultrainio::chain::role_base), (total_cons_staked)(is_active)(is_enabled)
                     (hasactived)(url)(unpaid_blocks)(total_produce_block)(last_claim_time)(location))
+FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_size)(total_resources_staked)(max_ram_size)(total_ram_bytes_reserved) )
 FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(block_num) )
-FC_REFLECT(ultrainio::chain::changed_committee, (deprecated_members)(new_added_members)(block_num) )
-FC_REFLECT(ultrainio::chain::subchain, (chain_name)(chain_type)(is_active)(is_synced)(committee_members)(deprecated_committee)
-                                       (unactivated_committee)(changed_info)(head_block_id)(head_block_num)(users) )
+FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )
+FC_REFLECT(ultrainio::chain::updated_committee, (deprecated_committee)(unactivated_committee)(take_effect_at_block) )
+FC_REFLECT(ultrainio::chain::subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_active)(is_synced)(committee_members)
+                                       (updated_info)(changing_info)(head_block_id)(head_block_num)(users) )
            //(chain_id)(genesis_info)(network_topology)(relayer_candidates)(relayer_list) )
+FC_REFLECT(ultrainio::chain::resources_lease, (owner)(lease_num)(start_time)(end_time) )
