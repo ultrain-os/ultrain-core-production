@@ -55,7 +55,7 @@
       "fields": [
         {"name": "account", "type": "account_name"},
         {"name": "lease_num", "type": "uint64"},
-        {"name": "days", "type": "uint64"},
+        {"name": "end_time", "type": "time_point_sec"},
         {"name": "location", "type": "uint64"},
         {"name": "approve_num", "type": "int64"}
       ]
@@ -108,7 +108,8 @@
       "base": "",
       "fields": [
         {"name": "chain_name",                 "type": "uint64"},
-        {"name": "chain_type",                 "type": "uint16"}
+        {"name": "chain_type",                 "type": "uint16"},
+        {"name": "genesis_time",               "type": "string"}
        ]
     },{
         "name": "extension",
@@ -419,6 +420,15 @@
          {"name":"last_operate_blocknum", "type":"uint64"}
       ]
     },{
+     "name": "chaintype",
+      "base": "",
+      "fields": [
+        {"name": "id",                     "type": "uint16"},
+        {"name": "min_producers",          "type": "uint32"},
+        {"name": "max_producers",          "type": "uint32"},
+        {"name": "consensus_period",       "type": "uint16"}
+       ]
+    },{
      "name": "user_info",
       "base": "",
       "fields": [
@@ -429,12 +439,28 @@
         {"name": "block_num",                     "type": "uint32"}
        ]
     },{
-     "name": "changed_committee",
+     "name": "chain_resource",
       "base": "",
       "fields": [
-        {"name": "deprecated_members",            "type": "role_base[]"},
-        {"name": "new_added_members",             "type": "role_base[]"},
-        {"name": "block_num",                     "type": "uint32"}
+        {"name": "max_resources_size",            "type": "uint16"},
+        {"name": "total_resources_staked",        "type": "uint16"},
+        {"name": "max_ram_size",                  "type": "uint64"},
+        {"name": "total_ram_bytes_reserved",      "type": "uint64"}
+       ]
+    },{
+     "name": "changing_committee",
+      "base": "",
+      "fields": [
+        {"name": "removed_members",               "type": "role_base[]"},
+        {"name": "new_added_members",             "type": "role_base[]"}
+       ]
+    },{
+     "name": "updated_committee",
+      "base": "",
+      "fields": [
+        {"name": "deprecated_committee",          "type": "role_base[]"},
+        {"name": "unactivated_committee",         "type": "account_name[]"},
+        {"name": "take_effect_at_block",          "type": "uint32"}
        ]
     },{
      "name": "subchain",
@@ -442,12 +468,13 @@
       "fields": [
         {"name": "chain_name",                    "type": "uint64"},
         {"name": "chain_type",                    "type": "uint16"},
+        {"name": "genesis_time",                  "type": "time_point_sec"},
+        {"name": "global_resource",               "type": "chain_resource"},
         {"name": "is_active",                     "type": "bool"},
         {"name": "is_synced",                     "type": "bool"},
         {"name": "committee_members",             "type": "role_base[]"},
-        {"name": "deprecated_committee",          "type": "role_base[]"},
-        {"name": "unactivated_committee",         "type": "account_name[]"},
-        {"name": "changed_info",                  "type": "changed_committee"},
+        {"name": "updated_info",                  "type": "updated_committee"},
+        {"name": "changing_info",                 "type": "changing_committee"},
         {"name": "head_block_id",                 "type": "block_id_type"},
         {"name": "head_block_num",                "type": "uint32"},
         {"name": "users",                         "type": "user_info[]"}
@@ -802,6 +829,12 @@
       "type": "pending_res",
       "index_type": "i64",
       "key_names": ["owner"],
+      "key_types": ["uint64"]
+    },{
+      "name": "chaintype",
+      "type": "chaintype",
+      "index_type": "i64",
+      "key_names": ["chain_name"],
       "key_types": ["uint64"]
     }
    ],

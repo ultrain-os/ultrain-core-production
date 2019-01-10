@@ -14,6 +14,7 @@
 #include <ultrainio/chain/transaction.hpp>
 #include <ultrainio/chain/abi_serializer.hpp>
 #include <ultrainio/chain/plugin_interface.hpp>
+#include <ultrainio/chain/ultrainio_object.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/algorithm/string.hpp>
@@ -293,7 +294,7 @@ public:
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
    struct get_subchain_committee_params {
-      uint64_t         chain_name;  //todo, will change it to name type later
+      uint64_t         chain_name;
    };
 
    struct get_subchain_committee_result {
@@ -302,6 +303,9 @@ public:
    };
 
    vector<get_subchain_committee_result> get_subchain_committee(const get_subchain_committee_params& p) const;
+
+   using get_subchain_resource_params = get_subchain_committee_params;
+   std::vector<ultrainio::chain::resources_lease> get_subchain_resource(const get_subchain_resource_params& p) const;
 
    using get_subchain_block_num_params = get_subchain_committee_params;
    uint32_t get_subchain_block_num(const get_subchain_block_num_params& p) const;
@@ -319,6 +323,7 @@ public:
 
    struct get_producer_info_result {
        uint64_t      location;
+       std::string   chain_id;
        uint64_t      from_location;
        uint32_t      quit_before_num;
    };
@@ -659,7 +664,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_params, (ch
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_ws_hash_params, (chain_name)(height) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(from_location)(quit_before_num) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(from_location)(quit_before_num) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );

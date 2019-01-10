@@ -92,6 +92,7 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_currency_stats, 200),
       CHAIN_RO_CALL(get_subchain_committee, 200),
       CHAIN_RO_CALL(get_subchain_block_num, 200),
+      CHAIN_RO_CALL(get_subchain_resource, 200),
       CHAIN_RO_CALL(get_subchain_ws_hash, 200),
       CHAIN_RO_CALL(get_producer_info, 200),
       CHAIN_RO_CALL(get_random, 200),
