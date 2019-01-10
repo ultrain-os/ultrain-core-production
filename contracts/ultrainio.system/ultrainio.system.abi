@@ -35,7 +35,8 @@
         {"name": "public_key", "type": "string"},
         {"name": "url", "type": "string"},
         {"name": "location", "type": "uint64"},
-        {"name": "adddel_miner", "type": "bool"}
+        {"name": "adddel_miner", "type": "bool"},
+        {"name": "approve_num", "type": "int64"}
       ]
     },{
       "name": "proposeaccount_info",
@@ -44,7 +45,9 @@
         {"name": "account", "type": "account_name"},
         {"name": "owner_key", "type": "string"},
         {"name": "active_key", "type": "string"},
-        {"name": "location", "type": "uint64"}
+        {"name": "updateable", "type": "bool"},
+        {"name": "location", "type": "uint64"},
+        {"name": "approve_num", "type": "int64"}
       ]
     },{
       "name": "proposeresource_info",
@@ -61,7 +64,7 @@
       "base": "",
       "fields": [
         {"name": "account", "type": "account_name"},
-        {"name": "last_vote_time", "type": "uint64"},
+        {"name": "last_vote_time", "type": "time_point_sec"},
         {"name": "resource_index", "type": "uint64"}
       ]
     },{
@@ -449,6 +452,22 @@
         {"name": "users",                         "type": "user_info[]"}
        ]
     },{
+     "name": "pending_miner",
+      "base": "",
+      "fields": [
+        {"name": "owner",                    "type": "account_name"},
+        {"name": "proposal_miner",           "type": "proposeminer_info[]"},
+        {"name": "provided_approvals",       "type": "provided_proposer[]"}
+       ]
+    },{
+     "name": "pending_acc",
+      "base": "",
+      "fields": [
+        {"name": "owner",                    "type": "account_name"},
+        {"name": "proposal_account",         "type": "proposeaccount_info[]"},
+        {"name": "provided_approvals",       "type": "provided_proposer[]"}
+       ]
+    },{
      "name": "pending_res",
       "base": "",
       "fields": [
@@ -764,6 +783,18 @@
       "type": "subchain",
       "index_type": "i64",
       "key_names": ["chain_name"],
+      "key_types": ["uint64"]
+    },{
+      "name": "pendingminer",
+      "type": "pending_miner",
+      "index_type": "i64",
+      "key_names": ["owner"],
+      "key_types": ["uint64"]
+    },{
+      "name": "pendingacc",
+      "type": "pending_acc",
+      "index_type": "i64",
+      "key_names": ["owner"],
       "key_types": ["uint64"]
     },{
       "name": "pendingres",

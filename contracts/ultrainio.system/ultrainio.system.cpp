@@ -18,7 +18,10 @@ namespace ultrainiosystem {
     _rammarket(_self,_self),
     _pending_que(_self, _self),
     _subchains(_self,_self),
-    _reslease_tbl( _self,_self ) {
+    _reslease_tbl( _self,_self ),
+    _pendingminer( _self, _self ),
+    _pendingaccount( _self, _self ),
+    _pendingres( _self, _self ) {
       //print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
 
@@ -136,133 +139,113 @@ namespace ultrainiosystem {
          });
       }
    }
-   void system_contract::updateactiveminers(const std::vector<ultrainio::proposeminer_info>&  miners ) {
-      for(auto const& miner:miners){
-         print("updateactiveminers   proposerminer:",name{miner.account}," adddel:",miner.adddel_miner);
-         if(miner.adddel_miner){
-            auto prod = _producers.find( miner.account );
-            if(prod != _producers.end() && prod->is_enabled){
-               print("\nupdateactiveminers curproducer existed  proposerminer:",name{(*prod).owner});
-               continue;
-            }
-            INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), {miner.account, N(active)},
-               { miner.account, miner.public_key, miner.url, miner.location} );
-               INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
-               { N(utrio.stake),miner.account,asset(consweight_per_subaccount)} ); 
-         }else{
-            auto prod = _producers.find( miner.account );
-            if(prod == _producers.end())// || !prod->is_enabled
-            {
-               print("updateactiveminers curproducer not found  proposerminer:",ultrainio::name{(*prod).owner}," (*produceriter).total_cons_staked:",(*prod).total_cons_staked);
-               continue;
-            }
-            _producers.modify( prod, 0, [&](auto& p) {
-                  p.deactivate();
-                  p.is_enabled =false;
-               });
-            print("updateactiveminers   del proposerminer:",ultrainio::name{(*prod).owner}," (*produceriter).total_cons_staked:",(*prod).total_cons_staked);
-            if((*prod).total_cons_staked > 0){
-               INLINE_ACTION_SENDER(ultrainiosystem::system_contract, undelegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
-                  { N(utrio.stake),(*prod).owner} );
-            }
+   void system_contract::updateactiveminers(const ultrainio::proposeminer_info&  miner ) {
+      if(miner.adddel_miner){
+         auto prod = _producers.find( miner.account );
+         if(prod != _producers.end() && prod->is_enabled){
+            print("\nupdateactiveminers curproducer existed  proposerminer:",name{(*prod).owner});
+            return;
+         }
+         print("updateactiveminers add  proposerminer:",name{miner.account}," adddel:",miner.adddel_miner);
+         INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), {miner.account, N(active)},
+            { miner.account, miner.public_key, miner.url, miner.location} );
+         INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
+         { N(utrio.stake),miner.account,asset(consweight_per_subaccount)} );
+      }else{
+         auto prod = _producers.find( miner.account );
+         if(prod == _producers.end())
+         {
+            print("updateactiveminers curproducer not found  proposerminer:",ultrainio::name{(*prod).owner}," total_cons_staked:",(*prod).total_cons_staked);
+            return;
+         }
+         _producers.modify( prod, 0, [&](auto& p) {
+               p.deactivate();
+               p.is_enabled =false;
+            });
+         print("updateactiveminers del proposerminer:",ultrainio::name{(*prod).owner}," total_cons_staked:",(*prod).total_cons_staked);
+         if((*prod).total_cons_staked > 0){
+            INLINE_ACTION_SENDER(ultrainiosystem::system_contract, undelegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
+               { N(utrio.stake),(*prod).owner} );
          }
       }
    }
    void system_contract::votecommittee() {
-      constexpr size_t max_stack_buffer_size = 4096;
       size_t size = action_data_size();
-      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      char* buffer = (char*)alloca(size);
       read_action_data( buffer, size );
       account_name proposer;
       vector<proposeminer_info> proposeminer;
       datastream<const char*> ds( buffer, size );
       ds >> proposer >> proposeminer;
-      uint32_t proposeminersize = proposeminer.size();
       ultrainio_assert( proposeminer.size() == 1, "The number of proposeminer changes cannot exceed one" );
       require_auth( proposer );
       auto propos = _producers.find( proposer );
-      ultrainio_assert( propos != _producers.end() && propos->is_enabled, "enabled producer not found this proposer" );
-      auto const comp = [this](const proposeminer_info &a, const proposeminer_info &b){
-         if (a.account < b.account)
-               return true;
-         return false;
-      };
-      std::sort(proposeminer.begin(), proposeminer.end(),comp);
-
-      bool nofindminerflg = false;
-      uint32_t  curactiveminer = 0;
+      ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+      uint32_t  enableprodnum = 0;
       for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
-         if(itr->is_enabled)
-            ++curactiveminer;
+         if(itr->is_enabled && itr->is_on_master_chain())
+            ++enableprodnum;
       }
-      print("votecommittee curactiveminer size:", curactiveminer," proposer:",ultrainio::name{proposer}," minersize:",proposeminer.size()," changeproducerflg:",curactiveminer*2/3>proposeminer.size(),"\n");
-
-      for(auto miner:proposeminer){
-         print("get votecommittee proposeminer vector:", ultrainio::name{miner.account}, miner.public_key, miner.adddel_miner);
-      }
-      pendingminers pendingminer( _self, _self );
-      provided_proposer  provideapprve(proposer,current_time(),0);
-      for(auto pendingiter = pendingminer.begin(); pendingiter != pendingminer.end(); pendingiter++)
-      {
-         nofindminerflg = false;
-         if((*pendingiter).proposal_miner.size() == proposeminersize){
-            for(uint32_t i = 0;i < proposeminersize;i++)
+      print("votecommittee enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeminer.size(),"\n");
+      for(auto minerinfo : proposeminer){
+         ultrainio_assert( is_account( minerinfo.account ), "vote votecommittee account not exist");
+         minerinfo.approve_num = 1;
+         provided_proposer  provideapprve(proposer,now(),0);
+         auto pendingiter = _pendingminer.find( minerinfo.account );
+         if ( pendingiter != _pendingminer.end() ) {
+            _pendingminer.modify( pendingiter, 0, [&]( auto& p ) {
+               auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
+               if(itr != p.provided_approvals.end())
+               {
+                  if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
+                        print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
+                        ultrainio_assert( false, "voteaccount proposer already voted" );
+                  }
+                  p.provided_approvals.erase(itr);
+               }
+            });
+            int32_t curproposeresnum = -1;
+            uint32_t proposeaccountsize = (*pendingiter).proposal_miner.size();
+            for(uint32_t i = 0;i < proposeaccountsize;i++)
             {
-               if((proposeminer[i].account != (*pendingiter).proposal_miner[i].account) ||
-                 (proposeminer[i].public_key != (*pendingiter).proposal_miner[i].public_key)  ||
-                 (proposeminer[i].location != (*pendingiter).proposal_miner[i].location)  ||
-                 (proposeminer[i].adddel_miner != (*pendingiter).proposal_miner[i].adddel_miner)){
-                  nofindminerflg = true;
+               if((minerinfo.account == (*pendingiter).proposal_miner[i].account) &&
+                  (minerinfo.public_key == (*pendingiter).proposal_miner[i].public_key)  &&
+                  (minerinfo.location == (*pendingiter).proposal_miner[i].location)  &&
+                  (minerinfo.adddel_miner == (*pendingiter).proposal_miner[i].adddel_miner)){
+                  curproposeresnum = (int32_t)i;
                   break;
                }
             }
-            if(!nofindminerflg){
-               auto itr = std::find( (*pendingiter).provided_approvals.begin(), (*pendingiter).provided_approvals.end(), provideapprve );
-               if(itr != (*pendingiter).provided_approvals.end())
-               {
-                  if((provideapprve.last_vote_time - itr->last_vote_time) < useconds_per_halfhour){
-                     print("\nvotecommittee nofindminerflg proposer already voted proposer :",ultrainio::name{proposer}," provideapprve.last_vote_time:",provideapprve.last_vote_time," itr->last_vote_time:",itr->last_vote_time);
-                     ultrainio_assert( false, "proposer already voted" );
-                  }
-                  pendingminer.modify( *pendingiter, 0, [&]( auto& p ) {
-                     p.provided_approvals.erase(itr);
-                  });
-               }
-               pendingminer.modify( *pendingiter, 0, [&]( auto& p ) {
+            if(curproposeresnum >= 0){
+               _pendingminer.modify( pendingiter, 0, [&]( auto& p ) {
+                  p.proposal_miner[(uint32_t)curproposeresnum].approve_num++;
+                  provideapprve.resource_index = (uint64_t)curproposeresnum;
                   p.provided_approvals.push_back(provideapprve);
                });
-               print("\nvotecommittee nofindminerflg proposer:",ultrainio::name{proposer}," proposernumberflg:",(*pendingiter).provided_approvals.size() >= curactiveminer*2/3," provideapprve.last_vote_time:",provideapprve.last_vote_time," curproposernum:",(*pendingiter).provided_approvals.size());
-               if((*pendingiter).provided_approvals.size() >= curactiveminer*2/3){
-                  updateactiveminers(proposeminer);
-                  pendingminer.modify( *pendingiter, 0, [&]( auto& p ) {
+
+               if((*pendingiter).proposal_miner[(uint32_t)curproposeresnum].approve_num >= (double)(enableprodnum)*2/3){
+                  updateactiveminers(minerinfo);
+                  _pendingminer.modify( pendingiter, 0, [&]( auto& p ) {
                      p.provided_approvals.clear();
                      p.proposal_miner.clear();
                   });
-                  const auto& pending = pendingminer.get( (*pendingiter).proposer, "the current proposal cannot be found" );
-                  pendingminer.erase( pending );
+                  _pendingminer.erase( pendingiter );
                }
-               return;
+            }else{
+               _pendingminer.modify( pendingiter, 0, [&]( auto& p ) {
+                  p.proposal_miner.push_back(minerinfo);
+                  provideapprve.resource_index = p.proposal_miner.size() - 1;
+                  p.provided_approvals.push_back(provideapprve);
+               });
             }
+         }else{
+            _pendingminer.emplace( _self, [&]( auto& p ) {
+               p.owner = minerinfo.account;
+               p.provided_approvals.push_back(provideapprve);
+               p.proposal_miner.push_back(minerinfo);
+            });
          }
       }
-      auto prod = pendingminer.find( proposer );
-      if ( prod != pendingminer.end() ) {
-         pendingminer.modify( prod, _self, [&]( auto& p ) {
-            p.provided_approvals.clear();
-            p.provided_approvals.push_back(provideapprve);
-            p.proposal_miner.clear();
-            for(auto miner:proposeminer)
-               p.proposal_miner.push_back(miner);
-         });
-      } else {
-         pendingminer.emplace( _self, [&]( auto& p ) {
-            p.proposer = proposer;
-            p.provided_approvals.push_back(provideapprve);
-            for(auto miner:proposeminer)
-               p.proposal_miner.push_back(miner);
-         });
-      }
-      print("votecommittee pushback  pendingminer");
    }
    void system_contract::getKeydata(const std::string& pubkey,std::array<char,33> & data){
       auto const getHexvalue = [](const char ch)->int{
@@ -281,126 +264,108 @@ namespace ultrainiosystem {
             data[j] = (getHexvalue(keydata[i-1])*16 + getHexvalue(keydata[i])) & 0xff;
             j++;
          }
-         //print("updateactiveaccounts publickey i:" , i," data:",keydata[i]," value:",getHexvalue(keydata[i])," j:",j," jdata:",data[j]);
       }
    }
-   void system_contract::add_subchain_account(const std::vector<ultrainio::proposeaccount_info>&  accounts ) {
-      for(auto const& newacc:accounts){
-         ultrainiosystem::key_weight ownerkeyweight;
-         std::array<char,33> ownerdata;
-         getKeydata(newacc.owner_key,ownerdata);
-         ownerkeyweight.key.data = ownerdata;
-         ownerkeyweight.key.type = 0;
-         ultrainiosystem::authority    ownerkey  = { .threshold = 1, .keys = { ownerkeyweight }, .accounts = {}, .waits = {} };
+   void system_contract::add_subchain_account(const ultrainio::proposeaccount_info&  newacc ) {
+      ultrainiosystem::key_weight ownerkeyweight;
+      std::array<char,33> ownerdata;
+      getKeydata(newacc.owner_key,ownerdata);
+      ownerkeyweight.key.data = ownerdata;
+      ownerkeyweight.key.type = 0;
+      ultrainiosystem::authority    ownerkey  = { .threshold = 1, .keys = { ownerkeyweight }, .accounts = {}, .waits = {} };
 
-         ultrainiosystem::key_weight activekeyweight;
-         std::array<char,33> activedata;
-         getKeydata(newacc.active_key,activedata);
-         activekeyweight.key.data = activedata;
-         activekeyweight.key.type = 0;
-         ultrainiosystem::authority     activekey = { .threshold = 1, .keys = { activekeyweight }, .accounts = {}, .waits = {} };
-         print("updateactiveaccounts proposerminer:",name{newacc.account}," ownerkey:",newacc.owner_key," ownerkey:",newacc.active_key);
-         action(
-            permission_level{ N(ultrainio), N(active) },
-            N(ultrainio), NEX(newaccount),
-            std::make_tuple(N(ultrainio),newacc.account, ownerkey, activekey, true)
-         ).send();
-      }
+      ultrainiosystem::key_weight activekeyweight;
+      std::array<char,33> activedata;
+      getKeydata(newacc.active_key,activedata);
+      activekeyweight.key.data = activedata;
+      activekeyweight.key.type = 0;
+      ultrainiosystem::authority     activekey = { .threshold = 1, .keys = { activekeyweight }, .accounts = {}, .waits = {} };
+      print("updateactiveaccounts proposerminer:",name{newacc.account}," ownerkey:",newacc.owner_key," active_key:",newacc.active_key);
+      action(
+         permission_level{ N(ultrainio), N(active) },
+         N(ultrainio), NEX(newaccount),
+         std::make_tuple(N(ultrainio),newacc.account, ownerkey, activekey, newacc.updateable)
+      ).send();
    }
 void system_contract::voteaccount() {
-      constexpr size_t max_stack_buffer_size = 4096;
       size_t size = action_data_size();
-      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      char* buffer = (char*)alloca(size);
       read_action_data( buffer, size );
       account_name proposer;
       vector<proposeaccount_info> proposeaccount;
       datastream<const char*> ds( buffer, size );
       ds >> proposer >> proposeaccount;
-      uint32_t proposeaccountsize = proposeaccount.size();
       ultrainio_assert( proposeaccount.size() > 0, "The number of proposeaccount changes greater than zero" );
       require_auth( proposer );
       auto propos = _producers.find( proposer );
-      ultrainio_assert( propos != _producers.end() && propos->is_enabled, "enabled producer not found this proposer" );
-      auto const comp = [this](const proposeaccount_info &a, const proposeaccount_info &b){
-         if (a.account < b.account)
-               return true;
-         return false;
-      };
-      std::sort(proposeaccount.begin(), proposeaccount.end(),comp);
+      ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
 
-      bool nofindaccountflg = false;
-      uint32_t  curactiveaccount = 0;
+      uint32_t  enableprodnum = 0;
       for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
-         if(itr->is_enabled)
-            ++curactiveaccount;
+         if(itr->is_enabled && itr->is_on_master_chain())
+            ++enableprodnum;
       }
-      print("voteaccount curactiveproducers size:", curactiveaccount," proposer:",ultrainio::name{proposer}," accountsize:",proposeaccount.size()," changeproducerflg:",curactiveaccount*2/3>proposeaccount.size(),"\n");
-
-      for(auto account:proposeaccount){
-         print("get voteaccount proposeaccount vector:", ultrainio::name{account.account}, account.owner_key);
-      }
-      pendingaccounts pendingaccount( _self, _self );
-      provided_proposer  provideapprve(proposer,current_time(),0);
-      for(auto pendingiter = pendingaccount.begin(); pendingiter != pendingaccount.end(); pendingiter++)
-      {
-         nofindaccountflg = false;
-         if((*pendingiter).proposal_account.size() == proposeaccountsize){
+      print("voteaccount enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeaccount.size(),"\n");
+      for(auto accinfo : proposeaccount){
+         ultrainio_assert( !is_account( accinfo.account ), "vote create account already exist");
+         accinfo.approve_num = 1;
+         provided_proposer  provideapprve(proposer,now(),0);
+         auto pendingiter = _pendingaccount.find( accinfo.account );
+         if ( pendingiter != _pendingaccount.end() ) {
+            _pendingaccount.modify( pendingiter, 0, [&]( auto& p ) {
+               auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
+               if(itr != p.provided_approvals.end())
+               {
+                  if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
+                        print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
+                        ultrainio_assert( false, "voteaccount proposer already voted" );
+                  }
+                  p.provided_approvals.erase(itr);
+               }
+            });
+            int32_t curproposeresnum = -1;
+            uint32_t proposeaccountsize = (*pendingiter).proposal_account.size();
             for(uint32_t i = 0;i < proposeaccountsize;i++)
             {
-               if((proposeaccount[i].account != (*pendingiter).proposal_account[i].account) ||
-                 (proposeaccount[i].owner_key != (*pendingiter).proposal_account[i].owner_key)  ||
-                 (proposeaccount[i].active_key != (*pendingiter).proposal_account[i].active_key) ){
-                  nofindaccountflg = true;
+               if((accinfo.account == (*pendingiter).proposal_account[i].account) &&
+                  (accinfo.owner_key == (*pendingiter).proposal_account[i].owner_key)  &&
+                  (accinfo.active_key == (*pendingiter).proposal_account[i].active_key)  &&
+                  (accinfo.updateable == (*pendingiter).proposal_account[i].updateable)  &&
+                  (accinfo.location == (*pendingiter).proposal_account[i].location) ){
+                  curproposeresnum = (int32_t)i;
                   break;
                }
             }
-            if(!nofindaccountflg){
-               auto itr = std::find( (*pendingiter).provided_approvals.begin(), (*pendingiter).provided_approvals.end(), provideapprve );
-               if(itr != (*pendingiter).provided_approvals.end())
-               {
-                  if((provideapprve.last_vote_time - itr->last_vote_time) < useconds_per_halfhour){
-                     print("\nvoteaccount nofindaccountflg proposer already voted proposer :",ultrainio::name{proposer}," provideapprve.last_vote_time:",provideapprve.last_vote_time," itr->last_vote_time:",itr->last_vote_time);
-                     ultrainio_assert( false, "proposer already voted" );
-                  }
-                  pendingaccount.modify( *pendingiter, 0, [&]( auto& p ) {
-                     p.provided_approvals.erase(itr);
-                  });
-               }
-               pendingaccount.modify( *pendingiter, 0, [&]( auto& p ) {
+            if(curproposeresnum >= 0){
+               _pendingaccount.modify( pendingiter, 0, [&]( auto& p ) {
+                  p.proposal_account[(uint32_t)curproposeresnum].approve_num++;
+                  provideapprve.resource_index = (uint64_t)curproposeresnum;
                   p.provided_approvals.push_back(provideapprve);
                });
-               print("\nvoteaccount nofindaccountflg proposer:",ultrainio::name{proposer}," proposernumberflg:",(*pendingiter).provided_approvals.size() >= curactiveaccount*2/3," provideapprve.last_vote_time:",provideapprve.last_vote_time," curproposernum:",(*pendingiter).provided_approvals.size());
-               if((*pendingiter).provided_approvals.size() >= curactiveaccount*2/3){
-                  add_subchain_account(proposeaccount);
-                  pendingaccount.modify( *pendingiter, 0, [&]( auto& p ) {
+
+               if((*pendingiter).proposal_account[(uint32_t)curproposeresnum].approve_num > enableprodnum*2/3){
+                  add_subchain_account(accinfo);
+                  _pendingaccount.modify( pendingiter, 0, [&]( auto& p ) {
                      p.provided_approvals.clear();
                      p.proposal_account.clear();
                   });
-                  const auto& pending = pendingaccount.get( (*pendingiter).proposer, "the current proposal cannot be found" );
-                  pendingaccount.erase( pending );
+                  _pendingaccount.erase( pendingiter );
                }
-               return;
+            }else{
+               _pendingaccount.modify( pendingiter, 0, [&]( auto& p ) {
+                  p.proposal_account.push_back(accinfo);
+                  provideapprve.resource_index = p.proposal_account.size() - 1;
+                  p.provided_approvals.push_back(provideapprve);
+               });
             }
+         }else{
+            _pendingaccount.emplace( _self, [&]( auto& p ) {
+               p.owner = accinfo.account;
+               p.provided_approvals.push_back(provideapprve);
+               p.proposal_account.push_back(accinfo);
+            });
          }
       }
-      auto prod = pendingaccount.find( proposer );
-      if ( prod != pendingaccount.end() ) {
-         pendingaccount.modify( prod, _self, [&]( auto& p ) {
-            p.provided_approvals.clear();
-            p.provided_approvals.push_back(provideapprve);
-            p.proposal_account.clear();
-            for(auto account:proposeaccount)
-               p.proposal_account.push_back(account);
-         });
-      } else {
-         pendingaccount.emplace( _self, [&]( auto& p ) {
-            p.proposer = proposer;
-            p.provided_approvals.push_back(provideapprve);
-            for(auto account:proposeaccount)
-               p.proposal_account.push_back(account);
-         });
-      }
-      print("voteaccount pushback  pendingaccount");
    }
 
 void system_contract::voteresourcelease() {
@@ -423,17 +388,17 @@ void system_contract::voteresourcelease() {
             ++enableprodnum;
       }
       print("voteresourcelease enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," proposeresource_info size:",proposeresource.size(),"\n");
-      pendingresource pendingres( _self, _self );
       for(auto resinfo : proposeresource){
+         ultrainio_assert( is_account( resinfo.account ), "vote resoucelease account not exist");
          resinfo.approve_num = 1;
-         provided_proposer  provideapprve(proposer,current_time(),0);
-         auto pendingiter = pendingres.find( resinfo.account );
-         if ( pendingiter != pendingres.end() ) {
-            pendingres.modify( pendingiter, _self, [&]( auto& p ) {
+         provided_proposer  provideapprve(proposer,now(),0);
+         auto pendingiter = _pendingres.find( resinfo.account );
+         if ( pendingiter != _pendingres.end() ) {
+            _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
                auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                if(itr != p.provided_approvals.end())
                {
-                  if((provideapprve.last_vote_time - itr->last_vote_time) < useconds_per_halfhour){
+                  if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
                         print("\nvoteresourcelease proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
                         ultrainio_assert( false, "proposer already voted" );
                   }
@@ -448,35 +413,35 @@ void system_contract::voteresourcelease() {
                   (resinfo.lease_num == (*pendingiter).proposal_resource[i].lease_num)  &&
                   (resinfo.days == (*pendingiter).proposal_resource[i].days)  &&
                   (resinfo.location == (*pendingiter).proposal_resource[i].location) ){
-                  curproposeresnum = i;
+                  curproposeresnum = (int32_t)i;
                   break;
                }
             }
             if(curproposeresnum >= 0){
-               pendingres.modify( pendingiter, 0, [&]( auto& p ) {
-                  p.proposal_resource[curproposeresnum].approve_num++;
+               _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
+                  p.proposal_resource[(uint32_t)curproposeresnum].approve_num++;
                   provideapprve.resource_index = (uint64_t)curproposeresnum;
                   p.provided_approvals.push_back(provideapprve);
                });
 
-               if((*pendingiter).proposal_resource[curproposeresnum].approve_num > enableprodnum*2/3){
+               if((*pendingiter).proposal_resource[(uint32_t)curproposeresnum].approve_num > enableprodnum*2/3){
                   INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                   { N(ultrainio),resinfo.account,resinfo.lease_num, resinfo.days,0} );
-                  pendingres.modify( pendingiter, 0, [&]( auto& p ) {
+                  _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
                      p.provided_approvals.clear();
                      p.proposal_resource.clear();
                   });
-                  pendingres.erase( pendingiter );
+                  _pendingres.erase( pendingiter );
                }
             }else{
-               pendingres.modify( pendingiter, 0, [&]( auto& p ) {
+               _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
                   p.proposal_resource.push_back(resinfo);
                   provideapprve.resource_index = p.proposal_resource.size() - 1;
                   p.provided_approvals.push_back(provideapprve);
                });
             }
          }else{
-            pendingres.emplace( _self, [&]( auto& p ) {
+            _pendingres.emplace( _self, [&]( auto& p ) {
                p.owner = resinfo.account;
                p.provided_approvals.push_back(provideapprve);
                p.proposal_resource.push_back(resinfo);

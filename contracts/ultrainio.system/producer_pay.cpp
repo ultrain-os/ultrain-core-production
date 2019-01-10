@@ -32,9 +32,6 @@ namespace ultrainiosystem {
          }
       }
 
-      const uint32_t seconds_per_block     = block_interval_seconds();
-      uint32_t blocks_per_year       = seconds_per_year / seconds_per_block;
-
 	  auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
          _gstate.total_unpaid_blocks++;
@@ -79,9 +76,6 @@ namespace ultrainiosystem {
             return;
          }
       }
-
-      const uint32_t seconds_per_block     = block_interval_seconds();
-      uint32_t blocks_per_year       = seconds_per_year / seconds_per_block;
 
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {

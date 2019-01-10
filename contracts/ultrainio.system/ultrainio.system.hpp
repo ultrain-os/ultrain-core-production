@@ -102,19 +102,19 @@ namespace ultrainiosystem {
                         (unpaid_blocks)(total_produce_block)(last_claim_time)(location)(last_operate_blocknum) )
    };
 
-   struct pendingminer {
-            account_name                               proposer;
+   struct pending_miner {
+            account_name                               owner;
             std::vector<ultrainio::proposeminer_info>  proposal_miner;
             std::vector<ultrainio::provided_proposer>  provided_approvals;
-            auto primary_key()const { return proposer; }
-            ULTRAINLIB_SERIALIZE(pendingminer, (proposer)(proposal_miner)(provided_approvals) )
+            auto primary_key()const { return owner; }
+            ULTRAINLIB_SERIALIZE(pending_miner, (owner)(proposal_miner)(provided_approvals) )
          };
-   struct pendingacc {
-         account_name                               proposer;
+   struct pending_acc {
+         account_name                               owner;
          std::vector<ultrainio::proposeaccount_info>  proposal_account;
          std::vector<ultrainio::provided_proposer>  provided_approvals;
-         auto primary_key()const { return proposer; }
-         ULTRAINLIB_SERIALIZE(pendingacc, (proposer)(proposal_account)(provided_approvals) )
+         auto primary_key()const { return owner; }
+         ULTRAINLIB_SERIALIZE(pending_acc, (owner)(proposal_account)(provided_approvals) )
       };
    struct pending_res {
          account_name                               owner;
@@ -123,8 +123,8 @@ namespace ultrainiosystem {
          auto primary_key()const { return owner; }
          ULTRAINLIB_SERIALIZE(pending_res, (owner)(proposal_resource)(provided_approvals) )
       };
-   typedef ultrainio::multi_index<N(pendingminer),pendingminer> pendingminers;
-   typedef ultrainio::multi_index<N(pendingacc),pendingacc> pendingaccounts;
+   typedef ultrainio::multi_index<N(pendingminer),pending_miner> pendingminers;
+   typedef ultrainio::multi_index<N(pendingacc),pending_acc> pendingaccounts;
    typedef ultrainio::multi_index<N(pendingres),pending_res> pendingresource;
    typedef ultrainio::multi_index< N(producers), producer_info,
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
@@ -204,7 +204,7 @@ namespace ultrainiosystem {
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
    static constexpr uint32_t seconds_per_year      = 52*7*24*3600;
    static constexpr uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
-   static constexpr uint64_t useconds_per_halfhour = 30 * 60 * uint64_t(1000000);
+   static constexpr uint64_t seconds_per_halfhour  = 30 * 60;
    static constexpr uint64_t useconds_per_year     = seconds_per_year*1000000ll;
 
    static constexpr uint64_t     system_token_symbol = CORE_SYMBOL;
@@ -219,6 +219,9 @@ namespace ultrainiosystem {
          pending_queue_singleton  _pending_que;
          subchains_table          _subchains;
          resources_lease_table    _reslease_tbl;
+         pendingminers            _pendingminer;
+         pendingaccounts          _pendingaccount;
+         pendingresource          _pendingres;
 //         user_table               _users;
 
       public:
@@ -303,9 +306,9 @@ namespace ultrainiosystem {
 
          void bidname( account_name bidder, account_name newname, asset bid );
 
-         void updateactiveminers(const std::vector<ultrainio::proposeminer_info>& miners );
+         void updateactiveminers(const ultrainio::proposeminer_info& miners );
 
-         void add_subchain_account(const std::vector<ultrainio::proposeaccount_info>& miners );
+         void add_subchain_account(const ultrainio::proposeaccount_info& newacc );
         // functions defined in scheduler.cpp
          void regsubchain(uint64_t chain_name, uint16_t chain_type);
 

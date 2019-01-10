@@ -161,8 +161,8 @@ namespace ultrainio {
       std::string       url;
       uint64_t          location;
       bool              adddel_miner;
-
-      ULTRAINLIB_SERIALIZE( proposeminer_info, (account)(public_key)(url)(location)(adddel_miner) )
+      int64_t           approve_num;
+      ULTRAINLIB_SERIALIZE( proposeminer_info, (account)(public_key)(url)(location)(adddel_miner)(approve_num) )
    };
    /**
     * provided_proposer  info
@@ -171,7 +171,7 @@ namespace ultrainio {
     */
    struct provided_proposer {
 
-      provided_proposer( account_name a, uint64_t l, uint64_t r):account(a),last_vote_time(l),resource_index(r){}
+      provided_proposer( account_name a, time l, uint64_t r):account(a),last_vote_time(l),resource_index(r){}
 
       /**
        * Default Constructor
@@ -181,7 +181,7 @@ namespace ultrainio {
       provided_proposer(){}
 
       account_name      account;
-      uint64_t          last_vote_time = 0;
+      time              last_vote_time = 0;
       uint64_t          resource_index = 0;
       bool operator==(const provided_proposer& c) const
       {
@@ -204,7 +204,7 @@ namespace ultrainio {
        * @param ok - Name of the owner keys
        * @param ak - Name of the active keys
        */
-      proposeaccount_info( account_name a, std::string ok, std::string ak, uint16_t l ):account(a),owner_key(ok),active_key(ak),location(l){}
+      proposeaccount_info( account_name a, std::string ok, std::string ak, uint16_t l, int64_t num ):account(a),owner_key(ok),active_key(ak),location(l),approve_num(num){}
 
       /**
        * Default Constructor
@@ -216,8 +216,10 @@ namespace ultrainio {
       account_name      account;
       std::string       owner_key;
       std::string       active_key;
+      bool              updateable;
       uint64_t          location;
-      ULTRAINLIB_SERIALIZE( proposeaccount_info, (account)(owner_key)(active_key)(location) )
+      int64_t           approve_num;
+      ULTRAINLIB_SERIALIZE( proposeaccount_info, (account)(owner_key)(active_key)(updateable)(location)(approve_num) )
    };
 
    /**
@@ -230,9 +232,11 @@ namespace ultrainio {
        * Construct a new proposeresource_info object
        *
        * @brief Construct a proposeresource_info object
-       * @param a - Name of the account who proposal pending miner
-       * @param ok - Name of the owner keys
-       * @param ak - Name of the active keys
+       * @param a - Name of the account who proposal resourcelease account
+       * @param lease - Number of lease
+       * @param d - Number of days
+       * @param l - location
+       * @param num - approve_num
        */
       proposeresource_info( account_name a, uint64_t lease, uint64_t d, uint16_t l, int64_t num ):account(a),lease_num(lease),days(d),location(l),approve_num(num){}
 

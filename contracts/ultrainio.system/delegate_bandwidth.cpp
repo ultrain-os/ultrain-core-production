@@ -471,7 +471,7 @@ namespace ultrainiosystem {
          asset total_update = stake_cons_delta;
          auto it = _producers.find(receiver);
          ultrainio_assert( (it != _producers.end()) && it->is_active, "Unable to delegate cons, you need to regproducer" );
-         uint64_t curblocknum = tapos_block_num();
+         uint64_t curblocknum = (uint64_t)tapos_block_num();
          if(stake_cons_delta.amount < 0){
             print("undelegatecons from:",name{from}," receiver:",name{receiver}," tapos_block_num:",curblocknum," it->last_operate_blocknum:",it->last_operate_blocknum);//
             const uint32_t seconds_per_block     = block_interval_seconds();
@@ -546,7 +546,7 @@ namespace ultrainiosystem {
                _gstate.total_resources_staked += combosize;
                ultrainio_assert(reslease_itr->end_time > now(), "resource lease endtime already expired" );
                double remain_time = (reslease_itr->end_time - now())/(double)seconds_per_day;
-               cuttingfee = ceil(remain_time)*combosize;
+               cuttingfee = (int64_t)(ceil(remain_time))*combosize;
                print("resourcelease remain_time:",remain_time," cuttingfee:",cuttingfee);
                _gstate.total_ram_bytes_reserved += (uint64_t)combosize*bytes;
             } else if(days > 0)
@@ -564,8 +564,8 @@ namespace ultrainiosystem {
                                              { from, N(utrio.fee), asset((int64_t)ceil((double)10000*640*cuttingfee/0.3/365)), std::string("buy resource lease") } );
 
          ultrainio_assert( 0 < reslease_itr->lease_num, "insufficient resource lease" );
-         set_resource_limits( receiver, bytes*reslease_itr->lease_num, reslease_itr->lease_num, reslease_itr->lease_num );
-         print("current resource limit net_weight:",reslease_itr->lease_num," cpu:",reslease_itr->lease_num," ram:",bytes*reslease_itr->lease_num);
+         set_resource_limits( receiver, (int64_t)bytes*reslease_itr->lease_num, reslease_itr->lease_num, reslease_itr->lease_num );
+         print("current resource limit net_weight:",reslease_itr->lease_num," cpu:",reslease_itr->lease_num," ram:",(int64_t)bytes*reslease_itr->lease_num);
 
       } // tot_itr can be invalid, should go out of scope
    }
@@ -650,8 +650,8 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
       if(_gstate.total_resources_staked >= lease_num)
          _gstate.total_resources_staked -= lease_num;
       uint64_t bytes = (_gstate.max_ram_size-2ll*1024*1024*1024)/_gstate.max_resources_size;
-      if(_gstate.total_ram_bytes_reserved >= (lease_num*bytes - ram_bytes))
-         _gstate.total_ram_bytes_reserved =_gstate.total_ram_bytes_reserved - lease_num*bytes + ram_bytes;
+      if(_gstate.total_ram_bytes_reserved >= (lease_num*bytes - (uint64_t)ram_bytes))
+         _gstate.total_ram_bytes_reserved =_gstate.total_ram_bytes_reserved - lease_num*bytes + (uint64_t)ram_bytes;
    }
 
    void system_contract::checkresexpire(){
