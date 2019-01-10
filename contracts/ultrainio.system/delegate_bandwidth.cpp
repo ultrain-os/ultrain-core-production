@@ -660,6 +660,7 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
          _gstate.last_check_resexpiretime = now();
       if(_gstate.last_check_resexpiretime < curtime && (curtime - _gstate.last_check_resexpiretime) >= seconds_per_day){
          _gstate.last_check_resexpiretime = curtime;
+         uint64_t starttime = current_time();
          for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ){
             if(leaseiter->end_time <= curtime){
                print("checkresexpire reslease name:",name{leaseiter->owner}, " leaseiter->end_time:",leaseiter->end_time," curtime:",curtime);
@@ -696,6 +697,8 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
                ++leaseiter;
             }
          }
+         uint64_t endtime = current_time();
+         print("checkresexpire expend time:",(endtime - starttime));
       }
    }
 

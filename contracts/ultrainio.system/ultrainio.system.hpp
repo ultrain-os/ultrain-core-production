@@ -62,13 +62,14 @@ namespace ultrainiosystem {
       uint16_t             total_resources_staked = 0;
       uint64_t             defer_trx_nextid = 0;
       time                 last_check_resexpiretime = 0;
+      time                 last_vote_expiretime = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
                                 (max_ram_size)(min_activated_stake)(min_committee_member)(min_committee_member_number)
                                 (total_ram_bytes_reserved)(total_ram_stake)(start_block)(last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
-                                (total_producer_vote_weight)(last_name_close)(max_resources_size)(total_resources_staked)(defer_trx_nextid)(last_check_resexpiretime) )
+                                (total_producer_vote_weight)(last_name_close)(max_resources_size)(total_resources_staked)(defer_trx_nextid)(last_check_resexpiretime)(last_vote_expiretime) )
    };
 
    struct role_base {
@@ -366,6 +367,8 @@ namespace ultrainiosystem {
          void getKeydata(const std::string& pubkey,std::array<char,33> & data);
 
          void checkresexpire();
+
+         void cleanvotetable();
    };
 
 } /// ultrainiosystem

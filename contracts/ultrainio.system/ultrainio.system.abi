@@ -393,7 +393,8 @@
          {"name":"max_resources_size",            "type":"uint16"},
          {"name":"total_resources_staked",        "type":"uint16"},
          {"name":"defer_trx_nextid",              "type":"uint64"},
-         {"name":"last_check_resexpiretime",      "type":"time_point_sec"}
+         {"name":"last_check_resexpiretime",      "type":"time_point_sec"},
+         {"name":"last_vote_expiretime",      "type":"time_point_sec"}
       ]
     },{
       "name": "role_base",

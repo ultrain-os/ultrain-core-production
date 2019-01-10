@@ -449,6 +449,68 @@ void system_contract::voteresourcelease() {
          }
       }
    }
+
+   void system_contract::cleanvotetable(){
+      time curtime = now();
+      if(_gstate.last_vote_expiretime == 0)
+         _gstate.last_vote_expiretime = now();
+      if(_gstate.last_vote_expiretime < curtime && (curtime - _gstate.last_vote_expiretime) >= seconds_per_halfhour){
+         _gstate.last_vote_expiretime = curtime;
+         uint64_t starttime = current_time();
+         //clean vote pendingminer expire
+         for(auto mineriter = _pendingminer.begin(); mineriter != _pendingminer.end(); ){
+            _pendingminer.modify( mineriter, 0, [&]( auto& p ) {
+               for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
+                  if((curtime - itr->last_vote_time) > seconds_per_halfhour){
+                     itr = p.provided_approvals.erase(itr);
+                  }else
+                     ++itr;
+               }
+            });
+            print("cleanvotetable _pendingminer name:",name{mineriter->owner}, " approversize::",mineriter->provided_approvals.size()," curtime:",curtime);
+            if(mineriter->provided_approvals.size() == 0){
+               mineriter = _pendingminer.erase(mineriter);
+            }else
+               ++mineriter;
+         }
+
+         //clean vote _pendingaccount expire
+         for(auto acciter = _pendingaccount.begin(); acciter != _pendingaccount.end(); ){
+            _pendingaccount.modify( acciter, 0, [&]( auto& p ) {
+               for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
+                  if((curtime - itr->last_vote_time) > seconds_per_halfhour){
+                     itr = p.provided_approvals.erase(itr);
+                  }else
+                     ++itr;
+               }
+            });
+            print("cleanvotetable _pendingaccount name:",name{acciter->owner}, " approversize::",acciter->provided_approvals.size()," curtime:",curtime);
+            if(acciter->provided_approvals.size() == 0){
+               acciter = _pendingaccount.erase(acciter);
+            }else
+               ++acciter;
+         }
+
+         //clean vote _pendingres expire
+         for(auto resiter = _pendingres.begin(); resiter != _pendingres.end(); ){
+            _pendingres.modify( resiter, 0, [&]( auto& p ) {
+               for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
+                  if((curtime - itr->last_vote_time) > seconds_per_halfhour){
+                     itr = p.provided_approvals.erase(itr);
+                  }else
+                     ++itr;
+               }
+            });
+            print("cleanvotetable _pendingres name:",name{resiter->owner}, " approversize::",resiter->provided_approvals.size()," curtime:",curtime);
+            if(resiter->provided_approvals.size() == 0){
+               resiter = _pendingres.erase(resiter);
+            }else
+               ++resiter;
+         }
+         uint64_t endtime = current_time();
+         print("cleanvotetable expend time:",(endtime - starttime));
+      }
+   }
    /**
     *  Called after a new account is created. This code enforces resource-limits rules
     *  for new accounts as well as new account naming conventions.
