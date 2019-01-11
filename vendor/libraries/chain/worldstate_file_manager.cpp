@@ -214,6 +214,10 @@ ws_file_manager::ws_file_manager(std::string dir)
     if (!bfs::is_directory(m_dir_path)){
         bfs::create_directories(m_dir_path);
     }
+
+    m_ws_delete_period = {std::chrono::seconds{30}};
+    m_ws_delete_check.reset(new boost::asio::steady_timer(appbase::app().get_io_service()));
+    start_delete_timer();
 }
 
 ws_file_manager::~ws_file_manager()
@@ -343,10 +347,6 @@ void ws_file_manager::set_local_max_count(int number)
     if (m_ws_delete_check) {
         m_ws_delete_check->cancel();
     }
-
-    m_ws_delete_period = {std::chrono::seconds{30}};
-    m_ws_delete_check.reset(new boost::asio::steady_timer(appbase::app().get_io_service()));
-    start_delete_timer();
 }
 
 void ws_file_manager::start_delete_timer()

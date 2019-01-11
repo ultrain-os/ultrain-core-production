@@ -619,17 +619,17 @@ namespace ultrainio { namespace chain {
       }
    }
 
-   bool block_log::validata_block(const signed_block_ptr& block) {
+   bool block_log::validata_block(const signed_block& block) {
       vector<digest_type> trx_digests;
-      const auto& trxs = block->transactions;
+      const auto& trxs = block.transactions;
       trx_digests.reserve( trxs.size() );
       for( const auto& a : trxs )
          trx_digests.emplace_back( a.digest() );
 
       auto trx_mroot = merkle( move(trx_digests) );
 
-      if(block->transaction_mroot != trx_mroot) {
-            ilog("Block trx mroot is ${bm}, cal result is ${cm}", ("bm", block->transaction_mroot) ("cm", trx_mroot));
+      if(block.transaction_mroot != trx_mroot) {
+            ilog("Block trx mroot is ${bm}, cal result is ${cm}", ("bm", block.transaction_mroot) ("cm", trx_mroot));
             return false;
       }
 

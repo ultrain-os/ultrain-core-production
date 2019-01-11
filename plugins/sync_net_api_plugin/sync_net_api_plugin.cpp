@@ -82,7 +82,7 @@ void sync_net_api_plugin::plugin_startup() {
        CALL(wss, sync_net_mgr, sync_ws,
             INVOKE_R_R(sync_net_mgr, sync_ws, sync_wss_params), 201),
        CALL(wss, sync_net_mgr, require_block,
-            INVOKE_R_R_R(sync_net_mgr, require_block, uint32_t, uint32_t), 201),
+            INVOKE_R_R_R(sync_net_mgr, require_block, std::string, uint32_t), 201),
        CALL(wss, sync_net_mgr, sync_block,
             INVOKE_R_R(sync_net_mgr, sync_block, uint32_t), 201),
        CALL(wss, sync_net_mgr, ws_status,

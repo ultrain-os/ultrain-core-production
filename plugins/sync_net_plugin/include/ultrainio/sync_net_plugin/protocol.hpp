@@ -27,6 +27,8 @@
 #include <chrono>
 
 #include <ultrainio/chain/worldstate_file_manager.hpp>
+#include <ultrainio/chain/block_log.hpp>
+#include <ultrainio/chain/block_header_state.hpp>
 
 namespace ultrainio {
 
@@ -165,6 +167,30 @@ namespace ultrainio {
             std::vector<char> chunk;
         };
 
+        struct ReqBlocksInfoMsg {
+            fc::sha256 chain_id;
+            uint32_t block_height; 
+        };
+
+        struct RspBlocksInfoMsg
+        {
+            fc::sha256 chain_id;
+            uint32_t block_height;
+            chain::genesis_state gs;
+        };
+
+        struct ReqBlocksFileMsg {
+            uint32_t block_num;
+        };
+
+        struct BlocksTransferPacket
+        {
+            unsigned long    chunkLen;
+            uint32_t block_num;
+            // std::vector<char> chunk;
+            chain::signed_block block;
+        };
+
        struct TimeInfo{
            tstamp reqTime;
            tstamp rspTime;
@@ -188,7 +214,11 @@ namespace ultrainio {
                ReqWsFileMsg,
                FileTransferPacket,
                ReqTestTimeMsg,
-               RspTestTimeMsg>;
+               RspTestTimeMsg,
+               ReqBlocksInfoMsg,
+               RspBlocksInfoMsg,
+               ReqBlocksFileMsg,
+               BlocksTransferPacket>;
    }
 } // namespace ultrainio
 
@@ -205,4 +235,7 @@ FC_REFLECT( ultrainio::wss::FileTransferPacket, (chunkLen)(chunkHashString)(slic
 FC_REFLECT( ultrainio::wss::TimeInfo, (reqTime)(rspTime) )
 FC_REFLECT( ultrainio::wss::ReqTestTimeMsg, (timeInfo)(chunk) )
 FC_REFLECT( ultrainio::wss::RspTestTimeMsg, (timeInfo)(chunk) )
-
+FC_REFLECT( ultrainio::wss::ReqBlocksInfoMsg, (chain_id)(block_height) )
+FC_REFLECT( ultrainio::wss::RspBlocksInfoMsg, (chain_id)(block_height)(gs) )
+FC_REFLECT( ultrainio::wss::ReqBlocksFileMsg, (block_num) )
+FC_REFLECT( ultrainio::wss::BlocksTransferPacket, (chunkLen)(block_num)(block) )

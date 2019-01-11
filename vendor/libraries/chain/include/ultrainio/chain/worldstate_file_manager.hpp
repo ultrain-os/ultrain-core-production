@@ -14,6 +14,8 @@
 #include <fc/crypto/sha256.hpp>
 #include <ultrainio/chain/types.hpp>
 
+#define MAX_WS_COUNT 5
+
 namespace ultrainio { namespace chain {
     struct ws_info{
         fc::sha256 chain_id;
@@ -97,7 +99,7 @@ namespace ultrainio { namespace chain {
             void start_delete_timer();
         private:
             std::string m_dir_path;
-            int m_max_ws_count;
+            int m_max_ws_count{MAX_WS_COUNT};
             boost::asio::steady_timer::duration   m_ws_delete_period;
             unique_ptr<boost::asio::steady_timer> m_ws_delete_check;
             std::map<ws_info, std::shared_ptr<ws_file_reader>> m_reader_map;

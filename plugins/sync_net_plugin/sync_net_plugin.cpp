@@ -18,6 +18,7 @@
 
 #include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/worldstate_file_manager.hpp>
+#include <ultrainio/chain/block_log.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -49,6 +50,7 @@ namespace ultrainio {
 
     class connection;
     class sync_ws_manager;
+    class sync_blocks_manager;
     
     using connection_ptr = std::shared_ptr<connection>;
     using connection_wptr = std::weak_ptr<connection>;
@@ -100,6 +102,7 @@ namespace ultrainio {
         std::ifstream src_file;
         std::ofstream dist_file;
         std::shared_ptr<sync_ws_manager> m_sync_ws_manager = std::make_shared<sync_ws_manager>();
+        std::shared_ptr<sync_blocks_manager> m_sync_blocks_manager = std::make_shared<sync_blocks_manager>();
         struct rcv_file_state{
             std::string  fileName;
             long double  fileSize;
@@ -142,6 +145,11 @@ namespace ultrainio {
         void handle_message( connection_ptr c, const ReqWsFileMsg &msg);
         void handle_message( connection_ptr c, const FileTransferPacket &msg);
 
+        void handle_message(connection_ptr c, const RspBlocksInfoMsg &msg);
+        void handle_message(connection_ptr c, const BlocksTransferPacket &msg);
+        void handle_message(connection_ptr c, const ReqBlocksInfoMsg &msg);
+        void handle_message(connection_ptr c, const ReqBlocksFileMsg &msg);
+    
         void handle_message(connection_ptr c, const ReqTestTimeMsg &msg);
         void handle_message(connection_ptr c, const RspTestTimeMsg &msg);
 
@@ -662,7 +670,13 @@ namespace ultrainio {
 
             auto ds = pending_message_buffer.create_datastream();
             net_message msg;
-            fc::raw::unpack(ds, msg);
+            try {
+                fc::raw::unpack(ds, msg);
+            } catch(  const fc::exception& e ) {
+                edump((e.to_detail_string() ));
+                impl.close( shared_from_this() );
+                return false;
+            }
             msgHandler m(impl, shared_from_this() );
             msg.visit(m);
         } catch(  const fc::exception& e ) {
@@ -674,7 +688,7 @@ namespace ultrainio {
     }
     //------------------------------------------------------------------------
 
-   class sync_ws_manager {
+    class sync_ws_manager {
         public:
             enum sync_code {none, waiting_respones, syncing, error, success, no_connection, hash_error, no_data};
 
@@ -693,6 +707,7 @@ namespace ultrainio {
             chain::ws_file_manager                          ws_file_manager;
             int	                                            num_of_hash_error;
             int                                             num_of_no_data;
+            int	                                            len_per_slice;
 
         public:
             sync_ws_manager();
@@ -701,12 +716,13 @@ namespace ultrainio {
             void receive_ws_sync_rsp(connection_ptr c, const RspLastWsInfoMsg &msg);
             void start_conn_check_timer();
             int select_strong_sync_src();
+            void remove_current_connect();
             void send_file_sync_req(uint32_t slice_idx);
             void receive_file_sync_rsp(connection_ptr c, const FileTransferPacket &msg);
             void sync_ws_done();
-
             void receive_ws_sync_req(connection_ptr c, const ReqLastWsInfoMsg &msg);
             void receive_file_sync_req(connection_ptr c, const ReqWsFileMsg &msg);
+            bool open_write();
     };
 
     sync_ws_manager::sync_ws_manager(){
@@ -715,6 +731,7 @@ namespace ultrainio {
         sync_timeout = {std::chrono::seconds{5}};
         sync_check_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
         ws_states = none;
+        len_per_slice = 1024;
     }
 
     void sync_ws_manager::sync_reset(sync_code st){
@@ -810,6 +827,7 @@ namespace ultrainio {
             } else {
                 ilog("connect timer out, start file sync");
                 if (m_conns.size() == 0){
+                    ilog("No valid connect!");
                     sync_code code;
                     if (num_of_hash_error > 0){
                         code = hash_error;
@@ -835,6 +853,22 @@ namespace ultrainio {
         return -1;
     }
 
+    void sync_ws_manager::remove_current_connect() {
+        int idx = -1;
+        for(int i = 0; i < m_conns.size(); i++){
+            if(m_conns[i] == ws_sync_conn){
+                idx = i;
+            }
+        }
+        
+        if (idx == -1) return;
+
+        ilog("remove_current_connect, peer name:  ${p}", ("p", ws_sync_conn->peer_name()));
+        m_conns_ws_info.erase(m_conns_ws_info.begin() + idx);
+        m_conns.erase(m_conns.begin() + idx);
+        ws_sync_conn.reset();
+    }
+
     void sync_ws_manager::send_file_sync_req(uint32_t slice_idx){
         int index = select_strong_sync_src();
         if (index < 0) {
@@ -845,7 +879,7 @@ namespace ultrainio {
         ws_sync_conn = m_conns[index];
 
         ReqWsFileMsg reqWsFileMsg;
-        reqWsFileMsg.lenPerSlice = 1024;
+        reqWsFileMsg.lenPerSlice = len_per_slice;
         reqWsFileMsg.info = m_conns_ws_info[index];
         reqWsFileMsg.index = slice_idx;
         ws_sync_conn->enqueue(net_message(reqWsFileMsg));
@@ -856,9 +890,7 @@ namespace ultrainio {
             if(ec) return;
 
             ilog("req slice ${slice_idx} timeout, peer ${p}", ("slice_idx", slice_idx)("p", m_conns[index]->peer_name()));
-            m_conns_ws_info.erase(m_conns_ws_info.begin() + index);
-            m_conns.erase(m_conns.begin() + index);
-            ws_sync_conn.reset();
+            remove_current_connect();
 
             //request the slice again
             send_file_sync_req(slice_idx);
@@ -870,30 +902,24 @@ namespace ultrainio {
             return;
 
         sync_check_timer->cancel();
-        if(!ws_writer){
-            int i = 0;
-            for(; i < m_conns.size(); i++){
-                if(m_conns[i] == ws_sync_conn){
-                break;
-                }
-            }
+        if (msg.sliceId > m_require_ws_info.file_size / len_per_slice || msg.chunkLen <= 0){
+            elog("Receive error/no data from ${p}, slice id: ${id}", ("p", c->peer_name())("id", msg.sliceId));
+            remove_current_connect();
+            send_file_sync_req(slice_num);
+            return;
+        }
 
-            if (i ==  m_conns.size()){
-                elog("Not find right connect");
-                return;
-            }
-            ws_writer = ws_file_manager.get_writer(m_conns_ws_info[i], 1024);
-            if (!ws_writer){
-                elog("ws_writer is nullptr");
-                sync_reset(error);
-                return;
-            }
+        if(!open_write()){            
+            elog("ws_writer is nullptr");
+            sync_reset(error);
+            return;
         }
 
         if (msg.sliceId % 100 == 0)
             ilog("receive_file_sync_rsp: ${id}", ("id", msg.sliceId));
+    
         ws_writer->write_data(msg.sliceId, msg.chunk, msg.chunkLen);
-        if(msg.endOfFile){
+        if(msg.endOfFile || msg.sliceId == m_require_ws_info.file_size / len_per_slice){//receive end data
             sync_ws_done();       
         } else {
             slice_num++;
@@ -907,13 +933,7 @@ namespace ultrainio {
         ws_writer.reset();
 
         if(!ret){//require ws from other connection
-            for(int i = 0; i < m_conns.size(); i++){
-                if(m_conns[i] == ws_sync_conn){
-                m_conns_ws_info.erase(m_conns_ws_info.begin() + i);
-                m_conns.erase(m_conns.begin() + i);
-                ws_sync_conn.reset();
-                }
-            }
+            remove_current_connect();
 
             slice_num = 0;
             send_file_sync_req(slice_num);         
@@ -963,6 +983,10 @@ namespace ultrainio {
         auto reader = ws_file_manager.get_reader(msg.info, msg.lenPerSlice);
         if (!reader){
             ilog("reader error ");
+            FileTransferPacket file_tp_msg;
+            file_tp_msg.chunkLen = 0;
+            file_tp_msg.sliceId = msg.index;
+            c->enqueue(net_message(file_tp_msg));
             return;
         }
 
@@ -972,7 +996,9 @@ namespace ultrainio {
         auto data = reader->get_data(msg.index, isEof);
         if(data.size() <= 0){
             ilog("reader error, no data ");
-            // TODO  send error to client
+            file_tp_msg.chunkLen = 0;
+            file_tp_msg.sliceId = msg.index;
+            c->enqueue(net_message(file_tp_msg));
             return;
         }
 
@@ -981,8 +1007,384 @@ namespace ultrainio {
         file_tp_msg.chunkLen = data.size();
         file_tp_msg.endOfFile = isEof;
         c->enqueue(net_message(file_tp_msg));
-        ilog("");
     }
+
+    bool sync_ws_manager::open_write(){
+        if (ws_writer)
+            return true;
+            
+        int i = 0;
+        for(; i < m_conns.size(); i++){
+            if(m_conns[i] == ws_sync_conn){
+                break;
+            }
+        }
+
+        if (i ==  m_conns.size()){
+            elog("Not find right connect");
+            return false;
+        }
+
+        ws_writer = ws_file_manager.get_writer(m_conns_ws_info[i], len_per_slice);
+        if (!ws_writer){
+            return false;
+        }
+        return true;
+    }
+
+    //------------------------------------------------------------------------
+    class sync_blocks_manager {
+        public:
+            enum sync_blocks_code {none, waiting_respones, syncing, error, success, no_connection, no_data};
+
+        public:
+            std::vector<connection_ptr>                     m_conns;
+            std::vector<int>                                m_block_height;
+            std::vector<chain::genesis_state>               m_gs;
+            sync_blocks_code                                blocks_sync_states;
+            boost::asio::steady_timer::duration             conn_timeout;
+            std::unique_ptr<boost::asio::steady_timer>      conn_check_timer;
+            boost::asio::steady_timer::duration             sync_timeout;
+            std::unique_ptr<boost::asio::steady_timer>      sync_check_timer;
+            fc::sha256                                      m_require_chain_id;
+            int	                                            m_require_block_height;
+            connection_ptr                                  sync_connect_ptr;
+            uint32_t                                        sync_num;
+            int                                             num_of_no_data;
+            std::shared_ptr<chain::block_log>               m_block_log_ptr;
+            bool	                                        m_is_read;
+            fc::path                                        block_dir;
+            bool	                                        max_try_cnt;
+            chain::signed_block                             previous_block;
+        public:
+            sync_blocks_manager();
+            void sync_blocks_reset(sync_blocks_code st);
+            bool send_blocks_sync_req(std::set< connection_ptr >& connections, const fc::sha256& chain_id, const int block_height);
+            void receive_blocks_sync_rsp(connection_ptr c, const RspBlocksInfoMsg &msg);
+            int select_strong_sync_src();
+            void remove_current_connect();
+            void send_blocks_file_sync_req(uint32_t slice_idx);
+            void receive_blocks_file_sync_rsp(connection_ptr c, const BlocksTransferPacket &msg);
+            void sync_blocks_done();
+            void receive_blocks_sync_req(connection_ptr c, const ReqBlocksInfoMsg &msg);
+            void receive_blocks_file_sync_req(connection_ptr c, const ReqBlocksFileMsg &msg);
+            void open_write();
+            void open_read(bool reload = false);
+    };
+
+    sync_blocks_manager::sync_blocks_manager(){
+        conn_timeout = {std::chrono::seconds{3}};
+        conn_check_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
+        sync_timeout = {std::chrono::seconds{5}};
+        sync_check_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
+        blocks_sync_states = none;
+        m_is_read = true;
+        block_dir = fc::app_path() / "ultrainio/nodultrain/data/blocks/";
+        max_try_cnt = 2;
+    }
+
+    void sync_blocks_manager::sync_blocks_reset(sync_blocks_code st){
+        blocks_sync_states = st;
+        sync_connect_ptr.reset();
+        sync_num = 2;
+        m_conns.clear();
+        m_block_height.clear();
+        m_gs.clear();
+        num_of_no_data = 0;
+    }
+
+    bool sync_blocks_manager::send_blocks_sync_req(std::set< connection_ptr >& connections, const fc::sha256& chain_id, const int block_height){
+        ilog("start blocks sync, chain_id: ${chain_id}, block_height: ${block_height}", ("chain_id", chain_id)("block_height", block_height));
+        if (blocks_sync_states == waiting_respones || blocks_sync_states == syncing)
+            return false;
+
+        sync_blocks_reset(none);
+
+        m_require_chain_id = chain_id;
+        m_require_block_height = block_height + 2; 
+       
+        ReqBlocksInfoMsg reqBlocksMsg;
+        reqBlocksMsg.chain_id = m_require_chain_id;
+        reqBlocksMsg.block_height = m_require_block_height;
+
+        bool is_connection = false;
+        for (const auto& c : connections) {
+            if(c->current()) {
+                ilog ("send file_info_msg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                c->enqueue(net_message(reqBlocksMsg));
+                is_connection = true;
+            }
+        }
+
+        if (!is_connection){
+            sync_blocks_reset(no_connection);
+            return false;
+        }
+
+        conn_check_timer->expires_from_now(conn_timeout);
+        conn_check_timer->async_wait([this](boost::system::error_code ec) {
+            if (ec.value() == boost::asio::error::operation_aborted) {
+                ilog("receive block conn check canceled, will not wait for ws sync");
+                sync_blocks_reset(error);
+            } else {
+                ilog("connect timer out, start blocks sync");
+                if (m_conns.size() == 0){
+                    ilog("No valid connect!");
+                    sync_blocks_code code;
+                    if (num_of_no_data > 0){
+                        code = no_data;
+                    } else {
+                        code = error;
+                    }
+
+                    sync_blocks_reset(code);
+                } else {
+                    blocks_sync_states = syncing;
+                    sync_num = 2;
+                    send_blocks_file_sync_req(sync_num);
+                }
+            }
+        });
+        blocks_sync_states = waiting_respones;
+        return true;
+    }
+        
+    void sync_blocks_manager::receive_blocks_sync_rsp(connection_ptr c, const RspBlocksInfoMsg &msg){
+        if( blocks_sync_states != waiting_respones){
+            ilog("get ws rsp from peer ${p}, but not in rsp waiting states", ("p", c->peer_name()));
+            return;
+        }
+
+        if(msg.block_height <= 1){ // no data
+            num_of_no_data++;
+            ilog("receive_blocks_sync_rsp: remote no block! peer ${p}", ("p", c->peer_name()));
+            return;
+        }
+
+        ilog("receive block msg: ${msg}, peer:${p}", ("msg", msg)("p", c->peer_name()));
+        auto it = find(m_conns.begin(), m_conns.end(), c);
+        if (it != m_conns.end()){
+            ilog("duplicate ws rsp from peer ${p}", ("p", c->peer_name()));
+            return;
+        }
+
+        if(msg.chain_id != m_require_chain_id || msg.gs.compute_chain_id() != m_require_chain_id){
+           ilog("receive chain id (${chain_id}) not samne from peer ${p}", ("chain_id", msg.chain_id)("p", c->peer_name()));
+           return;
+        }
+
+        m_block_height.emplace_back(msg.block_height - 1);
+        m_conns.emplace_back(c);
+        m_gs.emplace_back(msg.gs);
+    }
+
+    int sync_blocks_manager::select_strong_sync_src() {
+        if (m_block_height.size() <= 0)
+            return -1;
+
+        int idx = 0, max = -1, ret = -1;
+        for (auto& it : m_block_height){
+            if (max < it){
+                max = it;
+                ret = idx;
+            }
+            idx++;
+        }
+
+        return ret;
+    }
+
+    void sync_blocks_manager::remove_current_connect() {
+        int idx = -1;
+        for(int i = 0; i < m_conns.size(); i++){
+            if(m_conns[i] == sync_connect_ptr){
+                idx = i;
+            }
+        }
+        
+        if (idx == -1)
+            return;
+
+        ilog("remove_current_connect, peer name:  ${p}", ("p", sync_connect_ptr->peer_name()));
+        m_block_height.erase(m_block_height.begin() + idx);
+        m_conns.erase(m_conns.begin() + idx);
+        m_gs.erase(m_gs.begin() + idx);
+        sync_connect_ptr.reset();
+    }
+
+    void sync_blocks_manager::send_blocks_file_sync_req(uint32_t block_num){
+        int index = select_strong_sync_src();
+        if (index < 0) {
+            elog("No any connection");
+            sync_blocks_reset(error);//error
+            return;
+        }
+        sync_connect_ptr = m_conns[index];
+
+        ReqBlocksFileMsg reqMsg;
+        reqMsg.block_num = block_num;
+        sync_connect_ptr->enqueue(net_message(reqMsg));
+
+        sync_check_timer->cancel();
+        sync_check_timer->expires_from_now(sync_timeout);
+        sync_check_timer->async_wait([this, index, block_num](boost::system::error_code ec) {
+            if(ec) return;
+            ilog("req block_num ${block_num} timeout, peer ${p}", ("block_num", block_num)("p", m_conns[index]->peer_name()));
+            remove_current_connect();
+
+            //request the blocks again
+            send_blocks_file_sync_req(block_num);
+        });
+    }
+
+    void sync_blocks_manager::receive_blocks_file_sync_rsp(connection_ptr c, const BlocksTransferPacket &msg){
+        if (c != sync_connect_ptr)
+            return;
+
+        sync_check_timer->cancel();
+
+        static int retry_cnt = 0;
+        bool is_error = false;
+        if (msg.block_num <= 1 || msg.chunkLen == 0 || msg.block_num != sync_num){ //error block
+            elog("Error, receive error index block ${b}, with expect ${s}", ("b", msg.block_num)("s", sync_num));
+            is_error = true;
+        } else if(!chain::block_log::validata_block(msg.block)) {
+            elog("Error, validata_block faile ${b}", ("b", msg.block_num));
+            is_error = true;
+        } else if(msg.block_num > 2 && msg.block.previous != previous_block.id()) {
+            is_error = true;
+        }
+
+        //Set max try count
+        if (is_error){
+            if (retry_cnt >= max_try_cnt){
+                remove_current_connect();
+                retry_cnt = 0;
+            }
+            retry_cnt++;
+            send_blocks_file_sync_req(sync_num);
+            return;
+        } else {
+            retry_cnt = 1;
+        }
+
+        open_write();
+        previous_block = msg.block;
+        
+        if (msg.block_num == 2){//Init genesis block
+            chain::genesis_state gs;
+            for(int i = 0; i < m_conns.size(); i++){
+                if(m_conns[i] == sync_connect_ptr){
+                    gs = m_gs[i];
+                }
+            }
+
+            chain::signed_block_header header;
+            header.timestamp      = gs.initial_timestamp;
+            header.action_mroot   = gs.compute_chain_id();
+            auto block = std::make_shared<chain::signed_block>(header);
+            m_block_log_ptr->reset_to_genesis(gs, block);
+        }
+
+        auto block_ptr = std::make_shared<chain::signed_block>(msg.block);
+        auto ret = m_block_log_ptr->append(block_ptr);
+        ilog("receive_file_sync_rsp: ${id} ret:${ret}", ("id", msg.block_num)("ret", ret));
+
+        if(sync_num < m_require_block_height){
+            sync_num++;
+            send_blocks_file_sync_req(sync_num);
+        } else if(sync_num == m_require_block_height){
+            sync_blocks_done();
+        } else {
+            elog("ERORR, sync num > require");
+        }
+    }
+
+    void sync_blocks_manager::sync_blocks_done(){
+        ilog("blocks FileTransferEnd"); 
+        sync_blocks_reset(success);
+    }
+
+    void sync_blocks_manager::receive_blocks_sync_req(connection_ptr c, const ReqBlocksInfoMsg &msg) {
+        ilog("recieved ReqBlocksInfoMsg,start to rsp");
+        if (blocks_sync_states == waiting_respones || blocks_sync_states == syncing) {
+            RspBlocksInfoMsg rspBlocksMsg;
+            rspBlocksMsg.block_height = 0;
+            c->enqueue(net_message(rspBlocksMsg));
+            return;
+        }
+
+        open_read(true);
+        uint32_t blknum = m_block_log_ptr->head()->block_num();
+        ilog("local block height ${blknum}", ("blknum", blknum));
+        
+        chain::genesis_state gs;
+        gs = chain::block_log::extract_genesis_state(block_dir);
+
+        RspBlocksInfoMsg rspBlocksMsg;
+        rspBlocksMsg.chain_id = gs.compute_chain_id();
+        rspBlocksMsg.block_height = blknum;
+        rspBlocksMsg.gs = gs;
+
+        c->enqueue(net_message(rspBlocksMsg));
+    }
+
+    void sync_blocks_manager::receive_blocks_file_sync_req(connection_ptr c, const ReqBlocksFileMsg &msg) {
+        ilog("recieved ReqBlocksFileMsg, ${msg}", ("msg", msg));
+
+        if (blocks_sync_states == waiting_respones || blocks_sync_states == syncing) {
+            BlocksTransferPacket rspPck;
+            rspPck.block_num = 0;
+            rspPck.chunkLen = 0;
+            c->enqueue(net_message(rspPck));
+            return;
+        }
+
+        open_read();
+        uint32_t blknum = m_block_log_ptr->head()->block_num();
+
+        BlocksTransferPacket rspPck;
+        if (blknum > msg.block_num && msg.block_num > 1){
+            auto block_ptr = m_block_log_ptr->read_block_by_num(msg.block_num);
+            if (block_ptr) {
+                rspPck.block = *block_ptr;
+                rspPck.block_num = msg.block_num;
+                rspPck.chunkLen = msg.block_num;
+            } else {
+                rspPck.block_num = 0;
+                rspPck.chunkLen = 0;
+            }
+            ilog("block: ${b}", ("b", *block_ptr));
+        } else {
+            rspPck.block_num = 0;
+            rspPck.chunkLen = 0;
+        }       
+        
+        c->enqueue(net_message(rspPck));
+    }
+    void sync_blocks_manager::open_write() {
+        if (m_block_log_ptr && !m_is_read)
+            return;
+        m_block_log_ptr.reset();
+
+        fc::remove_all(block_dir);
+        m_block_log_ptr = std::make_shared<chain::block_log>(block_dir);
+        m_is_read = false;
+    }
+    
+    void sync_blocks_manager::open_read(bool reload) {
+        if (m_block_log_ptr && m_is_read) {
+            if (reload)
+                m_block_log_ptr->load_data(block_dir);
+            return;
+        }
+
+        m_block_log_ptr.reset();
+        m_block_log_ptr = std::make_shared<chain::block_log>();
+        m_block_log_ptr->load_data(block_dir);
+        m_is_read = true;
+    }
+
 
     //------------------------------------------------------------------------
 
@@ -1438,6 +1840,23 @@ namespace ultrainio {
          m_sync_ws_manager->receive_file_sync_rsp(c, msg);
     }
 
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const RspBlocksInfoMsg &msg) {
+        ilog("recieved RspBlocksInfoMsg");
+        m_sync_blocks_manager->receive_blocks_sync_rsp(c, msg);
+    }
+
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const BlocksTransferPacket &msg) {
+        m_sync_blocks_manager->receive_blocks_file_sync_rsp(c, msg);
+    }
+
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqBlocksInfoMsg &msg) {   
+        m_sync_blocks_manager->receive_blocks_sync_req(c, msg);
+    }
+
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqBlocksFileMsg &msg) {         
+        m_sync_blocks_manager->receive_blocks_file_sync_req(c, msg);
+    }
+
     void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqTestTimeMsg &msg) {
         RspTestTimeMsg rspTestTimeMsg;
         rspTestTimeMsg.timeInfo.reqTime = msg.timeInfo.reqTime;
@@ -1744,9 +2163,13 @@ namespace ultrainio {
         return "get triger and hosts list";
     }
 
-    string sync_net_plugin::require_block(uint32_t begin,uint32_t end) {
-
-        return "start transfer block";
+    string sync_net_plugin::require_block(const std::string& chain_id_text, uint32_t end) {
+        fc::sha256 chain_id(chain_id_text);
+        auto ret = my->m_sync_blocks_manager->send_blocks_sync_req(my->connections, chain_id, end);
+        if (ret)
+            return "success";
+        else
+            return "fail";
     }
 
     string sync_net_plugin::sync_block(uint32_t block_height) {
