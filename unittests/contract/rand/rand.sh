@@ -25,24 +25,26 @@ case "$1" in
 	i=0
 	while [ $i -lt $VOTER_NUM ]
 	do
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 create account ultrainio ${ult_accountLst[$i]} ${ult_pkLst[$i]} -u;
+		$clDir/clultrain --wallet-url http://127.0.0.1:6666 wallet import  --private-key ${ult_skLst[$i]}
 		sleep 1
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 transfer ultrainio ${ult_accountLst[$i]} "300000.0000 UGAS";
+		$clDir/clultrain --wallet-url http://127.0.0.1:6666 create account ultrainio ${ult_accountLst[$i]} ${ult_pkLst[$i]} -u -p ultrainio
+		sleep 1
+		$clDir/clultrain --wallet-url http://127.0.0.1:6666 transfer ultrainio ${ult_accountLst[$i]} "300000.0000 UGAS" -p ultrainio
 		sleep 1
 		$clDir/clultrain --wallet-url http://127.0.0.1:6666 system resourcelease ${ult_accountLst[$i]} ${ult_accountLst[$i]} 10 100
 		i=`expr $i + 1`
 		printf "\n\n"
 	done
 	;;
-  "i") # wallet import sks
-	i=0
-	while [ $i -lt $VOTER_NUM ]
-	do
-		# wallet import sks
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 wallet import  --private-key ${ult_skLst[$i]}
-		i=`expr $i + 1`
-	done 
-	;;
+#   "i") # wallet import sks
+# 	i=0
+# 	while [ $i -lt $VOTER_NUM ]
+# 	do
+# 		# wallet import sks
+# 		$clDir/clultrain --wallet-url http://127.0.0.1:6666 wallet import  --private-key ${ult_skLst[$i]}
+# 		i=`expr $i + 1`
+# 	done
+# 	;;
   "r")
 	#4 candidates
 	VOTER_NUM=16; i=0
@@ -53,10 +55,11 @@ case "$1" in
 		sleep 1 #remove, in case already registed
 
 		# authorize transfer to contractAccount to deposit money
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 set account permission ${ult_accountLst[$i]} active '{"threshold":1,"keys": [{"key":"'"${ult_pkLst[$i]}"'","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}' owner -p ${ult_accountLst[$i]} ;
-		sleep 1
+		# $clDir/clultrain --wallet-url http://127.0.0.1:6666 set account permission ${ult_accountLst[$i]} active '{"threshold":1,"keys": [{"key":"'"${ult_pkLst[$i]}"'","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}' owner -p ${ult_accountLst[$i]} ;
+		# sleep 1
 
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand addCandidate '[]' -p ${ult_accountLst[$i]};
+		# $clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand addCandidate '[]' -p ${ult_accountLst[$i]};
+		$clDir/clultrain --wallet-url http://127.0.0.1:6666 transfer ${ult_accountLst[$i]} utrio.rand "2.0000 UGAS" "as candidate" -p ${ult_accountLst[$i]};
 		sleep 1
 
 		i=`expr $i + 1`
@@ -91,7 +94,7 @@ case "$1" in
 			sleep 0.5
 		done
 		i=0
-		sleep 15;
+		sleep 20;
 		j=`expr $j + 1`;
 	done
     ;;

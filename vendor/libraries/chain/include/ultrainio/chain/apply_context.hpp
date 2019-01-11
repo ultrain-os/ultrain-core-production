@@ -92,24 +92,14 @@ class apply_context {
              * to purge a table from cache
              */
             void purge_table_cache(table_id_object::id_type tid) {
-               auto viter_obj = std::remove_if(_iterator_to_object.begin(), _iterator_to_object.end(), [&](auto& obj) {
-                  return obj->t_id._id == tid._id;
-               });
-               _iterator_to_object.erase(viter_obj, _iterator_to_object.end());
-
-               for (auto it = _object_to_iterator.begin(); it != _object_to_iterator.end(); ) {
-                  if (it->first->t_id._id == tid._id) it = _object_to_iterator.erase(it);
-                  else ++it;
+               auto size = _iterator_to_object.size();
+               for (auto i = 0; i < size; ++i) {
+                  auto it = _iterator_to_object[i];
+                  if (it != nullptr && it->t_id._id == tid._id) {
+                     _iterator_to_object[i] = nullptr;
+                     _object_to_iterator.erase(it);
+                  }
                }
-
-               auto cacheitr = _table_cache.find(tid);
-               if (cacheitr != _table_cache.end()) _table_cache.erase(cacheitr);
-
-               auto enditr = std::find_if(_end_iterator_to_table.begin(), _end_iterator_to_table.end(), [&](auto& ptobj) {
-                  return ptobj->id._id == tid._id;
-               });
-               if (enditr != _end_iterator_to_table.end())
-                  _end_iterator_to_table.erase(enditr);
             }
 
          private:

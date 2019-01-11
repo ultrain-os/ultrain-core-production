@@ -6,6 +6,10 @@
       "type": "name"
     },
     {
+      "new_type_name": "Asset",
+      "type": "asset"
+    },
+    {
       "new_type_name": "u64",
       "type": "uint64"
     },
@@ -21,9 +25,26 @@
       "name": "clearDB"
     },
     {
-      "fields": [],
+      "fields": [
+        {
+          "name": "from",
+          "type": "account_name"
+        },
+        {
+          "name": "to",
+          "type": "account_name"
+        },
+        {
+          "name": "value",
+          "type": "Asset"
+        },
+        {
+          "name": "memo",
+          "type": "string"
+        }
+      ],
       "base": "",
-      "name": "addCandidate"
+      "name": "transfer"
     },
     {
       "fields": [],
@@ -82,27 +103,32 @@
     {
       "ricardian_contract": "",
       "name": "clearDB",
-      "type": "clearDB"
+      "type": "clearDB",
+      "ability": "normal"
     },
     {
       "ricardian_contract": "",
-      "name": "addCandidate",
-      "type": "addCandidate"
+      "name": "transfer",
+      "type": "transfer",
+      "ability": "normal"
     },
     {
       "ricardian_contract": "",
       "name": "removeCandidate",
-      "type": "removeCandidate"
+      "type": "removeCandidate",
+      "ability": "normal"
     },
     {
       "ricardian_contract": "",
       "name": "vote",
-      "type": "vote"
+      "type": "vote",
+      "ability": "normal"
     },
     {
       "ricardian_contract": "",
       "name": "query",
-      "type": "query"
+      "type": "query",
+      "ability": "normal"
     }
   ],
   "tables": [

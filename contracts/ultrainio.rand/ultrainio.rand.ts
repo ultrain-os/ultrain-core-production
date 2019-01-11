@@ -30,7 +30,7 @@ const votescope = "s.vote";
 
 // parameters
 const EPOCH :u64 =  3; // peorids for rand generation
-const DEPOSIT_AMOUNT :u64 = 20000;
+let DEPOSIT_AMOUNT :Asset = new Asset(20000);
 const BONUS :u64 = 100; //bonus for voters
 const MIN_AGE :u64=2; //minimum age to be candidate
 
@@ -56,11 +56,11 @@ class rand extends Contract {
             c.name = NAME("blocknum");
             c.val = Block.number;
             this.votedDB.emplace(Action.sender, c);
-        
+
             c.name = NAME("seed");
             c.val = 2346;
             this.votedDB.emplace(Action.sender, c);
-        
+
             c.name = NAME("rand");
             c.val = 0;
             this.votedDB.emplace(Action.sender, c);
@@ -78,16 +78,20 @@ class rand extends Contract {
 
     // all candidate can register with deposit and pk
     @action
-    addCandidate(): void {
-        Log.s("addCandidate: ").s(RNAME(Action.sender)).flush();
-        //ultrain_assert(!this.candidateDB.exists(Action.sender), "cannot add existing candidate.");
+    transfer(from: account_name, to: account_name, value: Asset, memo: string): void {
+        if (from == this.receiver) return; // yourself, omit it.
+        if (memo != "as candidate") return; // not transfer to join the candidate list
+
+        ultrain_assert(!this.candidateDB.exists(from), "cannot add existing candidate.");
+        ultrain_assert(value.eq(DEPOSIT_AMOUNT), "deposit money is not accurate, require deposit: " + DEPOSIT_AMOUNT.toString());
+
+        Log.s("addCandidate: ").s(RNAME(from)).flush();
 
         let c = new Candidate();
-        c.name = Action.sender;
+        c.name = from;
         c.age = Block.number;
         // c.vrf_pk = "";
         this.candidateDB.emplace(this.receiver, c);
-        Asset.transfer(Action.sender, this.receiver, new Asset(DEPOSIT_AMOUNT), "deposit money"); //return deposit
     }
 
     //TODO: punish candidate
@@ -100,7 +104,7 @@ class rand extends Contract {
         if (this.votedDB.exists(Action.sender)) {
             this.votedDB.erase(Action.sender);
         }
-        Asset.transfer(this.receiver, Action.sender, new Asset(DEPOSIT_AMOUNT), "return deposited money"); //return deposit
+        Asset.transfer(this.receiver, Action.sender, DEPOSIT_AMOUNT, "return deposited money"); //return deposit
     }
 
     //TODO: punish unvoted ones?
@@ -163,7 +167,7 @@ class rand extends Contract {
         let vrf:u64 = <u64> parseInt(hash.substring(0, 14), 16); // convert hex_6digits string to u64
 
         this.votedDB.get(NAME("rand"), c);
-        c.val = c.val ^ vrf; 
+        c.val = c.val ^ vrf;
         let rand = c.val;
         this.votedDB.modify(this.receiver, c);
 
@@ -188,5 +192,9 @@ class rand extends Contract {
         else
             this.votedDB.get(NAME("seed"), c);
 	    Return(" Rand: " + intToString(c.val) + " Block.number: " + intToString(Block.number));
+    }
+
+    public filterAction(originalReceiver: u64): boolean {
+        return Contract.filterAcceptTransferTokenAction(this.receiver, originalReceiver, this.action);
     }
 }
