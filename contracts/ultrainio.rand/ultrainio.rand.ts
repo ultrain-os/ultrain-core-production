@@ -56,11 +56,9 @@ class rand extends Contract {
             c.name = NAME("blocknum");
             c.val = Block.number;
             this.votedDB.emplace(Action.sender, c);
-        
             c.name = NAME("seed");
             c.val = 2346;
             this.votedDB.emplace(Action.sender, c);
-        
             c.name = NAME("rand");
             c.val = 0;
             this.votedDB.emplace(Action.sender, c);
