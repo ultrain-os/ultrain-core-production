@@ -491,6 +491,15 @@ public:
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       if (t_id != nullptr) {
          const auto& idx = d.get_index<IndexType, chain::by_scope_primary>();
+         if(!p.table_key.empty()){
+            auto it = idx.find(boost::make_tuple( t_id->id, name(p.table_key) ));
+            if ( it != idx.end() ) {
+                vector<char> data;
+                copy_inline_row(*it, data);
+                result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, abi_serializer_max_time));
+            }
+            return result;
+         }
          decltype(t_id->id) next_tid(t_id->id._id + 1);
          auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
          auto upper = idx.lower_bound(boost::make_tuple(next_tid));
@@ -650,7 +659,7 @@ FC_REFLECT(ultrainio::chain_apis::read_only::get_block_header_state_params, (blo
 
 FC_REFLECT( ultrainio::chain_apis::read_write::push_tx_results, (transaction_id)(processed) )
 
-FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_result, (rows)(more) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit) )
