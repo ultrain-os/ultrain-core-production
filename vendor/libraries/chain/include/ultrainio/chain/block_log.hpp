@@ -69,7 +69,7 @@ namespace ultrainio { namespace chain {
          static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = 0 );
 
          static genesis_state extract_genesis_state( const fc::path& data_dir );
-         static bool validate_range( const fc::path& data_dir, uint32_t start, uint32_t end );
+         static bool validata_block(const signed_block_ptr& block);
          void load_data(const fc::path& data_dir);
 
       private:
