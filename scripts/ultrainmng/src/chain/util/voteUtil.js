@@ -28,7 +28,7 @@ function findVoteRecord(tableData, user, voteUser) {
             //logger.debug("row "+i+":");
             //logger.debug(tableData.rows[i]);
             let row = rows[i];
-            if (row.account == voteUser) {
+            if (row.owner == voteUser) {
                 for (var j = 0; j < row.provided_approvals.length; j++) {
                     if (row.provided_approvals[j].account == user) {
                         return true;
@@ -43,6 +43,32 @@ function findVoteRecord(tableData, user, voteUser) {
 
     return false;
 }
+
+var voteuserdata = {
+    "rows": [{
+        "owner": "user.122",
+        "proposal_account": [{
+            "account": "user.122",
+            "owner_key": "UTR7FLuM19CdCppghCjeswxPWAQxQj2LZnrKsCNwoXmi1GBwwrHUU",
+            "active_key": "UTR7FLuM19CdCppghCjeswxPWAQxQj2LZnrKsCNwoXmi1GBwwrHUU",
+            "updateable": 1,
+            "location": 0,
+            "approve_num": 2
+        }
+        ],
+        "provided_approvals": [{
+            "account": "user.115",
+            "last_vote_time": "2019-01-11T10:43:35",
+            "resource_index": 0
+        }
+        ]
+    }
+    ],
+    "more": false
+};
+
+//console.log(findVoteRecord(voteuserdata, "user.115", "user.122"));
+
 
 /**
  * 判断是否需要给资源投票
@@ -131,7 +157,7 @@ var voteResList = {
     ],
     "more": false
 };
-console.log(findVoteRes(voteResList,"user.113","user.112",1,null));
+//console.log(findVoteRes(voteResList,"user.113","user.112",1,null));
 
 /**
  * 对比两张表的数据找出需要更新的对象
@@ -157,7 +183,7 @@ async function genVoteResList(subResList, mainResList, chainConfig) {
             let mainResObj = getResObj(mainRows, index_main);
 
             //主链对象在子链找不到（子链到底 || 主链对象owner<子链当前对象owner）
-            if (utils.isNull(subResList) || mainResObj.owner < subResObj.owner) {
+            if (utils.isNull(subResObj) || mainResObj.owner < subResObj.owner) {
                 //查看子链上是否有该用户才处理
                 if (!utils.isNull(await chainApi.getAccount(chainConfig.configSub, mainResObj.owner))) {
                     result.push(mainResObj);
@@ -186,71 +212,66 @@ async function genVoteResList(subResList, mainResList, chainConfig) {
     return result;
 }
 
-// var subResList = {
-//     rows: [{
-//         owner: 'hello',
-//         lease_num: 10,
-//         start_time: '2019-01-10T11:53:50',
-//         end_time: '2019-04-20T11:53:50'
-//     },
-//         {
-//             owner: 'root',
-//             lease_num: 10,
-//             start_time: '2019-01-10T11:53:50',
-//             end_time: '2019-04-20T11:53:50'
-//         },
-//         {
-//             owner: 'root1',
-//             lease_num: 10,
-//             start_time: '2019-01-10T11:53:50',
-//             end_time: '2019-04-20T11:53:50'
-//         },
-//         {
-//             owner: 'root2',
-//             lease_num: 10,
-//             start_time: '2019-01-10T11:53:50',
-//             end_time: '2019-04-20T11:53:50'
-//         },
-//         {
-//             owner: 'root3',
-//             lease_num: 10,
-//             start_time: '2019-01-10T11:53:50',
-//             end_time: '2019-04-20T11:53:50'
-//         },
-//         {
-//             owner: 'root4',
-//             lease_num: 10,
-//             start_time: '2019-01-10T11:53:50',
-//             end_time: '2019-04-20T11:53:50'
-//         },
-//         {
-//             owner: 'root5',
-//             lease_num: 10,
-//             start_time: '2019-01-10T11:53:50',
-//             end_time: '2019-04-20T11:53:50'
-//         },
-//         {
-//             owner: 'user.112',
-//             lease_num: 1,
-//             start_time: '2019-01-10T12:39:40',
-//             end_time: '2019-01-30T12:39:40'
-//         }]
-// };
-// var mainResList = {
-//     rows: [{
-//         owner: 'root2',
-//         lease_num: 15,
-//         start_time: '2019-01-10T11:51:30',
-//         end_time: '2019-01-30T11:51:30'
-//     }, {
-//         owner: 'user.111',
-//         lease_num: 800,
-//         start_time: '2019-01-10T11:51:30',
-//         end_time: '2019-01-30T11:51:30'
-//     }]
-// }
-//
-// logger.error(genVoteResList(subResList, mainResList));
+var subResList = {
+    rows: [{
+        owner: 'hello',
+        lease_num: 10,
+        start_time: '2019-01-10T11:53:50',
+        end_time: '2019-04-20T11:53:50'
+    },
+        {
+            owner: 'root',
+            lease_num: 10,
+            start_time: '2019-01-10T11:53:50',
+            end_time: '2019-04-20T11:53:50'
+        },
+        {
+            owner: 'root1',
+            lease_num: 10,
+            start_time: '2019-01-10T11:53:50',
+            end_time: '2019-04-20T11:53:50'
+        },
+        {
+            owner: 'root2',
+            lease_num: 10,
+            start_time: '2019-01-10T11:53:50',
+            end_time: '2019-04-20T11:53:50'
+        },
+        {
+            owner: 'root3',
+            lease_num: 10,
+            start_time: '2019-01-10T11:53:50',
+            end_time: '2019-04-20T11:53:50'
+        },
+        {
+            owner: 'root4',
+            lease_num: 10,
+            start_time: '2019-01-10T11:53:50',
+            end_time: '2019-04-20T11:53:50'
+        },
+        {
+            owner: 'root5',
+            lease_num: 10,
+            start_time: '2019-01-10T11:53:50',
+            end_time: '2019-04-20T11:53:50'
+        },
+        {
+            owner: 'user.112',
+            lease_num: 1,
+            start_time: '2019-01-10T12:39:40',
+            end_time: '2019-01-30T12:39:40'
+        }]
+};
+var mainResList = {
+    rows: [{
+        owner: 'user.111',
+        lease_num: 800,
+        start_time: '2019-01-10T11:51:30',
+        end_time: '2019-01-30T11:51:30'
+    }]
+}
+
+logger.error(genVoteResList(subResList, mainResList));
 
 /**
  *
