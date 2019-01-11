@@ -1,5 +1,5 @@
 var process = require('child_process');
-var logger = require("../../config/logConfig");
+var logger = require("../../config/logConfig").getLogger("ShellCmd");
 var Constants = require('../constant/constants');
 var async = require('async');
 var deasync = require('deasync');
@@ -11,7 +11,7 @@ class ShellCmd {
 }
 
 /**
- * 命令执行（异步）
+ * 命令执行
  * @param command
  * @returns {Promise<void>}
  */
@@ -19,7 +19,7 @@ ShellCmd.execCmd = async function (command) {
 
     try {
         var done = false;
-        var result = false;
+        var result = true;
         /**
          * 由于execSync只有在node11以后才有，暂时用主动卡死方式执行
          */
@@ -33,9 +33,9 @@ ShellCmd.execCmd = async function (command) {
             done = true;
 
         });
-        require('deasync').loopWhile(function () {
-            return !done;
-        });
+        // require('deasync').loopWhile(function () {
+        //     return !done;
+        // });
         return result;
 
     } catch (e) {
@@ -74,20 +74,5 @@ ShellCmd.execCmdFiles = async function (command, args, options) {
     });
 }
 
-/**
- * 关闭nod程序
- * @returns {Promise<void>}
- */
-ShellCmd.stopNodultrain = async function () {
-    await this.execCmd(Constants.cmdConstants.KILL_NODULTRAIN);
-}
-
-/**
- * 关闭pm2
- * @returns {Promise<void>}
- */
-ShellCmd.stopPM2 = async function () {
-    await this.execCmd(Constants.cmdConstants.KILL_PM2);
-}
 
 module.exports = ShellCmd;

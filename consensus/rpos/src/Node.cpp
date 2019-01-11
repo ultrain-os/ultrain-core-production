@@ -24,7 +24,7 @@ using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-    char version[]="fdac3d";
+    char version[]="9c5aad";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 

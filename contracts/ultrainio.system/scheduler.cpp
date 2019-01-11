@@ -5,20 +5,44 @@ namespace ultrainiosystem {
 
     //const uint32_t relayer_deposit_threshold = 100000;
 
+    void system_contract::regchaintype(uint16_t type_id, uint32_t min_producer_num, uint32_t max_producer_num, uint16_t consensus_period) {
+        require_auth(N(ultrainio));
+        chaintypes_table type_tbl(_self, _self);
+        auto typeiter = type_tbl.find((uint64_t)type_id);
+        if (typeiter == type_tbl.end()) {
+            type_tbl.emplace(N(ultrainio), [&]( auto& new_subchain_type ) {
+                new_subchain_type.id = type_id;
+                new_subchain_type.min_producers = min_producer_num;
+                new_subchain_type.max_producers = max_producer_num;
+                new_subchain_type.consensus_period = consensus_period;
+            });
+        } else {
+            type_tbl.modify(typeiter, N(ultrainio), [&]( auto& _subchain_type ) {
+                _subchain_type.id = type_id;
+                _subchain_type.min_producers = min_producer_num;
+                _subchain_type.max_producers = max_producer_num;
+                _subchain_type.consensus_period = consensus_period;
+            });
+        }
+    }
     /// @abi action
-    void system_contract::regsubchain(uint64_t chain_name, uint16_t chain_type) {
+    void system_contract::regsubchain(uint64_t chain_name, uint16_t chain_type, time genesis_time) {
         require_auth(N(ultrainio));
         ultrainio_assert(chain_name != default_chain_name, "subchian cannot named as default.");
-        auto itor = _subchains.find(chain_name);
-        ultrainio_assert(itor == _subchains.end(), "There has been a subchian with this name.");
+        ultrainio_assert(chain_name != master_chain_name, "subchian cannot named as 0");
+        ultrainio_assert(chain_name != pending_queue, "subchian cannot named as uint64::max");
+        //auto itor = _subchains.find(chain_name);
+        //ultrainio_assert(itor == _subchains.end(), "There has been a subchian with this name.");
 
         _subchains.emplace(N(ultrainio), [&]( auto& new_subchain ) {
             new_subchain.chain_name        = chain_name;
             new_subchain.chain_type        = chain_type;
+            new_subchain.genesis_time      = genesis_time;
             new_subchain.is_active         = false;
             new_subchain.is_synced         = false;
             new_subchain.head_block_id     = block_id_type();
             new_subchain.head_block_num    = 0;
+            new_subchain.updated_info.take_effect_at_block = 0;
         });
     }
 
@@ -33,12 +57,12 @@ namespace ultrainiosystem {
         //todo, check if the subchain is avtive?
         for(uint32_t idx = 0; idx < headers.size(); ++idx) {
             account_name block_proposer = headers[idx].proposer;
-            auto prod = _producers.find(block_proposer);
-            ultrainio_assert(prod != _producers.end(), "The prososer is not a valid producer");
-
             bool found_prod = false;
             bool need_report = true;
+
             if(block_proposer != N() && block_proposer != N(genesis)) {
+                auto prod = _producers.find(block_proposer);
+                ultrainio_assert(prod != _producers.end(), "The prososer is not a valid producer");
                 auto itor = ite_chain->committee_members.begin();
                 for(; itor != ite_chain->committee_members.end(); ++itor) {
                     if(itor->owner == block_proposer) {
@@ -47,30 +71,29 @@ namespace ultrainiosystem {
                     }
                 }
                 //found producer and it's a new added member of last update, means the update works in subchain
-                if(found_prod && !ite_chain->unactivated_committee.empty()) {
-                    auto new_prod = ite_chain->unactivated_committee.begin();
-                    for(; new_prod != ite_chain->unactivated_committee.end(); ++new_prod) {
+                if(found_prod && !ite_chain->updated_info.unactivated_committee.empty()) {
+                    auto new_prod = ite_chain->updated_info.unactivated_committee.begin();
+                    for(; new_prod != ite_chain->updated_info.unactivated_committee.end(); ++new_prod) {
                         if(*new_prod == block_proposer) {
-                            //new committee works, clear deprecated and unactivated list
+                            //new committee works, clear unactivated list
                             _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
-                                _subchain.deprecated_committee.clear();
-                                _subchain.unactivated_committee.clear();
-                                _subchain.deprecated_committee.shrink_to_fit();
-                                _subchain.unactivated_committee.shrink_to_fit();
+                                _subchain.updated_info.unactivated_committee.clear();
+                                _subchain.updated_info.unactivated_committee.shrink_to_fit();
+                                _subchain.updated_info.take_effect_at_block = (uint32_t)tapos_block_num() + 30;
                             });
                             break;
                         }
                     }
                 }
-                else if(!found_prod && ite_chain->deprecated_committee.empty() ) {
-                    auto cur_block_num = tapos_block_num();
-                    for(auto ite_prod = ite_chain->deprecated_committee.begin(); ite_prod != ite_chain->deprecated_committee.end(); ++ite_prod) {
+                else if(!found_prod && ite_chain->updated_info.deprecated_committee.empty() ) {
+                    uint32_t cur_block_num = (uint32_t)tapos_block_num();
+                    for(auto ite_prod = ite_chain->updated_info.deprecated_committee.begin();
+                        ite_prod != ite_chain->updated_info.deprecated_committee.end(); ++ite_prod) {
                         if(ite_prod->owner == block_proposer) {
                             //todo, check quit num in produer table for the case about moving producer
-                            //no reword if it's 1 hour after last committee change confirmation.
-                            //todo, the time threshold is set to 1 hour temporarily, can be adjusted to a proper value later
-                            if(cur_block_num % 720 > 360) {
-                                need_report = false;
+                            if(ite_chain->updated_info.take_effect_at_block != 0 &&
+                               cur_block_num > ite_chain->updated_info.take_effect_at_block) {
+                                need_report = false; //no reward
                             }
                             found_prod = true;
                             break;
@@ -80,6 +103,7 @@ namespace ultrainiosystem {
 
                 if(!found_prod) {
                     //no reward for the producer. Here is not suggested to use assert
+                    //todo, add log
                     need_report = false;
                 }
             }
@@ -223,7 +247,7 @@ namespace ultrainiosystem {
                 for(; ite_miner != p_que->end() && i <= info.get_subchain_min_miner_num(); ++i) {
                     //update location of producer
                     auto ite_producer = _producers.find(ite_miner->owner);
-                    ultrainio_assert( ite_producer != _producers.end(), "Cannot find producer in database." );
+                    ultrainio_assert( ite_producer != _producers.end(), "cannot find producer in database" );
                     _producers.modify(ite_producer, 0 , [&](auto & v) {
                         v.location = info.chain_name;
                     });
@@ -264,16 +288,32 @@ namespace ultrainiosystem {
         auto ite_chain = _subchains.find(chain_name);
         ultrainio_assert(ite_chain != _subchains.end(), "The specific chain is not existed." );
 
-        for(auto& miner : ite_chain->committee_members) {
+        for(const auto& miner : ite_chain->committee_members) {
             if(miner.owner == producer) {
+                _subchains.modify(ite_chain, producer, [&](subchain& info) {
+                    auto ite_miner = info.changing_info.removed_members.begin();
+                    for(; ite_miner != info.changing_info.removed_members.end(); ++ite_miner) {
+                        if(miner.owner == producer) {
+                            info.changing_info.removed_members.erase(ite_miner);
+                            break;
+                        }
+                        info.changing_info.removed_members.shrink_to_fit();
+                    }
+                } );
                 return; //don't use assert.
+            }
+        }
+        //check changing info
+        for(const auto& miner : ite_chain->changing_info.new_added_members) {
+            if(miner.owner == producer) {
+                return;
             }
         }
         _subchains.modify(ite_chain, producer, [&](subchain& info) {
             role_base temp_node;
             temp_node.owner = producer;
             temp_node.producer_key   = public_key;
-            info.committee_members.push_back(temp_node);
+            info.changing_info.new_added_members.push_back(temp_node);
         } );
     }
 
@@ -281,53 +321,97 @@ namespace ultrainiosystem {
         auto ite_chain = _subchains.find(chain_name);
         ultrainio_assert(ite_chain != _subchains.end(), "The subchain is not existed.");
 
+        ultrainio_assert(ite_chain->committee_members.size() - 1 >= ite_chain->get_subchain_min_miner_num(), 
+                         "this subschain cannot remove producers");
         _subchains.modify(ite_chain, producer, [&](subchain& info){
+            auto ite_add = info.changing_info.new_added_members.begin();
+            for(; ite_add != info.changing_info.new_added_members.end() ; ++ite_add) {
+                if(ite_add->owner == producer) {
+                    info.changing_info.new_added_members.erase(ite_add);
+                    return;
+                }
+            }
+
             auto ite_producer = info.committee_members.begin();
             bool found = false;
             for(; ite_producer != info.committee_members.end(); ++ite_producer) {
                 if(ite_producer->owner == producer) {
-                    info.committee_members.erase(ite_producer);
                     found = true;
                     break;
                 }
             }
             ultrainio_assert(found, "The producer is not existed on this subchain.");
+            info.changing_info.removed_members.push_back(*ite_producer);
         } );
     }
 
     void system_contract::activate_committee_update() {
-        if(tapos_block_num()%720 != 0) {
-            return;  //do this operation every 2 hours == 720 block.
+        auto block_height = tapos_block_num();
+        if(block_height > 120 && block_height%360 != 0) {
+            return;  //do this operation every 1 hours == 360 block.
         }
         auto ite_chain = _subchains.begin();
         for(; ite_chain != _subchains.end(); ++ite_chain) {
-            if(!ite_chain->deprecated_committee.empty() || !ite_chain->unactivated_committee.empty() ||
-                !ite_chain->changed_info.deprecated_members.empty() || !ite_chain->changed_info.new_added_members.empty()) {
+            if(!ite_chain->updated_info.deprecated_committee.empty() ||
+               !ite_chain->updated_info.unactivated_committee.empty() ||
+               !ite_chain->changing_info.removed_members.empty() ||
+               !ite_chain->changing_info.new_added_members.empty() ||
+               ite_chain->updated_info.take_effect_at_block != 0 ) {
                 _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+                    //remove removed producers from committee
+                    auto removing_comm = _subchain.changing_info.removed_members.begin();
+                    for(; removing_comm != _subchain.changing_info.removed_members.end(); ++removing_comm) {
+                        auto current_comm = _subchain.committee_members.begin();
+                        for(; current_comm != _subchain.committee_members.end();) {
+                            if(current_comm->owner == removing_comm->owner) {
+                                current_comm = _subchain.committee_members.erase(current_comm);
+                            }
+                            else {
+                                ++current_comm;
+                            }
+                        }
+                    }
+                    //add new added to committee
+                    if(!_subchain.changing_info.new_added_members.empty()) {
+                        _subchain.committee_members.reserve(_subchain.committee_members.size() + _subchain.changing_info.new_added_members.size());
+                        _subchain.committee_members.insert(_subchain.committee_members.end(),
+                                                           _subchain.changing_info.new_added_members.begin(),
+                                                           _subchain.changing_info.new_added_members.end());
+                    }
+                    _subchain.committee_members.shrink_to_fit();
+                    //clear updated_info and then move changing_info to updated_info
                     if(_subchain.is_synced) {
-                        _subchain.deprecated_committee.swap(_subchain.changed_info.deprecated_members);
+                        _subchain.updated_info.deprecated_committee.swap(_subchain.changing_info.removed_members);
                     }
                     else {
-                        _subchain.deprecated_committee.reserve(_subchain.deprecated_committee.size() + _subchain.changed_info.deprecated_members.size());
-                        _subchain.deprecated_committee.insert(_subchain.deprecated_committee.end(),
-                                                              std::make_move_iterator(_subchain.changed_info.deprecated_members.begin()),
-                                                              std::make_move_iterator(_subchain.changed_info.deprecated_members.end()));
+                        _subchain.updated_info.deprecated_committee.reserve(_subchain.updated_info.deprecated_committee.size() + _subchain.changing_info.removed_members.size());
+                        _subchain.updated_info.deprecated_committee.insert(_subchain.updated_info.deprecated_committee.end(),
+                                                std::make_move_iterator(_subchain.changing_info.removed_members.begin()),
+                                              std::make_move_iterator(_subchain.changing_info.removed_members.end()));
                     }
-                    _subchain.changed_info.deprecated_members.clear();
+                    _subchain.updated_info.take_effect_at_block = 0;
+                    _subchain.changing_info.removed_members.clear();
 
-                    _subchain.unactivated_committee.clear();
-                    auto new_member = _subchain.changed_info.new_added_members.begin();
-                    for(; new_member != _subchain.changed_info.new_added_members.end(); ++new_member) {
-                        _subchain.unactivated_committee.emplace_back(new_member->owner);
+                    _subchain.updated_info.unactivated_committee.clear();
+                    auto new_member = _subchain.changing_info.new_added_members.begin();
+                    for(; new_member != _subchain.changing_info.new_added_members.end(); ++new_member) {
+                        _subchain.updated_info.unactivated_committee.emplace_back(new_member->owner);
                     }
-                    _subchain.changed_info.new_added_members.clear();
+                    _subchain.changing_info.new_added_members.clear();
 
-                    _subchain.deprecated_committee.shrink_to_fit();
-                    _subchain.unactivated_committee.shrink_to_fit();
-                    _subchain.changed_info.deprecated_members.shrink_to_fit();
-                    _subchain.changed_info.new_added_members.shrink_to_fit();
+                    _subchain.updated_info.deprecated_committee.shrink_to_fit();
+                    _subchain.updated_info.unactivated_committee.shrink_to_fit();
+                    _subchain.changing_info.removed_members.shrink_to_fit();
+                    _subchain.changing_info.new_added_members.shrink_to_fit();
                 });
             }
         }
+    }
+
+    chaintype system_contract::get_subchain_basic_info(uint16_t chain_type) const {
+        chaintypes_table type_tbl(_self, _self);
+        auto typeiter = type_tbl.find(chain_type);
+        ultrainio_assert(typeiter != type_tbl.end(), "chain type is not existed");
+        return *typeiter;
     }
 } //namespace ultrainiosystem

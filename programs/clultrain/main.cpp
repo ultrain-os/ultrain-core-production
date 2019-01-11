@@ -1848,7 +1848,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
-   getTable->add_option( "-k,--key", table_key, localized("Deprecated") );
+   getTable->add_option( "-k,--key", table_key, localized("filter index key") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
    getTable->add_option( "--index", index_position,

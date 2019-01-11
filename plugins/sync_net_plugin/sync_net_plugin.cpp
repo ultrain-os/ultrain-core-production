@@ -48,7 +48,8 @@ namespace ultrainio {
     namespace bip = boost::interprocess;
 
     class connection;
-
+    class sync_ws_manager;
+    
     using connection_ptr = std::shared_ptr<connection>;
     using connection_wptr = std::weak_ptr<connection>;
 
@@ -98,9 +99,7 @@ namespace ultrainio {
 
         std::ifstream src_file;
         std::ofstream dist_file;
-        chain::ws_file_manager ws_manager;
-        chain::ws_file_writer* ws_writer = nullptr;
-
+        std::shared_ptr<sync_ws_manager> m_sync_ws_manager = std::make_shared<sync_ws_manager>();
         struct rcv_file_state{
             std::string  fileName;
             long double  fileSize;
@@ -675,6 +674,315 @@ namespace ultrainio {
     }
     //------------------------------------------------------------------------
 
+   class sync_ws_manager {
+        public:
+            enum sync_code {none, waiting_respones, syncing, error, success, no_connection, hash_error, no_data};
+
+        public:
+            std::vector<connection_ptr>                     m_conns;
+            std::vector<chain::ws_info>                     m_conns_ws_info;
+            sync_code                                       ws_states;
+            boost::asio::steady_timer::duration             conn_timeout;
+            std::unique_ptr<boost::asio::steady_timer>      conn_check_timer;
+            boost::asio::steady_timer::duration             sync_timeout;
+            std::unique_ptr<boost::asio::steady_timer>      sync_check_timer;
+            chain::ws_info                                  m_require_ws_info;
+            connection_ptr                                  ws_sync_conn;
+            std::shared_ptr<chain::ws_file_writer>          ws_writer;
+            uint32_t                                        slice_num;
+            chain::ws_file_manager                          ws_file_manager;
+            int	                                            num_of_hash_error;
+            int                                             num_of_no_data;
+
+        public:
+            sync_ws_manager();
+            void sync_reset(sync_code st);
+            bool send_ws_sync_req(std::set< connection_ptr >& connections, const chain::ws_info& info);
+            void receive_ws_sync_rsp(connection_ptr c, const RspLastWsInfoMsg &msg);
+            void start_conn_check_timer();
+            int select_strong_sync_src();
+            void send_file_sync_req(uint32_t slice_idx);
+            void receive_file_sync_rsp(connection_ptr c, const FileTransferPacket &msg);
+            void sync_ws_done();
+
+            void receive_ws_sync_req(connection_ptr c, const ReqLastWsInfoMsg &msg);
+            void receive_file_sync_req(connection_ptr c, const ReqWsFileMsg &msg);
+    };
+
+    sync_ws_manager::sync_ws_manager(){
+        conn_timeout = {std::chrono::seconds{3}};
+        conn_check_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
+        sync_timeout = {std::chrono::seconds{5}};
+        sync_check_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
+        ws_states = none;
+    }
+
+    void sync_ws_manager::sync_reset(sync_code st){
+        ws_states = st;
+        ws_sync_conn.reset();
+        slice_num = 0;
+        ws_writer.reset();
+        m_conns.clear();
+        m_conns_ws_info.clear();
+        num_of_no_data = 0;
+        num_of_hash_error = 0;
+    }
+
+    bool sync_ws_manager::send_ws_sync_req(std::set< connection_ptr >& connections, const chain::ws_info& info){
+        ilog("start sync, info: ${info}", ("info", info));
+        if (ws_states == waiting_respones || ws_states == syncing)
+            return false;
+
+        m_require_ws_info = info;
+
+        //check local ws firstly, if not exist, send req by tcp connect
+        auto infoList = ws_file_manager.get_local_ws_info();  
+        for(auto& it : infoList){
+            if (it == info){
+                sync_reset(success);
+                ilog("Success: local exist ws file!!");
+                return true;
+            }
+        }
+        
+        ReqLastWsInfoMsg reqLastWsInfoMsg;
+        reqLastWsInfoMsg.chain_id = info.chain_id;
+        reqLastWsInfoMsg.block_height = info.block_height;
+
+        // //Only for test;
+        // reqLastWsInfoMsg.chain_id = fc::sha256("cd976519e5802ca7562ba8413e89776533c63a5cda01a3784928c323513236c9");
+        // reqLastWsInfoMsg.block_height = 0;
+
+        bool is_connection = false;
+        for (const auto& c : connections) {
+            if(c->current()) {
+                ilog ("send file_info_msg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                c->enqueue(net_message(reqLastWsInfoMsg));
+                is_connection = true;
+            }
+        }
+
+        if (!is_connection){
+            sync_reset(no_connection);
+            return false;
+        }
+
+        start_conn_check_timer();
+        ws_states = waiting_respones;
+        return true;
+    }
+        
+    void sync_ws_manager::receive_ws_sync_rsp(connection_ptr c, const RspLastWsInfoMsg &msg){
+        if( ws_states != waiting_respones){
+            ilog("get ws rsp from peer ${p}, but not in rsp waiting states", ("p", c->peer_name()));
+            return;
+        }
+
+        const ultrainio::chain::ws_info& info = msg.info;
+        if(info.block_height == 0){ // no data
+            num_of_no_data++;
+            ilog("RspLastWsInfoMsg: remote no ws! peer ${p}", ("p", c->peer_name()));
+            return;
+        }
+
+        ilog("WsInfo msg: ${msg}, peer:${p}", ("msg", info)("p", c->peer_name()));
+        auto it = find (m_conns.begin(), m_conns.end(), c);
+        if (it != m_conns.end()){
+            ilog("duplicate ws rsp from peer ${p}", ("p", c->peer_name()));
+            return;
+        }
+
+        if(info != m_require_ws_info){
+           ilog("hash string not samne from peer ${p}", ("p", c->peer_name()));
+           num_of_hash_error++;
+           return;
+        }
+        m_conns_ws_info.emplace_back(info);
+        m_conns.emplace_back(c);
+    }
+   
+    void sync_ws_manager::start_conn_check_timer() {
+        conn_check_timer->expires_from_now(conn_timeout);
+        conn_check_timer->async_wait([this](boost::system::error_code ec) {
+            if (ec.value() == boost::asio::error::operation_aborted) {
+                ilog("receive block conn check canceled, will not wait for ws sync");
+                sync_reset(error);
+            } else {
+                ilog("connect timer out, start file sync");
+                if (m_conns.size() == 0){
+                    sync_code code;
+                    if (num_of_hash_error > 0){
+                        code = hash_error;
+                    } else if (num_of_no_data > 0){
+                        code = no_data;
+                    } else {
+                        code = error;
+                    }
+
+                    sync_reset(code);
+                } else {
+                    ws_states = syncing;
+                    slice_num = 0;
+                    send_file_sync_req(slice_num);
+                }
+            }
+        });
+    }
+
+    int sync_ws_manager::select_strong_sync_src() {
+        if (m_conns.size())
+            return 0;
+        return -1;
+    }
+
+    void sync_ws_manager::send_file_sync_req(uint32_t slice_idx){
+        int index = select_strong_sync_src();
+        if (index < 0) {
+            elog("No any connection");
+            sync_reset(error);//error
+            return;
+        }
+        ws_sync_conn = m_conns[index];
+
+        ReqWsFileMsg reqWsFileMsg;
+        reqWsFileMsg.lenPerSlice = 1024;
+        reqWsFileMsg.info = m_conns_ws_info[index];
+        reqWsFileMsg.index = slice_idx;
+        ws_sync_conn->enqueue(net_message(reqWsFileMsg));
+
+        sync_check_timer->cancel();
+        sync_check_timer->expires_from_now(sync_timeout);
+        sync_check_timer->async_wait([this, index, slice_idx](boost::system::error_code ec) {
+            if(ec) return;
+
+            ilog("req slice ${slice_idx} timeout, peer ${p}", ("slice_idx", slice_idx)("p", m_conns[index]->peer_name()));
+            m_conns_ws_info.erase(m_conns_ws_info.begin() + index);
+            m_conns.erase(m_conns.begin() + index);
+            ws_sync_conn.reset();
+
+            //request the slice again
+            send_file_sync_req(slice_idx);
+        });
+    }
+
+    void sync_ws_manager::receive_file_sync_rsp(connection_ptr c, const FileTransferPacket &msg){
+        if (c != ws_sync_conn)
+            return;
+
+        sync_check_timer->cancel();
+        if(!ws_writer){
+            int i = 0;
+            for(; i < m_conns.size(); i++){
+                if(m_conns[i] == ws_sync_conn){
+                break;
+                }
+            }
+
+            if (i ==  m_conns.size()){
+                elog("Not find right connect");
+                return;
+            }
+            ws_writer = ws_file_manager.get_writer(m_conns_ws_info[i], 1024);
+            if (!ws_writer){
+                elog("ws_writer is nullptr");
+                sync_reset(error);
+                return;
+            }
+        }
+
+        if (msg.sliceId % 100 == 0)
+            ilog("receive_file_sync_rsp: ${id}", ("id", msg.sliceId));
+        ws_writer->write_data(msg.sliceId, msg.chunk, msg.chunkLen);
+        if(msg.endOfFile){
+            sync_ws_done();       
+        } else {
+            slice_num++;
+            send_file_sync_req(slice_num);
+        }
+    }
+
+    void sync_ws_manager::sync_ws_done(){
+        auto ret = ws_writer->is_valid();
+        ilog("FileTransferEnd is_valid: ${ret}", ("ret", ret));      
+        ws_writer.reset();
+
+        if(!ret){//require ws from other connection
+            for(int i = 0; i < m_conns.size(); i++){
+                if(m_conns[i] == ws_sync_conn){
+                m_conns_ws_info.erase(m_conns_ws_info.begin() + i);
+                m_conns.erase(m_conns.begin() + i);
+                ws_sync_conn.reset();
+                }
+            }
+
+            slice_num = 0;
+            send_file_sync_req(slice_num);         
+        } else {
+            sync_reset(success);
+        }
+    }
+
+    void sync_ws_manager::receive_ws_sync_req(connection_ptr c, const ReqLastWsInfoMsg &msg) {
+        ilog("recieved ReqLastWsInfoMsg,start to rsp");
+        auto infoList = ws_file_manager.get_local_ws_info();
+       
+        RspLastWsInfoMsg rspLastWsInfoMsg;
+        rspLastWsInfoMsg.info.block_height = 0; //default, no ws file
+
+        if(infoList.size() == 0) {
+            c->enqueue(net_message(rspLastWsInfoMsg));
+            return;
+        }     
+        
+        for(auto& it : infoList){
+            if(msg.chain_id != it.chain_id)
+                continue;
+
+            if (msg.block_height > 0 && msg.block_height == it.block_height){
+                rspLastWsInfoMsg.info = it;
+                break;
+            }
+
+            if (msg.block_height == 0) { //request lastest ws file
+                if (rspLastWsInfoMsg.info.block_height < it.block_height){
+                    rspLastWsInfoMsg.info = it;
+                }
+            } else {
+                if (msg.block_height == it.block_height){
+                    rspLastWsInfoMsg.info = it;
+                    break;
+                }
+            }
+        }
+            
+        c->enqueue(net_message(rspLastWsInfoMsg));
+    }
+
+    void sync_ws_manager::receive_file_sync_req(connection_ptr c, const ReqWsFileMsg &msg) {
+        ilog("recieved ReqWsFileMsg, ${msg}", ("msg", msg));
+        auto reader = ws_file_manager.get_reader(msg.info, msg.lenPerSlice);
+        if (!reader){
+            ilog("reader error ");
+            return;
+        }
+
+        bool isEof = false;
+        FileTransferPacket file_tp_msg;
+        
+        auto data = reader->get_data(msg.index, isEof);
+        if(data.size() <= 0){
+            ilog("reader error, no data ");
+            // TODO  send error to client
+            return;
+        }
+
+        file_tp_msg.sliceId = msg.index;
+        file_tp_msg.chunk = data;
+        file_tp_msg.chunkLen = data.size();
+        file_tp_msg.endOfFile = isEof;
+        c->enqueue(net_message(file_tp_msg));
+        ilog("");
+    }
 
     //------------------------------------------------------------------------
 
@@ -1114,84 +1422,20 @@ namespace ultrainio {
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqLastWsInfoMsg &msg) {
         ilog("recieved ReqLastWsInfoMsg,start to rsp");
-         // ws_manager file_manger(app().data_dir().string());
-         auto infoList = ws_manager.get_local_ws_info();
-         ilog("infoList size ${infoList}", ("infoList", infoList.size()));
-
-        RspLastWsInfoMsg rspLastWsInfoMsg;
-      //   rspLastWsInfoMsg.fileSeqNum = 1;
-      //   rspLastWsInfoMsg.fileName = "snapshotfile1.bin";
-      //   rspLastWsInfoMsg.fileSize = 1024;
-
-         if(infoList.size() > 0){
-            auto& tmp = infoList.front();
-            for(auto& it : infoList){
-               if(it.block_height > tmp.block_height)
-                  tmp = it;
-            }
-            rspLastWsInfoMsg.info = tmp;
-         } else {
-            rspLastWsInfoMsg.info.block_height = -1;
-         }
-            
-        c->enqueue(net_message(rspLastWsInfoMsg));
+        m_sync_ws_manager->receive_ws_sync_req(c, msg);
     }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const RspLastWsInfoMsg &msg) {
-         auto& info = msg.info;
-         if(info.block_height == -1){
-            ilog("RspLastWsInfoMsg: remote no ws");
-            return;
-         }
-
-         ilog("WsInfo msg: ${msg}", ("msg", info));
-         ws_writer = ws_manager.get_writer(info, 1024);
-         if(!ws_writer)
-            return;
-
-         ReqWsFileMsg reqWsFileMsg;
-         reqWsFileMsg.lenPerSlice = 1024;
-         reqWsFileMsg.info = info;
-         c->enqueue(net_message(reqWsFileMsg));
+         m_sync_ws_manager->receive_ws_sync_rsp(c, msg);
     }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqWsFileMsg &msg) {   
       ilog("recieved ReqWsFileMsg, ${msg}", ("msg", msg));
-      auto reader = ws_manager.get_reader(msg.info, msg.lenPerSlice);
-      if (!reader){
-         ilog("reader error ");
-         return;
-      }
-
-      int sliceId = 0;
-      bool isEof = false;
-      FileTransferPacket file_tp_msg;
-      while(!isEof){
-         auto data = reader->get_data(sliceId, isEof);
-         if(data.size() <= 0){
-            ilog("reader error, no data ");
-            break;
-         }
-
-         file_tp_msg.sliceId = sliceId;
-         file_tp_msg.chunk = data;
-         file_tp_msg.chunkLen = data.size();
-         file_tp_msg.endOfFile = isEof;
-         c->enqueue(net_message(file_tp_msg));
-         sliceId++;
-      }
-
-      // ilog("r");
-      reader->destory();
+      m_sync_ws_manager->receive_file_sync_req(c, msg);
     }
 
-    void sync_net_plugin_impl::handle_message(connection_ptr c, const FileTransferPacket &msg) {
-         ws_writer->write_data(msg.sliceId, msg.chunk, msg.chunkLen);
-         if(msg.endOfFile){
-               auto ret = ws_writer->is_valid();
-               ilog("FileTransferEnd is_valid: ${ret}", ("ret", ret));      
-               ws_writer->destory();        
-         }
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const FileTransferPacket &msg) {         
+         m_sync_ws_manager->receive_file_sync_rsp(c, msg);
     }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqTestTimeMsg &msg) {
@@ -1406,13 +1650,14 @@ namespace ultrainio {
       }
 
       my->start_monitors();
-      my->ws_manager.set_local_max_count(5);
+      my->m_sync_ws_manager->ws_file_manager.set_local_max_count(5);
       for( auto seed_node : my->supplied_peers ) {
          connect( seed_node );
       }
 
       if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
          logger = fc::get_logger_map()[logger_name];
+      
    }
 
    void sync_net_plugin::plugin_shutdown() {
@@ -1483,22 +1728,19 @@ namespace ultrainio {
       return result;
    }
 
-    string sync_net_plugin::require_ws(uint32_t height,string hash) {
-        ReqLastWsInfoMsg reqLastWsInfoMsg;
-        for (const auto& c : my->connections) {
-            if(c->current()) {
-                ilog ("send file_info_msg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
-                c->enqueue(net_message(reqLastWsInfoMsg));
-            }
-        }
-        return "start transfer file";
+    string sync_net_plugin::require_ws(const chain::ws_info& info) {
+        auto ret = my->m_sync_ws_manager->send_ws_sync_req(my->connections, info);
+        if (ret)
+            return "success";
+        else
+            return "fail";
     }
 
     string sync_net_plugin::sync_ws(const sync_wss_params& syncWssParams) {
-        ilog ("chain id : ${id}", ("id", syncWssParams.chainId));
-        for(const auto& host : syncWssParams.hosts){
-            ilog ("host : ${host}", ("host", host));
-        }
+        // ilog ("chain id : ${id}", ("id", syncWssParams.chainId));
+        // for(const auto& host : syncWssParams.hosts){
+        //     ilog ("host : ${host}", ("host", host));
+        // }
         return "get triger and hosts list";
     }
 
@@ -1540,7 +1782,7 @@ namespace ultrainio {
     }
 
    chain::ws_info sync_net_plugin::latest_wsinfo(){
-       auto node_list=my->ws_manager.get_local_ws_info();
+       auto node_list = my->m_sync_ws_manager->ws_file_manager.get_local_ws_info();
        if (node_list.empty()) {
            return chain::ws_info{};
        }

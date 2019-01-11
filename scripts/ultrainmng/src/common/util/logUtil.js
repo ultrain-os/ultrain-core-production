@@ -1,4 +1,4 @@
-var logger = require("../../config/logConfig");
+var logger = require("../../config/logConfig").getLogger("U3");
 
 
 /**

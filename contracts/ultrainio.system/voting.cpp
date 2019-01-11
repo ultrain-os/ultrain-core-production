@@ -41,9 +41,7 @@ namespace ultrainiosystem {
       require_auth( producer );
 
       auto prod = _producers.find( producer );
-      uint64_t curblocknum = (uint64_t)tapos_block_num();
       if( prod != _producers.end() ) {
-         ultrainio_assert( (curblocknum - prod->last_operate_blocknum) > 2 , "interval operate at least more than certain number block high" );
          //if location changes
          if(prod->is_enabled && prod->location != location) {
              ultrainio_assert(!prod->is_in_pending_queue(), "cannot move producers in pending queue");
@@ -71,7 +69,6 @@ namespace ultrainiosystem {
                info.is_active    = true;
                info.url          = url;
                info.location     = location;
-               info.last_operate_blocknum = curblocknum;
          });
       } else {
          _producers.emplace( producer, [&]( producer_info& info ){
@@ -82,9 +79,10 @@ namespace ultrainiosystem {
                info.is_enabled    = false;
                info.url           = url;
                info.location      = location;
-               info.last_operate_blocknum = curblocknum;
          });
       }
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {producer,N(active)},
+         { producer, N(utrio.fee), asset(50000), std::string("regproducer") } );
    }
 
    void system_contract::unregprod( const account_name producer ) {
@@ -94,7 +92,7 @@ namespace ultrainiosystem {
       uint64_t curblocknum = (uint64_t)tapos_block_num();
       print("unregprod tapos_block_num:",curblocknum," prod->last_operate_blocknum:",prod.last_operate_blocknum);
 
-      ultrainio_assert( (curblocknum - prod.last_operate_blocknum) > 2 , "interval operate at least more than certain number block high" );
+      ultrainio_assert( (curblocknum - prod.last_operate_blocknum) > 2 , "interval operate at least more than two number block high" );
       _producers.modify( prod, 0, [&]( producer_info& info ){
             info.deactivate();
             info.is_enabled = false;

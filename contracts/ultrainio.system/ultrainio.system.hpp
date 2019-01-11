@@ -62,13 +62,23 @@ namespace ultrainiosystem {
       uint16_t             total_resources_staked = 0;
       uint64_t             defer_trx_nextid = 0;
       time                 last_check_resexpiretime = 0;
+      time                 last_vote_expiretime = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
                                 (max_ram_size)(min_activated_stake)(min_committee_member)(min_committee_member_number)
                                 (total_ram_bytes_reserved)(total_ram_stake)(start_block)(last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
-                                (total_producer_vote_weight)(last_name_close)(max_resources_size)(total_resources_staked)(defer_trx_nextid)(last_check_resexpiretime) )
+                                (total_producer_vote_weight)(last_name_close)(max_resources_size)(total_resources_staked)(defer_trx_nextid)(last_check_resexpiretime)(last_vote_expiretime) )
+   };
+
+   struct chain_resource {
+       uint16_t             max_resources_size = 10000;
+       uint16_t             total_resources_staked = 0;
+       uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
+       uint64_t             total_ram_bytes_reserved = 0;
+
+       ULTRAINLIB_SERIALIZE(chain_resource, (max_resources_size)(total_resources_staked)(max_ram_size)(total_ram_bytes_reserved) )
    };
 
    struct role_base {
@@ -134,6 +144,18 @@ namespace ultrainiosystem {
 
    typedef ultrainio::singleton<N(pendingque), std::vector<role_base>> pending_queue_singleton;
 
+   struct chaintype {
+       uint16_t id;
+       uint32_t min_producers;
+       uint32_t max_producers;
+       uint16_t consensus_period;
+
+       auto primary_key() const { return uint64_t(id); }
+
+       ULTRAINLIB_SERIALIZE(chaintype, (id)(min_producers)(max_producers)(consensus_period) );
+   };
+   typedef ultrainio::multi_index< N(chaintype), chaintype > chaintypes_table;
+
    struct user_info {
       account_name      user_name;
       std::string       owner_key;
@@ -142,22 +164,27 @@ namespace ultrainiosystem {
       uint32_t          block_num; ////block num in master chain when this info added
    };
 
-   struct changed_committee {
-       std::vector<role_base> deprecated_members;
+   struct changing_committee {
+       std::vector<role_base> removed_members;
        std::vector<role_base> new_added_members;
-       uint32_t               block_num = 0;  //block num of master chain when this change was comfirmed,
-                                              //0 indicate all changed info has not bee confirmed.
+   };
+
+   struct updated_committee {
+       std::vector<role_base>    deprecated_committee;
+       std::vector<account_name> unactivated_committee;
+       uint32_t                  take_effect_at_block; //block num of master chain when the committee update takes effect
    };
 
    struct subchain {
        uint64_t                  chain_name;
        uint16_t                  chain_type;
+       time                      genesis_time;
+       chain_resource            global_resource;
        bool                      is_active;
        bool                      is_synced;
        std::vector<role_base>    committee_members;
-       std::vector<role_base>    deprecated_committee;
-       std::vector<account_name> unactivated_committee;
-       changed_committee         changed_info;
+       updated_committee         updated_info;
+       changing_committee        changing_info;
        block_id_type             head_block_id;
        uint32_t                  head_block_num;
        std::vector<user_info>    users;
@@ -169,12 +196,11 @@ namespace ultrainiosystem {
 
        auto primary_key()const { return chain_name; }
 
-       uint32_t get_subchain_min_miner_num() const { return chain_type == 1 ? 10 : 7;}
-       uint32_t get_subchain_max_miner_num() const {return chain_type == 2 ? 12 : 10000;}
+       uint32_t get_subchain_min_miner_num() const { return chain_type == 1 ? 20 : 5;}
+       uint32_t get_subchain_max_miner_num() const {return chain_type == 1 ? 1000 : 20;}
 
-       ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(is_active)(is_synced)(committee_members)(deprecated_committee)
-                                      (unactivated_committee)(changed_info)(head_block_id)(head_block_num)(users) )
-                                      //(chain_id)(genesis_info)(network_topology)(relayer_candidates)(relayer_list) )
+       ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_active)(is_synced)(committee_members)
+                                      (updated_info)(changing_info)(head_block_id)(head_block_num)(users) )
    };
    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
 
@@ -218,7 +244,6 @@ namespace ultrainiosystem {
          rammarket                _rammarket;
          pending_queue_singleton  _pending_que;
          subchains_table          _subchains;
-         resources_lease_table    _reslease_tbl;
          pendingminers            _pendingminer;
          pendingaccounts          _pendingaccount;
          pendingresource          _pendingres;
@@ -234,7 +259,7 @@ namespace ultrainiosystem {
          // functions defined in delegate_bandwidth.cpp
 
          void resourcelease( account_name from, account_name receiver,
-                          int64_t combosize, int64_t days, uint64_t location = 0);
+                          int64_t combosize, int64_t days, uint64_t location = master_chain_name);
          /**
           *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'.
           *  If transfer == true, then 'receiver' can unstake to their account
@@ -310,7 +335,7 @@ namespace ultrainiosystem {
 
          void add_subchain_account(const ultrainio::proposeaccount_info& newacc );
         // functions defined in scheduler.cpp
-         void regsubchain(uint64_t chain_name, uint16_t chain_type);
+         void regsubchain(uint64_t chain_name, uint16_t chain_type, time genesis_time);
 
          void acceptheader (uint64_t chain_name,
                             const std::vector<ultrainio::block_header>& headers);
@@ -327,6 +352,7 @@ namespace ultrainiosystem {
                                uint32_t relayer_deposit,
                                const std::string& ip,
                                uint64_t chain_name); */
+         void regchaintype(uint16_t type_id, uint32_t min_producer_num, uint32_t max_producer_num, uint16_t consensus_period);
 
          void votecommittee();
 
@@ -366,6 +392,12 @@ namespace ultrainiosystem {
          void getKeydata(const std::string& pubkey,std::array<char,33> & data);
 
          void checkresexpire();
+
+         void cleanvotetable();
+
+         chaintype get_subchain_basic_info(uint16_t chain_type) const;
+
+         void syncresource(account_name receiver, int64_t combosize, time endtime);
    };
 
 } /// ultrainiosystem

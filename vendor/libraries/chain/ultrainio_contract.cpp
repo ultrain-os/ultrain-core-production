@@ -118,11 +118,11 @@ void apply_ultrainio_newaccount(apply_context& context) {
    context.control.get_mutable_resource_limits_manager().initialize_account(create.name);
 
    int64_t ram_delta = config::overhead_per_account_ram_bytes;
-   //ram_delta += 2*config::billable_size_v<permission_object>;
-   //ram_delta += owner_permission.auth.get_billable_size();
-   //ram_delta += active_permission.auth.get_billable_size();
+   ram_delta += 2*config::billable_size_v<permission_object>;
+   ram_delta += owner_permission.auth.get_billable_size();
+   ram_delta += active_permission.auth.get_billable_size();
 
-   context.trx_context.add_ram_usage(create.name, ram_delta);
+   context.trx_context.add_ram_usage(create.creator, ram_delta);
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
@@ -271,13 +271,13 @@ void apply_ultrainio_updateauth(apply_context& context) {
 
       int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
-      context.trx_context.add_ram_usage( permission->owner, new_size - old_size );
+      context.trx_context.add_ram_usage( config::system_account_name, new_size - old_size );//permission->owner
    } else {
       const auto& p = authorization.create_permission( update.account, update.permission, parent_id, update.auth );
 
       int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size());
 
-      context.trx_context.add_ram_usage( update.account, new_size );
+      context.trx_context.add_ram_usage( config::system_account_name, new_size );//system_account_name  update.account
    }
 }
 
@@ -308,7 +308,7 @@ void apply_ultrainio_deleteauth(apply_context& context) {
 
    authorization.remove_permission( permission );
 
-   context.trx_context.add_ram_usage( remove.account, -old_size );
+   context.trx_context.add_ram_usage( config::system_account_name, -old_size ); //remove.account
 
 }
 

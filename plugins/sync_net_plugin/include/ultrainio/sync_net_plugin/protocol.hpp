@@ -137,7 +137,8 @@ namespace ultrainio {
        const unsigned long MAX_PACKET_DATA_LENGTH		=	1024 * 1024;
 
        struct ReqLastWsInfoMsg {
-           uint32_t seqNum;
+            fc::sha256 chain_id;
+            uint32_t block_height; 
        };
 
        struct RspLastWsInfoMsg
@@ -149,22 +150,20 @@ namespace ultrainio {
            ultrainio::chain::ws_info info;
        };
 
-       struct ReqWsFileMsg {
-        //    uint32_t fileSeqNum;
-           uint32_t lenPerSlice;
-           ultrainio::chain::ws_info info;
-       };
+        struct ReqWsFileMsg {
+            uint32_t lenPerSlice;
+            uint32_t index;
+            ultrainio::chain::ws_info info;
+        };
 
-       struct FileTransferPacket
-       {
-        //    unsigned long    chunkSeq;
-           unsigned long    chunkLen;
-           std::string      chunkHashString;
-           uint32_t sliceId;
-           bool endOfFile = false;
-        //    std::array<char, MAX_PACKET_DATA_LENGTH>    chunk;
+        struct FileTransferPacket
+        {
+            unsigned long    chunkLen;
+            std::string      chunkHashString;
+            uint32_t sliceId;
+            bool endOfFile = false;
             std::vector<char> chunk;
-       };
+        };
 
        struct TimeInfo{
            tstamp reqTime;
@@ -199,9 +198,9 @@ FC_REFLECT( ultrainio::wss::handshake_message,
             (os)(agent)(generation) )
 FC_REFLECT( ultrainio::wss::go_away_message, (reason)(node_id) )
 FC_REFLECT( ultrainio::wss::time_message, (org)(rec)(xmt)(dst) )
-FC_REFLECT( ultrainio::wss::ReqLastWsInfoMsg, (seqNum) )
+FC_REFLECT( ultrainio::wss::ReqLastWsInfoMsg, (chain_id)(block_height) )
 FC_REFLECT( ultrainio::wss::RspLastWsInfoMsg, (info) )
-FC_REFLECT( ultrainio::wss::ReqWsFileMsg, (lenPerSlice)(info) )
+FC_REFLECT( ultrainio::wss::ReqWsFileMsg, (lenPerSlice)(index)(info) )
 FC_REFLECT( ultrainio::wss::FileTransferPacket, (chunkLen)(chunkHashString)(sliceId)(endOfFile)(chunk) )
 FC_REFLECT( ultrainio::wss::TimeInfo, (reqTime)(rspTime) )
 FC_REFLECT( ultrainio::wss::ReqTestTimeMsg, (timeInfo)(chunk) )

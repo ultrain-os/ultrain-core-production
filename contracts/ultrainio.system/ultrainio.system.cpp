@@ -18,7 +18,6 @@ namespace ultrainiosystem {
     _rammarket(_self,_self),
     _pending_que(_self, _self),
     _subchains(_self,_self),
-    _reslease_tbl( _self,_self ),
     _pendingminer( _self, _self ),
     _pendingaccount( _self, _self ),
     _pendingres( _self, _self ) {
@@ -411,7 +410,7 @@ void system_contract::voteresourcelease() {
             {
                if((resinfo.account == (*pendingiter).proposal_resource[i].account) &&
                   (resinfo.lease_num == (*pendingiter).proposal_resource[i].lease_num)  &&
-                  (resinfo.days == (*pendingiter).proposal_resource[i].days)  &&
+                  (resinfo.end_time == (*pendingiter).proposal_resource[i].end_time)  &&
                   (resinfo.location == (*pendingiter).proposal_resource[i].location) ){
                   curproposeresnum = (int32_t)i;
                   break;
@@ -425,8 +424,7 @@ void system_contract::voteresourcelease() {
                });
 
                if((*pendingiter).proposal_resource[(uint32_t)curproposeresnum].approve_num > enableprodnum*2/3){
-                  INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                  { N(ultrainio),resinfo.account,resinfo.lease_num, resinfo.days,0} );
+                  syncresource(resinfo.account, resinfo.lease_num, resinfo.end_time);
                   _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
                      p.provided_approvals.clear();
                      p.proposal_resource.clear();
@@ -447,6 +445,68 @@ void system_contract::voteresourcelease() {
                p.proposal_resource.push_back(resinfo);
             });
          }
+      }
+   }
+
+   void system_contract::cleanvotetable(){
+      time curtime = now();
+      if(_gstate.last_vote_expiretime == 0)
+         _gstate.last_vote_expiretime = now();
+      if(_gstate.last_vote_expiretime < curtime && (curtime - _gstate.last_vote_expiretime) >= seconds_per_halfhour){
+         _gstate.last_vote_expiretime = curtime;
+         uint64_t starttime = current_time();
+         //clean vote pendingminer expire
+         for(auto mineriter = _pendingminer.begin(); mineriter != _pendingminer.end(); ){
+            _pendingminer.modify( mineriter, 0, [&]( auto& p ) {
+               for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
+                  if((curtime - itr->last_vote_time) > seconds_per_halfhour){
+                     itr = p.provided_approvals.erase(itr);
+                  }else
+                     ++itr;
+               }
+            });
+            print("cleanvotetable _pendingminer name:",name{mineriter->owner}, " approversize::",mineriter->provided_approvals.size()," curtime:",curtime);
+            if(mineriter->provided_approvals.size() == 0){
+               mineriter = _pendingminer.erase(mineriter);
+            }else
+               ++mineriter;
+         }
+
+         //clean vote _pendingaccount expire
+         for(auto acciter = _pendingaccount.begin(); acciter != _pendingaccount.end(); ){
+            _pendingaccount.modify( acciter, 0, [&]( auto& p ) {
+               for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
+                  if((curtime - itr->last_vote_time) > seconds_per_halfhour){
+                     itr = p.provided_approvals.erase(itr);
+                  }else
+                     ++itr;
+               }
+            });
+            print("cleanvotetable _pendingaccount name:",name{acciter->owner}, " approversize::",acciter->provided_approvals.size()," curtime:",curtime);
+            if(acciter->provided_approvals.size() == 0){
+               acciter = _pendingaccount.erase(acciter);
+            }else
+               ++acciter;
+         }
+
+         //clean vote _pendingres expire
+         for(auto resiter = _pendingres.begin(); resiter != _pendingres.end(); ){
+            _pendingres.modify( resiter, 0, [&]( auto& p ) {
+               for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
+                  if((curtime - itr->last_vote_time) > seconds_per_halfhour){
+                     itr = p.provided_approvals.erase(itr);
+                  }else
+                     ++itr;
+               }
+            });
+            print("cleanvotetable _pendingres name:",name{resiter->owner}, " approversize::",resiter->provided_approvals.size()," curtime:",curtime);
+            if(resiter->provided_approvals.size() == 0){
+               resiter = _pendingres.erase(resiter);
+            }else
+               ++resiter;
+         }
+         uint64_t endtime = current_time();
+         print("cleanvotetable expend time:",(endtime - starttime));
       }
    }
    /**
@@ -495,6 +555,13 @@ void system_contract::voteresourcelease() {
 
       set_resource_limits( newact, 0, 0, 0 );
    }
+   void native::updateauth( account_name     account/*,
+                  permission_name  permission,
+                  permission_name  parent,
+                  const authority& data*/ ){
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {account,N(active)},
+            { account, N(utrio.fee), asset(10000), std::string("update auth") } );
+      }
 
    void native::deletetable( account_name code ) {
       require_auth(_self);

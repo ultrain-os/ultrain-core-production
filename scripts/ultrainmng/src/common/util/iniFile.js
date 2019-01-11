@@ -1,6 +1,6 @@
 var fs = require('fs');
 var ini = require('ini');
-var logger = require("../../config/logConfig");
+var logger = require("../../config/logConfig").getLogger("IniFile");
 const utils = require("./utils")
 
 /**

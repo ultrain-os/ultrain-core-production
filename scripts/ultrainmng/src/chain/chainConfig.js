@@ -8,11 +8,12 @@ const {createU3, format} = U3;
 /**
  * 日志信息
  */
-var logger = require("../config/logConfig");
+var logger = require("../config/logConfig").getLogger("ChainConfig");
 var logUtil = require("../common/util/logUtil")
 var constant = require("../common/constant/constants")
 var utils = require("../common/util/utils");
 var chainApi = require("./chainApi")
+var sleep = require("sleep")
 
 /**
  * 主侧链相关配置
@@ -25,14 +26,17 @@ class ChainConfig {
 ChainConfig.configPath = path.join(__dirname, "../../config.ini");
 
 //localtest
-ChainConfig.localtest = false;
+ChainConfig.localTest = false;
 
 //chain_name
-ChainConfig.chain_name = "";
+ChainConfig.chainName = "";
+//main chain id
+ChainConfig.mainChain
 //节点登录的委员会用户信息
 ChainConfig.myAccountAsCommittee="";
 //委员会私钥
 ChainConfig.mySkAsCommittee="";
+
 
 //主链配置
 ChainConfig.config = {
@@ -83,14 +87,10 @@ ChainConfig.configSub = {
 };
 
 /**
- * 根据官网数据获取主网ip地址
- * @returns {Promise<*>}
+ * 主链和子链的u3对象
  */
-async function getRemoteIpAddress(url) {
-    const rs = await axios.get(url);
-    return rs.data;
-}
-
+ChainConfig.u3 = {};
+ChainConfig.u3Sub = {};
 
 //配置同步
 ChainConfig.syncConfig = async function () {
@@ -108,7 +108,7 @@ ChainConfig.syncConfig = async function () {
         logger.debug('configIniTarget(nodultrain)=', configIniTarget);
 
         //获取主链请求的http地址-默认使用
-        const ip = await getRemoteIpAddress(configIniLocal.url);
+        const ip = await chainApi.getRemoteIpAddress(configIniLocal.url);
         logger.debug('getRemoteIpAddress=', ip);
         this.config.httpEndpoint = `${configIniLocal.prefix}${ip}${configIniLocal.endpoint}`;
 
@@ -119,10 +119,10 @@ ChainConfig.syncConfig = async function () {
          * 获取配置中localtest配置
          */
         if (utils.isNotNull(configIniLocal["localtest"])) {
-            this.localtest = configIniLocal["localtest"];
+            this.localTest = configIniLocal["localtest"];
         }
 
-        logger.debug("env: (localtest:" + this.localtest + ")");
+        logger.debug("env: (localtest:" + this.localTest + ")");
 
         /**
          * 通过nodultrain的配置信息获取主子链的用户信息
@@ -135,14 +135,14 @@ ChainConfig.syncConfig = async function () {
         /**
          * 如果localtest为true，表明当前是本地测试状态，更新主链url等信息
          */
-        if (this.localtest) {
+        if (this.localTest) {
             if (utils.isNotNull(configIniLocal["mainchainHttpEndpoint"])) {
                 logger.debug("local mainchain httpEndpoint is enabled :" + configIniLocal["mainchainHttpEndpoint"]);
                 this.config.httpEndpoint = configIniLocal["mainchainHttpEndpoint"];
             }
             // config.httpEndpoint = "http://172.16.10.4:8877";
             if (utils.isNotNull(configIniLocal["chain_name"])) {
-                this.chain_name = configIniLocal["chain_name"];
+                this.chainName = configIniLocal["chain_name"];
             }
             /**
              * 账号信息需要同时否不为空才进行替换
@@ -167,18 +167,73 @@ ChainConfig.syncConfig = async function () {
 
         }
 
+        logger.debug("init u3 and u3Sub from config");
+        this.u3 = createU3({...this.config, sign: true, broadcast: true});
+        this.u3Sub = createU3({...this.configSub, sign: true, broadcast: true});
+
         logger.debug("finish init config file");
+
+        return true;
 
     } catch
         (e) {
         logger.error("sync chain config error: ", e);
+    }
+
+    return false;
+}
+
+/**
+ * 检查链的配置已经初始化成功了
+ */
+ChainConfig.isReady = function () {
+
+    //链信息查询
+    if (utils.isNull(this.chainName)) {
+        logger.error("chainconfig chain info is null");
+        return false;
+    }
+
+    //校验主子链的id
+    if (!utils.isAllNotNull(this.config.chainId,this.configSub.chainId)) {
+        logger.error("chainconfig chainId & subChainId  is null");
+        return false;
+    }
+
+    //用户信息为空
+    if (!utils.isAllNotNull(this.myAccountAsCommittee,this.mySkAsCommittee)) {
+        logger.error("chainconfig user account is null");
+        return false;
+    }
+
+    /**
+     * u3 object
+     */
+    if (!utils.isAllNotNull(this.u3,this.u3Sub)) {
+        logger.error("chainconfig u3 && u3Sub is not ready");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * 轮询保证配置已经同步了
+ * @returns {Promise<void>}
+ */
+ChainConfig.waitSyncConfig = async function () {
+    await this.syncConfig();
+    while (!this.isReady()) {
+        sleep.msleep(1000*5);
+        await this.syncConfig();
+        logger.info("wait 1 min to check")
     }
 }
 
 //打出信息
 ChainConfig.printInfo = function () {
     logger.info("====chain config====");
-    logger.info("localtest:" + this.localtest)
+    logger.info("localtest:" + this.localTest)
     logger.info("myAccountAsCommittee:" + this.myAccountAsCommittee)
     logger.info("mySkAsCommittee:" + this.mySkAsCommittee)
 

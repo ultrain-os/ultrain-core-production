@@ -14,6 +14,7 @@
 #include <ultrainio/chain/transaction.hpp>
 #include <ultrainio/chain/abi_serializer.hpp>
 #include <ultrainio/chain/plugin_interface.hpp>
+#include <ultrainio/chain/ultrainio_object.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/algorithm/string.hpp>
@@ -293,7 +294,7 @@ public:
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
    struct get_subchain_committee_params {
-      uint64_t         chain_name;  //todo, will change it to name type later
+      uint64_t         chain_name;
    };
 
    struct get_subchain_committee_result {
@@ -302,6 +303,9 @@ public:
    };
 
    vector<get_subchain_committee_result> get_subchain_committee(const get_subchain_committee_params& p) const;
+
+   using get_subchain_resource_params = get_subchain_committee_params;
+   std::vector<ultrainio::chain::resources_lease> get_subchain_resource(const get_subchain_resource_params& p) const;
 
    using get_subchain_block_num_params = get_subchain_committee_params;
    uint32_t get_subchain_block_num(const get_subchain_block_num_params& p) const;
@@ -319,6 +323,7 @@ public:
 
    struct get_producer_info_result {
        uint64_t      location;
+       std::string   chain_id;
        uint64_t      from_location;
        uint32_t      quit_before_num;
    };
@@ -486,6 +491,15 @@ public:
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       if (t_id != nullptr) {
          const auto& idx = d.get_index<IndexType, chain::by_scope_primary>();
+         if(!p.table_key.empty()){
+            auto it = idx.find(boost::make_tuple( t_id->id, name(p.table_key) ));
+            if ( it != idx.end() ) {
+                vector<char> data;
+                copy_inline_row(*it, data);
+                result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, abi_serializer_max_time));
+            }
+            return result;
+         }
          decltype(t_id->id) next_tid(t_id->id._id + 1);
          auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
          auto upper = idx.lower_bound(boost::make_tuple(next_tid));
@@ -645,7 +659,7 @@ FC_REFLECT(ultrainio::chain_apis::read_only::get_block_header_state_params, (blo
 
 FC_REFLECT( ultrainio::chain_apis::read_write::push_tx_results, (transaction_id)(processed) )
 
-FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_result, (rows)(more) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit) )
@@ -659,7 +673,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_params, (ch
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_ws_hash_params, (chain_name)(height) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(from_location)(quit_before_num) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(from_location)(quit_before_num) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
