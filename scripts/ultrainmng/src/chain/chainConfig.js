@@ -29,7 +29,7 @@ ChainConfig.configPath = path.join(__dirname, "../../config.ini");
 ChainConfig.localTest = false;
 
 //chain_name
-ChainConfig.chainName = "";
+ChainConfig.chainName = "11";
 //main chain id
 ChainConfig.mainChain
 //节点登录的委员会用户信息
@@ -101,11 +101,11 @@ ChainConfig.syncConfig = async function () {
          * 读取管家程序自己的config文件来读取
          */
         var configIniLocal = ini.parse(fs.readFileSync(this.configPath, constant.encodingConstants.UTF8));
-        logger.debug('configIniLocal=', configIniLocal);
+        //logger.debug('configIniLocal=', configIniLocal);
 
         //读取nodultrain程序中的config.ini
         var configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path, constant.encodingConstants.UTF8));
-        logger.debug('configIniTarget(nodultrain)=', configIniTarget);
+        //logger.debug('configIniTarget(nodultrain)=', configIniTarget);
 
         //获取主链请求的http地址-默认使用
         const ip = await chainApi.getRemoteIpAddress(configIniLocal.url);

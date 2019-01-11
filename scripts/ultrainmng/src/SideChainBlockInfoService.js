@@ -9,6 +9,7 @@ const schedule = require('node-schedule');
 const {createU3, format} = U3;
 const utils = require("./common/util/utils")
 
+
 /**
  * 全局变量定义
  * @type {string}
@@ -27,7 +28,7 @@ var localtest = false;
 /**
  * 日志信息
  */
-var logger = require("./config/logConfig");
+var logger = require("./config/logConfig").getLogger("SideChainBlockInfoService");
 var logUtil = require("./common/util/logUtil")
 
 var config = {
@@ -283,7 +284,8 @@ function buildCommittee(resultJson, jsonArray, add, result) {
                     public_key: resultJson[i].miner_pk,
                     url: "https://user.115.com",
                     location: 0,
-                    adddel_miner: add
+                    adddel_miner: add,
+                    approve_num : 0
                 });
                 continue;
             }
@@ -308,7 +310,8 @@ function buildCommittee(resultJson, jsonArray, add, result) {
                 public_key: resultJson[i].miner_pk,
                 url: "https://user.115.com",
                 location: 0,
-                adddel_miner: add
+                adddel_miner: add,
+                approve_num : 0
             });
         }
     }
@@ -426,6 +429,11 @@ async function voteAccount(results) {
     logger.debug("=======voteAccount params=", results);
     logger.debug("=======voteAccount info=", infos);
 
+
+    if (infos.length == 0) {
+        infos = [{owner:"user.122",owner_pk:"UTR7FLuM19CdCppghCjeswxPWAQxQj2LZnrKsCNwoXmi1GBwwrHUU",active_pk:"UTR7FLuM19CdCppghCjeswxPWAQxQj2LZnrKsCNwoXmi1GBwwrHUU",issue_date:'2019-01-11T03:33:10.000'}];
+    }
+
     for (var i in infos) {
         var info = infos[i];
 
@@ -435,7 +443,9 @@ async function voteAccount(results) {
                 account: info.owner,
                 owner_key: info.owner_pk,
                 active_key: info.active_pk,
-                location: 0
+                location: 0,
+                approve_num : 0,
+                updateable:1
             }]
         };
 
@@ -469,9 +479,10 @@ async function scheduleCronstyle() {
         logger.debug('scheduleCronstyle:' + new Date());
 
         try {
-            getBlocks();
 
-            getSubchainCommittee();
+            //getBlocks();
+
+            //getSubchainCommittee();
 
             voteAccount();
 

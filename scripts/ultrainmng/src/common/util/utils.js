@@ -9,6 +9,22 @@ function isNull(data) {
 }
 
 /**
+ * 判断是否为空
+ * @param data
+ * @returns {boolean}
+ */
+function isNullList(data) {
+    if (isNull(data)) {
+        return true;
+    }
+
+    if (data.length ==0) {
+        return true;
+    }
+    return false;
+}
+
+/**
  * 判断是否不为空
  * @param data
  * @returns {boolean}
@@ -66,5 +82,6 @@ module.exports = {
     isNotNull,
     isAllNull,
     isAllNotNull,
-    logNetworkError
+    logNetworkError,
+    isNullList
 }

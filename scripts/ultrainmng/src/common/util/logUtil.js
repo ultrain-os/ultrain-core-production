@@ -7,14 +7,14 @@ var logger = require("../../config/logConfig").getLogger("U3");
  */
 const loggerUtil = {
     log: function () {
-            logger.info(arguments);
+           // logger.info(arguments);
     },
     error: function () {
         logger.error(arguments);
 
     },
     debug: function () {
-            logger.debug(arguments);
+            //logger.debug(arguments);
     }
 }
 

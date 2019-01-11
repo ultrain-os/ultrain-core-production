@@ -42,11 +42,35 @@ var contractConstants = {
     ULTRAINIO : "ultrainio"
 }
 
+//action常量
+var actionConstants = {
+    VOTE_ACCOUNT : "voteaccount", //用户投票
+    VOTE_RESOURCE_LEASE : "voteresourcelease", //资源投票
+
+}
+
+//表常量
+var tableConstants = {
+    RESOURCE_LEASE : "reslease",//用户资源表，
+    PENDING_MINER:"pendingminer",//委员会投票表
+    PENDING_ACCOUNT:"pendingacc",//账户投票表
+    PENDING_RES:"pendingres" //资源投票表
+}
+
+//scode常量
+var scopeConstants = {
+    SCOPE_MAIN_CHAIN : 0,//主链scope
+}
+
+
 
 module.exports = {
     cmdConstants,
     encodingConstants,
     chainNameConstants,
     timeConstats,
-    contractConstants
+    contractConstants,
+    tableConstants,
+    actionConstants,
+    scopeConstants
 }

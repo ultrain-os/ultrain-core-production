@@ -44,7 +44,7 @@ const getSubChainId = async (configSub) => {
 const getChainName = async function initChainName(u3, user) {
 
     let result = await u3.getProducerInfo({"owner": user});
-    logger.debug(result);
+    //logger.debug(result);
     return result.location;
 
 }
@@ -56,6 +56,23 @@ const getChainName = async function initChainName(u3, user) {
 async function getRemoteIpAddress(url) {
     const rs = await axios.get(url);
     return rs.data;
+}
+
+/**
+ * 获取账号
+ * @param config
+ * @param accountName
+ * @returns {Promise<null>}
+ */
+async function getAccount(config, accountName) {
+    try {
+        const rs = await axios.post(config.httpEndpoint + "/v1/chain/get_account_info", {"account_name": accountName});
+        return rs.data;
+    } catch (e) {
+        //logger.error("getAccount("+accountName+") error",e);
+    }
+    return null;
+
 }
 
 /**
@@ -79,7 +96,7 @@ async function getProducerLists(configSub) {
         }
     }
 
-    logger.debug("getProducerLists result=", result);
+    //logger.debug("getProducerLists result=", result);
     return result;
 }
 
@@ -93,13 +110,15 @@ async function getProducerLists(configSub) {
  * @param privateKey
  * @returns {Promise<void>}
  */
-async function contractInteract(u3, contractName, actionName, params, accountName) {
+async function contractInteract(config, contractName, actionName, params, accountName, privateKey) {
     try {
-        // const keyProvider = [privateKey];
-        // const u3 = createU3({...config, keyProvider});
+
+         logger.error("contractInteract",privateKey);
+         const keyProvider = [privateKey];
+         const u3 = createU3({...config, keyProvider});
 
         const contract = await u3.contract(contractName);
-        logger.debug("contract=", JSON.stringify(contract.fc.abi.structs));
+        //logger.debug("contract=", JSON.stringify(contract.fc.abi.structs));
         if (!contract) {
             throw new Error("can't found contract");
         }
@@ -107,13 +126,15 @@ async function contractInteract(u3, contractName, actionName, params, accountNam
             throw new Error("action doesn't exist");
         }
         const data = await contract[actionName](params, {
-            authorization: [`${accountName}@active`],
+             authorization: [`${accountName}@active`],
         });
         logger.debug('contractInteract success :', actionName);
+        return data;
     } catch (err) {
         logger.debug('contractInteract error :', actionName);
         logger.error('contractInteract error :', err);
     }
+    return null;
 }
 
 
@@ -125,7 +146,7 @@ getUserBulletin = async (u3, chain_name) => {
     try {
         return await u3.getUserBulletin({"chain_name": parseInt(chain_name, 10)});
     } catch (e) {
-        logger.error("get user bulletin error :", e);
+        logger.error("get user bulletin error :", e.code);
     }
 
     return null;
@@ -145,16 +166,69 @@ getChainSeedIP = async (chain) => {
  * 根据链id获取链已上传的ws的height和hash
  * @returns {Promise<void>}
  */
-getSubchainWSHash = async (config,chainName) => {
+getSubchainWSHash = async (config, chainName) => {
     try {
         const params = {"chainName": chainName, "height": "0"};
         return await axios.post(config.httpEndpoint + "/v1/chain/get_subchain_ws_hash", params);
     } catch (e) {
-        logger.error("getSubchainWSHash error:",e);
+        logger.error("getSubchainWSHash error:", e);
     }
 
     return null;
 }
+
+/**
+ * 获取表数据
+ * @param config
+ * @param code
+ * @param scope
+ * @param table
+ * @param limit
+ * @param table_key
+ * @param lower_bound
+ * @param upper_bound
+ * @returns {Promise<*>}
+ */
+getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound, upper_bound) => {
+    try {
+        const params = {"code":code,"scope":scope,"table":table,"json":true};
+        logger.debug(params);
+        if (utils.isNotNull(limit)) {
+            params.limit = limit;
+        }
+        if (utils.isNotNull(table_key)) {
+            params.table_key = table_key;
+        }
+        if (utils.isNotNull(lower_bound)) {
+            params.lower_bound = lower_bound;
+        }
+        if (utils.isNotNull(upper_bound)) {
+            params.upper_bound = upper_bound;
+        }
+        let res =  await axios.post(config.httpEndpoint + "/v1/chain/get_table_records", params);
+        // logger.debug(res);
+        return res.data;
+    } catch (e) {
+        logger.error("get_table_records error:", e);
+    }
+
+    return null;
+}
+
+/**
+ * 获取全表数据
+ * @param config
+ * @param code
+ * @param scope
+ * @param table
+ * @returns {Promise<*>}
+ */
+getTableAllData = async (config, code, scope, table) => {
+    return await getTableInfo(config, code, scope, table,1000,null,null,null);
+}
+
+
+
 
 module.exports = {
     getMainChainId,
@@ -163,5 +237,8 @@ module.exports = {
     getRemoteIpAddress,
     getProducerLists,
     contractInteract,
-    getUserBulletin
+    getUserBulletin,
+    getAccount,
+    getTableInfo,
+    getTableAllData
 }

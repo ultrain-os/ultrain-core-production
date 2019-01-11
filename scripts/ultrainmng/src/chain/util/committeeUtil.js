@@ -38,7 +38,8 @@ function buildCommittee(resultJson, jsonArray, add, result) {
                     public_key: resultJson[i].miner_pk,
                     url: "https://user.115.com",
                     location: 0,
-                    adddel_miner: add
+                    adddel_miner: add,
+                    approve_num : 0
                 });
                 continue;
             }
@@ -63,7 +64,8 @@ function buildCommittee(resultJson, jsonArray, add, result) {
                 public_key: resultJson[i].miner_pk,
                 url: "https://user.115.com",
                 location: 0,
-                adddel_miner: add
+                adddel_miner: add,
+                approve_num : 0
             });
         }
     }
@@ -114,15 +116,15 @@ function isValidChangeMembers(resultArray) {
  */
 function isStayInCommittee(members,user) {
 
-    console.log(members);
-    console.log(user);
+    //.console.log(members);
+    //console.log(user);
     if (members.length == 0) {
         return false;
     }
 
     let find = false;
     members.forEach(function (item,index) {
-        console.log(item)
+        //console.log(item)
         if (item.owner == user) {
             find =  true;
         }
