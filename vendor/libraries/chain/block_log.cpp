@@ -3,6 +3,7 @@
  *  @copyright defined in ultrain/LICENSE.txt
  */
 #include <ultrainio/chain/block_log.hpp>
+#include <ultrainio/chain/block_header_state.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 #include <fstream>
 #include <fc/io/raw.hpp>
@@ -79,6 +80,12 @@ namespace ultrainio { namespace chain {
       my->block_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
       my->index_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
       open(data_dir);
+   }
+
+   block_log::block_log()
+   :my(new detail::block_log_impl()) {
+      my->block_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
+      my->index_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
    }
 
    block_log::block_log(block_log&& other) {
@@ -551,6 +558,115 @@ namespace ultrainio { namespace chain {
       genesis_state gs;
       fc::raw::unpack(block_stream, gs);
       return gs;
+   }
+
+   //load the second last pos block as the head as the last one may be not completed in log file for block sync
+   void block_log::load_data(const fc::path& data_dir) {
+      if (my->block_stream.is_open())
+         my->block_stream.close();
+      if (my->index_stream.is_open())
+         my->index_stream.close();
+
+      my->block_file = data_dir / "blocks.log";
+      my->index_file = data_dir / "blocks.index";
+
+      ilog("Opening block log at ${path}", ("path", my->block_file.generic_string()));
+      ilog("Opening index log at ${path}", ("path", my->index_file.generic_string()));
+
+      ULTRAIN_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(my->block_file), block_log_not_found,
+            "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir) );
+      ULTRAIN_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(my->index_file), block_log_not_found,
+            "Block index not found in '${blocks_dir}'", ("blocks_dir", data_dir) );
+      
+      auto log_size = fc::file_size(my->block_file);
+      auto index_size = fc::file_size(my->index_file);
+
+      ilog("Opening block log at ${path}", ("path", my->block_file.generic_string()));
+      ilog("Opening index log at ${path}", ("path", my->index_file.generic_string()));
+
+      ULTRAIN_ASSERT( index_size >= sizeof(uint64_t)*2, block_log_exception,
+            "Block index file need to contains 2 pos at least, but its size is ${iz}", ("iz", index_size) );
+
+      ilog("Opening block log at ${path}", ("path", my->block_file.generic_string()));
+      my->block_stream.open(my->block_file.generic_string().c_str(), LOG_READ);
+      my->index_stream.open(my->index_file.generic_string().c_str(), LOG_READ);
+      my->check_block_read();
+      my->check_index_read();
+
+      //Do not use the last one which may have incompleted block in the log file
+      uint64_t block_pos;
+      uint64_t block_cnt = index_size / sizeof(uint64_t);
+      my->index_stream.seekg(sizeof(uint64_t) * (block_cnt - 2));
+      my->index_stream.read((char*)&block_pos, sizeof(block_pos));
+
+
+      uint64_t filecur = my->index_stream.tellg();
+
+      ULTRAIN_ASSERT( log_size > block_pos, block_log_exception,
+            "Block log size ${bz} samller than index pos ${iz}", ("bz", log_size) ("iz", block_pos) );
+
+      ilog("Block log size ${bz} ;  index pos ${iz}, bklcnt ${bn}, sizeof ${us}, current ${bc}",
+              ("bz", log_size) ("iz", block_pos) ("bn", block_cnt) ("us", sizeof(uint64_t)) ("bc", filecur));
+
+      my->head = read_block(block_pos).first;
+      my->head_id = my->head->id();
+      
+      my->block_stream.seekg( 0 );
+      my->version = 0;
+      my->block_stream.read( (char*)&my->version, sizeof(my->version) );
+      ULTRAIN_ASSERT( my->version > 0, block_log_exception, "Block log was not setup properly" );
+      ULTRAIN_ASSERT( my->version >= min_supported_version && my->version <= max_supported_version, block_log_unsupported_version,
+            "Unsupported version of block log. Block log version is ${version} while code supports version(s) [${min},${max}]",
+            ("version", my->version)("min", block_log::min_supported_version)("max", block_log::max_supported_version) );
+
+
+      my->genesis_written_to_block_log = true; // Assume it was constructed properly.
+      if (my->version > 1){
+         my->first_block_num = 0;
+         my->block_stream.read( (char*)&my->first_block_num, sizeof(my->first_block_num) );
+         ULTRAIN_ASSERT(my->first_block_num > 0, block_log_exception, "Block log is malformed, first recorded block number is 0 but must be greater than or equal to 1");
+      } else {
+         my->first_block_num = 1;
+      }
+   }
+
+   bool block_log::validate_range( const fc::path& data_dir, uint32_t start, uint32_t end ) {
+      ilog("Validate Block Range...");
+      ULTRAIN_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
+                 "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
+
+      ULTRAIN_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.index"), block_log_not_found,
+                 "Block index not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
+
+      std::fstream  file_stream;
+      file_stream.open( (data_dir / "blocks.log").generic_string().c_str(), LOG_READ );
+
+      uint32_t version = 0;
+      file_stream.read( (char*)&version, sizeof(version) );
+      ULTRAIN_ASSERT( version > 0, block_log_exception, "Block log was not setup properly." );
+      ULTRAIN_ASSERT( version >= min_supported_version && version <= max_supported_version, block_log_unsupported_version,
+                 "Unsupported version of block log. Block log version is ${version} while code supports version(s) [${min},${max}]",
+                 ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version) );
+
+      uint32_t first_block_num = 1;
+      if (version != 1) {
+         file_stream.read ( (char*)&first_block_num, sizeof(first_block_num) );
+      }
+      file_stream.close();
+
+      //start should be 1 at least and this block need exist in the log file
+      if ( start == 0 || first_block_num > start ) {
+         return false;
+      }
+      
+      //use index file size to count block, the last one may not be completed in log file, so use <= to check
+      uint32_t last_block_num = fc::file_size(data_dir / "blocks.index") / sizeof(uint64_t);
+
+      if ( end == 0 || last_block_num <= end ) {
+         return false;
+      }
+
+      return true;
    }
 
 } } /// ultrainio::chain
