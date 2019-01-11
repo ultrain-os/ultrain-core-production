@@ -145,8 +145,11 @@ namespace ultrainiosystem {
             print("\nupdateactiveminers curproducer existed  proposerminer:",name{(*prod).owner});
             return;
          }
-         print("updateactiveminers add  proposerminer:",name{miner.account}," adddel:",miner.adddel_miner);
-         INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), {miner.account, N(active)},
+         print("updateactiveminers add  proposerminer:",name{miner.account});
+         vector<permission_level>   authorization;
+         authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
+         authorization.emplace_back(permission_level{miner.account, N(active)});
+         INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), authorization,
             { miner.account, miner.public_key, miner.url, miner.location} );
          INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
          { N(utrio.stake),miner.account,asset(consweight_per_subaccount)} );
@@ -192,17 +195,6 @@ namespace ultrainiosystem {
          provided_proposer  provideapprve(proposer,now(),0);
          auto pendingiter = _pendingminer.find( minerinfo.account );
          if ( pendingiter != _pendingminer.end() ) {
-            _pendingminer.modify( pendingiter, 0, [&]( auto& p ) {
-               auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
-               if(itr != p.provided_approvals.end())
-               {
-                  if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
-                        print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
-                        ultrainio_assert( false, "voteaccount proposer already voted" );
-                  }
-                  p.provided_approvals.erase(itr);
-               }
-            });
             int32_t curproposeresnum = -1;
             uint32_t proposeaccountsize = (*pendingiter).proposal_miner.size();
             for(uint32_t i = 0;i < proposeaccountsize;i++)
@@ -217,12 +209,21 @@ namespace ultrainiosystem {
             }
             if(curproposeresnum >= 0){
                _pendingminer.modify( pendingiter, 0, [&]( auto& p ) {
+                  auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
+                  if(itr != p.provided_approvals.end())
+                  {
+                     if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
+                           print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
+                           ultrainio_assert( false, "voteaccount proposer already voted" );
+                     }
+                     p.provided_approvals.erase(itr);
+                  }
                   p.proposal_miner[(uint32_t)curproposeresnum].approve_num++;
                   provideapprve.resource_index = (uint64_t)curproposeresnum;
                   p.provided_approvals.push_back(provideapprve);
                });
 
-               if((*pendingiter).proposal_miner[(uint32_t)curproposeresnum].approve_num >= (double)(enableprodnum)*2/3){
+               if((*pendingiter).proposal_miner[(uint32_t)curproposeresnum].approve_num >= ceil((double)(enableprodnum)*2/3)){
                   updateactiveminers(minerinfo);
                   _pendingminer.modify( pendingiter, 0, [&]( auto& p ) {
                      p.provided_approvals.clear();
@@ -253,9 +254,9 @@ namespace ultrainiosystem {
          if(ch >= 'a' && ch <= 'f')
             return ((ch-'a')+10);
       };
-      char  keydata[512];
+      char  keydata[67];
       memset(keydata,0,sizeof(keydata));
-      frombase58_recover_key(pubkey.c_str(), keydata,0);
+      frombase58_recover_key(pubkey.c_str(), keydata, 66);
       unsigned int j = 0;
       for ( uint32_t i=0; i < strlen(keydata); i++ ){
          if(i%2 == 1)
@@ -307,21 +308,12 @@ void system_contract::voteaccount() {
       print("voteaccount enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeaccount.size(),"\n");
       for(auto accinfo : proposeaccount){
          ultrainio_assert( !is_account( accinfo.account ), "vote create account already exist");
+         ultrainio_assert( accinfo.owner_key.length() == 53, "vote owner public key should be of size 53" );
+         ultrainio_assert( accinfo.active_key.length() == 53, "vote active public key should be of size 53" );
          accinfo.approve_num = 1;
          provided_proposer  provideapprve(proposer,now(),0);
          auto pendingiter = _pendingaccount.find( accinfo.account );
          if ( pendingiter != _pendingaccount.end() ) {
-            _pendingaccount.modify( pendingiter, 0, [&]( auto& p ) {
-               auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
-               if(itr != p.provided_approvals.end())
-               {
-                  if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
-                        print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
-                        ultrainio_assert( false, "voteaccount proposer already voted" );
-                  }
-                  p.provided_approvals.erase(itr);
-               }
-            });
             int32_t curproposeresnum = -1;
             uint32_t proposeaccountsize = (*pendingiter).proposal_account.size();
             for(uint32_t i = 0;i < proposeaccountsize;i++)
@@ -337,12 +329,21 @@ void system_contract::voteaccount() {
             }
             if(curproposeresnum >= 0){
                _pendingaccount.modify( pendingiter, 0, [&]( auto& p ) {
+                  auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
+                  if(itr != p.provided_approvals.end())
+                  {
+                     if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
+                           print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
+                           ultrainio_assert( false, "voteaccount proposer already voted" );
+                     }
+                     p.provided_approvals.erase(itr);
+                  }
                   p.proposal_account[(uint32_t)curproposeresnum].approve_num++;
                   provideapprve.resource_index = (uint64_t)curproposeresnum;
                   p.provided_approvals.push_back(provideapprve);
                });
 
-               if((*pendingiter).proposal_account[(uint32_t)curproposeresnum].approve_num > enableprodnum*2/3){
+               if((*pendingiter).proposal_account[(uint32_t)curproposeresnum].approve_num >= ceil((double)enableprodnum*2/3)){
                   add_subchain_account(accinfo);
                   _pendingaccount.modify( pendingiter, 0, [&]( auto& p ) {
                      p.provided_approvals.clear();
@@ -393,17 +394,6 @@ void system_contract::voteresourcelease() {
          provided_proposer  provideapprve(proposer,now(),0);
          auto pendingiter = _pendingres.find( resinfo.account );
          if ( pendingiter != _pendingres.end() ) {
-            _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
-               auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
-               if(itr != p.provided_approvals.end())
-               {
-                  if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
-                        print("\nvoteresourcelease proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
-                        ultrainio_assert( false, "proposer already voted" );
-                  }
-                  p.provided_approvals.erase(itr);
-               }
-            });
             int32_t curproposeresnum = -1;
             uint32_t proposeaccountsize = (*pendingiter).proposal_resource.size();
             for(uint32_t i = 0;i < proposeaccountsize;i++)
@@ -418,12 +408,21 @@ void system_contract::voteresourcelease() {
             }
             if(curproposeresnum >= 0){
                _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
+                  auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
+                  if(itr != p.provided_approvals.end())
+                  {
+                     if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
+                           print("\nvoteresourcelease proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
+                           ultrainio_assert( false, "proposer already voted" );
+                     }
+                     p.provided_approvals.erase(itr);
+                  }
                   p.proposal_resource[(uint32_t)curproposeresnum].approve_num++;
                   provideapprve.resource_index = (uint64_t)curproposeresnum;
                   p.provided_approvals.push_back(provideapprve);
                });
 
-               if((*pendingiter).proposal_resource[(uint32_t)curproposeresnum].approve_num > enableprodnum*2/3){
+               if((*pendingiter).proposal_resource[(uint32_t)curproposeresnum].approve_num >= ceil((double)enableprodnum*2/3)){
                   syncresource(resinfo.account, resinfo.lease_num, resinfo.end_time);
                   _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
                      p.provided_approvals.clear();

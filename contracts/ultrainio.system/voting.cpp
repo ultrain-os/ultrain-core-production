@@ -81,8 +81,12 @@ namespace ultrainiosystem {
                info.location      = location;
          });
       }
-      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {producer,N(active)},
-         { producer, N(utrio.fee), asset(50000), std::string("regproducer") } );
+      if(has_auth(_self)){
+         require_auth(_self);
+      } else{
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {producer,N(active)},
+            { producer, N(utrio.fee), asset(50000), std::string("regproducer") } );
+      }
    }
 
    void system_contract::unregprod( const account_name producer ) {

@@ -982,9 +982,10 @@ class crypto_api : public context_aware_api {
          auto check = fc::crypto::public_key( s, digest, false );
          ULTRAIN_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
       }
-      void frombase58_recover_key(const char * pubkey,
+      void frombase58_recover_key(null_terminated_ptr pubkey,
                         array_ptr<char> pub, size_t publen ) {
-         std::string hexstr = fc::crypto::public_key::base58_to_hex(pubkey);
+         std::string hexstr = fc::crypto::public_key::base58_to_hex(std::string(pubkey));
+         ULTRAIN_ASSERT( hexstr.size() == publen, crypto_api_exception, "frombase58_recover_key public key parase error" );
          memcpy(pub, hexstr.c_str(), hexstr.size());
       }
       int recover_key( const fc::sha256& digest,
