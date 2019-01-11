@@ -25,6 +25,61 @@ namespace ultrainiosystem {
             });
         }
     }
+    ///@abi action
+    void system_contract::reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash) {
+        require_auth(current_sender());
+        auto propos = _producers.find(current_sender());
+        /*
+         *
+         *TODO
+          1. uncomment the 3 assert when MT done, and it's ready to test with subchain header report
+          2. denial of the report when the hash for the blocknum has been voted by more than 2/3 committee member
+          3. according the world state design, change the magic num (10000, 1000) to macro or const.
+          4. delete the outdated hash when new hash reported.
+         */
+        //ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+        auto checkBlockNum = [&](uint64_t  bn) -> bool {
+            return (bn%10000) == 0;
+        };
+        ultrainio_assert(checkBlockNum(blocknum), "report an invalid blocknum ws");
+        auto ite_chain = _subchains.find(subchain);
+        //ultrainio_assert(blocknum <= ite_chain->head_block_num, "report a blocknum larger than current block");
+        //ultrainio_assert(ite_chain->head_block_num - blocknum <= 1000, "report a too old blocknum");
+
+        subchain_hash_table     hashTable(_self, subchain);
+
+        auto wshash = hashTable.find(blocknum);
+        if(wshash != hashTable.end()) {
+            auto & hashv = wshash->hash_v;
+            auto & acc   = wshash->accounts;
+            auto ret = std::find(acc.begin(), acc.end(), current_sender());
+            ultrainio_assert(ret == acc.end(), "the committee_members already report such ws hash");
+            auto it = hashv.begin();
+            for(; it != hashv.end(); it++) {
+                if(hash == it->hash) {
+                    hashTable.modify(wshash, 0, [&](auto &p) {
+                            p.hash_v[static_cast<unsigned int>(it-hashv.begin())].votes++;
+                            p.accounts.emplace_back(current_sender());
+                            });
+                    break;
+                }
+            }
+            if(it == hashv.end()) {
+                hashTable.modify(wshash, 0, [&](auto& p) {
+                        p.hash_v.emplace_back(hash, 1);
+                        p.accounts.emplace_back(current_sender());
+                        });
+            }
+        }
+        else {
+            hashTable.emplace(_self, [&](auto &p) {
+                    p.block_num = blocknum;
+                    p.hash_v.emplace_back(hash, 1);
+                    p.accounts.emplace_back(current_sender());
+                    });
+
+        }
+    }
     /// @abi action
     void system_contract::regsubchain(uint64_t chain_name, uint16_t chain_type, time genesis_time) {
         require_auth(N(ultrainio));
@@ -281,7 +336,7 @@ namespace ultrainiosystem {
 
     void system_contract::add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key) {
         if(chain_name == default_chain_name) {
-            //todo, loop all stable subchain, add to the one with least miners 
+            //todo, loop all stable subchain, add to the one with least miners
             //todo, update location of producer
             return;
         }
@@ -321,7 +376,7 @@ namespace ultrainiosystem {
         auto ite_chain = _subchains.find(chain_name);
         ultrainio_assert(ite_chain != _subchains.end(), "The subchain is not existed.");
 
-        ultrainio_assert(ite_chain->committee_members.size() - 1 >= ite_chain->get_subchain_min_miner_num(), 
+        ultrainio_assert(ite_chain->committee_members.size() - 1 >= ite_chain->get_subchain_min_miner_num(),
                          "this subschain cannot remove producers");
         _subchains.modify(ite_chain, producer, [&](subchain& info){
             auto ite_add = info.changing_info.new_added_members.begin();

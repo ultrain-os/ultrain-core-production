@@ -13,6 +13,7 @@
 #include <ultrainiolib/block_header.hpp>
 #include <ultrainiolib/ultrainio.hpp>
 #include <string>
+#include <vector>
 
 namespace ultrainiosystem {
 
@@ -133,6 +134,20 @@ namespace ultrainiosystem {
          auto primary_key()const { return owner; }
          ULTRAINLIB_SERIALIZE(pending_res, (owner)(proposal_resource)(provided_approvals) )
       };
+   struct hash_vote {
+       hash_vote(checksum256 hash, uint64_t vote):hash(hash), votes(vote){}
+       hash_vote(){}
+       checksum256      hash;
+       uint64_t         votes;
+       ULTRAINLIB_SERIALIZE(hash_vote , (hash)(votes) )
+   };
+    struct subchain_ws_hash {
+       uint64_t             block_num;
+       std::vector<hash_vote>    hash_v;
+       std::vector<account_name> accounts;
+       uint64_t  primary_key()const { return block_num; }
+       ULTRAINLIB_SERIALIZE( subchain_ws_hash , (block_num)(hash_v)(accounts) )
+    };
    typedef ultrainio::multi_index<N(pendingminer),pending_miner> pendingminers;
    typedef ultrainio::multi_index<N(pendingacc),pending_acc> pendingaccounts;
    typedef ultrainio::multi_index<N(pendingres),pending_res> pendingresource;
@@ -143,6 +158,7 @@ namespace ultrainiosystem {
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
 
    typedef ultrainio::singleton<N(pendingque), std::vector<role_base>> pending_queue_singleton;
+   typedef ultrainio::multi_index< N(wshash), subchain_ws_hash>      subchain_hash_table;
 
    struct chaintype {
        uint16_t id;
@@ -336,6 +352,7 @@ namespace ultrainiosystem {
          void add_subchain_account(const ultrainio::proposeaccount_info& newacc );
         // functions defined in scheduler.cpp
          void regsubchain(uint64_t chain_name, uint16_t chain_type, time genesis_time);
+         void reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash);
 
          void acceptheader (uint64_t chain_name,
                             const std::vector<ultrainio::block_header>& headers);

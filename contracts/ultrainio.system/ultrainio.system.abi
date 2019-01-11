@@ -60,6 +60,13 @@
         {"name": "approve_num", "type": "int64"}
       ]
     },{
+      "name": "hash_vote",
+      "base": "",
+      "fields": [
+        {"name": "hash", "type": "checksum256"},
+        {"name": "votes", "type": "uint64"}
+      ]
+    },{
       "name": "provided_proposer",
       "base": "",
       "fields": [
@@ -95,6 +102,14 @@
       "fields": [
          {"name":"proposer", "type":"account_name"},
          {"name":"proposeaccount", "type":"proposeaccount_info[]"}
+      ]
+    },{
+      "name": "reportsubchainhash",
+      "base": "",
+      "fields": [
+         {"name":"subchain", "type":"uint64"},
+         {"name":"blocknum", "type":"uint64"},
+         {"name":"hash", "type":"checksum256"}
       ]
     },{
       "name": "voteresourcelease",
@@ -504,6 +519,14 @@
         {"name": "provided_approvals",       "type": "provided_proposer[]"}
        ]
     },{
+     "name": "subchain_ws_hash",
+      "base": "",
+      "fields": [
+        {"name": "block_num",                "type": "uint64"},
+        {"name": "hash_v",                   "type": "hash_vote[]"},
+        {"name": "accounts",                 "type": "account_name[]"}
+       ]
+    },{
       "name": "regproducer",
       "base": "",
       "fields": [
@@ -686,6 +709,10 @@
       "type": "votecommittee",
       "ricardian_contract": ""
    },{
+      "name": "reportsubchainhash",
+      "type": "reportsubchainhash",
+      "ricardian_contract": ""
+   },{
       "name": "voteaccount",
       "type": "voteaccount",
       "ricardian_contract": ""
@@ -829,6 +856,12 @@
       "type": "pending_res",
       "index_type": "i64",
       "key_names": ["owner"],
+      "key_types": ["uint64"]
+    },{
+      "name": "wshash",
+      "type": "subchain_ws_hash",
+      "index_type": "i64",
+      "key_names": ["block_num"],
       "key_types": ["uint64"]
     },{
       "name": "chaintype",
