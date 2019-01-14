@@ -22,7 +22,6 @@ var logConfig = {
             "filename": dir+filename,
             "pattern": "yyyy-MM-dd.log",
             "alwaysIncludePattern": true,
-            "maxLogSize ": 314572800 //单文件最大300M
         }
     },
     "categories": {
@@ -31,7 +30,8 @@ var logConfig = {
                 "console",
                 "default"
             ],
-            "level": "all"
+            "level": "info" //ALL TRACE DEBUG INFO WARN ERROR FATAL OFF.
+
         }
     }
 };

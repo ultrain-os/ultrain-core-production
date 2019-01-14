@@ -113,17 +113,17 @@ async function getProducerLists(configSub) {
 async function contractInteract(config, contractName, actionName, params, accountName, privateKey) {
     try {
 
-         logger.error("contractInteract",privateKey);
+         //logger.error("contractInteract",privateKey);
          const keyProvider = [privateKey];
          const u3 = createU3({...config, keyProvider});
 
         const contract = await u3.contract(contractName);
         //logger.debug("contract=", JSON.stringify(contract.fc.abi.structs));
         if (!contract) {
-            throw new Error("can't found contract");
+            throw new Error("can't found contract "+contractName);
         }
         if (!contract[actionName] || typeof contract[actionName] !== 'function') {
-            throw new Error("action doesn't exist");
+            throw new Error("action doesn't exist:"+actionName);
         }
         const data = await contract[actionName](params, {
              authorization: [`${accountName}@active`],
@@ -154,12 +154,28 @@ getUserBulletin = async (u3, chain_name) => {
 }
 
 /**
- * 根据链id获取种子ip
+ * 根据链名称获取种子ip
  * @param chain
  * @returns {Promise<string>}
  */
-getChainSeedIP = async (chain) => {
-    return "11.11.11.11";
+getChainSeedIP = async (chainName,chainConfig) => {
+
+    // logger.debug(chainConfig.seedIpConfig);
+    // logger.debug(chainName);
+    try {
+        if (utils.isNotNull(chainConfig.seedIpConfig)) {
+            for (let i =0;i<chainConfig.seedIpConfig.length;i++) {
+                //logger.debug(chainConfig.seedIpConfig[i])
+                if (chainConfig.seedIpConfig[i].chainName == chainName) {
+                    return chainConfig.seedIpConfig[i].seedIp;
+                }
+            }
+        }
+
+    } catch (e) {
+        logger.error("get chain seed ip error:",e);
+    }
+    return "";
 }
 
 /**
@@ -240,5 +256,6 @@ module.exports = {
     getUserBulletin,
     getAccount,
     getTableInfo,
-    getTableAllData
+    getTableAllData,
+    getChainSeedIP
 }

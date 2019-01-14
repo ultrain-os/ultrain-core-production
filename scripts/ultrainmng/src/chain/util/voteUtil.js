@@ -271,7 +271,7 @@ var mainResList = {
     }]
 }
 
-logger.error(genVoteResList(subResList, mainResList));
+//logger.error(genVoteResList(subResList, mainResList));
 
 /**
  *
@@ -288,8 +288,49 @@ function getResObj(rows, index) {
 }
 
 
+/**
+ * 判断是否已经投过这个委员会成员
+ * user 投票人
+ * voteUser 被投票委员会人
+ */
+function findVoteCommitee(tableData, user, voteUser) {
+
+    if (utils.isNull(tableData)) {
+        return false;
+    }
+    let rows = tableData.rows;
+    if (utils.isNullList(rows)) {
+        return false;
+    }
+
+
+    try {
+
+        //logger.debug(tableData.rows.length);
+        for (var i = 0; i < tableData.rows.length; i++) {
+            //logger.debug("row "+i+":");
+            //logger.debug(tableData.rows[i]);
+            let row = rows[i];
+            if (row.owner == voteUser) {
+                for (var j = 0; j < row.provided_approvals.length; j++) {
+                    if (row.provided_approvals[j].account == user) {
+                        return true;
+                    }
+                }
+            }
+
+        }
+    } catch (e) {
+        logger.error("findVoteCommitee error", e);
+    }
+
+    return false;
+}
+
+
 module.exports = {
     findVoteRecord,
     genVoteResList,
+    findVoteCommitee,
     findVoteRes
 }
