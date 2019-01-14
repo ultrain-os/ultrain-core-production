@@ -526,15 +526,17 @@ namespace ultrainiosystem {
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                                  { N(ultrainio), receiver, deltasize, 0, master_chain_name} );
            }
-           auto deltadays = int64_t(endtime - resiter->end_time)/seconds_per_day;
-           if(deltadays > 0) {
+           if(((int64_t)endtime - (int64_t)resiter->end_time) > seconds_per_day/2){
+              auto deltadays = ceil(((int64_t)endtime - (int64_t)resiter->end_time)/double(seconds_per_day));
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                                 { N(ultrainio), receiver, 0, deltadays, master_chain_name} );
            }
        } else {
-           auto days = int64_t(endtime - now())/seconds_per_day + 1;
-           INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                               { N(ultrainio), receiver, combosize, days, master_chain_name} );
+           if(endtime > now()){
+               auto days = ceil(((int64_t)endtime - (int64_t)now())/(double)seconds_per_day);
+               INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
+                     { N(ultrainio), receiver, combosize, days, master_chain_name} );
+            }
        }
    }
 
@@ -563,6 +565,7 @@ namespace ultrainiosystem {
       else {
           bytes = (chain_itr->global_resource.max_ram_size-2ll*1024*1024*1024)/chain_itr->global_resource.max_resources_size;
       }
+      print("resourcelease receiver:",receiver," combosize:",combosize," days:",days);
       ultrainio_assert( days >= 0 && days <=365*30, "resource lease buy days must reserve a positive and less than 30 years" );
 
       // update totals of "receiver"
