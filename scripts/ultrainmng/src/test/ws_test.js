@@ -6,6 +6,8 @@ var utils = require('../common/util/utils');
 var async = require('async');
 var wsResUtil = require("../worldstate/wsResUtil")
 var sleep = require('sleep')
+var chainApi = require('../chain/chainApi')
+var chainConfig =require('../chain/chainConfig')
 
 
 /**
@@ -28,7 +30,7 @@ async function interactWithWorldState() {
          * start
          */
         let chainId = "11";
-        let seedIp = "11.11.11.11"
+        let seedIp = chainApi.getChainSeedIP(chainId,chainConfig);
         result = await WorldState.start(chainId, seedIp, 3000);
         if (result) {
             console.log("wss start successed");

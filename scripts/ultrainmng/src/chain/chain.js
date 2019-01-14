@@ -44,7 +44,7 @@ async function syncUser() {
         //mock data
         // if (userBulletinList.length == 0) {
         //     userBulletinList = [{
-        //         owner: "user.313",
+        //         owner: "user.314",
         //         owner_pk: "UTR7FLuM19CdCppghCjeswxPWAQxQj2LZnrKsCNwoXmi1GBwwrHUU",
         //         active_pk: "UTR7FLuM19CdCppghCjeswxPWAQxQj2LZnrKsCNwoXmi1GBwwrHUU",
         //         issue_date: '2019-01-11T03:33:10.000'
@@ -73,7 +73,7 @@ async function syncUser() {
                 logger.info("account(" + newUser.owner + ") is not ready,need vote..");
 
                 //查询是否已经投过票
-                let tableData = await chainApi.getTableAllData(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT);
+                let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT,null,newUser.owner,null,null);
                 logger.debug(tableData)
                 if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, newUser.owner) == false) {
                     //未找到投过票的记录，需要投票
@@ -246,7 +246,7 @@ async function syncCommitee() {
         } else {
             logger.debug("account(" + committeeUser + ") is ready in subchain,need vote him to committee");
             //判断是否已给他投过票
-            let tableData = await chainApi.getTableAllData(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_MINER);
+            let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_MINER,null,committeeUser,null,null);
             if (voteUtil.findVoteCommitee(tableData, chainConfig.myAccountAsCommittee, committeeUser) == false) {
                 logger.debug("account(" + chainConfig.myAccountAsCommittee + ") has not voted account(" + committeeUser + ")  to committee, start to vote..");
                 try {
@@ -354,11 +354,12 @@ async function syncResource() {
         if (changeList.length > 0) {
 
             //获取已透过的所有结果
-            let voteResList = await chainApi.getTableAllData(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_RES);
-            logger.debug("voteResList:", voteResList);
             for (var i = 0; i < changeList.length; i++) {
                 var changeResObj = changeList[i];
                 logger.debug("change res:", changeResObj);
+
+                let voteResList = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_RES,null,changeResObj.owner,null,null);
+                logger.debug("voteResList:", voteResList);
 
                 if (voteUtil.findVoteRes(voteResList, chainConfig.myAccountAsCommittee, changeResObj.owner, changeResObj.lease_num, changeResObj.end_time)) {
                     logger.info(chainConfig.myAccountAsCommittee + " has voted " + changeResObj.owner + "(resource:" + changeResObj.lease_num + ")");

@@ -2,6 +2,7 @@ const {U3} = require('u3.js');
 const {createU3, format} = U3;
 const axios = require('axios')
 
+
 /**
  * 链相关操作的api
  */
@@ -9,6 +10,7 @@ var logger = require("../config/logConfig").getLogger("ChainApi");
 var logUtil = require("../common/util/logUtil")
 var constant = require("../common/constant/constants")
 var utils = require("../common/util/utils");
+var sleep = require("sleep")
 
 /**
  * 获取主网主链Chain Id
@@ -113,20 +115,20 @@ async function getProducerLists(configSub) {
 async function contractInteract(config, contractName, actionName, params, accountName, privateKey) {
     try {
 
-         //logger.error("contractInteract",privateKey);
-         const keyProvider = [privateKey];
-         const u3 = createU3({...config, keyProvider});
+        //logger.error("contractInteract",privateKey);
+        const keyProvider = [privateKey];
+        const u3 = createU3({...config, keyProvider});
 
         const contract = await u3.contract(contractName);
         //logger.debug("contract=", JSON.stringify(contract.fc.abi.structs));
         if (!contract) {
-            throw new Error("can't found contract "+contractName);
+            throw new Error("can't found contract " + contractName);
         }
         if (!contract[actionName] || typeof contract[actionName] !== 'function') {
-            throw new Error("action doesn't exist:"+actionName);
+            throw new Error("action doesn't exist:" + actionName);
         }
         const data = await contract[actionName](params, {
-             authorization: [`${accountName}@active`],
+            authorization: [`${accountName}@active`],
         });
         logger.debug('contractInteract success :', actionName);
         return data;
@@ -158,13 +160,13 @@ getUserBulletin = async (u3, chain_name) => {
  * @param chain
  * @returns {Promise<string>}
  */
-getChainSeedIP = async (chainName,chainConfig) => {
+getChainSeedIP = async (chainName, chainConfig) => {
 
     // logger.debug(chainConfig.seedIpConfig);
     // logger.debug(chainName);
     try {
         if (utils.isNotNull(chainConfig.seedIpConfig)) {
-            for (let i =0;i<chainConfig.seedIpConfig.length;i++) {
+            for (let i = 0; i < chainConfig.seedIpConfig.length; i++) {
                 //logger.debug(chainConfig.seedIpConfig[i])
                 if (chainConfig.seedIpConfig[i].chainName == chainName) {
                     return chainConfig.seedIpConfig[i].seedIp;
@@ -173,7 +175,7 @@ getChainSeedIP = async (chainName,chainConfig) => {
         }
 
     } catch (e) {
-        logger.error("get chain seed ip error:",e);
+        logger.error("get chain seed ip error:", e);
     }
     return "";
 }
@@ -207,7 +209,7 @@ getSubchainWSHash = async (config, chainName) => {
  */
 getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound, upper_bound) => {
     try {
-        const params = {"code":code,"scope":scope,"table":table,"json":true};
+        const params = {"code": code, "scope": scope, "table": table, "json": true};
         logger.debug(params);
         if (utils.isNotNull(limit)) {
             params.limit = limit;
@@ -221,7 +223,7 @@ getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound,
         if (utils.isNotNull(upper_bound)) {
             params.upper_bound = upper_bound;
         }
-        let res =  await axios.post(config.httpEndpoint + "/v1/chain/get_table_records", params);
+        let res = await axios.post(config.httpEndpoint + "/v1/chain/get_table_records", params);
         // logger.debug(res);
         return res.data;
     } catch (e) {
@@ -240,10 +242,39 @@ getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound,
  * @returns {Promise<*>}
  */
 getTableAllData = async (config, code, scope, table) => {
-    return await getTableInfo(config, code, scope, table,1000,null,null,null);
+    let tableObj = {rows: [], more: false};
+    let count = 10000; //MAX NUM
+    let limit = 100; //limit
+    let finish = false;
+    let lower_bound = null;
+    try {
+        while (finish == false) {
+            let tableinfo = await getTableInfo(config, code, scope, table, limit, null, lower_bound, null);
+            logger.debug("tableinfo:", tableinfo);
+            if (utils.isNullList(tableinfo.rows) == false) {
+                for (let i = 0; i < tableinfo.rows.length; i++) {
+                    if (tableinfo.rows[i].owner != lower_bound) {
+                        tableObj.rows.push(tableinfo.rows[i]);
+                    }
+                }
+                lower_bound = tableinfo.rows[tableinfo.rows.length - 1].owner;
+            }
+            logger.debug("lower_bound：" + lower_bound);
+            //查看是否还有
+            finish = true;
+            if (utils.isNotNull(tableinfo.more) && tableinfo.more == true) {
+                finish = false;
+            }
+            logger.debug("tableinfo more：" + tableinfo.more);
+            //sleep.msleep(1000);
+        }
+    } catch (e) {
+        logger.error("getTableAllData error:", e);
+    }
+
+    return tableObj;
+
 }
-
-
 
 
 module.exports = {
