@@ -212,7 +212,7 @@ namespace ultrainiosystem {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
-                     if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
+                     if((itr->resource_index == curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
                            print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
                            ultrainio_assert( false, "voteaccount proposer already voted" );
                      }
@@ -332,7 +332,7 @@ void system_contract::voteaccount() {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
-                     if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
+                     if((itr->resource_index == curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
                            print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
                            ultrainio_assert( false, "voteaccount proposer already voted" );
                      }
@@ -411,7 +411,7 @@ void system_contract::voteresourcelease() {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
-                     if((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour){
+                     if((itr->resource_index == curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
                            print("\nvoteresourcelease proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
                            ultrainio_assert( false, "proposer already voted" );
                      }
