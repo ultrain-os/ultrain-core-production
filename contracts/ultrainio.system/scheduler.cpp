@@ -37,7 +37,7 @@ namespace ultrainiosystem {
           3. according the world state design, change the magic num (10000, 1000) to macro or const.
           4. delete the outdated hash when new hash reported.
          */
-        //ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+        //ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->location == subchain, "enabled producer not found this proposer" );
         auto checkBlockNum = [&](uint64_t  bn) -> bool {
             return (bn%10000) == 0;
         };
