@@ -520,19 +520,19 @@ namespace ultrainiosystem {
        auto resiter = _reslease_tbl.find(receiver);
        if(resiter != _reslease_tbl.end()) {
            ultrainio_assert(combosize >= resiter->lease_num, "error combo size in sync resource");
-           ultrainio_assert(endtime >= resiter->end_time, "error end time in sync resource");
+           ultrainio_assert(endtime > (resiter->end_time - 5*60), "error end time in sync resource");
            auto deltasize = combosize - resiter->lease_num;
            if(deltasize > 0) {
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                                  { N(ultrainio), receiver, deltasize, 0, master_chain_name} );
            }
-           auto deltadays = (endtime - resiter->end_time)/seconds_per_day;
+           auto deltadays = int64_t(endtime - resiter->end_time)/seconds_per_day;
            if(deltadays > 0) {
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                                 { N(ultrainio), receiver, 0, deltadays, master_chain_name} );
            }
        } else {
-           auto days = (endtime - now())/seconds_per_day + 1;
+           auto days = int64_t(endtime - now())/seconds_per_day + 1;
            INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                                { N(ultrainio), receiver, combosize, days, master_chain_name} );
        }
