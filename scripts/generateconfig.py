@@ -7,6 +7,7 @@ import random
 import copy
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--masterchain', action='store_true', help="set current master chain")
+parser.add_argument('-sub', '--subchain', type=str, help="set subchain name info")
 args = parser.parse_args()
 class Host(object):
 
@@ -309,6 +310,9 @@ def load_parameters():
     if args.masterchain:
         for a in accounts[1:]:
             adjustaccounts.append("master"+a)
+    elif args.subchain:
+        for a in accounts[1:]:
+            adjustaccounts.append("user"+"."+args.subchain+a)
     else:
         for a in accounts[1:]:
             adjustaccounts.append("user"+a)

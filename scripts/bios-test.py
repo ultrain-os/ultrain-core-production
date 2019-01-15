@@ -762,6 +762,7 @@ parser.add_argument('-a', '--all', action='store_true', help="Do everything mark
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
 parser.add_argument('-p','--programpath', metavar='', help="set programpath params")
 parser.add_argument('-m', '--masterchain', action='store_true', help="set current master chain")
+parser.add_argument('-sub', '--subchain', type=str, help="set subchain name info")
 for (flag, command, function, inAll, help) in commands:
     prefix = ''
     if inAll: prefix += '*'
@@ -785,6 +786,9 @@ adjustaccounts = ["genesis",]
 if args.masterchain:
     for a in accounts[1:]:
         adjustaccounts.append("master"+a)
+elif args.subchain:
+   for a in accounts[1:]:
+      adjustaccounts.append("user"+"."+args.subchain+a)
 else:
     for a in accounts[1:]:
         adjustaccounts.append("user"+a)
