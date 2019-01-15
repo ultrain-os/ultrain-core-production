@@ -99,9 +99,9 @@ struct controller_impl {
    bool                           can_receive_event = false;
    const uint32_t                 event_lifetime = 20; ///< 20 blocks' time, which = 10 seconds by default configuration
    uint32_t                       worldstate_head_block = 0;
-
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
+   std::shared_ptr<ws_file_manager>                       ws_manager_ptr;
 
    map< account_name, std::list<std::string> > registered_event_map;
    struct contract_event_type {
@@ -179,6 +179,11 @@ struct controller_impl {
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
                                  });
+
+   if (conf.worldstate_control){
+      ws_manager_ptr = std::make_shared<ws_file_manager>();
+      ws_manager_ptr->set_local_max_count(15);      
+   }
 
    }
 
@@ -434,12 +439,13 @@ struct controller_impl {
    }
 
    void add_to_worldstate(const chainbase::database& worldstate_db, uint32_t block_height, const block_state& fork_head) const{
-      ws_file_manager ws_manager;
+      if(!ws_manager_ptr) return;
+
       ws_info info;
       info.chain_id = self.get_chain_id();
       info.block_height = block_height;
 
-      std::string worldstate_path = ws_manager.get_file_path_by_info(info.chain_id, info.block_height);
+      std::string worldstate_path = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height);
         
       auto worldstate_out = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
       auto worldstate = std::make_shared<ostream_worldstate_writer>(worldstate_out);
@@ -484,8 +490,8 @@ struct controller_impl {
 
       //save worldstate file 
       info.file_size = bfs::file_size(worldstate_path);
-      info.hash_string = ws_manager.calculate_file_hash(worldstate_path).str();
-      ws_manager.save_info(info);
+      info.hash_string = ws_manager_ptr->calculate_file_hash(worldstate_path).str();
+      ws_manager_ptr->save_info(info);
       ilog("add_to_worldstate ws info: ${info}", ("info", info));
    }
 

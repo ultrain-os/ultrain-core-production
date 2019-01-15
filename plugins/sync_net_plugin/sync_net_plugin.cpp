@@ -766,10 +766,6 @@ namespace ultrainio {
         reqLastWsInfoMsg.chain_id = info.chain_id;
         reqLastWsInfoMsg.block_height = info.block_height;
 
-        // //Only for test;
-        // reqLastWsInfoMsg.chain_id = fc::sha256("cd976519e5802ca7562ba8413e89776533c63a5cda01a3784928c323513236c9");
-        // reqLastWsInfoMsg.block_height = 0;
-
         bool is_connection = false;
         for (const auto& c : connections) {
             if(c->current()) {

@@ -344,16 +344,13 @@ fc::sha256 ws_file_manager::calculate_file_hash(std::string file_name)
 void ws_file_manager::set_local_max_count(int number)
 {
     m_max_ws_count = number;
-    if (m_ws_delete_check) {
-        m_ws_delete_check->cancel();
-    }
 }
 
 void ws_file_manager::start_delete_timer()
 {    
     m_ws_delete_check->expires_from_now(m_ws_delete_period);
     m_ws_delete_check->async_wait([this](boost::system::error_code ec) {
-        ilog("delete timer start");
+        ilog("delete worldstate files timer start");
         if (ec.value() == boost::asio::error::operation_aborted) { //cancelled
             ilog("delete timer cancelled");
             return;
@@ -367,40 +364,38 @@ void ws_file_manager::start_delete_timer()
 
             auto count = m_max_ws_count;
             for(auto &node : node_list){
-                if(count > 0){
-                    count--;
-                    continue;
-                }
-
                 auto reader_itor = m_reader_map.find(node);
                 auto is_activate_itor = m_is_reader_activate_map.find(node);
-                bool is_need_keep = false;
-                if (is_activate_itor != m_is_reader_activate_map.end() && m_is_reader_activate_map[node] == true){
-                    is_need_keep = true;
-                    //set to false, erase from map in next timeout
-                    m_is_reader_activate_map[node] = false;
-                }
-
-                if (reader_itor != m_reader_map.end() && is_need_keep == false) {
-                    m_is_reader_activate_map.erase(node);
-                    m_reader_map.erase(node);
+                if (is_activate_itor != m_is_reader_activate_map.end() ) {
+                    if(m_is_reader_activate_map[node] == true){
+                        //set to false, erase from map in next timeout
+                        m_is_reader_activate_map[node] = false;
+                        continue;
+                    } else {
+                        if (reader_itor != m_reader_map.end()) {
+                            m_is_reader_activate_map.erase(node);
+                            m_reader_map.erase(node);
+                        }
+                    }               
                 }
 
                 if (m_max_ws_count == -1) //not set max count, keep all files
                     continue;
 
-                if (is_need_keep)
+                if(count > 0){
+                    count--;
                     continue;
+                }
 
                 std::string name = to_file_name(node.chain_id, node.block_height);
                 std::string ws_file_name  = m_dir_path + "/" +  name + ".ws";
                 std::string info_file_name  = m_dir_path + "/" +  name + ".info";
-                // fc::remove(path(info_file_name));
+                fc::remove(path(info_file_name));
                 fc::remove(path(ws_file_name));
             }
         }
         start_delete_timer();
-        ilog("delete timer end");
+        ilog("delete  worldstate files timer end");
     });
 }
 
