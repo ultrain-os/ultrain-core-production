@@ -100,6 +100,7 @@ namespace ultrainiosystem {
       uint64_t              last_claim_time = 0;
       uint64_t              location = 0;
       uint64_t              last_operate_blocknum = 0;
+      account_name          claim_rewards_account;
       uint64_t primary_key()const { return owner;                                   }
       double   by_votes()const    { return is_active ? -total_cons_staked : total_cons_staked;  }
       bool     active()const      { return is_active;                               }
@@ -110,7 +111,7 @@ namespace ultrainiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(hasactived)(url)
-                        (unpaid_blocks)(total_produce_block)(last_claim_time)(location)(last_operate_blocknum) )
+                        (unpaid_blocks)(total_produce_block)(last_claim_time)(location)(last_operate_blocknum)(claim_rewards_account) )
    };
 
    struct pending_miner {
@@ -280,61 +281,19 @@ namespace ultrainiosystem {
 
          void resourcelease( account_name from, account_name receiver,
                           int64_t combosize, int64_t days, uint64_t location = master_chain_name);
-         /**
-          *  Stakes SYS from the balance of 'from' for the benfit of 'receiver'.
-          *  If transfer == true, then 'receiver' can unstake to their account
-          *  Else 'from' can unstake at any time.
-          */
-         void delegatebw( account_name from, account_name receiver,
-                          asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
-
-
-         /**
-          *  Decreases the total tokens delegated by from to receiver and/or
-          *  frees the memory associated with the delegation if there is nothing
-          *  left to delegate.
-          *
-          *  This will cause an immediate reduction in net/cpu bandwidth of the
-          *  receiver.
-          *
-          *  A transaction is scheduled to send the tokens back to 'from' after
-          *  the staking period has passed. If existing transaction is scheduled, it
-          *  will be canceled and a new transaction issued that has the combined
-          *  undelegated amount.
-          *
-          *  The 'from' account loses voting power as a result of this call and
-          *  all producer tallies are updated.
-          */
-         void undelegatebw( account_name from, account_name receiver,
-                            asset unstake_net_quantity, asset unstake_cpu_quantity );
 
          void delegatecons( account_name from, account_name receiver,asset stake_net_quantity);
          void undelegatecons( account_name from, account_name receiver);
-         /**
-          * Increases receiver's ram quota based upon current price and quantity of
-          * tokens provided. An inline transfer from receiver to system contract of
-          * tokens will be executed.
-          */
-         void buyram( account_name buyer, account_name receiver, asset tokens );
-         void buyrambytes( account_name buyer, account_name receiver, uint32_t bytes );
-
-         /**
-          *  Reduces quota my bytes and then performs an inline transfer of tokens
-          *  to receiver based upon the average purchase price of the original quota.
-          */
-         void sellram( account_name receiver, int64_t bytes );
 
          /**
           *  This action is called after the delegation-period to claim all pending
           *  unstaked tokens belonging to owner
           */
-         void refund( account_name owner );
-
          void refundcons( account_name owner );
 
          // functions defined in voting.cpp
 
-         void regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint64_t location );
+         void regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint64_t location, account_name rewards_account );
 
          void unregprod( const account_name producer );
 
@@ -343,7 +302,7 @@ namespace ultrainiosystem {
          void setparams( const ultrainio::blockchain_parameters& params );
 
          // functions defined in producer_pay.cpp
-         void claimrewards( const account_name& owner );
+         void claimrewards();
 
          void setpriv( account_name account, uint8_t ispriv );
 
@@ -388,9 +347,6 @@ namespace ultrainiosystem {
          // Implementation details:
 
          //defind in delegate_bandwidth.cpp
-         void changebw( account_name from, account_name receiver,
-                        asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
-
          void change_cons( account_name from, account_name receiver, asset stake_cons_quantity);
 
          //defined in voting.hpp
@@ -419,6 +375,8 @@ namespace ultrainiosystem {
          chaintype get_subchain_basic_info(uint16_t chain_type) const;
 
          void syncresource(account_name receiver, int64_t combosize, time endtime);
+
+         void distributreward();
    };
 
 } /// ultrainiosystem

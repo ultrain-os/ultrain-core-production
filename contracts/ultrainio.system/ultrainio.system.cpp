@@ -150,9 +150,9 @@ namespace ultrainiosystem {
          authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
          authorization.emplace_back(permission_level{miner.account, N(active)});
          INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), authorization,
-            { miner.account, miner.public_key, miner.url, miner.location} );
+            { miner.account, miner.public_key, miner.url, miner.location, N(ultrainio)} );
          INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
-         { N(utrio.stake),miner.account,asset(consweight_per_subaccount)} );
+            { N(utrio.stake),miner.account,asset(consweight_per_subaccount)} );
       }else{
          auto prod = _producers.find( miner.account );
          if(prod == _producers.end())
@@ -212,7 +212,7 @@ namespace ultrainiosystem {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
-                     if((itr->resource_index == curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
+                     if((itr->resource_index == (uint64_t)curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
                            print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
                            ultrainio_assert( false, "voteaccount proposer already voted" );
                      }
@@ -332,7 +332,7 @@ void system_contract::voteaccount() {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
-                     if((itr->resource_index == curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
+                     if((itr->resource_index == (uint64_t)curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
                            print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
                            ultrainio_assert( false, "voteaccount proposer already voted" );
                      }
@@ -411,7 +411,7 @@ void system_contract::voteresourcelease() {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
-                     if((itr->resource_index == curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
+                     if((itr->resource_index == (uint64_t)curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
                            print("\nvoteresourcelease proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
                            ultrainio_assert( false, "proposer already voted" );
                      }

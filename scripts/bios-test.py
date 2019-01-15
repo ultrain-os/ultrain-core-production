@@ -16,15 +16,13 @@ args = None
 logFile = None
 
 unlockTimeout = 999999999
-defaultclu = '/root/workspace%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
-defaultkul = '/root/workspace%s/ultrain-core/build/programs/kultraind/kultraind'
-defaultcontracts_dir = '/root/workspace%s/ultrain-core/build/contracts/'
+defaultclu = '%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
+defaultkul = '%s/ultrain-core/build/programs/kultraind/kultraind'
+defaultcontracts_dir = '%s/ultrain-core/build/contracts/'
 systemAccounts = [
     'utrio.bpay',
     'utrio.msig',
     'utrio.names',
-    'utrio.ram',
-    'utrio.ramfee',
     'utrio.saving',
     'utrio.stake',
     'utrio.token',
@@ -46,8 +44,6 @@ accountsToResign = [
     'utrio.bpay',
     'utrio.msig',
     'utrio.names',
-    'utrio.ram',
-    'utrio.ramfee',
     'utrio.saving',
     'utrio.stake',
     'utrio.token',
@@ -587,10 +583,6 @@ def stepCreateStakedAccounts():
         retry(args.clultrain + 'create account ultrainio %s %s ' % (accounts[i], account_pk_list[i]))
     sleep(10)
     retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
-   #  for i in range(0, args.num_producers):
-   #      retry(args.clultrain + 'system resourcelease ultrainio %s  1 100' % (accounts[i]))
-   #      #retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "1.0000 UGAS" --stake-cpu "1.0000 UGAS" --buy-ram "1000.000 UGAS" ' % (accounts[i], args.public_key))
-   #  sleep(5)
 
 
 def stepRegProducers():
@@ -598,7 +590,7 @@ def stepRegProducers():
         retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
     sleep(15)
     for i in range(1, args.num_producers):
-        retry(args.clultrain + 'system regproducer %s %s https://%s.com 0 ' % (accounts[i], pk_list[i], accounts[i]))
+        retry(args.clultrain + 'system regproducer %s %s https://%s.com 0  %s' % (accounts[i], pk_list[i], accounts[i], accounts[i]))
     sleep(15)
     funds = 500000000 / args.num_producers / 2
     for i in range(1, args.num_producers):
@@ -758,9 +750,9 @@ parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", defau
 parser.add_argument('--private-Key', metavar='', help="ULTRAIN Private Key", default='5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H', dest="private_key")
 parser.add_argument('--initacc-pk', metavar='', help="ULTRAIN Public Key", default='UTR6XRzZpgATJaTtyeSKqGhZ6rH9yYn69f5fkLpjVx6y2mEv5iQTn', dest="initacc_pk")
 parser.add_argument('--initacc-sk', metavar='', help="ULTRAIN Private Key", default='5KZ7mnSHiKN8VaJF7aYf3ymCRKyfr4NiTiqKC5KLxkyM56KdQEP', dest="initacc_sk")
-parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '')
-parser.add_argument('--kultraind', metavar='', help="Path to kultraind binary", default=defaultkul % '')
-parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default=defaultcontracts_dir % '')
+parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '/root/workspace')
+parser.add_argument('--kultraind', metavar='', help="Path to kultraind binary", default=defaultkul % '/root/workspace')
+parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default=defaultcontracts_dir % '/root/workspace')
 parser.add_argument('--genesis', metavar='', help="Path to genesis.json", default="./genesis.json")
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
@@ -781,9 +773,9 @@ for (flag, command, function, inAll, help) in commands:
 
 args = parser.parse_args()
 if args.programpath:
-    args.clultrain = defaultclu % ('/'+args.programpath)
-    args.kultraind = defaultkul % ('/'+args.programpath)
-    args.contracts_dir = defaultcontracts_dir % ('/'+args.programpath)
+    args.clultrain = defaultclu % (args.programpath)
+    args.kultraind = defaultkul % (args.programpath)
+    args.contracts_dir = defaultcontracts_dir % (args.programpath)
 
 print(args.clultrain)
 print(args.kultraind)

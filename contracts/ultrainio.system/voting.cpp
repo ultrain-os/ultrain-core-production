@@ -34,7 +34,7 @@ namespace ultrainiosystem {
     *  @pre authority of producer to register
     *
     */
-    void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint64_t location ) {
+    void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint64_t location, account_name rewards_account ) {
       ultrainio_assert( url.size() < 512, "url too long" );
       // key is hex encoded
       ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
@@ -71,6 +71,7 @@ namespace ultrainiosystem {
                info.location     = location;
          });
       } else {
+         ultrainio_assert( is_account( rewards_account ), "rewards account not exists" );
          _producers.emplace( producer, [&]( producer_info& info ){
                info.owner         = producer;
                info.total_cons_staked   = 0LL;
@@ -79,6 +80,7 @@ namespace ultrainiosystem {
                info.is_enabled    = false;
                info.url           = url;
                info.location      = location;
+               info.claim_rewards_account = rewards_account;
          });
       }
       if(has_auth(_self)){

@@ -310,41 +310,13 @@
          {"name":"lease_num", "type":"uint64"}
       ]
     },{
-      "name": "delegated_bandwidth",
+      "name": "delegated_consensus",
       "base": "",
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"to", "type":"account_name"},
-         {"name":"net_weight", "type":"asset"},
-         {"name":"cpu_weight", "type":"asset"},
-         {"name":"cons_weight", "type":"asset"}
-      ]
-    },{
-      "name": "user_resources",
-      "base": "",
-      "fields": [
-         {"name":"owner", "type":"account_name"},
-         {"name":"net_weight", "type":"asset"},
-         {"name":"cpu_weight", "type":"asset"},
-         {"name":"ram_bytes", "type":"int64"}
-      ]
-    },{
-      "name": "total_resources",
-      "base": "",
-      "fields": [
-         {"name":"owner", "type":"account_name"},
-         {"name":"net_weight", "type":"asset"},
-         {"name":"cpu_weight", "type":"asset"},
-         {"name":"ram_bytes", "type":"uint64"}
-      ]
-    },{
-      "name": "refund_request",
-      "base": "",
-      "fields": [
-         {"name":"owner", "type":"account_name"},
-         {"name":"request_time", "type":"time_point_sec"},
-         {"name":"net_amount", "type":"asset"},
-         {"name":"cpu_amount", "type":"asset"}
+         {"name":"cons_weight", "type":"asset"},
+         {"name":"refund_account", "type":"account_name"}
       ]
     },{
       "name": "refund_cons",
@@ -432,7 +404,8 @@
          {"name":"total_produce_block",   "type":"uint64"},
          {"name":"last_claim_time", "type":"uint64"},
          {"name":"location",        "type":"uint64"},
-         {"name":"last_operate_blocknum", "type":"uint64"}
+         {"name":"last_operate_blocknum", "type":"uint64"},
+         {"name":"claim_rewards_account", "type":"account_name"}
       ]
     },{
      "name": "chaintype",
@@ -533,7 +506,8 @@
         {"name":"producer",     "type":"account_name"},
         {"name":"producer_key", "type":"string"},
         {"name":"url",          "type":"string"},
-        {"name":"location",     "type":"uint64"}
+        {"name":"location",     "type":"uint64"},
+        {"name":"rewards_account",     "type":"account_name"}
       ]
     },{
       "name": "unregprod",
@@ -551,7 +525,6 @@
       "name": "claimrewards",
       "base": "",
       "fields": [
-        {"name":"owner",   "type":"account_name"}
       ]
     },{
       "name": "setpriv",
@@ -786,14 +759,8 @@
       "key_names" : [],
       "key_types" : []
     },{
-      "name": "userres",
-      "type": "user_resources",
-      "index_type": "i64",
-      "key_names" : ["owner"],
-      "key_types" : ["uint64"]
-    },{
-      "name": "delband",
-      "type": "delegated_bandwidth",
+      "name": "delcons",
+      "type": "delegated_consensus",
       "index_type": "i64",
       "key_names" : ["to"],
       "key_types" : ["uint64"]
@@ -802,12 +769,6 @@
       "type": "exchange_state",
       "index_type": "i64",
       "key_names" : ["supply"],
-      "key_types" : ["uint64"]
-    },{
-      "name": "refunds",
-      "type": "refund_request",
-      "index_type": "i64",
-      "key_names" : ["owner"],
       "key_types" : ["uint64"]
     },{
       "name": "refundscons",
