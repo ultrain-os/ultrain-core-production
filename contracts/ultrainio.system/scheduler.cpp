@@ -32,19 +32,16 @@ namespace ultrainiosystem {
         /*
          *
          *TODO
-          1. uncomment the 3 assert when MT done, and it's ready to test with subchain header report
-          2. denial of the report when the hash for the blocknum has been voted by more than 2/3 committee member
-          3. according the world state design, change the magic num (10000, 1000) to macro or const.
-          4. delete the outdated hash when new hash reported.
+          1. denial of the report when the hash for the blocknum has been voted by more than 2/3 committee member
          */
-        //ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->location == subchain, "enabled producer not found this proposer" );
+        ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->location == subchain, "enabled producer not found this proposer" );
         auto checkBlockNum = [&](uint64_t  bn) -> bool {
-            return (bn%10000) == 0;
+            return (bn%default_worldstate_interval) == 0;
         };
         ultrainio_assert(checkBlockNum(blocknum), "report an invalid blocknum ws");
         auto ite_chain = _subchains.find(subchain);
-        //ultrainio_assert(blocknum <= ite_chain->head_block_num, "report a blocknum larger than current block");
-        //ultrainio_assert(ite_chain->head_block_num - blocknum <= 1000, "report a too old blocknum");
+        ultrainio_assert(blocknum <= ite_chain->head_block_num, "report a blocknum larger than current block");
+        ultrainio_assert(ite_chain->head_block_num - blocknum <= default_worldstate_interval, "report a too old blocknum");
 
         subchain_hash_table     hashTable(_self, subchain);
 
@@ -77,7 +74,11 @@ namespace ultrainiosystem {
                     p.hash_v.emplace_back(hash, 1);
                     p.accounts.emplace_back(current_sender());
                     });
-
+            int32_t expired = blocknum-MAX_WS_COUNT*default_worldstate_interval;
+            if (expired > 0){
+                auto old = hashTable.find(expired);
+                hashTable.erase(old);
+            }
         }
     }
     /// @abi action

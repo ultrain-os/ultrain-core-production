@@ -141,13 +141,17 @@ namespace ultrainiosystem {
        uint64_t         votes;
        ULTRAINLIB_SERIALIZE(hash_vote , (hash)(votes) )
    };
-    struct subchain_ws_hash {
+
+   static constexpr uint32_t default_worldstate_interval = 30;
+   static constexpr uint32_t MAX_WS_COUNT                = 5;
+
+   struct subchain_ws_hash {
        uint64_t             block_num;
        std::vector<hash_vote>    hash_v;
        std::vector<account_name> accounts;
        uint64_t  primary_key()const { return block_num; }
        ULTRAINLIB_SERIALIZE( subchain_ws_hash , (block_num)(hash_v)(accounts) )
-    };
+   };
    typedef ultrainio::multi_index<N(pendingminer),pending_miner> pendingminers;
    typedef ultrainio::multi_index<N(pendingacc),pending_acc> pendingaccounts;
    typedef ultrainio::multi_index<N(pendingres),pending_res> pendingresource;
