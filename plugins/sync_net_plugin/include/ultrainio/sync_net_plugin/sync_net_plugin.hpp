@@ -54,6 +54,7 @@ namespace ultrainio {
         string                       sync_block(uint32_t block_height);
         status_code                  ws_status(string id, int32_t simulator=-1);
         string                       test_latancy();
+        string                       repair_blog(string path,int32_t height);
 
         chain::ws_info                      latest_wsinfo();
 

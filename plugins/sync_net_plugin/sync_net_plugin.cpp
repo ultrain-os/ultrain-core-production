@@ -2192,6 +2192,11 @@ namespace ultrainio {
         } 
     }
 
+    string sync_net_plugin::repair_blog(string path,int32_t height){
+       auto backup_path = chain::block_log::repair_log(path, height);
+       return backup_path.generic_string().c_str();
+    }
+
     string sync_net_plugin::test_latancy() {
         ReqTestTimeMsg reqTestTimeMsg;
         for (const auto& c : my->connections) {
