@@ -43,11 +43,11 @@ const getSubChainId = async (configSub) => {
  * @param user
  * @returns {Promise<*|number|Location|string|WorkerLocation>}
  */
-const getChainName = async function initChainName(u3, user) {
+const getChainInfo = async function initChainName(u3, user) {
 
     let result = await u3.getProducerInfo({"owner": user});
-    //logger.debug(result);
-    return result.location;
+    logger.debug("getChainInfo",result);
+    return result;
 
 }
 
@@ -280,7 +280,7 @@ getTableAllData = async (config, code, scope, table) => {
 module.exports = {
     getMainChainId,
     getSubChainId,
-    getChainName,
+    getChainInfo,
     getRemoteIpAddress,
     getProducerLists,
     contractInteract,

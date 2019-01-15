@@ -34,6 +34,8 @@ ChainConfig.localTest = false;
 
 //chain_name
 ChainConfig.chainName = "11";
+//chain_name
+ChainConfig.chainId = "";
 //main chain id
 ChainConfig.mainChain
 //节点登录的委员会用户信息
@@ -269,6 +271,23 @@ ChainConfig.syncSeedIpConfig = function () {
     }
 
 }
+
+//目前在正确的子链上
+ChainConfig.isInRightChain = function () {
+
+    //主链未同步到我属于子链的创世块
+    if (constant.chainIdConstants.NONE_CHAIN == this.chainId || utils.isNull(this.chainId)) {
+        return true;
+    }
+
+    if (this.chainId == this.configSub.chainId) {
+        return true;
+    }
+
+    return false;
+
+}
+
 
 ChainConfig.syncSeedIpConfig();
 

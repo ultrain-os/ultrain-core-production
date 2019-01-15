@@ -8,6 +8,7 @@ var contractConstants = require("../common/constant/constants").contractConstant
 var tableConstants = require("../common/constant/constants").tableConstants
 var scopeConstants = require("../common/constant/constants").scopeConstants
 var actionConstants = require("../common/constant/constants").actionConstants
+var chainIdConstants = require("../common/constant/constants").chainIdConstants
 var sleep = require("sleep")
 var utils = require("../common/util/utils")
 var committeeUtil = require("./util/committeeUtil");
@@ -287,14 +288,33 @@ async function syncCommitee() {
 async function syncChainInfo() {
     try {
         logger.info("sync chain info and committee start..");
-        //同步链名称（主子链id等）
-        let chainName = await chainApi.getChainName(chainConfig.u3, chainConfig.myAccountAsCommittee);
-        logger.info("user("+chainConfig.myAccountAsCommittee+") belongs to chain name :" + chainName);
+        //同步链名称（子链id,链名称等）
+        let chainName = null;
+        let chainId = null;
+        let chainInfo = await chainApi.getChainInfo(chainConfig.u3, chainConfig.myAccountAsCommittee);
+        if (utils.isNotNull(chainInfo)) {
+            chainName = chainInfo.location;
+            chainId = chainInfo.chain_id;
+        }
+
+
         if (utils.isNotNull(chainName)) {
             if (chainConfig.chainName != chainName) {
                 chainConfig.chainName = chainName;
             }
         }
+        if (utils.isNotNull(chainId) && chainIdConstants.NONE_CHAIN != chainId) {
+            chainConfig.chainId = chainId;
+        }
+
+        logger.info(chainConfig.myAccountAsCommittee+" belongs to chaininfo (name:"+chainConfig.chainName+",chain_id:"+chainConfig.chainId+") from mainchain");
+        logger.info("now subchain's chainid :"+chainConfig.configSub.chainId);
+        if (chainConfig.isInRightChain()) {
+            logger.info(chainConfig.myAccountAsCommittee+" is in right chain");
+        } else {
+            logger.info(chainConfig.myAccountAsCommittee+" is not in right chain");
+        }
+
 
         //如果是主链，啥都不操作
         if (isMainChain()) {

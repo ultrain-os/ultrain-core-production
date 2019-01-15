@@ -62,6 +62,11 @@ var scopeConstants = {
     SCOPE_MAIN_CHAIN : 0,//主链scope
 }
 
+//chainid常量
+var chainIdConstants = {
+    NONE_CHAIN : "0000000000000000000000000000000000000000000000000000000000000000",//未同步子链创世块
+}
+
 
 
 module.exports = {
@@ -72,5 +77,6 @@ module.exports = {
     contractConstants,
     tableConstants,
     actionConstants,
-    scopeConstants
+    scopeConstants,
+    chainIdConstants
 }
