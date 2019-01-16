@@ -170,8 +170,14 @@ namespace ultrainiosystem {
 
             //compare previous with pre block's id.
             auto block_number = headers[idx].block_num();
-            if(ite_chain->head_block_num == 0 ||
-               (ite_chain->head_block_id == headers[idx].previous && block_number == ite_chain->head_block_num + 1)) {
+            if(0 == ite_chain->head_block_num && 1 == block_number) {
+                  _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+                      _subchain.head_block_id     = headers[idx].id();
+                      _subchain.head_block_num    = 1;
+                      _subchain.chain_id          = headers[idx].action_mroot; //save chain id
+                  });
+            }
+            else if (ite_chain->head_block_id == headers[idx].previous && block_number == ite_chain->head_block_num + 1) {
                   _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
                       _subchain.is_synced         = synced;
                       _subchain.head_block_id     = headers[idx].id();
@@ -403,7 +409,7 @@ namespace ultrainiosystem {
 
     void system_contract::activate_committee_update() {
         auto block_height = tapos_block_num();
-        if(block_height > 120 && block_height%360 != 0) {
+        if((block_height > 180 && block_height%360 != 0) || (block_height <= 180 && block_height%60 != 0) ) {
             return;  //do this operation every 1 hours == 360 block.
         }
         auto ite_chain = _subchains.begin();

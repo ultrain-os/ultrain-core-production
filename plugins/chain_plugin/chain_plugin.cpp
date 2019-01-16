@@ -998,7 +998,6 @@ vector<read_only::get_subchain_committee_result> read_only::get_subchain_committ
 
 vector<ultrainio::chain::resources_lease> read_only::get_subchain_resource(const read_only::get_subchain_resource_params& p) const {
 vector<ultrainio::chain::resources_lease> results;
-    ULTRAIN_ASSERT(p.chain_name != master_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
     const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
     auto index_type = get_table_type( abi, N(reslease) );
     walk_key_value_table(N(ultrainio), p.chain_name, N(reslease), [&](const key_value_object& obj) {
@@ -1053,15 +1052,34 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
        fc::raw::unpack(ds, producer_data);
        if(p.owner == producer_data.owner) {
            result.location = producer_data.location;
-           result.from_location = 0; //todo, replace it after VM data updated.
            return false;
        }
        else {
            return true;
        }
     });
+
+    if(result.location == 0) {
+        result.chain_id = db.get_chain_id();
+    }
+    else if (result.location != std::numeric_limits<uint64_t>::max()) {
+        table = N(subchains);
+        auto index_type = get_table_type( abi, table );
+        walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+            subchain subchain_data;
+            fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+            fc::raw::unpack(ds, subchain_data);
+            if(result.location == subchain_data.chain_name) {
+                result.chain_id = string(subchain_data.chain_id);
+                return false;
+            }
+            else {
+                return true;
+            }
+        });
+    }
+    result.from_location = 0;
     result.quit_before_num = 0; // todo, quey it from table
-    result.chain_id = db.get_chain_id();
     return result;
 }
 

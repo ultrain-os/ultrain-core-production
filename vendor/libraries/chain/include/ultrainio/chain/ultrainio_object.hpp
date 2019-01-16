@@ -60,7 +60,7 @@ namespace ultrainio { namespace chain {
        block_id_type             head_block_id;
        uint32_t                  head_block_num;
        std::vector<user_info>    users;
-//       checksum256_type        chain_id;
+       checksum256_type          chain_id;
 //       std::string             genesis_info;
 //       std::string             network_topology;   //ignore it now, todo, will re-design it after dynamic p2p network feature implemented
 //       std::vector<role_base>  relayer_candidates; //relayer only with deposit， not in committee list
@@ -84,6 +84,6 @@ FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_t
 FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )
 FC_REFLECT(ultrainio::chain::updated_committee, (deprecated_committee)(unactivated_committee)(take_effect_at_block) )
 FC_REFLECT(ultrainio::chain::subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_active)(is_synced)(committee_members)
-                                       (updated_info)(changing_info)(head_block_id)(head_block_num)(users) )
-           //(chain_id)(genesis_info)(network_topology)(relayer_candidates)(relayer_list) )
+                                       (updated_info)(changing_info)(head_block_id)(head_block_num)(users)(chain_id) )
+                                 //(genesis_info)(network_topology)(relayer_candidates)(relayer_list) )
 FC_REFLECT(ultrainio::chain::resources_lease, (owner)(lease_num)(start_time)(end_time) )
