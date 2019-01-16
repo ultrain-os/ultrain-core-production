@@ -275,6 +275,10 @@
       exit -1
    fi
 
+   printf "\\npm install start\\n"
+   cd ${SOURCE_DIR}/scripts/ultrainmng && npm install
+   printf "\\npm install end\\n"
+
    TIME_END=$(( $(date -u +%s) - ${TIME_BEGIN} ))
 
 	printf "\n\n${bldred}\t          _    _________ _______  _______ _________ _       \n"
@@ -293,3 +297,5 @@
 
    printf "\\tFor more information:\\n"
    printf "\\tULTRAIN.IO website: https://ultrain.io\\n"
+
+
