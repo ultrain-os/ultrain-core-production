@@ -334,7 +334,7 @@ namespace ultrainio {
         }
 
         const string peer_name();
-
+        const string peer_address();
 
         void enqueue( const net_message &msg, bool trigger_send = true );
         void flush_queues();
@@ -411,7 +411,7 @@ namespace ultrainio {
         no_retry(no_reason),
         fork_head_num(0)
     {
-        wlog( "created connection to ${n}", ("n", endpoint) );
+        ilog( "created connection to ${n}", ("n", endpoint) );
         initialize();
     }
 
@@ -428,7 +428,9 @@ namespace ultrainio {
         no_retry(no_reason),
         fork_head_num(0)
     {
-        wlog( "accepted network connection" );
+        auto tmp = s->remote_endpoint().address().to_string();
+        tmp += (":" + std::to_string(s->remote_endpoint().port()));
+        wlog( "accepted connection to ${n}", ("n", tmp) );
         initialize();
     }
 
@@ -639,6 +641,13 @@ namespace ultrainio {
         return "connecting client";
     }
 
+    const string connection::peer_address() {
+        if( socket ) {
+            return socket->remote_endpoint().address().to_string();
+        }
+        return "";
+    }
+
     void connection::fetch_timeout( boost::system::error_code ec ) {
         if( !ec ) {
 //            if( pending_fetch.valid() && !( pending_fetch->req_trx.empty( ) || pending_fetch->req_blocks.empty( ) ) ) {
@@ -708,6 +717,7 @@ namespace ultrainio {
             int	                                            num_of_hash_error;
             int                                             num_of_no_data;
             int	                                            len_per_slice;
+            std::string	                                    ip_address;
 
         public:
             sync_ws_manager();
@@ -723,6 +733,7 @@ namespace ultrainio {
             void receive_ws_sync_req(connection_ptr c, const ReqLastWsInfoMsg &msg);
             void receive_file_sync_req(connection_ptr c, const ReqWsFileMsg &msg);
             bool open_write();
+            int  get_status(std::string& ip);
     };
 
     sync_ws_manager::sync_ws_manager(){
@@ -732,6 +743,7 @@ namespace ultrainio {
         sync_check_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
         ws_states = none;
         len_per_slice = 1024;
+        ip_address = "";
     }
 
     void sync_ws_manager::sync_reset(sync_code st){
@@ -771,6 +783,7 @@ namespace ultrainio {
             if(c->current()) {
                 ilog ("send file_info_msg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
                 c->enqueue(net_message(reqLastWsInfoMsg));
+                ip_address = c->peer_address();
                 is_connection = true;
             }
         }
@@ -872,7 +885,11 @@ namespace ultrainio {
             sync_reset(error);//error
             return;
         }
-        ws_sync_conn = m_conns[index];
+
+        if (m_conns[index] != ws_sync_conn) {
+            ws_sync_conn = m_conns[index];
+            ip_address = ws_sync_conn->peer_address();
+        }
 
         ReqWsFileMsg reqWsFileMsg;
         reqWsFileMsg.lenPerSlice = len_per_slice;
@@ -1028,6 +1045,22 @@ namespace ultrainio {
         return true;
     }
 
+    int  sync_ws_manager::get_status(std::string& ip) {
+        ip = ws_sync_conn ? ws_sync_conn->peer_name() : ip_address;
+        if (ws_states == success)
+            return 0;
+        else if (ws_states == waiting_respones || ws_states == syncing){
+            return 1;
+        } else if ( ws_states == no_connection){
+            return 2;
+        } else if ( ws_states == hash_error){
+            return 3;
+        } else if ( ws_states == no_data){
+            return 4;
+        } 
+
+        return 5;
+    }
     //------------------------------------------------------------------------
     class sync_blocks_manager {
         public:
@@ -1052,6 +1085,7 @@ namespace ultrainio {
             fc::path                                        block_dir;
             bool	                                        max_try_cnt;
             chain::signed_block                             previous_block;
+            std::string	                                    ip_address;
         public:
             sync_blocks_manager();
             void sync_blocks_reset(sync_blocks_code st);
@@ -1066,6 +1100,7 @@ namespace ultrainio {
             void receive_blocks_file_sync_req(connection_ptr c, const ReqBlocksFileMsg &msg);
             void open_write();
             void open_read(bool reload = false);
+            int  get_status(std::string& ip);
     };
 
     sync_blocks_manager::sync_blocks_manager(){
@@ -1077,6 +1112,7 @@ namespace ultrainio {
         m_is_read = true;
         block_dir = fc::app_path() / "ultrainio/nodultrain/data/blocks/";
         max_try_cnt = 2;
+        ip_address = "";
     }
 
     void sync_blocks_manager::sync_blocks_reset(sync_blocks_code st){
@@ -1109,6 +1145,7 @@ namespace ultrainio {
                 ilog ("send file_info_msg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
                 c->enqueue(net_message(reqBlocksMsg));
                 is_connection = true;
+                ip_address = c->peer_address();
             }
         }
 
@@ -1209,13 +1246,16 @@ namespace ultrainio {
     }
 
     void sync_blocks_manager::send_blocks_file_sync_req(uint32_t block_num){
-        int index = select_strong_sync_src();
-        if (index < 0) {
-            elog("No any connection");
-            sync_blocks_reset(error);//error
-            return;
+        if(!sync_connect_ptr) {        
+            int index = select_strong_sync_src();
+            if (index < 0) {
+                elog("No any connection");
+                sync_blocks_reset(error);//error
+                return;
+            }
+            sync_connect_ptr = m_conns[index];
+            ip_address = sync_connect_ptr->peer_address();
         }
-        sync_connect_ptr = m_conns[index];
 
         ReqBlocksFileMsg reqMsg;
         reqMsg.block_num = block_num;
@@ -1223,9 +1263,9 @@ namespace ultrainio {
 
         sync_check_timer->cancel();
         sync_check_timer->expires_from_now(sync_timeout);
-        sync_check_timer->async_wait([this, index, block_num](boost::system::error_code ec) {
+        sync_check_timer->async_wait([this, block_num](boost::system::error_code ec) {
             if(ec) return;
-            ilog("req block_num ${block_num} timeout, peer ${p}", ("block_num", block_num)("p", m_conns[index]->peer_name()));
+            ilog("req block_num ${block_num} timeout, peer ${p}", ("block_num", block_num)("p", sync_connect_ptr->peer_name()));
             remove_current_connect();
 
             //request the blocks again
@@ -1381,6 +1421,22 @@ namespace ultrainio {
         m_is_read = true;
     }
 
+    int  sync_blocks_manager::get_status(std::string& ip) {
+        ip = sync_connect_ptr ? sync_connect_ptr->peer_name() : ip_address;
+        if (blocks_sync_states == success)
+            return 0;
+        else if (blocks_sync_states == waiting_respones || blocks_sync_states == syncing){
+            return 1;
+        } else if ( blocks_sync_states == no_connection){
+            return 2;
+        // } else if ( blocks_sync_states == error){
+        //     return 3;
+        } else if ( blocks_sync_states == no_data){
+            return 4;
+        } 
+
+        return 5;
+    }
 
     //------------------------------------------------------------------------
 
@@ -2174,18 +2230,43 @@ namespace ultrainio {
     }
 
     status_code sync_net_plugin::ws_status(string id,int32_t simulator){
-        switch (simulator) {
-             case 0:
-                 return {0,"success","127.0.0.1"};
-             case 1:
-                 return {1,"ongoing","127.0.0.1"};
-             case 2:
-                 return {2,"endpoint unreachable","127.0.0.1"};
-             case 3:
-                 return {3,"hash not match","127.0.0.1"};
-             default :
-                 return {0,"success","127.0.0.1"};
-        } 
+        std::string ip = "";
+
+        if(id == "ws") {
+            int code = my->m_sync_ws_manager->get_status(ip);
+            switch (code) {
+                case 0:
+                    return {0,"success", ip};
+                case 1:
+                    return {1,"ongoing",ip};
+                case 2:
+                    return {2,"endpoint unreachable",ip};
+                case 3:
+                    return {3,"hash not match",ip};
+                case 4:
+                    return {4,"no data",ip};
+                default :
+                    return {5,"error","unknow reason"};
+            } 
+        } else if (id == "block"){
+            int code = my->m_sync_blocks_manager->get_status(ip);
+            switch (code) {
+                case 0:
+                    return {0,"success", ip};
+                case 1:
+                    return {1,"ongoing",ip};
+                case 2:
+                    return {2,"endpoint unreachable",ip};
+                case 3:
+                    return {3,"header not match",ip};
+                case 4:
+                    return {4,"no data",ip};
+                default :
+                    return {5,"error","unknow reason"};
+            } 
+        }
+
+        return {-1,"error input", ""};
     }
 
     string sync_net_plugin::repair_blog(string path,int32_t height){
