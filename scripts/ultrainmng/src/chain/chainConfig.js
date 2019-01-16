@@ -128,8 +128,13 @@ ChainConfig.syncConfig = async function () {
         logger.debug('getRemoteIpAddress=', ip);
         this.config.httpEndpoint = `${configIniLocal.prefix}${ip}${configIniLocal.endpoint}`;
 
-        //子链请求地址配置
-        this.configSub.httpEndpoint = configIniLocal.subchainHttpEndpoint;
+        //子链请求地址配置-默认先从nod的config中获取，如果没有用本地的
+        if (utils.isNotNull(configIniTarget.subchainHttpEndpoint)) {
+            this.configSub.httpEndpoint = configIniTarget.subchainHttpEndpoint;
+        } else {
+            this.configSub.httpEndpoint = configIniLocal.subchainHttpEndpoint;
+        }
+        logger.info("subchain httpEndpoint:",this.configSub.httpEndpoint)
 
         /**
          * 获取配置中localtest配置

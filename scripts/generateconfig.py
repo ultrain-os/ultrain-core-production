@@ -343,6 +343,7 @@ def write_config_file():
                 insert_keys(fname, index_key)
             if con.name[len(con.name)-1::len(con.name)] == '7':
                 insert_non_producing(fname)
+            update_ultrainmng_config(fname)
             print(hostip,con.ip,con.id)
             insert_peer(fname,hosts[dockerinfo][0].ip)
             index_key+=1
@@ -378,6 +379,21 @@ def insert_leader_sk(fname):
 	index_line = content.index("#insert_my_keys\n")
 	content.insert(index_line+1, newcontent)
 	writefile(fname,content)
+
+
+# update ultrainmng  config
+def update_ultrainmng_config(fname):
+    content = readfile(fname)
+    print ("args.subchain:"+args.subchain);
+    if args.masterchain:
+        newcontent = "subchainHttpEndpoint = http://172.16.10.4:8877\n"
+    if args.subchain == "11" :
+        newcontent = "subchainHttpEndpoint = http://172.16.10.5:8888\n"
+    elif args.subchain == "12" :
+        newcontent = "subchainHttpEndpoint = http://172.16.10.5:8899\n"
+    index_line = content.index("#ultrainmng_subchainHttpEndpoint\n")
+    content.insert(index_line+1, newcontent)
+    writefile(fname,content)
 
 def insert_non_producing(fname):
 	content = readfile(fname)

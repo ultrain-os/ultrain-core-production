@@ -17,6 +17,8 @@ contract-emit-string-length = 1024
 
 #insert_if_producing-node
 
+#ultrainmng_subchainHttpEndpoint
+
 #insert_my_keys
 
 # print contract's output to console (ultrainio::chain_plugin)
