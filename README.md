@@ -17,7 +17,7 @@ ULTRAIN source code is released under the open source MIT license and is offered
 
 ## Supported Operating Systems
 ULTRAINIO currently supports the following operating systems:
-1. Ubuntu 16.04 (Ubuntu 16.10 recommended)
+1. Ubuntu 18.04 LTS
 2. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended)
 
 Docker image with pre-compiled Ultrain software can be requsted for.
