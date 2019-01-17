@@ -384,7 +384,7 @@ def insert_leader_sk(fname):
 # update ultrainmng  config
 def update_ultrainmng_config(fname):
     content = readfile(fname)
-    print ("args.subchain:"+args.subchain);
+    newcontent = "";
     if args.masterchain:
         newcontent = "subchainHttpEndpoint = http://172.16.10.4:8877\n"
     if args.subchain == "11" :
