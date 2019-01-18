@@ -15,7 +15,7 @@ class IniFile {
      */
     constructor(filepath, encoding) {
         try {
-            this.obj = ini.parse(fs.readFileSync(filepath, encoding));
+            this.lines = fs.readFileSync(filepath, encoding).split("\n");
         } catch (e) {
             logger.error("parse ini file error:" + filepath);
         }
@@ -26,9 +26,49 @@ class IniFile {
      * @param key
      */
     getValue(key) {
-        if (utils.isNotNull(this.obj)) {
-            return this.obj[key];
+        
+        let value = null;
+        for (var i=0;i<this.lines.length;i++) {
+            let line = this.lines[i];
+            if (this.isCommentLine(line)) {
+                continue;
+            }
+
+            var array = this.convertKV(line);
+            if (utils.isNotNull(array) && array[0].trim() == key) {
+                value = array[1];
+                break;
+            }
         }
+
+        return value;
+    }
+
+    /**
+     * 判断首字母是不是#
+     * @param lineStr
+     * @returns {boolean}
+     */
+    isCommentLine(lineStr) {
+        if (lineStr.indexOf("#") == 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 转换为kv对
+     * @param lineStr
+     * @returns {*}
+     */
+    convertKV(lineStr) {
+        let array = lineStr.split("=");
+        if (array.length != 2) {
+            return null;
+        }
+
+        return array;
     }
 
     /**
@@ -37,9 +77,27 @@ class IniFile {
      * @param value
      */
     setValue(key, value) {
-        if (utils.isNotNull(this.obj)) {
-            this.obj[key] = value;
+
+        let findFlag = false;
+        for (var i=0;i<this.lines.length;i++) {
+            let line = this.lines[i];
+            if (this.isCommentLine(line)) {
+                continue;
+            }
+
+            var array = this.convertKV(line);
+            if (utils.isNotNull(array) && array[0].trim() == key) {
+                findFlag = true;
+                this.lines[i]=array[0]+"="+value;
+                break;
+            }
         }
+
+        if (findFlag == false) {
+            this.lines.push(key+"="+value)
+        }
+
+        return value;
     }
 
 
@@ -50,7 +108,12 @@ class IniFile {
      */
     writefile(filepath, encoding) {
         try {
-            fs.writeFileSync(filepath, ini.stringify(this.obj, {section: ''}, encoding));
+            let output = "";
+            for (var i=0;i<this.lines.length;i++) {
+                output = output+this.lines[i]+"\n";
+            }
+
+            fs.writeFileSync(filepath, output, encoding);
             return true;
         } catch (e) {
             logger.error("write ini file error: " + filepath, e);

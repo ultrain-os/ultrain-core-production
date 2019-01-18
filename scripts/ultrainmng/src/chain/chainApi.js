@@ -19,10 +19,15 @@ var sleep = require("sleep")
  */
 const getMainChainId = async (config) => {
 
-    var u3 = createU3({...config, sign: true, broadcast: true});
-    var blockInfo = await u3.getBlockInfo("1");
-    //logger.debug("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
-    return blockInfo.action_mroot;
+    try {
+        var u3 = createU3({...config, sign: true, broadcast: true});
+        var blockInfo = await u3.getBlockInfo("1");
+        //logger.debug("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
+        return blockInfo.action_mroot;
+    } catch (e) {
+        logger.error("get main chain id error:",utils.logNetworkError(e))
+    }
+
 }
 
 /**
@@ -32,10 +37,14 @@ const getMainChainId = async (config) => {
  */
 const getSubChainId = async (configSub) => {
 
-    var u3Sub = createU3({...configSub, sign: true, broadcast: true});
-    var blockInfo = await u3Sub.getBlockInfo("1");
-    //logger.debug("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
-    return blockInfo.action_mroot;
+    try {
+        var u3Sub = createU3({...configSub, sign: true, broadcast: true});
+        var blockInfo = await u3Sub.getBlockInfo("1");
+        //logger.debug("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
+        return blockInfo.action_mroot;
+    } catch (e) {
+        logger.error("get sub chain id error:",utils.logNetworkError(e))
+    }
 }
 
 /**
@@ -45,8 +54,14 @@ const getSubChainId = async (configSub) => {
  */
 const getChainInfo = async function initChainName(u3, user) {
 
-    let result = await u3.getProducerInfo({"owner": user});
-    logger.debug("getChainInfo",result);
+    let result = null;
+    try {
+        result = await u3.getProducerInfo({"owner": user});
+        logger.debug("getChainInfo",result);
+    } catch (e) {
+        logger.error("getChainInfo error:",utils.logNetworkError(e));
+    }
+
     return result;
 
 }
@@ -227,7 +242,7 @@ getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound,
         // logger.debug(res);
         return res.data;
     } catch (e) {
-        logger.error("get_table_records error:", e);
+        logger.error("get_table_records error:", utils.logNetworkError(e));
     }
 
     return null;
@@ -276,6 +291,23 @@ getTableAllData = async (config, code, scope, table) => {
 
 }
 
+/**
+ * 返回不同子链对应的非noneproducer的链接点
+ * @param chainId
+ * @returns {Promise<string>}
+ */
+getSubchanEndPoint = async (chainId) => {
+    if (chainId == "11") {
+        return "http://172.16.10.5:8888";
+    }
+
+    if (chainId == "12") {
+        return "http://172.16.10.5:8899";
+    }
+
+    return "http://172.16.10.5:8888";
+}
+
 
 module.exports = {
     getMainChainId,
@@ -288,5 +320,6 @@ module.exports = {
     getAccount,
     getTableInfo,
     getTableAllData,
-    getChainSeedIP
+    getChainSeedIP,
+    getSubchanEndPoint
 }

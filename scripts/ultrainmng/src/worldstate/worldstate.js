@@ -24,7 +24,7 @@ WorldState.http = "http"
 WorldState.version = "v1"
 
 //检查世界状态是否可用时间间隔
-WorldState.statusCheckTime=500;
+WorldState.statusCheckTime = 500;
 
 //配置文件目录与文件名
 WorldState.configFilePath = "/root/.local/share/ultrainio/wssultrain/config/"
@@ -47,16 +47,16 @@ WorldState.getHttpRequestPath = function (path) {
  */
 WorldState.requestData = async function (path, params) {
     try {
-        logger.debug("send http request :"+this.getHttpRequestPath(path)+" params:"+params);
+        logger.debug("send http request :" + this.getHttpRequestPath(path) + " params:" + params);
         const rs = await axios.post(this.getHttpRequestPath(path), params);
-        logger.debug("get http request :"+this.getHttpRequestPath(path)+" params:"+params +" result :",rs.data);
+        logger.debug("get http request :" + this.getHttpRequestPath(path) + " params:" + params + " result :", rs.data);
         if (rs.status == 200 || rs.status == 201) {
             return rs.data;
         } else {
             logger.error("request wss service error code (" + this.getHttpRequestPath(path) + ")", rs);
         }
     } catch (e) {
-        logger.error("request wss service error (" + this.getHttpRequestPath(path) + ") :",utils.logNetworkError(e));
+        logger.error("request wss service error (" + this.getHttpRequestPath(path) + ") :", utils.logNetworkError(e));
     }
 
     return null;
@@ -108,7 +108,7 @@ WorldState.pollingkWSState = async function (code, timeInterval, totalTime) {
         /**
          * todo delete mock用
          */
-        if (totalTime-searchTime <= timeInterval) {
+        if (totalTime - searchTime <= timeInterval) {
             code = 0;
         }
         result = await WorldState.requestWSState(code);
@@ -127,7 +127,7 @@ WorldState.pollingkWSState = async function (code, timeInterval, totalTime) {
          * 等待
          */
         sleep.msleep(timeInterval);
-        searchTime +=timeInterval;
+        searchTime += timeInterval;
     }
     return result;
 }
@@ -154,7 +154,7 @@ WorldState.pollingBlockState = async function (code, timeInterval, totalTime) {
         /**
          * todo delete mock用
          */
-        if (totalTime-searchTime <= timeInterval) {
+        if (totalTime - searchTime <= timeInterval) {
             code = 0;
         }
         let res = await WorldState.requestBlockState(code);
@@ -165,7 +165,7 @@ WorldState.pollingBlockState = async function (code, timeInterval, totalTime) {
             if (wsResUtil.isOngoing(res)) {
                 logger.info("sync block is ongoing");
             } else if (wsResUtil.isError(res)) {
-                logger.error("sync block is error:",res)
+                logger.error("sync block is error:", res)
             }
         }
         /**
@@ -175,7 +175,7 @@ WorldState.pollingBlockState = async function (code, timeInterval, totalTime) {
             break;
         }
         sleep.msleep(timeInterval);
-        searchTime +=timeInterval;
+        searchTime += timeInterval;
     }
     return result;
 }
@@ -195,7 +195,7 @@ WorldState.syncBlocks = async function () {
  * @returns {Promise<*>}
  */
 WorldState.requestBlockState = async function (code) {
-    return await this.requestData("/wss/ws_status", "[\"block\","+code+"]");
+    return await this.requestData("/wss/ws_status", "[\"block\"," + code + "]");
 }
 
 
@@ -251,7 +251,7 @@ WorldState.stop = async function (totalTime) {
             return true;
         }
         sleep.msleep(this.statusCheckTime);
-        searchtime+=this.statusCheckTime;
+        searchtime += this.statusCheckTime;
     }
     return false;
     //return true;
@@ -261,7 +261,7 @@ WorldState.stop = async function (totalTime) {
  * 启动
  * @type {WorldState}
  */
-WorldState.start = async function (chainId, seedIp,totalTime) {
+WorldState.start = async function (chainId, seedIp, totalTime) {
 
     let result = false;
     /**
@@ -276,17 +276,29 @@ WorldState.start = async function (chainId, seedIp,totalTime) {
         //utils.sleep(this.statusCheckTime);
         let searchtime = this.statusCheckTime;
         while (totalTime >= searchtime) {
-             if (await this.checkAlive()) {
-                 result = true;
-                 break;
-             }
+            if (await this.checkAlive()) {
+                result = true;
+                break;
+            }
             sleep.msleep(this.statusCheckTime);
-            searchtime+=this.statusCheckTime;
+            searchtime += this.statusCheckTime;
         }
     } else {
         console.debug("start WorldState error");
     }
     return result;
+}
+
+/**
+ * 清除DB数据
+ * @returns {Promise<void>}
+ */
+WorldState.clearDB = async function () {
+    try {
+        await ShellCmd.execCmd(Constants.cmdConstants.CLEAR_WORLD_STATE_FILE);
+    } catch (e) {
+        logger.error("worldstate remove data error:",e);
+    }
 }
 
 

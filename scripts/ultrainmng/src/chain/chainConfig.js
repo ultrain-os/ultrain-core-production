@@ -36,6 +36,8 @@ ChainConfig.localTest = false;
 ChainConfig.chainName = "11";
 //chain_name
 ChainConfig.chainId = "";
+//genesisTime
+ChainConfig.genesisTime = "";
 //main chain id
 ChainConfig.mainChain
 //节点登录的委员会用户信息
@@ -113,12 +115,12 @@ ChainConfig.syncConfig = async function () {
          * 读取管家程序自己的config文件来读取
          */
         var configIniLocal = ini.parse(fs.readFileSync(this.configPath, constant.encodingConstants.UTF8));
-        //logger.debug('configIniLocal=', configIniLocal);
+        logger.debug('configIniLocal=', configIniLocal);
         this.configFileData.local = configIniLocal;
 
         //读取nodultrain程序中的config.ini
         var configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path, constant.encodingConstants.UTF8));
-        //logger.debug('configIniTarget(nodultrain)=', configIniTarget);
+        logger.debug('configIniTarget(nodultrain)=', configIniTarget);
         this.configFileData.target = configIniTarget;
 
         //logger.debug("this.configFileData data:", this.configFileData);
@@ -186,7 +188,7 @@ ChainConfig.syncConfig = async function () {
             this.configSub.chainId = await chainApi.getSubChainId(this.configSub);
             logger.debug("configSub.chainId=", this.configSub.chainId);
         } catch (e) {
-            logger.error("target node crashed, check main node or sub node", e)
+            logger.error("target node crashed, check main node or sub node", utils.logNetworkError(e))
 
         }
 
@@ -211,17 +213,17 @@ ChainConfig.syncConfig = async function () {
  */
 ChainConfig.isReady = function () {
 
-    //链信息查询
-    if (utils.isNull(this.chainName)) {
-        logger.error("chainconfig chain info is null");
-        return false;
-    }
+    // //链信息查询
+    // if (utils.isNull(this.chainName)) {
+    //     logger.error("can't get user belong to which subchain from mainchain");
+    //     return false;
+    // }
 
-    //校验主子链的id
-    if (!utils.isAllNotNull(this.config.chainId, this.configSub.chainId)) {
-        logger.error("chainconfig chainId & subChainId  is null");
-        return false;
-    }
+    //校验主链的id
+    // if (!utils.isAllNotNull(this.config.chainId)) {
+    //     logger.error("chainconfig main chainId  is null");
+    //     return false;
+    // }
 
     //用户信息为空
     if (!utils.isAllNotNull(this.myAccountAsCommittee, this.mySkAsCommittee)) {

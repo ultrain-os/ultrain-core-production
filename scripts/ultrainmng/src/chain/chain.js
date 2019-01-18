@@ -1,5 +1,6 @@
 const {U3} = require('u3.js');
 var logger = require("../config/logConfig").getLogger("Chain");
+var loggerChainChanging = require("../config/logConfig").getLogger("ChainChanging");
 var chainConfig = require("./chainConfig")
 var chainApi = require("./chainApi")
 var timeConstats = require("../common/constant/constants").timeConstats
@@ -14,6 +15,7 @@ var utils = require("../common/util/utils")
 var committeeUtil = require("./util/committeeUtil");
 var blockUtil = require("./util/blockUtil");
 var voteUtil = require("./util/voteUtil");
+var NodUltrain = require("../nodultrain/nodultrain")
 
 
 /**
@@ -24,11 +26,16 @@ var voteUtil = require("./util/voteUtil");
  */
 var syncChainData = true;
 
+//链切换flag-表示正在做链切换
+var syncChainChanging = false;
+
 
 //本地委员会成员列表
 var localProducers = []
 
 
+//存储用户同步的时候已成功的账户信息
+var successAccountCacheList = [];
 
 /**
  * 同步新用户和权限到子链
@@ -40,8 +47,6 @@ async function syncUser() {
     if (syncChainData == true) {
         //获取新增用户bulletin-并发送投票到子链
         let userBulletinList = await getUserBulletin(chainConfig.u3, chainConfig.chainName);
-
-
         //mock data
         // if (userBulletinList.length == 0) {
         //     userBulletinList = [{
@@ -54,7 +59,16 @@ async function syncUser() {
 
         logger.info("user userBulletinList:", userBulletinList);
 
+        //投票结果
+        var userCountRes = {
+            totalNum: 0,
+            successAccountNum: 0,
+            hasVotedNum: 0,
+            votingNum: 0
+        }
+
         for (var i in userBulletinList) {
+            userCountRes.totalNum++;
             var newUser = userBulletinList[i];
             const params = {
                 proposer: chainConfig.myAccountAsCommittee,
@@ -69,12 +83,18 @@ async function syncUser() {
             };
 
             logger.info("=======voteAccount to subchain:", newUser.owner);
+
+            //检查缓存中是否有
+            var hitFlag = successAccountCacheList.find((value, index, arr) => {
+                return Object.is(newUser.owner, value)
+            })
+
             //检查子链是否已经有改账户
-            if (utils.isNull(await chainApi.getAccount(chainConfig.configSub, newUser.owner))) {
+            if (utils.isNull(hitFlag) && utils.isNull(await chainApi.getAccount(chainConfig.configSub, newUser.owner))) {
                 logger.info("account(" + newUser.owner + ") is not ready,need vote..");
 
                 //查询是否已经投过票
-                let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT,null,newUser.owner,null,null);
+                let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, newUser.owner, null, null);
                 logger.debug(tableData)
                 if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, newUser.owner) == false) {
                     //未找到投过票的记录，需要投票
@@ -84,20 +104,26 @@ async function syncUser() {
                     //logger.debug("vote params ",params);
                     let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_ACCOUNT, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
                     logger.debug("account(" + newUser.owner + ") proposer(" + chainConfig.myAccountAsCommittee + "):", res);
+                    userCountRes.votingNum++;
                 } else {
                     //已投票不处理
                     logger.info("account(" + newUser.owner + ") has been voted by " + chainConfig.myAccountAsCommittee + "");
+                    userCountRes.hasVotedNum++;
                 }
 
 
             } else {
                 //账号已存在不处理
-                logger.info("account(" + newUser + ") is ready,need not vote..");
+                logger.info("account(" + newUser.owner + ") is ready,need not vote..");
+                userCountRes.successAccountNum++;
+                successAccountCacheList.push(newUser.owner);
             }
 
             //chainApi.contractInteract(chainConfig.u3, 'ultrainio', "voteaccount", params, myAccountAsCommittee);
             logger.info("=======voteAccount to subchain end", newUser.owner);
         }
+
+        logger.info("voting user result", userCountRes);
     }
 
     logger.info("sync user end");
@@ -114,7 +140,7 @@ async function syncBlock() {
     //一次最大块数
     var blockSyncMaxNum = 10;
     //主子链相差多少块进入追赶模式
-    var blockTraceModeBlockNum=3;
+    var blockTraceModeBlockNum = 3;
 
     if (syncChainData == true) {
         chainConfig.u3Sub.getChainInfo(async (error, info) => {
@@ -128,35 +154,35 @@ async function syncBlock() {
             var subBlockNumMax = info.head_block_num;
             let blockNum = await chainConfig.u3.getSubchainBlockNum({"chain_name": chainConfig.chainName.toString()});
             logger.info("subchain head block num=", subBlockNumMax);
-            logger.info("mainchain(subchain:"+chainConfig.chainName+") max blockNum =" + blockNum);
+            logger.info("mainchain(subchain:" + chainConfig.chainName + ") max blockNum =" + blockNum);
 
             //初始化block Num
             let blockNumInt = parseInt(blockNum, 10) + 1;
             var traceBlcokCount = subBlockNumMax - blockNumInt;
             logger.debug("trace block num count =", traceBlcokCount);
             if (traceBlcokCount > blockTraceModeBlockNum) {
-                logger.info("traceBlcokCount > "+blockTraceModeBlockNum+" trace mode is enabled:");
+                logger.info("traceBlcokCount > " + blockTraceModeBlockNum + " trace mode is enabled:");
             } else {
-                logger.info("traceBlcokCount <= "+blockTraceModeBlockNum+" trace mode is disabled:");
+                logger.info("traceBlcokCount <= " + blockTraceModeBlockNum + " trace mode is disabled:");
                 traceMode = false;
             }
             if (subBlockNumMax - blockNumInt >= blockSyncMaxNum) {
                 subBlockNumMax = blockNumInt + blockSyncMaxNum;
             }
 
-            logger.info("need upload block range ["+blockNumInt+" -> " + subBlockNumMax-1 +"]");
+            logger.info("need upload block range [" + blockNumInt + " -> " + subBlockNumMax - 1 + "]");
             let results = [];
             let blockListStr = "(";
             for (var i = blockNumInt; i < subBlockNumMax; i++) {
                 let result = await chainConfig.u3Sub.getBlockInfo((i).toString());
-                logger.debug("block "+i+": (proposer:", result.proposer+")");
+                logger.debug("block " + i + ": (proposer:", result.proposer + ")");
 
                 let needpush = true;
                 //非追赶模式下，选取部分节点进行上报
                 if (traceMode == false) {
                     if (blockUtil.needPushBlock(result, chainConfig.myAccountAsCommittee)) {
                         needpush = true;
-                    } else  {
+                    } else {
                         needpush = false;
                     }
 
@@ -169,7 +195,7 @@ async function syncBlock() {
                  * 需要上传
                  */
                 if (needpush) {
-                    logger.debug("add push array(block num ："+i+")");
+                    logger.debug("add push array(block num ：" + i + ")");
                     results.push({
                         "timestamp": result.timevalue,
                         "proposer": result.proposer,
@@ -182,14 +208,14 @@ async function syncBlock() {
                         "header_extensions": [],
                         //blockNum : i
                     });
-                    blockListStr += i+",";
+                    blockListStr += i + ",";
                 } else {
                     break;
                 }
 
             }
-            blockListStr+=")";
-            logger.info("local uncommit blocklist :",blockListStr);
+            blockListStr += ")";
+            logger.info("local uncommit blocklist :", blockListStr);
 
             /**
              * 块头上传
@@ -199,7 +225,7 @@ async function syncBlock() {
                     chain_name: parseInt(chainConfig.chainName, 10),
                     headers: results
                 };
-                logger.info("pushing block to head (chain_name :"+chainConfig.chainName +" count :"+results.length+")");
+                logger.info("pushing block to head (chain_name :" + chainConfig.chainName + " count :" + results.length + ")");
                 await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "acceptheader", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
             }
 
@@ -247,7 +273,7 @@ async function syncCommitee() {
         } else {
             logger.debug("account(" + committeeUser + ") is ready in subchain,need vote him to committee");
             //判断是否已给他投过票
-            let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_MINER,null,committeeUser,null,null);
+            let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_MINER, null, committeeUser, null, null);
             if (voteUtil.findVoteCommitee(tableData, chainConfig.myAccountAsCommittee, committeeUser) == false) {
                 logger.debug("account(" + chainConfig.myAccountAsCommittee + ") has not voted account(" + committeeUser + ")  to committee, start to vote..");
                 try {
@@ -281,52 +307,99 @@ async function syncCommitee() {
 
 }
 
+
+var testCount = 0;
+
 /**
  * 同步链信息
  * @returns {Promise<void>}
  */
 async function syncChainInfo() {
     try {
+
+        testCount++;
+
         logger.info("sync chain info and committee start..");
+
+        //如果已在切换链过程中，不需要再同步数据
+        if (syncChainChanging == true) {
+            logger.info("chain changing , need not sync chain info");
+            return;
+        }
+
         //同步链名称（子链id,链名称等）
         let chainName = null;
         let chainId = null;
+        let genesisTime = null;
         let chainInfo = await chainApi.getChainInfo(chainConfig.u3, chainConfig.myAccountAsCommittee);
         if (utils.isNotNull(chainInfo)) {
             chainName = chainInfo.location;
             chainId = chainInfo.chain_id;
+            genesisTime = chainInfo.genesis_time;
         }
 
-
+        //设置用户属于的chainid和chainname信息
         if (utils.isNotNull(chainName)) {
-            if (chainConfig.chainName != chainName) {
-                chainConfig.chainName = chainName;
-            }
+            chainConfig.chainName = chainName;
         }
         if (utils.isNotNull(chainId) && chainIdConstants.NONE_CHAIN != chainId) {
             chainConfig.chainId = chainId;
         }
 
-        logger.info(chainConfig.myAccountAsCommittee+" belongs to chaininfo (name:"+chainConfig.chainName+",chain_id:"+chainConfig.chainId+") from mainchain");
-        logger.info("now subchain's chainid :"+chainConfig.configSub.chainId);
-        if (chainConfig.isInRightChain()) {
-            logger.info(chainConfig.myAccountAsCommittee+" is in right chain");
-        } else {
-            logger.info(chainConfig.myAccountAsCommittee+" is not in right chain");
+        logger.info("force change chain info:");
+        if (testCount >= 0) {
+            chainConfig.chainName = "12";
+            chainConfig.chainId = "9b54abcb41c150b64f07e3138ad7a0a339d39fc10b4dc7312731e0c37179b171";
+            chainConfig.genesisTime = "2019-01-16 16:02:00"
         }
-
 
         //如果是主链，啥都不操作
         if (isMainChain()) {
-            logger.error(chainConfig.myAccountAsCommittee+" runing in main chain, need not work");
+            logger.error(chainConfig.myAccountAsCommittee + " runing in main chain, need not work");
             return;
+        }
+
+        logger.info(chainConfig.myAccountAsCommittee + " belongs to chaininfo (name:" + chainConfig.chainName + ",chain_id:" + chainConfig.chainId + ") from mainchain");
+        logger.info("now subchain's chainid :" + chainConfig.configSub.chainId);
+        var rightChain = chainConfig.isInRightChain()
+        if (!rightChain) {
+            syncChainData = false;
+            //我已不属于这条链且我不在委员会，准备迁走
+            logger.info(chainConfig.myAccountAsCommittee + "need trandfer to chain(" + chainConfig.chainName + "）,and  is not in committee, start transfer...");
+            syncChainChanging = true;
+            //开始迁移
+            await switchChain();
+            return;
+        } else {
+            syncChainData = true;
+            syncChainChanging = false;
+        }
+
+        //如果不在进行链切换且本地访问不到本地链信息，需要重启下
+        if (syncChainChanging == false) {
+            logger.info("check nod is alive ....");
+            let rsdata = await NodUltrain.checkAlive();
+            logger.debug("check alive data:",rsdata);
+            if (utils.isNull(rsdata)) {
+                logger.info("nod is not runing ,need restart it..");
+                //启动nod
+                syncChainChanging = true;
+                syncChainData = false;
+                await NodUltrain.stop(5000);
+                sleep.msleep(1000);
+                await NodUltrain.start(5000);
+                syncChainChanging = false;
+                syncChainData = true;
+                logger.info("nod restart end..");
+                return;
+            }
         }
 
         //同步委员会
         await syncCommitee();
-
+        var isStrillInCommittee = committeeUtil.isStayInCommittee(localProducers, chainConfig.myAccountAsCommittee);
         //检查自己是否不在委员会里面
-        if (!committeeUtil.isStayInCommittee(localProducers, chainConfig.myAccountAsCommittee)) {
+        if (!isStrillInCommittee) {
             syncChainData = false;
             logger.info("I(" + chainConfig.myAccountAsCommittee + ") am not in subchain committee")
         } else {
@@ -334,21 +407,107 @@ async function syncChainInfo() {
             logger.info("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee")
         }
 
+
+
     } catch (e) {
         logger.error("sync chain error:", e);
     }
 
     logger.info("sync chain info and committee end");
 
-
 }
 
 /**
- * 同步世界状态
+ *
  * @returns {Promise<void>}
  */
-async function syncWorldStateStatus() {
+async function switchChain() {
 
+    loggerChainChanging.info("starting to switch chain...");
+    try {
+
+        //停止nod程序
+        loggerChainChanging.info("shuting down nod...")
+        let result = await NodUltrain.stop(2000);
+        if (result == false) {
+            loggerChainChanging.info("nod is stopped");
+        } else {
+            loggerChainChanging.info("nod is not stopped");
+        }
+
+        //停止worldstate的程序
+        // result = await WorldState.stop(2000);
+        // if (result) {
+        //     logger.info("worldstate is stopped");
+        // } else {
+        //     logger.info("worldstate is not stopped");
+        // }
+
+        //删除block和shared_memory.bin数据
+        await NodUltrain.removeData();
+        loggerChainChanging.info("remove block data and shared_memory.bin");
+        sleep.msleep(1000);
+
+
+        //清除世界状态数据
+        //await WorldState.clearDB();
+        loggerChainChanging.info("remove worldstate data files");
+
+        //通过chainid拿到seedList
+        var seedIpInfo = await chainApi.getChainSeedIP(chainConfig.chainName, chainConfig);
+        logger.info("get chainid(" + chainConfig.chainName + ")'s seed ip info:", seedIpInfo);
+        if (utils.isNull(seedIpInfo)) {
+            loggerChainChanging.error("seed ip info is null");
+            syncChainChanging = false;
+            return;
+        }
+
+        //修改nod程序配置信息
+        var subchainEndPoint = await chainApi.getSubchanEndPoint(chainConfig.chainName);
+        logger.info("get chainid(" + chainConfig.chainName + ")'s seed ip info:", seedIpInfo);
+        logger.info("subchainEndPoint:",subchainEndPoint);
+        logger.info("genesisTime:",chainConfig.genesisTime);
+        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint,chainConfig.genesisTime);
+        if (result == true) {
+            loggerChainChanging.info("update nod config file success")
+            //重新加载配置文件信息
+            loggerChainChanging.info("reload config files")
+            await chainConfig.waitSyncConfig();
+            loggerChainChanging.info("reload config files ready")
+        } else {
+            loggerChainChanging.error("update nod config file error")
+        }
+
+        //设置worldstate的config.ini
+        // result = WorldState.updateConfig(chainConfig.chainName,seedIpInfo);
+        // if (result == true) {
+        //     logger.info("update world state config ini success");
+        // } else {
+        //     logger.error("update world state config ini error");
+        // }
+
+        //调用世界状态程序同步数据
+        loggerChainChanging.info("call worldstate to sync data....")
+        sleep.msleep(1000);
+        loggerChainChanging.info("call worldstate to sync data success")
+
+        //启动nod
+        result = await NodUltrain.start(9000);
+        if (result == true) {
+            loggerChainChanging.info("nod start success")
+        } else {
+            loggerChainChanging.error("node start error");
+        }
+
+        //结束设置结束flag
+        syncChainChanging = false;
+        loggerChainChanging.info("switching chain successfully...");
+    } catch (e) {
+
+        loggerChainChanging.info("fail to switch chain...",e);
+        //结束设置结束flag
+        syncChainChanging = false;
+    }
 }
 
 /**
@@ -378,7 +537,7 @@ async function syncResource() {
                 var changeResObj = changeList[i];
                 logger.debug("change res:", changeResObj);
 
-                let voteResList = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_RES,null,changeResObj.owner,null,null);
+                let voteResList = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_RES, null, changeResObj.owner, null, null);
                 logger.debug("voteResList:", voteResList);
 
                 if (voteUtil.findVoteRes(voteResList, chainConfig.myAccountAsCommittee, changeResObj.owner, changeResObj.lease_num, changeResObj.end_time)) {

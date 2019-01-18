@@ -18,6 +18,7 @@ class ShellCmd {
 ShellCmd.execCmd = async function (command) {
 
     try {
+        logger.info("execmd :",command);
         var done = false;
         var result = true;
         /**
@@ -25,9 +26,9 @@ ShellCmd.execCmd = async function (command) {
          */
         process.exec(command, function (error, stdout, stderr, finish) {
             if (error !== null) {
-                logger.log('exec error: ' + error);
+                logger.error('exec error: ' + error);
             } else {
-                console.info("exccmd success:"+command);
+                logger.info("exccmd success:"+command);
                 result = true;
             }
             done = true;
@@ -65,13 +66,15 @@ ShellCmd.execBatchCmd = async function () {
  * @returns {Promise<void>}
  */
 ShellCmd.execCmdFiles = async function (command, args, options) {
-     let finish = 0;
      process.execFile(command, args, options, function (error, stdout, stderr) {
-        if (error !== null) {
-            logger.log('exec file: ' + error);
-        }
-        logger.debug(stdout);
+         if (error !== null) {
+             logger.error('exec error: ' + error);
+         } else {
+             logger.info("exccmd success:"+command);
+         }
     });
+
+     return true;
 }
 
 

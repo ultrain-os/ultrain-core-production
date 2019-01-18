@@ -70,6 +70,11 @@ function isAllNull() {
  * @returns {*}
  */
 function logNetworkError(e) {
+
+    if (isNotNull(e.data)) {
+        return e.data;
+    }
+
     if (isNotNull(e.code)) {
         return e.code;
     }
