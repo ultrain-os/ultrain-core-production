@@ -275,7 +275,7 @@ fc::time_point calculate_genesis_timestamp( string tstr ) {
    ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", genesis_timestamp) );
    return genesis_timestamp;
 }
-void parse_genesis_timestamp(string& genesis) 
+void parse_genesis_timestamp(string& genesis)
 {
     std::tm t;
 
@@ -285,10 +285,9 @@ void parse_genesis_timestamp(string& genesis)
             "Genesis-time format error,should be YYYY-MM-DD HH:MM:SS.");
 
     std::string::size_type pos = 0;
-    std::string::size_type srclen = sizeof(" ");
     if( (pos=genesis.find(" ", pos)) != std::string::npos )
     {
-        genesis.replace( pos, srclen, "T" );
+        genesis.replace( pos, 1, "T" );
     }
 
 }
@@ -315,7 +314,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
       ULTRAIN_ASSERT( !my->_genesis_time.empty(),
               plugin_config_exception,
-              "Genesis-time can not be empty,should be set in config.ini."); 
+              "Genesis-time can not be empty,should be set in config.ini.");
       fc::time_point genesis_timestamp;
       parse_genesis_timestamp(my->_genesis_time);
      // my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(my->_genesis_time);
@@ -479,7 +478,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                     "Genesis information in blocks.log does not match genesis information in the worldstate");
          }
 
-      } else 
+      } else
       {
          if( options.count( "genesis-json" )) {
             ULTRAIN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
