@@ -346,12 +346,12 @@ async function syncChainInfo() {
             chainConfig.chainId = chainId;
         }
 
-        logger.info("force change chain info:");
-        if (testCount >= 0) {
-            chainConfig.chainName = "12";
-            chainConfig.chainId = "9b54abcb41c150b64f07e3138ad7a0a339d39fc10b4dc7312731e0c37179b171";
-            chainConfig.genesisTime = "2019-01-16 16:02:00"
-        }
+        // logger.info("force change chain info:");
+        // if (testCount >= 0) {
+        //     chainConfig.chainName = "12";
+        //     chainConfig.chainId = "9b54abcb41c150b64f07e3138ad7a0a339d39fc10b4dc7312731e0c37179b171";
+        //     chainConfig.genesisTime = "2019-01-16 16:02:00"
+        // }
 
         //如果是主链，啥都不操作
         if (isMainChain()) {

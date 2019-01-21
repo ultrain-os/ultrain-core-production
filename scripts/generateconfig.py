@@ -386,7 +386,7 @@ def update_ultrainmng_config(fname):
     content = readfile(fname)
     newcontent = "";
     if args.masterchain:
-        newcontent = "subchainHttpEndpoint = http://172.16.10.4:8877\n"
+        newcontent = "masterchain = 1\n"
     if args.subchain == "11" :
         newcontent = "subchainHttpEndpoint = http://172.16.10.5:8888\n"
     elif args.subchain == "12" :

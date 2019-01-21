@@ -136,6 +136,8 @@ ChainConfig.syncConfig = async function () {
         } else {
             this.configSub.httpEndpoint = configIniLocal.subchainHttpEndpoint;
         }
+
+
         logger.info("subchain httpEndpoint:",this.configSub.httpEndpoint)
 
         /**
@@ -177,6 +179,11 @@ ChainConfig.syncConfig = async function () {
                 this.config.keyProvider = [configIniLocal["my-sk-as-account"]];
                 this.configSub.keyProvider = [configIniLocal["my-sk-as-account"]];
             }
+        }
+
+        //现在处在主链
+        if (utils.isNotNull(configIniTarget.masterchain)) {
+            this.chainName = chainNameConstants.MAIN_CHAIN_NAME;
         }
 
         logger.info("user info : " + this.myAccountAsCommittee + "");
