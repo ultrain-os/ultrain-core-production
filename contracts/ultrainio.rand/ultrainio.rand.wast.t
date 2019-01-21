@@ -33,6 +33,7 @@
  (type $IIiiv (func (param i64 i64 i32 i32)))
  (type $iIIiii (func (param i32 i64 i64 i32 i32) (result i32)))
  (type $iIiiv (func (param i32 i64 i32 i32)))
+ (type $iIiii (func (param i32 i64 i32 i32) (result i32)))
  (type $Iii (func (param i64 i32) (result i32)))
  (type $Iiiii (func (param i64 i32 i32 i32) (result i32)))
  (type $iiF (func (param i32 i32) (result f64)))
@@ -212,6 +213,7 @@
  (data (i32.const 4600) "\05\00\00\00q\00u\00e\00r\00y\00")
  (data (i32.const 4616) "\06\00\00\00 \00q\00u\00e\00r\00y\00")
  (data (i32.const 4632) "\03\00\00\00e\00n\00d\00")
+ (data (i32.const 4648) "\07\00\00\00o\00n\00e\00r\00r\00o\00r\00")
  (table $0 1 anyfunc)
  (elem (i32.const 0) $null)
  (global $~lib/internal/allocator/AL_BITS i32 (i32.const 3))
@@ -284,7 +286,7 @@
  (global $~lib/internal/string/CharCode.o i32 (i32.const 111))
  (global $~lib/internal/string/CharCode.x i32 (i32.const 120))
  (global $~lib/internal/string/CharCode.z i32 (i32.const 122))
- (global $HEAP_BASE i32 (i32.const 4644))
+ (global $HEAP_BASE i32 (i32.const 4668))
  (export "memory" (memory $0))
  (export "table" (table $0))
  (export "apply" (func $contract/ultrainio.rand/apply))
@@ -7551,7 +7553,7 @@
    nop
   end
  )
- (func $~lib/ultrain-ts-lib/lib/permission-level/PermissionLevel#constructor (; 127 ;) (type $iIIi) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/ultrain-ts-lib/src/permission-level/PermissionLevel#constructor (; 127 ;) (type $iIIi) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   get_local $0
   if (result i32)
@@ -7619,14 +7621,123 @@
   i32.store offset=20
   get_local $0
  )
- (func $~lib/ultrain-ts-lib/src/action/ActionImpl#constructor (; 129 ;) (type $ii) (param $0 i32) (result i32)
+ (func $~lib/array/Array<PermissionLevel>#constructor (; 129 ;) (type $iii) (param $0 i32) (param $1 i32) (result i32)
+  (local $2 i32)
+  (local $3 i32)
+  (local $4 i32)
+  (local $5 i32)
+  get_local $1
+  i32.const 268435454
+  i32.gt_u
+  if
+   call $~lib/env/abort
+   unreachable
+  end
+  get_local $1
+  i32.const 2
+  i32.shl
+  set_local $2
+  get_local $2
+  call $~lib/internal/arraybuffer/allocateUnsafe
+  set_local $3
+  get_local $0
+  if (result i32)
+   get_local $0
+  else   
+   block (result i32)
+    i32.const 8
+    call $~lib/memory/memory.allocate
+    set_local $4
+    get_local $4
+    i32.const 0
+    i32.store
+    get_local $4
+    i32.const 0
+    i32.store offset=4
+    get_local $4
+   end
+   tee_local $0
+  end
+  tee_local $0
+  get_local $3
+  i32.store
+  get_local $0
+  get_local $1
+  i32.store offset=4
+  get_local $3
+  get_global $~lib/internal/arraybuffer/HEADER_SIZE
+  i32.add
+  set_local $4
+  i32.const 0
+  set_local $5
+  get_local $4
+  get_local $5
+  get_local $2
+  call $~lib/internal/memory/memset
+  get_local $0
+ )
+ (func $~lib/array/Array<PermissionLevel>#__unchecked_set (; 130 ;) (type $iiiv) (param $0 i32) (param $1 i32) (param $2 i32)
+  (local $3 i32)
+  get_local $0
+  i32.load
+  set_local $3
+  get_local $3
+  get_local $1
+  i32.const 2
+  i32.shl
+  i32.add
+  get_local $2
+  i32.store offset=8
+ )
+ (func $~lib/ultrain-ts-lib/src/action/Action#constructor (; 131 ;) (type $iIIi) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+  (local $3 i32)
+  get_local $0
+  if (result i32)
+   get_local $0
+  else   
+   block (result i32)
+    i32.const 4
+    call $~lib/memory/memory.allocate
+    set_local $3
+    get_local $3
+    i32.const 0
+    i32.store
+    get_local $3
+   end
+   tee_local $0
+  end
+  tee_local $0
+  i32.const 0
+  get_local $1
+  get_local $2
+  call $~lib/ultrain-ts-lib/lib/name_ex/NameEx#constructor
+  i32.store
+  get_local $0
+ )
+ (func $~lib/ultrain-ts-lib/src/action/ACTION (; 132 ;) (type $ii) (param $0 i32) (result i32)
+  (local $1 i32)
+  get_local $0
+  call $~lib/ultrain-ts-lib/lib/name_ex/NEX
+  set_local $1
+  i32.const 0
+  get_local $1
+  i64.load
+  get_local $1
+  i64.load offset=8
+  call $~lib/ultrain-ts-lib/src/action/Action#constructor
+ )
+ (func $~lib/ultrain-ts-lib/src/action/Action#get:code (; 133 ;) (type $ii) (param $0 i32) (result i32)
+  get_local $0
+  i32.load
+ )
+ (func $~lib/ultrain-ts-lib/src/action/ActionImpl#constructor (; 134 ;) (type $ii) (param $0 i32) (result i32)
   (local $1 i32)
   get_local $0
   if (result i32)
    get_local $0
   else   
    block (result i32)
-    i32.const 20
+    i32.const 21
     call $~lib/memory/memory.allocate
     set_local $1
     get_local $1
@@ -7641,6 +7752,9 @@
     get_local $1
     i32.const 0
     i32.store offset=16
+    get_local $1
+    i32.const 0
+    i32.store8 offset=20
     get_local $1
    end
    tee_local $0
@@ -7661,61 +7775,11 @@
   i32.const 3920
   i32.store offset=16
   get_local $0
+  i32.const 0
+  i32.store8 offset=20
+  get_local $0
  )
- (func $~lib/array/Array<PermissionLevel>#push (; 130 ;) (type $iii) (param $0 i32) (param $1 i32) (result i32)
-  (local $2 i32)
-  (local $3 i32)
-  (local $4 i32)
-  (local $5 i32)
-  get_local $0
-  i32.load offset=4
-  set_local $2
-  get_local $0
-  i32.load
-  set_local $3
-  get_local $3
-  i32.load
-  i32.const 2
-  i32.shr_u
-  set_local $4
-  get_local $2
-  i32.const 1
-  i32.add
-  set_local $5
-  get_local $2
-  get_local $4
-  i32.ge_u
-  if
-   get_local $2
-   i32.const 268435454
-   i32.ge_u
-   if
-    call $~lib/env/abort
-    unreachable
-   end
-   get_local $3
-   get_local $5
-   i32.const 2
-   i32.shl
-   call $~lib/internal/arraybuffer/reallocateUnsafe
-   set_local $3
-   get_local $0
-   get_local $3
-   i32.store
-  end
-  get_local $0
-  get_local $5
-  i32.store offset=4
-  get_local $3
-  get_local $2
-  i32.const 2
-  i32.shl
-  i32.add
-  get_local $1
-  i32.store offset=8
-  get_local $5
- )
- (func $~lib/ultrain-ts-lib/src/asset/Asset#serialize (; 131 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/asset/Asset#serialize (; 135 ;) (type $iiv) (param $0 i32) (param $1 i32)
   get_local $1
   get_local $0
   i64.load
@@ -7725,7 +7789,7 @@
   i64.load offset=8
   call $~lib/datastream/DataStream#write<u64>
  )
- (func $~lib/ultrain-ts-lib/src/action/TransferParams#serialize (; 132 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/action/TransferParams#serialize (; 136 ;) (type $iiv) (param $0 i32) (param $1 i32)
   get_local $1
   get_local $0
   i64.load
@@ -7743,7 +7807,7 @@
   i32.load offset=20
   call $~lib/datastream/DataStream#writeString
  )
- (func $~lib/datastream/DataStream.measure<TransferParams> (; 133 ;) (type $ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream.measure<TransferParams> (; 137 ;) (type $ii) (param $0 i32) (result i32)
   (local $1 i32)
   i32.const 0
   i32.const 0
@@ -7756,14 +7820,14 @@
   get_local $1
   i32.load offset=8
  )
- (func $~lib/datastream/DataStream#toArray<u8> (; 134 ;) (type $ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream#toArray<u8> (; 138 ;) (type $ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
   get_local $0
-  i32.load offset=8
+  i32.load offset=4
   i32.const 0
   i32.eq
   if
@@ -7773,7 +7837,7 @@
    return
   end
   get_local $0
-  i32.load offset=8
+  i32.load offset=4
   i32.const 1
   i32.div_u
   set_local $1
@@ -7819,7 +7883,30 @@
   end
   get_local $2
  )
- (func $~lib/ultrain-ts-lib/lib/name_ex/NameEx#serialize (; 135 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/action/SerializableToArray<TransferParams> (; 139 ;) (type $ii) (param $0 i32) (result i32)
+  (local $1 i32)
+  (local $2 i32)
+  (local $3 i32)
+  get_local $0
+  call $~lib/datastream/DataStream.measure<TransferParams>
+  set_local $1
+  i32.const 0
+  get_local $1
+  call $~lib/internal/typedarray/TypedArray<u8_u32>#constructor
+  set_local $2
+  i32.const 0
+  get_local $2
+  i32.load
+  get_local $1
+  call $~lib/datastream/DataStream#constructor
+  set_local $3
+  get_local $0
+  get_local $3
+  call $~lib/ultrain-ts-lib/src/action/TransferParams#serialize
+  get_local $3
+  call $~lib/datastream/DataStream#toArray<u8>
+ )
+ (func $~lib/ultrain-ts-lib/lib/name_ex/NameEx#serialize (; 140 ;) (type $iiv) (param $0 i32) (param $1 i32)
   get_local $1
   get_local $0
   i64.load
@@ -7829,7 +7916,7 @@
   i64.load offset=8
   call $~lib/datastream/DataStream#write<u64>
  )
- (func $~lib/array/Array<PermissionLevel>#__get (; 136 ;) (type $iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/array/Array<PermissionLevel>#__get (; 141 ;) (type $iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   get_local $0
   i32.load
@@ -7851,7 +7938,7 @@
    unreachable
   end
  )
- (func $~lib/ultrain-ts-lib/lib/permission-level/PermissionLevel#serialize (; 137 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/permission-level/PermissionLevel#serialize (; 142 ;) (type $iiv) (param $0 i32) (param $1 i32)
   get_local $1
   get_local $0
   i64.load
@@ -7861,7 +7948,7 @@
   i64.load offset=8
   call $~lib/datastream/DataStream#write<u64>
  )
- (func $~lib/datastream/DataStream#writeComplexVector<PermissionLevel> (; 138 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $~lib/datastream/DataStream#writeComplexVector<PermissionLevel> (; 143 ;) (type $iiv) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   block $~lib/array/Array<PermissionLevel>#get:length|inlined.0 (result i32)
@@ -7885,7 +7972,7 @@
     get_local $3
     call $~lib/array/Array<PermissionLevel>#__get
     get_local $0
-    call $~lib/ultrain-ts-lib/lib/permission-level/PermissionLevel#serialize
+    call $~lib/ultrain-ts-lib/src/permission-level/PermissionLevel#serialize
     get_local $3
     i32.const 1
     i32.add
@@ -7896,7 +7983,7 @@
    unreachable
   end
  )
- (func $~lib/datastream/DataStream#writeVector<u8> (; 139 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $~lib/datastream/DataStream#writeVector<u8> (; 144 ;) (type $iiv) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   block $~lib/array/Array<u8>#get:length|inlined.0 (result i32)
@@ -7931,7 +8018,7 @@
    unreachable
   end
  )
- (func $~lib/ultrain-ts-lib/src/action/ActionImpl#serialize (; 140 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/action/ActionImpl#serialize (; 145 ;) (type $iiv) (param $0 i32) (param $1 i32)
   get_local $1
   get_local $0
   i64.load
@@ -7948,8 +8035,12 @@
   get_local $0
   i32.load offset=16
   call $~lib/datastream/DataStream#writeVector<u8>
+  get_local $1
+  get_local $0
+  i32.load8_u offset=20
+  call $~lib/datastream/DataStream#write<u8>
  )
- (func $~lib/datastream/DataStream.measure<ActionImpl> (; 141 ;) (type $ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream.measure<ActionImpl> (; 146 ;) (type $ii) (param $0 i32) (result i32)
   (local $1 i32)
   i32.const 0
   i32.const 0
@@ -7962,7 +8053,7 @@
   get_local $1
   i32.load offset=8
  )
- (func $~lib/ultrain-ts-lib/src/action/dispatchInline (; 142 ;) (type $iIiiv) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i32)
+ (func $~lib/ultrain-ts-lib/src/action/composeActionData<TransferParams> (; 147 ;) (type $iIiii) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i32) (result i32)
   (local $4 i32)
   (local $5 i32)
   (local $6 i32)
@@ -7971,35 +8062,17 @@
   call $~lib/ultrain-ts-lib/src/action/ActionImpl#constructor
   set_local $4
   get_local $4
-  i32.load offset=12
   get_local $0
-  call $~lib/array/Array<PermissionLevel>#push
-  drop
+  i32.store offset=12
   get_local $4
   get_local $1
   i64.store
   get_local $4
   get_local $2
   i32.store offset=8
-  get_local $3
-  call $~lib/datastream/DataStream.measure<TransferParams>
-  set_local $5
-  i32.const 0
-  get_local $5
-  call $~lib/internal/typedarray/TypedArray<u8_u32>#constructor
-  set_local $6
-  i32.const 0
-  get_local $6
-  i32.load
-  get_local $5
-  call $~lib/datastream/DataStream#constructor
-  set_local $7
-  get_local $3
-  get_local $7
-  call $~lib/ultrain-ts-lib/src/action/TransferParams#serialize
   get_local $4
-  get_local $7
-  call $~lib/datastream/DataStream#toArray<u8>
+  get_local $3
+  call $~lib/ultrain-ts-lib/src/action/SerializableToArray<TransferParams>
   i32.store offset=16
   get_local $4
   call $~lib/datastream/DataStream.measure<ActionImpl>
@@ -8018,18 +8091,29 @@
   get_local $7
   call $~lib/ultrain-ts-lib/src/action/ActionImpl#serialize
   get_local $7
+ )
+ (func $~lib/ultrain-ts-lib/src/action/Action.sendInline<TransferParams> (; 148 ;) (type $iIiiv) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i32)
+  (local $4 i32)
+  get_local $0
+  get_local $1
+  get_local $2
+  get_local $3
+  call $~lib/ultrain-ts-lib/src/action/composeActionData<TransferParams>
+  set_local $4
+  get_local $4
   i32.load
-  get_local $7
+  get_local $4
   i32.load offset=8
   call $~lib/ultrain-ts-lib/internal/action.d/env.send_inline
  )
- (func $~lib/ultrain-ts-lib/lib/balance/send (; 143 ;) (type $IIiiv) (param $0 i64) (param $1 i64) (param $2 i32) (param $3 i32)
+ (func $~lib/ultrain-ts-lib/src/asset/Asset.transfer (; 149 ;) (type $IIiiv) (param $0 i64) (param $1 i64) (param $2 i32) (param $3 i32)
   (local $4 i32)
   (local $5 i32)
+  (local $6 i32)
   i32.const 0
   i64.const 0
   i64.const 0
-  call $~lib/ultrain-ts-lib/lib/permission-level/PermissionLevel#constructor
+  call $~lib/ultrain-ts-lib/src/permission-level/PermissionLevel#constructor
   set_local $4
   get_local $4
   get_local $0
@@ -8045,22 +8129,26 @@
   get_local $3
   call $~lib/ultrain-ts-lib/src/action/TransferParams#constructor
   set_local $5
-  get_local $4
+  block (result i32)
+   i32.const 0
+   i32.const 1
+   call $~lib/array/Array<PermissionLevel>#constructor
+   set_local $6
+   get_local $6
+   i32.const 0
+   get_local $4
+   call $~lib/array/Array<PermissionLevel>#__unchecked_set
+   get_local $6
+  end
   i32.const 2008
   call $~lib/ultrain-ts-lib/src/account/NAME
   i32.const 1984
-  call $~lib/ultrain-ts-lib/lib/name_ex/NEX
+  call $~lib/ultrain-ts-lib/src/action/ACTION
+  call $~lib/ultrain-ts-lib/src/action/Action#get:code
   get_local $5
-  call $~lib/ultrain-ts-lib/src/action/dispatchInline
+  call $~lib/ultrain-ts-lib/src/action/Action.sendInline<TransferParams>
  )
- (func $~lib/ultrain-ts-lib/src/asset/Asset.transfer (; 144 ;) (type $IIiiv) (param $0 i64) (param $1 i64) (param $2 i32) (param $3 i32)
-  get_local $0
-  get_local $1
-  get_local $2
-  get_local $3
-  call $~lib/ultrain-ts-lib/lib/balance/send
- )
- (func $contract/ultrainio.rand/rand#removeCandidate (; 145 ;) (type $iv) (param $0 i32)
+ (func $contract/ultrainio.rand/rand#removeCandidate (; 150 ;) (type $iv) (param $0 i32)
   get_local $0
   i32.load offset=12
   call $~lib/ultrain-ts-lib/src/action/Action.get:sender
@@ -8088,7 +8176,7 @@
   i32.const 3832
   call $~lib/ultrain-ts-lib/src/asset/Asset.transfer
  )
- (func $contract/ultrainio.rand/Vote#deserialize (; 146 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $contract/ultrainio.rand/Vote#deserialize (; 151 ;) (type $iiv) (param $0 i32) (param $1 i32)
   get_local $0
   get_local $1
   call $~lib/datastream/DataStream#read<u64>
@@ -8098,7 +8186,7 @@
   call $~lib/datastream/DataStream#read<u64>
   i64.store offset=8
  )
- (func $~lib/dbmanager/DBManager<Vote>#loadObjectByPrimaryIterator (; 147 ;) (type $iiiv) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/dbmanager/DBManager<Vote>#loadObjectByPrimaryIterator (; 152 ;) (type $iiiv) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -8127,7 +8215,7 @@
   get_local $5
   call $contract/ultrainio.rand/Vote#deserialize
  )
- (func $~lib/dbmanager/DBManager<Vote>#get (; 148 ;) (type $iIii) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/dbmanager/DBManager<Vote>#get (; 153 ;) (type $iIii) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   get_local $0
   i64.load offset=8
@@ -8151,7 +8239,7 @@
   call $~lib/dbmanager/DBManager<Vote>#loadObjectByPrimaryIterator
   i32.const 1
  )
- (func $~lib/datastream/DataStream#read<u32> (; 149 ;) (type $ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream#read<u32> (; 154 ;) (type $ii) (param $0 i32) (result i32)
   (local $1 i32)
   get_local $0
   i32.load
@@ -8168,7 +8256,7 @@
   i32.store offset=8
   get_local $1
  )
- (func $contract/ultrainio.rand/Candidate#deserialize (; 150 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $contract/ultrainio.rand/Candidate#deserialize (; 155 ;) (type $iiv) (param $0 i32) (param $1 i32)
   get_local $0
   get_local $1
   call $~lib/datastream/DataStream#read<u64>
@@ -8182,7 +8270,7 @@
   call $~lib/datastream/DataStream#read<u32>
   i32.store offset=12
  )
- (func $~lib/dbmanager/DBManager<Candidate>#loadObjectByPrimaryIterator (; 151 ;) (type $iiiv) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/dbmanager/DBManager<Candidate>#loadObjectByPrimaryIterator (; 156 ;) (type $iiiv) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -8211,7 +8299,7 @@
   get_local $5
   call $contract/ultrainio.rand/Candidate#deserialize
  )
- (func $~lib/dbmanager/DBManager<Candidate>#get (; 152 ;) (type $iIii) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/dbmanager/DBManager<Candidate>#get (; 157 ;) (type $iIii) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   get_local $0
   i64.load offset=8
@@ -8235,7 +8323,7 @@
   call $~lib/dbmanager/DBManager<Candidate>#loadObjectByPrimaryIterator
   i32.const 1
  )
- (func $~lib/ultrain-ts-lib/src/utils/intToString (; 153 ;) (type $Iii) (param $0 i64) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/utils/intToString (; 158 ;) (type $Iii) (param $0 i64) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i64)
   (local $4 i32)
@@ -8313,7 +8401,7 @@
   end
   get_local $4
  )
- (func $~lib/ultrain-ts-lib/src/account/Account.publicKeyOf (; 154 ;) (type $Iii) (param $0 i64) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/account/Account.publicKeyOf (; 159 ;) (type $Iii) (param $0 i64) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   i32.const 0
@@ -8349,7 +8437,7 @@
   unreachable
   unreachable
  )
- (func $~lib/ultrain-ts-lib/src/crypto/verify_with_pk (; 155 ;) (type $iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/verify_with_pk (; 160 ;) (type $iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
   (local $3 i32)
   get_local $0
   call $~lib/ultrain-ts-lib/src/utils/string2cstr
@@ -8368,14 +8456,14 @@
    i32.const 0
   end
  )
- (func $~lib/ultrain-ts-lib/src/crypto/Crypto#_Crypto_super (; 156 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/Crypto#_Crypto_super (; 161 ;) (type $iiv) (param $0 i32) (param $1 i32)
   get_local $0
   i32.const 0
   get_local $1
   call $~lib/internal/typedarray/TypedArray<u8_u32>#constructor
   i32.store
  )
- (func $~lib/ultrain-ts-lib/src/crypto/SHA256#constructor (; 157 ;) (type $ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/SHA256#constructor (; 162 ;) (type $ii) (param $0 i32) (result i32)
   (local $1 i32)
   get_local $0
   drop
@@ -8401,7 +8489,7 @@
   call $~lib/ultrain-ts-lib/src/crypto/Crypto#_Crypto_super
   get_local $0
  )
- (func $~lib/string/String#substring (; 158 ;) (type $iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
+ (func $~lib/string/String#substring (; 163 ;) (type $iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -8507,12 +8595,12 @@
   call $~lib/internal/string/copyUnsafe
   get_local $10
  )
- (func $~lib/ultrain-ts-lib/src/crypto/Crypto#get:buffer (; 159 ;) (type $ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/Crypto#get:buffer (; 164 ;) (type $ii) (param $0 i32) (result i32)
   get_local $0
   i32.load
   i32.load
  )
- (func $~lib/ultrain-ts-lib/src/crypto/Crypto#get:bufferSize (; 160 ;) (type $ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/Crypto#get:bufferSize (; 165 ;) (type $ii) (param $0 i32) (result i32)
   (local $1 i32)
   get_local $0
   i32.load
@@ -8522,7 +8610,7 @@
   i32.const 0
   i32.shr_u
  )
- (func $~lib/string/String#charAt (; 161 ;) (type $iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/string/String#charAt (; 166 ;) (type $iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   get_local $0
   i32.const 0
@@ -8553,7 +8641,7 @@
   i32.store16 offset=4
   get_local $2
  )
- (func $~lib/ultrain-ts-lib/src/crypto/to_hex (; 162 ;) (type $iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/to_hex (; 167 ;) (type $iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -8605,14 +8693,14 @@
   end
   get_local $2
  )
- (func $~lib/ultrain-ts-lib/src/crypto/Crypto#toString (; 163 ;) (type $ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/Crypto#toString (; 168 ;) (type $ii) (param $0 i32) (result i32)
   get_local $0
   call $~lib/ultrain-ts-lib/src/crypto/Crypto#get:buffer
   get_local $0
   call $~lib/ultrain-ts-lib/src/crypto/Crypto#get:bufferSize
   call $~lib/ultrain-ts-lib/src/crypto/to_hex
  )
- (func $~lib/ultrain-ts-lib/src/crypto/SHA256#hash (; 164 ;) (type $iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/SHA256#hash (; 169 ;) (type $iii) (param $0 i32) (param $1 i32) (result i32)
   get_local $1
   call $~lib/ultrain-ts-lib/src/utils/string2cstr
   get_local $1
@@ -8625,7 +8713,7 @@
   get_local $0
   call $~lib/ultrain-ts-lib/src/crypto/Crypto#toString
  )
- (func $~lib/internal/string/parse<f64> (; 165 ;) (type $iiF) (param $0 i32) (param $1 i32) (result f64)
+ (func $~lib/internal/string/parse<f64> (; 170 ;) (type $iiF) (param $0 i32) (param $1 i32) (result f64)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -8926,12 +9014,12 @@
   get_local $7
   f64.mul
  )
- (func $~lib/string/parseInt (; 166 ;) (type $iiF) (param $0 i32) (param $1 i32) (result f64)
+ (func $~lib/string/parseInt (; 171 ;) (type $iiF) (param $0 i32) (param $1 i32) (result f64)
   get_local $0
   get_local $1
   call $~lib/internal/string/parse<f64>
  )
- (func $~lib/dbmanager/DBManager<Vote>#modify (; 167 ;) (type $iIiv) (param $0 i32) (param $1 i64) (param $2 i32)
+ (func $~lib/dbmanager/DBManager<Vote>#modify (; 172 ;) (type $iIiv) (param $0 i32) (param $1 i64) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -8976,12 +9064,12 @@
   i32.load offset=8
   call $~lib/env/db_update_i64
  )
- (func $~lib/ultrain-ts-lib/src/return/Return<String> (; 168 ;) (type $iv) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/return/Return<String> (; 173 ;) (type $iv) (param $0 i32)
   get_local $0
   call $~lib/ultrain-ts-lib/src/utils/string2cstr
   call $~lib/ultrain-ts-lib/src/return/env.set_result_str
  )
- (func $contract/ultrainio.rand/rand#vote (; 169 ;) (type $iiv) (param $0 i32) (param $1 i32)
+ (func $contract/ultrainio.rand/rand#vote (; 174 ;) (type $iiv) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i64)
   (local $4 i64)
@@ -9362,7 +9450,7 @@
   call $~lib/string/String.__concat
   call $~lib/ultrain-ts-lib/src/return/Return<String>
  )
- (func $contract/ultrainio.rand/rand#query (; 170 ;) (type $iv) (param $0 i32)
+ (func $contract/ultrainio.rand/rand#query (; 175 ;) (type $iv) (param $0 i32)
   (local $1 i32)
   (local $2 i32)
   get_global $~lib/ultrain-ts-lib/src/log/Log
@@ -9475,10 +9563,13 @@
   call $~lib/ultrain-ts-lib/src/log/Logger#s
   call $~lib/ultrain-ts-lib/src/log/Logger#flush
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#onStop (; 171 ;) (type $iv) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#onError (; 176 ;) (type $iv) (param $0 i32)
   nop
  )
- (func $contract/ultrainio.rand/apply (; 172 ;) (type $IIIIv) (param $0 i64) (param $1 i64) (param $2 i64) (param $3 i64)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#onStop (; 177 ;) (type $iv) (param $0 i32)
+  nop
+ )
+ (func $contract/ultrainio.rand/apply (; 178 ;) (type $IIIIv) (param $0 i64) (param $1 i64) (param $2 i64) (param $3 i64)
   (local $4 i32)
   (local $5 i32)
   (local $6 i64)
@@ -9563,10 +9654,17 @@
     call $contract/ultrainio.rand/rand#query
    end
    get_local $4
+   i32.const 4648
+   call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
+   if
+    get_local $4
+    call $~lib/ultrain-ts-lib/src/contract/Contract#onError
+   end
+   get_local $4
    call $~lib/ultrain-ts-lib/src/contract/Contract#onStop
   end
  )
- (func $start (; 173 ;) (type $v)
+ (func $start (; 179 ;) (type $v)
   (local $0 i32)
   get_global $HEAP_BASE
   get_global $~lib/internal/allocator/AL_MASK
@@ -9600,6 +9698,6 @@
   call $~lib/ultrain-ts-lib/src/asset/Asset#constructor
   set_global $contract/ultrainio.rand/DEPOSIT_AMOUNT
  )
- (func $null (; 174 ;) (type $v)
+ (func $null (; 180 ;) (type $v)
  )
 )
