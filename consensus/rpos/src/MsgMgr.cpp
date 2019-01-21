@@ -24,7 +24,7 @@ namespace ultrainio {
 
     void MsgMgr::insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr) {
         ULTRAIN_ASSERT(aggEchoMsgPtr, chain::chain_exception, "agg echo msg pointer is null");
-        BlockMsgPoolPtr blockMsgPoolPtr = getBlockMsgPool(BlockHeader::num_from_id(aggEchoMsgPtr->blockId));
+        BlockMsgPoolPtr blockMsgPoolPtr = getBlockMsgPool(BlockHeader::num_from_id(aggEchoMsgPtr->commonEchoMsg.blockId));
         blockMsgPoolPtr->m_myAggEchoMsgPtr = aggEchoMsgPtr;
     }
 
@@ -64,7 +64,7 @@ namespace ultrainio {
             return kSuccess;
         }
 
-        uint32_t blockNum = BlockHeader::num_from_id(aggEchoMsg.blockId);
+        uint32_t blockNum = BlockHeader::num_from_id(aggEchoMsg.commonEchoMsg.blockId);
         uint32_t myBlockNum = UranusNode::getInstance()->getBlockNum();
         if (myBlockNum - Config::MAX_LATER_NUMBER > blockNum) {
             return kObsolete;
@@ -115,18 +115,18 @@ namespace ultrainio {
 #endif
             for (size_t i = 0; i < aggEchoMsg.accountPool.size(); i++) {
                 EchoMsg echoMsg;
-                echoMsg.blockId = aggEchoMsg.blockId;
+                echoMsg.blockId = aggEchoMsg.commonEchoMsg.blockId;
 #ifdef CONSENSUS_VRF
                 echoMsg.proposerPriority = aggEchoMsg.proposerPriority;
                 echoMsg.proof = aggEchoMsg.proofPool[i];
 #else
-                echoMsg.proposer = aggEchoMsg.proposer;
+                echoMsg.proposer = aggEchoMsg.commonEchoMsg.proposer;
 #endif
                 echoMsg.account = aggEchoMsg.accountPool[i];
                 echoMsg.signature = aggEchoMsg.sigPool[i];
                 echoMsg.timestamp = aggEchoMsg.timePool[i];
-                echoMsg.phase = aggEchoMsg.phase;
-                echoMsg.baxCount = aggEchoMsg.baxCount;
+                echoMsg.phase = aggEchoMsg.commonEchoMsg.phase;
+                echoMsg.baxCount = aggEchoMsg.commonEchoMsg.baxCount;
                 UranusNode::getInstance()->handleMessage(echoMsg);
             }
         }

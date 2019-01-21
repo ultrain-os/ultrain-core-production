@@ -7,14 +7,22 @@
 namespace ultrainio {
     class NodeInfo {
     public:
+        NodeInfo();
+
+        ~NodeInfo();
+
         void setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account);
 
         AccountName getMyAccount() const;
 
         PrivateKey getPrivateKey() const;
 
+        bool getMyBlsPrivateKey(unsigned char* sk, int skSize) const;
+
     private:
         PrivateKey m_privateKey;
+
+        unsigned char* m_blsPrivateKey;;
 
         std::string m_account;
     };

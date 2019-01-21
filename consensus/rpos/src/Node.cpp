@@ -523,7 +523,6 @@ namespace ultrainio {
     }
 
     void UranusNode::baxLoop(uint32_t timeout) {
-        EchoMsg echo_msg;
         msgkey msg_key;
 
         dlog("start baxLoop timeout = ${timeout}", ("timeout", timeout));

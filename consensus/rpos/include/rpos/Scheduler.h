@@ -18,20 +18,21 @@ namespace ultrainio {
     class UranusNode;
 
     struct echo_message_info {
-        EchoMsg echo;
+        CommonEchoMsg echoCommonPart;
         std::vector<AccountName> accountPool;
-        std::vector<std::string> proofPool;
         std::vector<std::string> sigPool;
+        std::vector<std::string> blsSignPool;
         std::vector<uint32_t>    timePool;
 #ifdef CONSENSUS_VRF
+        std::vector<std::string> proofPool;
         int totalVoter;
 #endif
         bool hasSend;
 
         echo_message_info() :
-                echo(), accountPool(), proofPool(), sigPool(), timePool(),
+                echoCommonPart(), accountPool(), sigPool(), timePool(),
 #ifdef CONSENSUS_VRF
-                totalVoter(0),
+                proofPool(), totalVoter(0),
 #endif
                 hasSend(false) {}
 

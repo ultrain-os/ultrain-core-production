@@ -18,7 +18,7 @@ namespace ultrainio {
         int32_t               phase;
         uint32_t              baxCount;
 
-        void digestFromeEchoMsg(const EchoMsg& echo_msg) {
+        void digestFromeEchoMsg(const CommonEchoMsg& echo_msg) {
             head.digestFromBlockHeader(echo_msg.blockId);
             phase    = echo_msg.phase;
             baxCount = echo_msg.baxCount;
@@ -32,7 +32,7 @@ namespace ultrainio {
         std::vector<AccountName>  account_pool; //public key pool
 
         void digestFromeEchoMsgInfo(const echo_message_info& echo_msg_info) {
-            echoMsg.digestFromeEchoMsg(echo_msg_info.echo);
+            echoMsg.digestFromeEchoMsg(echo_msg_info.echoCommonPart);
             hasSend = echo_msg_info.hasSend;
             accountPoolSize = echo_msg_info.accountPool.size();
             account_pool.assign(echo_msg_info.accountPool.begin(), echo_msg_info.accountPool.end());

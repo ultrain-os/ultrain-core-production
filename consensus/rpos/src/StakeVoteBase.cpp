@@ -57,6 +57,10 @@ namespace ultrainio {
         return s_keyKeeper->getPrivateKey();
     }
 
+    bool StakeVoteBase::getMyBlsPrivateKey(unsigned char* sk, int skSize) {
+        return s_keyKeeper->getMyBlsPrivateKey(sk, skSize);
+    }
+
     bool StakeVoteBase::newRound(ConsensusPhase phase, int baxCount) {
         if (kPhaseBA0 == phase && 0 == baxCount) {
             return true;

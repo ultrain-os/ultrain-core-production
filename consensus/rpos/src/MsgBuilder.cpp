@@ -4,6 +4,7 @@
 #include <rpos/Node.h>
 #include <rpos/Signer.h>
 #include <rpos/StakeVoteBase.h>
+#include <crypto/Bls.h>
 
 namespace ultrainio {
     EchoMsg MsgBuilder::constructMsg(const Block &block) {
@@ -11,7 +12,6 @@ namespace ultrainio {
         echo.blockId = block.id();
         echo.phase = UranusNode::getInstance()->getPhase();
         echo.baxCount = UranusNode::getInstance()->getBaxCount();
-        echo.timestamp = UranusNode::getInstance()->getRoundCount();
         echo.account = StakeVoteBase::getMyAccount();
 #ifdef CONSENSUS_VRF
         echo.proposerPriority = Proof(block.proposerProof).getPriority();
@@ -19,6 +19,10 @@ namespace ultrainio {
 #else
         echo.proposer = block.proposer;
 #endif
+        unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
+        StakeVoteBase::getMyBlsPrivateKey(sk, Bls::BLS_PRI_KEY_LENGTH);
+        echo.blsSignature = Signer::sign<CommonEchoMsg>(echo, sk);
+        echo.timestamp = UranusNode::getInstance()->getRoundCount();
         // initialized at the end
         echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, StakeVoteBase::getMyPrivateKey()));
         ilog("account : ${account} sign block ${id} signature ${signature}",
@@ -31,7 +35,6 @@ namespace ultrainio {
         echo.blockId = propose.block.id();
         echo.phase = UranusNode::getInstance()->getPhase();
         echo.baxCount = UranusNode::getInstance()->getBaxCount();
-        echo.timestamp = UranusNode::getInstance()->getRoundCount();
         echo.account = StakeVoteBase::getMyAccount();
 #ifdef CONSENSUS_VRF
         echo.proposerPriority = Proof(propose.block.proposerProof).getPriority();
@@ -39,6 +42,10 @@ namespace ultrainio {
 #else
         echo.proposer = propose.block.proposer;
 #endif
+        unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
+        StakeVoteBase::getMyBlsPrivateKey(sk, Bls::BLS_PRI_KEY_LENGTH);
+        echo.blsSignature = Signer::sign<CommonEchoMsg>(echo, sk);
+        echo.timestamp = UranusNode::getInstance()->getRoundCount();
         echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, StakeVoteBase::getMyPrivateKey()));
         ilog("account : ${account} sign block ${id} signature ${signature}",
                 ("account", std::string(StakeVoteBase::getMyAccount()))("id", propose.block.id())("signature", echo.signature));
@@ -47,11 +54,14 @@ namespace ultrainio {
 
     EchoMsg MsgBuilder::constructMsg(const EchoMsg &echo) {
         EchoMsg myEcho = echo;
-        myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
         myEcho.account = StakeVoteBase::getMyAccount();
 #ifdef CONSENSUS_VRF
         myEcho.proof = std::string(MsgMgr::getInstance()->getVoterProof(BlockHeader::num_from_id(echo.blockId), myEcho.phase, myEcho.baxCount));
 #endif
+        unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
+        StakeVoteBase::getMyBlsPrivateKey(sk, Bls::BLS_PRI_KEY_LENGTH);
+        myEcho.blsSignature = Signer::sign<CommonEchoMsg>(myEcho, sk);
+        myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
         myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(myEcho, StakeVoteBase::getMyPrivateKey()));
         ilog("timestamp : ${timestamp} proof : ${proof} account : ${account} sign block ${id} signature ${signature}",
              ("timestamp", myEcho.timestamp)("account", std::string(StakeVoteBase::getMyAccount()))

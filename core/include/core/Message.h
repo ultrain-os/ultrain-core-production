@@ -53,17 +53,23 @@ namespace ultrainio {
         Block block;
     };
 
-    struct UnsignedEchoMsg {
+    struct CommonEchoMsg {
         BlockIdType blockId;
         ConsensusPhase phase;
         uint32_t    baxCount;
-        uint32_t    timestamp;
-        AccountName account;
 #ifdef CONSENSUS_VRF
         uint32_t    proposerPriority;
-        std::string proof;
 #else
         AccountName proposer;
+#endif
+    };
+
+    struct UnsignedEchoMsg : public CommonEchoMsg {
+        std::string blsSignature;
+        AccountName account;
+        uint32_t    timestamp;
+#ifdef CONSENSUS_VRF
+        std::string proof;
 #endif
     };
 
@@ -73,20 +79,16 @@ namespace ultrainio {
 
     // aggregate echo msg
     struct UnsignedAggEchoMsg {
-        BlockIdType blockId;
+        CommonEchoMsg commonEchoMsg;
         std::vector<AccountName> accountPool;
         std::vector<std::string> sigPool;
+        std::vector<std::string> blsSignPool;
         std::vector<uint32_t> timePool;
-        ConsensusPhase phase;
-        uint32_t baxCount;
         AccountName account;
 #ifdef CONSENSUS_VRF
-        uint32_t    proposerPriority;
         std::vector<std::string> proofPool;
         // the proof of the node which send AggEchoMsg
         std::string myProposerProof;
-#else
-        AccountName proposer;
 #endif
     };
 
@@ -96,21 +98,26 @@ namespace ultrainio {
 }
 
 FC_REFLECT( ultrainio::ProposeMsg, (block))
+
 #ifdef CONSENSUS_VRF
-FC_REFLECT( ultrainio::UnsignedEchoMsg, (blockId)(phase)(baxCount)(timestamp)(account)(proposerPriority)(proof))
+FC_REFLECT( ultrainio::CommonEchoMsg, (blockId)(phase)(baxCount)(proposerPriority))
+FC_REFLECT_DERIVED( ultrainio::UnsignedEchoMsg, (ultrainio::CommonEchoMsg), (blsSignature)(account)(timestamp)(proof))
 #else
-FC_REFLECT( ultrainio::UnsignedEchoMsg, (blockId)(phase)(baxCount)(timestamp)(account)(proposer))
+FC_REFLECT( ultrainio::CommonEchoMsg, (blockId)(phase)(baxCount)(proposer))
+FC_REFLECT_DERIVED( ultrainio::UnsignedEchoMsg, (ultrainio::CommonEchoMsg), (blsSignature)(account)(timestamp))
 #endif
+
 FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature))
 FC_REFLECT( ultrainio::ReqSyncMsg, (seqNum)(startBlockNum)(endBlockNum) )
 FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
 FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))
 FC_REFLECT( ultrainio::SyncBlockMsg, (seqNum)(block))
 FC_REFLECT( ultrainio::SyncStopMsg, (seqNum))
+
 #ifdef CONSENSUS_VRF
-FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockId)(accountPool)(sigPool)(timePool)(phase)(baxCount)
-                                           (account)(proposerPriority)(proofPool)(myProposerProof))
+FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (commonEchoMsg)(accountPool)(sigPool)(blsSignPool)(timePool)(account)(proofPool)(myProposerProof))
 #else
-FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (blockId)(accountPool)(sigPool)(timePool)(phase)(baxCount)(account)(proposer))
+FC_REFLECT( ultrainio::UnsignedAggEchoMsg, (commonEchoMsg)(accountPool)(sigPool)(blsSignPool)(timePool)(account))
 #endif
+
 FC_REFLECT_DERIVED( ultrainio::AggEchoMsg, (ultrainio::UnsignedAggEchoMsg), (signature))

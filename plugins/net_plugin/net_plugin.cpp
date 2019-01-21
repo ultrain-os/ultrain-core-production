@@ -2220,7 +2220,7 @@ namespace ultrainio {
 
    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg) {
        ilog("receive AggEchoMsg msg!!! message from ${p} block id: ${id} block num: ${num} account : ${account}",
-            ("p", c->peer_name())("id", msg.blockId)("num", BlockHeader::num_from_id(msg.blockId))("account", std::string(msg.account)));
+            ("p", c->peer_name())("id", msg.commonEchoMsg.blockId)("num", BlockHeader::num_from_id(msg.commonEchoMsg.blockId))("account", std::string(msg.account)));
        if (MsgMgr::getInstance()->handleMessage(msg) == kSuccess) {
            for (auto &conn : connections) {
                if (conn != c && conn->priority == msg_priority_rpos) {

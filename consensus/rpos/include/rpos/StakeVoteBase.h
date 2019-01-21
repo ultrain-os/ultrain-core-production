@@ -26,6 +26,8 @@ namespace ultrainio {
 
         static PrivateKey getMyPrivateKey();
 
+        static bool getMyBlsPrivateKey(unsigned char* sk, int skSize);
+
         static bool committeeHasWorked();
 
         static bool isGenesisLeaderAndInGenesisPeriod();

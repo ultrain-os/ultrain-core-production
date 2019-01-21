@@ -1,18 +1,12 @@
 #! /bin/bash
-# bash run.sh -d; bash run.sh -e
 
 randDir="./"; clDir="../../../build/programs/clultrain"
 cvrf="./vrf_client"
 
 msg="234567" # TODO: add "vrf" prefix to all msg for security
-# read without trailing newline
-# https://stackoverflow.com/questions/41721847/readarray-t-option-in-bash-default-behavior
-
-cd $randDir
 readarray -t ult_pkLst < pk.lst; readarray -t ult_skLst < sk.lst; readarray -t ult_accountLst < account.lst
-# echo "${msgLst[*]}"
 
-wallet_url="--wallet-url http://127.0.0.1:6666"
+wallet_url=" --wallet-url http://127.0.0.1:6666 "
 
 # 1. rand.sh c
 # 2. rand.sh r
@@ -55,9 +49,6 @@ case "$1" in
 	sleep 10
 	;;
   "e") #vote
-	# delegate permission to send bonus
-	# ./clultrain set account permission abc123 active '{"threshold":1,"keys": [{"key":"UTR6FjKthwDnnh6o2T9n4DDb19X1vsrafJibEiCPDX6YP1QmZS7Bu","weight": 1}],"accounts": [{"permission":{"actor":"abc123","permission":"utrio.code"},"weight":1}]}' owner -p abc123
-
 	i=0;j=1; VOTE_TIMES=20; VOTER_NUM=16;
 	while [ $j -lt $VOTE_TIMES ];do
                 printf "times : "$j"\n"

@@ -4,7 +4,6 @@
 #include <iostream>
 
 #include <core/Message.h>
-#include <crypto/Bls.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
 #include <rpos/Proof.h>
@@ -36,13 +35,6 @@ BOOST_AUTO_TEST_SUITE(proof_test_suite)
         Proof faultProof(faultHexStr);
         BOOST_CHECK(faultProof.getPriority() == faultProof.getPriority());
         BOOST_CHECK(!Vrf::verify(publicKey, faultProof, seed, Vrf::kProposer));
-        string faultHexStr1;
-        for (int i = 0; i < Bls::BLS_SIGNATURE_LENGTH; i++) {
-            faultHexStr1 += "0";
-        }
-        Proof faultProof1(faultHexStr1);
-        BOOST_CHECK(faultProof1.isValid());
-        BOOST_CHECK(proof.getPriority() != faultProof1.getPriority());
     }
 
 BOOST_AUTO_TEST_SUITE_END()

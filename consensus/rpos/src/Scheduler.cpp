@@ -63,7 +63,6 @@ namespace {
 }
 
 namespace ultrainio {
-
     Scheduler::Scheduler() : m_ba0Block(), m_proposerMsgMap(), m_echoMsgMap(),
                                            m_cacheProposeMsgMap(), m_cacheEchoMsgMap(),
                                            m_echoMsgAllPhase() {
@@ -93,7 +92,9 @@ namespace ultrainio {
                 int s3 = 0;
                 for(const auto& it : m_echoMsgMap) {
                     s3 += it.second.accountPool.size();
+#ifdef CONSENSUS_VRF
                     s3 += it.second.proofPool.size();
+#endif
                     s3 += it.second.sigPool.size();
                     s3 += it.second.timePool.size();
                 }
@@ -115,7 +116,9 @@ namespace ultrainio {
                 for(const auto& it : m_echoMsgAllPhase) {
                     for( const auto& it2: it.second) {
                         s9 += it2.second.accountPool.size();
+#ifdef CONSENSUS_VRF
                         s9 += it2.second.proofPool.size();
+#endif
                         s9 += it2.second.sigPool.size();
                         s9 += it2.second.timePool.size();
                     }
@@ -172,6 +175,7 @@ namespace ultrainio {
                 itor->second.accountPool.push_back(echo.account);
                 itor->second.sigPool.push_back(echo.signature);
                 itor->second.timePool.push_back(echo.timestamp);
+                itor->second.blsSignPool.push_back(echo.blsSignature);
 #ifdef CONSENSUS_VRF
                 itor->second.proofPool.push_back(echo.proof);
                 itor->second.totalVoter += stakeVotePtr->calSelectedStake(Proof(echo.proof));
@@ -179,10 +183,11 @@ namespace ultrainio {
             }
         } else {
             echo_message_info echoMessageInfo;
-            echoMessageInfo.echo = echo;
+            echoMessageInfo.echoCommonPart = echo;
             echoMessageInfo.accountPool.push_back(echo.account);
             echoMessageInfo.sigPool.push_back(echo.signature);
             echoMessageInfo.timePool.push_back(echo.timestamp);
+            echoMessageInfo.blsSignPool.push_back(echo.blsSignature);
             echoMessageInfo.hasSend = true;
 #ifdef CONSENSUS_VRF
             echoMessageInfo.proofPool.push_back(echo.proof);
@@ -373,7 +378,7 @@ namespace ultrainio {
             }
         } else {
             echo_message_info info;
-            info.echo = echo;
+            info.echoCommonPart = echo;
             //dlog("processBeforeMsg.new blockhash.");
             if (updateAndMayResponse(info, echo, false)) {
                 map_it->second.insert(make_pair(echo.blockId, info));
@@ -391,6 +396,7 @@ namespace ultrainio {
         auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
         if (pkItor == info.accountPool.end()) {
             info.accountPool.push_back(echo.account);
+            info.blsSignPool.push_back(echo.blsSignature);
 #ifdef CONSENSUS_VRF
             info.proofPool.push_back(echo.proof);
 #endif
@@ -447,7 +453,7 @@ namespace ultrainio {
                         insertAccount(itor->second, echo);
                     } else {
                         echo_message_info info;
-                        info.echo = echo;
+                        info.echoCommonPart = echo;
                         insertAccount(info, echo);
                         echo_msg_map.insert(make_pair(echo.blockId, info));
                     }
@@ -489,7 +495,7 @@ namespace ultrainio {
                         updateAndMayResponse(itor->second, echo, false);
                     } else {
                         echo_message_info info;
-                        info.echo = echo;
+                        info.echoCommonPart = echo;
                         updateAndMayResponse(info, echo, false);
                         echo_msg_map.insert(make_pair(echo.blockId, info));
                     }
@@ -544,6 +550,14 @@ namespace ultrainio {
                     ("account", std::string(echo.account))("pk", std::string(publicKey))("signature", echo.signature));
             return false;
         }
+
+        //TODO shall not verify here
+        /*unsigned char blsPublicKey[Bls::BLS_PUB_KEY_COMPRESSED_LENGTH];
+        if (!Validator::verify<CommonEchoMsg>(echo.blsSignature, echo, blsPublicKey)) {
+            elog("validator echo bls signature error. ${account} signature : ${signature}",
+                    ("account", std::string(echo.account))("signature", echo.blsSignature));
+            return false;
+        }*/
 
 #ifdef CONSENSUS_VRF
         Proof proof(echo.proof);
@@ -701,7 +715,7 @@ namespace ultrainio {
             updateAndMayResponse(itor->second, echo, false);
         } else {
             echo_message_info info;
-            info.echo = echo;
+            info.echoCommonPart = echo;
             updateAndMayResponse(info, echo, false);
             m_echoMsgMap.insert(make_pair(echo.blockId, info));
         }
@@ -811,7 +825,7 @@ namespace ultrainio {
             }
         } else {
             echo_message_info info;
-            info.echo = echo;
+            info.echoCommonPart = echo;
             bret = updateAndMayResponse(info, echo, true);
             m_echoMsgMap.insert(make_pair(echo.blockId, info));
             if ((isMinEcho(info) || isMinFEcho(info)) && bret) {
@@ -976,7 +990,7 @@ namespace ultrainio {
 
     bool Scheduler::isMinFEcho(const echo_message_info &info, const echo_msg_buff &msgbuff) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr
-                = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
+                = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echoCommonPart.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
 #ifdef CONSENSUS_VRF
         uint32_t priority = info.echo.proposerPriority;
@@ -988,10 +1002,10 @@ namespace ultrainio {
             }
         }
 #else
-        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer, kPhaseBA0, 0);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echoCommonPart.proposer, kPhaseBA0, 0);
         for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
             if (itor->second.getTotalVoterWeight() >= stakeVotePtr->getSendEchoThreshold()) {
-                if (stakeVotePtr->proposerPriority(itor->second.echo.proposer, kPhaseBA0, 0) < priority) {
+                if (stakeVotePtr->proposerPriority(itor->second.echoCommonPart.proposer, kPhaseBA0, 0) < priority) {
                     return false;
                 }
             }
@@ -1002,7 +1016,7 @@ namespace ultrainio {
 
     bool Scheduler::isMinFEcho(const echo_message_info &info) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr
-                = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
+                = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echoCommonPart.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
 #ifdef CONSENSUS_VRF
         uint32_t priority = info.echo.proposerPriority;
@@ -1014,10 +1028,10 @@ namespace ultrainio {
             }
         }
 #else
-        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer, kPhaseBA0, 0);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echoCommonPart.proposer, kPhaseBA0, 0);
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
             if (itor->second.getTotalVoterWeight() >= stakeVotePtr->getSendEchoThreshold()) {
-                if (stakeVotePtr->proposerPriority(itor->second.echo.proposer, kPhaseBA0, 0) < priority) {
+                if (stakeVotePtr->proposerPriority(itor->second.echoCommonPart.proposer, kPhaseBA0, 0) < priority) {
                     return false;
                 }
             }
@@ -1035,11 +1049,11 @@ namespace ultrainio {
             }
         }
 #else
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echoCommonPart.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer, kPhaseBA0, 0);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echoCommonPart.proposer, kPhaseBA0, 0);
         for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
-            if (stakeVotePtr->proposerPriority(itor->second.echo.proposer, kPhaseBA0, 0) < priority) {
+            if (stakeVotePtr->proposerPriority(itor->second.echoCommonPart.proposer, kPhaseBA0, 0) < priority) {
                 return false;
             }
         }
@@ -1056,11 +1070,11 @@ namespace ultrainio {
             }
         }
 #else
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echo.blockId));
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(info.echoCommonPart.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        uint32_t priority = stakeVotePtr->proposerPriority(info.echo.proposer, kPhaseBA0, 0);
+        uint32_t priority = stakeVotePtr->proposerPriority(info.echoCommonPart.proposer, kPhaseBA0, 0);
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
-            if (stakeVotePtr->proposerPriority(itor->second.echo.proposer, kPhaseBA0, 0) < priority) {
+            if (stakeVotePtr->proposerPriority(itor->second.echoCommonPart.proposer, kPhaseBA0, 0) < priority) {
                 return false;
             }
         }
@@ -1448,7 +1462,7 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
                     uint32_t priority = echo_itor->second.echo.proposerPriority;
 #else
-                    uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer, kPhaseBA0, 0);
+                    uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echoCommonPart.proposer, kPhaseBA0, 0);
 #endif
                     if (min_priority >= priority) {
                         dlog("min proof change.");
@@ -1458,17 +1472,17 @@ namespace ultrainio {
                 }
             }
 
-            if (!echo_info || isBlank(echo_info->echo.blockId)) {
+            if (!echo_info || isBlank(echo_info->echoCommonPart.blockId)) {
                 continue;
             }
 
-            dlog("produceBaxBlock.min_hash = ${hash}",("hash",echo_info->echo.blockId));
+            dlog("produceBaxBlock.min_hash = ${hash}",("hash",echo_info->echoCommonPart.blockId));
 
-            if (isEmpty(echo_info->echo.blockId)) {
+            if (isEmpty(echo_info->echoCommonPart.blockId)) {
                 dlog("produceBaxBlock.produce empty Block");
                 return emptyBlock();
             }
-            auto propose_itor = m_proposerMsgMap.find(echo_info->echo.blockId);
+            auto propose_itor = m_proposerMsgMap.find(echo_info->echoCommonPart.blockId);
             if (propose_itor != m_proposerMsgMap.end()
 #ifdef CONSENSUS_VRF
                     && Proof(propose_itor->second.block.proposerProof).getPriority() == min_priority) {
@@ -1479,7 +1493,7 @@ namespace ultrainio {
                      ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
                 return propose_itor->second.block;
             }
-            dlog("produceBaxBlock.> 2f + 1 echo. hash = ${hash} can not find it's propose.",("hash",echo_info->echo.blockId));
+            dlog("produceBaxBlock.> 2f + 1 echo. hash = ${hash} can not find it's propose.",("hash",echo_info->echoCommonPart.blockId));
         }
 
         return Block();
@@ -1505,8 +1519,8 @@ namespace ultrainio {
 
         for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
             dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} block_hash : ${block_hash}",
-                 ("phase", (uint32_t) echo_itor->second.echo.phase)("size", echo_itor->second.accountPool.size())(
-                         "totalVoter", echo_itor->second.getTotalVoterWeight())("block_hash", echo_itor->second.echo.blockId));
+                 ("phase", (uint32_t) echo_itor->second.echoCommonPart.phase)("size", echo_itor->second.accountPool.size())(
+                         "totalVoter", echo_itor->second.getTotalVoterWeight())("block_hash", echo_itor->second.echoCommonPart.blockId));
 
 //            if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (phase < Config::kMaxBaxCount))
 //                || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (phase >= Config::kMaxBaxCount))) {
@@ -1515,10 +1529,10 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
                 uint32_t priority = echo_itor->second.echo.proposerPriority;
 #else
-                uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echo.proposer, kPhaseBA0, 0);
+                uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echoCommonPart.proposer, kPhaseBA0, 0);
 #endif
                 if (minPriority >= priority) {
-                    minBlockId = echo_itor->second.echo.blockId;
+                    minBlockId = echo_itor->second.echoCommonPart.blockId;
                     minPriority = priority;
                 }
             }
@@ -1575,20 +1589,16 @@ namespace ultrainio {
             return nullptr;
         }
         std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
-        aggEchoMsgPtr->blockId = blockId;
         aggEchoMsgPtr->account = StakeVoteBase::getMyAccount();
+        aggEchoMsgPtr->commonEchoMsg = echoMessageInfo.echoCommonPart;
 #ifdef CONSENSUS_VRF
         aggEchoMsgPtr->myProposerProof = std::string(MsgMgr::getInstance()->getProposerProof(blockPtr->block_num()));
-        aggEchoMsgPtr->proposerPriority = echoMessageInfo.echo.proposerPriority;
         aggEchoMsgPtr->proofPool = echoMessageInfo.proofPool;
-#else
-        aggEchoMsgPtr->proposer = echoMessageInfo.echo.proposer;
 #endif
         aggEchoMsgPtr->accountPool = echoMessageInfo.accountPool;
         aggEchoMsgPtr->sigPool = echoMessageInfo.sigPool;
+        aggEchoMsgPtr->blsSignPool = echoMessageInfo.blsSignPool;
         aggEchoMsgPtr->timePool = echoMessageInfo.timePool;
-        aggEchoMsgPtr->phase = echoMessageInfo.echo.phase;
-        aggEchoMsgPtr->baxCount = echoMessageInfo.echo.baxCount;
         aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, StakeVoteBase::getMyPrivateKey()));
         return aggEchoMsgPtr;
     }
