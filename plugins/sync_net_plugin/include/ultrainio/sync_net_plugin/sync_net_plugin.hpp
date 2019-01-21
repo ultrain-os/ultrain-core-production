@@ -52,7 +52,7 @@ namespace ultrainio {
         string                       sync_ws(const sync_wss_params& syncWssParams);
         string                       require_block(const std::string& chain_id_text,uint32_t end);
         string                       sync_block(uint32_t block_height);
-        status_code                  ws_status(string id, int32_t simulator=-1);
+        status_code                  ws_status(string id);
         string                       test_latancy();
         string                       repair_blog(string path,int32_t height);
 

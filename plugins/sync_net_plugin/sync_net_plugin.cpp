@@ -2229,7 +2229,7 @@ namespace ultrainio {
         return "get block";
     }
 
-    status_code sync_net_plugin::ws_status(string id,int32_t simulator){
+    status_code sync_net_plugin::ws_status(string id){
         std::string ip = "";
 
         if(id == "ws") {
