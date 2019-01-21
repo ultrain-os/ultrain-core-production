@@ -8,6 +8,7 @@ import copy
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--masterchain', action='store_true', help="set current master chain")
 parser.add_argument('-sub', '--subchain', type=str, help="set subchain name info")
+parser.add_argument('-ws', '--worldstate', action='store_true', help="enable worldstate ")
 args = parser.parse_args()
 class Host(object):
 
@@ -343,7 +344,8 @@ def write_config_file():
                 insert_keys(fname, index_key)
             if con.name[len(con.name)-1::len(con.name)] == '7':
                 insert_non_producing(fname)
-            update_ultrainmng_config(fname)
+            update_ultrainmng_config(fname,hosts[dockerinfo])
+            insert_worldstate_config(fname)
             print(hostip,con.ip,con.id)
             insert_peer(fname,hosts[dockerinfo][0].ip)
             index_key+=1
@@ -382,9 +384,11 @@ def insert_leader_sk(fname):
 
 
 # update ultrainmng  config
-def update_ultrainmng_config(fname):
+def update_ultrainmng_config(fname,ipList):
     content = readfile(fname)
     newcontent = "";
+    nonProducingNodeIp=ipList[len(ipList)-1].ip;
+    newcontent = "subchainHttpEndpoint = http://"+nonProducingNodeIp+":8888\n"
     if args.masterchain:
         newcontent = "masterchain = 1\n"
     if args.subchain == "11" :
@@ -392,6 +396,16 @@ def update_ultrainmng_config(fname):
     elif args.subchain == "12" :
         newcontent = "subchainHttpEndpoint = http://172.16.10.5:8899\n"
     index_line = content.index("#ultrainmng_subchainHttpEndpoint\n")
+    content.insert(index_line+1, newcontent)
+    writefile(fname,content)
+
+# insert worldstate config to enable worldstate
+def insert_worldstate_config(fname):
+    newcontent = "worldstate-control = false"
+    if args.worldstate:
+        newcontent = "worldstate-control = true"
+    content = readfile(fname)
+    index_line = content.index("#world_state_config\n")
     content.insert(index_line+1, newcontent)
     writefile(fname,content)
 

@@ -39,6 +39,23 @@ WorldState.getHttpRequestPath = function (path) {
     return this.http + "://" + this.hostname + ":" + this.port + "/" + this.version + path;
 }
 
+//实时状态
+WorldState.status = null;
+
+/**
+ * 同步世界状态信息
+ * @returns {Promise<void>}
+ */
+WorldState.syncStatus = async function () {
+    let data = await this.checkAlive();
+    if (utils.isNotNull(data)) {
+        //比较块高
+        if (utils.isNull(this.status) || data.block_height > this.status.block_height) {
+            this.status = data;
+        }
+    }
+}
+
 /**
  * 调用url获取请求
  * @param path
@@ -105,12 +122,6 @@ WorldState.pollingkWSState = async function (code, timeInterval, totalTime) {
      */
     let searchTime = 0;
     while (searchTime <= totalTime) {
-        /**
-         * todo delete mock用
-         */
-        if (totalTime - searchTime <= timeInterval) {
-            code = 0;
-        }
         result = await WorldState.requestWSState(code);
         if (wsResUtil.isSuccess(result)) {
             logger.info("sync worldstate success");
@@ -151,12 +162,6 @@ WorldState.pollingBlockState = async function (code, timeInterval, totalTime) {
      */
     let searchTime = 0;
     while (searchTime <= totalTime) {
-        /**
-         * todo delete mock用
-         */
-        if (totalTime - searchTime <= timeInterval) {
-            code = 0;
-        }
         let res = await WorldState.requestBlockState(code);
         if (wsResUtil.isSuccess(res)) {
             logger.info("sync  block success");
@@ -204,7 +209,16 @@ WorldState.requestBlockState = async function (code) {
  * @returns {Promise<*>}
  */
 WorldState.checkAlive = async function () {
-    return wsResUtil.isSuccess(await this.requestData("/wss/ws_status", "[\"\",0]"));
+
+    let resut = null;
+    try {
+        resut = await this.requestData("/wss/latest_wsinfo", null);
+        logger.debug("result:", resut);
+        return resut;
+    } catch (e) {
+        logger.error("request wss data error:", utils.logNetworkError(e));
+        return null;
+    }
 }
 
 /**
@@ -224,17 +238,22 @@ WorldState.getSubchainWsInfo = async function () {
  * @returns {boolean}
  */
 WorldState.updateConfig = function (chainId, seedIp) {
+
     try {
-        var iniFile = new IniFile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
-        iniFile.setValue("chainId", chainId);
-        iniFile.setValue("seedIP", seedIp);
-        iniFile.setValue("http-server-address", "127.0.0.1:" + this.port);
-        iniFile.writefile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
-        return true;
+        if (utils.isNotNull(chainId,seedIp)) {
+            var iniFile = new IniFile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
+            iniFile.setValue("chainId", chainId);
+            iniFile.setValue("seedIP", seedIp);
+            iniFile.setValue("http-server-address", "127.0.0.1:" + this.port);
+            iniFile.writefile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
+            return true;
+        } else {
+            logger.error("update wss config file error,chainId or seedIp is null");
+        }
     } catch (e) {
         logger.error("update wss config file error: ", e)
-        return false;
     }
+    return false;
 }
 
 /**
@@ -247,7 +266,7 @@ WorldState.stop = async function (totalTime) {
     //校验端口是否不提供服务
     let searchtime = this.statusCheckTime;
     while (totalTime >= searchtime) {
-        if (await this.checkAlive() == false) {
+        if (utils.isNull(await this.checkAlive()) == true) {
             return true;
         }
         sleep.msleep(this.statusCheckTime);
@@ -268,7 +287,7 @@ WorldState.start = async function (chainId, seedIp, totalTime) {
      * 更新配置信息（端口号，链id，种子ip
      */
     if (!this.updateConfig(chainId, seedIp)) {
-        return result;
+        //return result;
     }
     res = await ShellCmd.execCmd(Constants.cmdConstants.START_WORLDSTATE);
     if (res) {
@@ -276,7 +295,7 @@ WorldState.start = async function (chainId, seedIp, totalTime) {
         //utils.sleep(this.statusCheckTime);
         let searchtime = this.statusCheckTime;
         while (totalTime >= searchtime) {
-            if (await this.checkAlive()) {
+            if (utils.isNull(await this.checkAlive()) == false) {
                 result = true;
                 break;
             }
@@ -297,7 +316,7 @@ WorldState.clearDB = async function () {
     try {
         await ShellCmd.execCmd(Constants.cmdConstants.CLEAR_WORLD_STATE_FILE);
     } catch (e) {
-        logger.error("worldstate remove data error:",e);
+        logger.error("worldstate remove data error:", e);
     }
 }
 

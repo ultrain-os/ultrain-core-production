@@ -55,7 +55,8 @@ var tableConstants = {
     RESOURCE_LEASE: "reslease",//用户资源表，
     PENDING_MINER: "pendingminer",//委员会投票表
     PENDING_ACCOUNT: "pendingacc",//账户投票表
-    PENDING_RES: "pendingres" //资源投票表
+    PENDING_RES: "pendingres", //资源投票表
+    WORLDSTATE_HASH: "wshash", //世界状态hash表
 }
 
 //scode常量

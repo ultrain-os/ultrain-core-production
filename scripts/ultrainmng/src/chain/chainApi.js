@@ -192,7 +192,7 @@ getChainSeedIP = async (chainName, chainConfig) => {
     } catch (e) {
         logger.error("get chain seed ip error:", e);
     }
-    return "";
+    return utils.getLocalIPAdress();
 }
 
 /**

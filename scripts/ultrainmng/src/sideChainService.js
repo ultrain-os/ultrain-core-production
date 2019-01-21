@@ -32,6 +32,8 @@ async function startEntry() {
     logger.info("syncBlockSchedule ",syncBlockSchedule);
     var chainSyncCycleSchedule = utils.isNotNull(chainConfig.configFileData.local.chainSyncCycle) ?  chainConfig.configFileData.local.chainSyncCycle : singleJobSchedule;
     logger.info("chainSyncCycleSchedule ",chainSyncCycleSchedule);
+    var chainSyncWorldState = utils.isNotNull(chainConfig.configFileData.local.worldstateSyncCycle) ?  chainConfig.configFileData.local.worldstateSyncCycle : singleJobSchedule;
+    logger.info("worldstateSyncCycleSchedule ",chainSyncWorldState);
 
     //先做一次链信息同步
     logger.info("do sync chain info :")
@@ -55,6 +57,13 @@ async function startEntry() {
         //块同步
         await chain.syncBlock();
     });
+
+    logger.info("start world state sync:",chainSyncWorldState)
+    schedule.scheduleJob(chainSyncWorldState, async function () {
+        //世界状态同步
+        await chain.syncUser();
+    });
+
 
 }
 

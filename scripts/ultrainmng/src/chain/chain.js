@@ -16,6 +16,7 @@ var committeeUtil = require("./util/committeeUtil");
 var blockUtil = require("./util/blockUtil");
 var voteUtil = require("./util/voteUtil");
 var NodUltrain = require("../nodultrain/nodultrain")
+var WorldState = require("../worldstate/worldstate")
 
 
 /**
@@ -379,7 +380,7 @@ async function syncChainInfo() {
         if (syncChainChanging == false) {
             logger.info("check nod is alive ....");
             let rsdata = await NodUltrain.checkAlive();
-            logger.debug("check alive data:",rsdata);
+            logger.debug("check alive data:", rsdata);
             if (utils.isNull(rsdata)) {
                 logger.info("nod is not runing ,need restart it..");
                 //启动nod
@@ -406,7 +407,6 @@ async function syncChainInfo() {
             syncChainData = true;
             logger.info("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee")
         }
-
 
 
     } catch (e) {
@@ -465,9 +465,9 @@ async function switchChain() {
         //修改nod程序配置信息
         var subchainEndPoint = await chainApi.getSubchanEndPoint(chainConfig.chainName);
         logger.info("get chainid(" + chainConfig.chainName + ")'s seed ip info:", seedIpInfo);
-        logger.info("subchainEndPoint:",subchainEndPoint);
-        logger.info("genesisTime:",chainConfig.genesisTime);
-        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint,chainConfig.genesisTime);
+        logger.info("subchainEndPoint:", subchainEndPoint);
+        logger.info("genesisTime:", chainConfig.genesisTime);
+        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint, chainConfig.genesisTime);
         if (result == true) {
             loggerChainChanging.info("update nod config file success")
             //重新加载配置文件信息
@@ -504,7 +504,7 @@ async function switchChain() {
         loggerChainChanging.info("switching chain successfully...");
     } catch (e) {
 
-        loggerChainChanging.info("fail to switch chain...",e);
+        loggerChainChanging.info("fail to switch chain...", e);
         //结束设置结束flag
         syncChainChanging = false;
     }
@@ -575,6 +575,35 @@ async function syncResource() {
  */
 function isMainChain() {
     return chainNameConstants.MAIN_CHAIN_NAME == chainConfig.chainName;
+}
+
+/**
+ * 同步世界状态
+ * @returns {Promise<void>}
+ */
+async function syncWorldState() {
+    logger.info("syncWorldState start");
+
+    try {
+        //同步状态
+        await WorldState.syncStatus();
+        logger.info("WorldState.status:", WorldState.status);
+        if (utils.isNotNull(WorldState.status)) {
+
+            //调用主链查询当前已同步的块高
+            let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.RESOURCE_LEASE);
+            if (utils.isNotNull(mainChainData)) {
+                logger.debug("main chain ws data:", mainChainData);
+            }
+
+            //todo 比较并上传块高
+        }
+
+    } catch (e) {
+        logger.error("syncWorldState error:", e);
+    }
+
+    logger.info("syncWorldState end");
 }
 
 
