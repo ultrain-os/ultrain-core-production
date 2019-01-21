@@ -77,7 +77,8 @@ namespace ultrainiosystem {
             int32_t expired = blocknum-MAX_WS_COUNT*default_worldstate_interval;
             if (expired > 0){
                 auto old = hashTable.find(expired);
-                hashTable.erase(old);
+                if (old != hashTable.end())
+                    hashTable.erase(old);
             }
         }
     }
