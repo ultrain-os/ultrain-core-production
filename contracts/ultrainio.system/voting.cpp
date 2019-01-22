@@ -56,10 +56,10 @@ namespace ultrainiosystem {
                  add_to_pending_queue(prod->owner, prod->producer_key);
              }
              else {
-                 if(!prod->hasactived) {
+                 if(!prod->hasenabled) {
                      update_activated_stake(prod->total_cons_staked);
                      _producers.modify(prod, 0 , [&](auto & v) {
-                         v.hasactived = true;
+                         v.hasenabled = true;
                      });
                  }
              }
@@ -96,12 +96,11 @@ namespace ultrainiosystem {
 
       const auto& prod = _producers.get( producer, "producer not found" );
       uint64_t curblocknum = (uint64_t)tapos_block_num();
-      print("unregprod tapos_block_num:",curblocknum," prod->last_operate_blocknum:",prod.last_operate_blocknum);
+      print("unregprod curblocknum:",curblocknum," last_operate_blocknum:",prod.last_operate_blocknum);
 
       ultrainio_assert( (curblocknum - prod.last_operate_blocknum) > 2 , "interval operate at least more than two number block high" );
       _producers.modify( prod, 0, [&]( producer_info& info ){
             info.deactivate();
-            info.is_enabled = false;
             info.last_operate_blocknum = curblocknum;
       });
 /*

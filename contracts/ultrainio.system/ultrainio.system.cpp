@@ -78,6 +78,12 @@ namespace ultrainiosystem {
       _global.set( _gstate, _self );
    }
 
+   void system_contract::setblockreward( uint64_t rewardvalue ) {
+      require_auth( _self );
+      _gstate.reward_preblock = rewardvalue;
+      _global.set( _gstate, _self );
+   }
+
    void system_contract::setparams( const ultrainio::blockchain_parameters& params ) {
       require_auth( N(ultrainio) );
       (ultrainio::blockchain_parameters&)(_gstate) = params;
@@ -138,6 +144,20 @@ namespace ultrainiosystem {
          });
       }
    }
+   void system_contract::checkvotefrequency(ultrainiosystem::producers_table::const_iterator propos){
+      uint64_t cur_block_num = (uint64_t)tapos_block_num();
+      if((cur_block_num - propos->last_vote_blocknum) < 60){
+         ultrainio_assert( propos->vote_number > 600 , "too high voting frequency" );
+      }else{
+         _producers.modify( propos, 0, [&](auto& p ) {
+            p.last_vote_blocknum = cur_block_num;
+            p.vote_number = 0;
+         });
+      }
+      _producers.modify( propos, 0, [&](auto& p ) {
+         p.vote_number++;
+      });
+   }
    void system_contract::updateactiveminers(const ultrainio::proposeminer_info&  miner ) {
       if(miner.adddel_miner){
          auto prod = _producers.find( miner.account );
@@ -162,7 +182,6 @@ namespace ultrainiosystem {
          }
          _producers.modify( prod, 0, [&](auto& p) {
                p.deactivate();
-               p.is_enabled =false;
             });
          print("updateactiveminers del proposerminer:",ultrainio::name{(*prod).owner}," total_cons_staked:",(*prod).total_cons_staked);
          if((*prod).total_cons_staked > 0){
@@ -180,9 +199,11 @@ namespace ultrainiosystem {
       datastream<const char*> ds( buffer, size );
       ds >> proposer >> proposeminer;
       ultrainio_assert( proposeminer.size() == 1, "The number of proposeminer changes cannot exceed one" );
+      ultrainio_assert( proposeminer[0].url.size() < 512, "url too long" );
       require_auth( proposer );
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+      checkvotefrequency( propos );
       uint32_t  enableprodnum = 0;
       for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
          if(itr->is_enabled && itr->is_on_master_chain())
@@ -295,11 +316,11 @@ void system_contract::voteaccount() {
       vector<proposeaccount_info> proposeaccount;
       datastream<const char*> ds( buffer, size );
       ds >> proposer >> proposeaccount;
-      ultrainio_assert( proposeaccount.size() > 0, "The number of proposeaccount changes greater than zero" );
+      ultrainio_assert( proposeaccount.size() > 0 && proposeaccount.size() <= 10, "The number of proposeaccount changes changes not correct" );
       require_auth( proposer );
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
-
+      checkvotefrequency( propos );
       uint32_t  enableprodnum = 0;
       for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
          if(itr->is_enabled && itr->is_on_master_chain())
@@ -377,11 +398,11 @@ void system_contract::voteresourcelease() {
       vector<proposeresource_info> proposeresource;
       datastream<const char*> ds( buffer, size );
       ds >> proposer >> proposeresource;
-      ultrainio_assert( proposeresource.size() > 0, "The number of proposeresource changes greater than zero" );
+      ultrainio_assert( proposeresource.size() > 0 && proposeresource.size() <= 10, "The number of proposeresource changes not correct" );
       require_auth( proposer );
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
-
+      checkvotefrequency( propos );
       uint32_t  enableprodnum = 0;
       for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
          if(itr->is_enabled && itr->is_on_master_chain())
@@ -574,7 +595,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
-     (setram)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
+     (setram)(setblockreward)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate_bandwidth.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
      // voting.cpp

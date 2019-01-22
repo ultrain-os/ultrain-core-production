@@ -173,10 +173,10 @@ namespace ultrainiosystem {
          ultrainio_assert( (it != _producers.end()) && it->is_active, "Unable to delegate cons, you need to regproducer" );
          uint64_t curblocknum = (uint64_t)tapos_block_num();
          if(stake_cons_delta.amount < 0){
-            print("undelegatecons from:",name{from}," receiver:",name{receiver}," tapos_block_num:",curblocknum," it->last_operate_blocknum:",it->last_operate_blocknum);//
+            print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," last_operate_blocknum:",it->last_operate_blocknum);//
             const uint32_t seconds_per_block     = block_interval_seconds();
             uint32_t blocks_per_month            = seconds_per_year / seconds_per_block / 12;
-            ultrainio_assert( (curblocknum - it->last_operate_blocknum) > 3 , "should stake at least more than one month" );
+            ultrainio_assert( (curblocknum - it->last_operate_blocknum) > blocks_per_month , "should stake at least more than one month" );
          }
          auto enabled = ((it->total_cons_staked+total_update.amount) >=
                   _gstate.min_activated_stake/_gstate.min_committee_member);
@@ -186,13 +186,13 @@ namespace ultrainiosystem {
                   v.last_operate_blocknum = curblocknum;
                   });
          if(it->is_on_master_chain()) {
-             if(enabled && !it->hasactived) {
+             if(enabled && !it->hasenabled) {
                  update_activated_stake(it->total_cons_staked);
                  _producers.modify(it, 0 , [&](auto & v) {
-                         v.hasactived = true;
+                         v.hasenabled = true;
                      });
              }
-             else if(it->hasactived){
+             else if(it->hasenabled){
                  update_activated_stake(total_update.amount);
              }
          }

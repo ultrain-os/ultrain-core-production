@@ -13,12 +13,13 @@ namespace ultrainio { namespace chain {
       int64_t               total_cons_staked = 0;
       bool                  is_active = true;
       bool                  is_enabled = false;
-      bool                  hasactived = false;
+      bool                  hasenabled = false;
       std::string           url;
       uint64_t              unpaid_blocks = 0;
       uint64_t              total_produce_block = 0;
-      uint64_t              last_claim_time = 0;
       uint64_t              location = 0;
+      uint64_t              vote_number = 0;
+      uint64_t              last_vote_blocknum = 0;
    };
 
    struct chain_resource {
@@ -78,7 +79,7 @@ namespace ultrainio { namespace chain {
 
 FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::producer_info, (ultrainio::chain::role_base), (total_cons_staked)(is_active)(is_enabled)
-                    (hasactived)(url)(unpaid_blocks)(total_produce_block)(last_claim_time)(location))
+                    (hasenabled)(url)(unpaid_blocks)(total_produce_block)(location)(vote_number)(last_vote_blocknum))
 FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_size)(total_resources_staked)(max_ram_size)(total_ram_bytes_reserved) )
 FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(block_num) )
 FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )

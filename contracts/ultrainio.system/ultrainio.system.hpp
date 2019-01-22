@@ -51,7 +51,7 @@ namespace ultrainiosystem {
       int64_t              total_ram_stake = 0;
 
       uint64_t             start_block =0;
-      uint64_t             last_pervote_bucket_fill = 0;
+      uint64_t             reward_preblock = 3;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
       uint64_t             total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
@@ -68,7 +68,7 @@ namespace ultrainiosystem {
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
                                 (max_ram_size)(min_activated_stake)(min_committee_member)(min_committee_member_number)
-                                (total_ram_bytes_reserved)(total_ram_stake)(start_block)(last_pervote_bucket_fill)
+                                (total_ram_bytes_reserved)(total_ram_stake)(start_block)(reward_preblock)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
                                 (total_producer_vote_weight)(last_name_close)(max_resources_size)(total_resources_staked)(defer_trx_nextid)(last_check_resexpiretime)(last_vote_expiretime) )
    };
@@ -93,25 +93,26 @@ namespace ultrainiosystem {
       int64_t               total_cons_staked = 0;
       bool                  is_active = true;
       bool                  is_enabled = false;
-      bool                  hasactived = false;
+      bool                  hasenabled = false;
       std::string           url;
       uint64_t              unpaid_blocks = 0;
       uint64_t              total_produce_block;
-      uint64_t              last_claim_time = 0;
       uint64_t              location = 0;
       uint64_t              last_operate_blocknum = 0;
       account_name          claim_rewards_account;
+      uint64_t              vote_number = 0;
+      uint64_t              last_vote_blocknum = 0;
       uint64_t primary_key()const { return owner;                                   }
       double   by_votes()const    { return is_active ? -total_cons_staked : total_cons_staked;  }
       bool     active()const      { return is_active;                               }
-      void     deactivate()       { producer_key = std::string(); is_active = false; }
+      void     deactivate()       { producer_key = std::string(); is_active = false; is_enabled = false; }
       bool     is_on_master_chain() const  {return location == master_chain_name;}
       bool     is_in_pending_queue() const  {return location == pending_queue;}
       bool     is_on_subchain() const      {return location != master_chain_name && location != pending_queue;}
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(hasactived)(url)
-                        (unpaid_blocks)(total_produce_block)(last_claim_time)(location)(last_operate_blocknum)(claim_rewards_account) )
+      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(hasenabled)(url)
+                        (unpaid_blocks)(total_produce_block)(location)(last_operate_blocknum)(claim_rewards_account)(vote_number)(last_vote_blocknum) )
    };
 
    struct pending_miner {
@@ -299,6 +300,8 @@ namespace ultrainiosystem {
 
          void setram( uint64_t max_ram_size );
 
+         void setblockreward( uint64_t rewardvalue );
+
          void setparams( const ultrainio::blockchain_parameters& params );
 
          // functions defined in producer_pay.cpp
@@ -377,6 +380,8 @@ namespace ultrainiosystem {
          void syncresource(account_name receiver, int64_t combosize, time endtime);
 
          void distributreward();
+
+         void checkvotefrequency(ultrainiosystem::producers_table::const_iterator propos);
    };
 
 } /// ultrainiosystem

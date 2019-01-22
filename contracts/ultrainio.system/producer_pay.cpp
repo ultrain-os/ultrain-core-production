@@ -7,9 +7,6 @@
 
 namespace ultrainiosystem {
 
-   const int64_t  min_pervote_daily_pay = 100'0000;
-   uint32_t reward_preblock = 3;
-
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
       using namespace ultrainio;
 
@@ -96,7 +93,7 @@ namespace ultrainiosystem {
       require_auth(_self);
       uint64_t p10 = symbol_type(system_token_symbol).precision();
       int64_t new_tokens = 0;
-      new_tokens = static_cast<int64_t>(_gstate.total_unpaid_blocks*reward_preblock);
+      new_tokens = static_cast<int64_t>(_gstate.total_unpaid_blocks*_gstate.reward_preblock);
       _gstate.total_unpaid_blocks = 0;
       new_tokens *= p10;
       asset fee_tokens = ultrainio::token(N(utrio.token)).get_balance(N(utrio.fee),symbol_type(CORE_SYMBOL).name());
@@ -110,7 +107,7 @@ namespace ultrainiosystem {
             ultrainio_assert( _gstate.total_activated_stake >= _gstate.min_activated_stake,
                         "cannot claim rewards until the chain is activated (at least 15% of all tokens participate in voting)" );
             int64_t producer_per_block_pay = 0;
-            producer_per_block_pay += static_cast<int64_t>(itr->unpaid_blocks*reward_preblock);
+            producer_per_block_pay += static_cast<int64_t>(itr->unpaid_blocks*_gstate.reward_preblock);
             producer_per_block_pay *= p10;
             print("\nclaimrewards producer_pay:",producer_per_block_pay,"\n");
             _producers.modify( itr, 0, [&](auto& p) {
@@ -132,7 +129,7 @@ namespace ultrainiosystem {
 
    void system_contract::distributreward(){
       auto block_height = tapos_block_num();
-      if(block_height > 120 && block_height%(20) != 0) {
+      if(block_height < 120 || block_height%(360*24*7) != 0) {
          return;
       }
       //distribute rewards

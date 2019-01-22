@@ -370,7 +370,7 @@
          {"name":"total_ram_bytes_reserved",      "type":"uint64"},
          {"name":"total_ram_stake",               "type":"int64"},
          {"name":"start_blcok",                   "type":"uint64"},
-         {"name":"last_pervote_bucket_fill",      "type":"uint64"},
+         {"name":"reward_preblock",               "type":"uint64"},
          {"name":"pervote_bucket",                "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
          {"name":"total_unpaid_blocks",           "type":"uint64"},
@@ -398,14 +398,15 @@
          {"name":"total_cons_staked",     "type":"int64"},
          {"name":"is_active",       "type":"bool"},
          {"name":"is_enabled",      "type":"bool"},
-         {"name":"hasactived",      "type":"bool"},
+         {"name":"hasenabled",      "type":"bool"},
          {"name":"url",             "type":"string"},
          {"name":"unpaid_blocks",   "type":"uint64"},
          {"name":"total_produce_block",   "type":"uint64"},
-         {"name":"last_claim_time", "type":"uint64"},
          {"name":"location",        "type":"uint64"},
          {"name":"last_operate_blocknum", "type":"uint64"},
-         {"name":"claim_rewards_account", "type":"account_name"}
+         {"name":"claim_rewards_account", "type":"account_name"},
+         {"name":"vote_number",     "type":"uint64"},
+         {"name":"last_vote_blocenum", "type":"uint64"}
       ]
     },{
      "name": "chaintype",
@@ -521,6 +522,12 @@
       "base": "",
       "fields": [
         {"name":"max_ram_size",     "type":"uint64"}
+      ]
+    },{
+      "name": "setblockreward",
+      "base": "",
+      "fields": [
+        {"name":"rewardvalue",     "type":"uint64"}
       ]
     },{
       "name": "claimrewards",
@@ -673,6 +680,10 @@
    },{
       "name": "setram",
       "type": "setram",
+      "ricardian_contract": ""
+   },{
+      "name": "setblockreward",
+      "type": "setblockreward",
       "ricardian_contract": ""
    },{
       "name": "bidname",
