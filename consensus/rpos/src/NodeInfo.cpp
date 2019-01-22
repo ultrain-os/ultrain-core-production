@@ -1,5 +1,6 @@
 #include <rpos/NodeInfo.h>
 
+#include <base/Hex.h>
 #include <crypto/Bls.h>
 #include <rpos/Genesis.h>
 #include <rpos/Node.h>
@@ -23,7 +24,7 @@ namespace ultrainio {
      * 1. genesis can be config by itslef
      * 2. non-producer can not config private and account
      */
-    void NodeInfo::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account) {
+    void NodeInfo::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& blsSk, const std::string& account) {
         m_privateKey = PrivateKey(sk);
         m_account = account;
         dlog("My committee key pair. sk : ${sk} account : ${account}", ("sk", sk)("account", account));
@@ -40,8 +41,8 @@ namespace ultrainio {
                        chain::chain_exception,
                        "verify private key error.");
         ULTRAIN_ASSERT(!m_account.empty(), chain::chain_exception, "account is empty");
-        std::shared_ptr<Bls> blsPtr = Bls::getDefault();
-        ULTRAIN_ASSERT(blsPtr->getSk(sk, m_blsPrivateKey, Bls::BLS_PRI_KEY_LENGTH), chain::chain_exception, "generate BLS Private Key error");
+        ULTRAIN_ASSERT(blsSk.length() == Bls::BLS_PRI_KEY_LENGTH * 2, chain::chain_exception, "bls private key error");
+        Hex::fromHex<unsigned char>(blsSk, m_blsPrivateKey, Bls::BLS_PRI_KEY_LENGTH);
     }
 
     AccountName NodeInfo::getMyAccount() const {
@@ -56,9 +57,24 @@ namespace ultrainio {
         if (!sk || skSize < Bls::BLS_PRI_KEY_LENGTH) {
             return false;
         }
-        for (int i = 0; i < Bls::BLS_PRI_KEY_LENGTH; i++) {
-            sk[i] = m_blsPrivateKey[i];
+        memcpy(sk, m_blsPrivateKey, Bls::BLS_PRI_KEY_LENGTH);
+        return true;
+    }
+
+    bool NodeInfo::getMyBlsPublicKey(unsigned char* blsPk, int pkSize) const {
+        if (!blsPk || pkSize < Bls::BLS_PUB_KEY_COMPRESSED_LENGTH) {
+            return false;
         }
+        std::shared_ptr<Bls> blsPtr = Bls::getDefault();
+        static unsigned char* myBlsPk = nullptr;
+        // TODO
+        if (!myBlsPk) {
+            myBlsPk = (unsigned char*)malloc(Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+            if (!blsPtr->getPk(myBlsPk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH, m_blsPrivateKey, Bls::BLS_PRI_KEY_LENGTH)) {
+                return false;
+            }
+        }
+        memcpy(blsPk, myBlsPk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
         return true;
     }
 }

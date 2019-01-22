@@ -11,13 +11,15 @@ namespace ultrainio {
 
         ~NodeInfo();
 
-        void setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account);
+        void setMyInfoAsCommitteeKey(const std::string& sk, const std::string& blsSk, const std::string& account);
 
         AccountName getMyAccount() const;
 
         PrivateKey getPrivateKey() const;
 
         bool getMyBlsPrivateKey(unsigned char* sk, int skSize) const;
+
+        bool getMyBlsPublicKey(unsigned char* blsPk, int pkSize) const;
 
     private:
         PrivateKey m_privateKey;

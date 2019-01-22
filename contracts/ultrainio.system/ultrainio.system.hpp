@@ -85,8 +85,9 @@ namespace ultrainiosystem {
    struct role_base {
       account_name          owner;
       std::string           producer_key; /// a packed public key objec
+      std::string           bls_key;
 
-      ULTRAINLIB_SERIALIZE(role_base, (owner)(producer_key) )
+      ULTRAINLIB_SERIALIZE(role_base, (owner)(producer_key)(bls_key) )
    };
 
    struct producer_info : public role_base {
@@ -295,7 +296,7 @@ namespace ultrainiosystem {
 
          // functions defined in voting.cpp
 
-         void regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint64_t location, account_name rewards_account );
+         void regproducer( const account_name producer, const std::string& producer_key, const std::string& bls_key, const std::string& url, uint64_t location, account_name rewards_account );
 
          void unregprod( const account_name producer );
 
@@ -360,11 +361,11 @@ namespace ultrainiosystem {
          void reportblocknumber( account_name producer, uint64_t number);
 
          //defined in scheduler.cpp
-         void add_to_pending_queue(account_name producer, const std::string& public_key);
+         void add_to_pending_queue(account_name producer, const std::string& public_key, const std::string& bls_key);
 
          void remove_from_pending_queue(account_name producer);
 
-         void add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key);
+         void add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key, const std::string& bls_key);
 
          void remove_from_subchain(uint64_t chain_name, account_name producer);
 

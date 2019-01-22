@@ -170,7 +170,7 @@ namespace ultrainiosystem {
          authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
          authorization.emplace_back(permission_level{miner.account, N(active)});
          INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), authorization,
-            { miner.account, miner.public_key, miner.url, miner.location, N(ultrainio)} );
+            { miner.account, miner.public_key, miner.bls_key, miner.url, miner.location, N(ultrainio)} );
          INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
             { N(utrio.stake),miner.account,asset(consweight_per_subaccount)} );
       }else{
@@ -222,6 +222,7 @@ namespace ultrainiosystem {
             {
                if((minerinfo.account == (*pendingiter).proposal_miner[i].account) &&
                   (minerinfo.public_key == (*pendingiter).proposal_miner[i].public_key)  &&
+                  (minerinfo.bls_key == (*pendingiter).proposal_miner[i].bls_key)  &&
                   (minerinfo.location == (*pendingiter).proposal_miner[i].location)  &&
                   (minerinfo.adddel_miner == (*pendingiter).proposal_miner[i].adddel_miner)){
                   curproposeresnum = (int32_t)i;

@@ -116,6 +116,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       boost::program_options::variables_map _options;
       std::string _genesis_time = std::string();
       std::string _my_sk_as_committee;
+      std::string _my_bls_sk;
       std::string _my_account_as_committee;
       std::string _genesis_pk                      = Genesis::s_genesisPk;
       bool     _pause_production                   = false;
@@ -412,6 +413,7 @@ void producer_uranus_plugin::set_program_options(
          ("kultraind-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a kultraind provider for signing")
          ("my-sk-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_sk_as_committee = g; }), "sk as committer member")
+         ("my-bls-sk", boost::program_options::value<std::string>()->notifier([this](std::string sk) { my->_my_bls_sk = sk; }), "bls sk")
          ("my-account-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_account_as_committee = g; }), "account as committer member")
          ("genesis-startup-time", bpo::value<int32_t>()->default_value(Genesis::s_genesisStartupTime), "genesis startup time, set by test mode usually")
          ("genesis-pk", bpo::value<std::string>()->notifier([this](std::string g) { my->_genesis_pk = g; }), "genesis public key, set by test mode usually")
@@ -628,7 +630,7 @@ void producer_uranus_plugin::plugin_startup()
    std::shared_ptr<UranusNode> nodePtr = UranusNode::initAndGetInstance(app().get_io_service());
    // set before committee key
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
-   nodePtr->setMyInfoAsCommitteeKey(my->_my_sk_as_committee, my->_my_account_as_committee);
+   nodePtr->setMyInfoAsCommitteeKey(my->_my_sk_as_committee, my->_my_bls_sk, my->_my_account_as_committee);
    ULTRAIN_ASSERT( !my->_genesis_time.empty(),
            plugin_config_exception,
            "Genesis-time can not be empty,should be set in config.ini.");

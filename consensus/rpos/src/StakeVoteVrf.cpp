@@ -48,10 +48,8 @@ namespace ultrainio {
     }
 
     bool StakeVoteVrf::isCommitteeMember(const AccountName& account) const {
-        if (findInCommitteeMemberList(account) != PublicKey()) {
-            return true;
-        }
-        return false;
+        CommitteeInfo c = findInCommitteeMemberList(account);
+        return !c.isEmpty();
     }
 
     int StakeVoteVrf::calSelectedStake(const Proof& proof) {

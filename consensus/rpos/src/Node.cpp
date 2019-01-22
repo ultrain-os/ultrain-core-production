@@ -66,8 +66,8 @@ namespace ultrainio {
         m_schedulerPtr->enableEventRegister(v);
     }
 
-    void UranusNode::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account) {
-        StakeVoteBase::getKeyKeeper()->setMyInfoAsCommitteeKey(sk, account);
+    void UranusNode::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& blsSk, const std::string& account) {
+        StakeVoteBase::getKeyKeeper()->setMyInfoAsCommitteeKey(sk, blsSk, account);
     }
 
     bool UranusNode::getNonProducingNode() const {

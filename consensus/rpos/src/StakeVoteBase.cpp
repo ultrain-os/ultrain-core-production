@@ -4,6 +4,7 @@
 
 #include <boost/math/distributions/binomial.hpp>
 
+#include <base/Hex.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/Proof.h>
@@ -12,6 +13,7 @@
 
 #include <appbase/application.hpp>
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
+#include <crypto/Bls.h>
 
 using std::string;
 using namespace appbase;
@@ -197,16 +199,16 @@ namespace ultrainio {
         return realGetEmptyBlock2Threshold();
     }
 
-    PublicKey StakeVoteBase::findInCommitteeMemberList(const AccountName& account) const {
+    CommitteeInfo StakeVoteBase::findInCommitteeMemberList(const AccountName& account) const {
         if (m_committeeStatePtr) {
             for (auto& v : m_committeeStatePtr->cinfo) {
                 ULTRAIN_ASSERT(!v.accountName.empty(), chain::chain_exception, "account name is empty");
                 if (account == AccountName(v.accountName)) {
-                    return PublicKey(v.pk);
+                    return v;
                 }
             }
         }
-        return PublicKey();
+        return CommitteeInfo();
     }
 
     PublicKey StakeVoteBase::getPublicKey(const AccountName& account) const {
@@ -214,8 +216,27 @@ namespace ultrainio {
             return s_keyKeeper->getPrivateKey().getPublicKey();
         } else if (account == AccountName(Genesis::kGenesisAccount)) {
             return PublicKey(Genesis::s_genesisPk);
+        } else {
+            CommitteeInfo c = findInCommitteeMemberList(account);
+            return PublicKey(c.pk);
         }
-        return findInCommitteeMemberList(account);
+    }
+
+    bool StakeVoteBase::getBlsPublicKey(const AccountName& account, unsigned char* blsPublicKey, int pkSize) const {
+        std::string blsPk;
+        if (account == s_keyKeeper->getMyAccount()) {
+            return s_keyKeeper->getMyBlsPublicKey(blsPublicKey, pkSize);
+        } else if (account == AccountName(Genesis::kGenesisAccount)) {
+            Hex::fromHex<unsigned char>(Genesis::s_genesisBlsPk, blsPublicKey, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+            return true;
+        } else {
+            CommitteeInfo c = findInCommitteeMemberList(account);
+            if (c.isEmpty()) {
+                return false;
+            }
+            Hex::fromHex<unsigned char>(c.blsPk, blsPublicKey, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+            return true;
+        }
     }
 
     bool StakeVoteBase::isGenesisLeader(const AccountName& account) const {
@@ -237,6 +258,7 @@ namespace ultrainio {
                 for( const auto& r : result.rows ) {
                     cinfo.accountName = r["owner"].as_string();
                     cinfo.pk = r["producer_key"].as_string();
+                    cinfo.blsPk = r["bls_key"].as_string();
                     cinfo.stakesCount = r["total_cons_staked"].as_int64();
                     statePtr->cinfo.push_back(cinfo);
                 }

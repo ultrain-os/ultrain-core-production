@@ -158,11 +158,12 @@ namespace ultrainio {
 
       account_name      account;
       std::string       public_key;
+      std::string       bls_key;
       std::string       url;
       uint64_t          location;
       bool              adddel_miner;
       int64_t           approve_num;
-      ULTRAINLIB_SERIALIZE( proposeminer_info, (account)(public_key)(url)(location)(adddel_miner)(approve_num) )
+      ULTRAINLIB_SERIALIZE( proposeminer_info, (account)(public_key)(bls_key)(url)(location)(adddel_miner)(approve_num) )
    };
    /**
     * provided_proposer  info

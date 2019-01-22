@@ -546,14 +546,6 @@ namespace ultrainio {
             return false;
         }
 
-        //TODO shall not verify here
-        /*unsigned char blsPublicKey[Bls::BLS_PUB_KEY_COMPRESSED_LENGTH];
-        if (!Validator::verify<CommonEchoMsg>(echo.blsSignature, echo, blsPublicKey)) {
-            elog("validator echo bls signature error. ${account} signature : ${signature}",
-                    ("account", std::string(echo.account))("signature", echo.blsSignature));
-            return false;
-        }*/
-
 #ifdef CONSENSUS_VRF
         Proof proof(echo.proof);
         BlockIdType blockId = UranusNode::getInstance()->getPreviousHash();

@@ -983,6 +983,7 @@ vector<read_only::get_subchain_committee_result> read_only::get_subchain_committ
               read_only::get_subchain_committee_result tmp;
               tmp.owner = ite->owner.to_string();
               tmp.miner_pk = ite->producer_key;
+              tmp.bls_pk = ite->bls_key;
               result.push_back(tmp);
           }
           return false;

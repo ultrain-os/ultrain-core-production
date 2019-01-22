@@ -42,7 +42,7 @@ namespace ultrainio {
 
         static std::shared_ptr<UranusNode> getInstance();
 
-        void setMyInfoAsCommitteeKey(const std::string& sk, const std::string& account);
+        void setMyInfoAsCommitteeKey(const std::string& sk, const std::string& blsKey, const std::string& account);
 
         void setNonProducingNode(bool);
 

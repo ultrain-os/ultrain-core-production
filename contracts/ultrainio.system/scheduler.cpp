@@ -269,7 +269,7 @@ namespace ultrainiosystem {
 */
 
 
-    void system_contract::add_to_pending_queue(account_name producer, const std::string& public_key) {
+    void system_contract::add_to_pending_queue(account_name producer, const std::string& public_key, const std::string& bls_key) {
         auto itor = _producers.find(producer);
         ultrainio_assert(itor != _producers.end(), "need to register as a producer first");
 
@@ -294,6 +294,7 @@ namespace ultrainiosystem {
         role_base temp_node;
         temp_node.owner = producer;
         temp_node.producer_key   = public_key;
+        temp_node.bls_key   = bls_key;
         p_que->push_back(temp_node);
         //loop all inactive subchain, start it if miners sum meet its requirement.
         auto ite_subchain = _subchains.begin();
@@ -342,7 +343,7 @@ namespace ultrainiosystem {
         _pending_que.set(_pending, producer);
     }
 
-    void system_contract::add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key) {
+    void system_contract::add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key, const std::string& bls_key) {
         if(chain_name == default_chain_name) {
             //todo, loop all stable subchain, add to the one with least miners
             //todo, update location of producer
@@ -376,6 +377,7 @@ namespace ultrainiosystem {
             role_base temp_node;
             temp_node.owner = producer;
             temp_node.producer_key   = public_key;
+            temp_node.bls_key   = bls_key;
             info.changing_info.new_added_members.push_back(temp_node);
         } );
     }

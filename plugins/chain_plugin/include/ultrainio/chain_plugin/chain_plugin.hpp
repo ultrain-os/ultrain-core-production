@@ -298,6 +298,7 @@ public:
    struct get_subchain_committee_result {
       std::string     owner;
       std::string     miner_pk;
+      std::string     bls_pk;
    };
 
    vector<get_subchain_committee_result> get_subchain_committee(const get_subchain_committee_params& p) const;
@@ -668,7 +669,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_balance_params, (code
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_params, (chain_name));
-FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk)(bls_pk) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_ws_hash_params, (chain_name)(height) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(from_location)(quit_before_num) );

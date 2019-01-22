@@ -198,10 +198,10 @@ namespace ultrainiosystem {
          }
          else if (enabled) {
              if(it->is_in_pending_queue()) {
-                 add_to_pending_queue(it->owner, it->producer_key);
+                 add_to_pending_queue(it->owner, it->producer_key, it->bls_key);
              }
              else {
-                 add_to_subchain(it->location, it->owner, it->producer_key);
+                 add_to_subchain(it->location, it->owner, it->producer_key, it->bls_key);
              }
          }
          else {

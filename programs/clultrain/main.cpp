@@ -480,10 +480,11 @@ chain::action create_action(const vector<permission_level>& authorization, const
    return chain::action{authorization, code, act, variant_to_bin(code, act, args)};
 }
 
-fc::variant regproducer_variant(const account_name& producer, const std::string& key, const string& url, uint16_t location, const account_name& rewards_account) {
+fc::variant regproducer_variant(const account_name& producer, const std::string& key, const std::string& bls_key, const string& url, uint16_t location, const account_name& rewards_account) {
     return fc::mutable_variant_object()
         ("producer", producer)
         ("producer_key", key)
+        ("bls_key", bls_key)
         ("url", url)
         ("location", location)
         ("rewards_account", rewards_account)
@@ -786,6 +787,7 @@ CLI::callback_t obsoleted_option_host_port = [](CLI::results_t) {
 struct register_producer_subcommand {
    string producer_str;
    string producer_key_str;
+   string bls_key_str;
    string url;
    uint16_t loc = 0;
    string rewards_account;
@@ -793,7 +795,8 @@ struct register_producer_subcommand {
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
-      register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
+      register_producer->add_option("producer_key", producer_key_str, localized("The producer's produce block public key"))->required();
+      register_producer->add_option("bls_key", bls_key_str, localized("The producer's bls public key"))->required();
       register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
       register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), true);
       register_producer->add_option("rewards_account", rewards_account, localized("The producer's block reward refund account"));
@@ -801,7 +804,7 @@ struct register_producer_subcommand {
 
       register_producer->set_callback([this] {
          // TODO(yufengshen): Check if the key is valid.
-         auto regprod_var = regproducer_variant(producer_str, producer_key_str, url, loc, rewards_account);
+         auto regprod_var = regproducer_variant(producer_str, producer_key_str, bls_key_str, url, loc, rewards_account);
          send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, NEX(regproducer), regprod_var)});
       });
    }

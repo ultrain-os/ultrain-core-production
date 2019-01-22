@@ -17,6 +17,7 @@ namespace ultrainio { namespace chain {
    struct proposeminer_info {
       account_name    account;
       std::string     public_key;
+      std::string     bls_key;
       std::string     url;
       uint64_t        location;
       bool            adddel_miner;
@@ -131,7 +132,7 @@ namespace ultrainio { namespace chain {
 
 FC_REFLECT_ENUM( ultrainio::chain::action::AbilityType, (Normal)(PureView) )
 FC_REFLECT( ultrainio::chain::permission_level, (actor)(permission) )
-FC_REFLECT( ultrainio::chain::proposeminer_info, (account)(public_key)(url)(location)(adddel_miner)(approve_num) )
+FC_REFLECT( ultrainio::chain::proposeminer_info, (account)(public_key)(bls_key)(url)(location)(adddel_miner)(approve_num) )
 FC_REFLECT( ultrainio::chain::proposeaccount_info, (account)(owner_key)(active_key)(updateable)(location)(approve_num) )
 FC_REFLECT( ultrainio::chain::proposeresource_info, (account)(lease_num)(days)(location)(approve_num) )
 FC_REFLECT( ultrainio::chain::action, (account)(name)(authorization)(data)(ability) )

@@ -15,5 +15,7 @@ namespace ultrainio {
         static int s_genesisStartupBlockNum;
 
         static std::string s_genesisPk;
+
+        static std::string s_genesisBlsPk;
     };
 }

@@ -34,7 +34,7 @@ namespace ultrainiosystem {
     *  @pre authority of producer to register
     *
     */
-    void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& url, uint64_t location, account_name rewards_account ) {
+    void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& bls_key, const std::string& url, uint64_t location, account_name rewards_account ) {
       ultrainio_assert( url.size() < 512, "url too long" );
       // key is hex encoded
       ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
@@ -50,10 +50,10 @@ namespace ultrainiosystem {
                  remove_from_subchain(prod->location, prod->owner);
              }
              if(location != master_chain_name && location != pending_queue) {
-                 add_to_subchain(location, prod->owner, prod->producer_key);
+                 add_to_subchain(location, prod->owner, prod->producer_key, prod->bls_key);
              }
              else if(location == pending_queue) {
-                 add_to_pending_queue(prod->owner, prod->producer_key);
+                 add_to_pending_queue(prod->owner, prod->producer_key, prod->bls_key);
              }
              else {
                  if(!prod->hasenabled) {
@@ -66,6 +66,7 @@ namespace ultrainiosystem {
          }
          _producers.modify( prod, producer, [&]( producer_info& info ){
                info.producer_key = producer_key;
+               info.bls_key  = bls_key;
                info.is_active    = true;
                info.url          = url;
                info.location     = location;
@@ -76,6 +77,7 @@ namespace ultrainiosystem {
                info.owner         = producer;
                info.total_cons_staked   = 0LL;
                info.producer_key  = producer_key;
+               info.bls_key  = bls_key;
                info.is_active     = true;
                info.is_enabled    = false;
                info.url           = url;

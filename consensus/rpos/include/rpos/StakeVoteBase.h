@@ -60,6 +60,8 @@ namespace ultrainio {
 
         PublicKey getPublicKey(const AccountName& account) const;
 
+        bool getBlsPublicKey(const AccountName& account, unsigned char* blsPublicKey, int pkSize) const;
+
         chain::checksum256_type getCommitteeMroot() { return m_committeeMroot; }
 
         virtual Proof getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount);
@@ -106,7 +108,7 @@ namespace ultrainio {
 
         bool committeeHasWorked2() const;
 
-        PublicKey findInCommitteeMemberList(const AccountName& account) const;
+        CommitteeInfo findInCommitteeMemberList(const AccountName& account) const;
 
         uint32_t m_blockNum = 0;
 

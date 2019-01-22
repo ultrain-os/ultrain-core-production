@@ -33,6 +33,7 @@
       "fields": [
         {"name": "account", "type": "account_name"},
         {"name": "public_key", "type": "string"},
+        {"name": "bls_key", "type": "string"},
         {"name": "url", "type": "string"},
         {"name": "location", "type": "uint64"},
         {"name": "adddel_miner", "type": "bool"},
@@ -391,7 +392,8 @@
       "base": "",
       "fields": [
          {"name":"owner",           "type":"account_name"},
-         {"name":"producer_key",    "type":"string"}
+         {"name":"producer_key",    "type":"string"},
+         {"name":"bls_key",         "type":"string"}
       ]
     },{
       "name": "producer_info",
@@ -509,6 +511,7 @@
       "fields": [
         {"name":"producer",     "type":"account_name"},
         {"name":"producer_key", "type":"string"},
+        {"name":"bls_key", "type":"string"},
         {"name":"url",          "type":"string"},
         {"name":"location",     "type":"uint64"},
         {"name":"rewards_account",     "type":"account_name"}

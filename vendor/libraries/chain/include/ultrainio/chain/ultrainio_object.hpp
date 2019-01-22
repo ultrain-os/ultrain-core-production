@@ -7,6 +7,7 @@ namespace ultrainio { namespace chain {
     struct role_base {
       account_name          owner;
       std::string           producer_key; /// a packed public key objec
+      std::string           bls_key;
     };
 
     struct producer_info : public role_base {
@@ -77,7 +78,7 @@ namespace ultrainio { namespace chain {
 
 }} // namespace ultrainio::chain
 
-FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key) )
+FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key)(bls_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::producer_info, (ultrainio::chain::role_base), (total_cons_staked)(is_active)(is_enabled)
                     (hasenabled)(url)(unpaid_blocks)(total_produce_block)(location)(vote_number)(last_vote_blocknum))
 FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_size)(total_resources_staked)(max_ram_size)(total_ram_bytes_reserved) )
