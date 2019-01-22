@@ -233,6 +233,9 @@ namespace ultrainio { namespace chain {
          // assume it is a system action, so preset it action::Normal
          a.ability = action::Normal;
 
+         std::string account = std::string(a.account);
+         if (account.size() > 6 && account.substr(0, 6) == "utrio.") return;
+
          auto* code = control.db().find<account_object, by_name>(a.account);
          if (code != nullptr) {
             const auto& actionDefs = code->get_abi().actions;
