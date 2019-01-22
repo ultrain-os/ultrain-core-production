@@ -17,8 +17,6 @@ namespace ultrainio {
         std::shared_ptr<StakeVoteBase> getVoterSys();
     private:
         uint32_t m_blockNum = 0;
-        std::shared_ptr<AggEchoMsg> m_myAggEchoMsgPtr;
-        std::vector<AggEchoMsg> m_aggEchoMsgV;
         std::shared_ptr<StakeVoteBase> m_stakeVote = nullptr;
 
         friend class MsgMgr;

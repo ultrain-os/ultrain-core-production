@@ -78,8 +78,6 @@ namespace ultrainio {
 
         void sendMessage(const fc::sha256 &nodeId, const RspLastBlockNumMsg &msg);
 
-        void sendMessage(const AggEchoMsg& aggEchoMsg);
-
         bool isFastBlock();
 
         ConsensusPhase getPhase() const;

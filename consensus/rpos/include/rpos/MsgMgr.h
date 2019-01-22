@@ -31,12 +31,6 @@ namespace ultrainio {
         MsgMgr& operator = (const MsgMgr&) = delete;
         MsgMgr(const MsgMgr&) = delete;
 
-        int handleMessage(const AggEchoMsg& aggEchoMsg);
-
-        void insert(std::shared_ptr<AggEchoMsg> aggEchoMsgPtr);
-
-        std::shared_ptr<AggEchoMsg> getMyAggEchoMsg(uint32_t blockNum);
-
         void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
 
         bool isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount);

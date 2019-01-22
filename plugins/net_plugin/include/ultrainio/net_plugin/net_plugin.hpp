@@ -31,7 +31,6 @@ namespace ultrainio {
 
         void   broadcast(const ProposeMsg& propose);
         void   broadcast(const EchoMsg& echo);
-        void   broadcast(const AggEchoMsg& aggEchoMsg);
         void   send_block(const fc::sha256 &node_id, const SyncBlockMsg& sync_block);
         bool   send_req_sync(const ReqSyncMsg& reqSyncMsg);
         void   send_last_block_num(const fc::sha256 &node_id, const RspLastBlockNumMsg& last_block_num);

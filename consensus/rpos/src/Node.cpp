@@ -435,17 +435,6 @@ namespace ultrainio {
                 syncBlock(true);
             }
 
-            uint32_t blockNum = getBlockNum();
-            if (m_baxCount > 0 && m_baxCount % 5 == 0 && blockNum > 2) {
-                uint32_t preBlockNum = blockNum - 1;
-                if (MsgMgr::getInstance()->isProposer(preBlockNum)) {
-                    std::shared_ptr<AggEchoMsg> aggEchoMsg = MsgMgr::getInstance()->getMyAggEchoMsg(preBlockNum);
-                    if (aggEchoMsg) {
-                        sendMessage(*aggEchoMsg);
-                    }
-                }
-            }
-
             baxLoop(getRoundInterval());
         }
     }
@@ -666,10 +655,6 @@ namespace ultrainio {
 
     void UranusNode::sendMessage(const fc::sha256 &nodeId, const SyncBlockMsg &msg) {
         app().get_plugin<net_plugin>().send_block(nodeId, msg);
-    }
-
-    void UranusNode::sendMessage(const AggEchoMsg& aggEchoMsg) {
-        app().get_plugin<net_plugin>().broadcast(aggEchoMsg);
     }
 
     bool UranusNode::sendMessage(const ReqSyncMsg &msg) {

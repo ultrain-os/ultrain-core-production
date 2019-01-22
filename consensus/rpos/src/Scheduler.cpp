@@ -125,18 +125,13 @@ namespace ultrainio {
                 }
 
                 int s10 = 0;
-                int s11 = 0;
                 auto mm = MsgMgr::getInstance();
                 if (mm) {
                     s10 = mm->m_blockMsgPoolMap.size();
-                    for(const auto& it :  mm->m_blockMsgPoolMap) {
-                        const auto& it2 = *(it.second);
-                        s11 += it2.m_aggEchoMsgV.size();
-                    }
                 }
-                ilog("memleak check m_proposerMsgMap ${1}, m_echoMsgMap ${2} ${3} m_cacheProposeMsgMap ${4} ${5} m_cacheEchoMsgMap ${6} ${7} m_echoMsgAllPhase ${8} ${9} m_blockMsgPoolMap ${10} m_aggEchoMsgV ${11}",
+                ilog("memleak check m_proposerMsgMap ${1}, m_echoMsgMap ${2} ${3} m_cacheProposeMsgMap ${4} ${5} m_cacheEchoMsgMap ${6} ${7} m_echoMsgAllPhase ${8} ${9} m_blockMsgPoolMap ${10}",
                      ("1", s1)("2", s2)("3", s3)("4", s4)("5", s5)("6", s6)
-                     ("7", s7)("8", s8)("9", s9)("10", s10)("11",s11));
+                     ("7", s7)("8", s8)("9", s9)("10", s10));
             }
             else {
                elog( "Error from memleak check monitor: ${m}",( "m", ec.message()));
@@ -1582,27 +1577,6 @@ namespace ultrainio {
         return echo_message_info();
     }
 
-    std::shared_ptr<AggEchoMsg> Scheduler::generateAggEchoMsg(std::shared_ptr<Block> blockPtr) {
-        BlockIdType blockId = blockPtr->id();
-        echo_message_info echoMessageInfo = findEchoMsg(blockId);
-        if (echoMessageInfo.empty()) { // May be empty when sync block
-            return nullptr;
-        }
-        std::shared_ptr<AggEchoMsg> aggEchoMsgPtr = std::make_shared<AggEchoMsg>();
-        aggEchoMsgPtr->account = StakeVoteBase::getMyAccount();
-        aggEchoMsgPtr->commonEchoMsg = echoMessageInfo.echoCommonPart;
-#ifdef CONSENSUS_VRF
-        aggEchoMsgPtr->myProposerProof = std::string(MsgMgr::getInstance()->getProposerProof(blockPtr->block_num()));
-        aggEchoMsgPtr->proofPool = echoMessageInfo.proofPool;
-#endif
-        aggEchoMsgPtr->accountPool = echoMessageInfo.accountPool;
-        aggEchoMsgPtr->sigPool = echoMessageInfo.sigPool;
-        aggEchoMsgPtr->blsSignPool = echoMessageInfo.blsSignPool;
-        aggEchoMsgPtr->timePool = echoMessageInfo.timePool;
-        aggEchoMsgPtr->signature = std::string(Signer::sign<UnsignedAggEchoMsg>(*aggEchoMsgPtr, StakeVoteBase::getMyPrivateKey()));
-        return aggEchoMsgPtr;
-    }
-
     void Scheduler::clearPreRunStatus() {
         m_voterPreRunBa0InProgress = false;
         m_currentPreRunBa0TrxIndex = -1;
@@ -1908,12 +1882,6 @@ namespace ultrainio {
         clearTrxQueue();
 
         chain::block_state_ptr new_bs = chain.head_block_state();
-        if (MsgMgr::getInstance()->isProposer(block->block_num())) {
-            std::shared_ptr<AggEchoMsg> agg_echo = generateAggEchoMsg(block);
-            if (agg_echo) {
-                MsgMgr::getInstance()->insert(agg_echo);
-            }
-        }
         ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}",
              ("timestamp", block->timestamp)
              ("num", block->block_num())

@@ -257,7 +257,6 @@ namespace ultrainio {
         void handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg);
         void handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg);
         void handle_message( connection_ptr c, const ultrainio::SyncStopMsg& msg);
-        void handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg);
 
         void start_broadcast(const net_message& msg, msg_priority p);
         void send_block(const fc::sha256& node_id, const net_message& msg);
@@ -2218,18 +2217,6 @@ namespace ultrainio {
        }
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::AggEchoMsg& msg) {
-       ilog("receive AggEchoMsg msg!!! message from ${p} block id: ${id} block num: ${num} account : ${account}",
-            ("p", c->peer_name())("id", msg.commonEchoMsg.blockId)("num", BlockHeader::num_from_id(msg.commonEchoMsg.blockId))("account", std::string(msg.account)));
-       if (MsgMgr::getInstance()->handleMessage(msg) == kSuccess) {
-           for (auto &conn : connections) {
-               if (conn != c && conn->priority == msg_priority_rpos) {
-                   conn->enqueue(net_message(msg));
-               }
-           }
-       }
-   }
-
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg) {
         ilog("receive req last block num msg!!! from peer ${p} seq: ${s}", ("p", c->peer_name())("s", msg.seqNum));
         app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
@@ -2983,11 +2970,6 @@ namespace ultrainio {
       ilog("broadcast echo");
       my->start_broadcast(net_message(echo), msg_priority_rpos);
    }
-
-    void net_plugin::broadcast(const AggEchoMsg& aggEchoMsg) {
-        ilog("broadcast AggEchoMsg");
-        my->start_broadcast(net_message(aggEchoMsg), msg_priority_rpos);
-    }
 
    void net_plugin::send_block(const fc::sha256& node_id, const ultrainio::SyncBlockMsg& msg) {
        ilog("send block msg to node:${node} block num:${n} seq num:${sn}", ("node", node_id)("n", msg.block.block_num())("sn", msg.seqNum));
