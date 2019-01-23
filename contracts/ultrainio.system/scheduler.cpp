@@ -26,7 +26,7 @@ namespace ultrainiosystem {
         }
     }
     ///@abi action
-    void system_contract::reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash) {
+    void system_contract::reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash, uint64_t filesize) {
         require_auth(current_sender());
         auto propos = _producers.find(current_sender());
         /*
@@ -53,7 +53,7 @@ namespace ultrainiosystem {
             ultrainio_assert(ret == acc.end(), "the committee_members already report such ws hash");
             auto it = hashv.begin();
             for(; it != hashv.end(); it++) {
-                if(hash == it->hash) {
+                if(hash == it->hash && filesize == it->file_size) {
                     hashTable.modify(wshash, 0, [&](auto &p) {
                             p.hash_v[static_cast<unsigned int>(it-hashv.begin())].votes++;
                             p.accounts.emplace_back(current_sender());
@@ -63,15 +63,15 @@ namespace ultrainiosystem {
             }
             if(it == hashv.end()) {
                 hashTable.modify(wshash, 0, [&](auto& p) {
-                        p.hash_v.emplace_back(hash, 1);
-                        p.accounts.emplace_back(current_sender());
-                        });
+                    p.hash_v.emplace_back(hash, filesize, 1);
+                    p.accounts.emplace_back(current_sender());
+                });
             }
         }
         else {
             hashTable.emplace(_self, [&](auto &p) {
                     p.block_num = blocknum;
-                    p.hash_v.emplace_back(hash, 1);
+                    p.hash_v.emplace_back(hash, filesize, 1);
                     p.accounts.emplace_back(current_sender());
                     });
             int32_t expired = blocknum - MAX_WS_COUNT*default_worldstate_interval;

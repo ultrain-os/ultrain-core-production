@@ -137,11 +137,12 @@ namespace ultrainiosystem {
          ULTRAINLIB_SERIALIZE(pending_res, (owner)(proposal_resource)(provided_approvals) )
       };
    struct hash_vote {
-       hash_vote(checksum256 hash, uint64_t vote):hash(hash), votes(vote){}
+       hash_vote(checksum256 hash, uint64_t size, uint64_t vote):hash(hash),file_size(size),votes(vote){}
        hash_vote(){}
        checksum256      hash;
+       uint64_t         file_size;
        uint64_t         votes;
-       ULTRAINLIB_SERIALIZE(hash_vote , (hash)(votes) )
+       ULTRAINLIB_SERIALIZE(hash_vote , (hash)(file_size)(votes) )
    };
 
    static constexpr uint32_t default_worldstate_interval = 60;
@@ -318,7 +319,7 @@ namespace ultrainiosystem {
          void add_subchain_account(const ultrainio::proposeaccount_info& newacc );
         // functions defined in scheduler.cpp
          void regsubchain(uint64_t chain_name, uint16_t chain_type, time genesis_time);
-         void reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash);
+         void reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash, uint64_t filesize);
 
          void acceptheader (uint64_t chain_name,
                             const std::vector<ultrainio::block_header>& headers);

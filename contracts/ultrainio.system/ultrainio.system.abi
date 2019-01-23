@@ -64,6 +64,7 @@
       "base": "",
       "fields": [
         {"name": "hash", "type": "checksum256"},
+        {"name":"filesize", "type":"uint64"}
         {"name": "votes", "type": "uint64"}
       ]
     },{
@@ -110,6 +111,7 @@
          {"name":"subchain", "type":"uint64"},
          {"name":"blocknum", "type":"uint64"},
          {"name":"hash", "type":"checksum256"}
+         {"name":"filesize", "type":"uint64"}
       ]
     },{
       "name": "voteresourcelease",
