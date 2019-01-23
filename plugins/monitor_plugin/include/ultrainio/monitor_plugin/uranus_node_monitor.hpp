@@ -135,14 +135,15 @@ namespace ultrainio {
                 }
                 reportData.ba0BlockTime      = m_ba0BlockTime;
                 reportData.ba1BlockTime      = m_ba1BlockTime;
-
+#if 0
                 vector<connection_status> connectionsStatus = appbase::app().get_plugin<net_plugin>().connections();
                 for (const auto& connectStatus : connectionsStatus) {
                     if(!connectStatus.connecting) {   //only report connected peers
                         reportData.activePeers.push_back(connectStatus.peer);
                     }
                 }
-            }
+#endif
+     	    }
         }
 
         void getOsData(periodic_report_dynamic_data& reportData) {
