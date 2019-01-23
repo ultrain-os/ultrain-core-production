@@ -55,7 +55,7 @@ namespace ultrainiosystem {
             for(; it != hashv.end(); it++) {
                 if(hash == it->hash && filesize == it->file_size) {
                     hashTable.modify(wshash, 0, [&](auto &p) {
-                            p.hash_v[static_cast<unsigned int>(it-hashv.begin())].votes++;
+                            p.hash_v[static_cast<unsigned int>(it - hashv.begin())].votes++;
                             p.accounts.emplace_back(current_sender());
                             });
                     break;
