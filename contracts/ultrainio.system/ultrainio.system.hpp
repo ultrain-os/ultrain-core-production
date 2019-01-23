@@ -320,7 +320,7 @@ namespace ultrainiosystem {
          void add_subchain_account(const ultrainio::proposeaccount_info& newacc );
         // functions defined in scheduler.cpp
          void regsubchain(uint64_t chain_name, uint16_t chain_type, time genesis_time);
-         void reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash, uint64_t filesize);
+         void reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size);
 
          void acceptheader (uint64_t chain_name,
                             const std::vector<ultrainio::block_header>& headers);
