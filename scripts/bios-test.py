@@ -584,6 +584,15 @@ def stepCreateStakedAccounts():
     sleep(10)
     retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
 
+def stepInitSimpleTest():
+    retry(args.clultrain + 'push action hello hi \'{"user":"%s"}\' -p %s' % (accounts[1],accounts[1]))
+    for i in range(10):
+        retry(args.clultrain + 'transfer -f %s %s "0.1234 UGAS" ' %(accounts[1], accounts[2]))
+        retry(args.clultrain + 'transfer -f %s %s "0.1234 UGAS" ' %(accounts[2], accounts[1]))
+    for i in range(10):
+        transvale = random.randint(1, 999)
+        retry(args.clultrain + 'transfer  %s %s "0.%s UGAS" ' %(accounts[1], accounts[2], transvale))
+        retry(args.clultrain + 'transfer  %s %s "0.%s UGAS" ' %(accounts[2], accounts[1], transvale))
 
 def stepRegProducers():
     for i in range(1, args.num_producers):
@@ -595,14 +604,9 @@ def stepRegProducers():
     funds = 500000000 / args.num_producers / 2
     for i in range(1, args.num_producers):
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
-    sleep(20)
+    stepInitSimpleTest()
+    sleep(15)
     run(args.clultrain + 'system listproducers')
-
-def stpDelegateTestAcc():
-    subaccounts = accounts[1:3]
-    for testacc in subaccounts:
-        retry(args.clultrain + 'system resourcelease ultrainio %s  4000 0' % testacc)
-
 
 def stepCreateinitAccounts():
     for a in initialAccounts:
@@ -734,7 +738,7 @@ commands = [
     ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
     ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
-    ('d', 'deletatetest',   stpDelegateTestAcc,         False,    "Conduct transfer test for *.111 and *.112 multi-agent resources"),
+    ('I', 'initsimpletest', stepInitSimpleTest,         False,    "Simple transfer contract call test"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
 #    ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
      ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
