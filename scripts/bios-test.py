@@ -559,6 +559,11 @@ def stepStartWallet():
     importKeys()
 
 def createSystemAccounts():
+    while True:
+        j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_block_info",data = json.dumps({"block_num_or_id":"3"})).text)
+        if ("proposer" in j):
+            break
+        sleep(5)
     for a in systemAccounts:
         run(args.clultrain + 'create account -u ultrainio ' + a + ' ' + args.public_key)
 
