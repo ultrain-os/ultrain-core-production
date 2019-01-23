@@ -144,7 +144,7 @@ namespace ultrainiosystem {
        ULTRAINLIB_SERIALIZE(hash_vote , (hash)(votes) )
    };
 
-   static constexpr uint32_t default_worldstate_interval = 30;
+   static constexpr uint32_t default_worldstate_interval = 60;
    static constexpr uint32_t MAX_WS_COUNT                = 5;
 
    struct subchain_ws_hash {

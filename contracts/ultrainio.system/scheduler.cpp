@@ -74,7 +74,7 @@ namespace ultrainiosystem {
                     p.hash_v.emplace_back(hash, 1);
                     p.accounts.emplace_back(current_sender());
                     });
-            int32_t expired = blocknum-MAX_WS_COUNT*default_worldstate_interval;
+            int32_t expired = blocknum - MAX_WS_COUNT*default_worldstate_interval;
             if (expired > 0){
                 auto old = hashTable.find(expired);
                 if (old != hashTable.end())
