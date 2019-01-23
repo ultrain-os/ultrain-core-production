@@ -1,13 +1,9 @@
 #include "p2p/NodeTable.h"
 #include "p2p/Common.h"
-#include <appbase/application.hpp>
-#include <ultrainio/net_plugin/net_plugin.hpp>
 #include <fc/crypto/rand.hpp>
-#include <boost/asio/ip/tcp.hpp>
-
 #include <memory>
-using namespace std;
 
+using namespace std;
 
 namespace ultrainio
 {

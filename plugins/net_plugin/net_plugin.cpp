@@ -5,7 +5,6 @@
 #include <ultrainio/chain/types.hpp>
 
 #include <ultrainio/net_plugin/net_plugin.hpp>
-#include <ultrainio/net_plugin/protocol.hpp>
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/block.hpp>

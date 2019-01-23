@@ -4,7 +4,6 @@
 #include <memory>
 #include <vector>
 #include <deque>
-#include <array>
 #include <fc/network/message_buffer.hpp>
 
 namespace ba = boost::asio;

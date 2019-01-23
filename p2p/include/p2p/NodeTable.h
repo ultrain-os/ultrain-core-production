@@ -1,7 +1,5 @@
 #pragma once
 
-#include <algorithm>
-#include <atomic>
 #include <string>
 #include <set>
 #include <vector>
@@ -11,7 +9,6 @@
 
 #include <chrono>
 #include <boost/integer/static_log2.hpp>
-#include <ultrainio/net_plugin/protocol.hpp>
 #include "Common.h"
 #include "UDP.h"
 

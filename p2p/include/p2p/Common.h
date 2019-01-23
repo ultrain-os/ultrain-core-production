@@ -3,22 +3,9 @@
 
 #include <atomic>
 #include <string>
-#include <set>
 #include <vector>
-
-// Make sure boost/asio.hpp is included before windows.h.
-#include <boost/asio.hpp>
-#include <boost/asio/ip/tcp.hpp>
-
 #include <chrono>
-
-#include <algorithm>
-#include <unordered_set>
-#include <type_traits>
-#include <cstring>
-
-#include <ultrainio/chain/types.hpp>
-#include <ultrainio/net_plugin/protocol.hpp>
+#include <core/protocol.hpp>
 
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
@@ -86,7 +73,7 @@ namespace ultrainio
                         return;
                     }
                 }
-		m_listenPorts.emplace_back(port, businessType);
+                m_listenPorts.emplace_back(port, businessType);
             }
         };
 

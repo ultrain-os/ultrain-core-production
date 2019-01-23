@@ -5,7 +5,7 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
-#include <ultrainio/net_plugin/protocol.hpp>
+#include <core/protocol.hpp>
 
 namespace ultrainio {
     using namespace appbase;
