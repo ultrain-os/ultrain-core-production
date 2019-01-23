@@ -230,7 +230,7 @@ add_subdirectory( tools )
 add_subdirectory( vendor )
 add_subdirectory( unittests )
 add_subdirectory( debian )
-
+add_subdirectory( p2p )
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/ultrainio)
 
 install(FILES testnet.template DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/ultrainio/launcher)

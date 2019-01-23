@@ -134,6 +134,23 @@ namespace ultrainio {
     ordered_blk_ids req_blocks;
   };
 
+  enum msg_priority {
+    msg_priority_none,
+    msg_priority_rpos,
+    msg_priority_trx
+  };
+
+  struct listen_port {
+    uint16_t port;
+    msg_priority business_type;
+
+    listen_port() : port(0), business_type(msg_priority_none) {}
+    listen_port(uint16_t _port, msg_priority _business_type) {
+      port = _port;
+      business_type = _business_type;
+    }
+  };
+
    using net_message = static_variant<handshake_message,
                                       chain_size_message,
                                       go_away_message,
@@ -166,6 +183,7 @@ FC_REFLECT( ultrainio::go_away_message, (reason)(node_id) )
 FC_REFLECT( ultrainio::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( ultrainio::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( ultrainio::request_message, (req_trx)(req_blocks) )
+FC_REFLECT( ultrainio::listen_port, (port)(business_type) )
 
 /**
  *

@@ -35,7 +35,8 @@
 #if defined( __linux__ )
 #include <malloc.h>
 #endif
-
+#include <p2p/NodeTable.h>
+#include <rpos/StakeVoteBase.h>
 using namespace ultrainio::chain::plugin_interface::compat;
 
 namespace fc {
@@ -130,10 +131,6 @@ namespace ultrainio {
         >
     > node_transaction_index;
 
-    enum msg_priority{
-        msg_priority_rpos,
-        msg_priority_trx
-    };
 
     struct passive_peer{
         shared_ptr<tcp::acceptor>  acceptor;
@@ -164,9 +161,11 @@ namespace ultrainio {
         };
         possible_connections             allowed_connections{None};
 
-        connection_ptr find_connection(const string& host )const;
+        connection_ptr find_connection(const string& host) const;
+        bool connection_exist(const fc::sha256& nid) const;
 
         std::set< connection_ptr >       connections;
+	std::set< string >               peer_addr_black_list;
         bool                             done = false;
         unique_ptr< dispatch_manager >   dispatcher;
         unique_ptr< sync_block_manager > sync_block_master;
@@ -216,6 +215,10 @@ namespace ultrainio {
         void start_speedlimit_monitor_timer();
         void close( connection_ptr c );
         size_t count_open_sockets() const;
+
+        std::shared_ptr<p2p::NodeTable> node_table = nullptr;                                    
+
+        std::shared_ptr<p2p::NodeTable> get_node_table() { return node_table; }
 
         template<typename VerifierFunc>
         void send_all( const net_message &msg, VerifierFunc verify );
@@ -345,8 +348,8 @@ namespace ultrainio {
      */
     constexpr auto     def_send_buffer_size_mb = 4;
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
-    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
-    constexpr auto     def_max_nodes_per_host = 10;
+    constexpr auto     def_max_clients = 12; // 0 for unlimited clients
+    constexpr auto     def_max_nodes_per_host = 2;
     constexpr auto     def_conn_retry_wait = 30;
     constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
@@ -1851,6 +1854,7 @@ namespace ultrainio {
                         elog( "Error reading message from ${p}: ${m}",("p",pname)( "m", ec.message() ) );
                      } else {
                         ilog( "Peer ${p} closed connection",("p",pname) );
+                        peer_addr_black_list.insert(conn->peer_addr);
                      }
                      close( conn );
                   }
@@ -2501,15 +2505,39 @@ namespace ultrainio {
       auto it = connections.begin();
       while(it != connections.end()) {
          if( !(*it)->socket->is_open() && !(*it)->connecting) {
-            if( (*it)->peer_addr.length() > 0) {
-               connect(*it);
-            } 
-            else {
+            if ((*it)->peer_addr.length() <= 0 || peer_addr_black_list.find((*it)->peer_addr) != peer_addr_black_list.end()) {
                it = connections.erase(it);
                continue;
             }
+	    else {
+               connect(*it);
+            } 
          }
          ++it;
+      }
+
+      ilog("connections size: ${s} max_client_count: ${mcc}", ("s", connections.size())("mcc", max_client_count));
+      if (connections.size() < max_client_count) {
+         uint32_t count = max_client_count - connections.size();
+         std::list<p2p::NodeIPEndpoint> nodes = node_table->getNodes();
+         uint32_t i = 0;
+         ilog("nodes size: ${s}", ("s", nodes.size()));
+         for (std::list<p2p::NodeIPEndpoint>::iterator it = nodes.begin(); it != nodes.end() && i < count; ++it) {
+            ilog("node adress: ${ad} valid: ${v}", ("ad", it->address())("v", (bool)*it));
+            string host = it->address() + ":" + std::to_string(it->listenPort(msg_priority_trx));
+            if (!find_connection(host) && peer_addr_black_list.find(host) == peer_addr_black_list.end()) {
+               ilog("connect to node: ${a}", ("a", host));
+               connect(host, msg_priority_trx);
+               i++;
+            }
+
+            host = it->address() + ":" + std::to_string(it->listenPort(msg_priority_rpos));
+            if (!find_connection(host) && peer_addr_black_list.find(host) == peer_addr_black_list.end()) {
+               ilog("connect to node: ${a}", ("a", host));
+               connect(host, msg_priority_rpos);
+               i++;
+            }
+         }
       }
    }
 
@@ -2878,6 +2906,13 @@ namespace ultrainio {
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
          ilog( "my node_id is ${id}", ("id", my->node_id));
 
+         p2p::NodeIPEndpoint local;
+         local.setAddress("0.0.0.0");
+         local.setUdpPort(20124);
+         local.setListenPort(msg_priority_trx, my->trx_listener.listen_endpoint.port());
+         local.setListenPort(msg_priority_rpos, my->rpos_listener.listen_endpoint.port());
+         my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id);
+
          my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
          my->ticker();
       } FC_LOG_AND_RETHROW()
@@ -2915,13 +2950,15 @@ namespace ultrainio {
 
       my->start_monitors();
 
-      for (auto seed_node : my->trx_active_peers) {
+      /*for (auto seed_node : my->trx_active_peers) {
          my->connect(seed_node, msg_priority_trx);
       }
 
       for (auto seed_node : my->rpos_active_peers) {
          my->connect(seed_node, msg_priority_rpos);
-      }
+      }*/
+
+      my->node_table->init(my->rpos_active_peers);
 
       if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
          logger = fc::get_logger_map()[logger_name];
@@ -3034,6 +3071,16 @@ namespace ultrainio {
         for( const auto& c : connections )
             if( c->peer_addr == host ) return c;
         return connection_ptr();
+    }
+
+    bool net_plugin_impl::connection_exist(const fc::sha256& nid) const {
+        for (const auto& c : connections) {
+            if (c->node_id == nid) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     uint16_t net_plugin_impl::to_protocol_version (uint16_t v) {
