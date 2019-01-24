@@ -10,7 +10,7 @@ const loggerUtil = {
            // logger.info(arguments);
     },
     error: function () {
-        //logger.error(arguments);
+        logger.debug(arguments);
 
     },
     debug: function () {

@@ -36,7 +36,8 @@ function buildCommittee(resultJson, jsonArray, add, result) {
                 result.push({
                     account: resultJson[i].owner,
                     public_key: resultJson[i].miner_pk,
-                    url: "https://user.115.com",
+                    bls_pk: resultJson[i].bls_pk,
+                    url: "https://"+resultJson[i].owner+".com",
                     location: 0,
                     adddel_miner: add,
                     approve_num : 0
@@ -62,7 +63,8 @@ function buildCommittee(resultJson, jsonArray, add, result) {
             result.push({
                 account: resultJson[i].owner,
                 public_key: resultJson[i].miner_pk,
-                url: "https://user.115.com",
+                bls_pk: resultJson[i].bls_pk,
+                url: "https://"+resultJson[i].owner+".com",
                 location: 0,
                 adddel_miner: add,
                 approve_num : 0

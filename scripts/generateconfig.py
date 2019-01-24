@@ -7,6 +7,7 @@ from account_info import *
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--masterchain', action='store_true', help="set current master chain")
 parser.add_argument('-sub', '--subchain', type=str, help="set subchain name info")
+parser.add_argument('-mainHttp', '--mainchainHttp', type=str, help="set mainchainHttpEndpoint for ultranmng")
 parser.add_argument('-ws', '--worldstate', action='store_true', help="enable worldstate ")
 args = parser.parse_args()
 class Host(object):
@@ -138,12 +139,16 @@ def update_ultrainmng_config(fname,ipList):
     newcontent = "";
     nonProducingNodeIp=ipList[len(ipList)-1].ip;
     newcontent = "subchainHttpEndpoint = http://"+nonProducingNodeIp+":8888\n"
-    if args.masterchain:
-        newcontent = "masterchain = 1\n"
-    if args.subchain == "11" :
-        newcontent = "subchainHttpEndpoint = http://172.16.10.5:8888\n"
-    elif args.subchain == "12" :
-        newcontent = "subchainHttpEndpoint = http://172.16.10.5:8899\n"
+    # if args.masterchain:
+    #     newcontent = newcontent+"masterchain = 1\n"
+    #if is subchain,add mainchain http endpoint
+    if args.subchain:
+        httpUrl = "";
+        if args.mainchainHttp:
+            httpUrl = "http://"+args.mainchainHttp;
+        newcontent = newcontent+"mainchainHttpEndpoint = "+httpUrl+"\n"
+    else :
+        newcontent = newcontent+"masterchain = 1\n"
     index_line = content.index("#ultrainmng_subchainHttpEndpoint\n")
     content.insert(index_line+1, newcontent)
     writefile(fname,content)
@@ -162,7 +167,7 @@ def insert_non_producing(fname):
 	content = readfile(fname)
 	newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
         if args.masterchain:
-            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.4:8877\n"
+            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:9999\n"
         if args.subchain == "11" :
             newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
         elif args.subchain == "12" :

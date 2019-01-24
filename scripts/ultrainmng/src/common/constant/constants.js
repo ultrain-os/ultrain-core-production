@@ -14,6 +14,7 @@ var cmdConstants = {
     START_WORLDSTATE: "/root/workspace/ultrain-core/build/programs/wssultrain/wssultrain > /log/ws.log 2>&1 &",//启动世界状态程序
     START_NODULTRAIN: "sh /root/workspace/ultrain-core/scripts/_runultrain.sh /root/workspace",//启动nod程序
     START_NODULTRAIN_FILE: "/root/workspace/ultrain-core/scripts/_runultrain.sh",
+    START_WORLDSTATE_FILE: "/root/workspace/ultrain-core/scripts/_runworldstate.sh",
     START_NODULTRAIN_ARG:["/root/workspace"]
 
 }

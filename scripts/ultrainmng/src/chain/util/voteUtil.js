@@ -109,7 +109,8 @@ function findVoteRes(tableData, user, voteUser, lease_num, expire_date) {
                 if (provide_index >=0) {
                     var resObj = row.proposal_resource[provide_index];
                     //如果之前的数值<=当前的数值，说明已经投了
-                    if (resObj.lease_num >= lease_num) {
+                    logger.debug("res end_time :"+end_time +" ")
+                    if (resObj.lease_num >= lease_num && resObj.end_time >= expire_date) {
                         return true;
                     }
                 }
@@ -197,7 +198,7 @@ async function genVoteResList(subResList, mainResList, chainConfig) {
 
             } else if (mainResObj.owner == subResObj.owner) {
                 //主链对象和子链对象一致，比较资源大小
-                if (mainResObj.lease_num > subResObj.lease_num) {
+                if (mainResObj.lease_num > subResObj.lease_num || mainResObj.end_time > subResObj.end_time) {
                     result.push(mainResObj);
                 }
 

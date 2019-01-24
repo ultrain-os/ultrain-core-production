@@ -134,6 +134,8 @@ async function contractInteract(config, contractName, actionName, params, accoun
         const keyProvider = [privateKey];
         const u3 = createU3({...config, keyProvider});
 
+        logger.debug("keyProvider:",keyProvider);
+
         const contract = await u3.contract(contractName);
         //logger.debug("contract=", JSON.stringify(contract.fc.abi.structs));
         if (!contract) {
@@ -256,7 +258,7 @@ getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound,
  * @param table
  * @returns {Promise<*>}
  */
-getTableAllData = async (config, code, scope, table) => {
+getTableAllData = async (config, code, scope, table,pk) => {
     let tableObj = {rows: [], more: false};
     let count = 10000; //MAX NUM
     let limit = 100; //limit
@@ -265,16 +267,22 @@ getTableAllData = async (config, code, scope, table) => {
     try {
         while (finish == false) {
             let tableinfo = await getTableInfo(config, code, scope, table, limit, null, lower_bound, null);
-            logger.debug("tableinfo:", tableinfo);
+            logger.debug("tableinfo:"+table+"):", tableinfo);
             if (utils.isNullList(tableinfo.rows) == false) {
                 for (let i = 0; i < tableinfo.rows.length; i++) {
-                    if (tableinfo.rows[i].owner != lower_bound) {
+                    if (tableinfo.rows[i][pk] != lower_bound) {
                         tableObj.rows.push(tableinfo.rows[i]);
                     }
                 }
-                lower_bound = tableinfo.rows[tableinfo.rows.length - 1].owner;
+
+
+                if (utils.isNotNull(pk)) {
+                    lower_bound = tableinfo.rows[tableinfo.rows.length - 1][pk];
+                }
+
+                logger.debug(table+" lower_bound：" + lower_bound);
             }
-            logger.debug("lower_bound：" + lower_bound);
+
             //查看是否还有
             finish = true;
             if (utils.isNotNull(tableinfo.more) && tableinfo.more == true) {
@@ -287,6 +295,7 @@ getTableAllData = async (config, code, scope, table) => {
         logger.error("getTableAllData error:", e);
     }
 
+    logger.debug("getTableAllData("+table+"):", tableObj);
     return tableObj;
 
 }
@@ -296,17 +305,46 @@ getTableAllData = async (config, code, scope, table) => {
  * @param chainId
  * @returns {Promise<string>}
  */
-getSubchanEndPoint = async (chainId) => {
-    if (chainId == "11") {
-        return "http://172.16.10.5:8888";
-    }
+getSubchanEndPoint = async (chainName, chainConfig) => {
 
-    if (chainId == "12") {
-        return "http://172.16.10.5:8899";
-    }
+    // logger.debug(chainConfig.seedIpConfig);
+    // logger.debug(chainName);
+    try {
+        if (utils.isNotNull(chainConfig.seedIpConfig)) {
+            for (let i = 0; i < chainConfig.seedIpConfig.length; i++) {
+                //logger.debug(chainConfig.seedIpConfig[i])
+                if (chainConfig.seedIpConfig[i].chainName == chainName) {
+                    return chainConfig.seedIpConfig[i].subchainHttpEndpoint;
+                }
+            }
+        }
 
-    return "http://172.16.10.5:8888";
+    } catch (e) {
+        logger.error("getSubchanEndPoint error:", e);
+    }
+    return "";
 }
+
+getSubchainConfig = async (chainName, chainConfig) => {
+
+    // logger.debug(chainConfig.seedIpConfig);
+    // logger.debug(chainName);
+    try {
+        if (utils.isNotNull(chainConfig.seedIpConfig)) {
+            for (let i = 0; i < chainConfig.seedIpConfig.length; i++) {
+                //logger.debug(chainConfig.seedIpConfig[i])
+                if (chainConfig.seedIpConfig[i].chainName == chainName) {
+                    return chainConfig.seedIpConfig[i];
+                }
+            }
+        }
+
+    } catch (e) {
+        logger.error("getSubchainConfig error:", e);
+    }
+    return "";
+}
+
 
 
 module.exports = {
@@ -321,5 +359,6 @@ module.exports = {
     getTableInfo,
     getTableAllData,
     getChainSeedIP,
-    getSubchanEndPoint
+    getSubchanEndPoint,
+    getSubchainConfig
 }
