@@ -176,19 +176,20 @@ namespace ultrainiosystem {
             { N(utrio.stake),miner.account,asset(consweight_per_subaccount)} );
       }else{
          auto prod = _producers.find( miner.account );
-         if(prod == _producers.end())
+         if(prod == _producers.end() || !(prod->is_active))
          {
             print("updateactiveminers curproducer not found  proposerminer:",ultrainio::name{(*prod).owner}," total_cons_staked:",(*prod).total_cons_staked);
             return;
          }
-         _producers.modify( prod, 0, [&](auto& p) {
-               p.deactivate();
-            });
+
          print("updateactiveminers del proposerminer:",ultrainio::name{(*prod).owner}," total_cons_staked:",(*prod).total_cons_staked);
          if((*prod).total_cons_staked > 0){
             INLINE_ACTION_SENDER(ultrainiosystem::system_contract, undelegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
                { N(utrio.stake),(*prod).owner} );
          }
+         _producers.modify( prod, 0, [&](auto& p) {
+               p.deactivate();
+            });
       }
    }
    void system_contract::votecommittee() {
@@ -567,6 +568,8 @@ void system_contract::voteresourcelease() {
                ultrainio_assert( creator == suffix, "only suffix may create this account" );
             }
          }
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {creator,N(active)},
+            { creator, N(utrio.fee), asset(2000), std::string("create account") } );
       }
 
       //user_resources_table  userres( _self, newact);

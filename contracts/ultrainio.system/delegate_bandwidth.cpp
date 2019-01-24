@@ -170,13 +170,13 @@ namespace ultrainiosystem {
       {
          asset total_update = stake_cons_delta;
          auto it = _producers.find(receiver);
-         ultrainio_assert( (it != _producers.end()) && it->is_active, "Unable to delegate cons, you need to regproducer" );
+         ultrainio_assert( (it != _producers.end()), "Unable to delegate cons, you need to regproducer" );
          uint64_t curblocknum = (uint64_t)tapos_block_num();
          if(stake_cons_delta.amount < 0){
             print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," last_operate_blocknum:",it->last_operate_blocknum);//
             const uint32_t seconds_per_block     = block_interval_seconds();
             uint32_t blocks_per_month            = seconds_per_year / seconds_per_block / 12;
-            ultrainio_assert( (curblocknum - it->last_operate_blocknum) > blocks_per_month , "should stake at least more than one month" );
+            //ultrainio_assert( (curblocknum - it->last_operate_blocknum) > blocks_per_month , "should stake at least more than one month" );
          }
          auto enabled = ((it->total_cons_staked+total_update.amount) >=
                   _gstate.min_activated_stake/_gstate.min_committee_member);
