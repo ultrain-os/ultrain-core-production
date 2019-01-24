@@ -11,6 +11,7 @@ const {createU3, format} = U3;
 var logger = require("../config/logConfig").getLogger("ChainConfig");
 var logUtil = require("../common/util/logUtil")
 var constant = require("../common/constant/constants")
+var chainNameConstants = require("../common/constant/constants").chainNameConstants
 var utils = require("../common/util/utils");
 var chainApi = require("./chainApi")
 var sleep = require("sleep")
@@ -125,11 +126,6 @@ ChainConfig.syncConfig = async function () {
 
         //logger.debug("this.configFileData data:", this.configFileData);
 
-        //获取主链请求的http地址-默认使用
-        const ip = await chainApi.getRemoteIpAddress(configIniLocal.url);
-        logger.debug('getRemoteIpAddress=', ip);
-        this.config.httpEndpoint = `${configIniLocal.prefix}${ip}${configIniLocal.endpoint}`;
-
         //子链请求地址配置-默认先从nod的config中获取，如果没有用本地的
         if (utils.isNotNull(configIniTarget.subchainHttpEndpoint)) {
             this.configSub.httpEndpoint = configIniTarget.subchainHttpEndpoint;
@@ -139,6 +135,15 @@ ChainConfig.syncConfig = async function () {
 
 
         logger.info("subchain httpEndpoint:",this.configSub.httpEndpoint)
+
+
+        //获取主链请求的http地址-默认使用
+        // const ip = await chainApi.getRemoteIpAddress(configIniLocal.url);
+        // logger.debug('getRemoteIpAddress=', ip);
+        // this.config.httpEndpoint = `${configIniLocal.prefix}${ip}${configIniLocal.endpoint}`;
+        if (utils.isNotNull(configIniTarget["mainchainHttpEndpoint"])) {
+            this.config.httpEndpoint = configIniTarget["mainchainHttpEndpoint"];
+        }
 
         /**
          * 获取配置中localtest配置
@@ -156,6 +161,8 @@ ChainConfig.syncConfig = async function () {
         this.mySkAsCommittee = configIniTarget["my-sk-as-committee"];
         this.config.keyProvider = [configIniTarget["my-sk-as-account"]];
         this.configSub.keyProvider = [configIniTarget["my-sk-as-account"]];
+
+        logger.error("this.myAccountAsCommittee ",this.myAccountAsCommittee);
 
         /**
          * 如果localtest为true，表明当前是本地测试状态，更新主链url等信息
@@ -180,6 +187,8 @@ ChainConfig.syncConfig = async function () {
                 this.configSub.keyProvider = [configIniLocal["my-sk-as-account"]];
             }
         }
+
+        logger.info("mainchain httpEndpoint:",this.config.httpEndpoint)
 
         //现在处在主链
         if (utils.isNotNull(configIniTarget.masterchain)) {

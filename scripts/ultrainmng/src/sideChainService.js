@@ -44,7 +44,7 @@ async function startEntry() {
     logger.info("start chain style sync :",chainSyncCycleSchedule)
     schedule.scheduleJob(chainSyncCycleSchedule, async function () {
         //委员会同步
-        await chain.syncChainInfo();
+         await chain.syncChainInfo();
     });
 
     //同步块，资源，用户-10s
@@ -52,16 +52,16 @@ async function startEntry() {
     schedule.scheduleJob(syncBlockSchedule, async function () {
         //用户同步
         await chain.syncUser();
-        //资源同步
-        await chain.syncResource();
-        //块同步
+         //资源同步
+         await chain.syncResource();
+        // //块同步
         await chain.syncBlock();
     });
 
     logger.info("start world state sync:",chainSyncWorldState)
     schedule.scheduleJob(chainSyncWorldState, async function () {
         //世界状态同步
-        await chain.syncUser();
+        await chain.syncWorldState();
     });
 
 

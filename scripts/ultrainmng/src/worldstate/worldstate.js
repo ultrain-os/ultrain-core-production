@@ -47,7 +47,7 @@ WorldState.status = null;
  * @returns {Promise<void>}
  */
 WorldState.syncStatus = async function () {
-    let data = await this.checkAlive();
+    let data = await this.getSubchainWsInfo();
     if (utils.isNotNull(data)) {
         //比较块高
         if (utils.isNull(this.status) || data.block_height > this.status.block_height) {
@@ -85,9 +85,10 @@ WorldState.requestData = async function (path, params) {
  * @param height
  * @returns {Promise<*>}
  */
-WorldState.syncWorldState = async function (hash, height) {
-    console.log("syncWorldState")
-    let res = await this.requestData("/wss/require_ws", "[" + height + ",\"" + hash + "\"]");
+WorldState.syncWorldState = async function (hash, height,file_size,chain_id) {
+    let param = {"chain_id": chain_id,"block_height":height, "hash_string": hash, "file_size": file_size};
+    logger.info("syncWorldState param:",param)
+    let res = await this.requestData("/wss/require_ws", param);
     if (utils.isNotNull(res)) {
         return true;
     }
@@ -99,8 +100,8 @@ WorldState.syncWorldState = async function (hash, height) {
  * 请求同步世界状态
  * @returns {Promise<*>}
  */
-WorldState.requestWSState = async function (code) {
-    return await this.requestData("/wss/ws_status", "[\"ws\"," + code + "]");
+WorldState.requestWSState = async function () {
+    return await this.requestData("/wss/ws_status", "\"ws\"");
 }
 
 /**
@@ -110,7 +111,7 @@ WorldState.requestWSState = async function (code) {
  * @param totalTime 总时间
  * @returns {Promise<boolean>}
  */
-WorldState.pollingkWSState = async function (code, timeInterval, totalTime) {
+WorldState.pollingkWSState = async function (timeInterval, totalTime) {
 
     let result = false;
     if (totalTime <= 0 || timeInterval <= 0 || timeInterval > totalTime) {
@@ -122,7 +123,8 @@ WorldState.pollingkWSState = async function (code, timeInterval, totalTime) {
      */
     let searchTime = 0;
     while (searchTime <= totalTime) {
-        result = await WorldState.requestWSState(code);
+        result = await WorldState.requestWSState();
+        logger.info("pollingkWSState result:",result);
         if (wsResUtil.isSuccess(result)) {
             logger.info("sync worldstate success");
             result = true;
@@ -150,7 +152,7 @@ WorldState.pollingkWSState = async function (code, timeInterval, totalTime) {
  * @param totalTime 总时间
  * @returns {Promise<boolean>}
  */
-WorldState.pollingBlockState = async function (code, timeInterval, totalTime) {
+WorldState.pollingBlockState = async function (timeInterval, totalTime) {
 
     let result = false;
     if (totalTime <= 0 || timeInterval <= 0 || timeInterval > totalTime) {
@@ -162,7 +164,7 @@ WorldState.pollingBlockState = async function (code, timeInterval, totalTime) {
      */
     let searchTime = 0;
     while (searchTime <= totalTime) {
-        let res = await WorldState.requestBlockState(code);
+        let res = await WorldState.requestBlockState();
         if (wsResUtil.isSuccess(res)) {
             logger.info("sync  block success");
             result = true;
@@ -191,16 +193,16 @@ WorldState.pollingBlockState = async function (code, timeInterval, totalTime) {
  * @param end
  * @returns {Promise<*>}
  */
-WorldState.syncBlocks = async function () {
-    return await this.requestData("/wss/require_block", "[0,0]")
+WorldState.syncBlocks = async function (chainid,blockHeight) {
+    return await this.requestData("/wss/require_block", "[\""+chainid+"\","+blockHeight+"]")
 }
 
 /**
  * 请求同步块状态
  * @returns {Promise<*>}
  */
-WorldState.requestBlockState = async function (code) {
-    return await this.requestData("/wss/ws_status", "[\"block\"," + code + "]");
+WorldState.requestBlockState = async function () {
+    return await this.requestData("/wss/ws_status", "\"block\"");
 }
 
 
@@ -212,8 +214,9 @@ WorldState.checkAlive = async function () {
 
     let resut = null;
     try {
-        resut = await this.requestData("/wss/latest_wsinfo", null);
-        logger.debug("result:", resut);
+        //resut = await this.requestData("/wss/latest_wsinfo", null);
+        resut = await this.requestData("/wss/ws_status", "\"\"");
+        logger.info("ws result:", resut);
         return resut;
     } catch (e) {
         logger.error("request wss data error:", utils.logNetworkError(e));
@@ -228,7 +231,15 @@ WorldState.checkAlive = async function () {
  * {"chain_id":"0000000000000000000000000000000000000000000000000000000000000000","block_height":0,"hash_string":"","file_size":0}
  */
 WorldState.getSubchainWsInfo = async function () {
-    return await this.requestData("/wss/latest_wsinfo", "[\"\",0]")
+    let resut = null;
+    try {
+        resut = await this.requestData("/wss/latest_wsinfo", null);
+        logger.debug("result:", resut);
+        return resut;
+    } catch (e) {
+        logger.error("request wss data error:", utils.logNetworkError(e));
+        return null;
+    }
 }
 
 /**
@@ -243,7 +254,7 @@ WorldState.updateConfig = function (chainId, seedIp) {
         if (utils.isNotNull(chainId,seedIp)) {
             var iniFile = new IniFile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
             iniFile.setValue("chainId", chainId);
-            iniFile.setValue("seedIP", seedIp);
+            iniFile.setValue("p2p-peer-address", seedIp+":7272");
             iniFile.setValue("http-server-address", "127.0.0.1:" + this.port);
             iniFile.writefile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
             return true;
@@ -289,9 +300,8 @@ WorldState.start = async function (chainId, seedIp, totalTime) {
     if (!this.updateConfig(chainId, seedIp)) {
         //return result;
     }
-    res = await ShellCmd.execCmd(Constants.cmdConstants.START_WORLDSTATE);
+    res = await ShellCmd.execCmdFiles(Constants.cmdConstants.START_WORLDSTATE_FILE,Constants.cmdConstants.START_NODULTRAIN_ARG,null);
     if (res) {
-        console.debug("start WorldState success");
         //utils.sleep(this.statusCheckTime);
         let searchtime = this.statusCheckTime;
         while (totalTime >= searchtime) {

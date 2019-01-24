@@ -74,41 +74,41 @@ async function interactWithWorldState() {
     // let hash = "hash";
     // let height = 0;
     // result = await WorldState.syncWorldState(hash, height);
-    // if (result == false) {
-    //     console.log("sync worldstate request error");
-    // } else {
-    //     console.log("sync worldstate request success");
-    // }
+    if (result == false) {
+        console.log("sync worldstate request error");
+    } else {
+        console.log("sync worldstate request success");
+    }
     //
-    // /**
-    //  * 轮询检查同步世界状态情况
-    //  */
-    // result = await WorldState.pollingkWSState(1, 500, 3000);
-    // if (result == false) {
-    //     console.log("sync worldstate  error");
-    // } else {
-    //     console.log("sync worldstate  success");
-    // }
-    //
-    // /**
-    //  * 调用block
-    //  */
-    // result = await WorldState.syncBlocks();
-    // if (result == false) {
-    //     console.log("sync block request error");
-    // } else {
-    //     console.log("sync block request success");
-    // }
-    //
-    // /**
-    //  * 轮询block状态
-    //  */
-    // result = await WorldState.pollingBlockState(1, 500, 3000);
-    // if (result == false) {
-    //     console.log("sync block  error");
-    // } else {
-    //     console.log("sync block  success");
-    // }
+    /**
+     * 轮询检查同步世界状态情况
+     */
+    result = await WorldState.pollingkWSState(1, 500, 3000);
+    if (result == false) {
+        console.log("sync worldstate  error");
+    } else {
+        console.log("sync worldstate  success");
+    }
+
+    /**
+     * 调用block
+     */
+    result = await WorldState.syncBlocks();
+    if (result == false) {
+        console.log("sync block request error");
+    } else {
+        console.log("sync block request success");
+    }
+
+    /**
+     * 轮询block状态
+     */
+    result = await WorldState.pollingBlockState(1, 500, 3000);
+    if (result == false) {
+        console.log("sync block  error");
+    } else {
+        console.log("sync block  success");
+    }
 }
 
 
