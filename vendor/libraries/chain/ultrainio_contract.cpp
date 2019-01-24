@@ -122,7 +122,7 @@ void apply_ultrainio_newaccount(apply_context& context) {
    ram_delta += owner_permission.auth.get_billable_size();
    ram_delta += active_permission.auth.get_billable_size();
 
-   context.trx_context.add_ram_usage(create.creator, ram_delta);
+   context.trx_context.add_ram_usage( N(ultrainio), ram_delta ); //create.creator
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
