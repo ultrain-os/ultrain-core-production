@@ -114,6 +114,8 @@ def addChainType():
 # addSubchain()
 def addSubchain():
     print "addSubchain start..."
+    print "add a new subchain type"
+    retry(args.clultrain + ' push action ultrainio regchaintype \'{"type_id": "1", "min_producer_num": "40", "max_producer_num": "200", "sched_step": "10", "consensus_period": "10"}\' -p ultrainio@active');
     print "add a new subchain info(name:"+args.subchain+")"
     retry(args.clultrain + ' push action ultrainio regsubchain \'{"chain_name": "'+args.subchain+'", "chain_type": "1","genesis_time":"2019-01-01 21:00:00"}\' -p ultrainio@active');
     sleep(1)

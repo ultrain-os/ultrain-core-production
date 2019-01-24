@@ -8,6 +8,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--masterchain', action='store_true', help="set current master chain")
 parser.add_argument('-sub', '--subchain', type=str, help="set subchain name info")
 parser.add_argument('-mainHttp', '--mainchainHttp', type=str, help="set mainchainHttpEndpoint for ultranmng")
+parser.add_argument('-httpAlias', '--httpAlias', type=str, help="set http alias for noultrain")
 parser.add_argument('-ws', '--worldstate', action='store_true', help="enable worldstate ")
 args = parser.parse_args()
 class Host(object):
@@ -166,12 +167,15 @@ def insert_worldstate_config(fname):
 def insert_non_producing(fname):
 	content = readfile(fname)
 	newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
-        if args.masterchain:
-            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:9999\n"
-        if args.subchain == "11" :
-            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
-        elif args.subchain == "12" :
-            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8899\n"
+        if args.httpAlias :
+            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = "+args.httpAlias+"\n"
+        else:
+            if args.masterchain:
+                newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:9999\n"
+            if args.subchain == "11" :
+                newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
+            elif args.subchain == "12" :
+                newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8899\n"
 	print(newcontent)
 	index_line = content.index("#insert_if_producing-node\n")
 	content.insert(index_line+1, newcontent)
