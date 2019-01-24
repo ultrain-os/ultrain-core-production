@@ -203,7 +203,7 @@ namespace ultrainiosystem {
    struct subchain {
        uint64_t                  chain_name;
        uint64_t                  chain_type;
-       time                      genesis_time;
+       block_timestamp           genesis_time;
        chain_resource            global_resource;
        bool                      is_active;
        bool                      is_synced;

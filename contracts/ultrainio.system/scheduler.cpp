@@ -181,7 +181,7 @@ namespace ultrainiosystem {
                       _subchain.head_block_id     = headers[idx].id();
                       _subchain.head_block_num    = 1;
                       _subchain.chain_id          = headers[idx].action_mroot; //save chain id
-                      _subchain.genesis_time      = headers[idx].timestamp.abstime;
+                      _subchain.genesis_time      = headers[idx].timestamp;
                   });
             }
             else if (ite_chain->head_block_id == headers[idx].previous && block_number == ite_chain->head_block_num + 1) {

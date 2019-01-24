@@ -1060,7 +1060,7 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
 
     if(result.location == 0) {
         result.chain_id = db.get_chain_id();
-        result.genesis_time = time_point_sec(0); //TODO, modify as master genesis time
+        result.genesis_time = block_timestamp(); //TODO, modify as master genesis time
     }
     else if (result.location != std::numeric_limits<uint64_t>::max()) {
         table = N(subchains);

@@ -487,7 +487,7 @@
       "fields": [
         {"name": "chain_name",                    "type": "uint64"},
         {"name": "chain_type",                    "type": "uint64"},
-        {"name": "genesis_time",                  "type": "time_point_sec"},
+        {"name": "genesis_time",                  "type": "block_timestamp_type"},
         {"name": "global_resource",               "type": "chain_resource"},
         {"name": "is_active",                     "type": "bool"},
         {"name": "is_synced",                     "type": "bool"},

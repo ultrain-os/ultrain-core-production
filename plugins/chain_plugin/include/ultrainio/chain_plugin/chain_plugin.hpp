@@ -323,7 +323,7 @@ public:
    struct get_producer_info_result {
        uint64_t      location;
        std::string   chain_id;
-       fc::time_point_sec genesis_time;
+       chain::block_timestamp genesis_time;
        uint32_t      quit_before_num;
    };
 
