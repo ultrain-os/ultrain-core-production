@@ -7,7 +7,8 @@ var utils = require('../../common/util/utils')
  * @returns {*|void|string|never}
  */
 function formatGensisTime(time) {
-    return time.replace("T"," ");
+    //return time.replace("T"," ");
+    return time;
 }
 
 // let data = "1971-01-24T14:06:00";
