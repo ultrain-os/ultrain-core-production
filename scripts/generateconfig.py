@@ -81,15 +81,15 @@ def load_parameters():
     allIDs = allIDs + IDs
     allNames = allNames + Names
     allIPs = allIPs + IPs
-    allPriKeys = sk_list 
-    allPubKeys = pk_list 
+    allPriKeys = sk_list
+    allPubKeys = pk_list
 
     print(allIDs)
     print(allNames)
     print(allIPs)
 
 def write_config_file():
-        insert_genesis_time()	
+        insert_genesis_time()
         hostip = "config"
         os.system("rm -rf config/" + hostip)
         os.system("mkdir config/" + hostip)
@@ -128,7 +128,7 @@ def insert_genesis_time():
 	cmd = "cp %s %s" % (fname_orig, fname)
 	os.system(cmd)
 	content = readfile(fname)
-	after_time = (datetime.datetime.now()+datetime.timedelta(minutes=2)).strftime("%Y-%m-%d %H:%M") + ":00"
+	after_time = (datetime.datetime.utcnow()+datetime.timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M") + ":00"
 	newcontent = "genesis-time = %s\n" % after_time
 	index_line = content.index("#insert_genesis-time\n")
 	content.insert(index_line+1,newcontent)
@@ -199,4 +199,3 @@ def insert_keys(fname,index_key):
 
 load_parameters()
 write_config_file()
-

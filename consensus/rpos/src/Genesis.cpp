@@ -5,7 +5,7 @@
 namespace ultrainio {
     const std::string Genesis::kGenesisAccount("genesis");
 
-    boost::chrono::system_clock::time_point Genesis::s_time;
+    fc::time_point Genesis::s_time;
 
     int Genesis::s_genesisStartupTime = 60;
 

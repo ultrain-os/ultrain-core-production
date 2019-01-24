@@ -2,13 +2,14 @@
 
 #include <string>
 #include <boost/chrono.hpp>
+#include <fc/time.hpp>
 
 namespace ultrainio {
     class Genesis {
     public:
         static const std::string kGenesisAccount;
 
-        static boost::chrono::system_clock::time_point s_time;
+        static fc::time_point s_time;
 
         static int s_genesisStartupTime;
 

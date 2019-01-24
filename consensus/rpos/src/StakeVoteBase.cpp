@@ -92,11 +92,11 @@ namespace ultrainio {
 
     // static
     bool StakeVoteBase::isGenesisLeaderAndInGenesisPeriod() {
-        boost::chrono::minutes genesisElapsed
-                = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - Genesis::s_time);
-        if ((genesisElapsed < boost::chrono::minutes(Genesis::s_genesisStartupTime))
-                && StakeVoteBase::getMyAccount() == AccountName(Genesis::kGenesisAccount)
-                && !committeeHasWorked()) {
+        fc::time_point current_time = fc::time_point::now();
+        int pass_time_to_genesis_min = (current_time - Genesis::s_time).to_seconds() / 60;
+        if (pass_time_to_genesis_min < Genesis::s_genesisStartupTime
+            && StakeVoteBase::getMyAccount() == AccountName(Genesis::kGenesisAccount)
+            && !committeeHasWorked()) {
             return true;
         }
         return false;
@@ -110,9 +110,9 @@ namespace ultrainio {
     }
 
     bool StakeVoteBase::isGenesisPeriod() const {
-        boost::chrono::minutes genesisElapsed
-                = boost::chrono::duration_cast<boost::chrono::minutes>(boost::chrono::system_clock::now() - Genesis::s_time);
-        if (!committeeHasWorked2() && (genesisElapsed < boost::chrono::minutes(Genesis::s_genesisStartupTime))) {
+        fc::time_point current_time = fc::time_point::now();
+        int pass_time_to_genesis_min = (current_time - Genesis::s_time).to_seconds() / 60;
+        if (!committeeHasWorked2() && (pass_time_to_genesis_min < Genesis::s_genesisStartupTime)) {
             return true;
         }
         return false;

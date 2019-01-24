@@ -275,22 +275,7 @@ fc::time_point calculate_genesis_timestamp( string tstr ) {
    ilog( "Adjusting genesis timestamp to ${timestamp}", ("timestamp", genesis_timestamp) );
    return genesis_timestamp;
 }
-void parse_genesis_timestamp(string& genesis)
-{
-    std::tm t;
 
-    ULTRAIN_ASSERT( 6 == std::sscanf(genesis.data(), "%d-%d-%d %d:%d:%d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min,
-                &t.tm_sec),
-            plugin_config_exception,
-            "Genesis-time format error,should be YYYY-MM-DD HH:MM:SS.");
-
-    std::string::size_type pos = 0;
-    if( (pos=genesis.find(" ", pos)) != std::string::npos )
-    {
-        genesis.replace( pos, 1, "T" );
-    }
-
-}
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
@@ -315,10 +300,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       ULTRAIN_ASSERT( !my->_genesis_time.empty(),
               plugin_config_exception,
               "Genesis-time can not be empty,should be set in config.ini.");
-      fc::time_point genesis_timestamp;
-      parse_genesis_timestamp(my->_genesis_time);
-     // my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(my->_genesis_time);
-      genesis_timestamp =  calculate_genesis_timestamp(my->_genesis_time);
+      fc::time_point genesis_timestamp =  calculate_genesis_timestamp(my->_genesis_time);
       LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );
       LOAD_VALUE_SET( options, "actor-blacklist", my->chain_config->actor_blacklist );
       LOAD_VALUE_SET( options, "contract-whitelist", my->chain_config->contract_whitelist );

@@ -67,7 +67,6 @@ namespace {
 namespace ultrainio {
 
 static appbase::abstract_plugin& _producer_uranus_plugin = app().register_plugin<producer_uranus_plugin>();
-static bool parse_genesis(boost::chrono::system_clock::time_point &out_time_point, const char *time_format);
 
 using namespace ultrainio::chain;
 using namespace ultrainio::chain::plugin_interface;
@@ -635,9 +634,7 @@ void producer_uranus_plugin::plugin_startup()
            plugin_config_exception,
            "Genesis-time can not be empty,should be set in config.ini.");
    if (!my->_genesis_time.empty()) {
-       boost::chrono::system_clock::time_point tp;
-       FC_ASSERT(parse_genesis(tp, my->_genesis_time.data()),
-                 "parse_genesis error ${t}", ("t",my->_genesis_time));
+       fc::time_point tp = fc::time_point::from_iso_string(my->_genesis_time.data());
        nodePtr->setGenesisTime(tp);
    } /*else {
        // Align to the boundary of 5 seconds.
@@ -708,23 +705,6 @@ fc::microseconds producer_uranus_plugin::generate_worldstate() const {
    ilog("generate_worldstate test time: ${time_delta}", ("time_delta", time_delta));
    ilog("*****************************************");
    return {time_delta};
-}
-
-static bool parse_genesis(boost::chrono::system_clock::time_point &out_time_point, const char *time_format) {
-    if (!time_format) {
-        ilog("genesis time parameter error.");
-        return false;
-    }
-    std::tm t;
-    if (6 != std::sscanf(time_format, "%d-%d-%d %d:%d:%d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min,
-                         &t.tm_sec)) {
-        ilog("format error : ${time}", ("time", std::string(time_format)));
-        return false;
-    }
-    t.tm_year -= 1900;
-    t.tm_mon -= 1;
-    out_time_point = boost::chrono::system_clock::from_time_t(std::mktime(&t));
-    return true;
 }
 
 } // namespace ultrainio

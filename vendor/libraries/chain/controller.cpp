@@ -182,7 +182,7 @@ struct controller_impl {
 
    if (conf.worldstate_control){
       ws_manager_ptr = std::make_shared<ws_file_manager>();
-      ws_manager_ptr->set_local_max_count(15);      
+      ws_manager_ptr->set_local_max_count(15);
    }
 
    }

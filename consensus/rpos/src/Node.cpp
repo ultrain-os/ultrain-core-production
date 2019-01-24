@@ -101,8 +101,8 @@ namespace ultrainio {
     }
 
     void UranusNode::readyToJoin() {
-        boost::chrono::system_clock::time_point current_time = boost::chrono::system_clock::now();
-        boost::chrono::seconds pass_time_to_genesis;
+        auto current_time = fc::time_point::now();
+        int64_t pass_time_to_genesis;
 
         if (!m_connected) {
             readyToConnect();
@@ -110,27 +110,25 @@ namespace ultrainio {
             //m_connected = true;
         }
 
-        std::time_t t = boost::chrono::system_clock::to_time_t(current_time);
-        ilog("readyToJoin current_time ${t}", ("t", std::ctime(&t)));
+        ilog("readyToJoin current_time ${t} genesis time ${s}", ("t",current_time)("s",Genesis::s_time));
 
         if (current_time < Genesis::s_time) {
-            pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(Genesis::s_time - current_time);
-
-            if (pass_time_to_genesis.count() > Config::s_maxRoundSeconds) {
+            pass_time_to_genesis = (Genesis::s_time - current_time).to_seconds();
+            if (pass_time_to_genesis > Config::s_maxRoundSeconds) {
                 readyLoop(Config::s_maxRoundSeconds);
-            } else if (pass_time_to_genesis.count() == 0) {
+            } else if (pass_time_to_genesis == 0) {
                 m_ready = true;
                 run();
             } else {
-                readyLoop(pass_time_to_genesis.count());
+                readyLoop(pass_time_to_genesis);
             }
         } else if (Genesis::s_time == current_time) {
             m_ready = true;
             run();
         } else {
-            pass_time_to_genesis = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
+            pass_time_to_genesis = (current_time - Genesis::s_time).to_seconds();
             // run when genesis in startup period
-            if (pass_time_to_genesis.count() == 0 || StakeVoteBase::isGenesisLeaderAndInGenesisPeriod()) {
+            if (pass_time_to_genesis == 0 || StakeVoteBase::isGenesisLeaderAndInGenesisPeriod()) {
                 m_ready = true;
                 run();
             } else {
@@ -895,25 +893,23 @@ namespace ultrainio {
     }
 
     uint32_t UranusNode::getRoundCount() {
-        boost::chrono::system_clock::time_point current_time = boost::chrono::system_clock::now();
-        boost::chrono::seconds pass_time_to_genesis
-                = boost::chrono::duration_cast<boost::chrono::seconds>(current_time - Genesis::s_time);
+        fc::time_point current_time = fc::time_point::now();
+        int64_t pass_time_to_genesis = (current_time - Genesis::s_time).to_seconds();
 
         dlog("getRoundCount. count = ${id}.",
-             ("id", pass_time_to_genesis.count() / Config::s_maxPhaseSeconds));
+             ("id", pass_time_to_genesis / Config::s_maxPhaseSeconds));
 
-        return pass_time_to_genesis.count() / Config::s_maxPhaseSeconds;
+        return pass_time_to_genesis / Config::s_maxPhaseSeconds;
     }
 
     uint32_t UranusNode::getRoundInterval() {
-        boost::chrono::system_clock::time_point current_time = boost::chrono::system_clock::now();
-        boost::chrono::milliseconds pass_time_to_genesis
-                = boost::chrono::duration_cast<boost::chrono::milliseconds>(current_time - Genesis::s_time);
+        fc::time_point current_time = fc::time_point::now();
+        int64_t pass_time_to_genesis_m = (current_time - Genesis::s_time).to_seconds() * 1000;
 
         dlog("getRoundInterval. interval = ${id}.",
-             ("id", 1000 * Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % (1000 * Config::s_maxPhaseSeconds))));
+             ("id", 1000 * Config::s_maxPhaseSeconds - (pass_time_to_genesis_m % (1000 * Config::s_maxPhaseSeconds))));
 
-        return 1000 * Config::s_maxPhaseSeconds - (pass_time_to_genesis.count() % (1000 * Config::s_maxPhaseSeconds));
+        return 1000 * Config::s_maxPhaseSeconds - (pass_time_to_genesis_m % (1000 * Config::s_maxPhaseSeconds));
     }
 
     BlockIdType UranusNode::getPreviousHash() {
@@ -946,10 +942,9 @@ namespace ultrainio {
         return voterSysPtr->getCommitteeMemberNumber();
     }
 
-    void UranusNode::setGenesisTime(const boost::chrono::system_clock::time_point& tp) {
+    void UranusNode::setGenesisTime(const fc::time_point& tp) {
         Genesis::s_time = tp;
-        std::time_t t = boost::chrono::system_clock::to_time_t(Genesis::s_time);
-        ilog("Genesis time is ${t}", ("t", std::ctime(&t)));
+        ilog("Set Genesis time is ${t}", ("t", tp));
     }
 
     void UranusNode::setGenesisStartupTime(int32_t minutes) {

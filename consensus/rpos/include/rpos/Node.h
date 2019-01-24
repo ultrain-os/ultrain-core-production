@@ -138,7 +138,7 @@ namespace ultrainio {
 
         void vote(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount);
 
-        void setGenesisTime(const boost::chrono::system_clock::time_point& tp);
+        void setGenesisTime(const fc::time_point& tp);
 
         void setGenesisStartupTime(int32_t minutes);
 
