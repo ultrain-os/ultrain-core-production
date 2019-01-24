@@ -58,6 +58,7 @@ namespace ultrainiosystem {
       checkresexpire();
       cleanvotetable();
       activate_committee_update();
+      schedule(); //do it after activate committee update
       distributreward();
    }
 

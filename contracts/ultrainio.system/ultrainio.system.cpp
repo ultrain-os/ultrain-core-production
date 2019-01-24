@@ -20,7 +20,8 @@ namespace ultrainiosystem {
     _subchains(_self,_self),
     _pendingminer( _self, _self ),
     _pendingaccount( _self, _self ),
-    _pendingres( _self, _self ) {
+    _pendingres( _self, _self ),
+    _schedsetting(_self, _self) {
       //print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
 
@@ -604,5 +605,5 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // producer_pay.cpp
      (onblock)(claimrewards)
      // scheduler.cpp
-     (regsubchain)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)
+     (regchaintype)(regsubchain)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)(setsched)
 )

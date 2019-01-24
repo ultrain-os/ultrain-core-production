@@ -51,7 +51,7 @@ namespace ultrainio { namespace chain {
 
     struct subchain {
        uint64_t                  chain_name;
-       uint16_t                  chain_type;
+       uint64_t                  chain_type;
        time_point_sec            genesis_time;
        chain_resource            global_resource;
        bool                      is_active;

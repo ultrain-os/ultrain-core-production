@@ -323,7 +323,7 @@ public:
    struct get_producer_info_result {
        uint64_t      location;
        std::string   chain_id;
-       uint64_t      from_location;
+       fc::time_point_sec genesis_time;
        uint32_t      quit_before_num;
    };
 
@@ -672,7 +672,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_params, (ch
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk)(bls_pk) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_ws_hash_params, (chain_name)(height) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(from_location)(quit_before_num) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(genesis_time)(quit_before_num) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );

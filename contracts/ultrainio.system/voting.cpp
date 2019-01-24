@@ -38,7 +38,30 @@ namespace ultrainiosystem {
       ultrainio_assert( url.size() < 512, "url too long" );
       // key is hex encoded
       ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
+
       require_auth( producer );
+      if (location == master_chain_name || location == default_chain_name) {
+          if(location == default_chain_name) {
+              auto ite_chain = _subchains.begin();
+              auto ite_min = _subchains.end();
+              uint32_t min_committee_size = std::numeric_limits<uint32_t>::max();
+              for(; ite_chain != _subchains.end(); ++ite_chain) {
+                  uint32_t my_committee_num = ite_chain->committee_members.size();
+                  if(my_committee_num < min_committee_size ) {
+                      min_committee_size = my_committee_num;
+                      ite_min = ite_chain;
+                  }
+              }
+              ultrainio_assert(ite_min != _subchains.end(), "there's not any sidechain existed" );
+              location = ite_min->chain_name;
+          }
+          //require_auth( producer );
+      }
+      else {
+          auto ite_chain = _subchains.find(uint64_t(location) );
+          ultrainio_assert(ite_chain != _subchains.end(), "wrong location, subchain is not existed");
+          //require_auth( N(ultrainio) ); //pending que or specified subchain
+      }
 
       auto prod = _producers.find( producer );
       if( prod != _producers.end() ) {

@@ -122,12 +122,29 @@
          {"name":"proposeresource", "type":"proposeresource_info[]"}
       ]
     },{
+      "name": "regchaintype",
+      "base": "",
+      "fields": [
+        {"name": "type_id",                 "type": "uint64"},
+        {"name": "min_producer_num",        "type": "uint16"},
+        {"name": "max_producer_num",        "type": "uint16"},
+        {"name": "sched_step",              "type": "uint16"},
+        {"name": "consensus_period",        "type": "uint16"}
+       ]
+    },{
       "name": "regsubchain",
       "base": "",
       "fields": [
         {"name": "chain_name",                 "type": "uint64"},
-        {"name": "chain_type",                 "type": "uint16"},
-        {"name": "genesis_time",               "type": "string"}
+        {"name": "chain_type",                 "type": "uint64"}
+       ]
+    },{
+      "name": "setsched",
+      "base": "",
+      "fields": [
+        {"name": "is_enabled",                 "type": "bool"},
+        {"name": "sched_period",               "type": "uint16"},
+        {"name": "confirm_period",             "type": "uint16"}
        ]
     },{
         "name": "extension",
@@ -339,6 +356,14 @@
          {"name":"end_time", "type":"time_point_sec"}
       ]
     },{
+      "name": "schedule_setting",
+      "base": "",
+      "fields": [
+         {"name":"is_schedule_enabled",      "type":"bool"},
+         {"name":"schedule_period",          "type":"uint16"},
+         {"name":"committee_confirm_period", "type":"uint16"}
+      ]
+    },{
       "name": "blockchain_parameters",
       "base": "",
       "fields": [
@@ -414,11 +439,12 @@
       ]
     },{
      "name": "chaintype",
-      "base": "",
-      "fields": [
-        {"name": "id",                     "type": "uint16"},
-        {"name": "min_producers",          "type": "uint32"},
-        {"name": "max_producers",          "type": "uint32"},
+     "base": "",
+     "fields": [
+        {"name": "type_id",                "type": "uint64"},
+        {"name": "stable_min_producers",   "type": "uint16"},
+        {"name": "stable_max_producers",   "type": "uint16"},
+        {"name": "sched_inc_step",         "type": "uint16"},
         {"name": "consensus_period",       "type": "uint16"}
        ]
     },{
@@ -460,7 +486,7 @@
       "base": "",
       "fields": [
         {"name": "chain_name",                    "type": "uint64"},
-        {"name": "chain_type",                    "type": "uint16"},
+        {"name": "chain_type",                    "type": "uint64"},
         {"name": "genesis_time",                  "type": "time_point_sec"},
         {"name": "global_resource",               "type": "chain_resource"},
         {"name": "is_active",                     "type": "bool"},
@@ -711,6 +737,10 @@
       "type": "voteresourcelease",
       "ricardian_contract": ""
    },{
+      "name": "regchaintype",
+      "type": "regchaintype",
+      "ricardian_contract": ""
+   },{
       "name": "regsubchain",
       "type": "regsubchain",
       "ricardian_contract": ""
@@ -757,6 +787,10 @@
     },{
       "name": "reqauth",
       "type": "require_auth",
+      "ricardian_contract": ""
+    },{
+      "name": "setsched",
+      "type": "setsched",
       "ricardian_contract": ""
     },{
       "name": "setparams",
@@ -842,11 +876,17 @@
       "key_names": ["block_num"],
       "key_types": ["uint64"]
     },{
-      "name": "chaintype",
+      "name": "chaintypes",
       "type": "chaintype",
       "index_type": "i64",
-      "key_names": ["chain_name"],
+      "key_names": ["type_id"],
       "key_types": ["uint64"]
+    },{
+      "name": "schedset",
+      "type": "schedule_setting",
+      "index_type": "i64",
+      "key_names": [],
+      "key_types": []
     }
    ],
    "ricardian_clauses": [],

@@ -169,16 +169,17 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index< N(wshash), subchain_ws_hash>      subchain_hash_table;
 
    struct chaintype {
-       uint16_t id;
-       uint32_t min_producers;
-       uint32_t max_producers;
+       uint64_t type_id;
+       uint16_t stable_min_producers;
+       uint16_t stable_max_producers;
+       uint16_t sched_inc_step;
        uint16_t consensus_period;
 
-       auto primary_key() const { return uint64_t(id); }
+       auto primary_key() const { return type_id; }
 
-       ULTRAINLIB_SERIALIZE(chaintype, (id)(min_producers)(max_producers)(consensus_period) );
+       ULTRAINLIB_SERIALIZE(chaintype, (type_id)(stable_min_producers)(stable_max_producers)(sched_inc_step)(consensus_period) )
    };
-   typedef ultrainio::multi_index< N(chaintype), chaintype > chaintypes_table;
+   typedef ultrainio::multi_index< N(chaintypes), chaintype > chaintypes_table;
 
    struct user_info {
       account_name      user_name;
@@ -201,7 +202,7 @@ namespace ultrainiosystem {
 
    struct subchain {
        uint64_t                  chain_name;
-       uint16_t                  chain_type;
+       uint64_t                  chain_type;
        time                      genesis_time;
        chain_resource            global_resource;
        bool                      is_active;
@@ -220,9 +221,6 @@ namespace ultrainiosystem {
 
        auto primary_key()const { return chain_name; }
 
-       uint32_t get_subchain_min_miner_num() const { return chain_type == 1 ? 20 : 5;}
-       uint32_t get_subchain_max_miner_num() const {return chain_type == 1 ? 1000 : 20;}
-
        ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_active)(is_synced)(committee_members)
                                       (updated_info)(changing_info)(head_block_id)(head_block_num)(users)(chain_id) )
    };
@@ -240,6 +238,13 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE( resources_lease, (owner)(lease_num)(start_time)(end_time) )
    };
    typedef ultrainio::multi_index< N(reslease), resources_lease>      resources_lease_table;
+
+   struct schedule_setting {
+       bool          is_schedule_enabled;
+       uint16_t      schedule_period;
+       uint16_t      committee_confirm_period;
+   };
+   typedef ultrainio::singleton<N(schedset), schedule_setting> sched_set_singleton;
 /*
    struct empower_info {
       uint64_t          chain_name;
@@ -271,7 +276,7 @@ namespace ultrainiosystem {
          pendingminers            _pendingminer;
          pendingaccounts          _pendingaccount;
          pendingresource          _pendingres;
-//         user_table               _users;
+         sched_set_singleton      _schedsetting;
 
       public:
          system_contract( account_name s );
@@ -319,8 +324,11 @@ namespace ultrainiosystem {
 
          void add_subchain_account(const ultrainio::proposeaccount_info& newacc );
         // functions defined in scheduler.cpp
-         void regsubchain(uint64_t chain_name, uint16_t chain_type, time genesis_time);
          void reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size);
+
+         void regchaintype(uint64_t type_id, uint16_t min_producer_num, uint16_t max_producer_num,
+                                   uint16_t sched_step, uint16_t consensus_period);
+         void regsubchain(uint64_t chain_name, uint64_t chain_type);
 
          void acceptheader (uint64_t chain_name,
                             const std::vector<ultrainio::block_header>& headers);
@@ -337,7 +345,8 @@ namespace ultrainiosystem {
                                uint32_t relayer_deposit,
                                const std::string& ip,
                                uint64_t chain_name); */
-         void regchaintype(uint16_t type_id, uint32_t min_producer_num, uint32_t max_producer_num, uint16_t consensus_period);
+
+         void setsched(bool is_enabled, uint16_t sched_period, uint16_t confirm_period);
 
          void votecommittee();
 
@@ -371,19 +380,31 @@ namespace ultrainiosystem {
 
          void activate_committee_update(); //called in onblock, loop for all subchains and activate their committee update
 
+         void schedule(); //called in onblock every 24h defaultly.
+
          void getKeydata(const std::string& pubkey,std::array<char,33> & data);
 
          void checkresexpire();
 
          void cleanvotetable();
 
-         chaintype get_subchain_basic_info(uint16_t chain_type) const;
-
          void syncresource(account_name receiver, int64_t combosize, time endtime);
 
          void distributreward();
 
          void checkvotefrequency(ultrainiosystem::producers_table::const_iterator propos);
+
+         void move_producer(checksum256 head_id, subchains_table::const_iterator from_iter, uint64_t to_chain_name, uint16_t index);
    };
 
 } /// ultrainiosystem
+
+   #ifdef __cplusplus
+   extern "C" {
+   #endif
+
+    void head_block_id(char* buffer, uint32_t buffer_size);
+
+   #ifdef __cplusplus
+   }
+   #endif

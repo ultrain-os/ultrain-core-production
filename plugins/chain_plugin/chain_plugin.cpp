@@ -1045,7 +1045,6 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
     auto index_type = get_table_type( abi, table );
     read_only::get_producer_info_result result;
     result.location = std::numeric_limits<uint64_t>::max();
-    result.from_location = std::numeric_limits<uint64_t>::max();
     walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
        producer_info producer_data;
        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
@@ -1061,6 +1060,7 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
 
     if(result.location == 0) {
         result.chain_id = db.get_chain_id();
+        result.genesis_time = time_point_sec(0); //TODO, modify as master genesis time
     }
     else if (result.location != std::numeric_limits<uint64_t>::max()) {
         table = N(subchains);
@@ -1071,6 +1071,7 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
             fc::raw::unpack(ds, subchain_data);
             if(result.location == subchain_data.chain_name) {
                 result.chain_id = string(subchain_data.chain_id);
+                result.genesis_time = subchain_data.genesis_time;
                 return false;
             }
             else {
@@ -1078,7 +1079,6 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
             }
         });
     }
-    result.from_location = 0;
     result.quit_before_num = 0; // todo, quey it from table
     return result;
 }
