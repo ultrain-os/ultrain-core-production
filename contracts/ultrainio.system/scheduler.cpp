@@ -9,6 +9,10 @@ namespace ultrainiosystem {
     void system_contract::regchaintype(uint64_t type_id, uint16_t min_producer_num, uint16_t max_producer_num,
                                        uint16_t sched_step, uint16_t consensus_period) {
         require_auth(N(ultrainio));
+        ultrainio_assert(min_producer_num >= 4, "wrong min_producer_num, at least 4 producers is required for a chain");
+        ultrainio_assert(min_producer_num < max_producer_num, "max_producer_num must grater than min_producer_num");
+        ultrainio_assert(sched_step > 1 && sched_step <= 100, "sched_step should in scope [2, 100]");
+        ultrainio_assert(consensus_period > 1 && consensus_period <= 10, "consensus_period should in scope [2, 10]");
         chaintypes_table type_tbl(_self, _self);
         auto typeiter = type_tbl.find(type_id);
         if (typeiter == type_tbl.end()) {
@@ -563,13 +567,14 @@ namespace ultrainiosystem {
         auto min_sched_chain  = out_list.end();
         min_sched_chain--;
 
+        print("step 1:\n");
         auto out_iter = out_list.begin();
         for(; out_iter != min_sched_chain && compare_gt(*out_iter, *min_sched_chain) ; ++out_iter) {
-            print("step 1: out chain: ", out_iter->chain_ite->chain_name);
+            print("out chain: ", out_iter->chain_ite->chain_name);
             print(" can move out: ", uint32_t(out_iter->sched_out_num));
             print("producers to in chain: ", min_sched_chain->chain_ite->chain_name, "\n");
             for(uint16_t out_idx = 0; out_idx < out_iter->sched_out_num; ++out_idx ) {
-                move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite->chain_name, out_idx);
+                move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, out_idx);
                 --min_sched_chain->gap_to_next_level;
                 if(0 == min_sched_chain->gap_to_next_level) {
                     --min_sched_chain; //one chain can only increase one level in a scheduling loop
@@ -587,21 +592,22 @@ namespace ultrainiosystem {
         auto chain_from = out_list.begin();
         auto chain_to = out_list.begin();
         ++chain_to;
-        print("step 2: ");
+        print("step 2:\n");
         for(; chain_to != out_list.end(); ++chain_from, ++chain_to) {
             print("from chain: ", chain_from->chain_ite->chain_name);
             print(" to chain: ", chain_to->chain_ite->chain_name, "\n");
-            move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite->chain_name, 0);
+            move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, 0);
         }
         chain_from = out_list.end();
         --chain_from;
         chain_to = out_list.begin();
         print("from chain: ", chain_from->chain_ite->chain_name);
         print(" to chain: ", chain_to->chain_ite->chain_name, "\n");
-        move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite->chain_name, 0);
+        move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, 0);
     }
 
-    void system_contract::move_producer(checksum256 head_id, subchains_table::const_iterator from_iter, uint64_t to_chain_name, uint16_t index) {
+    void system_contract::move_producer(checksum256 head_id, subchains_table::const_iterator from_iter,
+                                        subchains_table::const_iterator to_iter, uint16_t index) {
         index = index % 25;
         uint32_t x = uint32_t(head_id.hash[31 - index]);
         //filter the the producers which has been scheduled out in this loop.
@@ -622,12 +628,37 @@ namespace ultrainiosystem {
         auto producer = schedule_producers[x % totalsize];
         auto producer_iter = _producers.find(producer);
         ultrainio_assert(producer_iter != _producers.end(), "producer is not found");
-        print("move ", name{producer}, " to ", to_chain_name, "\n");
+        print("move ", name{producer}, " to ", to_iter->chain_name, "\n");
+        //check user before move
+        auto user_iter = to_iter->users.begin();
+        for(; user_iter != to_iter->users.end(); ++user_iter) {
+            if(user_iter->user_name == producer) {
+                break;
+            }
+        }
+        if(user_iter == to_iter->users.end()) {
+            //not found
+            auto user_iter_from = from_iter->users.begin();
+            for(; user_iter_from != from_iter->users.end(); ++user_iter_from) {
+                if(user_iter_from->user_name == producer) {
+                    break;
+                }
+            }
+            ultrainio_assert(user_iter_from != from_iter->users.end(), "user was not empowered to the source chain");
+            user_info tempuser = *user_iter_from;
+            tempuser.emp_time = current_time();
+            tempuser.block_num = (uint32_t)tapos_block_num();
+
+            _subchains.modify(to_iter, N(ultrainio), [&]( auto& _chain ) {
+                _chain.users.push_back(tempuser);
+            });
+        }
+        //move producer
         _producers.modify( producer_iter, 0, [&]( producer_info& info ) {
-               info.location     = to_chain_name;
+               info.location     = to_iter->chain_name;
         });
         remove_from_subchain(from_iter->chain_name, producer);
-        add_to_subchain(to_chain_name, producer, producer_iter->producer_key, producer_iter->bls_key);
+        add_to_subchain(to_iter->chain_name, producer, producer_iter->producer_key, producer_iter->bls_key);
     }
 
     void system_contract::setsched(bool is_enabled, uint16_t sched_period, uint16_t confirm_period) {
@@ -635,6 +666,7 @@ namespace ultrainiosystem {
 
         ultrainio_assert(sched_period <= 1440*7, "scheduling period is overlong, it's supposed at least once a week."); //60m*24h = minutes per day, perform scheduling at least once a week;
         ultrainio_assert(confirm_period <= 60, "committee update confirm time is overlong, the maximum time is 60 minutes");
+        ultrainio_assert(confirm_period < sched_period, "committee update confirm time must lesser than scheduling period");
 
         schedule_setting temp;
         temp.is_schedule_enabled = is_enabled;

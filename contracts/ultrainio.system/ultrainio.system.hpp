@@ -394,7 +394,8 @@ namespace ultrainiosystem {
 
          void checkvotefrequency(ultrainiosystem::producers_table::const_iterator propos);
 
-         void move_producer(checksum256 head_id, subchains_table::const_iterator from_iter, uint64_t to_chain_name, uint16_t index);
+         void move_producer(checksum256 head_id, subchains_table::const_iterator from_iter,
+                            subchains_table::const_iterator to_iter, uint16_t index);
    };
 
 } /// ultrainiosystem
