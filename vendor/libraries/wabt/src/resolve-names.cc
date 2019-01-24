@@ -43,17 +43,23 @@ class NameResolver : public ExprVisitor::DelegateNop {
   Result OnBrTableExpr(BrTableExpr*) override;
   Result OnCallExpr(CallExpr*) override;
   Result OnCallIndirectExpr(CallIndirectExpr*) override;
-  Result OnGetGlobalExpr(GetGlobalExpr*) override;
-  Result OnGetLocalExpr(GetLocalExpr*) override;
+  Result OnReturnCallExpr(ReturnCallExpr *) override;
+  Result OnReturnCallIndirectExpr(ReturnCallIndirectExpr*) override;
+  Result OnGlobalGetExpr(GlobalGetExpr*) override;
+  Result OnGlobalSetExpr(GlobalSetExpr*) override;
   Result BeginIfExpr(IfExpr*) override;
   Result EndIfExpr(IfExpr*) override;
   Result BeginIfExceptExpr(IfExceptExpr*) override;
   Result EndIfExceptExpr(IfExceptExpr*) override;
+  Result OnLocalGetExpr(LocalGetExpr*) override;
+  Result OnLocalSetExpr(LocalSetExpr*) override;
+  Result OnLocalTeeExpr(LocalTeeExpr*) override;
   Result BeginLoopExpr(LoopExpr*) override;
   Result EndLoopExpr(LoopExpr*) override;
-  Result OnSetGlobalExpr(SetGlobalExpr*) override;
-  Result OnSetLocalExpr(SetLocalExpr*) override;
-  Result OnTeeLocalExpr(TeeLocalExpr*) override;
+  Result OnMemoryDropExpr(MemoryDropExpr*) override;
+  Result OnMemoryInitExpr(MemoryInitExpr*) override;
+  Result OnTableDropExpr(TableDropExpr*) override;
+  Result OnTableInitExpr(TableInitExpr*) override;
   Result BeginTryExpr(TryExpr*) override;
   Result EndTryExpr(TryExpr*) override;
   Result OnThrowExpr(ThrowExpr*) override;
@@ -63,6 +69,9 @@ class NameResolver : public ExprVisitor::DelegateNop {
   void PushLabel(const std::string& label);
   void PopLabel();
   void CheckDuplicateBindings(const BindingHash* bindings, const char* desc);
+  void PrintDuplicateBindingsError(const BindingHash::value_type&,
+                                   const BindingHash::value_type&,
+                                   const char* desc);
   void ResolveLabelVar(Var* var);
   void ResolveVar(const BindingHash* bindings, Var* var, const char* desc);
   void ResolveFuncVar(Var* var);
@@ -71,6 +80,8 @@ class NameResolver : public ExprVisitor::DelegateNop {
   void ResolveTableVar(Var* var);
   void ResolveMemoryVar(Var* var);
   void ResolveExceptionVar(Var* var);
+  void ResolveDataSegmentVar(Var* var);
+  void ResolveElemSegmentVar(Var* var);
   void ResolveLocalVar(Var* var);
   void ResolveBlockDeclarationVar(BlockDeclaration* decl);
   void VisitFunc(Func* func);
@@ -117,12 +128,18 @@ void NameResolver::CheckDuplicateBindings(const BindingHash* bindings,
                                           const char* desc) {
   bindings->FindDuplicates([this, desc](const BindingHash::value_type& a,
                                         const BindingHash::value_type& b) {
-    // Choose the location that is later in the file.
-    const Location& a_loc = a.second.loc;
-    const Location& b_loc = b.second.loc;
-    const Location& loc = a_loc.line > b_loc.line ? a_loc : b_loc;
-    PrintError(&loc, "redefinition of %s \"%s\"", desc, a.first.c_str());
+    PrintDuplicateBindingsError(a, b, desc);
   });
+}
+
+void NameResolver::PrintDuplicateBindingsError(const BindingHash::value_type& a,
+                                               const BindingHash::value_type& b,
+                                               const char* desc) {
+  // Choose the location that is later in the file.
+  const Location& a_loc = a.second.loc;
+  const Location& b_loc = b.second.loc;
+  const Location& loc = a_loc.line > b_loc.line ? a_loc : b_loc;
+  PrintError(&loc, "redefinition of %s \"%s\"", desc, a.first.c_str());
 }
 
 void NameResolver::ResolveLabelVar(Var* var) {
@@ -176,6 +193,14 @@ void NameResolver::ResolveMemoryVar(Var* var) {
 
 void NameResolver::ResolveExceptionVar(Var* var) {
   ResolveVar(&current_module_->except_bindings, var, "exception");
+}
+
+void NameResolver::ResolveDataSegmentVar(Var* var) {
+  ResolveVar(&current_module_->data_segment_bindings, var, "data segment");
+}
+
+void NameResolver::ResolveElemSegmentVar(Var* var) {
+  ResolveVar(&current_module_->elem_segment_bindings, var, "elem segment");
 }
 
 void NameResolver::ResolveLocalVar(Var* var) {
@@ -252,13 +277,25 @@ Result NameResolver::OnCallIndirectExpr(CallIndirectExpr* expr) {
   return Result::Ok;
 }
 
-Result NameResolver::OnGetGlobalExpr(GetGlobalExpr* expr) {
+Result NameResolver::OnReturnCallExpr(ReturnCallExpr* expr) {
+  ResolveFuncVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnReturnCallIndirectExpr(ReturnCallIndirectExpr* expr) {
+  if (expr->decl.has_func_type) {
+    ResolveFuncTypeVar(&expr->decl.type_var);
+  }
+  return Result::Ok;
+}
+
+Result NameResolver::OnGlobalGetExpr(GlobalGetExpr* expr) {
   ResolveGlobalVar(&expr->var);
   return Result::Ok;
 }
 
-Result NameResolver::OnGetLocalExpr(GetLocalExpr* expr) {
-  ResolveLocalVar(&expr->var);
+Result NameResolver::OnGlobalSetExpr(GlobalSetExpr* expr) {
+  ResolveGlobalVar(&expr->var);
   return Result::Ok;
 }
 
@@ -285,18 +322,38 @@ Result NameResolver::EndIfExceptExpr(IfExceptExpr* expr) {
   return Result::Ok;
 }
 
-Result NameResolver::OnSetGlobalExpr(SetGlobalExpr* expr) {
-  ResolveGlobalVar(&expr->var);
-  return Result::Ok;
-}
-
-Result NameResolver::OnSetLocalExpr(SetLocalExpr* expr) {
+Result NameResolver::OnLocalGetExpr(LocalGetExpr* expr) {
   ResolveLocalVar(&expr->var);
   return Result::Ok;
 }
 
-Result NameResolver::OnTeeLocalExpr(TeeLocalExpr* expr) {
+Result NameResolver::OnLocalSetExpr(LocalSetExpr* expr) {
   ResolveLocalVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnLocalTeeExpr(LocalTeeExpr* expr) {
+  ResolveLocalVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnMemoryDropExpr(MemoryDropExpr* expr) {
+  ResolveDataSegmentVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnMemoryInitExpr(MemoryInitExpr* expr) {
+  ResolveDataSegmentVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnTableDropExpr(TableDropExpr* expr) {
+  ResolveElemSegmentVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnTableInitExpr(TableInitExpr* expr) {
+  ResolveElemSegmentVar(&expr->var);
   return Result::Ok;
 }
 
@@ -322,8 +379,12 @@ void NameResolver::VisitFunc(Func* func) {
     ResolveFuncTypeVar(&func->decl.type_var);
   }
 
-  CheckDuplicateBindings(&func->param_bindings, "parameter");
-  CheckDuplicateBindings(&func->local_bindings, "local");
+  func->bindings.FindDuplicates(
+      [=](const BindingHash::value_type& a, const BindingHash::value_type& b) {
+        const char* desc =
+            (a.second.index < func->GetNumParams()) ? "parameter" : "local";
+        PrintDuplicateBindingsError(a, b, desc);
+      });
 
   visitor_.VisitFunc(func);
   current_func_ = nullptr;

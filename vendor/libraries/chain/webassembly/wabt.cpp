@@ -3,8 +3,8 @@
 #include <ultrainio/chain/wasm_ultrainio_constraints.hpp>
 
 //wabt includes
-#include <src/interp.h>
-#include <src/binary-reader-interp.h>
+#include <src/interp/interp.h>
+#include <src/interp/binary-reader-interp.h>
 #include <src/error-formatter.h>
 
 namespace ultrainio { namespace chain { namespace webassembly { namespace wabt_runtime {

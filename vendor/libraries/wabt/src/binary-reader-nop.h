@@ -154,7 +154,9 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   /* Code section */
   Result BeginCodeSection(Offset size) override { return Result::Ok; }
   Result OnFunctionBodyCount(Index count) override { return Result::Ok; }
-  Result BeginFunctionBody(Index index) override { return Result::Ok; }
+  Result BeginFunctionBody(Index index, Offset size) override {
+    return Result::Ok;
+  }
   Result OnLocalDeclCount(Index count) override { return Result::Ok; }
   Result OnLocalDecl(Index decl_index, Index count, Type type) override {
     return Result::Ok;
@@ -197,7 +199,7 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   Result OnAtomicWaitExpr(Opcode, uint32_t, Address) override {
     return Result::Ok;
   }
-  Result OnAtomicWakeExpr(Opcode, uint32_t, Address) override {
+  Result OnAtomicNotifyExpr(Opcode, uint32_t, Address) override {
     return Result::Ok;
   }
   Result OnBinaryExpr(Opcode opcode) override { return Result::Ok; }
@@ -221,8 +223,8 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   Result OnF32ConstExpr(uint32_t value_bits) override { return Result::Ok; }
   Result OnF64ConstExpr(uint64_t value_bits) override { return Result::Ok; }
   Result OnV128ConstExpr(v128 value_bits) override { return Result::Ok; }
-  Result OnGetGlobalExpr(Index global_index) override { return Result::Ok; }
-  Result OnGetLocalExpr(Index local_index) override { return Result::Ok; }
+  Result OnGlobalGetExpr(Index global_index) override { return Result::Ok; }
+  Result OnGlobalSetExpr(Index global_index) override { return Result::Ok; }
   Result OnI32ConstExpr(uint32_t value) override { return Result::Ok; }
   Result OnI64ConstExpr(uint64_t value) override { return Result::Ok; }
   Result OnIfExpr(Type sig_type) override { return Result::Ok; }
@@ -234,21 +236,30 @@ class BinaryReaderNop : public BinaryReaderDelegate {
                     Address offset) override {
     return Result::Ok;
   }
+  Result OnLocalGetExpr(Index local_index) override { return Result::Ok; }
+  Result OnLocalSetExpr(Index local_index) override { return Result::Ok; }
+  Result OnLocalTeeExpr(Index local_index) override { return Result::Ok; }
   Result OnLoopExpr(Type sig_type) override { return Result::Ok; }
+  Result OnMemoryCopyExpr() override { return Result::Ok; }
+  Result OnMemoryDropExpr(Index segment_index) override { return Result::Ok; }
+  Result OnMemoryFillExpr() override { return Result::Ok; }
   Result OnMemoryGrowExpr() override { return Result::Ok; }
+  Result OnMemoryInitExpr(Index segment_index) override { return Result::Ok; }
   Result OnMemorySizeExpr() override { return Result::Ok; }
+  Result OnTableCopyExpr() override { return Result::Ok; }
+  Result OnTableDropExpr(Index segment_index) override { return Result::Ok; }
+  Result OnTableInitExpr(Index segment_index) override { return Result::Ok; }
   Result OnNopExpr() override { return Result::Ok; }
   Result OnRethrowExpr() override { return Result::Ok; }
+  Result OnReturnCallExpr(Index sig_index) override { return Result::Ok; }
+  Result OnReturnCallIndirectExpr(Index sig_index) override { return Result::Ok; }
   Result OnReturnExpr() override { return Result::Ok; }
   Result OnSelectExpr() override { return Result::Ok; }
-  Result OnSetGlobalExpr(Index global_index) override { return Result::Ok; }
-  Result OnSetLocalExpr(Index local_index) override { return Result::Ok; }
   Result OnStoreExpr(Opcode opcode,
                      uint32_t alignment_log2,
                      Address offset) override {
     return Result::Ok;
   }
-  Result OnTeeLocalExpr(Index local_index) override { return Result::Ok; }
   Result OnThrowExpr(Index depth) override { return Result::Ok; }
   Result OnTryExpr(Type sig_type) override { return Result::Ok; }
   Result OnUnaryExpr(Opcode opcode) override { return Result::Ok; }
@@ -266,7 +277,7 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   /* Elem section */
   Result BeginElemSection(Offset size) override { return Result::Ok; }
   Result OnElemSegmentCount(Index count) override { return Result::Ok; }
-  Result BeginElemSegment(Index index, Index table_index) override {
+  Result BeginElemSegment(Index index, Index table_index, bool passive) override {
     return Result::Ok;
   }
   Result BeginElemSegmentInitExpr(Index index) override { return Result::Ok; }
@@ -283,7 +294,7 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   /* Data section */
   Result BeginDataSection(Offset size) override { return Result::Ok; }
   Result OnDataSegmentCount(Index count) override { return Result::Ok; }
-  Result BeginDataSegment(Index index, Index memory_index) override {
+  Result BeginDataSegment(Index index, Index memory_index, bool passive) override {
     return Result::Ok;
   }
   Result BeginDataSegmentInitExpr(Index index) override { return Result::Ok; }
@@ -356,6 +367,18 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   }
   Result EndExceptionSection() override { return Result::Ok; }
 
+  /* Dylink section */
+  Result BeginDylinkSection(Offset size) override { return Result::Ok; }
+  Result OnDylinkInfo(uint32_t mem_size,
+                      uint32_t mem_align,
+                      uint32_t table_size,
+                      uint32_t table_align) override {
+    return Result::Ok;
+  }
+  Result OnDylinkNeededCount(Index count) override { return Result::Ok; }
+  Result OnDylinkNeeded(string_view so_name) override { return Result::Ok; }
+  Result EndDylinkSection() override { return Result::Ok; }
+
   /* Linking section */
   Result BeginLinkingSection(Offset size) override { return Result::Ok; }
   Result OnSymbolCount(Index count) override { return Result::Ok; }
@@ -413,7 +436,7 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   Result OnInitExprV128ConstExpr(Index index, v128 value) override {
     return Result::Ok;
   }
-  Result OnInitExprGetGlobalExpr(Index index, Index global_index) override {
+  Result OnInitExprGlobalGetExpr(Index index, Index global_index) override {
     return Result::Ok;
   }
   Result OnInitExprI32ConstExpr(Index index, uint32_t value) override {

@@ -1,15 +1,20 @@
-[![Build Status](https://travis-ci.org/WebAssembly/wabt.svg?branch=master)](https://travis-ci.org/WebAssembly/wabt) [![Windows status](https://ci.appveyor.com/api/projects/status/79hqj5l0qggw645d/branch/master?svg=true)](https://ci.appveyor.com/project/WebAssembly/wabt/branch/master)
+[![Build Status](https://travis-ci.org/WebAssembly/wabt.svg?branch=master)](https://travis-ci.org/WebAssembly/wabt) [![Windows status](https://ci.appveyor.com/api/projects/status/8vl5jwtk5ch6r84t/branch/master?svg=true)](https://ci.appveyor.com/project/WebAssembly/wabt/branch/master)
 
 # WABT: The WebAssembly Binary Toolkit
 
 WABT (we pronounce it "wabbit") is a suite of tools for WebAssembly, including:
 
- - **wat2wasm**: translate from [WebAssembly text format](https://webassembly.github.io/spec/core/text/index.html) to the [WebAssembly binary format](https://webassembly.github.io/spec/core/binary/index.html)
- - **wasm2wat**: the inverse of wat2wasm, translate from the binary format back to the text format (also known as a .wat)
- - **wasm-objdump**: print information about a wasm binary. Similiar to objdump.
- - **wasm-interp**: decode and run a WebAssembly binary file using a stack-based interpreter
- - **wat-desugar**: parse .wat text form as supported by the spec interpreter (s-expressions, flat syntax, or mixed) and print "canonical" flat format
- - **wasm2c**: convert a WebAssembly binary file to a C source and header
+ - [**wat2wasm**](https://webassembly.github.io/wabt/doc/wat2wasm.1.html): translate from [WebAssembly text format](https://webassembly.github.io/spec/core/text/index.html) to the [WebAssembly binary format](https://webassembly.github.io/spec/core/binary/index.html)
+ - [**wasm2wat**](https://webassembly.github.io/wabt/doc/wasm2wat.1.html): the inverse of wat2wasm, translate from the binary format back to the text format (also known as a .wat)
+ - [**wasm-objdump**](https://webassembly.github.io/wabt/doc/wasm-objdump.1.html): print information about a wasm binary. Similiar to objdump.
+ - [**wasm-interp**](https://webassembly.github.io/wabt/doc/wasm-interp.1.html): decode and run a WebAssembly binary file using a stack-based interpreter
+ - [**wat-desugar**](https://webassembly.github.io/wabt/doc/wat-desugar.1.html): parse .wat text form as supported by the spec interpreter (s-expressions, flat syntax, or mixed) and print "canonical" flat format
+ - [**wasm2c**](https://webassembly.github.io/wabt/doc/wasm2c.1.html): convert a WebAssembly binary file to a C source and header
+ - [**wasm-strip**](https://webassembly.github.io/wabt/doc/wasm-strip.1.html): remove sections of a WebAssembly binary file
+ - [**wasm-validate**](https://webassembly.github.io/wabt/doc/wasm-validate.1.html): validate a file in the WebAssembly binary format
+ - [**wast2json**](https://webassembly.github.io/wabt/doc/wast2json.1.html): convert a file in the wasm spec test format to a JSON file and associated wasm binary files
+ - [**wasm-opcodecnt**](https://webassembly.github.io/wabt/doc/wasm-opcodecnt.1.html): count opcode usage for instructions
+ - [**spectest-interp**](https://webassembly.github.io/wabt/doc/spectest-interp.1.html): read a Spectest JSON file, and run its tests in the interpreter
 
 These tools are intended for use in (or for development of) toolchains or other
 systems that want to manipulate WebAssembly files. Unlike the WebAssembly spec
@@ -24,9 +29,9 @@ target; instead they aim for full fidelity and compliance with the spec (e.g.
 
 Wabt has been compiled to JavaScript via emscripten. Some of the functionality is available in the following demos:
 
-- [index](https://cdn.rawgit.com/WebAssembly/wabt/e0719fe0/demo/index.html)
-- [wat2wasm](https://cdn.rawgit.com/WebAssembly/wabt/e0719fe0/demo/wat2wasm/)
-- [wasm2wat](https://cdn.rawgit.com/WebAssembly/wabt/e0719fe0/demo/wasm2wat/)
+- [index](https://webassembly.github.io/wabt/demo/)
+- [wat2wasm](https://webassembly.github.io/wabt/demo/wat2wasm/)
+- [wasm2wat](https://webassembly.github.io/wabt/demo/wasm2wat/)
 
 ## Cloning
 
@@ -39,10 +44,32 @@ $ cd wabt
 
 This will fetch the testsuite and gtest repos, which are needed for some tests.
 
-## Building (macOS and Linux)
+## Building using CMake directly (Linux and macOS)
 
-You'll need [CMake](https://cmake.org). If you just run `make`, it will run
-CMake for you, and put the result in `out/clang/Debug/` by default:
+You'll need [CMake](https://cmake.org). You can then run CMake, the normal way:
+
+```console
+$ mkdir build
+$ cd build
+$ cmake ..
+...
+```
+
+This will produce build files using CMake's default build generator. Read the CMake
+documentation for more information.
+
+**NOTE**: You must create a separate directory for the build artifacts (e.g. `build` above).
+Running `cmake` from the repo root directory will not work since the build produces an
+executable called `wasm2c` which conflicts with the `wasm2c` directory.
+
+## Building using the top-level `Makefile` (Linux and macOS)
+
+**NOTE**: Under the hood, this uses `make` to run CMake, which then calls `make` again.
+On some systems (typically macOS), this doesn't build properly. If you see these errors,
+you can build using CMake directly as described above.
+
+You'll need [CMake](https://cmake.org). If you just run `make`, it will run CMake for you, 
+and put the result in `out/clang/Debug/` by default:
 
 > Note: If you are on macOS, you will need to use CMake version 3.2 or higher
 
@@ -69,15 +96,6 @@ $ make clang-debug
 $ make gcc-i686-release
 $ make clang-debug-lsan
 $ make gcc-debug-no-re2c
-```
-
-You can also run CMake yourself, the normal way:
-
-```console
-$ mkdir build
-$ cd build
-$ cmake ..
-...
 ```
 
 ## Building (Windows)
@@ -155,7 +173,7 @@ You can use `--help` to get additional help:
 $ out/wat2wasm --help
 ```
 
-Or try the [online demo](https://cdn.rawgit.com/WebAssembly/wabt/e0719fe0/demo/wat2wasm/).
+Or try the [online demo](https://webassembly.github.io/wabt/demo/wat2wasm/).
 
 ## Running wasm2wat
 
@@ -175,7 +193,7 @@ You can use `--help` to get additional help:
 $ out/wasm2wat --help
 ```
 
-Or try the [online demo](https://cdn.rawgit.com/WebAssembly/wabt/e0719fe0/demo/wasm2wat/).
+Or try the [online demo](https://webassembly.github.io/wabt/demo/wasm2wat/).
 
 ## Running wasm-interp
 

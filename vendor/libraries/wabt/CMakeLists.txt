@@ -26,6 +26,7 @@ option(USE_LSAN "Use leak sanitizer" OFF)
 option(USE_UBSAN "Use undefined behavior sanitizer" OFF)
 option(CODE_COVERAGE "Build with code coverage enabled" OFF)
 option(WITH_EXCEPTIONS "Build with exceptions enabled" OFF)
+option(WERROR "Build with warnings as errors" OFF)
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
   set(COMPILER_IS_CLANG 1)
@@ -79,7 +80,11 @@ if (COMPILER_IS_MSVC)
   #   seems to not like float compare w/ HUGE_VALF; bug?
   # disable warnings C4267 and C4244: conversion/truncation from larger to smaller type.
   # disable warning C4800: implicit conversion from larger int to bool
-  add_definitions(-W3 -wd4018 -wd4056 -wd4756 -wd4267 -wd4244 -wd4800 -WX -D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS)
+  add_definitions(-W3 -wd4018 -wd4056 -wd4756 -wd4267 -wd4244 -wd4800 -D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS)
+
+  if (WERROR)
+    add_definitions(-WX)
+  endif ()
 
   if (NOT WITH_EXCEPTIONS)
     # disable exception use in C++ library
@@ -90,11 +95,15 @@ else ()
   #   interfaces, etc.
   # disable -Wpointer-arith: this is a GCC extension, and doesn't work in MSVC.
   add_definitions(
-    -Wall -Wextra -Werror -Wno-unused-parameter -Wpointer-arith -g
+    -Wall -Wextra -Wno-unused-parameter -Wpointer-arith -g
     -Wuninitialized
   )
 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wold-style-cast")
+
+  if (WERROR)
+    add_definitions(-Werror)
+  endif ()
 
   if (NOT WITH_EXCEPTIONS)
     add_definitions(-fno-exceptions)
@@ -213,52 +222,50 @@ endif ()
 add_custom_target(everything)
 
 add_library(wabt STATIC
-  src/token.cc
-  src/opcode.cc
-  src/opcode-code-table.c
-  src/error-formatter.cc
-  src/hash-util.cc
-  src/filenames.cc
-  src/string-view.cc
-  src/ir.cc
-  src/expr-visitor.cc
-  src/lexer-source.cc
-  src/lexer-source-line-finder.cc
-  ${WAST_LEXER_GEN_CC}
-  src/wast-parser.cc
-  src/type-checker.cc
-  src/validator.cc
-
+  src/apply-names.cc
+  src/binary.cc
   src/binary-reader.cc
+  src/binary-reader-ir.cc
   src/binary-reader-logging.cc
   src/binary-writer.cc
   src/binary-writer-spec.cc
-  src/binary-reader-ir.cc
   src/binding-hash.cc
-  src/wat-writer.cc
-  src/interp.cc
-  src/binary-reader-interp.cc
-  src/apply-names.cc
-  src/generate-names.cc
-  src/resolve-names.cc
-
-  src/binary.cc
   src/color.cc
   src/common.cc
   src/config.cc
+  src/error-formatter.cc
+  src/expr-visitor.cc
   src/feature.cc
+  src/filenames.cc
+  src/generate-names.cc
+  src/hash-util.cc
+  src/ir.cc
   src/leb128.cc
+  src/lexer-source.cc
+  src/lexer-source-line-finder.cc
   src/literal.cc
+  src/opcode.cc
+  src/opcode-code-table.c
   src/option-parser.cc
+  src/resolve-names.cc
   src/stream.cc
+  src/string-view.cc
+  src/token.cc
   src/tracing.cc
+  src/type-checker.cc
   src/utf8.cc
+  src/validator.cc
+  src/wast-parser.cc
+  src/wat-writer.cc
+  ${WAST_LEXER_GEN_CC}
+
+  # TODO(binji): Move this into its own library?
+  src/interp/binary-reader-interp.cc
+  src/interp/interp.cc
+  src/interp/interp-disassemble.cc
+  src/interp/interp-trace.cc
 )
-install( TARGETS wabt 
-   RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
-   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-   ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-)
+
 
 if (NOT EMSCRIPTEN)
   if (CODE_COVERAGE)
@@ -410,6 +417,7 @@ if (NOT EMSCRIPTEN)
 
     # wabt-unittests
     set(UNITTESTS_SRCS
+      src/test-binary-reader.cc
       src/test-circular-array.cc
       src/test-interp.cc
       src/test-intrusive-list.cc
@@ -425,22 +433,22 @@ if (NOT EMSCRIPTEN)
       SOURCES ${UNITTESTS_SRCS}
       LIBS libgtest ${CMAKE_THREAD_LIBS_INIT}
     )
-  endif ()
 
-  if (NOT CMAKE_VERSION VERSION_LESS "3.2")
-    set(USES_TERMINAL USES_TERMINAL)
-  endif ()
+    if (NOT CMAKE_VERSION VERSION_LESS "3.2")
+      set(USES_TERMINAL USES_TERMINAL)
+    endif ()
 
-  # test running
-  find_package(PythonInterp 2.7 REQUIRED)
-  set(RUN_TESTS_PY ${WABT_SOURCE_DIR}/test/run-tests.py)
-  add_custom_target(run-tests
-    COMMAND ${CMAKE_BINARY_DIR}/wabt-unittests
-    COMMAND ${PYTHON_EXECUTABLE} ${RUN_TESTS_PY} --bindir ${CMAKE_BINARY_DIR}
-    DEPENDS ${WABT_EXECUTABLES}
-    WORKING_DIRECTORY ${WABT_SOURCE_DIR}
-    ${USES_TERMINAL}
-  )
+    # test running
+    find_package(PythonInterp 2.7 REQUIRED)
+    set(RUN_TESTS_PY ${WABT_SOURCE_DIR}/test/run-tests.py)
+    add_custom_target(run-tests
+      COMMAND ${CMAKE_BINARY_DIR}/wabt-unittests
+      COMMAND ${PYTHON_EXECUTABLE} ${RUN_TESTS_PY} --bindir ${CMAKE_BINARY_DIR}
+      DEPENDS ${WABT_EXECUTABLES}
+      WORKING_DIRECTORY ${WABT_SOURCE_DIR}
+      ${USES_TERMINAL}
+    )
+  endif ()
 
   # install
   if (BUILD_TOOLS OR BUILD_TESTS)

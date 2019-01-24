@@ -42,17 +42,23 @@ class NameApplier : public ExprVisitor::DelegateNop {
   Result OnBrTableExpr(BrTableExpr*) override;
   Result OnCallExpr(CallExpr*) override;
   Result OnCallIndirectExpr(CallIndirectExpr*) override;
-  Result OnGetGlobalExpr(GetGlobalExpr*) override;
-  Result OnGetLocalExpr(GetLocalExpr*) override;
+  Result OnReturnCallExpr(ReturnCallExpr*) override;
+  Result OnReturnCallIndirectExpr(ReturnCallIndirectExpr*) override;
+  Result OnGlobalGetExpr(GlobalGetExpr*) override;
+  Result OnGlobalSetExpr(GlobalSetExpr*) override;
   Result BeginIfExpr(IfExpr*) override;
   Result EndIfExpr(IfExpr*) override;
   Result BeginIfExceptExpr(IfExceptExpr*) override;
   Result EndIfExceptExpr(IfExceptExpr*) override;
+  Result OnLocalGetExpr(LocalGetExpr*) override;
+  Result OnLocalSetExpr(LocalSetExpr*) override;
+  Result OnLocalTeeExpr(LocalTeeExpr*) override;
   Result BeginLoopExpr(LoopExpr*) override;
   Result EndLoopExpr(LoopExpr*) override;
-  Result OnSetGlobalExpr(SetGlobalExpr*) override;
-  Result OnSetLocalExpr(SetLocalExpr*) override;
-  Result OnTeeLocalExpr(TeeLocalExpr*) override;
+  Result OnMemoryDropExpr(MemoryDropExpr*) override;
+  Result OnMemoryInitExpr(MemoryInitExpr*) override;
+  Result OnTableDropExpr(TableDropExpr*) override;
+  Result OnTableInitExpr(TableInitExpr*) override;
   Result BeginTryExpr(TryExpr*) override;
   Result EndTryExpr(TryExpr*) override;
   Result OnThrowExpr(ThrowExpr*) override;
@@ -68,6 +74,8 @@ class NameApplier : public ExprVisitor::DelegateNop {
   Result UseNameForTableVar(Var* var);
   Result UseNameForMemoryVar(Var* var);
   Result UseNameForExceptVar(Var* var);
+  Result UseNameForDataSegmentVar(Var* var);
+  Result UseNameForElemSegmentVar(Var* var);
   Result UseNameForParamAndLocalVar(Func* func, Var* var);
   Result VisitFunc(Index func_index, Func* func);
   Result VisitGlobal(Global* global);
@@ -78,9 +86,7 @@ class NameApplier : public ExprVisitor::DelegateNop {
   Module* module_ = nullptr;
   Func* current_func_ = nullptr;
   ExprVisitor visitor_;
-  /* mapping from param index to its name, if any, for the current func */
-  std::vector<std::string> param_index_to_name_;
-  std::vector<std::string> local_index_to_name_;
+  std::vector<std::string> param_and_local_index_to_name_;
   std::vector<std::string> labels_;
 };
 
@@ -176,32 +182,38 @@ Result NameApplier::UseNameForExceptVar(Var* var) {
   return Result::Ok;
 }
 
+Result NameApplier::UseNameForDataSegmentVar(Var* var) {
+  DataSegment* data_segment = module_->GetDataSegment(*var);
+  if (!data_segment) {
+    return Result::Error;
+  }
+  UseNameForVar(data_segment->name, var);
+  return Result::Ok;
+}
+
+Result NameApplier::UseNameForElemSegmentVar(Var* var) {
+  ElemSegment* elem_segment = module_->GetElemSegment(*var);
+  if (!elem_segment) {
+    return Result::Error;
+  }
+  UseNameForVar(elem_segment->name, var);
+  return Result::Ok;
+}
+
 Result NameApplier::UseNameForParamAndLocalVar(Func* func, Var* var) {
   Index local_index = func->GetLocalIndex(*var);
   if (local_index >= func->GetNumParamsAndLocals()) {
     return Result::Error;
   }
 
-  Index num_params = func->GetNumParams();
-  std::string* name;
-  if (local_index < num_params) {
-    /* param */
-    assert(local_index < param_index_to_name_.size());
-    name = &param_index_to_name_[local_index];
-  } else {
-    /* local */
-    local_index -= num_params;
-    assert(local_index < local_index_to_name_.size());
-    name = &local_index_to_name_[local_index];
-  }
-
+  std::string name = param_and_local_index_to_name_[local_index];
   if (var->is_name()) {
-    assert(*name == var->name());
+    assert(name == var->name());
     return Result::Ok;
   }
 
-  if (!name->empty()) {
-    var->set_name(*name);
+  if (!name.empty()) {
+    var->set_name(name);
   }
   return Result::Ok;
 }
@@ -223,6 +235,26 @@ Result NameApplier::BeginLoopExpr(LoopExpr* expr) {
 
 Result NameApplier::EndLoopExpr(LoopExpr* expr) {
   PopLabel();
+  return Result::Ok;
+}
+
+Result NameApplier::OnMemoryDropExpr(MemoryDropExpr* expr) {
+  CHECK_RESULT(UseNameForDataSegmentVar(&expr->var));
+  return Result::Ok;
+}
+
+Result NameApplier::OnMemoryInitExpr(MemoryInitExpr* expr)  {
+  CHECK_RESULT(UseNameForDataSegmentVar(&expr->var));
+  return Result::Ok;
+}
+
+Result NameApplier::OnTableDropExpr(TableDropExpr* expr)  {
+  CHECK_RESULT(UseNameForElemSegmentVar(&expr->var));
+  return Result::Ok;
+}
+
+Result NameApplier::OnTableInitExpr(TableInitExpr* expr)  {
+  CHECK_RESULT(UseNameForElemSegmentVar(&expr->var));
   return Result::Ok;
 }
 
@@ -276,12 +308,24 @@ Result NameApplier::OnCallIndirectExpr(CallIndirectExpr* expr) {
   return Result::Ok;
 }
 
-Result NameApplier::OnGetGlobalExpr(GetGlobalExpr* expr) {
+Result NameApplier::OnReturnCallExpr(ReturnCallExpr* expr) {
+  CHECK_RESULT(UseNameForFuncVar(&expr->var));
+  return Result::Ok;
+}
+
+Result NameApplier::OnReturnCallIndirectExpr(ReturnCallIndirectExpr* expr) {
+  if (expr->decl.has_func_type) {
+    CHECK_RESULT(UseNameForFuncTypeVar(&expr->decl.type_var));
+  }
+  return Result::Ok;
+}
+
+Result NameApplier::OnGlobalGetExpr(GlobalGetExpr* expr) {
   CHECK_RESULT(UseNameForGlobalVar(&expr->var));
   return Result::Ok;
 }
 
-Result NameApplier::OnGetLocalExpr(GetLocalExpr* expr) {
+Result NameApplier::OnLocalGetExpr(LocalGetExpr* expr) {
   CHECK_RESULT(UseNameForParamAndLocalVar(current_func_, &expr->var));
   return Result::Ok;
 }
@@ -307,17 +351,17 @@ Result NameApplier::EndIfExceptExpr(IfExceptExpr* expr) {
   return Result::Ok;
 }
 
-Result NameApplier::OnSetGlobalExpr(SetGlobalExpr* expr) {
+Result NameApplier::OnGlobalSetExpr(GlobalSetExpr* expr) {
   CHECK_RESULT(UseNameForGlobalVar(&expr->var));
   return Result::Ok;
 }
 
-Result NameApplier::OnSetLocalExpr(SetLocalExpr* expr) {
+Result NameApplier::OnLocalSetExpr(LocalSetExpr* expr) {
   CHECK_RESULT(UseNameForParamAndLocalVar(current_func_, &expr->var));
   return Result::Ok;
 }
 
-Result NameApplier::OnTeeLocalExpr(TeeLocalExpr* expr) {
+Result NameApplier::OnLocalTeeExpr(LocalTeeExpr* expr) {
   CHECK_RESULT(UseNameForParamAndLocalVar(current_func_, &expr->var));
   return Result::Ok;
 }
@@ -328,11 +372,8 @@ Result NameApplier::VisitFunc(Index func_index, Func* func) {
     CHECK_RESULT(UseNameForFuncTypeVar(&func->decl.type_var));
   }
 
-  MakeTypeBindingReverseMapping(func->decl.sig.param_types.size(),
-                                func->param_bindings, &param_index_to_name_);
-
-  MakeTypeBindingReverseMapping(func->local_types.size(), func->local_bindings,
-                                &local_index_to_name_);
+  MakeTypeBindingReverseMapping(func->GetNumParamsAndLocals(), func->bindings,
+                                &param_and_local_index_to_name_);
 
   CHECK_RESULT(visitor_.VisitFunc(func));
   current_func_ = nullptr;

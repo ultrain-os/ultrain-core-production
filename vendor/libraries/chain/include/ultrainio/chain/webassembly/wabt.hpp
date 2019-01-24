@@ -9,7 +9,7 @@
 //wabt includes
 #include <src/binary-reader.h>
 #include <src/common.h>
-#include <src/interp.h>
+#include <src/interp/interp.h>
 
 namespace ultrainio { namespace chain { namespace webassembly { namespace wabt_runtime {
 

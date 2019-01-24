@@ -78,8 +78,8 @@ class ExprVisitor::Delegate {
   virtual Result OnConstExpr(ConstExpr*) = 0;
   virtual Result OnConvertExpr(ConvertExpr*) = 0;
   virtual Result OnDropExpr(DropExpr*) = 0;
-  virtual Result OnGetGlobalExpr(GetGlobalExpr*) = 0;
-  virtual Result OnGetLocalExpr(GetLocalExpr*) = 0;
+  virtual Result OnGlobalGetExpr(GlobalGetExpr*) = 0;
+  virtual Result OnGlobalSetExpr(GlobalSetExpr*) = 0;
   virtual Result BeginIfExpr(IfExpr*) = 0;
   virtual Result AfterIfTrueExpr(IfExpr*) = 0;
   virtual Result EndIfExpr(IfExpr*) = 0;
@@ -87,17 +87,26 @@ class ExprVisitor::Delegate {
   virtual Result AfterIfExceptTrueExpr(IfExceptExpr*) = 0;
   virtual Result EndIfExceptExpr(IfExceptExpr*) = 0;
   virtual Result OnLoadExpr(LoadExpr*) = 0;
+  virtual Result OnLocalGetExpr(LocalGetExpr*) = 0;
+  virtual Result OnLocalSetExpr(LocalSetExpr*) = 0;
+  virtual Result OnLocalTeeExpr(LocalTeeExpr*) = 0;
   virtual Result BeginLoopExpr(LoopExpr*) = 0;
   virtual Result EndLoopExpr(LoopExpr*) = 0;
+  virtual Result OnMemoryCopyExpr(MemoryCopyExpr*) = 0;
+  virtual Result OnMemoryDropExpr(MemoryDropExpr*) = 0;
+  virtual Result OnMemoryFillExpr(MemoryFillExpr*) = 0;
   virtual Result OnMemoryGrowExpr(MemoryGrowExpr*) = 0;
+  virtual Result OnMemoryInitExpr(MemoryInitExpr*) = 0;
   virtual Result OnMemorySizeExpr(MemorySizeExpr*) = 0;
+  virtual Result OnTableCopyExpr(TableCopyExpr*) = 0;
+  virtual Result OnTableDropExpr(TableDropExpr*) = 0;
+  virtual Result OnTableInitExpr(TableInitExpr*) = 0;
   virtual Result OnNopExpr(NopExpr*) = 0;
   virtual Result OnReturnExpr(ReturnExpr*) = 0;
+  virtual Result OnReturnCallExpr(ReturnCallExpr*) = 0;
+  virtual Result OnReturnCallIndirectExpr(ReturnCallIndirectExpr*) = 0;
   virtual Result OnSelectExpr(SelectExpr*) = 0;
-  virtual Result OnSetGlobalExpr(SetGlobalExpr*) = 0;
-  virtual Result OnSetLocalExpr(SetLocalExpr*) = 0;
   virtual Result OnStoreExpr(StoreExpr*) = 0;
-  virtual Result OnTeeLocalExpr(TeeLocalExpr*) = 0;
   virtual Result OnUnaryExpr(UnaryExpr*) = 0;
   virtual Result OnUnreachableExpr(UnreachableExpr*) = 0;
   virtual Result BeginTryExpr(TryExpr*) = 0;
@@ -106,7 +115,7 @@ class ExprVisitor::Delegate {
   virtual Result OnThrowExpr(ThrowExpr*) = 0;
   virtual Result OnRethrowExpr(RethrowExpr*) = 0;
   virtual Result OnAtomicWaitExpr(AtomicWaitExpr*) = 0;
-  virtual Result OnAtomicWakeExpr(AtomicWakeExpr*) = 0;
+  virtual Result OnAtomicNotifyExpr(AtomicNotifyExpr*) = 0;
   virtual Result OnAtomicLoadExpr(AtomicLoadExpr*) = 0;
   virtual Result OnAtomicStoreExpr(AtomicStoreExpr*) = 0;
   virtual Result OnAtomicRmwExpr(AtomicRmwExpr*) = 0;
@@ -130,8 +139,8 @@ class ExprVisitor::DelegateNop : public ExprVisitor::Delegate {
   Result OnConstExpr(ConstExpr*) override { return Result::Ok; }
   Result OnConvertExpr(ConvertExpr*) override { return Result::Ok; }
   Result OnDropExpr(DropExpr*) override { return Result::Ok; }
-  Result OnGetGlobalExpr(GetGlobalExpr*) override { return Result::Ok; }
-  Result OnGetLocalExpr(GetLocalExpr*) override { return Result::Ok; }
+  Result OnGlobalGetExpr(GlobalGetExpr*) override { return Result::Ok; }
+  Result OnGlobalSetExpr(GlobalSetExpr*) override { return Result::Ok; }
   Result BeginIfExpr(IfExpr*) override { return Result::Ok; }
   Result AfterIfTrueExpr(IfExpr*) override { return Result::Ok; }
   Result EndIfExpr(IfExpr*) override { return Result::Ok; }
@@ -139,17 +148,28 @@ class ExprVisitor::DelegateNop : public ExprVisitor::Delegate {
   Result AfterIfExceptTrueExpr(IfExceptExpr*) override { return Result::Ok; }
   Result EndIfExceptExpr(IfExceptExpr*) override { return Result::Ok; }
   Result OnLoadExpr(LoadExpr*) override { return Result::Ok; }
+  Result OnLocalGetExpr(LocalGetExpr*) override { return Result::Ok; }
+  Result OnLocalSetExpr(LocalSetExpr*) override { return Result::Ok; }
+  Result OnLocalTeeExpr(LocalTeeExpr*) override { return Result::Ok; }
   Result BeginLoopExpr(LoopExpr*) override { return Result::Ok; }
   Result EndLoopExpr(LoopExpr*) override { return Result::Ok; }
+  Result OnMemoryCopyExpr(MemoryCopyExpr*) override { return Result::Ok; }
+  Result OnMemoryDropExpr(MemoryDropExpr*) override { return Result::Ok; }
+  Result OnMemoryFillExpr(MemoryFillExpr*) override { return Result::Ok; }
   Result OnMemoryGrowExpr(MemoryGrowExpr*) override { return Result::Ok; }
+  Result OnMemoryInitExpr(MemoryInitExpr*) override { return Result::Ok; }
   Result OnMemorySizeExpr(MemorySizeExpr*) override { return Result::Ok; }
+  Result OnTableCopyExpr(TableCopyExpr*) override { return Result::Ok; }
+  Result OnTableDropExpr(TableDropExpr*) override { return Result::Ok; }
+  Result OnTableInitExpr(TableInitExpr*) override { return Result::Ok; }
   Result OnNopExpr(NopExpr*) override { return Result::Ok; }
   Result OnReturnExpr(ReturnExpr*) override { return Result::Ok; }
+  Result OnReturnCallExpr(ReturnCallExpr*) override { return Result::Ok; }
+  Result OnReturnCallIndirectExpr(ReturnCallIndirectExpr*) override {
+    return Result::Ok;
+  }
   Result OnSelectExpr(SelectExpr*) override { return Result::Ok; }
-  Result OnSetGlobalExpr(SetGlobalExpr*) override { return Result::Ok; }
-  Result OnSetLocalExpr(SetLocalExpr*) override { return Result::Ok; }
   Result OnStoreExpr(StoreExpr*) override { return Result::Ok; }
-  Result OnTeeLocalExpr(TeeLocalExpr*) override { return Result::Ok; }
   Result OnUnaryExpr(UnaryExpr*) override { return Result::Ok; }
   Result OnUnreachableExpr(UnreachableExpr*) override { return Result::Ok; }
   Result BeginTryExpr(TryExpr*) override { return Result::Ok; }
@@ -158,7 +178,7 @@ class ExprVisitor::DelegateNop : public ExprVisitor::Delegate {
   Result OnThrowExpr(ThrowExpr*) override { return Result::Ok; }
   Result OnRethrowExpr(RethrowExpr*) override { return Result::Ok; }
   Result OnAtomicWaitExpr(AtomicWaitExpr*) override { return Result::Ok; }
-  Result OnAtomicWakeExpr(AtomicWakeExpr*) override { return Result::Ok; }
+  Result OnAtomicNotifyExpr(AtomicNotifyExpr*) override { return Result::Ok; }
   Result OnAtomicLoadExpr(AtomicLoadExpr*) override { return Result::Ok; }
   Result OnAtomicStoreExpr(AtomicStoreExpr*) override { return Result::Ok; }
   Result OnAtomicRmwExpr(AtomicRmwExpr*) override { return Result::Ok; }

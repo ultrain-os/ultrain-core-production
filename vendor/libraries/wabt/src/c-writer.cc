@@ -240,8 +240,9 @@ class CWriter {
   void WriteInit();
   void WriteFuncs();
   void Write(const Func&);
-  void WriteParams();
-  void WriteLocals();
+  void WriteParamsAndLocals();
+  void WriteParams(const std::vector<std::string>& index_to_name);
+  void WriteLocals(const std::vector<std::string>& index_to_name);
   void WriteStackVarDeclarations();
   void Write(const ExprList&);
 
@@ -300,9 +301,6 @@ static const char* s_global_symbols[] = {
     "switch", "_Thread_local", "typedef", "union", "unsigned", "void",
     "volatile", "while",
 
-    // assert.h
-    "assert", "static_assert",
-
     // math.h
     "abs", "acos", "acosh", "asin", "asinh", "atan", "atan2", "atanh", "cbrt",
     "ceil", "copysign", "cos", "cosh", "double_t", "erf", "erfc", "exp", "exp2",
@@ -339,15 +337,6 @@ static const char* s_global_symbols[] = {
     "uint_least64_t", "UINT_LEAST8_MAX", "uint_least8_t", "UINTMAX_C",
     "UINTMAX_MAX", "uintmax_t", "UINTPTR_MAX", "uintptr_t", "UNT8_C",
     "WCHAR_MAX", "WCHAR_MIN", "WINT_MAX", "WINT_MIN",
-
-    // stdlib.h
-    "abort", "abs", "atexit", "atof", "atoi", "atol", "atoll", "at_quick_exit",
-    "bsearch", "calloc", "div", "div_t", "exit", "_Exit", "EXIT_FAILURE",
-    "EXIT_SUCCESS", "free", "getenv", "labs", "ldiv", "ldiv_t", "llabs",
-    "lldiv", "lldiv_t", "malloc", "MB_CUR_MAX", "mblen", "mbstowcs", "mbtowc",
-    "qsort", "quick_exit", "rand", "RAND_MAX", "realloc", "size_t", "srand",
-    "strtod", "strtof", "strtol", "strtold", "strtoll", "strtoul", "strtoull",
-    "system", "wcstombs", "wctomb",
 
     // string.h
     "memchr", "memcmp", "memcpy", "memmove", "memset", "NULL", "size_t",
@@ -860,8 +849,8 @@ void CWriter::WriteInitExpr(const ExprList& expr_list) {
       Write(cast<ConstExpr>(expr)->const_);
       break;
 
-    case ExprType::GetGlobal:
-      Write(GlobalVar(cast<GetGlobalExpr>(expr)->var));
+    case ExprType::GlobalGet:
+      Write(GlobalVar(cast<GlobalGetExpr>(expr)->var));
       break;
 
     default:
@@ -1281,8 +1270,7 @@ void CWriter::Write(const Func& func) {
 
   Write("static ", ResultType(func.decl.sig.result_types), " ",
         GlobalName(func.name), "(");
-  WriteParams();
-  WriteLocals();
+  WriteParamsAndLocals();
   Write("FUNC_PROLOGUE;", Newline());
 
   stream_ = &func_stream_;
@@ -1316,13 +1304,18 @@ void CWriter::Write(const Func& func) {
   func_ = nullptr;
 }
 
-void CWriter::WriteParams() {
-  if (func_->decl.sig.param_types.empty()) {
+void CWriter::WriteParamsAndLocals() {
+  std::vector<std::string> index_to_name;
+  MakeTypeBindingReverseMapping(func_->GetNumParamsAndLocals(), func_->bindings,
+                                &index_to_name);
+  WriteParams(index_to_name);
+  WriteLocals(index_to_name);
+}
+
+void CWriter::WriteParams(const std::vector<std::string>& index_to_name) {
+  if (func_->GetNumParams() == 0) {
     Write("void");
   } else {
-    std::vector<std::string> index_to_name;
-    MakeTypeBindingReverseMapping(func_->decl.sig.param_types.size(),
-                                  func_->param_bindings, &index_to_name);
     Indent(4);
     for (Index i = 0; i < func_->GetNumParams(); ++i) {
       if (i != 0) {
@@ -1338,10 +1331,8 @@ void CWriter::WriteParams() {
   Write(") ", OpenBrace());
 }
 
-void CWriter::WriteLocals() {
-  std::vector<std::string> index_to_name;
-  MakeTypeBindingReverseMapping(func_->local_types.size(),
-                                func_->local_bindings, &index_to_name);
+void CWriter::WriteLocals(const std::vector<std::string>& index_to_name) {
+  Index num_params = func_->GetNumParams();
   for (Type type : {Type::I32, Type::I64, Type::F32, Type::F64}) {
     Index local_index = 0;
     size_t count = 0;
@@ -1356,7 +1347,8 @@ void CWriter::WriteLocals() {
             Write(Newline());
         }
 
-        Write(DefineLocalScopeName(index_to_name[local_index]), " = 0");
+        Write(DefineLocalScopeName(index_to_name[num_params + local_index]),
+              " = 0");
         ++count;
       }
       ++local_index;
@@ -1512,17 +1504,17 @@ void CWriter::Write(const ExprList& exprs) {
         DropTypes(1);
         break;
 
-      case ExprType::GetGlobal: {
-        const Var& var = cast<GetGlobalExpr>(&expr)->var;
+      case ExprType::GlobalGet: {
+        const Var& var = cast<GlobalGetExpr>(&expr)->var;
         PushType(module_->GetGlobal(var)->type);
         Write(StackVar(0), " = ", GlobalVar(var), ";", Newline());
         break;
       }
 
-      case ExprType::GetLocal: {
-        const Var& var = cast<GetLocalExpr>(&expr)->var;
-        PushType(func_->GetLocalType(var));
-        Write(StackVar(0), " = ", var, ";", Newline());
+      case ExprType::GlobalSet: {
+        const Var& var = cast<GlobalSetExpr>(&expr)->var;
+        Write(GlobalVar(var), " = ", StackVar(0), ";", Newline());
+        DropTypes(1);
         break;
       }
 
@@ -1549,6 +1541,26 @@ void CWriter::Write(const ExprList& exprs) {
         Write(*cast<LoadExpr>(&expr));
         break;
 
+      case ExprType::LocalGet: {
+        const Var& var = cast<LocalGetExpr>(&expr)->var;
+        PushType(func_->GetLocalType(var));
+        Write(StackVar(0), " = ", var, ";", Newline());
+        break;
+      }
+
+      case ExprType::LocalSet: {
+        const Var& var = cast<LocalSetExpr>(&expr)->var;
+        Write(var, " = ", StackVar(0), ";", Newline());
+        DropTypes(1);
+        break;
+      }
+
+      case ExprType::LocalTee: {
+        const Var& var = cast<LocalTeeExpr>(&expr)->var;
+        Write(var, " = ", StackVar(0), ";", Newline());
+        break;
+      }
+
       case ExprType::Loop: {
         const Block& block = cast<LoopExpr>(&expr)->block;
         if (!block.exprs.empty()) {
@@ -1564,6 +1576,16 @@ void CWriter::Write(const ExprList& exprs) {
         }
         break;
       }
+
+      case ExprType::MemoryCopy:
+      case ExprType::MemoryDrop:
+      case ExprType::MemoryInit:
+      case ExprType::MemoryFill:
+      case ExprType::TableCopy:
+      case ExprType::TableDrop:
+      case ExprType::TableInit:
+        UNIMPLEMENTED("...");
+        break;
 
       case ExprType::MemoryGrow: {
         assert(module_->memories.size() == 1);
@@ -1603,29 +1625,9 @@ void CWriter::Write(const ExprList& exprs) {
         break;
       }
 
-      case ExprType::SetGlobal: {
-        const Var& var = cast<SetGlobalExpr>(&expr)->var;
-        Write(GlobalVar(var), " = ", StackVar(0), ";", Newline());
-        DropTypes(1);
-        break;
-      }
-
-      case ExprType::SetLocal: {
-        const Var& var = cast<SetLocalExpr>(&expr)->var;
-        Write(var, " = ", StackVar(0), ";", Newline());
-        DropTypes(1);
-        break;
-      }
-
       case ExprType::Store:
         Write(*cast<StoreExpr>(&expr));
         break;
-
-      case ExprType::TeeLocal: {
-        const Var& var = cast<TeeLocalExpr>(&expr)->var;
-        Write(var, " = ", StackVar(0), ";", Newline());
-        break;
-      }
 
       case ExprType::Unary:
         Write(*cast<UnaryExpr>(&expr));
@@ -1649,14 +1651,16 @@ void CWriter::Write(const ExprList& exprs) {
         Write("UNREACHABLE;", Newline());
         return;
 
-      case ExprType::AtomicWait:
-      case ExprType::AtomicWake:
       case ExprType::AtomicLoad:
       case ExprType::AtomicRmw:
       case ExprType::AtomicRmwCmpxchg:
       case ExprType::AtomicStore:
+      case ExprType::AtomicWait:
+      case ExprType::AtomicNotify:
       case ExprType::IfExcept:
       case ExprType::Rethrow:
+      case ExprType::ReturnCall:
+      case ExprType::ReturnCallIndirect:
       case ExprType::Throw:
       case ExprType::Try:
         UNIMPLEMENTED("...");
@@ -1914,11 +1918,11 @@ void CWriter::Write(const ConvertExpr& expr) {
       WriteSimpleUnaryExpr(expr.opcode, "!");
       break;
 
-    case Opcode::I64ExtendSI32:
+    case Opcode::I64ExtendI32S:
       WriteSimpleUnaryExpr(expr.opcode, "(u64)(s64)(s32)");
       break;
 
-    case Opcode::I64ExtendUI32:
+    case Opcode::I64ExtendI32U:
       WriteSimpleUnaryExpr(expr.opcode, "(u64)");
       break;
 
@@ -1926,82 +1930,82 @@ void CWriter::Write(const ConvertExpr& expr) {
       WriteSimpleUnaryExpr(expr.opcode, "(u32)");
       break;
 
-    case Opcode::I32TruncSF32:
+    case Opcode::I32TruncF32S:
       WriteSimpleUnaryExpr(expr.opcode, "I32_TRUNC_S_F32");
       break;
 
-    case Opcode::I64TruncSF32:
+    case Opcode::I64TruncF32S:
       WriteSimpleUnaryExpr(expr.opcode, "I64_TRUNC_S_F32");
       break;
 
-    case Opcode::I32TruncSF64:
+    case Opcode::I32TruncF64S:
       WriteSimpleUnaryExpr(expr.opcode, "I32_TRUNC_S_F64");
       break;
 
-    case Opcode::I64TruncSF64:
+    case Opcode::I64TruncF64S:
       WriteSimpleUnaryExpr(expr.opcode, "I64_TRUNC_S_F64");
       break;
 
-    case Opcode::I32TruncUF32:
+    case Opcode::I32TruncF32U:
       WriteSimpleUnaryExpr(expr.opcode, "I32_TRUNC_U_F32");
       break;
 
-    case Opcode::I64TruncUF32:
+    case Opcode::I64TruncF32U:
       WriteSimpleUnaryExpr(expr.opcode, "I64_TRUNC_U_F32");
       break;
 
-    case Opcode::I32TruncUF64:
+    case Opcode::I32TruncF64U:
       WriteSimpleUnaryExpr(expr.opcode, "I32_TRUNC_U_F64");
       break;
 
-    case Opcode::I64TruncUF64:
+    case Opcode::I64TruncF64U:
       WriteSimpleUnaryExpr(expr.opcode, "I64_TRUNC_U_F64");
       break;
 
-    case Opcode::I32TruncSSatF32:
-    case Opcode::I64TruncSSatF32:
-    case Opcode::I32TruncSSatF64:
-    case Opcode::I64TruncSSatF64:
-    case Opcode::I32TruncUSatF32:
-    case Opcode::I64TruncUSatF32:
-    case Opcode::I32TruncUSatF64:
-    case Opcode::I64TruncUSatF64:
+    case Opcode::I32TruncSatF32S:
+    case Opcode::I64TruncSatF32S:
+    case Opcode::I32TruncSatF64S:
+    case Opcode::I64TruncSatF64S:
+    case Opcode::I32TruncSatF32U:
+    case Opcode::I64TruncSatF32U:
+    case Opcode::I32TruncSatF64U:
+    case Opcode::I64TruncSatF64U:
       UNIMPLEMENTED(expr.opcode.GetName());
       break;
 
-    case Opcode::F32ConvertSI32:
+    case Opcode::F32ConvertI32S:
       WriteSimpleUnaryExpr(expr.opcode, "(f32)(s32)");
       break;
 
-    case Opcode::F32ConvertSI64:
+    case Opcode::F32ConvertI64S:
       WriteSimpleUnaryExpr(expr.opcode, "(f32)(s64)");
       break;
 
-    case Opcode::F32ConvertUI32:
+    case Opcode::F32ConvertI32U:
     case Opcode::F32DemoteF64:
       WriteSimpleUnaryExpr(expr.opcode, "(f32)");
       break;
 
-    case Opcode::F32ConvertUI64:
+    case Opcode::F32ConvertI64U:
       // TODO(binji): This needs to be handled specially (see
       // wabt_convert_uint64_to_float).
       WriteSimpleUnaryExpr(expr.opcode, "(f32)");
       break;
 
-    case Opcode::F64ConvertSI32:
+    case Opcode::F64ConvertI32S:
       WriteSimpleUnaryExpr(expr.opcode, "(f64)(s32)");
       break;
 
-    case Opcode::F64ConvertSI64:
+    case Opcode::F64ConvertI64S:
       WriteSimpleUnaryExpr(expr.opcode, "(f64)(s64)");
       break;
 
-    case Opcode::F64ConvertUI32:
+    case Opcode::F64ConvertI32U:
     case Opcode::F64PromoteF32:
       WriteSimpleUnaryExpr(expr.opcode, "(f64)");
       break;
 
-    case Opcode::F64ConvertUI64:
+    case Opcode::F64ConvertI64U:
       // TODO(binji): This needs to be handled specially (see
       // wabt_convert_uint64_to_double).
       WriteSimpleUnaryExpr(expr.opcode, "(f64)");

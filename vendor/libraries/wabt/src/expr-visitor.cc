@@ -182,8 +182,8 @@ Result ExprVisitor::HandleDefaultState(Expr* expr) {
       CHECK_RESULT(delegate_->OnAtomicWaitExpr(cast<AtomicWaitExpr>(expr)));
       break;
 
-    case ExprType::AtomicWake:
-      CHECK_RESULT(delegate_->OnAtomicWakeExpr(cast<AtomicWakeExpr>(expr)));
+    case ExprType::AtomicNotify:
+      CHECK_RESULT(delegate_->OnAtomicNotifyExpr(cast<AtomicNotifyExpr>(expr)));
       break;
 
     case ExprType::Binary:
@@ -233,12 +233,12 @@ Result ExprVisitor::HandleDefaultState(Expr* expr) {
       CHECK_RESULT(delegate_->OnDropExpr(cast<DropExpr>(expr)));
       break;
 
-    case ExprType::GetGlobal:
-      CHECK_RESULT(delegate_->OnGetGlobalExpr(cast<GetGlobalExpr>(expr)));
+    case ExprType::GlobalGet:
+      CHECK_RESULT(delegate_->OnGlobalGetExpr(cast<GlobalGetExpr>(expr)));
       break;
 
-    case ExprType::GetLocal:
-      CHECK_RESULT(delegate_->OnGetLocalExpr(cast<GetLocalExpr>(expr)));
+    case ExprType::GlobalSet:
+      CHECK_RESULT(delegate_->OnGlobalSetExpr(cast<GlobalSetExpr>(expr)));
       break;
 
     case ExprType::If: {
@@ -259,6 +259,18 @@ Result ExprVisitor::HandleDefaultState(Expr* expr) {
       CHECK_RESULT(delegate_->OnLoadExpr(cast<LoadExpr>(expr)));
       break;
 
+    case ExprType::LocalGet:
+      CHECK_RESULT(delegate_->OnLocalGetExpr(cast<LocalGetExpr>(expr)));
+      break;
+
+    case ExprType::LocalSet:
+      CHECK_RESULT(delegate_->OnLocalSetExpr(cast<LocalSetExpr>(expr)));
+      break;
+
+    case ExprType::LocalTee:
+      CHECK_RESULT(delegate_->OnLocalTeeExpr(cast<LocalTeeExpr>(expr)));
+      break;
+
     case ExprType::Loop: {
       auto loop_expr = cast<LoopExpr>(expr);
       CHECK_RESULT(delegate_->BeginLoopExpr(loop_expr));
@@ -266,12 +278,40 @@ Result ExprVisitor::HandleDefaultState(Expr* expr) {
       break;
     }
 
+    case ExprType::MemoryCopy:
+      CHECK_RESULT(delegate_->OnMemoryCopyExpr(cast<MemoryCopyExpr>(expr)));
+      break;
+
+    case ExprType::MemoryDrop:
+      CHECK_RESULT(delegate_->OnMemoryDropExpr(cast<MemoryDropExpr>(expr)));
+      break;
+
+    case ExprType::MemoryFill:
+      CHECK_RESULT(delegate_->OnMemoryFillExpr(cast<MemoryFillExpr>(expr)));
+      break;
+
     case ExprType::MemoryGrow:
       CHECK_RESULT(delegate_->OnMemoryGrowExpr(cast<MemoryGrowExpr>(expr)));
       break;
 
+    case ExprType::MemoryInit:
+      CHECK_RESULT(delegate_->OnMemoryInitExpr(cast<MemoryInitExpr>(expr)));
+      break;
+
     case ExprType::MemorySize:
       CHECK_RESULT(delegate_->OnMemorySizeExpr(cast<MemorySizeExpr>(expr)));
+      break;
+
+    case ExprType::TableCopy:
+      CHECK_RESULT(delegate_->OnTableCopyExpr(cast<TableCopyExpr>(expr)));
+      break;
+
+    case ExprType::TableDrop:
+      CHECK_RESULT(delegate_->OnTableDropExpr(cast<TableDropExpr>(expr)));
+      break;
+
+    case ExprType::TableInit:
+      CHECK_RESULT(delegate_->OnTableInitExpr(cast<TableInitExpr>(expr)));
       break;
 
     case ExprType::Nop:
@@ -286,25 +326,23 @@ Result ExprVisitor::HandleDefaultState(Expr* expr) {
       CHECK_RESULT(delegate_->OnReturnExpr(cast<ReturnExpr>(expr)));
       break;
 
+    case ExprType::ReturnCall:
+      CHECK_RESULT(delegate_->OnReturnCallExpr(cast<ReturnCallExpr>(expr)));
+      break;
+
+    case ExprType::ReturnCallIndirect:
+      CHECK_RESULT(delegate_->OnReturnCallIndirectExpr(
+          cast<ReturnCallIndirectExpr>(expr)));
+      break;
+
     case ExprType::Select:
       CHECK_RESULT(delegate_->OnSelectExpr(cast<SelectExpr>(expr)));
-      break;
-
-    case ExprType::SetGlobal:
-      CHECK_RESULT(delegate_->OnSetGlobalExpr(cast<SetGlobalExpr>(expr)));
-      break;
-
-    case ExprType::SetLocal:
-      CHECK_RESULT(delegate_->OnSetLocalExpr(cast<SetLocalExpr>(expr)));
       break;
 
     case ExprType::Store:
       CHECK_RESULT(delegate_->OnStoreExpr(cast<StoreExpr>(expr)));
       break;
 
-    case ExprType::TeeLocal:
-      CHECK_RESULT(delegate_->OnTeeLocalExpr(cast<TeeLocalExpr>(expr)));
-      break;
 
     case ExprType::Throw:
       CHECK_RESULT(delegate_->OnThrowExpr(cast<ThrowExpr>(expr)));
