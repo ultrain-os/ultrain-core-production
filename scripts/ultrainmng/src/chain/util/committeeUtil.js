@@ -36,7 +36,7 @@ function buildCommittee(resultJson, jsonArray, add, result) {
                 result.push({
                     account: resultJson[i].owner,
                     public_key: resultJson[i].miner_pk,
-                    bls_pk: resultJson[i].bls_pk,
+                    bls_key: resultJson[i].bls_pk,
                     url: "https://"+resultJson[i].owner+".com",
                     location: 0,
                     adddel_miner: add,
@@ -63,7 +63,7 @@ function buildCommittee(resultJson, jsonArray, add, result) {
             result.push({
                 account: resultJson[i].owner,
                 public_key: resultJson[i].miner_pk,
-                bls_pk: resultJson[i].bls_pk,
+                bls_key: resultJson[i].bls_pk,
                 url: "https://"+resultJson[i].owner+".com",
                 location: 0,
                 adddel_miner: add,
@@ -102,8 +102,8 @@ function isValidChangeMembers(resultArray) {
         return false;
     }
 
-    if (resultArray.length > 1) {
-        logger.error("subchain committee change num > 1",resultArray)
+    if (resultArray.length > 2) {
+        logger.error("subchain committee change num > 2",resultArray)
         return false;
     }
 

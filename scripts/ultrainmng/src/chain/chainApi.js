@@ -101,6 +101,7 @@ async function getProducerLists(configSub) {
     const rs = await axios.post(configSub.httpEndpoint + "/v1/chain/get_producers", params);
     // const rs = await axios.post("http://172.16.10.5:8899/v1/chain/get_producers", params);
 
+    logger.debug("getProducerLists:",rs.data.rows);
     var result = [];
     var rows = rs.data.rows;
     for (var i in rows) {
@@ -108,7 +109,8 @@ async function getProducerLists(configSub) {
         if (row.is_active == 1) {
             result.push({
                 owner: row.owner,
-                miner_pk: "",
+                miner_pk: row.producer_key,
+                bls_pk:row.bls_key,
             });
         }
     }

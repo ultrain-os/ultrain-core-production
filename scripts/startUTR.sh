@@ -4,7 +4,7 @@ ULTRAIN_PATH=$2
 if [ ! -d "config/IPs" ]; then
   mkdir -p config/IPs
 fi
-for i in `docker ps  --filter  name=$NAME | grep $NAME  | awk '{print $1}'`;
+for i in `docker ps  --filter  name=$NAME- | grep $NAME-  | awk '{print $1}'`;
 do echo $i;
 docker inspect $i -f '{{.Config.Hostname}}';
 docker inspect $i -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}';#'{{.NetworkSettings.IPAddress}}' # '{{.NetworkSettings.Networks.globalnet.IPAddress}}';

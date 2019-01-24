@@ -1,15 +1,15 @@
 [
   {
     "chainName": "11",
-    "seedIp": "172.17.0.30",
-    "subchainHttpEndpoint": "http://172.17.0.36:8888",
+    "seedIp": "172.17.0.9",
+    "subchainHttpEndpoint": "http://172.16.10.5:8888",
     "genesisTime": "2019-01-23 14:30:00",
     "chainid": "fd3aaa72887682aaf657238afca17b1dc3976da38440fc1af1c0c690f657c834"
   },
   {
     "chainName": "12",
-    "seedIp": "172.17.0.37",
-    "subchainHttpEndpoint": "http://172.17.0.43:8888",
+    "seedIp": "172.17.0.30",
+    "subchainHttpEndpoint": "http://172.16.10.5:8899",
     "genesisTime": "2019-01-23 14:37:00",
     "chainid": "710119a8c837216475441555ca9327a6c73f3a4ead5e00713224906ae3eeb152"
   }

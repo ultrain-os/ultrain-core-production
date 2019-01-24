@@ -17,6 +17,7 @@ var blockUtil = require("./util/blockUtil");
 var voteUtil = require("./util/voteUtil");
 var NodUltrain = require("../nodultrain/nodultrain")
 var WorldState = require("../worldstate/worldstate")
+var chainUtil = require("./util/chainUtil");
 
 
 /**
@@ -248,7 +249,7 @@ async function syncCommitee() {
     logger.info("syncCommitee start");
     //获取本地prodcuers信息
     let producerList = await chainApi.getProducerLists(chainConfig.configSub);
-    logger.debug("subchain producers: ", producerList);
+    logger.info("subchain producers: ", producerList);
     if (utils.isNotNull(producerList)) {
         localProducers = producerList;
     }
@@ -264,41 +265,48 @@ async function syncCommitee() {
 
     //有变化的成员列表（包括删除/新增的）
     var changeMembers = committeeUtil.genChangeMembers(producerList, remoteProducers);
-    logger.debug("commite changeMembers:", changeMembers);
+    logger.info("commite changeMembers:", changeMembers);
+
 
     if (committeeUtil.isValidChangeMembers(changeMembers)) {
-        let committeeUser = changeMembers[0].account;
-        //判断需要投票的委员会的账号是否已在子链上
-        if (utils.isNull(await chainApi.getAccount(chainConfig.configSub, committeeUser))) {
-            logger.debug("account(" + committeeUser + ") is not exist in subchain,need not vote him to committee..");
-        } else {
-            logger.debug("account(" + committeeUser + ") is ready in subchain,need vote him to committee");
-            //判断是否已给他投过票
-            let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_MINER, null, committeeUser, null, null);
-            if (voteUtil.findVoteCommitee(tableData, chainConfig.myAccountAsCommittee, committeeUser) == false) {
-                logger.debug("account(" + chainConfig.myAccountAsCommittee + ") has not voted account(" + committeeUser + ")  to committee, start to vote..");
-                try {
-                    chainConfig.u3Sub.contract(contractConstants.ULTRAINIO).then(actions => {
-                        actions.votecommittee(chainConfig.myAccountAsCommittee, changeMembers).then((unsigned_transaction) => {
-                            chainConfig.u3Sub.sign(unsigned_transaction, /*mySkAsCommittee*/chainConfig.config.keyProvider[0], chainConfig.config.chainId).then((signature) => {
-                                if (signature) {
-                                    let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
-                                    logger.debug(signedTransaction);
-                                    chainConfig.u3Sub.pushTx(signedTransaction).then((processedTransaction) => {
-                                        logger.debug(processedTransaction);
-                                        // assert.equal(processedTransaction.transaction_id, unsigned_transaction.transaction_id);
-                                    });
-                                }
-                            })
-                        })
-                    });
-                } catch (e) {
-                    logger.error("u3 push tx error...", e)
-                    //logger.error("account(" + chainConfig.myAccountAsCommittee + ") has voted account(" + committeeUser + ")  to committee error",e);
-                }
+
+        for (var i = 0; i<changeMembers.length;i++) {
+            let committeeUser = changeMembers[i].account;
+            let params = [];
+            params.push(changeMembers[i]);
+            //判断需要投票的委员会的账号是否已在子链上
+            if (utils.isNull(await chainApi.getAccount(chainConfig.configSub, committeeUser))) {
+                logger.info("account(" + committeeUser + ") is not exist in subchain,need not vote him to committee..");
             } else {
-                //已投过票
-                logger.debug("account(" + chainConfig.myAccountAsCommittee + ") has voted account(" + committeeUser + ")  to committee, need not vote..");
+                logger.info("account(" + committeeUser + ") is ready in subchain,need vote him to committee");
+                //判断是否已给他投过票
+                let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_MINER, null, committeeUser, null, null);
+                if (voteUtil.findVoteCommitee(tableData, chainConfig.myAccountAsCommittee, committeeUser) == false) {
+                    logger.info("account(" + chainConfig.myAccountAsCommittee + ") has not voted account(" + committeeUser + ")  to committee, start to vote..");
+                    try {
+                        logger.info("vote commitee params:",params);
+                        chainConfig.u3Sub.contract(contractConstants.ULTRAINIO).then(actions => {
+                            actions.votecommittee(chainConfig.myAccountAsCommittee, params).then((unsigned_transaction) => {
+                                chainConfig.u3Sub.sign(unsigned_transaction, /*mySkAsCommittee*/chainConfig.config.keyProvider[0], chainConfig.config.chainId).then((signature) => {
+                                    if (signature) {
+                                        let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
+                                        logger.debug(signedTransaction);
+                                        chainConfig.u3Sub.pushTx(signedTransaction).then((processedTransaction) => {
+                                            logger.debug(processedTransaction);
+                                            // assert.equal(processedTransaction.transaction_id, unsigned_transaction.transaction_id);
+                                        });
+                                    }
+                                })
+                            })
+                        });
+                    } catch (e) {
+                        logger.error("u3 push tx error...", e)
+                        //logger.error("account(" + chainConfig.myAccountAsCommittee + ") has voted account(" + committeeUser + ")  to committee error",e);
+                    }
+                } else {
+                    //已投过票
+                    logger.debug("account(" + chainConfig.myAccountAsCommittee + ") has voted account(" + committeeUser + ")  to committee, need not vote..");
+                }
             }
         }
         //调用votecommittee来投票
@@ -333,10 +341,17 @@ async function syncChainInfo() {
         let chainId = null;
         let genesisTime = null;
         let chainInfo = await chainApi.getChainInfo(chainConfig.u3, chainConfig.myAccountAsCommittee);
+        logger.info("chain info from mainchain:",chainInfo);
         if (utils.isNotNull(chainInfo)) {
             chainName = chainInfo.location;
             chainId = chainInfo.chain_id;
-            genesisTime = chainInfo.genesis_time;
+            genesisTime = chainUtil.formatGensisTime(chainInfo.genesis_time);
+            // if (chainName == "11" || chainName == 11) {
+            //     genesisTime = "2019-01-24 14:06:00";
+            // }
+            // if (chainName == "12" || chainName == 12) {
+            //     genesisTime = "2019-01-24 14:11:00";
+            // }
         }
 
         //设置用户属于的chainid和chainname信息
@@ -371,7 +386,7 @@ async function syncChainInfo() {
             return;
         }
 
-        logger.info(chainConfig.myAccountAsCommittee + " belongs to chaininfo (name:" + chainConfig.chainName + ",chain_id:" + chainConfig.chainId + ") from mainchain");
+        logger.info(chainConfig.myAccountAsCommittee + " belongs to chaininfo (name:" + chainConfig.chainName + ",chain_id:" + chainConfig.chainId + " ,genesisTime:"+chainConfig.genesisTime+") from mainchain");
         logger.info("now subchain's chainid :" + chainConfig.configSub.chainId);
         var rightChain = chainConfig.isInRightChain()
         if (!rightChain) {
@@ -515,7 +530,7 @@ async function switchChain() {
         loggerChainChanging.info("start to require ws:");
         let hash = worldstatedata.hash_v[0].hash;
         let blockNum = worldstatedata.block_num;
-        let filesize = worldstatedata.hash_v[0].filesize;
+        let filesize = worldstatedata.hash_v[0].file_size;
         logger.info("start to require ws : (block num : "+blockNum+" "+"hash:"+hash);
         result = await WorldState.syncWorldState(hash, blockNum,filesize,chainConfig.chainId);
         if (result == true) {
