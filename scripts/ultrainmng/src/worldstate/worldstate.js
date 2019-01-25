@@ -8,6 +8,7 @@ var utils = require("../common/util/utils")
 var wsResUtil = require("./wsResUtil")
 var ShellCmd = require("../common/util/shellCmd")
 var sleep = require('sleep')
+const path = require('path');
 
 /**
  * 世界状态通信对象
@@ -85,9 +86,9 @@ WorldState.requestData = async function (path, params) {
  * @param height
  * @returns {Promise<*>}
  */
-WorldState.syncWorldState = async function (hash, height,file_size,chain_id) {
-    let param = {"chain_id": chain_id,"block_height":height, "hash_string": hash, "file_size": file_size};
-    logger.info("syncWorldState param:",param)
+WorldState.syncWorldState = async function (hash, height, file_size, chain_id) {
+    let param = {"chain_id": chain_id, "block_height": height, "hash_string": hash, "file_size": file_size};
+    logger.info("syncWorldState param:", param)
     let res = await this.requestData("/wss/require_ws", param);
     if (utils.isNotNull(res)) {
         return true;
@@ -124,7 +125,7 @@ WorldState.pollingkWSState = async function (timeInterval, totalTime) {
     let searchTime = 0;
     while (searchTime <= totalTime) {
         result = await WorldState.requestWSState();
-        logger.info("pollingkWSState result:",result);
+        logger.info("pollingkWSState result:", result);
         if (wsResUtil.isSuccess(result)) {
             logger.info("sync worldstate success");
             result = true;
@@ -193,8 +194,8 @@ WorldState.pollingBlockState = async function (timeInterval, totalTime) {
  * @param end
  * @returns {Promise<*>}
  */
-WorldState.syncBlocks = async function (chainid,blockHeight) {
-    return await this.requestData("/wss/require_block", "[\""+chainid+"\","+blockHeight+"]")
+WorldState.syncBlocks = async function (chainid, blockHeight) {
+    return await this.requestData("/wss/require_block", "[\"" + chainid + "\"," + blockHeight + "]")
 }
 
 /**
@@ -251,10 +252,16 @@ WorldState.getSubchainWsInfo = async function () {
 WorldState.updateConfig = function (chainId, seedIp) {
 
     try {
-        if (utils.isNotNull(chainId,seedIp)) {
+        if (utils.isNotNull(chainId, seedIp)) {
             var iniFile = new IniFile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
             iniFile.setValue("chainId", chainId);
-            iniFile.setValue("p2p-peer-address", seedIp+":7272");
+            //iniFile.setValue("p2p-peer-address", seedIp + ":7272");
+
+            iniFile.removeKey("p2p-peer-address");
+            for (var i = 0; i< seedIp.length;i++) {
+                iniFile.addKeyValue("p2p-peer-address", seedIp[i] + ":7272");
+            }
+
             iniFile.setValue("http-server-address", "127.0.0.1:" + this.port);
             iniFile.writefile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
             return true;
@@ -291,29 +298,33 @@ WorldState.stop = async function (totalTime) {
  * 启动
  * @type {WorldState}
  */
-WorldState.start = async function (chainId, seedIp, totalTime) {
+WorldState.start = async function (chainId, seedIp, totalTime, wsspath) {
 
     let result = false;
+    let args= [];
     /**
      * 更新配置信息（端口号，链id，种子ip
      */
     if (!this.updateConfig(chainId, seedIp)) {
         //return result;
     }
-    res = await ShellCmd.execCmdFiles(Constants.cmdConstants.START_WORLDSTATE_FILE,Constants.cmdConstants.START_NODULTRAIN_ARG,null);
-    if (res) {
-        //utils.sleep(this.statusCheckTime);
-        let searchtime = this.statusCheckTime;
-        while (totalTime >= searchtime) {
-            if (utils.isNull(await this.checkAlive()) == false) {
-                result = true;
-                break;
-            }
-            sleep.msleep(this.statusCheckTime);
-            searchtime += this.statusCheckTime;
+
+    var shPath= path.join(__dirname, "../../tool/_runworldstate.sh")
+    logger.info("start ws by shell file:",shPath);
+    logger.info("start ws by shell file:",wsspath);
+    args.push(wsspath)
+    await ShellCmd.execCmdFiles(shPath, args, null);
+    //await ShellCmd.execCmdFiles(Constants.cmdConstants.START_WORLDSTATE_FILE, Constants.cmdConstants.START_NODULTRAIN_ARG, null);
+
+    //utils.sleep(this.statusCheckTime);
+    let searchtime = this.statusCheckTime;
+    while (totalTime >= searchtime) {
+        if (utils.isNull(await this.checkAlive()) == false) {
+            result = true;
+            break;
         }
-    } else {
-        console.debug("start WorldState error");
+        sleep.msleep(this.statusCheckTime);
+        searchtime += this.statusCheckTime;
     }
     return result;
 }

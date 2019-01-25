@@ -52,8 +52,10 @@ def retry(args):
 # addSubChainUse
 def addSubChainUser():
     print "addSubChainUser start..."
-
-    for i in range(startl,endl+1):
+    endindex = endl;
+    if args.producerNum :
+        endindex = args.producerNum;
+    for i in range(startl,endindex+1):
         userName = user_prefix + "." + args.subchain + accounts[i];
         pk = account_pk_list[i]
         print "add new user:" + userName + "(" + pk + ") belongs to chain(" + args.subchain + ")"
@@ -66,7 +68,10 @@ def addSubChainUser():
 # add balance to user
 def addBalanceToUser():
     print "addBalanceToUser start..."
-    for i in range(startl,endl+1):
+    endindex = endl;
+    if args.producerNum :
+        endindex = args.producerNum;
+    for i in range(startl,endindex+1):
         userName = user_prefix + "." + args.subchain + accounts[i];
         print "transfer to  user(" + userName + ") 20.0000 UGAS"
         retry(args.clultrain + 'transfer ultrainio ' + userName + ' "20.0000 UGAS"')
@@ -77,8 +82,10 @@ def addBalanceToUser():
 # reg producer
 def regProducer():
     print "regProducer start..."
-
-    for i in range(startl,endl+1):
+    endindex = endl;
+    if args.producerNum :
+        endindex = args.producerNum;
+    for i in range(startl,endindex+1):
         userName = user_prefix + "." + args.subchain + accounts[i];
         pk = pk_list[i]
         bls_key = bls_pk_list[i];
@@ -92,7 +99,10 @@ def regProducer():
 def delegateStark():
     print "delegateStark start..."
 
-    for i in range(startl,endl+1):
+    endindex = endl;
+    if args.producerNum :
+        endindex = args.producerNum;
+    for i in range(startl,endindex+1):
         userName = user_prefix + "." + args.subchain + accounts[i];
         print "rdelegatecons:" + userName + " 553333.0000 UGAS"
         retry(args.clultrain + 'push action ultrainio delegatecons \'{"from":"utrio.stake", "receiver":"'+userName+'", "stake_cons_quantity":"553333.0000 UGAS"}\' -p utrio.stake@active')
@@ -114,18 +124,37 @@ def addChainType():
 # addSubchain()
 def addSubchain():
     print "addSubchain start..."
-    print "add a new subchain type"
-    retry(args.clultrain + ' push action ultrainio regchaintype \'{"type_id": "1", "min_producer_num": "40", "max_producer_num": "200", "sched_step": "10", "consensus_period": "10"}\' -p ultrainio@active');
     print "add a new subchain info(name:"+args.subchain+")"
-    retry(args.clultrain + ' push action ultrainio regsubchain \'{"chain_name": "'+args.subchain+'", "chain_type": "1","genesis_time":"2019-01-01 21:00:00"}\' -p ultrainio@active');
+    typeId=1;
+    if args.chainType :
+        array=args.chainType.split(',')
+        typeId=array[0]
+    retry(args.clultrain + ' push action ultrainio regsubchain \'{"chain_name": "'+args.subchain+'", "chain_type": "'+typeId+'","genesis_time":"2019-01-01 21:00:00"}\' -p ultrainio@active');
     sleep(1)
     print "addSubchain end..."
+
+def addChainType():
+    print "addChainType start..."
+    typeId=1;
+    minP=4
+    maxP=6
+    step=2
+    if args.chainType :
+        array=args.chainType.split(',')
+        typeId=array[0]
+        minP=array[1]
+        maxP=array[2]
+        step=array[3]
+    retry(args.clultrain + ' push action ultrainio regchaintype \'{"type_id": "'+typeId+'", "min_producer_num": "'+minP+'", "max_producer_num": "'+maxP+'", "sched_step": "'+step+'", "consensus_period": "10"}\' -p ultrainio@active');
+    print "addChainType end..."
+
 
 def showSubchain():
     run(args.clultrain + ' get table ultrainio ultrainio subchains',False);
 
 # Command Line Arguments
 commands = [
+    ('A', 'addSubChainType', addChainType, True, "add a new subchain type"),
     ('N', 'newSubchain', addSubchain, True, "add a new subchain"),
     ('U', 'addUser', addSubChainUser, True, "add subchain users in mainchain"),
     ('B', 'addBalance', addBalanceToUser, True, "add balance to subchain users"),
@@ -135,7 +164,8 @@ commands = [
     # ('C', 'clearSubchain', clearSubchain, True, "clear subchain's block and users"),
 ];
 parser = argparse.ArgumentParser()
-parser.add_argument('-sub', '--subchain', type=str, help="set subchain name info", required=True)
+parser.add_argument('-sub', '--subchain', type=str, help="set subchain name info")
+parser.add_argument('-ct', '--chainType', type=str, help="chain type data")
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-p', '--programpath', metavar='', help="set programpath params")
 parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '/root/workspace')
@@ -143,6 +173,7 @@ parser.add_argument('--kultraind', metavar='', help="Path to kultraind binary", 
 parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory",
                     default=defaultcontracts_dir % '/root/workspace')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
+parser.add_argument('-pn', '--producerNum', type=int, help="set producerNum to create")
 
 for (flag, command, function, inAll, help) in commands:
     prefix = ''

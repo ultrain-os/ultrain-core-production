@@ -99,6 +99,20 @@ function getLocalIPAdress(){
     }
 }
 
+function ipListToStr(iplist,port,splitChar) {
+    let result = "";
+    if (iplist.length > 0) {
+        result = iplist[0]+":"+port;
+        for (var i=1;i<iplist.length;i++) {
+            result = result+splitChar+iplist[i]+":"+port;
+        }
+    }
+
+    return result;
+}
+
+// console.log(ipListToStr(["172.17.0.9","172.17.0.10","172.17.0.11"],"222",","))
+
 module.exports = {
     isNull,
     isNotNull,
@@ -106,5 +120,6 @@ module.exports = {
     isAllNotNull,
     logNetworkError,
     isNullList,
-    getLocalIPAdress
+    getLocalIPAdress,
+    ipListToStr
 }

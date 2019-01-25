@@ -7,6 +7,7 @@ var Constants = require('../common/constant/constants');
 var ShellCmd = require("../common/util/shellCmd")
 var sleep = require("sleep")
 var utils = require("../common/util/utils")
+const path = require('path');
 
 /**
  * nod相关交互类
@@ -18,6 +19,7 @@ NodUltrain.statusCheckTime = 500;
 
 NodUltrain.configFilePath = "/root/.local/share/ultrainio/nodultrain/config/config.ini";
 
+
 /**
  * 更新nod配置文件
  * @param filepath
@@ -27,10 +29,16 @@ NodUltrain.configFilePath = "/root/.local/share/ultrainio/nodultrain/config/conf
 NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime) {
     try {
         var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
-        iniFile.setValue("p2p-peer-address", seedIp+":20122");
-        iniFile.setValue("rpos-p2p-peer-address", seedIp+":20123");
+
+        //iniFile.setValue("p2p-peer-address", seedIp+":20122");
+        //iniFile.setValue("rpos-p2p-peer-address", seedIp+":20123");
+        iniFile.removeKey("p2p-peer-address")
+        iniFile.removeKey("rpos-p2p-peer-address")
+        for (var i=0;i<seedIp.length;i++) {
+            iniFile.addKeyValue("p2p-peer-address", seedIp[i]+":20122");
+            iniFile.addKeyValue("rpos-p2p-peer-address", seedIp[i]+":20123");
+        }
         iniFile.setValue("subchainHttpEndpoint", subchainHttpEndpoint);
-        //todo 使用真实时间
         iniFile.setValue("genesis-time", genesisTime);
         iniFile.writefile(this.configFilePath, Constants.encodingConstants.UTF8);
         return true;
@@ -60,12 +68,33 @@ NodUltrain.stop = async function (totalTime) {
     return false;
 }
 
+
 /**
- * 启动nod
+ *
+ * @param totalTime
+ * @param cmdFlag true代表命令执行，false代表文件执行
+ * @param nodPath nod执行程序的目录
  * @returns {Promise<boolean>}
  */
-NodUltrain.start = async function (totalTime) {
-    await ShellCmd.execCmdFiles(Constants.cmdConstants.START_NODULTRAIN_FILE,Constants.cmdConstants.START_NODULTRAIN_ARG,null);
+NodUltrain.start = async function (totalTime,nodPath) {
+
+    var shPath= path.join(__dirname, "../../tool/_runultrain.sh")
+    logger.info("start nod by shell file..",shPath)
+    logger.info("start nod by shell file..",nodPath)
+    let args= [];
+    args.push(nodPath);
+    await ShellCmd.execCmdFiles(shPath, args, null);
+
+    //await ShellCmd.execCmdFiles(Constants.cmdConstants.START_NODULTRAIN_FILE,Constants.cmdConstants.START_NODULTRAIN_ARG,null);
+
+    // if (fileCmdFlag == true) {
+    //     logger.info("start nod by shell file..")
+    //     await ShellCmd.execCmdFiles(Constants.cmdConstants.START_NODULTRAIN_FILE,Constants.cmdConstants.START_NODULTRAIN_ARG,null);
+    // } else {
+    //     var cmd = "nohup "+nodPath+"nodultrain > /log/nod.log &"
+    //     logger.info("start nod by command:",cmd);
+    //     await ShellCmd.execCmd(cmd);
+    // }
     sleep.msleep(this.statusCheckTime);
     //校验端口是否不提供服务
     let searchtime = this.statusCheckTime;

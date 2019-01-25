@@ -50,6 +50,11 @@ class IniFile {
      * @returns {boolean}
      */
     isCommentLine(lineStr) {
+
+        if (utils.isNull(lineStr)) {
+            return true;
+        }
+
         if (lineStr.indexOf("#") == 0) {
             return true;
         }
@@ -100,6 +105,35 @@ class IniFile {
         return value;
     }
 
+    /**
+     * 删除key
+     * @param key
+     */
+    removeKey(key){
+        for (var i=0;i<this.lines.length;i++) {
+            let line = this.lines[i];
+            if (this.isCommentLine(line)) {
+                continue;
+            }
+            var array = this.convertKV(line);
+            if (utils.isNotNull(array) && array[0].trim() == key) {
+                this.lines[i] = "";
+                delete this.lines[i];
+            }
+        }
+
+    }
+
+    /**
+     * 添加key-value，不管是否会重复
+     * @param key
+     * @param value
+     * @returns {*}
+     */
+    addKeyValue(key, value) {
+        this.lines.push(key+"="+value)
+    }
+
 
     /**
      * 写入文件
@@ -110,7 +144,9 @@ class IniFile {
         try {
             let output = "";
             for (var i=0;i<this.lines.length;i++) {
-                output = output+this.lines[i]+"\n";
+                if (this.lines[i] != undefined) {
+                    output = output + this.lines[i] + "\n";
+                }
             }
 
             fs.writeFileSync(filepath, output, encoding);
