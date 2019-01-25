@@ -1099,12 +1099,6 @@ std::vector<read_only::get_user_bulletin_result> read_only::get_user_bulletin(co
     return result;
 }
 
-// TODO: move this and similar functions to a header. Copied from wasm_interface.cpp.
-// TODO: fix strict aliasing violation
-static float64_t to_softfloat64( double d ) {
-   return *reinterpret_cast<float64_t*>(&d);
-}
-
 static fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms ) {
    const auto table_type = get_table_type(abi, N(global));
    ULTRAIN_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));

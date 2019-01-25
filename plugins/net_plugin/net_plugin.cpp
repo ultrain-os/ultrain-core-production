@@ -215,7 +215,7 @@ namespace ultrainio {
         void close( connection_ptr c );
         size_t count_open_sockets() const;
 
-        std::shared_ptr<p2p::NodeTable> node_table = nullptr;                                    
+        std::shared_ptr<p2p::NodeTable> node_table = nullptr;
 
         std::shared_ptr<p2p::NodeTable> get_node_table() { return node_table; }
 
@@ -2306,8 +2306,8 @@ namespace ultrainio {
                   elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
               }
           } else if (msg.get_transaction().actions_are_pureview()) {
-            fc_dlog(logger, "chain accept pureview transaction.");
-            return;
+              // do not broadcast pureview action
+              // fc_dlog(logger, "chain accept pureview transaction.");
           } else {
               auto trace = result.get<transaction_trace_ptr>();
               if (!trace->except) {
@@ -2510,7 +2510,7 @@ namespace ultrainio {
             }
 	    else {
                connect(*it);
-            } 
+            }
          }
          ++it;
       }

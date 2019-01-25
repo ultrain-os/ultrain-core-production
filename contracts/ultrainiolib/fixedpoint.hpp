@@ -86,7 +86,7 @@ namespace ultrainio
 
     /**
     * The template param Q represents the Q Factor i.e number of decimals
-    * 
+    *
     * @brief 128 bits representation of Fixed Point class.
     *
     * Example:
@@ -105,14 +105,14 @@ namespace ultrainio
 
         /**
          * @brief Value of the fixed point represented as int128_t
-         * 
+         *
          * Value of the fixed point represented as int128_t
          */
         int128_t val;
 
         /**
         * Various constructors for fixed_point128. Can create fixed_point128 instance from an int128_t, fixed_point128,64,32 instance
-        * 
+        *
         * @brief Various constructors for fixed_point128
         *
         * Example:
@@ -123,10 +123,10 @@ namespace ultrainio
         * fixed_point128<5> c(a);
         * @endcode
         */
-        
+
         /**
          * Construct a new fixed point128 object from int128_t
-         * 
+         *
          * @brief Construct a new fixed point128 object
          * @param v - int128_t representation of the fixed point value
          */
@@ -134,31 +134,31 @@ namespace ultrainio
 
          /**
          * Construct a new fixed point128 object from another fixed_point128
-         * 
+         *
          * @brief Construct a new fixed point128 object from another fixed_point128
-         * @param r - Another fixed_point128 as source 
+         * @param r - Another fixed_point128 as source
          */
         template <uint8_t qr> fixed_point128(const fixed_point128<qr> &r);
 
         /**
          * Construct a new fixed point128 object from another fixed_point64
-         * 
+         *
          * @brief Construct a new fixed point128 object from another fixed_point64
-         * @param r -fixed_point64 as source 
+         * @param r -fixed_point64 as source
          */
         template <uint8_t qr> fixed_point128(const fixed_point64<qr> &r);
 
         /**
          * Construct a new fixed point128 object from another fixed_point32
-         * 
+         *
          * @brief Construct a new fixed point128 object from another fixed_point32
-         * @param r -fixed_point32 as source 
+         * @param r -fixed_point32 as source
          */
         template <uint8_t qr> fixed_point128(const fixed_point32<qr> &r);
 
         /**
         * Get the integer part of the 64 bit fixed number
-        * 
+        *
         * @brief To get the integer part of the fixed number
         * @return Returns integer part of the fixed number
         *
@@ -174,7 +174,7 @@ namespace ultrainio
 
         /**
         * Get the decimal part of the 64 bit fixed number
-        * 
+        *
         * @brief To get the decimal part of the fixed number
         * @return Returns decimal part of the fixed number
         *
@@ -191,7 +191,7 @@ namespace ultrainio
 
         /**
          * Prints the fixed point value
-         * 
+         *
          * @brief Prints the fixed point value
          */
         void print() const {
@@ -205,7 +205,7 @@ namespace ultrainio
         // Various assignment operators
         /**
          * Assignment operator. Assign fixed_point32 to fixed_point128
-         * 
+         *
          * @brief Assignment operator
          * @tparam qr - Precision of the source
          * @param r - Source
@@ -214,7 +214,7 @@ namespace ultrainio
         template <uint8_t qr> fixed_point128 &operator=(const fixed_point32<qr> &r);
          /**
          * Assignment operator. Assign fixed_point32 to fixed_point64
-         * 
+         *
          * @brief Assignment operator
          * @tparam qr - Precision of the source
          * @param r - Source
@@ -223,7 +223,7 @@ namespace ultrainio
         template <uint8_t qr> fixed_point128 &operator=(const fixed_point64<qr> &r);
          /**
          * Assignment operator. Assign fixed_point32 to fixed_point32
-         * 
+         *
          * @brief Assignment operator
          * @tparam qr - Precision of the source
          * @param r - Source
@@ -234,7 +234,7 @@ namespace ultrainio
         // Comparison functions
         /**
          * Equality operator
-         * 
+         *
          * @brief Equality operator
          * @tparam qr - Precision of the source
          * @param r - Source
@@ -245,7 +245,7 @@ namespace ultrainio
 
          /**
          * Greater than operator
-         * 
+         *
          * @brief Greater than operator
          * @tparam qr - Precision of the source
          * @param r - Source
@@ -256,7 +256,7 @@ namespace ultrainio
 
          /**
          * Less than operator
-         * 
+         *
          * @brief Less than operator
          * @tparam qr - Precision of the source
          * @param r - Source
@@ -286,14 +286,14 @@ namespace ultrainio
 
         /**
          * @brief Value of the fixed point represented as int64_t
-         * 
+         *
          * Value of the fixed point represented as int64_t
          */
         int64_t val;
 
         /**
          * Construct a new fixed point64 object from int64_t
-         * 
+         *
          * @brief Construct a new fixed point64 object
          * @param v - int64_t representation of the fixed point value
          */
@@ -301,17 +301,17 @@ namespace ultrainio
 
         /**
          * Construct a new fixed point64 object from another fixed_point64
-         * 
+         *
          * @brief Construct a new fixed point64 object from another fixed_point64
-         * @param r - Another fixed_point64 as source 
+         * @param r - Another fixed_point64 as source
          */
         template <uint8_t QR> fixed_point64(const fixed_point64<QR> &r);
 
         /**
          * Construct a new fixed point64 object from another fixed_point32
-         * 
+         *
          * @brief Construct a new fixed point64 object from another fixed_point32
-         * @param r - fixed_point64 as source 
+         * @param r - fixed_point64 as source
          */
         template <uint8_t QR> fixed_point64(const fixed_point32<QR> &r);
 
@@ -348,7 +348,7 @@ namespace ultrainio
 
         /**
          * Prints the fixed point value
-         * 
+         *
          * @brief Prints the fixed point value
          */
         void print() const {
@@ -360,9 +360,9 @@ namespace ultrainio
         // Various assignment operators
         /**
          * Assignment operator. Assign fixed_point32 to fixed_point64
-         * 
+         *
          * @brief Assignment operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return fixed_point64& - Reference to this object
          */
@@ -370,9 +370,9 @@ namespace ultrainio
 
         /**
          * Assignment operator. Assign fixed_point64 to fixed_point64
-         * 
+         *
          * @brief Assignment operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return fixed_point64& - Reference to this object
          */
@@ -381,7 +381,7 @@ namespace ultrainio
         // Arithmetic operations
         /**
          * Addition operator
-         * 
+         *
          * @brief Addition operator
          * @tparam QR - Precision of the second addend
          * @param r - Second addend
@@ -391,7 +391,7 @@ namespace ultrainio
 
         /**
          * Subtraction operator
-         * 
+         *
          * @brief Subtraction operator
          * @tparam QR - Precision of the minuend
          * @param r - Minuend
@@ -403,7 +403,7 @@ namespace ultrainio
         // The total number of decimals will be the max
         /**
          * Multiplication operator
-         * 
+         *
          * @brief Multiplication operator
          * @tparam QR - Precision of the multiplier
          * @param r - Multiplier
@@ -413,7 +413,7 @@ namespace ultrainio
 
         /**
          * Division operator
-         * 
+         *
          * @brief Division operator
          * @tparam QR - Precision of the divisor
          * @param r - Divisor
@@ -424,9 +424,9 @@ namespace ultrainio
         // Comparison functions
         /**
          * Equality operator
-         * 
+         *
          * @brief Equality operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise
@@ -435,9 +435,9 @@ namespace ultrainio
 
         /**
          * Greater than operator
-         * 
+         *
          * @brief Greater than operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise
@@ -446,9 +446,9 @@ namespace ultrainio
 
         /**
          * Less than operator
-         * 
+         *
          * @brief Less than operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise
@@ -477,36 +477,36 @@ namespace ultrainio
     struct fixed_point32
     {
         static_assert(Q < 128, "Maximum number of decimals supported in fixed_point32 is 128 decimals");
-        
+
         /**
          * @brief Value of the fixed point represented as int32_t
-         * 
+         *
          * Value of the fixed point represented as int32_t
          */
         int32_t val;
 
         /**
          * Construct a new fixed point32 object from another fixed_point32
-         * 
+         *
          * @brief Construct a new fixed point32 object from another fixed_point32
-         * @param r - Another fixed_point32 as source 
-         */    
+         * @param r - Another fixed_point32 as source
+         */
         template <uint8_t QR> fixed_point32(const fixed_point32<QR> &r);
 
         /**
          * Construct a new fixed point32 object from another fixed_point64. It will be truncated.
-         * 
+         *
          * @brief Construct a new fixed point32 object from another fixed_point64
-         * @param r - Another fixed_point32 as source 
+         * @param r - Another fixed_point32 as source
          */
         template <uint8_t QR> fixed_point32(const fixed_point64<QR> &r);
-       
+
 
         /**
          * Construct a new fixed point32 object from int32_t
-         * 
+         *
          * @brief Construct a new fixed point32 object
-         * @param v - int32_t representation of the fixed point value
+         * @param param - int32_t representation of the fixed point value
          */
         fixed_point32(int32_t param=0) : val(param) {}
 
@@ -539,7 +539,7 @@ namespace ultrainio
 
         /**
          * Prints the fixed point value
-         * 
+         *
          * @brief Prints the fixed point value
          */
         void print() const {
@@ -551,9 +551,9 @@ namespace ultrainio
         // Various assignment operators
         /**
          * Assignment operator. Assign fixed_point32 to fixed_point32
-         * 
+         *
          * @brief Assignment operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return fixed_point32& - Reference to this object
          */
@@ -561,9 +561,9 @@ namespace ultrainio
 
         /**
          * Assignment operator. Assign fixed_point64 to fixed_point32
-         * 
+         *
          * @brief Assignment operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return fixed_point32& - Reference to this object
          */
@@ -571,7 +571,7 @@ namespace ultrainio
 
         /**
          * Addition operator
-         * 
+         *
          * @brief Addition operator
          * @tparam QR - Precision of the second addend
          * @param r - Second addend
@@ -581,7 +581,7 @@ namespace ultrainio
 
         /**
          * Subtraction operator
-         * 
+         *
          * @brief Subtraction operator
          * @tparam QR - Precision of the minuend
          * @param r - Minuend
@@ -592,7 +592,7 @@ namespace ultrainio
         // productd of to fixed_point32 instances will be fixed_point64
         /**
          * Multiplication operator
-         * 
+         *
          * @brief Multiplication operator
          * @tparam QR - Precision of the multiplier
          * @param r - Multiplier
@@ -602,7 +602,7 @@ namespace ultrainio
 
         /**
          * Division operator
-         * 
+         *
          * @brief Division operator
          * @tparam QR - Precision of the divisor
          * @param r - Divisor
@@ -613,9 +613,9 @@ namespace ultrainio
         // Comparison functions
         /**
          * Equality operator
-         * 
+         *
          * @brief Equality operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise
@@ -624,9 +624,9 @@ namespace ultrainio
 
         /**
          * Greater than operator
-         * 
+         *
          * @brief Greater than operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise
@@ -635,9 +635,9 @@ namespace ultrainio
 
         /**
          * Less than operator
-         * 
+         *
          * @brief Less than operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise

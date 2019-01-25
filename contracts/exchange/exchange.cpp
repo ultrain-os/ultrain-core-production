@@ -203,8 +203,6 @@ namespace ultrainio {
       }
    }
 
-
-   #define N(X) ::ultrainio::string_to_name(#X)
    #define NEX(X) ::ultrainio::string_to_name_ex(#X)
 
    void exchange::apply( account_name contract, action_name action ) {

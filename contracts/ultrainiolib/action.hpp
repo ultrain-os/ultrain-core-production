@@ -235,7 +235,7 @@ namespace ultrainio {
        * @brief Construct a proposeresource_info object
        * @param a - Name of the account who proposal resourcelease account
        * @param lease - Number of lease
-       * @param d - Number of days
+       * @param e - end time
        * @param l - location
        * @param num - approve_num
        */
@@ -436,7 +436,8 @@ namespace ultrainio {
     *
     * @brief Base class to derive a new defined action from
     * @tparam Account - The account this action is intended for
-    * @tparam Name - The name of the action
+    * @tparam actH - The name of the action high part
+    * @tparam actL - The name of the action low part
     */
    template<uint64_t Account, uint64_t actH, uint64_t actL>
    struct action_meta {
