@@ -21,6 +21,7 @@ namespace p2p
         NodeIPEndpoint source;
         NodeIPEndpoint dest;
         NodeID sourceid; // sender public key (from signature)
+	NodeID destid;
    //     h256 echo;       // hash of encoded packet, for reply tracking
         std::string typeName() { return "Ping"; }
     };
@@ -35,6 +36,7 @@ namespace p2p
         NodeIPEndpoint destep;
         NodeIPEndpoint fromep;
         NodeID sourceid; // sender public key (from signature)
+	NodeID destid;
    //     h256 echo;       // hash of encoded packet, for reply tracking
         std::string typeName() { return "Pong"; }
     };
@@ -44,6 +46,7 @@ namespace p2p
         uint8_t type;/*3*/
         NodeID fromID;
         NodeID targetID;
+	NodeID destid;
         NodeIPEndpoint fromep;
         NodeIPEndpoint tartgetep;
         uint8_t packetType()  { return type; }
@@ -58,6 +61,7 @@ namespace p2p
     {
         uint8_t type ;/*4*/
         NodeID fromID;
+	NodeID destid;
         NodeIPEndpoint fromep;
         NodeIPEndpoint tartgetep;
         std::vector<Neighbour> neighbours;
@@ -357,8 +361,8 @@ void UDPSocket<Handler, MaxDatagramSize>::disconnectWithError(boost::system::err
 
 }
 //FC_REFLECT( ultrainio::p2p::UDPDatagram, (data)(locus_ip)(locus_port))
-FC_REFLECT( ultrainio::p2p::PingNode, (sourceid)(type)(source)(dest))
-FC_REFLECT( ultrainio::p2p::Pong, (type)(fromep)(destep)(sourceid))
-FC_REFLECT( ultrainio::p2p::FindNode, (type)(fromID)(targetID)(fromep)(tartgetep))
+FC_REFLECT( ultrainio::p2p::PingNode, (sourceid)(destid)(type)(source)(dest))
+FC_REFLECT( ultrainio::p2p::Pong, (type)(fromep)(destep)(sourceid)(destid))
+FC_REFLECT( ultrainio::p2p::FindNode, (type)(fromID)(targetID)(destid)(fromep)(tartgetep))
 FC_REFLECT( ultrainio::p2p::Neighbour, (node)(endpoint))
-FC_REFLECT( ultrainio::p2p::Neighbours, (fromID)(fromep)(tartgetep)(neighbours))
+FC_REFLECT( ultrainio::p2p::Neighbours, (type)(fromID)(destid)(fromep)(tartgetep)(neighbours))

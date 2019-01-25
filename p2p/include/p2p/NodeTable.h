@@ -111,7 +111,7 @@ private:
     };
 
     /// Used to ping endpoint.
-    void ping(NodeIPEndpoint _to);
+    void ping(NodeIPEndpoint _to,NodeID id);
 
     /// Used ping known node. Used by node table when refreshing buckets and as part of eviction process (see evict).
     void ping(NodeEntry const&  _nodeEntry,boost::optional<NodeID> const& _replacementNodeID = {});

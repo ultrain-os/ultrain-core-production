@@ -72,7 +72,7 @@ void NodeTable::init( const std::vector <std::string> &seeds) {
         p2p::NodeID id = fc::sha256();
         p2p::Node node(id, peer);
         m_pubkDiscoverPings[boost::asio::ip::address::from_string(node.m_endpoint.address())] = fc::time_point::now();
-        ping(node.m_endpoint);
+        ping(node.m_endpoint,id);
     }
     doIDRequest();
 }
@@ -91,7 +91,7 @@ void NodeTable::doIDRequestCheck()
             NodeIPEndpoint ep;
             ep.setAddress(i.first.to_string());
             ep.setUdpPort(20124);
-            ping(ep);
+            ping(ep,fc::sha256());
         }
         doIDRequest();
     }
@@ -211,6 +211,7 @@ void NodeTable::doDiscover(NodeID _node, unsigned _round, shared_ptr<set<shared_
             p.type = 3;
             p.fromID = m_hostNodeID;
             p.targetID = _node;
+            p.destid = node->m_id;
             p.fromep = m_hostNodeEndpoint;
             p.tartgetep = node->m_endpoint;
             m_socketPointer->send_msg(p,(bi::udp::endpoint)node->m_endpoint);
@@ -222,7 +223,7 @@ void NodeTable::doDiscover(NodeID _node, unsigned _round, shared_ptr<set<shared_
     }
     if (_round == s_maxSteps || newTriedCount == 0)
     {
-        ilog("Terminating discover after");
+        ilog("Terminating discover after round ${round}",("round",_round));
         doDiscovery();
         return;
     }
@@ -298,7 +299,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeID _target)
                 return ret;
 }
 
-void NodeTable::ping(NodeIPEndpoint _to)
+void NodeTable::ping(NodeIPEndpoint _to,NodeID _toID)
 {
     NodeIPEndpoint src;
     src = m_hostNodeEndpoint;
@@ -307,7 +308,7 @@ void NodeTable::ping(NodeIPEndpoint _to)
     p.source = src;
     p.dest = _to;
     p.sourceid = m_hostNodeID;
-
+    p.destid = _toID;
   //  p.sign(m_secret);
 
     m_socketPointer->send_msg(p,(bi::udp::endpoint)_to);
@@ -326,7 +327,7 @@ void NodeTable::ping(NodeEntry const& _nodeEntry, boost::optional<NodeID> const&
         m_sentPings[_nodeEntry.m_id] = {fc::time_point::now(),sendtimes+1, _replacementNodeID};
         ilog("ping times ${time}",("time",sendtimes));
     }
-    ping(_nodeEntry.m_endpoint);
+    ping(_nodeEntry.m_endpoint,_nodeEntry.m_id);
 
 }
 void NodeTable::evict(NodeEntry const& _leastSeen, NodeEntry const& _new)
@@ -419,7 +420,7 @@ void NodeTable::printallbucket()
 		{
 			if (auto n = np.lock())
 			{
-				ilog("bukket node ${ip} ${udp} ${trx} ${rpos}",("ip",(*n).m_endpoint.address())("udp",(*n).m_endpoint.udpPort())("trx",(*n).m_endpoint.listenPort(msg_priority_trx))("rpos",(*n).m_endpoint.listenPort(msg_priority_rpos)));
+				ilog("bucket node ${ip} ${udp} ${trx} ${rpos}",("ip",(*n).m_endpoint.address())("udp",(*n).m_endpoint.udpPort())("trx",(*n).m_endpoint.listenPort(msg_priority_trx))("rpos",(*n).m_endpoint.listenPort(msg_priority_rpos)));
 			}
 		}
 }
@@ -437,6 +438,11 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
         {
             m_pubkDiscoverPings.erase(sentdiscoverping);
         }
+    }
+    if(pong.destid != m_hostNodeID)
+    {
+        elog("pong msg not for me");
+        return ;
     }
     auto const& sourceId = pong.sourceid;
     auto const sentPing = m_sentPings.find(sourceId);
@@ -478,7 +484,11 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
         ilog("Find msg has no id");
         return ;
     }
-
+    if(in.destid != m_hostNodeID)
+    {
+        elog("FindNode msg not for me");
+        return ;
+    }
     vector<shared_ptr<NodeEntry>> nearest = nearestNodeEntries(in.targetID);
     static unsigned constexpr nlimit = (NodeSocket::maxDatagramSize - 109) / 90;
     NodeIPEndpoint from;
@@ -492,6 +502,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
        out.fromID = m_hostNodeID;
        out.fromep = m_hostNodeEndpoint;
        out.tartgetep =  from;
+       out.destid = in.fromID;
        auto _limit = nlimit ? std::min(nearest.size(), (size_t)(offset + nlimit)) : nearest.size();
        for (auto i = offset; i < _limit; i++)
        {
@@ -511,6 +522,11 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     if(in.fromID == fc::sha256())
     {
         ilog("nei msg has no id");
+        return ;
+    }
+    if(in.destid != m_hostNodeID)
+    {
+        elog("nei msg not for me");
         return ;
     }
     NodeIPEndpoint from;
@@ -550,6 +566,14 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingm
             m_pubkDiscoverPings.erase(sentdiscoverping);
         }
     }
+    if(pingmsg.destid != fc::sha256())
+    {
+        if(pingmsg.destid != m_hostNodeID)
+        {
+            elog("ping msg not for me");
+            return ;
+        }
+    }
     NodeIPEndpoint from;
     from.m_address = _from.address().to_string();
     from.m_udpPort = _from.port();
@@ -568,6 +592,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingm
     p.destep = from;
     p.fromep = m_hostNodeEndpoint;
     p.sourceid = m_hostNodeID;
+    p.destid = pingmsg.sourceid;
 
     m_socket->send_msg(p,(bi::udp::endpoint)p.destep);
     noteActiveNode(pingmsg.sourceid, from);
