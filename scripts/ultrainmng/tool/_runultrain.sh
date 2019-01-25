@@ -1,4 +1,4 @@
 #!/bin/bash
 ULTRAIN_PATH=$1
-rm -f /log/${HOSTNAME}.log
-nohup $ULTRAIN_PATH/nodultrain  > /log/${HOSTNAME}.log  2>&1 &
+DATE=`date +%Y-%m-%d-%H-%M`
+nohup $ULTRAIN_PATH/nodultrain  &>> /root/log/${DATE}-${HOSTNAME}.log  &

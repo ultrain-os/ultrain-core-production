@@ -474,11 +474,13 @@ async function switchChain() {
         }
 
         //停止worldstate的程序
-        result = await WorldState.stop(60000);
-        if (result) {
-            logger.info("worldstate is stopped");
-        } else {
-            logger.info("worldstate is not stopped");
+        if (chainConfig.configFileData.local.worldstate == true) {
+            result = await WorldState.stop(60000);
+            if (result) {
+                logger.info("worldstate is stopped");
+            } else {
+                logger.info("worldstate is not stopped");
+            }
         }
 
         //删除block和shared_memory.bin数据
@@ -488,9 +490,11 @@ async function switchChain() {
 
 
         //清除世界状态数据
-        await WorldState.clearDB();
-        loggerChainChanging.info("remove worldstate data files");
-        sleep.msleep(1000);
+        if (chainConfig.configFileData.local.worldstate == true) {
+            await WorldState.clearDB();
+            loggerChainChanging.info("remove worldstate data files");
+            sleep.msleep(1000);
+        }
 
         //通过chainid拿到seedList
         var seedIpInfo = await chainApi.getChainSeedIP(chainConfig.chainName, chainConfig);
@@ -502,86 +506,89 @@ async function switchChain() {
         }
 
 
-        logger.info("start world state");
-        result = await WorldState.start(chainConfig.chainName,seedIpInfo,60000,chainConfig.configFileData.local.wsspath);
-        if (result == true) {
-            logger.info("start ws success");
-        } else {
-            logger.info("start ws error");
-            // syncChainChanging = false;
-            // return;
+        //重启世界状态并拉块
+        if (chainConfig.configFileData.local.worldstate == true) {
+            logger.info("start world state");
+            result = await WorldState.start(chainConfig.chainName, seedIpInfo, 60000, chainConfig.configFileData.local.wsspath);
+            if (result == true) {
+                logger.info("start ws success");
+            } else {
+                logger.info("start ws error");
+                // syncChainChanging = false;
+                // return;
+            }
+
+            sleep.msleep(2000);
+
+            //调用世界状态程序同步数据
+            var worldstatedata = null;
+            let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.WORLDSTATE_HASH, "block_num");
+            if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
+                worldstatedata = mainChainData.rows[mainChainData.rows.length - 1];
+                logger.info("get worldstate data:", worldstatedata);
+            } else {
+                logger.error("can not get world state file,or data is null");
+                syncChainChanging = false;
+                return;
+            }
+
+            sleep.msleep(1000);
+            loggerChainChanging.info("start to require ws:");
+            let hash = worldstatedata.hash_v[0].hash;
+            let blockNum = worldstatedata.block_num;
+            let filesize = worldstatedata.hash_v[0].file_size;
+            logger.info("start to require ws : (block num : " + blockNum + " " + "hash:" + hash);
+            result = await WorldState.syncWorldState(hash, blockNum, filesize, chainConfig.chainId);
+            if (result == true) {
+                logger.info("sync worldstate request success");
+            } else {
+                logger.info("sync worldstate request failed");
+                syncChainChanging = false;
+                return;
+            }
+
+            loggerChainChanging.info("polling worldstate sync status ..")
+
+            sleep.msleep(1000);
+
+            /**
+             * 轮询检查同步世界状态情况
+             */
+            result = await WorldState.pollingkWSState(1000, 60000);
+            if (result == false) {
+                logger.info("require ws error");
+            } else {
+                logger.info("require ws success");
+            }
+
+            sleep.msleep(1000);
+
+            /**
+             * 调用block
+             */
+            logger.info("start to sync block:(chainid:" + chainConfig.chainId + ",block num:" + blockNum);
+            result = await WorldState.syncBlocks(chainConfig.chainId, blockNum);
+            if (result == false) {
+                logger.info("sync block request error");
+            } else {
+                logger.info("sync block request success");
+            }
+
+            sleep.msleep(1000);
+
+            /**
+             * 轮询检查同步世界状态情况block
+             */
+            logger.info("pollingBlockState start...");
+            result = await WorldState.pollingBlockState(1000, 60000);
+            if (result == false) {
+                logger.info("require block error");
+            } else {
+                logger.info("require block success");
+            }
+
+            sleep.msleep(1000);
         }
-
-        sleep.msleep(2000);
-
-        //调用世界状态程序同步数据
-        var worldstatedata = null;
-        let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.WORLDSTATE_HASH, "block_num");
-        if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
-            worldstatedata = mainChainData.rows[mainChainData.rows.length-1];
-            logger.info("get worldstate data:",worldstatedata);
-        } else {
-            logger.error("can not get world state file,or data is null");
-            syncChainChanging = false;
-            return;
-        }
-
-        sleep.msleep(1000);
-        loggerChainChanging.info("start to require ws:");
-        let hash = worldstatedata.hash_v[0].hash;
-        let blockNum = worldstatedata.block_num;
-        let filesize = worldstatedata.hash_v[0].file_size;
-        logger.info("start to require ws : (block num : "+blockNum+" "+"hash:"+hash);
-        result = await WorldState.syncWorldState(hash, blockNum,filesize,chainConfig.chainId);
-        if (result == true) {
-            logger.info("sync worldstate request success");
-        } else {
-            logger.info("sync worldstate request failed");
-            syncChainChanging = false;
-            return;
-        }
-
-        loggerChainChanging.info("polling worldstate sync status ..")
-
-        sleep.msleep(1000);
-
-        /**
-         * 轮询检查同步世界状态情况
-         */
-        result = await WorldState.pollingkWSState(1000, 60000);
-        if (result == false) {
-            logger.info("require ws error");
-        } else {
-            logger.info("require ws success");
-        }
-
-        sleep.msleep(1000);
-
-        /**
-         * 调用block
-         */
-        logger.info("start to sync block:(chainid:"+chainConfig.chainId+",block num:"+blockNum);
-        result = await WorldState.syncBlocks(chainConfig.chainId,blockNum);
-        if (result == false) {
-            logger.info("sync block request error");
-        } else {
-            logger.info("sync block request success");
-        }
-
-        sleep.msleep(1000);
-
-        /**
-         * 轮询检查同步世界状态情况block
-         */
-        logger.info("pollingBlockState start...");
-        result = await WorldState.pollingBlockState(1000, 60000);
-        if (result == false) {
-            logger.info("require block error");
-        } else {
-            logger.info("require block success");
-        }
-
-        sleep.msleep(1000);
 
 
         //修改nod程序配置信息
@@ -695,6 +702,11 @@ function isMainChain() {
  * @returns {Promise<void>}
  */
 async function syncWorldState() {
+
+    if (chainConfig.configFileData.local.worldstate  == false) {
+        logger.info("syncWorldState is disabled");
+        return;
+    }
     logger.info("syncWorldState start");
 
     if (syncChainData == true) {
