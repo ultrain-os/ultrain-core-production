@@ -102,8 +102,8 @@ function isValidChangeMembers(resultArray) {
         return false;
     }
 
-    if (resultArray.length > 2) {
-        logger.error("subchain committee change num > 2",resultArray)
+    if (resultArray.length > 3) {
+        logger.error("subchain committee change num > 3",resultArray)
         return false;
     }
 

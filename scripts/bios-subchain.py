@@ -87,8 +87,12 @@ def regProducer():
         endindex = args.producerNum;
     for i in range(startl,endindex+1):
         userName = user_prefix + "." + args.subchain + accounts[i];
+        userPK = account_pk_list[i]
         pk = pk_list[i]
         bls_key = bls_pk_list[i];
+        print "empoweruser(user:"+userName+" to chain:"+args.subchain+")"
+        retry(args.clultrain+'push action ultrainio empoweruser \'{"user": "'+userName+'", "owner_pk": "'+userPK+'", "active_pk": "'+userPK+'", "chain_name":"'+args.subchain+'"}\' -p '+userName+'@active');
+        sleep(1)
         print "reg producer:" + userName + "(" + pk + " "+bls_key+ ") belongs to chain(" + args.subchain + ")"
         retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key+' https://'+userName+'.com '+args.subchain+' '+userName+' -p ultrainio@active')
         sleep(0.5)
