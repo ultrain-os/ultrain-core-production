@@ -145,7 +145,8 @@ struct controller_impl {
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.state_size ),
+        cfg.state_size,
+        cfg.worldstate_control),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -379,8 +380,6 @@ struct controller_impl {
 
       authorization.add_indices(db);
       resource_limits.add_indices(db);
-
-      db.set_backup(conf.worldstate_control);
    }
 
    void add_contract_tables_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const {

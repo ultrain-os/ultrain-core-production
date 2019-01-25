@@ -328,8 +328,8 @@ namespace chainbase {
                    _cache.emplace_back( _indices_backup.get_allocator() );
                }else if(_is_cached)
                {
-                   _is_cached = false;
                    flush(true);
+                   _is_cached = false;
                }
 
                return session( *this, _revision );
@@ -776,7 +776,6 @@ namespace chainbase {
          virtual void    undo()const = 0;
          virtual void    squash()const = 0;
          virtual void    commit( int64_t revision )const = 0;
-         virtual void    set_backup(bool on)const = 0;
          virtual void    set_cache()const = 0;
          virtual void    cancel_cache()const = 0;
          virtual void    undo_all()const = 0;
@@ -805,7 +804,6 @@ namespace chainbase {
          virtual void     undo()const  override { _base.undo(); }
          virtual void     squash()const  override { _base.squash(); }
          virtual void     commit( int64_t revision )const  override { _base.commit(revision); }
-         virtual void     set_backup(bool on)const override { _base.set_backup(on); }
          virtual void     set_cache()const override { _base.set_cache(); }
          virtual void     cancel_cache()const override { _base.cancel_cache(); }
          virtual void     undo_all() const override {_base.undo_all(); }
@@ -871,7 +869,7 @@ namespace chainbase {
 
          using database_index_row_count_multiset = std::multiset<std::pair<unsigned, std::string>>;
 
-         database(const bfs::path& dir, open_flags write = read_only, uint64_t shared_file_size = 0, bool allow_dirty = false);
+         database(const bfs::path& dir, open_flags write = read_only, uint64_t shared_file_size = 0, bool ws = false, bool allow_dirty = false);
          ~database();
          database(database&&) = default;
          database& operator=(database&&) = default;
@@ -947,7 +945,6 @@ namespace chainbase {
          void squash();
          void commit( int64_t revision );
          void undo_all();
-         void set_backup(bool on = false);
          void set_cache();
          void cancel_cache() const;
 
@@ -979,6 +976,7 @@ namespace chainbase {
              }
 
              idx_ptr->validate();
+             idx_ptr->set_backup(_ws);
 
              if( type_id >= _index_map.size() )
                 _index_map.resize( type_id + 1 );
@@ -1185,6 +1183,7 @@ namespace chainbase {
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
 
+         bool                                                        _ws = false;
          void                                                        _msync_database();
    };
 
