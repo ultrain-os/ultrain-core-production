@@ -57,11 +57,12 @@ case "$1" in
 			sk="$(perl $randDir/b58.pl ${ult_skLst[$i]})" #decode sk from base58 to hex
 			printf "sk="$sk"\n"
 			# query latest rand
-			msg=$($clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand query '' -p ${ult_accountLst[$i]} | grep -oP "Rand: [0-9]+" | cut -d' ' -f 2)
+			msg=$($clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand query '' -p ${ult_accountLst[$i]} | grep -oP "=> [0-9]+" | cut -d' ' -f 2)
 			echo "query msg: "$msg
 			if [ $((${#msg} % 2)) -eq 1 ]; then
 				msg=$msg"0"
 			fi
+			echo "final msg: "$msg
 			pout="$($cvrf -p $sk  $msg)"
 			echo "pout: "$pout
 			IFS=';' read -ra data1 <<< "$pout"
@@ -69,7 +70,7 @@ case "$1" in
 			echo "data1[2]: "${data1[2]}
 			echo "account: "${ult_accountLst[$i]}
 			# cannot parse $ in '', only in ""
-			$clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand vote '["'"${data1[1]}"'" "'"${data1[2]}"'"]' -p ${ult_accountLst[$i]}
+			$clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand vote '["'"${data1[1]}"'"]' -p ${ult_accountLst[$i]}
 			i=`expr $i + 1`
 			sleep 0.5
 		done

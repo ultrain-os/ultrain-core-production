@@ -34,8 +34,6 @@ const EPOCH :u64 =  3; // peorids for rand generation
 const BONUS :u64 = 100; //bonus for voters
 const MIN_AGE :u64=2; //minimum age to be candidate
 
-// number of tables used in this class, not scopes
-// two tables for two different data types
 @database(Vote, "vote")
 @database(Candidate, "candidate")
 class rand extends Contract {
@@ -90,9 +88,6 @@ class rand extends Contract {
         this.candidateDB.emplace(this.receiver, c);
     }
 
-    //TODO: punish candidate
-
-    //remove Candidate
     @action
     removeCandidate(): void {
         ultrain_assert(this.candidateDB.exists(Action.sender), "cannot remove non-existing candidate.");
@@ -103,7 +98,6 @@ class rand extends Contract {
         Asset.transfer(this.receiver, Action.sender, DEPOSIT_AMOUNT, "return deposited money"); //return deposit
     }
 
-    //TODO: punish unvoted ones?
     @action
     vote(pk_proof: string): void {
         ultrain_assert(this.candidateDB.exists(Action.sender), "you should be a candidate firstly.");
@@ -158,7 +152,7 @@ class rand extends Contract {
         m = m.concat(ZERO);
 
         let pkStr = Account.publicKeyOf(Action.sender, 'hex');
-        Log.s("message1 : ").s(m).flush();
+        Log.s("m : ").s(m).flush();
         ultrain_assert(verify_with_pk(pkStr, pk_proof, m), "please provide a valid VRF proof." + pkStr + " " + pk_proof + " " + m);
 
         // aggregate rand
@@ -172,23 +166,20 @@ class rand extends Contract {
         rand.val = rand.val ^ vrf;
         this.votedDB.modify(this.receiver, rand);
 
-        Log.s("message2 : ").s(m).flush();
         let sender = new Vote();
         sender.name = Action.sender;
         sender.val = vrf;
         this.votedDB.emplace(Action.sender, sender);
         Asset.transfer(this.receiver, Action.sender, new Asset(BONUS), "bonus money"); //give bonus
 
-        Return(" Rand: " + intToString(rand.val) + " Block.number: " + intToString(Block.number));
+        Log.s("rand : ").s(intToString(rand.val)).s(" blockNum : ").s(intToString(Block.number)).flush();
+        Return(intToString(rand.val));
     }
 
     public filterAction(originalReceiver: u64): boolean {
         return Contract.filterAcceptTransferTokenAction(this.receiver, originalReceiver, this.action);
     }
 
-    //for external users, cross-contract calling
-    // TODO: require fees or deposits
-    // TODO: provide customized rand, such as hash(rand || query_account_name)
     @action
     query(): void {
         Log.s(RNAME(Action.sender)).s(" query").flush();
@@ -198,12 +189,11 @@ class rand extends Contract {
         if ((Block.number - blocknum.val) >= EPOCH) {
             let rand = new Vote();
             this.votedDB.get(NAME("rand"), rand);
-            Return(" Rand: " + intToString(rand.val) + " Block.number: " + intToString(Block.number));
+            Return(intToString(rand.val));
         } else {
             let seed = new Vote();
             this.votedDB.get(NAME("seed"), seed);
-            Return(" Rand: " + intToString(seed.val) + " Block.number: " + intToString(Block.number));
+            Return(intToString(seed.val));
         }
-        Log.s("end").flush();
     }
 }
