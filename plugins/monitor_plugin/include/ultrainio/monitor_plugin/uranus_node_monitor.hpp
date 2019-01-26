@@ -135,7 +135,7 @@ namespace ultrainio {
                 }
                 reportData.ba0BlockTime      = m_ba0BlockTime;
                 reportData.ba1BlockTime      = m_ba1BlockTime;
-#if 0
+#if 1
                 vector<connection_status> connectionsStatus = appbase::app().get_plugin<net_plugin>().connections();
                 for (const auto& connectStatus : connectionsStatus) {
                     if(!connectStatus.connecting) {   //only report connected peers
