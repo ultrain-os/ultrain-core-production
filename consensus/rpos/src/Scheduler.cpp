@@ -9,6 +9,7 @@
 #include <boost/asio.hpp>
 #include <fc/log/logger.hpp>
 #include <fc/crypto/sha256.hpp>
+#include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 
 #include <appbase/application.hpp>
@@ -1309,6 +1310,16 @@ namespace ultrainio {
             block.action_mroot = bh.action_mroot;
             block.transactions = pbs->block->transactions;
             block.committee_mroot = bh.committee_mroot;
+            if (!m_preBlockVoterSet.empty() && m_preBlockVoterSet.commonEchoMsg.blockId == block.previous) {
+                BlsVoterSet blsVoterSet = generateBlsVoterSet(m_preBlockVoterSet);
+                fc::variants va;
+                blsVoterSet.toVariants(va);
+                std::string s = fc::json::to_string(va);
+                ilog("blsVoterSet : ${set}", ("set", s));
+                std::vector<char> v(s.size());
+                v.assign(s.begin(), s.end());
+                block.header_extensions.push_back(std::make_pair(kExtVoterSet, v));
+            }
             block.signature = std::string(Signer::sign<BlockHeader>(block, StakeVoteBase::getMyPrivateKey()));
             ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature} committee mroot ${mroot}",
                  ("num", block.transactions.size())
@@ -1504,22 +1515,19 @@ namespace ultrainio {
         uint32_t minPriority = stakeVotePtr->getProposerNumber();
 #endif
 
-        for (auto echo_itor = m_echoMsgMap.begin(); echo_itor != m_echoMsgMap.end(); ++echo_itor) {
+        for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); itor++) {
             dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} block_hash : ${block_hash}",
-                 ("phase", (uint32_t) echo_itor->second.echoCommonPart.phase)("size", echo_itor->second.accountPool.size())(
-                         "totalVoter", echo_itor->second.getTotalVoterWeight())("block_hash", echo_itor->second.echoCommonPart.blockId));
-
-//            if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (phase < Config::kMaxBaxCount))
-//                || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (phase >= Config::kMaxBaxCount))) {
-            if (isMin2FEcho(echo_itor->second.getTotalVoterWeight(), phase)) {
+                 ("phase", (uint32_t) itor->second.echoCommonPart.phase)("size", itor->second.accountPool.size())(
+                         "totalVoter", itor->second.getTotalVoterWeight())("block_hash", itor->second.echoCommonPart.blockId));
+            if (isMin2FEcho(itor->second.getTotalVoterWeight(), phase)) {
                 dlog("found >= 2f + 1 echo, phase+cnt = ${phase}",("phase",phase));
 #ifdef CONSENSUS_VRF
-                uint32_t priority = echo_itor->second.echo.proposerPriority;
+                uint32_t priority = itor->second.echo.proposerPriority;
 #else
-                uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.echoCommonPart.proposer, kPhaseBA0, 0);
+                uint32_t priority = stakeVotePtr->proposerPriority(itor->second.echoCommonPart.proposer, kPhaseBA0, 0);
 #endif
                 if (minPriority >= priority) {
-                    minBlockId = echo_itor->second.echoCommonPart.blockId;
+                    minBlockId = itor->second.echoCommonPart.blockId;
                     minPriority = priority;
                 }
             }
@@ -1527,7 +1535,7 @@ namespace ultrainio {
 
         if (minBlockId == BlockIdType()) { // not found > 2f + 1 echo
             dlog("can not find >= 2f + 1");
-            if (UranusNode::getInstance()->getPhase() == kPhaseBA0) {
+            if (phase == kPhaseBA0) {
                 return emptyBlock();
             }
             dlog("can not find >= 2f + 1, and 2f + 1 = {num}", ("num", stakeVotePtr->getNextRoundThreshold()));
@@ -1536,6 +1544,27 @@ namespace ultrainio {
                 return produceBaxBlock();
             }
             return blankBlock();
+        }
+        for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); itor++) {
+#ifdef CONSENSUS_VRF
+            uint32_t priority = itor->second.echo.proposerPriority;
+#else
+            uint32_t priority = stakeVotePtr->proposerPriority(itor->second.echoCommonPart.proposer, kPhaseBA0, 0);
+#endif
+            if (minPriority == priority && phase == kPhaseBA1) { // check priority only
+                ilog("save VoterSet blockId = ${blockId}", ("blockId", itor->second.echoCommonPart.blockId));
+                VoterSet set;
+                set.commonEchoMsg = itor->second.echoCommonPart;
+                set.accountPool = itor->second.accountPool;
+                set.timePool = itor->second.timePool;
+                set.blsSignPool = itor->second.blsSignPool;
+                set.sigPool = itor->second.sigPool;
+#ifdef CONSENSUS_VRF
+                set.proofPool = itor->second.proofPool;
+#endif
+                m_preBlockVoterSet = set;
+                break;
+            }
         }
         if (minBlockId == emptyBlock().id()) {
             dlog("produce empty Block");
@@ -2142,5 +2171,33 @@ namespace ultrainio {
             m_committeeVoteBlock.insert(make_pair(echo.account, echo.blockId));
         }
         return false;
+    }
+
+    BlsVoterSet Scheduler::generateBlsVoterSet(const VoterSet& voterSet) {
+        BlsVoterSet blsVoterSet;
+        blsVoterSet.commonEchoMsg = voterSet.commonEchoMsg;
+        blsVoterSet.accountPool = voterSet.accountPool;
+#ifdef CONSENSUS_VRF
+        blsVoterSet.proofPool = voterSet.proofPool;
+#endif
+        std::shared_ptr<Bls> blsPtr = Bls::getDefault();
+        int n = blsVoterSet.accountPool.size();
+        unsigned char** blsSignV = (unsigned char**)malloc(n * sizeof(unsigned char*));
+        for (int i = 0; i < n; i++) {
+            blsSignV[i] = (unsigned char*)malloc(Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
+            Hex::fromHex(voterSet.blsSignPool[i], blsSignV[i], Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
+        }
+        unsigned char sigX[Bls::BLS_SIGNATURE_COMPRESSED_LENGTH];
+        bool res = blsPtr->aggregate(blsSignV, n, sigX, Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
+        for (int i = 0; i < n; i++) {
+            free(blsSignV[i]);
+        }
+        free(blsSignV);
+        if (!res) {
+            elog("aggregate bls error");
+            return BlsVoterSet();
+        }
+        blsVoterSet.sigX = Hex::toHex(sigX, Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
+        return blsVoterSet;
     }
 }  // namespace ultrainio

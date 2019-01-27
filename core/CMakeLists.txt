@@ -1,6 +1,6 @@
 file(GLOB HEADERS "include/core/*.h")
 add_library( ultrainio_core
-             src/Block.cpp
+             src/Message.cpp
         ${HEADERS} )
 
 target_link_libraries( ultrainio_core ultrainio_chain ultrainio_crypto )

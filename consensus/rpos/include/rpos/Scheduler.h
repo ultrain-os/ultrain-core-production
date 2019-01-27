@@ -52,6 +52,23 @@ namespace ultrainio {
         }
     };
 
+    struct VoterSet {
+        CommonEchoMsg commonEchoMsg;
+        std::vector<AccountName> accountPool;
+        std::vector<std::string> sigPool;
+        std::vector<std::string> blsSignPool;
+        std::vector<uint32_t>    timePool;
+#ifdef CONSENSUS_VRF
+        std::vector<std::string> proofPool;
+#endif
+        bool empty() {
+            if (accountPool.size() <= 0) {
+                return true;
+            }
+            return false;
+        }
+    };
+
     struct msgkey {
         uint32_t blockNum;
         uint16_t phase;
@@ -233,6 +250,8 @@ namespace ultrainio {
 
         bool hasMultiVotePropose(const EchoMsg& echo);
 
+        BlsVoterSet generateBlsVoterSet(const VoterSet& voterSet);
+
         // data member
         Block m_ba0Block;
         BlockIdType m_ba0VerifiedBlkId = BlockIdType();
@@ -257,6 +276,7 @@ namespace ultrainio {
         boost::asio::steady_timer::duration m_memleakCheckPeriod{std::chrono::seconds{10}};
         std::unique_ptr<boost::asio::steady_timer> m_memleakCheck;
         std::list<SyncTask> m_syncTaskQueue;
+        VoterSet m_preBlockVoterSet;
         uint32_t m_fast_timestamp;
         friend class UranusControllerMonitor;
     };

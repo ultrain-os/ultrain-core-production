@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fc/reflect/reflect.hpp>
+#include <fc/variant.hpp>
 #include <ultrainio/chain/block.hpp>
 #include <crypto/Signature.h>
 #include <core/Redefined.h>
@@ -10,6 +11,10 @@ namespace ultrainio {
     using Block = chain::signed_block;
     using BlockHeader = chain::block_header;
     using SignBlockHeader = chain::signed_block_header;
+
+    enum BlockHeaderExtKey {
+        kExtVoterSet = 0
+    };
 
     enum ConsensusPhase {
         kPhaseInit = 0,
@@ -62,6 +67,11 @@ namespace ultrainio {
 #else
         AccountName proposer;
 #endif
+        void toVariants(fc::variants&) const;
+
+        int fromVariants(const fc::variants&);
+
+        bool operator == (const CommonEchoMsg&);
     };
 
     struct UnsignedEchoMsg : public CommonEchoMsg {
@@ -77,24 +87,22 @@ namespace ultrainio {
         std::string signature; // hex string
     };
 
-    // aggregate echo msg
-//    struct UnsignedAggEchoMsg {
-//        CommonEchoMsg commonEchoMsg;
-//        std::vector<AccountName> accountPool;
-//        std::vector<std::string> sigPool;
-//        std::vector<std::string> blsSignPool;
-//        std::vector<uint32_t> timePool;
-//        AccountName account;
-//#ifdef CONSENSUS_VRF
-//        std::vector<std::string> proofPool;
-//        // the proof of the node which send AggEchoMsg
-//        std::string myProposerProof;
-//#endif
-//    };
-//
-//    struct AggEchoMsg : public UnsignedAggEchoMsg {
-//        std::string signature; // hex string
-//    };
+    struct BlsVoterSet {
+        CommonEchoMsg commonEchoMsg;
+        std::vector<AccountName> accountPool;
+#ifdef CONSENSUS_VRF
+        std::vector<std::string> proofPool;
+#endif
+        std::string sigX;
+
+        bool empty();
+
+        void toVariants(fc::variants&) const;
+
+        void fromVariants(const fc::variants&);
+
+        bool operator == (const BlsVoterSet&);
+    };
 }
 
 FC_REFLECT( ultrainio::ProposeMsg, (block))
@@ -113,3 +121,9 @@ FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
 FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))
 FC_REFLECT( ultrainio::SyncBlockMsg, (seqNum)(block))
 FC_REFLECT( ultrainio::SyncStopMsg, (seqNum))
+
+#ifdef CONSENSUS_VRF
+FC_REFLECT( ultrainio::BlsVoterSet, (commonEchoMsg)(accountPool)(proofPool)(sigX) )
+#else
+FC_REFLECT( ultrainio::BlsVoterSet, (commonEchoMsg)(accountPool)(sigX) )
+#endif
