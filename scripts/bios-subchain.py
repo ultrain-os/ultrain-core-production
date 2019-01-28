@@ -38,13 +38,13 @@ def run(args,stop):
 
 def retry(args):
     time = 0
-    while time <=20:
+    while True:
         print('bios-subchain.py:', args)
         logFile.write(args + '\n')
         if subprocess.call(args, shell=True):
             print('*** Retry')
             time=time+1;
-            sleep(1)
+            sleep(0.5)
         else:
             break
 

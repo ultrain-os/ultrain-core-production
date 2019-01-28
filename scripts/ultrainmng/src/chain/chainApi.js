@@ -31,7 +31,7 @@ const getMainChainId = async (config) => {
 }
 
 /**
- * 获取子网子链Chain Id
+ * 获取子网子链Chain Idf
  * @param configSub
  * @returns {Promise<*>}
  */
@@ -327,6 +327,31 @@ getSubchanEndPoint = async (chainName, chainConfig) => {
     return "";
 }
 
+/**
+ * 返回不同子链对应的monitor-server-endpoint的链接点
+ * @param chainId
+ * @returns {Promise<string>}
+ */
+getSubchanMonitorService = async (chainName, chainConfig) => {
+
+    // logger.debug(chainConfig.seedIpConfig);
+    // logger.debug(chainName);
+    try {
+        if (utils.isNotNull(chainConfig.seedIpConfig)) {
+            for (let i = 0; i < chainConfig.seedIpConfig.length; i++) {
+                //logger.debug(chainConfig.seedIpConfig[i])
+                if (chainConfig.seedIpConfig[i].chainName == chainName) {
+                    return chainConfig.seedIpConfig[i].monitorServerEndpoint;
+                }
+            }
+        }
+
+    } catch (e) {
+        logger.error("getSubchanMonitorService error:", e);
+    }
+    return "";
+}
+
 getSubchainConfig = async (chainName, chainConfig) => {
 
     // logger.debug(chainConfig.seedIpConfig);
@@ -362,5 +387,6 @@ module.exports = {
     getTableAllData,
     getChainSeedIP,
     getSubchanEndPoint,
-    getSubchainConfig
+    getSubchainConfig,
+    getSubchanMonitorService
 }

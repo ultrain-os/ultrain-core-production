@@ -26,12 +26,13 @@ NodUltrain.configFilePath = "/root/.local/share/ultrainio/nodultrain/config/conf
  * @param monitorServer
  * @returns {boolean}
  */
-NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime) {
+NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,monitorServcer) {
     try {
         var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
 
         //iniFile.setValue("p2p-peer-address", seedIp+":20122");
         //iniFile.setValue("rpos-p2p-peer-address", seedIp+":20123");
+        iniFile.setValue("monitor-server-endpoint", monitorServcer);
         iniFile.removeKey("p2p-peer-address")
         iniFile.removeKey("rpos-p2p-peer-address")
         for (var i=0;i<seedIp.length;i++) {

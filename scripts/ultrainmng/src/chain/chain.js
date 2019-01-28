@@ -270,7 +270,7 @@ async function syncCommitee() {
 
     if (committeeUtil.isValidChangeMembers(changeMembers)) {
 
-        for (var i = 0; i<changeMembers.length;i++) {
+        for (var i = 0; i < changeMembers.length; i++) {
             let committeeUser = changeMembers[i].account;
             let params = [];
             params.push(changeMembers[i]);
@@ -284,7 +284,7 @@ async function syncCommitee() {
                 if (voteUtil.findVoteCommitee(tableData, chainConfig.myAccountAsCommittee, committeeUser) == false) {
                     logger.info("account(" + chainConfig.myAccountAsCommittee + ") has not voted account(" + committeeUser + ")  to committee, start to vote..");
                     try {
-                        logger.info("vote commitee params:",params);
+                        logger.info("vote commitee params:", params);
                         chainConfig.u3Sub.contract(contractConstants.ULTRAINIO).then(actions => {
                             actions.votecommittee(chainConfig.myAccountAsCommittee, params).then((unsigned_transaction) => {
                                 chainConfig.u3Sub.sign(unsigned_transaction, /*mySkAsCommittee*/chainConfig.config.keyProvider[0], chainConfig.config.chainId).then((signature) => {
@@ -340,18 +340,16 @@ async function syncChainInfo() {
         let chainName = null;
         let chainId = null;
         let genesisTime = null;
+        if (utils.isNull(chainConfig.configSub.chainId)) {
+            chainConfig.configSub.chainId = await chainApi.getSubChainId(chainConfig.configSub);
+        }
+        logger.debug("configSub.chainId=", chainConfig.configSub.chainId);
         let chainInfo = await chainApi.getChainInfo(chainConfig.u3, chainConfig.myAccountAsCommittee);
-        logger.info("chain info from mainchain:",chainInfo);
+        logger.info("chain info from mainchain:", chainInfo);
         if (utils.isNotNull(chainInfo)) {
             chainName = chainInfo.location;
             chainId = chainInfo.chain_id;
             genesisTime = chainUtil.formatGensisTime(chainInfo.genesis_time);
-            // if (chainName == "11" || chainName == 11) {
-            //     genesisTime = "2019-01-24 14:06:00";
-            // }
-            // if (chainName == "12" || chainName == 12) {
-            //     genesisTime = "2019-01-24 14:11:00";
-            // }
         }
 
         //设置用户属于的chainid和chainname信息
@@ -365,20 +363,6 @@ async function syncChainInfo() {
             chainConfig.genesisTime = genesisTime;
         }
 
-        //  logger.info("testCount:",testCount);
-        // if (testCount >= 2) {
-        //     var newChainName = "12";
-        //     var chainObj = await chainApi.getSubchainConfig(newChainName,chainConfig);
-        //     logger.info("chainObj:",chainObj);
-        //     if (utils.isNotNull(chainObj)) {
-        //         chainConfig.chainName = newChainName;
-        //         chainConfig.chainId = chainObj.chainid;
-        //         chainConfig.genesisTime = chainObj.genesisTime
-        //     }
-        //     logger.info("getSubchanEndPoint: ",await chainApi.getSubchanEndPoint(newChainName,chainConfig));
-        //     logger.info("getChainSeedIP: ",await chainApi.getChainSeedIP(newChainName,chainConfig));
-        // }
-
         //如果是主链，啥都不操作
         if (isMainChain()) {
             syncChainData = false;
@@ -386,7 +370,7 @@ async function syncChainInfo() {
             return;
         }
 
-        logger.info(chainConfig.myAccountAsCommittee + " belongs to chaininfo (name:" + chainConfig.chainName + ",chain_id:" + chainConfig.chainId + " ,genesisTime:"+chainConfig.genesisTime+") from mainchain");
+        logger.info(chainConfig.myAccountAsCommittee + " belongs to chaininfo (name:" + chainConfig.chainName + ",chain_id:" + chainConfig.chainId + " ,genesisTime:" + chainConfig.genesisTime + ") from mainchain");
         logger.info("now subchain's chainid :" + chainConfig.configSub.chainId);
         var rightChain = chainConfig.isInRightChain()
         if (!rightChain) {
@@ -418,7 +402,7 @@ async function syncChainInfo() {
                 syncChainData = false;
                 await NodUltrain.stop(5000);
                 sleep.msleep(1000);
-                await NodUltrain.start(5000,chainConfig.configFileData.local.nodpath);
+                await NodUltrain.start(5000, chainConfig.configFileData.local.nodpath);
                 syncChainChanging = false;
                 syncChainData = true;
                 logger.info("nod restart end..");
@@ -592,11 +576,13 @@ async function switchChain() {
 
 
         //修改nod程序配置信息
-        var subchainEndPoint = await chainApi.getSubchanEndPoint(chainConfig.chainName,chainConfig);
+        var subchainEndPoint = await chainApi.getSubchanEndPoint(chainConfig.chainName, chainConfig);
+        var subchainMonitorService = await chainApi.getSubchanMonitorService(chainConfig.chainName, chainConfig);
         logger.info("get chainid(" + chainConfig.chainName + ")'s seed ip info:", seedIpInfo);
         logger.info("subchainEndPoint:", subchainEndPoint);
         logger.info("genesisTime:", chainConfig.genesisTime);
-        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint, chainConfig.genesisTime);
+        logger.info("get chainid(" + chainConfig.chainName + ")'s", subchainMonitorService);
+        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint, chainConfig.genesisTime, subchainMonitorService);
         if (result == true) {
             loggerChainChanging.info("update nod config file success")
             //重新加载配置文件信息
@@ -609,7 +595,7 @@ async function switchChain() {
 
 
         //启动nod
-        result = await NodUltrain.start(60000,chainConfig.configFileData.local.nodpath);
+        result = await NodUltrain.start(60000, chainConfig.configFileData.local.nodpath);
         if (result == true) {
             loggerChainChanging.info("nod start success")
         } else {
@@ -703,7 +689,7 @@ function isMainChain() {
  */
 async function syncWorldState() {
 
-    if (chainConfig.configFileData.local.worldstate  == false) {
+    if (chainConfig.configFileData.local.worldstate == false) {
         logger.info("syncWorldState is disabled");
         return;
     }
@@ -725,7 +711,7 @@ async function syncWorldState() {
                 let needUpload = true;
                 if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
                     logger.info("mainChainData:" + mainChainData);
-                    for (var i = mainChainData.rows.length-1; i >= 0; i--) {
+                    for (var i = mainChainData.rows.length - 1; i >= 0; i--) {
                         logger.info("main chain's world state (main chain block num :" + mainChainData.rows[i].block_num + " subchain node block num :" + WorldState.status.block_height + ")");
                         if (mainChainData.rows[i].block_num >= WorldState.status.block_height) {
                             logger.info("main chain's world state is newest,need not upload:(main chain block num :" + mainChainData.rows[i].block_num + " subchain node block num :" + WorldState.status.block_height + ")");

@@ -57,7 +57,7 @@ def importKeys():
     run(args.clultrain + 'wallet import --private-key ' + args.private_key)
     run(args.clultrain + 'wallet import --private-key ' + args.initacc_sk)
     run(args.clultrain + 'wallet import --private-key  5KG6NiRGhsEP9vTf4WVe312iVQ3uemEXsstsqkT9Wj1MkdY5uJk')
-    for i in range(0, args.num_producers):
+    for i in range(0, len(account_sk_list)):
        run(args.clultrain + 'wallet import --private-key ' + account_sk_list[i])
 
 def updateAuth(account, permission, parent, controller):

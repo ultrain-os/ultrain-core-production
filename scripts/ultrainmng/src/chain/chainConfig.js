@@ -168,24 +168,6 @@ ChainConfig.syncConfig = async function () {
          * 如果localtest为true，表明当前是本地测试状态，更新主链url等信息
          */
         if (this.localTest) {
-            // if (utils.isNotNull(configIniLocal["mainchainHttpEndpoint"])) {
-            //     logger.debug("local mainchain httpEndpoint is enabled :" + configIniLocal["mainchainHttpEndpoint"]);
-            //     this.config.httpEndpoint = configIniLocal["mainchainHttpEndpoint"];
-            // }
-            // // config.httpEndpoint = "http://172.16.10.4:8877";
-            // if (utils.isNotNull(configIniLocal["chain_name"])) {
-            //     this.chainName = configIniLocal["chain_name"];
-            // }
-            // /**
-            //  * 账号信息需要同时否不为空才进行替换
-            //  */
-            // if (utils.isAllNotNull(configIniLocal["my-account-as-committee"], configIniLocal["my-sk-as-committee"], configIniLocal["my-sk-as-account"])) {
-            //     logger.debug("local account config is enabled :" + configIniLocal["my-account-as-committee"]);
-            //     this.myAccountAsCommittee = configIniLocal["my-account-as-committee"];
-            //     this.mySkAsCommittee = configIniLocal["my-sk-as-committee"];
-            //     this.config.keyProvider = [configIniLocal["my-sk-as-account"]];
-            //     this.configSub.keyProvider = [configIniLocal["my-sk-as-account"]];
-            // }
         }
 
         logger.info("mainchain httpEndpoint:",this.config.httpEndpoint)
@@ -300,6 +282,11 @@ ChainConfig.isInRightChain = function () {
 
     //主链未同步到我属于子链的创世块
     if (constant.chainIdConstants.NONE_CHAIN == this.chainId || utils.isNull(this.chainId)) {
+        return true;
+    }
+
+    //子链未获取到chainid，暂不切链
+    if (utils.isNull(this.configSub.chainId)) {
         return true;
     }
 
