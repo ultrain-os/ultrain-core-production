@@ -249,7 +249,7 @@ namespace chainbase {
          void modify( const value_type& obj, Modifier&& m ) {
             on_modify( obj );
             auto ok = _indices.modify( _indices.iterator_to( obj ), m );
-            if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
+            if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "modify: Could not modify object, most likely a uniqueness constraint was violated" ) );
             backup_modify( obj );
          }
 
@@ -351,21 +351,18 @@ namespace chainbase {
 
             const auto& head = _stack.back();
 
-            for( auto& item : head.old_values ) {
-               auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
-                  v = item.second;
-               });
-               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
+            /*The order of operation must be create, modify, remove.That is because it maybe conflict 
+            between diff operations of unique key.
+            Ex: class A have a int unique key t
+               t1 = 1;
+               Oper A:  
+                  modify: t1 --> 3;
+               Oper B:
+                  create: t2 = 1;
 
-               if ( !_backup_on ) continue;
-               if( !_is_cached ) {
-                   ok = _indices_backup.modify( _indices_backup.find( item.second.id ), [&]( value_type& v ) {
-                                            v = std::move( item.second );
-                                    });
-               }
-               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
-            }
-
+               In this case, undo() must be undo  Oper B , then undo oper A. Otherwise, it will faild when modify t1
+               from 3 to 1; 
+            */
             for( auto id : head.new_ids )
             {
                _indices.erase( _indices.find( id ) );
@@ -375,14 +372,30 @@ namespace chainbase {
             }
             _next_id = head.old_next_id;
 
-            for( auto& item : head.removed_values ) {
-               bool ok = _indices.emplace( item.second ).second;
-               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not restore object, most likely a uniqueness constraint was violated" ) );
+            for( auto& item : head.old_values ) {
+               auto ok = _indices.modify( _indices.find( item.second.id ), [&]( value_type& v ) {
+                  v = item.second;
+               });
+               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "undo: Could not modify object, most likely a uniqueness constraint was violated" ) );
 
                if ( !_backup_on ) continue;
-               if( !_is_cached )
+               if( !_is_cached ) {
+                   ok = _indices_backup.modify( _indices_backup.find( item.second.id ), [&]( value_type& v ) {
+                                            v = std::move( item.second );
+                                    });
+                   if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "undo backup: Could not modify object, most likely a uniqueness constraint was violated" ) );
+               }
+            }
+
+            for( auto& item : head.removed_values ) {
+               bool ok = _indices.emplace( item.second ).second;
+               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "undo: Could not restore object, most likely a uniqueness constraint was violated" ) );
+
+               if ( !_backup_on ) continue;
+               if( !_is_cached ) {
                    ok = _indices_backup.emplace( std::move( item.second ) ).second;
-               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not restore object, most likely a uniqueness constraint was violated" ) );
+                  if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "undo backup: Could not restore object, most likely a uniqueness constraint was violated" ) );
+               }
             }
 
             _stack.pop_back();
@@ -564,22 +577,29 @@ namespace chainbase {
          {
             if ( !_backup_on ) return;
             auto& head= _cache.front();
-            for(auto& item :head.new_values)
+
+            /*The order of operation must be remove, modify, create.That is because it maybe conflict 
+            between diff operations of unique key.
+            */
+            for(auto id :head.removed_ids)
             {
-               bool ok = _indices_backup.emplace( std::move( item.second ) ).second;
-               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not restore object, most likely a uniqueness constraint was violated" ) );
+               _indices_backup.erase( _indices_backup.find( id ) );
             }
+
             for(auto& item :head.modify_values)
             {
                auto ok = _indices_backup.modify( _indices_backup.find( item.second.id ), [&]( value_type& v ) {
                         v = std::move( item.second );
                });
-               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
+               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a uniqueness constraint was violated" ) );
             }
-            for(auto id :head.removed_ids)
+
+            for(auto& item :head.new_values)
             {
-               _indices_backup.erase( _indices_backup.find( id ) );
+               bool ok = _indices_backup.emplace( std::move( item.second ) ).second;
+               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a uniqueness constraint was violated" ) );
             }
+
             _cache.pop_front();
          }
 
@@ -711,7 +731,7 @@ namespace chainbase {
                 if( !_indices_backup.modify( _indices_backup.find( v.id ), [&]( value_type& obj ) {
                             obj = v;
                             } ))
-                    BOOST_THROW_EXCEPTION( std::logic_error( "Could not modify object, most likely a uniqueness constraint was violated" ) );
+                    BOOST_THROW_EXCEPTION( std::logic_error( "backup_modify: Could not modify object, most likely a uniqueness constraint was violated" ) );
          }
 
          void backup_create( const value_type& v ) {
