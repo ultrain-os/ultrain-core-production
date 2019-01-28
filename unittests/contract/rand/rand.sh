@@ -49,7 +49,7 @@ case "$1" in
 	sleep 10
 	;;
   "e") #vote
-	i=0;j=1; VOTE_TIMES=20; VOTER_NUM=16;
+	i=0;j=1; VOTE_TIMES=200000; VOTER_NUM=16;
 	while [ $j -lt $VOTE_TIMES ];do
                 printf "times : "$j"\n"
 		while [ $i -lt $VOTER_NUM ];do

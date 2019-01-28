@@ -275,6 +275,13 @@ def stepregproducersTest():
     for i in range(0, pklen):
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "1000000.0000 UGAS" ' % (cur_accounts[i]))
 
+def stepexecrand():
+    randpath = "/root/workspace"
+    if args.programpath:
+        randpath = args.programpath
+    os.system("cd %s/ultrain-core/unittests/contract/rand;  ./rand.sh c  sleep 2;  ./rand.sh r  sleep 2;\
+      nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n'" % randpath)
+
 # Command Line Arguments
 
 parser = argparse.ArgumentParser()
@@ -291,7 +298,6 @@ commands = [
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
     ('I', 'initsimpletest', stepInitSimpleTest,         False,    "Simple transfer contract call test"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
-#    ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
      ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
 #    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
@@ -299,6 +305,7 @@ commands = [
     ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction"),
     ('u', 'unregproducers',  stepunregproducersTest,    False,    "stepunregproducersTest"),
     ('r', 'regproducers',  stepregproducersTest,    False,    "stepregproducersTest"),
+    ('e', 'execrand',          stepexecrand,            True,    "stepexecrand"),
 ]
 
 parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")
