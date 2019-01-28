@@ -161,6 +161,8 @@ private:
     boost::asio::steady_timer::duration   idrequestinterval{std::chrono::seconds{2}};
     std::unique_ptr<boost::asio::steady_timer> idrequest_timer;
 
+    boost::asio::steady_timer::duration   nodesrefindinterval{std::chrono::seconds{30}};
+    std::unique_ptr<boost::asio::steady_timer> nodesrefindtimer;
     void start_p2p_monitor(ba::io_service& _io);
     void doHandlePingTimeouts();
     void doHandleNodeTimeouts();
@@ -170,7 +172,8 @@ private:
     void doDiscovery();
     void doIDRequest();
     void doIDRequestCheck();
-
+    void doNodeReFindTimeouts();
+    void doNodeRefindCheck();
     NodeIPEndpoint m_hostNodeEndpoint;
 
     std::unordered_map<NodeID, std::shared_ptr<NodeEntry>> m_nodes;     ///< Known Node Endpoints
@@ -185,7 +188,8 @@ private:
     std::unordered_map<NodeID, fc::time_point> m_sentFindNodes;
     std::shared_ptr<NodeSocket> m_socket;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
     NodeSocket* m_socketPointer;                                ///< Set to m_socket.get(). Socket is created in constructor and disconnected in destructor to ensure access to pointer is safe.
-
+    vector<string> m_seeds;
+    void requireSeeds(const std::vector <std::string> &seeds);
  //   std::unordered_map<p2p::NodeID, std::shared_ptr<p2p::Node>> m_peers;
 
 }; // end of class NodeTable

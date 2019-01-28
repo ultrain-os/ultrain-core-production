@@ -60,23 +60,29 @@ namespace p2p {
     }
 //TODO::rpos seed& trx seed to one seed and must be same
 void NodeTable::init( const std::vector <std::string> &seeds) {
-    std::vector<NodeIPEndpoint> seeds_detailed;
 
     for (auto seed : seeds) {
         auto host = seed.substr(0, seed.find(':'));
         auto port = seed.substr( host.size() + 1, seed.size());
         idump((seed)(port));
+        m_seeds.push_back(host);
+    }
+    requireSeeds(m_seeds);
+    doIDRequest();
+}
+void NodeTable::requireSeeds(const std::vector <std::string> &seeds)
+{
+    for (auto seed : seeds) {
         p2p::NodeIPEndpoint peer;
-        peer.setAddress(host);
+        peer.setAddress(seed);
         peer.setUdpPort(20124);
         p2p::NodeID id = fc::sha256();
         p2p::Node node(id, peer);
         m_pubkDiscoverPings[boost::asio::ip::address::from_string(node.m_endpoint.address())] = fc::time_point::now();
         ping(node.m_endpoint,id);
     }
-    doIDRequest();
+    ilog("seeds size ${size} disping size ${pingsize}",("size",seeds.size())("pingsize",m_pubkDiscoverPings.size()));
 }
-    
 void NodeTable::doIDRequestCheck()
 {
     bi::udp::endpoint localep = (bi::udp::endpoint)m_hostNodeEndpoint;
@@ -431,14 +437,6 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
         elog("pong msg has no id");
         return ;
     }
-    if(pong.sourceid != fc::sha256())
-    {
-        auto const sentdiscoverping = m_pubkDiscoverPings.find(_from.address());
-        if (sentdiscoverping != m_pubkDiscoverPings.end())
-        {
-            m_pubkDiscoverPings.erase(sentdiscoverping);
-        }
-    }
     if(pong.destid != m_hostNodeID)
     {
         elog("pong msg not for me");
@@ -463,8 +461,8 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
         }
     }
     m_sentPings.erase(sentPing);
-    //TODOL::JWN dropnode
-     if (!m_hostNodeEndpoint)
+    
+    if (!m_hostNodeEndpoint)
      {
 	    ilog("local m_hostNodeEndpoint before ${host}",("host",m_hostNodeEndpoint.address()));
         m_hostNodeEndpoint.setAddress(pong.destep.address());
@@ -682,6 +680,21 @@ void NodeTable::doHandleNodeTimeouts()
         doHandleNodeTimeouts();
     });
 }
+void NodeTable::doNodeRefindCheck()
+{
+    if(m_nodes.size() < 3)
+    {
+        requireSeeds(m_seeds);
+    }
+}
+void NodeTable::doNodeReFindTimeouts()
+{
+    nodesrefindtimer->expires_from_now( nodesrefindinterval);
+    nodesrefindtimer->async_wait( [this](boost::system::error_code ec) {
+            doNodeRefindCheck();
+            doNodeReFindTimeouts();
+            });
+}
 void NodeTable::start_p2p_monitor(ba::io_service& _io)
 {
     checknodereachable_timer.reset(new boost::asio::steady_timer(_io));
@@ -692,6 +705,8 @@ void NodeTable::start_p2p_monitor(ba::io_service& _io)
     discover_splittimer.reset(new boost::asio::steady_timer(_io));
     discover_timer.reset(new boost::asio::steady_timer(_io));
     doDiscovery();
+    nodesrefindtimer.reset(new boost::asio::steady_timer(_io));
+    doNodeReFindTimeouts();
 }
 }  // namespace p2p
 }  // namespace ultrainio
