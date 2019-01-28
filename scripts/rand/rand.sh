@@ -1,6 +1,6 @@
 #! /bin/bash
 
-randDir="./"; clDir="../../../build/programs/clultrain"
+randDir="./"; clDir="../../build/programs/clultrain"
 cvrf="./vrf_client"
 
 msg="234567" # TODO: add "vrf" prefix to all msg for security

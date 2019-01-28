@@ -296,6 +296,7 @@ namespace ultrainiosystem {
       getKeydata(newacc.owner_key,ownerdata);
       ownerkeyweight.key.data = ownerdata;
       ownerkeyweight.key.type = 0;
+      ownerkeyweight.weight = 1;
       ultrainiosystem::authority    ownerkey  = { .threshold = 1, .keys = { ownerkeyweight }, .accounts = {}, .waits = {} };
 
       ultrainiosystem::key_weight activekeyweight;
@@ -303,6 +304,7 @@ namespace ultrainiosystem {
       getKeydata(newacc.active_key,activedata);
       activekeyweight.key.data = activedata;
       activekeyweight.key.type = 0;
+      activekeyweight.weight = 1;
       ultrainiosystem::authority     activekey = { .threshold = 1, .keys = { activekeyweight }, .accounts = {}, .waits = {} };
       print("updateactiveaccounts proposerminer:",name{newacc.account}," ownerkey:",newacc.owner_key," active_key:",newacc.active_key);
       action(

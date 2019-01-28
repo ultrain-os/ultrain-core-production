@@ -279,7 +279,7 @@ def stepexecrand():
     randpath = "/root/workspace"
     if args.programpath:
         randpath = args.programpath
-    os.system("cd %s/ultrain-core/unittests/contract/rand;  ./rand.sh c  sleep 2;  ./rand.sh r  sleep 2;\
+    os.system("cd %s/ultrain-core/scripts/rand;  ./rand.sh c  sleep 2;  ./rand.sh r  sleep 2;\
       nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n'" % randpath)
 
 # Command Line Arguments
