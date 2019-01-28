@@ -135,5 +135,5 @@ FC_REFLECT( ultrainio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( ultrainio::chain::proposeminer_info, (account)(public_key)(bls_key)(url)(location)(adddel_miner)(approve_num) )
 FC_REFLECT( ultrainio::chain::proposeaccount_info, (account)(owner_key)(active_key)(updateable)(location)(approve_num) )
 FC_REFLECT( ultrainio::chain::proposeresource_info, (account)(lease_num)(days)(location)(approve_num) )
-FC_REFLECT( ultrainio::chain::action, (account)(name)(authorization)(data)(ability) )
+FC_REFLECT( ultrainio::chain::action, (account)(name)(authorization)(data) )
 
