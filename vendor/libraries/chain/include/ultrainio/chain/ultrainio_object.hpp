@@ -71,7 +71,7 @@ namespace ultrainio { namespace chain {
 
     struct resources_lease {
       account_name             owner;
-      int64_t                  lease_num;
+      uint64_t                 lease_num;
       time_point_sec           start_time;
       time_point_sec           end_time;
     };

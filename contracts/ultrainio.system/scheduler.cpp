@@ -81,8 +81,8 @@ namespace ultrainiosystem {
                     p.hash_v.emplace_back(hash, file_size, 1);
                     p.accounts.emplace_back(current_sender());
                     });
-            int32_t expired = blocknum - MAX_WS_COUNT*default_worldstate_interval;
-            if (expired > 0){
+            if (blocknum > uint64_t(MAX_WS_COUNT * default_worldstate_interval)){
+                uint64_t expired = blocknum - uint64_t(MAX_WS_COUNT * default_worldstate_interval);
                 auto old = hashTable.find(expired);
                 if (old != hashTable.end())
                     hashTable.erase(old);
@@ -528,7 +528,7 @@ namespace ultrainiosystem {
             return;
         }
 
-        print( "start schedule\n");
+        print( "[schedule] start, master block num: ", block_height, "\n");
 
         //get current head block hash
         char blockid[32];
@@ -544,17 +544,20 @@ namespace ultrainiosystem {
         auto chain_iter = _subchains.begin();
         for(; chain_iter != _subchains.end(); ++chain_iter, ++index_in_list) {
             auto type_iter = type_tbl.find(chain_iter->chain_type);
-            ultrainio_assert(type_iter != type_tbl.end(), "the chain type is not existed");
+            if(type_iter == type_tbl.end()) {
+                print("[schedule] error: the chain type is not existed\n");
+                return;
+            }
             if(chain_iter->committee_members.size() < uint32_t(type_iter->stable_min_producers)) {
                 continue;
             }
             auto out_num = (chain_iter->committee_members.size() - type_iter->stable_min_producers)/type_iter->sched_inc_step;
             auto gap = type_iter->sched_inc_step - (chain_iter->committee_members.size() - type_iter->stable_min_producers)%type_iter->sched_inc_step;
-            uint8_t rf = head_block_hash.hash[31 - index_in_list%30] + index_in_list/30;//first 2 bytes are always 0, so here we use 30 =32 -2
+            uint8_t rf = head_block_hash.hash[31 - index_in_list % 30] + uint8_t(index_in_list / 30);//first 2 bytes are always 0, so here we use 30 =32 -2
             out_list.emplace_back(out_num, gap, rf, chain_iter);
         }
 
-        print( "out list size: ", out_list.size(), "\n" );
+        print( "[schedule] out list size: ", out_list.size(), "\n" );
         if(out_list.size() < 2) {
             return;
         }
@@ -563,18 +566,19 @@ namespace ultrainiosystem {
         out_list.sort(compare_gt);
 
         ////start 1st scheduling, this step is for balance
-        bool finish_step1 = false;
         auto min_sched_chain  = out_list.end();
         min_sched_chain--;
 
-        print("step 1:\n");
+        print("[schedule] step 1:\n");
         auto out_iter = out_list.begin();
         for(; out_iter != min_sched_chain && compare_gt(*out_iter, *min_sched_chain) ; ++out_iter) {
-            print("out chain: ", out_iter->chain_ite->chain_name);
+            print("[schedule] out_chain: ", out_iter->chain_ite->chain_name);
             print(" can move out: ", uint32_t(out_iter->sched_out_num));
-            print("producers to in chain: ", min_sched_chain->chain_ite->chain_name, "\n");
+            print(" producers to in_chain: ", min_sched_chain->chain_ite->chain_name, "\n");
             for(uint16_t out_idx = 0; out_idx < out_iter->sched_out_num; ++out_idx ) {
-                move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, out_idx);
+                if(!move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, out_idx) ) {
+                    continue;
+                }
                 --min_sched_chain->gap_to_next_level;
                 if(0 == min_sched_chain->gap_to_next_level) {
                     --min_sched_chain; //one chain can only increase one level in a scheduling loop
@@ -592,21 +596,23 @@ namespace ultrainiosystem {
         auto chain_from = out_list.begin();
         auto chain_to = out_list.begin();
         ++chain_to;
-        print("step 2:\n");
+        print("[schedule] step 2:\n");
         for(; chain_to != out_list.end(); ++chain_from, ++chain_to) {
-            print("from chain: ", chain_from->chain_ite->chain_name);
-            print(" to chain: ", chain_to->chain_ite->chain_name, "\n");
-            move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, 0);
+            print("[schedule] from_chain: ", chain_from->chain_ite->chain_name);
+            print(", to_chain: ", chain_to->chain_ite->chain_name, "\n");
+            if(!move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, 0) ) {
+                continue;
+            }
         }
         chain_from = out_list.end();
         --chain_from;
         chain_to = out_list.begin();
-        print("from chain: ", chain_from->chain_ite->chain_name);
-        print(" to chain: ", chain_to->chain_ite->chain_name, "\n");
+        print("[schedule] from chain: ", chain_from->chain_ite->chain_name);
+        print(", to chain: ", chain_to->chain_ite->chain_name, "\n");
         move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, 0);
     }
 
-    void system_contract::move_producer(checksum256 head_id, subchains_table::const_iterator from_iter,
+    bool system_contract::move_producer(checksum256 head_id, subchains_table::const_iterator from_iter,
                                         subchains_table::const_iterator to_iter, uint16_t index) {
         index = index % 25;
         uint32_t x = uint32_t(head_id.hash[31 - index]);
@@ -627,8 +633,11 @@ namespace ultrainiosystem {
         uint32_t totalsize = schedule_producers.size();
         auto producer = schedule_producers[x % totalsize];
         auto producer_iter = _producers.find(producer);
-        ultrainio_assert(producer_iter != _producers.end(), "producer is not found");
-        print("move ", name{producer}, " to ", to_iter->chain_name, "\n");
+        if(producer_iter == _producers.end()) {
+            print("[schedule] error: producer to move out is not found in _producers\n");
+            return false;
+        }
+        print("[schedule] move ", name{producer}, " to ", to_iter->chain_name, "\n");
         //check user before move
         auto user_iter = to_iter->users.begin();
         for(; user_iter != to_iter->users.end(); ++user_iter) {
@@ -644,7 +653,10 @@ namespace ultrainiosystem {
                     break;
                 }
             }
-            ultrainio_assert(user_iter_from != from_iter->users.end(), "user was not empowered to the source chain");
+            if(user_iter_from == from_iter->users.end()) {
+                print("[schedule] error: user info is not found in source chain\n");
+                return false;
+            }
             user_info tempuser = *user_iter_from;
             tempuser.emp_time = current_time();
             tempuser.block_num = (uint32_t)tapos_block_num();
@@ -659,6 +671,8 @@ namespace ultrainiosystem {
         });
         remove_from_subchain(from_iter->chain_name, producer);
         add_to_subchain(to_iter->chain_name, producer, producer_iter->producer_key, producer_iter->bls_key);
+
+        return true;
     }
 
     void system_contract::setsched(bool is_enabled, uint16_t sched_period, uint16_t confirm_period) {

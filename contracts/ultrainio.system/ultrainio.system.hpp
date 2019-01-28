@@ -138,7 +138,7 @@ namespace ultrainiosystem {
          ULTRAINLIB_SERIALIZE(pending_res, (owner)(proposal_resource)(provided_approvals) )
       };
    struct hash_vote {
-       hash_vote(checksum256 hash, uint64_t size, uint64_t vote):hash(hash),file_size(size),votes(vote){}
+       hash_vote(checksum256 hash_p, uint64_t size, uint64_t vote):hash(hash_p),file_size(size),votes(vote){}
        hash_vote(){}
        checksum256      hash;
        uint64_t         file_size;
@@ -228,7 +228,7 @@ namespace ultrainiosystem {
 
    struct resources_lease {
       account_name   owner;
-      int64_t        lease_num = 0;
+      uint64_t       lease_num = 0;
       time           start_time = 0;
       time           end_time;
 
@@ -288,7 +288,7 @@ namespace ultrainiosystem {
          // functions defined in delegate_bandwidth.cpp
 
          void resourcelease( account_name from, account_name receiver,
-                          int64_t combosize, int64_t days, uint64_t location = master_chain_name);
+                          uint64_t combosize, uint64_t days, uint64_t location = master_chain_name);
 
          void delegatecons( account_name from, account_name receiver,asset stake_net_quantity);
          void undelegatecons( account_name from, account_name receiver);
@@ -388,13 +388,13 @@ namespace ultrainiosystem {
 
          void cleanvotetable();
 
-         void syncresource(account_name receiver, int64_t combosize, time endtime);
+         void syncresource(account_name receiver, uint64_t combosize, time endtime);
 
          void distributreward();
 
          void checkvotefrequency(ultrainiosystem::producers_table::const_iterator propos);
 
-         void move_producer(checksum256 head_id, subchains_table::const_iterator from_iter,
+         bool move_producer(checksum256 head_id, subchains_table::const_iterator from_iter,
                             subchains_table::const_iterator to_iter, uint16_t index);
    };
 

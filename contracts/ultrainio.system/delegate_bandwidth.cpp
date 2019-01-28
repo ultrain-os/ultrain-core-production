@@ -217,7 +217,7 @@ namespace ultrainiosystem {
       }
    }
 
-   void system_contract::syncresource(account_name receiver, int64_t combosize, time endtime) {
+   void system_contract::syncresource(account_name receiver, uint64_t combosize, time endtime) {
        resources_lease_table _reslease_tbl( _self, master_chain_name );//In side chain, always treat itself as master
        auto resiter = _reslease_tbl.find(receiver);
        if(resiter != _reslease_tbl.end()) {
@@ -243,7 +243,7 @@ namespace ultrainiosystem {
    }
 
    void system_contract::resourcelease( account_name from, account_name receiver,
-                          int64_t combosize, int64_t days, uint64_t location){
+                          uint64_t combosize, uint64_t days, uint64_t location){
       require_auth( from );
       ultrainio_assert(location != pending_queue && location != default_chain_name, "wrong location");
       auto chain_itr = _subchains.end();
@@ -253,13 +253,12 @@ namespace ultrainiosystem {
       }
       resources_lease_table _reslease_tbl( _self,location );
 
-      ultrainio_assert( combosize >= 0, "must stake a positive resources package  amount" );
       auto max_availableused_size = _gstate.max_resources_size - _gstate.total_resources_staked;
       if(chain_itr != _subchains.end()) {
           max_availableused_size = chain_itr->global_resource.max_resources_size - chain_itr->global_resource.total_resources_staked;
       }
       std::string availableuserstr = "resources lease package available amount:"+ std::to_string(max_availableused_size);
-      ultrainio_assert( combosize <= max_availableused_size, availableuserstr.c_str() );
+      ultrainio_assert( combosize <= uint64_t(max_availableused_size), availableuserstr.c_str() );
       uint64_t bytes = 0;
       if(chain_itr == _subchains.end()) {
           bytes = (_gstate.max_ram_size-2ll*1024*1024*1024)/_gstate.max_resources_size;
@@ -268,11 +267,11 @@ namespace ultrainiosystem {
           bytes = (chain_itr->global_resource.max_ram_size-2ll*1024*1024*1024)/chain_itr->global_resource.max_resources_size;
       }
       print("resourcelease receiver:",receiver," combosize:",combosize," days:",days);
-      ultrainio_assert( days >= 0 && days <=365*30, "resource lease buy days must reserve a positive and less than 30 years" );
+      ultrainio_assert( days <= (365*30+7), "resource lease buy days must reserve a positive and less than 30 years" );
 
       // update totals of "receiver"
       {
-         int64_t cuttingfee = 0;
+         uint64_t cuttingfee = 0;
          auto reslease_itr = _reslease_tbl.find( receiver );
          if( reslease_itr ==  _reslease_tbl.end() ) {
             ultrainio_assert( (combosize > 0) && (days > 0), "resource lease buy days and numbler must > 0" );
@@ -299,7 +298,7 @@ namespace ultrainiosystem {
             {
                ultrainio_assert(reslease_itr->end_time > now(), "resource lease endtime already expired" );
                double remain_time = (reslease_itr->end_time - now())/(double)seconds_per_day;
-               cuttingfee = (int64_t)(ceil(remain_time))*combosize;
+               cuttingfee = uint64_t(ceil(remain_time))*combosize;
                print("resourcelease remain_time:",remain_time," cuttingfee:",cuttingfee);
                if(chain_itr == _subchains.end()) {
                    _gstate.total_resources_staked += combosize;
@@ -327,8 +326,8 @@ namespace ultrainiosystem {
 
          ultrainio_assert( 0 < reslease_itr->lease_num, "insufficient resource lease" );
          if (chain_itr == _subchains.end()) {
-             set_resource_limits( receiver, (int64_t)bytes*reslease_itr->lease_num, reslease_itr->lease_num, reslease_itr->lease_num );
-             print("current resource limit net_weight:",reslease_itr->lease_num," cpu:",reslease_itr->lease_num," ram:",(int64_t)bytes*reslease_itr->lease_num);
+             set_resource_limits( receiver, int64_t(bytes*reslease_itr->lease_num), int64_t(reslease_itr->lease_num), int64_t(reslease_itr->lease_num) );
+             print("current resource limit net_weight:",reslease_itr->lease_num," cpu:",reslease_itr->lease_num," ram:",int64_t(bytes*reslease_itr->lease_num));
          }
       } // tot_itr can be invalid, should go out of scope
    }
