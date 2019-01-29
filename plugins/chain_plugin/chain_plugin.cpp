@@ -1115,7 +1115,7 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
    return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms);
 }
 
-read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p , bool filter_enabled) const {
+read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
    const abi_def abi = ultrainio::chain_apis::get_abi(db, N(ultrainio));
    const auto table_type = get_table_type(abi, N(producers));
    const abi_serializer abis{ abi, abi_serializer_max_time };
@@ -1141,7 +1141,10 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    std::for_each(lower,upper, [&](const key_value_object& obj) {
         copy_inline_row(obj, data);
         auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
-        if(filter_enabled && !(producer["is_enabled"].as_bool())) {
+        if(p.filter_enabled && !(producer["is_enabled"].as_bool())) {
+            return;
+        }
+        if(p.filter_actived && !(producer["is_active"].as_bool())) {
             return;
         }
         if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {
@@ -1215,7 +1218,10 @@ bool read_only::is_genesis_finished() const{
             get_producers_params params;
             params.json=true;
             params.lower_bound="";
-            auto result = get_producers(params,true);
+            params.filter_enabled = true;
+            params.show_chain_num = 0;
+            params.is_filter_chain = true;
+            auto result = get_producers(params);
             genesis_finished = result.thresh_activated_stake_time && result.rows.size()>result.min_committee_member_number? true: false;
         }
         catch (fc::exception& e) {

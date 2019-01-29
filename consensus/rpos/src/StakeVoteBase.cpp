@@ -252,8 +252,9 @@ namespace ultrainio {
         params.lower_bound="";
         params.show_chain_num = 0;
         params.is_filter_chain = true;
+        params.filter_enabled = true;
         try {
-            auto result = ro_api.get_producers(params, true);
+            auto result = ro_api.get_producers(params);
             if(!result.rows.empty()) {
                 for( const auto& r : result.rows ) {
                     cinfo.accountName = r["owner"].as_string();

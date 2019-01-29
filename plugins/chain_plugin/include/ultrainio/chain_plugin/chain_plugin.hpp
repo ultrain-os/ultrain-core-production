@@ -355,6 +355,8 @@ public:
       uint32_t    limit = 50;
       bool        is_filter_chain = true;
       uint64_t    show_chain_num = 0;
+      bool        filter_enabled = false;
+      bool        filter_actived = false;
    };
 
    struct get_producers_result {
@@ -365,7 +367,7 @@ public:
       uint32_t            min_committee_member_number {};
    };
 
-   get_producers_result get_producers( const get_producers_params& params, bool filter_enabled = false)const;
+   get_producers_result get_producers( const get_producers_params& params )const;
 
    bool is_genesis_finished()const;
 
@@ -678,7 +680,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
 
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num)(filter_enabled)(filter_actived) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thresh_activated_stake_time)(more) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,

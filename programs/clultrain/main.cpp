@@ -867,17 +867,20 @@ struct list_producers_subcommand {
    std::string lower;
    bool   is_filter_chain = false;
    uint64_t  show_chain_num = 0;
-
+   bool        filter_enabled = false;
+   bool        filter_actived = false;
    list_producers_subcommand(CLI::App* actionRoot) {
       auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
       list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format"));
       list_producers->add_option("-l,--limit", limit, localized("The maximum number of rows to return"));
       list_producers->add_option("-L,--lower", lower, localized("lower bound value of key, defaults to first"));
-      list_producers->add_option("-f,--filterchain", is_filter_chain, localized("The maximum number of rows to return"));
+      list_producers->add_flag("-f,--filterchain", is_filter_chain, localized("The maximum number of rows to return"));
       list_producers->add_option("-s,--showchainnum", show_chain_num, localized("lower bound value of key, defaults to first"));
+      list_producers->add_flag("-e,--enable", filter_enabled, localized("filter_enabled"));
+      list_producers->add_flag("-a,--actice", filter_actived, localized("filter_actived"));
       list_producers->set_callback([this] {
          auto rawResult = call(get_producers_func, fc::mutable_variant_object
-            ("json", true)("lower_bound", lower)("limit", limit)("is_filter_chain", is_filter_chain)("show_chain_num", show_chain_num));
+            ("json", true)("lower_bound", lower)("limit", limit)("is_filter_chain", is_filter_chain)("show_chain_num", show_chain_num)("filter_enabled", filter_enabled)("filter_actived", filter_actived));
          if ( print_json ) {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;
@@ -892,6 +895,7 @@ struct list_producers_subcommand {
             weight = 1;
          uint64_t total_unpaid_blocks = 0;
          uint64_t total_produce_blocks = 0;
+         std::map<uint64_t,uint64_t>  chaininfo;
          printf("%-13s %-54s  %-16s  %-10s  %-8s  %-13s  %-12s\n", "Producer", "Producer key", "Consensus weight", "is_enabled", "location","unpaid blocks","total blocks");
          for ( auto& row : result.rows ){
             printf("%-13.13s %-54.54s  %-16ld  %-10u  %-8lu  %-13lu  %-12lu\n",
@@ -905,9 +909,12 @@ struct list_producers_subcommand {
                    );
             total_unpaid_blocks += row["unpaid_blocks"].as_uint64();
             total_produce_blocks += row["total_produce_block"].as_uint64();
+            chaininfo[row["location"].as_uint64()]++;
 	    }
         std::cout << "total_unpaid_blocks: " << total_unpaid_blocks <<std::endl;
         std::cout << "total_produce_blocks: " << total_produce_blocks << std::endl;
+         for(auto iter = chaininfo.begin(); iter != chaininfo.end(); iter++)
+            std::cout<<"location:"<< iter->first <<"    number:"<<iter->second<<std::endl;
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;
       });
