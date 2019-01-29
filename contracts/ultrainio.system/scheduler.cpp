@@ -109,6 +109,7 @@ namespace ultrainiosystem {
             new_subchain.head_block_id     = block_id_type();
             new_subchain.head_block_num    = 0;
             new_subchain.updated_info.take_effect_at_block = 0;
+            new_subchain.is_schedulable    = false;
         });
     }
 
@@ -186,6 +187,8 @@ namespace ultrainiosystem {
                       _subchain.head_block_num    = 1;
                       _subchain.chain_id          = headers[idx].action_mroot; //save chain id
                       _subchain.genesis_time      = headers[idx].timestamp;
+                      _subchain.is_schedulable    = true;
+                      _subchain.committee_mroot   = headers[idx].committee_mroot;
                   });
             }
             else if (ite_chain->head_block_id == headers[idx].previous && block_number == ite_chain->head_block_num + 1) {
@@ -193,6 +196,10 @@ namespace ultrainiosystem {
                       _subchain.is_synced         = synced;
                       _subchain.head_block_id     = headers[idx].id();
                       _subchain.head_block_num    = block_number;
+                      if(ite_chain->committee_mroot != headers[idx].committee_mroot) {
+                          _subchain.committee_mroot = headers[idx].committee_mroot;
+                          _subchain.is_schedulable  = true;
+                      }
                   });
                   //record proposer for rewards
                   if(need_report) {
@@ -236,6 +243,9 @@ namespace ultrainiosystem {
             _subchain.users.shrink_to_fit();
             _subchain.head_block_id     = block_id_type();
             _subchain.head_block_num    = 0;
+            _subchain.is_schedulable    = false;
+            _subchain.committee_mroot   = checksum256();
+            _subchain.chain_id          = checksum256();
         });
         print( "clearchain chain_name:", chain_name, " users_only:", users_only, "\n" );
         auto ite = _producers.begin();
@@ -435,8 +445,7 @@ namespace ultrainiosystem {
             period_minutes = int32_t(temp.committee_confirm_period);
         }
         auto block_height = tapos_block_num();
-        if((block_height > 180 && block_height%(period_minutes * 6) != 0) ||
-           (block_height <= 180 && block_height%30 != 0) ) {
+        if(block_height > 180 && block_height%(period_minutes * 6) != 0 ) {
             return;
         }
         auto ite_chain = _subchains.begin();
@@ -454,6 +463,7 @@ namespace ultrainiosystem {
                         for(; current_comm != _subchain.committee_members.end();) {
                             if(current_comm->owner == removing_comm->owner) {
                                 current_comm = _subchain.committee_members.erase(current_comm);
+                                _subchain.is_schedulable = false;
                             }
                             else {
                                 ++current_comm;
@@ -466,6 +476,7 @@ namespace ultrainiosystem {
                         _subchain.committee_members.insert(_subchain.committee_members.end(),
                                                            _subchain.changing_info.new_added_members.begin(),
                                                            _subchain.changing_info.new_added_members.end());
+                        _subchain.is_schedulable = false;
                     }
                     _subchain.committee_members.shrink_to_fit();
                     //clear updated_info and then move changing_info to updated_info
@@ -549,7 +560,12 @@ namespace ultrainiosystem {
                 print("[schedule] error: the chain type is not existed\n");
                 return;
             }
-            if(chain_iter->committee_members.size() < uint32_t(type_iter->stable_min_producers)) {
+            //below cases will not take part in scheduling
+            //1. producer sum doesn't reach stable_min
+            //2. not schedulable: committee mroot did't update since last committee update
+            //3. not synced: current block reported to master is far from the head block on subchain
+            if((chain_iter->committee_members.size() < uint32_t(type_iter->stable_min_producers)) ||
+               !(chain_iter->is_schedulable) || !(chain_iter->is_synced)) {
                 continue;
             }
             auto out_num = (chain_iter->committee_members.size() - type_iter->stable_min_producers)/type_iter->sched_inc_step;

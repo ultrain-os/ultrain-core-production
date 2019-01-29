@@ -491,13 +491,15 @@
         {"name": "global_resource",               "type": "chain_resource"},
         {"name": "is_active",                     "type": "bool"},
         {"name": "is_synced",                     "type": "bool"},
+        {"name": "is_schedulable",                "type": "bool"},
         {"name": "committee_members",             "type": "role_base[]"},
         {"name": "updated_info",                  "type": "updated_committee"},
         {"name": "changing_info",                 "type": "changing_committee"},
         {"name": "head_block_id",                 "type": "block_id_type"},
         {"name": "head_block_num",                "type": "uint32"},
         {"name": "users",                         "type": "user_info[]"},
-        {"name": "chain_id",                      "type": "checksum256"}
+        {"name": "chain_id",                      "type": "checksum256"},
+        {"name": "committee_mroot",               "type": "checksum256"}
        ]
     },{
      "name": "pending_miner",
