@@ -237,6 +237,7 @@ namespace ultrainiosystem {
             _subchain.head_block_id     = block_id_type();
             _subchain.head_block_num    = 0;
         });
+        print( "clearchain chain_name:", chain_name, " users_only:", users_only, "\n" );
         auto ite = _producers.begin();
         for(; ite != _producers.end(); ++ite) {
             if(ite->location == chain_name) {

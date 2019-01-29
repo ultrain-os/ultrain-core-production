@@ -21,7 +21,7 @@ namespace ultrainiosystem {
    using ultrainio::indexed_by;
    using ultrainio::const_mem_fun;
    using ultrainio::block_timestamp;
-
+   using ultrainio::print;
    const uint64_t master_chain_name = 0;
    const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
    const uint64_t default_chain_name = N(default);  //default chain, will be assigned by system.

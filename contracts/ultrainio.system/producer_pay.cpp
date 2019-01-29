@@ -30,13 +30,14 @@ namespace ultrainiosystem {
          }
       }
 
-	  auto prod = _producers.find(producer);
+      auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
          _gstate.total_unpaid_blocks++;
          _producers.modify( prod, 0, [&](auto& p ) {
                p.unpaid_blocks++;
                p.total_produce_block++;
          });
+         print( "onblock timestamp:", timestamp.abstime, " producer:", name{producer}," produce_block:", prod->total_produce_block, "\n" );
       }
 
 
@@ -84,8 +85,9 @@ namespace ultrainiosystem {
          _gstate.total_unpaid_blocks += number;
          _producers.modify( prod, 0, [&](auto& p ) {
                p.unpaid_blocks += number;
-               p.total_produce_block++;
+               p.total_produce_block += number;
          });
+         print( "reportblocknumber number:", number, " producer:", name{producer}, " produce_block:", prod->total_produce_block,"\n" );
       }
    }
 
