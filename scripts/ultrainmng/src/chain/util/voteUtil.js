@@ -294,7 +294,7 @@ function getResObj(rows, index) {
  * user 投票人
  * voteUser 被投票委员会人
  */
-function findVoteCommitee(tableData, user, voteUser) {
+function findVoteCommitee(tableData, user, voteUser,adddel_miner) {
 
     if (utils.isNull(tableData)) {
         return false;
@@ -315,7 +315,10 @@ function findVoteCommitee(tableData, user, voteUser) {
             if (row.owner == voteUser) {
                 for (var j = 0; j < row.provided_approvals.length; j++) {
                     if (row.provided_approvals[j].account == user) {
-                        return true;
+                        var index = row.provided_approvals[j].resource_index;
+                        if (utils.isNotNull(row.proposal_miner) && utils.isNotNull(row.proposal_miner[index]) && row.proposal_miner[index].adddel_miner == adddel_miner) {
+                            return true;
+                        }
                     }
                 }
             }

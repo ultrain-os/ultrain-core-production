@@ -1,0 +1,29 @@
+[
+  {
+    "chainName": "11",
+    "seedIp": [
+      "172.31.7.20",
+      "172.31.32.236"
+    ],
+    "subchainHttpEndpoint": "http://172.31.7.20:8888",
+    "monitorServerEndpoint": "http://172.31.9.38:8078"
+  },
+  {
+    "chainName": "12",
+    "seedIp": [
+      "172.31.12.250",
+      "172.31.32.217"
+    ],
+    "subchainHttpEndpoint": "http://172.31.12.250:8888",
+    "monitorServerEndpoint": "http://172.31.6.209:8078"
+  },
+  {
+    "chainName": "13",
+    "seedIp": [
+      "172.31.8.22",
+      "172.31.32.241"
+    ],
+    "subchainHttpEndpoint": "http://172.31.8.22:8888",
+    "monitorServerEndpoint": "http://172.31.10.173:8078"
+  }
+]

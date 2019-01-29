@@ -7,7 +7,7 @@ monitor-server-endpoint = http://172.16.10.7:8078
 
 allowed-connection = any
 
-max-transaction-time = 30000
+max-transaction-time = 1000
 contract-return-string-length = 1024
 contract-emit-string-length = 1024
 

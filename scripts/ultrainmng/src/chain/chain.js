@@ -39,6 +39,41 @@ var localProducers = []
 //存储用户同步的时候已成功的账户信息
 var successAccountCacheList = [];
 
+//存储同步时失败的
+var failedAccountPramList = [];
+
+//清除失败用户
+function clearFailedUser(user) {
+    if (failedAccountPramList.length == 0) {
+        return;
+    }
+
+    var findflag = false;
+    failedAccountPramList.forEach(function (item,index) {
+        if (item.owner == user) {
+            delete failedAccountPramList[index]
+            findflag = true;
+        }
+    })
+
+    if (findflag == false) {
+        return;
+    }
+
+
+    var array = [];
+    failedAccountPramList.forEach(function (item, index) {
+        if (utils.isNotNull(item)) {
+            array.push(item)
+        }
+    })
+
+    failedAccountPramList = array;
+
+}
+
+
+
 /**
  * 同步新用户和权限到子链
  * @returns {Promise<void>}
@@ -60,6 +95,17 @@ async function syncUser() {
         // }
 
         logger.info("user userBulletinList:", userBulletinList);
+
+        if (utils.isNullList(userBulletinList)) {
+            logger.info("userBulletinList is null ,check failed list count :",failedAccountPramList.length);
+            if (failedAccountPramList.length >0) {
+                failedAccountPramList.forEach(function (item,index) {
+                    userBulletinList.push(item);
+                })
+
+                logger.info("retry user userBulletinList:", userBulletinList);
+            }
+        }
 
         //投票结果
         var userCountRes = {
@@ -98,7 +144,7 @@ async function syncUser() {
                 //查询是否已经投过票
                 let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, newUser.owner, null, null);
                 logger.debug(tableData)
-                if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, newUser.owner) == false) {
+                if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, newUser.owner,) == false) {
                     //未找到投过票的记录，需要投票
                     logger.info("account(" + newUser.owner + ") has not been voted by " + chainConfig.myAccountAsCommittee + ", start voting....");
 
@@ -107,6 +153,10 @@ async function syncUser() {
                     let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_ACCOUNT, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
                     logger.debug("account(" + newUser.owner + ") proposer(" + chainConfig.myAccountAsCommittee + "):", res);
                     userCountRes.votingNum++;
+                    //投票失败，加入到失败的队列中
+                    if (res == null) {
+                        failedAccountPramList.push(newUser);
+                    }
                 } else {
                     //已投票不处理
                     logger.info("account(" + newUser.owner + ") has been voted by " + chainConfig.myAccountAsCommittee + "");
@@ -117,6 +167,7 @@ async function syncUser() {
             } else {
                 //账号已存在不处理
                 logger.info("account(" + newUser.owner + ") is ready,need not vote..");
+                clearFailedUser(newUser.owner);
                 userCountRes.successAccountNum++;
                 successAccountCacheList.push(newUser.owner);
             }
@@ -142,7 +193,7 @@ async function syncBlock() {
     //一次最大块数
     var blockSyncMaxNum = 10;
     //主子链相差多少块进入追赶模式
-    var blockTraceModeBlockNum = 3;
+    var blockTraceModeBlockNum = 5;
 
     if (syncChainData == true) {
         chainConfig.u3Sub.getChainInfo(async (error, info) => {
@@ -256,17 +307,10 @@ async function syncCommitee() {
 
     let remoteProducers = await chainConfig.u3.getSubchainCommittee({"chain_name": chainConfig.chainName.toString()});
     logger.info("subchain commitee from mainchain: ", remoteProducers);
-    //mock一个producers
-    // remoteProducers.push({
-    //     owner: 'user.311',
-    //     miner_pk:
-    //         '8f6e3b3336276138023617f0ae0e6fd0c37d27aa9995f9803fe78df4941dd3ec'
-    // });
 
     //有变化的成员列表（包括删除/新增的）
     var changeMembers = committeeUtil.genChangeMembers(producerList, remoteProducers);
     logger.info("commite changeMembers:", changeMembers);
-
 
     if (committeeUtil.isValidChangeMembers(changeMembers)) {
 
@@ -281,7 +325,7 @@ async function syncCommitee() {
                 logger.info("account(" + committeeUser + ") is ready in subchain,need vote him to committee");
                 //判断是否已给他投过票
                 let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_MINER, null, committeeUser, null, null);
-                if (voteUtil.findVoteCommitee(tableData, chainConfig.myAccountAsCommittee, committeeUser) == false) {
+                if (voteUtil.findVoteCommitee(tableData, chainConfig.myAccountAsCommittee, committeeUser,changeMembers[i].adddel_miner) == false) {
                     logger.info("account(" + chainConfig.myAccountAsCommittee + ") has not voted account(" + committeeUser + ")  to committee, start to vote..");
                     try {
                         logger.info("vote commitee params:", params);
@@ -305,7 +349,7 @@ async function syncCommitee() {
                     }
                 } else {
                     //已投过票
-                    logger.debug("account(" + chainConfig.myAccountAsCommittee + ") has voted account(" + committeeUser + ")  to committee, need not vote..");
+                    logger.info("account(" + chainConfig.myAccountAsCommittee + ") has voted account(" + committeeUser + ")  to committee, need not vote..");
                 }
             }
         }
@@ -317,7 +361,6 @@ async function syncCommitee() {
 }
 
 
-var testCount = 0;
 
 /**
  * 同步链信息
@@ -325,8 +368,6 @@ var testCount = 0;
  */
 async function syncChainInfo() {
     try {
-
-        testCount++;
 
         logger.info("sync chain info and committee start..");
 
@@ -370,8 +411,24 @@ async function syncChainInfo() {
             return;
         }
 
+        //如果是非出块节点，啥都不操作
+        if (chainConfig.isNoneProducer()) {
+            syncChainData = false;
+            logger.error(chainConfig.myAccountAsCommittee + " runing is none-producer, need not work");
+            return;
+        }
+
+
         logger.info(chainConfig.myAccountAsCommittee + " belongs to chaininfo (name:" + chainConfig.chainName + ",chain_id:" + chainConfig.chainId + " ,genesisTime:" + chainConfig.genesisTime + ") from mainchain");
         logger.info("now subchain's chainid :" + chainConfig.configSub.chainId);
+
+        //主链返回的chainname非法，说明主链返回的有问题，或者是该用户在主链不存在,不工作
+        if (chainConfig.chainName == chainNameConstants.INVAILD_CHAIN_NAME) {
+            syncChainData = false;
+            logger.error(chainConfig.myAccountAsCommittee + " is a invalid name in main chain,need not work");
+            return;
+        }
+
         var rightChain = chainConfig.isInRightChain()
         if (!rightChain) {
             syncChainData = false;
@@ -436,6 +493,7 @@ async function syncChainInfo() {
  */
 function clearCacheData() {
     successAccountCacheList = [];
+    failedAccountPramList = [];
     WorldState.status = null;
 }
 

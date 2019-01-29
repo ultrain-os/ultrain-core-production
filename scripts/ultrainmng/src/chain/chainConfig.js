@@ -224,10 +224,10 @@ ChainConfig.isReady = function () {
     // }
 
     //用户信息为空
-    if (!utils.isAllNotNull(this.myAccountAsCommittee, this.mySkAsCommittee)) {
-        logger.error("chainconfig user account is null");
-        return false;
-    }
+    // if (!utils.isAllNotNull(this.myAccountAsCommittee, this.mySkAsCommittee)) {
+    //     logger.error("chainconfig user account is null");
+    //     return false;
+    // }
 
     /**
      * u3 object
@@ -296,6 +296,18 @@ ChainConfig.isInRightChain = function () {
 
     return false;
 
+}
+
+//判断是非出块节点
+ChainConfig.isNoneProducer = function () {
+    //logger.error(this.configFileData.target);
+    logger.info("is-non-producing-node:", this.configFileData.target["is-non-producing-node"]);
+
+    if (this.configFileData.target["is-non-producing-node"] == 1) {
+        return true;
+    }
+
+    return false;
 }
 
 

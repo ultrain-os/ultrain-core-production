@@ -28,6 +28,7 @@ var encodingConstants = {
 //链常量
 var chainNameConstants = {
     MAIN_CHAIN_NAME: "0",
+    INVAILD_CHAIN_NAME: "18446744073709551615", //非法链
 }
 
 //时间常量（单位ms）

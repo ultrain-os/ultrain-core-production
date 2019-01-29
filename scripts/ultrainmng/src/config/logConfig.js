@@ -6,7 +6,7 @@ var os = require('os');
  * log文件mng（前缀+系统名+时间）
  * @type {string}
  */
-var dir = "/log/mng/";
+var dir = "/root/log/";
 var filename = "mng-"+os.hostname()+"-";
 /**
  * log整体配置

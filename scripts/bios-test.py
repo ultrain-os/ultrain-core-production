@@ -130,7 +130,7 @@ def stepSetSystemContract():
     sleep(15)
 
 def stepCreateStakedAccounts():
-    for i in range(0, args.num_producers):
+    for i in range(0, args.num_producers+1):
         retry(args.clultrain + 'create account ultrainio %s %s ' % (accounts[i], account_pk_list[i]))
     sleep(10)
     retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
@@ -146,14 +146,14 @@ def stepInitSimpleTest():
         retry(args.clultrain + 'transfer  %s %s "0.%s UGAS" ' %(accounts[2], accounts[1], transvale))
 
 def stepRegProducers():
-    for i in range(1, args.num_producers):
+    for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
     sleep(15)
-    for i in range(1, args.num_producers):
+    for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system regproducer %s %s %s https://%s.com 0  %s' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
     sleep(15)
     funds = 500000000 / args.num_producers / 2
-    for i in range(1, args.num_producers):
+    for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
     stepInitSimpleTest()
     sleep(15)
@@ -319,7 +319,7 @@ parser.add_argument('--genesis', metavar='', help="Path to genesis.json", defaul
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
 parser.add_argument('--symbol', metavar='', help="The utrio.system symbol", default='UGAS')
-parser.add_argument('--num-producers', metavar='', help="Number of producers to register", type=int, default=6, dest="num_producers")
+parser.add_argument('--num-producers', metavar='', help="Number of producers to register", type=int, default=5, dest="num_producers")
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
 parser.add_argument('-p','--programpath', metavar='', help="set programpath params")

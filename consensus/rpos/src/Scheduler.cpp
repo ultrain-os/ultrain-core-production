@@ -1530,6 +1530,7 @@ namespace ultrainio {
             if (UranusNode::getInstance()->getPhase() == kPhaseBA0) {
                 return emptyBlock();
             }
+            dlog("can not find >= 2f + 1, and 2f + 1 = {num}", ("num", stakeVotePtr->getNextRoundThreshold()));
             if ((!m_echoMsgAllPhase.empty()) && (UranusNode::getInstance()->getPhase() == kPhaseBAX)) {
                 dlog("current blockhash is empty. into produceBaxBlock.");
                 return produceBaxBlock();
