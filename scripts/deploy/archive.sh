@@ -1,5 +1,6 @@
 #!/bin/bash
-# 例子：sh /home/sidechain/ultrain-core/scripts/deploy/deploy.sh /home/sidechain/ultrain-core/ /home/sidechain/
+# achive all required files to a tar
+# sample：sh /home/sidechain/ultrain-core/scripts/deploy/archive.sh /home/sidechain/ultrain-core/ /root/
 ULTRAIN_PATH=$1
 DEPLOY_PATH=$2
 

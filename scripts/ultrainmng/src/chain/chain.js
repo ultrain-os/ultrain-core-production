@@ -84,16 +84,6 @@ async function syncUser() {
     if (syncChainData == true) {
         //获取新增用户bulletin-并发送投票到子链
         let userBulletinList = await getUserBulletin(chainConfig.u3, chainConfig.chainName);
-        //mock data
-        // if (userBulletinList.length == 0) {
-        //     userBulletinList = [{
-        //         owner: "user.314",
-        //         owner_pk: "UTR7FLuM19CdCppghCjeswxPWAQxQj2LZnrKsCNwoXmi1GBwwrHUU",
-        //         active_pk: "UTR7FLuM19CdCppghCjeswxPWAQxQj2LZnrKsCNwoXmi1GBwwrHUU",
-        //         issue_date: '2019-01-11T03:33:10.000'
-        //     }];
-        // }
-
         logger.info("user userBulletinList:", userBulletinList);
 
         if (utils.isNullList(userBulletinList)) {
@@ -457,9 +447,15 @@ async function syncChainInfo() {
                 //启动nod
                 syncChainChanging = true;
                 syncChainData = false;
-                await NodUltrain.stop(5000);
+                await NodUltrain.stop(60000);
                 sleep.msleep(1000);
-                await NodUltrain.start(5000, chainConfig.configFileData.local.nodpath);
+                logger.info("clear DB data before restart it..");
+                await NodUltrain.removeData();
+                if (chainConfig.configFileData.local.worldstate == true) {
+                    await WorldState.clearDB();
+                }
+                logger.info("restart data");
+                await NodUltrain.start(60000, chainConfig.configFileData.local.nodpath);
                 syncChainChanging = false;
                 syncChainData = true;
                 logger.info("nod restart end..");
