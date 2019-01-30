@@ -3065,6 +3065,17 @@ namespace ultrainio {
         }
         return result;
     }
+    vector<connection_status> net_plugin::get_connected_connections()const {
+        vector<connection_status> result;
+        result.reserve( my->connections.size() );
+        for( const auto& c : my->connections ) {
+            if(c->current())
+            {
+                result.push_back( c->get_status() );
+            }
+        }
+        return result;
+    }
 
     connection_ptr net_plugin_impl::find_connection(const string& host )const {
         for( const auto& c : connections )
