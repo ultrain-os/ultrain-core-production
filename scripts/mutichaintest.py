@@ -2235,11 +2235,15 @@ def run(args):
         print('bios-boot-tutorial.py: exiting because of error')
         sys.exit(1)
 def retry(args):
+    retyrnum = 0
     while True:
         print('bios-boot-tutorial.py:', args)
         logFile.write(args + '\n')
         if subprocess.call(args, shell=True):
             print('*** Retry')
+            retyrnum += 1
+            if retyrnum > 500:
+                break
         else:
             break
 
