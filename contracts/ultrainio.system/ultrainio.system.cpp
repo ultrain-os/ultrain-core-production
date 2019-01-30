@@ -85,6 +85,13 @@ namespace ultrainiosystem {
       _global.set( _gstate, _self );
    }
 
+   void system_contract::setmincommittee( uint32_t number, uint32_t staked ) {
+      require_auth( _self );
+      _gstate.min_committee_member_number = number;
+      _gstate.min_activated_stake = (int64_t)staked;
+      _global.set( _gstate, _self );
+   }
+
    void system_contract::setparams( const ultrainio::blockchain_parameters& params ) {
       require_auth( N(ultrainio) );
       (ultrainio::blockchain_parameters&)(_gstate) = params;
@@ -173,7 +180,7 @@ namespace ultrainiosystem {
          INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), authorization,
             { miner.account, miner.public_key, miner.bls_key, miner.url, miner.location, N(ultrainio)} );
          INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
-            { N(utrio.stake),miner.account,asset(consweight_per_subaccount)} );
+            { N(utrio.stake),miner.account,asset(_gstate.min_activated_stake)} );
       }else{
          auto prod = _producers.find( miner.account );
          if(prod == _producers.end() || !(prod->is_active))
@@ -602,7 +609,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
-     (setram)(setblockreward)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
+     (setram)(setblockreward)(setmincommittee)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate_bandwidth.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
      // voting.cpp

@@ -563,6 +563,13 @@
         {"name":"rewardvalue",     "type":"uint64"}
       ]
     },{
+      "name": "setmincommittee",
+      "base": "",
+      "fields": [
+        {"name":"number",     "type":"uint32"},
+        {"name":"staked",     "type":"uint32"}
+      ]
+    },{
       "name": "claimrewards",
       "base": "",
       "fields": [
@@ -717,6 +724,10 @@
    },{
       "name": "setblockreward",
       "type": "setblockreward",
+      "ricardian_contract": ""
+   },{
+      "name": "setmincommittee",
+      "type": "setmincommittee",
       "ricardian_contract": ""
    },{
       "name": "bidname",

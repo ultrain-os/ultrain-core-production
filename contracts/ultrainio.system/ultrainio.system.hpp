@@ -44,9 +44,9 @@ namespace ultrainiosystem {
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
       uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
-      int64_t              min_activated_stake   = 150'000'000'0000;
+      int64_t              min_activated_stake   = 42'000'0000;
       uint32_t             min_committee_member = 1000;
-      uint32_t             min_committee_member_number = 4;
+      uint32_t             min_committee_member_number = 100;
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
 
@@ -254,7 +254,7 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index<N(users), empower_info> user_table;
 */
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
-   static constexpr int64_t  consweight_per_subaccount = 1000'000'0000;
+
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
    static constexpr uint32_t seconds_per_year      = 52*7*24*3600;
    static constexpr uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
@@ -307,6 +307,8 @@ namespace ultrainiosystem {
          void setram( uint64_t max_ram_size );
 
          void setblockreward( uint64_t rewardvalue );
+
+         void setmincommittee( uint32_t number, uint32_t staked );
 
          void setparams( const ultrainio::blockchain_parameters& params );
 

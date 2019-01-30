@@ -12,6 +12,8 @@ from account_info import *
 
 args = None
 logFile = None
+min_committee_staked = 420000000
+min_committee_number = 4
 
 unlockTimeout = 999999999
 defaultclu = '%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
@@ -152,12 +154,12 @@ def stepRegProducers():
     for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system regproducer %s %s %s https://%s.com 0  %s' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
     sleep(15)
-    funds = 500000000 / args.num_producers / 2
+
     for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], (funds*2)))
+        retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
     stepInitSimpleTest()
-    sleep(15)
-    run(args.clultrain + 'system listproducers')
+    retry(args.clultrain + ' push action ultrainio setmincommittee \'{"number":%s,"staked":%s}\' -p ultrainio ' % (min_committee_number,min_committee_staked) )
+
 
 def stepCreateinitAccounts():
     for a in initialAccounts:
@@ -279,8 +281,9 @@ def stepexecrand():
     randpath = "/root/workspace"
     if args.programpath:
         randpath = args.programpath
+    listprods = args.clultrain + 'system listproducers'
     os.system("cd %s/ultrain-core/scripts/rand;  ./rand.sh c  sleep 2;  ./rand.sh r  sleep 2;\
-      nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n'" % randpath)
+      nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
 
 # Command Line Arguments
 

@@ -181,7 +181,7 @@ namespace ultrainiosystem {
             }
          }
          auto enabled = ((it->total_cons_staked+total_update.amount) >=
-                  _gstate.min_activated_stake/_gstate.min_committee_member);
+                  _gstate.min_activated_stake);
          _producers.modify(it, 0 , [&](auto & v) {
                   v.total_cons_staked += total_update.amount;
                   v.is_enabled = enabled;
@@ -340,9 +340,6 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
 
    void system_contract::undelegatecons( account_name from, account_name receiver)
    {
-      ultrainio_assert( _gstate.total_activated_stake >= _gstate.min_activated_stake,
-                    "cannot undelegate cons until the chain is activated (at least 15% of all tokens participate in voting)" );
-
       change_cons( from, receiver, asset(-1));
    } // undelegatecons
 

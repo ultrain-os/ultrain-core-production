@@ -1160,7 +1160,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    ilog("global ${gl}", ("gl", gstate));
 
    result.thresh_activated_stake_time = gstate["thresh_activated_stake_time"].as_double();
-   result.min_stake_thresh = gstate["min_activated_stake"].as_double()/gstate["min_committee_member"].as_double();
+   result.min_stake_thresh = gstate["min_activated_stake"].as_double();
    result.min_committee_member_number = gstate["min_committee_member_number"].as_double();
    return result;
 }
@@ -1222,7 +1222,7 @@ bool read_only::is_genesis_finished() const{
             params.show_chain_num = 0;
             params.is_filter_chain = true;
             auto result = get_producers(params);
-            genesis_finished = result.thresh_activated_stake_time && result.rows.size()>result.min_committee_member_number? true: false;
+            genesis_finished = result.thresh_activated_stake_time && result.rows.size()>=result.min_committee_member_number? true: false;
         }
         catch (fc::exception& e) {
             ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
