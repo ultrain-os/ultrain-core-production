@@ -1093,6 +1093,7 @@ struct controller_impl {
          // We have to copy here.
          chain::signed_block_header* hp = &(pending->_pending_block_state->header);
          hp->proposer = b->proposer;
+         hp->header_extensions = b->header_extensions;
 #ifdef CONSENSUS_VRF
          hp->proposerProof = b->proposerProof;
 #endif
@@ -1347,6 +1348,10 @@ struct controller_impl {
          trx_digests.emplace_back( a.digest() );
 
       pending->_pending_block_state->header.transaction_mroot = merkle( move(trx_digests) );
+   }
+
+   void set_header_extensions(const extensions_type& exts) {
+       pending->_pending_block_state->header.header_extensions = move(exts);
    }
 
    void finalize_block()
@@ -1717,6 +1722,10 @@ void controller::set_action_merkle_hack() {
 }
 void controller::set_trx_merkle_hack() {
     my->set_trx_merkle();
+}
+
+void controller::set_header_extensions(const extensions_type& exts) {
+    my->set_header_extensions(exts);
 }
 
 time_point controller::pending_block_time()const {

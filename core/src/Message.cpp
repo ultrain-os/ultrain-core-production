@@ -18,22 +18,21 @@ namespace ultrainio {
 
     int CommonEchoMsg::fromVariants(const fc::variants& v) {
         int nextIndex = 0;
-        blockId = v[nextIndex].as<fc::sha256>();
-        nextIndex++;
-        phase = ConsensusPhase(v[nextIndex].as<int>());
-        nextIndex++;
-        baxCount = v[nextIndex].as<uint32_t>();
-        nextIndex++;
+        blockId = v[nextIndex++].as<fc::sha256>();
+        phase = ConsensusPhase(v[nextIndex++].as<int>());
+        baxCount = v[nextIndex++].as<uint32_t>();
 #ifdef CONSENSUS_VRF
-        proposerPriority = v[nextIndex].as<uint32_t>();
+        proposerPriority = v[nextIndex++].as<uint32_t>();
 #else
-        proposer = AccountName(v[nextIndex].as_string());
+        proposer = AccountName(v[nextIndex++].as_string());
 #endif
-        nextIndex++;
         return nextIndex;
     }
 
     bool CommonEchoMsg::operator == (const CommonEchoMsg& rhs) {
+        if (this == &rhs) {
+            return true;
+        }
         if (blockId == rhs.blockId
                 && phase == rhs.phase
                 && baxCount == rhs.baxCount
@@ -49,10 +48,7 @@ namespace ultrainio {
 
     // BlsVoterSet
     bool BlsVoterSet::empty() {
-        if (accountPool.size() <= 0) {
-            return true;
-        }
-        return false;
+        return accountPool.empty();
     }
 
     void BlsVoterSet::toVariants(fc::variants& v) const {
@@ -72,16 +68,13 @@ namespace ultrainio {
 
     void BlsVoterSet::fromVariants(const fc::variants& v) {
         int nextIndex = commonEchoMsg.fromVariants(v);
-        uint32_t n = v[nextIndex].as<uint32_t>();
-        nextIndex++;
+        uint32_t n = v[nextIndex++].as<uint32_t>();
         for (int i = 0; i < n; i++) {
-            accountPool.push_back(v[nextIndex].as_string());
-            nextIndex++;
+            accountPool.push_back(v[nextIndex++].as_string());
         }
 #ifdef CONSENSUS_VRF
         for (int i = 0; i < n; i++) {
-            proofPool.push_back(v[nextIndex].as_string());
-            nextIndex++;
+            proofPool.push_back(v[nextIndex++].as_string());
         }
 #endif
         // sigX
@@ -89,13 +82,17 @@ namespace ultrainio {
     }
 
     bool BlsVoterSet::operator == (const BlsVoterSet& rhs) {
-            if (commonEchoMsg == rhs.commonEchoMsg
-                    && accountPool == rhs.accountPool
+        if (this == &rhs) {
+            return true;
+        }
+        if (commonEchoMsg == rhs.commonEchoMsg
+                && accountPool == rhs.accountPool
 #ifdef CONSENSUS_VRF
-                    && proofPool == rhs.proofPool
+                && proofPool == rhs.proofPool
 #endif
-                    && sigX == rhs.sigX) {
-                return true;
-            }
+                && sigX == rhs.sigX) {
+            return true;
+        }
+        return false;
     }
 }

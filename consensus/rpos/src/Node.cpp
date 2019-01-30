@@ -258,12 +258,10 @@ namespace ultrainio {
         m_schedulerPtr->setBa0Block(ba0Block);
         if ((!isBlank(ba0Block.id()))
             && (ba0Block.previous != m_schedulerPtr->getPreviousBlockhash())) {
-
             elog("ba0Process error. previous block hash error. hash = ${hash1} local hash = ${hash2}",
                  ("hash1", ba0Block.previous)("hash2", m_schedulerPtr->getPreviousBlockhash()));
 
             ULTRAIN_ASSERT(false, chain::chain_exception, "DB error. please reset with cmd --delete-all-blocks.");
-            return;
         }
 
         msgkey msg_key;
@@ -341,8 +339,8 @@ namespace ultrainio {
 
     void UranusNode::ba1Process() {
         // produce block
-        m_phase = kPhaseInit;
         Block ba1Block = m_schedulerPtr->produceTentativeBlock();
+        m_phase = kPhaseInit; // why reset to kPhaseInit
         //monitor begin, record ba1 block producing time
         if(ba1Callback != nullptr) {
             ba1Callback();
@@ -358,7 +356,6 @@ namespace ultrainio {
                  ("hash1", ba1Block.previous)("hash2", m_schedulerPtr->getPreviousBlockhash()));
 
             ULTRAIN_ASSERT(false, chain::chain_exception, "DB error. please reset with cmd --delete-all-blocks.");
-            return;
         }
 
         std::shared_ptr<Block> blockPtr = std::make_shared<chain::signed_block>();
@@ -377,8 +374,9 @@ namespace ultrainio {
                      ("head_hash", m_schedulerPtr->getPreviousBlockhash()));
         m_schedulerPtr->produceBlock(blockPtr);
 
-        ULTRAIN_ASSERT(blockPtr->id() == m_schedulerPtr->getPreviousBlockhash(),
-                       chain::chain_exception, "Produced block hash is not expected");
+        ULTRAIN_ASSERT(blockPtr->id() == m_schedulerPtr->getPreviousBlockhash(), chain::chain_exception,
+                "Produced block hash is not expected id : ${id} while previous : ${previous}",
+                ("id", blockPtr->id())("previous", m_schedulerPtr->getPreviousBlockhash()));
         run();
     }
 
