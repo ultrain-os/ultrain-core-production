@@ -447,7 +447,7 @@ async function syncChainInfo() {
                 //启动nod
                 syncChainChanging = true;
                 syncChainData = false;
-                await NodUltrain.stop(60000);
+                await NodUltrain.stop(120000);
                 sleep.msleep(1000);
                 logger.info("clear DB data before restart it..");
                 await NodUltrain.removeData();
@@ -455,7 +455,7 @@ async function syncChainInfo() {
                     await WorldState.clearDB();
                 }
                 logger.info("restart data");
-                await NodUltrain.start(60000, chainConfig.configFileData.local.nodpath);
+                await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath);
                 syncChainChanging = false;
                 syncChainData = true;
                 logger.info("nod restart end..");
@@ -504,7 +504,7 @@ async function switchChain() {
 
         //停止nod程序
         loggerChainChanging.info("shuting down nod...")
-        let result = await NodUltrain.stop(60000);
+        let result = await NodUltrain.stop(120000);
         if (result == false) {
             loggerChainChanging.info("nod is stopped");
         } else {
@@ -513,7 +513,7 @@ async function switchChain() {
 
         //停止worldstate的程序
         if (chainConfig.configFileData.local.worldstate == true) {
-            result = await WorldState.stop(60000);
+            result = await WorldState.stop(120000);
             if (result) {
                 logger.info("worldstate is stopped");
             } else {
@@ -547,7 +547,7 @@ async function switchChain() {
         //重启世界状态并拉块
         if (chainConfig.configFileData.local.worldstate == true) {
             logger.info("start world state");
-            result = await WorldState.start(chainConfig.chainName, seedIpInfo, 60000, chainConfig.configFileData.local.wsspath);
+            result = await WorldState.start(chainConfig.chainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath);
             if (result == true) {
                 logger.info("start ws success");
             } else {
@@ -592,7 +592,7 @@ async function switchChain() {
             /**
              * 轮询检查同步世界状态情况
              */
-            result = await WorldState.pollingkWSState(1000, 60000);
+            result = await WorldState.pollingkWSState(1000, 120000);
             if (result == false) {
                 logger.info("require ws error");
             } else {
@@ -618,7 +618,7 @@ async function switchChain() {
              * 轮询检查同步世界状态情况block
              */
             logger.info("pollingBlockState start...");
-            result = await WorldState.pollingBlockState(1000, 60000);
+            result = await WorldState.pollingBlockState(1000, 120000);
             if (result == false) {
                 logger.info("require block error");
             } else {
@@ -649,7 +649,7 @@ async function switchChain() {
 
 
         //启动nod
-        result = await NodUltrain.start(60000, chainConfig.configFileData.local.nodpath);
+        result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath);
         if (result == true) {
             loggerChainChanging.info("nod start success")
         } else {

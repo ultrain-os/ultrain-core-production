@@ -2228,6 +2228,16 @@ sidechainacc1 = schduleaccounts[basis_value:(basis_value+50)]
 sidechainacc2 = schduleaccounts[(basis_value+50):(basis_value+100)]
 sidechainacc3 = schduleaccounts[(basis_value+100):(basis_value+150)]
 
+
+local= True;
+sub1HttpUrlLocal = "172.16.10.5:8888"
+sub2HttpUrlLocal = "172.16.10.5:8899"
+sub3HttpUrlLocal = "172.16.10.5:8888"
+sub1HttpUrl = "172.31.7.20:8888"
+sub2HttpUrl = "172.31.12.250:8888"
+sub3HttpUrl = "172.31.8.22:8888"
+
+
 def run(args):
     print('bios-boot-tutorial.py:', args)
     logFile.write(args + '\n')
@@ -2260,8 +2270,10 @@ def sendEmail(msg):
     """
     try:
         sender = "739884701@qq.com"
-        receiver = "yanhuichao@ultrain.io"
+        receiver = "sidechain@ultrain.io"
         subject = '今日测试账户资源同步情况'
+        if local == False:
+            subject = '今日测试账户资源同步情况(docker环境)'
         username = "739884701"
         password = "oarbqgghvwtbbbei"
         host = "smtp.qq.com"
@@ -2285,30 +2297,39 @@ def createmutiaccounts():
     for a in sidechainacc:
         retry(args.clultrain + 'create account -u ultrainio ' + a + ' ' + args.initacc_pk)
     sleep(10)
-
-    for a in sidechainacc1:
-        retry(args.clultrain + ' push action ultrainio empoweruser \'{"user":"%s","owner_pk":"%s","active_pk":"%s","chain_name":"%s"}\' -p %s@active' %(a,args.initacc_pk,args.initacc_pk,"11",a))
-    for a in sidechainacc2:
-        retry(args.clultrain + ' push action ultrainio empoweruser \'{"user":"%s","owner_pk":"%s","active_pk":"%s","chain_name":"%s"}\' -p %s@active' %(a,args.initacc_pk,args.initacc_pk,"12",a))
-    for a in sidechainacc3:
-        retry(args.clultrain + ' push action ultrainio empoweruser \'{"user":"%s","owner_pk":"%s","active_pk":"%s","chain_name":"%s"}\' -p %s@active' %(a,args.initacc_pk,args.initacc_pk,"13",a))
+    if args.subchainNum >= 1:
+        for a in sidechainacc1:
+            retry(args.clultrain + ' push action ultrainio empoweruser \'{"user":"%s","owner_pk":"%s","active_pk":"%s","chain_name":"%s"}\' -p %s@active' %(a,args.initacc_pk,args.initacc_pk,"11",a))
+    if args.subchainNum >= 2:
+        for a in sidechainacc2:
+            retry(args.clultrain + ' push action ultrainio empoweruser \'{"user":"%s","owner_pk":"%s","active_pk":"%s","chain_name":"%s"}\' -p %s@active' %(a,args.initacc_pk,args.initacc_pk,"12",a))
+    if args.subchainNum >= 3:
+        for a in sidechainacc3:
+            retry(args.clultrain + ' push action ultrainio empoweruser \'{"user":"%s","owner_pk":"%s","active_pk":"%s","chain_name":"%s"}\' -p %s@active' %(a,args.initacc_pk,args.initacc_pk,"13",a))
 
 def stepmutireslease():
-    for a in sidechainacc1:
-        retry(args.clultrain + ' system resourcelease ultrainio %s 1  20  %s -p %s@active' %(a,"11",a))
-    for a in sidechainacc2:
-        retry(args.clultrain + ' system resourcelease ultrainio %s 2  15  %s -p %s@active' %(a,"12",a))
-    for a in sidechainacc3:
-        retry(args.clultrain + ' system resourcelease ultrainio %s 3  25  %s -p %s@active' %(a,"12",a))
+    if args.subchainNum >= 1:
+        for a in sidechainacc1:
+            retry(args.clultrain + ' system resourcelease ultrainio %s 1  20  %s -p %s@active' %(a,"11",a))
+    if args.subchainNum >= 2:
+        for a in sidechainacc2:
+            retry(args.clultrain + ' system resourcelease ultrainio %s 2  15  %s -p %s@active' %(a,"12",a))
+    if args.subchainNum >= 3:
+        for a in sidechainacc3:
+            retry(args.clultrain + ' system resourcelease ultrainio %s 3  25  %s -p %s@active' %(a,"12",a))
 
 def voteresrelet():
     #购买资源
-    for a in sidechainacc1:
-        retry(args.clultrain + ' system resourcelease ultrainio %s 3  0  %s -p %s@active' %(a,"11",a))
-    for a in sidechainacc2:
-        retry(args.clultrain + ' system resourcelease ultrainio %s 0  15  %s -p %s@active' %(a,"12",a))
-    for a in sidechainacc3:
-        retry(args.clultrain + ' system resourcelease ultrainio %s 1  0  %s -p %s@active' %(a,"13",a))
+    if args.subchainNum >= 1:
+        for a in sidechainacc1:
+            retry(args.clultrain + ' system resourcelease ultrainio %s 3  0  %s -p %s@active' %(a,"11",a))
+    if args.subchainNum >= 2:
+        for a in sidechainacc2:
+            retry(args.clultrain + ' system resourcelease ultrainio %s 0  15  %s -p %s@active' %(a,"12",a))
+    if args.subchainNum >= 3:
+        for a in sidechainacc3:
+            retry(args.clultrain + ' system resourcelease ultrainio %s 1  0  %s -p %s@active' %(a,"13",a))
+
 def getaccresinfo(ip,acclist,nofindacc,leasenum,days,reslist):
     for a in acclist:
         j = json.loads(requests.get("http://"+ip+"/v1/chain/get_account_info",data = json.dumps({"account_name":a})).text)
@@ -2330,6 +2351,7 @@ def getaccresinfo(ip,acclist,nofindacc,leasenum,days,reslist):
             if lease_days == days :
                 continue
         reslist.append(a)
+
 def getchaincontext(chainname,sidechainacc,chainnofindacc,chainnofindres):
     chaininfostr = "子链:"+chainname+" \n"+"同步账户数量为"+str(len(sidechainacc))+" \n账户列表为:"
     for a in sidechainacc:
@@ -2347,6 +2369,7 @@ def getchaincontext(chainname,sidechainacc,chainnofindacc,chainnofindres):
         for i in range(resnum):
             chaininfostr += chainnofindres[i] +","
     return chaininfostr + "\n\n"
+
 def verifyaccrestest():
     chain1nofindacc = []
     chain2nofindacc = []
@@ -2354,12 +2377,32 @@ def verifyaccrestest():
     chain1nofindres = []
     chain2nofindres = []
     chain3nofindres = []
-    getaccresinfo("172.16.10.5:8888",sidechainacc1,chain1nofindacc,4,20,chain1nofindres)
-    getaccresinfo("172.16.10.5:8899",sidechainacc2,chain2nofindacc,2,30,chain2nofindres)
-    getaccresinfo("172.16.10.5:9999",sidechainacc3,chain3nofindacc,4,25,chain3nofindres)
-    print("chain1 not find account number:",int(len(chain1nofindacc))," notfind resource number:",int(len(chain1nofindres)))
-    print("chain2 not find account number:",int(len(chain2nofindacc))," notfind resource number:",int(len(chain2nofindres)))
-    print("chain3 not find account number:",int(len(chain3nofindacc))," notfind resource number:",int(len(chain3nofindres)))
+
+    url1 = sub1HttpUrl;
+    if local == True :
+        url1 = sub1HttpUrlLocal;
+
+    url2 = sub2HttpUrl;
+    if local == True:
+        url2 = sub2HttpUrlLocal;
+
+    url3 = sub3HttpUrl;
+    if local == True:
+        url3 = sub3HttpUrlLocal;
+
+    if args.subchainNum >=1:
+        getaccresinfo(url1,sidechainacc1,chain1nofindacc,4,20,chain1nofindres)
+        print("chain1 not find account number:",int(len(chain1nofindacc))," notfind resource number:",int(len(chain1nofindres)))
+        chaininfostr = getchaincontext("11",sidechainacc1,chain1nofindacc,chain1nofindres)
+    if args.subchainNum >=2:
+        getaccresinfo(url2,sidechainacc2,chain2nofindacc,2,30,chain2nofindres)
+        print("chain2 not find account number:",int(len(chain2nofindacc))," notfind resource number:",int(len(chain2nofindres)))
+        chaininfostr += getchaincontext("12",sidechainacc2,chain2nofindacc,chain2nofindres)
+    if args.subchainNum >=3:
+        getaccresinfo(url3,sidechainacc3,chain3nofindacc,4,25,chain3nofindres)
+        print("chain3 not find account number:",int(len(chain3nofindacc))," notfind resource number:",int(len(chain3nofindres)))
+        chaininfostr += getchaincontext("13",sidechainacc3,chain3nofindacc,chain3nofindres)
+
     configindex = curindex + 1
     if os.path.isfile("mutichain.cfg") :
         conf.set('config', 'index', str(configindex))
@@ -2368,9 +2411,9 @@ def verifyaccrestest():
         conf.set('config', 'index', str(configindex))
     with open('mutichain.cfg', 'w') as fw:
         conf.write(fw)
-    chaininfostr = getchaincontext("11",sidechainacc1,chain1nofindacc,chain1nofindres)
-    chaininfostr += getchaincontext("12",sidechainacc2,chain2nofindacc,chain2nofindres)
-    chaininfostr += getchaincontext("13",sidechainacc3,chain3nofindacc,chain3nofindres)
+
+
+
     print(chaininfostr)
     sendEmail(chaininfostr)
 
@@ -2388,6 +2431,7 @@ commands = [
 parser.add_argument('--initacc-pk', metavar='', help="ULTRAIN Public Key", default='UTR6XRzZpgATJaTtyeSKqGhZ6rH9yYn69f5fkLpjVx6y2mEv5iQTn', dest="initacc_pk")
 parser.add_argument('--initacc-sk', metavar='', help="ULTRAIN Private Key", default='5KZ7mnSHiKN8VaJF7aYf3ymCRKyfr4NiTiqKC5KLxkyM56KdQEP', dest="initacc_sk")
 parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '/root/workspace')
+parser.add_argument('-sn', '--subchainNum', type=int, default=3)
 
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
 for (flag, command, function, inAll, help) in commands:
