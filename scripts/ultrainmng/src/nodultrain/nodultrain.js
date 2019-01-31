@@ -77,25 +77,16 @@ NodUltrain.stop = async function (totalTime) {
  * @param nodPath nod执行程序的目录
  * @returns {Promise<boolean>}
  */
-NodUltrain.start = async function (totalTime,nodPath) {
+NodUltrain.start = async function (totalTime,nodPath,wssinfo) {
 
     var shPath= path.join(__dirname, "../../tool/_runultrain.sh")
     logger.info("start nod by shell file..",shPath)
     logger.info("start nod by shell file..",nodPath)
+    logger.info("start nod by shell file..",wssinfo)
     let args= [];
     args.push(nodPath);
+    args.push(wssinfo);
     await ShellCmd.execCmdFiles(shPath, args, null);
-
-    //await ShellCmd.execCmdFiles(Constants.cmdConstants.START_NODULTRAIN_FILE,Constants.cmdConstants.START_NODULTRAIN_ARG,null);
-
-    // if (fileCmdFlag == true) {
-    //     logger.info("start nod by shell file..")
-    //     await ShellCmd.execCmdFiles(Constants.cmdConstants.START_NODULTRAIN_FILE,Constants.cmdConstants.START_NODULTRAIN_ARG,null);
-    // } else {
-    //     var cmd = "nohup "+nodPath+"nodultrain > /log/nod.log &"
-    //     logger.info("start nod by command:",cmd);
-    //     await ShellCmd.execCmd(cmd);
-    // }
     sleep.msleep(this.statusCheckTime);
     //校验端口是否不提供服务
     let searchtime = this.statusCheckTime;

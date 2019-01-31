@@ -272,7 +272,7 @@ getTableAllData = async (config, code, scope, table,pk) => {
             logger.info("table: "+table+" scope:"+scope+" lower_bound(request)：" + lower_bound);
             index++;
             let tableinfo = await getTableInfo(config, code, scope, table, limit, null, lower_bound, null);
-            logger.info("tableinfo:"+table+"):", tableinfo);
+            logger.debug("tableinfo:"+table+"):", tableinfo);
             if (utils.isNullList(tableinfo.rows) == false) {
                 for (let i = 0; i < tableinfo.rows.length; i++) {
                     if (tableinfo.rows[i][pk] != lower_bound) {

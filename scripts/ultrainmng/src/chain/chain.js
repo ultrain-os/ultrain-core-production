@@ -456,7 +456,7 @@ async function syncChainInfo() {
                     await WorldState.clearDB();
                 }
                 logger.info("restart data");
-                await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath);
+                await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath," ");
                 syncChainChanging = false;
                 syncChainData = true;
                 logger.info("nod restart end..");
@@ -545,6 +545,7 @@ async function switchChain() {
         }
 
 
+        let wssinfo = " ";
         //重启世界状态并拉块
         if (chainConfig.configFileData.local.worldstate == true) {
             logger.info("start world state");
@@ -567,66 +568,66 @@ async function switchChain() {
                 logger.info("get worldstate data:", worldstatedata);
             } else {
                 logger.error("can not get world state file,or data is null");
-                syncChainChanging = false;
-                return;
             }
 
-            sleep.msleep(1000);
-            loggerChainChanging.info("start to require ws:");
-            let hash = worldstatedata.hash_v[0].hash;
-            let blockNum = worldstatedata.block_num;
-            let filesize = worldstatedata.hash_v[0].file_size;
-            logger.info("start to require ws : (block num : " + blockNum + " " + "hash:" + hash);
-            result = await WorldState.syncWorldState(hash, blockNum, filesize, chainConfig.chainId);
-            if (result == true) {
-                logger.info("sync worldstate request success");
-            } else {
-                logger.info("sync worldstate request failed");
-                syncChainChanging = false;
-                return;
+            if (worldstatedata != null) {
+                sleep.msleep(1000);
+                loggerChainChanging.info("start to require ws:");
+                let hash = worldstatedata.hash_v[0].hash;
+                let blockNum = worldstatedata.block_num;
+                let filesize = worldstatedata.hash_v[0].file_size;
+                logger.info("start to require ws : (block num : " + blockNum + " " + "hash:" + hash);
+                result = await WorldState.syncWorldState(hash, blockNum, filesize, chainConfig.chainId);
+                if (result == true) {
+                    logger.info("sync worldstate request success");
+                } else {
+                    logger.info("sync worldstate request failed");
+                }
+
+                loggerChainChanging.info("polling worldstate sync status ..")
+
+                sleep.msleep(1000);
+
+                /**
+                 * 轮询检查同步世界状态情况
+                 */
+                result = await WorldState.pollingkWSState(1000, 120000);
+                if (result == false) {
+                    logger.info("require ws error");
+                } else {
+                    logger.info("require ws success");
+                    wssinfo = "--worldstate " + "/root/.local/share/ultrainio/wssultrain/data/worldstate/" + chainConfig.chainId + "-" + blockNum + ".ws";
+                    logger.info("wssinfo:" + wssinfo);
+                }
+
+                sleep.msleep(1000);
+
+                /**
+                 * 调用block
+                 */
+                logger.info("start to sync block:(chainid:" + chainConfig.chainId + ",block num:" + blockNum);
+                result = await WorldState.syncBlocks(chainConfig.chainId, blockNum);
+                if (result == false) {
+                    logger.info("sync block request error");
+                } else {
+                    logger.info("sync block request success");
+                }
+
+                sleep.msleep(1000);
+
+                /**
+                 * 轮询检查同步世界状态情况block
+                 */
+                logger.info("pollingBlockState start...");
+                result = await WorldState.pollingBlockState(1000, 120000);
+                if (result == false) {
+                    logger.info("require block error");
+                } else {
+                    logger.info("require block success");
+                }
+
+                sleep.msleep(1000);
             }
-
-            loggerChainChanging.info("polling worldstate sync status ..")
-
-            sleep.msleep(1000);
-
-            /**
-             * 轮询检查同步世界状态情况
-             */
-            result = await WorldState.pollingkWSState(1000, 120000);
-            if (result == false) {
-                logger.info("require ws error");
-            } else {
-                logger.info("require ws success");
-            }
-
-            sleep.msleep(1000);
-
-            /**
-             * 调用block
-             */
-            logger.info("start to sync block:(chainid:" + chainConfig.chainId + ",block num:" + blockNum);
-            result = await WorldState.syncBlocks(chainConfig.chainId, blockNum);
-            if (result == false) {
-                logger.info("sync block request error");
-            } else {
-                logger.info("sync block request success");
-            }
-
-            sleep.msleep(1000);
-
-            /**
-             * 轮询检查同步世界状态情况block
-             */
-            logger.info("pollingBlockState start...");
-            result = await WorldState.pollingBlockState(1000, 120000);
-            if (result == false) {
-                logger.info("require block error");
-            } else {
-                logger.info("require block success");
-            }
-
-            sleep.msleep(1000);
         }
 
 
@@ -650,7 +651,7 @@ async function switchChain() {
 
 
         //启动nod
-        result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath);
+        result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath,wssinfo);
         if (result == true) {
             loggerChainChanging.info("nod start success")
         } else {
