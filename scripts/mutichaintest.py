@@ -2268,11 +2268,14 @@ def sendEmail(msg):
     :param str: email content
     :return:
     """
+    if local == True :
+        return ;
+
     try:
         sender = "739884701@qq.com"
         receiver = "sidechain@ultrain.io"
         subject = '今日测试账户资源同步情况'
-        if local == False:
+        if local == True:
             subject = '今日测试账户资源同步情况(docker环境)'
         username = "739884701"
         password = "oarbqgghvwtbbbei"
@@ -2316,7 +2319,7 @@ def stepmutireslease():
             retry(args.clultrain + ' system resourcelease ultrainio %s 2  15  %s -p %s@active' %(a,"12",a))
     if args.subchainNum >= 3:
         for a in sidechainacc3:
-            retry(args.clultrain + ' system resourcelease ultrainio %s 3  25  %s -p %s@active' %(a,"12",a))
+            retry(args.clultrain + ' system resourcelease ultrainio %s 3  25  %s -p %s@active' %(a,"13",a))
 
 def voteresrelet():
     #购买资源

@@ -49,18 +49,25 @@ async function startEntry() {
 
     //同步块，资源，用户-10s
     logger.info("start user,resource,block sync:",syncBlockSchedule)
+
+    //用户同步
     schedule.scheduleJob(syncBlockSchedule, async function () {
-        //用户同步
         await chain.syncUser();
-         //资源同步
-         await chain.syncResource();
-        // //块同步
+    });
+
+    //资源同步
+    schedule.scheduleJob(syncBlockSchedule, async function () {
+        await chain.syncResource();
+    });
+
+    //块同步
+    schedule.scheduleJob(syncBlockSchedule, async function () {
         await chain.syncBlock();
     });
 
+    //世界状态同步
     logger.info("start world state sync:",chainSyncWorldState)
     schedule.scheduleJob(chainSyncWorldState, async function () {
-        //世界状态同步
         await chain.syncWorldState();
     });
 

@@ -109,7 +109,7 @@ function findVoteRes(tableData, user, voteUser, lease_num, expire_date) {
                 if (provide_index >=0) {
                     var resObj = row.proposal_resource[provide_index];
                     //如果之前的数值<=当前的数值，说明已经投了
-                    logger.debug("res end_time :"+end_time +" ")
+                    logger.debug("res end_time :"+expire_date +" ")
                     if (resObj.lease_num >= lease_num && resObj.end_time >= expire_date) {
                         return true;
                     }

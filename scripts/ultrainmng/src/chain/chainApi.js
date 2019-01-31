@@ -228,7 +228,7 @@ getSubchainWSHash = async (config, chainName) => {
  */
 getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound, upper_bound) => {
     try {
-        const params = {"code": code, "scope": scope, "table": table, "json": true};
+        const params = {"code": code, "scope": scope, "table": table, "json": true,"key_type":"name"};
         logger.debug(params);
         if (utils.isNotNull(limit)) {
             params.limit = limit;
@@ -263,13 +263,16 @@ getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound,
 getTableAllData = async (config, code, scope, table,pk) => {
     let tableObj = {rows: [], more: false};
     let count = 10000; //MAX NUM
-    let limit = 100; //limit
+    let limit = 1000; //limit
     let finish = false;
     let lower_bound = null;
+    var index = 0;
     try {
         while (finish == false) {
+            logger.info("table: "+table+" scope:"+scope+" lower_bound(request)：" + lower_bound);
+            index++;
             let tableinfo = await getTableInfo(config, code, scope, table, limit, null, lower_bound, null);
-            logger.debug("tableinfo:"+table+"):", tableinfo);
+            logger.info("tableinfo:"+table+"):", tableinfo);
             if (utils.isNullList(tableinfo.rows) == false) {
                 for (let i = 0; i < tableinfo.rows.length; i++) {
                     if (tableinfo.rows[i][pk] != lower_bound) {
@@ -277,12 +280,11 @@ getTableAllData = async (config, code, scope, table,pk) => {
                     }
                 }
 
-
                 if (utils.isNotNull(pk)) {
                     lower_bound = tableinfo.rows[tableinfo.rows.length - 1][pk];
                 }
 
-                logger.debug(table+" lower_bound：" + lower_bound);
+                logger.info("table: "+table+" scope:"+scope+" lower_bound(change)：" + lower_bound);
             }
 
             //查看是否还有
@@ -291,7 +293,11 @@ getTableAllData = async (config, code, scope, table,pk) => {
                 finish = false;
             }
             logger.debug("tableinfo more：" + tableinfo.more);
-            //sleep.msleep(1000);
+            if (index*limit >= count) {
+                logger.info("table: "+table+" count > "+count+" break now!");
+                break;
+            }
+
         }
     } catch (e) {
         logger.error("getTableAllData error:", e);

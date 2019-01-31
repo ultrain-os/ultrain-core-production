@@ -234,6 +234,7 @@ async function syncBlock() {
                     needpush = true;
                 }
 
+                //logger.info("header_extensions:",result.header_extensions,)
                 /**
                  * 需要上传
                  */

@@ -124,7 +124,7 @@ ChainConfig.syncConfig = async function () {
         logger.debug('configIniTarget(nodultrain)=', configIniTarget);
         this.configFileData.target = configIniTarget;
 
-        //logger.debug("this.configFileData data:", this.configFileData);
+        logger.debug("this.configFileData data:", this.configFileData);
 
         //子链请求地址配置-默认先从nod的config中获取，如果没有用本地的
         if (utils.isNotNull(configIniTarget.subchainHttpEndpoint)) {
@@ -182,9 +182,9 @@ ChainConfig.syncConfig = async function () {
         try {
             //
             this.config.chainId = await chainApi.getMainChainId(this.config);
-            logger.debug("config.chainId=", this.config.chainId);
+            logger.info("config.chainId=", this.config.chainId);
             this.configSub.chainId = await chainApi.getSubChainId(this.configSub);
-            logger.debug("configSub.chainId=", this.configSub.chainId);
+            logger.info("configSub.chainId=", this.configSub.chainId);
         } catch (e) {
             logger.error("target node crashed, check main node or sub node", utils.logNetworkError(e))
 
