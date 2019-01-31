@@ -301,9 +301,11 @@ struct controller_impl {
 
    void replay()
    {
+      auto head_num  = head->block_num;
       auto blog_head = blog.read_head();
       replaying = true;
-      ilog( "existing block log, attempting to replay ${n} blocks", ("n",blog_head->block_num()) );
+      ilog( "existing block log, attempting to replay ${n} blocks: #${sn} - #${en}",
+            ("n", blog_head->block_num()-head_num) ("sn", head_num+1)("en", blog_head->block_num()));
 
       auto start = fc::time_point::now();
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
@@ -315,8 +317,8 @@ struct controller_impl {
 
       auto end = fc::time_point::now();
       ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-         ("n", head->block_num)("duration", (end-start).count()/1000000)
-         ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
+         ("n", head->block_num-head_num)("duration", (end-start).count()/1000000)
+         ("mspb", ((end-start).count()/1000.0)/(head->block_num-head_num) ) );
       std::cerr<< "\n";
       replaying = false;
    }
