@@ -311,7 +311,34 @@ async function syncCommitee() {
             params.push(changeMembers[i]);
             //判断需要投票的委员会的账号是否已在子链上
             if (utils.isNull(await chainApi.getAccount(chainConfig.configSub, committeeUser))) {
-                logger.info("account(" + committeeUser + ") is not exist in subchain,need not vote him to committee..");
+                logger.info("account(" + committeeUser + ") is not exist in subchain,should add him first");
+                let account = await chainApi.getAccount(chainConfig.config, committeeUser);
+                logger.info("account info:",account);
+                logger.info("account info:",account.permissions[0].required_auth);
+                //查询是否已经投过票
+                let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, committeeUser, null, null);
+                logger.debug(tableData)
+                if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, committeeUser) == true) {
+                    logger.info("account(" + committeeUser + ") is not exist in subchain,has voted him to user");
+                } else {
+                    logger.info("account(" + committeeUser + ") is not exist in subchain,has not voted him to user,start to vote");
+
+                    const params = {
+                        proposer: chainConfig.myAccountAsCommittee,
+                        proposeaccount: [{
+                            account: account.account_name,
+                            owner_key: chainUtil.getOwnerPkByAccount(account,"owner"),
+                            active_key: chainUtil.getOwnerPkByAccount(account,"active"),
+                            location: 0,
+                            approve_num: 0,
+                            updateable: 1 //该账号后续部署合约能否被更新
+                        }]
+                    };
+
+                    logger.info("vote account param :",params);
+
+                    let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_ACCOUNT, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
+                }
             } else {
                 logger.info("account(" + committeeUser + ") is ready in subchain,need vote him to committee");
                 //判断是否已给他投过票
