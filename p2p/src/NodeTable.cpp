@@ -32,11 +32,12 @@ namespace p2p {
                                                                                                                   _pubk)) {}
 
 
-    NodeTable::NodeTable(ba::io_service &_io, NodeIPEndpoint const &_endpoint, NodeID const &nodeID, bool _enabled) :
+    NodeTable::NodeTable(ba::io_service &_io, NodeIPEndpoint const &_endpoint, NodeID const &nodeID, string const& chainid, bool _enabled) :
             m_hostNodeID(nodeID),
             m_hostNodeEndpoint(_endpoint),
             m_socket(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents *>(this),
                                              (bi::udp::endpoint) _endpoint)),
+	    m_chainid(chainid),
             m_socketPointer(m_socket.get())
            // m_timers(_io) {
     {
@@ -48,6 +49,7 @@ namespace p2p {
             m_socketPointer->connect();
 //            doDiscovery();
             start_p2p_monitor(_io);
+	    ilog("chain_id ${id}",("id",m_chainid));
         }
         catch (std::exception const &_e) {
             elog("Exception connecting NodeTable socket:");
@@ -220,7 +222,8 @@ void NodeTable::doDiscover(NodeID _node, unsigned _round, shared_ptr<set<shared_
             p.destid = node->m_id;
             p.fromep = m_hostNodeEndpoint;
             p.tartgetep = node->m_endpoint;
-            m_socketPointer->send_msg(p,(bi::udp::endpoint)node->m_endpoint);
+            p.chain_id = m_chainid;
+	    m_socketPointer->send_msg(p,(bi::udp::endpoint)node->m_endpoint);
             m_sentFindNodes[node->m_id] = fc::time_point::now();
 	    _tried->emplace(node);
             if (++newTriedCount == s_alpha)
@@ -315,7 +318,7 @@ void NodeTable::ping(NodeIPEndpoint _to,NodeID _toID)
     p.dest = _to;
     p.sourceid = m_hostNodeID;
     p.destid = _toID;
-  //  p.sign(m_secret);
+    p.chain_id = m_chainid;
 
     m_socketPointer->send_msg(p,(bi::udp::endpoint)_to);
 }
@@ -442,6 +445,11 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
         elog("pong msg not for me");
         return ;
     }
+    if(pong.chain_id != m_chainid)
+    {
+        elog("wrong chain");
+	return ;
+    }
     auto const& sourceId = pong.sourceid;
     auto const sentPing = m_sentPings.find(sourceId);
     if (sentPing == m_sentPings.end())
@@ -487,6 +495,11 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
         elog("FindNode msg not for me");
         return ;
     }
+    if(in.chain_id != m_chainid)
+    {
+	    elog("wrong chain");
+	    return ;
+    }
     vector<shared_ptr<NodeEntry>> nearest = nearestNodeEntries(in.targetID);
     static unsigned constexpr nlimit = (NodeSocket::maxDatagramSize - 109) / 90;
     NodeIPEndpoint from;
@@ -501,6 +514,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
        out.fromep = m_hostNodeEndpoint;
        out.tartgetep =  from;
        out.destid = in.fromID;
+       out.chain_id = m_chainid;
        auto _limit = nlimit ? std::min(nearest.size(), (size_t)(offset + nlimit)) : nearest.size();
        for (auto i = offset; i < _limit; i++)
        {
@@ -526,6 +540,11 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     {
         elog("nei msg not for me");
         return ;
+    }
+    if(in.chain_id != m_chainid)
+    {
+	    elog("wrong chain");
+	    return ;
     }
     NodeIPEndpoint from;
     from.m_address = _from.address().to_string();
@@ -555,6 +574,11 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingm
     {
         ilog("ping msg has no id");
         return ;
+    }
+    if(pingmsg.chain_id != m_chainid)
+    {
+	    elog("wrong chain");
+	    return;
     }
     if(pingmsg.sourceid != fc::sha256())
     {
@@ -590,8 +614,8 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingm
     p.destep = from;
     p.fromep = m_hostNodeEndpoint;
     p.sourceid = m_hostNodeID;
-    p.destid = pingmsg.sourceid;
-
+    p.destid = pingmsg.sourceid; 
+    p.chain_id = m_chainid;
     m_socket->send_msg(p,(bi::udp::endpoint)p.destep);
     noteActiveNode(pingmsg.sourceid, from);
 

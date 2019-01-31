@@ -59,10 +59,10 @@ public:
     enum NodeRelation { Unknown = 0, Known };
     
     /// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
-    NodeTable(ba::io_service& _io, NodeIPEndpoint const& _endpoint, NodeID const& nodeID,bool _enabled = true);
+    NodeTable(ba::io_service& _io, NodeIPEndpoint const& _endpoint, NodeID const& nodeID, string const& chainid, bool _enabled = true);
     ~NodeTable();
     NodeID const m_hostNodeID;
-
+    string const m_chainid;
     /// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
     static int distance(NodeID const& _a, NodeID const& _b)
     {

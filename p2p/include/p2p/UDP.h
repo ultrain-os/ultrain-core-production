@@ -23,7 +23,8 @@ namespace p2p
         NodeID sourceid; // sender public key (from signature)
 	NodeID destid;
    //     h256 echo;       // hash of encoded packet, for reply tracking
-        std::string typeName() { return "Ping"; }
+        string chain_id;
+	std::string typeName() { return "Ping"; }
     };
     /**
  * Pong packet: Sent in response to ping
@@ -38,6 +39,7 @@ namespace p2p
         NodeID sourceid; // sender public key (from signature)
 	NodeID destid;
    //     h256 echo;       // hash of encoded packet, for reply tracking
+        string chain_id;
         std::string typeName() { return "Pong"; }
     };
     struct FindNode
@@ -49,6 +51,7 @@ namespace p2p
 	NodeID destid;
         NodeIPEndpoint fromep;
         NodeIPEndpoint tartgetep;
+        string chain_id;
         uint8_t packetType()  { return type; }
         std::string typeName()  { return "FindNode"; }
     };
@@ -65,6 +68,7 @@ namespace p2p
         NodeIPEndpoint fromep;
         NodeIPEndpoint tartgetep;
         std::vector<Neighbour> neighbours;
+        string chain_id;
 
         uint8_t packetType() { return type; }
         std::string typeName() { return "Neighbours"; }
@@ -361,8 +365,8 @@ void UDPSocket<Handler, MaxDatagramSize>::disconnectWithError(boost::system::err
 
 }
 //FC_REFLECT( ultrainio::p2p::UDPDatagram, (data)(locus_ip)(locus_port))
-FC_REFLECT( ultrainio::p2p::PingNode, (sourceid)(destid)(type)(source)(dest))
-FC_REFLECT( ultrainio::p2p::Pong, (type)(fromep)(destep)(sourceid)(destid))
-FC_REFLECT( ultrainio::p2p::FindNode, (type)(fromID)(targetID)(destid)(fromep)(tartgetep))
+FC_REFLECT( ultrainio::p2p::PingNode, (sourceid)(destid)(type)(source)(dest)(chain_id))
+FC_REFLECT( ultrainio::p2p::Pong, (type)(fromep)(destep)(sourceid)(destid)(chain_id))
+FC_REFLECT( ultrainio::p2p::FindNode, (type)(fromID)(targetID)(destid)(fromep)(tartgetep)(chain_id))
 FC_REFLECT( ultrainio::p2p::Neighbour, (node)(endpoint))
-FC_REFLECT( ultrainio::p2p::Neighbours, (type)(fromID)(destid)(fromep)(tartgetep)(neighbours))
+FC_REFLECT( ultrainio::p2p::Neighbours, (type)(fromID)(destid)(fromep)(tartgetep)(neighbours)(chain_id))

@@ -2902,6 +2902,7 @@ namespace ultrainio {
 
          my->chain_plug = app().find_plugin<chain_plugin>();
          my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
+	 ilog("my chainid ${chainid}",("chainid",my->chain_id));
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
          ilog( "my node_id is ${id}", ("id", my->node_id));
 
@@ -2910,7 +2911,7 @@ namespace ultrainio {
          local.setUdpPort(20124);
          local.setListenPort(msg_priority_trx, my->trx_listener.listen_endpoint.port());
          local.setListenPort(msg_priority_rpos, my->rpos_listener.listen_endpoint.port());
-         my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id);
+         my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str());
 
          my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
          my->ticker();
