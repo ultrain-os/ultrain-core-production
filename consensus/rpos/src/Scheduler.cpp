@@ -1551,7 +1551,8 @@ namespace ultrainio {
 #else
             uint32_t priority = stakeVotePtr->proposerPriority(itor->second.echoCommonPart.proposer, kPhaseBA0, 0);
 #endif
-            if (minPriority == priority && phase == kPhaseBA1) { // check priority only
+            //if (minPriority == priority && phase == kPhaseBA1) { // check priority only
+            if (false) {
                 ilog("save VoterSet blockId = ${blockId}", ("blockId", itor->second.echoCommonPart.blockId));
                 VoterSet set;
                 set.commonEchoMsg = itor->second.echoCommonPart;
