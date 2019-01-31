@@ -112,15 +112,6 @@ struct ALIGNED(checksum512) {
 typedef struct checksum256 transaction_id_type;
 typedef struct checksum256 block_id_type;
 
-bool operator!=(const checksum256& sha256_1, const checksum256& sha256_2) {
-    for(auto i = 0; i < 32; ++i) {
-        if(sha256_1.hash[i] != sha256_2.hash[i]) {
-            return true;
-        }
-    }
-    return false;
-}
-
 struct account_permission {
    account_name account;
    permission_name permission;
