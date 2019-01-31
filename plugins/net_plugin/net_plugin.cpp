@@ -145,6 +145,8 @@ namespace ultrainio {
         uint32_t                         max_client_count = 0;
         uint32_t                         max_nodes_per_host = 2;
         uint32_t                         num_clients = 0;
+        uint32_t                         max_retry_count = 3;
+        uint32_t                         max_grey_list_size = 40;
 
         vector<string>                   rpos_active_peers;
         vector<string>                   trx_active_peers;
@@ -162,9 +164,10 @@ namespace ultrainio {
 
         connection_ptr find_connection(const string& host) const;
         bool connection_exist(const fc::sha256& nid) const;
+        bool is_grey_connection(const string& host) const;
 
         std::set< connection_ptr >       connections;
-	std::set< string >               peer_addr_black_list;
+        std::list< string >              peer_addr_grey_list;
         bool                             done = false;
         unique_ptr< dispatch_manager >   dispatcher;
         unique_ptr< sync_block_manager > sync_block_master;
@@ -520,6 +523,7 @@ namespace ultrainio {
         RspLastBlockNumMsg      last_block_info;
         uint32_t pack_count_rcv = 0;
         uint32_t pack_count_drop = 0;
+        uint32_t retry_connect_count = 0;
         connection_status get_status()const {
             connection_status stat;
             stat.peer = peer_addr;
@@ -1853,7 +1857,6 @@ namespace ultrainio {
                         elog( "Error reading message from ${p}: ${m}",("p",pname)( "m", ec.message() ) );
                      } else {
                         ilog( "Peer ${p} closed connection",("p",pname) );
-                        peer_addr_black_list.insert(conn->peer_addr);
                      }
                      close( conn );
                   }
@@ -2504,18 +2507,30 @@ namespace ultrainio {
       auto it = connections.begin();
       while(it != connections.end()) {
          if( !(*it)->socket->is_open() && !(*it)->connecting) {
-            if ((*it)->peer_addr.length() <= 0 || peer_addr_black_list.find((*it)->peer_addr) != peer_addr_black_list.end()) {
+            if ((*it)->retry_connect_count > max_retry_count) {
+               if (peer_addr_grey_list.size() >= max_grey_list_size) {
+                  peer_addr_grey_list.pop_front();
+               }
+
+               if (!is_grey_connection((*it)->peer_addr)) {
+                  peer_addr_grey_list.emplace_back((*it)->peer_addr);
+               }
+               it = connections.erase(it);
+               continue;
+            }
+            else if ((*it)->peer_addr.length() <= 0 || is_grey_connection((*it)->peer_addr)) {
                it = connections.erase(it);
                continue;
             }
 	    else {
+               (*it)->retry_connect_count++;
                connect(*it);
             }
          }
          ++it;
       }
 
-      ilog("connections size: ${s} max_client_count: ${mcc}", ("s", connections.size())("mcc", max_client_count));
+      ilog("connections size: ${s} max_client_count: ${mcc} num_clients: ${nc}", ("s", connections.size())("mcc", max_client_count)("nc", num_clients));
       if (connections.size() < max_client_count) {
          uint32_t count = max_client_count - connections.size();
          std::list<p2p::NodeIPEndpoint> nodes = node_table->getNodes();
@@ -2524,14 +2539,14 @@ namespace ultrainio {
          for (std::list<p2p::NodeIPEndpoint>::iterator it = nodes.begin(); it != nodes.end() && i < count; ++it) {
             ilog("node adress: ${ad} valid: ${v}", ("ad", it->address())("v", (bool)*it));
             string host = it->address() + ":" + std::to_string(it->listenPort(msg_priority_trx));
-            if (!find_connection(host) && peer_addr_black_list.find(host) == peer_addr_black_list.end()) {
+            if (!find_connection(host) && !is_grey_connection(host)) {
                ilog("connect to node: ${a}", ("a", host));
                connect(host, msg_priority_trx);
                i++;
             }
 
             host = it->address() + ":" + std::to_string(it->listenPort(msg_priority_rpos));
-            if (!find_connection(host) && peer_addr_black_list.find(host) == peer_addr_black_list.end()) {
+            if (!find_connection(host) && !is_grey_connection(host)) {
                ilog("connect to node: ${a}", ("a", host));
                connect(host, msg_priority_rpos);
                i++;
@@ -2745,6 +2760,8 @@ namespace ultrainio {
          ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
+         ( "max-retry-count", bpo::value<uint32_t>()->default_value(3), "Maximum number of reconnecting to listen endpoint")
+         ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(40), "Maximum size of grey list")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
@@ -2789,6 +2806,15 @@ namespace ultrainio {
          my->dispatcher->just_send_it_max = options.at( "max-implicit-request" ).as<uint32_t>();
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
+
+         if (options.count( "max-retry-count" )) {
+            my->max_retry_count = options.at( "max-retry-count" ).as<uint32_t>();
+         }
+
+         if (options.count( "max-grey-list-size" )) {
+            my->max_grey_list_size = options.at( "max-grey-list-size" ).as<uint32_t>();
+         }
+
          my->num_clients = 0;
          my->started_sessions = 0;
 
@@ -2902,9 +2928,8 @@ namespace ultrainio {
 
          my->chain_plug = app().find_plugin<chain_plugin>();
          my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
-	 ilog("my chainid ${chainid}",("chainid",my->chain_id));
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
-         ilog( "my node_id is ${id}", ("id", my->node_id));
+         ilog( "my node_id is ${id} ${chainid}", ("id", my->node_id)("chainid",my->chain_id));
 
          p2p::NodeIPEndpoint local;
          local.setAddress("0.0.0.0");
@@ -3089,6 +3114,16 @@ namespace ultrainio {
             if (c->node_id == nid) {
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    bool net_plugin_impl::is_grey_connection(const string& host) const {
+        for (const auto& c : connections) {
+          if (c->peer_addr == host) {
+            return true;
+          }
         }
 
         return false;
