@@ -37,7 +37,7 @@ namespace p2p
         NodeIPEndpoint destep;
         NodeIPEndpoint fromep;
         NodeID sourceid; // sender public key (from signature)
-	NodeID destid;
+        NodeID destid;
    //     h256 echo;       // hash of encoded packet, for reply tracking
         string chain_id;
         std::string typeName() { return "Pong"; }
@@ -48,7 +48,7 @@ namespace p2p
         uint8_t type;/*3*/
         NodeID fromID;
         NodeID targetID;
-	NodeID destid;
+        NodeID destid;
         NodeIPEndpoint fromep;
         NodeIPEndpoint tartgetep;
         string chain_id;
@@ -64,7 +64,7 @@ namespace p2p
     {
         uint8_t type ;/*4*/
         NodeID fromID;
-	NodeID destid;
+        NodeID destid;
         NodeIPEndpoint fromep;
         NodeIPEndpoint tartgetep;
         std::vector<Neighbour> neighbours;
@@ -78,14 +78,6 @@ namespace p2p
             FindNode,
             Neighbours>;
 
-/**
- * @brief Interface which UDPSocket will implement.
- */
-struct UDPSocketFace
-{
- //   virtual bool send(UDPDatagram const& _msg) = 0;
-    virtual void disconnect() = 0;
-};
 
 /**
  * @brief Interface which a UDPSocket's owner must implement.
@@ -93,7 +85,7 @@ struct UDPSocketFace
 struct UDPSocketEvents
 {
     virtual ~UDPSocketEvents() = default;
-    virtual void onSocketDisconnected(UDPSocketFace*) {}
+    virtual void onSocketDisconnected() {}
     virtual void handlemsg( bi::udp::endpoint const& _from, PingNode const& pingmsg ) = 0;
     virtual void handlemsg( bi::udp::endpoint const& _from, Pong const& pongmsg ) = 0;
     virtual void handlemsg( bi::udp::endpoint const& _from, FindNode const& findnodemsg ) = 0;
@@ -122,7 +114,7 @@ constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
  * @todo decouple deque from UDPDatagram and add ref() to datagram for fire&forget
  */
 template <typename Handler, unsigned MaxDatagramSize>
-class UDPSocket: UDPSocketFace, public std::enable_shared_from_this<UDPSocket<Handler, MaxDatagramSize>>
+class UDPSocket: public std::enable_shared_from_this<UDPSocket<Handler, MaxDatagramSize>>
 {
 public:
     enum { maxDatagramSize = MaxDatagramSize };
@@ -220,9 +212,15 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
 {
     if (m_closed)
         return;
-    auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
+    std::weak_ptr<UDPSocket<Handler, MaxDatagramSize>> self =UDPSocket<Handler, MaxDatagramSize>::shared_from_this();
     m_socket.async_receive_from(pending_message_buffer.get_buffer_sequence_for_boost_async_read(), m_recvEndpoint, [this, self](boost::system::error_code _ec, size_t _len)
     {
+        auto conn = self.lock();
+        if(!conn)
+        {
+            elog("closed");
+            return ;
+        }
         if (m_closed)
             return disconnectWithError(_ec);
        // ilog("doRead from address ${address} ${port}",("address",m_recvEndpoint.address().to_string())("port",std::to_string(m_recvEndpoint.port()))); 
@@ -358,7 +356,7 @@ void UDPSocket<Handler, MaxDatagramSize>::disconnectWithError(boost::system::err
     if (wasClosed)
         return;
 
-    m_host.onSocketDisconnected(this);
+    m_host.onSocketDisconnected();
 }
 
 }

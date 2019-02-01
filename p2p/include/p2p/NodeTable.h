@@ -146,7 +146,7 @@ private:
     void handlemsg( bi::udp::endpoint const& _from, FindNode const& findnodemsg ) ;
     void handlemsg( bi::udp::endpoint const& _from, Neighbours const& msg ) ;
     /// Called by m_socket when socket is disconnected.
-    void onSocketDisconnected(UDPSocketFace*) {}
+    void onSocketDisconnected() {}
 
     ///timers
     boost::asio::steady_timer::duration   nodetimeoutinterval{std::chrono::seconds{30}};
@@ -187,7 +187,6 @@ private:
 
     std::unordered_map<NodeID, fc::time_point> m_sentFindNodes;
     std::shared_ptr<NodeSocket> m_socket;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
-    NodeSocket* m_socketPointer;                                ///< Set to m_socket.get(). Socket is created in constructor and disconnected in destructor to ensure access to pointer is safe.
     vector<string> m_seeds;
     void requireSeeds(const std::vector <std::string> &seeds);
  //   std::unordered_map<p2p::NodeID, std::shared_ptr<p2p::Node>> m_peers;
