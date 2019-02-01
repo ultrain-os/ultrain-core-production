@@ -642,7 +642,7 @@ namespace ultrainio {
     }
 
     const string connection::peer_address() {
-        if( socket ) {
+        if( socket && connected()) {
             return socket->remote_endpoint().address().to_string();
         }
         return "";
@@ -758,9 +758,11 @@ namespace ultrainio {
     }
 
     bool sync_ws_manager::send_ws_sync_req(std::set< connection_ptr >& connections, const chain::ws_info& info){
-        ilog("start sync, info: ${info}", ("info", info));
-        if (ws_states == waiting_respones || ws_states == syncing)
+        ilog("start ws sync, info: ${info}", ("info", info));
+        if (ws_states == waiting_respones || ws_states == syncing) {
+            ilog("ws sync already start, return!!");
             return false;
+        }
 
         m_require_ws_info = info;
 
@@ -781,7 +783,7 @@ namespace ultrainio {
         bool is_connection = false;
         for (const auto& c : connections) {
             if(c->current()) {
-                ilog ("send file_info_msg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                ilog ("send ws-sync request to peer: ${peer_address}", ("peer_address", c->peer_name()));
                 c->enqueue(net_message(reqLastWsInfoMsg));
                 ip_address = c->peer_address();
                 is_connection = true;
@@ -800,26 +802,26 @@ namespace ultrainio {
         
     void sync_ws_manager::receive_ws_sync_rsp(connection_ptr c, const RspLastWsInfoMsg &msg){
         if( ws_states != waiting_respones){
-            ilog("get ws rsp from peer ${p}, but not in rsp waiting states", ("p", c->peer_name()));
+            ilog("get ws-sync rsp from peer ${p}, but not in rsp waiting states", ("p", c->peer_name()));
             return;
         }
 
         const ultrainio::chain::ws_info& info = msg.info;
         if(info.block_height == 0){ // no data
             num_of_no_data++;
-            ilog("RspLastWsInfoMsg: remote no ws! peer ${p}", ("p", c->peer_name()));
+            ilog("ws-sync info rsp: remote no ws! peer ${p}", ("p", c->peer_name()));
             return;
         }
 
-        ilog("WsInfo msg: ${msg}, peer:${p}", ("msg", info)("p", c->peer_name()));
+        ilog("Receive ws-sync info rsp: ${msg}, peer:${p}", ("msg", info)("p", c->peer_name()));
         auto it = find (m_conns.begin(), m_conns.end(), c);
         if (it != m_conns.end()){
-            ilog("duplicate ws rsp from peer ${p}", ("p", c->peer_name()));
+            ilog("duplicate ws-sync info rsp from peer ${p}", ("p", c->peer_name()));
             return;
         }
 
         if(info != m_require_ws_info){
-           ilog("hash string not samne from peer ${p}", ("p", c->peer_name()));
+           ilog("error ws-sync info from peer ${p}", ("p", c->peer_name()));
            num_of_hash_error++;
            return;
         }
@@ -831,10 +833,10 @@ namespace ultrainio {
         conn_check_timer->expires_from_now(conn_timeout);
         conn_check_timer->async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
-                ilog("receive block conn check canceled, will not wait for ws sync");
+                ilog("ws-sync connect checking timer canceled, ws-sync failed!!");
                 sync_reset(error);
             } else {
-                ilog("connect timer out, start file sync");
+                ilog("ws-sync connect timer out, start ws file sync");
                 if (m_conns.size() == 0){
                     ilog("No valid connect!");
                     sync_code code;
@@ -872,7 +874,7 @@ namespace ultrainio {
         
         if (idx == -1) return;
 
-        ilog("remove_current_connect, peer name:  ${p}", ("p", ws_sync_conn->peer_name()));
+        ilog("ws-sync remove current connect. peer name:  ${p}", ("p", ws_sync_conn->peer_name()));
         m_conns_ws_info.erase(m_conns_ws_info.begin() + idx);
         m_conns.erase(m_conns.begin() + idx);
         ws_sync_conn.reset();
@@ -928,8 +930,8 @@ namespace ultrainio {
             return;
         }
 
-        if (msg.sliceId % 100 == 0)
-            ilog("receive_file_sync_rsp: ${id}", ("id", msg.sliceId));
+        if (msg.sliceId % 1000 == 0)
+            ilog("receive worldstate sync data, sliceId: ${id}", ("id", msg.sliceId));
     
         ws_writer->write_data(msg.sliceId, msg.chunk, msg.chunkLen);
         if(msg.endOfFile || msg.sliceId == m_require_ws_info.file_size / len_per_slice){//receive end data
@@ -942,12 +944,12 @@ namespace ultrainio {
 
     void sync_ws_manager::sync_ws_done(){
         auto ret = ws_writer->is_valid();
-        ilog("FileTransferEnd is_valid: ${ret}", ("ret", ret));      
+        ilog("ws-sync done, ws file is_valid: ${ret}", ("ret", ret));
         ws_writer.reset();
 
         if(!ret){//require ws from other connection
             remove_current_connect();
-
+            ilog("restart ws-sync");
             slice_num = 0;
             send_file_sync_req(slice_num);         
         } else {
@@ -956,7 +958,7 @@ namespace ultrainio {
     }
 
     void sync_ws_manager::receive_ws_sync_req(connection_ptr c, const ReqLastWsInfoMsg &msg) {
-        ilog("recieved ReqLastWsInfoMsg,start to rsp");
+        ilog("recieved ws-sync info request from  ${peer_address}", ("peer_address", c->peer_name()));
         auto infoList = ws_file_manager.get_local_ws_info();
        
         RspLastWsInfoMsg rspLastWsInfoMsg;
@@ -991,8 +993,10 @@ namespace ultrainio {
         c->enqueue(net_message(rspLastWsInfoMsg));
     }
 
-    void sync_ws_manager::receive_file_sync_req(connection_ptr c, const ReqWsFileMsg &msg) {
-        ilog("recieved ReqWsFileMsg, ${msg}", ("msg", msg));
+    void sync_ws_manager::receive_file_sync_req(connection_ptr c, const ReqWsFileMsg &msg) { 
+        if (msg.index < 5 || msg.index % 1000 == 0)
+            ilog("recieved ReqWsFileMsg, ${msg}", ("msg", msg));
+
         auto reader = ws_file_manager.get_reader(msg.info, msg.lenPerSlice);
         if (!reader){
             ilog("reader error ");
@@ -1046,7 +1050,7 @@ namespace ultrainio {
     }
 
     int  sync_ws_manager::get_status(std::string& ip) {
-        ip = ws_sync_conn ? ws_sync_conn->peer_name() : ip_address;
+        ip = ws_sync_conn ? ws_sync_conn->peer_address() : ip_address;
         if (ws_states == success)
             return 0;
         else if (ws_states == waiting_respones || ws_states == syncing){
@@ -1117,6 +1121,7 @@ namespace ultrainio {
 
     void sync_blocks_manager::sync_blocks_reset(sync_blocks_code st){
         blocks_sync_states = st;
+        m_block_log_ptr.reset();
         sync_connect_ptr.reset();
         sync_num = 2;
         m_conns.clear();
@@ -1127,8 +1132,10 @@ namespace ultrainio {
 
     bool sync_blocks_manager::send_blocks_sync_req(std::set< connection_ptr >& connections, const fc::sha256& chain_id, const int block_height){
         ilog("start blocks sync, chain_id: ${chain_id}, block_height: ${block_height}", ("chain_id", chain_id)("block_height", block_height));
-        if (blocks_sync_states == waiting_respones || blocks_sync_states == syncing)
+        if (blocks_sync_states == waiting_respones || blocks_sync_states == syncing) {
+            ilog("blocks sync already start, return!!");
             return false;
+        }
 
         sync_blocks_reset(none);
 
@@ -1142,7 +1149,7 @@ namespace ultrainio {
         bool is_connection = false;
         for (const auto& c : connections) {
             if(c->current()) {
-                ilog ("send file_info_msg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                ilog ("send blocks-sync request to peer: ${peer_address}", ("peer_address", c->peer_name()));
                 c->enqueue(net_message(reqBlocksMsg));
                 is_connection = true;
                 ip_address = c->peer_address();
@@ -1157,7 +1164,7 @@ namespace ultrainio {
         conn_check_timer->expires_from_now(conn_timeout);
         conn_check_timer->async_wait([this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
-                ilog("receive block conn check canceled, will not wait for ws sync");
+                ilog("block-sync connect checking timer canceled, block-sync failed!!");
                 sync_blocks_reset(error);
             } else {
                 ilog("connect timer out, start blocks sync");
@@ -1184,25 +1191,25 @@ namespace ultrainio {
         
     void sync_blocks_manager::receive_blocks_sync_rsp(connection_ptr c, const RspBlocksInfoMsg &msg){
         if( blocks_sync_states != waiting_respones){
-            ilog("get ws rsp from peer ${p}, but not in rsp waiting states", ("p", c->peer_name()));
+            ilog("get block-sync rsp from peer ${p}, but not in rsp waiting states", ("p", c->peer_name()));
             return;
         }
 
         if(msg.block_height <= 1){ // no data
             num_of_no_data++;
-            ilog("receive_blocks_sync_rsp: remote no block! peer ${p}", ("p", c->peer_name()));
+            ilog("receive block-sync rsp, but remote no correct block data! peer ${p}", ("p", c->peer_name()));
             return;
         }
 
-        ilog("receive block msg: ${msg}, peer:${p}", ("msg", msg)("p", c->peer_name()));
+        ilog("receive block-sync rsp msg: ${msg}, peer:${p}", ("msg", msg)("p", c->peer_name()));
         auto it = find(m_conns.begin(), m_conns.end(), c);
         if (it != m_conns.end()){
-            ilog("duplicate ws rsp from peer ${p}", ("p", c->peer_name()));
+            ilog("duplicate block-sync rsp from peer ${p}", ("p", c->peer_name()));
             return;
         }
 
         if(msg.chain_id != m_require_chain_id || msg.gs.compute_chain_id() != m_require_chain_id){
-           ilog("receive chain id (${chain_id}) not samne from peer ${p}", ("chain_id", msg.chain_id)("p", c->peer_name()));
+           ilog("Error chain_id(${chain_id}) from peer ${p}", ("chain_id", msg.chain_id)("p", c->peer_name()));
            return;
         }
 
@@ -1238,7 +1245,7 @@ namespace ultrainio {
         if (idx == -1)
             return;
 
-        ilog("remove_current_connect, peer name:  ${p}", ("p", sync_connect_ptr->peer_name()));
+        ilog("block-sync, remove current connect. peer name:  ${p}", ("p", sync_connect_ptr->peer_name()));
         m_block_height.erase(m_block_height.begin() + idx);
         m_conns.erase(m_conns.begin() + idx);
         m_gs.erase(m_gs.begin() + idx);
@@ -1246,7 +1253,7 @@ namespace ultrainio {
     }
 
     void sync_blocks_manager::send_blocks_file_sync_req(uint32_t block_num){
-        if(!sync_connect_ptr) {        
+        if(!sync_connect_ptr) {
             int index = select_strong_sync_src();
             if (index < 0) {
                 elog("No any connection");
@@ -1265,7 +1272,7 @@ namespace ultrainio {
         sync_check_timer->expires_from_now(sync_timeout);
         sync_check_timer->async_wait([this, block_num](boost::system::error_code ec) {
             if(ec) return;
-            ilog("req block_num ${block_num} timeout, peer ${p}", ("block_num", block_num)("p", sync_connect_ptr->peer_name()));
+            ilog("req block_num ${block_num} timeout, from peer ${p}", ("block_num", block_num)("p", sync_connect_ptr->peer_name()));
             remove_current_connect();
 
             //request the blocks again
@@ -1281,8 +1288,8 @@ namespace ultrainio {
 
         static int retry_cnt = 0;
         bool is_error = false;
-        if (msg.block_num <= 1 || msg.chunkLen == 0 || msg.block_num != sync_num){ //error block
-            elog("Error, receive error index block ${b}, with expect ${s}", ("b", msg.block_num)("s", sync_num));
+        if (msg.block_num <= 1 || msg.chunkLen == 0 || msg.block_num != sync_num || msg.block_num > m_require_block_height){ //error block
+            elog("Error, receive error block ${b}, with expect ${s}", ("b", msg.block_num)("s", sync_num));
             is_error = true;
         } else if(!chain::block_log::validata_block(msg.block)) {
             elog("Error, validata_block faile ${b}", ("b", msg.block_num));
@@ -1324,29 +1331,31 @@ namespace ultrainio {
 
         auto block_ptr = std::make_shared<chain::signed_block>(msg.block);
         auto ret = m_block_log_ptr->append(block_ptr);
-        ilog("receive_file_sync_rsp: ${id} ret:${ret}", ("id", msg.block_num)("ret", ret));
+
+        if (msg.block_num % 1000 == 0)
+            ilog("receive block data, block-number: ${id}, append pos:${ret}", ("id", msg.block_num)("ret", ret));
 
         if(sync_num < m_require_block_height){
             sync_num++;
             send_blocks_file_sync_req(sync_num);
-        } else if(sync_num == m_require_block_height){
-            sync_blocks_done();
         } else {
-            elog("ERORR, sync num > require");
-        }
+            sync_blocks_done();
+        } 
     }
 
     void sync_blocks_manager::sync_blocks_done(){
-        ilog("blocks FileTransferEnd"); 
+        ilog("blocks sync end, success!");
+        m_block_log_ptr.reset();
         sync_blocks_reset(success);
     }
 
     void sync_blocks_manager::receive_blocks_sync_req(connection_ptr c, const ReqBlocksInfoMsg &msg) {
-        ilog("recieved ReqBlocksInfoMsg,start to rsp");
+        ilog("recieved blocks request, msg: ${msg}", ("msg", msg));
         if (blocks_sync_states == waiting_respones || blocks_sync_states == syncing) {
             RspBlocksInfoMsg rspBlocksMsg;
             rspBlocksMsg.block_height = 0;
             c->enqueue(net_message(rspBlocksMsg));
+            ilog("block-sync is syning from other wss, don't respone request!");
             return;
         }
 
@@ -1366,7 +1375,8 @@ namespace ultrainio {
     }
 
     void sync_blocks_manager::receive_blocks_file_sync_req(connection_ptr c, const ReqBlocksFileMsg &msg) {
-        ilog("recieved ReqBlocksFileMsg, ${msg}", ("msg", msg));
+        if(msg.block_num < 5 || msg.block_num % 1000 == 0)
+            ilog("recieved block request, msg: ${msg}", ("msg", msg));
 
         if (blocks_sync_states == waiting_respones || blocks_sync_states == syncing) {
             BlocksTransferPacket rspPck;
@@ -1380,7 +1390,7 @@ namespace ultrainio {
         uint32_t blknum = m_block_log_ptr->head()->block_num();
 
         BlocksTransferPacket rspPck;
-        if (blknum > msg.block_num && msg.block_num > 1){
+        if (blknum >= msg.block_num && msg.block_num > 1){
             auto block_ptr = m_block_log_ptr->read_block_by_num(msg.block_num);
             if (block_ptr) {
                 rspPck.block = *block_ptr;
@@ -1390,7 +1400,6 @@ namespace ultrainio {
                 rspPck.block_num = 0;
                 rspPck.chunkLen = 0;
             }
-            ilog("block: ${b}", ("b", *block_ptr));
         } else {
             rspPck.block_num = 0;
             rspPck.chunkLen = 0;
@@ -1422,7 +1431,7 @@ namespace ultrainio {
     }
 
     int  sync_blocks_manager::get_status(std::string& ip) {
-        ip = sync_connect_ptr ? sync_connect_ptr->peer_name() : ip_address;
+        ip = sync_connect_ptr ? sync_connect_ptr->peer_address() : ip_address;
         if (blocks_sync_states == success)
             return 0;
         else if (blocks_sync_states == waiting_respones || blocks_sync_states == syncing){
@@ -1875,7 +1884,6 @@ namespace ultrainio {
    }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqLastWsInfoMsg &msg) {
-        ilog("recieved ReqLastWsInfoMsg,start to rsp");
         m_sync_ws_manager->receive_ws_sync_req(c, msg);
     }
 
@@ -1884,7 +1892,6 @@ namespace ultrainio {
     }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqWsFileMsg &msg) {   
-      ilog("recieved ReqWsFileMsg, ${msg}", ("msg", msg));
       m_sync_ws_manager->receive_file_sync_req(c, msg);
     }
 
@@ -1893,7 +1900,6 @@ namespace ultrainio {
     }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const RspBlocksInfoMsg &msg) {
-        ilog("recieved RspBlocksInfoMsg");
         m_sync_blocks_manager->receive_blocks_sync_rsp(c, msg);
     }
 
@@ -2264,6 +2270,20 @@ namespace ultrainio {
                 default :
                     return {5,"error","unknow reason"};
             } 
+        } else if(id == "connect") {
+            std::string ip_text = ""; 
+            std::string name_text = ""; 
+            for( const auto& c : my->connections ) {     
+                if(!c->connected())   
+                    continue;
+
+                ip_text += ip_text.empty() ? "" : " , ";
+                name_text += name_text.empty() ? "" : " , ";
+                ip_text += c->peer_address();
+                name_text += c->peer_name();
+            }
+
+            return {0, "peerName_list: "+name_text, "ip_list: "+ip_text};
         }
 
         return {-1,"error input", ""};

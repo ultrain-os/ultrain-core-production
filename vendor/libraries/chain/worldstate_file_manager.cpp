@@ -110,6 +110,10 @@ m_is_write(false)
 ,m_write_size(0)
 ,m_len_per_slice(len_per_slice)
 {
+    if (!bfs::is_directory(dir)){
+        bfs::create_directories(dir);
+    }
+
     m_file_name = dir + "/" + to_file_name(m_info.chain_id, m_info.block_height) + ".ws";
     m_fd.open(m_file_name.c_str(), std::ios::out | std::ios::binary);    
     m_is_write = true;
