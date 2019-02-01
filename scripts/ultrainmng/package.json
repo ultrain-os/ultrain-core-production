@@ -3,11 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./src/SideChainBlockInfoService.js"
+    "start": "node ./src/SideChainBlockInfoService.js",
+    "deploy": "npx webpack --mode=development"
   },
   "dependencies": {
     "async": "^2.6.1",
     "axios": "^0.18.0",
+    "babel-loader": "^8.0.5",
     "cookie-parser": "~1.4.3",
     "deasync": "^0.1.14",
     "debug": "~2.6.9",
@@ -21,6 +23,11 @@
     "random-lib": "^3.0.0",
     "sleep": "^5.2.3",
     "u3-utils": "0.0.2",
-    "u3.js": "git://github.com/ultrain-os/u3.js.git#dev"
+    "u3.js": "git://github.com/ultrain-os/u3.js.git#dev",
+    "webpack": "^4.29.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.2.2",
+    "webpack-cli": "^3.2.1"
   }
 }
