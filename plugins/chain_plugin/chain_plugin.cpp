@@ -1070,25 +1070,29 @@ std::vector<read_only::get_user_bulletin_result> read_only::get_user_bulletin(co
 
     name table = N(subchains);
     auto index_type = get_table_type( abi, table );
+    const auto& d = db.db();
     std::vector<read_only::get_user_bulletin_result> result;
     walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
        subchain subchain_data;
        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
        fc::raw::unpack(ds, subchain_data);
        if(p.chain_name == subchain_data.chain_name) {
-           auto headblock = db.head_block_num();
-           for(int32_t index = subchain_data.users.size() - 1; index >= 0; --index) {
-               if(headblock - subchain_data.users[index].block_num <= 180) {
-                   read_only::get_user_bulletin_result tmpuser;
-                   tmpuser.owner = subchain_data.users[index].user_name.to_string();
-                   tmpuser.owner_pk = subchain_data.users[index].owner_key;
-                   tmpuser.active_pk = subchain_data.users[index].active_key;
-                   tmpuser.issue_date = fc::time_point(microseconds(subchain_data.users[index].emp_time));
-                   result.push_back(tmpuser);
+           for(int32_t index = subchain_data.recent_users.size() - 1; index >= 0; --index) {
+               read_only::get_user_bulletin_result tmpuser;
+               tmpuser.owner = subchain_data.recent_users[index].user_name.to_string();
+               tmpuser.issue_date = fc::time_point_sec(subchain_data.recent_users[index].emp_time);
+               if(subchain_data.recent_users[index].is_producer) {
+                   //producer will always use the same pk as in master
+                   const auto& permission_o = d.get<permission_object,by_owner>(boost::make_tuple(subchain_data.recent_users[index].user_name, N(owner)));
+                   tmpuser.owner_pk = string(permission_o.auth.keys[0].key);
+                   const auto& permission_a = d.get<permission_object,by_owner>(boost::make_tuple(subchain_data.recent_users[index].user_name, N(active)));
+                   tmpuser.active_pk = string(permission_a.auth.keys[0].key);
                }
                else {
-                   break;
+                   tmpuser.owner_pk = subchain_data.recent_users[index].owner_key;
+                   tmpuser.active_pk = subchain_data.recent_users[index].active_key;
                }
+               result.push_back(tmpuser);
            }
            return false;
        }

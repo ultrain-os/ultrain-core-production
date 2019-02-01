@@ -185,8 +185,8 @@ namespace ultrainiosystem {
       account_name      user_name;
       std::string       owner_key;
       std::string       active_key;
-      uint64_t          emp_time;
-      uint32_t          block_num; ////block num in master chain when this info added
+      uint32_t          emp_time;
+      bool              is_producer; //producer will also use pk same with master chain
    };
 
    struct changing_committee {
@@ -213,15 +213,16 @@ namespace ultrainiosystem {
        changing_committee        changing_info;
        block_id_type             head_block_id;
        uint32_t                  head_block_num;
-       std::vector<user_info>    users;
+       std::vector<user_info>    recent_users;
+       uint32_t                  total_user_num;
        checksum256               chain_id;
        checksum256               committee_mroot;
 
        auto primary_key()const { return chain_name; }
 
        ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_active)(is_synced)(is_schedulable)
-                                      (committee_members)(updated_info)(changing_info)(head_block_id)(head_block_num)(users)
-                                      (chain_id)(committee_mroot) )
+                                      (committee_members)(updated_info)(changing_info)(head_block_id)(head_block_num)(recent_users)
+                                      (total_user_num)(chain_id)(committee_mroot) )
    };
    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
 
@@ -244,15 +245,6 @@ namespace ultrainiosystem {
        uint16_t      committee_confirm_period;
    };
    typedef ultrainio::singleton<N(schedset), schedule_setting> sched_set_singleton;
-/*
-   struct empower_info {
-      uint64_t          chain_name;
-      std::vector<user_info>  users;
-
-      auto primary_key()const { return chain_name; }
-   };
-   typedef ultrainio::multi_index<N(users), empower_info> user_table;
-*/
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
 
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
@@ -383,6 +375,8 @@ namespace ultrainiosystem {
 
          void schedule(); //called in onblock every 24h defaultly.
 
+         void checkbulletin();
+
          void getKeydata(const std::string& pubkey,std::array<char,33> & data);
 
          void checkresexpire();
@@ -406,6 +400,8 @@ namespace ultrainiosystem {
    #endif
 
     void head_block_id(char* buffer, uint32_t buffer_size);
+    void empower_to_chain(account_name user, uint64_t chain_name);
+    bool is_empowered(account_name user, uint64_t chain_name);
 
    #ifdef __cplusplus
    }

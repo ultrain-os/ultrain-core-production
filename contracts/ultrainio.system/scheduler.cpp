@@ -119,6 +119,7 @@ namespace ultrainiosystem {
             new_subchain.head_block_num    = 0;
             new_subchain.updated_info.take_effect_at_block = 0;
             new_subchain.is_schedulable    = false;
+            new_subchain.total_user_num    = 0;
         });
     }
 
@@ -242,14 +243,14 @@ namespace ultrainiosystem {
         //todo, check if the subchain is avtive?
         if(users_only) {
             _subchains.modify(ite_chain, 0, [&]( auto& _subchain ) {
-                _subchain.users.clear();
-                _subchain.users.shrink_to_fit();
+                _subchain.recent_users.clear();
+                _subchain.recent_users.shrink_to_fit();
             });
             return;
         }
         _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
-            _subchain.users.clear();
-            _subchain.users.shrink_to_fit();
+            _subchain.recent_users.clear();
+            _subchain.recent_users.shrink_to_fit();
             _subchain.head_block_id     = block_id_type();
             _subchain.head_block_num    = 0;
             _subchain.is_schedulable    = false;
@@ -271,33 +272,42 @@ namespace ultrainiosystem {
     void system_contract::empoweruser(account_name user, const std::string& owner_pk, const std::string& active_pk, uint64_t chain_name) {
         require_auth(user);
         auto ite_chain = _subchains.find(chain_name);
-        ultrainio_assert(ite_chain != _subchains.end(), "This subchian is not existed.");
-        ultrainio_assert(owner_pk.size() == 53, "owner public key should be of size 53");
-        ultrainio_assert(active_pk.size() == 53, "avtive public key should be of size 53");
+        ultrainio_assert(ite_chain != _subchains.end(), "this subchian is not existed");
+        ultrainio_assert(!is_empowered(user, chain_name), "user has been empowered to this chain before");
+        bool is_prod = false;
+        auto prod = _producers.find(user);
+        if(prod == _producers.end()) {
+            ultrainio_assert(owner_pk.size() == 53, "owner public key should be of size 53");
+            ultrainio_assert(active_pk.size() == 53, "avtive public key should be of size 53");
+        }
+        else {
+            is_prod = true;
+        }
         //todo, check whether this subchain is active.
+
+        empower_to_chain(user, chain_name);
 
         user_info tempuser;
         tempuser.user_name = user;
-        tempuser.owner_key = owner_pk;
-        tempuser.active_key = active_pk;
-        tempuser.emp_time = current_time();
-        tempuser.block_num = (uint32_t)tapos_block_num();
+        tempuser.is_producer = is_prod;
+        if(is_prod) {
+            tempuser.owner_key = "";  //use pk of master mandatorily
+            tempuser.active_key = "";
+        }
+        else {
+            tempuser.owner_key = owner_pk;
+            tempuser.active_key = active_pk;
+        }
+        tempuser.emp_time = now();
 
         _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _chain ) {
-            for(const auto& _user : _chain.users) {
-                ultrainio_assert(_user.user_name != user, "User has existed in this subchain.");
+            for(const auto& _user : _chain.recent_users) {
+                ultrainio_assert(_user.user_name != user, "User has published in this subchain recently.");
             }
-            _chain.users.push_back(tempuser);
+            _chain.recent_users.push_back(tempuser);
+            _chain.total_user_num += 1;
         });
     }
-/*
-    void system_contract::register_relayer(const std::string& miner_pk,
-                                     account_name relayer_account_name,
-                                     uint32_t relayer_deposit,
-                                     const std::string& ip,
-                                     uint64_t chain_name) {}
-*/
-
 
     void system_contract::add_to_pending_queue(account_name producer, const std::string& public_key, const std::string& bls_key) {
         auto itor = _producers.find(producer);
@@ -665,31 +675,17 @@ namespace ultrainiosystem {
         }
         print("[schedule] move ", name{producer}, " to ", to_iter->chain_name, "\n");
         //check user before move
-        auto user_iter = to_iter->users.begin();
-        for(; user_iter != to_iter->users.end(); ++user_iter) {
-            if(user_iter->user_name == producer) {
-                break;
-            }
-        }
-        if(user_iter == to_iter->users.end()) {
-            //not found
-            auto user_iter_from = from_iter->users.begin();
-            for(; user_iter_from != from_iter->users.end(); ++user_iter_from) {
-                if(user_iter_from->user_name == producer) {
-                    break;
-                }
-            }
-            if(user_iter_from == from_iter->users.end()) {
-                print("[schedule] error: user info is not found in source chain\n");
-                return false;
-            }
-            user_info tempuser = *user_iter_from;
-            tempuser.emp_time = current_time();
-            tempuser.block_num = (uint32_t)tapos_block_num();
+        if(!is_empowered(producer, to_iter->chain_name)) {
+            user_info tempuser;
+            tempuser.user_name = producer;
+            tempuser.is_producer = true;
+            tempuser.emp_time = now();
 
             _subchains.modify(to_iter, N(ultrainio), [&]( auto& _chain ) {
-                _chain.users.push_back(tempuser);
+                _chain.recent_users.push_back(tempuser);
+                _chain.total_user_num += 1;
             });
+            empower_to_chain(producer, to_iter->chain_name);
         }
         //move producer
         _producers.modify( producer_iter, 0, [&]( producer_info& info ) {
@@ -713,5 +709,28 @@ namespace ultrainiosystem {
         temp.schedule_period = sched_period;
         temp.committee_confirm_period = confirm_period;
         _schedsetting.set(temp, N(ultrainio));
+    }
+
+    void system_contract::checkbulletin() {
+        auto ct = now();
+        auto chain_it = _subchains.begin();
+        for(; chain_it != _subchains.end(); ++chain_it) {
+            if(!chain_it->recent_users.empty()) {
+                if( (ct > chain_it->recent_users[0].emp_time) && (ct - chain_it->recent_users[0].emp_time >= 30*60 ) ) {
+                    _subchains.modify(chain_it, 0, [&](auto& _subchain) {
+                        auto user_it = _subchain.recent_users.begin();
+                        for(; user_it != _subchain.recent_users.end();) {
+                            if(ct > user_it->emp_time && (ct - user_it->emp_time >= 30*60)) {
+                                user_it = _subchain.recent_users.erase(user_it);
+                            }
+                            else {
+                                ++user_it;
+                            }
+                        }
+                        _subchain.recent_users.shrink_to_fit();
+                    });
+                }
+            }
+        }
     }
 } //namespace ultrainiosystem

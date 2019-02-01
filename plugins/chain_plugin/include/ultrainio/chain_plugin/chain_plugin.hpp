@@ -344,7 +344,7 @@ public:
        std::string     owner;
        std::string     owner_pk;
        std::string     active_pk;
-       fc::time_point  issue_date;
+       fc::time_point_sec  issue_date;
    };
 
    std::vector<get_user_bulletin_result> get_user_bulletin(const get_user_bulletin_params& p) const;
