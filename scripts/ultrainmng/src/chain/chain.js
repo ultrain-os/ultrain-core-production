@@ -234,7 +234,15 @@ async function syncBlock() {
                     needpush = true;
                 }
 
-                //logger.info("header_extensions:",result.header_extensions,)
+                logger.info("header_extensions:",result.header_extensions);
+                var extensions = [];
+                if (result.header_extensions.length > 0 ) {
+                    result.header_extensions.forEach(function (item,index) {
+                        extensions.push({"type":item[0],"data":item[1]})
+                    })
+                }
+
+                //logger.info("extensions:",extensions);
                 /**
                  * 需要上传
                  */
@@ -249,7 +257,7 @@ async function syncBlock() {
                         "transaction_mroot": result.transaction_mroot,
                         "action_mroot": result.action_mroot,
                         "committee_mroot": result.committee_mroot,
-                        "header_extensions": [],
+                        "header_extensions": extensions,
                         //blockNum : i
                     });
                     blockListStr += i + ",";
@@ -269,6 +277,8 @@ async function syncBlock() {
                     chain_name: parseInt(chainConfig.chainName, 10),
                     headers: results
                 };
+
+                logger.debug("block params:",params);
                 logger.info("pushing block to head (chain_name :" + chainConfig.chainName + " count :" + results.length + ")");
                 await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "acceptheader", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
             }

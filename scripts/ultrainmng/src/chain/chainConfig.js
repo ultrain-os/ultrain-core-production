@@ -34,7 +34,7 @@ ChainConfig.configPath = path.join(__dirname, "../../config.ini");
 ChainConfig.localTest = false;
 
 //chain_name
-ChainConfig.chainName = "11";
+ChainConfig.chainName = "";
 //chain_name
 ChainConfig.chainId = "";
 //genesisTime

@@ -2218,10 +2218,12 @@ schduleaccounts = [
 
 conf = ConfigParser()
 curindex = 0
-if os.path.isfile("mutichain.cfg") :
-    conf.read("mutichain.cfg")
+if os.path.isfile("/root/workspace/ultrain-core/scripts/mutichain.cfg") :
+    conf.read("/root/workspace/ultrain-core/scripts/mutichain.cfg")
     curindex = conf.getint('config', 'index')
 basis_value = curindex*150
+print "basis_value："
+print basis_value
 
 sidechainacc = schduleaccounts[(basis_value):(basis_value+150)]
 sidechainacc1 = schduleaccounts[basis_value:(basis_value+50)]
@@ -2407,12 +2409,12 @@ def verifyaccrestest():
         chaininfostr += getchaincontext("13",sidechainacc3,chain3nofindacc,chain3nofindres)
 
     configindex = curindex + 1
-    if os.path.isfile("mutichain.cfg") :
+    if os.path.isfile("/root/workspace/ultrain-core/scripts/mutichain.cfg") :
         conf.set('config', 'index', str(configindex))
     else:
         conf.add_section("config")
         conf.set('config', 'index', str(configindex))
-    with open('mutichain.cfg', 'w') as fw:
+    with open('/root/workspace/ultrain-core/scripts/mutichain.cfg', 'w') as fw:
         conf.write(fw)
 
 
