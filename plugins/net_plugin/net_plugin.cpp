@@ -2554,6 +2554,9 @@ namespace ultrainio {
       if (results.first) {
          fc_ilog(logger,"signaled NACK, trx-id = ${id} : ${why}",("id", id)("why", results.first->to_detail_string()));
          dispatcher->rejected_transaction(id);
+      } else if (results.second->get_transaction().actions_are_pureview()){
+         // Do not broadcast pureview action.
+         dispatcher->rejected_transaction(id);
       } else {
          fc_ilog(logger,"signaled ACK, trx-id = ${id}",("id", id));
          dispatcher->bcast_transaction(*results.second);
