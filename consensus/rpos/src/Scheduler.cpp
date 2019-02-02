@@ -1296,7 +1296,6 @@ namespace ultrainio {
             // TODO(yufengshen) - Do we need to include the merkle in the block propose?
             chain.set_action_merkle_hack();
             chain.set_trx_merkle_hack();
-            ilog("myBlock : ${my} head : ${head}", ("my", chain::block_header::num_from_id(m_preBlockVoterSet.commonEchoMsg.blockId))("head", chain.head_block_num()));
             if (!m_preBlockVoterSet.empty() && chain::block_header::num_from_id(m_preBlockVoterSet.commonEchoMsg.blockId) == chain.head_block_num()) {
                 BlsVoterSet blsVoterSet = generateBlsVoterSet(m_preBlockVoterSet);
                 fc::variants va;

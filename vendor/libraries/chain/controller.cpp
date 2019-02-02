@@ -1351,7 +1351,7 @@ struct controller_impl {
    }
 
    void set_header_extensions(const extensions_type& exts) {
-       pending->_pending_block_state->header.header_extensions = move(exts);
+       pending->_pending_block_state->header.header_extensions = exts;
    }
 
    void finalize_block()

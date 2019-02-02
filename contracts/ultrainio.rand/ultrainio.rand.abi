@@ -128,7 +128,7 @@
       "ricardian_contract": "",
       "name": "query",
       "type": "query",
-      "ability": "normal"
+      "ability": "pureview"
     }
   ],
   "tables": [

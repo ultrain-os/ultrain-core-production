@@ -75,9 +75,9 @@ class rand extends Contract {
     // all candidate can register with deposit and pk
     @action
     transfer(from: account_name, to: account_name, value: Asset, memo: string): void {
-        Log.s("addCandidate: ").s(RNAME(from)).flush();
         if (from == this.receiver) return; // yourself, omit it.
         if (memo != "as candidate") return; // not transfer to join the candidate list
+        Log.s("addCandidate from : ").s(RNAME(from)).s(" to :").s(RNAME(to)).flush();
         ultrain_assert(!this.candidateDB.exists(from), "cannot add existing candidate.");
         ultrain_assert(value.eq(DEPOSIT_AMOUNT), "deposit money is not accurate, require deposit: " + DEPOSIT_AMOUNT.toString());
 
@@ -180,7 +180,7 @@ class rand extends Contract {
         return Contract.filterAcceptTransferTokenAction(this.receiver, originalReceiver, this.action);
     }
 
-    @action
+    @action("pureview")
     query(): void {
         Log.s(RNAME(Action.sender)).s(" query").flush();
         let blocknum = new Vote();
