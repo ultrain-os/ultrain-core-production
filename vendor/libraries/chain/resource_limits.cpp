@@ -143,14 +143,14 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
          uint128_t all_user_weight = state.total_cpu_weight;
 
          auto max_user_use_in_window = (virtual_network_capacity_in_window * user_weight) / all_user_weight;
-#if TEST_MODE == 0
+
          ULTRAIN_ASSERT( cpu_used_in_window <= max_user_use_in_window,
                      tx_cpu_usage_exceeded,
                      "authorizing account '${n}' has insufficient cpu resources for this transaction",
                      ("n", name(a))
                      ("cpu_used_in_window",cpu_used_in_window)
                      ("max_user_use_in_window",max_user_use_in_window) );
-#endif
+
       }
 
       if( net_weight >= 0 && state.total_net_weight > 0) {
@@ -163,14 +163,14 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
          uint128_t all_user_weight = state.total_net_weight;
 
          auto max_user_use_in_window = (virtual_network_capacity_in_window * user_weight) / all_user_weight;
-#if TEST_MODE == 0
+
          ULTRAIN_ASSERT( net_used_in_window <= max_user_use_in_window,
                      tx_net_usage_exceeded,
                      "authorizing account '${n}' has insufficient net resources for this transaction",
                      ("n", name(a))
                      ("net_used_in_window",net_used_in_window)
                      ("max_user_use_in_window",max_user_use_in_window) );
-#endif
+
       }
    }
 
@@ -179,10 +179,10 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
       rls.pending_cpu_usage += cpu_usage;
       rls.pending_net_usage += net_usage;
    });
-#if TEST_MODE == 0
+
    ULTRAIN_ASSERT( state.pending_cpu_usage <= config.cpu_limit_parameters.max, block_resource_exhausted, "Block has insufficient cpu resources" );
    ULTRAIN_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
-#endif   
+
 }
 
 void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta ) {
@@ -238,7 +238,7 @@ double  resource_limits_manager::get_cpu_rate(bool elastic)  const
    uint128_t window_size = config.account_cpu_usage_average_window;
     uint128_t virtual_cpu_capacity_in_window = (uint128_t)(elastic ? state.virtual_cpu_limit : config.cpu_limit_parameters.max) * window_size;
    uint128_t all_user_weight = (uint128_t)state.total_cpu_weight;
-   int64_t cpu_weight = 10000; 
+   int64_t cpu_weight = 10000;
    double cpurate = (virtual_cpu_capacity_in_window * cpu_weight) /((double)all_user_weight);
    return cpurate;// us/UGAS
 }

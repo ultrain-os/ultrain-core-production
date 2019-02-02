@@ -961,7 +961,7 @@ struct controller_impl {
 
 
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
-#if TEST_MODE == 0
+
             if( !self.skip_auth_check() && !implicit ) {
                authorization.check_authorization(
                        trx->trx.actions,
@@ -974,7 +974,7 @@ struct controller_impl {
                        false
                );
             }
-#endif
+
             auto event_restore = make_event_restore_point();
             trx_context.preset_action_ability();
             trx_context.exec();
@@ -1962,7 +1962,7 @@ void controller::validate_referenced_accounts( const transaction& trx )const {
 }
 
 void controller::validate_expiration( const transaction& trx )const { try {
-#if TEST_MODE == 0
+
    const auto& chain_configuration = get_global_properties().configuration;
 
    ULTRAIN_ASSERT( time_point(trx.expiration) >= pending_block_time(),
@@ -1976,18 +1976,18 @@ void controller::validate_expiration( const transaction& trx )const { try {
                "expiration is ${trx.expiration} and the maximum transaction lifetime is ${max_til_exp} seconds",
                ("trx.expiration",trx.expiration)("reference_time",pending_block_time())
                ("max_til_exp",chain_configuration.max_transaction_lifetime) );
-#endif
+
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 void controller::validate_tapos( const transaction& trx )const { try {
-#if TEST_MODE == 0
+
     const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)trx.ref_block_num);
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
    ULTRAIN_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
               "Transaction's reference block did not match. Is this transaction from a different fork?",
               ("tapos_summary", tapos_block_summary));
-#endif
+
 } FC_CAPTURE_AND_RETHROW() }
 
 void controller::validate_db_available_size() const {

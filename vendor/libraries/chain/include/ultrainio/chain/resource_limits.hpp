@@ -4,7 +4,6 @@
 #include <ultrainio/chain/worldstate.hpp>
 #include <chainbase/chainbase.hpp>
 #include <set>
-#define TEST_MODE 0
 
 namespace ultrainio { namespace chain { namespace resource_limits {
    namespace impl {

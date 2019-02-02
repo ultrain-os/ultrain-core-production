@@ -366,7 +366,7 @@ namespace ultrainio { namespace chain {
    }
 
    void transaction_context::check_net_usage()const {
-#if TEST_MODE == 0
+
       if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
          if ( net_limit_due_to_block ) {
             ULTRAIN_THROW( block_net_usage_exceeded,
@@ -382,11 +382,11 @@ namespace ultrainio { namespace chain {
                        ("net_usage", net_usage)("net_limit", eager_net_limit) );
          }
       }
-#endif
+
    }
 
    void transaction_context::checktime()const {
-#if TEST_MODE == 0
+
       auto now = fc::time_point::now();
       //      ilog("checktime deadline now${now}, deadline${deadline},start${start}", ("now", now)("deadline", _deadline)("start", start) );
       if( BOOST_UNLIKELY( now > _deadline ) ) {
@@ -410,7 +410,7 @@ namespace ultrainio { namespace chain {
          }
          ULTRAIN_ASSERT( false,  transaction_exception, "unexpected deadline exception code" );
       }
-#endif
+
    }
 
    void transaction_context::pause_billing_timer() {
@@ -437,7 +437,7 @@ namespace ultrainio { namespace chain {
    }
 
    void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {
-#if TEST_MODE == 0
+
       if( check_minimum ) {
          const auto& cfg = control.get_global_properties().configuration;
          ULTRAIN_ASSERT( billed_us >= cfg.min_transaction_cpu_usage, transaction_exception,
@@ -459,7 +459,7 @@ namespace ultrainio { namespace chain {
                      ("billed", billed_us)("billable", objective_duration_limit.count())
                    );
       }
-#endif
+
    }
 
    void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
