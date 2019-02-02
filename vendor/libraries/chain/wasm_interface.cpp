@@ -2016,6 +2016,33 @@ class call_depth_api : public context_aware_api {
       }
 };
 
+class multi_chain_api : public context_aware_api {
+   public:
+      multi_chain_api( apply_context& ctx ):context_aware_api(ctx, true) {}
+
+      void empower_to_chain(account_name user, uint64_t chain_name) {
+         const auto& a = context.db.get<account_object, by_name>( user );
+         for(auto i = 0; i < a.chain_names.size(); ++i) {
+             if(a.chain_names[i] == chain_name) {
+                 return;
+             }
+         }
+         context.db.modify( a, [&]( auto& ma ){
+            ma.chain_names.push_back(chain_name);
+         });
+      }
+
+      bool is_empowered(account_name user, uint64_t chain_name) const {
+         const auto& a = context.db.get<account_object, by_name>( user );
+         for(auto i = 0; i < a.chain_names.size(); ++i) {
+             if(a.chain_names[i] == chain_name) {
+                 return true;
+             }
+         }
+          return false;
+      }
+};
+
 #ifdef ULTRAIN_SUPPORT_TYPESCRIPT
 REGISTER_INTRINSICS(typescript_action_api,
   (ts_log_print_s,              void(int)     )
@@ -2329,6 +2356,11 @@ REGISTER_INTRINSICS(big_int_api,
       (big_int_gcd,         void(int, int, int, int, int))
       (big_int_mul,         void(int, int, int, int, int))
       (big_int_probab_prime,int(int, int, int))
+);
+
+REGISTER_INTRINSICS(multi_chain_api,
+      (empower_to_chain,    void(int64_t, int64_t))
+      (is_empowered,   int(int64_t, int64_t))
 );
 
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {

@@ -164,30 +164,30 @@ def insert_worldstate_config(fname):
     content.insert(index_line+1, newcontent)
     writefile(fname,content)
 
+
 def insert_non_producing(fname):
-	content = readfile(fname)
-	newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
-        if args.httpAlias :
-            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = "+args.httpAlias+"\n"
-        else:
-            if args.masterchain:
-                newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:9999\n"
-            if args.subchain == "11" :
-                newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
-            elif args.subchain == "12" :
-                newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8899\n"
-	print(newcontent)
-	index_line = content.index("#insert_if_producing-node\n")
-	content.insert(index_line+1, newcontent)
-	writefile(fname,content)
+    content = readfile(fname)
+    newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
+    if args.httpAlias:
+        newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = " + args.httpAlias + "\n"
+    else:
+        if args.masterchain:
+            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:9999\n"
+        if args.subchain == "11":
+            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
+        elif args.subchain == "12":
+            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8899\n"
+    print(newcontent)
+    index_line = content.index("#insert_if_producing-node\n")
+    content.insert(index_line + 1, newcontent)
+    writefile(fname, content)
 
 def insert_peer(fname,peer):
-	content = readfile(fname)
-        newcontent = "p2p-peer-address = %s:20122\nrpos-p2p-peer-address = %s:20123\n" % (peer,peer)
-	print(newcontent)
-	index_line = content.index("#insert_peers\n")
-	content.insert(index_line+1, newcontent)
-	writefile(fname,content)
+    content = readfile(fname)
+    newcontent = "p2p-peer-address = %s:20122\nrpos-p2p-peer-address = %s:20123\n" % (peer,peer)
+    index_line = content.index("#insert_peers\n")
+    content.insert(index_line+1, newcontent)
+    writefile(fname,content)
 
 def insert_keys(fname,index_key):
 	content = readfile(fname)

@@ -37,10 +37,7 @@ namespace ultrainio {
                 hasSend(false) {}
 
         bool empty() {
-            if (accountPool.size() <= 0) {
-                return true;
-            }
-            return false;
+            return accountPool.empty();
         }
 
         int getTotalVoterWeight() const {
@@ -62,10 +59,7 @@ namespace ultrainio {
         std::vector<std::string> proofPool;
 #endif
         bool empty() {
-            if (accountPool.size() <= 0) {
-                return true;
-            }
-            return false;
+            return accountPool.empty();
         }
     };
 

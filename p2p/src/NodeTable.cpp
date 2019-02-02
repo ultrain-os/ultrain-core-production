@@ -34,22 +34,20 @@ namespace p2p {
 
     NodeTable::NodeTable(ba::io_service &_io, NodeIPEndpoint const &_endpoint, NodeID const &nodeID, string const& chainid, bool _enabled) :
             m_hostNodeID(nodeID),
+            m_chainid(chainid),
             m_hostNodeEndpoint(_endpoint),
             m_socket(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents *>(this),
-                                             (bi::udp::endpoint) _endpoint)),
-	    m_chainid(chainid),
-            m_socketPointer(m_socket.get())
-           // m_timers(_io) {
+                                             (bi::udp::endpoint) _endpoint))
     {
         for (unsigned i = 0; i < s_bins; i++)
             m_state[i].distance = i;
         if (!_enabled)
             return;
         try {
-            m_socketPointer->connect();
+            m_socket->connect();
 //            doDiscovery();
             start_p2p_monitor(_io);
-	    ilog("chain_id ${id}",("id",m_chainid));
+            ilog("chain_id ${id}",("id",m_chainid));
         }
         catch (std::exception const &_e) {
             elog("Exception connecting NodeTable socket:");
@@ -57,8 +55,7 @@ namespace p2p {
     }
 
     NodeTable::~NodeTable() {
-        m_socketPointer->disconnect();
-   //     m_timers.stop();
+        m_socket->disconnect();
     }
 //TODO::rpos seed& trx seed to one seed and must be same
 void NodeTable::init( const std::vector <std::string> &seeds) {
@@ -205,7 +202,7 @@ void NodeTable::doDiscover(NodeID _node, unsigned _round, shared_ptr<set<shared_
 {
     // NOTE: ONLY called by doDiscovery!
     
-    if (!m_socketPointer->isOpen())
+    if (!m_socket->isOpen())
         return;
     
     auto const nearestNodes = nearestNodeEntries(_node);
@@ -223,9 +220,9 @@ void NodeTable::doDiscover(NodeID _node, unsigned _round, shared_ptr<set<shared_
             p.fromep = m_hostNodeEndpoint;
             p.tartgetep = node->m_endpoint;
             p.chain_id = m_chainid;
-	    m_socketPointer->send_msg(p,(bi::udp::endpoint)node->m_endpoint);
+            m_socket->send_msg(p,(bi::udp::endpoint)node->m_endpoint);
             m_sentFindNodes[node->m_id] = fc::time_point::now();
-	    _tried->emplace(node);
+            _tried->emplace(node);
             if (++newTriedCount == s_alpha)
                 break;
         }
@@ -320,7 +317,7 @@ void NodeTable::ping(NodeIPEndpoint _to,NodeID _toID)
     p.destid = _toID;
     p.chain_id = m_chainid;
 
-    m_socketPointer->send_msg(p,(bi::udp::endpoint)_to);
+    m_socket->send_msg(p,(bi::udp::endpoint)_to);
 }
 void NodeTable::ping(NodeEntry const& _nodeEntry, boost::optional<NodeID> const& _replacementNodeID)
 {
@@ -341,7 +338,7 @@ void NodeTable::ping(NodeEntry const& _nodeEntry, boost::optional<NodeID> const&
 }
 void NodeTable::evict(NodeEntry const& _leastSeen, NodeEntry const& _new)
 {
-    if (!m_socketPointer->isOpen())
+    if (!m_socket->isOpen())
         return;
 
      ilog("evict old ${old} new ${new}",("old",_leastSeen.m_endpoint.address())("new",_new.m_endpoint.address()));

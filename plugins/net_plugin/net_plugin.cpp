@@ -185,7 +185,6 @@ namespace ultrainio {
         boost::asio::steady_timer::duration   txn_exp_period;
         boost::asio::steady_timer::duration   resp_expected_period;
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
-        boost::asio::steady_timer::duration   sizeprint_period{std::chrono::seconds{30}};
         boost::asio::steady_timer::duration   speedmonitor_period;
         boost::asio::steady_timer::duration   block_handler_period{std::chrono::seconds{1}};
         const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
@@ -210,9 +209,6 @@ namespace ultrainio {
         bool start_session( connection_ptr c );
         void start_listen_loop(shared_ptr<tcp::acceptor> acceptor, msg_priority p);
         void start_read_message( connection_ptr c);
-        void get_con_buffer_size(connection_ptr c);
-        void print_queue_size( );
-        void start_sizeprint_timer( );
         void reset_speedlimit_monitor( );
         void start_speedlimit_monitor_timer();
         void close( connection_ptr c );
@@ -2323,42 +2319,6 @@ namespace ultrainio {
           dispatcher->rejected_transaction(tid);
       });
    }
-    void net_plugin_impl::get_con_buffer_size(connection_ptr conn)
-    {
-        int size_send = 0;
-        int size_write = 0;
-        boost::asio::socket_base::receive_buffer_size option1;
-        boost::asio::socket_base::send_buffer_size option;
-
-        conn->socket->get_option(option);
-        size_send = option.value();
-        conn->socket->get_option(option1);
-        size_write = option1.value();
-
-        ilog("peer ${peer} socket_s_size ${send_size} socket_r_size ${size_write} pbsize ${pensize} onwait ${onwait} wqsz ${wqsize} oqsz ${ot_size}",
-                ("peer",conn->peer_name())("send_size",size_send)("size_write",size_write)("pensize",conn->pending_message_buffer.total_bytes())("onwait",conn->pending_message_buffer.bytes_to_read())("wqsize",conn->write_queue.size())("ot_size",conn->out_queue.size()));
-
-
-    }
-    void net_plugin_impl:: print_queue_size( ) {
-        auto it = connections.begin();
-        while(it != connections.end()) {
-            if( (*it)->socket && (*it)->socket->is_open() && !(*it)->connecting) {
-
-                get_con_buffer_size(*it);
-
-            }
-            ++it;
-        }
-    }
-    void net_plugin_impl::start_sizeprint_timer( ) {
-        sizeprint_timer->expires_from_now( sizeprint_period);
-        sizeprint_timer->async_wait( [this](boost::system::error_code ec) {
-
-            print_queue_size();
-            start_sizeprint_timer();
-        });
-    }
     void net_plugin_impl::reset_speedlimit_monitor( )
     {
         for(auto &c : connections) {
@@ -2461,7 +2421,6 @@ namespace ultrainio {
       block_handler_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
       start_txn_timer();
-      start_sizeprint_timer();
       int round_interval = app().get_plugin<producer_uranus_plugin>().get_round_interval();
       speedmonitor_period = {std::chrono::seconds{round_interval}};
 
@@ -2753,6 +2712,7 @@ namespace ultrainio {
          ( "rpos-p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:20123" ), "The actual host:port used to listen for incoming rpos p2p connections.")
          ( "rpos-p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to rpos-p2p-listen-endpoint.")
          ( "rpos-p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple rpos-p2p-peer-address options as needed to compose a network.")
+         ( "udp-listen-port", bpo::value<uint16_t>()->default_value(20124), "The udp port used by p2p search.")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
@@ -2931,9 +2891,13 @@ namespace ultrainio {
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
          ilog( "my node_id is ${id} ${chainid}", ("id", my->node_id)("chainid",my->chain_id));
 
+         uint16_t udp_port = 20124;
+         if (options.count("udp-listen-port")) {
+            udp_port = options.at( "udp-listen-port" ).as<uint16_t>();
+         }
          p2p::NodeIPEndpoint local;
          local.setAddress("0.0.0.0");
-         local.setUdpPort(20124);
+         local.setUdpPort(udp_port);
          local.setListenPort(msg_priority_trx, my->trx_listener.listen_endpoint.port());
          local.setListenPort(msg_priority_rpos, my->rpos_listener.listen_endpoint.port());
          my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str());

@@ -59,7 +59,8 @@ namespace {
                  ba0_block.transaction_mroot == block->transaction_mroot &&
                  ba0_block.action_mroot == block->action_mroot &&
                  ba0_block.committee_mroot == block->committee_mroot &&
-                 ba0_block.previous == block->previous);
+                 ba0_block.previous == block->previous &&
+                 ba0_block.header_extensions == block->header_extensions);
     }
 }
 
@@ -1295,6 +1296,19 @@ namespace ultrainio {
             // TODO(yufengshen) - Do we need to include the merkle in the block propose?
             chain.set_action_merkle_hack();
             chain.set_trx_merkle_hack();
+            ilog("myBlock : ${my} head : ${head}", ("my", chain::block_header::num_from_id(m_preBlockVoterSet.commonEchoMsg.blockId))("head", chain.head_block_num()));
+            if (!m_preBlockVoterSet.empty() && chain::block_header::num_from_id(m_preBlockVoterSet.commonEchoMsg.blockId) == chain.head_block_num()) {
+                BlsVoterSet blsVoterSet = generateBlsVoterSet(m_preBlockVoterSet);
+                fc::variants va;
+                blsVoterSet.toVariants(va);
+                std::string s = fc::json::to_string(va);
+                ilog("blsVoterSet : ${set}", ("set", s));
+                std::vector<char> v(s.size());
+                v.assign(s.begin(), s.end());
+                chain::extensions_type exts;
+                exts.push_back(std::make_pair(kExtVoterSet, v));
+                chain.set_header_extensions(exts);
+            }
             // Construct the block msg from pbs.
             const auto &pbs = chain.pending_block_state();
             FC_ASSERT(pbs, "pending_block_state does not exist but it should, another plugin may have corrupted it");
@@ -1310,16 +1324,7 @@ namespace ultrainio {
             block.action_mroot = bh.action_mroot;
             block.transactions = pbs->block->transactions;
             block.committee_mroot = bh.committee_mroot;
-            if (!m_preBlockVoterSet.empty() && m_preBlockVoterSet.commonEchoMsg.blockId == block.previous) {
-                BlsVoterSet blsVoterSet = generateBlsVoterSet(m_preBlockVoterSet);
-                fc::variants va;
-                blsVoterSet.toVariants(va);
-                std::string s = fc::json::to_string(va);
-                ilog("blsVoterSet : ${set}", ("set", s));
-                std::vector<char> v(s.size());
-                v.assign(s.begin(), s.end());
-                block.header_extensions.push_back(std::make_pair(kExtVoterSet, v));
-            }
+            block.header_extensions = bh.header_extensions;
             block.signature = std::string(Signer::sign<BlockHeader>(block, StakeVoteBase::getMyPrivateKey()));
             ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature} committee mroot ${mroot}",
                  ("num", block.transactions.size())
@@ -1534,11 +1539,10 @@ namespace ultrainio {
         }
 
         if (minBlockId == BlockIdType()) { // not found > 2f + 1 echo
-            dlog("can not find >= 2f + 1");
-            if (phase == kPhaseBA0) {
+            dlog("can not find >= 2f + 1 = ${num}", ("num", stakeVotePtr->getNextRoundThreshold()));
+            if (UranusNode::getInstance()->getPhase() == kPhaseBA0) {
                 return emptyBlock();
             }
-            dlog("can not find >= 2f + 1, and 2f + 1 = {num}", ("num", stakeVotePtr->getNextRoundThreshold()));
             if ((!m_echoMsgAllPhase.empty()) && (UranusNode::getInstance()->getPhase() == kPhaseBAX)) {
                 dlog("current blockhash is empty. into produceBaxBlock.");
                 return produceBaxBlock();
@@ -1551,8 +1555,7 @@ namespace ultrainio {
 #else
             uint32_t priority = stakeVotePtr->proposerPriority(itor->second.echoCommonPart.proposer, kPhaseBA0, 0);
 #endif
-            //if (minPriority == priority && phase == kPhaseBA1) { // check priority only
-            if (false) {
+            if (minPriority == priority && phase >= kPhaseBA1) { // check priority only
                 ilog("save VoterSet blockId = ${blockId}", ("blockId", itor->second.echoCommonPart.blockId));
                 VoterSet set;
                 set.commonEchoMsg = itor->second.echoCommonPart;
@@ -1644,6 +1647,8 @@ namespace ultrainio {
         // TODO(yufengshen): Move all this into start_block() to remove dup codes.
         bp->proposer = block.proposer;
         hp->proposer = block.proposer;
+        bp->header_extensions = block.header_extensions;
+        hp->header_extensions = block.header_extensions;
 #ifdef CONSENSUS_VRF
         bp->proposerProof = block.proposerProof;
         hp->proposerProof = block.proposerProof;
@@ -1682,6 +1687,7 @@ namespace ultrainio {
             }
             chain.set_action_merkle_hack();
             chain.set_trx_merkle_hack();
+            chain.set_header_extensions(m_ba0Block.header_extensions);
             ULTRAIN_ASSERT(pbs->header.action_mroot == block.action_mroot,
                            chain::chain_exception,
                            "Verify Ba0 block not generating expected action_mroot");
@@ -1724,6 +1730,8 @@ namespace ultrainio {
             chain::signed_block_header *hp = &(pbs->header);
             bp->proposer = block.proposer;
             hp->proposer = block.proposer;
+            bp->header_extensions = block.header_extensions;
+            hp->header_extensions = block.header_extensions;
 #ifdef CONSENSUS_VRF
             bp->proposerProof = block.proposerProof;
             hp->proposerProof = block.proposerProof;
@@ -2104,7 +2112,6 @@ namespace ultrainio {
         const auto &pbs = chain.pending_block_state();
         const auto &bh = pbs->header;
         blockPtr->timestamp = bh.timestamp;
-        blockPtr->previous = bh.previous;
         blockPtr->previous = bh.previous;
         blockPtr->transaction_mroot = bh.transaction_mroot;
         blockPtr->action_mroot = bh.action_mroot;

@@ -454,8 +454,8 @@
         {"name": "user_name",                     "type": "account_name"},
         {"name": "owner_key",                     "type": "string"},
         {"name": "active_key",                    "type": "string"},
-        {"name": "emp_time",                      "type": "uint64"},
-        {"name": "block_num",                     "type": "uint32"}
+        {"name": "emp_time",                      "type": "uint32"},
+        {"name": "is_producer",                   "type": "bool"}
        ]
     },{
      "name": "chain_resource",
@@ -497,7 +497,8 @@
         {"name": "changing_info",                 "type": "changing_committee"},
         {"name": "head_block_id",                 "type": "block_id_type"},
         {"name": "head_block_num",                "type": "uint32"},
-        {"name": "users",                         "type": "user_info[]"},
+        {"name": "recent_users",                  "type": "user_info[]"},
+        {"name": "total_user_num",                "type": "uint32"},
         {"name": "chain_id",                      "type": "checksum256"},
         {"name": "committee_mroot",               "type": "checksum256"}
        ]

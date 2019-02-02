@@ -38,7 +38,7 @@ namespace ultrainio { namespace chain {
    */
   block_header_state block_header_state::next( const signed_block_header& h, bool trust )const {
     ULTRAIN_ASSERT( h.timestamp != block_timestamp_type(), block_validate_exception, "", ("h",h) );
-    ULTRAIN_ASSERT( h.header_extensions.size() == 0, block_validate_exception, "no supported extensions" );
+    //ULTRAIN_ASSERT( h.header_extensions.size() == 0, block_validate_exception, "no supported extensions" );
 
     ULTRAIN_ASSERT( h.timestamp > header.timestamp, block_validate_exception, "block must be later in time" );
     ULTRAIN_ASSERT( h.previous == id, unlinkable_block_exception, "block must link to current state" );
@@ -51,6 +51,7 @@ namespace ultrainio { namespace chain {
     result.header.transaction_mroot  = h.transaction_mroot;
     result.header.committee_mroot    = h.committee_mroot;
     result.header.proposer           = h.proposer;
+    result.header.header_extensions  = h.header_extensions;
 #ifdef CONSENSUS_VRF
     result.header.proposerProof      = h.proposerProof;
 #endif

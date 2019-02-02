@@ -34,11 +34,10 @@ BOOST_AUTO_TEST_SUITE(message_test_suite)
 
         std::vector<char> vc(s.size());
         vc.assign(s.begin(), s.end());
-        for (char c : vc) {
-            std::cout << c;
-        }
-        std::cout << std::endl;
-        fc::variant v = fc::json::from_string(s);
+        std::string restoreS;
+        restoreS.assign(vc.begin(), vc.end());
+        BOOST_CHECK(s == restoreS);
+        fc::variant v = fc::json::from_string(restoreS);
         fc::variants restoreVa = v.get_array();
         BOOST_CHECK(va == restoreVa);
 

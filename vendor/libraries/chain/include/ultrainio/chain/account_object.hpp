@@ -25,6 +25,7 @@ namespace ultrainio { namespace chain {
       time_point           last_code_update;
       digest_type          code_version;
       block_timestamp_type creation_date;
+      vector<uint64_t>     chain_names;
 
       shared_string  code;
       shared_string  abi;
@@ -82,5 +83,5 @@ CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::account_object, ultrainio::chain::acc
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::account_sequence_object, ultrainio::chain::account_sequence_index)
 
 
-FC_REFLECT(ultrainio::chain::account_object,(name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(code)(abi))
+FC_REFLECT(ultrainio::chain::account_object,(name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(chain_names)(code)(abi))
 FC_REFLECT(ultrainio::chain::account_sequence_object, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence))
