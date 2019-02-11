@@ -829,6 +829,7 @@ struct controller_impl {
       try {
          trx_context.init_for_deferred_trx( gtrx.published );
          trx_context.preset_action_ability();
+         trace->ability = trx_context.trx.actions_are_pureview() ? action::PureView : action::Normal;
          trx_context.exec();
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
@@ -977,6 +978,7 @@ struct controller_impl {
 
             auto event_restore = make_event_restore_point();
             trx_context.preset_action_ability();
+            trace->ability = trx_context.trx.actions_are_pureview() ? action::PureView : action::Normal;
             trx_context.exec();
             trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 

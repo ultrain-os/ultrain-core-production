@@ -56,7 +56,7 @@ namespace ultrainio { namespace chain { namespace plugin_interface {
 
    namespace compat {
       namespace channels {
-         using transaction_ack       = channel_decl<struct accepted_transaction_tag, std::pair<fc::exception_ptr, packed_transaction_ptr>>;
+         using transaction_ack       = channel_decl<struct accepted_transaction_tag, std::tuple<const fc::exception_ptr, const transaction_trace_ptr, const packed_transaction_ptr>>;
       }
    }
 

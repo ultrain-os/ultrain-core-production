@@ -45,6 +45,8 @@ namespace ultrainio { namespace chain {
       transaction_trace_ptr                      failed_dtrx_trace;
       fc::optional<fc::exception>                except;
       std::exception_ptr                         except_ptr;
+
+      action::AbilityType                        ability = action::Normal;
    };
 
    struct block_trace {

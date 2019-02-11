@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <ctime>
 #include <chrono>
+#include <tuple>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/function_output_iterator.hpp>
 #include <boost/multi_index_container.hpp>
@@ -220,6 +221,8 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool from_network, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
           // We do pre-run here only for returning results asap to the transaction caller.
+          #define MAKE_TRANSACTION_ACK_TUPLE std::tuple<const fc::exception_ptr, const transaction_trace_ptr, const packed_transaction_ptr>
+
           chain::controller& chain = app().get_plugin<chain_plugin>().chain();
 
           static auto last_incoming_trx_report_time = fc::time_point::now();
@@ -239,14 +242,14 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
               if( fc::time_point(trx_ptr->trx.expiration) < block_time ) {
                   ilog("on_incoming_transaction_async cache trx.id = ${id}, but expired so drop", ("id", trx_ptr->id));
                   auto e = std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", trx_ptr->id)));
-                  _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(e, trx));
+                  _transaction_ack_channel.publish(MAKE_TRANSACTION_ACK_TUPLE(e, nullptr, trx));
                   return;
               }
 
               if (chain.is_known_unexpired_transaction(trx_ptr->id)) {
                   ilog("on_incoming_transaction_async cache trx.id = ${id}, but known so drop", ("id", trx_ptr->id));
                   auto e = std::make_shared<tx_duplicate>(FC_LOG_MESSAGE(error, "duplicate transaction ${id}", ("id", trx_ptr->id)));
-                  _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(e, trx));
+                  _transaction_ack_channel.publish(MAKE_TRANSACTION_ACK_TUPLE(e, nullptr, trx));
                   return;
               }
 
@@ -254,12 +257,12 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
               //         ilog("on_incoming_transaction_async cache trx.id = ${id}, overflow ${o}, duplicate ${d}",
               //              ("id", trx->id())("o", ret.first)("d", ret.second));;
               if (!ret.first && !ret.second) {
-                  _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
+                  _transaction_ack_channel.publish(MAKE_TRANSACTION_ACK_TUPLE(nullptr, nullptr, trx));
               } else {
                   auto e = std::make_shared<tx_duplicate>(
                       FC_LOG_MESSAGE(error, "overflow ${o} or duplicate ${d} transaction ${id}",
                                      ("o", ret.first)("d", ret.second)("id", trx_ptr->id)));
-                  _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(e, trx));
+                  _transaction_ack_channel.publish(MAKE_TRANSACTION_ACK_TUPLE(e, nullptr, trx));
               }
 
               if (time_delta > fc::seconds(report_period) || incoming_trx_count > report_trx_count_thresh) {
@@ -299,9 +302,9 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
           auto send_response = [this, &trx, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
                                    next(response);
                                    if (response.contains<fc::exception_ptr>()) {
-                                       _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(response.get<fc::exception_ptr>(), trx));
+                                       _transaction_ack_channel.publish(MAKE_TRANSACTION_ACK_TUPLE(response.get<fc::exception_ptr>(), nullptr, trx));
                                    } else {
-                                       _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
+                                       _transaction_ack_channel.publish(MAKE_TRANSACTION_ACK_TUPLE(nullptr, response.get<transaction_trace_ptr>(), trx));
                                    }
                                };
 

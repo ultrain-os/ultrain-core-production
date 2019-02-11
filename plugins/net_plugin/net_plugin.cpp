@@ -227,7 +227,7 @@ namespace ultrainio {
         void accepted_transaction(const transaction_metadata_ptr&);
         void applied_transaction(const transaction_trace_ptr&);
 
-        void transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>&);
+        void transaction_ack(const std::tuple<const fc::exception_ptr, const transaction_trace_ptr, const packed_transaction_ptr>&);
         bool is_valid( const handshake_message &msg);
 
         shared_ptr<tcp::resolver> get_resolver(msg_priority p) const;
@@ -2304,12 +2304,9 @@ namespace ultrainio {
                          e_ptr->code() != node_is_syncing::code_value) {
                   elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
               }
-          } else if (msg.get_transaction().actions_are_pureview()) {
-              // do not broadcast pureview action
-              // fc_dlog(logger, "chain accept pureview transaction.");
           } else {
               auto trace = result.get<transaction_trace_ptr>();
-              if (!trace->except) {
+              if (!trace->except && trace->ability != action::PureView) {
                   fc_dlog(logger, "chain accepted transaction");
                   dispatcher->bcast_transaction(msg);
                   return;
@@ -2549,17 +2546,19 @@ namespace ultrainio {
       fc_dlog(logger,"signaled, id = ${id}",("id", txn->id));
    }
 
-   void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>& results) {
-      transaction_id_type id = results.second->id();
-      if (results.first) {
-         fc_ilog(logger,"signaled NACK, trx-id = ${id} : ${why}",("id", id)("why", results.first->to_detail_string()));
+   void net_plugin_impl::transaction_ack(const std::tuple<const fc::exception_ptr, const transaction_trace_ptr, const packed_transaction_ptr>& results) {
+      transaction_id_type id = std::get<2>(results)->id();
+      if (std::get<0>(results)) {
+         fc_ilog(logger,"signaled NACK, trx-id = ${id} : ${why}",("id", id)("why", std::get<0>(results)->to_detail_string()));
          dispatcher->rejected_transaction(id);
-      } else if (results.second->get_transaction().actions_are_pureview()){
+      } else if (std::get<1>(results) && std::get<1>(results)->ability == action::PureView) {
+          fc_ilog(logger, "PureView action, reject to broadcast.");
          // Do not broadcast pureview action.
          dispatcher->rejected_transaction(id);
       } else {
          fc_ilog(logger,"signaled ACK, trx-id = ${id}",("id", id));
-         dispatcher->bcast_transaction(*results.second);
+         const auto& ptx = std::get<2>(results);
+         dispatcher->bcast_transaction(*ptx);
       }
    }
 
