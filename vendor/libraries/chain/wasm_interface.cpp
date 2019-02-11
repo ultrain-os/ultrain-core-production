@@ -314,6 +314,17 @@ class typescript_crypto_api : public context_aware_api {
       int ts_verify_with_pk(null_terminated_ptr pk_str, null_terminated_ptr pk_proof, null_terminated_ptr message) {
           return ultrainio::verify_with_pk(pk_str.value, pk_proof.value, message.value) ? 1 : 0;
       }
+
+      int ts_is_account_with_code(account_name account) {
+         auto* acct = context.db.find<account_object, by_name>(account);
+         if (!acct) return -1; // invalid account
+
+         auto code = acct->code;
+
+         if (code.size() != 0) return 1;
+
+         return 0;
+      }
 };
 #endif
 
@@ -2074,6 +2085,7 @@ REGISTER_INTRINSICS(typescript_crypto_api,
    (ts_public_key_of_account,  int(int64_t, int, int, int)        )
    (ts_read_db_record,         int(int64_t, int64_t, int64_t, int64_t, int , int) )
    (ts_verify_with_pk,         int(int, int, int)                 )
+   (ts_is_account_with_code,   int(int64_t)                       )
 );
 #endif
 

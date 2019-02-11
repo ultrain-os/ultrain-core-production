@@ -65,5 +65,5 @@ FC_REFLECT_DERIVED( ultrainio::chain::action_trace,
                     (ultrainio::chain::base_action_trace), (inline_traces) )
 
 FC_REFLECT( ultrainio::chain::transaction_trace, (id)(receipt)(elapsed)(net_usage)(scheduled)
-                                             (action_traces)(failed_dtrx_trace)(except) )
+                                             (action_traces)(failed_dtrx_trace)(except)(ability) )
 FC_REFLECT( ultrainio::chain::block_trace, (elapsed)(billed_cpu_usage_us)(trx_traces) )
