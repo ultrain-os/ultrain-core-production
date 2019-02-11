@@ -17,6 +17,9 @@ namespace bfs = boost::filesystem;
 
 namespace ultrainio { namespace chain {
 
+#define WS_DATA_DIR "ultrainio/wssultrain/data/worldstate"
+#define WS_DOWNLOAD_RELATIVE_DIR "download"
+
 std::string to_file_name(fc::sha256 chain_id, uint32_t block_height)
 {
     fc::variant chain_var;
@@ -110,11 +113,12 @@ m_is_write(false)
 ,m_write_size(0)
 ,m_len_per_slice(len_per_slice)
 {
-    if (!bfs::is_directory(dir)){
-        bfs::create_directories(dir);
+    std::string download_dir = dir + "/" + WS_DOWNLOAD_RELATIVE_DIR + "/";
+    if (!bfs::is_directory(download_dir)){
+        bfs::create_directories(download_dir);
     }
 
-    m_file_name = dir + "/" + to_file_name(m_info.chain_id, m_info.block_height) + ".ws";
+    m_file_name = download_dir + to_file_name(m_info.chain_id, m_info.block_height) + ".ws";
     m_fd.open(m_file_name.c_str(), std::ios::out | std::ios::binary);    
     m_is_write = true;
 }
@@ -134,10 +138,8 @@ void ws_file_writer::destory()
     if(m_valid != 1){//Delete file
         bfs::remove(m_file_name.c_str());
     } else {
-        m_manager.save_info(m_info);
+        m_manager.save_info(m_info, WS_DOWNLOAD_RELATIVE_DIR);
     }
-
-    // delete this;
 }
 
 void ws_file_writer::write_data(uint32_t slice_id, const std::vector<char>& data, uint32_t data_len)
@@ -209,10 +211,10 @@ void ws_file_writer::open_read()
 
 ws_file_manager::ws_file_manager(std::string dir)
 :m_dir_path(dir)
-,m_max_ws_count(-1)
+,m_max_ws_count(MAX_WS_COUNT)
 {
     if(m_dir_path.empty()){
-        m_dir_path = (fc::app_path() / "ultrainio/wssultrain/data/worldstate").string();
+        m_dir_path = (fc::app_path() / WS_DATA_DIR).string();
     }
     
     if (!bfs::is_directory(m_dir_path)){
@@ -289,9 +291,15 @@ std::list<ws_info> ws_file_manager::get_local_ws_info()
    return std::list<ws_info>();
 }
 
-void ws_file_manager::save_info(ws_info& node)
+void ws_file_manager::save_info(ws_info& node, std::string relative_dir)
 {
-    std::string info_file_name  = m_dir_path + "/" +  to_file_name(node.chain_id, node.block_height) + ".info";
+    std::string info_file_name;
+    if (relative_dir.empty()){
+      info_file_name = m_dir_path + "/" +  to_file_name(node.chain_id, node.block_height) + ".info";
+    } else {
+      info_file_name = m_dir_path + "/" + relative_dir + "/" +  to_file_name(node.chain_id, node.block_height) + ".info";
+    }
+
     fc::json::save_to_file(node, info_file_name, true);
 }
 
@@ -317,12 +325,12 @@ std::shared_ptr<ws_file_reader> ws_file_manager::get_reader(ws_info node, uint32
 
 std::shared_ptr<ws_file_writer>  ws_file_manager::get_writer(ws_info node, uint32_t len_per_slice)
 {
-    auto node_list = get_local_ws_info();
-    for(auto &it : node_list){
-        if(it == node){
-            return nullptr;
-        }
-    }
+    // auto node_list = get_local_ws_info();
+    // for(auto &it : node_list){
+    //     if(it == node){
+    //         return nullptr;
+    //     }
+    // }
     return std::make_shared<ws_file_writer>(node, len_per_slice, m_dir_path,  *this);
 }
 

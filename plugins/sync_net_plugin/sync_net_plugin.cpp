@@ -767,14 +767,14 @@ namespace ultrainio {
         m_require_ws_info = info;
 
         //check local ws firstly, if not exist, send req by tcp connect
-        auto infoList = ws_file_manager.get_local_ws_info();  
-        for(auto& it : infoList){
-            if (it == info){
-                sync_reset(success);
-                ilog("Success: local exist ws file!!");
-                return true;
-            }
-        }
+        // auto infoList = ws_file_manager.get_local_ws_info();  
+        // for(auto& it : infoList){
+        //     if (it == info){
+        //         sync_reset(success);
+        //         ilog("Success: local exist ws file!!");
+        //         return true;
+        //     }
+        // }
         
         ReqLastWsInfoMsg reqLastWsInfoMsg;
         reqLastWsInfoMsg.chain_id = info.chain_id;

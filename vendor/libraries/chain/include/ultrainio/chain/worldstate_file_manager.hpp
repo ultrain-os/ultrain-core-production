@@ -92,14 +92,14 @@ namespace ultrainio { namespace chain {
             std::shared_ptr<ws_file_writer> get_writer(ws_info node, uint32_t len_per_slice);
             fc::sha256 calculate_file_hash(std::string file_name);
             std::string get_file_path_by_info(fc::sha256& chain_id, uint32_t block_height);
-            void save_info(ws_info& node);
+            void save_info(ws_info& node, std::string relative_dir="");
             void set_local_max_count(int number);
         private:
             bool load_local_info_file(const std::string file_name, ws_info& node);
             void start_delete_timer();
         private:
             std::string m_dir_path;
-            int m_max_ws_count{MAX_WS_COUNT};
+            int m_max_ws_count;
             boost::asio::steady_timer::duration   m_ws_delete_period;
             unique_ptr<boost::asio::steady_timer> m_ws_delete_check;
             std::map<ws_info, std::shared_ptr<ws_file_reader>> m_reader_map;
