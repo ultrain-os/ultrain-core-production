@@ -153,7 +153,7 @@ namespace ultrainiosystem {
       }
    }
    void system_contract::checkvotefrequency(ultrainiosystem::producers_table::const_iterator propos){
-      uint64_t cur_block_num = (uint64_t)tapos_block_num();
+      uint64_t cur_block_num = (uint64_t)head_block_number() + 1;
       if((cur_block_num - propos->last_vote_blocknum) < 60){
          ultrainio_assert( propos->vote_number <= 600 , "too high voting frequency" );
       }else{

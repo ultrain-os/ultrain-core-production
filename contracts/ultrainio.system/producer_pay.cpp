@@ -24,7 +24,7 @@ namespace ultrainiosystem {
          uint32_t i {};
          for(auto itr = _producers.begin(); i <= _gstate.min_committee_member_number && itr != _producers.end(); ++itr, ++i){}
 		 if( i > _gstate.min_committee_member_number){
-			_gstate.start_block=(uint64_t)tapos_block_num();
+			_gstate.start_block=(uint64_t)head_block_number() + 1;
          }else{
             return;
          }
@@ -75,7 +75,7 @@ namespace ultrainiosystem {
          uint32_t i {};
          for(auto itr = _producers.begin(); i <= _gstate.min_committee_member_number && itr != _producers.end(); ++itr, ++i){}
 		 if( i > _gstate.min_committee_member_number){
-			_gstate.start_block=(uint64_t)tapos_block_num();
+			_gstate.start_block=(uint64_t)head_block_number() + 1;
          }else{
             return;
          }
@@ -132,7 +132,7 @@ namespace ultrainiosystem {
    }
 
    void system_contract::distributreward(){
-      auto block_height = tapos_block_num();
+      auto block_height = head_block_number() + 1;
       if(block_height < 120 || block_height%(360*24*7) != 0) {
          return;
       }

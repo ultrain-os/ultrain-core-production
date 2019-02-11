@@ -185,7 +185,7 @@ namespace ultrainiosystem {
       account_name      user_name;
       std::string       owner_key;
       std::string       active_key;
-      uint32_t          emp_time;
+      time              emp_time;
       bool              is_producer; //producer will also use pk same with master chain
    };
 
@@ -231,11 +231,12 @@ namespace ultrainiosystem {
       uint64_t       lease_num = 0;
       time           start_time = 0;
       time           end_time;
+      time           modify_time;
 
       uint64_t  primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( resources_lease, (owner)(lease_num)(start_time)(end_time) )
+      ULTRAINLIB_SERIALIZE( resources_lease, (owner)(lease_num)(start_time)(end_time)(modify_time) )
    };
    typedef ultrainio::multi_index< N(reslease), resources_lease>      resources_lease_table;
 
@@ -400,6 +401,7 @@ namespace ultrainiosystem {
    #endif
 
     void head_block_id(char* buffer, uint32_t buffer_size);
+    int head_block_number();
     void empower_to_chain(account_name user, uint64_t chain_name);
     bool is_empowered(account_name user, uint64_t chain_name);
 

@@ -156,14 +156,14 @@ namespace ultrainiosystem {
                             _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
                                 _subchain.updated_info.unactivated_committee.clear();
                                 _subchain.updated_info.unactivated_committee.shrink_to_fit();
-                                _subchain.updated_info.take_effect_at_block = (uint32_t)tapos_block_num() + 30;
+                                _subchain.updated_info.take_effect_at_block = (uint32_t)head_block_number() + 30;
                             });
                             break;
                         }
                     }
                 }
                 else if(!found_prod && ite_chain->updated_info.deprecated_committee.empty() ) {
-                    uint32_t cur_block_num = (uint32_t)tapos_block_num();
+                    uint32_t cur_block_num = (uint32_t)head_block_number() + 1;
                     for(auto ite_prod = ite_chain->updated_info.deprecated_committee.begin();
                         ite_prod != ite_chain->updated_info.deprecated_committee.end(); ++ite_prod) {
                         if(ite_prod->owner == block_proposer) {
@@ -463,7 +463,7 @@ namespace ultrainiosystem {
             auto temp = _schedsetting.get();
             period_minutes = int32_t(temp.committee_confirm_period);
         }
-        auto block_height = tapos_block_num();
+        auto block_height = head_block_number() + 1;
         if(block_height > 180 && block_height%(period_minutes * 6) != 0 ) {
             return;
         }
@@ -554,7 +554,7 @@ namespace ultrainiosystem {
             sched_period_minute = int32_t(temp.schedule_period);
         }
 
-        auto block_height = tapos_block_num();
+        auto block_height = head_block_number() + 1;
         if( block_height%(sched_period_minute * 6) != 0) {
             return;
         }

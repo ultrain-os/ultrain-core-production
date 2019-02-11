@@ -986,7 +986,10 @@ vector<ultrainio::chain::resources_lease> results;
         resources_lease resLease;
         fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
         fc::raw::unpack(ds, resLease);
-        results.push_back(resLease);
+        time_point_sec ct(fc::time_point::now());
+        if(resLease.modify_time <= ct && (ct - resLease.modify_time).to_seconds() <= 30*60) {
+            results.push_back(resLease);
+        }
         return true;
     } );
 return results;

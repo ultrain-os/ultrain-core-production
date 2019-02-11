@@ -171,7 +171,7 @@ namespace ultrainiosystem {
          asset total_update = stake_cons_delta;
          auto it = _producers.find(receiver);
          ultrainio_assert( (it != _producers.end()), "Unable to delegate cons, you need to regproducer" );
-         uint64_t curblocknum = (uint64_t)tapos_block_num();
+         uint64_t curblocknum = (uint64_t)head_block_number() + 1;
          if(stake_cons_delta.amount < 0){
             print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," last_operate_blocknum:",it->last_operate_blocknum);//
             if((name{from}.to_string().find( "utrio." ) != 0 ) && (from != _self)){
@@ -291,6 +291,7 @@ namespace ultrainiosystem {
                   tot.lease_num = combosize;
                   tot.start_time = now();
                   tot.end_time = tot.start_time + (uint32_t)days*seconds_per_day;
+                  tot.modify_time = now();
                });
          } else {
             ultrainio_assert(((combosize > 0) && (days == 0))||((combosize == 0) && (days > 0)), "resource lease days and numbler can't increase them at the same time" );
@@ -318,6 +319,7 @@ namespace ultrainiosystem {
             _reslease_tbl.modify( reslease_itr, 0, [&]( auto& tot ) {
                   tot.lease_num += combosize;
                   tot.end_time  += days*seconds_per_day;
+                  tot.modify_time = now();
                });
          }
          ultrainio_assert(cuttingfee > 0, "resource lease cuttingfee is abnormal" );

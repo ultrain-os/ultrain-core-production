@@ -120,7 +120,7 @@ namespace ultrainiosystem {
       require_auth( producer );
 
       const auto& prod = _producers.get( producer, "producer not found" );
-      uint64_t curblocknum = (uint64_t)tapos_block_num();
+      uint64_t curblocknum = (uint64_t)head_block_number() + 1;
       print("unregprod curblocknum:",curblocknum," last_operate_blocknum:",prod.last_operate_blocknum);
 
       ultrainio_assert( (curblocknum - prod.last_operate_blocknum) > 2 , "interval operate at least more than two number block high" );
