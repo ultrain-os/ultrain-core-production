@@ -12,9 +12,11 @@ var logger = require("../config/logConfig").getLogger("ChainConfig");
 var logUtil = require("../common/util/logUtil")
 var constant = require("../common/constant/constants")
 var chainNameConstants = require("../common/constant/constants").chainNameConstants
+var pathConstants = require("../common/constant/constants").pathConstants
 var utils = require("../common/util/utils");
 var chainApi = require("./chainApi")
 var sleep = require("sleep")
+var chainUtil = require("./util/chainUtil")
 
 
 /**
@@ -28,7 +30,7 @@ class ChainConfig {
 ChainConfig.seedIpConfig = {};
 
 //配置文件信息
-ChainConfig.configPath = path.join(__dirname, "../../config.ini");
+ChainConfig.configPath = pathConstants.MNG_CONFIG+"config.ini"
 
 //localtest
 ChainConfig.localTest = false;
@@ -112,9 +114,12 @@ ChainConfig.syncConfig = async function () {
 
     try {
         logger.info("start sync config info");
+
         /**
          * 读取管家程序自己的config文件来读取
          */
+        chainUtil.checkFileExist(this.configPath);
+
         var configIniLocal = ini.parse(fs.readFileSync(this.configPath, constant.encodingConstants.UTF8));
         logger.debug('configIniLocal=', configIniLocal);
         this.configFileData.local = configIniLocal;
@@ -134,7 +139,7 @@ ChainConfig.syncConfig = async function () {
         }
 
 
-        logger.info("subchain httpEndpoint:",this.configSub.httpEndpoint)
+        logger.info("subchain httpEndpoint:", this.configSub.httpEndpoint)
 
 
         //获取主链请求的http地址-默认使用
@@ -162,7 +167,7 @@ ChainConfig.syncConfig = async function () {
         this.config.keyProvider = [configIniTarget["my-sk-as-account"]];
         this.configSub.keyProvider = [configIniTarget["my-sk-as-account"]];
 
-        logger.error("this.myAccountAsCommittee ",this.myAccountAsCommittee);
+        logger.error("this.myAccountAsCommittee ", this.myAccountAsCommittee);
 
         /**
          * 如果localtest为true，表明当前是本地测试状态，更新主链url等信息
@@ -170,7 +175,7 @@ ChainConfig.syncConfig = async function () {
         if (this.localTest) {
         }
 
-        logger.info("mainchain httpEndpoint:",this.config.httpEndpoint)
+        logger.info("mainchain httpEndpoint:", this.config.httpEndpoint)
 
         //现在处在主链
         if (utils.isNotNull(configIniTarget.masterchain)) {
@@ -187,7 +192,6 @@ ChainConfig.syncConfig = async function () {
             logger.info("configSub.chainId=", this.configSub.chainId);
         } catch (e) {
             logger.error("target node crashed, check main node or sub node", utils.logNetworkError(e))
-
         }
 
         logger.debug("init u3 and u3Sub from config");
@@ -266,10 +270,14 @@ ChainConfig.printInfo = function () {
 //同步seedip config
 ChainConfig.syncSeedIpConfig = function () {
     try {
-        var data = fs.readFileSync(path.join(__dirname, "../../seedconfig.json"), constant.encodingConstants.UTF8);
+
+        var filepath = pathConstants.MNG_CONFIG+"seedconfig.json";
+        logger.info("seed ip config :", filepath);
+        chainUtil.checkFileExist(filepath)
+        var data = fs.readFileSync(filepath, constant.encodingConstants.UTF8);
         if (utils.isNotNull(data)) {
             this.seedIpConfig = JSON.parse(data);
-            //logger.debug("seedIpConfig:", this.seedIpConfig);
+            logger.info("seedIpConfig:", this.seedIpConfig);
         }
     } catch (e) {
         logger.error("syncSeedIpConfig error", e);

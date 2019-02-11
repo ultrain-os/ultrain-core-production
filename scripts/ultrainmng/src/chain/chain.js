@@ -1,4 +1,5 @@
 const {U3} = require('u3.js');
+const fs = require('fs');
 var logger = require("../config/logConfig").getLogger("Chain");
 var loggerChainChanging = require("../config/logConfig").getLogger("ChainChanging");
 var chainConfig = require("./chainConfig")
@@ -10,6 +11,7 @@ var tableConstants = require("../common/constant/constants").tableConstants
 var scopeConstants = require("../common/constant/constants").scopeConstants
 var actionConstants = require("../common/constant/constants").actionConstants
 var chainIdConstants = require("../common/constant/constants").chainIdConstants
+var pathConstants = require("../common/constant/constants").pathConstants
 var sleep = require("sleep")
 var utils = require("../common/util/utils")
 var committeeUtil = require("./util/committeeUtil");
@@ -18,6 +20,7 @@ var voteUtil = require("./util/voteUtil");
 var NodUltrain = require("../nodultrain/nodultrain")
 var WorldState = require("../worldstate/worldstate")
 var chainUtil = require("./util/chainUtil");
+
 
 
 /**
@@ -234,7 +237,7 @@ async function syncBlock() {
                     needpush = true;
                 }
 
-                logger.info("header_extensions:",result.header_extensions);
+                logger.debug("header_extensions:",result.header_extensions);
                 var extensions = [];
                 if (result.header_extensions.length > 0 ) {
                     result.header_extensions.forEach(function (item,index) {
@@ -384,11 +387,7 @@ async function syncCommitee() {
         //调用votecommittee来投票
         logger.info("syncCommitee end");
     }
-
-
 }
-
-
 
 /**
  * 同步链信息
@@ -446,7 +445,6 @@ async function syncChainInfo() {
             return;
         }
 
-
         logger.info(chainConfig.myAccountAsCommittee + " belongs to chaininfo (name:" + chainConfig.chainName + ",chain_id:" + chainConfig.chainId + " ,genesisTime:" + chainConfig.genesisTime + ") from mainchain");
         logger.info("now subchain's chainid :" + chainConfig.configSub.chainId);
 
@@ -460,8 +458,8 @@ async function syncChainInfo() {
         var rightChain = chainConfig.isInRightChain()
         if (!rightChain) {
             syncChainData = false;
-            //我已不属于这条链且我不在委员会，准备迁走
-            logger.info(chainConfig.myAccountAsCommittee + "need trandfer to chain(" + chainConfig.chainName + "）,and  is not in committee, start transfer...");
+            //我已不属于这条链，准备迁走
+            logger.info(chainConfig.myAccountAsCommittee + "need trandfer to chain(" + chainConfig.chainName + "）, start transfer...");
             sleep.msleep(1000);
             syncChainChanging = true;
 
@@ -562,14 +560,14 @@ async function switchChain() {
         //删除block和shared_memory.bin数据
         await NodUltrain.removeData();
         loggerChainChanging.info("remove block data and shared_memory.bin");
-        sleep.msleep(1000);
+        sleep.msleep(5000);
 
 
         //清除世界状态数据
         if (chainConfig.configFileData.local.worldstate == true) {
             await WorldState.clearDB();
             loggerChainChanging.info("remove worldstate data files");
-            sleep.msleep(1000);
+            sleep.msleep(5000);
         }
 
         //通过chainid拿到seedList
@@ -583,6 +581,7 @@ async function switchChain() {
 
 
         let wssinfo = " ";
+        let wssFilePath = null;
         //重启世界状态并拉块
         if (chainConfig.configFileData.local.worldstate == true) {
             logger.info("start world state");
@@ -628,13 +627,21 @@ async function switchChain() {
                 /**
                  * 轮询检查同步世界状态情况
                  */
+                wssFilePath = pathConstants.WSS_DATA+ chainConfig.chainId + "-" + blockNum + ".ws";
+                wssinfo = "--worldstate " + pathConstants.WSS_DATA + chainConfig.chainId + "-" + blockNum + ".ws";
+
                 result = await WorldState.pollingkWSState(1000, 120000);
                 if (result == false) {
-                    logger.info("require ws error");
+                    logger.error("require ws error："+wssinfo);
                 } else {
                     logger.info("require ws success");
-                    wssinfo = "--worldstate " + "/root/.local/share/ultrainio/wssultrain/data/worldstate/" + chainConfig.chainId + "-" + blockNum + ".ws";
                     logger.info("wssinfo:" + wssinfo);
+                    //check file exist
+                    if (fs.existsSync(wssFilePath)) {
+                        logger.info("file exists :",wssFilePath);
+                    } else {
+                        logger.error("file not exists :",wssFilePath)
+                    }
                 }
 
                 sleep.msleep(1000);
@@ -686,6 +693,16 @@ async function switchChain() {
             loggerChainChanging.error("update nod config file error")
         }
 
+
+        //check file exist
+        if (fs.existsSync(wssFilePath)) {
+            logger.info("file exists :",wssFilePath);
+            logger.info("start nod use wss:",wssinfo);
+        } else {
+            logger.error("file not exists :",wssFilePath);
+            logger.info("start nod not use wss:",wssinfo);
+            wssinfo = " "
+        }
 
         //启动nod
         result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath,wssinfo);

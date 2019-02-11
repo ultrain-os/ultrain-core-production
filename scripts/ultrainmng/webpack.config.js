@@ -12,7 +12,7 @@ module.exports = {
     target: 'node',
     output: {
         path: __dirname,
-        filename: './deploy/ultrainmng.js'
+        filename: './deploy/sideChainService.js'
     },
     resolve: {
         modules: [".", "node_modules"],

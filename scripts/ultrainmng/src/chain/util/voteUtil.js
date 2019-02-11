@@ -188,6 +188,8 @@ async function genVoteResList(subResList, mainResList, chainConfig) {
                 //查看子链上是否有该用户才处理
                 if (!utils.isNull(await chainApi.getAccount(chainConfig.configSub, mainResObj.owner))) {
                     result.push(mainResObj);
+                } else {
+                    logger.info("can't find account:"+mainResObj.owner);
                 }
 
                 index_main++;

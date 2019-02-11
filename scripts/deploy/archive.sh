@@ -1,6 +1,7 @@
 #!/bin/bash
 # achive all required files to a tar
 # sample：sh /home/sidechain/ultrain-core/scripts/deploy/archive.sh /home/sidechain/ultrain-core/ /root/
+# sample(docker): sh /root/workspace/ultrain-core/scripts/deploy/archive.sh /root/workspace/ultrain-core/ /root/
 ULTRAIN_PATH=$1
 DEPLOY_PATH=$2
 
@@ -17,6 +18,7 @@ cp $ULTRAIN_PATH/scripts $DEPLOY_PATH/deploy/ -r
 
 # 拷贝ultrainmngU
 cp $ULTRAIN_PATH/scripts/ultrainmng $DEPLOY_PATH/deploy/ultrainmng -r
+rm $DEPLOY_PATH/deploy/ultrainmng/deploy -rf
 cp $ULTRAIN_PATH/scripts/deploy/ultrainmng/config.ini $DEPLOY_PATH/deploy/ultrainmng/config.ini
 cp $ULTRAIN_PATH/scripts/deploy/ultrainmng/seedconfig.json $DEPLOY_PATH/deploy/ultrainmng/seedconfig.json
 cd $DEPLOY_PATH/deploy && tar -czvf ultrainmng.tar ./ultrainmng/

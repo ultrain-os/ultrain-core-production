@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "start": "node ./src/SideChainBlockInfoService.js",
-    "deploy": "npx webpack --mode=development"
+    "deploy-dev": "npx webpack --mode=development",
+    "deploy": "npx webpack --mode=production"
   },
   "dependencies": {
     "async": "^2.6.1",

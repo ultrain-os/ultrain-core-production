@@ -1,5 +1,6 @@
 var logger = require("../../config/logConfig").getLogger("ChainUtil")
 var utils = require('../../common/util/utils')
+const fs = require('fs');
 
 /**
  * 创世时间格式化
@@ -17,17 +18,17 @@ function formatGensisTime(time) {
  * @param permName
  * @returns {*}
  */
-function getOwnerPkByAccount(account,permName) {
+function getOwnerPkByAccount(account, permName) {
 
     try {
 
         let permissions = account.permissions;
         if (permissions.length > 0) {
-            for (let i=0;i<account.permissions.length;i++) {
+            for (let i = 0; i < account.permissions.length; i++) {
                 var permission = account.permissions[i];
                 if (permission.perm_name == permName) {
-                    logger.debug("account.permissions[i].required_auth",account.permissions[i]);
-                    logger.debug("account.permissions[i].required_auth",account.permissions[i].required_auth);
+                    logger.debug("account.permissions[i].required_auth", account.permissions[i]);
+                    logger.debug("account.permissions[i].required_auth", account.permissions[i].required_auth);
                     return account.permissions[i].required_auth.keys[0].key;
                 }
             }
@@ -40,11 +41,25 @@ function getOwnerPkByAccount(account,permName) {
 
 
     } catch (e) {
-        logger.error("getOwnerPkByAccount error:",e);
+        logger.error("getOwnerPkByAccount error:", e);
     }
 
     return null;
 
+}
+
+/**
+ * filepath check exist
+ * @param filepath
+ * @returns {boolean}
+ */
+function checkFileExist(filepath) {
+    if (fs.existsSync(filepath)) {
+        logger.info("filepath exists:", filepath)
+        return true;
+    }
+    logger.error("filepath not exist:", filepath);
+    return false;
 }
 
 
@@ -54,5 +69,6 @@ function getOwnerPkByAccount(account,permName) {
 
 module.exports = {
     formatGensisTime,
-    getOwnerPkByAccount
+    getOwnerPkByAccount,
+    checkFileExist
 }
