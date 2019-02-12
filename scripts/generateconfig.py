@@ -107,7 +107,7 @@ def write_config_file():
             update_ultrainmng_config(fname,hosts[dockerinfo])
             insert_worldstate_config(fname)
             print(hostip,con.ip,con.id)
-            insert_peer(fname,hosts[dockerinfo][0].ip)
+            insert_udp_seed(fname,hosts[dockerinfo][0].ip)
             index_key+=1
         os.system("rm -f  template.txt")
 
@@ -186,6 +186,13 @@ def insert_peer(fname,peer):
     content = readfile(fname)
     newcontent = "p2p-peer-address = %s:20122\nrpos-p2p-peer-address = %s:20123\n" % (peer,peer)
     index_line = content.index("#insert_peers\n")
+    content.insert(index_line+1, newcontent)
+    writefile(fname,content)
+
+def insert_udp_seed(fname,seed):
+    content = readfile(fname)
+    newcontent = "udp-seed = %s\n" % (seed)
+    index_line = content.index("#insert_udp_seeds\n")
     content.insert(index_line+1, newcontent)
     writefile(fname,content)
 

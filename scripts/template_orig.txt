@@ -20,6 +20,8 @@ contract-emit-string-length = 1024
 
 #insert_peers
 
+#insert_udp_seeds
+
 #insert_if_producing-node
 
 #ultrainmng_subchainHttpEndpoint
