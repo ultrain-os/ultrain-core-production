@@ -59,13 +59,7 @@ namespace p2p {
     }
 //TODO::rpos seed& trx seed to one seed and must be same
 void NodeTable::init( const std::vector <std::string> &seeds) {
-
-    for (auto seed : seeds) {
-        auto host = seed.substr(0, seed.find(':'));
-        auto port = seed.substr( host.size() + 1, seed.size());
-        idump((seed)(port));
-        m_seeds.push_back(host);
-    }
+    m_seeds = seeds;
     requireSeeds(m_seeds);
     doIDRequest();
 }

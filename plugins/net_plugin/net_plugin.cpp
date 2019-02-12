@@ -153,7 +153,8 @@ namespace ultrainio {
         vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
         std::map<chain::public_key_type,
                  chain::private_key_type> private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
-
+        vector<string>                   udp_seed_ip;
+        bool                             use_node_table = false;
         enum possible_connections : char {
             None = 0,
             Producers = 1 << 0,
@@ -163,7 +164,6 @@ namespace ultrainio {
         possible_connections             allowed_connections{None};
 
         connection_ptr find_connection(const string& host) const;
-        bool connection_exist(const fc::sha256& nid) const;
         bool is_grey_connection(const string& host) const;
 
         std::set< connection_ptr >       connections;
@@ -2462,8 +2462,8 @@ namespace ultrainio {
       start_conn_timer();
       auto it = connections.begin();
       while(it != connections.end()) {
-         if( !(*it)->socket->is_open() && !(*it)->connecting) {
-            if ((*it)->retry_connect_count > max_retry_count) {
+         if (!(*it)->socket->is_open() && !(*it)->connecting) {
+            if (use_node_table && (*it)->retry_connect_count > max_retry_count) { // if use_node_table == false, we should always reconnect peers
                if (peer_addr_grey_list.size() >= max_grey_list_size) {
                   peer_addr_grey_list.pop_front();
                }
@@ -2471,6 +2471,7 @@ namespace ultrainio {
                if (!is_grey_connection((*it)->peer_addr)) {
                   peer_addr_grey_list.emplace_back((*it)->peer_addr);
                }
+               ilog("put ${a} to grey list, and erase it from connections.", ("a", (*it)->peer_addr));
                it = connections.erase(it);
                continue;
             }
@@ -2486,14 +2487,12 @@ namespace ultrainio {
          ++it;
       }
 
-      ilog("connections size: ${s} max_client_count: ${mcc} num_clients: ${nc}", ("s", connections.size())("mcc", max_client_count)("nc", num_clients));
-      if (connections.size() < max_client_count) {
+      ilog("connections size: ${s} max_client_count: ${mcc} num_clients: ${nc} grey list size: ${gls}", ("s", connections.size())("mcc", max_client_count)("nc", num_clients)("gls", peer_addr_grey_list.size()));
+      if (use_node_table && connections.size() < max_client_count) { // if use_node_table == false, we can't get any valid node ip from node table
          uint32_t count = max_client_count - connections.size();
          std::list<p2p::NodeIPEndpoint> nodes = node_table->getNodes();
          uint32_t i = 0;
-         ilog("nodes size: ${s}", ("s", nodes.size()));
          for (std::list<p2p::NodeIPEndpoint>::iterator it = nodes.begin(); it != nodes.end() && i < count; ++it) {
-            ilog("node adress: ${ad} valid: ${v}", ("ad", it->address())("v", (bool)*it));
             string host = it->address() + ":" + std::to_string(it->listenPort(msg_priority_trx));
             if (!find_connection(host) && !is_grey_connection(host)) {
                ilog("connect to node: ${a}", ("a", host));
@@ -2715,6 +2714,7 @@ namespace ultrainio {
          ( "rpos-p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to rpos-p2p-listen-endpoint.")
          ( "rpos-p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple rpos-p2p-peer-address options as needed to compose a network.")
          ( "udp-listen-port", bpo::value<uint16_t>()->default_value(20124), "The udp port used by p2p search.")
+         ( "udp-seed", bpo::value< vector<string> >()->composing(), "The udp seed ip to build p2p nodes table. If this option was not set, we would get nothing from p2p nodes table.")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
@@ -2904,6 +2904,13 @@ namespace ultrainio {
          local.setListenPort(msg_priority_rpos, my->rpos_listener.listen_endpoint.port());
          my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str());
 
+         if (options.count("udp-seed")) {
+            my->udp_seed_ip = options.at( "udp-seed" ).as<vector<string> >();
+         }
+         if (!my->udp_seed_ip.empty()) {
+            my->use_node_table = true;
+         }
+
          my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
          my->ticker();
       } FC_LOG_AND_RETHROW()
@@ -2941,15 +2948,15 @@ namespace ultrainio {
 
       my->start_monitors();
 
-      /*for (auto seed_node : my->trx_active_peers) {
-         my->connect(seed_node, msg_priority_trx);
+      for (auto active_peer : my->trx_active_peers) {
+         my->connect(active_peer, msg_priority_trx);
       }
 
-      for (auto seed_node : my->rpos_active_peers) {
-         my->connect(seed_node, msg_priority_rpos);
-      }*/
+      for (auto active_peer : my->rpos_active_peers) {
+         my->connect(active_peer, msg_priority_rpos);
+      }
 
-      my->node_table->init(my->rpos_active_peers);
+      my->node_table->init(my->udp_seed_ip);
 
       if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
          logger = fc::get_logger_map()[logger_name];
@@ -3075,19 +3082,9 @@ namespace ultrainio {
         return connection_ptr();
     }
 
-    bool net_plugin_impl::connection_exist(const fc::sha256& nid) const {
-        for (const auto& c : connections) {
-            if (c->node_id == nid) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     bool net_plugin_impl::is_grey_connection(const string& host) const {
-        for (const auto& c : connections) {
-          if (c->peer_addr == host) {
+        for (const auto& addr : peer_addr_grey_list) {
+          if (addr == host) {
             return true;
           }
         }
