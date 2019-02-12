@@ -7,12 +7,7 @@ var sleep = require("sleep")
 var utils = require('./common/util/utils')
 
 //定时配置
-var chainJobSchedule = "*/10 * * * * *"
-var blockJobSchedule = "*/10 * * * * *"
-var userJobSchedule = "*/10 * * * * *"
-
 var singleJobSchedule = "*/20 * * * * *";
-
 
 /**
  * 管家程序入口
@@ -34,6 +29,8 @@ async function startEntry() {
     logger.info("chainSyncCycleSchedule ",chainSyncCycleSchedule);
     var chainSyncWorldState = utils.isNotNull(chainConfig.configFileData.local.worldstateSyncCycle) ?  chainConfig.configFileData.local.worldstateSyncCycle : singleJobSchedule;
     logger.info("worldstateSyncCycleSchedule ",chainSyncWorldState);
+    var resourceJobSchedule = utils.isNotNull(chainConfig.configFileData.local.resourceSyncCycle) ?  chainConfig.configFileData.local.resourceSyncCycle : singleJobSchedule;
+    logger.info("resourceJobSchedule ",resourceJobSchedule);
 
     //先做一次链信息同步
     logger.info("do sync chain info :")
@@ -55,14 +52,21 @@ async function startEntry() {
         await chain.syncUser();
     });
 
-    //资源同步
+    //资源同步-近段时间
     schedule.scheduleJob(syncBlockSchedule, async function () {
-        await chain.syncResource();
+        await chain.syncNewestResource();
     });
+
 
     //块同步
     schedule.scheduleJob(syncBlockSchedule, async function () {
         await chain.syncBlock();
+    });
+
+    //资源同步-所有数据
+    logger.info("start resource all data sync:",resourceJobSchedule)
+    schedule.scheduleJob(resourceJobSchedule, async function () {
+        await chain.syncAllResource();
     });
 
     //世界状态同步

@@ -727,22 +727,78 @@ async function switchChain() {
 }
 
 /**
+ * 同步资源（全表）
+ * @returns {Promise<void>}
+ */
+async function syncAllResource() {
+    await syncResource(true);
+}
+
+/**
+ * 同步资源（最新半小时）
+ * @returns {Promise<void>}
+ */
+async function syncNewestResource() {
+    await syncResource(false);
+}
+
+/**
  * 同步资源
  * @returns {Promise<void>}
  */
-async function syncResource() {
+async function syncResource(allFlag) {
     logger.info("syncResource start");
     if (syncChainData == true) {
-        //获取子链上所有资源的信息
-        let subChainResourceList = await chainApi.getTableAllData(chainConfig.configSub, contractConstants.ULTRAINIO, scopeConstants.SCOPE_MAIN_CHAIN, tableConstants.RESOURCE_LEASE, "owner");
-        logger.debug("subChainResourceList:", subChainResourceList);
 
-        //获取主链上所有资源的信息
-        let mainChainResourceList = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.RESOURCE_LEASE, "owner");
-        logger.debug("mainChainResourceList:", mainChainResourceList);
+        let changeList = [];
+        /**
+         * 全表对比
+         */
+        if (allFlag == true) {
+            logger.info("sync all resource");
+            //获取子链上所有资源的信息
+            let subChainResourceList = await chainApi.getTableAllData(chainConfig.configSub, contractConstants.ULTRAINIO, scopeConstants.SCOPE_MAIN_CHAIN, tableConstants.RESOURCE_LEASE, "owner");
+            logger.debug("subChainResourceList:", subChainResourceList);
 
-        //对比两张表，获取更新的信息
-        let changeList = await voteUtil.genVoteResList(subChainResourceList, mainChainResourceList, chainConfig);
+            //获取主链上所有资源的信息
+            let mainChainResourceList = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.RESOURCE_LEASE, "owner");
+            logger.debug("mainChainResourceList:", mainChainResourceList);
+
+            //对比两张表，获取更新的信息
+            changeList = await voteUtil.genVoteResList(subChainResourceList, mainChainResourceList, chainConfig);
+        } else {
+            logger.info("sync newest resource");
+            /**
+             * 从公告蓝上获取最新的资源
+             */
+            let newestChangeList = await chainApi.getSubchainResource(chainConfig.chainName,chainConfig);
+            logger.info("newestChangeList:",newestChangeList.length)
+            if (utils.isNullList(newestChangeList) == false && newestChangeList.length > 0) {
+                for (var i = 0; i < newestChangeList.length; i++) {
+                    let resObj = newestChangeList[i];
+                    logger.debug("resobj:",resObj);
+                    let localtableObj = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, chainNameConstants.MAIN_CHAIN_NAME, tableConstants.RESOURCE_LEASE, null, resObj.owner, null, null);
+                    let localresObj = null;
+                    if (localtableObj != null && localtableObj.rows != null && localtableObj.rows.length > 0) {
+                        localresObj = localtableObj.rows[0];
+                    }
+                    logger.debug("localresObj:",localresObj);
+                    if (utils.isNull(localresObj)) {
+                        logger.debug("subchain has no res of owner:"+resObj.owner+",need add to array");
+                        changeList.push(resObj);
+                    } else {
+                        logger.debug("subchain has  res of owner:"+resObj.owner+",need check");
+                        if (resObj.lease_num > localresObj.lease_num || resObj.end_time > localresObj.end_time) {
+                            logger.debug("subchain has  res of owner:"+resObj.owner+" has not synced,need add to array");
+                            changeList.push(resObj);
+                        } else {
+                            logger.debug("subchain has  res of owner:"+resObj.owner+" has already synced");
+                        }
+                    }
+                }
+            }
+        }
+
         logger.info("change resList:", changeList);
 
         //获取主链上所有资源的信息
@@ -868,6 +924,7 @@ module.exports = {
     syncChainInfo,
     syncUser,
     syncResource,
-    syncWorldState
-
+    syncWorldState,
+    syncAllResource,
+    syncNewestResource
 }

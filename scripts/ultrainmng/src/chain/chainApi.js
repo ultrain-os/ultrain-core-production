@@ -25,7 +25,7 @@ const getMainChainId = async (config) => {
         //logger.debug("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
         return blockInfo.action_mroot;
     } catch (e) {
-        logger.error("get main chain id error:",utils.logNetworkError(e))
+        logger.error("get main chain id error:", utils.logNetworkError(e))
     }
 
 }
@@ -43,7 +43,7 @@ const getSubChainId = async (configSub) => {
         //logger.debug("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
         return blockInfo.action_mroot;
     } catch (e) {
-        logger.error("get sub chain id error:",utils.logNetworkError(e))
+        logger.error("get sub chain id error:", utils.logNetworkError(e))
     }
 }
 
@@ -57,9 +57,9 @@ const getChainInfo = async function initChainName(u3, user) {
     let result = null;
     try {
         result = await u3.getProducerInfo({"owner": user});
-        logger.debug("getChainInfo",result);
+        logger.debug("getChainInfo", result);
     } catch (e) {
-        logger.error("getChainInfo error:",utils.logNetworkError(e));
+        logger.error("getChainInfo error:", utils.logNetworkError(e));
     }
 
     return result;
@@ -101,7 +101,7 @@ async function getProducerLists(configSub) {
     const rs = await axios.post(configSub.httpEndpoint + "/v1/chain/get_producers", params);
     // const rs = await axios.post("http://172.16.10.5:8899/v1/chain/get_producers", params);
 
-    logger.debug("getProducerLists:",rs.data.rows);
+    logger.debug("getProducerLists:", rs.data.rows);
     var result = [];
     var rows = rs.data.rows;
     for (var i in rows) {
@@ -110,7 +110,7 @@ async function getProducerLists(configSub) {
             result.push({
                 owner: row.owner,
                 miner_pk: row.producer_key,
-                bls_pk:row.bls_key,
+                bls_pk: row.bls_key,
             });
         }
     }
@@ -136,7 +136,7 @@ async function contractInteract(config, contractName, actionName, params, accoun
         const keyProvider = [privateKey];
         const u3 = createU3({...config, keyProvider});
 
-        logger.debug("keyProvider:",keyProvider);
+        logger.debug("keyProvider:", keyProvider);
 
         const contract = await u3.contract(contractName);
         //logger.debug("contract=", JSON.stringify(contract.fc.abi.structs));
@@ -228,7 +228,7 @@ getSubchainWSHash = async (config, chainName) => {
  */
 getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound, upper_bound) => {
     try {
-        const params = {"code": code, "scope": scope, "table": table, "json": true,"key_type":"name"};
+        const params = {"code": code, "scope": scope, "table": table, "json": true, "key_type": "name"};
         logger.debug(params);
         if (utils.isNotNull(limit)) {
             params.limit = limit;
@@ -260,7 +260,7 @@ getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound,
  * @param table
  * @returns {Promise<*>}
  */
-getTableAllData = async (config, code, scope, table,pk) => {
+getTableAllData = async (config, code, scope, table, pk) => {
     let tableObj = {rows: [], more: false};
     let count = 10000; //MAX NUM
     let limit = 1000; //limit
@@ -269,10 +269,10 @@ getTableAllData = async (config, code, scope, table,pk) => {
     var index = 0;
     try {
         while (finish == false) {
-            logger.info("table: "+table+" scope:"+scope+" lower_bound(request)：" + lower_bound);
+            logger.info("table: " + table + " scope:" + scope + " lower_bound(request)：" + lower_bound);
             index++;
             let tableinfo = await getTableInfo(config, code, scope, table, limit, null, lower_bound, null);
-            logger.debug("tableinfo:"+table+"):", tableinfo);
+            logger.debug("tableinfo:" + table + "):", tableinfo);
             if (utils.isNullList(tableinfo.rows) == false) {
                 for (let i = 0; i < tableinfo.rows.length; i++) {
                     if (tableinfo.rows[i][pk] != lower_bound) {
@@ -284,7 +284,7 @@ getTableAllData = async (config, code, scope, table,pk) => {
                     lower_bound = tableinfo.rows[tableinfo.rows.length - 1][pk];
                 }
 
-                logger.info("table: "+table+" scope:"+scope+" lower_bound(change)：" + lower_bound);
+                logger.info("table: " + table + " scope:" + scope + " lower_bound(change)：" + lower_bound);
             }
 
             //查看是否还有
@@ -293,8 +293,8 @@ getTableAllData = async (config, code, scope, table,pk) => {
                 finish = false;
             }
             logger.debug("tableinfo more：" + tableinfo.more);
-            if (index*limit >= count) {
-                logger.info("table: "+table+" count > "+count+" break now!");
+            if (index * limit >= count) {
+                logger.info("table: " + table + " count > " + count + " break now!");
                 break;
             }
 
@@ -303,7 +303,7 @@ getTableAllData = async (config, code, scope, table,pk) => {
         logger.error("getTableAllData error:", e);
     }
 
-    logger.debug("getTableAllData("+table+"):", tableObj);
+    logger.debug("getTableAllData(" + table + "):", tableObj);
     return tableObj;
 
 }
@@ -378,6 +378,24 @@ getSubchainConfig = async (chainName, chainConfig) => {
     return "";
 }
 
+/**
+ * 获取子链近半小时更新的资源信息
+ * @param chainName
+ * @param chainConfig
+ * @returns {Promise<*>}
+ */
+getSubchainResource = async (chainName, chainConfig) => {
+
+    try {
+        const params = {"chain_name": chainName};
+        const rs =  await axios.post(chainConfig.config.httpEndpoint + "/v1/chain/get_subchain_resource", params);
+        return rs.data;
+    } catch (e) {
+        logger.error("getSubchainResource error:", e);
+    }
+
+    return null;
+}
 
 
 module.exports = {
@@ -394,5 +412,6 @@ module.exports = {
     getChainSeedIP,
     getSubchanEndPoint,
     getSubchainConfig,
-    getSubchanMonitorService
+    getSubchanMonitorService,
+    getSubchainResource
 }
