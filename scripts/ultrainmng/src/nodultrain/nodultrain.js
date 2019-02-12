@@ -77,9 +77,12 @@ NodUltrain.stop = async function (totalTime) {
  * @param nodPath nod执行程序的目录
  * @returns {Promise<boolean>}
  */
-NodUltrain.start = async function (totalTime,nodPath,wssinfo) {
+NodUltrain.start = async function (totalTime,nodPath,wssinfo,local) {
 
-    var shPath= path.join(__dirname, "../../tool/_runultrain.sh")
+    var shPath= path.join(__dirname, "../../tool/_runultrain.sh");
+    if (local == false) {
+        shPath = Constants.cmdConstants.START_NODULTRAIN_FILE;
+    }
     logger.info("start nod by shell file..",shPath)
     logger.info("start nod by shell file..",nodPath)
     logger.info("start nod by shell file..",wssinfo)

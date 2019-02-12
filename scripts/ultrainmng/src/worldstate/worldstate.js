@@ -298,7 +298,7 @@ WorldState.stop = async function (totalTime) {
  * 启动
  * @type {WorldState}
  */
-WorldState.start = async function (chainId, seedIp, totalTime, wsspath) {
+WorldState.start = async function (chainId, seedIp, totalTime, wsspath,local) {
 
     let result = false;
     let args= [];
@@ -309,7 +309,10 @@ WorldState.start = async function (chainId, seedIp, totalTime, wsspath) {
         //return result;
     }
 
-    var shPath= path.join(__dirname, "../../tool/_runworldstate.sh")
+    var shPath= path.join(__dirname, "../../tool/_runworldstate.sh");
+    if (local == false) {
+        shPath = Constants.cmdConstants.START_WORLDSTATE_FILE;
+    }
     logger.info("start ws by shell file:",shPath);
     logger.info("start ws by shell file:",wsspath);
     args.push(wsspath)
