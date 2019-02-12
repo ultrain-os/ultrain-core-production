@@ -21,7 +21,44 @@ namespace ultrainio
 {
 namespace p2p
 {
-
+    /*UDP notify tcp*/
+enum NodeTableEventType
+{
+    NodeEntryAdded,
+    NodeEntryDropped,
+    NodeEntryScheduledForEviction
+};
+struct NodeEvent
+{
+	NodeIPEndpoint ep;
+	NodeTableEventType ep_evtype;
+};
+class NodeTableEventHandler
+{
+    friend class NodeTable;
+    public:
+        virtual ~NodeTableEventHandler() = default;
+        virtual void processEvent(NodeIPEndpoint const& _n, NodeTableEventType const& _e) = 0;
+    protected:
+        void processEvents()
+        {
+            std::list<std::pair<NodeIPEndpoint, NodeTableEventType>> events;
+            {
+                if (!m_nodeEventHandler.size())
+                    return;
+                //m_nodeEventHandler.unique();
+                for (auto const& n: m_nodeEventHandler)
+                    events.push_back(std::make_pair(n.ep,n.ep_evtype));
+                m_nodeEventHandler.clear();
+                //m_events.clear();
+            }
+            for (auto const& e: events)
+                processEvent(e.first, e.second);
+        }
+        virtual void appendEvent(NodeIPEndpoint _n, NodeTableEventType _e) { m_nodeEventHandler.push_back({_n,_e}); }
+        //std::unordered_map<NodeIPEndpoint, NodeTableEventType> m_events;
+        std::list<NodeEvent> m_nodeEventHandler;
+};
 /**
  * NodeEntry
  * @brief Entry in Node Table
@@ -85,7 +122,7 @@ public:
     std::list<NodeIPEndpoint> getNodes();
     /// Returns the Node to the corresponding node id or the empty Node if that id is not found.
     Node node(NodeID const& _id);
-
+    void setEventHandler(NodeTableEventHandler* _handler) { m_nodeEventHandler.reset(_handler); }
 #if defined(BOOST_AUTO_TEST_SUITE) || defined(_MSC_VER) // MSVC includes access specifier in symbol name
 protected:
 #else
@@ -189,8 +226,11 @@ private:
     std::shared_ptr<NodeSocket> m_socket;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
     vector<string> m_seeds;
     void requireSeeds(const std::vector <std::string> &seeds);
- //   std::unordered_map<p2p::NodeID, std::shared_ptr<p2p::Node>> m_peers;
-
+    std::unique_ptr<NodeTableEventHandler> m_nodeEventHandler;       ///< Event handler for node events.
+    boost::asio::steady_timer::duration   eventHandlerInterval{std::chrono::seconds{30}};
+    std::unique_ptr<boost::asio::steady_timer> eventHandlertimer;
+    void doEventHandler();
+    void processEvent();
 }; // end of class NodeTable
 
 } // end of namespace p2p

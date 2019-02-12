@@ -130,7 +130,14 @@ namespace ultrainio {
         >
     > node_transaction_index;
 
-
+    class HostNodeTableHandler: public p2p::NodeTableEventHandler
+    {
+	    public:
+		    HostNodeTableHandler(net_plugin_impl& _impl);
+	    private:
+		    virtual void processEvent(p2p::NodeIPEndpoint const& _n, p2p::NodeTableEventType const& _e);
+		    net_plugin_impl &impl; 
+    };
     struct passive_peer{
         shared_ptr<tcp::acceptor>  acceptor;
         shared_ptr<tcp::resolver>  resolver;
@@ -217,7 +224,8 @@ namespace ultrainio {
         std::shared_ptr<p2p::NodeTable> node_table = nullptr;
 
         std::shared_ptr<p2p::NodeTable> get_node_table() { return node_table; }
-
+        void set_nodetable_eventhandler(){  node_table->setEventHandler(new HostNodeTableHandler(*this)); }
+        void onNodeTableEvent(p2p::NodeIPEndpoint const& _n, p2p::NodeTableEventType const& _e);
         template<typename VerifierFunc>
         void send_all( const net_message &msg, VerifierFunc verify );
 
@@ -870,8 +878,13 @@ namespace ultrainio {
     };
 
     //---------------------------------------------------------------------------
-
-    connection::connection(string endpoint, msg_priority pri)
+HostNodeTableHandler::HostNodeTableHandler(net_plugin_impl& _impl):impl(_impl){}
+void HostNodeTableHandler::processEvent(p2p::NodeIPEndpoint const& _n, p2p::NodeTableEventType const& _e)
+{
+  impl.onNodeTableEvent(_n,_e);
+}
+    
+connection::connection(string endpoint, msg_priority pri)
         : blk_state(),
         trx_state(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
@@ -2349,7 +2362,11 @@ namespace ultrainio {
             }
         });
     }
-
+    void net_plugin_impl::onNodeTableEvent(p2p::NodeIPEndpoint const& _n, p2p::NodeTableEventType const& _e)
+   {
+     //TODO:P2P udp linkage p2p
+       ilog("onNodeTableEven addr ${addr}",("addr",_n.address()));   
+   }
     void net_plugin_impl::start_block_handler_timer( ) {
         block_handler_check->expires_from_now(block_handler_period);
         block_handler_check->async_wait( [this](boost::system::error_code ec) {
@@ -2903,14 +2920,14 @@ namespace ultrainio {
          local.setListenPort(msg_priority_trx, my->trx_listener.listen_endpoint.port());
          local.setListenPort(msg_priority_rpos, my->rpos_listener.listen_endpoint.port());
          my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str());
-
          if (options.count("udp-seed")) {
             my->udp_seed_ip = options.at( "udp-seed" ).as<vector<string> >();
          }
          if (!my->udp_seed_ip.empty()) {
             my->use_node_table = true;
          }
-
+         //TODO:P2P Commented udp linkage tcp
+         //my->set_nodetable_eventhandler();
          my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
          my->ticker();
       } FC_LOG_AND_RETHROW()
