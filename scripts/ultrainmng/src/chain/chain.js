@@ -630,7 +630,7 @@ async function switchChain() {
                 wssFilePath = pathConstants.WSS_DATA+ chainConfig.chainId + "-" + blockNum + ".ws";
                 wssinfo = "--worldstate " + pathConstants.WSS_DATA + chainConfig.chainId + "-" + blockNum + ".ws";
 
-                result = await WorldState.pollingkWSState(1000, 120000);
+                result = await WorldState.pollingkWSState(1000, 300000);
                 if (result == false) {
                     logger.error("require ws error："+wssinfo);
                 } else {
@@ -646,31 +646,39 @@ async function switchChain() {
 
                 sleep.msleep(1000);
 
-                /**
-                 * 调用block
-                 */
-                logger.info("start to sync block:(chainid:" + chainConfig.chainId + ",block num:" + blockNum);
-                result = await WorldState.syncBlocks(chainConfig.chainId, blockNum);
-                if (result == false) {
-                    logger.info("sync block request error");
+                //判断配置是否需要拉块
+                if (chainConfig.configFileData.local.wsSyncBlock == true) {
+                    logger.info("wsSyncBlock is true，need sync block");
+                    /**
+                     * 调用block
+                     */
+                    logger.info("start to sync block:(chainid:" + chainConfig.chainId + ",block num:" + blockNum);
+                    result = await WorldState.syncBlocks(chainConfig.chainId, blockNum);
+                    if (result == false) {
+                        logger.info("sync block request error");
+                    } else {
+                        logger.info("sync block request success");
+                    }
+
+                    sleep.msleep(1000);
+
+                    /**
+                     * 轮询检查同步世界状态情况block
+                     */
+                    logger.info("pollingBlockState start...");
+                    result = await WorldState.pollingBlockState(1000, 300000);
+                    if (result == false) {
+                        logger.info("require block error");
+                    } else {
+                        logger.info("require block success");
+                    }
+
+                    sleep.msleep(1000);
+
                 } else {
-                    logger.info("sync block request success");
+                    logger.info("wsSyncBlock is false，need not sync block");
+                    sleep.msleep(3000);
                 }
-
-                sleep.msleep(1000);
-
-                /**
-                 * 轮询检查同步世界状态情况block
-                 */
-                logger.info("pollingBlockState start...");
-                result = await WorldState.pollingBlockState(1000, 120000);
-                if (result == false) {
-                    logger.info("require block error");
-                } else {
-                    logger.info("require block success");
-                }
-
-                sleep.msleep(1000);
             }
         }
 

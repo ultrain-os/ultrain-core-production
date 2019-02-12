@@ -1,6 +1,10 @@
 var log4js = require('log4js');
+const fs = require('fs');
 var path = require('path');
 var os = require('os');
+const ini = require('ini');
+var pathConstants = require("../common/constant/constants").pathConstants;
+var constant = require("../common/constant/constants");
 
 /**
  * log文件mng（前缀+系统名+时间）
@@ -8,6 +12,7 @@ var os = require('os');
  */
 var dir = "/root/log/";
 var filename = "mng-"+os.hostname()+"-";
+
 /**
  * log整体配置
  * @type {{categories: {default: {level: string, appenders: string[]}}, appenders: {console: {type: string}, default: {filename: string, "maxLogSize ": number, alwaysIncludePattern: boolean, pattern: string, type: string}}}}
@@ -35,6 +40,19 @@ var logConfig = {
         }
     }
 };
+
+//read config
+try {
+    var configIniLocal = ini.parse(fs.readFileSync(pathConstants.MNG_CONFIG+"config.ini", constant.encodingConstants.UTF8));
+    var level = configIniLocal.logLevel;
+    if (level != null && level != undefined && level != "") {
+        logConfig.categories.default.level = level;
+    }
+} catch (e) {
+    console.log("read config file error of log info");
+}
+
+
 log4js.configure(logConfig);
 
 /**
