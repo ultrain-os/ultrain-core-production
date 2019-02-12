@@ -18,4 +18,17 @@ namespace ultrainio {
         }
         return rand;
     }
+
+    std::string short_sig(const std::string& s) {
+        if (s.length() < 32) return s;
+        std::string ret = s.substr(0, 8) + "..." + s.substr(s.length() - 8, 8);
+        return ret;
+    }
+
+    std::string short_hash(const fc::sha256& id) {
+        std::string s = id.str();
+        if (s.length() < 16) return s;
+        std::string ret = s.substr(0, 8) + "..." + s.substr(s.length() - 8, 8);
+        return ret;
+    }
 }

@@ -30,6 +30,7 @@
 
 #include <random>
 #include <rpos/MsgMgr.h>
+#include <rpos/Utils.h>
 
 #if defined( __linux__ )
 #include <malloc.h>
@@ -1692,12 +1693,17 @@ connection::connection(string endpoint, msg_priority pri)
    }
 
     void net_plugin_impl::start_broadcast(const net_message& msg, msg_priority p) {
+        std::string peers_str;
         for(auto &c : connections) {
             if (c->current() && p == c->priority) {
-                ilog ("send to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                peers_str += c->peer_name() + ";";
                 c->enqueue(msg);
             }
         }
+        if (!peers_str.empty()) {
+            ilog ("enqueue send to peers : ${peer_address}", ("peer_address", peers_str));
+        }
+
     }
 
     void net_plugin_impl::send_block(const fc::sha256& node_id, const net_message& msg) {
@@ -2209,7 +2215,7 @@ connection::connection(string endpoint, msg_priority pri)
 
    void net_plugin_impl::handle_message( connection_ptr c, const EchoMsg &msg) {
        ilog("receive echo msg!!! message from ${p} block_id: ${id} block num: ${num} phase: ${phase} baxcount: ${baxcount} account: ${account}",
-            ("p", c->peer_name())("id", msg.blockId)("num", BlockHeader::num_from_id(msg.blockId))
+            ("p", c->peer_name())("id", short_hash(msg.blockId))("num", BlockHeader::num_from_id(msg.blockId))
             ("phase", (uint32_t)msg.phase)("baxcount",msg.baxCount)("account", std::string(msg.account)));
        if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
@@ -2222,7 +2228,7 @@ connection::connection(string endpoint, msg_priority pri)
 
    void net_plugin_impl::handle_message( connection_ptr c, const ProposeMsg& msg) {
        ilog("receive propose msg!!! message from ${p} block id: ${id} block num: ${num}",
-            ("p", c->peer_name())("id", msg.block.id())("num", msg.block.block_num()));
+            ("p", c->peer_name())("id", short_hash(msg.block.id()))("num", msg.block.block_num()));
        if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
                if (conn != c && conn->priority == msg_priority_rpos) {
@@ -2541,12 +2547,12 @@ connection::connection(string endpoint, msg_priority pri)
 
    void net_plugin_impl::accepted_block_header(const block_state_ptr& block) {
       fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
-      ilog("accepted_block_header ${id}", ("id", block->id));
+      ilog("accepted_block_header ${id}", ("id", short_hash(block->id)));
    }
 
    void net_plugin_impl::accepted_block(const block_state_ptr& block) {
       fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
-      ilog("signaled, id = ${id}",("id", block->id));
+      ilog("signaled, id = ${id}",("id", short_hash(block->id)));
    }
 
    void net_plugin_impl::irreversible_block(const block_state_ptr&block) {
@@ -3014,7 +3020,7 @@ connection::connection(string endpoint, msg_priority pri)
     }
 
    void net_plugin::broadcast(const ProposeMsg& propose) {
-      ilog("broadcast propose msg. blockHash : ${blockHash}", ("blockHash", propose.block.id()));
+      ilog("broadcast propose msg. blockHash : ${blockHash}", ("blockHash", short_hash(propose.block.id())));
       my->start_broadcast(net_message(propose), msg_priority_rpos);
    }
 

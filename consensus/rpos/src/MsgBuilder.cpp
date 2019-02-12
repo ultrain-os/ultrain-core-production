@@ -3,6 +3,7 @@
 #include <rpos/MsgMgr.h>
 #include <rpos/Node.h>
 #include <rpos/Signer.h>
+#include <rpos/Utils.h>
 #include <rpos/StakeVoteBase.h>
 #include <crypto/Bls.h>
 
@@ -26,7 +27,7 @@ namespace ultrainio {
         // initialized at the end
         echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, StakeVoteBase::getMyPrivateKey()));
         ilog("account : ${account} sign block ${id} signature ${signature}",
-             ("account", std::string(StakeVoteBase::getMyAccount()))("id", block.id())("signature", echo.signature));
+             ("account", std::string(StakeVoteBase::getMyAccount()))("id", short_hash(block.id()))("signature", short_sig(echo.signature)));
         return echo;
     }
 
@@ -48,7 +49,7 @@ namespace ultrainio {
         echo.timestamp = UranusNode::getInstance()->getRoundCount();
         echo.signature = std::string(Signer::sign<UnsignedEchoMsg>(echo, StakeVoteBase::getMyPrivateKey()));
         ilog("account : ${account} sign block ${id} signature ${signature}",
-                ("account", std::string(StakeVoteBase::getMyAccount()))("id", propose.block.id())("signature", echo.signature));
+             ("account", std::string(StakeVoteBase::getMyAccount()))("id", short_hash(propose.block.id()))("signature", short_sig(echo.signature)));
         return echo;
     }
 
@@ -65,7 +66,7 @@ namespace ultrainio {
         myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(myEcho, StakeVoteBase::getMyPrivateKey()));
         ilog("timestamp : ${timestamp} proof : ${proof} account : ${account} sign block ${id} signature ${signature}",
              ("timestamp", myEcho.timestamp)("account", std::string(StakeVoteBase::getMyAccount()))
-             ("id", myEcho.blockId)("signature", myEcho.signature));
+             ("id", short_hash(myEcho.blockId))("signature", short_sig(myEcho.signature)));
         return myEcho;
     }
 }

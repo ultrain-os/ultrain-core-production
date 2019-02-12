@@ -15,6 +15,7 @@
 #include <rpos/Scheduler.h>
 #include <rpos/NodeInfo.h>
 #include <rpos/StakeVoteBase.h>
+#include <rpos/Utils.h>
 
 // eos net
 #include <appbase/application.hpp>
@@ -25,7 +26,7 @@ using namespace std;
 
 namespace ultrainio {
 
-    char version[]="ccfc70";
+    char version[]="a64113";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -275,7 +276,7 @@ namespace ultrainio {
 
         dlog("############## ba0 finish blockNum = ${id}, host_name = ${host_name}",
              ("id", getBlockNum())("host_name", boost::asio::ip::host_name()));
-        dlog("ba0Process voter.hash = ${hash1}",("hash1", ba0Block.id()));
+        dlog("ba0Process voter.hash = ${hash1}",("hash1", short_hash(ba0Block.id())));
         dlog("ba0Process. prepare ba1. blockNum = ${blockNum}, isVoter = ${isVoter}.", ("blockNum", getBlockNum())
                 ("isVoter",MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
 
@@ -305,13 +306,13 @@ namespace ultrainio {
                 ProposeMsg propose;
                 bool ret = m_schedulerPtr->initProposeMsg(&propose);
                 ULTRAIN_ASSERT(ret, chain::chain_exception, "Init propose msg failed");
-                dlog("vote.propose.block_hash : ${block_hash}", ("block_hash", propose.block.id()));
+                dlog("vote.propose.block_hash : ${block_hash}", ("block_hash", short_hash(propose.block.id())));
                 m_schedulerPtr->insert(propose);
                 sendMessage(propose);
                 if (MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
                     EchoMsg echo = MsgBuilder::constructMsg(propose);
                     m_schedulerPtr->insert(echo);
-                    dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockId));
+                    dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", short_hash(echo.blockId)));
                     sendMessage(echo);
                 }
             }
@@ -327,7 +328,7 @@ namespace ultrainio {
                 EchoMsg echo = MsgBuilder::constructMsg(*ba0Block);
                 m_schedulerPtr->insert(echo);
                 //echo.timestamp = getRoundCount();
-                dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", echo.blockId));
+                dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", short_hash(echo.blockId)));
                 sendMessage(echo);
             } else {
                 elog("vote. verify ba0Block failed. And send echo for empty block");
@@ -353,7 +354,7 @@ namespace ultrainio {
             && (ba1Block.previous != m_schedulerPtr->getPreviousBlockhash())) {
 
             elog("ba1Process error. previous block hash error. hash = ${hash1} local hash = ${hash2}",
-                 ("hash1", ba1Block.previous)("hash2", m_schedulerPtr->getPreviousBlockhash()));
+                 ("hash1", short_hash(ba1Block.previous))("hash2", short_hash(m_schedulerPtr->getPreviousBlockhash())));
 
             ULTRAIN_ASSERT(false, chain::chain_exception, "DB error. please reset with cmd --delete-all-blocks.");
         }
@@ -370,8 +371,8 @@ namespace ultrainio {
 
         dlog("##############ba1Process. finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
              ("block_num", getBlockNum())
-                     ("hash", blockPtr->id())
-                     ("head_hash", m_schedulerPtr->getPreviousBlockhash()));
+             ("hash", short_hash(blockPtr->id()))
+             ("head_hash", short_hash(m_schedulerPtr->getPreviousBlockhash())));
         m_schedulerPtr->produceBlock(blockPtr);
 
         ULTRAIN_ASSERT(blockPtr->id() == m_schedulerPtr->getPreviousBlockhash(), chain::chain_exception,
@@ -414,8 +415,8 @@ namespace ultrainio {
             *uranus_block = baxBlock;
             dlog("##############baxProcess. finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
                  ("block_num", getBlockNum())
-                         ("hash", uranus_block->id())
-                         ("head_hash", m_schedulerPtr->getPreviousBlockhash()));
+                 ("hash", short_hash(uranus_block->id()))
+                 ("head_hash", short_hash(m_schedulerPtr->getPreviousBlockhash())));
 
             m_schedulerPtr->produceBlock(uranus_block);
 
@@ -765,7 +766,7 @@ namespace ultrainio {
                 *uranus_block = baxBlock;
 
                 dlog("##############fastBa1.finish blockNum = ${id}, hash = ${hash}",
-                     ("id", getBlockNum())("hash", uranus_block->id()));
+                     ("id", getBlockNum())("hash", short_hash(uranus_block->id())));
                 m_schedulerPtr->produceBlock(uranus_block);
 
                 fastBlock(msg_key.blockNum);
@@ -828,7 +829,7 @@ namespace ultrainio {
 
                 m_schedulerPtr->produceBlock(uranus_block);
                 dlog("##############finish blockNum = ${id}, hash = ${hash}",
-                     ("id", getBlockNum())("hash", uranus_block->id()));
+                     ("id", getBlockNum())("hash", short_hash(uranus_block->id())));
 
                 fastBlock(msg_key.blockNum);
             } else {
@@ -929,7 +930,7 @@ namespace ultrainio {
 
     void UranusNode::sendEchoForEmptyBlock() {
         Block block = m_schedulerPtr->emptyBlock();
-        dlog("vote empty block. blockNum = ${blockNum} hash = ${hash}", ("blockNum",getBlockNum())("hash", block.id()));
+        dlog("vote empty block. blockNum = ${blockNum} hash = ${hash}", ("blockNum",getBlockNum())("hash", short_hash(block.id())));
         EchoMsg echoMsg = MsgBuilder::constructMsg(block);
         m_schedulerPtr->insert(echoMsg);
         //echoMsg.timestamp = getRoundCount();

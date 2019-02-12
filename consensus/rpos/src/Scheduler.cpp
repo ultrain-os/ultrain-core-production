@@ -1,4 +1,5 @@
 #include <rpos/Scheduler.h>
+#include <rpos/Utils.h>
 
 #include <iostream>
 #include <string>
@@ -196,7 +197,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::insert(const ProposeMsg &propose) {
-        dlog("insert.save propose msg.blockhash = ${blockhash}", ("blockhash", propose.block.id()));
+        dlog("insert.save propose msg.blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
         m_proposerMsgMap.insert(make_pair(propose.block.id(), propose));
         return true;
     }
@@ -389,7 +390,7 @@ namespace ultrainio {
 
     bool Scheduler::updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response) {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
-        ilog("update echo blockId: ${id}", ("id", echo.blockId));
+        ilog("update echo blockId: ${id}", ("id", short_hash(echo.blockId)));
         auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
         if (pkItor == info.accountPool.end()) {
             info.accountPool.push_back(echo.account);
@@ -730,7 +731,7 @@ namespace ultrainio {
         }
 
         if ((UranusNode::getInstance()->isSyncing()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
-            dlog("receive propose msg. node is syncing. blockhash = ${blockhash}", ("blockhash", propose.block.id()));
+            dlog("receive propose msg. node is syncing. blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
             return true;
         }
 
@@ -747,7 +748,7 @@ namespace ultrainio {
             return true;
         }
 
-        dlog("receive propose msg.blockhash = ${blockhash}", ("blockhash", propose.block.id()));
+        dlog("receive propose msg.blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
         auto itor = m_proposerMsgMap.find(propose.block.id());
         if (itor == m_proposerMsgMap.end()) {
             if (isMinPropose(propose)) {
@@ -757,7 +758,7 @@ namespace ultrainio {
                     UranusNode::getInstance()->sendMessage(echo);
                     insert(echo);
                 }
-                dlog("save propose msg.blockhash = ${blockhash}", ("blockhash", propose.block.id()));
+                dlog("save propose msg.blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
                 m_proposerMsgMap.insert(make_pair(propose.block.id(), propose));
                 return true;
             }
@@ -787,7 +788,7 @@ namespace ultrainio {
 
         if ((UranusNode::getInstance()->isSyncing()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
             dlog("receive echo msg. node is syncing. blockhash = ${blockhash} echo'account = ${account}",
-                 ("blockhash", echo.blockId)("account", std::string(echo.account)));
+                 ("blockhash", short_hash(echo.blockId))("account", std::string(echo.account)));
             return true;
         }
 
@@ -804,8 +805,9 @@ namespace ultrainio {
             return true;
         }
 
+
         dlog("receive echo msg.blockhash = ${blockhash} echo'account = ${account} signature : ${signature}",
-             ("blockhash", echo.blockId)("account", std::string(echo.account))("signature", echo.signature));
+             ("blockhash", short_hash(echo.blockId))("account", std::string(echo.account))("signature", short_sig(echo.signature)));
         auto itor = m_echoMsgMap.find(echo.blockId);
         if (itor != m_echoMsgMap.end()) {
             bret = updateAndMayResponse(itor->second, echo, true);
@@ -1328,7 +1330,7 @@ namespace ultrainio {
             ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature} committee mroot ${mroot}",
                  ("num", block.transactions.size())
                  ("proposer", std::string(block.proposer))
-                 ("signature", block.signature)
+                 ("signature", short_sig(block.signature))
                  ("mroot", block.committee_mroot)
                  );
             /*
@@ -1522,7 +1524,7 @@ namespace ultrainio {
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); itor++) {
             dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} block_hash : ${block_hash}",
                  ("phase", (uint32_t) itor->second.echoCommonPart.phase)("size", itor->second.accountPool.size())(
-                         "totalVoter", itor->second.getTotalVoterWeight())("block_hash", itor->second.echoCommonPart.blockId));
+                     "totalVoter", itor->second.getTotalVoterWeight())("block_hash", short_hash(itor->second.echoCommonPart.blockId)));
             if (isMin2FEcho(itor->second.getTotalVoterWeight(), phase)) {
                 dlog("found >= 2f + 1 echo, phase+cnt = ${phase}",("phase",phase));
 #ifdef CONSENSUS_VRF
