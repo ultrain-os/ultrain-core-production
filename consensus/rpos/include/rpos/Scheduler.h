@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <ultrainio/chain/callback.hpp>
 #include <ultrainio/chain/transaction_metadata.hpp>
 #include <ultrainio/chain/types.hpp>
 
@@ -92,8 +93,9 @@ namespace ultrainio {
 
     typedef std::map<chain::block_id_type, echo_message_info> echo_msg_buff;
 
-    class Scheduler : public std::enable_shared_from_this<Scheduler> {
+class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrainio::chain::callback {
     public:
+        ~Scheduler();
         Scheduler();
 
         void reset();
@@ -216,6 +218,9 @@ namespace ultrainio {
         void insertAccount(echo_message_info &info, const EchoMsg &echo);
 
         void enableEventRegister(bool v);
+
+        // implement callback
+        int on_header_extensions_verify(uint64_t chainName, int extKey, const std::string& extValue);
     private:
         // This function is time consuming, please cache the result empty block.
         std::shared_ptr<Block> generateEmptyBlock();
@@ -245,6 +250,8 @@ namespace ultrainio {
         bool hasMultiVotePropose(const EchoMsg& echo);
 
         BlsVoterSet generateBlsVoterSet(const VoterSet& voterSet);
+
+        void freeTwoDim(unsigned char** p, int size);
 
         // data member
         Block m_ba0Block;

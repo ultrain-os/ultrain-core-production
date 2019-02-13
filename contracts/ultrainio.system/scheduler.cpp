@@ -212,6 +212,19 @@ namespace ultrainiosystem {
                           _subchain.is_schedulable  = true;
                       }
                   });
+                  // veirfy block header ext
+                  ultrainio::extensions_type exts = headers[idx].header_extensions;
+                  print("acceptheader verify block header exts.size : ", exts.size(), "\n");
+                  for (auto& t : exts) {
+                      uint16_t k = std::get<0>(t);
+                      if (k == 0) { // bls
+                          std::vector<char> vc = std::get<1>(t);
+                          std::string blsData;
+                          blsData.assign(vc.begin(), vc.end());
+                          int verify = verify_header_extensions(chain_name, k, blsData.c_str(), blsData.length());
+                          ultrainio_assert(verify == 0, "verify header ext error.");
+                      }
+                  }
                   //record proposer for rewards
                   if(need_report) {
                       reportblocknumber(block_proposer, 1);

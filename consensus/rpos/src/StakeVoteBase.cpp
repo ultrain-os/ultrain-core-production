@@ -38,7 +38,7 @@ namespace ultrainio {
     StakeVoteBase::StakeVoteBase(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr)
             : m_committeeStatePtr(committeeStatePtr), m_blockNum(blockNum) {
         if (!m_committeeStatePtr) {
-            m_committeeStatePtr = getCommitteeState();
+            m_committeeStatePtr = getCommitteeState(0);
         }
         computeCommitteeMroot();
         ULTRAIN_ASSERT(getCommitteeMemberNumber() != 0, chain::chain_exception, "totalStake is 0");
@@ -239,18 +239,42 @@ namespace ultrainio {
         }
     }
 
+    bool StakeVoteBase::getBlsPublicKeyBatch(uint64_t chainName, const std::vector<AccountName>& accounts, unsigned char** pks) {
+        std::shared_ptr<CommitteeState> committeeState = getCommitteeState(chainName);
+        if (!committeeState) {
+            ilog("committeeState is nullptr for subchain : ${chainName}", ("chainName", chainName));
+            return false;
+        }
+        for (int i = 0; i < accounts.size(); i++) {
+            AccountName account = accounts.at(i);
+            bool found = false;
+            for (CommitteeInfo info : committeeState->cinfo) {
+                if (info.accountName == account) {
+                    Hex::fromHex<unsigned char>(info.blsPk, pks[i], Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                ilog("can not find account : ${account}'bls pk", ("account", std::string(account)));
+                return false;
+            }
+        }
+        return true;
+    }
+
     bool StakeVoteBase::isGenesisLeader(const AccountName& account) const {
         return account.good() && account == AccountName(Genesis::kGenesisAccount);
     }
 
-    std::shared_ptr<CommitteeState> StakeVoteBase::getCommitteeState() {
+    std::shared_ptr<CommitteeState> StakeVoteBase::getCommitteeState(uint64_t chainNum) {
         const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         struct chain_apis::read_only::get_producers_params params;
         CommitteeInfo cinfo;
         auto statePtr(std::make_shared<CommitteeState>());
         params.json=true;
         params.lower_bound="";
-        params.show_chain_num = 0;
+        params.show_chain_num = chainNum;
         params.is_filter_chain = true;
         params.filter_enabled = true;
         try {

@@ -24,6 +24,8 @@ add_library( ultrainio_chain
              ultrainio_contract_abi.cpp
              chain_config.cpp
              chain_id_type.cpp
+             callback.cpp
+             callback_manager.cpp
              genesis_state.cpp
              ${CMAKE_CURRENT_BINARY_DIR}/genesis_state_root_key.cpp
 

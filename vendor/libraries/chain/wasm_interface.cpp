@@ -3,6 +3,8 @@
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/transaction_context.hpp>
 #include <ultrainio/chain/exceptions.hpp>
+#include <ultrainio/chain/callback.hpp>
+#include <ultrainio/chain/callback_manager.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <ultrainio/chain/authorization_manager.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
@@ -2052,6 +2054,11 @@ class multi_chain_api : public context_aware_api {
          }
           return false;
       }
+
+      int verify_header_extensions(uint64_t chain_name, int ext_key, array_ptr<const char> ext_value, size_t value_len) {
+          std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
+          return cb->on_header_extensions_verify(chain_name, ext_key, std::string(ext_value, value_len));
+      }
 };
 
 #ifdef ULTRAIN_SUPPORT_TYPESCRIPT
@@ -2373,6 +2380,7 @@ REGISTER_INTRINSICS(big_int_api,
 REGISTER_INTRINSICS(multi_chain_api,
       (empower_to_chain,    void(int64_t, int64_t))
       (is_empowered,   int(int64_t, int64_t))
+      (verify_header_extensions, int(int64_t, int, int, int))
 );
 
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {

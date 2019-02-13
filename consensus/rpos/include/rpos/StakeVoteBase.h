@@ -62,6 +62,8 @@ namespace ultrainio {
 
         bool getBlsPublicKey(const AccountName& account, unsigned char* blsPublicKey, int pkSize) const;
 
+        bool getBlsPublicKeyBatch(uint64_t chainName, const std::vector<AccountName>& accounts, unsigned char** pks);
+
         chain::checksum256_type getCommitteeMroot() { return m_committeeMroot; }
 
         virtual Proof getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount);
@@ -116,7 +118,7 @@ namespace ultrainio {
         static std::shared_ptr<NodeInfo> s_keyKeeper;
 
         // get committee state from world state
-        std::shared_ptr<CommitteeState> getCommitteeState();
+        std::shared_ptr<CommitteeState> getCommitteeState(uint64_t chainNum);
 
         void computeCommitteeMroot();
 
