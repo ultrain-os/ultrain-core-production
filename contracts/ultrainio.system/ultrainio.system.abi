@@ -56,7 +56,7 @@
       "fields": [
         {"name": "account", "type": "account_name"},
         {"name": "lease_num", "type": "uint64"},
-        {"name": "end_time", "type": "time_point_sec"},
+        {"name": "end_block_height", "type": "uint32"},
         {"name": "location", "type": "uint64"},
         {"name": "approve_num", "type": "int64"}
       ]
@@ -73,7 +73,7 @@
       "base": "",
       "fields": [
         {"name": "account", "type": "account_name"},
-        {"name": "last_vote_time", "type": "time_point_sec"},
+        {"name": "last_vote_blockheight", "type": "uint32"},
         {"name": "resource_index", "type": "uint64"}
       ]
     },{
@@ -352,9 +352,9 @@
       "fields": [
          {"name":"owner",       "type":"account_name"},
          {"name":"lease_num",   "type":"uint64"},
-         {"name":"start_time",  "type":"time_point_sec"},
-         {"name":"end_time",    "type":"time_point_sec"},
-         {"name":"modify_time", "type":"time_point_sec"},
+         {"name":"start_block_height",  "type":"uint32"},
+         {"name":"end_block_height",    "type":"uint32"},
+         {"name":"modify_block_height", "type":"uint32"},
       ]
     },{
       "name": "schedule_setting",
@@ -409,9 +409,7 @@
          {"name":"last_name_close",               "type":"block_timestamp_type"},
          {"name":"max_resources_size",            "type":"uint16"},
          {"name":"total_resources_staked",        "type":"uint16"},
-         {"name":"defer_trx_nextid",              "type":"uint64"},
-         {"name":"last_check_resexpiretime",      "type":"time_point_sec"},
-         {"name":"last_vote_expiretime",      "type":"time_point_sec"}
+         {"name":"defer_trx_nextid",              "type":"uint64"}
       ]
     },{
       "name": "role_base",

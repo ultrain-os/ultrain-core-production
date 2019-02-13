@@ -132,8 +132,9 @@ namespace ultrainiosystem {
    }
 
    void system_contract::distributreward(){
-      auto block_height = head_block_number() + 1;
-      if(block_height < 120 || block_height%(360*24*7) != 0) {
+      uint32_t block_height = (uint32_t)head_block_number() + 1;
+      uint32_t interval_num = seconds_per_day*7/block_interval_seconds();
+      if(block_height < 120 || block_height%interval_num != 0) {
          return;
       }
       //distribute rewards

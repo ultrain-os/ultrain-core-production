@@ -71,9 +71,9 @@ namespace ultrainio { namespace chain {
     struct resources_lease {
       account_name             owner;
       uint64_t                 lease_num;
-      time_point_sec           start_time;
-      time_point_sec           end_time;
-      time_point_sec           modify_time;
+      uint32_t                 start_block_height;
+      uint32_t                 end_block_height;
+      uint32_t                 modify_block_height;
     };
 
 }} // namespace ultrainio::chain
@@ -89,4 +89,4 @@ FC_REFLECT(ultrainio::chain::subchain, (chain_name)(chain_type)(genesis_time)(gl
                                        (committee_members)(updated_info)(changing_info)(head_block_id)(head_block_num)(recent_users)
                                        (total_user_num)(chain_id)(committee_mroot) )
                                  //(genesis_info)(network_topology)(relayer_candidates)(relayer_list) )
-FC_REFLECT(ultrainio::chain::resources_lease, (owner)(lease_num)(start_time)(end_time)(modify_time) )
+FC_REFLECT(ultrainio::chain::resources_lease, (owner)(lease_num)(start_block_height)(end_block_height)(modify_block_height) )

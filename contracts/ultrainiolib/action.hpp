@@ -172,7 +172,7 @@ namespace ultrainio {
     */
    struct provided_proposer {
 
-      provided_proposer( account_name a, time l, uint64_t r):account(a),last_vote_time(l),resource_index(r){}
+      provided_proposer( account_name a, uint32_t l, uint64_t r):account(a),last_vote_blockheight(l),resource_index(r){}
 
       /**
        * Default Constructor
@@ -182,13 +182,13 @@ namespace ultrainio {
       provided_proposer(){}
 
       account_name      account;
-      time              last_vote_time = 0;
+      time              last_vote_blockheight = 0;
       uint64_t          resource_index = 0;
       bool operator==(const provided_proposer& c) const
       {
          return c.account == account;
       }
-      ULTRAINLIB_SERIALIZE( provided_proposer, (account)(last_vote_time)(resource_index) )
+      ULTRAINLIB_SERIALIZE( provided_proposer, (account)(last_vote_blockheight)(resource_index) )
    };
 
    /**
@@ -235,11 +235,11 @@ namespace ultrainio {
        * @brief Construct a proposeresource_info object
        * @param a - Name of the account who proposal resourcelease account
        * @param lease - Number of lease
-       * @param e - end time
+       * @param e - end_block_height
        * @param l - location
        * @param num - approve_num
        */
-      proposeresource_info( account_name a, uint64_t lease, time e, uint16_t l, int64_t num ):account(a),lease_num(lease),end_time(e),location(l),approve_num(num){}
+      proposeresource_info( account_name a, uint64_t lease, uint32_t e, uint16_t l, int64_t num ):account(a),lease_num(lease),end_block_height(e),location(l),approve_num(num){}
 
       /**
        * Default Constructor
@@ -250,10 +250,10 @@ namespace ultrainio {
 
       account_name      account;
       uint64_t          lease_num;
-      time              end_time;
+      uint32_t          end_block_height;
       uint64_t          location;
       int64_t           approve_num;
-      ULTRAINLIB_SERIALIZE( proposeresource_info, (account)(lease_num)(end_time)(location)(approve_num) )
+      ULTRAINLIB_SERIALIZE( proposeresource_info, (account)(lease_num)(end_block_height)(location)(approve_num) )
    };
    /**
     * Require the specified authorization for this action. If this action doesn't contain the specified auth, it will fail.

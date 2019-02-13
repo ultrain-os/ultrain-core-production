@@ -62,15 +62,13 @@ namespace ultrainiosystem {
       uint16_t             max_resources_size = 10000;    //set the resource combo to 10000
       uint16_t             total_resources_staked = 0;
       uint64_t             defer_trx_nextid = 0;
-      time                 last_check_resexpiretime = 0;
-      time                 last_vote_expiretime = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
                                 (max_ram_size)(min_activated_stake)(min_committee_member)(min_committee_member_number)
                                 (total_ram_bytes_reserved)(total_ram_stake)(start_block)(reward_preblock)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
-                                (total_producer_vote_weight)(last_name_close)(max_resources_size)(total_resources_staked)(defer_trx_nextid)(last_check_resexpiretime)(last_vote_expiretime) )
+                                (total_producer_vote_weight)(last_name_close)(max_resources_size)(total_resources_staked)(defer_trx_nextid) )
    };
 
    struct chain_resource {
@@ -229,14 +227,14 @@ namespace ultrainiosystem {
    struct resources_lease {
       account_name   owner;
       uint64_t       lease_num = 0;
-      time           start_time = 0;
-      time           end_time;
-      time           modify_time;
+      uint32_t       start_block_height = 0;
+      uint32_t       end_block_height = 0;
+      uint32_t       modify_block_height = 0;
 
       uint64_t  primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( resources_lease, (owner)(lease_num)(start_time)(end_time)(modify_time) )
+      ULTRAINLIB_SERIALIZE( resources_lease, (owner)(lease_num)(start_block_height)(end_block_height)(modify_block_height) )
    };
    typedef ultrainio::multi_index< N(reslease), resources_lease>      resources_lease_table;
 
@@ -384,7 +382,7 @@ namespace ultrainiosystem {
 
          void cleanvotetable();
 
-         void syncresource(account_name receiver, uint64_t combosize, time endtime);
+         void syncresource(account_name receiver, uint64_t combosize, uint32_t block_height);
 
          void distributreward();
 

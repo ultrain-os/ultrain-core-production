@@ -986,13 +986,14 @@ vector<ultrainio::chain::resources_lease> results;
         resources_lease resLease;
         fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
         fc::raw::unpack(ds, resLease);
-        time_point_sec ct(fc::time_point::now());
-        if(resLease.modify_time <= ct && (ct - resLease.modify_time).to_seconds() <= 30*60) {
+        auto headblock = db.head_block_num();
+        auto blockinterval = (30 * 60 * 1000) /config::block_interval_ms;
+        if(resLease.modify_block_height <= headblock && (headblock - resLease.modify_block_height) <= blockinterval) {
             results.push_back(resLease);
         }
         return true;
     } );
-return results;
+    return results;
 }
 
 uint32_t read_only::get_subchain_block_num(const read_only::get_subchain_block_num_params& p) const {

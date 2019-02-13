@@ -1272,12 +1272,12 @@ void get_account( const string& accountName, bool json_format ) {
          std::cout << std::endl;
          std::cout << "resource lease: " << std::endl;
          auto leasenum = res.resources_lease.get_object()["lease_num"].as_int64();
-         auto start_time = res.resources_lease.get_object()["start_time"].as_string();
-         auto end_time = res.resources_lease.get_object()["end_time"].as_string();
+         auto start_block_height = res.resources_lease.get_object()["start_block_height"].as_string();
+         auto end_block_height = res.resources_lease.get_object()["end_block_height"].as_string();
          std::cout << std::fixed << setprecision(3);
          std::cout << indent << std::left << std::setw(11) << "lease_num:"      << std::right << std::setw(13) << leasenum << "\n";
-         std::cout << indent << std::left << std::setw(11) << "start_time:" << std::right << std::setw(18) << start_time << "\n";
-         std::cout << indent << std::left << std::setw(11) << "end_time:"     << std::right << std::setw(18) << end_time << "\n";
+         std::cout << indent << std::left << std::setw(11) << "start_block_height:" << std::right << std::setw(18) << start_block_height << "\n";
+         std::cout << indent << std::left << std::setw(11) << "end_block_height:"     << std::right << std::setw(18) << end_block_height << "\n";
          std::cout << std::endl;
       }
 

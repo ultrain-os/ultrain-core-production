@@ -222,7 +222,7 @@ namespace ultrainiosystem {
       for(auto minerinfo : proposeminer){
          ultrainio_assert( is_account( minerinfo.account ), "vote votecommittee account not exist");
          minerinfo.approve_num = 1;
-         provided_proposer  provideapprve(proposer,now(),0);
+         provided_proposer  provideapprve(proposer,(uint32_t)head_block_number(),0);
          auto pendingiter = _pendingminer.find( minerinfo.account );
          if ( pendingiter != _pendingminer.end() ) {
             int32_t curproposeresnum = -1;
@@ -243,8 +243,8 @@ namespace ultrainiosystem {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
-                     if((itr->resource_index == (uint64_t)curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
-                           print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
+                     if((itr->resource_index == (uint64_t)curproposeresnum) && (block_interval_seconds()*(provideapprve.last_vote_blockheight - itr->last_vote_blockheight) < seconds_per_halfhour)){
+                           print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_last_vote_blockheight:",provideapprve.last_vote_blockheight," last_vote_blockheight:",itr->last_vote_blockheight);
                            ultrainio_assert( false, "voteaccount proposer already voted" );
                      }
                      p.provided_approvals.erase(itr);
@@ -284,6 +284,7 @@ namespace ultrainiosystem {
             return (ch-'0');
          if(ch >= 'a' && ch <= 'f')
             return ((ch-'a')+10);
+         return 0;
       };
       char  keydata[67];
       memset(keydata,0,sizeof(keydata));
@@ -292,7 +293,7 @@ namespace ultrainiosystem {
       for ( uint32_t i=0; i < strlen(keydata); i++ ){
          if(i%2 == 1)
          {
-            data[j] = (getHexvalue(keydata[i-1])*16 + getHexvalue(keydata[i])) & 0xff;
+            data[j] = static_cast<char>((getHexvalue(keydata[i-1])*16 + getHexvalue(keydata[i])) & 0xff);
             j++;
          }
       }
@@ -344,7 +345,7 @@ void system_contract::voteaccount() {
          ultrainio_assert( accinfo.owner_key.length() == 53, "vote owner public key should be of size 53" );
          ultrainio_assert( accinfo.active_key.length() == 53, "vote active public key should be of size 53" );
          accinfo.approve_num = 1;
-         provided_proposer  provideapprve(proposer,now(),0);
+         provided_proposer  provideapprve(proposer,(uint32_t)head_block_number(),0);
          auto pendingiter = _pendingaccount.find( accinfo.account );
          if ( pendingiter != _pendingaccount.end() ) {
             int32_t curproposeresnum = -1;
@@ -365,8 +366,8 @@ void system_contract::voteaccount() {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
-                     if((itr->resource_index == (uint64_t)curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
-                           print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
+                     if((itr->resource_index == (uint64_t)curproposeresnum) && (block_interval_seconds()*(provideapprve.last_vote_blockheight - itr->last_vote_blockheight) < seconds_per_halfhour)){
+                           print("\nvoteaccount proposer already voted proposer :",ultrainio::name{proposer}," current_last_vote_blockheight:",provideapprve.last_vote_blockheight," last_vote_blockheight:",itr->last_vote_blockheight);
                            ultrainio_assert( false, "voteaccount proposer already voted" );
                      }
                      p.provided_approvals.erase(itr);
@@ -424,7 +425,7 @@ void system_contract::voteresourcelease() {
       for(auto resinfo : proposeresource){
          ultrainio_assert( is_account( resinfo.account ), "vote resoucelease account not exist");
          resinfo.approve_num = 1;
-         provided_proposer  provideapprve(proposer,now(),0);
+         provided_proposer  provideapprve( proposer, (uint32_t)head_block_number(), 0);
          auto pendingiter = _pendingres.find( resinfo.account );
          if ( pendingiter != _pendingres.end() ) {
             int32_t curproposeresnum = -1;
@@ -433,7 +434,7 @@ void system_contract::voteresourcelease() {
             {
                if((resinfo.account == (*pendingiter).proposal_resource[i].account) &&
                   (resinfo.lease_num == (*pendingiter).proposal_resource[i].lease_num)  &&
-                  (resinfo.end_time == (*pendingiter).proposal_resource[i].end_time)  &&
+                  (resinfo.end_block_height == (*pendingiter).proposal_resource[i].end_block_height)  &&
                   (resinfo.location == (*pendingiter).proposal_resource[i].location) ){
                   curproposeresnum = (int32_t)i;
                   break;
@@ -444,8 +445,8 @@ void system_contract::voteresourcelease() {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
-                     if((itr->resource_index == (uint64_t)curproposeresnum) && ((provideapprve.last_vote_time - itr->last_vote_time) < seconds_per_halfhour)){
-                           print("\nvoteresourcelease proposer already voted proposer :",ultrainio::name{proposer}," current_time:",provideapprve.last_vote_time," last_vote_time:",itr->last_vote_time);
+                     if((itr->resource_index == (uint64_t)curproposeresnum) && (block_interval_seconds()*(provideapprve.last_vote_blockheight - itr->last_vote_blockheight) < seconds_per_halfhour)){
+                           print("\nvoteresourcelease proposer already voted proposer :",ultrainio::name{proposer}," current_last_vote_blockheight:",provideapprve.last_vote_blockheight," last_vote_blockheight:",itr->last_vote_blockheight);
                            ultrainio_assert( false, "proposer already voted" );
                      }
                      p.provided_approvals.erase(itr);
@@ -456,7 +457,7 @@ void system_contract::voteresourcelease() {
                });
 
                if((*pendingiter).proposal_resource[(uint32_t)curproposeresnum].approve_num >= ceil((double)enableprodnum*2/3)){
-                  syncresource(resinfo.account, resinfo.lease_num, resinfo.end_time);
+                  syncresource(resinfo.account, resinfo.lease_num, resinfo.end_block_height);
                   _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
                      p.provided_approvals.clear();
                      p.proposal_resource.clear();
@@ -481,65 +482,65 @@ void system_contract::voteresourcelease() {
    }
 
    void system_contract::cleanvotetable(){
-      time curtime = now();
-      if(_gstate.last_vote_expiretime == 0)
-         _gstate.last_vote_expiretime = now();
-      if(_gstate.last_vote_expiretime < curtime && (curtime - _gstate.last_vote_expiretime) >= seconds_per_halfhour){
-         _gstate.last_vote_expiretime = curtime;
-         uint64_t starttime = current_time();
-         //clean vote pendingminer expire
-         for(auto mineriter = _pendingminer.begin(); mineriter != _pendingminer.end(); ){
-            _pendingminer.modify( mineriter, 0, [&]( auto& p ) {
-               for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
-                  if((curtime - itr->last_vote_time) > seconds_per_halfhour){
-                     itr = p.provided_approvals.erase(itr);
-                  }else
-                     ++itr;
-               }
-            });
-            print("cleanvotetable _pendingminer name:",name{mineriter->owner}, " approversize::",mineriter->provided_approvals.size()," curtime:",curtime);
-            if(mineriter->provided_approvals.size() == 0){
-               mineriter = _pendingminer.erase(mineriter);
-            }else
-               ++mineriter;
-         }
-
-         //clean vote _pendingaccount expire
-         for(auto acciter = _pendingaccount.begin(); acciter != _pendingaccount.end(); ){
-            _pendingaccount.modify( acciter, 0, [&]( auto& p ) {
-               for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
-                  if((curtime - itr->last_vote_time) > seconds_per_halfhour){
-                     itr = p.provided_approvals.erase(itr);
-                  }else
-                     ++itr;
-               }
-            });
-            print("cleanvotetable _pendingaccount name:",name{acciter->owner}, " approversize::",acciter->provided_approvals.size()," curtime:",curtime);
-            if(acciter->provided_approvals.size() == 0){
-               acciter = _pendingaccount.erase(acciter);
-            }else
-               ++acciter;
-         }
-
-         //clean vote _pendingres expire
-         for(auto resiter = _pendingres.begin(); resiter != _pendingres.end(); ){
-            _pendingres.modify( resiter, 0, [&]( auto& p ) {
-               for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
-                  if((curtime - itr->last_vote_time) > seconds_per_halfhour){
-                     itr = p.provided_approvals.erase(itr);
-                  }else
-                     ++itr;
-               }
-            });
-            print("cleanvotetable _pendingres name:",name{resiter->owner}, " approversize::",resiter->provided_approvals.size()," curtime:",curtime);
-            if(resiter->provided_approvals.size() == 0){
-               resiter = _pendingres.erase(resiter);
-            }else
-               ++resiter;
-         }
-         uint64_t endtime = current_time();
-         print("cleanvotetable expend time:",(endtime - starttime));
+      auto block_height = (uint32_t)head_block_number() + 1;
+      uint32_t interval_num = seconds_per_halfhour/block_interval_seconds();
+      if(block_height < 120 || block_height%interval_num != 0) {
+         return;
       }
+      uint32_t curblockheight = (uint32_t)head_block_number() + 1;
+      uint64_t starttime = current_time();
+      //clean vote pendingminer expire
+      for(auto mineriter = _pendingminer.begin(); mineriter != _pendingminer.end(); ){
+         _pendingminer.modify( mineriter, 0, [&]( auto& p ) {
+            for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
+               if(block_interval_seconds()*(curblockheight - itr->last_vote_blockheight) > seconds_per_halfhour){
+                  itr = p.provided_approvals.erase(itr);
+               }else
+                  ++itr;
+            }
+         });
+         print("cleanvotetable _pendingminer name:",name{mineriter->owner}, " approversize::",mineriter->provided_approvals.size()," curblockheight:",curblockheight);
+         if(mineriter->provided_approvals.size() == 0){
+            mineriter = _pendingminer.erase(mineriter);
+         }else
+            ++mineriter;
+      }
+
+      //clean vote _pendingaccount expire
+      for(auto acciter = _pendingaccount.begin(); acciter != _pendingaccount.end(); ){
+         _pendingaccount.modify( acciter, 0, [&]( auto& p ) {
+            for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
+               if(block_interval_seconds()*(curblockheight - itr->last_vote_blockheight) > seconds_per_halfhour){
+                  itr = p.provided_approvals.erase(itr);
+               }else
+                  ++itr;
+            }
+         });
+         print("cleanvotetable _pendingaccount name:",name{acciter->owner}, " approversize::",acciter->provided_approvals.size()," curblockheight:",curblockheight);
+         if(acciter->provided_approvals.size() == 0){
+            acciter = _pendingaccount.erase(acciter);
+         }else
+            ++acciter;
+      }
+
+      //clean vote _pendingres expire
+      for(auto resiter = _pendingres.begin(); resiter != _pendingres.end(); ){
+         _pendingres.modify( resiter, 0, [&]( auto& p ) {
+            for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
+               if(block_interval_seconds()*(curblockheight - itr->last_vote_blockheight) > seconds_per_halfhour){
+                  itr = p.provided_approvals.erase(itr);
+               }else
+                  ++itr;
+            }
+         });
+         print("cleanvotetable _pendingres name:",name{resiter->owner}, " approversize::",resiter->provided_approvals.size()," curblockheight:",curblockheight);
+         if(resiter->provided_approvals.size() == 0){
+            resiter = _pendingres.erase(resiter);
+         }else
+            ++resiter;
+      }
+      uint64_t endtime = current_time();
+      print("cleanvotetable expend time:",(endtime - starttime));
    }
    /**
     *  Called after a new account is created. This code enforces resource-limits rules

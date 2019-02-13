@@ -217,25 +217,25 @@ namespace ultrainiosystem {
       }
    }
 
-   void system_contract::syncresource(account_name receiver, uint64_t combosize, time endtime) {
+   void system_contract::syncresource(account_name receiver, uint64_t combosize, uint32_t block_height) {
        resources_lease_table _reslease_tbl( _self, master_chain_name );//In side chain, always treat itself as master
        auto resiter = _reslease_tbl.find(receiver);
        if(resiter != _reslease_tbl.end()) {
            ultrainio_assert(combosize >= resiter->lease_num, "error combo size in sync resource");
-           ultrainio_assert(endtime > (resiter->end_time - 5*60), "error end time in sync resource");
-           auto deltasize = combosize - resiter->lease_num;
+           ultrainio_assert(block_height > (resiter->end_block_height - 50), "error end time in sync resource");
+           if(((int64_t)block_height - (int64_t)resiter->end_block_height) > seconds_per_day/2/block_interval_seconds()){
+              auto deltadays = ceil(block_interval_seconds()*((int64_t)block_height - (int64_t)resiter->end_block_height)/double(seconds_per_day));
+               INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
+                                { N(ultrainio), receiver, 0, deltadays, master_chain_name} );
+           }
+           int64_t deltasize = (int64_t)combosize - (int64_t)resiter->lease_num;
            if(deltasize > 0) {
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                                  { N(ultrainio), receiver, deltasize, 0, master_chain_name} );
            }
-           if(((int64_t)endtime - (int64_t)resiter->end_time) > seconds_per_day/2){
-              auto deltadays = ceil(((int64_t)endtime - (int64_t)resiter->end_time)/double(seconds_per_day));
-               INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                                { N(ultrainio), receiver, 0, deltadays, master_chain_name} );
-           }
        } else {
-           if(endtime > now()){
-               auto days = ceil(((int64_t)endtime - (int64_t)now())/(double)seconds_per_day);
+           if(block_height > (uint32_t)head_block_number()){
+               auto days = ceil(block_interval_seconds()*(block_height - (uint32_t)head_block_number())/(double)seconds_per_day);
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                      { N(ultrainio), receiver, combosize, days, master_chain_name} );
             }
@@ -266,7 +266,7 @@ namespace ultrainiosystem {
       else {
           bytes = (chain_itr->global_resource.max_ram_size-2ll*1024*1024*1024)/chain_itr->global_resource.max_resources_size;
       }
-      print("resourcelease receiver:",receiver," combosize:",combosize," days:",days);
+      print("resourcelease receiver:", name{receiver}, " combosize:",combosize," days:",days);
       ultrainio_assert( days <= (365*30+7), "resource lease buy days must reserve a positive and less than 30 years" );
 
       // update totals of "receiver"
@@ -289,18 +289,18 @@ namespace ultrainiosystem {
             reslease_itr = _reslease_tbl.emplace( from, [&]( auto& tot ) {
                   tot.owner = receiver;
                   tot.lease_num = combosize;
-                  tot.start_time = now();
-                  tot.end_time = tot.start_time + (uint32_t)days*seconds_per_day;
-                  tot.modify_time = now();
+                  tot.start_block_height = (uint32_t)head_block_number();
+                  tot.end_block_height = tot.start_block_height + (uint32_t)days*seconds_per_day / block_interval_seconds();
+                  tot.modify_block_height = (uint32_t)head_block_number();
                });
          } else {
             ultrainio_assert(((combosize > 0) && (days == 0))||((combosize == 0) && (days > 0)), "resource lease days and numbler can't increase them at the same time" );
             if(combosize > 0)
             {
-               ultrainio_assert(reslease_itr->end_time > now(), "resource lease endtime already expired" );
-               double remain_time = (reslease_itr->end_time - now())/(double)seconds_per_day;
+               ultrainio_assert(reslease_itr->end_block_height > (uint32_t)head_block_number(), "resource lease endtime already expired" );
+               double remain_time = block_interval_seconds()*(reslease_itr->end_block_height - (uint32_t)head_block_number())/(double)seconds_per_day;
                cuttingfee = uint64_t(ceil(remain_time))*combosize;
-               print("resourcelease remain_time:",remain_time," cuttingfee:",cuttingfee);
+               print("resourcelease receiver:", name{receiver}, " remain_time:",remain_time," cuttingfee:",cuttingfee);
                if(chain_itr == _subchains.end()) {
                    _gstate.total_resources_staked += combosize;
                    _gstate.total_ram_bytes_reserved += (uint64_t)combosize*bytes;
@@ -318,8 +318,8 @@ namespace ultrainiosystem {
             }
             _reslease_tbl.modify( reslease_itr, 0, [&]( auto& tot ) {
                   tot.lease_num += combosize;
-                  tot.end_time  += days*seconds_per_day;
-                  tot.modify_time = now();
+                  tot.end_block_height  += days * seconds_per_day / block_interval_seconds();
+                  tot.modify_block_height = (uint32_t)head_block_number();
                });
          }
          ultrainio_assert(cuttingfee > 0, "resource lease cuttingfee is abnormal" );
@@ -329,7 +329,7 @@ namespace ultrainiosystem {
          ultrainio_assert( 0 < reslease_itr->lease_num, "insufficient resource lease" );
          if (chain_itr == _subchains.end()) {
              set_resource_limits( receiver, int64_t(bytes*reslease_itr->lease_num), int64_t(reslease_itr->lease_num), int64_t(reslease_itr->lease_num) );
-             print("current resource limit net_weight:",reslease_itr->lease_num," cpu:",reslease_itr->lease_num," ram:",int64_t(bytes*reslease_itr->lease_num));
+             print("current resource limit  receiver:", name{receiver}, " net_weight:",reslease_itr->lease_num," cpu:",reslease_itr->lease_num," ram:",int64_t(bytes*reslease_itr->lease_num));
          }
       } // tot_itr can be invalid, should go out of scope
    }
@@ -375,73 +375,73 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
    }
 
    void system_contract::checkresexpire(){
-      time curtime = now();
-      if(_gstate.last_check_resexpiretime == 0)
-         _gstate.last_check_resexpiretime = now();
-      if(_gstate.last_check_resexpiretime < curtime && (curtime - _gstate.last_check_resexpiretime) >= seconds_per_day){
-         _gstate.last_check_resexpiretime = curtime;
-         uint64_t starttime = current_time();
-         resources_lease_table _reslease_tbl( _self, master_chain_name);
-         for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
-            if(leaseiter->end_time <= curtime){
-               print("checkresexpire reslease name:",name{leaseiter->owner}, " leaseiter->end_time:",leaseiter->end_time," curtime:",curtime);
-               //drop contract account table
-               db_drop_table(leaseiter->owner);
-               //clear contract account code
-               ultrainio::transaction codetrans;
-               codetrans.actions.emplace_back( permission_level{ leaseiter->owner, N(active) }, _self, NEX(setcode), std::make_tuple(leaseiter->owner, 0, 0, bytes()) );
-               codetrans.actions[0].authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
-               codetrans.delay_sec = 1;
-               uint128_t trxid = now() + leaseiter->owner + N(setcode);
-               cancel_deferred(trxid);
-               codetrans.send( trxid, _self, true );
-               print("checkresexpire set code:",current_time()," trxid:",trxid);
-               //clear contract account abi
-               ultrainio::transaction abitrans;
-               abitrans.actions.emplace_back( permission_level{ leaseiter->owner, N(active) }, _self, NEX(setabi), std::make_tuple(leaseiter->owner, bytes()) );
-               abitrans.actions[0].authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
-               abitrans.delay_sec = 1;
-               trxid = now() +leaseiter->owner + N(setabi);
-               cancel_deferred(trxid);
-               abitrans.send( trxid, _self, true );
-               print("checkresexpire set abi:",current_time()," trxid:",trxid);
-               //recycle resource
-               ultrainio::transaction recyclerestrans;
-               recyclerestrans.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(recycleresource), std::make_tuple(leaseiter->owner, leaseiter->lease_num) );
-               recyclerestrans.delay_sec = 3;
-               trxid = now() +leaseiter->owner + N(recycleres);
-               cancel_deferred(trxid);
-               recyclerestrans.send( trxid, _self, true );
-               print("checkresexpire recycleres:",current_time()," trxid:",trxid);
-               leaseiter = _reslease_tbl.erase(leaseiter);
-            } else {
-               ++leaseiter;
-            }
-         }
-
-         auto chain_iter = _subchains.begin();
-         for(; chain_iter != _subchains.end(); ++chain_iter) {
-             if(chain_iter->global_resource.total_resources_staked > 0) {
-                 resources_lease_table _reslease_sub( _self, chain_iter->chain_name);
-                 for(auto reslease_iter = _reslease_sub.begin(); reslease_iter != _reslease_sub.end(); ) {
-                     if(reslease_iter->end_time <= curtime) {
-                         uint64_t bytes = (chain_iter->global_resource.max_ram_size-2ll*1024*1024*1024)/chain_iter->global_resource.max_resources_size;
-                         if(chain_iter->global_resource.total_resources_staked >= reslease_iter->lease_num) {
-                             _subchains.modify(chain_iter, 0, [&]( auto& subchain ) {
-                                 subchain.global_resource.total_resources_staked -= reslease_iter->lease_num;
-                                 subchain.global_resource.total_ram_bytes_reserved -= reslease_iter->lease_num*bytes;
-                             });
-                         }
-                         reslease_iter = _reslease_sub.erase(reslease_iter);
-                     } else {
-                         ++reslease_iter;
-                     }
-                 }
-             }
-         }
-         uint64_t endtime = current_time();
-         print("checkresexpire expend time:",(endtime - starttime));
+      uint32_t block_height = (uint32_t)head_block_number() + 1;
+      uint32_t interval_num = seconds_per_day/block_interval_seconds();
+      if(block_height < 120 || block_height%interval_num != 0) {
+         return;
       }
+
+      uint64_t starttime = current_time();
+      resources_lease_table _reslease_tbl( _self, master_chain_name);
+      for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
+         if(leaseiter->end_block_height <= block_height){
+            print("checkresexpire reslease name:",name{leaseiter->owner}, " leaseiter->end_block_height:",leaseiter->end_block_height," block_height:",block_height);
+            //drop contract account table
+            db_drop_table(leaseiter->owner);
+            //clear contract account code
+            ultrainio::transaction codetrans;
+            codetrans.actions.emplace_back( permission_level{ leaseiter->owner, N(active) }, _self, NEX(setcode), std::make_tuple(leaseiter->owner, 0, 0, bytes()) );
+            codetrans.actions[0].authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
+            codetrans.delay_sec = 1;
+            uint128_t trxid = now() + leaseiter->owner + N(setcode);
+            cancel_deferred(trxid);
+            codetrans.send( trxid, _self, true );
+            print("checkresexpire set code:",current_time()," trxid:",trxid);
+            //clear contract account abi
+            ultrainio::transaction abitrans;
+            abitrans.actions.emplace_back( permission_level{ leaseiter->owner, N(active) }, _self, NEX(setabi), std::make_tuple(leaseiter->owner, bytes()) );
+            abitrans.actions[0].authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
+            abitrans.delay_sec = 1;
+            trxid = now() +leaseiter->owner + N(setabi);
+            cancel_deferred(trxid);
+            abitrans.send( trxid, _self, true );
+            print("checkresexpire set abi:",current_time()," trxid:",trxid);
+            //recycle resource
+            ultrainio::transaction recyclerestrans;
+            recyclerestrans.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(recycleresource), std::make_tuple(leaseiter->owner, leaseiter->lease_num) );
+            recyclerestrans.delay_sec = 3;
+            trxid = now() +leaseiter->owner + N(recycleres);
+            cancel_deferred(trxid);
+            recyclerestrans.send( trxid, _self, true );
+            print("checkresexpire recycleres:",current_time()," trxid:",trxid);
+            leaseiter = _reslease_tbl.erase(leaseiter);
+         } else {
+            ++leaseiter;
+         }
+      }
+
+      auto chain_iter = _subchains.begin();
+      for(; chain_iter != _subchains.end(); ++chain_iter) {
+            if(chain_iter->global_resource.total_resources_staked > 0) {
+               resources_lease_table _reslease_sub( _self, chain_iter->chain_name);
+               for(auto reslease_iter = _reslease_sub.begin(); reslease_iter != _reslease_sub.end(); ) {
+                  if(reslease_iter->end_block_height <= block_height) {
+                        uint64_t bytes = (chain_iter->global_resource.max_ram_size-2ll*1024*1024*1024)/chain_iter->global_resource.max_resources_size;
+                        if(chain_iter->global_resource.total_resources_staked >= reslease_iter->lease_num) {
+                           _subchains.modify(chain_iter, 0, [&]( auto& subchain ) {
+                              subchain.global_resource.total_resources_staked -= reslease_iter->lease_num;
+                              subchain.global_resource.total_ram_bytes_reserved -= reslease_iter->lease_num*bytes;
+                           });
+                        }
+                        reslease_iter = _reslease_sub.erase(reslease_iter);
+                  } else {
+                        ++reslease_iter;
+                  }
+               }
+            }
+      }
+      uint64_t endtime = current_time();
+      print("checkresexpire expend time:",(endtime - starttime));
    }
 
 } //namespace ultrainiosystem
