@@ -222,9 +222,10 @@ namespace ultrainiosystem {
        auto resiter = _reslease_tbl.find(receiver);
        if(resiter != _reslease_tbl.end()) {
            ultrainio_assert(combosize >= resiter->lease_num, "error combo size in sync resource");
-           ultrainio_assert(block_height > (resiter->end_block_height - 50), "error end time in sync resource");
-           if(((int64_t)block_height - (int64_t)resiter->end_block_height) > seconds_per_day/2/block_interval_seconds()){
-              auto deltadays = ceil(block_interval_seconds()*((int64_t)block_height - (int64_t)resiter->end_block_height)/double(seconds_per_day));
+           int64_t remain_blockheight = (int64_t)block_height - ((int64_t)resiter->end_block_height - (int64_t)resiter->start_block_height);
+           ultrainio_assert(remain_blockheight + 30 > 0, "error end time in sync resource");
+           if(remain_blockheight > seconds_per_day/2/block_interval_seconds()){
+              auto deltadays = ceil(block_interval_seconds()*remain_blockheight/double(seconds_per_day));
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                                 { N(ultrainio), receiver, 0, deltadays, master_chain_name} );
            }
@@ -234,8 +235,8 @@ namespace ultrainiosystem {
                                  { N(ultrainio), receiver, deltasize, 0, master_chain_name} );
            }
        } else {
-           if(block_height > (uint32_t)head_block_number()){
-               auto days = ceil(block_interval_seconds()*(block_height - (uint32_t)head_block_number())/(double)seconds_per_day);
+           if(block_height > 0 && combosize > 0){
+               auto days = ceil(block_interval_seconds()*block_height/(double)seconds_per_day);
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                      { N(ultrainio), receiver, combosize, days, master_chain_name} );
             }
@@ -385,7 +386,7 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
       resources_lease_table _reslease_tbl( _self, master_chain_name);
       for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
          if(leaseiter->end_block_height <= block_height){
-            print("checkresexpire reslease name:",name{leaseiter->owner}, " leaseiter->end_block_height:",leaseiter->end_block_height," block_height:",block_height);
+            print("checkresexpire reslease name:",name{leaseiter->owner}, " end_block_height:",leaseiter->end_block_height," cur block_height:",block_height);
             //drop contract account table
             db_drop_table(leaseiter->owner);
             //clear contract account code

@@ -56,6 +56,7 @@ namespace ultrainiosystem {
         };
         ultrainio_assert(checkBlockNum(blocknum), "report an invalid blocknum ws");
         auto ite_chain = _subchains.find(subchain);
+        ultrainio_assert(ite_chain != _subchains.end(), "subchain not found");
         ultrainio_assert(blocknum <= ite_chain->head_block_num, "report a blocknum larger than current block");
         ultrainio_assert(ite_chain->head_block_num - blocknum <= default_worldstate_interval, "report a too old blocknum");
 

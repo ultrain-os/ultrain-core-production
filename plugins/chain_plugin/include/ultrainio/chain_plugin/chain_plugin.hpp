@@ -91,6 +91,7 @@ public:
 
       uint64_t                block_cpu_limit = 0;
       uint64_t                block_net_limit = 0;
+      uint32_t                block_interval_ms;
       //string                  recent_slots;
       //double                  participation_rate = 0;
    };
@@ -654,7 +655,7 @@ private:
 FC_REFLECT( ultrainio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(ultrainio::chain_apis::empty, )
 FC_REFLECT(ultrainio::chain_apis::read_only::get_info_results,
-(server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_proposer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
+(server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_proposer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)(block_interval_ms) )
 FC_REFLECT(ultrainio::chain_apis::read_only::get_block_info_params, (block_num_or_id))
 FC_REFLECT(ultrainio::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
 

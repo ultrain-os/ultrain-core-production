@@ -434,7 +434,7 @@ void system_contract::voteresourcelease() {
             {
                if((resinfo.account == (*pendingiter).proposal_resource[i].account) &&
                   (resinfo.lease_num == (*pendingiter).proposal_resource[i].lease_num)  &&
-                  (resinfo.end_block_height == (*pendingiter).proposal_resource[i].end_block_height)  &&
+                  (resinfo.block_height_interval == (*pendingiter).proposal_resource[i].block_height_interval)  &&
                   (resinfo.location == (*pendingiter).proposal_resource[i].location) ){
                   curproposeresnum = (int32_t)i;
                   break;
@@ -457,7 +457,7 @@ void system_contract::voteresourcelease() {
                });
 
                if((*pendingiter).proposal_resource[(uint32_t)curproposeresnum].approve_num >= ceil((double)enableprodnum*2/3)){
-                  syncresource(resinfo.account, resinfo.lease_num, resinfo.end_block_height);
+                  syncresource(resinfo.account, resinfo.lease_num, resinfo.block_height_interval);
                   _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
                      p.provided_approvals.clear();
                      p.proposal_resource.clear();

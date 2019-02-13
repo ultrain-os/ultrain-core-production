@@ -235,11 +235,11 @@ namespace ultrainio {
        * @brief Construct a proposeresource_info object
        * @param a - Name of the account who proposal resourcelease account
        * @param lease - Number of lease
-       * @param e - end_block_height
+       * @param e - block_height_interval
        * @param l - location
        * @param num - approve_num
        */
-      proposeresource_info( account_name a, uint64_t lease, uint32_t e, uint16_t l, int64_t num ):account(a),lease_num(lease),end_block_height(e),location(l),approve_num(num){}
+      proposeresource_info( account_name a, uint64_t lease, uint32_t e, uint16_t l, int64_t num ):account(a),lease_num(lease),block_height_interval(e),location(l),approve_num(num){}
 
       /**
        * Default Constructor
@@ -250,10 +250,10 @@ namespace ultrainio {
 
       account_name      account;
       uint64_t          lease_num;
-      uint32_t          end_block_height;
+      uint32_t          block_height_interval;
       uint64_t          location;
       int64_t           approve_num;
-      ULTRAINLIB_SERIALIZE( proposeresource_info, (account)(lease_num)(end_block_height)(location)(approve_num) )
+      ULTRAINLIB_SERIALIZE( proposeresource_info, (account)(lease_num)(block_height_interval)(location)(approve_num) )
    };
    /**
     * Require the specified authorization for this action. If this action doesn't contain the specified auth, it will fail.
