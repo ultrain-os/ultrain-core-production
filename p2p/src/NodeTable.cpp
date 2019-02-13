@@ -101,7 +101,7 @@ void NodeTable::doIDRequest()
     idrequest_timer->async_wait( [this](boost::system::error_code ec) {
         if (ec)
         {
-            elog("doIDRequest was probably cancelled:");
+            elog("doIDRequest timer error: ${ec}",("ec",ec.message()));
 
         }
         doIDRequestCheck();
