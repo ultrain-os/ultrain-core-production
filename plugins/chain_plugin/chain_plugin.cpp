@@ -1636,7 +1636,15 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
             result.producer_info = abis.binary_to_variant( "producer_info", data, abi_serializer_max_time );
          }
       }
-
+      auto chain_resource_func = [&](const vector<char>& data, uint64_t chain_name){
+         auto resleaseinfo = abis.binary_to_variant( "resources_lease", data, abi_serializer_max_time );
+         read_only::get_block_info_params blockinfoparams{resleaseinfo["start_block_height"].as_string()};
+         auto blockinfo = get_block_info(blockinfoparams);
+         string str_start_time = blockinfo["timestamp"].as_string();
+         fc::time_point start_timestamp = time_point::from_iso_string( str_start_time );
+         fc::time_point end_timestamp(microseconds((resleaseinfo["end_block_height"].as_uint64() - resleaseinfo["start_block_height"].as_uint64())*config::block_interval_us + start_timestamp.time_since_epoch().count()));
+         result.chain_resource.push_back( resourcelease{ chain_name, resleaseinfo["lease_num"].as_uint64(), string(start_timestamp), string(end_timestamp) } );
+      };
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, 0, N(reslease) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
@@ -1644,9 +1652,31 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.resources_lease = abis.binary_to_variant( "resources_lease", data, abi_serializer_max_time );
+            chain_resource_func( data, 0 );
          }
       }
+
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(subchains) ));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         for(auto it = idx.begin(); it != idx.end(); ++it){
+            vector<char> data;
+            copy_inline_row(*it, data);
+            auto subchain = abis.binary_to_variant( "subchain", data, abi_serializer_max_time );
+            uint64_t chain_name = subchain["chain_name"].as_uint64();
+            const auto* res_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, chain_name, N(reslease) ));
+            if (res_id != nullptr) {
+               const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+               auto it = idx.find(boost::make_tuple( res_id->id, params.account_name ));
+               if ( it != idx.end() ) {
+                  vector<char> data;
+                  copy_inline_row(*it, data);
+                  chain_resource_func(data, chain_name);
+               }
+            }
+         }
+      }
+
    }
    return result;
 }

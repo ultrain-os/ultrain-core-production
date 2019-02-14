@@ -49,6 +49,13 @@ struct permission {
    authority         required_auth;
 };
 
+struct resourcelease {
+   uint64_t       chain_name = 0;
+   uint64_t       lease_num = 0;
+   std::string    start_time;
+   std::string    end_time;
+};
+
 template<typename>
 struct resolver_factory;
 
@@ -127,7 +134,7 @@ public:
       fc::variant                self_delegated_consensus;
       fc::variant                refund_cons;
       fc::variant                producer_info;
-      fc::variant                resources_lease;
+      vector<resourcelease>      chain_resource;
    };
 
    struct get_account_info_params {
@@ -653,6 +660,7 @@ private:
 }
 
 FC_REFLECT( ultrainio::chain_apis::permission, (perm_name)(parent)(required_auth) )
+FC_REFLECT( ultrainio::chain_apis::resourcelease, (chain_name)(lease_num)(start_time)(end_time) )
 FC_REFLECT(ultrainio::chain_apis::empty, )
 FC_REFLECT(ultrainio::chain_apis::read_only::get_info_results,
 (server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_proposer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)(block_interval_ms) )
@@ -687,7 +695,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thres
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
         (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
                 net_limit)(cpu_limit)(ram_usage)(permissions)(
-                self_delegated_consensus)(refund_cons)(producer_info)(resources_lease))
+                self_delegated_consensus)(refund_cons)(producer_info)(chain_resource))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_sourcerate_results,(net_rate)(cpu_rate))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_result, (transactions)(more) );

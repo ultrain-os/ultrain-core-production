@@ -1268,17 +1268,17 @@ void get_account( const string& accountName, bool json_format ) {
          return ss.str();
       };
 
-      if ( res.resources_lease.is_object() ) {
+      if ( res.chain_resource.size() > 0) {
          std::cout << std::endl;
          std::cout << "resource lease: " << std::endl;
-         auto leasenum = res.resources_lease.get_object()["lease_num"].as_int64();
-         auto start_block_height = res.resources_lease.get_object()["start_block_height"].as_string();
-         auto end_block_height = res.resources_lease.get_object()["end_block_height"].as_string();
-         std::cout << std::fixed << setprecision(3);
-         std::cout << indent << std::left << std::setw(11) << "lease_num:"      << std::right << std::setw(13) << leasenum << "\n";
-         std::cout << indent << std::left << std::setw(11) << "start_block_height:" << std::right << std::setw(18) << start_block_height << "\n";
-         std::cout << indent << std::left << std::setw(11) << "end_block_height:"     << std::right << std::setw(18) << end_block_height << "\n";
-         std::cout << std::endl;
+         for(auto chainres : res.chain_resource){
+            std::cout << std::fixed << setprecision(3);
+            std::cout << indent << std::left << std::setw(11) << "location:"      << std::right << std::setw(13) << chainres.chain_name << "\n";
+            std::cout << indent << std::left << std::setw(11) << "lease_num:"      << std::right << std::setw(13) << chainres.lease_num << "\n";
+            std::cout << indent << std::left << std::setw(11) << "start_time:" << std::right << std::setw(13) << chainres.start_time << "\n";
+            std::cout << indent << std::left << std::setw(11) << "end_time:"     << std::right << std::setw(14) << chainres.end_time << "\n";
+            std::cout << std::endl;
+         }
       }
 
       std::cout << "memory: " << std::endl
