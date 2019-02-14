@@ -41,12 +41,16 @@ ChainConfig.chainName = "";
 ChainConfig.chainId = "";
 //genesisTime
 ChainConfig.genesisTime = "";
-//main chain id
-ChainConfig.mainChain
 //节点登录的委员会用户信息
 ChainConfig.myAccountAsCommittee = "";
 //委员会私钥
 ChainConfig.mySkAsCommittee = "";
+
+//主链出一块的时间间隔（默认10000ms）
+ChainConfig.mainChainBlockDuration = 10000;
+
+//子链出一块的时间间隔（默认10000ms）
+ChainConfig.subChainBlockDuration = 10000;
 
 
 //主链配置
@@ -190,6 +194,17 @@ ChainConfig.syncConfig = async function () {
             logger.info("config.chainId=", this.config.chainId);
             this.configSub.chainId = await chainApi.getSubChainId(this.configSub);
             logger.info("configSub.chainId=", this.configSub.chainId);
+            mainChainBlockDuration = await chainApi.getChainBlockDuration(this.config);
+            if (utils.isNotNull(mainChainBlockDuration)) {
+                this.mainChainBlockDuration = mainChainBlockDuration;
+            }
+            logger.info("mainChainBlockDuration:",this.mainChainBlockDuration);
+            subChainBlockDuration = await chainApi.getChainBlockDuration(this.configSub);
+            logger.info("subChainBlockDuration:",this.subChainBlockDuration);
+            if (utils.isNotNull(subChainBlockDuration)) {
+                this.subChainBlockDuration = subChainBlockDuration;
+            }
+            logger.info("subChainBlockDuration:",this.subChainBlockDuration);
         } catch (e) {
             logger.error("target node crashed, check main node or sub node", utils.logNetworkError(e))
         }
@@ -201,7 +216,6 @@ ChainConfig.syncConfig = async function () {
         logger.info("finish sync config info");
 
         return true;
-
     } catch
         (e) {
         logger.error("sync chain config error: ", e);

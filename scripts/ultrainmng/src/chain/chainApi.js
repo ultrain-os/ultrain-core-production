@@ -153,7 +153,7 @@ async function contractInteract(config, contractName, actionName, params, accoun
         return data;
     } catch (err) {
         logger.debug('contractInteract error :', actionName);
-        logger.error('contractInteract error :', err);
+        logger.error(''+actionName+' error :', err);
     }
     return null;
 }
@@ -397,6 +397,24 @@ getSubchainResource = async (chainName, chainConfig) => {
     return null;
 }
 
+/**
+ *
+ * @param config
+ * @returns {Promise<*>}
+ */
+const getChainBlockDuration = async (config) => {
+    try {
+        const rs =  await axios.post(config.httpEndpoint + "/v1/chain/get_chain_info", {});
+        return rs.data.block_interval_ms;
+    } catch (e) {
+        logger.error("getChainBlockDuration error,",e);
+    }
+
+    return null;
+
+}
+
+
 
 module.exports = {
     getMainChainId,
@@ -413,5 +431,6 @@ module.exports = {
     getSubchanEndPoint,
     getSubchainConfig,
     getSubchanMonitorService,
-    getSubchainResource
+    getSubchainResource,
+    getChainBlockDuration
 }

@@ -62,6 +62,71 @@ function checkFileExist(filepath) {
     return false;
 }
 
+/**
+ *
+ * @param startBlockNum
+ * @param endBlockNum
+ * @param blockDuration(unit:second)
+ */
+function calcBlockDuration(startBlockNum, endBlockNum, blockDuration) {
+
+    if (endBlockNum <= startBlockNum) {
+        return 0;
+    }
+
+    try {
+
+        let deltaBlockNum = endBlockNum - startBlockNum;
+        logger.debug("deltaBlockNum: ", deltaBlockNum);
+
+        let time = deltaBlockNum * blockDuration;
+        logger.debug("deltaTime: ", time);
+
+        return time;
+
+    } catch (e) {
+        logger.error("calcBlockDuration error,", e)
+    }
+
+    return 0;
+}
+
+/**
+ *
+ * @param mainResObj
+ * @param subResObj
+ * @param chainConfig
+ * @returns {boolean}
+ */
+function isResourceChanged(mainResObj, subResObj, chainConfig) {
+
+    if (mainResObj.lease_num > subResObj.lease_num ||
+        calcBlockDuration(mainResObj.start_block_height, mainResObj.end_block_height, chainConfig.mainChainBlockDuration) > calcBlockDuration(subResObj.start_block_height, subResObj.end_block_height, chainConfig.subChainBlockDuration)) {
+        return true;
+    }
+
+    return false;
+
+}
+
+/**
+ *
+ * @param mainchainStartBlockNum
+ * @param mainchainEndBlockNum
+ * @param mainChainBlockDuration
+ * @param subchainBlockDuration
+ * @returns {number}
+ */
+function calcSubchainIntevalBlockHeight(mainchainStartBlockNum, mainchainEndBlockNum, mainChainBlockDuration, subchainBlockDuration) {
+
+    if (mainchainEndBlockNum <= mainchainStartBlockNum) {
+        return 0;
+    }
+
+    return Math.ceil((mainchainEndBlockNum - mainchainStartBlockNum ) * mainChainBlockDuration / subchainBlockDuration);
+}
+
+// console.log("block:",calcSubchainIntevalBlockHeight(1,101,10,21));
 
 // let data = "1971-01-24T14:06:00";
 //
@@ -70,5 +135,8 @@ function checkFileExist(filepath) {
 module.exports = {
     formatGensisTime,
     getOwnerPkByAccount,
-    checkFileExist
+    checkFileExist,
+    calcBlockDuration,
+    isResourceChanged,
+    calcSubchainIntevalBlockHeight
 }

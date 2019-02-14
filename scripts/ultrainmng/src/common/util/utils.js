@@ -30,7 +30,7 @@ function isNullList(data) {
  * @returns {boolean}
  */
 function isNotNull(data) {
-    return !isNull(data);
+    return isNull(data) == false;
 }
 
 /**

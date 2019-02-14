@@ -185,8 +185,6 @@ async function syncBlock() {
 
     //一次最大块数
     var blockSyncMaxNum = 10;
-    //主子链相差多少块进入追赶模式
-    var blockTraceModeBlockNum = 5;
 
     if (syncChainData == true) {
         chainConfig.u3Sub.getChainInfo(async (error, info) => {
@@ -198,6 +196,16 @@ async function syncBlock() {
             var traceMode = true;
             //获取本地最新的块头，获取服务端最新的块头
             var subBlockNumMax = info.head_block_num;
+            let result = await chainConfig.u3Sub.getBlockInfo((subBlockNumMax).toString());
+
+            //判断是否要上传块头
+            if (blockUtil.needPushBlock(result,chainConfig.myAccountAsCommittee,chainConfig.configFileData.local.syncBlockRatio) == false) {
+                logger.info("finish sync block..");
+                return;
+            }
+
+            logger.info("start to push block..");
+
             let blockNum = await chainConfig.u3.getSubchainBlockNum({"chain_name": chainConfig.chainName.toString()});
             logger.info("subchain head block num=", subBlockNumMax);
             logger.info("mainchain(subchain:" + chainConfig.chainName + ") max blockNum =" + blockNum);
@@ -206,12 +214,7 @@ async function syncBlock() {
             let blockNumInt = parseInt(blockNum, 10) + 1;
             var traceBlcokCount = subBlockNumMax - blockNumInt;
             logger.debug("trace block num count =", traceBlcokCount);
-            if (traceBlcokCount > blockTraceModeBlockNum) {
-                logger.info("traceBlcokCount > " + blockTraceModeBlockNum + " trace mode is enabled:");
-            } else {
-                logger.info("traceBlcokCount <= " + blockTraceModeBlockNum + " trace mode is disabled:");
-                traceMode = false;
-            }
+
             if (subBlockNumMax - blockNumInt >= blockSyncMaxNum) {
                 subBlockNumMax = blockNumInt + blockSyncMaxNum;
             }
@@ -222,21 +225,6 @@ async function syncBlock() {
             for (var i = blockNumInt; i < subBlockNumMax; i++) {
                 let result = await chainConfig.u3Sub.getBlockInfo((i).toString());
                 logger.debug("block " + i + ": (proposer:", result.proposer + ")");
-
-                let needpush = true;
-                //非追赶模式下，选取部分节点进行上报
-                if (traceMode == false) {
-                    if (blockUtil.needPushBlock(result, chainConfig.myAccountAsCommittee)) {
-                        needpush = true;
-                    } else {
-                        needpush = false;
-                    }
-
-                } else {
-                    //追赶模式下，所有节点上报
-                    needpush = true;
-                }
-
                 logger.debug("header_extensions:",result.header_extensions);
                 var extensions = [];
                 if (result.header_extensions.length > 0 ) {
@@ -249,24 +237,22 @@ async function syncBlock() {
                 /**
                  * 需要上传
                  */
-                if (needpush) {
-                    logger.debug("add push array(block num ：" + i + ")");
-                    results.push({
-                        "timestamp": result.timevalue,
-                        "proposer": result.proposer,
-                        // "proposerProof": proposerProof,
-                        "version": result.version,
-                        "previous": result.previous,
-                        "transaction_mroot": result.transaction_mroot,
-                        "action_mroot": result.action_mroot,
-                        "committee_mroot": result.committee_mroot,
-                        "header_extensions": extensions,
-                        //blockNum : i
-                    });
-                    blockListStr += i + ",";
-                } else {
-                    break;
-                }
+
+                logger.debug("add push array(block num ：" + i + ")");
+                results.push({
+                    "timestamp": result.timevalue,
+                    "proposer": result.proposer,
+                    // "proposerProof": proposerProof,
+                    "version": result.version,
+                    "previous": result.previous,
+                    "transaction_mroot": result.transaction_mroot,
+                    "action_mroot": result.action_mroot,
+                    "committee_mroot": result.committee_mroot,
+                    "header_extensions": extensions,
+                    //blockNum : i
+                });
+                blockListStr += i + ",";
+
 
             }
             blockListStr += ")";
@@ -766,11 +752,11 @@ async function syncResource(allFlag) {
             logger.info("sync all resource");
             //获取子链上所有资源的信息
             let subChainResourceList = await chainApi.getTableAllData(chainConfig.configSub, contractConstants.ULTRAINIO, scopeConstants.SCOPE_MAIN_CHAIN, tableConstants.RESOURCE_LEASE, "owner");
-            logger.debug("subChainResourceList:", subChainResourceList);
+            logger.info("subChainResourceList:", subChainResourceList);
 
             //获取主链上所有资源的信息
             let mainChainResourceList = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.RESOURCE_LEASE, "owner");
-            logger.debug("mainChainResourceList:", mainChainResourceList);
+            logger.info("mainChainResourceList:", mainChainResourceList);
 
             //对比两张表，获取更新的信息
             changeList = await voteUtil.genVoteResList(subChainResourceList, mainChainResourceList, chainConfig);
@@ -796,7 +782,7 @@ async function syncResource(allFlag) {
                         changeList.push(resObj);
                     } else {
                         logger.debug("subchain has  res of owner:"+resObj.owner+",need check");
-                        if (resObj.lease_num > localresObj.lease_num || resObj.end_time > localresObj.end_time) {
+                        if (chainUtil.isResourceChanged(resObj,localresObj,chainConfig)) {
                             logger.debug("subchain has  res of owner:"+resObj.owner+" has not synced,need add to array");
                             changeList.push(resObj);
                         } else {
@@ -820,7 +806,7 @@ async function syncResource(allFlag) {
                 let voteResList = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_RES, null, changeResObj.owner, null, null);
                 logger.debug("voteResList:", voteResList);
 
-                if (voteUtil.findVoteRes(voteResList, chainConfig.myAccountAsCommittee, changeResObj.owner, changeResObj.lease_num, changeResObj.end_time)) {
+                if (voteUtil.findVoteRes(voteResList, chainConfig.myAccountAsCommittee, changeResObj, chainConfig)) {
                     logger.info(chainConfig.myAccountAsCommittee + " has voted " + changeResObj.owner + "(resource:" + changeResObj.lease_num + ")");
                 } else {
                     logger.info(chainConfig.myAccountAsCommittee + " has not voted " + changeResObj.owner + "(resource:" + changeResObj.lease_num + "), start vote...");
@@ -830,7 +816,7 @@ async function syncResource(allFlag) {
                         proposeresource: [{
                             account: changeResObj.owner,
                             lease_num: changeResObj.lease_num,
-                            end_time: changeResObj.end_time,
+                            block_height_interval: chainUtil.calcSubchainIntevalBlockHeight(changeResObj.start_block_height,changeResObj.end_block_height,chainConfig.mainChainBlockDuration,chainConfig.subChainBlockDuration),
                             location: 0,
                             approve_num: 0
                         }]

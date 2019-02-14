@@ -4,6 +4,7 @@
 var logger = require("../../config/logConfig").getLogger("VoteUtil")
 var utils = require('../../common/util/utils')
 var chainApi = require("../chainApi")
+var chainUtil = require("./chainUtil")
 
 /**
  * 判断是否需要给用户投票
@@ -72,12 +73,13 @@ var voteuserdata = {
 
 /**
  * 判断是否需要给资源投票
- * user 投票人
- * voteUser 被投票人
- * lease_num 资源份数
- * expire_date 时间
+ * @param tableData
+ * @param user
+ * @param changeResObj
+ * @param chainConfig
+ * @returns {boolean}
  */
-function findVoteRes(tableData, user, voteUser, lease_num, expire_date) {
+function findVoteRes(tableData, user, changeResObj,chainConfig) {
 
     if (utils.isNull(tableData)) {
         return false;
@@ -96,7 +98,7 @@ function findVoteRes(tableData, user, voteUser, lease_num, expire_date) {
             //logger.debug(tableData.rows[i]);
             let row = rows[i];
             //查找目标用户是否有投票记录
-            if (row.owner == voteUser) {
+            if (row.owner == changeResObj.owner) {
                 var provide_index = -1;
                 //查找目标用户是否已经被我投了
                 for (var j = 0; j < row.provided_approvals.length; j++) {
@@ -109,8 +111,7 @@ function findVoteRes(tableData, user, voteUser, lease_num, expire_date) {
                 if (provide_index >=0) {
                     var resObj = row.proposal_resource[provide_index];
                     //如果之前的数值<=当前的数值，说明已经投了
-                    logger.debug("res end_time :"+expire_date +" ")
-                    if (resObj.lease_num >= lease_num && resObj.end_time >= expire_date) {
+                    if (chainUtil.isResourceChanged(resObj,changeResObj,chainConfig)) {
                         return true;
                     }
                 }
@@ -200,7 +201,7 @@ async function genVoteResList(subResList, mainResList, chainConfig) {
 
             } else if (mainResObj.owner == subResObj.owner) {
                 //主链对象和子链对象一致，比较资源大小
-                if (mainResObj.lease_num > subResObj.lease_num || mainResObj.end_time > subResObj.end_time) {
+                if (chainUtil.isResourceChanged(mainResObj,subResObj,chainConfig)) {
                     result.push(mainResObj);
                 }
 
@@ -215,66 +216,7 @@ async function genVoteResList(subResList, mainResList, chainConfig) {
     return result;
 }
 
-var subResList = {
-    rows: [{
-        owner: 'hello',
-        lease_num: 10,
-        start_time: '2019-01-10T11:53:50',
-        end_time: '2019-04-20T11:53:50'
-    },
-        {
-            owner: 'root',
-            lease_num: 10,
-            start_time: '2019-01-10T11:53:50',
-            end_time: '2019-04-20T11:53:50'
-        },
-        {
-            owner: 'root1',
-            lease_num: 10,
-            start_time: '2019-01-10T11:53:50',
-            end_time: '2019-04-20T11:53:50'
-        },
-        {
-            owner: 'root2',
-            lease_num: 10,
-            start_time: '2019-01-10T11:53:50',
-            end_time: '2019-04-20T11:53:50'
-        },
-        {
-            owner: 'root3',
-            lease_num: 10,
-            start_time: '2019-01-10T11:53:50',
-            end_time: '2019-04-20T11:53:50'
-        },
-        {
-            owner: 'root4',
-            lease_num: 10,
-            start_time: '2019-01-10T11:53:50',
-            end_time: '2019-04-20T11:53:50'
-        },
-        {
-            owner: 'root5',
-            lease_num: 10,
-            start_time: '2019-01-10T11:53:50',
-            end_time: '2019-04-20T11:53:50'
-        },
-        {
-            owner: 'user.112',
-            lease_num: 1,
-            start_time: '2019-01-10T12:39:40',
-            end_time: '2019-01-30T12:39:40'
-        }]
-};
-var mainResList = {
-    rows: [{
-        owner: 'user.111',
-        lease_num: 800,
-        start_time: '2019-01-10T11:51:30',
-        end_time: '2019-01-30T11:51:30'
-    }]
-}
 
-//logger.error(genVoteResList(subResList, mainResList));
 
 /**
  *
