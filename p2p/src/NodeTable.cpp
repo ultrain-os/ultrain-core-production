@@ -368,8 +368,7 @@ void NodeTable::noteActiveNode(NodeID const& _pubk, NodeIPEndpoint const& _endpo
                 if (nodes.size() < s_bucketSize)
                 {
                    nodes.push_back(newNode);
-                   if (m_nodeEventHandler)
-                       m_nodeEventHandler->appendEvent(newNode->m_endpoint, NodeEntryAdded);
+                   nodeaddevent(newNode->m_endpoint); 
                 }
                 else
                 {
@@ -380,8 +379,7 @@ void NodeTable::noteActiveNode(NodeID const& _pubk, NodeIPEndpoint const& _endpo
                         ilog("noteActive change node");
                         nodes.pop_front();
                         nodes.push_back(newNode);
-                        if (m_nodeEventHandler)
-                            m_nodeEventHandler->appendEvent(newNode->m_endpoint, NodeEntryAdded);
+                        nodeaddevent(newNode->m_endpoint); 
 
                     }
                 }
@@ -410,7 +408,8 @@ void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
 	m_nodes.erase(_n->m_id);
 	// notify host
 	ilog("p2p.nodes.drop id ${id} ep ${ep}",("id",_n->m_id)("ep",_n->m_endpoint.address()));
-	printallbucket();
+	nodedropevent(_n->m_endpoint);
+    printallbucket();
 }
 
 NodeTable::NodeBucket& NodeTable::bucket_UNSAFE(NodeEntry const* _n)
@@ -714,19 +713,6 @@ void NodeTable::doNodeReFindTimeouts()
             doNodeReFindTimeouts();
             });
 }
-void NodeTable::processEvent()
-{
-	if (m_nodeEventHandler)
-		m_nodeEventHandler->processEvents();
-}
-void NodeTable::doEventHandler()
-{
-	eventHandlertimer->expires_from_now(eventHandlerInterval);
-	eventHandlertimer->async_wait( [this](boost::system::error_code ec) {
-			processEvent();
-			doEventHandler();
-			});
-}
 void NodeTable::start_p2p_monitor(ba::io_service& _io)
 {
     checknodereachable_timer.reset(new boost::asio::steady_timer(_io));
@@ -739,8 +725,6 @@ void NodeTable::start_p2p_monitor(ba::io_service& _io)
     doDiscovery();
     nodesrefindtimer.reset(new boost::asio::steady_timer(_io));
     doNodeReFindTimeouts();
-    eventHandlertimer.reset(new boost::asio::steady_timer(_io));
-    doEventHandler();
 }
 }  // namespace p2p
 }  // namespace ultrainio

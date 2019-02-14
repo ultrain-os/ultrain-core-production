@@ -131,14 +131,6 @@ namespace ultrainio {
         >
     > node_transaction_index;
 
-    class HostNodeTableHandler: public p2p::NodeTableEventHandler
-    {
-	    public:
-		    HostNodeTableHandler(net_plugin_impl& _impl);
-	    private:
-		    virtual void processEvent(p2p::NodeIPEndpoint const& _n, p2p::NodeTableEventType const& _e);
-		    net_plugin_impl &impl; 
-    };
     struct passive_peer{
         shared_ptr<tcp::acceptor>  acceptor;
         shared_ptr<tcp::resolver>  resolver;
@@ -225,8 +217,8 @@ namespace ultrainio {
         std::shared_ptr<p2p::NodeTable> node_table = nullptr;
 
         std::shared_ptr<p2p::NodeTable> get_node_table() { return node_table; }
-        void set_nodetable_eventhandler(){  node_table->setEventHandler(new HostNodeTableHandler(*this)); }
-        void onNodeTableEvent(p2p::NodeIPEndpoint const& _n, p2p::NodeTableEventType const& _e);
+        void onNodeTableAddEvent(const p2p::NodeIPEndpoint& _n);
+        void onNodeTableDropEvent(const p2p::NodeIPEndpoint& _n);
         template<typename VerifierFunc>
         void send_all( const net_message &msg, VerifierFunc verify );
 
@@ -879,12 +871,6 @@ namespace ultrainio {
     };
 
     //---------------------------------------------------------------------------
-HostNodeTableHandler::HostNodeTableHandler(net_plugin_impl& _impl):impl(_impl){}
-void HostNodeTableHandler::processEvent(p2p::NodeIPEndpoint const& _n, p2p::NodeTableEventType const& _e)
-{
-  impl.onNodeTableEvent(_n,_e);
-}
-    
 connection::connection(string endpoint, msg_priority pri)
         : blk_state(),
         trx_state(),
@@ -2368,11 +2354,16 @@ connection::connection(string endpoint, msg_priority pri)
             }
         });
     }
-    void net_plugin_impl::onNodeTableEvent(p2p::NodeIPEndpoint const& _n, p2p::NodeTableEventType const& _e)
+    void net_plugin_impl::onNodeTableAddEvent(p2p::NodeIPEndpoint const& _n)
    {
      //TODO:P2P udp linkage p2p
-       ilog("onNodeTableEven addr ${addr}",("addr",_n.address()));   
+       ilog("onNodeTableAddEven addr ${addr}",("addr",_n.address())); 
    }
+    void net_plugin_impl::onNodeTableDropEvent(p2p::NodeIPEndpoint const& _n)
+    {
+        //TODO:P2P udp linkage p2p
+        ilog("onNodeTableDropEven addr ${addr}",("addr",_n.address()));
+    }
     void net_plugin_impl::start_block_handler_timer( ) {
         block_handler_check->expires_from_now(block_handler_period);
         block_handler_check->async_wait( [this](boost::system::error_code ec) {
@@ -2932,8 +2923,6 @@ connection::connection(string endpoint, msg_priority pri)
          if (!my->udp_seed_ip.empty()) {
             my->use_node_table = true;
          }
-         //TODO:P2P Commented udp linkage tcp
-         //my->set_nodetable_eventhandler();
          my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
          my->ticker();
       } FC_LOG_AND_RETHROW()
@@ -2965,6 +2954,8 @@ connection::connection(string endpoint, msg_priority pri)
          cc.irreversible_block.connect( boost::bind(&net_plugin_impl::irreversible_block, my.get(), _1));
          cc.accepted_transaction.connect( boost::bind(&net_plugin_impl::accepted_transaction, my.get(), _1));
          cc.applied_transaction.connect( boost::bind(&net_plugin_impl::applied_transaction, my.get(), _1));
+         my->node_table->nodeaddevent.connect( boost::bind(&net_plugin_impl::onNodeTableAddEvent, my.get(), _1));
+         my->node_table->nodedropevent.connect( boost::bind(&net_plugin_impl::onNodeTableDropEvent, my.get(), _1));
       }
 
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
