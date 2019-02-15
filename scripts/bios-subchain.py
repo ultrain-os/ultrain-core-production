@@ -121,12 +121,6 @@ def clearSubchain():
     print "clearSubchain start..."
     print "clearSubchain end..."
 
-# add chain_type todo
-# clu push action ultrainio regchaintype '{"type_id": "1", "min_producer_num": "40", "max_producer_num": "200", "sched_step": "10", "consensus_period": "10"}' -p ultrainio@active
-def addChainType():
-    print "addChainType start..."
-    print "addChainType end..."
-
 # addSubchain()
 def addSubchain():
     print "addSubchain start..."
@@ -139,6 +133,8 @@ def addSubchain():
     sleep(1)
     print "addSubchain end..."
 
+# add chain_type
+# clu push action ultrainio regchaintype '{"type_id": "1", "min_producer_num": "40", "max_producer_num": "200", "sched_step": "10", "consensus_period": "10"}' -p ultrainio@active
 def addChainType():
     print "addChainType start..."
     typeId=1;

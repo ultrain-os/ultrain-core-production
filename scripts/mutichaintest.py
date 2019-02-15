@@ -112,21 +112,26 @@ def sleep(t):
     time.sleep(t)
     print('resume')
 
-def sendEmail(msg):
+def sendEmail(msg,successFlag):
     """
     邮件通知
     :param str: email content
     :return:
     """
+    receiver = "sidechain@ultrain.io"
     if local == True :
-        return ;
+        receiver = "chenxiaojian@ultrain.io" ;
 
     try:
         sender = "739884701@qq.com"
-        receiver = "sidechain@ultrain.io"
-        subject = '今日测试账户资源同步情况'
+        receiver = "chenxiaojian@ultrain.io"
+        subject = '今日测试账户资源同步'
         if local == True:
-            subject = '今日测试账户资源同步情况(docker环境)'
+            subject = '今日测试账户资源同步(docker环境)'
+        status = "--失败"
+        if successFlag == True :
+            status = "--成功"
+        subject = subject+status;
         username = "739884701"
         password = "oarbqgghvwtbbbei"
         host = "smtp.qq.com"
@@ -233,6 +238,7 @@ def deleteHistory():
         os.remove("/root/workspace/ultrain-core/scripts/mutichain.cfg");
 
 def verifyaccrestest():
+    successFlag=True;
     chain1nofindacc = []
     chain2nofindacc = []
     chain3nofindacc = []
@@ -257,16 +263,22 @@ def verifyaccrestest():
         getaccresinfo(url1,sidechainacc1,chain1nofindacc,4,20,chain1nofindres)
         print("chain1 not find account number:",int(len(chain1nofindacc))," notfind resource number:",int(len(chain1nofindres)))
         chaininfostr = getchaincontext("11",sidechainacc1,chain1nofindacc,chain1nofindres)
+        if (int(len(chain1nofindacc)) > 0 or int(len(chain1nofindres)) > 0) :
+            successFlag = False;
     if args.subchainNum >=2:
         print "check chain2 num"
         getaccresinfo(url2,sidechainacc2,chain2nofindacc,2,30,chain2nofindres)
         print("chain2 not find account number:",int(len(chain2nofindacc))," notfind resource number:",int(len(chain2nofindres)))
         chaininfostr += getchaincontext("12",sidechainacc2,chain2nofindacc,chain2nofindres)
+        if (int(len(chain2nofindacc)) > 0 or int(len(chain2nofindres)) > 0) :
+            successFlag = False;
     if args.subchainNum >=3:
         print "check chain3 num"
         getaccresinfo(url3,sidechainacc3,chain3nofindacc,4,25,chain3nofindres)
         print("chain3 not find account number:",int(len(chain3nofindacc))," notfind resource number:",int(len(chain3nofindres)))
         chaininfostr += getchaincontext("13",sidechainacc3,chain3nofindacc,chain3nofindres)
+        if (int(len(chain3nofindacc)) > 0 or int(len(chain3nofindres)) > 0) :
+            successFlag = False;
 
     configindex = curindex + 1
     if os.path.isfile("/root/workspace/ultrain-core/scripts/mutichain.cfg") :
@@ -280,7 +292,7 @@ def verifyaccrestest():
 
 
     print(chaininfostr)
-    sendEmail(chaininfostr)
+    sendEmail(chaininfostr,successFlag)
 
 # Command Line Arguments
 

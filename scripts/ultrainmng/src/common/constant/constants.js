@@ -15,7 +15,7 @@ var cmdConstants = {
     START_NODULTRAIN: "sh /root/workspace/ultrain-core/scripts/_runultrain.sh /root/workspace",//启动nod程序
     START_NODULTRAIN_FILE: "/root/ultrainmng/tool/_runultrain.sh",
     START_WORLDSTATE_FILE: "/root/ultrainmng/tool/_runworldstate.sh",
-    START_NODULTRAIN_ARG:["/root/workspace"]
+    START_NODULTRAIN_ARG: ["/root/workspace"]
 
 }
 
@@ -74,7 +74,18 @@ var chainIdConstants = {
 //路径常量
 var pathConstants = {
     WSS_DATA: "/root/.local/share/ultrainio/wssultrain/data/worldstate/download/",
-    MNG_CONFIG:"/root/.local/share/ultrainio/ultrainmng/config/"
+    MNG_CONFIG: "/root/.local/share/ultrainio/ultrainmng/config/"
+}
+
+//ini配置常量
+var iniConstants = {
+    UDP_SEED: "udp-seed",
+    MONITOR_SERVER_ENDPOINT: "monitor-server-endpoint",
+    P2P_PEER_ADDRESS: "p2p-peer-address",
+    RPOS_P2P_PEER_ADDRESS: "rpos-p2p-peer-address",
+    SUBCHAIN_HTTP_ENDPOINT: "subchainHttpEndpoint",
+    GENESIS_TIME:"genesis-time"
+
 }
 
 
@@ -88,5 +99,6 @@ module.exports = {
     actionConstants,
     scopeConstants,
     chainIdConstants,
-    pathConstants
+    pathConstants,
+    iniConstants
 }

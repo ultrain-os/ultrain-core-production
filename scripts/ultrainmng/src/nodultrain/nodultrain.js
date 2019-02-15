@@ -4,6 +4,7 @@ const axios = require('axios')
 var logger = require("../config/logConfig").getLogger("NodUltrain");
 var IniFile = require('../common/util/iniFile');
 var Constants = require('../common/constant/constants');
+var iniConstants = require('../common/constant/constants').iniConstants;
 var ShellCmd = require("../common/util/shellCmd")
 var sleep = require("sleep")
 var utils = require("../common/util/utils")
@@ -30,17 +31,26 @@ NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,moni
     try {
         var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
 
-        //iniFile.setValue("p2p-peer-address", seedIp+":20122");
-        //iniFile.setValue("rpos-p2p-peer-address", seedIp+":20123");
-        iniFile.setValue("monitor-server-endpoint", monitorServcer);
-        iniFile.removeKey("p2p-peer-address")
-        iniFile.removeKey("rpos-p2p-peer-address")
-        for (var i=0;i<seedIp.length;i++) {
-            iniFile.addKeyValue("p2p-peer-address", seedIp[i]+":20122");
-            iniFile.addKeyValue("rpos-p2p-peer-address", seedIp[i]+":20123");
+        iniFile.setValue(iniConstants.MONITOR_SERVER_ENDPOINT, monitorServcer);
+
+        if (utils.isNotNull(iniFile.getValue(iniConstants.UDP_SEED))) {
+            logger.info("nod has udp config,set udp seed");
+            iniFile.removeKey(iniConstants.UDP_SEED);
+            for (var i=0;i<seedIp.length;i++) {
+                iniFile.addKeyValue(iniConstants.UDP_SEED, seedIp[i]);
+            }
+        } else {
+            logger.info("nod has no udp config,set p2p-peer-address");
+            iniFile.removeKey(iniConstants.P2P_PEER_ADDRESS)
+            iniFile.removeKey(iniConstants.RPOS_P2P_PEER_ADDRESS)
+            for (var i=0;i<seedIp.length;i++) {
+                iniFile.addKeyValue(iniConstants.P2P_PEER_ADDRESS, seedIp[i]+":20122");
+                iniFile.addKeyValue(iniConstants.RPOS_P2P_PEER_ADDRESS, seedIp[i]+":20123");
+            }
         }
-        iniFile.setValue("subchainHttpEndpoint", subchainHttpEndpoint);
-        iniFile.setValue("genesis-time", genesisTime);
+
+        iniFile.setValue(iniConstants.SUBCHAIN_HTTP_ENDPOINT, subchainHttpEndpoint);
+        iniFile.setValue(iniConstants.GENESIS_TIME, genesisTime);
         iniFile.writefile(this.configFilePath, Constants.encodingConstants.UTF8);
         return true;
     } catch (e) {
