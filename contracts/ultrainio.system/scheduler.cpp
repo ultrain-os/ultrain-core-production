@@ -25,7 +25,7 @@ namespace ultrainiosystem {
         chaintypes_table type_tbl(_self, _self);
         auto typeiter = type_tbl.find(type_id);
         if (typeiter == type_tbl.end()) {
-            type_tbl.emplace(N(ultrainio), [&]( auto& new_subchain_type ) {
+            type_tbl.emplace( [&]( auto& new_subchain_type ) {
                 new_subchain_type.type_id = type_id;
                 new_subchain_type.stable_min_producers = min_producer_num;
                 new_subchain_type.stable_max_producers = max_producer_num;
@@ -86,7 +86,7 @@ namespace ultrainiosystem {
             }
         }
         else {
-            hashTable.emplace(_self, [&](auto &p) {
+            hashTable.emplace([&](auto &p) {
                     p.block_num = blocknum;
                     p.hash_v.emplace_back(hash, file_size, 1);
                     p.accounts.emplace_back(current_sender());
@@ -111,7 +111,7 @@ namespace ultrainiosystem {
         auto type_iter = type_tbl.find(chain_type);
         ultrainio_assert(type_iter != type_tbl.end(), "this chain type is not existed");
 
-        _subchains.emplace(N(ultrainio), [&]( auto& new_subchain ) {
+        _subchains.emplace( [&]( auto& new_subchain ) {
             new_subchain.chain_name        = chain_name;
             new_subchain.chain_type        = chain_type;
             new_subchain.is_active         = false;

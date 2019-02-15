@@ -31,7 +31,7 @@ class economic : public ultrainio::contract {
       void test1(const account_name player) {
          require_auth( player );
          offer_index       offers(_self,player);
-         offers.emplace(_self, [&](auto& offer){
+         offers.emplace([&](auto& offer){
             offer.id         = offers.available_primary_key();
             offer.bet        = asset(1);
             offer.owner      = player;
@@ -48,7 +48,7 @@ class economic : public ultrainio::contract {
 
          auto itr = accounts.find(from);
          if( itr == accounts.end() ) {
-            itr = accounts.emplace(_self, [&](auto& acnt){
+            itr = accounts.emplace([&](auto& acnt){
                acnt.owner = from;
                acnt.ultrain_balance = quantity;
             });

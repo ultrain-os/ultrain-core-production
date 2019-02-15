@@ -1656,27 +1656,29 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
          }
       }
 
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(subchains) ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         for(auto it = idx.begin(); it != idx.end(); ++it){
+      auto table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(subchains) ));
+      if (table_id != nullptr) {
+         const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
+         decltype(table_id->id) next_tid(table_id->id._id + 1);
+         auto lower = kv_index.lower_bound(boost::make_tuple(table_id->id));
+         auto upper = kv_index.lower_bound(boost::make_tuple(next_tid));
+         std::for_each(lower,upper, [&](const key_value_object& obj) {
             vector<char> data;
-            copy_inline_row(*it, data);
-            auto subchain = abis.binary_to_variant( "subchain", data, abi_serializer_max_time );
+            copy_inline_row(obj, data);
+            auto subchain = abis.binary_to_variant(abis.get_table_type(N(subchains)), data, abi_serializer_max_time);
             uint64_t chain_name = subchain["chain_name"].as_uint64();
             const auto* res_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, chain_name, N(reslease) ));
             if (res_id != nullptr) {
                const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-               auto it = idx.find(boost::make_tuple( res_id->id, params.account_name ));
-               if ( it != idx.end() ) {
+               auto itres = idx.find(boost::make_tuple( res_id->id, params.account_name ));
+               if ( itres != idx.end() ) {
                   vector<char> data;
-                  copy_inline_row(*it, data);
+                  copy_inline_row(*itres, data);
                   chain_resource_func(data, chain_name);
                }
-            }
-         }
+            }            
+         });
       }
-
    }
    return result;
 }

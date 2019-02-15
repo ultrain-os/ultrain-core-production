@@ -78,7 +78,7 @@ namespace ultrainiosystem {
       del_consensus_table     del_tbl( _self, from);
       auto itr = del_tbl.find( receiver );
       if( itr == del_tbl.end() ) {
-         itr = del_tbl.emplace( from, [&]( auto& dbo ){
+         itr = del_tbl.emplace( [&]( auto& dbo ){
                dbo.from          = from;
                dbo.to            = receiver;
                dbo.cons_weight    = stake_cons_delta;
@@ -137,7 +137,7 @@ namespace ultrainiosystem {
                }
 
             } else if ( cons_balance < asset(0) ) { //need to create refund_cons
-               refunds_tbl.emplace( from, [&]( refund_cons& r ) {
+               refunds_tbl.emplace( [&]( refund_cons& r ) {
                   r.owner = from;
                   if ( cons_balance < asset(0) ) {
                      r.cons_amount = -cons_balance;
@@ -249,8 +249,9 @@ namespace ultrainiosystem {
       ultrainio_assert(location != pending_queue && location != default_chain_name, "wrong location");
       auto chain_itr = _subchains.end();
       if(location != master_chain_name) {
-          chain_itr = _subchains.find(location);
-          ultrainio_assert(chain_itr != _subchains.end(), "location is not existed");
+         chain_itr = _subchains.find(location);
+         ultrainio_assert(chain_itr != _subchains.end(), "this subchian location is not existed");
+         ultrainio_assert(is_empowered(receiver, location), "the receiver is not yet empowered to this chain before");
       }
       resources_lease_table _reslease_tbl( _self,location );
 
@@ -287,7 +288,7 @@ namespace ultrainiosystem {
                     _subchain.global_resource.total_ram_bytes_reserved += (uint64_t)combosize*bytes;
                 });
             }
-            reslease_itr = _reslease_tbl.emplace( from, [&]( auto& tot ) {
+            reslease_itr = _reslease_tbl.emplace( [&]( auto& tot ) {
                   tot.owner = receiver;
                   tot.lease_num = combosize;
                   tot.start_block_height = (uint32_t)head_block_number();

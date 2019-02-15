@@ -90,7 +90,7 @@ namespace ultrainio {
    void market_state::adjust_lend_shares( account_name lender, loans& l, double delta ) {
       auto existing = l.find( lender );
       if( existing == l.end() ) {
-         l.emplace( lender, [&]( auto& obj ) {
+         l.emplace( [&]( auto& obj ) {
             obj.owner = lender;
             obj.interest_shares = delta;
             ultrainio_assert( delta >= 0, "underflow" );
@@ -177,7 +177,7 @@ namespace ultrainio {
          ultrainio_assert( delta_debt.amount > 0, "cannot borrow neg" );
          ultrainio_assert( delta_col.amount > 0, "cannot have neg collat" );
 
-         existing = m.emplace( borrower, [&]( auto& obj ) {
+         existing = m.emplace( [&]( auto& obj ) {
             obj.owner      = borrower;
             obj.borrowed   = delta_debt;
             obj.collateral = delta_col;

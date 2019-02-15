@@ -11,7 +11,7 @@ namespace ultrainio {
       }
       auto useraccounts = table->second.find( owner );
       if( useraccounts == table->second.end() ) {
-         table->second.emplace( owner, [&]( auto& exa ){
+         table->second.emplace([&]( auto& exa ){
            exa.owner = owner;
            exa.balances[delta.get_extended_symbol()] = delta.amount;
            ultrainio_assert( delta.amount >= 0, "overdrawn balance 1" );

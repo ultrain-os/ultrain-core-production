@@ -136,7 +136,7 @@ namespace ultrainio {
       auto existing = exstates.find( exchange_symbol );
 
       ultrainio_assert( existing == exstates.end(), "market already exists" );
-      exstates.emplace( creator, [&]( auto& s ) {
+      exstates.emplace( [&]( auto& s ) {
           s.manager = creator;
           s.supply  = extended_asset(initial_supply, _this_contract);
           s.base.balance = base_deposit;

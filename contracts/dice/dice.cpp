@@ -46,7 +46,7 @@ class dice : public ultrainio::contract {
          ultrainio_assert(cur_player_itr != accounts.end(), "unknown account");
 
          // Store new offer
-         auto new_offer_itr = offers.emplace(_self, [&](auto& offer){
+         auto new_offer_itr = offers.emplace([&](auto& offer){
             offer.id         = offers.available_primary_key();
             offer.bet        = bet;
             offer.owner      = player;
@@ -73,7 +73,7 @@ class dice : public ultrainio::contract {
             // Create global game counter if not exists
             auto gdice_itr = global_dices.begin();
             if( gdice_itr == global_dices.end() ) {
-               gdice_itr = global_dices.emplace(_self, [&](auto& gdice){
+               gdice_itr = global_dices.emplace([&](auto& gdice){
                   gdice.nextgameid=0;
                });
             }
@@ -84,7 +84,7 @@ class dice : public ultrainio::contract {
             });
 
             // Create a new game
-            auto game_itr = games.emplace(_self, [&](auto& new_game){
+            auto game_itr = games.emplace([&](auto& new_game){
                new_game.id       = gdice_itr->nextgameid;
                new_game.bet      = new_offer_itr->bet;
                new_game.deadline = ultrainio::time_point_sec(0);
@@ -220,7 +220,7 @@ class dice : public ultrainio::contract {
 
          auto itr = accounts.find(from);
          if( itr == accounts.end() ) {
-            itr = accounts.emplace(_self, [&](auto& acnt){
+            itr = accounts.emplace([&](auto& acnt){
                acnt.owner = from;
             });
          }

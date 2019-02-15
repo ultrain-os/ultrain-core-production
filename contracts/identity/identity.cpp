@@ -63,7 +63,7 @@ namespace identity {
             trust_table table( _self, trustor );
             auto itr = table.find(trusting);
             if( itr == table.end() && trust > 0 ) {
-               table.emplace( trustor, [&](trustrow& row) {
+               table.emplace( [&](trustrow& row) {
                      row.account = trusting;
                   });
             } else if( itr != table.end() && trust == 0 ) {
@@ -96,7 +96,7 @@ namespace identity {
             auto itr = t.find( identity );
             ultrainio_assert( itr == t.end(), "identity already exists" );
             ultrainio_assert( identity != 0, "identity=0 is not allowed" );
-            t.emplace(creator, [&](identrow& i) {
+            t.emplace( [&](identrow& i) {
                   i.identity = identity;
                   i.creator = creator;
                });
@@ -132,7 +132,7 @@ namespace identity {
                         });
                   } else {
                      auto pk = certs.available_primary_key();
-                     certs.emplace(_self, [&](certrow& row) {
+                     certs.emplace( [&](certrow& row) {
                            row.id = pk;
                            row.property   = value.property;
                            row.trusted    = trusted;

@@ -1605,7 +1605,6 @@ class multi_index
        *  Adds a new object (i.e., row) to the table.
        *  @brief Adds a new object (i.e., row) to the table.
        *
-       *  @param payer - Account name of the payer for the Storage usage of the new object
        *  @param constructor - Lambda function that does an in-place initialization of the object to be created in the table
        *
        *  @pre A multi index table has been instantiated
@@ -1654,11 +1653,11 @@ class multi_index
        *  @endcode
        */
       template<typename Lambda>
-      const_iterator emplace( uint64_t payer, Lambda&& constructor ) {
+      const_iterator emplace( Lambda&& constructor ) {
          using namespace _multi_index_detail;
 
          ultrainio_assert( _code == current_receiver(), "cannot create objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
-         payer = _code;
+         uint64_t payer = _code;
          auto itm = std::make_unique<item>( this, [&]( auto& i ){
             T& obj = static_cast<T&>(i);
             constructor( obj );
@@ -1698,6 +1697,11 @@ class multi_index
          return {this, ptr};
       }
 
+      template<typename Lambda>
+      const_iterator emplace( uint64_t payer, Lambda&& constructor ) {
+         (void)payer;
+         return emplace( constructor );
+      }
       /**
        *  Modifies an existing object in a table.
        *  @brief Modifies an existing object in a table.
