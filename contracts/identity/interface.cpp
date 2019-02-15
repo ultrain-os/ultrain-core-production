@@ -28,7 +28,7 @@ account_name interface::get_owner_for_identity( uint64_t receiver, identity_name
                }
             } else if (_self == receiver){
                //the certifier is no longer trusted, need to unset the flag
-               idx.modify(itr, 0, [&](certrow& r) {
+               idx.modify(itr, [&](certrow& r) {
                      r.trusted = 0;
                   });
             } else {
@@ -53,7 +53,7 @@ account_name interface::get_owner_for_identity( uint64_t receiver, identity_name
          if (ident == get_claimed_identity(account) && is_trusted(itr->certifier)) {
             if (_self == receiver) {
                // the certifier became trusted and we have permissions to update the flag
-               idx.modify(itr, 0, [&](certrow& r) {
+               idx.modify(itr, [&](certrow& r) {
                      r.trusted = 1;
                   });
             }

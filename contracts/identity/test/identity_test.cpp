@@ -20,13 +20,13 @@ namespace identity_test {
          void getowner( const uint64_t identity ) {
             identity::interface iface( N(identity) );
             account_name owner = iface.get_owner_for_identity(current_receiver(), identity);
-            result_table( code, 0 ).set( owner, code ); //use scope = 0 for simplicity
+            result_table( code, 0 ).set( owner ); //use scope = 0 for simplicity
          }
 
          void getidentity( const account_name account ) {
             identity::interface iface( N(identity) );
             identity::identity_name idnt = iface.get_identity_for_account(current_receiver(), account);
-            result_table( code, 0 ).set(idnt, code ); //use scope = 0 for simplicity
+            result_table( code, 0 ).set(idnt ); //use scope = 0 for simplicity
          }
    };
 

@@ -85,7 +85,7 @@ namespace ultrainiosystem {
             });
       }
       else {
-         del_tbl.modify( itr, 0, [&]( auto& dbo ){
+         del_tbl.modify( itr, [&]( auto& dbo ){
                if(stake_cons_delta.amount < 0)
                {
                   stake_cons_delta = asset(0) - dbo.cons_weight;
@@ -114,7 +114,7 @@ namespace ultrainiosystem {
 
          if( is_undelegating ) {
             if ( req != refunds_tbl.end() ) { //need to update refund_cons
-               refunds_tbl.modify( req, 0, [&]( refund_cons& r ) {
+               refunds_tbl.modify( req, [&]( refund_cons& r ) {
                   if ( cons_balance < asset(0)) {
                      r.request_time = now();
                   }
@@ -182,7 +182,7 @@ namespace ultrainiosystem {
          }
          auto enabled = ((it->total_cons_staked+total_update.amount) >=
                   _gstate.min_activated_stake);
-         _producers.modify(it, 0 , [&](auto & v) {
+         _producers.modify(it, [&](auto & v) {
                   v.total_cons_staked += total_update.amount;
                   v.is_enabled = enabled;
                   v.last_operate_blocknum = curblocknum;
@@ -190,7 +190,7 @@ namespace ultrainiosystem {
          if(it->is_on_master_chain()) {
              if(enabled && !it->hasenabled) {
                  update_activated_stake(it->total_cons_staked);
-                 _producers.modify(it, 0 , [&](auto & v) {
+                 _producers.modify(it, [&](auto & v) {
                          v.hasenabled = true;
                      });
              }
@@ -268,7 +268,7 @@ namespace ultrainiosystem {
       else {
           bytes = (chain_itr->global_resource.max_ram_size-2ll*1024*1024*1024)/chain_itr->global_resource.max_resources_size;
       }
-      print("resourcelease receiver:", name{receiver}, " combosize:",combosize," days:",days);
+      print("resourcelease receiver:", name{receiver}, " combosize:",combosize," days:",days," location:",location);
       ultrainio_assert( days <= (365*30+7), "resource lease buy days must reserve a positive and less than 30 years" );
 
       // update totals of "receiver"
@@ -283,7 +283,7 @@ namespace ultrainiosystem {
                 _gstate.total_ram_bytes_reserved += (uint64_t)combosize*bytes;
             }
             else {
-                _subchains.modify(chain_itr, 0, [&]( auto& _subchain ) {
+                _subchains.modify(chain_itr, [&]( auto& _subchain ) {
                     _subchain.global_resource.total_resources_staked += combosize;
                     _subchain.global_resource.total_ram_bytes_reserved += (uint64_t)combosize*bytes;
                 });
@@ -302,13 +302,12 @@ namespace ultrainiosystem {
                ultrainio_assert(reslease_itr->end_block_height > (uint32_t)head_block_number(), "resource lease endtime already expired" );
                double remain_time = block_interval_seconds()*(reslease_itr->end_block_height - (uint32_t)head_block_number())/(double)seconds_per_day;
                cuttingfee = uint64_t(ceil(remain_time))*combosize;
-               print("resourcelease receiver:", name{receiver}, " remain_time:",remain_time," cuttingfee:",cuttingfee);
                if(chain_itr == _subchains.end()) {
                    _gstate.total_resources_staked += combosize;
                    _gstate.total_ram_bytes_reserved += (uint64_t)combosize*bytes;
                }
                else {
-                   _subchains.modify(chain_itr, 0, [&]( auto& _subchain ) {
+                   _subchains.modify(chain_itr, [&]( auto& _subchain ) {
                        _subchain.global_resource.total_resources_staked += combosize;
                        _subchain.global_resource.total_ram_bytes_reserved += (uint64_t)combosize*bytes;
                    });
@@ -318,16 +317,18 @@ namespace ultrainiosystem {
                ultrainio_assert(reslease_itr->lease_num > 0, "resource lease number is not normal" );
                cuttingfee = days*reslease_itr->lease_num;
             }
-            _reslease_tbl.modify( reslease_itr, 0, [&]( auto& tot ) {
+            _reslease_tbl.modify( reslease_itr, [&]( auto& tot ) {
                   tot.lease_num += combosize;
                   tot.end_block_height  += days * seconds_per_day / block_interval_seconds();
                   tot.modify_block_height = (uint32_t)head_block_number();
                });
          }
-         ultrainio_assert(cuttingfee > 0, "resource lease cuttingfee is abnormal" );
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
-                                             { from, N(utrio.fee), asset((int64_t)ceil((double)10000*640*cuttingfee/0.3/365)), std::string("buy resource lease") } );
+         auto resourcefee = (int64_t)ceil((double)10000*640*cuttingfee/0.3/365);
+         ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
 
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
+                                             { from, N(utrio.fee), asset(resourcefee), std::string("buy resource lease") } );
+         print("resourcelease calculatefee receiver:", name{receiver}," resourcenum_time:",cuttingfee, " resourcefee:",resourcefee);
          ultrainio_assert( 0 < reslease_itr->lease_num, "insufficient resource lease" );
          if (chain_itr == _subchains.end()) {
              set_resource_limits( receiver, int64_t(bytes*reslease_itr->lease_num), int64_t(reslease_itr->lease_num), int64_t(reslease_itr->lease_num) );
@@ -378,7 +379,7 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
 
    void system_contract::checkresexpire(){
       uint32_t block_height = (uint32_t)head_block_number() + 1;
-      uint32_t interval_num = seconds_per_day/block_interval_seconds();
+      uint32_t interval_num = seconds_per_day/block_interval_seconds()/3;
       if(block_height < 120 || block_height%interval_num != 0) {
          return;
       }
@@ -430,7 +431,7 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
                   if(reslease_iter->end_block_height <= block_height) {
                         uint64_t bytes = (chain_iter->global_resource.max_ram_size-2ll*1024*1024*1024)/chain_iter->global_resource.max_resources_size;
                         if(chain_iter->global_resource.total_resources_staked >= reslease_iter->lease_num) {
-                           _subchains.modify(chain_iter, 0, [&]( auto& subchain ) {
+                           _subchains.modify(chain_iter, [&]( auto& subchain ) {
                               subchain.global_resource.total_resources_staked -= reslease_iter->lease_num;
                               subchain.global_resource.total_ram_bytes_reserved -= reslease_iter->lease_num*bytes;
                            });

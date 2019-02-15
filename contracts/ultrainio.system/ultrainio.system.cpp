@@ -30,7 +30,7 @@ namespace ultrainiosystem {
       if( itr == _rammarket.end() ) {
          auto system_token_supply   = ultrainio::token(N(utrio.token)).get_supply(ultrainio::symbol_type(system_token_symbol).name()).amount;
          if( system_token_supply > 0 ) {
-            itr = _rammarket.emplace( _self, [&]( auto& m ) {
+            itr = _rammarket.emplace( [&]( auto& m ) {
                m.supply.amount = 100000000000000ll;
                m.supply.symbol = S(4,RAMCORE);
                m.base.balance.amount = int64_t(_gstate.free_ram());
@@ -53,7 +53,7 @@ namespace ultrainiosystem {
 
    system_contract::~system_contract() {
       //print( "destruct system\n" );
-      _global.set( _gstate, _self );
+      _global.set( _gstate );
       //ultrainio_exit(0);
    }
 
@@ -71,25 +71,25 @@ namespace ultrainiosystem {
        *  Increase or decrease the amount of ram for sale based upon the change in max
        *  ram size.
        */
-      _rammarket.modify( itr, 0, [&]( auto& m ) {
+      _rammarket.modify( itr, [&]( auto& m ) {
          m.base.balance.amount += delta;
       });
 
       _gstate.max_ram_size = max_ram_size;
-      _global.set( _gstate, _self );
+      _global.set( _gstate );
    }
 
    void system_contract::setblockreward( uint64_t rewardvalue ) {
       require_auth( _self );
       _gstate.reward_preblock = rewardvalue;
-      _global.set( _gstate, _self );
+      _global.set( _gstate );
    }
 
    void system_contract::setmincommittee( uint32_t number, uint32_t staked ) {
       require_auth( _self );
       _gstate.min_committee_member_number = number;
       _gstate.min_activated_stake = (int64_t)staked;
-      _global.set( _gstate, _self );
+      _global.set( _gstate );
    }
 
    void system_contract::setparams( const ultrainio::blockchain_parameters& params ) {
@@ -108,7 +108,7 @@ namespace ultrainiosystem {
       require_auth( _self );
       auto prod = _producers.find( producer );
       ultrainio_assert( prod != _producers.end(), "producer not found" );
-      _producers.modify( prod, 0, [&](auto& p) {
+      _producers.modify( prod, [&](auto& p) {
             p.deactivate();
          });
    }
@@ -130,7 +130,7 @@ namespace ultrainiosystem {
       print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
       auto current = bids.find( newname );
       if( current == bids.end() ) {
-         bids.emplace( bidder, [&]( auto& b ) {
+         bids.emplace( [&]( auto& b ) {
             b.newname = newname;
             b.high_bidder = bidder;
             b.high_bid = bid.amount;
@@ -145,7 +145,7 @@ namespace ultrainiosystem {
                                                        { N(utrio.names), current->high_bidder, asset(current->high_bid),
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
-         bids.modify( current, bidder, [&]( auto& b ) {
+         bids.modify( current, [&]( auto& b ) {
             b.high_bidder = bidder;
             b.high_bid = bid.amount;
             b.last_bid_time = current_time();
@@ -157,12 +157,12 @@ namespace ultrainiosystem {
       if((cur_block_num - propos->last_vote_blocknum) < 60){
          ultrainio_assert( propos->vote_number <= 600 , "too high voting frequency" );
       }else{
-         _producers.modify( propos, 0, [&](auto& p ) {
+         _producers.modify( propos, [&](auto& p ) {
             p.last_vote_blocknum = cur_block_num;
             p.vote_number = 0;
          });
       }
-      _producers.modify( propos, 0, [&](auto& p ) {
+      _producers.modify( propos, [&](auto& p ) {
          p.vote_number++;
       });
    }
@@ -178,7 +178,7 @@ namespace ultrainiosystem {
          authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
          authorization.emplace_back(permission_level{miner.account, N(active)});
          INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), authorization,
-            { miner.account, miner.public_key, miner.bls_key, miner.url, miner.location, N(ultrainio)} );
+            { miner.account, miner.public_key, miner.bls_key, N(ultrainio), miner.url, miner.location } );
          INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
             { N(utrio.stake),miner.account,asset(_gstate.min_activated_stake)} );
       }else{
@@ -194,7 +194,7 @@ namespace ultrainiosystem {
             INLINE_ACTION_SENDER(ultrainiosystem::system_contract, undelegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
                { N(utrio.stake),(*prod).owner} );
          }
-         _producers.modify( prod, 0, [&](auto& p) {
+         _producers.modify( prod, [&](auto& p) {
                p.deactivate();
             });
       }
@@ -239,7 +239,7 @@ namespace ultrainiosystem {
                }
             }
             if(curproposeresnum >= 0){
-               _pendingminer.modify( pendingiter, 0, [&]( auto& p ) {
+               _pendingminer.modify( pendingiter, [&]( auto& p ) {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
@@ -256,21 +256,21 @@ namespace ultrainiosystem {
 
                if((*pendingiter).proposal_miner[(uint32_t)curproposeresnum].approve_num >= ceil((double)(enableprodnum)*2/3)){
                   updateactiveminers(minerinfo);
-                  _pendingminer.modify( pendingiter, 0, [&]( auto& p ) {
+                  _pendingminer.modify( pendingiter, [&]( auto& p ) {
                      p.provided_approvals.clear();
                      p.proposal_miner.clear();
                   });
                   _pendingminer.erase( pendingiter );
                }
             }else{
-               _pendingminer.modify( pendingiter, 0, [&]( auto& p ) {
+               _pendingminer.modify( pendingiter, [&]( auto& p ) {
                   p.proposal_miner.push_back(minerinfo);
                   provideapprve.resource_index = p.proposal_miner.size() - 1;
                   p.provided_approvals.push_back(provideapprve);
                });
             }
          }else{
-            _pendingminer.emplace( _self, [&]( auto& p ) {
+            _pendingminer.emplace( [&]( auto& p ) {
                p.owner = minerinfo.account;
                p.provided_approvals.push_back(provideapprve);
                p.proposal_miner.push_back(minerinfo);
@@ -362,7 +362,7 @@ void system_contract::voteaccount() {
                }
             }
             if(curproposeresnum >= 0){
-               _pendingaccount.modify( pendingiter, 0, [&]( auto& p ) {
+               _pendingaccount.modify( pendingiter, [&]( auto& p ) {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
@@ -379,21 +379,21 @@ void system_contract::voteaccount() {
 
                if((*pendingiter).proposal_account[(uint32_t)curproposeresnum].approve_num >= ceil((double)enableprodnum*2/3)){
                   add_subchain_account(accinfo);
-                  _pendingaccount.modify( pendingiter, 0, [&]( auto& p ) {
+                  _pendingaccount.modify( pendingiter, [&]( auto& p ) {
                      p.provided_approvals.clear();
                      p.proposal_account.clear();
                   });
                   _pendingaccount.erase( pendingiter );
                }
             }else{
-               _pendingaccount.modify( pendingiter, 0, [&]( auto& p ) {
+               _pendingaccount.modify( pendingiter, [&]( auto& p ) {
                   p.proposal_account.push_back(accinfo);
                   provideapprve.resource_index = p.proposal_account.size() - 1;
                   p.provided_approvals.push_back(provideapprve);
                });
             }
          }else{
-            _pendingaccount.emplace( _self, [&]( auto& p ) {
+            _pendingaccount.emplace( [&]( auto& p ) {
                p.owner = accinfo.account;
                p.provided_approvals.push_back(provideapprve);
                p.proposal_account.push_back(accinfo);
@@ -441,7 +441,7 @@ void system_contract::voteresourcelease() {
                }
             }
             if(curproposeresnum >= 0){
-               _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
+               _pendingres.modify( pendingiter, [&]( auto& p ) {
                   auto itr = std::find( p.provided_approvals.begin(), p.provided_approvals.end(), provideapprve );
                   if(itr != p.provided_approvals.end())
                   {
@@ -458,21 +458,21 @@ void system_contract::voteresourcelease() {
 
                if((*pendingiter).proposal_resource[(uint32_t)curproposeresnum].approve_num >= ceil((double)enableprodnum*2/3)){
                   syncresource(resinfo.account, resinfo.lease_num, resinfo.block_height_interval);
-                  _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
+                  _pendingres.modify( pendingiter, [&]( auto& p ) {
                      p.provided_approvals.clear();
                      p.proposal_resource.clear();
                   });
                   _pendingres.erase( pendingiter );
                }
             }else{
-               _pendingres.modify( pendingiter, 0, [&]( auto& p ) {
+               _pendingres.modify( pendingiter, [&]( auto& p ) {
                   p.proposal_resource.push_back(resinfo);
                   provideapprve.resource_index = p.proposal_resource.size() - 1;
                   p.provided_approvals.push_back(provideapprve);
                });
             }
          }else{
-            _pendingres.emplace( _self, [&]( auto& p ) {
+            _pendingres.emplace( [&]( auto& p ) {
                p.owner = resinfo.account;
                p.provided_approvals.push_back(provideapprve);
                p.proposal_resource.push_back(resinfo);
@@ -491,7 +491,7 @@ void system_contract::voteresourcelease() {
       uint64_t starttime = current_time();
       //clean vote pendingminer expire
       for(auto mineriter = _pendingminer.begin(); mineriter != _pendingminer.end(); ){
-         _pendingminer.modify( mineriter, 0, [&]( auto& p ) {
+         _pendingminer.modify( mineriter, [&]( auto& p ) {
             for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
                if(block_interval_seconds()*(curblockheight - itr->last_vote_blockheight) > seconds_per_halfhour){
                   itr = p.provided_approvals.erase(itr);
@@ -508,7 +508,7 @@ void system_contract::voteresourcelease() {
 
       //clean vote _pendingaccount expire
       for(auto acciter = _pendingaccount.begin(); acciter != _pendingaccount.end(); ){
-         _pendingaccount.modify( acciter, 0, [&]( auto& p ) {
+         _pendingaccount.modify( acciter, [&]( auto& p ) {
             for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
                if(block_interval_seconds()*(curblockheight - itr->last_vote_blockheight) > seconds_per_halfhour){
                   itr = p.provided_approvals.erase(itr);
@@ -525,7 +525,7 @@ void system_contract::voteresourcelease() {
 
       //clean vote _pendingres expire
       for(auto resiter = _pendingres.begin(); resiter != _pendingres.end(); ){
-         _pendingres.modify( resiter, 0, [&]( auto& p ) {
+         _pendingres.modify( resiter, [&]( auto& p ) {
             for(auto itr = p.provided_approvals.begin(); itr != p.provided_approvals.end();){
                if(block_interval_seconds()*(curblockheight - itr->last_vote_blockheight) > seconds_per_halfhour){
                   itr = p.provided_approvals.erase(itr);
@@ -584,7 +584,7 @@ void system_contract::voteresourcelease() {
 
       //user_resources_table  userres( _self, newact);
 
-      //userres.emplace( newact, [&]( auto& res ) {
+      //userres.emplace( [&]( auto& res ) {
       //  res.owner = newact;
       //});
 

@@ -152,7 +152,7 @@ def stepRegProducers():
         retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
     sleep(15)
     for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'system regproducer %s %s %s https://%s.com 0  %s' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
+        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com 0 ' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
     sleep(15)
 
     for i in range(1, args.num_producers+1):

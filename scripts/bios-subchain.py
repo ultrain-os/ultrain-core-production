@@ -96,7 +96,7 @@ def regProducer():
         retry(args.clultrain+'push action ultrainio empoweruser \'{"user": "'+userName+'", "owner_pk": "'+userPK+'", "active_pk": "'+userPK+'", "chain_name":"'+args.subchain+'"}\' -p '+userName+'@active');
         sleep(1)
         print "reg producer:" + userName + "(" + pk + " "+bls_key+ ") belongs to chain(" + args.subchain + ")"
-        retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key+' https://'+userName+'.com '+args.subchain+' '+userName+' -p ultrainio@active')
+        retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key + ' ' + userName+' https://'+userName+'.com '+args.subchain +' -p ultrainio@active')
         sleep(0.5)
     print "regProducer end..."
     sleep(2)

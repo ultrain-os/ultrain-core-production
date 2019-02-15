@@ -44,7 +44,6 @@ struct limit_order {
 
          static void on(const trigger& act)
          {
-            auto payer = act.get_account();
             print("Acting on trigger action.\n");
             switch(act.what)
             {
@@ -56,13 +55,13 @@ struct limit_order {
                      indexed_by< N(byprice), const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
                      > orders( N(multitest), N(multitest) );
 
-                  orders.emplace( payer, [&]( auto& o ) {
+                  orders.emplace( [&]( auto& o ) {
                     o.id = 1;
                     o.expiration = 300;
                     o.owner = N(dan);
                   });
 
-                  auto order2 = orders.emplace( payer, [&]( auto& o ) {
+                  auto order2 = orders.emplace( [&]( auto& o ) {
                      o.id = 2;
                      o.expiration = 200;
                      o.owner = N(alice);
@@ -81,7 +80,7 @@ struct limit_order {
                   }
 
                   print("Modifying expiration of order with ID=2 to 400.\n");
-                  orders.modify( order2, payer, [&]( auto& o ) {
+                  orders.modify( order2, [&]( auto& o ) {
                      o.expiration = 400;
                   });
 
@@ -103,17 +102,17 @@ struct limit_order {
                      indexed_by< N(byval), const_mem_fun<test_k256, key256, &test_k256::get_val> >
                   > testtable( N(multitest), N(exchange) ); // Code must be same as the receiver? Scope doesn't have to be.
 
-                  testtable.emplace( payer, [&]( auto& o ) {
+                  testtable.emplace( [&]( auto& o ) {
                      o.id = 1;
                      o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });
 
-                  testtable.emplace( payer, [&]( auto& o ) {
+                  testtable.emplace( [&]( auto& o ) {
                      o.id = 2;
                      o.val = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
                   });
 
-                  testtable.emplace( payer, [&]( auto& o ) {
+                  testtable.emplace( [&]( auto& o ) {
                      o.id = 3;
                      o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });

@@ -96,7 +96,7 @@ namespace ultrainio {
             ultrainio_assert( delta >= 0, "underflow" );
          });
       } else {
-         l.modify( existing, 0, [&]( auto& obj ) {
+         l.modify( existing, [&]( auto& obj ) {
             obj.interest_shares += delta;
             ultrainio_assert( obj.interest_shares >= 0, "underflow" );
          });
@@ -142,7 +142,7 @@ namespace ultrainio {
          _accounts.adjust_balance( borrower, freedcollateral );
       }
       else {
-         m.modify( existing, 0, [&]( auto& obj ) {
+         m.modify( existing, [&]( auto& obj ) {
              obj.collateral.amount -= estcol.amount;
              obj.borrowed.amount -= cover_amount.amount;
              obj.call_price = double(obj.borrowed.amount) / obj.collateral.amount;
@@ -190,7 +190,7 @@ namespace ultrainio {
             m.erase( existing );
             existing = m.begin();
          } else {
-            m.modify( existing, 0, [&]( auto& obj ) {
+            m.modify( existing, [&]( auto& obj ) {
                obj.borrowed   += delta_debt;
                obj.collateral += delta_col;
                obj.call_price = double(obj.borrowed.amount) / obj.collateral.amount;
@@ -215,7 +215,7 @@ namespace ultrainio {
 
 
    void market_state::save() {
-      market_table.modify( market_state_itr, 0, [&]( auto& s ) {
+      market_table.modify( market_state_itr, [&]( auto& s ) {
          s = exstate;
       });
    }

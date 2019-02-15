@@ -119,14 +119,13 @@ namespace  ultrainio {
           * @brief Set new value to the singleton table
           * 
           * @param value - New value to be set
-          * @param bill_to_account - Account to pay for the new value
           */
-         void set( const T& value, account_name bill_to_account ) {
+         void set( const T& value ) {
             auto itr = _t.find( pk_value );
             if( itr != _t.end() ) {
-               _t.modify(itr, bill_to_account, [&](row& r) { r.value = value; });
+               _t.modify(itr, [&](row& r) { r.value = value; });
             } else {
-               _t.emplace(bill_to_account, [&](row& r) { r.value = value; });
+               _t.emplace( [&](row& r) { r.value = value; });
             }
          }
 

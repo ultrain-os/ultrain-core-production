@@ -33,7 +33,7 @@ namespace ultrainiosystem {
                 new_subchain_type.consensus_period = consensus_period;
             });
         } else {
-            type_tbl.modify(typeiter, N(ultrainio), [&]( auto& _subchain_type ) {
+            type_tbl.modify(typeiter, [&]( auto& _subchain_type ) {
                 _subchain_type.stable_min_producers = min_producer_num;
                 _subchain_type.stable_max_producers = max_producer_num;
                 _subchain_type.sched_inc_step = sched_step;
@@ -71,7 +71,7 @@ namespace ultrainiosystem {
             auto it = hashv.begin();
             for(; it != hashv.end(); it++) {
                 if(hash == it->hash && file_size == it->file_size) {
-                    hashTable.modify(wshash, 0, [&](auto &p) {
+                    hashTable.modify(wshash, [&](auto &p) {
                             p.hash_v[static_cast<unsigned int>(it - hashv.begin())].votes++;
                             p.accounts.emplace_back(current_sender());
                             });
@@ -79,7 +79,7 @@ namespace ultrainiosystem {
                 }
             }
             if(it == hashv.end()) {
-                hashTable.modify(wshash, 0, [&](auto& p) {
+                hashTable.modify(wshash, [&](auto& p) {
                     p.hash_v.emplace_back(hash, file_size, 1);
                     p.accounts.emplace_back(current_sender());
                 });
@@ -154,7 +154,7 @@ namespace ultrainiosystem {
                     for(; new_prod != ite_chain->updated_info.unactivated_committee.end(); ++new_prod) {
                         if(*new_prod == block_proposer) {
                             //new committee works, clear unactivated list
-                            _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+                            _subchains.modify(ite_chain, [&]( auto& _subchain ) {
                                 _subchain.updated_info.unactivated_committee.clear();
                                 _subchain.updated_info.unactivated_committee.shrink_to_fit();
                                 _subchain.updated_info.take_effect_at_block = (uint32_t)head_block_number() + 30;
@@ -193,7 +193,7 @@ namespace ultrainiosystem {
             //compare previous with pre block's id.
             auto block_number = headers[idx].block_num();
             if(0 == ite_chain->head_block_num && 1 == block_number) {
-                  _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+                  _subchains.modify(ite_chain, [&]( auto& _subchain ) {
                       _subchain.head_block_id     = headers[idx].id();
                       _subchain.head_block_num    = 1;
                       _subchain.chain_id          = headers[idx].action_mroot; //save chain id
@@ -203,7 +203,7 @@ namespace ultrainiosystem {
                   });
             }
             else if (ite_chain->head_block_id == headers[idx].previous && block_number == ite_chain->head_block_num + 1) {
-                  _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+                  _subchains.modify(ite_chain, [&]( auto& _subchain ) {
                       _subchain.is_synced         = synced;
                       _subchain.head_block_id     = headers[idx].id();
                       _subchain.head_block_num    = block_number;
@@ -256,13 +256,13 @@ namespace ultrainiosystem {
         ultrainio_assert(ite_chain != _subchains.end(), "This subchian is not existed.");
         //todo, check if the subchain is avtive?
         if(users_only) {
-            _subchains.modify(ite_chain, 0, [&]( auto& _subchain ) {
+            _subchains.modify(ite_chain, [&]( auto& _subchain ) {
                 _subchain.recent_users.clear();
                 _subchain.recent_users.shrink_to_fit();
             });
             return;
         }
-        _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+        _subchains.modify(ite_chain, [&]( auto& _subchain ) {
             _subchain.recent_users.clear();
             _subchain.recent_users.shrink_to_fit();
             _subchain.head_block_id     = block_id_type();
@@ -275,7 +275,7 @@ namespace ultrainiosystem {
         auto ite = _producers.begin();
         for(; ite != _producers.end(); ++ite) {
             if(ite->location == chain_name) {
-                _producers.modify(ite, N(ultrainio), [&](auto & p) {
+                _producers.modify(ite, [&](auto & p) {
                      p.unpaid_blocks = 0;
                      p.total_produce_block = 0;
                 });
@@ -314,7 +314,7 @@ namespace ultrainiosystem {
         }
         tempuser.emp_time = now();
 
-        _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _chain ) {
+        _subchains.modify(ite_chain, [&]( auto& _chain ) {
             for(const auto& _user : _chain.recent_users) {
                 ultrainio_assert(_user.user_name != user, "User has published in this subchain recently.");
             }
@@ -365,7 +365,7 @@ namespace ultrainiosystem {
             }
         }
         if(ite_subchain != _subchains.end()) {
-            _subchains.modify(ite_subchain, N(ultrainio), [&](subchain& info) {
+            _subchains.modify(ite_subchain, [&](subchain& info) {
                 //move miners from pending que to this sub chian
                 uint32_t i = 0;
                 auto ite_miner = p_que->begin();
@@ -373,7 +373,7 @@ namespace ultrainiosystem {
                     //update location of producer
                     auto ite_producer = _producers.find(ite_miner->owner);
                     ultrainio_assert( ite_producer != _producers.end(), "cannot find producer in database" );
-                    _producers.modify(ite_producer, 0 , [&](auto & v) {
+                    _producers.modify(ite_producer, [&](auto & v) {
                         v.location = info.chain_name;
                     });
                     //move to subchain
@@ -384,7 +384,7 @@ namespace ultrainiosystem {
             });
         }
 
-        _pending_que.set(*p_que, producer);
+        _pending_que.set(*p_que);
     }
 
     void system_contract::remove_from_pending_queue(account_name producer) {
@@ -401,7 +401,7 @@ namespace ultrainiosystem {
             return; //don't use assert
         }
         _pending.erase(ite);
-        _pending_que.set(_pending, producer);
+        _pending_que.set(_pending);
     }
 
     void system_contract::add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key, const std::string& bls_key) {
@@ -415,7 +415,7 @@ namespace ultrainiosystem {
 
         for(const auto& miner : ite_chain->committee_members) {
             if(miner.owner == producer) {
-                _subchains.modify(ite_chain, producer, [&](subchain& info) {
+                _subchains.modify(ite_chain, [&](subchain& info) {
                     auto ite_miner = info.changing_info.removed_members.begin();
                     for(; ite_miner != info.changing_info.removed_members.end(); ++ite_miner) {
                         if(miner.owner == producer) {
@@ -434,7 +434,7 @@ namespace ultrainiosystem {
                 return;
             }
         }
-        _subchains.modify(ite_chain, producer, [&](subchain& info) {
+        _subchains.modify(ite_chain, [&](subchain& info) {
             role_base temp_node;
             temp_node.owner = producer;
             temp_node.producer_key   = public_key;
@@ -449,7 +449,7 @@ namespace ultrainiosystem {
 
         //ultrainio_assert(ite_chain->committee_members.size() - 1 >= ite_chain->get_subchain_min_miner_num(),
         //                 "this subschain cannot remove producers");
-        _subchains.modify(ite_chain, producer, [&](subchain& info){
+        _subchains.modify(ite_chain, [&](subchain& info){
             auto ite_add = info.changing_info.new_added_members.begin();
             for(; ite_add != info.changing_info.new_added_members.end() ; ++ite_add) {
                 if(ite_add->owner == producer) {
@@ -488,7 +488,7 @@ namespace ultrainiosystem {
                !ite_chain->changing_info.removed_members.empty() ||
                !ite_chain->changing_info.new_added_members.empty() ||
                ite_chain->updated_info.take_effect_at_block != 0 ) {
-                _subchains.modify(ite_chain, N(ultrainio), [&]( auto& _subchain ) {
+                _subchains.modify(ite_chain, [&]( auto& _subchain ) {
                     //remove removed producers from committee
                     auto removing_comm = _subchain.changing_info.removed_members.begin();
                     for(; removing_comm != _subchain.changing_info.removed_members.end(); ++removing_comm) {
@@ -695,14 +695,14 @@ namespace ultrainiosystem {
             tempuser.is_producer = true;
             tempuser.emp_time = now();
 
-            _subchains.modify(to_iter, N(ultrainio), [&]( auto& _chain ) {
+            _subchains.modify(to_iter, [&]( auto& _chain ) {
                 _chain.recent_users.push_back(tempuser);
                 _chain.total_user_num += 1;
             });
             empower_to_chain(producer, to_iter->chain_name);
         }
         //move producer
-        _producers.modify( producer_iter, 0, [&]( producer_info& info ) {
+        _producers.modify( producer_iter, [&]( producer_info& info ) {
                info.location     = to_iter->chain_name;
         });
         remove_from_subchain(from_iter->chain_name, producer);
@@ -722,7 +722,7 @@ namespace ultrainiosystem {
         temp.is_schedule_enabled = is_enabled;
         temp.schedule_period = sched_period;
         temp.committee_confirm_period = confirm_period;
-        _schedsetting.set(temp, N(ultrainio));
+        _schedsetting.set(temp);
     }
 
     void system_contract::checkbulletin() {
@@ -731,7 +731,7 @@ namespace ultrainiosystem {
         for(; chain_it != _subchains.end(); ++chain_it) {
             if(!chain_it->recent_users.empty()) {
                 if( (ct > chain_it->recent_users[0].emp_time) && (ct - chain_it->recent_users[0].emp_time >= 30*60 ) ) {
-                    _subchains.modify(chain_it, 0, [&](auto& _subchain) {
+                    _subchains.modify(chain_it, [&](auto& _subchain) {
                         auto user_it = _subchain.recent_users.begin();
                         for(; user_it != _subchain.recent_users.end();) {
                             if(ct > user_it->emp_time && (ct - user_it->emp_time >= 30*60)) {

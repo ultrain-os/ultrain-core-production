@@ -291,7 +291,7 @@ namespace ultrainiosystem {
 
          // functions defined in voting.cpp
 
-         void regproducer( const account_name producer, const std::string& producer_key, const std::string& bls_key, const std::string& url, uint64_t location, account_name rewards_account );
+         void regproducer( const account_name producer, const std::string& producer_key, const std::string& bls_key, account_name rewards_account, const std::string& url, uint64_t location );
 
          void unregprod( const account_name producer );
 

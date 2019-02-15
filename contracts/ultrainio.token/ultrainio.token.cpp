@@ -22,7 +22,7 @@ void token::create( account_name issuer,
     auto existing = statstable.find( sym.name() );
     ultrainio_assert( existing == statstable.end(), "token with symbol already exists" );
 
-    statstable.emplace( _self, [&]( auto& s ) {
+    statstable.emplace( [&]( auto& s ) {
        s.supply.symbol = maximum_supply.symbol;
        s.max_supply    = maximum_supply;
        s.issuer        = issuer;
@@ -49,11 +49,11 @@ void token::issue( account_name to, asset quantity, string memo )
     ultrainio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
     ultrainio_assert( quantity.amount <= st.max_supply.amount - st.supply.amount, "quantity exceeds available supply");
 
-    statstable.modify( st, 0, [&]( auto& s ) {
+    statstable.modify( st, [&]( auto& s ) {
        s.supply += quantity;
     });
 
-    add_balance( st.issuer, quantity, st.issuer );
+    add_balance( st.issuer, quantity );
 
     if( to != st.issuer ) {
        SEND_INLINE_ACTION( *this, transfer, {st.issuer,N(active)}, {st.issuer, to, quantity, memo} );
@@ -82,7 +82,7 @@ void token::transfer( account_name from,
 
 
     sub_balance( from, quantity );
-    add_balance( to, quantity, from );
+    add_balance( to, quantity );
 }
 
 void token::sub_balance( account_name owner, asset value ) {
@@ -97,7 +97,7 @@ void token::sub_balance( account_name owner, asset value ) {
       else
          fee = asset(operatefee);
       ultrainio_assert( fee.amount > 0, "fee must a positive value" );
-      add_balance( N(utrio.fee), fee, 0);
+      add_balance( N(utrio.fee), fee );
       value += fee;
    }
 
@@ -106,24 +106,24 @@ void token::sub_balance( account_name owner, asset value ) {
    if( from.balance.amount == value.amount ) {
       from_acnts.erase( from );
    } else {
-      from_acnts.modify( from, owner, [&]( auto& a ) {
+      from_acnts.modify( from, [&]( auto& a ) {
           a.balance -= value;
           a.last_time = ct;
       });
    }
 }
 
-void token::add_balance( account_name owner, asset value, account_name ram_payer )
+void token::add_balance( account_name owner, asset value )
 {
    accounts to_acnts( _self, owner );
    auto to = to_acnts.find( value.symbol.name() );
    if( to == to_acnts.end() ) {
-      to_acnts.emplace( ram_payer, [&]( auto& a ){
+      to_acnts.emplace( [&]( auto& a ){
         a.balance = value;
         a.last_time = now();
       });
    } else {
-      to_acnts.modify( to, 0, [&]( auto& a ) {
+      to_acnts.modify( to, [&]( auto& a ) {
         a.balance += value;
       });
    }

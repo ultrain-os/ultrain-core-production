@@ -488,10 +488,10 @@ class multi_index
             }
 
             template<typename Lambda>
-            void modify( const_iterator itr, uint64_t payer, Lambda&& updater ) {
+            void modify( const_iterator itr,  Lambda&& updater ) {
                ultrainio_assert( itr != cend(), "cannot pass end iterator to modify" );
 
-               _multidx->modify( *itr, payer, std::forward<Lambda&&>(updater) );
+               _multidx->modify( *itr, std::forward<Lambda&&>(updater) );
             }
 
             const_iterator erase( const_iterator itr ) {
@@ -1697,17 +1697,11 @@ class multi_index
          return {this, ptr};
       }
 
-      template<typename Lambda>
-      const_iterator emplace( uint64_t payer, Lambda&& constructor ) {
-         (void)payer;
-         return emplace( constructor );
-      }
       /**
        *  Modifies an existing object in a table.
        *  @brief Modifies an existing object in a table.
        *
        *  @param itr - an iterator pointing to the object to be updated
-       *  @param payer - account name of the payer for the Storage usage of the updated row
        *  @param updater - lambda function that updates the target object
        *
        *  @pre itr points to an existing element
@@ -1765,10 +1759,10 @@ class multi_index
        *  @endcode
        */
       template<typename Lambda>
-      void modify( const_iterator itr, uint64_t payer, Lambda&& updater ) {
+      void modify( const_iterator itr, Lambda&& updater ) {
          ultrainio_assert( itr != end(), "cannot pass end iterator to modify" );
-         payer = _code;
-         modify( *itr, payer, std::forward<Lambda&&>(updater) );
+
+         modify( *itr, std::forward<Lambda&&>(updater) );
       }
 
       /**
@@ -1776,7 +1770,6 @@ class multi_index
        *  @brief Modifies an existing object in a table.
        *
        *  @param obj - a reference to the object to be updated
-       *  @param payer - account name of the payer for the Storage usage of the updated row
        *  @param updater - lambda function that updates the target object
        *
        *  @pre obj is an existing object in the table
@@ -1835,9 +1828,9 @@ class multi_index
        *  @endcode
        */
       template<typename Lambda>
-      void modify( const T& obj, uint64_t payer, Lambda&& updater ) {
+      void modify( const T& obj, Lambda&& updater ) {
          using namespace _multi_index_detail;
-         payer = _code;
+         uint64_t payer = _code;
          const auto& objitem = static_cast<const item&>(obj);
          ultrainio_assert( objitem.__idx == this, "object passed to modify is not in multi_index" );
          auto& mutableitem = const_cast<item&>(objitem);

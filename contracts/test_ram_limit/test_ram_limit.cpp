@@ -22,18 +22,18 @@ class test_ram_limit : public ultrainio::contract {
       {}
 
       //@abi action
-      void setentry(account_name payer, uint64_t from, uint64_t to, uint64_t size) {
+      void setentry(uint64_t from, uint64_t to, uint64_t size) {
          const auto self = get_self();
          ultrainio::print("test_ram_limit::setentry ", ultrainio::name{self}, "\n");
          test_table table(self, self);
          for (int key = from; key <=to; ++key) {
             auto itr = table.find(key);
             if (itr != table.end()) {
-               table.modify(itr, payer, [size](test& t) {
+               table.modify(itr, [size](test& t) {
                   t.data.assign(size, (int8_t)size);
                });
             } else {
-               table.emplace(payer, [key,size](test& t) {
+               table.emplace( [key,size](test& t) {
                   t.key = key;
                   t.data.assign(size, (int8_t)size);
                });

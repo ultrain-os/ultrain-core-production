@@ -125,7 +125,7 @@ namespace identity {
                   auto itr = idx.lower_bound( certrow::key(value.property, trusted, certifier) );
 
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == trusted && itr->certifier == certifier) {
-                     idx.modify(itr, 0, [&](certrow& row) {
+                     idx.modify(itr, [&](certrow& row) {
                            row.confidence = value.confidence;
                            row.type       = value.type;
                            row.data       = value.data;
@@ -153,7 +153,7 @@ namespace identity {
                      ultrainio_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
                      if (certifier == acnt) { //only self-certitication affects accounts_table
-                        accounts_table( _self, acnt ).set( identity, acnt );
+                        accounts_table( _self, acnt ).set( identity );
                      }
                   }
                } else {

@@ -8,9 +8,6 @@
       "name": "setentry",
       "base": "",
       "fields": [{
-          "name": "payer",
-          "type": "account_name"
-        },{
           "name": "from",
           "type": "uint64"
         },{

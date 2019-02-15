@@ -55,13 +55,13 @@ void multisig::propose() {
    INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {proposer,N(active)},
                         { proposer, N(utrio.fee), asset(feeNum), std::string("ram fee") } );
 
-   proptable.emplace( proposer, [&]( auto& prop ) {
+   proptable.emplace( [&]( auto& prop ) {
       prop.proposal_name       = proposal_name;
       prop.packed_transaction  = bytes( buffer+trx_pos, buffer+size );
    });
 
    approvals apptable(  _self, proposer );
-   apptable.emplace( proposer, [&]( auto& a ) {
+   apptable.emplace( [&]( auto& a ) {
       a.proposal_name       = proposal_name;
       a.requested_approvals = std::move(requested);
    });
@@ -78,7 +78,7 @@ void multisig::approve( account_name proposer, name proposal_name, permission_le
 
    INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {level.actor,N(active)},
                         { level.actor, N(utrio.fee), asset(1000), std::string("ram fee") } );
-   apptable.modify( apps, proposer, [&]( auto& a ) {
+   apptable.modify( apps, [&]( auto& a ) {
       a.provided_approvals.push_back( level );
       a.requested_approvals.erase( itr );
    });
@@ -94,7 +94,7 @@ void multisig::unapprove( account_name proposer, name proposal_name, permission_
 
    INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {level.actor,N(active)},
                         { level.actor, N(utrio.fee), asset(1000), std::string("ram fee") } );
-   apptable.modify( apps, proposer, [&]( auto& a ) {
+   apptable.modify( apps, [&]( auto& a ) {
       a.requested_approvals.push_back(level);
       a.provided_approvals.erase(itr);
    });

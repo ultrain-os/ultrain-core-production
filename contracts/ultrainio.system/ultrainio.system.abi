@@ -540,9 +540,9 @@
         {"name":"producer",     "type":"account_name"},
         {"name":"producer_key", "type":"string"},
         {"name":"bls_key", "type":"string"},
+        {"name":"rewards_account", "type":"account_name"},
         {"name":"url",          "type":"string"},
-        {"name":"location",     "type":"uint64"},
-        {"name":"rewards_account",     "type":"account_name"}
+        {"name":"location",     "type":"uint64"}
       ]
     },{
       "name": "unregprod",

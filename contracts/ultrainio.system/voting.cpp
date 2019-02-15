@@ -34,7 +34,7 @@ namespace ultrainiosystem {
     *  @pre authority of producer to register
     *
     */
-    void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& bls_key, const std::string& url, uint64_t location, account_name rewards_account ) {
+    void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& bls_key, account_name rewards_account, const std::string& url, uint64_t location ) {
       ultrainio_assert( url.size() < 512, "url too long" );
       // key is hex encoded
       ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
@@ -81,13 +81,13 @@ namespace ultrainiosystem {
              else {
                  if(!prod->hasenabled) {
                      update_activated_stake(prod->total_cons_staked);
-                     _producers.modify(prod, 0 , [&](auto & v) {
+                     _producers.modify(prod, [&](auto & v) {
                          v.hasenabled = true;
                      });
                  }
              }
          }
-         _producers.modify( prod, producer, [&]( producer_info& info ){
+         _producers.modify( prod, [&]( producer_info& info ){
                info.producer_key = producer_key;
                info.bls_key  = bls_key;
                info.is_active    = true;
@@ -96,7 +96,7 @@ namespace ultrainiosystem {
          });
       } else {
          ultrainio_assert( is_account( rewards_account ), "rewards account not exists" );
-         _producers.emplace( producer, [&]( producer_info& info ){
+         _producers.emplace( [&]( producer_info& info ){
                info.owner         = producer;
                info.total_cons_staked   = 0LL;
                info.producer_key  = producer_key;
@@ -124,7 +124,7 @@ namespace ultrainiosystem {
       print("unregprod curblocknum:",curblocknum," last_operate_blocknum:",prod.last_operate_blocknum);
 
       ultrainio_assert( (curblocknum - prod.last_operate_blocknum) > 2 , "interval operate at least more than two number block high" );
-      _producers.modify( prod, 0, [&]( producer_info& info ){
+      _producers.modify( prod, [&]( producer_info& info ){
             info.deactivate();
             info.last_operate_blocknum = curblocknum;
       });

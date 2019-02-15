@@ -63,7 +63,7 @@ class dice : public ultrainio::contract {
             || matched_offer_itr->owner == new_offer_itr->owner ) {
 
             // No matching bet found, update player's account
-            accounts.modify( cur_player_itr, 0, [&](auto& acnt) {
+            accounts.modify( cur_player_itr, [&](auto& acnt) {
                ultrainio_assert( acnt.ultrain_balance >= bet, "insufficient balance" );
                acnt.ultrain_balance -= bet;
                acnt.open_offers++;
@@ -79,7 +79,7 @@ class dice : public ultrainio::contract {
             }
 
             // Increment global game counter
-            global_dices.modify(gdice_itr, 0, [&](auto& gdice){
+            global_dices.modify(gdice_itr, [&](auto& gdice){
                gdice.nextgameid++;
             });
 
@@ -97,23 +97,23 @@ class dice : public ultrainio::contract {
             });
 
             // Update player's offers
-            idx.modify(matched_offer_itr, 0, [&](auto& offer){
+            idx.modify(matched_offer_itr, [&](auto& offer){
                offer.bet.amount = 0;
                offer.gameid = game_itr->id;
             });
 
-            offers.modify(new_offer_itr, 0, [&](auto& offer){
+            offers.modify(new_offer_itr, [&](auto& offer){
                offer.bet.amount = 0;
                offer.gameid = game_itr->id;
             });
 
             // Update player's accounts
-            accounts.modify( accounts.find( matched_offer_itr->owner ), 0, [&](auto& acnt) {
+            accounts.modify( accounts.find( matched_offer_itr->owner ), [&](auto& acnt) {
                acnt.open_offers--;
                acnt.open_games++;
             });
 
-            accounts.modify( cur_player_itr, 0, [&](auto& acnt) {
+            accounts.modify( cur_player_itr, [&](auto& acnt) {
                ultrainio_assert( acnt.ultrain_balance >= bet, "insufficient balance" );
                acnt.ultrain_balance -= bet;
                acnt.open_games++;
@@ -132,7 +132,7 @@ class dice : public ultrainio::contract {
          require_auth( offer_itr->owner );
 
          auto acnt_itr = accounts.find(offer_itr->owner);
-         accounts.modify(acnt_itr, 0, [&](auto& acnt){
+         accounts.modify(acnt_itr, [&](auto& acnt){
             acnt.open_offers--;
             acnt.ultrain_balance += offer_itr->bet;
          });
@@ -178,7 +178,7 @@ class dice : public ultrainio::contract {
             }
 
          } else {
-            games.modify(game_itr, 0, [&](auto& game){
+            games.modify(game_itr, [&](auto& game){
 
                if( is_equal(curr_reveal.commitment, game.player1.commitment) )
                   game.player1.reveal = source;
@@ -231,7 +231,7 @@ class dice : public ultrainio::contract {
             std::make_tuple(from, _self, quantity, std::string(""))
          ).send();
 
-         accounts.modify( itr, 0, [&]( auto& acnt ) {
+         accounts.modify( itr, [&]( auto& acnt ) {
             acnt.ultrain_balance += quantity;
          });
       }
@@ -246,7 +246,7 @@ class dice : public ultrainio::contract {
          auto itr = accounts.find( to );
          ultrainio_assert(itr != accounts.end(), "unknown account");
 
-         accounts.modify( itr, 0, [&]( auto& acnt ) {
+         accounts.modify( itr, [&]( auto& acnt ) {
             ultrainio_assert( acnt.ultrain_balance >= quantity, "insufficient balance" );
             acnt.ultrain_balance -= quantity;
          });
@@ -367,14 +367,14 @@ class dice : public ultrainio::contract {
 
          // Update winner account balance and game count
          auto winner_account = accounts.find(winner_offer.owner);
-         accounts.modify( winner_account, 0, [&]( auto& acnt ) {
+         accounts.modify( winner_account, [&]( auto& acnt ) {
             acnt.ultrain_balance += 2*g.bet;
             acnt.open_games--;
          });
 
          // Update losser account game count
          auto loser_account = accounts.find(loser_offer.owner);
-         accounts.modify( loser_account, 0, [&]( auto& acnt ) {
+         accounts.modify( loser_account, [&]( auto& acnt ) {
             acnt.open_games--;
          });
 

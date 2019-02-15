@@ -9,7 +9,6 @@ namespace ultrainio {
 
    /**
     *  This contract enables the creation, issuance, and transfering of many different tokens.
-    *  @deprecated This class is deprecated in favor of ultrainio.token in Dawn 3.0
     */
    class currency {
       public:
@@ -136,7 +135,7 @@ namespace ultrainio {
              auto existing = statstable.find( sym.name() );
              ultrainio_assert( existing == statstable.end(), "token with symbol already exists" );
 
-             statstable.emplace( c.issuer, [&]( auto& s ) {
+             statstable.emplace( [&]( auto& s ) {
                 s.supply.symbol = c.maximum_supply.symbol;
                 s.max_supply    = c.maximum_supply;
                 s.issuer        = c.issuer;
@@ -151,12 +150,12 @@ namespace ultrainio {
              stats statstable( _contract, sym );
              const auto& st = statstable.get( sym );
 
-             statstable.modify( st, 0, [&]( auto& s ) {
+             statstable.modify( st, [&]( auto& s ) {
                 s.supply.amount += i.quantity.amount;
                 ultrainio_assert( s.supply.amount >= 0, "underflow" );
              });
 
-             add_balance( st.issuer, i.quantity, st, st.issuer );
+             add_balance( st.issuer, i.quantity, st );
           }
 
 
@@ -181,11 +180,11 @@ namespace ultrainio {
              ultrainio_assert( i.quantity.is_valid(), "invalid quantity" );
              ultrainio_assert( i.quantity.amount > 0, "must issue positive quantity" );
 
-             statstable.modify( st, 0, [&]( auto& s ) {
+             statstable.modify( st, [&]( auto& s ) {
                 s.supply.amount += i.quantity.amount;
              });
 
-             add_balance( st.issuer, i.quantity, st, st.issuer );
+             add_balance( st.issuer, i.quantity, st );
 
              if( i.to != st.issuer )
              {
@@ -204,7 +203,7 @@ namespace ultrainio {
              ultrainio_assert( t.quantity.is_valid(), "invalid quantity" );
              ultrainio_assert( t.quantity.amount > 0, "must transfer positive quantity" );
              sub_balance( t.from, t.quantity, st );
-             add_balance( t.to, t.quantity, st, t.from );
+             add_balance( t.to, t.quantity, st );
           }
 
 
@@ -225,23 +224,23 @@ namespace ultrainio {
                 ultrainio_assert( false, "insufficient authority" );
              }
 
-             from_acnts.modify( from, owner, [&]( auto& a ) {
+             from_acnts.modify( from, [&]( auto& a ) {
                  a.balance.amount -= value.amount;
              });
           }
 
-          void add_balance( account_name owner, asset value, const currency_stats& st, account_name ram_payer )
+          void add_balance( account_name owner, asset value, const currency_stats& st )
           {
              accounts to_acnts( _contract, owner );
              auto to = to_acnts.find( value.symbol.name() );
              if( to == to_acnts.end() ) {
                 ultrainio_assert( !st.enforce_whitelist, "can only transfer to white listed accounts" );
-                to_acnts.emplace( ram_payer, [&]( auto& a ){
+                to_acnts.emplace( [&]( auto& a ){
                   a.balance = value;
                 });
              } else {
                 ultrainio_assert( !st.enforce_whitelist || to->whitelist, "receiver requires whitelist by issuer" );
-                to_acnts.modify( to, 0, [&]( auto& a ) {
+                to_acnts.modify( to, [&]( auto& a ) {
                   a.balance.amount += value.amount;
                 });
              }

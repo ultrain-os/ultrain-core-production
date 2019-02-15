@@ -17,7 +17,7 @@ namespace ultrainio {
            ultrainio_assert( delta.amount >= 0, "overdrawn balance 1" );
          });
       } else {
-         table->second.modify( useraccounts, 0, [&]( auto& exa ) {
+         table->second.modify( useraccounts, [&]( auto& exa ) {
            const auto& b = exa.balances[delta.get_extended_symbol()] += delta.amount;
            ultrainio_assert( b >= 0, "overdrawn balance 2" );
          });

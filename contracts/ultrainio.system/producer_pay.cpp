@@ -33,7 +33,7 @@ namespace ultrainiosystem {
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
          _gstate.total_unpaid_blocks++;
-         _producers.modify( prod, 0, [&](auto& p ) {
+         _producers.modify( prod, [&](auto& p ) {
                p.unpaid_blocks++;
                p.total_produce_block++;
          });
@@ -51,7 +51,7 @@ namespace ultrainiosystem {
               _gstate.thresh_activated_stake_time > 0 &&
               (current_time() - _gstate.thresh_activated_stake_time) > 14 * useconds_per_day ) {
               _gstate.last_name_close = timestamp;
-              idx.modify( highest, 0, [&]( auto& b ){
+              idx.modify( highest, [&]( auto& b ){
                                           b.high_bid = -b.high_bid;
                                       });
           }
@@ -84,7 +84,7 @@ namespace ultrainiosystem {
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
          _gstate.total_unpaid_blocks += number;
-         _producers.modify( prod, 0, [&](auto& p ) {
+         _producers.modify( prod, [&](auto& p ) {
                p.unpaid_blocks += number;
                p.total_produce_block += number;
          });
@@ -114,7 +114,7 @@ namespace ultrainiosystem {
             producer_per_block_pay += static_cast<int64_t>(itr->unpaid_blocks*_gstate.reward_preblock);
             producer_per_block_pay *= p10;
             print("\nclaimrewards producer_pay:",producer_per_block_pay,"\n");
-            _producers.modify( itr, 0, [&](auto& p) {
+            _producers.modify( itr, [&](auto& p) {
                p.unpaid_blocks = 0;
             });
 

@@ -10,14 +10,14 @@ class simpletoken : public ultrainio::contract {
 
          const auto& fromacnt = _accounts.get( from );
          ultrainio_assert( fromacnt.balance >= quantity, "overdrawn balance" );
-         _accounts.modify( fromacnt, from, [&]( auto& a ){ a.balance -= quantity; } );
+         _accounts.modify( fromacnt, [&]( auto& a ){ a.balance -= quantity; } );
 
-         add_balance( from, to, quantity );
+         add_balance( to, quantity );
       }
 
       void issue( account_name to, uint64_t quantity ) {
          require_auth( _self );
-         add_balance( _self, to, quantity );
+         add_balance( to, quantity );
       }
 
    private:
@@ -30,15 +30,15 @@ class simpletoken : public ultrainio::contract {
 
       ultrainio::multi_index<N(accounts), account> _accounts;
 
-      void add_balance( account_name payer, account_name to, uint64_t q ) {
+      void add_balance( account_name to, uint64_t q ) {
          auto toitr = _accounts.find( to );
          if( toitr == _accounts.end() ) {
-           _accounts.emplace( payer, [&]( auto& a ) {
+           _accounts.emplace( [&]( auto& a ) {
               a.owner = to;
               a.balance = q;
            });
          } else {
-           _accounts.modify( toitr, 0, [&]( auto& a ) {
+           _accounts.modify( toitr, [&]( auto& a ) {
               a.balance += q;
               ultrainio_assert( a.balance >= q, "overflow detected" );
            });

@@ -84,10 +84,9 @@ namespace _test_multi_index {
          indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary> >
       > table( receiver, receiver );
 
-      auto payer = receiver;
 
       for (size_t i = 0; i < num_records; ++i) {
-         table.emplace( payer, [&]( auto& r ) {
+         table.emplace( [&]( auto& r ) {
             r.id = records[i].id;
             r.sec = records[i].sec;
          });
@@ -106,7 +105,6 @@ namespace _test_multi_index {
          indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary> >
       > table( receiver, receiver );
 
-      auto payer = receiver;
 
       auto secondary_index = table.template get_index<N(bysecondary)>();
 
@@ -189,12 +187,12 @@ namespace _test_multi_index {
       // modify and erase
       {
          const uint64_t ssn = 421;
-         auto new_person = table.emplace( payer, [&]( auto& r ) {
+         auto new_person = table.emplace( [&]( auto& r ) {
             r.id = ssn;
             r.sec = N(bob);
          });
 
-         table.modify(new_person, payer, [&]( auto& r ) {
+         table.modify(new_person, [&]( auto& r ) {
             r.sec = N(billy);
          });
 
@@ -294,10 +292,9 @@ namespace _test_multi_index {
          indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
       > table( receiver, receiver );
 
-      auto payer = receiver;
 
       for (uint64_t i = 0; i < 5; ++i) {
-         table.emplace( payer, [&]( auto& r ) {
+         table.emplace( [&]( auto& r ) {
             r.id = i;
             r.sec = static_cast<uint128_t>(1ULL << 63) * i;
          });
@@ -316,11 +313,9 @@ namespace _test_multi_index {
          indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
       > table( receiver, receiver );
 
-      auto payer = receiver;
-
       auto secondary_index = table.template get_index<N(bysecondary)>();
 
-      table.modify(table.get(3), payer, [&]( auto& r ) {
+      table.modify(table.get(3), [&]( auto& r ) {
          r.sec *= 2;
       });
 
@@ -421,14 +416,13 @@ void test_multi_index::idx128_autoincrement_test(uint64_t receiver, uint64_t cod
    typedef record_idx128 record;
 
    const uint64_t table_name = N(autoinctbl1);
-   auto payer = receiver;
 
    multi_index<table_name, record,
       indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
    > table( receiver, receiver );
 
    for( int i = 0; i < 5; ++i ) {
-      table.emplace( payer, [&]( auto& r ) {
+      table.emplace( [&]( auto& r ) {
          r.id = table.available_primary_key();
          r.sec = 1000 - static_cast<uint128_t>(r.id);
       });
@@ -447,12 +441,12 @@ void test_multi_index::idx128_autoincrement_test(uint64_t receiver, uint64_t cod
 
    // The modification below would trigger an error:
    /*
-   table.modify(itr, payer, [&]( auto& r ) {
+   table.modify(itr, [&]( auto& r ) {
       r.id = 100;
    });
    */
 
-   table.emplace( payer, [&]( auto& r) {
+   table.emplace( [&]( auto& r) {
       r.id  = 100;
       r.sec = itr->sec;
    });
@@ -469,14 +463,13 @@ void test_multi_index::idx128_autoincrement_test_part1(uint64_t receiver, uint64
    typedef record_idx128 record;
 
    const uint64_t table_name = N(autoinctbl2);
-   auto payer = receiver;
 
    multi_index<table_name, record,
       indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
    > table( receiver, receiver );
 
    for( int i = 0; i < 3; ++i ) {
-      table.emplace( payer, [&]( auto& r ) {
+      table.emplace( [&]( auto& r ) {
          r.id = table.available_primary_key();
          r.sec = 1000 - static_cast<uint128_t>(r.id);
       });
@@ -502,7 +495,6 @@ void test_multi_index::idx128_autoincrement_test_part2(uint64_t receiver, uint64
    typedef record_idx128 record;
 
    const uint64_t table_name = N(autoinctbl2);
-   auto payer = receiver;
 
    {
       multi_index<table_name, record,
@@ -516,14 +508,14 @@ void test_multi_index::idx128_autoincrement_test_part2(uint64_t receiver, uint64
       indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
    > table( receiver, receiver );
 
-   table.emplace( payer, [&]( auto& r) {
+   table.emplace( [&]( auto& r) {
       r.id = 0;
       r.sec = 1000;
    });
    // Done this way to make sure that table._next_primary_key is not incorrectly set to 1.
 
    for( int i = 3; i < 5; ++i ) {
-      table.emplace( payer, [&]( auto& r ) {
+      table.emplace( [&]( auto& r ) {
          auto itr = table.available_primary_key();
          r.id = itr;
          r.sec = 1000 - static_cast<uint128_t>(r.id);
@@ -541,7 +533,7 @@ void test_multi_index::idx128_autoincrement_test_part2(uint64_t receiver, uint64
    auto itr = table.find(3);
    ultrainio_assert( itr != table.end(), "idx128_autoincrement_test_part2 - could not find object with primary key of 3" );
 
-   table.emplace( payer, [&]( auto& r) {
+   table.emplace( [&]( auto& r) {
       r.id  = 100;
       r.sec = itr->sec;
    });
@@ -558,7 +550,6 @@ void test_multi_index::idx256_general(uint64_t receiver, uint64_t code, action_n
    typedef record_idx256 record;
 
    const uint64_t table_name = N(indextable5);
-   auto payer = receiver;
 
    print("Testing key256 secondary index.\n");
    multi_index<table_name, record,
@@ -569,17 +560,17 @@ void test_multi_index::idx256_general(uint64_t receiver, uint64_t code, action_n
    //auto onetwothreefour = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
    auto onetwothreefour = key256{std::array<uint32_t, 8>{{0,1, 0,2, 0,3, 0,4}}};
 
-   table.emplace( payer, [&]( auto& o ) {
+   table.emplace( [&]( auto& o ) {
       o.id = 1;
       o.sec = fourtytwo;
    });
 
-   table.emplace( payer, [&]( auto& o ) {
+   table.emplace( [&]( auto& o ) {
       o.id = 2;
       o.sec = onetwothreefour;
    });
 
-   table.emplace( payer, [&]( auto& o ) {
+   table.emplace( [&]( auto& o ) {
       o.id = 3;
       o.sec = fourtytwo;
    });
@@ -664,7 +655,6 @@ void test_multi_index::idx_double_general(uint64_t receiver, uint64_t code, acti
    typedef record_idx_double record;
 
    const uint64_t table_name = N(floattable1);
-   auto payer = receiver;
 
    print("Testing double secondary index.\n");
    multi_index<table_name, record,
@@ -677,7 +667,7 @@ void test_multi_index::idx_double_general(uint64_t receiver, uint64_t code, acti
    print("tolerance = ", tolerance, "\n");
 
    for( uint64_t i = 1; i <= 10; ++i ) {
-      table.emplace( payer, [&]( auto& o ) {
+      table.emplace( [&]( auto& o ) {
          o.id = i;
          o.sec = 1.0 / (i * 1000000.0);
       });
@@ -719,7 +709,6 @@ void test_multi_index::idx_long_double_general(uint64_t receiver, uint64_t code,
    typedef record_idx_long_double record;
 
    const uint64_t table_name = N(floattable2);
-   auto payer = receiver;
 
    print("Testing long double secondary index.\n");
    multi_index<table_name, record,
@@ -734,7 +723,7 @@ void test_multi_index::idx_long_double_general(uint64_t receiver, uint64_t code,
 
    long double f = 1.0l;
    for( uint64_t i = 1; i <= 10; ++i, f += 1.0l ) {
-      table.emplace( payer, [&]( auto& o ) {
+      table.emplace( [&]( auto& o ) {
          o.id = i;
          o.sec = 1.0l / (i * 1000000.0l);
       });
@@ -838,9 +827,8 @@ void test_multi_index::idx64_pass_pk_end_itr_to_modify(uint64_t receiver, uint64
    auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>(receiver);
    auto end_itr = table.end();
 
-   auto payer = receiver;
    // Should fail
-   table.modify(end_itr, payer, [](auto&){});
+   table.modify(end_itr, [](auto&){});
 }
 
 
@@ -869,9 +857,8 @@ void test_multi_index::idx64_pass_sk_end_itr_to_modify(uint64_t receiver, uint64
    auto sec_index = table.get_index<N(bysecondary)>();
    auto end_itr = sec_index.end();
 
-   auto payer = receiver;
    // Should fail
-   sec_index.modify(end_itr, payer, [](auto&){});
+   sec_index.modify(end_itr, [](auto&){});
 }
 
 
@@ -892,10 +879,8 @@ void test_multi_index::idx64_modify_primary_key(uint64_t receiver, uint64_t code
    auto pk_itr = table.find(781);
    ultrainio_assert(pk_itr != table.end() && pk_itr->sec == N(bob), "idx64_modify_primary_key - table.find() of existing primary key");
 
-   auto payer = receiver;
-
    // Should fail
-   table.modify(pk_itr, payer, [](auto& r){
+   table.modify(pk_itr, [](auto& r){
       r.id = 1100;
    });
 }
@@ -907,15 +892,13 @@ void test_multi_index::idx64_run_out_of_avl_pk(uint64_t receiver, uint64_t code,
    auto pk_itr = table.find(781);
    ultrainio_assert(pk_itr != table.end() && pk_itr->sec == N(bob), "idx64_modify_primary_key - table.find() of existing primary key");
 
-   auto payer = receiver;
-
-   table.emplace( payer, [&]( auto& r ) {
+   table.emplace( [&]( auto& r ) {
       r.id = static_cast<uint64_t>(-4);
       r.sec = N(alice);
    });
    ultrainio_assert(table.available_primary_key() == static_cast<uint64_t>(-3), "idx64_run_out_of_avl_pk - incorrect available primary key");
 
-   table.emplace( payer, [&]( auto& r ) {
+   table.emplace( [&]( auto& r ) {
       r.id = table.available_primary_key();
       r.sec = N(bob);
    });

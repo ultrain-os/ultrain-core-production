@@ -93,7 +93,7 @@ void tic_tac_toe::create(const account_name& challenger, const account_name& hos
    auto itr = existing_host_games.find( challenger );
    ultrainio_assert(itr == existing_host_games.end(), "game already exists");
 
-   existing_host_games.emplace(host, [&]( auto& g ) {
+   existing_host_games.emplace( [&]( auto& g ) {
       g.challenger = challenger;
       g.host = host;
       g.turn = host;
@@ -115,7 +115,7 @@ void tic_tac_toe::restart(const account_name& challenger, const account_name& ho
    ultrainio_assert(by == itr->host || by == itr->challenger, "this is not your game!");
 
    // Reset game
-   existing_host_games.modify(itr, itr->host, []( auto& g ) {
+   existing_host_games.modify(itr, []( auto& g ) {
       g.reset_game();
    });
 }
@@ -160,7 +160,7 @@ void tic_tac_toe::move(const account_name& challenger, const account_name& host,
    // Fill the cell, 1 for host, 2 for challenger
    const uint8_t cell_value = itr->turn == itr->host ? 1 : 2;
    const auto turn = itr->turn == itr->host ? itr->challenger : itr->host;
-   existing_host_games.modify(itr, itr->host, [&]( auto& g ) {
+   existing_host_games.modify(itr, [&]( auto& g ) {
       g.board[row * tic_tac_toe::game::board_width + column] = cell_value;
       g.turn = turn;
       g.winner = get_winner(g);
