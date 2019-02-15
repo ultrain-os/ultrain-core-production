@@ -10,6 +10,7 @@ parser.add_argument('-sub', '--subchain', type=str, help="set subchain name info
 parser.add_argument('-mainHttp', '--mainchainHttp', type=str, help="set mainchainHttpEndpoint for ultranmng")
 parser.add_argument('-httpAlias', '--httpAlias', type=str, help="set http alias for noultrain")
 parser.add_argument('-ws', '--worldstate', action='store_true', help="enable worldstate ")
+parser.add_argument('-tcp', '--tcp', action='store_true', help="enable tcp,ignore udp")
 args = parser.parse_args()
 class Host(object):
 
@@ -107,7 +108,11 @@ def write_config_file():
             update_ultrainmng_config(fname,hosts[dockerinfo])
             insert_worldstate_config(fname)
             print(hostip,con.ip,con.id)
-            insert_udp_seed(fname,hosts[dockerinfo][0].ip)
+            if args.tcp == None:
+                insert_udp_seed(fname,hosts[dockerinfo][0].ip);
+            else :
+                insert_peer(fname,hosts[dockerinfo][0].ip);
+
             index_key+=1
         os.system("rm -f  template.txt")
 

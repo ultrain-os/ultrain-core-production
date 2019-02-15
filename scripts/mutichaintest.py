@@ -133,7 +133,7 @@ def sendEmail(msg,successFlag):
             status = "--成功"
         subject = subject+status;
         username = "739884701"
-        password = "oarbqgghvwtbbbei"
+        password = "cfiawwwcqltbbcic"
         host = "smtp.qq.com"
         s = "{0}".format(msg)
 
