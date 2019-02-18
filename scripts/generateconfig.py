@@ -104,6 +104,7 @@ def write_config_file():
             if con.name[len(con.name)-1::len(con.name)] != '7':
                 insert_keys(fname, index_key)
             if con.name[len(con.name)-1::len(con.name)] == '7':
+                insert_keys(fname, index_key)
                 insert_non_producing(fname)
             update_ultrainmng_config(fname,hosts[dockerinfo])
             insert_worldstate_config(fname)
