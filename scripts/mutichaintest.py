@@ -124,7 +124,6 @@ def sendEmail(msg,successFlag):
 
     try:
         sender = "739884701@qq.com"
-        receiver = "chenxiaojian@ultrain.io"
         subject = '今日测试账户资源同步'
         if local == True:
             subject = '今日测试账户资源同步(docker环境)'

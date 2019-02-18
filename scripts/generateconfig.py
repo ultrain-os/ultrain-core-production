@@ -108,7 +108,7 @@ def write_config_file():
             update_ultrainmng_config(fname,hosts[dockerinfo])
             insert_worldstate_config(fname)
             print(hostip,con.ip,con.id)
-            if args.tcp == None:
+            if args.tcp == False:
                 insert_udp_seed(fname,hosts[dockerinfo][0].ip);
             else :
                 insert_peer(fname,hosts[dockerinfo][0].ip);
