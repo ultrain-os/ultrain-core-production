@@ -70,6 +70,8 @@ namespace ultrainio { namespace chain {
 
          static genesis_state extract_genesis_state( const fc::path& data_dir );
          static bool validata_block(const signed_block& block);
+         static fc::path backup_block(const fc::path& data_dir);
+         static uint32_t check_block(const fc::path& data_dir, const chain_id_type& chain_id);
          void load_data(const fc::path& data_dir);
 
       private:

@@ -554,6 +554,7 @@ namespace ultrainio { namespace chain {
       if (version != 1) {
          block_stream.read ( (char*)&first_block_num, sizeof(first_block_num) );
       }
+      block_stream.close();
 
       genesis_state gs;
       fc::raw::unpack(block_stream, gs);
@@ -634,6 +635,189 @@ namespace ultrainio { namespace chain {
       }
 
       return true;
+   }
+
+   fc::path block_log::backup_block(const fc::path& data_dir) {
+      auto now = fc::time_point::now();
+
+      auto blocks_dir = fc::canonical( data_dir );
+      if( blocks_dir.filename().generic_string() == "." ) {
+            blocks_dir = blocks_dir.parent_path();
+      }
+      auto backup_dir = blocks_dir.parent_path();
+      auto blocks_dir_name = blocks_dir.filename();
+      ULTRAIN_ASSERT( blocks_dir_name.generic_string() != ".", block_log_exception, "Invalid path to blocks directory" );
+
+      backup_dir = backup_dir / blocks_dir_name.generic_string().append("-").append( now );
+
+      ULTRAIN_ASSERT( !fc::exists(backup_dir), block_log_backup_dir_exist,
+            "Cannot move existing blocks directory to already existing directory '${new_blocks_dir}'",
+            ("new_blocks_dir", backup_dir) );
+
+      fc::rename( blocks_dir, backup_dir );
+      ilog( "Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir) );
+
+      fc::create_directories(blocks_dir);
+
+      return backup_dir;
+   }
+
+   uint32_t block_log::check_block(const fc::path& data_dir, const chain_id_type& chain_id) {
+      fc::path                 block_file, index_file;
+      std::fstream             block_stream, index_stream;
+
+      block_file = data_dir / "blocks.log";
+      index_file = data_dir / "blocks.index";
+
+      if(!(fc::is_directory(data_dir) && fc::is_regular_file(block_file))) {
+         elog("Block file not found in '${blocks_dir}'", ("blocks_dir", data_dir) );
+         fc::remove_all(index_file);
+         return 0;
+      }
+
+      block_stream.open(block_file.generic_string().c_str(), LOG_READ);
+
+      block_stream.seekg( 0, std::ios::end );
+      uint64_t end_pos = block_stream.tellg();
+      block_stream.seekg( 0 );
+
+      uint32_t version = 0;
+      block_stream.read( (char*)&version, sizeof(version) );
+      if ( !(version > 0 && version >= min_supported_version && version <= max_supported_version) ) {
+         elog("Block log version was not setup properly, version is ${version} ", ("version", version));
+         block_stream.close();
+         backup_block(data_dir);
+         return 0;
+      }
+
+      uint32_t first_block_num = 1;
+      if (version != 1) {
+         block_stream.read ( (char*)&first_block_num, sizeof(first_block_num) );
+      }
+
+      genesis_state gs;
+      fc::raw::unpack(block_stream, gs);
+
+      //chain id not match; first block is not gensis
+      //back up current files and create empty directory
+      if((gs.compute_chain_id() != chain_id) || (first_block_num != 1)) {
+         elog("Chain id not match or block num not start from 1, chain id: ${chain}, block num: ${num}",
+                 ("chain", gs.compute_chain_id()) ("num", first_block_num));
+         block_stream.close();
+         backup_block(data_dir);
+         return 0;
+      }
+
+      if (version != 1) {
+         auto expected_totem = npos;
+         std::decay_t<decltype(npos)> actual_totem;
+         block_stream.read ( (char*)&actual_totem, sizeof(actual_totem) );
+      }
+
+      //as need to validate each local block and may stop any position, reconstruct index file
+      fc::remove_all(index_file);
+      index_stream.open(index_file.generic_string().c_str(), LOG_WRITE);
+
+      std::exception_ptr     except_ptr;
+      optional<signed_block> bad_block;
+      uint32_t               block_num = 0;
+      block_id_type          previous;
+
+      uint64_t  pos = block_stream.tellg();
+      while( pos < end_pos ) {
+         signed_block tmp;
+         try {
+            fc::raw::unpack(block_stream, tmp);
+         } catch( ... ) {
+            except_ptr = std::current_exception();
+            elog("Unpack block failed");
+            break;
+         }
+
+         auto id = tmp.id();
+         if( block_header::num_from_id(previous) + 1 != block_header::num_from_id(id) ) {
+            elog( "Block ${num} (${id}) skips blocks. Previous block in block log is block ${prev_num} (${previous})",
+                  ("num", block_header::num_from_id(id))("id", id)
+                  ("prev_num", block_header::num_from_id(previous))("previous", previous) );
+            block_num = block_header::num_from_id(previous);
+            break;
+         }
+         if( previous != tmp.previous ) {
+            elog( "Block ${num} (${id}) does not link back to previous block. "
+                  "Expected previous: ${expected}. Actual previous: ${actual}.",
+                  ("num", block_header::num_from_id(id))("id", id)("expected", previous)("actual", tmp.previous) );
+            block_num = block_header::num_from_id(previous);
+            break;
+         }
+
+         if ( !validata_block(tmp) ) {
+            elog( "Block ${num} (${id}) failed trx mroot validation. ",
+                  ("num", block_header::num_from_id(id))("id", id));
+            block_num = block_header::num_from_id(previous);
+         }
+
+         previous = id;
+
+         uint64_t tmp_pos = std::numeric_limits<uint64_t>::max();
+         if( (static_cast<uint64_t>(block_stream.tellg()) + sizeof(pos)) <= end_pos ) {
+            block_stream.read( reinterpret_cast<char*>(&tmp_pos), sizeof(tmp_pos) );
+         }
+         if( pos != tmp_pos ) {
+            bad_block = tmp;
+            break;
+         }
+
+         index_stream.write((char*)&tmp_pos, sizeof(tmp_pos));
+         block_num = tmp.block_num();
+         pos = block_stream.tellp();
+      }
+
+      bool bad_file = true;
+
+      if( bad_block.valid() ) {
+         ilog( "Good blocks up to number ${num}. Last block in file has issue:\n${last_block}",
+               ("num", block_num)("last_block", *bad_block) );
+      } else if( except_ptr ) {
+         std::string error_msg;
+
+         try {
+            std::rethrow_exception(except_ptr);
+         } catch( const fc::exception& e ) {
+            error_msg = e.what();
+         } catch( const std::exception& e ) {
+            error_msg = e.what();
+         } catch( ... ) {
+            error_msg = "unrecognized exception";
+         }
+
+         ilog( "Good blocks up to number ${num}. "
+               "The block ${next_num} could not be deserialized from the block log due to error:\n${error_msg}",
+               ("num", block_num)("next_num", block_num+1)("error_msg", error_msg) );
+
+      } else if ( pos < end_pos ) {
+         ilog( "Stopped recovery of block log early at  block number: ${stop}.", ("stop", block_num) );
+      } else {
+         bad_file = false;
+         ilog( "Existing block log was undamaged. Use current file to block number ${num}.", ("num", block_num) );
+      }
+
+      if (block_num == 0) {
+         elog("There is no valid block in the local file");
+         block_stream.close();
+         index_stream.close();
+         backup_block(data_dir);
+         return 0;
+      }
+
+      if (bad_file == true) {
+         block_stream.close();
+         fc::resize_file( block_file, pos);
+      }
+
+      block_stream.close();
+      index_stream.close();
+
+      return block_num;
    }
 
 } } /// ultrainio::chain
