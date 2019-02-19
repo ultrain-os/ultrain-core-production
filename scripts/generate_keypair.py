@@ -1,4 +1,16 @@
 #!/usr/bin/env python
+account_list = [
+
+]
+miner_pk_list = [
+
+    ]
+miner_sk_list = [
+
+    ]
+acc_sk_list = [
+
+]
 
 bls_sk_list = [
     "26bf5ac96faa98fa97be285639d17fbca7d8f5ef", # genesis
@@ -249,7 +261,16 @@ def generate_keypair():
                         + allAccounts[i] +"\n"+"\n"
     
     writefile("newfile.txt",content)
+def generate_newkeypair():
+    content = ""
+    for i in range(0,len(account_list)):
+         content=content+ "pri:"+miner_sk_list[i] +"\n"\
+                        + "pub:"+miner_pk_list[i] +"\n"\
+                        + "ask:"+acc_sk_list[i] +"\n"\
+                        + "apk:"+acc_pk_list[i] +"\n"\
+                        + "account:"+account_list[i] +"\n"+"\n"\
 
+    writefile("newfile.txt",content)
 def readfile(fname):
 	fileold = open(fname, "r")
 	content = fileold.readlines()
@@ -261,5 +282,5 @@ def writefile(fname,content):
 	filenew.writelines(content)
 	filenew.close()
 
-generate_keypair()
+generate_newkeypair()
 

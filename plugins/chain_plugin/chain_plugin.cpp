@@ -187,6 +187,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
+         ("masterchain", bpo::bool_switch()->default_value(false),
+          "if the chain is running as main chain")
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Account added to actor whitelist (may specify multiple times)")
          ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -230,8 +232,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cli.add_options()
          ("genesis-json", bpo::value<bfs::path>(), "File to read Genesis State from")
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
-         ("is-on-main-chain", bpo::bool_switch()->default_value(false),
-          "if the chain is running as main chain")
          ("print-genesis-json", bpo::bool_switch()->default_value(false),
           "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
@@ -523,10 +523,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          ULTRAIN_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
       }
 
-      if( options.at( "is-on-main-chain" ).as<bool>()) {
-          my->chain_config->is_on_main_chain = true;
-      }
-
+      my->chain_config->is_on_main_chain = options.at( "masterchain" ).as<bool>();
+      ilog( "config is masterchain value: '${masterchain}'", ("masterchain",options.at( "masterchain" ).as<bool>()));
       my->chain.emplace( *my->chain_config );
       my->chain_id.emplace( my->chain->get_chain_id());
 

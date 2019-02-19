@@ -556,6 +556,7 @@ void system_contract::voteresourcelease() {
                             /*  no need to parse authorities
                             const authority& owner,
                             const authority& active*/ ) {
+      ultrainio_assert( is_master_chain() || creator == _self, "only master chain allow create account" );
 
       if( creator != _self ) {
          auto tmp = newact >> 4;

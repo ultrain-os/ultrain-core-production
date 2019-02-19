@@ -71,6 +71,7 @@ namespace ultrainiosystem {
 
    void system_contract::change_cons( account_name from, account_name receiver, asset stake_cons_delta)
    {
+      ultrainio_assert( is_master_chain() || from == _self || name{from}.to_string().find( "utrio." ) == 0, "only master chain allow delegate consensus" );
       require_auth( from );
       ultrainio_assert( stake_cons_delta != asset(0), "should stake non-zero amount" );
       ultrainio_assert( stake_cons_delta.amount >= 1000000 || stake_cons_delta.amount < 0 , "should stake at least 100 amount" );
@@ -246,6 +247,7 @@ namespace ultrainiosystem {
    void system_contract::resourcelease( account_name from, account_name receiver,
                           uint64_t combosize, uint64_t days, uint64_t location){
       require_auth( from );
+      ultrainio_assert( is_master_chain() || from == _self, "only master chain allow resourcelease" );
       ultrainio_assert(location != pending_queue && location != default_chain_name, "wrong location");
       auto chain_itr = _subchains.end();
       if(location != master_chain_name) {

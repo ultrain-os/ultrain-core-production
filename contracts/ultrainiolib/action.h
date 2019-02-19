@@ -176,6 +176,5 @@ extern "C" {
    ///@ } actioncapi
 
 
-   void require_on_main_chain();
-   void require_on_side_chain();
+   bool is_master_chain();
 }

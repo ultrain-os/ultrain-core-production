@@ -111,6 +111,7 @@ namespace ultrainiosystem {
       if(has_auth(_self)){
          require_auth(_self);
       } else{
+         ultrainio_assert( is_master_chain(), "only master chain allow regproducer" );
          INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {producer,N(active)},
             { producer, N(utrio.fee), asset(50000), std::string("regproducer") } );
       }
@@ -118,7 +119,11 @@ namespace ultrainiosystem {
 
    void system_contract::unregprod( const account_name producer ) {
       require_auth( producer );
-
+      if(has_auth(_self)){
+         require_auth(_self);
+      } else{
+         ultrainio_assert( is_master_chain(), "only master chain allow unregprod" );
+      }
       const auto& prod = _producers.get( producer, "producer not found" );
       uint64_t curblocknum = (uint64_t)head_block_number() + 1;
       print("unregprod curblocknum:",curblocknum," last_operate_blocknum:",prod.last_operate_blocknum);

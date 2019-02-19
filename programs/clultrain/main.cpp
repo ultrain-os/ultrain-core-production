@@ -791,6 +791,7 @@ struct register_producer_subcommand {
    string url;
    uint16_t loc = 0;
    string rewards_account;
+   bool superprivflg = false;
 
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
@@ -800,12 +801,16 @@ struct register_producer_subcommand {
       register_producer->add_option("rewards_account", rewards_account, localized("The producer's block reward refund account"));
       register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
       register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), true);
+      register_producer->add_flag("-u,--superpriv", superprivflg, localized("register_producer add privileged (rarely used)"));
       add_standard_transaction_options(register_producer);
 
       register_producer->set_callback([this] {
          // TODO(yufengshen): Check if the key is valid.
          auto regprod_var = regproducer_variant(producer_str, producer_key_str, bls_key_str, rewards_account, url, loc );
-         send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, NEX(regproducer), regprod_var)});
+         vector<permission_level> permiss_info{permission_level{producer_str,config::active_name}};
+         if(superprivflg)
+            permiss_info.push_back(permission_level{N(ultrainio),config::active_name});
+         send_actions({create_action(permiss_info, config::system_account_name, NEX(regproducer), regprod_var)});
       });
    }
 };
@@ -846,17 +851,21 @@ struct create_account_subcommand {
 
 struct unregister_producer_subcommand {
    string producer_str;
+   bool superprivflg = false;
 
    unregister_producer_subcommand(CLI::App* actionRoot) {
       auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
       unregister_producer->add_option("account", producer_str, localized("The account to unregister as a producer"))->required();
+      unregister_producer->add_flag("-u,--superpriv", superprivflg, localized("unregister_producer add privileged (rarely used)"));
       add_standard_transaction_options(unregister_producer);
 
       unregister_producer->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("producer", producer_str);
-
-         send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, NEX(unregprod), act_payload)});
+         vector<permission_level> permiss_info{permission_level{producer_str,config::active_name}};
+         if(superprivflg)
+            permiss_info.push_back(permission_level{N(ultrainio),config::active_name});
+         send_actions({create_action( permiss_info, config::system_account_name, NEX(unregprod), act_payload)});
       });
    }
 };
@@ -1444,22 +1453,40 @@ int main( int argc, char** argv ) {
    create->require_subcommand();
 
    bool r1 = false;
+   int  keysize = 1;
    // create key
-   auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback( [&r1](){
-      if( r1 ) {
-         auto pk    = private_key_type::generate_r1();
-         auto privs = string(pk);
-         auto pubs  = string(pk.get_public_key());
-         std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
-         std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
-      } else {
-         auto pk    = private_key_type::generate();
-         auto privs = string(pk);
-         auto pubs  = string(pk.get_public_key());
-         std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
-         std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
-      }
+   auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback( [&](){
+        vector<std::pair<string,string>> keypairvec;
+        string privs,pubs;
+        for(int i = 0; i < keysize; i++){
+            if( r1 ) {
+                auto pk    = private_key_type::generate_r1();
+                privs = string(pk);
+                pubs  = string(pk.get_public_key());
+            } else {
+                auto pk    = private_key_type::generate();
+                privs = string(pk);
+                pubs  = string(pk.get_public_key());
+            }
+            std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
+            std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
+            std::cout << std::endl;
+            keypairvec.push_back(std::pair<string,string>(privs,pubs));
+        }
+        if(keysize > 1){
+            std::cout << std::endl;
+            std::cout <<"pri keys:"<< std::endl;
+            for(auto keypair:keypairvec){
+                std::cout << "\"" << keypair.first << "\"," <<std::endl;
+            }
+            std::cout << std::endl;
+            std::cout <<"pub keys:"<< std::endl;
+            for(auto keypair:keypairvec){
+                std::cout << "\"" << keypair.second << "\"," << std::endl;
+            }
+        }
    });
+   create_key->add_option("keysize", keysize, localized("create key sizes"));
    create_key->add_flag( "--r1", r1, "Generate a key using the R1 curve (iPhone), instead of the K1 curve (Bitcoin)"  );
 
    // create account
