@@ -11,6 +11,7 @@ parser.add_argument('-mainHttp', '--mainchainHttp', type=str, help="set mainchai
 parser.add_argument('-httpAlias', '--httpAlias', type=str, help="set http alias for noultrain")
 parser.add_argument('-ws', '--worldstate', action='store_true', help="enable worldstate ")
 parser.add_argument('-tcp', '--tcp', action='store_true', help="enable tcp,ignore udp")
+parser.add_argument('-monitor', '--monitor', type=str, help="set monitor server")
 args = parser.parse_args()
 class Host(object):
 
@@ -108,6 +109,7 @@ def write_config_file():
                 insert_non_producing(fname)
             update_ultrainmng_config(fname,hosts[dockerinfo])
             insert_worldstate_config(fname)
+            insert_monitor_config(fname)
             print(hostip,con.ip,con.id)
             if args.tcp == False:
                 insert_udp_seed(fname,hosts[dockerinfo][0].ip);
@@ -167,6 +169,15 @@ def insert_worldstate_config(fname):
         newcontent = "worldstate-control = true"
     content = readfile(fname)
     index_line = content.index("#world_state_config\n")
+    content.insert(index_line+1, newcontent)
+    writefile(fname,content)
+
+def insert_monitor_config(fname):
+    newcontent = "http://172.16.10.7:8078"
+    if args.monitor:
+        newcontent = "monitor-server-endpoint = "+args.monitor;
+    content = readfile(fname)
+    index_line = content.index("#monitor_server\n")
     content.insert(index_line+1, newcontent)
     writefile(fname,content)
 

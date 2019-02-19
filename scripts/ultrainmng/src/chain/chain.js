@@ -29,7 +29,7 @@ var chainUtil = require("./util/chainUtil");
  * 2. 当自己是子链，但不是委员会成员是为false
  * @type {boolean}
  */
-var syncChainData = true;
+var syncChainData = false;
 
 //链切换flag-表示正在做链切换
 var syncChainChanging = false;
@@ -455,7 +455,6 @@ async function syncChainInfo() {
             await switchChain();
             return;
         } else {
-            syncChainData = true;
             syncChainChanging = false;
         }
 

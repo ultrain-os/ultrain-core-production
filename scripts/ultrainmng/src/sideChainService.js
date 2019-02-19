@@ -1,4 +1,5 @@
 var chain = require("./chain/chain")
+var monitor = require("./chain/monitor")
 var chainConfig = require("./chain/chainConfig")
 var chainApi = require("./chain/chainApi")
 var logger = require("./config/logConfig").getLogger("SideChainService");
@@ -7,7 +8,7 @@ var sleep = require("sleep")
 var utils = require('./common/util/utils')
 
 //定时配置
-var singleJobSchedule = "*/20 * * * * *";
+var singleJobSchedule = "*/10 * * * * *";
 
 /**
  * 管家程序入口
@@ -31,6 +32,9 @@ async function startEntry() {
     logger.info("worldstateSyncCycleSchedule ",chainSyncWorldState);
     var resourceJobSchedule = utils.isNotNull(chainConfig.configFileData.local.resourceSyncCycle) ?  chainConfig.configFileData.local.resourceSyncCycle : singleJobSchedule;
     logger.info("resourceJobSchedule ",resourceJobSchedule);
+
+    var monitorSchedule = utils.isNotNull(chainConfig.configFileData.local.monitorSyncCycle) ?  chainConfig.configFileData.local.monitorSyncCycle : singleJobSchedule;
+    logger.info("monitorSchedule ",monitorSchedule);
 
     //先做一次链信息同步
     logger.info("do sync chain info :")
@@ -73,6 +77,12 @@ async function startEntry() {
     logger.info("start world state sync:",chainSyncWorldState)
     schedule.scheduleJob(chainSyncWorldState, async function () {
         await chain.syncWorldState();
+    });
+
+    //monitor同步
+    logger.info("monitor sync:",monitorSchedule);
+    schedule.scheduleJob(monitorSchedule, async function () {
+        await monitor.checkIn();
     });
 
 

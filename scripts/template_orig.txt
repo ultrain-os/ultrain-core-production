@@ -8,7 +8,7 @@ max-clients = 12
 max-retry-count = 3
 max-grey-list-size = 40
 
-monitor-server-endpoint = http://172.16.10.7:8078
+#monitor_server
 
 allowed-connection = any
 

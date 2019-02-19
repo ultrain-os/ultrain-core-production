@@ -1,6 +1,7 @@
 const {U3} = require('u3.js');
 const {createU3, format} = U3;
 const axios = require('axios')
+var qs = require('qs');
 
 
 /**
@@ -414,6 +415,24 @@ const getChainBlockDuration = async (config) => {
 
 }
 
+/**
+ * monitor check in
+ * @param url
+ * @param param
+ * @returns {Promise<*>}
+ */
+monitorCheckIn = async (url,param) => {
+    try {
+        logger.info("monitorCheckIn param:",qs.stringify(param));
+        //var url = "http://172.16.10.5:8078/filedist/checkIn";
+        const rs =  await axios.post(url+"/filedist/checkIn", qs.stringify(param));
+        logger.info("monitorCheckIn result:",rs.data);
+        return rs.data;
+    } catch (e) {
+        logger.error("monitorCheckIn error,",e);
+    }
+}
+
 
 
 module.exports = {
@@ -432,5 +451,6 @@ module.exports = {
     getSubchainConfig,
     getSubchanMonitorService,
     getSubchainResource,
-    getChainBlockDuration
+    getChainBlockDuration,
+    monitorCheckIn
 }

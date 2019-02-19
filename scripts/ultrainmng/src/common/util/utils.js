@@ -1,3 +1,5 @@
+var logger = require("../../config/logConfig").getLogger("Utils");
+const publicIp = require('public-ip');
 
 /**
  * 判断是否为空
@@ -88,6 +90,7 @@ function logNetworkError(e) {
  */
 function getLocalIPAdress(){
     var interfaces = require('os').networkInterfaces();
+    //console.log(interfaces);
     for(var devName in interfaces){
         var iface = interfaces[devName];
         for(var i=0;i<iface.length;i++){
@@ -97,6 +100,25 @@ function getLocalIPAdress(){
             }
         }
     }
+}
+
+/**
+ * 获取外网ip
+ * @returns {Promise<void>}
+ */
+getPublicIp = async () => {
+
+    let ip = getLocalIPAdress();
+    try {
+
+        let res = await publicIp.v4();
+        if (isNotNull(res)) {
+            ip = res;
+        }
+    } catch (e) {
+        logger.error("getPublicIp error:",e);
+    }
+    return ip;
 }
 
 function ipListToStr(iplist,port,splitChar) {
@@ -111,7 +133,6 @@ function ipListToStr(iplist,port,splitChar) {
     return result;
 }
 
-// console.log(ipListToStr(["172.17.0.9","172.17.0.10","172.17.0.11"],"222",","))
 
 module.exports = {
     isNull,
@@ -121,5 +142,6 @@ module.exports = {
     logNetworkError,
     isNullList,
     getLocalIPAdress,
-    ipListToStr
+    ipListToStr,
+    getPublicIp
 }
