@@ -4,7 +4,6 @@
 #include <iostream>
 
 #include <core/Message.h>
-#include <core/Redefined.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
 #include <rpos/Validator.h>

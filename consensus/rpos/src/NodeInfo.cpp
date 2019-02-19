@@ -21,7 +21,7 @@ namespace ultrainio {
      *
      * @param sk private key for committee member
      * @param account committee member name
-     * 1. genesis can be config by itslef
+     * 1. genesis can be config by itself
      * 2. non-producer can not config private and account
      */
     void NodeInfo::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& blsSk, const std::string& account) {

@@ -12,8 +12,10 @@
 #include <ultrainio/chain/types.hpp>
 
 #include <core/Message.h>
-#include <core/Redefined.h>
+#include <core/types.h>
 #include <boost/asio/steady_timer.hpp>
+
+#include <rpos/BlsVoterSet.h>
 
 namespace ultrainio {
     class UranusNode;
@@ -47,20 +49,6 @@ namespace ultrainio {
 #else
             return accountPool.size();
 #endif
-        }
-    };
-
-    struct VoterSet {
-        CommonEchoMsg commonEchoMsg;
-        std::vector<AccountName> accountPool;
-        std::vector<std::string> sigPool;
-        std::vector<std::string> blsSignPool;
-        std::vector<uint32_t>    timePool;
-#ifdef CONSENSUS_VRF
-        std::vector<std::string> proofPool;
-#endif
-        bool empty() {
-            return accountPool.empty();
         }
     };
 

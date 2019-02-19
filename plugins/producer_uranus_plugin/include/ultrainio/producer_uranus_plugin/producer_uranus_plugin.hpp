@@ -9,7 +9,6 @@
 #include <ultrainio/http_client_plugin/http_client_plugin.hpp>
 
 #include <core/Message.h>
-#include <core/Redefined.h>
 
 #include <appbase/application.hpp>
 

@@ -2,12 +2,14 @@
 
 #include <string>
 #include <vector>
+
+#include <fc/reflect/reflect.hpp>
+
 namespace ultrainio {
     struct CommitteeInfo {
         std::string accountName;
         std::string pk;
         std::string blsPk;
-        int64_t stakesCount;
         bool isEmpty() {
             return accountName.empty() || pk.empty() || blsPk.empty();
         }
@@ -19,3 +21,4 @@ namespace ultrainio {
     };
 }
 
+FC_REFLECT( ultrainio::CommitteeInfo, (accountName)(pk)(blsPk))

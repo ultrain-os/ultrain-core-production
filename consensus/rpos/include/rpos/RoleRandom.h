@@ -1,7 +1,7 @@
 #pragma once
 
 #include <core/Message.h>
-#include <core/Redefined.h>
+#include <core/types.h>
 
 namespace ultrainio {
     class RoleRandom {

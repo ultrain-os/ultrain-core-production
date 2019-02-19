@@ -5,7 +5,7 @@
 #include <vector>
 
 #include <core/Message.h>
-#include <core/Redefined.h>
+#include <core/types.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
 #include <rpos/CommitteeInfo.h>

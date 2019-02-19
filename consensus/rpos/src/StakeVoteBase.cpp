@@ -75,12 +75,7 @@ namespace ultrainio {
             m_committeeMroot = chain::checksum256_type();
             return;
         }
-        vector<string> accounts;
-        for (const auto& c : m_committeeStatePtr->cinfo) {
-            accounts.push_back(c.accountName);
-        }
-        std::sort(accounts.begin(), accounts.end());
-        m_committeeMroot = chain::digest_type::hash(accounts);
+        m_committeeMroot = chain::digest_type::hash(m_committeeStatePtr->cinfo);
         dlog("--------- committee mroot is ${mroot}", ("mroot", m_committeeMroot));
     }
 
@@ -284,7 +279,7 @@ namespace ultrainio {
                     cinfo.accountName = r["owner"].as_string();
                     cinfo.pk = r["producer_key"].as_string();
                     cinfo.blsPk = r["bls_key"].as_string();
-                    cinfo.stakesCount = r["total_cons_staked"].as_int64();
+                    //cinfo.stakesCount = r["total_cons_staked"].as_int64();
                     statePtr->cinfo.push_back(cinfo);
                 }
                 ilog("#########################there are ${p} committee member enabled", ("p", result.rows.size()));

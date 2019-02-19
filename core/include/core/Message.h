@@ -4,13 +4,9 @@
 #include <fc/variant.hpp>
 #include <ultrainio/chain/block.hpp>
 #include <crypto/Signature.h>
-#include <core/Redefined.h>
+#include <core/types.h>
 
 namespace ultrainio {
-
-    using Block = chain::signed_block;
-    using BlockHeader = chain::block_header;
-    using SignBlockHeader = chain::signed_block_header;
 
     enum BlockHeaderExtKey {
         kExtVoterSet = 0
@@ -86,23 +82,6 @@ namespace ultrainio {
     struct EchoMsg : public UnsignedEchoMsg {
         std::string signature; // hex string
     };
-
-    struct BlsVoterSet {
-        CommonEchoMsg commonEchoMsg;
-        std::vector<AccountName> accountPool;
-#ifdef CONSENSUS_VRF
-        std::vector<std::string> proofPool;
-#endif
-        std::string sigX;
-
-        bool empty();
-
-        void toVariants(fc::variants&) const;
-
-        void fromVariants(const fc::variants&);
-
-        bool operator == (const BlsVoterSet&);
-    };
 }
 
 FC_REFLECT( ultrainio::ProposeMsg, (block))
@@ -121,9 +100,3 @@ FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
 FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))
 FC_REFLECT( ultrainio::SyncBlockMsg, (seqNum)(block))
 FC_REFLECT( ultrainio::SyncStopMsg, (seqNum))
-
-#ifdef CONSENSUS_VRF
-FC_REFLECT( ultrainio::BlsVoterSet, (commonEchoMsg)(accountPool)(proofPool)(sigX) )
-#else
-FC_REFLECT( ultrainio::BlsVoterSet, (commonEchoMsg)(accountPool)(sigX) )
-#endif

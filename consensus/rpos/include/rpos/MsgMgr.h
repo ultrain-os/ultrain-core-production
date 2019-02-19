@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <core/Message.h>
-#include <core/Redefined.h>
+#include <core/types.h>
 #include <crypto/Ed25519.h>
 #include <rpos/BlockMsgPool.h>
 #include <rpos/Proof.h>

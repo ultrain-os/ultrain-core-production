@@ -45,3 +45,13 @@ add_executable( punishmgr_unittest
 target_link_libraries( punishmgr_unittest ultrainio_rpos )
 
 add_test(NAME punishmgr_unittest COMMAND punishmgr_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+### BlsVoterSet
+add_executable( blsvoterset_test
+        BlsVoterSetTest.cpp)
+
+include_directories ( ${Boost_INCLUDE_DIR} )
+
+target_link_libraries( blsvoterset_test ultrainio_rpos )
+
+add_test(NAME blsvoterset_test COMMAND blsvoterset_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

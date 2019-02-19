@@ -413,7 +413,7 @@ namespace ultrainiosystem {
     int head_block_number();
     void empower_to_chain(account_name user, uint64_t chain_name);
     bool is_empowered(account_name user, uint64_t chain_name);
-    int verify_header_extensions(uint64_t chain_name, int ext_key, const char* ext_value, int value_len);
+    int verify_header_extensions(uint64_t chain_name, int ext_key, const char* ext_value, size_t value_len);
 
    #ifdef __cplusplus
    }
