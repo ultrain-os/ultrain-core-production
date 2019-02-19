@@ -234,7 +234,11 @@ namespace ultrainio { namespace chain {
          a.ability = action::Normal;
 
          std::string account = std::string(a.account);
-         if (account.size() > 6 && account.substr(0, 6) == "utrio.") return;
+         // utrio.rand is a special case where it has pureview action 'query'.
+         // otherwise we filter out system account.
+         if (account != "utrio.rand" &&
+             account.size() > 6 &&
+             account.substr(0, 6) == "utrio.") return;
 
          auto* code = control.db().find<account_object, by_name>(a.account);
          if (code != nullptr) {

@@ -269,8 +269,8 @@ namespace ultrainio {
                 std::vector<EchoMsg> &ev = itor->second;
                 for (size_t i = 0; i < ev.size(); i++) {
                     if (ev[i].account == echo.account && ev[i].blockId == id) {
-                        ilog("duplicate echo msg!!! id:${id} account:${account} blockNum:${b} phase:${p}",
-                             ("id", echo.blockId)("account", std::string(echo.account))("b", key.blockNum)("p", key.phase));
+                        ilog("dup echo msg!!! id:${id} account:${account} blockNum:${b} phase:${p}",
+                             ("id", short_hash(echo.blockId))("account", std::string(echo.account))("b", key.blockNum)("p", key.phase));
                         duplicate = true;
                         return true;
                     }
@@ -309,7 +309,7 @@ namespace ultrainio {
                 for (size_t i = 0; i < pv.size(); i++) {
                     if (pv[i].block.proposer == propose.block.proposer && pv[i].block.id() == id) {
                         ilog("duplicate propose msg!!! id:${id} pk:${pk} blockNum:${b} phase:${p}",
-                             ("id", propose.block.id())("pk", propose.block.proposer)("b", key.blockNum)("p",
+                             ("id", short_hash(propose.block.id()))("pk", propose.block.proposer)("b", key.blockNum)("p",
                                                                                                            key.phase));
                         duplicate = true;
                         return true;
