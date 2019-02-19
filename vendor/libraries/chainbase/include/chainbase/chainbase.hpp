@@ -19,6 +19,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
 #include <boost/throw_exception.hpp>
+#include <boost/tuple/tuple_io.hpp>
 
 #include <array>
 #include <atomic>
@@ -235,6 +236,7 @@ namespace chainbase {
             };
 
             auto insert_result = _indices.emplace( constructor, _indices.get_allocator() );
+
             if( !insert_result.second ) {
                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
             }
@@ -269,7 +271,11 @@ namespace chainbase {
          template<typename CompatibleKey>
          const value_type& get( CompatibleKey&& key )const {
             auto ptr = find( key );
-            if( !ptr ) BOOST_THROW_EXCEPTION( std::out_of_range("key not found") );
+            if( !ptr ) {
+               std::stringstream ss;
+               ss << "key not found (" << boost::core::demangle( typeid( key ).name() ) << "): " << key;
+               BOOST_THROW_EXCEPTION( std::out_of_range( ss.str().c_str() ) );
+            }
             return *ptr;
          }
 
@@ -463,6 +469,7 @@ namespace chainbase {
             if( !enabled() ) return;
             if( _stack.size() == 1 ) {
                _stack.pop_front();
+               --_revision;
                return;
             }
 
@@ -638,8 +645,13 @@ namespace chainbase {
 
          void set_revision( uint64_t revision )
          {
-            if( _stack.size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
-            _revision = revision;
+            if( _stack.size() != 0 )
+               BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
+
+            if( revision > std::numeric_limits<int64_t>::max() )
+               BOOST_THROW_EXCEPTION( std::logic_error("revision to set is too high") );
+
+            _revision = static_cast<int64_t>(revision);
          }
 
          void remove_object( int64_t id )
@@ -648,6 +660,20 @@ namespace chainbase {
             if( !val ) BOOST_THROW_EXCEPTION( std::out_of_range( boost::lexical_cast<std::string>(id) ) );
             remove( *val );
          }
+
+         std::pair<int64_t, int64_t> undo_stack_revision_range()const {
+            int64_t begin = _revision;
+            int64_t end   = _revision;
+
+            if( _stack.size() > 0 ) {
+               begin = _stack.front().revision - 1;
+               end   = _stack.back().revision;
+            }
+
+            return {begin, end};
+         }
+
+         const auto& stack()const { return _stack; }
 
       private:
          bool enabled()const { return _stack.size(); }
@@ -802,6 +828,7 @@ namespace chainbase {
          virtual uint32_t type_id()const  = 0;
          virtual uint64_t row_count()const = 0;
          virtual const std::string& type_name()const = 0;
+         virtual std::pair<int64_t, int64_t> undo_stack_revision_range()const = 0;
 
          virtual void remove_object( int64_t id ) = 0;
 
@@ -830,6 +857,7 @@ namespace chainbase {
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
          virtual uint64_t row_count()const override { return _base.indices().size(); }
          virtual const std::string& type_name() const override { return BaseIndex_name; }
+         virtual std::pair<int64_t, int64_t> undo_stack_revision_range()const override { return _base.undo_stack_revision_range(); }
 
          virtual void     remove_object( int64_t id ) override { return _base.remove_object( id ); }
       private:
@@ -977,41 +1005,75 @@ namespace chainbase {
 
          template<typename MultiIndexType>
          void add_index() {
-             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
-             typedef generic_index<MultiIndexType>          index_type;
-             typedef typename index_type::allocator_type    index_alloc;
+            const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
+            typedef generic_index<MultiIndexType>          index_type;
+            typedef typename index_type::allocator_type    index_alloc;
 
-             std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
+            std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
 
-             if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
-                BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
-             }
+            if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
+               BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
+            }
 
-             index_type* idx_ptr =  nullptr;
-             if( !_read_only ) {
-                idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
-             } else {
-                idx_ptr = _segment->find< index_type >( type_name.c_str() ).first;
-                if( !idx_ptr ) BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in read only database" ) );
+            index_type* idx_ptr = _segment->find< index_type >( type_name.c_str() ).first;
+            bool first_time_adding = false;
+            if( !idx_ptr ) {
+               if( _read_only ) {
+                  BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in read only database" ) );
+               }
+               first_time_adding = true;
+               idx_ptr = _segment->construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
              }
 
              idx_ptr->validate();
              idx_ptr->set_backup(_ws);
+			 
+            // Ensure the undo stack of added index is consistent with the other indices in the database
+            if( _index_list.size() > 0 ) {
+               auto expected_revision_range = _index_list.front()->undo_stack_revision_range();
+               auto added_index_revision_range = idx_ptr->undo_stack_revision_range();
 
-             if( type_id >= _index_map.size() )
-                _index_map.resize( type_id + 1 );
+               if( added_index_revision_range.first != expected_revision_range.first ||
+                   added_index_revision_range.second != expected_revision_range.second ) {
 
-             auto new_index = new index<index_type>( *idx_ptr );
-             _index_map[ type_id ].reset( new_index );
-             _index_list.push_back( new_index );
+                  if( !first_time_adding ) {
+                     BOOST_THROW_EXCEPTION( std::logic_error(
+                        "existing index for " + type_name + " has an undo stack (revision range [" +
+                        std::to_string(added_index_revision_range.first) + ", " + std::to_string(added_index_revision_range.second) +
+                        "]) that is inconsistent with other indices in the database (revision range [" +
+                        std::to_string(expected_revision_range.first) + ", " + std::to_string(expected_revision_range.second) +
+                        "]); corrupted database?"
+                     ) );
+                  }
+
+                  if( _read_only ) {
+                     BOOST_THROW_EXCEPTION( std::logic_error(
+                        "new index for " + type_name +
+                        " requires an undo stack that is consistent with other indices in the database; cannot fix in read-only mode"
+                     ) );
+                  }
+
+                  idx_ptr->set_revision( static_cast<uint64_t>(expected_revision_range.first) );
+                  while( idx_ptr->revision() < expected_revision_range.second ) {
+                     idx_ptr->start_undo_session(true).push();
+                  }
+               }
+            }
+
+            if( type_id >= _index_map.size() )
+               _index_map.resize( type_id + 1 );
+
+            auto new_index = new index<index_type>( *idx_ptr );
+            _index_map[ type_id ].reset( new_index );
+            _index_list.push_back( new_index );
          }
 
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
             return _segment->get_segment_manager();
          }
 
-         void* get_segment_address() {
-            return _segment->get_address();
+         auto get_segment_manager()const -> std::add_const_t< decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager() ) > {
+            return _segment->get_segment_manager();
          }
 
          size_t get_free_memory()const
@@ -1079,8 +1141,11 @@ namespace chainbase {
          {
              CHAINBASE_REQUIRE_READ_LOCK("get", ObjectType);
              auto obj = find< ObjectType, IndexedByType >( std::forward< CompatibleKey >( key ) );
-             if( !obj )
-                BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key" ) );
+             if( !obj ) {
+                std::stringstream ss;
+                ss << "unknown key (" << boost::core::demangle( typeid( key ).name() ) << "): " << key;
+                BOOST_THROW_EXCEPTION( std::out_of_range( ss.str().c_str() ) );
+             }
              return *obj;
          }
 
@@ -1089,8 +1154,11 @@ namespace chainbase {
          {
              CHAINBASE_REQUIRE_READ_LOCK("get", ObjectType);
              auto obj = find< ObjectType >( key );
-             if( !obj )
-                BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key") );
+             if( !obj ) {
+                std::stringstream ss;
+                ss << "unknown key (" << boost::core::demangle( typeid( key ).name() ) << "): " << key._id;
+                BOOST_THROW_EXCEPTION( std::out_of_range( ss.str().c_str() ) );
+             }
              return *obj;
          }
 
@@ -1170,7 +1238,7 @@ namespace chainbase {
             return callback();
          }
 
-         database_index_row_count_multiset row_count_per_index() {
+         database_index_row_count_multiset row_count_per_index()const {
             database_index_row_count_multiset ret;
             for(const auto& ai_ptr : _index_map) {
                if(!ai_ptr)
@@ -1199,10 +1267,11 @@ namespace chainbase {
 
          bfs::path                                                   _data_dir;
 
-         mutable int32_t                                             _read_lock_count = 0;
+#ifdef CHAINBASE_CHECK_LOCKING
+         int32_t                                                     _read_lock_count = 0;
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
-
+#endif
          bool                                                        _ws = false;
          void                                                        _msync_database();
    };
@@ -1210,4 +1279,3 @@ namespace chainbase {
    template<typename Object, typename... Args>
    using shared_multi_index_container = boost::multi_index_container<Object,Args..., chainbase::allocator<Object> >;
 }  // namepsace chainbase
-
