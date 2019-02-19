@@ -106,14 +106,28 @@ function getLocalIPAdress(){
  * 获取外网ip
  * @returns {Promise<void>}
  */
+var cachePublicIp = "";
 getPublicIp = async () => {
 
     let ip = getLocalIPAdress();
+    if (isNotNull(cachePublicIp)) {
+        ip = cachePublicIp;
+    }
     try {
 
+        let retry = 3;
         let res = await publicIp.v4();
+        while (isNull(res)) {
+           res = await publicIp.v4();
+            retry--;
+            if (retry <=0) {
+                break;
+            }
+        }
+
         if (isNotNull(res)) {
             ip = res;
+            cachePublicIp = res;
         }
     } catch (e) {
         logger.error("getPublicIp error:",e);

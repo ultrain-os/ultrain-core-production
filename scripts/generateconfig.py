@@ -173,7 +173,7 @@ def insert_worldstate_config(fname):
     writefile(fname,content)
 
 def insert_monitor_config(fname):
-    newcontent = "http://172.16.10.7:8078"
+    newcontent = "monitor-server-endpoint = http://172.16.10.7:8078"
     if args.monitor:
         newcontent = "monitor-server-endpoint = "+args.monitor;
     content = readfile(fname)
