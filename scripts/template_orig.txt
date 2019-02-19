@@ -5,6 +5,7 @@ rpos-p2p-listen-endpoint = 0.0.0.0:20123
 udp-listen-port = 20124
 
 max-clients = 12
+min-connections = 10
 max-retry-count = 3
 max-grey-list-size = 40
 

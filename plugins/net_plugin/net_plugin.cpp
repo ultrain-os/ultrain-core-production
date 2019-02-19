@@ -143,7 +143,8 @@ namespace ultrainio {
         passive_peer                     rpos_listener;
         passive_peer                     trx_listener;
         uint32_t                         max_client_count = 0;
-        uint32_t                         max_nodes_per_host = 2;
+        uint32_t                         min_connections = 0;
+        uint32_t                         max_nodes_per_host = 4;
         uint32_t                         num_clients = 0;
         uint32_t                         max_retry_count = 3;
         uint32_t                         max_grey_list_size = 40;
@@ -348,7 +349,7 @@ namespace ultrainio {
     constexpr auto     def_send_buffer_size_mb = 4;
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
     constexpr auto     def_max_clients = 12; // 0 for unlimited clients
-    constexpr auto     def_max_nodes_per_host = 2;
+    constexpr auto     def_max_nodes_per_host = 4;
     constexpr auto     def_conn_retry_wait = 30;
     constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
@@ -2488,12 +2489,10 @@ connection::connection(string endpoint, msg_priority pri)
                ilog("put ${a} to grey list, and erase it from connections.", ("a", (*it)->peer_addr));
                it = connections.erase(it);
                continue;
-            }
-            else if ((*it)->peer_addr.length() <= 0 || is_grey_connection((*it)->peer_addr)) {
+            } else if ((*it)->peer_addr.length() <= 0 || is_grey_connection((*it)->peer_addr)) {
                it = connections.erase(it);
                continue;
-            }
-	    else {
+            } else {
                (*it)->retry_connect_count++;
                connect(*it);
             }
@@ -2501,9 +2500,9 @@ connection::connection(string endpoint, msg_priority pri)
          ++it;
       }
 
-      ilog("connections size: ${s} max_client_count: ${mcc} num_clients: ${nc} grey list size: ${gls}", ("s", connections.size())("mcc", max_client_count)("nc", num_clients)("gls", peer_addr_grey_list.size()));
-      if (use_node_table && connections.size() < max_client_count) { // if use_node_table == false, we can't get any valid node ip from node table
-         uint32_t count = max_client_count - connections.size();
+      ilog("connections size: ${s} min_connections: ${mc} num_clients: ${nc} grey list size: ${gls}", ("s", connections.size())("mc", min_connections)("nc", num_clients)("gls", peer_addr_grey_list.size()));
+      if (use_node_table && connections.size() < min_connections) { // if use_node_table == false, we can't get any valid node ip from node table
+         uint32_t count = min_connections - connections.size();
          std::list<p2p::NodeIPEndpoint> nodes = node_table->getNodes();
          uint32_t i = 0;
          for (std::list<p2p::NodeIPEndpoint>::iterator it = nodes.begin(); it != nodes.end() && i < count; ++it) {
@@ -2736,6 +2735,7 @@ connection::connection(string endpoint, msg_priority pri)
          ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
+         ( "min-connections", bpo::value<int>()->default_value(10), "Minimum number of connections the programme need create, including active and subjective connections")
          ( "max-retry-count", bpo::value<uint32_t>()->default_value(3), "Maximum number of reconnecting to listen endpoint")
          ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(40), "Maximum size of grey list")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
@@ -2781,6 +2781,9 @@ connection::connection(string endpoint, msg_priority pri)
          my->resp_expected_period = def_resp_expected_wait;
          my->dispatcher->just_send_it_max = options.at( "max-implicit-request" ).as<uint32_t>();
          my->max_client_count = options.at( "max-clients" ).as<int>();
+         my->min_connections = options.at( "min-connections" ).as<int>();
+         ULTRAIN_ASSERT( my->max_client_count > my->min_connections, plugin_config_exception, "max_client_count must be > min_connections");
+
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
 
          if (options.count( "max-retry-count" )) {
