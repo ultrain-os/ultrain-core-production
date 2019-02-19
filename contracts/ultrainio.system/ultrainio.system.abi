@@ -185,9 +185,9 @@
       "base": "",
       "fields": [
         {"name": "user",          "type": "account_name"},
+        {"name": "chain_name",    "type": "uint64"},
         {"name": "owner_pk",      "type": "string"},
-        {"name": "active_pk",     "type": "string"},
-        {"name": "chain_name",    "type": "uint64"}
+        {"name": "active_pk",     "type": "string"}
       ]
     },{
       "name": "permission_level_weight",
@@ -481,6 +481,18 @@
         {"name": "take_effect_at_block",          "type": "uint32"}
        ]
     },{
+     "name": "unconfirmed_block_header",
+      "base": "",
+      "fields": [
+        {"name": "fork_id",                       "type": "uint16"},
+        {"name": "to_be_paid",                    "type": "bool"},
+        {"name": "is_leaf",                       "type": "bool"},
+        {"name": "proposer",                      "type": "account_name"},
+        {"name": "block_id",                      "type": "block_id_type"},
+        {"name": "block_number",                  "type": "uint32"},
+        {"name": "committee_mroot",               "type": "checksum256"}
+       ]
+    },{
      "name": "subchain",
       "base": "",
       "fields": [
@@ -494,12 +506,13 @@
         {"name": "committee_members",             "type": "role_base[]"},
         {"name": "updated_info",                  "type": "updated_committee"},
         {"name": "changing_info",                 "type": "changing_committee"},
-        {"name": "head_block_id",                 "type": "block_id_type"},
-        {"name": "head_block_num",                "type": "uint32"},
         {"name": "recent_users",                  "type": "user_info[]"},
         {"name": "total_user_num",                "type": "uint32"},
         {"name": "chain_id",                      "type": "checksum256"},
-        {"name": "committee_mroot",               "type": "checksum256"}
+        {"name": "committee_mroot",               "type": "checksum256"},
+        {"name": "confirmed_block_number",        "type": "uint32"},
+        {"name": "highest_block_number",          "type": "uint32"},
+        {"name": "unconfirmed_blocks",            "type": "unconfirmed_block_header[]"}
        ]
     },{
      "name": "pending_miner",

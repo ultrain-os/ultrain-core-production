@@ -158,13 +158,13 @@ def createmutiaccounts():
     print sidechainacc1;
     if args.subchainNum >= 1:
         for a in sidechainacc1:
-            retry(args.clultrain + ' push action ultrainio empoweruser \'{"user":"%s","owner_pk":"%s","active_pk":"%s","chain_name":"%s"}\' -p %s@active' %(a,args.initacc_pk,args.initacc_pk,"11",a))
+            retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"11",args.initacc_pk,args.initacc_pk,a))
     if args.subchainNum >= 2:
         for a in sidechainacc2:
-            retry(args.clultrain + ' push action ultrainio empoweruser \'{"user":"%s","owner_pk":"%s","active_pk":"%s","chain_name":"%s"}\' -p %s@active' %(a,args.initacc_pk,args.initacc_pk,"12",a))
+            retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"12",args.initacc_pk,args.initacc_pk,a))
     if args.subchainNum >= 3:
         for a in sidechainacc3:
-            retry(args.clultrain + ' push action ultrainio empoweruser \'{"user":"%s","owner_pk":"%s","active_pk":"%s","chain_name":"%s"}\' -p %s@active' %(a,args.initacc_pk,args.initacc_pk,"13",a))
+            retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"13",args.initacc_pk,args.initacc_pk,a))
 
 def stepmutireslease():
     if args.subchainNum >= 1:

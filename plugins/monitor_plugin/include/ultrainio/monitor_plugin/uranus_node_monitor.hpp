@@ -177,7 +177,7 @@ namespace ultrainio {
                 staticConfig.nonProducingNode  = pNode->getNonProducingNode();
                 staticConfig.genesisLeaderPk   = Genesis::s_genesisPk;
                 staticConfig.publicKey         = std::string(StakeVoteBase::getMyPrivateKey().getPublicKey());
-                staticConfig.privateKey        = std::string(StakeVoteBase::getMyPrivateKey());
+                //staticConfig.privateKey        = std::string(StakeVoteBase::getMyPrivateKey());
                 staticConfig.account           = std::string(StakeVoteBase::getMyAccount());
 
                 const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();

@@ -1192,6 +1192,31 @@ struct canceldelay_subcommand {
    }
 };
 
+struct empoweruser_subcommand {
+   string user_account;
+   string owner_public_key;
+   string active_public_key;
+   string chain_name;
+
+   empoweruser_subcommand(CLI::App* actionRoot) {
+      auto empower_user = actionRoot->add_subcommand("empoweruser", localized("Empower user's onwer&active permissions to a sidechain"));
+      empower_user->add_option("user_account", user_account, localized("Account of the user to be empowered"))->required();
+      empower_user->add_option("chain_name", chain_name, localized("The name of the sidechain which the user will be empowered to"))->required();
+      empower_user->add_option("owner_public_key", owner_public_key, localized("Public key of owner permission, the default is the same as master"));
+      empower_user->add_option("active_public_key", active_public_key, localized("Public key of active permission, the default is the same as master"));
+      add_standard_transaction_options(empower_user);
+
+      empower_user->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("user", user_account)
+                  ("chain_name", chain_name)
+                  ("owner_pk", owner_public_key)
+                  ("active_pk", active_public_key);
+         send_actions({create_action({permission_level{user_account, config::active_name}}, config::system_account_name, NEX(empoweruser), act_payload)});
+      });
+   }
+};
+
 void get_account( const string& accountName, bool json_format ) {
    auto json = call(get_account_func, fc::mutable_variant_object("account_name", accountName));
    auto res = json.as<ultrainio::chain_apis::read_only::get_account_results>();
@@ -2703,6 +2728,7 @@ int main( int argc, char** argv ) {
    auto bidnameinfo = bidname_info_subcommand(system);
 
    auto cancelDelay = canceldelay_subcommand(system);
+   auto empowerUser = empoweruser_subcommand(system);
 
    try {
        app.parse(argc, argv);

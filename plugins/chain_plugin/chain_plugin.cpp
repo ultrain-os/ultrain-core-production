@@ -995,14 +995,14 @@ vector<ultrainio::chain::resources_lease> results;
     return results;
 }
 
-uint32_t read_only::get_subchain_block_num(const read_only::get_subchain_block_num_params& p) const {
+read_only::get_subchain_block_num_result read_only::get_subchain_block_num(const read_only::get_subchain_block_num_params& p) const {
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
    ULTRAIN_ASSERT(p.chain_name != master_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
 
    name table = N(subchains);
    auto index_type = get_table_type( abi, table );
 
-   uint32_t result = std::numeric_limits<uint32_t>::max();
+   read_only::get_subchain_block_num_result result;
    walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
    //    ULTRAIN_ASSERT( obj.value.size() >= sizeof(subchain), chain::asset_type_exception, "Invalid subchain data on table");
 
@@ -1010,7 +1010,19 @@ uint32_t read_only::get_subchain_block_num(const read_only::get_subchain_block_n
        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
        fc::raw::unpack(ds, subchain_data);
        if(p.chain_name == subchain_data.chain_name) {
-           result = subchain_data.head_block_num;
+           result.confirmed_block.number = subchain_data.confirmed_block_number;
+           auto ite_block = subchain_data.unconfirmed_blocks.begin();
+           for(; ite_block != subchain_data.unconfirmed_blocks.end(); ++ite_block) {
+               if(ite_block->is_leaf) {
+                   block_num_and_id temp_num_id;
+                   temp_num_id.number   = ite_block->block_number;
+                   temp_num_id.block_id = ite_block->block_id;
+                   result.forks.push_back(temp_num_id);
+               }
+               if(ite_block->block_number == result.confirmed_block.number) {
+                   result.confirmed_block.block_id = ite_block->block_id;
+               }
+           }
            return false;
        }
        else {
@@ -1084,15 +1096,20 @@ std::vector<read_only::get_user_bulletin_result> read_only::get_user_bulletin(co
                read_only::get_user_bulletin_result tmpuser;
                tmpuser.owner = subchain_data.recent_users[index].user_name.to_string();
                tmpuser.issue_date = fc::time_point_sec(subchain_data.recent_users[index].emp_time);
-               if(subchain_data.recent_users[index].is_producer) {
+               if(subchain_data.recent_users[index].is_producer || subchain_data.recent_users[index].owner_key == "") {
                    //producer will always use the same pk as in master
                    const auto& permission_o = d.get<permission_object,by_owner>(boost::make_tuple(subchain_data.recent_users[index].user_name, N(owner)));
                    tmpuser.owner_pk = string(permission_o.auth.keys[0].key);
+               }
+               else{
+                   tmpuser.owner_pk = subchain_data.recent_users[index].owner_key;
+               }
+
+               if(subchain_data.recent_users[index].is_producer ||subchain_data.recent_users[index].active_key == "") {
                    const auto& permission_a = d.get<permission_object,by_owner>(boost::make_tuple(subchain_data.recent_users[index].user_name, N(active)));
                    tmpuser.active_pk = string(permission_a.auth.keys[0].key);
                }
                else {
-                   tmpuser.owner_pk = subchain_data.recent_users[index].owner_key;
                    tmpuser.active_pk = subchain_data.recent_users[index].active_key;
                }
                result.push_back(tmpuser);

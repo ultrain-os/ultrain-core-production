@@ -198,6 +198,16 @@ namespace ultrainiosystem {
        uint32_t                  take_effect_at_block; //block num of master chain when the committee update takes effect
    };
 
+   struct unconfirmed_block_header {
+       uint16_t                  fork_id;
+       bool                      to_be_paid;    //should block proposer be paid when this block was confirmed
+       bool                      is_leaf;       //leaf in the fork tree
+       account_name              proposer;
+       block_id_type             block_id;
+       uint32_t                  block_number;
+       checksum256               committee_mroot;
+   };
+
    struct subchain {
        uint64_t                  chain_name;
        uint64_t                  chain_type;
@@ -209,18 +219,19 @@ namespace ultrainiosystem {
        std::vector<role_base>    committee_members;
        updated_committee         updated_info;
        changing_committee        changing_info;
-       block_id_type             head_block_id;
-       uint32_t                  head_block_num;
        std::vector<user_info>    recent_users;
        uint32_t                  total_user_num;
        checksum256               chain_id;
        checksum256               committee_mroot;
+       uint32_t                  confirmed_block_number;
+       uint32_t                  highest_block_number;
+       std::vector<unconfirmed_block_header>  unconfirmed_blocks; //actually the last confirmed block is also stored in this vector
 
        auto primary_key()const { return chain_name; }
 
        ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_active)(is_synced)(is_schedulable)
-                                      (committee_members)(updated_info)(changing_info)(head_block_id)(head_block_num)(recent_users)
-                                      (total_user_num)(chain_id)(committee_mroot) )
+                                      (committee_members)(updated_info)(changing_info)(recent_users)(total_user_num)(chain_id)
+                                      (committee_mroot)(confirmed_block_number)(highest_block_number)(unconfirmed_blocks) )
    };
    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
 
@@ -329,7 +340,7 @@ namespace ultrainiosystem {
 //                          const std::vector<std::string>& echo_account_vector);
 
          void clearchain(uint64_t chain_name, bool users_only);
-         void empoweruser(account_name user, const std::string& owner_pk, const std::string& active_pk, uint64_t chain_name);
+         void empoweruser(account_name user, uint64_t chain_name, const std::string& owner_pk, const std::string& active_pk);
          //Register to ba a relayer candidate of a subchain, only for those accounts which are not in the committee list of this subchain.
          //All committee members are also be relayer candidates automatically
 /*         void register_relayer(const std::string& miner_pk,
