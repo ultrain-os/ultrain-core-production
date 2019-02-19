@@ -205,10 +205,51 @@ async function syncBlock() {
             }
 
             logger.info("start to push block..");
+            let blockNum = 0;
+            let subchainBlockNumResult = await chainConfig.u3.getSubchainBlockNum({"chain_name": chainConfig.chainName.toString()});
+            logger.info("mainchain block num:",subchainBlockNumResult);
 
-            let blockNum = await chainConfig.u3.getSubchainBlockNum({"chain_name": chainConfig.chainName.toString()});
+            let confirmed_block = subchainBlockNumResult.confirmed_block;
+            let forks = subchainBlockNumResult.forks;
+            let findFlag = false;
+            if (utils.isNullList(forks) == false) {
+                for (let i = 0; i < forks.length; i++) {
+                    let fork = forks[i];
+                    let block_id = fork.block_id;
+                    logger.info("fork:",fork);
+                    let localBlockId = 0;
+                    try {
+                        let result = await chainConfig.u3Sub.getBlockInfo(fork.number.toString());
+                        logger.debug("block info",result);
+                        localBlockId = result.id;
+                    } catch (e) {
+                        logger.error("get block("+fork.number+") error,",e);
+                    }
+
+                    if (block_id == localBlockId) {
+                        findFlag = true;
+                        logger.info("block id("+block_id+") == local block id("+localBlockId+"),match");
+                        blockNum = fork.number;
+                        break;
+                    } else {
+                        logger.info("block id("+block_id+") != local block id("+localBlockId+"),mot match");
+                    }
+
+                }
+            } else {
+                findFlag = true;
+            }
+
+            //如果找不到块，不上传块头
+            if (findFlag == false) {
+                logger.error("can't find matched block info , nedd not sync block");
+                return;
+            }
+
             logger.info("subchain head block num=", subBlockNumMax);
             logger.info("mainchain(subchain:" + chainConfig.chainName + ") max blockNum =" + blockNum);
+
+
 
             //初始化block Num
             let blockNumInt = parseInt(blockNum, 10) + 1;
