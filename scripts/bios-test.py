@@ -41,6 +41,7 @@ def retry(args):
         print('bios-boot-tutorial.py:', args)
         logFile.write(args + '\n')
         if subprocess.call(args, shell=True):
+            sleep(0.2)
             print('*** Retry')
         else:
             break
@@ -61,6 +62,8 @@ def importKeys():
     run(args.clultrain + 'wallet import --private-key  5KG6NiRGhsEP9vTf4WVe312iVQ3uemEXsstsqkT9Wj1MkdY5uJk')
     for i in range(0, len(account_sk_list)):
        run(args.clultrain + 'wallet import --private-key ' + account_sk_list[i])
+    for i in range(0, len(rand_sk_lst)):
+       run(args.clultrain + 'wallet import --private-key ' + rand_sk_lst[i])
 
 def updateAuth(account, permission, parent, controller):
     run(args.clultrain + 'push action ultrainio updateauth' + jsonArg({
@@ -111,7 +114,7 @@ def createSystemAccounts():
         if ("proposer" in j):
             break
         print ("waiting for block 3 is ready in the chain....")
-        sleep(5)
+        sleep(2)
     for a in systemAccounts:
         run(args.clultrain + 'create account -u ultrainio ' + a + ' ' + args.public_key)
 
@@ -119,24 +122,27 @@ def stepInstallSystemContracts():
     retry(args.clultrain + 'set contract utrio.token ' + args.contracts_dir + 'ultrainio.token/')
     retry(args.clultrain + 'set contract utrio.msig ' + args.contracts_dir + 'ultrainio.msig/')
     retry(args.clultrain + 'set contract utrio.rand ' + args.contracts_dir + 'ultrainio.rand/')
-    sleep(20)
+    sleep(2)
 
 def stepCreateTokens():
     retry(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 UGAS"]\' -p utrio.token')
     retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "900000000.0000 UGAS", "memo"]\' -p ultrainio')
-    sleep(15)
+    sleep(2)
 
 def stepSetSystemContract():
     retry(args.clultrain + 'set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/')
     retry(args.clultrain + 'push action ultrainio setpriv' + jsonArg(['utrio.msig', 1]) + '-p ultrainio@active')
-    sleep(15)
+    sleep(2)
 
 def stepCreateStakedAccounts():
+    retry(args.clultrain + ' create account -u ultrainio hello %s ' % args.initacc_pk)
     for i in range(0, args.num_producers+1):
         retry(args.clultrain + 'create account ultrainio %s %s ' % (accounts[i], account_pk_list[i]))
-    sleep(10)
-    retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
 
+    for a in initialAccounts:
+        retry(args.clultrain + ' create account -u ultrainio %s %s ' % (a, args.initacc_pk))
+    for i in range(0, len(rand_acc_lst)):
+        retry(args.clultrain + ' create account -u ultrainio %s %s ' % ( rand_acc_lst[i], rand_pk_lst[i]))
 def stepInitSimpleTest():
     retry(args.clultrain + 'push action hello hi \'{"user":"%s"}\' -p %s' % (accounts[1],accounts[1]))
     for i in range(10):
@@ -149,30 +155,29 @@ def stepInitSimpleTest():
 
 def stepRegProducers():
     for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
-    sleep(15)
-    for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com 0 -u' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
-    sleep(15)
-
+    retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
+    sleep(5)
     for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
     stepInitSimpleTest()
+    for a in rand_acc_lst:
+        retry(args.clultrain + 'transfer %s utrio.rand \'2.0000 UGAS\' \'as candidate\' -p %s' % ( a, a))
     retry(args.clultrain + ' push action ultrainio setmincommittee \'{"number":%s,"staked":%s}\' -p ultrainio ' % (min_committee_number,min_committee_staked) )
 
 
 def stepCreateinitAccounts():
-    for a in initialAccounts:
-        retry(args.clultrain + ' create account -u ultrainio %s %s ' % (a, args.initacc_pk))
-    retry(args.clultrain + ' create account -u ultrainio hello %s ' % args.initacc_pk)
-    sleep(10)
+    for i in range(1, args.num_producers+1):
+        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
+
     for a in initialAccounts:
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
         retry(args.clultrain + 'system resourcelease ultrainio  %s  10 100' % a)
     retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100')
     retry(args.clultrain + 'transfer ultrainio utrio.rand "10000 UGAS" ')
     retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
-
+    for a in rand_acc_lst:
+        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"2.0000"))
 def stepResign():
     resign('ultrainio', 'utrio.null')
 #    for a in accountsToResign:
@@ -282,9 +287,10 @@ def stepexecrand():
     if args.programpath:
         randpath = args.programpath
     listprods = args.clultrain + 'system listproducers'
-    os.system("cd %s/ultrain-core/scripts/rand;  ./rand.sh c  sleep 2;  ./rand.sh r  sleep 2;\
+    # os.system("cd %s/ultrain-core/scripts/rand;  ./rand.sh c  sleep 2;  ./rand.sh r  sleep 2;\
+    #   nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
+    os.system("cd %s/ultrain-core/scripts/rand; \
       nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
-
 # Command Line Arguments
 
 parser = argparse.ArgumentParser()
@@ -297,9 +303,9 @@ commands = [
     ('c', 'contracts',      stepInstallSystemContracts, True,    "Install system contracts (token, msig)"),
     ('t', 'tokens',         stepCreateTokens,           True,    "Create tokens"),
     ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
-    ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
     ('I', 'initsimpletest', stepInitSimpleTest,         False,    "Simple transfer contract call test"),
+    ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
      ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
 #    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),

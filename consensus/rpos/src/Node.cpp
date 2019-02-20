@@ -26,7 +26,7 @@ using namespace std;
 
 namespace ultrainio {
 
-    char version[]="62de58";
+    char version[]="688d57";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 

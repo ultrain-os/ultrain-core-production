@@ -23,8 +23,8 @@ case "$1" in
 	    $clDir/clultrain --wallet-url http://127.0.0.1:6666 create account ultrainio ${ult_accountLst[$i]} ${ult_pkLst[$i]} -u -p ultrainio
 		sleep 1
 		$clDir/clultrain --wallet-url http://127.0.0.1:6666 transfer ultrainio ${ult_accountLst[$i]} "300000.0000 UGAS" -p ultrainio
-		sleep 1
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 system resourcelease ${ult_accountLst[$i]} ${ult_accountLst[$i]} 10 100
+		# sleep 1
+		# $clDir/clultrain --wallet-url http://127.0.0.1:6666 system resourcelease ${ult_accountLst[$i]} ${ult_accountLst[$i]} 10 100
 		i=`expr $i + 1`
 		printf "\n\n"
 	done
@@ -39,7 +39,7 @@ case "$1" in
 		#$clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand removeCandidate '' -p ${ult_accountLst[$i]};
 		sleep 1 #remove, in case already registed
 
-
+        #command: ../../build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 transfer wenge utrio.rand '2.0000 UGAS' 'as candidate' -p wenge
 		$clDir/clultrain --wallet-url http://127.0.0.1:6666 transfer ${ult_accountLst[$i]} utrio.rand "2.0000 UGAS" "as candidate" -p ${ult_accountLst[$i]};
 		sleep 1
 
