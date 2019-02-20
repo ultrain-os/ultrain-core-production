@@ -554,10 +554,10 @@ namespace ultrainio { namespace chain {
       if (version != 1) {
          block_stream.read ( (char*)&first_block_num, sizeof(first_block_num) );
       }
-      block_stream.close();
 
       genesis_state gs;
       fc::raw::unpack(block_stream, gs);
+      block_stream.close();
       return gs;
    }
 

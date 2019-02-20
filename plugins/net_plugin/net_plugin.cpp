@@ -350,7 +350,7 @@ namespace ultrainio {
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
     constexpr auto     def_max_clients = 12; // 0 for unlimited clients
     constexpr auto     def_max_nodes_per_host = 4;
-    constexpr auto     def_conn_retry_wait = 30;
+    constexpr auto     def_conn_retry_wait = 15;
     constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
     constexpr auto     def_sync_fetch_span = 100;
