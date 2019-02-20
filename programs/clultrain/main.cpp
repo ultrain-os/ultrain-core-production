@@ -821,10 +821,9 @@ struct create_account_subcommand {
    string owner_key_str;
    string active_key_str;
    bool   updateable_val = false;
-   bool simple;
 
-   create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
-      auto createAccount = actionRoot->add_subcommand( (simple ? "account" : "newaccount"), localized("Create an account, buy ram, stake for bandwidth for the account"));
+   create_account_subcommand( CLI::App* actionRoot ) {
+      auto createAccount = actionRoot->add_subcommand( "account", localized("Create an account, buy ram, stake for bandwidth for the account"));
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
@@ -899,9 +898,6 @@ struct list_producers_subcommand {
             std::cout << "No producers found" << std::endl;
             return;
          }
-         auto weight = result.thresh_activated_stake_time;
-         if ( !weight )
-            weight = 1;
          uint64_t total_unpaid_blocks = 0;
          uint64_t total_produce_blocks = 0;
          std::map<uint64_t,uint64_t>  chaininfo;
@@ -1515,7 +1511,7 @@ int main( int argc, char** argv ) {
    create_key->add_flag( "--r1", r1, "Generate a key using the R1 curve (iPhone), instead of the K1 curve (Bitcoin)"  );
 
    // create account
-   auto createAccount = create_account_subcommand( create, true /*simple*/ );
+   auto createAccount = create_account_subcommand( create );
 
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
@@ -1737,15 +1733,6 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
-   // get CPU NET SOURCERATE
-   string sourcerateName;
-   auto getSourceRate = get->add_subcommand("sourcerate", localized("Retrieve sourcetrans from the blockchain"), false);
-   getSourceRate->add_option("name", sourcerateName, localized("The name of the account whose abi should be retrieved"));
-   getSourceRate->set_callback([&]() {
-    auto json = call(get_sourcerate_func,fc::mutable_variant_object("account_name", accountName));
-    std::cout << fc::json::to_pretty_string(json) << std::endl;
-
-    });
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "), false);
@@ -2710,7 +2697,6 @@ int main( int argc, char** argv ) {
    auto system = app.add_subcommand("system", localized("Send ultrainio.system contract action to the blockchain."), false);
    system->require_subcommand();
 
-   //auto createAccountSystem = create_account_subcommand( system, false /*simple*/ );
    auto registerProducer = register_producer_subcommand(system);
    auto unregisterProducer = unregister_producer_subcommand(system);
 

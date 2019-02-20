@@ -142,16 +142,6 @@ public:
    };
    get_account_results get_account_info( const get_account_info_params& params )const;
 
- struct get_sourcerate_results {
-      double                    net_rate = 0;
-      double                    cpu_rate = 0;
-   };
-  struct get_sourcerate_params {
-      name account_name;
-   };
-   get_sourcerate_results get_sourcerate( const get_sourcerate_params& params)const;
-
-
    struct get_contract_results {
       name                   account_name;
       string                 wast;
@@ -701,19 +691,17 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num)(filter_enabled)(filter_actived) )
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thresh_activated_stake_time)(more) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thresh_activated_stake_time)(more)(min_stake_thresh)(min_committee_member_number) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
         (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
                 net_limit)(cpu_limit)(ram_usage)(permissions)(
                 self_delegated_consensus)(refund_cons)(producer_info)(chain_resource))
-FC_REFLECT( ultrainio::chain_apis::read_only::get_sourcerate_results,(net_rate)(cpu_rate))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_result, (transactions)(more) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_contract_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_abi_results, (account_name)(abi) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_account_info_params, (account_name) )
-FC_REFLECT( ultrainio::chain_apis::read_only::get_sourcerate_params, (account_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_contract_params, (account_name)(code_as_wasm) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_abi_params, (account_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_raw_code_and_abi_params, (account_name) )

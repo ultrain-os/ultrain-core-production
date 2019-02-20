@@ -34,8 +34,6 @@ namespace fc
             log_context     context;
             string          format;
             variant_object  args;
-            uint64_t        needsnum = 0ULL;
-            uint64_t        availablenum = 0ULL;
       };
    }
 
@@ -187,35 +185,6 @@ namespace fc
    {
       my->format  = std::move(format);
       my->args    = std::move(args);
-      my->needsnum = 0ULL;
-      my->availablenum = 0ULL;
-      auto const getresourcevalue = [&](uint64_t& value,const char* name){
-        auto val = my->args.find( name );
-        if( val != my->args.end() )
-        {
-          if( val->value().is_object() || val->value().is_array() )
-          {
-            value = std::atoi(json::to_string( val->value() ).c_str());
-          }
-          else
-          {
-            value = std::atoi(val->value().as_string().c_str());
-          }
-        }
-      };
-      
-      getresourcevalue(my->needsnum,"net_usage");
-      getresourcevalue(my->availablenum,"net_limit");
-      if(my->needsnum == 0)
-      {
-        getresourcevalue(my->needsnum,"billed");
-        getresourcevalue(my->availablenum,"billable"); 
-        if(my->needsnum == 0)
-        {
-          getresourcevalue(my->needsnum,"needs");
-          getresourcevalue(my->availablenum,"available");                   
-        }      
-      }
    }
 
    log_message::log_message( const variant& v )
@@ -235,8 +204,6 @@ namespace fc
    log_context          log_message::get_context()const { return my->context; }
    string              log_message::get_format()const  { return my->format;  }
    variant_object log_message::get_data()const    { return my->args;    }
-   uint64_t       log_message::get_needsnum()const{ return my->needsnum; }
-   uint64_t       log_message::get_availablenum()const{ return my->availablenum; }
    string        log_message::get_message()const
    {
       return format_string( my->format, my->args );

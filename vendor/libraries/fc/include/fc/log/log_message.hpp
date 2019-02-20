@@ -119,8 +119,6 @@ namespace fc
                               
          log_context    get_context()const;
          string         get_format()const;
-         uint64_t       get_needsnum()const;
-         uint64_t       get_availablenum()const;       
          variant_object get_data()const;
 
       private:

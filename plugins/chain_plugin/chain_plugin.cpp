@@ -1184,8 +1184,8 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    ilog("global ${gl}", ("gl", gstate));
 
    result.thresh_activated_stake_time = gstate["thresh_activated_stake_time"].as_double();
-   result.min_stake_thresh = gstate["min_activated_stake"].as_double();
-   result.min_committee_member_number = gstate["min_committee_member_number"].as_double();
+   result.min_stake_thresh = gstate["min_activated_stake"].as_int64();
+   result.min_committee_member_number = gstate["min_committee_member_number"].as_uint64();
    return result;
 }
 
@@ -1697,15 +1697,8 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
    }
    return result;
 }
-read_only::get_sourcerate_results read_only::get_sourcerate( const get_sourcerate_params& params)const {
-      get_sourcerate_results result;
-      bool grelisted = db.is_resource_greylisted(params.account_name);
 
-      const auto& rm = db.get_resource_limits_manager();
-      result.cpu_rate = rm.get_cpu_rate(!grelisted);
-      result.net_rate = rm.get_net_rate(!grelisted);
-      return result;
-}
+
 static variant action_abi_to_variant( const abi_def& abi, type_name action_type ) {
    variant v;
    auto it = std::find_if(abi.structs.begin(), abi.structs.end(), [&](auto& x){return x.name == action_type;});
