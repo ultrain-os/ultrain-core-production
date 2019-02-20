@@ -1,0 +1,63 @@
+const crypto = require('crypto');
+const fs = require('fs');
+var logger = require("../../config/logConfig").getLogger("HashUtil");
+var constants = require("../constant/constants");
+
+/**
+ *
+ * @param str
+ * @param algorithm
+ * @param encoding
+ * @returns {string}
+ */
+function checksum(str, algorithm, encoding) {
+
+    let hash = crypto.createHash(algorithm);
+    hash.update(str, encoding);
+    return hash.digest('hex');
+}
+
+/**
+ *
+ * @param filepath
+ * @returns {Promise<*>}
+ */
+ function calcHash(filepath,algorithm) {
+    try {
+        logger.info("start calc hash file :",filepath);
+        if (fs.existsSync(filepath)) {
+            let data =fs.readFileSync(filepath,null);
+            //logger.info("data:",data);
+            let hash =  checksum(data, algorithm,null);
+            logger.info("finish calc hash file :",filepath);
+            logger.info("finish calc hash file hash :",hash);
+            return hash;
+
+        } else {
+            logger.error("hashutil not exist:",filepath);
+        }
+
+    } catch (e) {
+        logger.error("calc hash file error:",e);
+    }
+
+    return null;
+
+}
+
+// async  function test() {
+//     let hash = await calcHash("/root/workspace/ultrain-core/scripts/ultrainmng/deploy/sideChainService.js");
+//     console.log("hash:"+hash);
+//     hash = await calcHash("/root/workspace/ultrain-core/build/programs/nodultrain/nodultrain");
+//     console.log("hash:"+hash);
+//
+//     hash = await calcHash("/root/workspace/ultrain-core/scripts/ultrainmng/src/sideChainService.js");
+//     console.log("hash:"+hash);
+//
+// }
+//
+// test();
+
+module.exports = {
+    calcHash
+}

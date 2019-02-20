@@ -3,38 +3,59 @@ const fs = require('fs');
 var logger = require("../config/logConfig").getLogger("Monitor");
 var chainConfig = require("./chainConfig")
 var chainApi = require("./chainApi")
-var timeConstats = require("../common/constant/constants").timeConstats
-var chainNameConstants = require("../common/constant/constants").chainNameConstants
-var contractConstants = require("../common/constant/constants").contractConstants
-var tableConstants = require("../common/constant/constants").tableConstants
-var scopeConstants = require("../common/constant/constants").scopeConstants
-var actionConstants = require("../common/constant/constants").actionConstants
-var chainIdConstants = require("../common/constant/constants").chainIdConstants
-var pathConstants = require("../common/constant/constants").pathConstants
-var sleep = require("sleep")
+var cacheKeyConstants = require("../common/constant/constants").cacheKeyConstants
+var filenameConstants = require("../common/constant/constants").filenameConstants
+var iniConstants = require("../common/constant/constants").iniConstants
+var algorithmConstants = require("../common/constant/constants").algorithmConstants
 var utils = require("../common/util/utils")
-var committeeUtil = require("./util/committeeUtil");
-var blockUtil = require("./util/blockUtil");
-var voteUtil = require("./util/voteUtil");
-var NodUltrain = require("../nodultrain/nodultrain")
-var WorldState = require("../worldstate/worldstate")
-var chainUtil = require("./util/chainUtil");
-const publicIp = require('public-ip');
+var CacheObj = require("../common/cache/cacheObj");
+var hashUtil = require("../common/util/hashUtil")
+
+
+var hashCache = new CacheObj(false, null);
+/**
+ * hash缓存过期时间（1分钟）
+ * @type {number}
+ */
+var HASH_EXPIRE_TIME_MS = 1000 * 60;
 
 /**
  *
  * @returns {string}
  */
-function getNodVersion() {
-    return "1.0.0";
+async function getNodVersion() {
+    let hashFile = hashCache.get(cacheKeyConstants.NOD_FILE_KEY);
+    if (utils.isNull(hashFile)) {
+        logger.info("cache not hit :"+cacheKeyConstants.NOD_FILE_KEY);
+        let nodFilePath = chainConfig.configFileData.local.nodpath + "/" + filenameConstants.NOD_EXE_FILE;
+        hashFile =  hashUtil.calcHash(nodFilePath,algorithmConstants.SHA1);
+        if (utils.isNotNull(hashFile)) {
+            hashCache.put(cacheKeyConstants.NOD_FILE_KEY,hashFile,HASH_EXPIRE_TIME_MS);
+            logger.info("cache info :",hashCache.getAll());
+        }
+    } else {
+        logger.info("cache hit :"+cacheKeyConstants.NOD_FILE_KEY,hashFile);
+    }
+    return hashFile;
 }
 
 /**
  *
  * @returns {string}
  */
-function getMngVersion() {
-    return "1.0.0";
+async function getMngVersion() {
+    let hashFile = hashCache.get(cacheKeyConstants.MNG_FILE_KEY);
+    if (utils.isNull(hashFile)) {
+        logger.info("cache not hit :"+cacheKeyConstants.MNG_FILE_KEY);
+        let nodFilePath = chainConfig.configFileData.local.mngpath + "/" + filenameConstants.MNG_FILE;
+        hashFile =  hashUtil.calcHash(nodFilePath,algorithmConstants.SHA1);
+        if (utils.isNotNull(hashFile)) {
+            hashCache.put(cacheKeyConstants.MNG_FILE_KEY,hashFile,HASH_EXPIRE_TIME_MS);
+        }
+    } else {
+        logger.info("cache hit :"+cacheKeyConstants.MNG_FILE_KEY,hashFile);
+    }
+    return hashFile;
 }
 
 /**
@@ -42,7 +63,7 @@ function getMngVersion() {
  * @returns {*}
  */
 function getMonitorUrl() {
-    return chainConfig.configFileData.target["monitor-server-endpoint"];
+    return chainConfig.configFileData.target[iniConstants.MONITOR_SERVER_ENDPOINT];
 }
 
 /**
@@ -50,7 +71,7 @@ function getMonitorUrl() {
  * @returns {boolean}
  */
 function checkNeedSync() {
-    if (chainConfig.configFileData.local["monitor"] == false) {
+    if (chainConfig.configFileData.local[iniConstants.MONITOR] == false) {
         return false;
     }
 
@@ -72,19 +93,31 @@ async function checkIn() {
     logger.info("monitor checkin start");
     logger.info("monitor check in(http:" + getMonitorUrl());
     let publicip = await utils.getPublicIp();
-    logger.debug("extern ip:"+publicip);
+    logger.debug("extern ip:" + publicip);
     var user = "unkown";
     if (utils.isNotNull(chainConfig.myAccountAsCommittee)) {
         user = chainConfig.myAccountAsCommittee;
+    }
+    var nodFileHash = await getNodVersion();
+    if (utils.isNull(nodFileHash)) {
+        logger.error("nod file hash error");
+        return;
+    }
+
+    var mngFileHash = await getMngVersion();
+    if (utils.isNull(mngFileHash)) {
+        logger.error("mng file hash error");
+        return;
     }
     var param = {
         "chainId": chainConfig.chainName,
         "ipLocal": utils.getLocalIPAdress(),
         "ipPublic": publicip,
         "user": user,
-        "nodVersion": getNodVersion(),
-        "mngVersion": getMngVersion()
+        "nodVersion": nodFileHash,
+        "mngVersion": mngFileHash
     };
+
     await chainApi.monitorCheckIn(getMonitorUrl(), param);
 
     logger.info("monitor checkin end");

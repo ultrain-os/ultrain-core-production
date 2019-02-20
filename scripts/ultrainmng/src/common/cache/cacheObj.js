@@ -34,12 +34,24 @@ class CacheObj {
 
 
     /**
-     * 设置
+     *
      * @param key
      * @param value
+     * @param expireTime -1 不过期 >=0 相对当前时间
+     * @returns {boolean}
      */
-    put(key, value) {
-        this.cacheData[key] = value;
+    put(key, value, expireTime) {
+
+        let time = -1;
+        if (expireTime >=0) {
+            time = new Date().getTime() + expireTime;
+        }
+
+        var obj = {
+            value: value,
+            time : time
+        }
+        this.cacheData[key] = obj;
         return this.saveTofile();
     }
 
@@ -49,7 +61,26 @@ class CacheObj {
      * @returns {*}
      */
     get(key) {
-        return this.cacheData[key]
+        var obj = this.cacheData[key];
+        logger.debug("cache obj:",obj);
+        if (utils.isNull(obj)) {
+            return null;
+        }
+
+        /**
+         * 不过期
+         */
+        if (obj.time == -1) {
+            return obj.value;
+        }
+        //比较当前时间
+        let now = new Date().getTime();
+        //已过期
+        if (now >= obj.time) {
+            this.delete(key);
+            return null;
+        }
+        return this.cacheData[key].value
     }
 
     /**

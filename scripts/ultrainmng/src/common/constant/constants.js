@@ -85,8 +85,35 @@ var iniConstants = {
     P2P_PEER_ADDRESS: "p2p-peer-address",
     RPOS_P2P_PEER_ADDRESS: "rpos-p2p-peer-address",
     SUBCHAIN_HTTP_ENDPOINT: "subchainHttpEndpoint",
-    GENESIS_TIME:"genesis-time"
+    GENESIS_TIME: "genesis-time",
+    MNG_PATH: "mngpath",
+    NOD_PATH: "nodpath",
+    WSS_PATH: "wsspath",
+    MONITOR: "monitor"
+}
 
+/**
+ * 缓存key常量
+ * @type {{NOD_FILE_KEY: string, MNG_FILE_KEY: string}}
+ */
+var cacheKeyConstants = {
+    NOD_FILE_KEY: "nod_file_key",
+    MNG_FILE_KEY: "mng_file_key"
+}
+
+/**
+ * 文件名constants
+ * @type {{NOD_EXE_FILE: string}}
+ */
+var filenameConstants = {
+    NOD_EXE_FILE: "nodultrain",
+    MNG_FILE: "sideChainService.js"
+}
+
+var algorithmConstants = {
+    MD5 : "md5",
+    SHA1 : "sha1",
+    SHA256 : "sha256"
 }
 
 
@@ -101,5 +128,8 @@ module.exports = {
     scopeConstants,
     chainIdConstants,
     pathConstants,
-    iniConstants
+    iniConstants,
+    cacheKeyConstants,
+    filenameConstants,
+    algorithmConstants
 }
