@@ -45,6 +45,9 @@ var successAccountCacheList = [];
 //存储同步时失败的
 var failedAccountPramList = [];
 
+//nod请求失败次数
+var nodFailedTimes=0;
+
 //清除失败用户
 function clearFailedUser(user) {
     if (failedAccountPramList.length == 0) {
@@ -500,28 +503,23 @@ async function syncChainInfo() {
         }
 
         //如果不在进行链切换且本地访问不到本地链信息，需要重启下
+        let wssinfo = " ";
+        let wssFilePath = "";
+        let result = null;
         if (syncChainChanging == false) {
             logger.info("check nod is alive ....");
             let rsdata = await NodUltrain.checkAlive();
             logger.debug("check alive data:", rsdata);
             if (utils.isNull(rsdata)) {
-                logger.info("nod is not runing ,need restart it..");
-                //启动nod
-                syncChainChanging = true;
-                syncChainData = false;
-                await NodUltrain.stop(120000);
-                sleep.msleep(1000);
-                logger.info("clear DB data before restart it..");
-                await NodUltrain.removeData();
-                if (chainConfig.configFileData.local.worldstate == true) {
-                    await WorldState.clearDB();
+                if (nodFailedTimes >= 3) {
+                    nodFailedTimes = 0;
+                    logger.info("nod is not runing ,need restart it..");
+                    await restartNod();
+                    logger.info("nod restart end..");
+                } else {
+                    nodFailedTimes ++;
+                    logger.info("nod is not alive,count("+nodFailedTimes+")");
                 }
-                logger.info("restart data");
-                await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath," ",chainConfig.localTest);
-                syncChainChanging = false;
-                syncChainData = true;
-                logger.info("nod restart end..");
-                return;
             }
         }
 
@@ -553,6 +551,7 @@ function clearCacheData() {
     successAccountCacheList = [];
     failedAccountPramList = [];
     WorldState.status = null;
+    nodFailedTimes = 0;
 }
 
 /**
@@ -760,6 +759,202 @@ async function switchChain() {
     }
 }
 
+
+/**
+ * 重启nod
+ * @returns {Promise<void>}
+ */
+async function restartNod() {
+
+    //标志位设置
+    syncChainChanging = true;
+
+    try {
+
+        //使用world state to recover
+        if (chainConfig.configFileData.local.worldstate == true) {
+
+            //停止worldstate的程序
+            if (chainConfig.configFileData.local.worldstate == true) {
+                result = await WorldState.stop(120000);
+                if (result) {
+                    logger.info("worldstate is stopped");
+                } else {
+                    logger.info("worldstate is not stopped");
+                }
+            }
+
+            //通过chainid拿到seedList
+            var seedIpInfo = await chainApi.getChainSeedIP(chainConfig.chainName, chainConfig);
+            logger.info("get chainid(" + chainConfig.chainName + ")'s seed ip info:", seedIpInfo);
+            let wsStarted = true;
+            if (utils.isNull(seedIpInfo)) {
+                loggerChainChanging.error("seed ip info is null");
+            } else {
+                logger.info("start world state");
+                result = await WorldState.start(chainConfig.chainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath, chainConfig.localTest);
+                if (result == true) {
+                    logger.info("start ws success");
+                    logger.info("world state is on , use world state to revocer");
+                } else {
+                    logger.info("start ws error");
+                    logger.info("world state is off");
+                    wsStarted = false;
+                }
+            }
+
+            if (wsStarted == true) {
+                //调用世界状态程序同步数据
+                var worldstatedata = null;
+                let maxBlockHeight = 0;
+                let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.WORLDSTATE_HASH, "block_num");
+                if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
+                    worldstatedata = mainChainData.rows[mainChainData.rows.length - 1];
+                    logger.info("get worldstate data:", worldstatedata);
+                    maxBlockHeight = worldstatedata.block_num;
+                } else {
+                    logger.error("can not get world state file,or data is null");
+                }
+
+                //查看本地ws最大文件
+                let localHashIsMax = false;
+                if (utils.isNotNull(WorldState.status)) {
+                    logger.info("local ws status:", WorldState.status);
+                    logger.info("local ws max block heght(" + WorldState.status.block_height + "),mainchain max block height(" + maxBlockHeight + ")")
+                    if (WorldState.status.block_height == maxBlockHeight) {
+                        logger.info("block height is equal, check ws file");
+                        wssFilePath = pathConstants.WSS_LOCAL_DATA + chainConfig.chainId + "-" + WorldState.status.block_height + ".ws";
+                        logger.info("file path:", wssFilePath);
+                        if (fs.existsSync(wssFilePath)) {
+                            logger.info("file path exists:", wssFilePath);
+                            wssinfo = "--worldstate " + pathConstants.WSS_LOCAL_DATA + chainConfig.chainId + "-" + WorldState.status.block_height + ".ws";
+                            localHashIsMax = true;
+                        } else {
+                            logger.info("file path not exists:", filepath);
+                        }
+                    } else {
+                        logger.info("block height is not equal,not use local ws file to start");
+                    }
+                } else {
+                    logger.info("local ws status is null");
+                }
+
+                //本地没有最新，拉取最新的
+                if (localHashIsMax == false && worldstatedata != null) {
+                    sleep.msleep(1000);
+                    logger.info("start to require ws:");
+                    let hash = worldstatedata.hash_v[0].hash;
+                    let blockNum = worldstatedata.block_num;
+                    let filesize = worldstatedata.hash_v[0].file_size;
+                    logger.info("start to require ws : (block num : " + blockNum + " " + "hash:" + hash);
+                    result = await WorldState.syncWorldState(hash, blockNum, filesize, chainConfig.chainId);
+                    if (result == true) {
+                        logger.info("sync worldstate request success");
+                    } else {
+                        logger.info("sync worldstate request failed");
+                    }
+
+                    loggerChainChanging.info("polling worldstate sync status ..")
+
+                    sleep.msleep(1000);
+
+                    /**
+                     * 轮询检查同步世界状态情况
+                     */
+                    wssFilePath = pathConstants.WSS_DATA + chainConfig.chainId + "-" + blockNum + ".ws";
+                    wssinfo = "--worldstate " + pathConstants.WSS_DATA + chainConfig.chainId + "-" + blockNum + ".ws";
+
+                    result = await WorldState.pollingkWSState(1000, 300000);
+                    if (result == false) {
+                        logger.error("require ws error：" + wssinfo);
+                    } else {
+                        logger.info("require ws success");
+                        logger.info("wssinfo:" + wssinfo);
+                        //check file exist
+                        if (fs.existsSync(wssFilePath)) {
+                            logger.info("file exists :", wssFilePath);
+                        } else {
+                            logger.error("file not exists :", wssFilePath)
+                        }
+                    }
+
+                    sleep.msleep(1000);
+
+                    //判断配置是否需要拉块
+                    if (chainConfig.configFileData.local.wsSyncBlock == true) {
+                        logger.info("wsSyncBlock is true，need sync block");
+                        /**
+                         * 调用block
+                         */
+                        logger.info("start to sync block:(chainid:" + chainConfig.chainId + ",block num:" + blockNum);
+                        result = await WorldState.syncBlocks(chainConfig.chainId, blockNum);
+                        if (result == false) {
+                            logger.info("sync block request error");
+                        } else {
+                            logger.info("sync block request success");
+                        }
+
+                        sleep.msleep(1000);
+
+                        /**
+                         * 轮询检查同步世界状态情况block
+                         */
+                        logger.info("pollingBlockState start...");
+                        result = await WorldState.pollingBlockState(1000, 300000);
+                        if (result == false) {
+                            logger.info("require block error");
+                        } else {
+                            logger.info("require block success");
+                        }
+
+                        sleep.msleep(1000);
+
+                    } else {
+                        logger.info("wsSyncBlock is false，need not sync block");
+                        sleep.msleep(3000);
+                    }
+                }
+
+            }
+        } else {
+            logger.info("world state is not on", chainConfig.configFileData.local.worldstate);
+        }
+
+        //启动nod
+        await NodUltrain.stop(120000);
+        sleep.msleep(1000);
+        logger.info("clear Nod DB data before restart it..");
+        await NodUltrain.removeData();
+
+        // if (chainConfig.configFileData.local.worldstate == true) {
+        //     await WorldState.clearDB();
+        // }
+
+        //check file exist
+        if (fs.existsSync(wssFilePath)) {
+            logger.info("file exists :", wssFilePath);
+            logger.info("start nod use wss:", wssinfo);
+        } else {
+            logger.error("file not exists :", wssFilePath);
+            logger.info("start nod not use wss:", wssinfo);
+            wssinfo = " "
+        }
+
+        //启动nod
+        result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath, wssinfo, chainConfig.localTest);
+        if (result == true) {
+            logger.info("nod start success")
+        } else {
+            logger.error("node start error");
+        }
+
+    } catch (e) {
+        logger.error("restartNod error,",e);
+    }
+
+    syncChainChanging = false;
+
+}
 /**
  * 同步资源（全表）
  * @returns {Promise<void>}

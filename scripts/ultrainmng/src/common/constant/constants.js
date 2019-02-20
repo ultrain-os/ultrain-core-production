@@ -74,6 +74,7 @@ var chainIdConstants = {
 //路径常量
 var pathConstants = {
     WSS_DATA: "/root/.local/share/ultrainio/wssultrain/data/worldstate/download/",
+    WSS_LOCAL_DATA: "/root/.local/share/ultrainio/wssultrain/data/worldstate/",
     MNG_CONFIG: "/root/.local/share/ultrainio/ultrainmng/config/"
 }
 

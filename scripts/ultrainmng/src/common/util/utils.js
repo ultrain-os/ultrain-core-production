@@ -107,31 +107,42 @@ function getLocalIPAdress(){
  * @returns {Promise<void>}
  */
 var cachePublicIp = "";
+var ptime = 0;
+var errortime = 0;
 getPublicIp = async () => {
 
     let ip = getLocalIPAdress();
+    logger.info("cachePublicIp:",cachePublicIp);
     if (isNotNull(cachePublicIp)) {
         ip = cachePublicIp;
+        ptime++;
     }
-    try {
+    if (ptime == 0) {
+        try {
 
-        let retry = 3;
-        let res = await publicIp.v4();
-        while (isNull(res)) {
-           res = await publicIp.v4();
-            retry--;
-            if (retry <=0) {
-                break;
+            let retry = 3;
+            let res = await publicIp.v4();
+            while (isNull(res)) {
+                res = await publicIp.v4();
+                retry--;
+                if (retry <= 0) {
+                    break;
+                }
             }
-        }
 
-        if (isNotNull(res)) {
-            ip = res;
-            cachePublicIp = res;
+            if (isNotNull(res)) {
+                ip = res;
+                cachePublicIp = res;
+            }
+        } catch (e) {
+            logger.error("getPublicIp error:", e);
         }
-    } catch (e) {
-        logger.error("getPublicIp error:",e);
     }
+
+    if (ptime >= 10) {
+        ptime = 0;
+    }
+    logger.info("PublicIp:",ip);
     return ip;
 }
 
