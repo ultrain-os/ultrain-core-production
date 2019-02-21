@@ -214,7 +214,7 @@ namespace chainbase {
          typedef undo_state< value_type >                              undo_state_type;
          typedef cache_state< value_type >                              cache_state_type;
 
-         generic_index( allocator<value_type> a, bool cache_on )
+         generic_index( allocator<value_type> a, bool cache_on=true )
          :_stack(a),_cache(a),_cache_on(cache_on),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
 
          void validate()const {
@@ -226,6 +226,18 @@ namespace chainbase {
           * Construct a new element in the multi_index_container.
           * Set the ID to the next available ID, then increment _next_id and fire off on_create().
           */
+         template<typename Constructor>
+         void backup_emplace( Constructor&& c ) {
+            auto constructor = [&]( value_type& v ) {
+               c( v );
+            };
+
+            auto insert_result = _indices_backup.emplace( constructor, _indices_backup.get_allocator() );
+            if( !insert_result.second ) {
+               BOOST_THROW_EXCEPTION( std::logic_error("could not insert backup object, most likely a uniqueness constraint was violated") );
+            }
+         }
+
          template<typename Constructor>
          const value_type& emplace( Constructor&& c ) {
             auto new_id = _next_id;
@@ -556,6 +568,36 @@ namespace chainbase {
             squash_cache();
          }
 
+         void process_cache()
+         {
+             if ( !_cache_on || !_cache.size()) return;
+             auto& head= _cache.front();
+
+             /*The order of operation must be remove, modify, create.That is because it maybe conflict 
+              * between diff operations of unique key.
+              * */
+             for(auto id :head.removed_ids)
+             {
+                    _indices_backup.erase( _indices_backup.find( id ) );
+             }
+
+             for(auto& item :head.modify_values)
+             {
+                 auto ok = _indices_backup.modify( _indices_backup.find( item.second.id ), [&]( value_type& v ) {
+                                  v = std::move( item.second );
+                                  });
+                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a uniqueness constraint was violated" ) );
+             }
+
+             for(auto& item :head.new_values)
+             {
+                 bool ok = _indices_backup.emplace( std::move( item.second ) ).second;
+                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a uniqueness constraint was violated" ) );
+             }
+
+             _cache.pop_front();
+         }
+
          /**
           * Unwinds all undo states
           */
@@ -819,7 +861,7 @@ namespace chainbase {
 
          using database_index_row_count_multiset = std::multiset<std::pair<unsigned, std::string>>;
 
-         database(const bfs::path& dir, open_flags write = read_only, uint64_t shared_file_size = 0, bool ws = false, bool allow_dirty = false);
+         database(const bfs::path& dir, open_flags write = read_only, uint64_t shared_file_size = 0, bool ws = true, bool allow_dirty = false);
          ~database();
          database(database&&) = default;
          database& operator=(database&&) = default;
@@ -1083,6 +1125,14 @@ namespace chainbase {
              CHAINBASE_REQUIRE_WRITE_LOCK("create", ObjectType);
              typedef typename get_index_type<ObjectType>::type index_type;
              return get_mutable_index<index_type>().emplace( std::forward<Constructor>(con) );
+         }
+
+         template<typename ObjectType, typename Constructor>
+         void backup_create( Constructor&& con )
+         {
+             CHAINBASE_REQUIRE_WRITE_LOCK("backup_create", ObjectType);
+             typedef typename get_index_type<ObjectType>::type index_type;
+             get_mutable_index<index_type>().backup_emplace( std::forward<Constructor>(con) );
          }
 
          template< typename Lambda >

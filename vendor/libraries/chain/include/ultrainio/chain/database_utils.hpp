@@ -51,8 +51,11 @@ namespace ultrainio { namespace chain {
          }
 
          template<typename F>
-         static void create( chainbase::database& db, F cons ) {
-            db.create<typename index_t::value_type>(cons);
+         static void create( chainbase::database& db, F cons ,bool ws=false) {
+            if (ws)
+                db.backup_create<typename index_t::value_type>(cons);
+            else
+                db.create<typename index_t::value_type>(cons);
          }
    };
 
