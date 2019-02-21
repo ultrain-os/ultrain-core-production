@@ -5,6 +5,7 @@
 #include <boost/math/distributions/binomial.hpp>
 
 #include <base/Hex.h>
+#include <rpos/CommitteeSet.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/Proof.h>
@@ -75,7 +76,7 @@ namespace ultrainio {
             m_committeeMroot = chain::checksum256_type();
             return;
         }
-        m_committeeMroot = chain::digest_type::hash(m_committeeStatePtr->cinfo);
+        m_committeeMroot = CommitteeSet(m_committeeStatePtr->cinfo).committeeMroot();
         dlog("--------- committee mroot is ${mroot}", ("mroot", m_committeeMroot));
     }
 

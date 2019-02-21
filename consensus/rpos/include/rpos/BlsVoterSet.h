@@ -14,11 +14,22 @@ namespace ultrainio {
 
         bool empty();
 
+        BlsVoterSet();
+
+        BlsVoterSet(const std::string& s);
+
+        //BlsVoterSet(const std::vector<char>& vc);
+
+        std::string toString() const;
+
+        std::vector<char> toVectorChar() const;
+
+        bool operator == (const BlsVoterSet&) const;
+
+    private:
         void toVariants(fc::variants&) const;
 
         void fromVariants(const fc::variants&);
-
-        bool operator == (const BlsVoterSet&);
     };
 
     struct VoterSet {

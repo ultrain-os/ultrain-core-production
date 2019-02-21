@@ -9,7 +9,9 @@
 namespace ultrainio {
 
     enum BlockHeaderExtKey {
-        kExtVoterSet = 0
+        kPreCheckpointId = 0,
+        kCommitteeSet,
+        kExtVoterSet
     };
 
     enum ConsensusPhase {
@@ -67,7 +69,7 @@ namespace ultrainio {
 
         int fromVariants(const fc::variants&);
 
-        bool operator == (const CommonEchoMsg&);
+        bool operator == (const CommonEchoMsg&) const;
     };
 
     struct UnsignedEchoMsg : public CommonEchoMsg {

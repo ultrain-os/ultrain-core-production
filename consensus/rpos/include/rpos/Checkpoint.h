@@ -1,16 +1,22 @@
 #pragma once
 
-class Checkpoint {
-public:
-    static bool isCheckpoint(const BlockHeader& blockHeader);
+#include <core/types.h>
+#include <rpos/BlsVoterSet.h>
+#include <rpos/CommitteeSet.h>
 
-    Checkpoint(const BlockHeader& blockHeader);
-private:
-    BlockIdType m_blockId;
-    Checksum256Type m_committeeMroot;
+namespace ultrainio {
+    class Checkpoint {
+    public:
+        static bool isCheckpoint(const BlockHeader& blockHeader);
 
-    // header extensions
-    BlockIdTyep m_preCheckpointBlockId;
-    std::vector<CommitteeInfo> m_committeeInfo;
-    BlsVoterSet m_blsVoterSet;
-};
+        Checkpoint(const BlockHeader& blockHeader);
+    private:
+        BlockHeader m_blockHeader;
+
+        // header extensions
+        BlockIdType m_preCheckpointBlockId;
+        CommitteeSet m_committeeSet;
+        // confirm the block before this checkpoint
+        BlsVoterSet m_blsVoterSet;
+    };
+}

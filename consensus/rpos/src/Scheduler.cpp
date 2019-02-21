@@ -1305,14 +1305,8 @@ namespace ultrainio {
             chain.set_trx_merkle_hack();
             if (!m_preBlockVoterSet.empty() && chain::block_header::num_from_id(m_preBlockVoterSet.commonEchoMsg.blockId) == chain.head_block_num()) {
                 BlsVoterSet blsVoterSet = generateBlsVoterSet(m_preBlockVoterSet);
-                fc::variants va;
-                blsVoterSet.toVariants(va);
-                std::string s = fc::json::to_string(va);
-                ilog("blsVoterSet : ${set}", ("set", s));
-                std::vector<char> v(s.size());
-                v.assign(s.begin(), s.end());
                 chain::extensions_type exts;
-                exts.push_back(std::make_pair(kExtVoterSet, v));
+                exts.push_back(std::make_pair(kExtVoterSet, blsVoterSet.toVectorChar()));
                 chain.set_header_extensions(exts);
             }
             // Construct the block msg from pbs.
@@ -2159,10 +2153,7 @@ namespace ultrainio {
     int Scheduler::on_header_extensions_verify(uint64_t chainName, int extKey, const std::string& extValue) {
         ilog("enter on_header_extensions_verify chain id : ${chainName} extKey : ${extKey} extValue : ${extValue}", ("chainName", chainName)("extKey", extKey)("extValue", extValue));
         if (static_cast<BlockHeaderExtKey>(extKey) == kExtVoterSet) {
-            fc::variant v = fc::json::from_string(extValue);
-            fc::variants vs = v.get_array();
-            BlsVoterSet blsVoterSet;
-            blsVoterSet.fromVariants(vs);
+            BlsVoterSet blsVoterSet(extValue);
             if (blsVoterSet.empty()) {
                 return -1;
             }

@@ -29,7 +29,7 @@ namespace ultrainio {
         return nextIndex;
     }
 
-    bool CommonEchoMsg::operator == (const CommonEchoMsg& rhs) {
+    bool CommonEchoMsg::operator == (const CommonEchoMsg& rhs) const {
         if (this == &rhs) {
             return true;
         }

@@ -28,21 +28,9 @@ BOOST_AUTO_TEST_SUITE(blsvoterset_test_suite)
         blsVoterSet.proofPool.push_back(std::string("proof2"));
 #endif
         blsVoterSet.sigX = std::string("sigx");
-        fc::variants va;
-        blsVoterSet.toVariants(va);
-        std::string s = fc::json::to_string(va);
-
-        std::vector<char> vc(s.size());
-        vc.assign(s.begin(), s.end());
-        std::string restoreS;
-        restoreS.assign(vc.begin(), vc.end());
-        BOOST_CHECK(s == restoreS);
-        fc::variant v = fc::json::from_string(restoreS);
-        fc::variants restoreVa = v.get_array();
-        BOOST_CHECK(va == restoreVa);
-
-        BlsVoterSet restoreBlsVoterSet;
-        restoreBlsVoterSet.fromVariants(restoreVa);
+        std::string restoreS = blsVoterSet.toString();
+        cout << "restoreS " << restoreS << std::endl;
+        BlsVoterSet restoreBlsVoterSet(restoreS);
         BOOST_CHECK(blsVoterSet == restoreBlsVoterSet);
     }
     BOOST_AUTO_TEST_SUITE_END()

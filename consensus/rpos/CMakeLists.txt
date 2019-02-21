@@ -3,6 +3,9 @@ file(GLOB HEADERS "include/rpos/*.h")
 add_library( ultrainio_rpos
         src/BlockMsgPool.cpp
         src/BlsVoterSet.cpp
+        src/Checkpoint.cpp
+        src/CommitteeInfo.cpp
+        src/CommitteeSet.cpp
         src/Config.cpp
         src/EvilType.cpp
         src/FisherYates.cpp

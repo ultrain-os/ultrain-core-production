@@ -1,7 +1,30 @@
 #include <rpos/BlsVoterSet.h>
 
+#include <fc/io/json.hpp>
+
 namespace ultrainio {
     // BlsVoterSet
+    BlsVoterSet::BlsVoterSet() {}
+
+    BlsVoterSet::BlsVoterSet(const std::string& s) {
+        fc::variant v = fc::json::from_string(s);
+        fc::variants vs = v.get_array();
+        this->fromVariants(vs);
+    }
+
+    std::string BlsVoterSet::toString() const {
+        fc::variants va;
+        this->toVariants(va);
+        return fc::json::to_string(va);
+    }
+
+    std::vector<char> BlsVoterSet::toVectorChar() const {
+        std::string s = this->toString();
+        std::vector<char> v(s.size());
+        v.assign(s.begin(), s.end());
+        return v;
+    }
+
     bool BlsVoterSet::empty() {
         return accountPool.empty();
     }
@@ -36,7 +59,7 @@ namespace ultrainio {
         sigX = v[nextIndex].as_string();
     }
 
-    bool BlsVoterSet::operator == (const BlsVoterSet& rhs) {
+    bool BlsVoterSet::operator == (const BlsVoterSet& rhs) const {
         if (this == &rhs) {
             return true;
         }
