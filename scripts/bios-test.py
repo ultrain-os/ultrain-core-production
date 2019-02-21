@@ -41,7 +41,7 @@ def retry(args):
         print('bios-boot-tutorial.py:', args)
         logFile.write(args + '\n')
         if subprocess.call(args, shell=True):
-            sleep(0.2)
+            sleep(0.3)
             print('*** Retry')
         else:
             break
@@ -136,7 +136,7 @@ def stepSetSystemContract():
 
 def stepCreateStakedAccounts():
     retry(args.clultrain + ' create account -u ultrainio hello %s ' % args.initacc_pk)
-    for i in range(0, args.num_producers+1):
+    for i in range(0, args.num_producers + 1 + args.non_producers):
         retry(args.clultrain + 'create account ultrainio %s %s ' % (accounts[i], account_pk_list[i]))
 
     for a in initialAccounts:
@@ -161,10 +161,11 @@ def stepRegProducers():
     for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
     stepInitSimpleTest()
+    sleep(5)
     for a in rand_acc_lst:
         retry(args.clultrain + 'transfer %s utrio.rand \'2.0000 UGAS\' \'as candidate\' -p %s' % ( a, a))
     retry(args.clultrain + ' push action ultrainio setmincommittee \'{"number":%s,"staked":%s}\' -p ultrainio ' % (min_committee_number,min_committee_staked) )
-
+    sleep(10)
 
 def stepCreateinitAccounts():
     for i in range(1, args.num_producers+1):
@@ -329,6 +330,7 @@ parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory",
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
 parser.add_argument('--symbol', metavar='', help="The utrio.system symbol", default='UGAS')
 parser.add_argument('--num-producers', metavar='', help="Number of producers to register", type=int, default=5, dest="num_producers")
+parser.add_argument('--non-producers', metavar='', help="Number of non-producers to create", type=int, default=1, dest="non_producers")
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
 parser.add_argument('-p','--programpath', metavar='', help="set programpath params")
