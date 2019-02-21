@@ -246,7 +246,7 @@ bool ws_file_manager::load_local_info_file(const std::string file_name, ws_info&
 
 std::string ws_file_manager::get_file_path_by_info(fc::sha256& chain_id, uint32_t block_height)
 {
-    std::string ws_file_name  = m_dir_path + "/" +  to_file_name(chain_id, block_height) + ".ws";
+    std::string ws_file_name  = m_dir_path + "/" +  to_file_name(chain_id, block_height);
     return ws_file_name;
 }
 
@@ -409,6 +409,65 @@ void ws_file_manager::start_delete_timer()
         start_delete_timer();
         ilog("delete  worldstate files timer end");
     });
+}
+
+ws_helper::ws_helper(std::string old_ws, std::string new_ws)
+:m_old_ws_path(old_ws)
+,m_new_ws_path(new_ws)
+{
+    //output stream
+    if(bfs::exists(m_old_ws_path + ".ws") && !bfs::exists(m_old_ws_path + ".id")){
+        m_reader_fd = std::ifstream(m_old_ws_path + ".ws", (std::ios::in | std::ios::binary));
+        m_reader = std::make_shared<istream_worldstate_reader>(m_reader_fd);
+
+        m_id_reader_fd = std::ifstream(m_old_ws_path + ".id", (std::ios::in | std::ios::binary));
+        m_id_reader = std::make_shared<istream_worldstate_id_reader>(m_id_reader_fd);
+    }
+
+    //input stream
+    m_writer_fd = std::ofstream(m_new_ws_path + ".ws", (std::ios::out | std::ios::binary));
+    m_writer = std::make_shared<ostream_worldstate_writer>(m_writer_fd);
+
+    m_id_writer_fd = std::ofstream(m_new_ws_path + ".id", (std::ios::out | std::ios::binary));
+    m_id_writer = std::make_shared<ostream_worldstate_id_writer>(m_id_writer_fd);
+}
+
+ws_helper::~ws_helper()
+{
+    if (m_reader_fd.is_open()) 
+        m_reader_fd.close();
+    if (m_id_reader_fd.is_open()) 
+        m_id_reader_fd.close();
+
+    if (m_writer_fd.is_open()) { 
+        m_writer_fd.flush();
+        m_writer_fd.close();
+    }
+
+    if (m_id_writer_fd.is_open()) {
+        m_id_writer_fd.flush();
+        m_id_writer_fd.close();
+    }
+}
+
+std::shared_ptr<istream_worldstate_reader> ws_helper::get_reader()
+{
+    return m_reader;
+}
+
+std::shared_ptr<istream_worldstate_id_reader> ws_helper::get_id_reader()
+{
+    return m_id_reader;
+}
+
+std::shared_ptr<ostream_worldstate_writer> ws_helper::get_writer()
+{
+    return m_writer;
+}
+
+std::shared_ptr<ostream_worldstate_id_writer> ws_helper::get_id_writer()
+{
+    return m_id_writer;
 }
 
 }}

@@ -13,6 +13,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <ultrainio/chain/types.hpp>
+#include <ultrainio/chain/worldstate.hpp>
 
 #define MAX_WS_COUNT 5
 
@@ -104,6 +105,31 @@ namespace ultrainio { namespace chain {
             unique_ptr<boost::asio::steady_timer> m_ws_delete_check;
             std::map<ws_info, std::shared_ptr<ws_file_reader>> m_reader_map;
             std::map<ws_info, bool> m_is_reader_activate_map;
+    };
+
+
+    class ws_helper
+    {
+       public:
+            ws_helper(std::string old_ws, std::string new_ws);
+            ~ws_helper();        
+        public:
+            std::shared_ptr<istream_worldstate_reader> get_reader();
+            std::shared_ptr<istream_worldstate_id_reader> get_id_reader();
+            std::shared_ptr<ostream_worldstate_writer> get_writer();
+            std::shared_ptr<ostream_worldstate_id_writer> get_id_writer();
+
+        private:
+            std::string m_old_ws_path;
+            std::string m_new_ws_path;
+            std::shared_ptr<ostream_worldstate_writer> m_writer;
+            std::shared_ptr<istream_worldstate_reader> m_reader;
+            std::shared_ptr<ostream_worldstate_id_writer> m_id_writer;
+            std::shared_ptr<istream_worldstate_id_reader> m_id_reader;
+            std::ofstream m_writer_fd;
+            std::ifstream m_reader_fd;
+            std::ofstream m_id_writer_fd;
+            std::ifstream m_id_reader_fd;
     };
 }}
 

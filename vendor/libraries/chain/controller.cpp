@@ -444,24 +444,11 @@ struct controller_impl {
       info.chain_id = self.get_chain_id();
       info.block_height = block_height;
 
-      std::string worldstate_path = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height);
-      auto worldstate_out = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
-      auto worldstate = std::make_shared<ostream_worldstate_writer>(worldstate_out);
+      #define INTERVAL 10
+      auto ws_helper_ptr = std::make_shared<ws_helper>(ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height - INTERVAL),
+         ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height));
 
-      //generate worldstate
-      worldstate->write_section<chain_worldstate_header>([this,&worldstate_db]( auto &section ){
-         section.add_row(chain_worldstate_header(), worldstate_db);
-      });
-
-      worldstate->write_section<genesis_state>([this,&worldstate_db]( auto &section ){
-         section.add_row(conf.genesis, worldstate_db);
-      });
-
-      worldstate->write_section<block_state>([this,&worldstate_db, fork_head]( auto &section ){
-         section.template add_row<block_header_state>(fork_head, worldstate_db);
-      });
-
-      controller_index_set::walk_indices([this,&worldstate_db, worldstate]( auto utils ){
+      controller_index_set::walk_indices([this,&worldstate_db, &ws_helper_ptr]( auto utils ){
          using value_t = typename decltype(utils)::index_t::value_type;
 
          // skip the table_id_object as its inlined with contract tables section
@@ -469,27 +456,110 @@ struct controller_impl {
             return;
          }
 
-         worldstate->write_section<value_t>([this,&worldstate_db]( auto& section ){
-            decltype(utils)::walk(worldstate_db, [this,&worldstate_db, &section]( const auto &row ) {
+         ws_helper_ptr->get_writer()->write_section<value_t>([this,&worldstate_db, &ws_helper_ptr]( auto& section ){
+            //solution A: add all records to backup indices, then squach backup indices and cache, 
+            // then, write to new ws ongoing file
+            
+            //1:  add to backup if exit old ws file
+            if(ws_helper_ptr->get_id_reader() && ws_helper_ptr->get_reader()) {//if exit old ws file
+               ws_helper_ptr->get_reader()->read_section<value_t>([this, &ws_helper_ptr]( auto& reader_section ) {
+                  ws_helper_ptr->get_id_reader()->read_start_id_section(boost::core::demangle(typeid(value_t).name()));
+               
+                  bool more = !reader_section.empty();
+                  bool id_more = !ws_helper_ptr->get_id_reader()->empty();
+                  ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
+                  
+                  // while(more) {
+                  //    //TODO
+                  //    // insert the record to backup
+                  //    decltype(utils)::create(db, [this, &reader_section, &more, &id_more, &ws_helper_ptr]( auto &row ) {
+                  //       int old_id = -1, size = -1;
+                  //       id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
+                  //       more = reader_section.read_row(row, db);
+                  //    });
+                  //    ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
+                  // }
+               });
+            };    
+
+            //2:  squach back and cache
+
+            //3. read all record from backup
+            ws_helper_ptr->get_id_writer()->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
+            decltype(utils)::walk(worldstate_db, [this,&worldstate_db, &section, &ws_helper_ptr]( const auto &row ) {
                section.add_row(row, worldstate_db);
+               ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, 0);
             });
+            ws_helper_ptr->get_id_writer()->write_end_id_section();
+
+
+            //solution B: get old id, and find the id in cache.If not find, copy the text from old ws to new ws;
+            //If find, using cache object to create new text, insert to new ws
+            //TODO
          });
       });
 
-      add_contract_tables_to_worldstate(worldstate,worldstate_db);
 
-      authorization.add_to_worldstate(worldstate,worldstate_db);
-      resource_limits.add_to_worldstate(worldstate,worldstate_db);
+      // //out stream
+      // std::string worldstate_path = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height) + ".ws";
+      // auto old_ws_out_stream = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
+      // auto old_writer = std::make_shared<ostream_worldstate_writer>(worldstate_out);
 
-      //flush worldstate file
-      worldstate->finalize();
-      worldstate_out.flush();
-      worldstate_out.close();
+      // std::string worldstate_id_path = worldstate_path + ".id";
+      // auto old_id_out = std::ofstream(worldstate_id_path, (std::ios::out | std::ios::binary));
+      // auto old_id = std::make_shared<ostream_worldstate_id_writer>(worldstate_id_out);
 
-      //save worldstate file
-      info.file_size = bfs::file_size(worldstate_path);
-      info.hash_string = ws_manager_ptr->calculate_file_hash(worldstate_path).str();
-      ws_manager_ptr->save_info(info);
+      // //inout stream
+      // if(info.block_height - 10 <= 0) { //first time to create ws file
+         
+      // }
+
+      // //generate worldstate
+      // worldstate->write_section<chain_worldstate_header>([this,&worldstate_db]( auto &section ){
+      //    section.add_row(chain_worldstate_header(), worldstate_db);
+      // });
+
+      // worldstate->write_section<genesis_state>([this,&worldstate_db]( auto &section ){
+      //    section.add_row(conf.genesis, worldstate_db);
+      // });
+
+      // worldstate->write_section<block_state>([this,&worldstate_db, fork_head]( auto &section ){
+      //    section.template add_row<block_header_state>(fork_head, worldstate_db);
+      // });
+
+      // //
+      // controller_index_set::walk_indices([this,&worldstate_db, worldstate, worldstate_id]( auto utils ){
+      //    using value_t = typename decltype(utils)::index_t::value_type;
+
+      //    // skip the table_id_object as its inlined with contract tables section
+      //    if (std::is_same<value_t, table_id_object>::value) {
+      //       return;
+      //    }
+
+      //    worldstate_id->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
+      //    worldstate->write_section<value_t>([this,&worldstate_db, worldstate_id]( auto& section ){
+      //       decltype(utils)::walk(worldstate_db, [this,&worldstate_db, &section, worldstate_id]( const auto &row ) {
+      //          worldstate_id->write_row_id(row.id._id);
+      //          section.add_row(row, worldstate_db);
+      //       });
+      //    });
+      //    worldstate_id->write_end_id_section();//??
+      // });
+
+      // add_contract_tables_to_worldstate(worldstate,worldstate_db);
+
+      // authorization.add_to_worldstate(worldstate,worldstate_db);
+      // resource_limits.add_to_worldstate(worldstate,worldstate_db);
+
+      // //flush worldstate file
+      // worldstate->finalize();
+      // worldstate_out.flush();
+      // worldstate_out.close();
+
+      // //save worldstate file
+      // info.file_size = bfs::file_size(worldstate_path);
+      // info.hash_string = ws_manager_ptr->calculate_file_hash(worldstate_path).str();
+      // ws_manager_ptr->save_info(info);
       ilog("add_to_worldstate ws info: ${info}", ("info", info));
    }
 
