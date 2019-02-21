@@ -145,8 +145,7 @@ struct controller_impl {
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.state_size,
-        cfg.worldstate_control),
+        cfg.state_size),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -218,14 +217,12 @@ struct controller_impl {
       auto begin = fc::time_point::now();
       block_state fork_head = *fork_db.head();
       uint32_t block_height = fork_head.block_num;
-      db.set_cache();
 
       //thread to generate worldstate file
       boost::thread worldstate([this,fork_head,block_height](){
          auto begin = fc::time_point::now();
          try {
             add_to_worldstate(db, block_height, fork_head);
-            db.cancel_cache();
          } catch( const boost::interprocess::bad_alloc& e ) {
             elog("worldstate thread error: bad alloc");
          } catch( const boost::exception& e ) {

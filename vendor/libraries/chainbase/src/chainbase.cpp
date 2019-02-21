@@ -34,7 +34,7 @@ namespace chainbase {
       uint32_t                boost_version;
    };
 
-   database::database(const bfs::path& dir, open_flags flags, uint64_t shared_file_size, bool ws, bool allow_dirty): _ws(ws) {
+   database::database(const bfs::path& dir, open_flags flags, uint64_t shared_file_size, bool allow_dirty) {
       bool write = flags & database::read_write;
 
       if (!bfs::exists(dir)) {
@@ -236,18 +236,6 @@ namespace chainbase {
       {
          item->commit( revision );
       }
-   }
-
-   void database::set_cache()
-   {
-       for( auto& item : _index_list )
-           item->set_cache();
-   }
-
-   void database::cancel_cache() const
-   {
-       for( auto& item : _index_list )
-           item->cancel_cache();
    }
 
    void database::undo_all()
