@@ -2474,6 +2474,8 @@ connection::connection(string endpoint, msg_priority pri)
    }
 
    void net_plugin_impl::connection_monitor( ) {
+      static std::default_random_engine rg(time(0));
+
       start_conn_timer();
       auto it = connections.begin();
       while(it != connections.end()) {
@@ -2506,6 +2508,10 @@ connection::connection(string endpoint, msg_priority pri)
          std::list<p2p::NodeIPEndpoint> nodes = node_table->getNodes();
          uint32_t i = 0;
          for (std::list<p2p::NodeIPEndpoint>::iterator it = nodes.begin(); it != nodes.end() && i < count; ++it) {
+            if (rg() % 2 == 0) {
+               continue;
+            }
+
             string host = it->address() + ":" + std::to_string(it->listenPort(msg_priority_trx));
             if (!find_connection(host) && !is_grey_connection(host)) {
                ilog("connect to node: ${a}", ("a", host));
@@ -2735,7 +2741,7 @@ connection::connection(string endpoint, msg_priority pri)
          ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
-         ( "min-connections", bpo::value<int>()->default_value(10), "Minimum number of connections the programme need create, including active and subjective connections")
+         ( "min-connections", bpo::value<int>()->default_value(8), "Minimum number of connections the programme need create, including active and subjective connections")
          ( "max-retry-count", bpo::value<uint32_t>()->default_value(3), "Maximum number of reconnecting to listen endpoint")
          ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(40), "Maximum size of grey list")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
