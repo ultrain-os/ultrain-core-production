@@ -194,14 +194,26 @@ namespace ultrainiosystem {
        uint32_t                  take_effect_at_block; //block num of master chain when the committee update takes effect
    };
 
-   struct unconfirmed_block_header {
+   struct block_header_digest {
+       account_name              proposer;
+       block_id_type             block_id;
+       uint32_t                  block_number = 0;
+       checksum256               transaction_mroot;
+
+       auto primary_key() const { return uint64_t(block_number); }
+
+       ULTRAINLIB_SERIALIZE(block_header_digest, (proposer)(block_id)(block_number)(transaction_mroot))
+   };
+
+   typedef ultrainio::multi_index<N(blockheaders), block_header_digest> block_table;
+
+   struct unconfirmed_block_header : public block_header_digest {
        uint16_t                  fork_id;
        bool                      to_be_paid;    //should block proposer be paid when this block was confirmed
        bool                      is_leaf;       //leaf in the fork tree
-       account_name              proposer;
-       block_id_type             block_id;
-       uint32_t                  block_number;
        checksum256               committee_mroot;
+
+       ULTRAINLIB_SERIALIZE_DERIVED(unconfirmed_block_header, block_header_digest, (fork_id)(to_be_paid)(is_leaf)(committee_mroot))
    };
 
    struct subchain {
@@ -344,6 +356,8 @@ namespace ultrainiosystem {
                                uint64_t chain_name); */
 
          void setsched(bool is_enabled, uint16_t sched_period, uint16_t confirm_period);
+
+         void forcesetblock(uint64_t chain_name, block_header_digest header_dig, checksum256 committee_mrt);
 
          void votecommittee();
 

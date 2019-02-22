@@ -49,13 +49,17 @@ namespace ultrainio { namespace chain {
        uint32_t                  take_effect_at_block; //block num of master chain when the committee update takes effect
    };
 
-   struct unconfirmed_block_header {
-       uint16_t                  fork_id;
-       bool                      to_be_paid;    //should block proposer be paid when this block was confirmed
-       bool                      is_leaf;
+   struct block_header_digest {
        account_name              proposer;
        block_id_type             block_id;
        uint32_t                  block_number;
+       checksum256_type          transaction_mroot;
+   };
+
+   struct unconfirmed_block_header : public block_header_digest {
+       uint16_t                  fork_id;
+       bool                      to_be_paid;    //should block proposer be paid when this block was confirmed
+       bool                      is_leaf;
        checksum256_type          committee_mroot;
    };
 
@@ -96,7 +100,9 @@ FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_number)(total_resour
 FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(is_producer) )
 FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )
 FC_REFLECT(ultrainio::chain::updated_committee, (deprecated_committee)(unactivated_committee)(take_effect_at_block) )
-FC_REFLECT(ultrainio::chain::unconfirmed_block_header, (fork_id)(to_be_paid)(is_leaf)(proposer)(block_id)(block_number)(committee_mroot) )
+FC_REFLECT(ultrainio::chain::block_header_digest, (proposer)(block_id)(block_number)(transaction_mroot) )
+FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_block_header, (ultrainio::chain::block_header_digest), (fork_id)(to_be_paid)
+                    (is_leaf)(committee_mroot) )
 FC_REFLECT(ultrainio::chain::subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_active)(is_synced)(is_schedulable)
                                        (committee_members)(updated_info)(changing_info)(recent_users)(total_user_num)(chain_id)
                                        (committee_mroot)(confirmed_block_number)(highest_block_number)(unconfirmed_blocks) )

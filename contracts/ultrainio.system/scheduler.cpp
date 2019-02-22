@@ -216,8 +216,22 @@ namespace ultrainiosystem {
             else {
                 need_report = false; //Don't pay for null block and all blocks produced by genesis
             }
-            //todo, check signatures.
 
+            // veirfy block header ext
+            ultrainio::extensions_type exts = headers[idx].header_extensions;
+            print("acceptheader verify block header exts.size : ", exts.size(), "\n");
+            for (const auto& t : exts) {
+                uint16_t k = std::get<0>(t);
+                if (k == 0) { // bls
+                    std::vector<char> vc = std::get<1>(t);
+                    std::string blsData;
+                    blsData.assign(vc.begin(), vc.end());
+                    int verify = verify_header_extensions(chain_name, k, blsData.c_str(), blsData.length());
+                    ultrainio_assert(verify == 0, "verify header ext error.");
+                }
+            }
+
+            block_header_digest confirmed_header;
             //add block head to table
             if(1 == block_number) {
                 //same block case has been filtered above, so the genesis block should be the first one in this subchain
@@ -237,8 +251,14 @@ namespace ultrainiosystem {
                     temp_header.is_leaf       = true;
                     temp_header.proposer      = headers[idx].proposer;
                     temp_header.committee_mroot = headers[idx].committee_mroot;
+                    temp_header.transaction_mroot = headers[idx].transaction_mroot;
                     _subchain.unconfirmed_blocks.push_back(temp_header);
                 });
+
+                confirmed_header.proposer          = headers[idx].proposer;
+                confirmed_header.block_id          = block_id;
+                confirmed_header.block_number      = 1;
+                confirmed_header.transaction_mroot = headers[idx].transaction_mroot;
             }
             else {
                 ultrainio_assert(pre_id != 0 && ite_parent_block != ite_chain->unconfirmed_blocks.end(), "previous block is not found");
@@ -316,6 +336,11 @@ namespace ultrainiosystem {
                         if(ite_confirm_block->to_be_paid) {
                             reportblocknumber( ite_chain->chain_type, ite_confirm_block->proposer, 1);
                         }
+                        //save confirmed block
+                        confirmed_header.proposer          = ite_confirm_block->proposer;
+                        confirmed_header.block_id          = ite_confirm_block->block_id;
+                        confirmed_header.block_number      = ite_confirm_block->block_number;
+                        confirmed_header.transaction_mroot = ite_confirm_block->transaction_mroot;
                     }
                     else {
                         auto ite_block_b = _subchain.unconfirmed_blocks.begin();
@@ -335,9 +360,24 @@ namespace ultrainiosystem {
                     temp_header.is_leaf       = true;
                     temp_header.proposer      = headers[idx].proposer;
                     temp_header.committee_mroot = headers[idx].committee_mroot;
+                    temp_header.transaction_mroot = headers[idx].transaction_mroot;
                     _subchain.unconfirmed_blocks.push_back(temp_header);
                    
                     _subchain.unconfirmed_blocks.shrink_to_fit();
+                });
+            }
+            if(confirmed_header.block_number != 0){
+                block_table subchain_block_tbl(_self, chain_name);
+                auto block_ite = subchain_block_tbl.find(uint64_t(confirmed_header.block_number));
+                ultrainio_assert(block_ite == subchain_block_tbl.end(), "a block number can not be confirmed twice");
+                if(confirmed_header.block_number > 1000) {
+                    block_ite = subchain_block_tbl.find(uint64_t(confirmed_header.block_number - 1000));
+                    if(block_ite != subchain_block_tbl.end()) {
+                        subchain_block_tbl.erase(block_ite);
+                    }
+                }
+                subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
+                    new_confirmed_header = confirmed_header;
                 });
             }
         }
@@ -840,6 +880,53 @@ namespace ultrainiosystem {
                         }
                         _subchain.recent_users.shrink_to_fit();
                     });
+                }
+            }
+        }
+    }
+
+    void system_contract::forcesetblock(uint64_t chain_name, block_header_digest header_dig, checksum256 committee_mrt) {
+        //set confirm block of subchain
+        require_auth(N(ultrainio));
+        auto ite_chain = _subchains.find(chain_name);
+        ultrainio_assert(ite_chain != _subchains.end(), "subchain not found");
+        uint32_t current_confirmed_number = ite_chain->confirmed_block_number;
+        _subchains.modify(ite_chain, [&]( auto& _subchain ) {
+            _subchain.confirmed_block_number = header_dig.block_number;
+            _subchain.highest_block_number   = header_dig.block_number;
+            _subchain.unconfirmed_blocks.clear();
+            _subchain.is_synced = false;
+            _subchain.is_schedulable = true;
+
+            unconfirmed_block_header temp_header;
+            temp_header.fork_id       = 0x0001;
+            temp_header.block_id      = header_dig.block_id;
+            temp_header.block_number  = header_dig.block_number;
+            temp_header.to_be_paid    = false;
+            temp_header.is_leaf       = true;
+            temp_header.proposer      = header_dig.proposer;
+            temp_header.committee_mroot = committee_mrt;
+            temp_header.transaction_mroot = header_dig.transaction_mroot;
+            _subchain.unconfirmed_blocks.push_back(temp_header);
+        });
+        //handle block table of subchain
+        block_table subchain_block_tbl(_self, chain_name);
+        auto block_ite = subchain_block_tbl.find(uint64_t(header_dig.block_number));
+        if(block_ite == subchain_block_tbl.end()) {
+            block_ite = subchain_block_tbl.begin();
+            for(; block_ite != subchain_block_tbl.end();) {
+                block_ite = subchain_block_tbl.erase(block_ite);
+            }
+            subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
+                new_confirmed_header = header_dig;
+            });
+        }
+        else {
+            uint32_t number_to_remove = header_dig.block_number + 1;
+            while(number_to_remove <= current_confirmed_number) {
+                block_ite = subchain_block_tbl.find(uint64_t(number_to_remove));
+                if(block_ite != subchain_block_tbl.end()) {
+                    subchain_block_tbl.erase(block_ite);
                 }
             }
         }
