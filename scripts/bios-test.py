@@ -14,7 +14,7 @@ args = None
 logFile = None
 min_committee_staked = 420000000
 min_committee_number = 4
-
+max_resources_number = 10000
 unlockTimeout = 999999999
 defaultclu = '%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
 defaultkul = '%s/ultrain-core/build/programs/kultraind/kultraind'
@@ -157,15 +157,18 @@ def stepRegProducers():
     for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com 0 -u' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
     retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
-    sleep(5)
+    sleep(2)
     for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
     stepInitSimpleTest()
-    sleep(5)
+    sleep(2)
     for a in rand_acc_lst:
         retry(args.clultrain + 'transfer %s utrio.rand \'2.0000 UGAS\' \'as candidate\' -p %s' % ( a, a))
-    retry(args.clultrain + ' push action ultrainio setmincommittee \'{"number":%s,"staked":%s}\' -p ultrainio ' % (min_committee_number,min_committee_staked) )
-    sleep(10)
+    retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"140000000",\
+        "min_activated_stake":%s,"min_committee_member_number":%s,\
+        "block_reward_vec":[{"consensus_period":10,"reward":3},{"consensus_period":2,"reward":0.6}],\
+        "max_resources_number":%s}}\' -p ultrainio ' % ( min_committee_staked, min_committee_number, max_resources_number) )
+    sleep(5)
 
 def stepCreateinitAccounts():
     for i in range(1, args.num_producers+1):
@@ -299,7 +302,6 @@ parser = argparse.ArgumentParser()
 commands = [
     ('k', 'kill',           stepKillAll,                True,    "Kill all nodultrain and kultraind processes"),
     ('w', 'wallet',         stepStartWallet,            True,    "Start kultraind, create wallet, fill with keys"),
-#    ('b', 'boot',           stepStartBoot,              True,    "Start boot node"),
     ('s', 'sys',            createSystemAccounts,       True,    "Create system accounts (utrio.*)"),
     ('c', 'contracts',      stepInstallSystemContracts, True,    "Install system contracts (token, msig)"),
     ('t', 'tokens',         stepCreateTokens,           True,    "Create tokens"),
@@ -309,9 +311,7 @@ commands = [
     ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
      ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
-#    ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
-#    ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
     ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction"),
     ('u', 'unregproducers',  stepunregproducersTest,    False,    "stepunregproducersTest"),
     ('r', 'regproducers',  stepregproducersTest,    False,    "stepregproducersTest"),

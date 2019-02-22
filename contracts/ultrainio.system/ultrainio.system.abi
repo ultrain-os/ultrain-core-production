@@ -69,6 +69,13 @@
         {"name": "votes", "type": "uint64"}
       ]
     },{
+      "name": "block_reward",
+      "base": "",
+      "fields": [
+        {"name": "consensus_period", "type": "uint16"},
+        {"name":"reward", "type":"float64"}
+      ]
+    },{
       "name": "provided_proposer",
       "base": "",
       "fields": [
@@ -389,27 +396,34 @@
 
       ]
     },{
+      "name": "ultrainio_system_params",
+      "base": "",
+      "fields": [
+         {"name":"chain_type",                    "type":"uint64"},
+         {"name":"max_ram_size",                  "type":"uint64"},
+         {"name":"min_activated_stake",           "type":"int64"},
+         {"name":"min_committee_member_number",   "type":"uint32"},
+         {"name":"block_reward_vec",              "type":"block_reward[]"},
+         {"name":"max_resources_number",            "type":"uint16"}
+      ]
+    },{
       "name": "ultrainio_global_state",
       "base": "blockchain_parameters",
       "fields": [
          {"name":"max_ram_size",                  "type":"uint64"},
          {"name":"min_activated_stake",           "type":"int64"},
-         {"name":"min_committee_member",          "type":"uint32"},
          {"name":"min_committee_member_number",   "type":"uint32"},
-         {"name":"total_ram_bytes_reserved",      "type":"uint64"},
-         {"name":"total_ram_stake",               "type":"int64"},
+         {"name":"total_ram_bytes_used",      "type":"uint64"},
          {"name":"start_blcok",                   "type":"uint64"},
-         {"name":"reward_preblock",               "type":"uint64"},
+         {"name":"block_reward_vec",               "type":"block_reward[]"},
          {"name":"pervote_bucket",                "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
-         {"name":"total_unpaid_blocks",           "type":"uint64"},
+         {"name":"total_unpaid_balance",           "type":"float64"},
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"thresh_activated_stake_time",   "type":"uint64"},
-         {"name":"total_producer_vote_weight",    "type":"float64"},
          {"name":"last_name_close",               "type":"block_timestamp_type"},
-         {"name":"max_resources_size",            "type":"uint16"},
-         {"name":"total_resources_staked",        "type":"uint16"},
-         {"name":"defer_trx_nextid",              "type":"uint64"}
+         {"name":"max_resources_number",            "type":"uint16"},
+         {"name":"total_resources_used_number",        "type":"uint16"}
       ]
     },{
       "name": "role_base",
@@ -428,10 +442,11 @@
          {"name":"is_enabled",      "type":"bool"},
          {"name":"hasenabled",      "type":"bool"},
          {"name":"url",             "type":"string"},
-         {"name":"unpaid_blocks",   "type":"uint64"},
+         {"name":"unpaid_balance",   "type":"float64"},
          {"name":"total_produce_block",   "type":"uint64"},
          {"name":"location",        "type":"uint64"},
          {"name":"last_operate_blocknum", "type":"uint64"},
+         {"name":"delegated_cons_blocknum", "type":"uint64"},
          {"name":"claim_rewards_account", "type":"account_name"},
          {"name":"vote_number",     "type":"uint64"},
          {"name":"last_vote_blocenum", "type":"uint64"}
@@ -460,10 +475,10 @@
      "name": "chain_resource",
       "base": "",
       "fields": [
-        {"name": "max_resources_size",            "type": "uint16"},
-        {"name": "total_resources_staked",        "type": "uint16"},
+        {"name": "max_resources_number",            "type": "uint16"},
+        {"name": "total_resources_used_number",        "type": "uint16"},
         {"name": "max_ram_size",                  "type": "uint64"},
-        {"name": "total_ram_bytes_reserved",      "type": "uint64"}
+        {"name": "total_ram_bytes_used",      "type": "uint64"}
        ]
     },{
      "name": "changing_committee",
@@ -570,17 +585,10 @@
         {"name":"max_ram_size",     "type":"uint64"}
       ]
     },{
-      "name": "setblockreward",
+      "name": "setsysparams",
       "base": "",
       "fields": [
-        {"name":"rewardvalue",     "type":"uint64"}
-      ]
-    },{
-      "name": "setmincommittee",
-      "base": "",
-      "fields": [
-        {"name":"number",     "type":"uint32"},
-        {"name":"staked",     "type":"uint32"}
+        {"name":"params",     "type":"ultrainio_system_params"}
       ]
     },{
       "name": "claimrewards",
@@ -735,12 +743,8 @@
       "type": "setram",
       "ricardian_contract": ""
    },{
-      "name": "setblockreward",
-      "type": "setblockreward",
-      "ricardian_contract": ""
-   },{
-      "name": "setmincommittee",
-      "type": "setmincommittee",
+      "name": "setsysparams",
+      "type": "setsysparams",
       "ricardian_contract": ""
    },{
       "name": "bidname",

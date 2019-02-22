@@ -62,7 +62,7 @@ namespace ultrainiosystem {
 
       ultrainio_assert( _gstate.max_ram_size < max_ram_size, "ram may only be increased" ); /// decreasing ram might result market maker issues
       ultrainio_assert( max_ram_size < 1024ll*1024*1024*1024*1024, "ram size is unrealistic" );
-      ultrainio_assert( max_ram_size > _gstate.total_ram_bytes_reserved, "attempt to set max below reserved" );
+      ultrainio_assert( max_ram_size > _gstate.total_ram_bytes_used, "attempt to set max below reserved" );
 
       auto delta = int64_t(max_ram_size) - int64_t(_gstate.max_ram_size);
       auto itr = _rammarket.find(S(4,RAMCORE));
@@ -79,17 +79,27 @@ namespace ultrainiosystem {
       _global.set( _gstate );
    }
 
-   void system_contract::setblockreward( uint64_t rewardvalue ) {
-      require_auth( _self );
-      _gstate.reward_preblock = rewardvalue;
-      _global.set( _gstate );
-   }
-
-   void system_contract::setmincommittee( uint32_t number, uint32_t staked ) {
-      require_auth( _self );
-      _gstate.min_committee_member_number = number;
-      _gstate.min_activated_stake = (int64_t)staked;
-      _global.set( _gstate );
+   void system_contract::setsysparams( const ultrainio::ultrainio_system_params& params) {
+        require_auth( _self );
+        if(params.chain_type == 0) //master chain
+        {
+            _gstate.max_ram_size = params.max_ram_size;
+            _gstate.min_activated_stake = params.min_activated_stake;
+            _gstate.min_committee_member_number = params.min_committee_member_number;
+            if(params.block_reward_vec.size() > 0){
+                _gstate.block_reward_vec.clear();
+                _gstate.block_reward_vec.assign(params.block_reward_vec.begin(), params.block_reward_vec.end());;
+            }
+            _gstate.max_resources_number = params.max_resources_number;
+            _global.set( _gstate );
+        }else {
+            auto ite_chain = _subchains.find(params.chain_type);
+            ultrainio_assert(ite_chain != _subchains.end(), "this chian is not existed");
+            _subchains.modify(ite_chain, [&](subchain& info) {
+                info.global_resource.max_ram_size = params.max_ram_size;
+                info.global_resource.max_resources_number = params.max_resources_number;
+            } );
+        }
    }
 
    void system_contract::setparams( const ultrainio::blockchain_parameters& params ) {
@@ -611,7 +621,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
-     (setram)(setblockreward)(setmincommittee)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
+     (setram)(setsysparams)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate_bandwidth.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
      // voting.cpp

@@ -147,7 +147,7 @@ var searchData=
   ['unpack',['unpack',['../namespaceultrainio.html#a2ffaa5bd18836b7d40db601fb20965bb',1,'ultrainio::unpack(const char *buffer, size_t len)'],['../namespaceultrainio.html#a242928d37de56064f54a01eae305024e',1,'ultrainio::unpack(const vector&lt; char &gt; &amp;bytes)'],['../namespacemingw.html#ac50a46e35ae74f23ece0e5efd2afeabd',1,'mingw.unpack()']]],
   ['unpack_5faction_5fdata',['unpack_action_data',['../group__actioncppapi.html#ga3ce0a297276d44f03c9b5dc17fcd2b31',1,'ultrainio']]],
   ['unpack_5fsent_5ftrx',['unpack_sent_trx',['../structultrainio_1_1onerror.html#a8fe8368f7a3213b5ab0a93407f41cd66',1,'ultrainio::onerror']]],
-  ['unpaid_5fblocks',['unpaid_blocks',['../structultrainiosystem_1_1producer__info.html#a24e7945da7f329a88dd915d1582a877c',1,'ultrainiosystem::producer_info']]],
+  ['unpaid_5fblocks',['unpaid_balance',['../structultrainiosystem_1_1producer__info.html#a24e7945da7f329a88dd915d1582a877c',1,'ultrainiosystem::producer_info']]],
   ['unpromote',['unpromote',['../structcheck__bitmask__type.html#a6c4171199866b3863b565c98aecedf82',1,'check_bitmask_type']]],
   ['unregprod',['unregprod',['../classultrainiosystem_1_1system__contract.html#a7bba025eba3bde6c97ec025cc2935211',1,'ultrainiosystem::system_contract']]],
   ['unsetenv',['unsetenv',['../musl_2upstream_2include_2stdlib_8h.html#a4f1e5944541aa8d1b18932a54158eb70',1,'unsetenv(const char *):&#160;unsetenv.c'],['../unsetenv_8c.html#a17a3a11d20a551951a4acbc3872b280c',1,'unsetenv(const char *name):&#160;unsetenv.c'],['../temp__directory__path_8pass_8cpp.html#a2d0ee9640e5d243e31321a92a2025197',1,'UnsetEnv(std::string var):&#160;temp_directory_path.pass.cpp']]],

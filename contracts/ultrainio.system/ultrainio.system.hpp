@@ -40,44 +40,39 @@ namespace ultrainiosystem {
                                indexed_by<N(highbid), const_mem_fun<name_bid, uint64_t, &name_bid::by_high_bid>  >
                                >  name_bid_table;
 
-
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
-      uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
+      uint64_t free_ram()const { return max_ram_size - total_ram_bytes_used; }
       uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
       int64_t              min_activated_stake   = 42'000'0000;
-      uint32_t             min_committee_member = 1000;
-      uint32_t             min_committee_member_number = 100;
-      uint64_t             total_ram_bytes_reserved = 0;
-      int64_t              total_ram_stake = 0;
+      uint32_t             min_committee_member_number = 1000;
+      uint64_t             total_ram_bytes_used = 0;
 
       uint64_t             start_block =0;
-      uint64_t             reward_preblock = 3;
+      std::vector<ultrainio::block_reward> block_reward_vec;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
-      uint64_t             total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
+      double              total_unpaid_balance = 0.0; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
       uint64_t             thresh_activated_stake_time = 0;
-      double               total_producer_vote_weight = 0; /// the sum of all producer votes
       block_timestamp      last_name_close;
-      uint16_t             max_resources_size = 10000;    //set the resource combo to 10000
-      uint16_t             total_resources_staked = 0;
-      uint64_t             defer_trx_nextid = 0;
+      uint16_t             max_resources_number = 10000;    //set the resource combo to 10000
+      uint16_t             total_resources_used_number = 0;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
-                                (max_ram_size)(min_activated_stake)(min_committee_member)(min_committee_member_number)
-                                (total_ram_bytes_reserved)(total_ram_stake)(start_block)(reward_preblock)
-                                (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
-                                (total_producer_vote_weight)(last_name_close)(max_resources_size)(total_resources_staked)(defer_trx_nextid) )
+                                (max_ram_size)(min_activated_stake)(min_committee_member_number)
+                                (total_ram_bytes_used)(start_block)(block_reward_vec)
+                                (pervote_bucket)(perblock_bucket)(total_unpaid_balance)(total_activated_stake)(thresh_activated_stake_time)
+                                (last_name_close)(max_resources_number)(total_resources_used_number) )
    };
 
    struct chain_resource {
-       uint16_t             max_resources_size = 10000;
-       uint16_t             total_resources_staked = 0;
+       uint16_t             max_resources_number = 10000;
+       uint16_t             total_resources_used_number = 0;
        uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
-       uint64_t             total_ram_bytes_reserved = 0;
+       uint64_t             total_ram_bytes_used = 0;
 
-       ULTRAINLIB_SERIALIZE(chain_resource, (max_resources_size)(total_resources_staked)(max_ram_size)(total_ram_bytes_reserved) )
+       ULTRAINLIB_SERIALIZE(chain_resource, (max_resources_number)(total_resources_used_number)(max_ram_size)(total_ram_bytes_used) )
    };
 
    struct role_base {
@@ -94,10 +89,11 @@ namespace ultrainiosystem {
       bool                  is_enabled = false;
       bool                  hasenabled = false;
       std::string           url;
-      uint64_t              unpaid_blocks = 0;
+      double                 unpaid_balance = 0;
       uint64_t              total_produce_block;
       uint64_t              location = 0;
       uint64_t              last_operate_blocknum = 0;
+      uint64_t              delegated_cons_blocknum = 0;
       account_name          claim_rewards_account;
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
@@ -111,7 +107,7 @@ namespace ultrainiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(hasenabled)(url)
-                        (unpaid_blocks)(total_produce_block)(location)(last_operate_blocknum)(claim_rewards_account)(vote_number)(last_vote_blocknum) )
+                        (unpaid_balance)(total_produce_block)(location)(last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account)(vote_number)(last_vote_blocknum) )
    };
 
    struct pending_miner {
@@ -308,9 +304,7 @@ namespace ultrainiosystem {
 
          void setram( uint64_t max_ram_size );
 
-         void setblockreward( uint64_t rewardvalue );
-
-         void setmincommittee( uint32_t number, uint32_t staked );
+         void setsysparams( const ultrainio::ultrainio_system_params& params );
 
          void setparams( const ultrainio::blockchain_parameters& params );
 
@@ -370,7 +364,7 @@ namespace ultrainiosystem {
          static ultrainio_global_state get_default_parameters();
 
          //defined in producer_pay.cpp
-         void reportblocknumber( account_name producer, uint64_t number);
+         void reportblocknumber( uint64_t chain_type, account_name producer, uint64_t number);
 
          //defined in scheduler.cpp
          void add_to_pending_queue(account_name producer, const std::string& public_key, const std::string& bls_key);

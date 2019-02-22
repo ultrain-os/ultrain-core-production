@@ -314,7 +314,7 @@ namespace ultrainiosystem {
                         }
                         //record proposer for rewards
                         if(ite_confirm_block->to_be_paid) {
-                            reportblocknumber(ite_confirm_block->proposer, 1);
+                            reportblocknumber( ite_chain->chain_type, ite_confirm_block->proposer, 1);
                         }
                     }
                     else {
@@ -373,7 +373,7 @@ namespace ultrainiosystem {
         for(; ite != _producers.end(); ++ite) {
             if(ite->location == chain_name) {
                 _producers.modify(ite, [&](auto & p) {
-                     p.unpaid_blocks = 0;
+                     p.unpaid_balance = 0.0;
                      p.total_produce_block = 0;
                 });
             }

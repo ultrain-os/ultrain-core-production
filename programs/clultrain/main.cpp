@@ -898,25 +898,25 @@ struct list_producers_subcommand {
             std::cout << "No producers found" << std::endl;
             return;
          }
-         uint64_t total_unpaid_blocks = 0;
+         double total_unpaid_balance = 0;
          uint64_t total_produce_blocks = 0;
          std::map<uint64_t,uint64_t>  chaininfo;
-         printf("%-13s %-54s  %-16s  %-10s  %-8s  %-13s  %-12s\n", "Producer", "Producer key", "Consensus weight", "is_enabled", "location","unpaid blocks","total blocks");
+         printf("%-13s %-54s  %-16s  %-10s  %-8s  %-13s    %-12s\n", "Producer", "Producer key", "Consensus_weight", "is_enabled", "location","unpaid_blocks","total_blocks");
          for ( auto& row : result.rows ){
-            printf("%-13.13s %-54.54s  %-16ld  %-10u  %-8lu  %-13lu  %-12lu\n",
+            printf("%-13.13s %-54.54s  %-16ld  %-10u  %-8lu  %-.4f UGAS     %-12lu\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["total_cons_staked"].as_int64(),
                    row["is_enabled"].as_bool(),
                    row["location"].as_uint64(),
-                   row["unpaid_blocks"].as_uint64(),
+                   row["unpaid_balance"].as_double(),
                    row["total_produce_block"].as_uint64()
                    );
-            total_unpaid_blocks += row["unpaid_blocks"].as_uint64();
+            total_unpaid_balance += row["unpaid_balance"].as_double();
             total_produce_blocks += row["total_produce_block"].as_uint64();
             chaininfo[row["location"].as_uint64()]++;
 	    }
-        std::cout << "total_unpaid_blocks: " << total_unpaid_blocks <<std::endl;
+        printf("total_unpaid_balance: %-.4f UGAS \n",total_unpaid_balance);
         std::cout << "total_produce_blocks: " << total_produce_blocks << std::endl;
          for(auto iter = chaininfo.begin(); iter != chaininfo.end(); iter++)
             std::cout<<"location:"<< iter->first <<"    number:"<<iter->second<<std::endl;
@@ -927,79 +927,102 @@ struct list_producers_subcommand {
 };
 
 struct votecommittee_subcommand {
-   string requested_perm;
+   string requested_data;
    string proposer;
    votecommittee_subcommand(CLI::App* actionRoot) {
-      auto propose_action = actionRoot->add_subcommand("votecommittee", localized("Propose action"));
+      auto propose_action = actionRoot->add_subcommand("votecommittee", localized("vote side chain sync producer action"));
       add_standard_transaction_options(propose_action);
       propose_action->add_option("proposer", proposer, localized("proposer name"))->required();
-      propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+      propose_action->add_option("requested_permissions", requested_data, localized("The JSON string or filename defining requested permissions"))->required();
       propose_action->set_callback([&] {
-         fc::variant requested_perm_var;
+         fc::variant requested_data_var;
          try {
-            requested_perm_var = json_from_file_or_string(requested_perm);
-         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+            requested_data_var = json_from_file_or_string(requested_data);
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_data))
          vector<proposeminer_info> reqperm;
          try {
-            reqperm = requested_perm_var.as<vector<proposeminer_info>>();
-         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
+            reqperm = requested_data_var.as<vector<proposeminer_info>>();
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_data_var));
 
          auto args = fc::mutable_variant_object()
             ("proposer", proposer )
-            ("proposeminer", requested_perm_var);
+            ("proposeminer", requested_data_var);
          send_actions({chain::action{{permission_level{proposer,config::active_name}}, config::system_account_name, "votecommittee", variant_to_bin( N(ultrainio), NEX(votecommittee), args ) }});
       });
    }
 };
 
 struct voteaccount_subcommand {
-   string requested_perm;
+   string requested_data;
    string proposer;
    voteaccount_subcommand(CLI::App* actionRoot) {
-      auto propose_action = actionRoot->add_subcommand("voteaccount", localized("Propose action"));
+      auto propose_action = actionRoot->add_subcommand("voteaccount", localized("vote side chain sync account action"));
       add_standard_transaction_options(propose_action);
       propose_action->add_option("proposer", proposer, localized("proposer name"))->required();
-      propose_action->add_option("proposeaccount", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+      propose_action->add_option("proposeaccount", requested_data, localized("The JSON string or filename defining requested permissions"))->required();
       propose_action->set_callback([&] {
-         fc::variant requested_perm_var;
+         fc::variant requested_data_var;
          try {
-            requested_perm_var = json_from_file_or_string(requested_perm);
-         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+            requested_data_var = json_from_file_or_string(requested_data);
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_data))
          vector<proposeaccount_info> reqperm;
          try {
-            reqperm = requested_perm_var.as<vector<proposeaccount_info>>();
-         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
+            reqperm = requested_data_var.as<vector<proposeaccount_info>>();
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_data_var));
 
          auto args = fc::mutable_variant_object()
             ("proposer", proposer )
-            ("proposeaccount", requested_perm_var);
+            ("proposeaccount", requested_data_var);
          send_actions({chain::action{{permission_level{proposer,config::active_name}}, config::system_account_name, "voteaccount", variant_to_bin( N(ultrainio), NEX(voteaccount), args ) }});
       });
    }
 };
 
 struct voteresource_subcommand {
-   string requested_perm;
+   string requested_data;
    string proposer;
    voteresource_subcommand(CLI::App* actionRoot) {
       auto propose_action = actionRoot->add_subcommand("voteresourcelease", localized("vote side chain resourcelease action"));
       add_standard_transaction_options(propose_action);
       propose_action->add_option("proposer", proposer, localized("proposer name"))->required();
-      propose_action->add_option("proposeresource", requested_perm, localized("The JSON string or filename defining resourceleaseinfo"))->required();
+      propose_action->add_option("proposeresource", requested_data, localized("The JSON string or filename defining resourceleaseinfo"))->required();
       propose_action->set_callback([&] {
-         fc::variant requested_perm_var;
+         fc::variant requested_data_var;
          try {
-            requested_perm_var = json_from_file_or_string(requested_perm);
-         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse resourceleaseinfo JSON '${data}'", ("data",requested_perm))
+            requested_data_var = json_from_file_or_string(requested_data);
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse resourceleaseinfo JSON '${data}'", ("data",requested_data))
          vector<proposeresource_info> reqperm;
          try {
-            reqperm = requested_perm_var.as<vector<proposeresource_info>>();
-         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested resourceleaseinfo format: '${data}'", ("data",requested_perm_var));
+            reqperm = requested_data_var.as<vector<proposeresource_info>>();
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested resourceleaseinfo format: '${data}'", ("data",requested_data_var));
 
          auto args = fc::mutable_variant_object()
             ("proposer", proposer )
-            ("proposeresource", requested_perm_var);
+            ("proposeresource", requested_data_var);
          send_actions({chain::action{{permission_level{proposer,config::active_name}}, config::system_account_name, "voteresourcelease", variant_to_bin( N(ultrainio), NEX(voteresourcelease), args ) }});
+      });
+   }
+};
+
+struct setsysparams_subcommand {
+   string requested_data;
+   setsysparams_subcommand(CLI::App* actionRoot) {
+      auto setsysparams_action = actionRoot->add_subcommand("setsysparams", localized("set system contract params action"));
+      add_standard_transaction_options(setsysparams_action);
+      setsysparams_action->add_option("ultrainio_system_params", requested_data, localized("The JSON string or filename defining ultrainio_system_params"))->required();
+      setsysparams_action->set_callback([&] {
+         fc::variant requested_data_var;
+         try {
+            requested_data_var = json_from_file_or_string(requested_data);
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse ultrainio_system_params JSON '${data}'", ("data",requested_data))
+         ultrainio_system_params reqdata;
+         try {
+            reqdata = requested_data_var.as<ultrainio_system_params>();
+         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested ultrainio_system_params format: '${data}'", ("data",requested_data_var));
+
+         auto args = fc::mutable_variant_object()
+            ("ultrainio_system_params", requested_data_var);
+         send_actions({chain::action{{permission_level{config::system_account_name,config::active_name}}, config::system_account_name, "setsysparams", variant_to_bin( N(ultrainio), NEX(setsysparams), args ) }});
       });
    }
 };
@@ -1134,8 +1157,8 @@ struct list_bw_subcommand {
    bool print_json = false;
 
    list_bw_subcommand(CLI::App* actionRoot) {
-      auto list_bw = actionRoot->add_subcommand("listbw", localized("List delegated bandwidth"));
-      list_bw->add_option("account", account, localized("The account delegated bandwidth"))->required();
+      auto list_bw = actionRoot->add_subcommand("listbw", localized("List delegated consensus weight"));
+      list_bw->add_option("account", account, localized("The account delegated consensus weight"))->required();
       list_bw->add_flag("--json,-j", print_json, localized("Output in JSON format") );
 
       list_bw->set_callback([this] {
@@ -1148,16 +1171,14 @@ struct list_bw_subcommand {
             if (!print_json) {
                auto res = result.as<ultrainio::chain_apis::read_only::get_table_records_result>();
                if ( !res.rows.empty() ) {
-                  std::cout << std::setw(13) << std::left << "Receiver" << std::setw(21) << std::left << "Net bandwidth"
-                            << std::setw(21) << std::left << "CPU bandwidth" << std::endl;
+                  std::cout << std::setw(13) << std::left << "Receiver" << std::setw(21) << std::left << "consensus weight" << std::endl;
                   for ( auto& r : res.rows ){
                      std::cout << std::setw(13) << std::left << r["to"].as_string()
-                               << std::setw(21) << std::left << r["net_weight"].as_string()
-                               << std::setw(21) << std::left << r["cpu_weight"].as_string()
+                               << std::setw(21) << std::left << r["cons_weight"].as_string()
                                << std::endl;
                   }
                } else {
-                  std::cerr << "Delegated bandwidth not found" << std::endl;
+                  std::cerr << "Delegated consensus not found" << std::endl;
                }
             } else {
                std::cout << fc::json::to_pretty_string(result) << std::endl;
@@ -2395,7 +2416,7 @@ int main( int argc, char** argv ) {
 
    // multisig propose
    string proposal_name;
-   string requested_perm;
+   string requested_data;
    string transaction_perm;
    string proposed_transaction;
    string proposed_contract;
@@ -2415,7 +2436,7 @@ int main( int argc, char** argv ) {
    auto propose_action = msig->add_subcommand("propose", localized("Propose action"));
    add_standard_transaction_options(propose_action);
    propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
-   propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+   propose_action->add_option("requested_permissions", requested_data, localized("The JSON string or filename defining requested permissions"))->required();
    propose_action->add_option("trx_permissions", transaction_perm, localized("The JSON string or filename defining transaction permissions"))->required();
    propose_action->add_option("contract", proposed_contract, localized("contract to which deferred transaction should be delivered"))->required();
    propose_action->add_option("action", proposed_action, localized("action of deferred transaction"))->required();
@@ -2424,10 +2445,10 @@ int main( int argc, char** argv ) {
    propose_action->add_option("proposal_expiration", parse_expiration_hours, localized("Proposal expiration interval in hours"));
 
    propose_action->set_callback([&] {
-      fc::variant requested_perm_var;
+      fc::variant requested_data_var;
       try {
-         requested_perm_var = json_from_file_or_string(requested_perm);
-      } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+         requested_data_var = json_from_file_or_string(requested_data);
+      } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_data))
       fc::variant transaction_perm_var;
       try {
          transaction_perm_var = json_from_file_or_string(transaction_perm);
@@ -2441,8 +2462,8 @@ int main( int argc, char** argv ) {
 
       vector<permission_level> reqperm;
       try {
-         reqperm = requested_perm_var.as<vector<permission_level>>();
-      } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
+         reqperm = requested_data_var.as<vector<permission_level>>();
+      } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_data_var));
 
       vector<permission_level> trxperm;
       try {
@@ -2476,7 +2497,7 @@ int main( int argc, char** argv ) {
       auto args = fc::mutable_variant_object()
          ("proposer", proposer )
          ("proposal_name", proposal_name)
-         ("requested", requested_perm_var)
+         ("requested", requested_data_var)
          ("trx", trx_var);
 
       send_actions({chain::action{accountPermissions, "utrio.msig", "propose", variant_to_bin( N(utrio.msig), NEX(propose), args ) }});
@@ -2498,15 +2519,15 @@ int main( int argc, char** argv ) {
    auto propose_trx = msig->add_subcommand("propose_trx", localized("Propose transaction"));
    add_standard_transaction_options(propose_trx);
    propose_trx->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
-   propose_trx->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+   propose_trx->add_option("requested_permissions", requested_data, localized("The JSON string or filename defining requested permissions"))->required();
    propose_trx->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
    propose_trx->add_option("proposer", proposer, localized("Account proposing the transaction"));
 
    propose_trx->set_callback([&] {
-      fc::variant requested_perm_var;
+      fc::variant requested_data_var;
       try {
-         requested_perm_var = json_from_file_or_string(requested_perm);
-      } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+         requested_data_var = json_from_file_or_string(requested_data);
+      } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_data))
 
       fc::variant trx_var;
       try {
@@ -2528,7 +2549,7 @@ int main( int argc, char** argv ) {
       auto args = fc::mutable_variant_object()
          ("proposer", proposer )
          ("proposal_name", proposal_name)
-         ("requested", requested_perm_var)
+         ("requested", requested_data_var)
          ("trx", trx_var);
 
       send_actions({chain::action{accountPermissions, "utrio.msig", "propose", variant_to_bin( N(utrio.msig), NEX(propose), args ) }});
@@ -2704,6 +2725,7 @@ int main( int argc, char** argv ) {
    auto votecommittee = votecommittee_subcommand(system);
    auto voteaccount = voteaccount_subcommand(system);
    auto voteresource = voteresource_subcommand(system);
+   auto setsysparams = setsysparams_subcommand(system);
    auto buyresourcespackage = buy_respackage_subcommand(system);
 
    auto delegatecons = delegate_cons_subcommand(system);

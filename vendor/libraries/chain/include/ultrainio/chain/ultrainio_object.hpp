@@ -16,7 +16,7 @@ namespace ultrainio { namespace chain {
       bool                  is_enabled = false;
       bool                  hasenabled = false;
       std::string           url;
-      uint64_t              unpaid_blocks = 0;
+      double                unpaid_balance = 0;
       uint64_t              total_produce_block = 0;
       uint64_t              location = 0;
       uint64_t              vote_number = 0;
@@ -24,10 +24,10 @@ namespace ultrainio { namespace chain {
    };
 
    struct chain_resource {
-       uint16_t             max_resources_size = 10000;
-       uint16_t             total_resources_staked = 0;
+       uint16_t             max_resources_number = 10000;
+       uint16_t             total_resources_used_number = 0;
        uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
-       uint64_t             total_ram_bytes_reserved = 0;
+       uint64_t             total_ram_bytes_used = 0;
    };
 
    struct user_info {
@@ -91,8 +91,8 @@ namespace ultrainio { namespace chain {
 
 FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key)(bls_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::producer_info, (ultrainio::chain::role_base), (total_cons_staked)(is_active)(is_enabled)
-                    (hasenabled)(url)(unpaid_blocks)(total_produce_block)(location)(vote_number)(last_vote_blocknum))
-FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_size)(total_resources_staked)(max_ram_size)(total_ram_bytes_reserved) )
+                    (hasenabled)(url)(unpaid_balance)(total_produce_block)(location)(vote_number)(last_vote_blocknum))
+FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_number)(total_resources_used_number)(max_ram_size)(total_ram_bytes_used) )
 FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(is_producer) )
 FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )
 FC_REFLECT(ultrainio::chain::updated_committee, (deprecated_committee)(unactivated_committee)(take_effect_at_block) )
