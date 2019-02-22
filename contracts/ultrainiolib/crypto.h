@@ -257,6 +257,12 @@ void assert_recover_key( const checksum256* digest, const char* sig, size_t sigl
  *  @endcode
  */
 void frombase58_recover_key(const char* pubkey, char* pubkey_val,int size) ;
+
+
+int ts_verify_merkle_proof(const char* transaction_mroot, const char* merkle_proof, size_t merkle_proof_len, const char* tx_bytes, size_t tx_bytes_len);
+int ts_merkle_proof(int block_number, const char* tx_id, void* buffer, size_t buffer_size);
+int ts_merkle_proof_length(int block_number, const char* tx_id);
+
 /// }@cryptocapi
 
 }

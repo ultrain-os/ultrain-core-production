@@ -327,6 +327,59 @@ class typescript_crypto_api : public context_aware_api {
 
          return 0;
       }
+
+      int ts_verify_merkle_proof(null_terminated_ptr transaction_mroot, array_ptr<char> merkle_proof, size_t merkle_proof_len, array_ptr<char> tx_bytes, size_t tx_bytes_len) {
+         if (merkle_proof_len == 0 || tx_bytes_len == 0) return 0;
+         vector<string> strproofs;
+         datastream<char *> ds(merkle_proof, merkle_proof_len);
+         fc::raw::unpack(ds, strproofs);
+
+         vector<digest_type> proofs;
+         std::transform(strproofs.begin(), strproofs.end(), std::back_inserter(proofs), [](string s) -> digest_type { return digest_type(s); });
+
+         vector<char> tx(tx_bytes_len);
+         tx.assign(tx_bytes.value, tx_bytes.value + tx_bytes_len);
+
+         std::string tm(transaction_mroot);
+         digest_type tmdigest(tm);
+
+         return context.control.verify_merkle_proof(proofs, tmdigest, tx);
+      }
+
+      std::tuple<vector<string>, vector<char>> do_get_merkle_proof(uint32_t block_number, null_terminated_ptr trx_id_str) {
+         vector<digest_type> proofs;
+         vector<char> trx_bytes;
+
+         std::string sdigest(trx_id_str.value);
+         digest_type trx_id(sdigest);
+         proofs = context.control.merkle_proof_of(block_number, trx_id, trx_bytes);
+
+         vector<string> strproofs;
+         std::transform(proofs.begin(), proofs.end(), std::back_inserter(strproofs), [](digest_type dt) -> string { return string(dt); });
+
+         return std::make_tuple(strproofs, trx_bytes);
+      }
+
+      int32_t ts_merkle_proof_length(uint32_t block_number, null_terminated_ptr trx_id_str) {
+         auto mps = do_get_merkle_proof(block_number, trx_id_str);
+         int32_t length = fc::raw::pack_size(std::get<0>(mps)) + fc::raw::pack_size(std::get<1>(mps));
+         return length;
+      }
+
+      int32_t ts_merkle_proof(uint32_t block_number, null_terminated_ptr trx_id_str, array_ptr<char> buffer, size_t buffer_size) {
+         auto mps = do_get_merkle_proof(block_number, trx_id_str);
+         auto proofs = std::get<0>(mps);
+         auto trx_bytes = std::get<1>(mps);
+         int32_t length = fc::raw::pack_size(proofs) + fc::raw::pack_size(trx_bytes);
+
+         if (buffer_size < length) return length;
+
+         datastream<char*> ds( buffer, length );
+         fc::raw::pack(ds, proofs);
+         fc::raw::pack(ds, trx_bytes);
+
+         return 0;
+      }
 };
 #endif
 
@@ -2089,6 +2142,9 @@ REGISTER_INTRINSICS(typescript_crypto_api,
    (ts_read_db_record,         int(int64_t, int64_t, int64_t, int64_t, int , int) )
    (ts_verify_with_pk,         int(int, int, int)                 )
    (ts_is_account_with_code,   int(int64_t)                       )
+   (ts_verify_merkle_proof,    int(int, int, int, int, int)   )
+   (ts_merkle_proof_length,    int(int32_t, int)                  )
+   (ts_merkle_proof,           int(int32_t, int, int, int)        )
 );
 #endif
 

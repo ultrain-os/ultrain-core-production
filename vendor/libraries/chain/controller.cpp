@@ -2027,4 +2027,140 @@ const flat_set<account_name> &controller::get_resource_greylist() const {
    return  my->conf.resource_greylist;
 }
 
+vector<digest_type> controller::merkle_proof_of(const uint32_t& block_number, const digest_type& trx_id, vector<char>& trx_receipt_bytes) const {
+   auto make_digests_even = [](vector<digest_type>& vdigests) {
+      if (vdigests.size() % 2)
+         vdigests.push_back(vdigests.back());
+   };
+
+   auto get_next_digest = [](const size_t& pos, const vector<digest_type>& vdigests) -> digest_type {
+      if (vdigests.size() % 2 != 0 || pos >= vdigests.size()) return digest_type();
+
+      if (pos % 2 != 0) return make_canonical_left(vdigests[pos - 1]); // left leaf
+      else return make_canonical_right(vdigests[pos + 1]); // right leaf
+   };
+
+   auto next_loop_merkle_tree = [](vector<digest_type>& ids) {
+      if( ids.size() % 2 != 0 )
+         ids.push_back(ids.back());
+
+      for (int i = 0; i < ids.size() / 2; i++) {
+         ids[i] = digest_type::hash(make_canonical_pair(ids[2 * i], ids[(2 * i) + 1]));
+      }
+
+      ids.resize(ids.size() / 2);
+   };
+   // for debug
+   auto print_mt = [](const vector<digest_type>& ids) {
+      std::cout << "merkle_proof digest: " << std::endl;
+      for (const auto& dt : ids) {
+         std::cout <<"\t"<< string(dt) << std::endl;
+      }
+   };
+
+   signed_block_ptr block;
+   try {
+         block = fetch_block_by_number(block_number);
+   } catch(...) {
+      block = nullptr;
+   }
+
+   // to generate merkle proof vector
+   vector<digest_type> merkle_proof;
+
+   if (block == nullptr) return merkle_proof;
+
+   const vector<transaction_receipt>& trxs = block->transactions;
+   if (trxs.empty()) return merkle_proof;
+
+   size_t target_pos = -1;
+   for (auto i = 0; i < trxs.size(); i++) {
+      if (trxs[i].trx.contains<packed_transaction>() && trxs[i].trx.get<packed_transaction>().id() == trx_id) {
+         target_pos = i;
+         break;
+      }
+   }
+
+   if (target_pos == -1) return merkle_proof;
+
+   trx_receipt_bytes = fc::raw::pack(trxs[target_pos]);
+
+   vector<digest_type> trx_digests;
+   trx_digests.reserve( trxs.size() );
+   for( const auto& a : trxs ) {
+      trx_digests.emplace_back( a.digest() );
+   }
+   // for test now, fill the real digest of original tx
+   if (target_pos % 2 == 0) merkle_proof.push_back(make_canonical_left(digest_type()));
+   else merkle_proof.push_back(make_canonical_right(digest_type()));
+
+   //std::cout << "merkle_proof: " << string(merkle_proof.back()) << std::endl;
+
+   do {
+      make_digests_even(trx_digests);
+
+      //print_mt(trx_digests);
+      auto n = get_next_digest(target_pos, trx_digests);
+      merkle_proof.push_back(n);
+
+      target_pos /= 2;
+      next_loop_merkle_tree(trx_digests);
+      // std::cout << "merkle_proof: " << string(merkle_proof.back()) << std::endl;
+   } while (trx_digests.size() >= 2);
+
+   return merkle_proof;
+}
+
+static void print_log(const vector<digest_type>& merkle_proof, const vector<char>& trx_receipt_bytes) {
+   std::cout << "controller::verify_merkle_proof, merkle_proof: " << std::endl;
+   for (const auto& dg : merkle_proof) {
+      std::cout <<"\t" << string(dg) << std::endl;
+   }
+
+   std::cout << "controller::verify_merkle_proof, trx_receipt_bytes.length = "<< trx_receipt_bytes.size() << std::endl;
+   for (auto c: trx_receipt_bytes) std::cout << std::hex << (int(c) & 0xff) << " ";
+   std::cout << std::endl;
+}
+
+bool controller::verify_merkle_proof(const vector<digest_type>& merkle_proof, const digest_type& transaction_mroot, const vector<char>& trx_receipt_bytes) const {
+
+   // print_log(merkle_proof, trx_receipt_bytes);
+
+   if (merkle_proof.size() < 2) return false;
+
+   if (transaction_mroot == digest_type()) return false;
+
+   transaction_receipt trx = fc::raw::unpack<transaction_receipt>(trx_receipt_bytes);
+
+   auto first = merkle_proof[0];
+   auto second = merkle_proof[1];
+
+   digest_type left_leaf, right_leaf;
+   if (is_canonical_left(first) && is_canonical_right(second)) {
+      left_leaf = make_canonical_left(trx.digest());
+      right_leaf = second;
+   } else if (is_canonical_left(second) && is_canonical_right(first)) {
+      left_leaf = second;
+      right_leaf = make_canonical_right(trx.digest());
+   } else {
+      return false;
+   }
+
+   auto proof = digest_type::hash(make_canonical_pair(left_leaf, right_leaf));
+
+   for (int i = 2; i < merkle_proof.size(); i++) {
+      const digest_type& t = merkle_proof[i];
+      if (is_canonical_left(t)) {
+         left_leaf = t;
+         right_leaf = make_canonical_right(proof);
+      } else {
+         left_leaf =  make_canonical_left(proof);
+         right_leaf = t;
+      }
+
+      proof = digest_type::hash(make_canonical_pair(left_leaf, right_leaf));
+   }
+
+   return proof == transaction_mroot;
+}
 } } /// ultrainio::chain

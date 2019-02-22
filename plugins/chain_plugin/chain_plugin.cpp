@@ -1376,6 +1376,22 @@ fc::variant read_only::get_block_info(const read_only::get_block_info_params& pa
            ("timevalue", block->timestamp.abstime);
 }
 
+read_only::get_merkle_proof_result read_only::get_merkle_proof(const read_only::get_merkle_proof_params& params) {
+   read_only::get_merkle_proof_result result;
+
+   vector<char> trx_receipt_bytes;
+   result.merkle_proof =  db.merkle_proof_of(params.block_number, params.trx_id, trx_receipt_bytes);
+   result.trx_receipt_bytes = trx_receipt_bytes;
+
+   return result;
+}
+
+read_only::verify_merkle_proof_result read_only::verify_merkle_proof(const read_only::verify_merkle_proof_params& params) {
+   read_only::verify_merkle_proof_result result;
+   result.is_matched = db.verify_merkle_proof(params.merkle_proof, params.transaction_mroot, params.trx_receipt_bytes);
+   return result;
+}
+
 fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
    block_state_ptr b;
    optional<uint64_t> block_num;

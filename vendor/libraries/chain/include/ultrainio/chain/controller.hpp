@@ -239,6 +239,10 @@ namespace ultrainio { namespace chain {
          uint64_t get_contract_emit_length() const;
          #endif
 
+
+         vector<digest_type> merkle_proof_of(const uint32_t& block_number, const digest_type& trx_id, std::vector<char>& trx_receipt_bytes) const;
+         bool verify_merkle_proof(const vector<digest_type>& merkle_proof, const digest_type& transaction_mroot, const std::vector<char>& trx_receipt_bytes) const;
+
          void set_subjective_cpu_leeway(fc::microseconds leeway);
 
          signal<void(const signed_block_ptr&)>         pre_accepted_block;

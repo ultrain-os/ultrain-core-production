@@ -391,6 +391,30 @@ public:
 
    get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
 
+   struct get_merkle_proof_params {
+      uint32_t             block_number;
+      chain::digest_type   trx_id;
+   };
+
+   struct get_merkle_proof_result {
+      vector<chain::digest_type> merkle_proof;
+      vector<char>               trx_receipt_bytes;
+   };
+
+   get_merkle_proof_result get_merkle_proof(const get_merkle_proof_params& params);
+
+   struct verify_merkle_proof_params {
+      vector<chain::digest_type> merkle_proof;
+      chain::digest_type         transaction_mroot;
+      vector<char>               trx_receipt_bytes;
+   };
+
+   struct verify_merkle_proof_result {
+      bool is_matched;
+   };
+
+   verify_merkle_proof_result verify_merkle_proof(const verify_merkle_proof_params& params);
+
    static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
@@ -717,3 +741,8 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_required_keys_result, (require
 FC_REFLECT( ultrainio::chain_apis::read_write::register_event_params, (account)(post_url));
 FC_REFLECT( ultrainio::chain_apis::read_write::unregister_event_params, (account)(post_url));
 FC_REFLECT( ultrainio::chain_apis::read_write::register_result, (result));
+
+FC_REFLECT( ultrainio::chain_apis::read_only::get_merkle_proof_params, (block_number)(trx_id));
+FC_REFLECT( ultrainio::chain_apis::read_only::get_merkle_proof_result, (merkle_proof)(trx_receipt_bytes));
+FC_REFLECT( ultrainio::chain_apis::read_only::verify_merkle_proof_params, (merkle_proof)(transaction_mroot)(trx_receipt_bytes));
+FC_REFLECT( ultrainio::chain_apis::read_only::verify_merkle_proof_result, (is_matched));

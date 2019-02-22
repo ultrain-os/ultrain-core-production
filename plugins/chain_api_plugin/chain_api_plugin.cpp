@@ -80,6 +80,8 @@ void chain_api_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
       CHAIN_RO_CALL(get_chain_info, 200),
       CHAIN_RO_CALL(get_block_info, 200),
+      CHAIN_RO_CALL(get_merkle_proof, 200),
+      CHAIN_RO_CALL(verify_merkle_proof, 200),
       CHAIN_RO_CALL(get_block_header_state, 200),
       CHAIN_RO_CALL(get_account_info, 200),
       CHAIN_RO_CALL(get_contract, 200),
