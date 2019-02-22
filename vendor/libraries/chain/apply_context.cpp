@@ -281,6 +281,7 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
+   ULTRAIN_ASSERT(act.account == N(ultrainio), action_validate_exception, "only ultrainio can send deferred transaction" );
    ULTRAIN_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
    trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
