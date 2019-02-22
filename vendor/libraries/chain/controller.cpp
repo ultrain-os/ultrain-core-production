@@ -146,7 +146,7 @@ struct controller_impl {
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size,
-        cfg.worldstate_control),
+        cfg.worldstate_control?cfg.worldstate_interval:0),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),

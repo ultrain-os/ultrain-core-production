@@ -214,8 +214,8 @@ namespace chainbase {
          typedef undo_state< value_type >                              undo_state_type;
          typedef cache_state< value_type >                              cache_state_type;
 
-         generic_index( allocator<value_type> a, bool cache_on=true )
-         :_stack(a),_cache(a),_cache_on(cache_on),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+         generic_index( allocator<value_type> a, uint64_t cache_interval=0 )
+         :_stack(a),_cache(a),_cache_interval(cache_interval),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
 
          void validate()const {
             if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
@@ -340,7 +340,7 @@ namespace chainbase {
                _stack.emplace_back( _indices.get_allocator() );
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
-               if( _cache_on )
+               if( _cache_interval )
                   _cache.emplace_back( _indices.get_allocator() );
 
                return session( *this, _revision );
@@ -403,7 +403,7 @@ namespace chainbase {
           *  This method does not change the state of the index, only the state of the undo buffer.
           */
          void squash_cache(){
-             if( !_cache_on || _cache.size()<2 ) return;
+             if( !_cache_interval || _cache.size()<2 || (1 == _revision %_cache_interval)) return;
 
              auto& cache = _cache.back();
              auto& prev_cache = _cache[_cache.size()-2];
@@ -570,7 +570,7 @@ namespace chainbase {
 
          void process_cache()
          {
-             if ( !_cache_on || !_cache.size()) return;
+             if ( !_cache_interval || !_cache.size()) return;
              auto& head= _cache.front();
 
              /*The order of operation must be remove, modify, create.That is because it maybe conflict 
@@ -687,7 +687,7 @@ namespace chainbase {
          }
 
          void cache_remove( const value_type& v ) {
-            if ( !_cache_on || !_cache.size() ) return;
+            if ( !_cache_interval || !_cache.size() ) return;
             auto& head = _cache.back();
             if( !head.new_values.erase(v.id) ){
                head.modify_values.erase(v.id);
@@ -696,7 +696,7 @@ namespace chainbase {
          }
 
          void cache_modify( const value_type& v ) {
-            if ( !_cache_on || !_cache.size() ) return;
+            if ( !_cache_interval || !_cache.size() ) return;
             auto& head = _cache.back();
             auto it = head.new_values.find(v.id);
             if( it != head.new_values.end() )
@@ -714,7 +714,7 @@ namespace chainbase {
          }
 
          void cache_create( const value_type& v ) {
-            if ( !_cache_on || !_cache.size() ) return;
+            if ( !_cache_interval || !_cache.size() ) return;
             _cache.back().new_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
          }
 
@@ -727,7 +727,7 @@ namespace chainbase {
           *
           *  Commit will discard all revisions prior to the committed revision.
           */
-         bool                            _cache_on=false;
+         uint64_t                        _cache_interval;
          int64_t                         _revision = 0;
          typename value_type::id_type    _next_id = 0;
          index_type                      _indices,_indices_backup;
@@ -861,7 +861,7 @@ namespace chainbase {
 
          using database_index_row_count_multiset = std::multiset<std::pair<unsigned, std::string>>;
 
-         database(const bfs::path& dir, open_flags write = read_only, uint64_t shared_file_size = 0, bool ws = true, bool allow_dirty = false);
+         database(const bfs::path& dir, open_flags write = read_only, uint64_t shared_file_size = 0, uint64_t ws_interval = 0, bool allow_dirty = false);
          ~database();
          database(database&&) = default;
          database& operator=(database&&) = default;
@@ -964,7 +964,7 @@ namespace chainbase {
                   BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in read only database" ) );
                }
                first_time_adding = true;
-               idx_ptr = _segment->construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ), _ws );
+               idx_ptr = _segment->construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ), _ws_interval );
              }
 
              idx_ptr->validate();
@@ -1221,7 +1221,7 @@ namespace chainbase {
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
 #endif
-         bool                                                        _ws;
+         uint64_t                                                    _ws_interval;
          void                                                        _msync_database();
    };
 
