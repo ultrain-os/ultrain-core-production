@@ -237,10 +237,6 @@ class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrain
 
         bool hasMultiVotePropose(const EchoMsg& echo);
 
-        BlsVoterSet generateBlsVoterSet(const VoterSet& voterSet);
-
-        void freeTwoDim(unsigned char** p, int size);
-
         // data member
         Block m_ba0Block;
         BlockIdType m_ba0VerifiedBlkId = BlockIdType();

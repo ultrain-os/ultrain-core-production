@@ -1,25 +1,23 @@
-#include <rpos/Checkpoint.h>
+#include <rpos/ConfirmPoint.h>
 
 namespace ultrainio {
-    bool Checkpoint::isCheckpoint(const BlockHeader& blockHeader) {
+    bool ConfirmPoint::isConfirmPoint(const BlockHeader& blockHeader) {
         ExtensionsType ext = blockHeader.header_extensions;
         for (auto& e : ext) {
-            if (std::get<0>(e) == kCommitteeSet) {
+            if (std::get<0>(e) == kBlsVoterSet) {
                 return true;
             }
         }
         return false;
     }
 
-    Checkpoint::Checkpoint(const BlockHeader& blockHeader) : m_blockHeader(blockHeader) {
-        ExtensionsType ext = m_blockHeader.header_extensions;
+    ConfirmPoint::ConfirmPoint(const BlockHeader& blockHeader) : m_blockHeader(blockHeader) {
+        ExtensionsType ext = blockHeader.header_extensions;
         for (auto& e : ext) {
             BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
             if (key == kPreCheckpointId) {
                 auto& value = std::get<1>(e);
                 m_preCheckpointBlockId = BlockIdType(std::string(value.begin(), value.end()));
-            } else if (key == kCommitteeSet) {
-                m_committeeSet = CommitteeSet(std::get<1>(e));
             } else if (key == kBlsVoterSet) {
                 m_blsVoterSet = BlsVoterSet(std::get<1>(e));
             }

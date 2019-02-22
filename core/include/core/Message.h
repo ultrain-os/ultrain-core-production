@@ -11,7 +11,7 @@ namespace ultrainio {
     enum BlockHeaderExtKey {
         kPreCheckpointId = 0,
         kCommitteeSet,
-        kExtVoterSet
+        kBlsVoterSet
     };
 
     enum ConsensusPhase {

@@ -7,6 +7,7 @@ add_library( ultrainio_rpos
         src/CommitteeInfo.cpp
         src/CommitteeSet.cpp
         src/Config.cpp
+        src/ConfirmPoint.cpp
         src/EvilType.cpp
         src/FisherYates.cpp
         src/Genesis.cpp

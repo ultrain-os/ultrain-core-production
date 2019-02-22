@@ -25,6 +25,7 @@
 #include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/config.hpp>
 
+#include <base/Memory.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/MsgBuilder.h>
@@ -1304,9 +1305,9 @@ namespace ultrainio {
             chain.set_action_merkle_hack();
             chain.set_trx_merkle_hack();
             if (!m_preBlockVoterSet.empty() && chain::block_header::num_from_id(m_preBlockVoterSet.commonEchoMsg.blockId) == chain.head_block_num()) {
-                BlsVoterSet blsVoterSet = generateBlsVoterSet(m_preBlockVoterSet);
+                BlsVoterSet blsVoterSet = m_preBlockVoterSet.toBlsVoterSet();
                 chain::extensions_type exts;
-                exts.push_back(std::make_pair(kExtVoterSet, blsVoterSet.toVectorChar()));
+                exts.push_back(std::make_pair(kBlsVoterSet, blsVoterSet.toVectorChar()));
                 chain.set_header_extensions(exts);
             }
             // Construct the block msg from pbs.
@@ -2152,7 +2153,7 @@ namespace ultrainio {
 
     int Scheduler::on_header_extensions_verify(uint64_t chainName, int extKey, const std::string& extValue) {
         ilog("enter on_header_extensions_verify chain id : ${chainName} extKey : ${extKey} extValue : ${extValue}", ("chainName", chainName)("extKey", extKey)("extValue", extValue));
-        if (static_cast<BlockHeaderExtKey>(extKey) == kExtVoterSet) {
+        if (static_cast<BlockHeaderExtKey>(extKey) == kBlsVoterSet) {
             BlsVoterSet blsVoterSet(extValue);
             if (blsVoterSet.empty()) {
                 return -1;
@@ -2167,26 +2168,18 @@ namespace ultrainio {
             std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
             if (!stakeVotePtr->getBlsPublicKeyBatch(chainName, blsVoterSet.accountPool, pks)) { // todo(qinxiaofen)
                 ilog("validate subchain : ${subchain} bls error actually", ("subchain", chainName));
-                freeTwoDim(pks, blsVoterSet.accountPool.size());
+                Memory::freeMultiDim<unsigned char>(pks, blsVoterSet.accountPool.size());
                 return 0;
             }
             bool validated = Validator::verify(blsVoterSet.sigX, blsVoterSet.commonEchoMsg, pks, blsVoterSet.accountPool.size());
             if (!validated) {
                 ilog("validate subchain : ${subchain} bls error actually", ("subchain", chainName));
             }
-            freeTwoDim(pks, blsVoterSet.accountPool.size());
+            Memory::freeMultiDim<unsigned char>(pks, blsVoterSet.accountPool.size());
             ilog("validate subchain blockheader success");
             return 0;
         }
         return -1;
-    }
-
-    void Scheduler::freeTwoDim(unsigned char** p, int size) {
-        ULTRAIN_ASSERT(p, chain::chain_exception, "pks is nullptr");
-        for (int i = 0; i < size; i++) {
-            free(p[i]);
-        }
-        free(p);
     }
 
     bool Scheduler::isDuplicate(const ProposeMsg& proposeMsg) {
@@ -2218,30 +2211,5 @@ namespace ultrainio {
             m_committeeVoteBlock.insert(make_pair(echo.account, echo.blockId));
         }
         return false;
-    }
-
-    BlsVoterSet Scheduler::generateBlsVoterSet(const VoterSet& voterSet) {
-        BlsVoterSet blsVoterSet;
-        blsVoterSet.commonEchoMsg = voterSet.commonEchoMsg;
-        blsVoterSet.accountPool = voterSet.accountPool;
-#ifdef CONSENSUS_VRF
-        blsVoterSet.proofPool = voterSet.proofPool;
-#endif
-        std::shared_ptr<Bls> blsPtr = Bls::getDefault();
-        int n = blsVoterSet.accountPool.size();
-        unsigned char** blsSignV = (unsigned char**)malloc(n * sizeof(unsigned char*));
-        for (int i = 0; i < n; i++) {
-            blsSignV[i] = (unsigned char*)malloc(Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
-            Hex::fromHex(voterSet.blsSignPool[i], blsSignV[i], Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
-        }
-        unsigned char sigX[Bls::BLS_SIGNATURE_COMPRESSED_LENGTH];
-        bool res = blsPtr->aggregate(blsSignV, n, sigX, Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
-        freeTwoDim(blsSignV, n);
-        if (!res) {
-            elog("aggregate bls error");
-            return BlsVoterSet();
-        }
-        blsVoterSet.sigX = Hex::toHex(sigX, Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
-        return blsVoterSet;
     }
 }  // namespace ultrainio

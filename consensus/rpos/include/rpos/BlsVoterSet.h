@@ -18,7 +18,7 @@ namespace ultrainio {
 
         BlsVoterSet(const std::string& s);
 
-        //BlsVoterSet(const std::vector<char>& vc);
+        BlsVoterSet(const std::vector<char>& vc);
 
         std::string toString() const;
 
@@ -27,6 +27,8 @@ namespace ultrainio {
         bool operator == (const BlsVoterSet&) const;
 
     private:
+        void init(const std::string& s);
+
         void toVariants(fc::variants&) const;
 
         void fromVariants(const fc::variants&);
@@ -42,5 +44,7 @@ namespace ultrainio {
         std::vector<std::string> proofPool;
 #endif
         bool empty();
+
+        BlsVoterSet toBlsVoterSet() const;
     };
 }
