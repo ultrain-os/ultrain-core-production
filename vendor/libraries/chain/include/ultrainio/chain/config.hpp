@@ -16,7 +16,7 @@ const static auto default_blocks_dir_name    = "blocks";
 
 const static auto default_state_dir_name     = "state";
 const static auto default_worldstate_dir_name = "worldstate";
-const static auto default_worldstate_interval = 60;
+const static auto default_worldstate_interval = 9;
 const static auto forkdb_filename            = "forkdb.dat";
 const static auto default_state_size            = 1*1024*1024*1024ll;
 const static auto default_state_guard_size      = 128*1024*1024ll;

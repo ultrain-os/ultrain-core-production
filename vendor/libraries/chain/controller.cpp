@@ -55,6 +55,8 @@ using contract_database_index_set = index_set<
    index256_index
 >;
 
+#define WS_INTERVAL 3
+
 // these are the default numbers, and it could be changed during startup.
 //int chain::config::block_interval_ms = 10*1000;
 //int chain::config::block_interval_us = 10*1000*1000;
@@ -146,7 +148,7 @@ struct controller_impl {
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size,
-        cfg.worldstate_control?cfg.worldstate_interval:0),
+        WS_INTERVAL),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -437,66 +439,146 @@ struct controller_impl {
       });
    }
 
-   void add_to_worldstate(const chainbase::database& worldstate_db, uint32_t block_height, const block_state& fork_head) const{
+   void add_to_worldstate(chainbase::database& worldstate_db, uint32_t block_height, const block_state& fork_head) const{
+      ilog("test1");
       if(!ws_manager_ptr) return;
 
       ws_info info;
       info.chain_id = self.get_chain_id();
       info.block_height = block_height;
 
-      #define INTERVAL 10
-      auto ws_helper_ptr = std::make_shared<ws_helper>(ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height - INTERVAL),
-         ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height));
-
+      std::string new_ws_file = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height);
+      auto ws_helper_ptr = std::make_shared<ws_helper>(
+         ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height - WS_INTERVAL),
+         new_ws_file
+      );
+      ilog("test1-1");
       controller_index_set::walk_indices([this,&worldstate_db, &ws_helper_ptr]( auto utils ){
-         using value_t = typename decltype(utils)::index_t::value_type;
+         using index_t = typename decltype(utils)::index_t;
+         using value_t = typename index_t::value_type;
+         ilog("test2 ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
 
          // skip the table_id_object as its inlined with contract tables section
          if (std::is_same<value_t, table_id_object>::value) {
             return;
          }
-
-         ws_helper_ptr->get_writer()->write_section<value_t>([this,&worldstate_db, &ws_helper_ptr]( auto& section ){
-            //solution A: add all records to backup indices, then squach backup indices and cache, 
-            // then, write to new ws ongoing file
+         ilog("test3");
+#if 1
+         //solution A: add all records to backup indices, then squach backup indices and cache, 
+         // then, write to new ws ongoing file
+         
+         //1:  add to backup if exit old ws file
+         if(ws_helper_ptr->get_id_reader() && ws_helper_ptr->get_reader()) {//if exit old ws file
+            ws_helper_ptr->get_reader()->read_section<value_t>([this, &ws_helper_ptr, &worldstate_db]( auto& reader_section ) {
+               ws_helper_ptr->get_id_reader()->read_start_id_section(boost::core::demangle(typeid(value_t).name()));
             
-            //1:  add to backup if exit old ws file
-            if(ws_helper_ptr->get_id_reader() && ws_helper_ptr->get_reader()) {//if exit old ws file
-               ws_helper_ptr->get_reader()->read_section<value_t>([this, &ws_helper_ptr]( auto& reader_section ) {
-                  ws_helper_ptr->get_id_reader()->read_start_id_section(boost::core::demangle(typeid(value_t).name()));
+               bool more = !reader_section.empty();
+               bool id_more = !ws_helper_ptr->get_id_reader()->empty();
+               ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
                
-                  bool more = !reader_section.empty();
-                  bool id_more = !ws_helper_ptr->get_id_reader()->empty();
+               while(more) {
+                  // insert the record to backup
+                  decltype(utils)::create(worldstate_db, [this, &worldstate_db, &reader_section, &more, &id_more, &ws_helper_ptr]( auto &row ) {
+                     int old_id = -1, size = -1;
+                     id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
+                     more = reader_section.read_row(row, worldstate_db);
+                     row.id._id = old_id;
+                  }, true);
                   ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
-                  
-                  // while(more) {
-                  //    //TODO
-                  //    // insert the record to backup
-                  //    decltype(utils)::create(db, [this, &reader_section, &more, &id_more, &ws_helper_ptr]( auto &row ) {
-                  //       int old_id = -1, size = -1;
-                  //       id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
-                  //       more = reader_section.read_row(row, db);
-                  //    });
-                  //    ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
-                  // }
-               });
-            };    
-
-            //2:  squach back and cache
-
-            //3. read all record from backup
+               }
+            });
+         };    
+         ilog("test4-1");
+         //2:  squach backup and cache
+         worldstate_db.get_mutable_index<index_t>().process_cache();
+         ilog("test4-2");
+         //3. read all record from backup, write to new ws file
+         ws_helper_ptr->get_writer()->write_section<value_t>([this, &worldstate_db, &ws_helper_ptr]( auto& section ){
             ws_helper_ptr->get_id_writer()->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
             decltype(utils)::walk(worldstate_db, [this,&worldstate_db, &section, &ws_helper_ptr]( const auto &row ) {
                section.add_row(row, worldstate_db);
-               ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, 0);
-            });
+               auto length = ws_helper_ptr->get_writer()->write_length();
+               ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, length);
+            });            
             ws_helper_ptr->get_id_writer()->write_end_id_section();
-
-
-            //solution B: get old id, and find the id in cache.If not find, copy the text from old ws to new ws;
-            //If find, using cache object to create new text, insert to new ws
-            //TODO
          });
+         ilog("test5-2");
+         // 4. clear backup_indices
+         (const_cast<index_t&>(worldstate_db.get_mutable_index<index_t>().backup_indices())).clear();
+         ilog("test5-3");
+#else
+         //solution B: get old id, and find the id in cache.If not find, copy the text from old ws to new ws;
+         //If find, using cache object to create new text, insert to new ws
+         //1. get old id for old_id file
+         //2. search the id in cache;
+         //3, if not find, get the row string data from old ws file, cp to new ws file; 
+         //4, if find, using "section.add_row()" to add the cache record to new ws file;
+
+
+         auto& cache_node = worldstate_db.get_index<index_t>().cache().front();
+
+         //If don't exit old ws file, it first time to create ws. Restore the cache new values to ws file;
+         if(!ws_helper_ptr->get_id_reader() || !ws_helper_ptr->get_reader()) {
+            ULTRAIN_ASSERT(cache_node.removed_ids.empty() || cache_node.modify_values.empty(), worldstate_exception,
+                 "Remove or modify old record, but there no old ws file.!");
+            
+            ws_helper_ptr->get_writer()->write_section<value_t>([this, &worldstate_db, &ws_helper_ptr]( auto& section ){
+               ws_helper_ptr->get_id_writer()->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
+               
+               // TODO, whether map/set  sort by id ascend
+               for(auto& v : cache_node.new_values) {
+                  auto& row = v.second;
+                  section.add_row(row, worldstate_db);
+                  auto length = ws_helper_ptr->get_writer()->write_length();
+                  ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, length);
+               }
+               ws_helper_ptr->get_id_writer()->write_end_id_section();
+            });
+            return;
+         };    
+
+         //Get id and row from old ws files, find the old id in cache;
+         ws_helper_ptr->get_reader()->read_section<value_t>([this, &ws_helper_ptr, &worldstate_db]( auto& reader_section ) {
+               ws_helper_ptr->get_id_reader()->read_start_id_section(boost::core::demangle(typeid(value_t).name()));
+            
+               bool more = !reader_section.empty();
+               bool id_more = !ws_helper_ptr->get_id_reader()->empty();
+               ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Get old ws file data error: the ws file conflict with ws id file");
+               
+               std::vector<char> row_from_ws;
+               while(more) {
+                  int old_id = -1, size = -1;
+                  id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
+                  chainbase::oid<value_t> object_id(old_id);
+
+                  if(cache_node.removed_ids.find(object_id) != cache_node.removed_ids.end()){
+                     //get old this row, don't insert to new ws file
+                     more = reader_section.read_row(size, row_from_ws);
+                     continue;
+                  } 
+                  
+                  auto itr = cache_node.modify_values.find(object_id);
+                  if (itr != cache_node.modify_values.end()){
+                     //get old this row, don't insert to new ws file
+                     more = reader_section.read_row(size, row_from_ws);
+
+                     //check.....
+                     section.add_row(row, worldstate_db);
+                  auto length = ws_helper_ptr->get_writer()->write_length();
+                  ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, length);
+
+                  }
+
+                  decltype(utils)::create(worldstate_db, [this, &worldstate_db, &reader_section, &more, &id_more, &ws_helper_ptr]( auto &row ) {
+                     int old_id = -1, size = -1;
+                     id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
+                     more = reader_section.read_row(row, worldstate_db);
+                     row.id._id = old_id;
+                  }, true);
+                  ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Get old ws file data error: the ws file conflict with ws id file");
+               }
+            });
+#endif
       });
 
 
@@ -556,10 +638,13 @@ struct controller_impl {
       // worldstate_out.flush();
       // worldstate_out.close();
 
-      // //save worldstate file
-      // info.file_size = bfs::file_size(worldstate_path);
-      // info.hash_string = ws_manager_ptr->calculate_file_hash(worldstate_path).str();
-      // ws_manager_ptr->save_info(info);
+      ws_helper_ptr.reset();
+
+      //save worldstate file
+      std::string new_ws_file_name = new_ws_file +".ws";
+      info.file_size = bfs::file_size(new_ws_file_name);
+      info.hash_string = ws_manager_ptr->calculate_file_hash(new_ws_file_name).str();
+      ws_manager_ptr->save_info(info);
       ilog("add_to_worldstate ws info: ${info}", ("info", info));
    }
 
@@ -718,7 +803,7 @@ struct controller_impl {
 
          // block syncing and listner branch, worldstate allowed for listner but not for syncing
          if ( (conf.worldstate_control)
-               && (0 == fork_db.head()->block_num % conf.worldstate_interval)
+               && (0 == fork_db.head()->block_num % WS_INTERVAL)
                && (worldstate_allowed) ) {
             create_worldstate();
          }

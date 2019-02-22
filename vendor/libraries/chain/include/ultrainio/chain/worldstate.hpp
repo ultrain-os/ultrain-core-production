@@ -291,11 +291,6 @@ namespace ultrainio { namespace chain {
          return get_section_info(section_size, row_count, data_pos, suffix + detail::worldstate_section_traits<T>::section_name());
       }
 
-      // template<typename T>
-      // bool get_data(std::streampos& data_pos, uint64_t size, std::vector<char>& out_data,const std::string& suffix = std::string()) {
-      //    return get_data(data_pos, size, out_data, suffix + detail::worldstate_section_traits<T>::section_name());
-      // }
-
       virtual void validate() const = 0;
 
       virtual ~worldstate_reader(){};
@@ -303,7 +298,6 @@ namespace ultrainio { namespace chain {
       protected:
          virtual bool has_section( const std::string& section_name ) = 0;
          virtual bool get_section_info(uint64_t& section_size, uint64_t& row_count, int& data_pos, const std::string& section_name){ return false; };
-         virtual bool get_data(int data_pos, uint64_t size, std::vector<char>& out_data){ return false; };
          virtual void set_section( const std::string& section_name ) = 0;
          virtual bool read_row( detail::abstract_worldstate_row_reader& row_reader ) = 0;
          virtual bool empty( ) = 0;
@@ -353,6 +347,7 @@ namespace ultrainio { namespace chain {
          void write_row( std::vector<char>& in_data ) override;
          void write_end_section( ) override;
          void finalize();
+         uint64_t write_length();
 
          static const uint32_t magic_number = 0x30510550;
 
@@ -361,6 +356,7 @@ namespace ultrainio { namespace chain {
          std::streampos          header_pos;
          std::streampos          section_pos;
          uint64_t                row_count;
+         uint64_t	               length_write;
 
    };
 
@@ -371,11 +367,12 @@ namespace ultrainio { namespace chain {
          void validate() const override;
          bool has_section( const string& section_name ) override;
          bool get_section_info(uint64_t& section_size, uint64_t& row_count, int& data_pos, const std::string& section_name) override;
-         bool get_data(int data_pos, uint64_t size, std::vector<char>& out_data) override;
          void set_section( const string& section_name ) override;
          bool read_row( detail::abstract_worldstate_row_reader& row_reader ) override;
          bool empty ( ) override;
          void clear_section() override;
+         uint64_t read_length();
+         bool read_row(uint64_t size, std::vector<char>& out_data);
 
       private:
          bool validate_section() const;
@@ -384,6 +381,7 @@ namespace ultrainio { namespace chain {
          std::streampos header_pos;
          uint64_t       num_rows;
          uint64_t       cur_row;
+         uint64_t	      length_read;
    };
 
    class integrity_hash_worldstate_writer : public worldstate_writer {
@@ -431,7 +429,7 @@ namespace ultrainio { namespace chain {
          void validate() const;
          bool has_id_section( const string& section_name );
          void read_start_id_section( const string& section_name );
-         bool read_id_row( int64_t& id, int64_t& size);
+         bool read_id_row(int& id, int& size);
          bool empty ( );
          void clear_id_section();
 

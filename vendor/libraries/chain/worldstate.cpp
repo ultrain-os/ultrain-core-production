@@ -119,6 +119,7 @@ ostream_worldstate_writer::ostream_worldstate_writer(std::ostream& worldstate)
 ,header_pos(worldstate.tellp())
 ,section_pos(-1)
 ,row_count(0)
+,length_write(0)
 {
    // write magic number
    auto totem = magic_number;
@@ -156,6 +157,7 @@ void ostream_worldstate_writer::write_row( const detail::abstract_worldstate_row
       worldstate.seekp(restore);
       throw;
    }
+   length_write = worldstate.tellp() - restore;
    row_count++;
 }
 
@@ -167,6 +169,7 @@ void ostream_worldstate_writer::write_row( std::vector<char>& in_data ) {
       worldstate.seekp(restore);
       throw;
    }
+   length_write = worldstate.tellp() - restore;
    row_count++;
 }
 
@@ -196,11 +199,16 @@ void ostream_worldstate_writer::finalize() {
    worldstate.write((char*)&end_marker, sizeof(end_marker));
 }
 
+uint64_t ostream_worldstate_writer::write_length() {
+   return length_write;
+}
+
 istream_worldstate_reader::istream_worldstate_reader(std::istream& worldstate)
 :worldstate(worldstate)
 ,header_pos(worldstate.tellg())
 ,num_rows(0)
 ,cur_row(0)
+,length_read(0)
 {
 
 }
@@ -328,29 +336,24 @@ bool istream_worldstate_reader::get_section_info(uint64_t& section_size, uint64_
    // ULTRAIN_THROW(worldstate_exception, "Binary worldstate has no section named ${n}", ("n", section_name));
 }
 
-bool istream_worldstate_reader::get_data(int data_pos, uint64_t size, std::vector<char>& out_data)
+bool istream_worldstate_reader::read_row(uint64_t size, std::vector<char>& out_data)
 {
-   // auto restore_pos = fc::make_scoped_exit([this,pos=worldstate.tellg()](){
-   //    worldstate.seekg(pos);
-   // });
-
    try {
-      // worldstate.seekg(data_pos);
-
       out_data.resize(size);
       worldstate.read(out_data.data(), size);
       int read_cnt = worldstate.gcount();
       if (read_cnt != size){
          ULTRAIN_THROW(worldstate_exception, "Binary worldstate read section error, \
-            read data size(${r}) not same with ${s}. data_pos ${n}", ("r", read_cnt)("s", size)("n", data_pos));
-         return false;
+            read data size(${r}) not same with ${s}", ("r", read_cnt)("s", size));
       }
       auto isEof = worldstate.eof();
       if(isEof)
          worldstate.clear();
-      return true;
+
+      length_read = size;
+      return ++cur_row < num_rows;
    } catch (...){
-      ULTRAIN_THROW(worldstate_exception, "Binary worldstate read section error. data_pos ${n}", ("n", data_pos));
+      ULTRAIN_THROW(worldstate_exception, "Binary worldstate read section error. size ${n}", ("n", size));
    }
    return false;
 }
@@ -399,7 +402,9 @@ void istream_worldstate_reader::set_section( const string& section_name ) {
 }
 
 bool istream_worldstate_reader::read_row( detail::abstract_worldstate_row_reader& row_reader ) {
+   auto start = worldstate.tellg();
    row_reader.provide(worldstate);
+   length_read = worldstate.tellg() - start;
    return ++cur_row < num_rows;
 }
 
@@ -410,6 +415,11 @@ bool istream_worldstate_reader::empty ( ) {
 void istream_worldstate_reader::clear_section() {
    num_rows = 0;
    cur_row = 0;
+}
+
+uint64_t istream_worldstate_reader::read_length()
+{
+   return length_read;
 }
 
 integrity_hash_worldstate_writer::integrity_hash_worldstate_writer(fc::sha256::encoder& enc)
@@ -643,7 +653,7 @@ void istream_worldstate_id_reader::read_start_id_section( const string& section_
    ULTRAIN_THROW(worldstate_exception, "Binary worldstate_id_ostream has no section named ${n}", ("n", section_name));
 }
 
-bool istream_worldstate_id_reader::read_id_row( int64_t& id, int64_t& size) {
+bool istream_worldstate_id_reader::read_id_row(int& id, int& size) {
    fc::raw::unpack(worldstate_id_ostream, id);
    fc::raw::unpack(worldstate_id_ostream, size);
    return ++cur_row < num_rows;

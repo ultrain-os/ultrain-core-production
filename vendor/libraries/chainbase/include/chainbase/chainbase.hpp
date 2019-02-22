@@ -293,6 +293,7 @@ namespace chainbase {
 
          const index_type& indices()const { return _indices; }
          const index_type& backup_indices() const { return _indices_backup;}
+         // void backup_clear() { return _indices_backup.clear();}
 
          class session {
             public:
@@ -638,6 +639,7 @@ namespace chainbase {
          }
 
          const auto& stack()const { return _stack; }
+         const auto& cache()const { return _cache; }
 
       private:
          bool enabled()const { return _stack.size(); }
@@ -730,7 +732,8 @@ namespace chainbase {
          uint64_t                        _cache_interval;
          int64_t                         _revision = 0;
          typename value_type::id_type    _next_id = 0;
-         index_type                      _indices,_indices_backup;
+         index_type                      _indices;
+         mutable index_type              _indices_backup;
          uint32_t                        _size_of_value_type = 0;
          uint32_t                        _size_of_this = 0;
    };
