@@ -700,10 +700,7 @@ void NodeTable::doHandleNodeTimeouts()
 }
 void NodeTable::doNodeRefindCheck()
 {
-    if(m_nodes.size() < 3)
-    {
-        requireSeeds(m_seeds);
-    }
+	requireSeeds(m_seeds);
 }
 void NodeTable::doNodeReFindTimeouts()
 {
