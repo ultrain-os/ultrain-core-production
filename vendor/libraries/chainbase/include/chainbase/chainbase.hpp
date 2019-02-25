@@ -405,7 +405,7 @@ namespace chainbase {
           */
          void squash_cache(){
              std::cout<<"#####squash_cache before size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
-             if( !_cache_interval || _cache.size()<2 || (_flag&&(_revision %_cache_interval == 1))) {_flag=false;return};
+             if( !_cache_interval || _cache.size()<2 || (_flag&&(_revision %_cache_interval == 1))) {_flag=false;};
              std::cout<<"#####squash_cache size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
              auto& cache = _cache.back();
              auto& prev_cache = _cache[_cache.size()-2];
