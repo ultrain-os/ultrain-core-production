@@ -167,7 +167,7 @@ def stepRegProducers():
     sleep(2)
     for a in rand_acc_lst:
         retry(args.clultrain + 'transfer %s utrio.rand \'2.0000 UGAS\' \'as candidate\' -p %s' % ( a, a))
-    retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"140000000",\
+    retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"12884901888",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
         "max_resources_number":%s, "newaccount_fee":%s}}\' -p ultrainio ' % ( min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, newaccount_fee) )
