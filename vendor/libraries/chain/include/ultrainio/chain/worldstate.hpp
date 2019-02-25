@@ -408,7 +408,7 @@ namespace ultrainio { namespace chain {
       //    }
       // };
          void write_start_id_section( const std::string& section_name );
-         void write_row_id( const int64_t id, const int64_t size);
+         void write_row_id( const uint64_t id, const uint64_t size);
          void write_end_id_section( );
          void finalize();
 
@@ -429,7 +429,7 @@ namespace ultrainio { namespace chain {
          void validate() const;
          bool has_id_section( const string& section_name );
          void read_start_id_section( const string& section_name );
-         bool read_id_row(int& id, int& size);
+         bool read_id_row(uint64_t& id, uint64_t& size);
          bool empty ( );
          void clear_id_section();
 

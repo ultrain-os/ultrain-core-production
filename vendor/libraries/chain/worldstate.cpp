@@ -478,7 +478,7 @@ void ostream_worldstate_id_writer::write_start_id_section( const std::string& se
    worldstate_id_ostream.put(0);
 }
 
-void ostream_worldstate_id_writer::write_row_id( const int64_t id, const int64_t size ) {
+void ostream_worldstate_id_writer::write_row_id( const uint64_t id, const uint64_t size ) {
    auto restore = worldstate_id_ostream.tellp();
    try {
       fc::raw::pack(worldstate_id_ostream, id);
@@ -653,7 +653,7 @@ void istream_worldstate_id_reader::read_start_id_section( const string& section_
    ULTRAIN_THROW(worldstate_exception, "Binary worldstate_id_ostream has no section named ${n}", ("n", section_name));
 }
 
-bool istream_worldstate_id_reader::read_id_row(int& id, int& size) {
+bool istream_worldstate_id_reader::read_id_row(uint64_t& id, uint64_t& size) {
    fc::raw::unpack(worldstate_id_ostream, id);
    fc::raw::unpack(worldstate_id_ostream, size);
    return ++cur_row < num_rows;

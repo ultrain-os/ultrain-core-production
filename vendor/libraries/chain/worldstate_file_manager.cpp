@@ -434,8 +434,15 @@ ws_helper::ws_helper(std::string old_ws, std::string new_ws)
 
 ws_helper::~ws_helper()
 {
+    if (m_id_writer)
+        m_id_writer->finalize();
+    
+    if (m_writer)
+        m_writer->finalize();
+
     if (m_reader_fd.is_open()) 
         m_reader_fd.close();
+        
     if (m_id_reader_fd.is_open()) 
         m_id_reader_fd.close();
 

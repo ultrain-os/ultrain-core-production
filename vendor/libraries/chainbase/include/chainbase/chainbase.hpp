@@ -28,6 +28,7 @@
 #include <stdexcept>
 #include <typeindex>
 #include <typeinfo>
+#include <fc/log/logger.hpp>
 
 #ifndef CHAINBASE_NUM_RW_LOCKS
    #define CHAINBASE_NUM_RW_LOCKS 10
@@ -309,8 +310,6 @@ namespace chainbase {
                /** leaves the UNDO state on the stack when session goes out of scope */
                void push()   {
                    _apply = false;
-                   if (_revision == 3)
-                       _index.squash_cache();
                    if (_index._flag)
                    {_index._flag = false;return;}
                    _index.squash_cache();
@@ -350,9 +349,12 @@ namespace chainbase {
                _stack.emplace_back( _indices.get_allocator() );
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
+
+             ilog("test####start_undo_session:    ${s}  ${t}", ("s", _stack.back().revision)("t", _stack.back().revision));
+
                if( _cache_interval ){
                   _cache.emplace_back( _indices.get_allocator() );
-}
+               }
                return session( *this, _revision );
             } else {
                return session( *this, -1 );
@@ -369,6 +371,7 @@ namespace chainbase {
             if( !enabled() ) return;
 
             if( _cache.size() ) _cache.pop_back();
+            ilog("test####start_undo_session:    ${s}  ${t}", ("s", _cache.size())("t", _cache.size()));
 
             const auto& head = _stack.back();
 
@@ -414,8 +417,10 @@ namespace chainbase {
           */
          void squash_cache(){
              std::cout<<"#####squash_cache before size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
+             ilog("test####squash_cache before size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
              if( !_cache_interval || _cache.size()<2  ) {return;};
              std::cout<<"#####squash_cache size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
+             ilog("test####squash_cache size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
              auto& cache = _cache.back();
              auto& prev_cache = _cache[_cache.size()-2];
 
@@ -459,7 +464,7 @@ namespace chainbase {
                  prev_cache.removed_ids.emplace( id );
              }
              _cache.pop_back();
-             std::cout<<"#####squash_cache pop size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
+             ilog("test####squash_cache pop size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
          }
 
          void squash()
@@ -571,6 +576,8 @@ namespace chainbase {
           */
          void commit( int64_t revision )
          {
+            // std::cout<<"#####commit  revision: "<< revision<<" \n";
+            ilog("test####commit  revision: ${s}  ${t}", ("s", revision)("t", _cache.size()));
             while( _stack.size() && _stack[0].revision <= revision )
             {
                _stack.pop_front();
