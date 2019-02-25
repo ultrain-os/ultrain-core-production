@@ -215,7 +215,7 @@ namespace chainbase {
          typedef cache_state< value_type >                              cache_state_type;
 
          generic_index( allocator<value_type> a, uint64_t cache_interval=0 )
-         :_stack(a),_cache(a),_cache_interval(cache_interval),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+         :_stack(a),_cache(a),_cache_interval(cache_interval),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){_cache.emplace_back( _indices.get_allocator() );}
 
          void validate()const {
             if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
@@ -341,7 +341,7 @@ namespace chainbase {
                _stack.emplace_back( _indices.get_allocator() );
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
-               if( _cache_interval )
+               if( _cache_interval && 1 != _revision)
                   _cache.emplace_back( _indices.get_allocator() );
 
                return session( *this, _revision );
