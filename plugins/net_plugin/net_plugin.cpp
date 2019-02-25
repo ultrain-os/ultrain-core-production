@@ -1234,10 +1234,7 @@ connection::connection(string endpoint, msg_priority pri)
             auto ds = pending_message_buffer.create_datastream();
             net_message msg;
             fc::raw::unpack(ds, msg);
-            if(msg_priority_rpos == priority)
-            {
-                ticker_rcv = true;
-            }
+            ticker_rcv = true;
             bool isexceed = check_pack_speed_exceed();
             if(isexceed)
             {
@@ -2076,9 +2073,9 @@ connection::connection(string endpoint, msg_priority pri)
        * the message, but it can't be helped.
        */
       ilog("received time ${peer}",("peer",c->peer_name()));
-      if((c->priority == msg_priority_rpos) &&  c->current())
+      if(c->current())
       {
-           c->ticker_rcv = true;
+         c->ticker_rcv = true;
       }
       msg.dst = c->get_time();
 
@@ -2398,7 +2395,7 @@ connection::connection(string endpoint, msg_priority pri)
                wlog ("Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()));
             }
             for (auto &c : connections ) {
-               if((c->priority == msg_priority_rpos) && c->current())
+               if (c->current())
                {
                   if(!c->ticker_rcv)
                   {
