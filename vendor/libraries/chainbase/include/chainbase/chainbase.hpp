@@ -341,9 +341,9 @@ namespace chainbase {
                _stack.emplace_back( _indices.get_allocator() );
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
-               if( _cache_interval && 1 != _revision)
+               if( _cache_interval && 1 != _revision){
                   _cache.emplace_back( _indices.get_allocator() );
-
+}
                return session( *this, _revision );
             } else {
                return session( *this, -1 );
@@ -405,7 +405,7 @@ namespace chainbase {
           */
          void squash_cache(){
              std::cout<<"#####squash_cache before size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
-             if( !_cache_interval || _cache.size()<2 || (_flag&&(_revision %_cache_interval == 1))) {_flag=false;};
+             if( !_cache_interval || _cache.size()<2 || (_flag&&(_revision %_cache_interval == 1))) {_flag=false;return;};
              std::cout<<"#####squash_cache size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
              auto& cache = _cache.back();
              auto& prev_cache = _cache[_cache.size()-2];
@@ -568,7 +568,10 @@ namespace chainbase {
             }
 
             squash_cache();
-            if ((_revision+1) %_cache_interval == 0)
+            std::cout<<"#########commit: "<<_cache.size()<<" revision:"<<revision<<"\n";
+            if (_revision == 3)
+                squash_cache();
+            if ((_revision+2) %_cache_interval == 0)
                 _flag = true;
          }
 
