@@ -405,7 +405,7 @@ namespace chainbase {
           */
          void squash_cache(){
              if( !_cache_interval || _cache.size()<2 || (1 == _revision %_cache_interval)) return;
-
+             std::cout<<"#####squash_cache size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
              auto& cache = _cache.back();
              auto& prev_cache = _cache[_cache.size()-2];
 
@@ -449,7 +449,7 @@ namespace chainbase {
                  prev_cache.removed_ids.emplace( id );
              }
              _cache.pop_back();
-
+             std::cout<<"#####squash_cache pop size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
          }
 
          void squash()
