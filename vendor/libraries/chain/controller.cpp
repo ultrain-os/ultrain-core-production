@@ -463,12 +463,22 @@ struct controller_impl {
             return;
          }
          ilog("test3");
+
+         //problem: 
+         // 1.拉块时候，是否生成ws.ongoing，如果生成，性能是否可以匹配拉块速度（是否会造成积累大量cache） 
+         // 2.频繁的读写文件，是否影响主现场性能；
+         // 3.如何处理第一块之前插入的数据； 
 #if 1
          //solution A: add all records to backup indices, then squach backup indices and cache, 
          // then, write to new ws ongoing file
          
+         auto& cache_node = worldstate_db.get_index<index_t>().cache().front();
+         ilog("test cache size ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+         ilog("test cache() size ${s}", ("s", worldstate_db.get_index<index_t>().cache().size()));
+
          //1:  add to backup if exit old ws file
          if(ws_helper_ptr->get_id_reader() && ws_helper_ptr->get_reader()) {//if exit old ws file
+            ilog("test3-31");
             ws_helper_ptr->get_reader()->read_section<value_t>([this, &ws_helper_ptr, &worldstate_db]( auto& reader_section ) {
                ws_helper_ptr->get_id_reader()->read_start_id_section(boost::core::demangle(typeid(value_t).name()));
             
@@ -514,12 +524,12 @@ struct controller_impl {
          //3, if not find, get the row string data from old ws file, cp to new ws file; 
          //4, if find, using "section.add_row()" to add the cache record to new ws file;
 
-
-         auto& cache_node = worldstate_db.get_index<index_t>().cache().front();
-
+         auto& cache_node = worldstate_db.get_mutable_index<index_t>().cache().front();
+         ilog("test cache size ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+         
          //If don't exit old ws file, it first time to create ws. Restore the cache new values to ws file;
          if(!ws_helper_ptr->get_id_reader() || !ws_helper_ptr->get_reader()) {
-            ULTRAIN_ASSERT(cache_node.removed_ids.empty() || cache_node.modify_values.empty(), worldstate_exception,
+            ULTRAIN_ASSERT(cache_node.removed_ids.empty() && cache_node.modify_values.empty(), worldstate_exception,
                  "Remove or modify old record, but there no old ws file.!");
             
             ws_helper_ptr->get_writer()->write_section<value_t>([this, &worldstate_db, &ws_helper_ptr]( auto& section ){
@@ -537,8 +547,11 @@ struct controller_impl {
             return;
          };    
 
-         //Get id and row from old ws files, find the old id in cache;
-         ws_helper_ptr->get_reader()->read_section<value_t>([this, &ws_helper_ptr, &worldstate_db]( auto& reader_section ) {
+         ws_helper_ptr->get_writer()->write_section<value_t>([this, &worldstate_db, &ws_helper_ptr]( auto& section ){
+            ws_helper_ptr->get_id_writer()->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
+              
+            //Handle remove and modify cache: get id and row from old ws files, find the old id in cache.
+            ws_helper_ptr->get_reader()->read_section<value_t>([this, &ws_helper_ptr, &worldstate_db]( auto& reader_section ) {
                ws_helper_ptr->get_id_reader()->read_start_id_section(boost::core::demangle(typeid(value_t).name()));
             
                bool more = !reader_section.empty();
@@ -549,35 +562,49 @@ struct controller_impl {
                while(more) {
                   int old_id = -1, size = -1;
                   id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
+                  ULTRAIN_ASSERT(old_id >= 0 && size > 0, worldstate_exception, "Get local ws row info failed!");
+
                   chainbase::oid<value_t> object_id(old_id);
 
-                  if(cache_node.removed_ids.find(object_id) != cache_node.removed_ids.end()){
-                     //get old this row, don't insert to new ws file
-                     more = reader_section.read_row(size, row_from_ws);
-                     continue;
-                  } 
-                  
-                  auto itr = cache_node.modify_values.find(object_id);
-                  if (itr != cache_node.modify_values.end()){
-                     //get old this row, don't insert to new ws file
-                     more = reader_section.read_row(size, row_from_ws);
+                  do {
+                     if(cache_node.removed_ids.find(object_id) != cache_node.removed_ids.end()){
+                        //get old this row, don't insert to new ws file
+                        more = reader_section.read_row(size, row_from_ws);
+                        cache_node.removed_ids.erase(object_id);
+                        break;
+                     } 
+                     
+                     auto itr = cache_node.modify_values.find(object_id);
+                     if (itr != cache_node.modify_values.end()){
+                        //get old this row, don't insert to new ws file
+                        more = reader_section.read_row(size, row_from_ws);
 
-                     //check.....
-                     section.add_row(row, worldstate_db);
-                  auto length = ws_helper_ptr->get_writer()->write_length();
-                  ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, length);
+                        //add record to new ws file
+                        section.add_row(itr->second, worldstate_db);
+                        auto length = ws_helper_ptr->get_writer()->write_length();
+                        ws_helper_ptr->get_id_writer()->write_row_id(itr->second.id._id, length);
+                        cache_node.modify_values.erase(itr);
+                        break;
+                     }
 
-                  }
-
-                  decltype(utils)::create(worldstate_db, [this, &worldstate_db, &reader_section, &more, &id_more, &ws_helper_ptr]( auto &row ) {
-                     int old_id = -1, size = -1;
-                     id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
-                     more = reader_section.read_row(row, worldstate_db);
-                     row.id._id = old_id;
-                  }, true);
+                     ULTRAIN_ASSERT(cache_node.new_values.find(object_id) == cache_node.new_values.end(), 
+                        worldstate_exception, "Find old id in cache new values!!");
+                  }while(0);
                   ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Get old ws file data error: the ws file conflict with ws id file");
                }
             });
+            ULTRAIN_ASSERT(cache_node.removed_ids.empty() && cache_node.modify_values.empty(), worldstate_exception, \
+               "remove and modify cache not empty ERROR!");
+
+            //Handle create cache, add all create value to new ws files
+            for(auto& v : cache_node.new_values) {
+               auto& row = v.second;
+               section.add_row(row, worldstate_db);
+               auto length = ws_helper_ptr->get_writer()->write_length();
+               ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, length);
+            }
+            ws_helper_ptr->get_id_writer()->write_end_id_section();
+         });
 #endif
       });
 

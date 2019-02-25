@@ -416,7 +416,7 @@ ws_helper::ws_helper(std::string old_ws, std::string new_ws)
 ,m_new_ws_path(new_ws)
 {
     //output stream
-    if(bfs::exists(m_old_ws_path + ".ws") && !bfs::exists(m_old_ws_path + ".id")){
+    if(bfs::exists(m_old_ws_path + ".ws") && bfs::exists(m_old_ws_path + ".id")){
         m_reader_fd = std::ifstream(m_old_ws_path + ".ws", (std::ios::in | std::ios::binary));
         m_reader = std::make_shared<istream_worldstate_reader>(m_reader_fd);
 
