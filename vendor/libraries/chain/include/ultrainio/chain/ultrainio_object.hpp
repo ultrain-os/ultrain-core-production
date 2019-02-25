@@ -16,7 +16,7 @@ namespace ultrainio { namespace chain {
       bool                  is_enabled = false;
       bool                  hasenabled = false;
       std::string           url;
-      double                unpaid_balance = 0;
+      uint64_t              unpaid_balance = 0;
       uint64_t              total_produce_block = 0;
       uint64_t              location = 0;
       uint64_t              vote_number = 0;

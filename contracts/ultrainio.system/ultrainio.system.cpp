@@ -1,9 +1,9 @@
 #include "ultrainio.system.hpp"
 #include <ultrainiolib/dispatcher.hpp>
 
-#include "producer_pay.cpp"
-#include "delegate_bandwidth.cpp"
-#include "voting.cpp"
+#include "reward.cpp"
+#include "delegate.cpp"
+#include "producer.cpp"
 #include "scheduler.cpp"
 #include <ultrainiolib/action.hpp>
 
@@ -49,6 +49,7 @@ namespace ultrainiosystem {
                 _gstate.block_reward_vec.clear();
                 _gstate.block_reward_vec.assign(params.block_reward_vec.begin(), params.block_reward_vec.end());;
             }
+            _gstate.newaccount_fee = params.newaccount_fee;
             _gstate.max_resources_number = params.max_resources_number;
             _global.set( _gstate );
         }else {
@@ -548,8 +549,14 @@ void system_contract::voteresourcelease() {
                ultrainio_assert( creator == suffix, "only suffix may create this account" );
             }
          }
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {creator,N(active)},
-            { creator, N(utrio.fee), asset(2000), std::string("create account") } );
+         global_state_singleton globalparams( _self,_self);
+         if(globalparams.exists()){
+            ultrainio_global_state  _gstate = globalparams.get();
+            if(_gstate.newaccount_fee > 0){
+                INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {creator,N(active)},
+                    { creator, N(utrio.fee), asset(_gstate.newaccount_fee), std::string("create account") } );   
+            }
+         }
       }
 
       //user_resources_table  userres( _self, newact);
@@ -581,11 +588,11 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
      (setsysparams)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
-     // delegate_bandwidth.cpp
+     // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
-     // voting.cpp
+     // producer.cpp
      (regproducer)(unregprod)
-     // producer_pay.cpp
+     // reward.cpp
      (onblock)(claimrewards)
      // scheduler.cpp
      (regchaintype)(regsubchain)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)(setsched)(forcesetblock)

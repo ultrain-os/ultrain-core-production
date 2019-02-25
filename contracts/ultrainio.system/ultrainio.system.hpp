@@ -50,19 +50,19 @@ namespace ultrainiosystem {
       std::vector<ultrainio::block_reward> block_reward_vec;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
-      double              total_unpaid_balance = 0.0; /// all blocks which have been produced but not paid
+      uint64_t             total_unpaid_balance = 0; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
       uint64_t             thresh_activated_stake_time = 0;
       block_timestamp      last_name_close;
       uint16_t             max_resources_number = 10000;    //set the resource combo to 10000
       uint16_t             total_resources_used_number = 0;
-
+      uint32_t             newaccount_fee = 2000;
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
                                 (max_ram_size)(min_activated_stake)(min_committee_member_number)
                                 (total_ram_bytes_used)(start_block)(block_reward_vec)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_balance)(total_activated_stake)(thresh_activated_stake_time)
-                                (last_name_close)(max_resources_number)(total_resources_used_number) )
+                                (last_name_close)(max_resources_number)(total_resources_used_number)(newaccount_fee) )
    };
 
    struct chain_resource {
@@ -88,7 +88,7 @@ namespace ultrainiosystem {
       bool                  is_enabled = false;
       bool                  hasenabled = false;
       std::string           url;
-      double                 unpaid_balance = 0;
+      uint64_t              unpaid_balance = 0;
       uint64_t              total_produce_block;
       uint64_t              location = 0;
       uint64_t              last_operate_blocknum = 0;
@@ -292,7 +292,7 @@ namespace ultrainiosystem {
          // Actions:
          void onblock( block_timestamp timestamp, account_name producer );
                       // const block_header& header ); /// only parse first 3 fields of block header
-         // functions defined in delegate_bandwidth.cpp
+         // functions defined in delegate.cpp
 
          void resourcelease( account_name from, account_name receiver,
                           uint64_t combosize, uint64_t days, uint64_t location = master_chain_name);
@@ -306,7 +306,7 @@ namespace ultrainiosystem {
           */
          void refundcons( account_name owner );
 
-         // functions defined in voting.cpp
+         // functions defined in producer.cpp
 
          void regproducer( const account_name producer, const std::string& producer_key, const std::string& bls_key, account_name rewards_account, const std::string& url, uint64_t location );
 
@@ -316,7 +316,7 @@ namespace ultrainiosystem {
 
          void setparams( const ultrainio::blockchain_parameters& params );
 
-         // functions defined in producer_pay.cpp
+         // functions defined in reward.cpp
          void claimrewards();
 
          void setpriv( account_name account, uint8_t ispriv );
@@ -367,13 +367,13 @@ namespace ultrainiosystem {
 
          // Implementation details:
 
-         //defind in delegate_bandwidth.cpp
+         //defind in delegate.cpp
          void change_cons( account_name from, account_name receiver, asset stake_cons_quantity);
 
          //defined in voting.hpp
          static ultrainio_global_state get_default_parameters();
 
-         //defined in producer_pay.cpp
+         //defined in reward.cpp
          void reportblocknumber( uint64_t chain_type, account_name producer, uint64_t number);
 
          //defined in scheduler.cpp

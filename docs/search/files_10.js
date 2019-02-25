@@ -132,7 +132,7 @@ var searchData=
   ['private_5fconstructor_2ehpp',['private_constructor.hpp',['../private__constructor_8hpp.html',1,'']]],
   ['privileged_2eh',['privileged.h',['../privileged_8h.html',1,'']]],
   ['privileged_2ehpp',['privileged.hpp',['../privileged_8hpp.html',1,'']]],
-  ['producer_5fpay_2ecpp',['producer_pay.cpp',['../producer__pay_8cpp.html',1,'']]],
+  ['producer_5fpay_2ecpp',['reward.cpp',['../producer__pay_8cpp.html',1,'']]],
   ['producer_5fschedule_2ehpp',['producer_schedule.hpp',['../producer__schedule_8hpp.html',1,'']]],
   ['proj_2epass_2ecpp',['proj.pass.cpp',['../cmplx_8over_2proj_8pass_8cpp.html',1,'(Global Namespace)'],['../complex_8value_8ops_2proj_8pass_8cpp.html',1,'(Global Namespace)']]],
   ['promise_2epass_2ecpp',['promise.pass.cpp',['../promise_8pass_8cpp.html',1,'']]],

@@ -364,7 +364,7 @@ var searchData=
   ['producer_5finfo',['producer_info',['../structultrainiosystem_1_1producer__info.html',1,'ultrainiosystem']]],
   ['producer_5fkey',['producer_key',['../structultrainio_1_1producer__key.html',1,'ultrainio::producer_key'],['../structultrainiosystem_1_1producer__info.html#ae39a2bd7332a10fe183c86e8810ffc42',1,'ultrainiosystem::producer_info::producer_key()']]],
   ['producer_5fname',['producer_name',['../structultrainio_1_1producer__key.html#a9153ec244662ee657e2a7e6e51da2862',1,'ultrainio::producer_key']]],
-  ['producer_5fpay_2ecpp',['producer_pay.cpp',['../producer__pay_8cpp.html',1,'']]],
+  ['producer_5fpay_2ecpp',['reward.cpp',['../producer__pay_8cpp.html',1,'']]],
   ['producer_5fschedule',['producer_schedule',['../structultrainio_1_1producer__schedule.html',1,'ultrainio']]],
   ['producer_5fschedule_2ehpp',['producer_schedule.hpp',['../producer__schedule_8hpp.html',1,'']]],
   ['producers',['producers',['../structproducers.html',1,'producers'],['../structultrainiosystem_1_1voter__info.html#a7c44bd4797132e3d6c121aa0a73d2e58',1,'ultrainiosystem::voter_info::producers()'],['../structultrainio_1_1producer__schedule.html#a10628b8023f6db90687a54776d15a117',1,'ultrainio::producer_schedule::producers()'],['../structproducers.html#a951bf52bfcc3df967476a600bd17c8a1',1,'producers::producers()']]],

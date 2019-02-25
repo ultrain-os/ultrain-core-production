@@ -73,7 +73,7 @@
       "base": "",
       "fields": [
         {"name": "consensus_period", "type": "uint16"},
-        {"name":"reward", "type":"float64"}
+        {"name":"reward", "type":"uint64"}
       ]
     },{
       "name": "provided_proposer",
@@ -404,7 +404,8 @@
          {"name":"min_activated_stake",           "type":"int64"},
          {"name":"min_committee_member_number",   "type":"uint32"},
          {"name":"block_reward_vec",              "type":"block_reward[]"},
-         {"name":"max_resources_number",            "type":"uint16"}
+         {"name":"max_resources_number",           "type":"uint16"},
+         {"name":"newaccount_fee",                 "type":"uint32"}
       ]
     },{
       "name": "ultrainio_global_state",
@@ -418,12 +419,13 @@
          {"name":"block_reward_vec",               "type":"block_reward[]"},
          {"name":"pervote_bucket",                "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
-         {"name":"total_unpaid_balance",           "type":"float64"},
+         {"name":"total_unpaid_balance",           "type":"uint64"},
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"thresh_activated_stake_time",   "type":"uint64"},
          {"name":"last_name_close",               "type":"block_timestamp_type"},
          {"name":"max_resources_number",            "type":"uint16"},
-         {"name":"total_resources_used_number",        "type":"uint16"}
+         {"name":"total_resources_used_number",        "type":"uint16"},
+         {"name":"newaccount_fee",            "type":"uint32"}
       ]
     },{
       "name": "role_base",
@@ -442,7 +444,7 @@
          {"name":"is_enabled",      "type":"bool"},
          {"name":"hasenabled",      "type":"bool"},
          {"name":"url",             "type":"string"},
-         {"name":"unpaid_balance",   "type":"float64"},
+         {"name":"unpaid_balance",   "type":"uint64"},
          {"name":"total_produce_block",   "type":"uint64"},
          {"name":"location",        "type":"uint64"},
          {"name":"last_operate_blocknum", "type":"uint64"},

@@ -73,7 +73,6 @@ namespace ultrainiosystem {
    {
       ultrainio_assert( is_master_chain() || from == _self || name{from}.to_string().find( "utrio." ) == 0, "only master chain allow delegate consensus" );
       require_auth( from );
-      ultrainio_assert( stake_cons_delta != asset(0), "should stake non-zero amount" );
       ultrainio_assert( stake_cons_delta.amount >= 1000000 || stake_cons_delta.amount < 0 , "should stake at least 100 amount" );
       // update consensus stake delegated from "from" to "receiver"
       del_consensus_table     del_tbl( _self, from);
@@ -247,13 +246,15 @@ namespace ultrainiosystem {
    void system_contract::resourcelease( account_name from, account_name receiver,
                           uint64_t combosize, uint64_t days, uint64_t location){
       require_auth( from );
-      ultrainio_assert( is_master_chain() || from == _self, "only master chain allow resourcelease" );
+      ultrainio_assert( is_master_chain() || from == _self, "only master chain allow sync resourcelease" );
       ultrainio_assert(location != pending_queue && location != default_chain_name, "wrong location");
       auto chain_itr = _subchains.end();
       if(location != master_chain_name) {
          chain_itr = _subchains.find(location);
          ultrainio_assert(chain_itr != _subchains.end(), "this subchian location is not existed");
          ultrainio_assert(is_empowered(receiver, location), "the receiver is not yet empowered to this chain before");
+      }else{
+          require_auth( _self );
       }
       resources_lease_table _reslease_tbl( _self,location );
 

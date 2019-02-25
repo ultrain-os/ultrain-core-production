@@ -726,7 +726,7 @@ void ensure_kultraind_running(CLI::App* app) {
     if (app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
        return;
     if (auto* subapp = app->get_subcommand("system")) {
-       if (subapp->got_subcommand("listproducers") || subapp->got_subcommand("listbw") || subapp->got_subcommand("bidnameinfo")) // system list* do not require wallet
+       if (subapp->got_subcommand("listproducers") || subapp->got_subcommand("listdelcons") || subapp->got_subcommand("bidnameinfo")) // system list* do not require wallet
          return;
     }
 
@@ -898,7 +898,7 @@ struct list_producers_subcommand {
             std::cout << "No producers found" << std::endl;
             return;
          }
-         double total_unpaid_balance = 0;
+         uint64_t total_unpaid_balance = 0;
          uint64_t total_produce_blocks = 0;
          std::map<uint64_t,uint64_t>  chaininfo;
          printf("%-13s %-54s  %-16s  %-10s  %-8s  %-13s    %-12s\n", "Producer", "Producer key", "Consensus_weight", "is_enabled", "location","unpaid_balance","total_blocks");
@@ -909,14 +909,14 @@ struct list_producers_subcommand {
                    row["total_cons_staked"].as_int64(),
                    row["is_enabled"].as_bool(),
                    row["location"].as_uint64(),
-                   row["unpaid_balance"].as_double(),
+                   ((double)row["unpaid_balance"].as_uint64())/10000,
                    row["total_produce_block"].as_uint64()
                    );
-            total_unpaid_balance += row["unpaid_balance"].as_double();
+            total_unpaid_balance += row["unpaid_balance"].as_uint64();
             total_produce_blocks += row["total_produce_block"].as_uint64();
             chaininfo[row["location"].as_uint64()]++;
 	    }
-        printf("total_unpaid_balance: %-.4f UGAS \n",total_unpaid_balance);
+        printf("total_unpaid_balance: %-.4f UGAS \n",(double)total_unpaid_balance/10000);
         std::cout << "total_produce_blocks: " << total_produce_blocks << std::endl;
          for(auto iter = chaininfo.begin(); iter != chaininfo.end(); iter++)
             std::cout<<"location:"<< iter->first <<"    number:"<<iter->second<<std::endl;
@@ -1039,7 +1039,7 @@ struct buy_respackage_subcommand {
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the resources packages"))->required();
       delegate_bandwidth->add_option("combosize", combosize, localized("The amount of  buy for resources packages"))->required();
       delegate_bandwidth->add_option("days", days, localized("days of use resource lease"))->required();
-      delegate_bandwidth->add_option("location", location, localized("location of buy resource lease on multichain"));
+      delegate_bandwidth->add_option("location", location, localized("location of buy resource lease on multichain"))->required();
       add_standard_transaction_options(delegate_bandwidth);
 
       delegate_bandwidth->set_callback([this] {
@@ -1152,12 +1152,12 @@ struct bidname_info_subcommand {
    }
 };
 
-struct list_bw_subcommand {
+struct list_delcons_subcommand {
    ultrainio::name account;
    bool print_json = false;
 
-   list_bw_subcommand(CLI::App* actionRoot) {
-      auto list_bw = actionRoot->add_subcommand("listbw", localized("List delegated consensus weight"));
+   list_delcons_subcommand(CLI::App* actionRoot) {
+      auto list_bw = actionRoot->add_subcommand("listdelcons", localized("List delegated consensus weight"));
       list_bw->add_option("account", account, localized("The account delegated consensus weight"))->required();
       list_bw->add_flag("--json,-j", print_json, localized("Output in JSON format") );
 
@@ -2731,7 +2731,7 @@ int main( int argc, char** argv ) {
    auto delegatecons = delegate_cons_subcommand(system);
    auto undelegatecons = undelegate_cons_subcommand(system);
 
-   auto listBandWidth = list_bw_subcommand(system);
+   auto listdelcons = list_delcons_subcommand(system);
    auto bidname = bidname_subcommand(system);
    auto bidnameinfo = bidname_info_subcommand(system);
 

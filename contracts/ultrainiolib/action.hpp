@@ -259,7 +259,7 @@ namespace ultrainio {
    struct block_reward {
        block_reward(){}
        uint16_t         consensus_period;
-       double           reward;
+       uint64_t         reward;
        ULTRAINLIB_SERIALIZE(block_reward , (consensus_period)(reward) )
    };
    struct ultrainio_system_params {
@@ -270,9 +270,10 @@ namespace ultrainio {
       uint32_t             min_committee_member_number;
       std::vector<block_reward> block_reward_vec;
       uint16_t             max_resources_number;
+      uint32_t             newaccount_fee;
       uint64_t  primary_key()const { return chain_type; }
       ULTRAINLIB_SERIALIZE( ultrainio_system_params,(chain_type)(max_ram_size)(min_activated_stake)
-                            (min_committee_member_number)(block_reward_vec)(max_resources_number) )
+                            (min_committee_member_number)(block_reward_vec)(max_resources_number)(newaccount_fee) )
    };
    /**
     * Require the specified authorization for this action. If this action doesn't contain the specified auth, it will fail.

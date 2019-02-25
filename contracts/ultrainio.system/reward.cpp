@@ -34,7 +34,7 @@ namespace ultrainiosystem {
         auto const iter = std::find_if( _gstate.block_reward_vec.begin(), _gstate.block_reward_vec.end(), [&](ultrainio::block_reward const& obj){
                             return obj.consensus_period == block_interval_seconds();
                         } );
-        double curblockreward = 0.0;
+        uint64_t curblockreward = 0;
         if(iter != _gstate.block_reward_vec.end()){
             curblockreward = iter->reward;
         }
@@ -72,7 +72,7 @@ namespace ultrainiosystem {
    void system_contract::reportblocknumber( uint64_t chain_type, account_name producer, uint64_t number) {
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
-        double curblockreward = 0.0;
+        uint64_t curblockreward = 0;
         chaintypes_table type_tbl(_self, _self);
         auto typeiter = type_tbl.find(chain_type);
         if (typeiter != type_tbl.end()) {
@@ -94,8 +94,7 @@ namespace ultrainiosystem {
 
    void system_contract::claimrewards() {
       require_auth(_self);
-      uint64_t p10 = symbol_type(system_token_symbol).precision();
-      int64_t new_tokens = (int64_t)std::floor( _gstate.total_unpaid_balance * (double)p10 );
+      int64_t new_tokens = (int64_t)_gstate.total_unpaid_balance;
       _gstate.total_unpaid_balance = 0;
       asset fee_tokens = ultrainio::token(N(utrio.token)).get_balance(N(utrio.fee),symbol_type(CORE_SYMBOL).name());
       print("\nclaimrewards new_tokens:",new_tokens," fee_tokens:",fee_tokens.amount,"\n");
@@ -107,10 +106,10 @@ namespace ultrainiosystem {
          if(itr->unpaid_balance > 0 && itr->is_active){
             ultrainio_assert( _gstate.total_activated_stake >= _gstate.min_activated_stake,
                         "cannot claim rewards until the chain is activated" );
-            auto producer_per_block_pay = (int64_t)std::floor( itr->unpaid_balance * (double)p10 );
+            auto producer_per_block_pay = (int64_t)itr->unpaid_balance;
             print("\nclaimrewards producer_pay:",producer_per_block_pay,"\n");
             _producers.modify( itr, [&](auto& p) {
-               p.unpaid_balance = 0.0;
+               p.unpaid_balance = 0;
             });
 
             uint64_t pay_account = 0;
@@ -125,6 +124,8 @@ namespace ultrainiosystem {
    }
 
    void system_contract::distributreward(){
+      if(!is_master_chain())
+         return;
       uint32_t block_height = (uint32_t)head_block_number() + 1;
       uint32_t interval_num = seconds_per_day*7/block_interval_seconds();
       if(block_height < 120 || block_height%interval_num != 0) {

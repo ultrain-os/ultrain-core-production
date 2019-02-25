@@ -413,7 +413,7 @@ namespace ultrainiosystem {
         for(; ite != _producers.end(); ++ite) {
             if(ite->location == chain_name) {
                 _producers.modify(ite, [&](auto & p) {
-                     p.unpaid_balance = 0.0;
+                     p.unpaid_balance = 0;
                      p.total_produce_block = 0;
                 });
             }

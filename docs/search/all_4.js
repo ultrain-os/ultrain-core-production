@@ -206,7 +206,7 @@ var searchData=
   ['delay',['delay',['../structproxy_1_1set__owner.html#af1ac09f9bdce51fc08bc9cdf65da33cd',1,'proxy::set_owner::delay()'],['../structproxy_1_1config.html#a346536a60319e5666f7e037c77d4079b',1,'proxy::config::delay()']]],
   ['delay_5fsec',['delay_sec',['../structultrainiosystem_1_1authority.html#a7d81d4dd00611cf72f2ce60cf726a9fd',1,'ultrainiosystem::authority::delay_sec()'],['../classultrainio_1_1transaction__header.html#adbe5ee5f38a82db68162188c49d62f39',1,'ultrainio::transaction_header::delay_sec()'],['../structdtt__action.html#af330a29684fa422b7cc21bd93a078c41',1,'dtt_action::delay_sec()']]],
   ['delaytimer_5fmax',['DELAYTIMER_MAX',['../musl_2upstream_2include_2limits_8h.html#a86025bd0a07f29a6ae97f310ff9c701c',1,'limits.h']]],
-  ['delegate_5fbandwidth_2ecpp',['delegate_bandwidth.cpp',['../delegate__bandwidth_8cpp.html',1,'']]],
+  ['delegate_5fbandwidth_2ecpp',['delegate.cpp',['../delegate__bandwidth_8cpp.html',1,'']]],
   ['delegatebw',['delegatebw',['../classultrainiosystem_1_1system__contract.html#aa9060eea3ddf2cbf35d8220fcf7550c6',1,'ultrainiosystem::system_contract']]],
   ['delegated_5fbandwidth',['delegated_bandwidth',['../structultrainiosystem_1_1delegated__bandwidth.html',1,'ultrainiosystem']]],
   ['delete_5falign_5fval_5ft_5freplace_2epass_2ecpp',['delete_align_val_t_replace.pass.cpp',['../new_8delete_8array_2delete__align__val__t__replace_8pass_8cpp.html',1,'(Global Namespace)'],['../new_8delete_8single_2delete__align__val__t__replace_8pass_8cpp.html',1,'(Global Namespace)']]],

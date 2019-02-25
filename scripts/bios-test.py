@@ -16,6 +16,9 @@ min_committee_staked = 420000000
 min_committee_number = 4
 max_resources_number = 10000
 unlockTimeout = 999999999
+reward_tensecperiod = 30000
+reward_twosecperiod = 6000
+newaccount_fee = 2000
 defaultclu = '%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
 defaultkul = '%s/ultrain-core/build/programs/kultraind/kultraind'
 defaultcontracts_dir = '%s/ultrain-core/build/contracts/'
@@ -159,15 +162,15 @@ def stepRegProducers():
     retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
     sleep(2)
     for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
+        retry(args.clultrain + 'system delegatecons ultrainio %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
     stepInitSimpleTest()
     sleep(2)
     for a in rand_acc_lst:
         retry(args.clultrain + 'transfer %s utrio.rand \'2.0000 UGAS\' \'as candidate\' -p %s' % ( a, a))
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"140000000",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
-        "block_reward_vec":[{"consensus_period":10,"reward":3},{"consensus_period":2,"reward":0.6}],\
-        "max_resources_number":%s}}\' -p ultrainio ' % ( min_committee_staked, min_committee_number, max_resources_number) )
+        "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
+        "max_resources_number":%s, "newaccount_fee":%s}}\' -p ultrainio ' % ( min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, newaccount_fee) )
     sleep(5)
 
 def stepCreateinitAccounts():
@@ -176,8 +179,7 @@ def stepCreateinitAccounts():
 
     for a in initialAccounts:
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
-        retry(args.clultrain + 'system resourcelease ultrainio  %s  10 100' % a)
-    retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100')
+    retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100  0')
     retry(args.clultrain + 'transfer ultrainio utrio.rand "10000 UGAS" ')
     retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
     for a in rand_acc_lst:
