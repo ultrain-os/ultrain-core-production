@@ -404,7 +404,8 @@ namespace chainbase {
           *  This method does not change the state of the index, only the state of the undo buffer.
           */
          void squash_cache(){
-             if( !_cache_interval || _cache.size()<2 || (1 == _revision %_cache_interval)) return;
+             std::cout<<"#####squash_cache before size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
+             if( !_cache_interval || _cache.size()<2 || (_flag&&(_revision %_cache_interval == 1))) {_flag=false;return};
              std::cout<<"#####squash_cache size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
              auto& cache = _cache.back();
              auto& prev_cache = _cache[_cache.size()-2];
@@ -552,9 +553,8 @@ namespace chainbase {
             }
 
             _stack.pop_back();
-            --_revision;
-
             squash_cache();
+            --_revision;
          }
 
          /**
@@ -566,7 +566,10 @@ namespace chainbase {
             {
                _stack.pop_front();
             }
+
             squash_cache();
+            if ((_revision+1) %_cache_interval == 0)
+                _flag = true;
          }
 
          void process_cache()
@@ -729,6 +732,7 @@ namespace chainbase {
           *
           *  Commit will discard all revisions prior to the committed revision.
           */
+         bool                            _flag;
          uint64_t                        _cache_interval;
          int64_t                         _revision = 0;
          typename value_type::id_type    _next_id = 0;
