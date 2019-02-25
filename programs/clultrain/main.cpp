@@ -901,9 +901,9 @@ struct list_producers_subcommand {
          double total_unpaid_balance = 0;
          uint64_t total_produce_blocks = 0;
          std::map<uint64_t,uint64_t>  chaininfo;
-         printf("%-13s %-54s  %-16s  %-10s  %-8s  %-13s    %-12s\n", "Producer", "Producer key", "Consensus_weight", "is_enabled", "location","unpaid_blocks","total_blocks");
+         printf("%-13s %-54s  %-16s  %-10s  %-8s  %-13s    %-12s\n", "Producer", "Producer key", "Consensus_weight", "is_enabled", "location","unpaid_balance","total_blocks");
          for ( auto& row : result.rows ){
-            printf("%-13.13s %-54.54s  %-16ld  %-10u  %-8lu  %-.4f UGAS     %-12lu\n",
+            printf("%-13.13s %-54.54s  %-16ld  %-10u  %-8lu  %-.4f UGAS       %-12lu\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["total_cons_staked"].as_int64(),

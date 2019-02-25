@@ -4,7 +4,6 @@
 #include "producer_pay.cpp"
 #include "delegate_bandwidth.cpp"
 #include "voting.cpp"
-#include "exchange_state.cpp"
 #include "scheduler.cpp"
 #include <ultrainiolib/action.hpp>
 
@@ -15,7 +14,6 @@ namespace ultrainiosystem {
    :native(s),
     _producers(_self,_self),
     _global(_self,_self),
-    _rammarket(_self,_self),
     _pending_que(_self, _self),
     _subchains(_self,_self),
     _pendingminer( _self, _self ),
@@ -24,24 +22,6 @@ namespace ultrainiosystem {
     _schedsetting(_self, _self) {
       //print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
-
-      auto itr = _rammarket.find(S(4,RAMCORE));
-
-      if( itr == _rammarket.end() ) {
-         auto system_token_supply   = ultrainio::token(N(utrio.token)).get_supply(ultrainio::symbol_type(system_token_symbol).name()).amount;
-         if( system_token_supply > 0 ) {
-            itr = _rammarket.emplace( [&]( auto& m ) {
-               m.supply.amount = 100000000000000ll;
-               m.supply.symbol = S(4,RAMCORE);
-               m.base.balance.amount = int64_t(_gstate.free_ram());
-               m.base.balance.symbol = S(0,RAM);
-               m.quote.balance.amount = system_token_supply / 1000;
-               m.quote.balance.symbol = CORE_SYMBOL;
-            });
-         }
-      } else {
-         //print( "ram market already created" );
-      }
    }
 
    ultrainio_global_state system_contract::get_default_parameters() {
@@ -57,33 +37,12 @@ namespace ultrainiosystem {
       //ultrainio_exit(0);
    }
 
-   void system_contract::setram( uint64_t max_ram_size ) {
-      require_auth( _self );
-
-      ultrainio_assert( _gstate.max_ram_size < max_ram_size, "ram may only be increased" ); /// decreasing ram might result market maker issues
-      ultrainio_assert( max_ram_size < 1024ll*1024*1024*1024*1024, "ram size is unrealistic" );
-      ultrainio_assert( max_ram_size > _gstate.total_ram_bytes_used, "attempt to set max below reserved" );
-
-      auto delta = int64_t(max_ram_size) - int64_t(_gstate.max_ram_size);
-      auto itr = _rammarket.find(S(4,RAMCORE));
-
-      /**
-       *  Increase or decrease the amount of ram for sale based upon the change in max
-       *  ram size.
-       */
-      _rammarket.modify( itr, [&]( auto& m ) {
-         m.base.balance.amount += delta;
-      });
-
-      _gstate.max_ram_size = max_ram_size;
-      _global.set( _gstate );
-   }
-
    void system_contract::setsysparams( const ultrainio::ultrainio_system_params& params) {
         require_auth( _self );
         if(params.chain_type == 0) //master chain
         {
             _gstate.max_ram_size = params.max_ram_size;
+            ultrainio_assert( params.max_ram_size > _gstate.total_ram_bytes_used, "attempt to set max below reserved" );
             _gstate.min_activated_stake = params.min_activated_stake;
             _gstate.min_committee_member_number = params.min_committee_member_number;
             if(params.block_reward_vec.size() > 0){
@@ -621,7 +580,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
-     (setram)(setsysparams)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
+     (setsysparams)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate_bandwidth.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
      // voting.cpp

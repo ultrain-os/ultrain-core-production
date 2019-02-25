@@ -9,7 +9,6 @@
 #include <ultrainiolib/time.hpp>
 #include <ultrainiolib/privileged.hpp>
 #include <ultrainiolib/singleton.hpp>
-#include <ultrainio.system/exchange_state.hpp>
 #include <ultrainiolib/block_header.hpp>
 #include <ultrainiolib/ultrainio.hpp>
 #include <string>
@@ -279,7 +278,6 @@ namespace ultrainiosystem {
          global_state_singleton _global;
 
          ultrainio_global_state   _gstate;
-         rammarket                _rammarket;
          pending_queue_singleton  _pending_que;
          subchains_table          _subchains;
          pendingminers            _pendingminer;
@@ -313,8 +311,6 @@ namespace ultrainiosystem {
          void regproducer( const account_name producer, const std::string& producer_key, const std::string& bls_key, account_name rewards_account, const std::string& url, uint64_t location );
 
          void unregprod( const account_name producer );
-
-         void setram( uint64_t max_ram_size );
 
          void setsysparams( const ultrainio::ultrainio_system_params& params );
 

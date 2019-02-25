@@ -585,12 +585,6 @@
         {"name":"producer",     "type":"account_name"}
       ]
     },{
-      "name": "setram",
-      "base": "",
-      "fields": [
-        {"name":"max_ram_size",     "type":"uint64"}
-      ]
-    },{
       "name": "setsysparams",
       "base": "",
       "fields": [
@@ -751,10 +745,6 @@
    },{
       "name": "regproducer",
       "type": "regproducer",
-      "ricardian_contract": ""
-   },{
-      "name": "setram",
-      "type": "setram",
       "ricardian_contract": ""
    },{
       "name": "setsysparams",
