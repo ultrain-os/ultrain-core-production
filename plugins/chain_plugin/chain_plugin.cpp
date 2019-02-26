@@ -1586,7 +1586,7 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
    result.privileged       = a.privileged;
    result.last_code_update = a.last_code_update;
    result.created          = a.creation_date;
-
+   result.updateable       = a.updateable;
    bool grelisted = db.is_resource_greylisted(result.account_name);
    result.net_limit = rm.get_account_net_limit_ex( result.account_name, !grelisted);
    result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name, !grelisted);

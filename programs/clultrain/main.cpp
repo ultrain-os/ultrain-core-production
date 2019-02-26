@@ -820,7 +820,7 @@ struct create_account_subcommand {
    string account_name;
    string owner_key_str;
    string active_key_str;
-   bool   updateable_val = false;
+   bool   unrenewable_val = false;
 
    create_account_subcommand( CLI::App* actionRoot ) {
       auto createAccount = actionRoot->add_subcommand( "account", localized("Create an account, buy ram, stake for bandwidth for the account"));
@@ -828,7 +828,7 @@ struct create_account_subcommand {
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
       createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"));
-      createAccount->add_flag("-u,--updatable", updateable_val, localized("The updatable setting for the new account"));
+      createAccount->add_flag("-u,--unrenewable", unrenewable_val, localized("The unrenewable setting for the new account"));
 
       add_standard_transaction_options(createAccount);
 
@@ -842,7 +842,7 @@ struct create_account_subcommand {
             try {
                active_key = public_key_type(active_key_str);
             } ULTRAIN_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
-            auto create = create_newaccount(creator, account_name, owner_key, active_key, updateable_val);
+            auto create = create_newaccount(creator, account_name, owner_key, active_key, !unrenewable_val);
             send_actions( { create } );
       });
    }
@@ -1318,7 +1318,7 @@ void get_account( const string& accountName, bool json_format ) {
          ss << unit;
          return ss.str();
       };
-
+      std::cout << "contract updateable: " << res.updateable << std::endl;
       if ( res.chain_resource.size() > 0) {
          std::cout << std::endl;
          std::cout << "resource lease: " << std::endl;

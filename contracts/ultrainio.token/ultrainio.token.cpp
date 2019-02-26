@@ -90,12 +90,10 @@ void token::sub_balance( account_name owner, asset value ) {
 
    const auto& from = from_acnts.get( value.symbol.name(), "no balance object found" );
    auto ct = now();
-   asset fee(0);
    if((ct - from.last_time < interval_sec) && (owner != N(ultrainio))){
-      if(value.amount >= 100000)
+      asset fee( operatefee, value.symbol );
+      if(value.amount > 100000)
          fee = value/1000;
-      else
-         fee = asset(operatefee);
       ultrainio_assert( fee.amount > 0, "fee must a positive value" );
       add_balance( N(utrio.fee), fee );
       value += fee;

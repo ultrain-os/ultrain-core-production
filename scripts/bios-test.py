@@ -19,6 +19,7 @@ unlockTimeout = 999999999
 reward_tensecperiod = 10000
 reward_twosecperiod = 2000
 newaccount_fee = 2000
+max_ram_size = 12 * 1024 *1024 *1024
 defaultclu = '%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
 defaultkul = '%s/ultrain-core/build/programs/kultraind/kultraind'
 defaultcontracts_dir = '%s/ultrain-core/build/contracts/'
@@ -119,7 +120,7 @@ def createSystemAccounts():
         print ("waiting for block 3 is ready in the chain....")
         sleep(2)
     for a in systemAccounts:
-        run(args.clultrain + 'create account -u ultrainio ' + a + ' ' + args.public_key)
+        run(args.clultrain + 'create account ultrainio ' + a + ' ' + args.public_key)
 
 def stepInstallSystemContracts():
     retry(args.clultrain + 'set contract utrio.token ' + args.contracts_dir + 'ultrainio.token/')
@@ -138,14 +139,14 @@ def stepSetSystemContract():
     sleep(2)
 
 def stepCreateStakedAccounts():
-    retry(args.clultrain + ' create account -u ultrainio hello %s ' % args.initacc_pk)
+    retry(args.clultrain + ' create account ultrainio hello %s ' % args.initacc_pk)
     for i in range(0, args.num_producers + 1 + args.non_producers):
         retry(args.clultrain + 'create account ultrainio %s %s ' % (accounts[i], account_pk_list[i]))
 
     for a in initialAccounts:
-        retry(args.clultrain + ' create account -u ultrainio %s %s ' % (a, args.initacc_pk))
+        retry(args.clultrain + ' create account ultrainio %s %s ' % (a, args.initacc_pk))
     for i in range(0, len(rand_acc_lst)):
-        retry(args.clultrain + ' create account -u ultrainio %s %s ' % ( rand_acc_lst[i], rand_pk_lst[i]))
+        retry(args.clultrain + ' create account ultrainio %s %s ' % ( rand_acc_lst[i], rand_pk_lst[i]))
 def stepInitSimpleTest():
     retry(args.clultrain + 'push action hello hi \'{"user":"%s"}\' -p %s' % (accounts[1],accounts[1]))
     for i in range(10):
@@ -167,10 +168,10 @@ def stepRegProducers():
     sleep(2)
     for a in rand_acc_lst:
         retry(args.clultrain + 'transfer %s utrio.rand \'2.0000 UGAS\' \'as candidate\' -p %s' % ( a, a))
-    retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"12884901888",\
+    retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s}}\' -p ultrainio ' % ( min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, newaccount_fee) )
+        "max_resources_number":%s, "newaccount_fee":%s}}\' -p ultrainio ' % (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, newaccount_fee) )
     sleep(5)
 
 def stepCreateinitAccounts():
@@ -277,7 +278,7 @@ def stepregproducersTest():
         j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":cur_accounts[i]})).text)
         if ("account_name" in j):
             continue
-        retry(args.clultrain + 'create account -u ultrainio %s %s ' % (cur_accounts[i], acc_pk_list[i]))
+        retry(args.clultrain + 'create account ultrainio %s %s ' % (cur_accounts[i], acc_pk_list[i]))
     sleep(10)
     for a in cur_accounts:
         retry(args.clultrain + 'transfer ultrainio %s  "100.0000 UGAS"' % a)

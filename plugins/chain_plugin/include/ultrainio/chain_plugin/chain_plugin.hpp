@@ -116,6 +116,7 @@ public:
       fc::time_point             head_block_time;
 
       bool                       privileged = false;
+      bool                       updateable;
       fc::time_point             last_code_update;
       fc::time_point             created;
 
@@ -718,7 +719,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thresh_activated_stake_time)(more)(min_stake_thresh)(min_committee_member_number) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
-        (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
+        (account_name)(head_block_num)(head_block_time)(privileged)(updateable)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
                 net_limit)(cpu_limit)(ram_usage)(permissions)(
                 self_delegated_consensus)(refund_cons)(producer_info)(chain_resource))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
