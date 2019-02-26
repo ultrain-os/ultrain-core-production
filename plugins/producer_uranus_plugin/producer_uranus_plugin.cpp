@@ -116,6 +116,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       boost::program_options::variables_map _options;
       std::string _genesis_time = std::string();
       std::string _my_sk_as_committee;
+      std::string _my_sk_as_account;
       std::string _my_bls_sk;
       std::string _my_account_as_committee;
       std::string _genesis_pk                      = Genesis::s_genesisPk;
@@ -415,6 +416,7 @@ void producer_uranus_plugin::set_program_options(
          ("kultraind-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a kultraind provider for signing")
          ("my-sk-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_sk_as_committee = g; }), "sk as committer member")
+         ("my-sk-as-account", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_sk_as_account = g; }), "sk as created account")
          ("my-bls-sk", boost::program_options::value<std::string>()->notifier([this](std::string sk) { my->_my_bls_sk = sk; }), "bls sk")
          ("my-account-as-committee", boost::program_options::value<std::string>()->notifier([this](std::string g) { my->_my_account_as_committee = g; }), "account as committer member")
          ("genesis-startup-time", bpo::value<int32_t>()->default_value(Genesis::s_genesisStartupTime), "genesis startup time, set by test mode usually")
@@ -588,6 +590,10 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
 int  producer_uranus_plugin::get_round_interval()
 {
 	    return  my->_max_round_seconds;
+}
+string producer_uranus_plugin::get_account_sk()
+{
+        return my->_my_sk_as_account;
 }
 bool producer_uranus_plugin::handle_message(const EchoMsg& echo) {
    return UranusNode::getInstance()->handleMessage(echo);

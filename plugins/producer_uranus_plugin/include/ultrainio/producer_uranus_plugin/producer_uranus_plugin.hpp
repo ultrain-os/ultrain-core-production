@@ -48,6 +48,7 @@ public:
    bool sync_fail(const ultrainio::ReqSyncMsg& sync_msg);
    bool sync_cancel();
    int  get_round_interval();
+   string get_account_sk();
    void pause();
    void resume();
    bool paused() const;

@@ -2895,7 +2895,7 @@ connection::connection(string endpoint, msg_priority pri)
          if( options.count( "peer-key" )) {
             const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
             for( const std::string& key_string : key_strings ) {
-               my->allowed_peers.push_back( dejsonify<chain::public_key_type>( key_string ));
+               my->allowed_peers.push_back( chain::public_key_type( key_string ));
             }
          }
 
