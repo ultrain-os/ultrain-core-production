@@ -26,6 +26,7 @@
 #include <ultrainio/chain/config.hpp>
 
 #include <base/Memory.h>
+#include <lightclient/CommitteeSet.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/MsgBuilder.h>
@@ -1258,14 +1259,15 @@ namespace ultrainio {
         auto &block = propose_msg->block;
         auto start_timestamp = fc::time_point::now();
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
-        size_t count2 = 0,count3 = 0;
+        size_t count2 = 0, count3 = 0;
   //      uint32_t trx_run_time = 3'000'000 * (Config::s_maxPhaseSeconds/5 +0.1*(Config::s_maxPhaseSeconds%5));
         try {
+            SHA256 committeeMroot = getCommitteeMroot(chain.head_block_num() + 1);
             if (!chain.pending_block_state()) {
                 auto block_timestamp = chain.get_proper_next_block_timestamp();
                 ilog("initProposeMsg: start block at ${time} and block_timestamp is ${timestamp}",
                      ("time", fc::time_point::now())("timestamp", block_timestamp));
-                chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1));
+                chain.start_block(block_timestamp, committeeMroot);
             }
 
             // TODO(yufengshen): We have to cap the block size, cpu/net resource when packing a block.
@@ -1304,11 +1306,21 @@ namespace ultrainio {
             // TODO(yufengshen) - Do we need to include the merkle in the block propose?
             chain.set_action_merkle_hack();
             chain.set_trx_merkle_hack();
+            // check committee mroot
+            if (StakeVoteBase::committeeHasWorked()) {
+                std::shared_ptr<CommitteeState> committeeState = StakeVoteBase::getCommitteeState(0);
+                CommitteeSet committeeSet(committeeState->cinfo);
+                if (committeeSet.committeeMroot() != committeeMroot) {
+                    std::string s = std::string(committeeSet.committeeMroot());
+                    std::vector<char> v(s.size());
+                    v.assign(s.begin(), s.end());
+                    chain.add_header_extensions_entry(kNextCommitteeMroot, v);
+                }
+            }
+            // fix
             if (!m_preBlockVoterSet.empty() && chain::block_header::num_from_id(m_preBlockVoterSet.commonEchoMsg.blockId) == chain.head_block_num()) {
                 BlsVoterSet blsVoterSet = m_preBlockVoterSet.toBlsVoterSet();
-                chain::extensions_type exts;
-                exts.push_back(std::make_pair(kBlsVoterSet, blsVoterSet.toVectorChar()));
-                chain.set_header_extensions(exts);
+                chain.add_header_extensions_entry(kBlsVoterSet, blsVoterSet.toVectorChar());
             }
             // Construct the block msg from pbs.
             const auto &pbs = chain.pending_block_state();
@@ -1333,23 +1345,6 @@ namespace ultrainio {
                  ("signature", short_sig(block.signature))
                  ("mroot", block.committee_mroot)
                  );
-            /*
-              ilog("----------propose block current header is ${t} ${p} ${pk} ${pf} ${v} ${prv} ${ma} ${mt} ${id}",
-              ("t", block.timestamp)
-              ("pk", block.proposerPk)
-              ("pf", block.proposerProof)
-              ("v", block.version)
-              ("prv", block.previous)
-              ("ma", block.transaction_mroot)
-              ("mt", block.action_mroot)
-              ("id", block.id()));
-            */
-            // Need to sign this block
-            /*
-              auto signature_provider_itr = _signature_providers.find( pbs->block_signing_key );
-              FC_ASSERT(signature_provider_itr != _signature_providers.end(), "Attempting to produce a block for which we don't have the private key");
-              //idump( (fc::time_point::now() - chain.pending_block_time()) );
-            */
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
             chain.abort_block();

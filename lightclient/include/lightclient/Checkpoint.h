@@ -1,8 +1,8 @@
 #pragma once
 
 #include <core/types.h>
-#include <rpos/BlsVoterSet.h>
-#include <rpos/CommitteeSet.h>
+#include <lightclient/BlsVoterSet.h>
+#include <lightclient/CommitteeSet.h>
 
 namespace ultrainio {
     class Checkpoint {
@@ -16,7 +16,5 @@ namespace ultrainio {
         // header extensions
         BlockIdType m_preCheckpointBlockId;
         CommitteeSet m_committeeSet;
-        // confirm the block before this checkpoint
-        BlsVoterSet m_blsVoterSet;
     };
 }

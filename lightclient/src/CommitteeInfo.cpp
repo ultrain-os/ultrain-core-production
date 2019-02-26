@@ -1,4 +1,4 @@
-#include <rpos/CommitteeInfo.h>
+#include <lightclient/CommitteeInfo.h>
 
 namespace ultrainio {
 

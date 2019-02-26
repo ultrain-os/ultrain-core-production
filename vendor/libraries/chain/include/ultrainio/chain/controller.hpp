@@ -190,6 +190,7 @@ namespace ultrainio { namespace chain {
          void set_action_merkle_hack();
          void set_trx_merkle_hack();
          void set_header_extensions(const extensions_type&);
+         void add_header_extensions_entry(uint16_t key, const vector<char>& value);
 
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;

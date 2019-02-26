@@ -1356,6 +1356,17 @@ struct controller_impl {
        pending->_pending_block_state->header.header_extensions = exts;
    }
 
+   void add_header_extensions_entry(uint16_t key, const vector<char>& value) {
+       auto& exts = pending->_pending_block_state->header.header_extensions;
+       for (auto itor = exts.begin(); itor != exts.end(); itor++) {
+           if (itor->first == key) {
+              exts.erase(itor);
+              break;
+           }
+       }
+       exts.emplace_back(key, value);
+   }
+
    void finalize_block()
    {
       ULTRAIN_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
@@ -1728,6 +1739,10 @@ void controller::set_trx_merkle_hack() {
 
 void controller::set_header_extensions(const extensions_type& exts) {
     my->set_header_extensions(exts);
+}
+
+void controller::add_header_extensions_entry(uint16_t key, const vector<char>& value) {
+    my->add_header_extensions_entry(key, value);
 }
 
 time_point controller::pending_block_time()const {

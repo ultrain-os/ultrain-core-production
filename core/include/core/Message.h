@@ -10,6 +10,7 @@ namespace ultrainio {
 
     enum BlockHeaderExtKey {
         kPreCheckpointId = 0,
+        kNextCommitteeMroot,
         kCommitteeSet,
         kBlsVoterSet
     };

@@ -3,8 +3,8 @@
 
 #include <iostream>
 #include <fc/io/json.hpp>
-#include <rpos/CommitteeInfo.h>
-#include <rpos/CommitteeSet.h>
+#include <lightclient/CommitteeInfo.h>
+#include <lightclient/CommitteeSet.h>
 
 using namespace ultrainio;
 using namespace std;

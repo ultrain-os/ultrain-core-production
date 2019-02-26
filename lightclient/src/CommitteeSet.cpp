@@ -1,6 +1,5 @@
-#include <rpos/CommitteeSet.h>
+#include <lightclient/CommitteeSet.h>
 
-#include <rpos/CommitteeInfo.h>
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 

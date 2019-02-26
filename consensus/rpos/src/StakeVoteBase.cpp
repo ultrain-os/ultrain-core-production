@@ -5,7 +5,7 @@
 #include <boost/math/distributions/binomial.hpp>
 
 #include <base/Hex.h>
-#include <rpos/CommitteeSet.h>
+#include <lightclient/CommitteeSet.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/Proof.h>
@@ -263,6 +263,7 @@ namespace ultrainio {
         return account.good() && account == AccountName(Genesis::kGenesisAccount);
     }
 
+    // static
     std::shared_ptr<CommitteeState> StakeVoteBase::getCommitteeState(uint64_t chainNum) {
         const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         struct chain_apis::read_only::get_producers_params params;

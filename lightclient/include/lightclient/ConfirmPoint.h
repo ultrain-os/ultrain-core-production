@@ -1,7 +1,7 @@
 #pragma once
 
 #include <core/types.h>
-#include <rpos/BlsVoterSet.h>
+#include <lightclient/BlsVoterSet.h>
 
 namespace ultrainio {
     class ConfirmPoint {
@@ -14,7 +14,6 @@ namespace ultrainio {
         BlockHeader m_blockHeader;
 
         // header_extensions
-        BlockIdType m_preCheckpointBlockId;
         BlsVoterSet m_blsVoterSet;
     };
 }

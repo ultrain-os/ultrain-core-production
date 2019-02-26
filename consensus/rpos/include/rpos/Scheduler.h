@@ -15,7 +15,8 @@
 #include <core/types.h>
 #include <boost/asio/steady_timer.hpp>
 
-#include <rpos/BlsVoterSet.h>
+#include <lightclient/BlsVoterSet.h>
+#include <rpos/VoterSet.h>
 
 namespace ultrainio {
     class UranusNode;

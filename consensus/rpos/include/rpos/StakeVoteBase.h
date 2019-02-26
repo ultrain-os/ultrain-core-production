@@ -8,14 +8,19 @@
 #include <core/types.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
-#include <rpos/CommitteeInfo.h>
+#include <lightclient/CommitteeInfo.h>
 
 namespace ultrainio {
     // forward declare
-    struct CommitteeState;
     class PublicKey;
     class Proof;
     class NodeInfo;
+
+    struct CommitteeState {
+        std::vector<CommitteeInfo> cinfo;
+        bool chainStateNormal = false;
+        uint64_t chainMinStakeThresh {};
+    };
 
     class StakeVoteBase {
     public:
@@ -29,6 +34,9 @@ namespace ultrainio {
         static bool getMyBlsPrivateKey(unsigned char* sk, int skSize);
 
         static bool committeeHasWorked();
+
+        // get committee state from world state
+        static std::shared_ptr<CommitteeState> getCommitteeState(uint64_t chainNum);
 
         static bool isGenesisLeaderAndInGenesisPeriod();
 
@@ -116,9 +124,6 @@ namespace ultrainio {
 
     private:
         static std::shared_ptr<NodeInfo> s_keyKeeper;
-
-        // get committee state from world state
-        std::shared_ptr<CommitteeState> getCommitteeState(uint64_t chainNum);
 
         void computeCommitteeMroot();
 

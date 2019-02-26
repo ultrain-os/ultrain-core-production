@@ -2,12 +2,7 @@ file(GLOB HEADERS "include/rpos/*.h")
 
 add_library( ultrainio_rpos
         src/BlockMsgPool.cpp
-        src/BlsVoterSet.cpp
-        src/Checkpoint.cpp
-        src/CommitteeInfo.cpp
-        src/CommitteeSet.cpp
         src/Config.cpp
-        src/ConfirmPoint.cpp
         src/EvilType.cpp
         src/FisherYates.cpp
         src/Genesis.cpp
@@ -26,10 +21,11 @@ add_library( ultrainio_rpos
         src/StakeVoteRandom.cpp
         src/StakeVoteVrf.cpp
         src/Utils.cpp
+        src/VoterSet.cpp
         src/Vrf.cpp
         ${HEADERS} )
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=delete-non-virtual-dtor" )
 
-target_link_libraries( ultrainio_rpos net_plugin ultrainio_core ultrainio_crypto )
+target_link_libraries( ultrainio_rpos net_plugin ultrainio_lightclient ultrainio_core ultrainio_crypto )
 target_include_directories( ultrainio_rpos PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )

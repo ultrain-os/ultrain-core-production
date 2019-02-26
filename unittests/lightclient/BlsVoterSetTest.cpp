@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <fc/io/json.hpp>
-#include <rpos/BlsVoterSet.h>
+#include <lightclient/BlsVoterSet.h>
 
 using namespace ultrainio;
 using namespace std;

@@ -5,7 +5,6 @@
 #include <vector>
 
 #include <core/Message.h>
-#include <rpos/CommitteeInfo.h>
 #include <rpos/Proof.h>
 
 namespace ultrainio {

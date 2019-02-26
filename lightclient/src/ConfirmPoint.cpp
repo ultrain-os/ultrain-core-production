@@ -1,4 +1,4 @@
-#include <rpos/ConfirmPoint.h>
+#include <lightclient/ConfirmPoint.h>
 
 namespace ultrainio {
     bool ConfirmPoint::isConfirmPoint(const BlockHeader& blockHeader) {
@@ -15,10 +15,7 @@ namespace ultrainio {
         ExtensionsType ext = blockHeader.header_extensions;
         for (auto& e : ext) {
             BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
-            if (key == kPreCheckpointId) {
-                auto& value = std::get<1>(e);
-                m_preCheckpointBlockId = BlockIdType(std::string(value.begin(), value.end()));
-            } else if (key == kBlsVoterSet) {
+            if (key == kBlsVoterSet) {
                 m_blsVoterSet = BlsVoterSet(std::get<1>(e));
             }
         }

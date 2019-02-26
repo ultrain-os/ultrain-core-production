@@ -1,4 +1,4 @@
-#include <rpos/Checkpoint.h>
+#include <lightclient/Checkpoint.h>
 
 namespace ultrainio {
     bool Checkpoint::isCheckpoint(const BlockHeader& blockHeader) {
@@ -20,8 +20,6 @@ namespace ultrainio {
                 m_preCheckpointBlockId = BlockIdType(std::string(value.begin(), value.end()));
             } else if (key == kCommitteeSet) {
                 m_committeeSet = CommitteeSet(std::get<1>(e));
-            } else if (key == kBlsVoterSet) {
-                m_blsVoterSet = BlsVoterSet(std::get<1>(e));
             }
         }
     }

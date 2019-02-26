@@ -3,7 +3,7 @@
 #include <string>
 
 #include <core/types.h>
-#include <rpos/CommitteeInfo.h>
+#include <lightclient/CommitteeInfo.h>
 
 namespace ultrainio {
     struct CommitteeInfo;
