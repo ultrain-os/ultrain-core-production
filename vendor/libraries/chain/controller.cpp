@@ -827,14 +827,6 @@ struct controller_impl {
             head = fork_db.head();
             ULTRAIN_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
          }
-
-         // block syncing and listner branch, worldstate allowed for listner but not for syncing
-         if ( (conf.worldstate_control)
-               && (0 == fork_db.head()->block_num % WS_INTERVAL)
-               && (worldstate_allowed) ) {
-            create_worldstate();
-         }
-
          emit( self.accepted_block, pending->_pending_block_state );
       } catch (...) {
          // dont bother resetting pending, instead abort the block
@@ -845,6 +837,12 @@ struct controller_impl {
 
       // push the state for pending.
       pending->push();
+      // block syncing and listner branch, worldstate allowed for listner but not for syncing
+      if ( (conf.worldstate_control)
+           && (0 == fork_db.head()->block_num % WS_INTERVAL)
+           && (worldstate_allowed) ) {
+         create_worldstate();
+      }
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.

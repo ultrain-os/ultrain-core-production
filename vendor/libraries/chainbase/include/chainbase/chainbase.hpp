@@ -215,7 +215,7 @@ namespace chainbase {
          typedef cache_state< value_type >                              cache_state_type;
 
          generic_index( allocator<value_type> a, uint64_t cache_interval=0 )
-         :_stack(a),_cache(a),_cache_interval(cache_interval),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){_cache.emplace_back( _indices.get_allocator() );}
+         :_stack(a),_cache(a),_cache_interval(cache_interval),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
 
          void validate()const {
             if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
@@ -307,7 +307,16 @@ namespace chainbase {
                }
 
                /** leaves the UNDO state on the stack when session goes out of scope */
-               void push()   { _apply = false; }
+               void push()   {
+                   _apply = false;
+                   if (_revision == 3)
+                       _index.squash_cache();
+                   if (_index._flag)
+                   {_index._flag = false;return;}
+                   _index.squash_cache();
+                   if ((_revision+2) %_index._cache_interval == 0)
+                       _index._flag = true;
+               }
                /** combines this session with the prior session */
                void squash() { if( _apply ) _index.squash(); _apply = false; }
                void undo()   { if( _apply ) _index.undo();  _apply = false; }
@@ -341,7 +350,7 @@ namespace chainbase {
                _stack.emplace_back( _indices.get_allocator() );
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
-               if( _cache_interval && 1 != _revision){
+               if( _cache_interval ){
                   _cache.emplace_back( _indices.get_allocator() );
 }
                return session( *this, _revision );
@@ -405,7 +414,7 @@ namespace chainbase {
           */
          void squash_cache(){
              std::cout<<"#####squash_cache before size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
-             if( !_cache_interval || _cache.size()<2 || (_flag&&(_revision %_cache_interval == 1))) {_flag=false;return;};
+             if( !_cache_interval || _cache.size()<2  ) {return;};
              std::cout<<"#####squash_cache size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
              auto& cache = _cache.back();
              auto& prev_cache = _cache[_cache.size()-2];
@@ -566,13 +575,6 @@ namespace chainbase {
             {
                _stack.pop_front();
             }
-
-            squash_cache();
-            std::cout<<"#########commit: "<<_cache.size()<<" revision:"<<revision<<"\n";
-            if (_revision == 3)
-                squash_cache();
-            if ((_revision+2) %_cache_interval == 0)
-                _flag = true;
          }
 
          void process_cache()
@@ -623,6 +625,7 @@ namespace chainbase {
                BOOST_THROW_EXCEPTION( std::logic_error("revision to set is too high") );
 
             _revision = static_cast<int64_t>(revision);
+            _cache.emplace_back( _indices.get_allocator() );
          }
 
          void remove_object( int64_t id )
@@ -735,7 +738,7 @@ namespace chainbase {
           *
           *  Commit will discard all revisions prior to the committed revision.
           */
-         bool                            _flag;
+         bool                            _flag = false;
          uint64_t                        _cache_interval;
          int64_t                         _revision = 0;
          typename value_type::id_type    _next_id = 0;
