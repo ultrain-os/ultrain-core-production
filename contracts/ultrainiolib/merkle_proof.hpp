@@ -19,7 +19,7 @@ namespace ultrainio {
 
         bool verify(std::string transaction_mroot) {
             size_t proofs_size = pack_size(proofs);
-            void* proofs_buffer = proofs_size <= max_stack_buffer_size ? malloc(proofs_size) : alloca(proofs_size);
+            void* proofs_buffer = max_stack_buffer_size < proofs_size ? malloc(proofs_size) : alloca(proofs_size);
             datastream<char*> pbds((char*)proofs_buffer, proofs_size);
             pbds << proofs;
 
@@ -27,12 +27,31 @@ namespace ultrainio {
             return r != 0;
         }
 
+        transaction recover_transaction() {
+            void* buffer = alloca(max_stack_buffer_size);
+            size_t size = max_stack_buffer_size;
+            size_t ret = ts_recover_transaction(buffer, size, (const char*)(&tx_bytes[0]), tx_bytes.size());
+            ultrainio_assert(ret != -1, "transaction_receipt only contains transaction id, no packed_transaction contains.");
+            if (ret != 0) {
+                buffer = malloc(ret);
+                size = ret;
+                ret = ts_recover_transaction(buffer, size, (const char*)(&tx_bytes[0]), tx_bytes.size());
+                ultrainio_assert(ret == 0, "read packed_transaction raw data failed.");
+            }
+
+            transaction tx;
+            datastream<char *> ds((char*) buffer, size);
+            ds >> tx;
+
+            return tx;
+        }
+
         static merkle_proof get_merkle_proof(uint32_t block_number, std::string tx_id) {
-            void* buffer = malloc(max_stack_buffer_size);
+            void* buffer = alloca(max_stack_buffer_size);
             size_t size = max_stack_buffer_size;
             size_t ret = ts_merkle_proof(block_number, tx_id.c_str(), buffer, max_stack_buffer_size);
             if (ret != 0) {
-                buffer = alloca(ret);
+                buffer = malloc(ret);
                 size = ret;
                 ret = ts_merkle_proof(block_number, tx_id.c_str(), buffer, ret);
                 ultrainio_assert(ret == 0, "read merkle proof failed.");

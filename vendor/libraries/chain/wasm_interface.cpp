@@ -381,6 +381,22 @@ class typescript_crypto_api : public context_aware_api {
 
          return 0;
       }
+
+      int32_t ts_recover_transaction(array_ptr<char> buffer, size_t buffer_size, array_ptr<char> tx_receipt_bytes, size_t tx_receipt_bytes_len) {
+         datastream<char *> ds(tx_receipt_bytes, tx_receipt_bytes_len);
+         transaction_receipt trx_receipt;
+         fc::raw::unpack(ds, trx_receipt);
+
+         if (trx_receipt.trx.contains<packed_transaction>()) {
+            bytes tx_raw_data = trx_receipt.trx.get<packed_transaction>().get_raw_transaction();
+            if (buffer_size < tx_raw_data.size()) return tx_raw_data.size();
+
+            memcpy(buffer, tx_raw_data.data(), tx_raw_data.size());
+            return 0;
+         }
+
+         return -1;
+      }
 };
 #endif
 
@@ -2143,9 +2159,10 @@ REGISTER_INTRINSICS(typescript_crypto_api,
    (ts_read_db_record,         int(int64_t, int64_t, int64_t, int64_t, int , int) )
    (ts_verify_with_pk,         int(int, int, int)                 )
    (ts_is_account_with_code,   int(int64_t)                       )
-   (ts_verify_merkle_proof,    int(int, int, int, int, int)   )
+   (ts_verify_merkle_proof,    int(int, int, int, int, int)       )
    (ts_merkle_proof_length,    int(int32_t, int)                  )
    (ts_merkle_proof,           int(int32_t, int, int, int)        )
+   (ts_recover_transaction,    int(int, int, int, int)            )
 );
 #endif
 

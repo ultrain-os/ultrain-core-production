@@ -2095,8 +2095,10 @@ vector<digest_type> controller::merkle_proof_of(const uint32_t& block_number, co
    else merkle_proof.push_back(make_canonical_right(digest_type()));
 
    //std::cout << "merkle_proof: " << string(merkle_proof.back()) << std::endl;
+   // if there is only one tx, then trx' digest is mroot.
+   if (trx_digests.size() == 1) return merkle_proof;
 
-   do {
+   while (trx_digests.size() > 1) {
       make_digests_even(trx_digests);
 
       //print_mt(trx_digests);
@@ -2106,7 +2108,7 @@ vector<digest_type> controller::merkle_proof_of(const uint32_t& block_number, co
       target_pos /= 2;
       next_loop_merkle_tree(trx_digests);
       // std::cout << "merkle_proof: " << string(merkle_proof.back()) << std::endl;
-   } while (trx_digests.size() >= 2);
+   }
 
    return merkle_proof;
 }
@@ -2126,11 +2128,13 @@ bool controller::verify_merkle_proof(const vector<digest_type>& merkle_proof, co
 
    // print_log(merkle_proof, trx_receipt_bytes);
 
-   if (merkle_proof.size() < 2) return false;
-
+   if (merkle_proof.size() == 0) return false;
    if (transaction_mroot == digest_type()) return false;
 
    transaction_receipt trx = fc::raw::unpack<transaction_receipt>(trx_receipt_bytes);
+   if (merkle_proof.size() == 1) {
+      return trx.digest() == transaction_mroot;
+   }
 
    auto first = merkle_proof[0];
    auto second = merkle_proof[1];
