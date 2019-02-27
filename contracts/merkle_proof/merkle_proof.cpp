@@ -13,7 +13,7 @@ class TransferActionParam {
         asset        val;
         std::string  memo;
 
-        ULTRAINLIB_SERIALIZE(TransferActionParam, (from)(to)(val)(memo));
+        ULTRAINLIB_SERIALIZE(TransferActionParam, (from)(to)(val)(memo))
 };
 
 class merkle_proof_contract : public ultrainio::contract {

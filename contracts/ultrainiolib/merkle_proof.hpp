@@ -30,11 +30,11 @@ namespace ultrainio {
         transaction recover_transaction() {
             void* buffer = alloca(max_stack_buffer_size);
             size_t size = max_stack_buffer_size;
-            size_t ret = ts_recover_transaction(buffer, size, (const char*)(&tx_bytes[0]), tx_bytes.size());
+            int ret = ts_recover_transaction(buffer, size, (const char*)(&tx_bytes[0]), tx_bytes.size());
             ultrainio_assert(ret != -1, "transaction_receipt only contains transaction id, no packed_transaction contains.");
             if (ret != 0) {
-                buffer = malloc(ret);
-                size = ret;
+                size = (size_t)ret;
+                buffer = malloc(size);
                 ret = ts_recover_transaction(buffer, size, (const char*)(&tx_bytes[0]), tx_bytes.size());
                 ultrainio_assert(ret == 0, "read packed_transaction raw data failed.");
             }
@@ -49,11 +49,11 @@ namespace ultrainio {
         static merkle_proof get_merkle_proof(uint32_t block_number, std::string tx_id) {
             void* buffer = alloca(max_stack_buffer_size);
             size_t size = max_stack_buffer_size;
-            size_t ret = ts_merkle_proof(block_number, tx_id.c_str(), buffer, max_stack_buffer_size);
+            int ret = ts_merkle_proof(block_number, tx_id.c_str(), buffer, max_stack_buffer_size);
             if (ret != 0) {
-                buffer = malloc(ret);
-                size = ret;
-                ret = ts_merkle_proof(block_number, tx_id.c_str(), buffer, ret);
+                size = (size_t)ret;
+                buffer = malloc(size);
+                ret = ts_merkle_proof(block_number, tx_id.c_str(), buffer, size);
                 ultrainio_assert(ret == 0, "read merkle proof failed.");
             }
             merkle_proof mklp;
