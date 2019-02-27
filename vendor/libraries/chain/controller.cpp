@@ -671,6 +671,40 @@ struct controller_impl {
       // worldstate->finalize();
       // worldstate_out.flush();
       // worldstate_out.close();
+auto& backup = const_cast<key_value_index&>(worldstate_db.get_index<key_value_index>().backup_indices());
+table_id_object::id_type tid;
+worldstate_db.get_mutable_index<key_value_index>().process_table(
+/*        [&backup,&tid](auto& item)->bool{
+        if (item.t_id == tid){
+        backup.erase( backup.find( item) );
+        return true;
+        }  
+        return false;
+        }
+*/
+        [&backup,&tid](auto& item)->bool{
+        return true;
+        }
+        ,
+        [&backup,&tid](auto& item)->bool{
+        if (item.second.t_id == tid){
+        auto itr = backup.find( item.second.id );
+        auto ok = backup.modify( itr, [&]( key_value_object& v ) {
+                v = std::move( item.second );
+                });
+        if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a nstraint was violated" ) );
+        return true;
+        }
+        return false;
+        },
+        [&backup,&tid](auto& item)->bool{
+        if (item.second.t_id == tid){
+        bool ok = backup.emplace( std::move( item.second ) ).second;
+        if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a nstraint was violated" ) );
+        return true;
+        }
+        return false;
+        });
 
       ws_helper_ptr.reset();
 

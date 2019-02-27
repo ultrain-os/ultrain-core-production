@@ -614,6 +614,64 @@ namespace chainbase {
              _cache.pop_front();
          }
 
+         bool process_table()
+         {
+             if ( !_cache_interval || !_cache.size()) return false;
+             auto& head= _cache.front();
+             auto& row = _indices_backup.begin();
+
+             if (head.removed_ids.count(row->id) )
+             {
+                 _indices_backup.erase( row );
+                 head.removed_ids.erase(row->id);
+                 return true;
+             }
+
+             auto itr = head.modify_values.find(row->id);
+             if (itr != head.modify_values.end() )
+             {
+                 auto ok = _indices_backup.modify( row, [&]( value_type& v ) {
+                                          v = std::move( *itr );
+                                                           });
+                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a queness constraint was violated" ) );
+                 head.modify_values.erase(row->id);
+                 return false;
+             }
+
+             itr = head.new_values.find(row->id);
+             if (itr != head.new_values.end() )
+             {
+                 bool ok = _indices_backup.emplace( std::move( *itr ) ).second;
+                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a queness constraint was violated" ) );
+                 head.new_values.erase(row->id);
+                 return false;
+             }
+         }
+
+         template<typename R,typename M,typename C>
+             void process_table(R&& r,M&& m,C&& c)
+             {
+                 if ( !_cache_interval || !_cache.size()) return;
+                 auto& head= _cache.front();
+
+                 for(auto& item :head.removed_ids)
+                 {
+                     if(r(item))
+                         head.removed_ids.erase(item);//bug remove之后迭代器不能正常工作
+                 }
+
+                 for(auto& item :head.modify_values)
+                 {
+                     if(m(item))
+                         head.modify_values.erase(item.second.id);//bug remove之后迭代器不能正常工作
+                 }
+
+                 for(auto& item :head.new_values)
+                 {
+                     if(c(item))
+                         head.new_values.erase(item.second.id);//bug remove之后迭代器不能正常工作
+                 }
+             }
          /**
           * Unwinds all undo states
           */
