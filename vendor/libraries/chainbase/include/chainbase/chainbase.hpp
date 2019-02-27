@@ -648,28 +648,40 @@ namespace chainbase {
              }
          }
 
-         template<typename R,typename M,typename C>
-             void process_table(R&& r,M&& m,C&& c)
+         template<typename C>
+             void process_table(C&& c)
              {
                  if ( !_cache_interval || !_cache.size()) return;
                  auto& head= _cache.front();
 
-                 for(auto& item :head.removed_ids)
+                 for(auto item :head.removed_ids)
                  {
-                     if(r(item))
+                     auto itr = _indices_backup.find( item );
+                     if(itr != _indices_backup.end()){
+                         _indices_backup.erase( itr);
                          head.removed_ids.erase(item);//bug remove之后迭代器不能正常工作
+                     }
                  }
 
                  for(auto& item :head.modify_values)
                  {
-                     if(m(item))
+                     auto itr = _indices_backup.find(item.second.id);
+                     if(itr != _indices_backup.end()){
+                         auto ok = _indices_backup.modify( itr , [&]( value_type& v ) {
+                                 v = std::move( item.second );
+                                 });
+                         if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a nstraint was violated" ) );
                          head.modify_values.erase(item.second.id);//bug remove之后迭代器不能正常工作
+                     }
                  }
 
                  for(auto& item :head.new_values)
                  {
-                     if(c(item))
+                     if(c(item)){
+                         bool ok = _indices_backup.emplace( std::move( item.second ) ).second;
+                         if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a nstraint was violated" ) );
                          head.new_values.erase(item.second.id);//bug remove之后迭代器不能正常工作
+                     }
                  }
              }
          /**
