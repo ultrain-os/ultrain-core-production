@@ -9,6 +9,8 @@ namespace ultrainio {
 
         EpochEndPoint(const BlockHeader& blockHeader);
 
+        EpochEndPoint();
+
     private:
         BlockHeader m_blockHeader;
 

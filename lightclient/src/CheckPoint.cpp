@@ -1,7 +1,7 @@
-#include <lightclient/Checkpoint.h>
+#include <lightclient/CheckPoint.h>
 
 namespace ultrainio {
-    bool Checkpoint::isCheckpoint(const BlockHeader& blockHeader) {
+    bool CheckPoint::isCheckPoint(const BlockHeader& blockHeader) {
         ExtensionsType ext = blockHeader.header_extensions;
         for (auto& e : ext) {
             if (std::get<0>(e) == kCommitteeSet) {
@@ -11,13 +11,14 @@ namespace ultrainio {
         return false;
     }
 
-    Checkpoint::Checkpoint(const BlockHeader& blockHeader) : m_blockHeader(blockHeader) {
+    CheckPoint::CheckPoint() {}
+    CheckPoint::CheckPoint(const BlockHeader& blockHeader) : m_blockHeader(blockHeader) {
         ExtensionsType ext = m_blockHeader.header_extensions;
         for (auto& e : ext) {
             BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
-            if (key == kPreCheckpointId) {
+            if (key == kPreCheckPointId) {
                 auto& value = std::get<1>(e);
-                m_preCheckpointBlockId = BlockIdType(std::string(value.begin(), value.end()));
+                m_preCheckPointBlockId = BlockIdType(std::string(value.begin(), value.end()));
             } else if (key == kCommitteeSet) {
                 m_committeeSet = CommitteeSet(std::get<1>(e));
             }

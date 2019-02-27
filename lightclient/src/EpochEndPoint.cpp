@@ -11,6 +11,8 @@ namespace ultrainio {
         return false;
     }
 
+    EpochEndPoint::EpochEndPoint() {}
+
     EpochEndPoint::EpochEndPoint(const BlockHeader& blockHeader) : m_blockHeader (blockHeader) {
         ExtensionsType ext = blockHeader.header_extensions;
         for (auto& e : ext) {

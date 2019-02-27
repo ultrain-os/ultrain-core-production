@@ -10,6 +10,8 @@ namespace ultrainio {
 
         ConfirmPoint(const BlockHeader& blockHeader);
 
+        ConfirmPoint();
+
     private:
         BlockHeader m_blockHeader;
 

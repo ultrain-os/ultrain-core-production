@@ -16,7 +16,7 @@
 #include <appbase/application.hpp>
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <ultrainio/chain/block_timestamp.hpp>
-#include <ultrainio/chain/callback_manager.hpp>
+#include <ultrainio/chain/callback.hpp>
 #include <ultrainio/chain/config.hpp>
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/exceptions.hpp>
@@ -79,7 +79,6 @@ namespace ultrainio {
         m_memleakCheck.reset(new boost::asio::steady_timer(app().get_io_service()));
         start_memleak_check();
         m_fast_timestamp = 0;
-        ultrainio::chain::callback_manager::get_self()->register_callback(std::shared_ptr<ultrainio::chain::callback>(this));
     }
 
     chain::checksum256_type Scheduler::getCommitteeMroot(uint32_t block_num) {
@@ -1306,7 +1305,7 @@ namespace ultrainio {
             // TODO(yufengshen) - Do we need to include the merkle in the block propose?
             chain.set_action_merkle_hack();
             chain.set_trx_merkle_hack();
-            // check committee mroot
+            // EpochEndPoint BlockHeader
             if (StakeVoteBase::committeeHasWorked()) {
                 std::shared_ptr<CommitteeState> committeeState = StakeVoteBase::getCommitteeState(0);
                 CommitteeSet committeeSet(committeeState->cinfo);
@@ -1315,8 +1314,12 @@ namespace ultrainio {
                     std::vector<char> v(s.size());
                     v.assign(s.begin(), s.end());
                     chain.add_header_extensions_entry(kNextCommitteeMroot, v);
+                    ilog("old mroot = ${old}, new mroot = ${new}", ("old", committeeMroot)("new", committeeSet.committeeMroot()));
                 }
             }
+            // CheckPoint
+            BlockHeader blockHeader = chain.head_block_header();
+            //if (EpochEndPoint::)
             // fix
             if (!m_preBlockVoterSet.empty() && chain::block_header::num_from_id(m_preBlockVoterSet.commonEchoMsg.blockId) == chain.head_block_num()) {
                 BlsVoterSet blsVoterSet = m_preBlockVoterSet.toBlsVoterSet();

@@ -8,6 +8,7 @@
 
 #include <fc/log/logger.hpp>
 
+#include <ultrainio/chain/callback_manager.hpp>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/MsgBuilder.h>
@@ -47,6 +48,7 @@ namespace ultrainio {
                                                                  m_preRunTimer(ioservice),
                                                                  m_schedulerPtr(std::make_shared<Scheduler>()) {
         ilog("Code version is ${s}", ("s", version));
+        ultrainio::chain::callback_manager::get_self()->register_callback(m_schedulerPtr);
     };
 
     uint32_t UranusNode::getBlockNum() const {

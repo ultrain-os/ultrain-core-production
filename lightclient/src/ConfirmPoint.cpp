@@ -11,6 +11,8 @@ namespace ultrainio {
         return false;
     }
 
+    ConfirmPoint::ConfirmPoint() {}
+
     ConfirmPoint::ConfirmPoint(const BlockHeader& blockHeader) : m_blockHeader(blockHeader) {
         ExtensionsType ext = blockHeader.header_extensions;
         for (auto& e : ext) {
