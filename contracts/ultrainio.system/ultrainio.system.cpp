@@ -93,8 +93,8 @@ namespace ultrainiosystem {
       ultrainio_assert( bid.symbol == asset().symbol, "asset must be system token" );
       ultrainio_assert( bid.amount > 0, "insufficient bid" );
 
-      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {bidder,N(active)},
-                                                    { bidder, N(utrio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
+      INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {bidder,N(active)},
+                                                             { bidder, N(utrio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
 
       name_bid_table bids(_self,_self);
       print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
@@ -111,7 +111,7 @@ namespace ultrainiosystem {
          ultrainio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          ultrainio_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.names),N(active)},
+         INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {N(utrio.names),N(active)},
                                                        { N(utrio.names), current->high_bidder, asset(current->high_bid),
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
@@ -553,8 +553,8 @@ void system_contract::voteresourcelease() {
          if(globalparams.exists()){
             ultrainio_global_state  _gstate = globalparams.get();
             if(_gstate.newaccount_fee > 0){
-                INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {creator,N(active)},
-                    { creator, N(utrio.fee), asset(_gstate.newaccount_fee), std::string("create account") } );   
+                INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {creator,N(active)},
+                    { creator, N(utrio.fee), asset(_gstate.newaccount_fee), std::string("create account") } );
             }
          }
       }
@@ -571,7 +571,7 @@ void system_contract::voteresourcelease() {
                   permission_name  permission,
                   permission_name  parent,
                   const authority& data*/ ){
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {account,N(active)},
+         INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {account,N(active)},
             { account, N(utrio.fee), asset(10000), std::string("update auth") } );
       }
 

@@ -112,7 +112,7 @@ namespace ultrainiosystem {
          require_auth(_self);
       } else{
          ultrainio_assert( is_master_chain(), "only master chain allow regproducer" );
-         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {producer,N(active)},
+         INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {producer,N(active)},
             { producer, N(utrio.fee), asset(50000), std::string("regproducer") } );
       }
    }

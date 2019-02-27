@@ -30,10 +30,15 @@ namespace ultrainio {
                         account_name to,
                         asset        quantity,
                         string       memo );
-      
-      
+
+         // transfer without calling require_recipient.
+         void safe_transfer( account_name from,
+                             account_name to,
+                             asset        quantity,
+                             string       memo );
+
          inline asset get_supply( symbol_name sym )const;
-         
+
          inline asset get_balance( account_name owner, symbol_name sym )const;
 
       private:

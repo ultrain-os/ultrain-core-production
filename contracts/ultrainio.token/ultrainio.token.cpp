@@ -85,6 +85,29 @@ void token::transfer( account_name from,
     add_balance( to, quantity );
 }
 
+void token::safe_transfer( account_name from,
+                           account_name to,
+                           asset        quantity,
+                           string       memo )
+{
+    ultrainio_assert( from != to, "cannot transfer to self" );
+    require_auth( from );
+    ultrainio_assert( is_account( to ), "to account does not exist");
+    auto sym = quantity.symbol.name();
+    stats statstable( _self, sym );
+    const auto& st = statstable.get( sym );
+
+    ultrainio_assert( quantity.is_valid(), "invalid quantity" );
+    ultrainio_assert( quantity.amount > 0, "must transfer positive quantity" );
+    ultrainio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
+    ultrainio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
+
+
+    sub_balance( from, quantity );
+    add_balance( to, quantity );
+}
+
+
 void token::sub_balance( account_name owner, asset value ) {
    accounts from_acnts( _self, owner );
 
@@ -129,4 +152,4 @@ void token::add_balance( account_name owner, asset value )
 
 } /// namespace ultrainio
 
-ULTRAINIO_ABI( ultrainio::token, (create)(issue)(transfer) )
+ULTRAINIO_ABI( ultrainio::token, (create)(issue)(transfer)(safe_transfer) )

@@ -117,7 +117,7 @@ namespace ultrainiosystem {
                 pay_account = N(ultrainio);
             else
                 pay_account = N(utrio.fee);
-            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {pay_account,N(active)},
+            INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
                                                         { pay_account, itr->owner, asset(producer_per_block_pay), std::string("producer block pay") } );
          }
       }

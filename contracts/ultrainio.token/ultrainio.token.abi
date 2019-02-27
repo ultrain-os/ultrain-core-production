@@ -14,6 +14,15 @@
         {"name":"memo", "type":"string"}
       ]
     },{
+      "name": "safe_transfer",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
+      ]
+    },{
      "name": "create",
      "base": "",
      "fields": [
@@ -50,6 +59,10 @@
       "type": "transfer",
       "ricardian_contract": ""
     },{
+      "name": "safe_transfer",
+      "type": "safe_transfer",
+      "ricardian_contract": ""
+    }, {
       "name": "issue",
       "type": "issue",
       "ricardian_contract": ""
