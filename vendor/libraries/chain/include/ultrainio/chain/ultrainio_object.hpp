@@ -4,12 +4,14 @@ namespace ultrainio { namespace chain {
 
     const uint64_t master_chain_name = 0;
 
+    // keep this the same as defined in ultrainio.system.hpp;
     struct role_base {
       account_name          owner;
       std::string           producer_key; /// a packed public key objec
       std::string           bls_key;
     };
 
+    // keep this the same as defined in ultrainio.system.hpp;
     struct producer_info : public role_base {
       int64_t               total_cons_staked = 0;
       bool                  is_active = true;
@@ -19,6 +21,9 @@ namespace ultrainio { namespace chain {
       uint64_t              unpaid_balance = 0;
       uint64_t              total_produce_block = 0;
       uint64_t              location = 0;
+      uint64_t              last_operate_blocknum = 0;
+      uint64_t              delegated_cons_blocknum = 0;
+      account_name          claim_rewards_account;
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
    };
@@ -95,7 +100,7 @@ namespace ultrainio { namespace chain {
 
 FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key)(bls_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::producer_info, (ultrainio::chain::role_base), (total_cons_staked)(is_active)(is_enabled)
-                    (hasenabled)(url)(unpaid_balance)(total_produce_block)(location)(vote_number)(last_vote_blocknum))
+                    (hasenabled)(url)(unpaid_balance)(total_produce_block)(location)(last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account)(vote_number)(last_vote_blocknum))
 FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_number)(total_resources_used_number)(max_ram_size)(total_ram_bytes_used) )
 FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(is_producer) )
 FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )

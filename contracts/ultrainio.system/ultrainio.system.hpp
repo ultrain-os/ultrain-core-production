@@ -89,7 +89,7 @@ namespace ultrainiosystem {
       bool                  hasenabled = false;
       std::string           url;
       uint64_t              unpaid_balance = 0;
-      uint64_t              total_produce_block;
+      uint64_t              total_produce_block = 0;
       uint64_t              location = 0;
       uint64_t              last_operate_blocknum = 0;
       uint64_t              delegated_cons_blocknum = 0;
@@ -97,7 +97,6 @@ namespace ultrainiosystem {
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
       uint64_t primary_key()const { return owner;                                   }
-      double   by_votes()const    { return is_active ? -total_cons_staked : total_cons_staked;  }
       bool     active()const      { return is_active;                               }
       void     deactivate()       { producer_key = std::string(); bls_key = std::string(); is_active = false; is_enabled = false; }
       bool     is_on_master_chain() const  {return location == master_chain_name;}
@@ -152,9 +151,7 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index<N(pendingminer),pending_miner> pendingminers;
    typedef ultrainio::multi_index<N(pendingacc),pending_acc> pendingaccounts;
    typedef ultrainio::multi_index<N(pendingres),pending_res> pendingresource;
-   typedef ultrainio::multi_index< N(producers), producer_info,
-                               indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
-                               >  producers_table;
+   typedef ultrainio::multi_index<N(producers), producer_info> producers_table;
 
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
 
