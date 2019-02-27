@@ -94,31 +94,26 @@ namespace ultrainiosystem {
 
    void system_contract::claimrewards() {
       require_auth(_self);
+      ultrainio_assert( _gstate.total_activated_stake >= _gstate.min_activated_stake,
+            "cannot claim rewards until the chain is activated" );
       int64_t new_tokens = (int64_t)_gstate.total_unpaid_balance;
       _gstate.total_unpaid_balance = 0;
-      asset fee_tokens = ultrainio::token(N(utrio.token)).get_balance(N(utrio.fee),symbol_type(CORE_SYMBOL).name());
+      uint64_t pay_account = N(utrio.fee);
+      asset fee_tokens = ultrainio::token(N(utrio.token)).get_balance( pay_account,symbol_type(CORE_SYMBOL).name());
       print("\nclaimrewards new_tokens:",new_tokens," fee_tokens:",fee_tokens.amount,"\n");
       if(fee_tokens.amount < new_tokens){
          INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
-                                                      {N(ultrainio), asset(new_tokens), std::string("issue tokens for claimrewards")} );
+                                                      {pay_account, asset(new_tokens - fee_tokens.amount), std::string("issue tokens for claimrewards")} );
       }
       for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
          if(itr->unpaid_balance > 0 && itr->is_active){
-            ultrainio_assert( _gstate.total_activated_stake >= _gstate.min_activated_stake,
-                        "cannot claim rewards until the chain is activated" );
-            auto producer_per_block_pay = (int64_t)itr->unpaid_balance;
-            print("\nclaimrewards producer_pay:",producer_per_block_pay,"\n");
+            auto producer_unpaid_balance = (int64_t)itr->unpaid_balance;
+            print("\nclaimrewards producer:",name{itr->owner}," producer_pay:",producer_unpaid_balance,"\n");
             _producers.modify( itr, [&](auto& p) {
                p.unpaid_balance = 0;
             });
-
-            uint64_t pay_account = 0;
-            if(fee_tokens.amount < producer_per_block_pay)
-                pay_account = N(ultrainio);
-            else
-                pay_account = N(utrio.fee);
             INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
-                                                        { pay_account, itr->owner, asset(producer_per_block_pay), std::string("producer block pay") } );
+                                                        { pay_account, itr->owner, asset(producer_unpaid_balance), std::string("producer block pay") } );
          }
       }
    }

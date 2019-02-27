@@ -10,6 +10,7 @@ systemAccounts = [
     'utrio.vpay',
     'utrio.fee',
     'utrio.rand',
+    'utrio.bank',
 ]
 
 initialAccounts = [

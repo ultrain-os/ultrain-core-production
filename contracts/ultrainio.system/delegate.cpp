@@ -254,7 +254,7 @@ namespace ultrainiosystem {
          ultrainio_assert(chain_itr != _subchains.end(), "this subchian location is not existed");
          ultrainio_assert(is_empowered(receiver, location), "the receiver is not yet empowered to this chain before");
       }else{
-          require_auth( _self );
+          ultrainio_assert( from == _self, "master chain not allow buy resourcelease" );
       }
       resources_lease_table _reslease_tbl( _self,location );
 

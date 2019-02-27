@@ -659,6 +659,14 @@
         {"name":"params", "type":"blockchain_parameters"}
       ]
     },{
+      "name": "synctransfer",
+      "base": "",
+      "fields": [
+          {"name": "transaction_mroot","type": "string"},
+          {"name": "block_number","type": "uint32"},
+          {"name": "tx_id","type": "string"}
+        ]
+    },{
       "name": "connector",
       "base": "",
       "fields": [
@@ -835,6 +843,10 @@
     },{
       "name": "setparams",
       "type": "setparams",
+      "ricardian_contract": ""
+    },{
+      "name": "synctransfer",
+      "type": "synctransfer",
       "ricardian_contract": ""
     }],
    "tables": [{

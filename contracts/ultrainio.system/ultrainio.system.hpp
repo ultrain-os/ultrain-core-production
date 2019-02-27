@@ -359,6 +359,8 @@ namespace ultrainiosystem {
          void voteresourcelease();
 
          void recycleresource(const account_name owner ,uint64_t lease_num);
+
+         void synctransfer( std::string transaction_mroot, uint32_t block_number, std::string tx_id );
       private:
          inline void update_activated_stake(int64_t stake);
 

@@ -113,7 +113,7 @@ void token::sub_balance( account_name owner, asset value ) {
 
    const auto& from = from_acnts.get( value.symbol.name(), "no balance object found" );
    auto ct = now();
-   if((ct - from.last_time < interval_sec) && (owner != N(ultrainio))){
+   if((ct - from.last_time < interval_sec) && (owner != N(ultrainio)) && name{owner}.to_string().find( "utrio." ) != 0){
       asset fee( operatefee, value.symbol );
       if(value.amount > 100000)
          fee = value/1000;

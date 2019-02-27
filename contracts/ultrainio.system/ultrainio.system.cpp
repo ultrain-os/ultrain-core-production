@@ -1,11 +1,12 @@
 #include "ultrainio.system.hpp"
 #include <ultrainiolib/dispatcher.hpp>
+#include <ultrainiolib/action.hpp>
 
 #include "reward.cpp"
 #include "delegate.cpp"
 #include "producer.cpp"
 #include "scheduler.cpp"
-#include <ultrainiolib/action.hpp>
+#include "synctransaction.cpp"
 
 
 namespace ultrainiosystem {
@@ -596,4 +597,6 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      (onblock)(claimrewards)
      // scheduler.cpp
      (regchaintype)(regsubchain)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)(setsched)(forcesetblock)
+     // synctransaction.cpp
+     (synctransfer)
 )
