@@ -1,8 +1,5 @@
 #include <lightclient/CommitteeSet.h>
 
-#include <fc/io/json.hpp>
-#include <fc/variant.hpp>
-
 namespace ultrainio {
     CommitteeSet::CommitteeSet() {}
 
@@ -15,12 +12,12 @@ namespace ultrainio {
     }
 
     void CommitteeSet::init(const std::string& s) {
-        fc::variant v = fc::json::from_string(s);
-        fc::variants vs = v.get_array();
-        for (int i = 0; i < vs.size(); i++) {
-            CommitteeInfo committeeInfo;
-            committeeInfo.fromVariants(vs[i].get_array());
-            m_committeeInfoV.push_back(committeeInfo);
+        std::stringstream ss(s);
+        std::string tempStr;
+        uint8_t idx = 0;
+        CommitteeInfo committeeInfo;
+        while(committeeInfo.fromStrStream(ss)) {
+           m_committeeInfoV.push_back(committeeInfo);
         }
     }
 
@@ -40,13 +37,14 @@ namespace ultrainio {
     }
 
     std::string CommitteeSet::toString() const {
-        std::vector<fc::variants> v(m_committeeInfoV.size());
+        std::stringstream ss;
         for (int i = 0; i < m_committeeInfoV.size(); i++) {
-            fc::variants vs;
-            m_committeeInfoV[i].toVariants(vs);
-            v[i] = vs;
+            m_committeeInfoV[i].toStrStream(ss);
+            if (i != m_committeeInfoV.size() -1) {
+                ss << " ";
+            }
         }
-        return fc::json::to_string(v);
+        return ss.str();
     }
 
     bool CommitteeSet::operator == (const CommitteeSet& rhs) const {

@@ -6,19 +6,24 @@ namespace ultrainio {
         return accountName.empty() || pk.empty() || blsPk.empty();
     }
 
-    void CommitteeInfo::toVariants(fc::variants& vs) const {
-        vs.push_back(fc::variant(accountName));
-        vs.push_back(fc::variant(pk));
-        vs.push_back(fc::variant(blsPk));
+    void CommitteeInfo::toStrStream(std::stringstream& ss) const {
+        ss << accountName << " ";
+        ss << pk << " ";
+        ss << blsPk;
     }
 
-    void CommitteeInfo::fromVariants(const fc::variants& vs) {
-        if (vs.size() < 3) {
-            return;
+    bool CommitteeInfo::fromStrStream(std::stringstream& ss) {
+        if(!(ss >> accountName)) {
+            return false;
         }
-        accountName = vs[0].as<std::string>();
-        pk = vs[1].as<std::string>();
-        blsPk = vs[2].as<std::string>();
+        if(!(ss >> pk)) {
+            return false;
+        }
+        if(!(ss >> blsPk)) {
+            return false;
+        }
+
+        return true;
     }
 
     bool CommitteeInfo::operator == (const CommitteeInfo& rhs) const {
