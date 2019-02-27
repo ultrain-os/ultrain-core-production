@@ -637,15 +637,6 @@ namespace chainbase {
                  head.modify_values.erase(row->id);
                  return false;
              }
-
-             itr = head.new_values.find(row->id);
-             if (itr != head.new_values.end() )
-             {
-                 bool ok = _indices_backup.emplace( std::move( *itr ) ).second;
-                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a queness constraint was violated" ) );
-                 head.new_values.erase(row->id);
-                 return false;
-             }
          }
 
          template<typename C>
@@ -654,7 +645,7 @@ namespace chainbase {
                  if ( !_cache_interval || !_cache.size()) return;
                  auto& head= _cache.front();
 
-                 for(auto item = head.removed_ids.begin();item != head.removed_ids.end();)
+                 for(auto item = head.removed_ids.begin();item != head.removed_ids.end()&&_indices_backup.empty();)
                  {
                      auto itr = _indices_backup.find( *item );
                      if(itr != _indices_backup.end()){
@@ -665,7 +656,7 @@ namespace chainbase {
                      ++item;
                  }
 
-                 for(auto item = head.modify_values.begin();item != head.modify_values.end();)
+                 for(auto item = head.modify_values.begin();item != head.modify_values.end()&&_indices_backup.empty();)
                  {
                      auto itr = _indices_backup.find(item->second.id);
                      if(itr != _indices_backup.end()){
@@ -690,6 +681,22 @@ namespace chainbase {
                      ++item;
                  }
              }
+         std::pair<bool,typename value_type::id_type> process_create()
+         {    
+             if ( !_cache_interval || !_cache.size()) return {false,0};
+             auto& create= _cache.front().new_values;
+
+             if (create.empty()) return {false,0};
+
+             auto item = create.begin();
+             auto id=item->second.id;
+
+
+             bool ok = _indices_backup.emplace( std::move(item->second)).second;;
+             if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a nstraint was violated" ) );
+             create.erase(item->first);
+             return {create.size()!=0,id};
+         }
          /**
           * Unwinds all undo states
           */
