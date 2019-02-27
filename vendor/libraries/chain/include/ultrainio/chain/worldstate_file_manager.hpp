@@ -119,6 +119,150 @@ namespace ultrainio { namespace chain {
             std::shared_ptr<ostream_worldstate_writer> get_writer();
             std::shared_ptr<ostream_worldstate_id_writer> get_id_writer();
 
+            template<typename index_t, typename F> void restore_backup_indices(chainbase::database& worldstate_db, F&& f){
+                using value_t = typename index_t::value_type;
+                
+                if(!get_id_reader() || !get_reader()) { ilog("Don't exist old ws file"); return;}
+
+                get_reader()->read_section<value_t>([&]( auto& reader_section ) {
+                    get_id_reader()->read_start_id_section(boost::core::demangle(typeid(value_t).name()));
+                
+                    bool more = !reader_section.empty();
+                    bool id_more = !get_id_reader()->empty();
+                    ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
+                    
+                    while(more) {// insert the record to backup
+                        uint64_t old_id = 0, size = 0;
+                        get_id_reader()->read_id_row(old_id, size);
+                        ilog("test id reader: ${t} ${s}", ("t", old_id)("s", size));
+
+                        index_utils<index_t>::create(worldstate_db, [&]( auto &row ) {
+                            row.id._id = old_id;
+                            more = f(reader_section, row);                            
+                        }, true);
+                        id_more = get_id_reader()->is_more();
+                        ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
+                    }
+                });
+            };
+
+            template<typename index_t> void restore_backup_indices(chainbase::database& worldstate_db){                
+                restore_backup_indices<index_t>(worldstate_db, [&worldstate_db](auto& reader_section, auto& row)->bool{
+                    return reader_section.read_row(row, worldstate_db);
+                });
+            }
+
+            template<typename index_t, typename F> void store_backup_indices(chainbase::database& worldstate_db, F&& f){
+                using value_t = typename index_t::value_type;
+                ilog("store_backup_indices");
+                ULTRAIN_ASSERT(get_writer() && get_id_writer(), worldstate_exception, "Ws writer is not exist!");
+
+                get_id_writer()->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
+
+                get_writer()->write_section<value_t>([&]( auto& section ){
+                    index_utils<index_t>::walk(worldstate_db, [&]( const auto &row ) {
+                        get_id_writer()->write_row_id(row.id._id, 0);
+                        ilog("test id writer:  ${t} ${s}", ("t", row.id._id)("s", 0));
+
+                        // section.add_row(row, worldstate_db);
+                        f(section, row);
+                        ilog("test");
+
+                        auto length = get_writer()->write_length();
+                        //get_id_writer()->write_row_id(row.id._id, 0);
+
+                        
+                    });
+                });
+
+                get_id_writer()->write_end_id_section();
+                ilog("test5-2");
+            };
+
+            template<typename index_t> void store_backup_indices(chainbase::database& worldstate_db){
+                store_backup_indices<index_t>(worldstate_db, [&worldstate_db](auto& writer_section, auto& row){
+                    writer_section.add_row(row, worldstate_db);
+                });
+            }
+
+            template<typename index_t> void handle_indices(chainbase::database& worldstate_db){
+                auto& cache_node = worldstate_db.get_index<index_t>().cache().front();
+                ilog("test cache type size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+                ilog("test cache() count: ${s}", ("s", worldstate_db.get_index<index_t>().cache().size()));
+
+                ilog("test backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
+                
+                //1:  add to backup if exit old ws file
+                restore_backup_indices<index_t>(worldstate_db);
+
+                //2:  squach backup and cache
+                worldstate_db.get_mutable_index<index_t>().process_cache();
+
+                //3. read all record from backup, write to new ws file
+                store_backup_indices<index_t>(worldstate_db);
+
+                // 4. clear backup_indices
+                (const_cast<index_t&>(worldstate_db.get_mutable_index<index_t>().backup_indices())).clear();
+                ilog("test5-3");
+            };
+
+            // template<typename index_t> void handle_indices(chainbase::database& worldstate_db){
+            //     using value_t = typename index_t::value_type;
+            //     auto& cache_node = worldstate_db.get_index<index_t>().cache().front();
+            //     ilog("test cache type size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+            //     ilog("test cache() count: ${s}", ("s", worldstate_db.get_index<index_t>().cache().size()));
+
+            //     ilog("test backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
+
+            //     //1:  add to backup if exit old ws file
+            //     if(get_id_reader() && get_reader()) {//if exit old ws file
+            //         ilog("test3-31");
+            //         get_reader()->read_section<value_t>([this, &worldstate_db]( auto& reader_section ) {
+            //             get_id_reader()->read_start_id_section(boost::core::demangle(typeid(value_t).name()));
+                    
+            //             bool more = !reader_section.empty();
+            //             bool id_more = !get_id_reader()->empty();
+            //             ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
+                        
+            //             while(more) {
+            //                 // insert the record to backup
+            //                 index_utils<index_t>::create(worldstate_db, [this, &worldstate_db, &reader_section, &more, &id_more]( auto &row ) {
+            //                     uint64_t old_id = 0, size = 0;
+            //                     id_more = get_id_reader()->read_id_row(old_id, size);
+            //                     more = reader_section.read_row(row, worldstate_db);
+            //                     row.id._id = old_id;
+            //                     // ilog("test read reader: ${t} ${s}", ("t", old_id)("s", size));
+            //                 }, true);
+            //                 ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
+            //             }
+            //         });
+            //     };    
+            //     ilog("test4-1");
+                
+            //     //2:  squach backup and cache
+            //     worldstate_db.get_mutable_index<index_t>().process_cache();
+            //     ilog("test , after process_cache(),  cache() count: ${s}", ("s", worldstate_db.get_index<index_t>().cache().size()));
+            //     ilog("test4-2");
+                
+            //     //3. read all record from backup, write to new ws file
+            //     get_writer()->write_section<value_t>([this, &worldstate_db]( auto& section ){
+            //         get_id_writer()->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
+            //         index_utils<index_t>::walk(worldstate_db, [this,&worldstate_db, &section]( const auto &row ) {
+            //             section.add_row(row, worldstate_db, this);
+            //             auto length = get_writer()->write_length();
+            //             get_id_writer()->write_row_id(row.id._id, length);
+            //             // ilog("test id writer:  ${t} ${s}", ("t", row.id._id)("s", length));
+            //         });            
+            //         get_id_writer()->write_end_id_section();
+            //     });
+            //     ilog("test5-2");
+
+            //     // 4. clear backup_indices
+            //     (const_cast<index_t&>(worldstate_db.get_mutable_index<index_t>().backup_indices())).clear();
+            //     ilog("test5-3");
+            //     return;
+            // };
+
         private:
             std::string m_old_ws_path;
             std::string m_new_ws_path;

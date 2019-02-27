@@ -228,7 +228,7 @@ namespace chainbase {
           * Set the ID to the next available ID, then increment _next_id and fire off on_create().
           */
          template<typename Constructor>
-         void backup_emplace( Constructor&& c ) {
+         const value_type& backup_emplace( Constructor&& c ) {
             auto constructor = [&]( value_type& v ) {
                c( v );
             };
@@ -237,6 +237,7 @@ namespace chainbase {
             if( !insert_result.second ) {
                BOOST_THROW_EXCEPTION( std::logic_error("could not insert backup object, most likely a uniqueness constraint was violated") );
             }
+            return *insert_result.first;
          }
 
          template<typename Constructor>
@@ -1231,11 +1232,11 @@ namespace chainbase {
          }
 
          template<typename ObjectType, typename Constructor>
-         void backup_create( Constructor&& con )
+         const ObjectType& backup_create( Constructor&& con )
          {
              CHAINBASE_REQUIRE_WRITE_LOCK("backup_create", ObjectType);
              typedef typename get_index_type<ObjectType>::type index_type;
-             get_mutable_index<index_type>().backup_emplace( std::forward<Constructor>(con) );
+             return get_mutable_index<index_type>().backup_emplace( std::forward<Constructor>(con) );
          }
 
          template< typename Lambda >

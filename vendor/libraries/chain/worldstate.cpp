@@ -663,6 +663,10 @@ bool istream_worldstate_id_reader::empty ( ) {
    return num_rows == 0;
 }
 
+bool istream_worldstate_id_reader::is_more ( ) {
+   return cur_row < num_rows;
+}
+
 void istream_worldstate_id_reader::clear_id_section() {
    num_rows = 0;
    cur_row = 0;

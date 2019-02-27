@@ -63,13 +63,17 @@ void resource_limits_manager::initialize_database() {
    });
 }
 
-void resource_limits_manager::add_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db ) const {
-   resource_index_set::walk_indices([this, &worldstate_db, &worldstate]( auto utils ){
-      worldstate->write_section<typename decltype(utils)::index_t::value_type>([this, &worldstate_db]( auto& section ){
-         decltype(utils)::walk(worldstate_db, [this, &worldstate_db, &section]( const auto &row ) {
-         section.add_row(row, worldstate_db);
-         });
-      });
+void resource_limits_manager::add_to_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db ) {
+   resource_index_set::walk_indices([this, &worldstate_db, &ws_helper_ptr]( auto utils ){
+      // worldstate->write_section<typename decltype(utils)::index_t::value_type>([this, &worldstate_db]( auto& section ){
+      //    decltype(utils)::walk(worldstate_db, [this, &worldstate_db, &section]( const auto &row ) {
+      //    section.add_row(row, worldstate_db);
+      //    });
+      // });
+      using index_t = typename decltype(utils)::index_t;
+      using value_t = typename index_t::value_type;
+      ilog("test2 ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
+      ws_helper_ptr->handle_indices<index_t>(worldstate_db);
    });
 }
 

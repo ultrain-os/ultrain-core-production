@@ -7,6 +7,8 @@
 #include <ultrainio/chain/types.hpp>
 #include <ultrainio/chain/permission_object.hpp>
 #include <ultrainio/chain/worldstate.hpp>
+#include <chainbase/chainbase.hpp>
+#include <ultrainio/chain/worldstate_file_manager.hpp>
 
 #include <utility>
 #include <functional>
@@ -29,7 +31,7 @@ namespace ultrainio { namespace chain {
          void add_indices(chainbase::database& db);
          void initialize_database();
 
-         void add_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const;
+         void add_to_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db);
          void read_from_worldstate( const worldstate_reader_ptr& worldstate );
 
          const permission_object& create_permission( account_name account,
