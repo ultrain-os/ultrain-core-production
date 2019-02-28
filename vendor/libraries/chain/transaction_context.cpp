@@ -14,9 +14,6 @@
 #include <ultrainio.token/ultrainio.token.wast.hpp>
 #include <ultrainio.token/ultrainio.token.abi.hpp>
 
-//TODO  comments bill out firstly
-#define BILL 0
-
 namespace ultrainio { namespace chain {
 
    transaction_context::transaction_context( controller& c,
@@ -37,37 +34,6 @@ namespace ultrainio { namespace chain {
       ULTRAIN_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
    }
 
-#if BILL == 1
-   static std::vector<string>  superAccount ={"ultrainio",
-                                            "utrio.bpay",
-                                            "utrio.msig",
-                                            "utrio.names",
-                                            "utrio.ram",
-                                            "utrio.ramfee",
-                                            "utrio.saving",
-                                            "utrio.stake",
-                                            "utrio.token",
-                                            "utrio.vpay",
-                                            "genesis"
-                                            };
-   void check_billed_account(const chain_apis::read_only & ro_api, const account_name& acc, share_type& least_amount) {
-        static struct chain_apis::read_only::get_currency_balance_params params1;
-        if ( std::find(std::begin(superAccount), std::end(superAccount), acc) == std::end(superAccount) ) {
-            params1.code = N(utrio.token);
-            params1.account = acc;
-            params1.symbol = "SYS";
-            auto result = ro_api.get_currency_balance(params1);
-            ULTRAIN_ASSERT(result.size() == 1, unsupported_feature, "can't find acc");
-            ULTRAIN_ASSERT(result[0].get_amount() > 0, unsupported_feature, "unsupport");
-            if (result[0].get_amount()<least_amount) {
-                least_amount = result[0].get_amount();
-            }
-            ilog("account ${acc}, ${am}", ("acc", acc)("am", least_amount));
-        }
-        return;
-   }
-#endif
-
    void transaction_context::init(uint64_t initial_net_usage)
    {
       ULTRAIN_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
@@ -81,12 +47,10 @@ namespace ultrainio { namespace chain {
       // Record accounts to be billed for network and CPU usage
       for( const auto& act : trx.actions ) {
          bill_to_accounts.insert( act.account );
+         // we bill to account, not actor;
 //          for( const auto& auth : act.authorization ) {
 //             //bill_to_accounts.insert( auth.actor );
 //             ilog("transaction_context:: insert auth.actor${auth.actor}", ("auth.actor", auth.actor));
-// #if BILL == 1
-//             check_billed_account(ro_api, auth.actor, least_amount);
-// #endif
 //          }
       }
 
@@ -279,31 +243,6 @@ namespace ultrainio { namespace chain {
             trace->action_traces.emplace_back();
             dispatch_action( trace->action_traces.back(), act );
          }
-#if BILL == 1
-         auto bill_account_for_trx_fee = [&](){
-             for( const auto& auth : bill_to_accounts ) {
-                 if ( std::find(std::begin(superAccount), std::end(superAccount), auth) != std::end(superAccount) ) {
-                     continue;
-                 }
-                 static action act_tmp;
-                 static auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
-                 static abi_serializer ultrainio_token_serializer{fc::json::from_string(ultrainio_token_abi).as<abi_def>(), abi_serializer_max_time};
-
-                 std::string act = "{\"from\":\""+auth.to_string()+"\",\"to\":\"utrio.saving\",\"quantity\":\"0.0300 SYS\",\"memo\":\"charge\"}";
-
-                 ilog("bill acc ${acc}, cmd ${cmd}", ("acc", auth)("cmd",act));
-
-                 act_tmp.account = N(utrio.token);
-
-                 act_tmp.name = NEX(transfer);
-                 act_tmp.authorization = vector<permission_level>{{auth,config::active_name}};
-                 act_tmp.data = ultrainio_token_serializer.variant_to_binary("transfer", fc::json::from_string(act), abi_serializer_max_time);
-                trace->action_traces.emplace_back();
-                dispatch_action( trace->action_traces.back(), act_tmp );
-             }
-         };
-         bill_account_for_trx_fee();
-#endif
       } else {
          schedule_transaction();
       }
@@ -523,6 +462,10 @@ namespace ultrainio { namespace chain {
    }
 
    void transaction_context::schedule_transaction() {
+       for( const auto& act : trx.actions ) {
+           ULTRAIN_ASSERT(act.account == N(ultrainio), transaction_exception, "only ultrainio transaction can be delayed" );
+       }
+
       // Charge ahead of time for the additional net usage needed to retire the delayed transaction
       // whether that be by successfully executing, soft failure, hard failure, or expiration.
       if( trx.delay_sec.value == 0 ) { // Do not double bill. Only charge if we have not already charged for the delay.
