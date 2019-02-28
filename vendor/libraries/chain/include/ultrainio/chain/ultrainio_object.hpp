@@ -14,7 +14,6 @@ namespace ultrainio { namespace chain {
     // keep this the same as defined in ultrainio.system.hpp;
     struct producer_info : public role_base {
       int64_t               total_cons_staked = 0;
-      bool                  is_active;
       bool                  is_enabled = false;
       std::string           url;
       uint64_t              unpaid_balance = 0;
