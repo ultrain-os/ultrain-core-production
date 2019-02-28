@@ -5,7 +5,6 @@
 #include <boost/math/distributions/binomial.hpp>
 
 #include <base/Hex.h>
-#include <lightclient/CommitteeSet.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/Proof.h>
@@ -41,7 +40,6 @@ namespace ultrainio {
         if (!m_committeeStatePtr) {
             m_committeeStatePtr = getCommitteeState(0);
         }
-        computeCommitteeMroot();
         ULTRAIN_ASSERT(getCommitteeMemberNumber() != 0, chain::chain_exception, "totalStake is 0");
     }
 
@@ -71,13 +69,18 @@ namespace ultrainio {
         return false;
     }
 
-    void StakeVoteBase::computeCommitteeMroot() {
+    SHA256 StakeVoteBase::getCommitteeMroot() const {
         if (!m_committeeStatePtr) {
-            m_committeeMroot = chain::checksum256_type();
-            return;
+            return SHA256();
         }
-        m_committeeMroot = CommitteeSet(m_committeeStatePtr->cinfo).committeeMroot();
-        dlog("--------- committee mroot is ${mroot}", ("mroot", m_committeeMroot));
+        return CommitteeSet(m_committeeStatePtr->cinfo).committeeMroot();
+    }
+
+    CommitteeSet StakeVoteBase::getCommitteeSet() const {
+        if (!m_committeeStatePtr) {
+            return CommitteeSet();
+        }
+        return CommitteeSet(m_committeeStatePtr->cinfo);
     }
 
     // static

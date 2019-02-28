@@ -12,7 +12,7 @@ namespace ultrainio {
 #endif
         std::string sigX;
 
-        bool empty();
+        bool empty() const;
 
         BlsVoterSet();
 

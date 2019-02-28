@@ -19,7 +19,7 @@ namespace ultrainio {
         uint64_t m_chainName;
 
         // the latest BlockHeader
-        BlockHeader m_confirmedblockHeader;
+        BlockHeader m_latestConfirmedblockHeader;
 
         std::list<BlockHeader> m_unconfirmedBlockHeaderList;
 

@@ -12,6 +12,8 @@ namespace ultrainio {
 
         ConfirmPoint();
 
+        BlockIdType confirmedBlockId() const;
+
     private:
         BlockHeader m_blockHeader;
 

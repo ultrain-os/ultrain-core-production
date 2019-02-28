@@ -27,6 +27,9 @@
 
 #include <base/Memory.h>
 #include <lightclient/CommitteeSet.h>
+#include <lightclient/EpochEndPoint.h>
+#include <lightclient/LightClientProducer.h>
+#include <lightclient/LightClientMgr.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/MsgBuilder.h>
@@ -1269,6 +1272,26 @@ namespace ultrainio {
                 chain.start_block(block_timestamp, committeeMroot);
             }
 
+            // CheckPoint
+            BlockHeader headBlockHeader = chain.head_block_header();
+            if (EpochEndPoint::isEpochEndPoint(headBlockHeader)) { // CheckPoint iff the before one is EpochEndHeader
+                std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(chain.head_block_num() + 1);
+                ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
+                CommitteeSet committeeSet = stakeVotePtr->getCommitteeSet();
+                chain.add_header_extensions_entry(kCommitteeSet, committeeSet.toVectorChar());
+                ilog("add kCommitteeSet in blockNum : ${blockNum} : ${committeeset}", ("blockNum", chain.head_block_num() + 1)("committeeset", committeeSet.toString()));
+            }
+
+            // ConfirmPoint
+            std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
+            if (lightClientProducerPtr->hasNextTobeConfirmedBlsVoterSet()) {
+                chain.add_header_extensions_entry(kBlsVoterSet, lightClientProducerPtr->nextTobeConfirmedBlsVoterSet().toVectorChar());
+                ilog("add kBlsVoterSet to confirm ${confirmedBlockNum} in blockNum : ${blockNum}, set : ${set}",
+                        ("confirmedBlockNum", BlockHeader::num_from_id(lightClientProducerPtr->nextTobeConfirmedBlsVoterSet().commonEchoMsg.blockId))
+                        ("blockNum", chain.head_block_num() + 1)
+                        ("set", lightClientProducerPtr->nextTobeConfirmedBlsVoterSet().toVectorChar()));
+            }
+
             // TODO(yufengshen): We have to cap the block size, cpu/net resource when packing a block.
             // Refer to the subjective and exhausted design.
             std::list<chain::transaction_metadata_ptr> *pending_trxs = chain.get_pending_transactions();
@@ -1305,25 +1328,18 @@ namespace ultrainio {
             // TODO(yufengshen) - Do we need to include the merkle in the block propose?
             chain.set_action_merkle_hack();
             chain.set_trx_merkle_hack();
-            // EpochEndPoint BlockHeader
-            if (StakeVoteBase::committeeHasWorked()) {
-                std::shared_ptr<CommitteeState> committeeState = StakeVoteBase::getCommitteeState(0);
+            // EpochEndPoint iff CommitteeSet changed
+            std::shared_ptr<CommitteeState> committeeState = StakeVoteBase::getCommitteeState(0);
+            if (committeeState && committeeState->cinfo.size() > 0) {
                 CommitteeSet committeeSet(committeeState->cinfo);
                 if (committeeSet.committeeMroot() != committeeMroot) {
                     std::string s = std::string(committeeSet.committeeMroot());
                     std::vector<char> v(s.size());
                     v.assign(s.begin(), s.end());
                     chain.add_header_extensions_entry(kNextCommitteeMroot, v);
-                    ilog("old mroot = ${old}, new mroot = ${new}", ("old", committeeMroot)("new", committeeSet.committeeMroot()));
+                    ilog("add kNextCommitteeMroot old mroot = ${old}, new mroot = ${new} in ${blockNum}",
+                            ("old", committeeMroot)("new", committeeSet.committeeMroot())("blockNum", chain.head_block_num() + 1));
                 }
-            }
-            // CheckPoint
-            BlockHeader blockHeader = chain.head_block_header();
-            //if (EpochEndPoint::)
-            // fix
-            if (!m_preBlockVoterSet.empty() && chain::block_header::num_from_id(m_preBlockVoterSet.commonEchoMsg.blockId) == chain.head_block_num()) {
-                BlsVoterSet blsVoterSet = m_preBlockVoterSet.toBlsVoterSet();
-                chain.add_header_extensions_entry(kBlsVoterSet, blsVoterSet.toVectorChar());
             }
             // Construct the block msg from pbs.
             const auto &pbs = chain.pending_block_state();
@@ -1548,6 +1564,8 @@ namespace ultrainio {
             }
             return blankBlock();
         }
+        VoterSet voterSet;
+        std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); itor++) {
 #ifdef CONSENSUS_VRF
             uint32_t priority = itor->second.echo.proposerPriority;
@@ -1556,25 +1574,29 @@ namespace ultrainio {
 #endif
             if (minPriority == priority && phase >= kPhaseBA1) { // check priority only
                 ilog("save VoterSet blockId = ${blockId}", ("blockId", itor->second.echoCommonPart.blockId));
-                VoterSet set;
-                set.commonEchoMsg = itor->second.echoCommonPart;
-                set.accountPool = itor->second.accountPool;
-                set.timePool = itor->second.timePool;
-                set.blsSignPool = itor->second.blsSignPool;
-                set.sigPool = itor->second.sigPool;
+                voterSet.commonEchoMsg = itor->second.echoCommonPart;
+                voterSet.accountPool = itor->second.accountPool;
+                voterSet.timePool = itor->second.timePool;
+                voterSet.blsSignPool = itor->second.blsSignPool;
+                voterSet.sigPool = itor->second.sigPool;
 #ifdef CONSENSUS_VRF
-                set.proofPool = itor->second.proofPool;
+                voterSet.proofPool = itor->second.proofPool;
 #endif
-                m_preBlockVoterSet = set;
                 break;
             }
         }
         if (minBlockId == emptyBlock().id()) {
             dlog("produce empty Block");
+            if (lightClientProducerPtr->shouldBeConfirmed(emptyBlock()) && !voterSet.empty()) {
+                lightClientProducerPtr->addBlockHeaderAndBlsVoterSetPair(emptyBlock(), voterSet.toBlsVoterSet());
+            }
             return emptyBlock();
         }
         auto propose_itor = m_proposerMsgMap.find(minBlockId);
         if (propose_itor != m_proposerMsgMap.end()) {
+            if (lightClientProducerPtr->shouldBeConfirmed(propose_itor->second.block) && !voterSet.empty()) {
+                lightClientProducerPtr->addBlockHeaderAndBlsVoterSetPair(propose_itor->second.block, voterSet.toBlsVoterSet());
+            }
             dlog("find propose msg ok.");
             return propose_itor->second.block;
         }
@@ -1917,6 +1939,8 @@ namespace ultrainio {
              ("num", block->block_num())
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
+        std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
+        lightClientProducerPtr->acceptBlockHeader(chain.head_block_header());
         MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
     }
 

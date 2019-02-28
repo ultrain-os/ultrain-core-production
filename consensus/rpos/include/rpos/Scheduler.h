@@ -262,7 +262,6 @@ class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrain
         boost::asio::steady_timer::duration m_memleakCheckPeriod{std::chrono::seconds{10}};
         std::unique_ptr<boost::asio::steady_timer> m_memleakCheck;
         std::list<SyncTask> m_syncTaskQueue;
-        VoterSet m_preBlockVoterSet;
         uint32_t m_fast_timestamp;
         friend class UranusControllerMonitor;
     };

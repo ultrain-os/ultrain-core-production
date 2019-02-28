@@ -9,6 +9,7 @@ add_library( ultrainio_lightclient
         src/EpochEndPoint.cpp
         src/LightClient.cpp
         src/LightClientMgr.cpp
+        src/LightClientProducer.cpp
         ${HEADERS} )
 
 target_link_libraries( ultrainio_lightclient ultrainio_core )

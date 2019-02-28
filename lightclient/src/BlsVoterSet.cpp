@@ -35,7 +35,7 @@ namespace ultrainio {
         return v;
     }
 
-    bool BlsVoterSet::empty() {
+    bool BlsVoterSet::empty() const {
         return accountPool.empty();
     }
 

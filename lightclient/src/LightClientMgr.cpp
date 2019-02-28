@@ -1,6 +1,7 @@
 #include <lightclient/LightClientMgr.h>
 
 #include <lightclient/LightClient.h>
+#include <lightclient/LightClientProducer.h>
 
 namespace ultrainio {
     std::shared_ptr<LightClientMgr> LightClientMgr::s_self = nullptr;
@@ -21,5 +22,12 @@ namespace ultrainio {
         std::shared_ptr<LightClient> lightClient = std::make_shared<LightClient>(chainName);
         m_lightClientList.push_back(lightClient);
         return lightClient;
+    }
+
+    std::shared_ptr<LightClientProducer> LightClientMgr::getLightClientProducer() {
+        if (!m_lightClientProducer) {
+            m_lightClientProducer = std::make_shared<LightClientProducer>();
+        }
+        return m_lightClientProducer;
     }
 }

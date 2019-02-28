@@ -9,6 +9,7 @@
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
 #include <lightclient/CommitteeInfo.h>
+#include <lightclient/CommitteeSet.h>
 
 namespace ultrainio {
     // forward declare
@@ -72,7 +73,9 @@ namespace ultrainio {
 
         bool getBlsPublicKeyBatch(uint64_t chainName, const std::vector<AccountName>& accounts, unsigned char** pks);
 
-        chain::checksum256_type getCommitteeMroot() { return m_committeeMroot; }
+        SHA256 getCommitteeMroot() const;
+
+        CommitteeSet getCommitteeSet() const;
 
         virtual Proof getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount);
 
@@ -124,9 +127,5 @@ namespace ultrainio {
 
     private:
         static std::shared_ptr<NodeInfo> s_keyKeeper;
-
-        void computeCommitteeMroot();
-
-        chain::checksum256_type m_committeeMroot;
     };
 }

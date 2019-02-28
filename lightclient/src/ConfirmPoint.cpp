@@ -22,4 +22,8 @@ namespace ultrainio {
             }
         }
     }
+
+    BlockIdType ConfirmPoint::confirmedBlockId() const {
+        return m_blsVoterSet.commonEchoMsg.blockId;
+    }
 }
