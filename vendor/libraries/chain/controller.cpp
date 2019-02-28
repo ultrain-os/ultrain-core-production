@@ -101,6 +101,8 @@ struct controller_impl {
    bool                           can_receive_event = false;
    const uint32_t                 event_lifetime = 20; ///< 20 blocks' time, which = 10 seconds by default configuration
    uint32_t                       worldstate_head_block = 0;
+   uint32_t                       worldstate_previous_block = 0;
+   bool                           worldstate_thread_running = false;
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    std::shared_ptr<ws_file_manager>                       ws_manager_ptr;
@@ -239,13 +241,16 @@ struct controller_impl {
          } catch( ... ) {
             elog("worldstate thread error: unknown exception");
          }
+         
+         worldstate_thread_running = false;
          auto end = fc::time_point::now();
          ilog("worldstate thread end, cost time: ${time}", ("time", end - begin));
       });
       worldstate.detach();
+      worldstate_thread_running = true;
 
       auto end=fc::time_point::now();
-      ilog("create_worldstate total_time cost time: ${time_delta}", ("time_delta", end - begin));
+      ilog("start world state thread end, cost time: ${time_delta}", ("time_delta", end - begin));
    }
 
    void on_irreversible( const block_state_ptr& s ) {      
@@ -597,7 +602,7 @@ struct controller_impl {
 
       std::string new_ws_file = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height);
       auto ws_helper_ptr = std::make_shared<ws_helper>(
-         ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height - WS_INTERVAL),
+         worldstate_previous_block > 0 ? ws_manager_ptr->get_file_path_by_info(info.chain_id, worldstate_previous_block) : "",
          new_ws_file
       );
 
@@ -637,6 +642,7 @@ struct controller_impl {
       ws_helper_ptr.reset();
       
       //save worldstate file
+      worldstate_previous_block = block_height;
       std::string new_ws_file_name = new_ws_file +".ws";
       info.file_size = bfs::file_size(new_ws_file_name);
       info.hash_string = ws_manager_ptr->calculate_file_hash(new_ws_file_name).str();
@@ -789,7 +795,7 @@ struct controller_impl {
          pending.reset();
       });
 
-      bool ws = conf.worldstate_control &&(0 == fork_db.head()->block_num % WS_INTERVAL)&&(worldstate_allowed);
+      bool ws = conf.worldstate_control && (0 == fork_db.head()->block_num % WS_INTERVAL) && worldstate_allowed && !worldstate_thread_running;
       try {
          if (add_to_fork_db) {
             pending->_pending_block_state->validated = true;
