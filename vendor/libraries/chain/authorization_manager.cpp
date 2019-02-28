@@ -39,58 +39,54 @@ namespace ultrainio { namespace chain {
          using worldstate_type = worldstate_permission_object;
 
          static worldstate_permission_object to_worldstate_row(const permission_object& value, const chainbase::database& db, void* data) {
-            ilog("test 99-1");
+            ilog("to_worldstate_row, id: ${t}", ("t", value.id._id));
+
             worldstate_permission_object res;
             res.name = value.name;
             res.owner = value.owner;
             res.last_updated = value.last_updated;
             res.auth = value.auth.to_authority();
-            ilog("test 99-2");
+
             // lookup parent name
             const auto& idx = db.get_index<permission_index>().backup_indices();
             auto itr = idx.find( value.parent );
             ULTRAIN_ASSERT( itr != idx.end(), worldstate_exception, "Not find the expected parent: ${s}", ("s", value.parent._id));
-            ilog("test 99-3");
+      
             const auto& parent = *itr;
             res.parent = parent.name;
-            ilog("test 99-3");
-
 
             // lookup the usage object
             if(value.id != 0){
                const auto& idx_usage = db.get_index<permission_usage_index>().backup_indices();
                auto itr_usage = idx_usage.find( value.usage_id );
                ULTRAIN_ASSERT( itr_usage != idx_usage.end(), worldstate_exception, "Not find the expected idx_usage: ${s}", ("s", value.usage_id._id));
-               ilog("test 99-4");
+    
                const auto& usage = *itr_usage;
                res.last_used = usage.last_used;
 
-               ilog("test 99-5");
                if (data){
                   ws_helper* ptr = (ws_helper*)data;
-                  ilog("test 99-5-1");
                   auto id_writer = ptr->get_id_writer();
                   if(id_writer) {
-                     ilog("test 99-5-2 usage.id：  ${t}", ("t", usage.id._id));
+                     ilog("usage.id：  ${t}", ("t", usage.id._id));
                      id_writer->write_row_id(usage.id._id, 0);
                   }
                }
             } else {
                res.last_used = time_point();
             }
-            ilog("test 99-6");
             return res;
          }
-// usage_id 和 permission_object  id 读写顺序不同，造成
+
          static void from_worldstate_row(worldstate_permission_object&& row, permission_object& value, chainbase::database& db, bool backup, void* data = nullptr) {
             value.name = row.name;
             value.owner = row.owner;
             value.last_updated = row.last_updated;
             value.auth = row.auth;
             
-            ilog("test");
+            ilog("from_worldstate_row, id: ${t}", ("t", value.id._id));
             value.parent = 0;
-            if (value.id == 0) { ilog("test  1111");
+            if (value.id == 0) {
                ULTRAIN_ASSERT(row.parent == permission_name(), worldstate_exception, "Unexpected parent name on reserved permission 0");
                ULTRAIN_ASSERT(row.name == permission_name(), worldstate_exception, "Unexpected permission name on reserved permission 0");
                ULTRAIN_ASSERT(row.owner == name(), worldstate_exception, "Unexpected owner name on reserved permission 0");
@@ -100,7 +96,7 @@ namespace ultrainio { namespace chain {
                ULTRAIN_ASSERT(row.auth.threshold == 0,  worldstate_exception, "Unexpected auth threshold on reserved permission 0");
                ULTRAIN_ASSERT(row.last_updated == time_point(),  worldstate_exception, "Unexpected auth last updated on reserved permission 0");
                value.parent = 0;
-            } else if ( row.parent != permission_name()){ ilog("test  1111");
+            } else if ( row.parent != permission_name()){
                if(!backup) {
                   const auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(row.owner, row.parent));
 
@@ -118,27 +114,26 @@ namespace ultrainio { namespace chain {
                
             }
 
-            ilog("test  1111");
-            if (value.id != 0) { ilog("test  1111");
+            if (value.id != 0) {
                // create the usage object
                if(!backup) {
                   const auto& usage = db.create<permission_usage_object>([&](auto& p) {
                      p.last_used = row.last_used;
                   });
                   value.usage_id = usage.id;
-               } else { ilog("test  1111");
+               } else {
                   ULTRAIN_ASSERT( data != nullptr, worldstate_exception, "Data is nullptr, request data!");
                   ws_helper* ptr = (ws_helper*)data;
                   uint64_t old_id = 0, size = 0;
                   ptr->get_id_reader()->read_id_row(old_id, size);
-                  ilog("test read_id usage.id：  ${t}  ${s}", ("t", old_id)("s", size));
+                  ilog("read_id usage.id：  ${t}  ${s}", ("t", old_id)("s", size));
                   const auto& usage = db.backup_create<permission_usage_object>([&](auto& p) {
                      p.last_used = row.last_used;
                      p.id._id = old_id;
                   });
                   value.usage_id = usage.id;
                }
-            } else { ilog("test  1111");
+            } else {
                value.usage_id = 0;
             }
          }
@@ -153,45 +148,32 @@ namespace ultrainio { namespace chain {
          // skip the permission_usage_index as its inlined with permission_index
          if (std::is_same<value_t, permission_usage_object>::value) {
             return;
-         }
+         }         
 
          auto& cache_node = worldstate_db.get_index<index_t>().cache().front();
-         ilog("test cache type size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
-         ilog("test cache() count: ${s}", ("s", worldstate_db.get_index<index_t>().cache().size()));
-
-         ilog("test backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
+         ilog("index: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
+         ilog("remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+         ilog("Cache count: ${s}", ("s", worldstate_db.get_index<index_t>().cache().size()));
+         ilog("Backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
          
          //1:  add to backup if exit old ws file
-         ws_helper_ptr->restore_backup_indices<index_t>(worldstate_db, [&](auto& reader_section, auto& row)->bool{
-            ilog("test restore ${s}", ("s", row.id._id));
-            return reader_section.read_row(row, worldstate_db, true, (void*)ws_helper_ptr.get());
-         });
-
-         ilog("process_cache");
+         ws_helper_ptr->restore_backup_indices<index_t>(worldstate_db, true, (void*)ws_helper_ptr.get());
+    
          //2:  squach backup and cache
          worldstate_db.get_mutable_index<index_t>().process_cache();
          if (std::is_same<value_t, permission_object>::value) {
             worldstate_db.get_mutable_index<permission_usage_index>().process_cache();
          }
 
-         ilog("store_backup_indices");
          //3. read all record from backup, write to new ws file
-         ws_helper_ptr->store_backup_indices<index_t>(worldstate_db, [&](auto& writer_section, auto& row){
-            writer_section.add_row(row, worldstate_db, (void*)ws_helper_ptr.get());
-         });
+         ws_helper_ptr->store_backup_indices<index_t>(worldstate_db, (void*)ws_helper_ptr.get());
 
          // 4. clear backup_indices
          (const_cast<index_t&>(worldstate_db.get_mutable_index<index_t>().backup_indices())).clear();
          if (std::is_same<value_t, permission_object>::value) {
             (const_cast<permission_usage_index&>(worldstate_db.get_mutable_index<permission_usage_index>().backup_indices())).clear();
          }
-         ilog("test5-3");
-
-         // worldstate->write_section<value_t>([this, &worldstate_db]( auto& section ){
-         //    decltype(utils)::walk(worldstate_db, [this, &worldstate_db, &section]( const auto &row ) {
-         //       section.add_row(row, worldstate_db);
-         //    });
-         // });
+         ilog("done");
       });
    }
 
@@ -208,7 +190,7 @@ namespace ultrainio { namespace chain {
             bool more = !section.empty();
             while(more) {
                decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
-                  // more = section.read_row(row, _db);
+                  more = section.read_row(row, _db);
                });
             }
          });

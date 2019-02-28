@@ -251,7 +251,7 @@ namespace ultrainio { namespace chain {
                }
 
                template<typename T>
-               auto read_row( T& out, chainbase::database& db, bool backup = false, void* data = nullptr) -> std::enable_if_t<!std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
+               auto read_row( T& out, chainbase::database& db, bool backup = true, void* data = nullptr) -> std::enable_if_t<!std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
                   auto temp = typename detail::worldstate_row_traits<T>::worldstate_type();
                   auto reader = detail::make_row_reader(temp);
                   bool result = _reader.read_row(reader);
@@ -406,12 +406,6 @@ namespace ultrainio { namespace chain {
    class ostream_worldstate_id_writer {
       public:
          explicit ostream_worldstate_id_writer(std::ostream& worldstate_id_ostream);
-         // template<typename T>
-      // struct worldstate_section_traits {
-      //    static std::string section_name() {
-      //       return boost::core::demangle(typeid(T).name());
-      //    }
-      // };
          void write_start_id_section( const std::string& section_name );
          void write_row_id( const uint64_t id, const uint64_t size);
          void write_end_id_section( );
@@ -438,7 +432,7 @@ namespace ultrainio { namespace chain {
          bool empty ( );
          void clear_id_section();
          bool is_more();
-         
+
       private:
          bool validate_id_section() const;
 
