@@ -442,7 +442,6 @@
       "base": "role_base",
       "fields": [
          {"name":"total_cons_staked",     "type":"int64"},
-         {"name":"is_active",       "type":"bool"},
          {"name":"is_enabled",      "type":"bool"},
          {"name":"url",             "type":"string"},
          {"name":"unpaid_balance",   "type":"uint64"},

@@ -44,7 +44,7 @@ namespace ultrainio {
       private:
          struct account {
             asset    balance;
-            time     last_time;
+            uint32_t  last_block_height;
             uint64_t primary_key()const { return balance.symbol.name(); }
          };
 

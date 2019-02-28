@@ -364,7 +364,6 @@ public:
       bool        is_filter_chain = true;
       uint64_t    show_chain_num = 0;
       bool        filter_enabled = false;
-      bool        filter_actived = false;
    };
 
    struct get_producers_result {
@@ -714,7 +713,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
 
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num)(filter_enabled)(filter_actived) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num)(filter_enabled) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(more)(min_stake_thresh)(min_committee_member_number) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,

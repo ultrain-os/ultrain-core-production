@@ -82,6 +82,7 @@ extern "C" {
 
    uint32_t block_interval_seconds();
 
+   uint32_t head_block_number();
    /**
     *  Returns the time in seconds from 1970 of the block including this action
     *  @brief Get time (rounded down to the nearest second) of the current block (i.e. the block including this action)

@@ -41,6 +41,7 @@ namespace ultrainiosystem {
 
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_used; }
+      bool is_master_chain()const { return chain_name == 0; }
       uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
       int64_t              min_activated_stake   = 42'000'0000;
       uint32_t             min_committee_member_number = 1000;
@@ -84,7 +85,6 @@ namespace ultrainiosystem {
 
    struct producer_info : public role_base {
       int64_t               total_cons_staked = 0;
-      bool                  is_active = true;
       bool                  is_enabled = false;
       std::string           url;
       uint64_t              unpaid_balance = 0;
@@ -96,14 +96,13 @@ namespace ultrainiosystem {
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
       uint64_t primary_key()const { return owner;                                   }
-      bool     active()const      { return is_active;                               }
-      void     deactivate()       { producer_key = std::string(); bls_key = std::string(); is_active = false; is_enabled = false; }
+      void     deactivate()       { producer_key = std::string(); bls_key = std::string(); is_enabled = false; }
       bool     is_on_master_chain() const  {return location == master_chain_name;}
       bool     is_in_pending_queue() const  {return location == pending_queue;}
       bool     is_on_subchain() const      {return location != master_chain_name && location != pending_queue;}
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(url)
+      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_enabled)(url)
                         (unpaid_balance)(total_produce_block)(location)(last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account)(vote_number)(last_vote_blocknum) )
    };
 
@@ -411,7 +410,6 @@ namespace ultrainiosystem {
    #endif
 
     void head_block_id(char* buffer, uint32_t buffer_size);
-    int head_block_number();
     void empower_to_chain(account_name user, uint64_t chain_name);
     bool is_empowered(account_name user, uint64_t chain_name);
     int verify_header_extensions(uint64_t chain_name, int ext_key, const char* ext_value, size_t value_len);

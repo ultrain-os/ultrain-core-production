@@ -86,6 +86,7 @@ namespace ultrainiosystem {
    }
 
    void system_contract::bidname( account_name bidder, account_name newname, asset bid ) {
+      ultrainio_assert( _gstate.is_master_chain(), "only master chain allow create account" );
       require_auth( bidder );
       ultrainio_assert( ultrainio::name_suffix(newname) == newname, "you can only bid on top-level suffix" );
       ultrainio_assert( newname != 0, "the empty name is not a valid account name to bid on" );
@@ -155,7 +156,7 @@ namespace ultrainiosystem {
             { N(utrio.stake),miner.account,asset(_gstate.min_activated_stake)} );
       }else{
          auto prod = _producers.find( miner.account );
-         if(prod == _producers.end() || !(prod->is_active))
+         if( prod == _producers.end() )
          {
             print("updateactiveminers curproducer not found  proposerminer:",ultrainio::name{(*prod).owner}," total_cons_staked:",(*prod).total_cons_staked);
             return;
@@ -172,8 +173,9 @@ namespace ultrainiosystem {
       }
    }
    void system_contract::votecommittee() {
+      constexpr size_t max_stack_buffer_size = 512;
       size_t size = action_data_size();
-      char* buffer = (char*)alloca(size);
+      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
       read_action_data( buffer, size );
       account_name proposer;
       vector<proposeminer_info> proposeminer;
@@ -294,8 +296,9 @@ namespace ultrainiosystem {
       ).send();
    }
 void system_contract::voteaccount() {
+      constexpr size_t max_stack_buffer_size = 512;
       size_t size = action_data_size();
-      char* buffer = (char*)alloca(size);
+      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
       read_action_data( buffer, size );
       account_name proposer;
       vector<proposeaccount_info> proposeaccount;
@@ -375,11 +378,11 @@ void system_contract::voteaccount() {
    }
 
 void system_contract::voteresourcelease() {
+      constexpr size_t max_stack_buffer_size = 512;
       size_t size = action_data_size();
-      char* buffer = (char*)alloca(size);
+      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
       read_action_data( buffer, size );
       account_name proposer;
-
       vector<proposeresource_info> proposeresource;
       datastream<const char*> ds( buffer, size );
       ds >> proposer >> proposeresource;
@@ -528,7 +531,13 @@ void system_contract::voteresourcelease() {
                             /*  no need to parse authorities
                             const authority& owner,
                             const authority& active*/ ) {
-      ultrainio_assert( is_master_chain() || creator == _self, "only master chain allow create account" );
+      global_state_singleton globalparams( _self,_self);
+      int32_t newaccount_fee = 0;
+      if(globalparams.exists()){
+         ultrainio_global_state  _gstate = globalparams.get();
+         newaccount_fee = (int32_t)_gstate.newaccount_fee;
+         ultrainio_assert( _gstate.is_master_chain() || creator == _self, "only master chain allow create account" );
+      }
 
       if( creator != _self ) {
          auto tmp = newact >> 4;
@@ -551,13 +560,9 @@ void system_contract::voteresourcelease() {
                ultrainio_assert( creator == suffix, "only suffix may create this account" );
             }
          }
-         global_state_singleton globalparams( _self,_self);
-         if(globalparams.exists()){
-            ultrainio_global_state  _gstate = globalparams.get();
-            if(_gstate.newaccount_fee > 0){
-                INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {creator,N(active)},
-                    { creator, N(utrio.fee), asset(_gstate.newaccount_fee), std::string("create account") } );
-            }
+         if(newaccount_fee > 0){
+               INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {creator,N(active)},
+                  { creator, N(utrio.fee), asset(newaccount_fee), std::string("create account") } );
          }
       }
 

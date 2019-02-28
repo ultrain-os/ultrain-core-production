@@ -71,7 +71,7 @@ namespace ultrainiosystem {
 
    void system_contract::change_cons( account_name from, account_name receiver, asset stake_cons_delta)
    {
-      ultrainio_assert( is_master_chain() || from == _self || name{from}.to_string().find( "utrio." ) == 0, "only master chain allow delegate consensus" );
+      ultrainio_assert( _gstate.is_master_chain() || from == _self || name{from}.to_string().find( "utrio." ) == 0, "only master chain allow delegate consensus" );
       require_auth( from );
       ultrainio_assert( stake_cons_delta.amount >= 1000000 || stake_cons_delta.amount < 0 , "should stake at least 100 amount" );
       // update consensus stake delegated from "from" to "receiver"
@@ -176,7 +176,7 @@ namespace ultrainiosystem {
             print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," delegated_cons_blocknum:",it->delegated_cons_blocknum);//
             if((name{from}.to_string().find( "utrio." ) != 0 ) && (from != _self)){
                const uint32_t seconds_per_block     = block_interval_seconds();
-               uint32_t blocks_per_month            = seconds_per_year / seconds_per_block / 12;
+               uint32_t blocks_per_month            = seconds_per_day / seconds_per_block / 2;//seconds_per_year / seconds_per_block / 12;
                ultrainio_assert( (curblocknum - it->delegated_cons_blocknum) > blocks_per_month , "should stake at least more than one month" );
             }
          }
@@ -238,7 +238,7 @@ namespace ultrainiosystem {
    void system_contract::resourcelease( account_name from, account_name receiver,
                           uint64_t combosize, uint64_t days, uint64_t location){
       require_auth( from );
-      ultrainio_assert( is_master_chain() || from == _self, "only master chain allow sync resourcelease" );
+      ultrainio_assert( _gstate.is_master_chain() || from == _self, "only master chain allow sync resourcelease" );
       ultrainio_assert(location != pending_queue && location != default_chain_name, "wrong location");
       auto chain_itr = _subchains.end();
       if(location != master_chain_name) {

@@ -121,7 +121,6 @@ public:
 
    bfs::path                        blocks_dir;
    bool                             readonly = false;
-   bool                             is_on_main_chain  = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
@@ -523,8 +522,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          ULTRAIN_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
       }
 
-      my->chain_config->is_on_main_chain = options.at( "masterchain" ).as<bool>();
-      ilog( "config is masterchain value: '${masterchain}'", ("masterchain",options.at( "masterchain" ).as<bool>()));
       my->chain.emplace( *my->chain_config );
       my->chain_id.emplace( my->chain->get_chain_id());
 
@@ -1166,9 +1163,6 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
         copy_inline_row(obj, data);
         auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
         if(p.filter_enabled && !(producer["is_enabled"].as_bool())) {
-            return;
-        }
-        if(p.filter_actived && !(producer["is_active"].as_bool())) {
             return;
         }
         if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {

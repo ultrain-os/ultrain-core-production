@@ -106,7 +106,7 @@ namespace ultrainiosystem {
                                                       {pay_account, asset(new_tokens - fee_tokens.amount), std::string("issue tokens for claimrewards")} );
       }
       for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
-         if(itr->unpaid_balance > 0 && itr->is_active){
+         if( itr->unpaid_balance > 0 ){
             auto producer_unpaid_balance = (int64_t)itr->unpaid_balance;
             print("\nclaimrewards producer:",name{itr->owner}," producer_pay:",producer_unpaid_balance,"\n");
             _producers.modify( itr, [&](auto& p) {
@@ -119,10 +119,10 @@ namespace ultrainiosystem {
    }
 
    void system_contract::distributreward(){
-      if(!is_master_chain())
+      if(!_gstate.is_master_chain())
          return;
       uint32_t block_height = (uint32_t)head_block_number() + 1;
-      uint32_t interval_num = seconds_per_day*7/block_interval_seconds();
+      uint32_t interval_num = seconds_per_day/block_interval_seconds();
       if(block_height < 120 || block_height%interval_num != 0) {
          return;
       }

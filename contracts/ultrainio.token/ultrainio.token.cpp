@@ -112,8 +112,8 @@ void token::sub_balance( account_name owner, asset value ) {
    accounts from_acnts( _self, owner );
 
    const auto& from = from_acnts.get( value.symbol.name(), "no balance object found" );
-   auto ct = now();
-   if((ct - from.last_time < interval_sec) && (owner != N(ultrainio)) && name{owner}.to_string().find( "utrio." ) != 0){
+   uint32_t cur_block_height= (uint32_t)head_block_number();
+   if((cur_block_height - from.last_block_height < interval_sec/block_interval_seconds()) && (owner != N(ultrainio)) && name{owner}.to_string().find( "utrio." ) != 0){
       asset fee( operatefee, value.symbol );
       if(value.amount > 100000)
          fee = value/1000;
@@ -129,7 +129,7 @@ void token::sub_balance( account_name owner, asset value ) {
    } else {
       from_acnts.modify( from, [&]( auto& a ) {
           a.balance -= value;
-          a.last_time = ct;
+          a.last_block_height = cur_block_height;
       });
    }
 }
@@ -141,7 +141,7 @@ void token::add_balance( account_name owner, asset value )
    if( to == to_acnts.end() ) {
       to_acnts.emplace( [&]( auto& a ){
         a.balance = value;
-        a.last_time = now();
+        a.last_block_height = (uint32_t)head_block_number();
       });
    } else {
       to_acnts.modify( to, [&]( auto& a ) {

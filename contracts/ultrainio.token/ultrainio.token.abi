@@ -42,7 +42,7 @@
       "base": "",
       "fields": [
         {"name":"balance", "type":"asset"},
-        {"name":"last_time", "type":"time_point_sec"}
+        {"name":"last_block_height", "type":"uint32"}
       ]
     },{
       "name": "currency_stats",

@@ -175,6 +175,4 @@ extern "C" {
    account_name current_sender();
    ///@ } actioncapi
 
-
-   bool is_master_chain();
 }

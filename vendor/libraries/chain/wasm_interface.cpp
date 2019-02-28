@@ -1231,10 +1231,6 @@ class authorization_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-   bool is_master_chain() {
-      return context.control.is_on_main_chain();
-   }
-
    void require_authorization( const account_name& account ) {
       context.require_authorization( account );
    }
@@ -2326,7 +2322,6 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(authorization_api,
-   (is_master_chain,       int()          )
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )

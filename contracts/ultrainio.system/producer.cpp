@@ -82,9 +82,12 @@ namespace ultrainiosystem {
          _producers.modify( prod, [&]( producer_info& info ){
                info.producer_key = producer_key;
                info.bls_key  = bls_key;
-               info.is_active    = true;
                info.url          = url;
                info.location     = location;
+               if(info.total_cons_staked >= _gstate.min_activated_stake)
+                    info.is_enabled = true;
+               else
+                    info.is_enabled = false;  
          });
       } else {
          ultrainio_assert( is_account( rewards_account ), "rewards account not exists" );
@@ -93,7 +96,6 @@ namespace ultrainiosystem {
                info.total_cons_staked   = 0LL;
                info.producer_key  = producer_key;
                info.bls_key  = bls_key;
-               info.is_active     = true;
                info.is_enabled    = false;
                info.url           = url;
                info.location      = location;
@@ -103,7 +105,9 @@ namespace ultrainiosystem {
       if(has_auth(_self)){
          require_auth(_self);
       } else{
-         ultrainio_assert( is_master_chain(), "only master chain allow regproducer" );
+         ultrainio_assert( _gstate.is_master_chain(), "only master chain allow regproducer" );
+         asset cur_tokens = ultrainio::token(N(utrio.token)).get_balance( producer,symbol_type(CORE_SYMBOL).name());
+         ultrainio_assert( cur_tokens.amount >= 50000, "The current action fee is 5 UGAS, please ensure that the account is fully funded" );
          INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {producer,N(active)},
             { producer, N(utrio.fee), asset(50000), std::string("regproducer") } );
       }
@@ -114,7 +118,7 @@ namespace ultrainiosystem {
       if(has_auth(_self)){
          require_auth(_self);
       } else{
-         ultrainio_assert( is_master_chain(), "only master chain allow unregprod" );
+         ultrainio_assert( _gstate.is_master_chain(), "only master chain allow unregprod" );
       }
       const auto& prod = _producers.get( producer, "producer not found" );
       uint64_t curblocknum = (uint64_t)head_block_number() + 1;
@@ -122,7 +126,7 @@ namespace ultrainiosystem {
 
       ultrainio_assert( (curblocknum - prod.last_operate_blocknum) > 2 , "interval operate at least more than two number block high" );
       _producers.modify( prod, [&]( producer_info& info ){
-            info.deactivate();
+            info.set_disabled();
             info.last_operate_blocknum = curblocknum;
       });
 /*

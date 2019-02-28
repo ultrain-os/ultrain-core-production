@@ -66,7 +66,6 @@ namespace ultrainio { namespace chain {
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
             db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
-            bool                     is_on_main_chain = false;
 
             flat_set<account_name>   resource_greylist;
 
@@ -211,7 +210,6 @@ namespace ultrainio { namespace chain {
          void check_action_list( account_name code, action_name action )const;
          void check_key_list( const public_key_type& key )const;
          bool is_producing_block()const;
-         bool is_on_main_chain()const;
 
          void add_resource_greylist(const account_name &name);
          void remove_resource_greylist(const account_name &name);
