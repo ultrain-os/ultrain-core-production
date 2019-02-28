@@ -96,7 +96,7 @@ namespace ultrainiosystem {
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
       uint64_t primary_key()const { return owner;                                   }
-      void     deactivate()       { producer_key = std::string(); bls_key = std::string(); is_enabled = false; }
+      void     set_disabled()       { producer_key = std::string(); bls_key = std::string(); is_enabled = false; }
       bool     is_on_master_chain() const  {return location == master_chain_name;}
       bool     is_in_pending_queue() const  {return location == pending_queue;}
       bool     is_on_subchain() const      {return location != master_chain_name && location != pending_queue;}
