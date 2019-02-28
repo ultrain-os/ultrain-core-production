@@ -72,8 +72,8 @@ struct pending_state {
 
    controller::block_status           _block_status = controller::block_status::incomplete;
 
-   void push() {
-      _db_session.push();
+   void push(bool ws =false) {
+      _db_session.push(ws);
    }
 };
 
@@ -148,7 +148,7 @@ struct controller_impl {
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size,
-        WS_INTERVAL),
+        cfg.worldstate_control),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -803,6 +803,7 @@ struct controller_impl {
          pending.reset();
       });
 
+      bool ws = conf.worldstate_control &&(0 == fork_db.head()->block_num % WS_INTERVAL)&&(worldstate_allowed);
       try {
          if (add_to_fork_db) {
             pending->_pending_block_state->validated = true;
@@ -820,11 +821,9 @@ struct controller_impl {
       }
 
       // push the state for pending.
-      pending->push();
+      pending->push(ws);
       // block syncing and listner branch, worldstate allowed for listner but not for syncing
-      if ( (conf.worldstate_control)
-           && (0 == fork_db.head()->block_num % WS_INTERVAL)
-           && (worldstate_allowed) ) {
+      if ( ws ) {
          create_worldstate();
       }
    }

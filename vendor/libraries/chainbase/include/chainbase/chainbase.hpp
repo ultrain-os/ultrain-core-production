@@ -215,8 +215,8 @@ namespace chainbase {
          typedef undo_state< value_type >                              undo_state_type;
          typedef cache_state< value_type >                              cache_state_type;
 
-         generic_index( allocator<value_type> a, uint64_t cache_interval=0 )
-         :_stack(a),_cache(a),_cache_interval(cache_interval),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+         generic_index( allocator<value_type> a, bool cache_on=true )
+         :_stack(a),_cache(a),_cache_on(cache_on),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
 
          void validate()const {
             if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
@@ -309,12 +309,12 @@ namespace chainbase {
                }
 
                /** leaves the UNDO state on the stack when session goes out of scope */
-               void push()   {
+               void push( bool ws = false )   {
                    _apply = false;
                    if (_index._flag)
                    {_index._flag = false;return;}
                    _index.squash_cache();
-                   if ((_revision+2) %_index._cache_interval == 0)
+                   if ( ws )
                        _index._flag = true;
                }
                /** combines this session with the prior session */
@@ -353,7 +353,7 @@ namespace chainbase {
 
              ilog("test####start_undo_session:    ${s}  ${t}", ("s", _stack.back().revision)("t", _stack.back().revision));
 
-               if( _cache_interval ){
+               if( _cache_on){
                   _cache.emplace_back( _indices.get_allocator() );
                }
                return session( *this, _revision );
@@ -419,7 +419,7 @@ namespace chainbase {
          void squash_cache(){
              std::cout<<"#####squash_cache before size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
              ilog("test####squash_cache before size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
-             if( !_cache_interval || _cache.size()<2  ) {return;};
+             if( !_cache_on|| _cache.size()<2  ) {return;};
              std::cout<<"#####squash_cache size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
              ilog("test####squash_cache size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
              auto& cache = _cache.back();
@@ -587,7 +587,7 @@ namespace chainbase {
 
          void process_cache()
          {
-             if ( !_cache_interval || !_cache.size()) return;
+             if ( !_cache_on|| !_cache.size()) return;
              auto& head= _cache.front();
 
              /*The order of operation must be remove, modify, create.That is because it maybe conflict 
@@ -617,7 +617,7 @@ namespace chainbase {
 
          bool process_table()
          {
-             if ( !_cache_interval || !_cache.size()) return false;
+             if ( !_cache_on|| !_cache.size()) return false;
              auto& head= _cache.front();
              auto& row = _indices_backup.begin();
 
@@ -643,7 +643,7 @@ namespace chainbase {
          template<typename C>
              void process_table(C&& c)
              {
-                 if ( !_cache_interval || !_cache.size()) return;
+                 if ( !_cache_on|| !_cache.size()) return;
                  auto& head= _cache.front();
 
                  for(auto item = head.removed_ids.begin();item != head.removed_ids.end()&&_indices_backup.empty();)
@@ -684,7 +684,7 @@ namespace chainbase {
              }
          std::pair<bool,typename value_type::id_type> process_create()
          {    
-             if ( !_cache_interval || !_cache.size()) return {false,0};
+             if ( !_cache_on|| !_cache.size()) return {false,0};
              auto& create= _cache.front().new_values;
 
              if (create.empty()) return {false,0};
@@ -789,7 +789,7 @@ namespace chainbase {
          }
 
          void cache_remove( const value_type& v ) {
-            if ( !_cache_interval || !_cache.size() ) return;
+            if ( !_cache_on|| !_cache.size() ) return;
             auto& head = _cache.back();
             if( !head.new_values.erase(v.id) ){
                head.modify_values.erase(v.id);
@@ -798,7 +798,7 @@ namespace chainbase {
          }
 
          void cache_modify( const value_type& v ) {
-            if ( !_cache_interval || !_cache.size() ) return;
+            if ( !_cache_on|| !_cache.size() ) return;
             auto& head = _cache.back();
             auto it = head.new_values.find(v.id);
             if( it != head.new_values.end() )
@@ -816,7 +816,7 @@ namespace chainbase {
          }
 
          void cache_create( const value_type& v ) {
-            if ( !_cache_interval || !_cache.size() ) return;
+            if ( !_cache_on|| !_cache.size() ) return;
             _cache.back().new_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
          }
 
@@ -830,7 +830,7 @@ namespace chainbase {
           *  Commit will discard all revisions prior to the committed revision.
           */
          bool                            _flag = false;
-         uint64_t                        _cache_interval;
+         uint64_t                        _cache_on;
          int64_t                         _revision = 0;
          typename value_type::id_type    _next_id = 0;
          index_type                      _indices;
@@ -842,7 +842,7 @@ namespace chainbase {
    class abstract_session {
       public:
          virtual ~abstract_session(){};
-         virtual void push()             = 0;
+         virtual void push(bool ws=false)= 0;
          virtual void squash()           = 0;
          virtual void undo()             = 0;
          virtual int64_t revision()const  = 0;
@@ -854,7 +854,7 @@ namespace chainbase {
       public:
          session_impl( SessionType&& s ):_session( std::move( s ) ){}
 
-         virtual void push() override  { _session.push();  }
+         virtual void push(bool ws=false) override{ _session.push(ws);  }
          virtual void squash() override{ _session.squash(); }
          virtual void undo() override  { _session.undo();  }
          virtual int64_t revision()const override  { return _session.revision();  }
@@ -965,7 +965,7 @@ namespace chainbase {
 
          using database_index_row_count_multiset = std::multiset<std::pair<unsigned, std::string>>;
 
-         database(const bfs::path& dir, open_flags write = read_only, uint64_t shared_file_size = 0, uint64_t ws_interval = 0, bool allow_dirty = false);
+         database(const bfs::path& dir, open_flags write = read_only, uint64_t shared_file_size = 0, bool ws = true, bool allow_dirty = false);
          ~database();
          database(database&&) = default;
          database& operator=(database&&) = default;
@@ -1002,9 +1002,9 @@ namespace chainbase {
                   undo();
                }
 
-               void push()
+               void push(bool ws=false)
                {
-                  for( auto& i : _index_sessions ) i->push();
+                  for( auto& i : _index_sessions ) i->push(ws);
                   _index_sessions.clear();
                }
 
@@ -1068,7 +1068,7 @@ namespace chainbase {
                   BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in read only database" ) );
                }
                first_time_adding = true;
-               idx_ptr = _segment->construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ), _ws_interval );
+               idx_ptr = _segment->construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ), _ws);
              }
 
              idx_ptr->validate();
@@ -1325,7 +1325,7 @@ namespace chainbase {
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
 #endif
-         uint64_t                                                    _ws_interval;
+         bool                                                        _ws;
          void                                                        _msync_database();
    };
 
