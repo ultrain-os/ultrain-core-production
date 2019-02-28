@@ -56,12 +56,13 @@ namespace ultrainiosystem {
       uint16_t             max_resources_number = 10000;    //set the resource combo to 10000
       uint16_t             total_resources_used_number = 0;
       uint32_t             newaccount_fee = 2000;
+      uint64_t             chain_name = 0;
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
                                 (max_ram_size)(min_activated_stake)(min_committee_member_number)
                                 (total_ram_bytes_used)(start_block)(block_reward_vec)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_balance)(total_activated_stake)
-                                (last_name_close)(max_resources_number)(total_resources_used_number)(newaccount_fee) )
+                                (last_name_close)(max_resources_number)(total_resources_used_number)(newaccount_fee)(chain_name) )
    };
 
    struct chain_resource {

@@ -171,7 +171,7 @@ def stepRegProducers():
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s}}\' -p ultrainio ' % (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, newaccount_fee) )
+        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":%s}}\' -p ultrainio ' % (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, newaccount_fee, args.subchain) )
     sleep(5)
 
 def stepCreateinitAccounts():
@@ -338,7 +338,7 @@ parser.add_argument('-a', '--all', action='store_true', help="Do everything mark
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
 parser.add_argument('-p','--programpath', metavar='', help="set programpath params")
 parser.add_argument('-m', '--masterchain', action='store_true', help="set current master chain")
-parser.add_argument('-sub', '--subchain', type=str, help="set subchain name info")
+parser.add_argument('-sub', '--subchain', type=str, default="0", help="set subchain name info")
 for (flag, command, function, inAll, help) in commands:
     prefix = ''
     if inAll: prefix += '*'
@@ -362,7 +362,7 @@ adjustaccounts = ["genesis",]
 if args.masterchain:
     for a in accounts[1:]:
         adjustaccounts.append("master"+a)
-elif args.subchain:
+elif args.subchain and args.subchain != '0' :
    for a in accounts[1:]:
       adjustaccounts.append("user"+"."+args.subchain+a)
 else:

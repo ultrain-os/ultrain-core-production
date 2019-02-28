@@ -51,10 +51,11 @@ namespace ultrainiosystem {
                 _gstate.block_reward_vec.assign(params.block_reward_vec.begin(), params.block_reward_vec.end());;
             }
             _gstate.newaccount_fee = params.newaccount_fee;
+            _gstate.chain_name = params.chain_name;
             _gstate.max_resources_number = params.max_resources_number;
             _global.set( _gstate );
         }else {
-            auto ite_chain = _subchains.find(params.chain_type);
+            auto ite_chain = _subchains.find(params.chain_name);
             ultrainio_assert(ite_chain != _subchains.end(), "this chian is not existed");
             _subchains.modify(ite_chain, [&](subchain& info) {
                 info.global_resource.max_ram_size = params.max_ram_size;

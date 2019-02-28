@@ -406,7 +406,8 @@
          {"name":"min_committee_member_number",   "type":"uint32"},
          {"name":"block_reward_vec",              "type":"block_reward[]"},
          {"name":"max_resources_number",           "type":"uint16"},
-         {"name":"newaccount_fee",                 "type":"uint32"}
+         {"name":"newaccount_fee",                 "type":"uint32"},
+         {"name":"chain_name",                     "type":"uint64"}
       ]
     },{
       "name": "ultrainio_global_state",
@@ -425,7 +426,8 @@
          {"name":"last_name_close",               "type":"block_timestamp_type"},
          {"name":"max_resources_number",            "type":"uint16"},
          {"name":"total_resources_used_number",        "type":"uint16"},
-         {"name":"newaccount_fee",            "type":"uint32"}
+         {"name":"newaccount_fee",            "type":"uint32"},
+         {"name":"chain_name",            "type":"uint64"}
       ]
     },{
       "name": "role_base",

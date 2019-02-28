@@ -271,9 +271,10 @@ namespace ultrainio {
       std::vector<block_reward> block_reward_vec;
       uint16_t             max_resources_number;
       uint32_t             newaccount_fee;
+      uint64_t             chain_name;
       uint64_t  primary_key()const { return chain_type; }
       ULTRAINLIB_SERIALIZE( ultrainio_system_params,(chain_type)(max_ram_size)(min_activated_stake)
-                            (min_committee_member_number)(block_reward_vec)(max_resources_number)(newaccount_fee) )
+                            (min_committee_member_number)(block_reward_vec)(max_resources_number)(newaccount_fee)(chain_name) )
    };
    /**
     * Require the specified authorization for this action. If this action doesn't contain the specified auth, it will fail.

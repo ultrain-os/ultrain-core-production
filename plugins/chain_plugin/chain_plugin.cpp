@@ -685,7 +685,7 @@ namespace chain_apis {
 const string read_only::KEYi64 = "i64";
 
 read_only::get_info_results read_only::get_chain_info(const read_only::get_chain_info_params&) const {
-   const auto& rm = db.get_resource_limits_manager();
+    const auto& rm = db.get_resource_limits_manager();
    return {
       ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
       db.get_chain_id(),

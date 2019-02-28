@@ -46,15 +46,7 @@ namespace ultrainio { namespace chain {
        uint16_t         consensus_period;
        uint64_t         reward;
    };
-   struct ultrainio_system_params {
-      uint64_t             chain_type;
-      uint64_t             max_ram_size;
-      int64_t              min_activated_stake;
-      uint32_t             min_committee_member_number;
-      std::vector<block_reward> block_reward_vec;
-      uint16_t             max_resources_number;
-      uint32_t             newaccount_fee;
-   };
+
    inline bool operator== (const permission_level& lhs, const permission_level& rhs) {
       return std::tie(lhs.actor, lhs.permission) == std::tie(rhs.actor, rhs.permission);
    }
@@ -150,6 +142,5 @@ FC_REFLECT( ultrainio::chain::proposeminer_info, (account)(public_key)(bls_key)(
 FC_REFLECT( ultrainio::chain::proposeaccount_info, (account)(owner_key)(active_key)(updateable)(location)(approve_num) )
 FC_REFLECT( ultrainio::chain::proposeresource_info, (account)(lease_num)(days)(location)(approve_num) )
 FC_REFLECT( ultrainio::chain::block_reward , (consensus_period)(reward) )
-FC_REFLECT( ultrainio::chain::ultrainio_system_params,(chain_type)(max_ram_size)(min_activated_stake)(min_committee_member_number)(block_reward_vec)(max_resources_number)(newaccount_fee) )
 FC_REFLECT( ultrainio::chain::action, (account)(name)(authorization)(data) )
 

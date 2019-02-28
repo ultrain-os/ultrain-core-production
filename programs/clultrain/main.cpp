@@ -1004,29 +1004,6 @@ struct voteresource_subcommand {
    }
 };
 
-struct setsysparams_subcommand {
-   string requested_data;
-   setsysparams_subcommand(CLI::App* actionRoot) {
-      auto setsysparams_action = actionRoot->add_subcommand("setsysparams", localized("set system contract params action"));
-      add_standard_transaction_options(setsysparams_action);
-      setsysparams_action->add_option("ultrainio_system_params", requested_data, localized("The JSON string or filename defining ultrainio_system_params"))->required();
-      setsysparams_action->set_callback([&] {
-         fc::variant requested_data_var;
-         try {
-            requested_data_var = json_from_file_or_string(requested_data);
-         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse ultrainio_system_params JSON '${data}'", ("data",requested_data))
-         ultrainio_system_params reqdata;
-         try {
-            reqdata = requested_data_var.as<ultrainio_system_params>();
-         } ULTRAIN_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested ultrainio_system_params format: '${data}'", ("data",requested_data_var));
-
-         auto args = fc::mutable_variant_object()
-            ("ultrainio_system_params", requested_data_var);
-         send_actions({chain::action{{permission_level{config::system_account_name,config::active_name}}, config::system_account_name, "setsysparams", variant_to_bin( N(ultrainio), NEX(setsysparams), args ) }});
-      });
-   }
-};
-
 struct buy_respackage_subcommand {
    string from_str;
    string receiver_str;
@@ -2725,7 +2702,6 @@ int main( int argc, char** argv ) {
    auto votecommittee = votecommittee_subcommand(system);
    auto voteaccount = voteaccount_subcommand(system);
    auto voteresource = voteresource_subcommand(system);
-   auto setsysparams = setsysparams_subcommand(system);
    auto buyresourcespackage = buy_respackage_subcommand(system);
 
    auto delegatecons = delegate_cons_subcommand(system);
