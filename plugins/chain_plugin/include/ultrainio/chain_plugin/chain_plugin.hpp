@@ -369,7 +369,6 @@ public:
 
    struct get_producers_result {
       vector<fc::variant> rows; ///< one row per item, either encoded as hex string or JSON object
-      uint64_t            thresh_activated_stake_time;
       string              more; ///< fill lower_bound with this value to fetch more rows
       int64_t             min_stake_thresh {};
       uint32_t            min_committee_member_number {};
@@ -716,7 +715,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num)(filter_enabled)(filter_actived) )
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(thresh_activated_stake_time)(more)(min_stake_thresh)(min_committee_member_number) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(more)(min_stake_thresh)(min_committee_member_number) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
         (account_name)(head_block_num)(head_block_time)(privileged)(updateable)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(

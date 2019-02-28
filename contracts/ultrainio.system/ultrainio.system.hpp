@@ -46,13 +46,12 @@ namespace ultrainiosystem {
       uint32_t             min_committee_member_number = 1000;
       uint64_t             total_ram_bytes_used = 0;
 
-      uint64_t             start_block =0;
+      uint64_t             start_block = 0;
       std::vector<ultrainio::block_reward> block_reward_vec;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
       uint64_t             total_unpaid_balance = 0; /// all blocks which have been produced but not paid
       int64_t              total_activated_stake = 0;
-      uint64_t             thresh_activated_stake_time = 0;
       block_timestamp      last_name_close;
       uint16_t             max_resources_number = 10000;    //set the resource combo to 10000
       uint16_t             total_resources_used_number = 0;
@@ -61,7 +60,7 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
                                 (max_ram_size)(min_activated_stake)(min_committee_member_number)
                                 (total_ram_bytes_used)(start_block)(block_reward_vec)
-                                (pervote_bucket)(perblock_bucket)(total_unpaid_balance)(total_activated_stake)(thresh_activated_stake_time)
+                                (pervote_bucket)(perblock_bucket)(total_unpaid_balance)(total_activated_stake)
                                 (last_name_close)(max_resources_number)(total_resources_used_number)(newaccount_fee) )
    };
 
@@ -86,7 +85,6 @@ namespace ultrainiosystem {
       int64_t               total_cons_staked = 0;
       bool                  is_active = true;
       bool                  is_enabled = false;
-      bool                  hasenabled = false;
       std::string           url;
       uint64_t              unpaid_balance = 0;
       uint64_t              total_produce_block = 0;
@@ -104,7 +102,7 @@ namespace ultrainiosystem {
       bool     is_on_subchain() const      {return location != master_chain_name && location != pending_queue;}
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(hasenabled)(url)
+      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_active)(is_enabled)(url)
                         (unpaid_balance)(total_produce_block)(location)(last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account)(vote_number)(last_vote_blocknum) )
    };
 
@@ -362,8 +360,6 @@ namespace ultrainiosystem {
 
          void synctransfer( std::string transaction_mroot, uint32_t block_number, std::string tx_id );
       private:
-         inline void update_activated_stake(int64_t stake);
-
          // Implementation details:
 
          //defind in delegate.cpp

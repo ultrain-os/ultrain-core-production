@@ -78,14 +78,6 @@ namespace ultrainiosystem {
              else if(location == pending_queue) {
                  add_to_pending_queue(prod->owner, prod->producer_key, prod->bls_key);
              }
-             else {
-                 if(!prod->hasenabled) {
-                     update_activated_stake(prod->total_cons_staked);
-                     _producers.modify(prod, [&](auto & v) {
-                         v.hasenabled = true;
-                     });
-                 }
-             }
          }
          _producers.modify( prod, [&]( producer_info& info ){
                info.producer_key = producer_key;
@@ -142,12 +134,5 @@ namespace ultrainiosystem {
       } */
    }
 
-   inline void system_contract::update_activated_stake(int64_t stake) {
-       _gstate.total_activated_stake += stake;
-         if( _gstate.total_activated_stake >= _gstate.min_activated_stake && _gstate.thresh_activated_stake_time == 0 ) {
-            _gstate.thresh_activated_stake_time = current_time();
-         }
-
-   }
 
 } /// namespace ultrainiosystem

@@ -41,7 +41,7 @@ namespace ultrainiosystem {
                  TransferActionParam tap = unpack<TransferActionParam>(act.data);
                  ultrainio_assert(tap.to == N(utrio.bank), " account to is not utrio.bank");
                  INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {_self, N(active)},
-                    { N(utrio.bank), tap.from, tap.val, std::string("sync transfer") } );   
+                    { N(utrio.bank), tap.from, tap.val, std::string("sync transfer") } );
                  print("from : ", name{tap.from});
                  print(", to: ", name{tap.to});
                  print(", asset: "); tap.val.print();

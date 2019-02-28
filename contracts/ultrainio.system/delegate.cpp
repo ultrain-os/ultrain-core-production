@@ -188,15 +188,7 @@ namespace ultrainiosystem {
                   v.delegated_cons_blocknum = curblocknum;
                   });
          if(it->is_on_master_chain()) {
-             if(enabled && !it->hasenabled) {
-                 update_activated_stake(it->total_cons_staked);
-                 _producers.modify(it, [&](auto & v) {
-                         v.hasenabled = true;
-                     });
-             }
-             else if(it->hasenabled){
-                 update_activated_stake(total_update.amount);
-             }
+            _gstate.total_activated_stake += total_update.amount;
          }
          else if (enabled) {
              if(it->is_in_pending_queue()) {
