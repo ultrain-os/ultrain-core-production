@@ -423,7 +423,7 @@ namespace chainbase {
              std::cout<<"#####squash_cache size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
              ilog("test####squash_cache size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
              auto& cache = _cache.back();
-             auto& prev_cache = _cache[_cache.size()-2];
+             auto& prev_cache = *(_cache.end()-2);
 
              for( const auto& item : cache.modify_values )
              {
