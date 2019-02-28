@@ -81,7 +81,7 @@ namespace ultrainiosystem {
       auto prod = _producers.find( producer );
       ultrainio_assert( prod != _producers.end(), "producer not found" );
       _producers.modify( prod, [&](auto& p) {
-            p.deactivate();
+            p.set_disabled();
          });
    }
 
@@ -168,7 +168,7 @@ namespace ultrainiosystem {
                { N(utrio.stake),(*prod).owner} );
          }
          _producers.modify( prod, [&](auto& p) {
-               p.deactivate();
+               p.set_disabled();
             });
       }
    }
