@@ -66,7 +66,8 @@
       "fields": [
         {"name": "hash", "type": "checksum256"},
         {"name":"file_size", "type":"uint64"},
-        {"name": "votes", "type": "uint64"}
+        {"name": "votes", "type": "uint64"},
+        {"name": "valid", "type": "bool"}
       ]
     },{
       "name": "block_reward",

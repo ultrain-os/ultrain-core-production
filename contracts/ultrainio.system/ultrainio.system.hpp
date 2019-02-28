@@ -128,12 +128,13 @@ namespace ultrainiosystem {
          ULTRAINLIB_SERIALIZE(pending_res, (owner)(proposal_resource)(provided_approvals) )
       };
    struct hash_vote {
-       hash_vote(checksum256 hash_p, uint64_t size, uint64_t vote):hash(hash_p),file_size(size),votes(vote){}
+       hash_vote(checksum256 hash_p, uint64_t size, uint64_t vote, bool val):hash(hash_p),file_size(size),votes(vote),valid(val){}
        hash_vote(){}
        checksum256      hash;
        uint64_t         file_size;
        uint64_t         votes;
-       ULTRAINLIB_SERIALIZE(hash_vote , (hash)(file_size)(votes) )
+       bool             valid;
+       ULTRAINLIB_SERIALIZE(hash_vote , (hash)(file_size)(votes)(valid) )
    };
 
    static constexpr uint32_t default_worldstate_interval = 60;

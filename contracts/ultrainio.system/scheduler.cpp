@@ -45,16 +45,13 @@ namespace ultrainiosystem {
     void system_contract::reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size) {
         require_auth(current_sender());
         auto propos = _producers.find(current_sender());
-        /*
-         *
-         *TODO
-          1. denial of the report when the hash for the blocknum has been voted by more than 2/3 committee member
-         */
+
         ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->location == subchain, "enabled producer not found this proposer" );
         auto checkBlockNum = [&](uint64_t  bn) -> bool {
             return (bn%default_worldstate_interval) == 0;
         };
         ultrainio_assert(checkBlockNum(blocknum), "report an invalid blocknum ws");
+
         auto ite_chain = _subchains.find(subchain);
         ultrainio_assert(ite_chain != _subchains.end(), "subchain not found");
         ultrainio_assert(blocknum <= ite_chain->confirmed_block_number, "report a blocknum larger than current block");
@@ -68,19 +65,35 @@ namespace ultrainiosystem {
             auto & acc   = wshash->accounts;
             auto ret = std::find(acc.begin(), acc.end(), current_sender());
             ultrainio_assert(ret == acc.end(), "the committee_members already report such ws hash");
+
+            uint32_t  pro_cnt = 0;
+            for(auto itr = _producers.begin(); itr != _producers.end(); itr++) {
+                if(itr->is_enabled && itr->location == subchain) {
+                    pro_cnt++;
+                }
+            }
+
             auto it = hashv.begin();
             for(; it != hashv.end(); it++) {
                 if(hash == it->hash && file_size == it->file_size) {
-                    hashTable.modify(wshash, [&](auto &p) {
+                    if((it->votes+1) >= ceil((double)pro_cnt*2/3)) {
+                        hashTable.modify(wshash, [&](auto &p) {
+                            p.hash_v[static_cast<unsigned int>(it - hashv.begin())].votes++;
+                            p.hash_v[static_cast<unsigned int>(it - hashv.begin())].valid = true;
+                            p.accounts.emplace_back(current_sender());
+                            });
+                    } else {
+                        hashTable.modify(wshash, [&](auto &p) {
                             p.hash_v[static_cast<unsigned int>(it - hashv.begin())].votes++;
                             p.accounts.emplace_back(current_sender());
                             });
+                    }
                     break;
                 }
             }
             if(it == hashv.end()) {
                 hashTable.modify(wshash, [&](auto& p) {
-                    p.hash_v.emplace_back(hash, file_size, 1);
+                    p.hash_v.emplace_back(hash, file_size, 1, false);
                     p.accounts.emplace_back(current_sender());
                 });
             }
@@ -88,14 +101,33 @@ namespace ultrainiosystem {
         else {
             hashTable.emplace([&](auto &p) {
                     p.block_num = blocknum;
-                    p.hash_v.emplace_back(hash, file_size, 1);
+                    p.hash_v.emplace_back(hash, file_size, 1, false);
                     p.accounts.emplace_back(current_sender());
                     });
+
+            // delete item which is old enough but need to keep it if it is the only one with valid flag
             if (blocknum > uint64_t(MAX_WS_COUNT * default_worldstate_interval)){
+                uint64_t latest_valid = 0;
                 uint64_t expired = blocknum - uint64_t(MAX_WS_COUNT * default_worldstate_interval);
-                auto old = hashTable.find(expired);
-                if (old != hashTable.end())
-                    hashTable.erase(old);
+                std::vector<uint64_t> expired_nums;
+
+                for(auto itr = hashTable.begin(); itr != hashTable.end(); itr++) {
+                    auto & hashv = itr->hash_v;
+                    for(auto it = hashv.begin(); it != hashv.end(); it++) {
+                        if(it->valid == true && itr->block_num > latest_valid) {
+                            latest_valid = itr->block_num;
+                        }
+                    }
+                    if(itr->block_num <= expired) {
+                        expired_nums.push_back(itr->block_num);
+                    }
+                }
+                for(auto exp : expired_nums) {
+                    auto old = hashTable.find(exp);
+                    if (old != hashTable.end() && (latest_valid == 0 || exp != latest_valid)) {
+                        hashTable.erase(old);
+                    }
+                }
             }
         }
     }
