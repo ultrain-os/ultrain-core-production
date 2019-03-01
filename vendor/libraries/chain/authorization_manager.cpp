@@ -150,10 +150,10 @@ namespace ultrainio { namespace chain {
             return;
          }         
 
-         auto& cache_node = worldstate_db.get_index<index_t>().cache().front();
+         auto& cache_node = worldstate_db.get_mutable_index<index_t>().cache().front();
          ilog("index: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
          ilog("remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
-         ilog("Cache count: ${s}", ("s", worldstate_db.get_index<index_t>().cache().size()));
+         ilog("Cache count: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().cache().size()));
          ilog("Backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
          
          //1:  add to backup if exit old ws file

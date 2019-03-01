@@ -688,8 +688,9 @@ namespace chainbase {
                  {
                      if(c(*item)){
                          bool ok = _indices_backup.emplace( std::move( item->second ) ).second;
+                         ilog("test emplace");
                          if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a nstraint was violated" ) );
-                         head.new_values.erase(item->second.id);
+                         item = head.new_values.erase(item->second.id);
                          continue;
                      }
                      ++item;
@@ -752,7 +753,7 @@ namespace chainbase {
          }
 
          const auto& stack()const { return _stack; }
-         const auto& cache()const { return _cache; }
+         auto& cache() { return _cache; }
 
       private:
          bool enabled()const { return _stack.size(); }
