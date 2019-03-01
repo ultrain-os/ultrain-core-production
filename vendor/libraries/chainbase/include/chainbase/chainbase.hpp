@@ -590,26 +590,39 @@ namespace chainbase {
              if ( !_cache_on|| !_cache.size()) return;
              auto& head= _cache.front();
 
-             /*The order of operation must be remove, modify, create.That is because it maybe conflict 
-              * between diff operations of unique key.
-              * */
-             for(auto id :head.removed_ids)
+             for(auto item = head.removed_ids.begin();item != head.removed_ids.end()&&_indices_backup.empty();)
              {
-                    _indices_backup.erase( _indices_backup.find( id ) );
+                 auto itr = _indices_backup.find( *item );
+                 if(itr != _indices_backup.end()){
+                     _indices_backup.erase( itr);
+                     item = head.removed_ids.erase(item);
+                     continue;
+                 }
+                 ++item;
              }
 
-             for(auto& item :head.modify_values)
+             for(auto item = head.modify_values.begin();item != head.modify_values.end()&&_indices_backup.empty();)
              {
-                 auto ok = _indices_backup.modify( _indices_backup.find( item.second.id ), [&]( value_type& v ) {
-                                  v = std::move( item.second );
-                                  });
-                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a uniqueness constraint was violated" ) );
+                 auto itr = _indices_backup.find(item->second.id);
+                 if(itr != _indices_backup.end()){
+                     auto ok = _indices_backup.modify( itr , [&]( value_type& v ) {
+                                     v = std::move( item->second );
+                                             });
+                     if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a nstraint was violated" ) );
+                      item = head.modify_values.erase(item);
+                      continue;
+                 }
+                 ++item;
              }
 
-             for(auto& item :head.new_values)
+             for(auto item = head.new_values.begin();item != head.new_values.end();)
              {
-                 bool ok = _indices_backup.emplace( std::move( item.second ) ).second;
-                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a uniqueness constraint was violated" ) );
+
+                 bool ok = _indices_backup.emplace( std::move( item->second ) ).second;
+                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a nstraint was violated" ) );
+                 head.new_values.erase(item->second.id);
+                 continue;
+                 ++item;
              }
 
              _cache.pop_front();
