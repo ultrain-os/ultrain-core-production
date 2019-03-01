@@ -420,7 +420,7 @@ struct controller_impl {
       int count = 0;
       index_utils<table_id_multi_index>::walk(worldstate_db, [&]( const table_id_object& table_row ){
          ws_helper_ptr->get_id_writer()->write_row_id(table_row.id._id, 0);
-
+         ilog("test id ${t}", ("t",table_row.id._id ));
          // add a row for the table
          writer_section.add_row(table_row, worldstate_db);
          count++;
@@ -464,7 +464,13 @@ struct controller_impl {
 
                table_id_object::id_type t_id;
                ilog("test table_id");
+               auto& cache_node = worldstate_db.get_mutable_index<table_id_multi_index>().cache().front();
+
                while (more) {
+                  ilog("re-add_contract remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+                  ilog("re-add_contract Cache count: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().cache().size()));
+                  ilog("re-add_contract Backup size: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices().size()));
+            
                   //1.read 1 table_id row from old ws file, insert to backup indices
                   uint64_t old_id = 0, size = 0;
                   ilog("test");
@@ -473,6 +479,7 @@ struct controller_impl {
                      row.id._id = old_id;
                      reader_section.read_row(row, db);
                      t_id = row.id;
+                     ilog("test id ${t}", ("t",row.id._id ));
                   }, true);
                   ilog("test");
 

@@ -708,7 +708,7 @@ namespace chainbase {
              bool ok = _indices_backup.emplace( std::move(item->second)).second;;
              if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a nstraint was violated" ) );
              create.erase(item->first);
-             return {create.size()!=0,id};
+             return {true,id};
          }
          /**
           * Unwinds all undo states
