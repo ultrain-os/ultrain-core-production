@@ -163,7 +163,7 @@ def stepRegProducers():
     retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
     sleep(2)
     for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'system delegatecons ultrainio %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
+        retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
     stepInitSimpleTest()
     sleep(2)
     for a in rand_acc_lst:
