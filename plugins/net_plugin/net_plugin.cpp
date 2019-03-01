@@ -220,7 +220,7 @@ namespace ultrainio {
         std::shared_ptr<p2p::NodeTable> get_node_table() { return node_table; }
         void onNodeTableAddEvent(const p2p::NodeIPEndpoint& _n);
         void onNodeTableDropEvent(const p2p::NodeIPEndpoint& _n);
-        template<typename VerifierFunc>
+	template<typename VerifierFunc>
         void send_all( const net_message &msg, VerifierFunc verify );
 
         void accepted_block_header(const block_state_ptr&);
@@ -234,7 +234,6 @@ namespace ultrainio {
 
         shared_ptr<tcp::resolver> get_resolver(msg_priority p) const;
         shared_ptr<tcp::acceptor> get_acceptor(msg_priority p) const;
-
         void handle_message( connection_ptr c, const handshake_message &msg);
         void handle_message( connection_ptr c, const chain_size_message &msg);
         void handle_message( connection_ptr c, const go_away_message &msg);
@@ -278,13 +277,16 @@ namespace ultrainio {
         /** \brief Peer heartbeat ticker.
          */
         void ticker();
+        bool is_genesis_finish = false;
+	bool is_producer_account_pk(chain::public_key_type const& pk);
+	bool authen_whitelist_and_producer(const fc::sha256& hash,const chain::public_key_type& pk,const chain::signature_type& sig);
         /** \brief Determine if a peer is allowed to connect.
          *
          * Checks current connection mode and key authentication.
          *
          * \return False if the peer should not connect, true otherwise.
          */
-        bool authenticate_peer(const handshake_message& msg) const;
+        bool authenticate_peer(const handshake_message& msg);
         /** \brief Retrieve public key used to authenticate with peers.
          *
          * Finds a key to use for authentication.  If this node is a producer, use
@@ -1942,7 +1944,6 @@ connection::connection(string endpoint, msg_priority pri)
             return trx_listener.acceptor;
         }
     }
-
     void net_plugin_impl::handle_message( connection_ptr c, const chain_size_message &msg) {
         peer_ilog(c, "received chain_size_message");
     }
@@ -2576,7 +2577,88 @@ connection::connection(string endpoint, msg_priority pri)
          dispatcher->bcast_transaction(*ptx);
       }
    }
+   bool net_plugin_impl::is_producer_account_pk(chain::public_key_type const& pk)
+   {
+        const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+        struct chain_apis::read_only::get_producers_params params;
+        params.json=true;
+        params.lower_bound="";
+        params.show_chain_num = 0;
+        params.is_filter_chain = true;
+        params.filter_enabled = true;
+        std::vector<string> producers_account;
+        std::vector<chain::public_key_type> producers_pk;
+        try {
+            auto result = ro_api.get_producers(params);
+            if(!result.rows.empty()) {
+                for( const auto& r : result.rows ) {
+                    producers_account.push_back(r["owner"].as_string());
+                }
 
+            }
+            for(auto account:producers_account)
+            {
+                struct chain_apis::read_only::get_account_info_params get_account_para;
+                get_account_para.account_name =account;
+                auto result = ro_api.get_account_info(get_account_para);
+                for ( auto& perm : result.permissions )
+                {
+                    for(auto& key_wei: perm.required_auth.keys)
+                    {
+                        producers_pk.push_back(key_wei.key);
+                    }
+                }
+            }
+
+        }
+       catch (fc::exception& e) {
+            ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
+        }
+       auto found_producer_key = std::find(producers_pk.begin(), producers_pk.end(), pk);
+       if(found_producer_key == producers_pk.end())
+       {
+	       return false;
+       }  
+       return true;
+   }
+   bool net_plugin_impl::authen_whitelist_and_producer(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig)
+   {
+        if(!is_genesis_finish)
+        {
+            const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+            bool is_genesis_fin = ro_api.is_genesis_finished();
+            if(!is_genesis_fin)
+            {
+                return true;
+            }
+            else
+            {
+                is_genesis_finish =true;
+            }
+        }
+        chain::public_key_type peer_key;
+        try {
+            peer_key = crypto::public_key(sig,hash, true);
+        }
+        catch (fc::exception& /*e*/) {
+            elog("unrecover key error");
+            return false;
+        }
+        if(peer_key != pk)
+        {
+            elog("unauthenticated key");
+            return false;
+        }
+        auto allowed_it = std::find(allowed_peers.begin(), allowed_peers.end(), pk);
+        bool is_producer_pk = is_producer_account_pk(pk);    
+       if( allowed_it == allowed_peers.end() && (!is_producer_pk))
+       {
+	   elog("an unauthorized key");
+           return false;
+       }
+       return true;
+   }
+#if 0
    bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
       if(allowed_connections == None)
          return false;
@@ -2635,14 +2717,45 @@ connection::connection(string endpoint, msg_priority pri)
       }
       return true;
    }
+#endif
+bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
+	if(allowed_connections == None)
+		return false;
 
+	if(allowed_connections == Any)
+		return true;
+	namespace sc = std::chrono;
+	sc::system_clock::duration msg_time(msg.time);
+	auto time = sc::system_clock::now().time_since_epoch();
+	if(time - msg_time > peer_authentication_interval) {
+		elog( "Peer ${peer} sent a handshake with a timestamp skewed by more than ${time}.",
+				("peer", msg.p2p_address)("time", "1 second")); // TODO Add to_variant for std::chrono::system_clock::duration
+		return false;
+	}
+	if(msg.sig != chain::signature_type() && msg.token != sha256()) {
+		sha256 hash = fc::sha256::hash(msg.time);
+		if(hash != msg.token) {
+			elog( "Peer ${peer} sent a handshake with an invalid token.",
+					("peer", msg.p2p_address));
+			return false;
+		}
+		bool isvalid = authen_whitelist_and_producer(hash,msg.key,msg.sig);
+		return isvalid; 
+	}
+	else
+	{
+		elog( "Peer sent a handshake with blank signature and token, but this node accepts only authenticated connections.");
+		return false;
+	}
+}
    chain::public_key_type net_plugin_impl::get_authentication_key() const {
       if(!private_keys.empty())
          return private_keys.begin()->first;
       /*producer_uranus_plugin* pp = app().find_plugin<producer_uranus_plugin>();
       if(pp != nullptr && pp->get_state() == abstract_plugin::started)
          return pp->first_producer_public_key();*/
-      return chain::public_key_type();
+      ilog("get_authentication_key empty");
+       return chain::public_key_type();
    }
 
    chain::signature_type net_plugin_impl::sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const
@@ -2661,11 +2774,14 @@ connection::connection(string endpoint, msg_priority pri)
       hello.network_version = net_version_base + net_version;
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
-      hello.key = my_impl->get_authentication_key();
+      //hello.key = my_impl->get_authentication_key();
+      auto sk_account = private_key_type(app().get_plugin<producer_uranus_plugin>().get_account_sk());
+      hello.key = sk_account.get_public_key();      
       hello.time = std::chrono::system_clock::now().time_since_epoch().count();
       hello.token = fc::sha256::hash(hello.time);
-      hello.sig = my_impl->sign_compact(hello.key, hello.token);
-      // If we couldn't sign, don't send a token.
+      //hello.sig = my_impl->sign_compact(hello.key, hello.token);
+      hello.sig = sk_account.sign(hello.token);      
+// If we couldn't sign, don't send a token.
       if(hello.sig == chain::signature_type())
          hello.token = sha256();
 
@@ -2898,16 +3014,20 @@ connection::connection(string endpoint, msg_priority pri)
                my->allowed_peers.push_back( chain::public_key_type( key_string ));
             }
          }
+	 for(auto peer: my->allowed_peers)
+	 {
+		 ilog("peer key ${key}",("key",peer));
+	 }
 
          if( options.count( "peer-private-key" )) {
-            const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
+            ilog("has peer-private-key");            
+	    const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
             for( const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings ) {
                auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(
                      key_id_to_wif_pair_string );
                my->private_keys[key_id_to_wif_pair.first] = fc::crypto::private_key( key_id_to_wif_pair.second );
             }
          }
-
          my->chain_plug = app().find_plugin<chain_plugin>();
          my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
@@ -2962,8 +3082,8 @@ connection::connection(string endpoint, msg_priority pri)
          cc.applied_transaction.connect( boost::bind(&net_plugin_impl::applied_transaction, my.get(), _1));
          my->node_table->nodeaddevent.connect( boost::bind(&net_plugin_impl::onNodeTableAddEvent, my.get(), _1));
          my->node_table->nodedropevent.connect( boost::bind(&net_plugin_impl::onNodeTableDropEvent, my.get(), _1));
+	 my->node_table->pktcheckevent.connect(boost::bind(&net_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3));
       }
-
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
 
       my->start_monitors();
@@ -2975,9 +3095,10 @@ connection::connection(string endpoint, msg_priority pri)
       for (auto active_peer : my->rpos_active_peers) {
          my->connect(active_peer, msg_priority_rpos);
       }
-
-      my->node_table->init(my->udp_seed_ip);
-
+      auto sk_account = private_key_type(app().get_plugin<producer_uranus_plugin>().get_account_sk());
+      my->node_table->set_nodetable_sk(sk_account);
+      my->node_table->set_nodetable_pk(sk_account.get_public_key());
+      my->node_table->init(my->udp_seed_ip,std::ref(app().get_io_service()));
       if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
          logger = fc::get_logger_map()[logger_name];
    }

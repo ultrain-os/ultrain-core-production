@@ -11,7 +11,7 @@ max-grey-list-size = 40
 
 #monitor_server
 
-allowed-connection = any
+allowed-connection = producers
 
 max-transaction-time = 1000
 contract-return-string-length = 1024

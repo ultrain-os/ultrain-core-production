@@ -12,7 +12,7 @@
 #include "Common.h"
 #include "UDP.h"
 #include <boost/signals2/signal.hpp>
-
+#include <ultrainio/chain/types.hpp>
 using namespace boost::asio;
 
 namespace ba = boost::asio;
@@ -74,7 +74,7 @@ public:
        return ret;
     }
 
-    void init( const std::vector <std::string> &seeds);
+    void init( const std::vector <std::string> &seeds,ba::io_service &_io);
 
     /// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeID is empty.
     void addNode(Node const& _node, NodeRelation _relation = NodeRelation::Unknown);
@@ -85,11 +85,15 @@ public:
     std::list<NodeID> nodes() const;
 
     std::list<NodeIPEndpoint> getNodes();
-    /// Returns the Node to the corresponding node id or the empty Node if that id is not found.
+/// Returns the Node to the corresponding node id or the empty Node if that id is not found.
     Node node(NodeID const& _id);
     signal<void(const NodeIPEndpoint&)> nodeaddevent;
     signal<void(const NodeIPEndpoint&)> nodedropevent;
-
+    signal<bool(const fc::sha256&,const chain::public_key_type&,const chain::signature_type&)> pktcheckevent;
+    chain::public_key_type m_pk;
+    chain::private_key_type m_sk;
+    void set_nodetable_pk(chain::public_key_type pk){m_pk = pk;}
+    void set_nodetable_sk(chain::private_key_type sk){m_sk = sk;}
 #if defined(BOOST_AUTO_TEST_SUITE) || defined(_MSC_VER) // MSVC includes access specifier in symbol name
 protected:
 #else
@@ -151,7 +155,6 @@ private:
     void handlemsg( bi::udp::endpoint const& _from, Neighbours const& msg ) ;
     /// Called by m_socket when socket is disconnected.
     void onSocketDisconnected() {}
-
     ///timers
     boost::asio::steady_timer::duration   nodetimeoutinterval{std::chrono::seconds{30}};
     std::unique_ptr<boost::asio::steady_timer> checknodereachable_timer;

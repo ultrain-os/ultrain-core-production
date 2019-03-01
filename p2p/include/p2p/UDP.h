@@ -13,38 +13,39 @@ namespace ultrainio
 {
 namespace p2p
 {
-    struct PingNode
+    struct UnsignedPingNode
     {
         uint8_t type ;
-        uint8_t packetType()  { return type; }
-
         NodeIPEndpoint source;
         NodeIPEndpoint dest;
         NodeID sourceid; // sender public key (from signature)
-	NodeID destid;
-   //     h256 echo;       // hash of encoded packet, for reply tracking
+        NodeID destid;
         string chain_id;
-	std::string typeName() { return "Ping"; }
+        chain::public_key_type pk;/*public_key*/
+    };
+    struct PingNode:public UnsignedPingNode
+    {
+        string signature;
     };
     /**
  * Pong packet: Sent in response to ping
  */
-    struct Pong
+    struct UnsignedPong
     {
         uint8_t type ;/*2*/
-        uint8_t packetType()  { return type; }
-
         NodeIPEndpoint destep;
-        NodeIPEndpoint fromep;
-        NodeID sourceid; // sender public key (from signature)
-        NodeID destid;
-   //     h256 echo;       // hash of encoded packet, for reply tracking
-        string chain_id;
-        std::string typeName() { return "Pong"; }
+	NodeIPEndpoint fromep;
+	NodeID sourceid; // sender public key (from signature)
+	NodeID destid;
+	string chain_id;
+        chain::public_key_type pk;/*public_key*/
     };
-    struct FindNode
+    struct Pong:public UnsignedPong
     {
-
+	string signature;
+    };
+    struct UnsignedFindNode
+    {
         uint8_t type;/*3*/
         NodeID fromID;
         NodeID targetID;
@@ -52,15 +53,18 @@ namespace p2p
         NodeIPEndpoint fromep;
         NodeIPEndpoint tartgetep;
         string chain_id;
-        uint8_t packetType()  { return type; }
-        std::string typeName()  { return "FindNode"; }
+        chain::public_key_type pk;/*public_key*/
+    };
+    struct FindNode:public UnsignedFindNode
+    {
+        string signature;
     };
     struct Neighbour
     {
         NodeIPEndpoint endpoint;
         NodeID node;
     };
-    struct Neighbours
+    struct UnsignedNeighbours
     {
         uint8_t type ;/*4*/
         NodeID fromID;
@@ -69,9 +73,11 @@ namespace p2p
         NodeIPEndpoint tartgetep;
         std::vector<Neighbour> neighbours;
         string chain_id;
-
-        uint8_t packetType() { return type; }
-        std::string typeName() { return "Neighbours"; }
+        chain::public_key_type pk;/*public_key*/
+    };
+    struct Neighbours:public  UnsignedNeighbours
+    {
+        string signature;
     };
     using udp_msg = fc::static_variant<PingNode,
             Pong,
@@ -363,8 +369,12 @@ void UDPSocket<Handler, MaxDatagramSize>::disconnectWithError(boost::system::err
 
 }
 //FC_REFLECT( ultrainio::p2p::UDPDatagram, (data)(locus_ip)(locus_port))
-FC_REFLECT( ultrainio::p2p::PingNode, (sourceid)(destid)(type)(source)(dest)(chain_id))
-FC_REFLECT( ultrainio::p2p::Pong, (type)(fromep)(destep)(sourceid)(destid)(chain_id))
-FC_REFLECT( ultrainio::p2p::FindNode, (type)(fromID)(targetID)(destid)(fromep)(tartgetep)(chain_id))
+FC_REFLECT( ultrainio::p2p::UnsignedPingNode, (sourceid)(destid)(type)(source)(dest)(chain_id)(pk))
+FC_REFLECT_DERIVED( ultrainio::p2p::PingNode, (ultrainio::p2p::UnsignedPingNode), (signature))
+FC_REFLECT( ultrainio::p2p::UnsignedPong, (type)(fromep)(destep)(sourceid)(destid)(chain_id)(pk))
+FC_REFLECT_DERIVED( ultrainio::p2p::Pong, (ultrainio::p2p::UnsignedPong), (signature))
+FC_REFLECT( ultrainio::p2p::UnsignedFindNode, (type)(fromID)(targetID)(destid)(fromep)(tartgetep)(chain_id)(pk))
+FC_REFLECT_DERIVED( ultrainio::p2p::FindNode, (ultrainio::p2p::UnsignedFindNode), (signature))
 FC_REFLECT( ultrainio::p2p::Neighbour, (node)(endpoint))
-FC_REFLECT( ultrainio::p2p::Neighbours, (type)(fromID)(destid)(fromep)(tartgetep)(neighbours)(chain_id))
+FC_REFLECT( ultrainio::p2p::UnsignedNeighbours, (type)(fromID)(destid)(fromep)(tartgetep)(neighbours)(chain_id)(pk))
+FC_REFLECT_DERIVED( ultrainio::p2p::Neighbours, (ultrainio::p2p::UnsignedNeighbours), (signature))
