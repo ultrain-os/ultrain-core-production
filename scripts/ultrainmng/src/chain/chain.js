@@ -519,9 +519,9 @@ async function syncChainInfo() {
         if (!rightChain) {
             syncChainData = false;
             //我已不属于这条链，准备迁走
-            // if (isStrillInCommittee)  {
-            //     logger.error("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee,can't be transfer,wait...")
-            // } else {
+            if (isStrillInCommittee)  {
+                logger.error("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee,can't be transfer,wait...")
+            } else {
                 logger.info(chainConfig.myAccountAsCommittee + " are not in subchain committee , need trandfer to chain(" + chainName + "）, start transfer...");
                 if (monitor.isDeploying() == true) {
                     logger.error("monitor isDeploying, wait to switchChain");
@@ -537,7 +537,7 @@ async function syncChainInfo() {
                     await switchChain();
                     return;
                 }
-            // }
+            }
         } else {
             syncChainChanging = false;
         }
