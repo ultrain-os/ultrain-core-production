@@ -18,7 +18,7 @@ class ShellCmd {
 ShellCmd.execCmd = async function (command) {
 
     try {
-        logger.info("execmd :",command);
+        logger.info("execmd :", command);
         var done = false;
         var result = true;
         /**
@@ -28,7 +28,7 @@ ShellCmd.execCmd = async function (command) {
             if (error !== null) {
                 logger.error('exec error: ' + error);
             } else {
-                logger.info("exccmd success:"+command);
+                logger.info("exccmd success:" + command);
                 result = true;
             }
             done = true;
@@ -40,9 +40,22 @@ ShellCmd.execCmd = async function (command) {
         return result;
 
     } catch (e) {
-        logger.error("exec cmd error:",e);
+        logger.error("exec cmd error:", e);
     }
     return false;
+}
+
+
+ShellCmd.execCmdCallback = function (command, callback) {
+    logger.info("execmd :", command);
+    /**
+     * 由于execSync只有在node11以后才有，暂时用主动卡死方式执行
+     */
+    process.exec(command, function (error, stdout, stderr, finish) {
+
+        callback(error, stdout, stderr, finish);
+
+    });
 }
 
 /**
@@ -66,15 +79,15 @@ ShellCmd.execBatchCmd = async function () {
  * @returns {Promise<void>}
  */
 ShellCmd.execCmdFiles = async function (command, args, options) {
-     process.execFile(command, args, options, function (error, stdout, stderr) {
-         if (error !== null) {
-             logger.error('exec error: ' + error);
-         } else {
-             logger.info("exccmd success:"+command);
-         }
+    process.execFile(command, args, options, function (error, stdout, stderr) {
+        if (error !== null) {
+            logger.error('exec error: ' + error);
+        } else {
+            logger.info("exccmd success:" + command);
+        }
     });
 
-     return true;
+    return true;
 }
 
 

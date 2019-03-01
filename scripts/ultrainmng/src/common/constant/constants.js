@@ -59,6 +59,7 @@ var tableConstants = {
     PENDING_ACCOUNT: "pendingacc",//账户投票表
     PENDING_RES: "pendingres", //资源投票表
     WORLDSTATE_HASH: "wshash", //世界状态hash表
+    GLOBAL: "global",
 }
 
 //scode常量
@@ -75,7 +76,8 @@ var chainIdConstants = {
 var pathConstants = {
     WSS_DATA: "/root/.local/share/ultrainio/wssultrain/data/worldstate/download/",
     WSS_LOCAL_DATA: "/root/.local/share/ultrainio/wssultrain/data/worldstate/",
-    MNG_CONFIG: "/root/.local/share/ultrainio/ultrainmng/config/"
+    MNG_CONFIG: "/root/.local/share/ultrainio/ultrainmng/config/",
+    FILE_DOWNLOAD_PATH:"/root/.local/share/ultrainio/ultrainmng/download/",
 }
 
 //ini配置常量
@@ -89,7 +91,8 @@ var iniConstants = {
     MNG_PATH: "mngpath",
     NOD_PATH: "nodpath",
     WSS_PATH: "wsspath",
-    MONITOR: "monitor"
+    MONITOR: "monitor",
+    PEER_KEY: "peer-key",
 }
 
 /**
@@ -110,10 +113,26 @@ var filenameConstants = {
     MNG_FILE: "sideChainService.js"
 }
 
+/**
+ * 加密算法
+ * @type {{SHA256: string, SHA1: string, MD5: string}}
+ */
 var algorithmConstants = {
     MD5 : "md5",
     SHA1 : "sha1",
     SHA256 : "sha256"
+}
+
+/**
+ * status 常量
+ * @type {{STARTING: number, SUCCESS: number, STOP: number, EXCEPTION: number, UNSTART: number}}
+ */
+var statusConstants = {
+    SUCCESS: 4,
+    EXCEPTION: 3,
+    STOP: 2,
+    STARTING: 1,
+    UNSTART: 0
 }
 
 
@@ -131,5 +150,6 @@ module.exports = {
     iniConstants,
     cacheKeyConstants,
     filenameConstants,
-    algorithmConstants
+    algorithmConstants,
+    statusConstants
 }

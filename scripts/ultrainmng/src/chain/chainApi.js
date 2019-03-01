@@ -48,6 +48,21 @@ const getSubChainId = async (configSub) => {
     }
 }
 
+const getChainName = async (configSub) => {
+    let chainName = null;
+    try {
+        let res = await getTableAllData(configSub,constant.contractConstants.ULTRAINIO,constant.contractConstants.ULTRAINIO,constant.tableConstants.GLOBAL,null);
+        logger.debug("global table :",res);
+        if (utils.isNotNull(res) && res.rows.length > 0) {
+            chainName = res.rows[0].chain_name;
+        }
+    } catch (e) {
+        logger.error("getChainName error,",e);
+    }
+
+    return chainName;
+}
+
 /**
  * 根据user 获取chain name
  * @param user
@@ -107,7 +122,7 @@ async function getProducerLists(configSub) {
     var rows = rs.data.rows;
     for (var i in rows) {
         var row = rows[i];
-        if (row.is_active == 1) {
+        if (row.is_enabled == 1) {
             result.push({
                 owner: row.owner,
                 miner_pk: row.producer_key,
@@ -201,6 +216,31 @@ getChainSeedIP = async (chainName, chainConfig) => {
 }
 
 /**
+ * 根据链名称获取白名单公钥信息（genesis+seed）
+ * @param chain
+ * @returns {Promise<string>}
+ */
+getChainPeerKey = async (chainName, chainConfig) => {
+
+    // logger.debug(chainConfig.seedIpConfig);
+    // logger.debug(chainName);
+    try {
+        if (utils.isNotNull(chainConfig.seedIpConfig)) {
+            for (let i = 0; i < chainConfig.seedIpConfig.length; i++) {
+                //logger.debug(chainConfig.seedIpConfig[i])
+                if (chainConfig.seedIpConfig[i].chainName == chainName) {
+                    return chainConfig.seedIpConfig[i].peerKeys;
+                }
+            }
+        }
+
+    } catch (e) {
+        logger.error("get getChainPeerKey error:", e);
+    }
+    return [];
+}
+
+/**
  * 根据链id获取链已上传的ws的height和hash
  * @returns {Promise<void>}
  */
@@ -276,7 +316,7 @@ getTableAllData = async (config, code, scope, table, pk) => {
             logger.debug("tableinfo:" + table + "):", tableinfo);
             if (utils.isNullList(tableinfo.rows) == false) {
                 for (let i = 0; i < tableinfo.rows.length; i++) {
-                    if (tableinfo.rows[i][pk] != lower_bound) {
+                    if (tableinfo.rows[i][pk] != lower_bound || lower_bound == null) {
                         tableObj.rows.push(tableinfo.rows[i]);
                     }
                 }
@@ -433,6 +473,40 @@ monitorCheckIn = async (url,param) => {
     }
 }
 
+/**
+ *
+ * @param url
+ * @param param
+ * @returns {Promise<*>}
+ */
+checkDeployFile = async (url,param) => {
+    try {
+        logger.debug("checkDeployFile param:",qs.stringify(param));
+        const rs =  await axios.post(url+"/filedist/checkDeployInfo", qs.stringify(param));
+        logger.info("checkDeployFile result:",rs.data);
+        return rs.data;
+    } catch (e) {
+        logger.error("checkDeployFile error,",e);
+    }
+}
+
+/**
+ *
+ * @param url
+ * @param param
+ * @returns {Promise<*>}
+ */
+finsihDeployFile = async (url,param) => {
+    try {
+        logger.debug("finishDeployInfo param:",qs.stringify(param));
+        const rs =  await axios.post(url+"/filedist/finishDeployInfo", qs.stringify(param));
+        logger.info("finishDeployInfo result:",rs.data);
+        return rs.data;
+    } catch (e) {
+        logger.error("finishDeployInfo error,",e);
+    }
+}
+
 
 
 module.exports = {
@@ -452,5 +526,9 @@ module.exports = {
     getSubchanMonitorService,
     getSubchainResource,
     getChainBlockDuration,
-    monitorCheckIn
+    monitorCheckIn,
+    checkDeployFile,
+    finsihDeployFile,
+    getChainPeerKey,
+    getChainName
 }

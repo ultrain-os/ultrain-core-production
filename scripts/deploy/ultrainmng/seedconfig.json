@@ -5,6 +5,11 @@
       "172.31.7.20",
       "172.31.32.236"
     ],
+    "peerKeys": [
+      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
+      "UTR6k8qHBrc1CYxNUdbHSThtWid5E4xwNLF9kxk8bXuHV1q3BaQ39",
+      "UTR77phXVHqBtKm1b7NZbyhHt839oRB67Mr2A8pRmavNkTFcPq6yy"
+    ],
     "subchainHttpEndpoint": "http://172.31.7.20:8888",
     "monitorServerEndpoint": "http://172.31.9.38:8078"
   },
@@ -14,6 +19,11 @@
       "172.31.12.250",
       "172.31.32.217"
     ],
+    "peerKeys": [
+      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
+      "UTR5xrJz8r5WDBErKkT8qjsUYLTAGMM5FWcMiE3Hzk3jKvd14NhSK",
+      "UTR6ruimZSqg9uWsAXo6JiP6dtjCeNSYH5158VvVTxUpcuyC1FADM"
+    ],
     "subchainHttpEndpoint": "http://172.31.12.250:8888",
     "monitorServerEndpoint": "http://172.31.6.209:8078"
   },
@@ -22,6 +32,11 @@
     "seedIp": [
       "172.31.8.22",
       "172.31.32.241"
+    ],
+    "peerKeys": [
+      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
+      "UTR8PD6cNkD8f8VqbAUHdmWvqDhXK6f6jsAQXEfgCZkZpSEEhnDzz",
+      "UTR5517AaVg7qgz7VdDCurDrXwfdVQ2TSj1ToCWxCnvfxXhyZkpYa"
     ],
     "subchainHttpEndpoint": "http://172.31.8.22:8888",
     "monitorServerEndpoint": "http://172.31.10.173:8078"

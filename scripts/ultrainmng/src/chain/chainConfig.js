@@ -35,9 +35,13 @@ ChainConfig.configPath = pathConstants.MNG_CONFIG+"config.ini"
 //localtest
 ChainConfig.localTest = false;
 
-//chain_name
+//chain_name- realtime chain name this user belong to
 ChainConfig.chainName = "";
-//chain_name
+
+//local chainName of this chain
+ChainConfig.localChainName = "";
+
+//chain_id
 ChainConfig.chainId = "";
 //genesisTime
 ChainConfig.genesisTime = "";
@@ -97,8 +101,7 @@ ChainConfig.configSub = {
         debug: logUtil.debug
     },
     binaryen: require('binaryen'),
-    symbol: 'UGAS'
-
+    symbol: 'UGAS',
 };
 
 /**
@@ -182,9 +185,9 @@ ChainConfig.syncConfig = async function () {
         logger.info("mainchain httpEndpoint:", this.config.httpEndpoint)
 
         //现在处在主链
-        if (utils.isNotNull(configIniTarget.masterchain)) {
-            this.chainName = chainNameConstants.MAIN_CHAIN_NAME;
-        }
+        // if (utils.isNotNull(configIniTarget.masterchain)) {
+        //     this.chainName = chainNameConstants.MAIN_CHAIN_NAME;
+        // }
 
         logger.info("user info : " + this.myAccountAsCommittee + "");
 
@@ -194,6 +197,8 @@ ChainConfig.syncConfig = async function () {
             logger.info("config.chainId=", this.config.chainId);
             this.configSub.chainId = await chainApi.getSubChainId(this.configSub);
             logger.info("configSub.chainId=", this.configSub.chainId);
+            this.localChainName = await chainApi.getChainName(this.configSub);
+            logger.info("chain name :"+this.localChainName);
             mainChainBlockDuration = await chainApi.getChainBlockDuration(this.config);
             if (utils.isNotNull(mainChainBlockDuration)) {
                 this.mainChainBlockDuration = mainChainBlockDuration;
@@ -229,11 +234,6 @@ ChainConfig.syncConfig = async function () {
  */
 ChainConfig.isReady = function () {
 
-    // //链信息查询
-    // if (utils.isNull(this.chainName)) {
-    //     logger.error("can't get user belong to which subchain from mainchain");
-    //     return false;
-    // }
 
     //校验主链的id
     // if (!utils.isAllNotNull(this.config.chainId)) {
@@ -254,6 +254,14 @@ ChainConfig.isReady = function () {
         logger.error("chainconfig u3 && u3Sub is not ready");
         return false;
     }
+
+    //链信息查询
+    if (this.localChainName == null) {
+        logger.error("chainName can't be null:"+this.configSub.localChainName);
+        return false;
+    }
+
+
 
     return true;
 }

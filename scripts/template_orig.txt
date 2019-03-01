@@ -31,6 +31,8 @@ contract-emit-string-length = 1024
 
 #insert_my_keys
 
+# Optional public key of peer allowed to connect
+
 # print contract's output to console (ultrainio::chain_plugin)
 contracts-console = 1
 plugin = ultrainio::chain_plugin

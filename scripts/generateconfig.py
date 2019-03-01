@@ -13,72 +13,82 @@ parser.add_argument('-ws', '--worldstate', action='store_true', help="enable wor
 parser.add_argument('-tcp', '--tcp', action='store_true', help="enable tcp,ignore udp")
 parser.add_argument('-monitor', '--monitor', type=str, help="set monitor server")
 args = parser.parse_args()
+
+
 class Host(object):
 
-	def __init__(self, ip, constainers):
-		self.ip = ip
-		self.containers = constainers
+    def __init__(self, ip, constainers):
+        self.ip = ip
+        self.containers = constainers
+
 
 class Container(object):
 
-	def __init__(self, id, name, ip, hostip):
-		self.id = id
-		self.name = name
-		self.ip = ip
-		self.hostip = hostip
-		self.peers = []
-		self.isleaf = False
+    def __init__(self, id, name, ip, hostip):
+        self.id = id
+        self.name = name
+        self.ip = ip
+        self.hostip = hostip
+        self.peers = []
+        self.isleaf = False
+
 
 class Node(object):
 
-	def __init__(self, ip):
-		self.id=ip
+    def __init__(self, ip):
+        self.id = ip
+
 
 # global parameters
-hosts={}
-allIDs=[]
-allNames=[]
-allIPs=[]
-allAccounts=[]
+hosts = {}
+allIDs = []
+allNames = []
+allIPs = []
+allAccounts = []
 allPriKeys = []
-allPubKeys =[]
+allPubKeys = []
 
 dockerinfo = "dockerinfo"
+
+
 def select_sort(lists):
     count = len(lists)
     for i in range(0, count):
         min = i
         for j in range(i + 1, count):
-            if int(lists[min].name[len(lists[min].name)-1::len(lists[min].name)]) > int(lists[j].name[len(lists[j].name)-1::len(lists[j].name)]):
+            if int(lists[min].name[len(lists[min].name) - 1::len(lists[min].name)]) > int(
+                    lists[j].name[len(lists[j].name) - 1::len(lists[j].name)]):
                 min = j
         lists[min], lists[i] = lists[i], lists[min]
     return lists
+
+
 # load containers' parameters in hosts
 def load_parameters():
-    global hosts,allIDs,allNames,allIPs,allAccounts,allPriKeys,allPubKeys
+    global hosts, allIDs, allNames, allIPs, allAccounts, allPriKeys, allPubKeys
     print(dockerinfo)
-    with open('config/IPs/'+dockerinfo+'.txt') as f:
-       elements = f.read().splitlines()
+    with open('config/IPs/' + dockerinfo + '.txt') as f:
+        elements = f.read().splitlines()
     IDs = elements[0::3]
     Names = elements[1::3]
     IPs = elements[2::3]
 
     containers = []
-    for i in range(0,len(IDs)):
-        container = Container(IDs[i],Names[i],IPs[i],dockerinfo)
+    for i in range(0, len(IDs)):
+        container = Container(IDs[i], Names[i], IPs[i], dockerinfo)
         containers.append(container)
     hosts[dockerinfo] = select_sort(containers)
 
-    adjustaccounts = ["genesis",]
+    adjustaccounts = ["genesis", ]
     if args.masterchain:
         for a in accounts[1:]:
-            adjustaccounts.append("master"+a)
+            adjustaccounts.append("master" + a)
     elif args.subchain:
         for a in accounts[1:]:
-            adjustaccounts.append("user"+"."+args.subchain+a)
+            adjustaccounts.append("user" + "." + args.subchain + a)
     else:
         for a in accounts[1:]:
-            adjustaccounts.append("user"+a)
+            adjustaccounts.append("user" + a)
     allAccounts = adjustaccounts
     allIDs = allIDs + IDs
     allNames = allNames + Names
@@ -90,77 +100,85 @@ def load_parameters():
     print(allNames)
     print(allIPs)
 
-def write_config_file():
-        insert_genesis_time()
-        hostip = "config"
-        os.system("rm -rf config/" + hostip)
-        os.system("mkdir config/" + hostip)
-        index_key = 0
-        for con in hosts[dockerinfo]:
-            fname = "config/%s/%s.ini" % (hostip, con.id)
-            print(fname)
-            if not os.path.isfile(fname):  # file does not exist
-                        cmd = "cp template.txt " + fname
-                        os.system(cmd)
-            if con.name[len(con.name)-1::len(con.name)] != '7':
-                insert_keys(fname, index_key)
-            if con.name[len(con.name)-1::len(con.name)] == '7':
-                insert_keys(fname, index_key)
-                insert_non_producing(fname)
-            update_ultrainmng_config(fname,hosts[dockerinfo])
-            insert_worldstate_config(fname)
-            insert_monitor_config(fname)
-            print(hostip,con.ip,con.id)
-            if args.tcp == False:
-                insert_udp_seed(fname,hosts[dockerinfo][0].ip);
-            else :
-                insert_peer(fname,hosts[dockerinfo][0].ip);
 
-            index_key+=1
-        os.system("rm -f  template.txt")
+def write_config_file():
+    insert_genesis_time()
+    hostip = "config"
+    os.system("rm -rf config/" + hostip)
+    os.system("mkdir config/" + hostip)
+    index_key = 0
+    for con in hosts[dockerinfo]:
+        fname = "config/%s/%s.ini" % (hostip, con.id)
+        print(fname)
+        if not os.path.isfile(fname):  # file does not exist
+            cmd = "cp template.txt " + fname
+            os.system(cmd)
+        if con.name[len(con.name) - 1::len(con.name)] != '7':
+            insert_keys(fname, index_key)
+        if con.name[len(con.name) - 1::len(con.name)] == '7':
+            insert_keys(fname, index_key)
+            insert_non_producing(fname)
+        update_ultrainmng_config(fname, hosts[dockerinfo])
+        insert_worldstate_config(fname)
+        insert_monitor_config(fname)
+        print(hostip, con.ip, con.id)
+        if args.tcp == False:
+            insert_udp_seed(fname, hosts[dockerinfo][0].ip);
+        else:
+            insert_peer(fname, hosts[dockerinfo][0].ip);
+
+        insertPeerKey(fname);
+
+        index_key += 1
+    os.system("rm -f  template.txt")
+
 
 def readfile(fname):
-	fileold = open(fname, "r")
-	content = fileold.readlines()
-	fileold.close()
-	return content
+    fileold = open(fname, "r")
+    content = fileold.readlines()
+    fileold.close()
+    return content
 
-def writefile(fname,content):
-	filenew = open(fname, "w")
-	filenew.writelines(content)
-	filenew.close()
+
+def writefile(fname, content):
+    filenew = open(fname, "w")
+    filenew.writelines(content)
+    filenew.close()
+
 
 def insert_genesis_time():
-	fname_orig = "template_orig.txt"
-	fname = "template.txt"
-	cmd = "cp %s %s" % (fname_orig, fname)
-	os.system(cmd)
-	content = readfile(fname)
-	after_time = (datetime.datetime.utcnow()+datetime.timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M") + ":00"
-	newcontent = "genesis-time = %s\n" % after_time
-	index_line = content.index("#insert_genesis-time\n")
-	content.insert(index_line+1,newcontent)
-	writefile(fname,content)
+    fname_orig = "template_orig.txt"
+    fname = "template.txt"
+    cmd = "cp %s %s" % (fname_orig, fname)
+    os.system(cmd)
+    content = readfile(fname)
+    after_time = (datetime.datetime.utcnow() + datetime.timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M") + ":00"
+    newcontent = "genesis-time = %s\n" % after_time
+    index_line = content.index("#insert_genesis-time\n")
+    content.insert(index_line + 1, newcontent)
+    writefile(fname, content)
+
 
 # update ultrainmng  config
-def update_ultrainmng_config(fname,ipList):
+def update_ultrainmng_config(fname, ipList):
     content = readfile(fname)
     newcontent = "";
-    nonProducingNodeIp=ipList[len(ipList)-1].ip;
-    newcontent = "subchainHttpEndpoint = http://"+nonProducingNodeIp+":8888\n"
+    nonProducingNodeIp = ipList[len(ipList) - 1].ip;
+    newcontent = "subchainHttpEndpoint = http://" + nonProducingNodeIp + ":8888\n"
     # if args.masterchain:
     #     newcontent = newcontent+"masterchain = 1\n"
-    #if is subchain,add mainchain http endpoint
+    # if is subchain,add mainchain http endpoint
     if args.subchain:
         httpUrl = "";
         if args.mainchainHttp:
-            httpUrl = "http://"+args.mainchainHttp;
-        newcontent = newcontent+"mainchainHttpEndpoint = "+httpUrl+"\n"
-    else :
-        newcontent = newcontent+"masterchain = 1\n"
+            httpUrl = "http://" + args.mainchainHttp;
+        newcontent = newcontent + "mainchainHttpEndpoint = " + httpUrl + "\n"
+    else:
+        newcontent = newcontent + "mainchainHttpEndpoint = " + "http://" + nonProducingNodeIp + ":8888\n"
     index_line = content.index("#ultrainmng_subchainHttpEndpoint\n")
-    content.insert(index_line+1, newcontent)
-    writefile(fname,content)
+    content.insert(index_line + 1, newcontent)
+    writefile(fname, content)
+
 
 # insert worldstate config to enable worldstate
 def insert_worldstate_config(fname):
@@ -169,17 +187,18 @@ def insert_worldstate_config(fname):
         newcontent = "worldstate-control = true"
     content = readfile(fname)
     index_line = content.index("#world_state_config\n")
-    content.insert(index_line+1, newcontent)
-    writefile(fname,content)
+    content.insert(index_line + 1, newcontent)
+    writefile(fname, content)
+
 
 def insert_monitor_config(fname):
     newcontent = "monitor-server-endpoint = http://172.16.10.7:8078"
     if args.monitor:
-        newcontent = "monitor-server-endpoint = "+args.monitor;
+        newcontent = "monitor-server-endpoint = " + args.monitor;
     content = readfile(fname)
     index_line = content.index("#monitor_server\n")
-    content.insert(index_line+1, newcontent)
-    writefile(fname,content)
+    content.insert(index_line + 1, newcontent)
+    writefile(fname, content)
 
 
 def insert_non_producing(fname):
@@ -199,27 +218,41 @@ def insert_non_producing(fname):
     content.insert(index_line + 1, newcontent)
     writefile(fname, content)
 
-def insert_peer(fname,peer):
-    content = readfile(fname)
-    newcontent = "p2p-peer-address = %s:20122\nrpos-p2p-peer-address = %s:20123\n" % (peer,peer)
-    index_line = content.index("#insert_peers\n")
-    content.insert(index_line+1, newcontent)
-    writefile(fname,content)
 
-def insert_udp_seed(fname,seed):
+def insert_peer(fname, peer):
+    content = readfile(fname)
+    newcontent = "p2p-peer-address = %s:20122\nrpos-p2p-peer-address = %s:20123\n" % (peer, peer)
+    index_line = content.index("#insert_peers\n")
+    content.insert(index_line + 1, newcontent)
+    writefile(fname, content)
+
+
+def insert_udp_seed(fname, seed):
     content = readfile(fname)
     newcontent = "udp-seed = %s\n" % (seed)
     index_line = content.index("#insert_udp_seeds\n")
-    content.insert(index_line+1, newcontent)
-    writefile(fname,content)
+    content.insert(index_line + 1, newcontent)
+    writefile(fname, content)
 
-def insert_keys(fname,index_key):
-	content = readfile(fname)
-	newcontent = "my-account-as-committee = %s\nmy-sk-as-committee = %s\nmy-sk-as-account = %s\nmy-bls-sk = %s\n" % \
-				 (allAccounts[index_key],allPriKeys[index_key],account_sk_list[index_key], bls_sk_list[index_key])
-	index_line = content.index("#insert_my_keys\n")
-	content.insert(index_line+1, newcontent)
-	writefile(fname, content)
+
+def insertPeerKey(fname):
+    content = readfile(fname)
+    newcontent = "peer-key = %s\n" % (account_pk_list[0])
+    newcontent1 = "peer-key = %s\n" % (account_pk_list[6])
+    index_line = content.index("# Optional public key of peer allowed to connect\n")
+    content.insert(index_line + 1, newcontent)
+    content.insert(index_line + 2, newcontent1)
+    writefile(fname, content)
+
+
+def insert_keys(fname, index_key):
+    content = readfile(fname)
+    newcontent = "my-account-as-committee = %s\nmy-sk-as-committee = %s\nmy-sk-as-account = %s\nmy-bls-sk = %s\n" % \
+                 (allAccounts[index_key], allPriKeys[index_key], account_sk_list[index_key], bls_sk_list[index_key])
+    index_line = content.index("#insert_my_keys\n")
+    content.insert(index_line + 1, newcontent)
+    writefile(fname, content)
+
 
 load_parameters()
 write_config_file()

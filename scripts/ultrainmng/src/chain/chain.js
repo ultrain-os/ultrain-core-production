@@ -20,6 +20,7 @@ var voteUtil = require("./util/voteUtil");
 var NodUltrain = require("../nodultrain/nodultrain")
 var WorldState = require("../worldstate/worldstate")
 var chainUtil = require("./util/chainUtil");
+var monitor = require("./monitor")
 
 
 
@@ -47,6 +48,7 @@ var failedAccountPramList = [];
 
 //nod请求失败次数
 var nodFailedTimes=0;
+var maxNodFailedTimes=1;
 
 //清除失败用户
 function clearFailedUser(user) {
@@ -89,7 +91,7 @@ async function syncUser() {
     logger.info("sync user start");
     if (syncChainData == true) {
         //获取新增用户bulletin-并发送投票到子链
-        let userBulletinList = await getUserBulletin(chainConfig.u3, chainConfig.chainName);
+        let userBulletinList = await getUserBulletin(chainConfig.u3, chainConfig.localChainName);
         logger.info("user userBulletinList:", userBulletinList);
 
         if (utils.isNullList(userBulletinList)) {
@@ -184,6 +186,12 @@ async function syncUser() {
  */
 async function syncBlock() {
 
+    if (monitor.isDeploying()) {
+        logger.info("monitor.isDeploying()",monitor.isDeploying());
+    } else {
+        logger.info("monitor.isDeploying()",monitor.isDeploying());
+    }
+
     logger.info("sync block start");
 
     //一次最大块数
@@ -209,7 +217,7 @@ async function syncBlock() {
 
             logger.info("start to push block..");
             let blockNum = 0;
-            let subchainBlockNumResult = await chainConfig.u3.getSubchainBlockNum({"chain_name": chainConfig.chainName.toString()});
+            let subchainBlockNumResult = await chainConfig.u3.getSubchainBlockNum({"chain_name": chainConfig.localChainName.toString()});
             logger.info("mainchain block num:",subchainBlockNumResult);
 
             let confirmed_block = subchainBlockNumResult.confirmed_block;
@@ -250,7 +258,7 @@ async function syncBlock() {
             }
 
             logger.info("subchain head block num=", subBlockNumMax);
-            logger.info("mainchain(subchain:" + chainConfig.chainName + ") max blockNum =" + blockNum);
+            logger.info("mainchain(subchain:" + chainConfig.localChainName + ") max blockNum =" + blockNum);
 
 
 
@@ -307,12 +315,12 @@ async function syncBlock() {
              */
             if (results) {
                 const params = {
-                    chain_name: parseInt(chainConfig.chainName, 10),
+                    chain_name: parseInt(chainConfig.localChainName, 10),
                     headers: results
                 };
 
                 logger.debug("block params:",params);
-                logger.info("pushing block to head (chain_name :" + chainConfig.chainName + " count :" + results.length + ")");
+                logger.info("pushing block to head (chain_name :" + chainConfig.localChainName + " count :" + results.length + ")");
                 await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "acceptheader", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
             }
 
@@ -339,16 +347,24 @@ async function syncCommitee() {
         localProducers = producerList;
     }
 
-    let remoteProducers = await chainConfig.u3.getSubchainCommittee({"chain_name": chainConfig.chainName.toString()});
+    let remoteProducers = await chainConfig.u3.getSubchainCommittee({"chain_name": chainConfig.localChainName.toString()});
     logger.info("subchain commitee from mainchain: ", remoteProducers);
 
     //有变化的成员列表（包括删除/新增的）
-    var changeMembers = committeeUtil.genChangeMembers(producerList, remoteProducers);
+    var seed = committeeUtil.genSeedByChainId(chainConfig.configSub.chainId);
+    logger.info("commit seed :" +seed);
+    var changeMembers = committeeUtil.genChangeMembers(producerList, remoteProducers,seed);
     logger.info("commite changeMembers:", changeMembers);
 
     if (committeeUtil.isValidChangeMembers(changeMembers)) {
 
         for (var i = 0; i < changeMembers.length; i++) {
+
+            //每轮只做第一个
+            if (i >=1) {
+                break;
+            }
+
             let committeeUser = changeMembers[i].account;
             let params = [];
             params.push(changeMembers[i]);
@@ -485,19 +501,43 @@ async function syncChainInfo() {
             return;
         }
 
+        //同步委员会
+        if (isMainChain() == false) {
+            await syncCommitee();
+        }
+        var isStrillInCommittee = committeeUtil.isStayInCommittee(localProducers, chainConfig.myAccountAsCommittee);
+        //检查自己是否不在委员会里面
+        if (!isStrillInCommittee) {
+            syncChainData = false;
+            logger.info("I(" + chainConfig.myAccountAsCommittee + ") am not in subchain committee")
+        } else {
+            syncChainData = true;
+            logger.info("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee")
+        }
+
         var rightChain = chainConfig.isInRightChain()
         if (!rightChain) {
             syncChainData = false;
             //我已不属于这条链，准备迁走
-            logger.info(chainConfig.myAccountAsCommittee + "need trandfer to chain(" + chainConfig.chainName + "）, start transfer...");
-            sleep.msleep(1000);
-            syncChainChanging = true;
+            // if (isStrillInCommittee)  {
+            //     logger.error("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee,can't be transfer,wait...")
+            // } else {
+                logger.info(chainConfig.myAccountAsCommittee + " are not in subchain committee , need trandfer to chain(" + chainName + "）, start transfer...");
+                if (monitor.isDeploying() == true) {
+                    logger.error("monitor isDeploying, wait to switchChain");
+                    sleep.msleep(1000);
+                } else {
+                    sleep.msleep(1000);
+                    syncChainChanging = true;
+                    monitor.disableDeploy();
 
-            //清除数据
-            clearCacheData()
-            //开始迁移
-            await switchChain();
-            return;
+                    //清除数据
+                    clearCacheData()
+                    //开始迁移
+                    await switchChain();
+                    return;
+                }
+            // }
         } else {
             syncChainChanging = false;
         }
@@ -511,7 +551,7 @@ async function syncChainInfo() {
             let rsdata = await NodUltrain.checkAlive();
             logger.debug("check alive data:", rsdata);
             if (utils.isNull(rsdata)) {
-                if (nodFailedTimes >= 3) {
+                if (nodFailedTimes >= maxNodFailedTimes) {
                     nodFailedTimes = 0;
                     logger.info("nod is not runing ,need restart it..");
                     await restartNod();
@@ -523,17 +563,7 @@ async function syncChainInfo() {
             }
         }
 
-        //同步委员会
-        await syncCommitee();
-        var isStrillInCommittee = committeeUtil.isStayInCommittee(localProducers, chainConfig.myAccountAsCommittee);
-        //检查自己是否不在委员会里面
-        if (!isStrillInCommittee) {
-            syncChainData = false;
-            logger.info("I(" + chainConfig.myAccountAsCommittee + ") am not in subchain committee")
-        } else {
-            syncChainData = true;
-            logger.info("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee")
-        }
+
 
 
     } catch (e) {
@@ -559,6 +589,8 @@ function clearCacheData() {
  * @returns {Promise<void>}
  */
 async function switchChain() {
+
+
 
     loggerChainChanging.info("starting to switch chain...");
     try {
@@ -602,6 +634,13 @@ async function switchChain() {
             loggerChainChanging.error("seed ip info is null");
             syncChainChanging = false;
             return;
+        }
+
+        //通过chainid拿到peerkeys
+        var chainPeerInfo = await chainApi.getChainPeerKey(chainConfig.chainName, chainConfig);
+        logger.info("get chainid(" + chainConfig.chainName + ")'s peer info:", chainPeerInfo);
+        if (utils.isNull(chainPeerInfo)) {
+            loggerChainChanging.error("chainPeerInfo is null");
         }
 
 
@@ -715,7 +754,7 @@ async function switchChain() {
         logger.info("subchainEndPoint:", subchainEndPoint);
         logger.info("genesisTime:", chainConfig.genesisTime);
         logger.info("get chainid(" + chainConfig.chainName + ")'s", subchainMonitorService);
-        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint, chainConfig.genesisTime, subchainMonitorService);
+        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint, chainConfig.genesisTime, subchainMonitorService,chainPeerInfo);
         if (result == true) {
             loggerChainChanging.info("update nod config file success")
             //重新加载配置文件信息
@@ -756,6 +795,7 @@ async function switchChain() {
         loggerChainChanging.info("fail to switch chain...", e);
         //结束设置结束flag
         syncChainChanging = false;
+        monitor.enableDeploy();
     }
 }
 
@@ -766,11 +806,21 @@ async function switchChain() {
  */
 async function restartNod() {
 
+
+    if (monitor.isDeploying() == true) {
+        logger.info("monitor isDeploying, wait to restart");
+        sleep.msleep(1000);
+        return;
+    }
+
     //标志位设置
     syncChainChanging = true;
+    monitor.disableDeploy();
 
     try {
 
+        let wssinfo = " ";
+        let wssFilePath = " ";
         //使用world state to recover
         if (chainConfig.configFileData.local.worldstate == true) {
 
@@ -785,14 +835,14 @@ async function restartNod() {
             }
 
             //通过chainid拿到seedList
-            var seedIpInfo = await chainApi.getChainSeedIP(chainConfig.chainName, chainConfig);
-            logger.info("get chainid(" + chainConfig.chainName + ")'s seed ip info:", seedIpInfo);
+            var seedIpInfo = await chainApi.getChainSeedIP(chainConfig.localChainName, chainConfig);
+            logger.info("get chainid(" + chainConfig.localChainName + ")'s seed ip info:", seedIpInfo);
             let wsStarted = true;
             if (utils.isNull(seedIpInfo)) {
                 loggerChainChanging.error("seed ip info is null");
             } else {
                 logger.info("start world state");
-                result = await WorldState.start(chainConfig.chainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath, chainConfig.localTest);
+                result = await WorldState.start(chainConfig.localChainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath, chainConfig.localTest);
                 if (result == true) {
                     logger.info("start ws success");
                     logger.info("world state is on , use world state to revocer");
@@ -807,7 +857,7 @@ async function restartNod() {
                 //调用世界状态程序同步数据
                 var worldstatedata = null;
                 let maxBlockHeight = 0;
-                let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.WORLDSTATE_HASH, "block_num");
+                let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.localChainName, tableConstants.WORLDSTATE_HASH, "block_num");
                 if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
                     worldstatedata = mainChainData.rows[mainChainData.rows.length - 1];
                     logger.info("get worldstate data:", worldstatedata);
@@ -954,6 +1004,8 @@ async function restartNod() {
 
     syncChainChanging = false;
 
+    monitor.enableDeploy();
+
 }
 /**
  * 同步资源（全表）
@@ -990,7 +1042,7 @@ async function syncResource(allFlag) {
             logger.info("subChainResourceList:", subChainResourceList);
 
             //获取主链上所有资源的信息
-            let mainChainResourceList = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.RESOURCE_LEASE, "owner");
+            let mainChainResourceList = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.localChainName, tableConstants.RESOURCE_LEASE, "owner");
             logger.info("mainChainResourceList:", mainChainResourceList);
 
             //对比两张表，获取更新的信息
@@ -1000,7 +1052,7 @@ async function syncResource(allFlag) {
             /**
              * 从公告蓝上获取最新的资源
              */
-            let newestChangeList = await chainApi.getSubchainResource(chainConfig.chainName,chainConfig);
+            let newestChangeList = await chainApi.getSubchainResource(chainConfig.localChainName,chainConfig);
             logger.info("newestChangeList:",newestChangeList.length)
             if (utils.isNullList(newestChangeList) == false && newestChangeList.length > 0) {
                 for (var i = 0; i < newestChangeList.length; i++) {
@@ -1075,7 +1127,7 @@ async function syncResource(allFlag) {
  * @returns {Promise<boolean>}
  */
 function isMainChain() {
-    return chainNameConstants.MAIN_CHAIN_NAME == chainConfig.chainName;
+    return chainNameConstants.MAIN_CHAIN_NAME == chainConfig.localChainName;
 }
 
 /**
@@ -1100,7 +1152,7 @@ async function syncWorldState() {
                 logger.info("WorldState.status not null");
                 //调用主链查询当前已同步的块高
                 //let mainChainData = await chainApi.getTableInfo(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.WORLDSTATE_HASH,1000,null,null,null);
-                let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.WORLDSTATE_HASH, "block_num");
+                let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.localChainName, tableConstants.WORLDSTATE_HASH, "block_num");
 
                 logger.debug("mainChainData:", mainChainData);
                 let needUpload = true;
@@ -1124,7 +1176,7 @@ async function syncWorldState() {
                 //需要上传
                 if (needUpload) {
                     let params = {
-                        subchain: chainConfig.chainName,
+                        subchain: chainConfig.localChainName,
                         blocknum: WorldState.status.block_height,
                         hash: WorldState.status.hash_string,
                         file_size: WorldState.status.file_size
@@ -1147,6 +1199,8 @@ async function syncWorldState() {
 }
 
 
+
+
 module.exports = {
     isMainChain,
     syncBlock,
@@ -1155,5 +1209,5 @@ module.exports = {
     syncResource,
     syncWorldState,
     syncAllResource,
-    syncNewestResource
+    syncNewestResource,
 }

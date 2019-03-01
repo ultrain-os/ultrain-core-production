@@ -10,21 +10,6 @@ var logger = require("../../config/logConfig").getLogger("CommitteeUtil")
  * @returns {*}
  */
 function buildCommittee(resultJson, jsonArray, add, result) {
-    /**
-     *
-     * [{
-            "account": "user.114",
-            "public_key": "b9a55c3c661abd8c539b7a7c05c8176036f87aeeb6b117a138327cfdb374cc23",
-            "url": "https://user.115.com",
-            "location": 0
-        }, {
-            "account": "user.115",
-            "public_key": "8f6e3b3336276138023617f0ae0e6fd0c37d27aa9995f9803fe78df4941dd3ec",
-            "url": "https://user.115.com",
-            "location": 0
-        }]
-
-     * **/
 
     for (var i in resultJson) {
 
@@ -37,10 +22,10 @@ function buildCommittee(resultJson, jsonArray, add, result) {
                     account: resultJson[i].owner,
                     public_key: resultJson[i].miner_pk,
                     bls_key: resultJson[i].bls_pk,
-                    url: "https://"+resultJson[i].owner+".com",
+                    url: "https://" + resultJson[i].owner + ".com",
                     location: 0,
                     adddel_miner: add,
-                    approve_num : 0
+                    approve_num: 0
                 });
                 continue;
             }
@@ -64,10 +49,10 @@ function buildCommittee(resultJson, jsonArray, add, result) {
                 account: resultJson[i].owner,
                 public_key: resultJson[i].miner_pk,
                 bls_key: resultJson[i].bls_pk,
-                url: "https://"+resultJson[i].owner+".com",
+                url: "https://" + resultJson[i].owner + ".com",
                 location: 0,
                 adddel_miner: add,
-                approve_num : 0
+                approve_num: 0
             });
         }
     }
@@ -78,16 +63,58 @@ function buildCommittee(resultJson, jsonArray, add, result) {
     return result;
 }
 
+function genSeedByChainId(chainId) {
+    var str = chainId.toString().substr(0,1);
+    return str.charCodeAt()%2;
+}
+
+//console.log(genSeedByChainId("BC123"));
+
 /**
  * 生成委员会更新的成员数组 1-新增 0-删除
  * @param localArray
  * @param remoteArray
  * @returns {Array}
  */
-function genChangeMembers(localArray, remoteArray) {
+function genChangeMembers(localArray, remoteArray, seed) {
+    var resultAdd = [];
+    resultAdd = buildCommittee(remoteArray, localArray, 1, resultAdd);
+    var resultRemove = [];
+    resultRemove = buildCommittee(localArray, remoteArray, 0, resultRemove);
+
     var result = [];
-    result = buildCommittee(remoteArray, localArray, 1, result);
-    result = buildCommittee(localArray, remoteArray, 0, result);
+
+    if (resultAdd.length == 0 && resultRemove.length == 0) {
+        return result;
+    }
+
+    //哪一个变化多先处理哪一个，如果相等，看seed（来源于chainid）
+    if (resultAdd.length > resultRemove.length) {
+        result = resultAdd;
+    } else if (resultAdd.length < resultRemove.length) {
+        result = resultRemove;
+    } else {
+        //equal
+        if (seed == 0) {
+            result = resultAdd;
+        } else {
+            result = resultRemove;
+        }
+    }
+
+    if (result.length > 0) {
+        result.sort(function (s, t) {
+            if (s.account > t.account) {
+                return 1;
+            }
+
+            if (s.account < t.account) {
+                return -1;
+            }
+            return 0;
+
+        })
+    }
     return result;
 }
 
@@ -116,7 +143,7 @@ function isValidChangeMembers(resultArray) {
  * @param user
  * @returns {boolean}
  */
-function isStayInCommittee(members,user) {
+function isStayInCommittee(members, user) {
 
     //.console.log(members);
     //console.log(user);
@@ -125,10 +152,10 @@ function isStayInCommittee(members,user) {
     }
 
     let find = false;
-    members.forEach(function (item,index) {
+    members.forEach(function (item, index) {
         //console.log(item)
         if (item.owner == user) {
-            find =  true;
+            find = true;
         }
     })
 
@@ -139,5 +166,6 @@ function isStayInCommittee(members,user) {
 module.exports = {
     genChangeMembers,
     isValidChangeMembers,
-    isStayInCommittee
+    isStayInCommittee,
+    genSeedByChainId
 }

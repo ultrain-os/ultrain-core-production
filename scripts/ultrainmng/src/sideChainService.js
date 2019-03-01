@@ -18,6 +18,7 @@ async function startEntry() {
 
     logger.info("Ultrainmng start to work:");
 
+
     logger.info("waiting sync config data....");
     //等待配置信息同步完成
     await chainConfig.waitSyncConfig()

@@ -9,6 +9,9 @@ var ShellCmd = require("../common/util/shellCmd")
 var sleep = require("sleep")
 var utils = require("../common/util/utils")
 const path = require('path');
+var hashUtil = require("../common/util/hashUtil")
+var algorithmConstants = require("../common/constant/constants").algorithmConstants
+var process = require('child_process');
 
 /**
  * nod相关交互类
@@ -27,7 +30,7 @@ NodUltrain.configFilePath = "/root/.local/share/ultrainio/nodultrain/config/conf
  * @param monitorServer
  * @returns {boolean}
  */
-NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,monitorServcer) {
+NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,monitorServcer,chainPeerInfo) {
     try {
         var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
 
@@ -47,6 +50,12 @@ NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,moni
                 iniFile.addKeyValue(iniConstants.P2P_PEER_ADDRESS, seedIp[i]+":20122");
                 iniFile.addKeyValue(iniConstants.RPOS_P2P_PEER_ADDRESS, seedIp[i]+":20123");
             }
+        }
+
+        //更新peer info
+        iniFile.removeKey(iniConstants.PEER_KEY);
+        for (var i=0;i<chainPeerInfo.length;i++) {
+            iniFile.addKeyValue(iniConstants.PEER_KEY, chainPeerInfo[i]);
         }
 
         iniFile.setValue(iniConstants.SUBCHAIN_HTTP_ENDPOINT, subchainHttpEndpoint);
@@ -144,6 +153,43 @@ NodUltrain.removeData = async function () {
         logger.error("nod remove data error:",e);
     }
 
+}
+
+/**
+ * 更新执行程序
+ * @returns {Promise<void>}
+ */
+NodUltrain.updateExeFile = async function (localpath,targetpath,hashFile) {
+    let result = false;
+    try {
+        result = this.stop(1200000);
+        if (result == false) {
+            logger.error("stop nod error,can't update file");
+            return false;
+        } else {
+            let cmd = "cp " + localpath + " " + targetpath;
+            sleep.msleep(2000);
+            logger.error("stop nod success,start to update file: " + cmd);
+            await ShellCmd.execCmd(cmd);
+            sleep.msleep(5000);
+            let i = 0;
+            while (i <=10) {
+                let sha = hashUtil.calcHash(targetpath,algorithmConstants.SHA1);
+                if (sha == hashFile) {
+                    logger.info("target file("+targetpath+") hash("+sha+") ==" + hashFile);
+                    return true;
+                }
+                await ShellCmd.execCmd(cmd);
+                sleep.msleep(2000);
+                i++;
+            }
+
+        }
+    } catch (e) {
+        logger.error("updateExeFile error:",e);
+    }
+
+    return false;
 }
 
 

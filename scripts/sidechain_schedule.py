@@ -74,7 +74,7 @@ def transferReg():
     bls_key = bls_pk_list[index];
     print "reg producer:" + user + "(" + userPK + " "+bls_key+ ") belongs to chain(" + dest + ")"
     #print(args.clultrain + 'system regproducer ' + user +' '+userPK+' '+bls_key+' https://'+user+'.com '+dest+' '+user+' -p ultrainio@active')
-    retry(args.clultrain + 'system regproducer ' + user +' '+minerPK+' '+bls_key+' '+user+' https://'+user+'.com '+dest+' -p ultrainio@active')
+    retry(args.clultrain + 'system regproducer ' + user +' '+minerPK+' '+bls_key+' '+user+' https://'+user+'.com '+dest+' -p ultrainio@active -u')
 
 # set schedule
 def setSchedule():

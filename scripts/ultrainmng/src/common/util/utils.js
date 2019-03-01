@@ -112,7 +112,7 @@ var errortime = 0;
 getPublicIp = async () => {
 
     let ip = getLocalIPAdress();
-    logger.info("cachePublicIp:",cachePublicIp);
+    //logger.info("cachePublicIp:",cachePublicIp);
     if (isNotNull(cachePublicIp)) {
         ip = cachePublicIp;
         ptime++;

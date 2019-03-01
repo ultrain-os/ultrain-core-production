@@ -41,6 +41,8 @@ def run(args,stop):
 def retry(args):
     time = 0
     while True:
+        if time >= 30 :
+            break;
         print('bios-subchain.py:', args)
         logFile.write(args + '\n')
         if subprocess.call(args, shell=True):
@@ -96,7 +98,7 @@ def regProducer():
         retry(args.clultrain+'system empoweruser '+userName+' '+args.subchain+' -p '+userName+'@active');
         sleep(1)
         print "reg producer:" + userName + "(" + pk + " "+bls_key+ ") belongs to chain(" + args.subchain + ")"
-        retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key + ' ' + userName+' https://'+userName+'.com '+args.subchain +' -p ultrainio@active')
+        retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key + ' ' + userName+' https://'+userName+'.com '+args.subchain +' -p ultrainio@active -u')
         sleep(0.5)
     print "regProducer end..."
     sleep(2)
