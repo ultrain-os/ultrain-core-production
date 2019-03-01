@@ -46,21 +46,6 @@ namespace ultrainiosystem {
          print( "onblock timestamp:", timestamp.abstime, " producer:", name{producer}," produce_block:", prod->total_produce_block, "\n" );
       }
 
-      if( (timestamp.abstime - _gstate.last_name_close.abstime) > seconds_per_day ) {
-          uint64_t block_height = (uint64_t)head_block_number() + 1;
-          name_bid_table bids(_self,_self);
-          auto idx = bids.get_index<N(highbid)>();
-          auto highest = idx.begin();
-          if( highest != idx.end() &&
-              highest->high_bid > 0 &&
-              highest->last_bid_time < (current_time() - useconds_per_day) &&
-              (block_height - _gstate.start_block) > 14 * seconds_per_day/block_interval_seconds() ) {
-              _gstate.last_name_close = timestamp;
-              idx.modify( highest, [&]( auto& b ){
-                                          b.high_bid = -b.high_bid;
-                                      });
-          }
-      }
       checkresexpire();
       cleanvotetable();
       checkbulletin();

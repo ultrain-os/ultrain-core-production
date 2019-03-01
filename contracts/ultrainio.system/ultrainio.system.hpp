@@ -25,20 +25,6 @@ namespace ultrainiosystem {
    const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
    const uint64_t default_chain_name = N(default);  //default chain, will be assigned by system.
 
-   struct name_bid {
-     account_name            newname;
-     account_name            high_bidder;
-     int64_t                 high_bid = 0; ///< negative high_bid == closed auction waiting to be claimed
-     uint64_t                last_bid_time = 0;
-
-     auto     primary_key()const { return newname;                          }
-     uint64_t by_high_bid()const { return static_cast<uint64_t>(-high_bid); }
-   };
-
-   typedef ultrainio::multi_index< N(namebids), name_bid,
-                               indexed_by<N(highbid), const_mem_fun<name_bid, uint64_t, &name_bid::by_high_bid>  >
-                               >  name_bid_table;
-
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_used; }
       bool is_master_chain()const { return chain_name == 0; }
@@ -318,8 +304,6 @@ namespace ultrainiosystem {
          void setpriv( account_name account, uint8_t ispriv );
 
          void rmvproducer( account_name producer );
-
-         void bidname( account_name bidder, account_name newname, asset bid );
 
          void updateactiveminers(const ultrainio::proposeminer_info& miners );
 

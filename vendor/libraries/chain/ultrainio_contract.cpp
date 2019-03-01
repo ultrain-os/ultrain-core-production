@@ -82,13 +82,21 @@ void apply_ultrainio_newaccount(apply_context& context) {
    auto name_str = name(create.name).to_string();
 
    ULTRAIN_ASSERT( !create.name.empty(), action_validate_exception, "account name cannot be empty" );
-   ULTRAIN_ASSERT( name_str.size() <= 12, action_validate_exception, "account names can only be 12 chars long" );
+
+   auto p1 = name_str.find('.');
+   bool at_begin = (p1 != std::string::npos) && (p1 == 0);
+   auto p2 = name_str.rfind('.');
+   bool at_end   = (p2 != std::string::npos) && (p2 == name_str.length() - 1);
+   ULTRAIN_ASSERT( !(at_begin || at_end), action_validate_exception, "account name can't start/end with ." );
 
    // Check if the creator is privileged
    const auto &creator = db.get<account_object, by_name>(create.creator);
    if( !creator.privileged ) {
+      ULTRAIN_ASSERT( name_str.size() == 12, action_validate_exception, "account names can only be 12 chars long" );
       ULTRAIN_ASSERT( name_str.find( "utrio." ) != 0, action_validate_exception,
                   "only privileged accounts can have names that start with 'utrio.'" );
+   } else {
+      ULTRAIN_ASSERT( name_str.size() <= 12, action_validate_exception, "account names must be less than only 12 chars long" );
    }
 
    auto existing_account = db.find<account_object, by_name>(create.name);

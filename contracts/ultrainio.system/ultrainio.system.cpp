@@ -85,46 +85,6 @@ namespace ultrainiosystem {
          });
    }
 
-   void system_contract::bidname( account_name bidder, account_name newname, asset bid ) {
-      ultrainio_assert( _gstate.is_master_chain(), "only master chain allow create account" );
-      require_auth( bidder );
-      ultrainio_assert( ultrainio::name_suffix(newname) == newname, "you can only bid on top-level suffix" );
-      ultrainio_assert( newname != 0, "the empty name is not a valid account name to bid on" );
-      ultrainio_assert( (newname & 0xFull) == 0, "13 character names are not valid account names to bid on" );
-      ultrainio_assert( (newname & 0x1F0ull) == 0, "accounts with 12 character names and no dots can be created without bidding required" );
-      ultrainio_assert( !is_account( newname ), "account already exists" );
-      ultrainio_assert( bid.symbol == asset().symbol, "asset must be system token" );
-      ultrainio_assert( bid.amount > 0, "insufficient bid" );
-
-      INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {bidder,N(active)},
-                                                             { bidder, N(utrio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
-
-      name_bid_table bids(_self,_self);
-      print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
-      auto current = bids.find( newname );
-      if( current == bids.end() ) {
-         bids.emplace( [&]( auto& b ) {
-            b.newname = newname;
-            b.high_bidder = bidder;
-            b.high_bid = bid.amount;
-            b.last_bid_time = current_time();
-         });
-      } else {
-         ultrainio_assert( current->high_bid > 0, "this auction has already closed" );
-         ultrainio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
-         ultrainio_assert( current->high_bidder != bidder, "account is already highest bidder" );
-
-         INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {N(utrio.names),N(active)},
-                                                       { N(utrio.names), current->high_bidder, asset(current->high_bid),
-                                                       std::string("refund bid on name ")+(name{newname}).to_string()  } );
-
-         bids.modify( current, [&]( auto& b ) {
-            b.high_bidder = bidder;
-            b.high_bid = bid.amount;
-            b.last_bid_time = current_time();
-         });
-      }
-   }
    void system_contract::checkvotefrequency(ultrainiosystem::producers_table::const_iterator propos){
       uint64_t cur_block_num = (uint64_t)head_block_number() + 1;
       if((cur_block_num - propos->last_vote_blocknum) < 60){
@@ -539,31 +499,9 @@ void system_contract::voteresourcelease() {
          ultrainio_assert( _gstate.is_master_chain() || creator == _self, "only master chain allow create account" );
       }
 
-      if( creator != _self ) {
-         auto tmp = newact >> 4;
-         bool has_dot = false;
-
-         for( uint32_t i = 0; i < 12; ++i ) {
-           has_dot |= !(tmp & 0x1f);
-           tmp >>= 5;
-         }
-         if( has_dot ) { // or is less than 12 characters
-            auto suffix = ultrainio::name_suffix(newact);
-            if( suffix == newact ) {
-               name_bid_table bids(_self,_self);
-               auto current = bids.find( newact );
-               ultrainio_assert( current != bids.end(), "no active bid for name" );
-               ultrainio_assert( current->high_bidder == creator, "only highest bidder can claim" );
-               ultrainio_assert( current->high_bid < 0, "auction for name is not closed yet" );
-               bids.erase( current );
-            } else {
-               ultrainio_assert( creator == suffix, "only suffix may create this account" );
-            }
-         }
-         if(newaccount_fee > 0){
-               INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {creator,N(active)},
-                  { creator, N(utrio.fee), asset(newaccount_fee), std::string("create account") } );
-         }
+      if (creator != _self && newaccount_fee > 0) {
+          INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {creator,N(active)},
+                                                                 { creator, N(utrio.fee), asset(newaccount_fee), std::string("create account") } );
       }
 
       //user_resources_table  userres( _self, newact);
@@ -594,7 +532,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
-     (setsysparams)(setparams)(setpriv)(rmvproducer)(bidname)(votecommittee)(voteaccount)(voteresourcelease)
+     (setsysparams)(setparams)(setpriv)(rmvproducer)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
      // producer.cpp
