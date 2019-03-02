@@ -68,7 +68,7 @@ namespace ultrainio { namespace chain {
                   ws_helper* ptr = (ws_helper*)data;
                   auto id_writer = ptr->get_id_writer();
                   if(id_writer) {
-                     ilog("usage.id：  ${t}", ("t", usage.id._id));
+                     ilog("usage.id:  ${t}", ("t", usage.id._id));
                      id_writer->write_row_id(usage.id._id, 0);
                   }
                }

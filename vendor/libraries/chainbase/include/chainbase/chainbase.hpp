@@ -153,7 +153,7 @@ namespace chainbase {
          id_type                      old_next_id = 0;
          int64_t                      revision = 0;
    };
-   
+
    template< typename value_type >
    class cache_state
    {
@@ -376,17 +376,17 @@ namespace chainbase {
 
             const auto& head = _stack.back();
 
-            /*The order of operation must be create, modify, remove.That is because it maybe conflict 
+            /*The order of operation must be create, modify, remove.That is because it maybe conflict
             between diff operations of unique key.
             Ex: class A have a int unique key t
                t1 = 1;
-               Oper A:  
+               Oper A:
                   modify: t1 --> 3;
                Oper B:
                   create: t2 = 1;
 
                In this case, undo() must be undo  Oper B , then undo oper A. Otherwise, it will faild when modify t1
-               from 3 to 1; 
+               from 3 to 1;
             */
             for( auto id : head.new_ids )
             {
@@ -590,7 +590,7 @@ namespace chainbase {
              if ( !_cache_on|| !_cache.size()) return;
              auto& head= _cache.front();
 
-             for(auto item = head.removed_ids.begin();item != head.removed_ids.end()&&_indices_backup.empty();)
+             for(auto item = head.removed_ids.begin();item != head.removed_ids.end() && !_indices_backup.empty();)
              {
                  auto itr = _indices_backup.find( *item );
                  if(itr != _indices_backup.end()){
@@ -601,7 +601,7 @@ namespace chainbase {
                  ++item;
              }
 
-             for(auto item = head.modify_values.begin();item != head.modify_values.end()&&_indices_backup.empty();)
+             for(auto item = head.modify_values.begin();item != head.modify_values.end() && !_indices_backup.empty();)
              {
                  auto itr = _indices_backup.find(item->second.id);
                  if(itr != _indices_backup.end()){
@@ -628,14 +628,15 @@ namespace chainbase {
 
          bool process_table()
          {
-             if ( !_cache_on|| !_cache.size()) return false;
-             auto& head= _cache.front();
-             auto& row = _indices_backup.begin();
+            if ( !_cache_on|| !_cache.size()) return false;
+            auto& head = _cache.front();
+            auto row = _indices_backup.begin();
+            assert( _indices_backup.size() > 0 );
 
              if (head.removed_ids.count(row->id) )
              {
-                 _indices_backup.erase( row );
                  head.removed_ids.erase(row->id);
+                 _indices_backup.erase( row );
                  return true;
              }
 
@@ -643,12 +644,13 @@ namespace chainbase {
              if (itr != head.modify_values.end() )
              {
                  auto ok = _indices_backup.modify( row, [&]( value_type& v ) {
-                                          v = std::move( *itr );
+                                          v = std::move( itr->second );
                                                            });
                  if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a queness constraint was violated" ) );
                  head.modify_values.erase(row->id);
                  return false;
              }
+             return false;
          }
 
          template<typename C>
@@ -657,7 +659,7 @@ namespace chainbase {
                  if ( !_cache_on|| !_cache.size()) return;
                  auto& head= _cache.front();
 
-                 for(auto item = head.removed_ids.begin();item != head.removed_ids.end()&&_indices_backup.empty();)
+                 for(auto item = head.removed_ids.begin();item != head.removed_ids.end() && !_indices_backup.empty();)
                  {
                      auto itr = _indices_backup.find( *item );
                      if(itr != _indices_backup.end()){
@@ -668,7 +670,7 @@ namespace chainbase {
                      ++item;
                  }
 
-                 for(auto item = head.modify_values.begin();item != head.modify_values.end()&&_indices_backup.empty();)
+                 for(auto item = head.modify_values.begin();item != head.modify_values.end() && !_indices_backup.empty();)
                  {
                      auto itr = _indices_backup.find(item->second.id);
                      if(itr != _indices_backup.end()){
@@ -695,7 +697,7 @@ namespace chainbase {
                  }
              }
          std::pair<bool,typename value_type::id_type> process_create()
-         {    
+         {
              if ( !_cache_on|| !_cache.size()) return {false,0};
              auto& create= _cache.front().new_values;
 
@@ -1084,7 +1086,7 @@ namespace chainbase {
              }
 
              idx_ptr->validate();
-			 
+
             // Ensure the undo stack of added index is consistent with the other indices in the database
             if( _index_list.size() > 0 ) {
                auto expected_revision_range = _index_list.front()->undo_stack_revision_range();
