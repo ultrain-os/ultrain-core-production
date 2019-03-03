@@ -10,19 +10,24 @@ namespace ultrainio {
     public:
         LightClientProducer();
 
-        bool shouldBeConfirmed(const BlockHeader& blockHeader) const;
-
-        void addBlockHeaderAndBlsVoterSetPair(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
-
         bool hasNextTobeConfirmedBlsVoterSet() const;
 
         BlsVoterSet nextTobeConfirmedBlsVoterSet() const;
 
-        void acceptBlockHeader(const BlockHeader& blockHeader);
+        BlockIdType getLatestCheckPointId() const;
+
+        void acceptBlockHeader(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
 
     private:
-        std::list<BlockHeader> m_shouldBeConfirmedBlockHeaderList;
 
-        std::list<BlsVoterSet> m_shouldBeConfirmedBlockHeaderBlsVoterSetList;
+        bool shouldBeConfirmed(const BlockHeader& blockHeader) const;
+
+        BlockIdType m_latestCheckPointId;
+
+        BlockIdType m_latestConfirmedBlockId;
+
+        std::list<BlockHeader> m_shouldBeConfirmedList;
+
+        std::list<BlsVoterSet> m_shouldBeConfirmedBlsVoterSetList;
     };
 }

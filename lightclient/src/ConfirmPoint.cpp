@@ -1,5 +1,7 @@
 #include <lightclient/ConfirmPoint.h>
 
+#include <lightclient/BlockHeaderExtKey.h>
+
 namespace ultrainio {
     bool ConfirmPoint::isConfirmPoint(const BlockHeader& blockHeader) {
         ExtensionsType ext = blockHeader.header_extensions;

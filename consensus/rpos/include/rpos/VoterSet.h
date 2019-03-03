@@ -14,7 +14,7 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
         std::vector<std::string> proofPool;
 #endif
-        bool empty();
+        bool empty() const;
 
         BlsVoterSet toBlsVoterSet() const;
     };

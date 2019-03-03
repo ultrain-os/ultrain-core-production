@@ -11,6 +11,10 @@ namespace ultrainio {
 
         CheckPoint(const BlockHeader& blockHeader);
 
+        uint32_t blockNum() const;
+
+        CommitteeSet committeeSet() const;
+
         CheckPoint();
     private:
         BlockHeader m_blockHeader;

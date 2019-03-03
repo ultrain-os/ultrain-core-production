@@ -11,6 +11,8 @@ namespace ultrainio {
 
         EpochEndPoint();
 
+        uint32_t blockNum() const;
+
     private:
         BlockHeader m_blockHeader;
 

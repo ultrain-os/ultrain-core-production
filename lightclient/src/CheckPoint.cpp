@@ -1,5 +1,7 @@
 #include <lightclient/CheckPoint.h>
 
+#include <lightclient/BlockHeaderExtKey.h>
+
 namespace ultrainio {
     bool CheckPoint::isCheckPoint(const BlockHeader& blockHeader) {
         ExtensionsType ext = blockHeader.header_extensions;
@@ -23,5 +25,13 @@ namespace ultrainio {
                 m_committeeSet = CommitteeSet(std::get<1>(e));
             }
         }
+    }
+
+    uint32_t CheckPoint::blockNum() const {
+        return m_blockHeader.block_num();
+    }
+
+    CommitteeSet CheckPoint::committeeSet() const {
+        return m_committeeSet;
     }
 }

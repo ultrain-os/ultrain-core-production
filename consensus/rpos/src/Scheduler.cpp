@@ -26,6 +26,7 @@
 #include <ultrainio/chain/config.hpp>
 
 #include <base/Memory.h>
+#include <lightclient/BlockHeaderExtKey.h>
 #include <lightclient/CommitteeSet.h>
 #include <lightclient/EpochEndPoint.h>
 #include <lightclient/LightClientProducer.h>
@@ -1273,17 +1274,23 @@ namespace ultrainio {
             }
 
             // CheckPoint
+            std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
             BlockHeader headBlockHeader = chain.head_block_header();
             if (EpochEndPoint::isEpochEndPoint(headBlockHeader)) { // CheckPoint iff the before one is EpochEndHeader
                 std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(chain.head_block_num() + 1);
                 ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
                 CommitteeSet committeeSet = stakeVotePtr->getCommitteeSet();
                 chain.add_header_extensions_entry(kCommitteeSet, committeeSet.toVectorChar());
+                BlockIdType blockIdType = lightClientProducerPtr->getLatestCheckPointId();
+                if (BlockIdType() != blockIdType) {
+                    std::string s = std::string(blockIdType);
+                    std::vector<char> vc(s.begin(), s.begin());
+                    chain.add_header_extensions_entry(kPreCheckPointId, vc);
+                }
                 ilog("add kCommitteeSet in blockNum : ${blockNum} : ${committeeset}", ("blockNum", chain.head_block_num() + 1)("committeeset", committeeSet.toString()));
             }
 
             // ConfirmPoint
-            std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
             if (lightClientProducerPtr->hasNextTobeConfirmedBlsVoterSet()) {
                 chain.add_header_extensions_entry(kBlsVoterSet, lightClientProducerPtr->nextTobeConfirmedBlsVoterSet().toVectorChar());
                 ilog("add kBlsVoterSet to confirm ${confirmedBlockNum} in blockNum : ${blockNum}, set : ${set}",
@@ -1565,7 +1572,6 @@ namespace ultrainio {
             return blankBlock();
         }
         VoterSet voterSet;
-        std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); itor++) {
 #ifdef CONSENSUS_VRF
             uint32_t priority = itor->second.echo.proposerPriority;
@@ -1582,21 +1588,17 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
                 voterSet.proofPool = itor->second.proofPool;
 #endif
+                // save VoterSet
+                m_currentVoterSet = voterSet;
                 break;
             }
         }
         if (minBlockId == emptyBlock().id()) {
             dlog("produce empty Block");
-            if (lightClientProducerPtr->shouldBeConfirmed(emptyBlock()) && !voterSet.empty()) {
-                lightClientProducerPtr->addBlockHeaderAndBlsVoterSetPair(emptyBlock(), voterSet.toBlsVoterSet());
-            }
             return emptyBlock();
         }
         auto propose_itor = m_proposerMsgMap.find(minBlockId);
         if (propose_itor != m_proposerMsgMap.end()) {
-            if (lightClientProducerPtr->shouldBeConfirmed(propose_itor->second.block) && !voterSet.empty()) {
-                lightClientProducerPtr->addBlockHeaderAndBlsVoterSetPair(propose_itor->second.block, voterSet.toBlsVoterSet());
-            }
             dlog("find propose msg ok.");
             return propose_itor->second.block;
         }
@@ -1940,7 +1942,7 @@ namespace ultrainio {
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
         std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
-        lightClientProducerPtr->acceptBlockHeader(chain.head_block_header());
+        lightClientProducerPtr->acceptBlockHeader(chain.head_block_header(), m_currentVoterSet.toBlsVoterSet());
         MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
     }
 

@@ -26,7 +26,7 @@ namespace ultrainio {
 
     SHA256 CommitteeSet::committeeMroot() const {
         // MUST BE the same with StakeOverBase
-        return SHA256::hash(m_committeeInfoV);
+        return SHA256::hash(toString());
     }
 
     std::vector<char> CommitteeSet::toVectorChar() const {

@@ -6,7 +6,7 @@
 
 namespace ultrainio {
     // class VoterSet
-    bool VoterSet::empty() {
+    bool VoterSet::empty() const {
         return accountPool.empty();
     }
 

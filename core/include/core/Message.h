@@ -7,14 +7,6 @@
 #include <core/types.h>
 
 namespace ultrainio {
-
-    enum BlockHeaderExtKey {
-        kPreCheckPointId = 0,
-        kNextCommitteeMroot,
-        kCommitteeSet,
-        kBlsVoterSet
-    };
-
     enum ConsensusPhase {
         kPhaseInit = 0,
         kPhaseBA0,

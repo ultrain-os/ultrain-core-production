@@ -1,5 +1,7 @@
 #include <lightclient/EpochEndPoint.h>
 
+#include <lightclient/BlockHeaderExtKey.h>
+
 namespace ultrainio {
     bool EpochEndPoint::isEpochEndPoint(const BlockHeader& blockHeader) {
         ExtensionsType ext = blockHeader.header_extensions;
@@ -22,5 +24,9 @@ namespace ultrainio {
                 m_nextCommitteeMroot = SHA256(r);
             }
         }
+    }
+
+    uint32_t EpochEndPoint::blockNum() const {
+        return m_blockHeader.block_num();
     }
 }

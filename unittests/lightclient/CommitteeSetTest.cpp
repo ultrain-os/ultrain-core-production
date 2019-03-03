@@ -2,7 +2,6 @@
 #include <boost/test/included/unit_test.hpp>
 
 #include <iostream>
-#include <fc/io/json.hpp>
 #include <lightclient/CommitteeInfo.h>
 #include <lightclient/CommitteeSet.h>
 
@@ -31,7 +30,6 @@ BOOST_AUTO_TEST_SUITE(committeeset_test_suite)
         BOOST_CHECK(committeeSet == committeeSetR);
 
         cout << "mroot " << std::string(committeeSet.committeeMroot()) << std::endl;
-        BOOST_CHECK(SHA256::hash(committeeInfoV) == committeeSetR.committeeMroot());
         BOOST_CHECK(committeeSet.committeeMroot() == committeeSetR.committeeMroot());
     }
 BOOST_AUTO_TEST_SUITE_END()

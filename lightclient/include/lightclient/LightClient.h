@@ -2,6 +2,7 @@
 
 #include <core/types.h>
 #include <lightclient/CheckPoint.h>
+#include <lightclient/CommitteeSet.h>
 #include <lightclient/ConfirmPoint.h>
 #include <lightclient/EpochEndPoint.h>
 
@@ -12,22 +13,26 @@ namespace ultrainio {
 
         uint64_t chainName() const;
 
-        int accept(const BlockHeader& blockHeader);
+        void accept(const BlockHeader& blockHeader);
+
+        std::list<BlockHeader> getConfirmedList() const;
+
+        void clear();
 
     private:
         // chain name
         uint64_t m_chainName;
 
-        // the latest BlockHeader
-        BlockHeader m_latestConfirmedblockHeader;
+        CommitteeSet workingCommitteeSet;
 
-        std::list<BlockHeader> m_unconfirmedBlockHeaderList;
+        BlockIdType m_latestConfirmedBlockId;
 
-        // the latest ConfirmPoint
-        ConfirmPoint m_confirmPoint;
+        std::list<BlockHeader> m_unconfirmedList;
 
-        std::list<CheckPoint> m_checkPointList;
+        std::list<CheckPoint> m_unconfirmedCheckPointList;
 
-        std::list<EpochEndPoint> m_epochEndPointList;
+        std::list<EpochEndPoint> m_unconfirmedEpochEndPointList;
+
+        std::list<BlockHeader> m_confirmedList;
     };
 }
