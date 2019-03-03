@@ -330,7 +330,7 @@ struct controller_impl {
       replaying = false;
    }
 
-   void init(const worldstate_reader_ptr& worldstate) {
+   void init(const bfs::path& worldstate_path) {
 
       /**
       *  The fork database needs an initial block_state to be set before
@@ -338,11 +338,9 @@ struct controller_impl {
       *  in the database (whose head block state should be irreversible) or
       *  it would be the genesis state.
       */
-      if (worldstate) {
+      if (bfs::exists(worldstate_path)) {
          ULTRAIN_ASSERT(!head, fork_database_exception, "");
-         worldstate->validate();
-
-         read_from_worldstate(worldstate);
+         read_from_worldstate(worldstate_path);
 
          auto end = blog.read_head();
          if( !end ) {
@@ -573,26 +571,36 @@ struct controller_impl {
       ilog("add_contract_tables_to_worldstate end");
    }
 
-   void read_contract_tables_from_worldstate( const worldstate_reader_ptr& worldstate ) {
-      worldstate->read_section("contract_tables", [this]( auto& section ) {
+   void read_contract_tables_from_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db ) {
+      ULTRAIN_ASSERT(ws_helper_ptr->get_reader(), worldstate_exception, "Ws reaer is not exist!");
+      ilog("read_contract_tables_from_worldstate");
+
+      ws_helper_ptr->get_id_writer()->write_start_id_section("contract_tables");
+      ws_helper_ptr->get_reader()->read_section("contract_tables", [&]( auto& section ) {
          bool more = !section.empty();
          while (more) {
             // read the row for the table
             table_id_object::id_type t_id;
-            index_utils<table_id_multi_index>::create(db, [this, &section, &t_id](auto& row) {
+            index_utils<table_id_multi_index>::create(db, [&](auto& row) {
+               ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, 0);
+               
                section.read_row(row, db);
                t_id = row.id;
             });
 
             // read the size and data rows for each type of table
-            contract_database_index_set::walk_indices([this, &section, &t_id, &more](auto utils) {
+            contract_database_index_set::walk_indices([&](auto utils) {
                using utils_t = decltype(utils);
 
                unsigned_int size;
                more = section.read_row(size, db);
+               /*Import, insert a ignore value,keep same relative pos with ws file*/
+               ws_helper_ptr->get_id_writer()->write_row_id(0, 0);
 
                for (size_t idx = 0; idx < size.value; idx++) {
-                  utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
+                  utils_t::create(db, [&](auto& row) {
+                     ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, 0);
+
                      row.t_id = t_id;
                      more = section.read_row(row, db);
                   });
@@ -600,6 +608,8 @@ struct controller_impl {
             });
          }
       });
+      ws_helper_ptr->get_id_writer()->write_end_id_section();
+      ilog("read_contract_tables_from_worldstate end");
    }
 
    void add_to_worldstate(chainbase::database& worldstate_db, uint32_t block_height, const block_state& fork_head){
@@ -642,10 +652,10 @@ struct controller_impl {
             return;
          }
 
-         ws_helper_ptr->handle_indices<index_t>(worldstate_db);
+         ws_helper_ptr->add_table_to_worldstate<index_t>(worldstate_db);
       });
 
-      add_contract_tables_to_worldstate(ws_helper_ptr,worldstate_db);
+      //add_contract_tables_to_worldstate(ws_helper_ptr,worldstate_db);
       authorization.add_to_worldstate(ws_helper_ptr, worldstate_db);
       resource_limits.add_to_worldstate(ws_helper_ptr, worldstate_db);
 
@@ -658,17 +668,25 @@ struct controller_impl {
       info.hash_string = ws_manager_ptr->calculate_file_hash(new_ws_file_name).str();
       ws_manager_ptr->save_info(info);
       ilog("add_to_worldstate ws info: ${info}", ("info", info));
+
+      //TODO-N: remove old ongoing files
    }
 
-   void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
+   void read_from_worldstate( const bfs::path& worldstate_path ) {
+      auto& worldstate_db = db;
+      fc::sha256 tmp_chain_id = self.get_chain_id();
+      std::string id_file = ws_manager_ptr->get_file_path_by_info(tmp_chain_id, 0) + ".id";
+      auto ws_helper_ptr = std::make_shared<ws_helper>(
+         worldstate_path.string(), id_file, true
+      );
 
-      worldstate->read_section<chain_worldstate_header>([this]( auto &section ){
+      ws_helper_ptr->get_reader()->read_section<chain_worldstate_header>([this]( auto &section ){
          chain_worldstate_header header;
          section.read_row(header, db);
          header.validate();
       });
 
-      worldstate->read_section<block_state>([this]( auto &section ){
+      ws_helper_ptr->get_reader()->read_section<block_state>([this]( auto &section ){
           block_header_state head_header_state;
           section.read_row(head_header_state, db);
 
@@ -681,29 +699,38 @@ struct controller_impl {
           worldstate_head_block = head->block_num;
       });
 
-      controller_index_set::walk_indices([this, &worldstate]( auto utils ){
-         using value_t = typename decltype(utils)::index_t::value_type;
+      controller_index_set::walk_indices([&]( auto utils ){
+         using index_t = typename decltype(utils)::index_t;
+         using value_t = typename index_t::value_type;
 
          // skip the table_id_object as its inlined with contract tables section
          if (std::is_same<value_t, table_id_object>::value) {
             return;
          }
 
-         worldstate->read_section<value_t>([this]( auto& section ) {
-            bool more = !section.empty();
-            while(more) {
-               decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
-                  more = section.read_row(row, db);
-               });
-            }
-         });
+         ws_helper_ptr->read_table_from_worldstate<index_t>(worldstate_db);
       });
 
-      read_contract_tables_from_worldstate(worldstate);
-      authorization.read_from_worldstate(worldstate);
-      resource_limits.read_from_worldstate(worldstate);
+      read_contract_tables_from_worldstate(ws_helper_ptr, worldstate_db);
+      authorization.read_from_worldstate(ws_helper_ptr, worldstate_db);
+      resource_limits.read_from_worldstate(ws_helper_ptr, worldstate_db);
 
       db.set_revision( head->block_num );
+      ws_helper_ptr.reset();
+      
+      //copy the file, save in local path
+      ws_info info;
+      info.chain_id = tmp_chain_id;
+      info.block_height = head->block_num;
+      std::string ws_file = ws_manager_ptr->get_file_path_by_info(tmp_chain_id, head->block_num);
+      fc::rename(worldstate_path, bfs::path(ws_file+".ws") );
+      fc::rename(id_file, bfs::path(ws_file+".id") );
+
+      info.file_size = bfs::file_size(ws_file + ".ws");
+      info.hash_string = ws_manager_ptr->calculate_file_hash(ws_file+".ws").str();
+      ws_manager_ptr->save_info(info);
+
+      worldstate_previous_block = head->block_num;
       ilog("read_from_worldstate, block_num: ${block_num}", ("block_num", head->block_num));
     }
 
@@ -1761,12 +1788,12 @@ void controller::add_indices() {
    my->add_indices();
 }
 
-void controller::startup( const worldstate_reader_ptr& worldstate ) {
+void controller::startup( bfs::path worldstate_path ) {
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init(worldstate);
+   my->init(worldstate_path);
 }
 
 chainbase::database& controller::db()const { return my->db; }
@@ -1980,8 +2007,8 @@ void controller::write_worldstate() const {
    return my->create_worldstate();
 }
 
-void controller::read_worldstate( const worldstate_reader_ptr& worldstate ) {
-    return my->read_from_worldstate(worldstate);
+void controller::read_worldstate( const bfs::path& worldstate_path ) {
+    return my->read_from_worldstate(worldstate_path);
 }
 
 sha256 controller::calculate_integrity_hash()const { try {

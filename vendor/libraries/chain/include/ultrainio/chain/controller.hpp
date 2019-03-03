@@ -13,6 +13,7 @@ namespace chainbase {
    class database;
 }
 
+namespace bfs = boost::filesystem;
 
 namespace ultrainio { namespace chain {
 
@@ -87,7 +88,7 @@ namespace ultrainio { namespace chain {
          ~controller();
 
          void add_indices();
-         void startup(const worldstate_reader_ptr& worldstate = nullptr );
+         void startup(bfs::path worldstate_path = bfs::path());
 
          /**
           * Starts a new pending block session upon which new transactions can
@@ -202,7 +203,7 @@ namespace ultrainio { namespace chain {
 
          block_id_type get_block_id_for_num( uint32_t block_num )const;
          void write_worldstate()const;
-         void read_worldstate( const worldstate_reader_ptr& worldstate );
+         void read_worldstate( const bfs::path& worldstate_path );
          sha256 calculate_integrity_hash()const;
 
          void check_actor_list( const flat_set<account_name>& actors )const;

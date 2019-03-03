@@ -64,14 +64,10 @@ namespace ultrainio { namespace chain {
                const auto& usage = *itr_usage;
                res.last_used = usage.last_used;
 
-               if (data){
-                  ws_helper* ptr = (ws_helper*)data;
-                  auto id_writer = ptr->get_id_writer();
-                  if(id_writer) {
-                     ilog("usage.id:  ${t}", ("t", usage.id._id));
-                     id_writer->write_row_id(usage.id._id, 0);
-                  }
-               }
+               ULTRAIN_ASSERT( data != nullptr, worldstate_exception, "Data is nullptr, request data!");
+               ws_helper* ptr = (ws_helper*)data;
+               ilog("usage.id:  ${t}", ("t", usage.id._id));
+               ptr->get_id_writer()->write_row_id(usage.id._id, 0);
             } else {
                res.last_used = time_point();
             }
@@ -115,18 +111,19 @@ namespace ultrainio { namespace chain {
             }
 
             if (value.id != 0) {
-               // create the usage object
-               if(!backup) {
-                  const auto& usage = db.create<permission_usage_object>([&](auto& p) {
+               ULTRAIN_ASSERT( data != nullptr, worldstate_exception, "Data is nullptr, request data!");
+               ws_helper* ptr = (ws_helper*)data;
+
+               if(!backup) {// create the usage object
+                  const auto& usage = db.create<permission_usage_object>([&](auto& p) { 
                      p.last_used = row.last_used;
                   });
+                  ptr->get_id_writer()->write_row_id(usage.id._id, 0);
                   value.usage_id = usage.id;
                } else {
-                  ULTRAIN_ASSERT( data != nullptr, worldstate_exception, "Data is nullptr, request data!");
-                  ws_helper* ptr = (ws_helper*)data;
                   uint64_t old_id = 0, size = 0;
                   ptr->get_id_reader()->read_id_row(old_id, size);
-                  ilog("read_id usage.id：  ${t}  ${s}", ("t", old_id)("s", size));
+                  ilog("read_id usage.id:  ${t}  ${s}", ("t", old_id)("s", size));
                   const auto& usage = db.backup_create<permission_usage_object>([&](auto& p) {
                      p.last_used = row.last_used;
                      p.id._id = old_id;
@@ -177,8 +174,9 @@ namespace ultrainio { namespace chain {
       });
    }
 
-   void authorization_manager::read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
-      authorization_index_set::walk_indices([this, &worldstate]( auto utils ){
+   void authorization_manager::read_from_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db ) {
+      authorization_index_set::walk_indices([&]( auto utils ){
+         using index_t = typename decltype(utils)::index_t;
          using section_t = typename decltype(utils)::index_t::value_type;
 
          // skip the permission_usage_index as its inlined with permission_index
@@ -186,14 +184,7 @@ namespace ultrainio { namespace chain {
             return;
          }
 
-         worldstate->read_section<section_t>([this]( auto& section ) {
-            bool more = !section.empty();
-            while(more) {
-               decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
-                  more = section.read_row(row, _db);
-               });
-            }
-         });
+         ws_helper_ptr->read_table_from_worldstate<index_t>(worldstate_db, (void*)ws_helper_ptr.get());
       });
    }
 

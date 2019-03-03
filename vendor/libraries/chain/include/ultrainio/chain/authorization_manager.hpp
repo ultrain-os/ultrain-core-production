@@ -32,7 +32,7 @@ namespace ultrainio { namespace chain {
          void initialize_database();
 
          void add_to_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db);
-         void read_from_worldstate( const worldstate_reader_ptr& worldstate );
+         void read_from_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db );
 
          const permission_object& create_permission( account_name account,
                                                      permission_name name,

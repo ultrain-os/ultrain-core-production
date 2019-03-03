@@ -241,17 +241,12 @@ namespace ultrainio { namespace chain {
                }
 
                template<typename T>
-               auto read_row( T& out, chainbase::database& ) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
+               auto read_row( T& out, chainbase::database&, bool backup = false, void* data = nullptr) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
                   return read_row(out);
                }
 
                template<typename T>
-               auto read_row( T& out, chainbase::database&, bool backup, void* data = nullptr) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
-                  return read_row(out);
-               }
-
-               template<typename T>
-               auto read_row( T& out, chainbase::database& db, bool backup = true, void* data = nullptr) -> std::enable_if_t<!std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
+               auto read_row( T& out, chainbase::database& db, bool backup, void* data) -> std::enable_if_t<!std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
                   auto temp = typename detail::worldstate_row_traits<T>::worldstate_type();
                   auto reader = detail::make_row_reader(temp);
                   bool result = _reader.read_row(reader);

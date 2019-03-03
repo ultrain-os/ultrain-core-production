@@ -112,6 +112,7 @@ namespace ultrainio { namespace chain {
     {
        public:
             ws_helper(std::string old_ws, std::string new_ws);
+            ws_helper(std::string ws_file, std::string id_file, bool isReload);
             ~ws_helper();        
         public:
             std::shared_ptr<istream_worldstate_reader> get_reader();
@@ -172,9 +173,9 @@ namespace ultrainio { namespace chain {
                 ilog("store_backup_indices done");
             };
 
-            template<typename index_t> void handle_indices(chainbase::database& worldstate_db){
+            template<typename index_t> void add_table_to_worldstate(chainbase::database& worldstate_db){
                 using value_t = typename index_t::value_type;
-                ilog("handle_indices: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
+                ilog("add_table_to_worldstate: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
 
                 auto& cache_node = worldstate_db.get_mutable_index<index_t>().cache().front();
                 ilog("remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
@@ -192,7 +193,29 @@ namespace ultrainio { namespace chain {
 
                 // 4. clear backup_indices
                 (const_cast<index_t&>(worldstate_db.get_mutable_index<index_t>().backup_indices())).clear();
-                ilog("handle_indices done");
+                ilog("add_table_to_worldstate done");
+            };
+
+            template<typename index_t> void read_table_from_worldstate(chainbase::database& worldstate_db, void* data = nullptr){
+                ULTRAIN_ASSERT(get_reader(), worldstate_exception, "Reader is nullptr, maybe ws file don't exist");
+                    
+                using value_t = typename index_t::value_type;
+                ilog("read_table_from_worldstate: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
+                
+                //Id file don't sync, so when restore, id file need to rebuild.
+                get_id_writer()->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
+                get_reader()->read_section<value_t>([&]( auto& section ) {
+                    bool more = !section.empty();
+                    while(more) {
+                        index_utils<index_t>::create(worldstate_db, [&]( auto &row ) {
+                            get_id_writer()->write_row_id(row.id._id, 0);
+                            more = section.read_row(row, worldstate_db, false, data);
+                        }, false);
+                    }
+                });
+
+                get_id_writer()->write_end_id_section();
+                ilog("read_table_from_worldstate done");
             };
 
         private:

@@ -68,20 +68,14 @@ void resource_limits_manager::add_to_worldstate( std::shared_ptr<ws_helper> ws_h
       using index_t = typename decltype(utils)::index_t;
       using value_t = typename index_t::value_type;
       ilog("add_to_worldstate ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
-      ws_helper_ptr->handle_indices<index_t>(worldstate_db);
+      ws_helper_ptr->add_table_to_worldstate<index_t>(worldstate_db);
    });
 }
 
-void resource_limits_manager::read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
-   resource_index_set::walk_indices([this, &worldstate]( auto utils ){
-      worldstate->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
-         bool more = !section.empty();
-         while(more) {
-            decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
-               more = section.read_row(row, _db);
-            });
-         }
-      });
+void resource_limits_manager::read_from_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db ) {
+   resource_index_set::walk_indices([&]( auto utils ){
+      using index_t = typename decltype(utils)::index_t;
+      ws_helper_ptr->read_table_from_worldstate<index_t>(worldstate_db);
    });
 }
 
