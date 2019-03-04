@@ -385,6 +385,8 @@ namespace ultrainiosystem {
 
          bool move_producer(checksum256 head_id, subchains_table::const_iterator from_iter,
                             subchains_table::const_iterator to_iter, uint16_t index);
+
+         uint32_t get_enable_producers_number();
    };
 
 } /// ultrainiosystem

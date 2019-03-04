@@ -340,6 +340,7 @@ void system_contract::delegatecons( account_name from, account_name receiver,ass
 
    void system_contract::undelegatecons( account_name from, account_name receiver)
    {
+      ultrainio_assert( get_enable_producers_number() > _gstate.min_committee_member_number, " The number of committees is about to be smaller than the minimum number and therefore cannot be undelegatecons" );
       change_cons( from, receiver, asset(-1));
    } // undelegatecons
 

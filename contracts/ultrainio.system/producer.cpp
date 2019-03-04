@@ -115,6 +115,7 @@ namespace ultrainiosystem {
 
    void system_contract::unregprod( const account_name producer ) {
       require_auth( producer );
+      ultrainio_assert( get_enable_producers_number() > _gstate.min_committee_member_number, " The number of committees is about to be smaller than the minimum number and therefore cannot be unregprod" );
       if(has_auth(_self)){
          require_auth(_self);
       } else{
@@ -137,6 +138,13 @@ namespace ultrainiosystem {
           //todo
       } */
    }
-
+   inline uint32_t system_contract::get_enable_producers_number(){
+      uint32_t  enableprodnum = 0;
+      for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
+         if(itr->is_enabled && itr->is_on_master_chain())
+            ++enableprodnum;
+      }
+      return enableprodnum;
+   }
 
 } /// namespace ultrainiosystem

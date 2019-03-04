@@ -135,7 +135,8 @@ namespace ultrainiosystem {
    void system_contract::votecommittee() {
       constexpr size_t max_stack_buffer_size = 512;
       size_t size = action_data_size();
-      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      const bool heap_allocation = max_stack_buffer_size < size;
+      char* buffer = (char*)( heap_allocation ? malloc(size) : alloca(size) );
       read_action_data( buffer, size );
       account_name proposer;
       vector<proposeminer_info> proposeminer;
@@ -147,11 +148,8 @@ namespace ultrainiosystem {
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency( propos );
-      uint32_t  enableprodnum = 0;
-      for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
-         if(itr->is_enabled && itr->is_on_master_chain())
-            ++enableprodnum;
-      }
+      uint32_t  enableprodnum = get_enable_producers_number();
+      ultrainio_assert( enableprodnum > _gstate.min_committee_member_number || proposeminer[0].adddel_miner, " The number of committees is about to be smaller than the minimum number and therefore cannot be voted away" );
       print("votecommittee enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeminer.size(),"\n");
       for(auto minerinfo : proposeminer){
          ultrainio_assert( is_account( minerinfo.account ), "vote votecommittee account not exist");
@@ -211,6 +209,9 @@ namespace ultrainiosystem {
             });
          }
       }
+      if(heap_allocation){
+          free(buffer);
+      }
    }
    void system_contract::getKeydata(const std::string& pubkey,std::array<char,33> & data){
       auto const getHexvalue = [](const char ch)->int{
@@ -258,7 +259,8 @@ namespace ultrainiosystem {
 void system_contract::voteaccount() {
       constexpr size_t max_stack_buffer_size = 512;
       size_t size = action_data_size();
-      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      const bool heap_allocation = max_stack_buffer_size < size;
+      char* buffer = (char*)( heap_allocation ? malloc(size) : alloca(size) );
       read_action_data( buffer, size );
       account_name proposer;
       vector<proposeaccount_info> proposeaccount;
@@ -269,11 +271,7 @@ void system_contract::voteaccount() {
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency( propos );
-      uint32_t  enableprodnum = 0;
-      for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
-         if(itr->is_enabled && itr->is_on_master_chain())
-            ++enableprodnum;
-      }
+      uint32_t  enableprodnum = get_enable_producers_number();
       print("voteaccount enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeaccount.size(),"\n");
       for(auto accinfo : proposeaccount){
          ultrainio_assert( !is_account( accinfo.account ), "vote create account already exist");
@@ -335,12 +333,16 @@ void system_contract::voteaccount() {
             });
          }
       }
+      if(heap_allocation){
+          free(buffer);
+      }
    }
 
 void system_contract::voteresourcelease() {
       constexpr size_t max_stack_buffer_size = 512;
       size_t size = action_data_size();
-      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      const bool heap_allocation = max_stack_buffer_size < size;
+      char* buffer = (char*)( heap_allocation ? malloc(size) : alloca(size) );
       read_action_data( buffer, size );
       account_name proposer;
       vector<proposeresource_info> proposeresource;
@@ -351,11 +353,7 @@ void system_contract::voteresourcelease() {
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency( propos );
-      uint32_t  enableprodnum = 0;
-      for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
-         if(itr->is_enabled && itr->is_on_master_chain())
-            ++enableprodnum;
-      }
+      uint32_t  enableprodnum = get_enable_producers_number();
       print("voteresourcelease enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," proposeresource_info size:",proposeresource.size(),"\n");
       for(auto resinfo : proposeresource){
          ultrainio_assert( is_account( resinfo.account ), "vote resoucelease account not exist");
@@ -413,6 +411,9 @@ void system_contract::voteresourcelease() {
                p.proposal_resource.push_back(resinfo);
             });
          }
+      }
+      if(heap_allocation){
+          free(buffer);
       }
    }
 
