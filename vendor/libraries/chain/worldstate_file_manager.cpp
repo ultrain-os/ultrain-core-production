@@ -51,7 +51,15 @@ bool from_file_name(fc::path name, fc::sha256& chain_id, uint32_t& block_height)
     fc::variant chain_var(text.substr(0, pos));
     fc::from_variant(chain_var, chain_id);
 
-    fc::variant height_var(text.substr(pos+1, text.size() - pos - 1));
+    int end = pos;
+    while(text[end] != '-' && text[end] != '.' && end < text.size()){
+        end++;
+    }
+
+    if(end >= text.size())
+        return false;
+
+    fc::variant height_var(text.substr(pos+1, end));
     fc::from_variant(height_var, block_height);
     return true;   
 }
@@ -420,7 +428,6 @@ ws_helper::ws_helper(std::string old_ws, std::string new_ws)
 ,m_new_ws_path(new_ws)
 {
     //output stream
-    // TODO_N:  have to consider ongoing  files
     if(!old_ws.empty() && bfs::exists(m_old_ws_path + ".ws") && bfs::exists(m_old_ws_path + ".id")){
         m_reader_fd = std::ifstream(m_old_ws_path + ".ws", (std::ios::in | std::ios::binary));
         m_reader = std::make_shared<istream_worldstate_reader>(m_reader_fd);
@@ -442,7 +449,7 @@ ws_helper::ws_helper(std::string old_ws, std::string new_ws)
 ws_helper::ws_helper(std::string ws_file, std::string id_file, bool isReload)
 {
     ULTRAIN_ASSERT(isReload == true, worldstate_exception, "reload mode, [isReload] must be true!");
-    ULTRAIN_ASSERT(!ws_file.empty() &&  bfs::exists(ws_file), worldstate_exception, "reload mode, [isReload] must be true!");
+    ULTRAIN_ASSERT(!ws_file.empty() &&  bfs::exists(ws_file), worldstate_exception, "reload mode, ws have to exist!");
 
     //output stream
     m_reader_fd = std::ifstream(ws_file, (std::ios::in | std::ios::binary));
@@ -456,17 +463,16 @@ ws_helper::ws_helper(std::string ws_file, std::string id_file, bool isReload)
 
 ws_helper::~ws_helper()
 {
-    if (m_id_writer)
-        m_id_writer->finalize();
-    
-    if (m_writer)
-        m_writer->finalize();
+    if (m_id_reader)    m_id_reader.reset();
+    if (m_reader)   m_reader.reset();
 
-    if (m_reader_fd.is_open()) 
-        m_reader_fd.close();
+    if (m_id_writer)    m_id_writer->finalize();
+    
+    if (m_writer)   m_writer->finalize();
+
+    if (m_reader_fd.is_open())  m_reader_fd.close();
         
-    if (m_id_reader_fd.is_open()) 
-        m_id_reader_fd.close();
+    if (m_id_reader_fd.is_open())   m_id_reader_fd.close();
 
     if (m_writer_fd.is_open()) { 
         m_writer_fd.flush();

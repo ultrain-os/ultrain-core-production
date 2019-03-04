@@ -500,7 +500,7 @@ struct controller_impl {
                   contract_database_index_set::walk_indices([&]( auto utils ) {
                      using index_t = typename decltype(utils)::index_t;
                      worldstate_db.get_mutable_index<index_t>().process_table([&](auto& item)->bool{
-                        return item.second.t_id == t_id;//TODO why t_id is ok???
+                        return item.second.t_id == t_id;
                      });
                   });
                   ilog("process_table done");
@@ -613,7 +613,7 @@ struct controller_impl {
    }
 
    void add_to_worldstate(chainbase::database& worldstate_db, uint32_t block_height, const block_state& fork_head){
-      ilog("start add_to_worldstate");
+      ilog("start add_to_worldstate blockNum: ${t}",  ("t", block_height));
       if(!ws_manager_ptr) return;
 
       ws_info info;
@@ -621,10 +621,14 @@ struct controller_impl {
       info.block_height = block_height;
 
       std::string new_ws_file = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height);
-      auto ws_helper_ptr = std::make_shared<ws_helper>(
-         worldstate_previous_block > 0 ? ws_manager_ptr->get_file_path_by_info(info.chain_id, worldstate_previous_block) : "",
-         new_ws_file
-      );
+      std::string old_ws_file = worldstate_previous_block > 0 ? ws_manager_ptr->get_file_path_by_info(info.chain_id, worldstate_previous_block) : "";
+      if (block_height %  conf.worldstate_interval != 0)
+         new_ws_file += ".tmp";
+
+      if (worldstate_previous_block > 0 && worldstate_previous_block %  conf.worldstate_interval != 0)
+         old_ws_file += ".tmp";
+
+      auto ws_helper_ptr = std::make_shared<ws_helper>(old_ws_file, new_ws_file);
 
       ws_helper_ptr->get_writer()->write_section<chain_worldstate_header>([this,&worldstate_db]( auto &section ){
          section.add_row(chain_worldstate_header(), worldstate_db);
@@ -655,30 +659,33 @@ struct controller_impl {
          ws_helper_ptr->add_table_to_worldstate<index_t>(worldstate_db);
       });
 
-      //add_contract_tables_to_worldstate(ws_helper_ptr,worldstate_db);
+      add_contract_tables_to_worldstate(ws_helper_ptr,worldstate_db);
       authorization.add_to_worldstate(ws_helper_ptr, worldstate_db);
       resource_limits.add_to_worldstate(ws_helper_ptr, worldstate_db);
 
-      ws_helper_ptr.reset();
-
       //save worldstate file
-      worldstate_previous_block = block_height;
-      std::string new_ws_file_name = new_ws_file +".ws";
+      ws_helper_ptr.reset();
+      std::string new_ws_file_name = new_ws_file + ".ws";
       info.file_size = bfs::file_size(new_ws_file_name);
       info.hash_string = ws_manager_ptr->calculate_file_hash(new_ws_file_name).str();
       ws_manager_ptr->save_info(info);
-      ilog("add_to_worldstate ws info: ${info}", ("info", info));
 
-      //TODO-N: remove old ongoing files
+      //Remove old ws files if temp
+      if (worldstate_previous_block > 0 && worldstate_previous_block %  conf.worldstate_interval != 0) {
+         // fc::remove(ws_manager_ptr->get_file_path_by_info(info.chain_id, worldstate_previous_block)+".info");
+         fc::remove(old_ws_file+".id");
+         fc::remove(old_ws_file+".ws");
+      }
+
+      worldstate_previous_block = block_height;
+      ilog("add_to_worldstate ws info: ${info}", ("info", info));
    }
 
    void read_from_worldstate( const bfs::path& worldstate_path ) {
       auto& worldstate_db = db;
       fc::sha256 tmp_chain_id = self.get_chain_id();
       std::string id_file = ws_manager_ptr->get_file_path_by_info(tmp_chain_id, 0) + ".id";
-      auto ws_helper_ptr = std::make_shared<ws_helper>(
-         worldstate_path.string(), id_file, true
-      );
+      auto ws_helper_ptr = std::make_shared<ws_helper>(worldstate_path.string(), id_file, true);
 
       ws_helper_ptr->get_reader()->read_section<chain_worldstate_header>([this]( auto &section ){
          chain_worldstate_header header;
