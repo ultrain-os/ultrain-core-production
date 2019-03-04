@@ -23,9 +23,11 @@ schduleaccounts=[]
 
 conf = ConfigParser()
 curindex = 0
+curblockheight = 0
 if os.path.isfile("/root/workspace/ultrain-core/scripts/mutichain.cfg") :
     conf.read("/root/workspace/ultrain-core/scripts/mutichain.cfg")
     curindex = conf.getint('config', 'index')
+    curblockheight = conf.getint('config', 'blockheight')
 basis_value = curindex*150
 maxnum=5
 prefixStr="test.a."
@@ -236,6 +238,37 @@ def deleteHistory():
     if os.path.isfile("/root/workspace/ultrain-core/scripts/mutichain.cfg") :
         os.remove("/root/workspace/ultrain-core/scripts/mutichain.cfg");
 
+def merkleproof():
+    global curblockheight
+    curproofindex = 0
+    verifysucblock = []
+    verifyfailblock = []
+    while True:
+        curproofindex += 1
+        if curproofindex > 1000:
+            break
+        addvalue = random.randint(1, 50)
+        curblockheight += addvalue
+        reqblockinfo = requests.get("http://127.0.0.1:8888/v1/chain/get_block_info",data = json.dumps({"block_num_or_id":str(curblockheight)})).text
+        j = json.loads(reqblockinfo)
+        if not ("proposer" in j):
+            break
+        if len(j["transactions"]) == 0:
+            continue
+        trx_id = j["transactions"][0]["trx"]["id"]
+        transaction_mroot = j["transaction_mroot"]
+        req_getmerkle = requests.get("http://127.0.0.1:8888/v1/chain/get_merkle_proof",data = json.dumps({"block_number":curblockheight,"trx_id":trx_id})).text
+        merkle_j = json.loads(req_getmerkle)
+        merkle_proof = merkle_j["merkle_proof"]
+        trx_receipt_bytes = merkle_j["trx_receipt_bytes"]
+        reqverifymerkle = requests.get("http://127.0.0.1:8888/v1/chain/verify_merkle_proof",data = json.dumps({"transaction_mroot":transaction_mroot,"merkle_proof":merkle_proof,"trx_receipt_bytes":trx_receipt_bytes})).text
+        verfy_j = json.loads(reqverifymerkle)
+        if verfy_j["is_matched"] == True:
+            verifysucblock.append(curblockheight)
+        else :
+            verifyfailblock.append(curblockheight)
+    return (verifysucblock,verifyfailblock)
+
 def verifyaccrestest():
     successFlag=True;
     chain1nofindacc = []
@@ -278,13 +311,28 @@ def verifyaccrestest():
         chaininfostr += getchaincontext("13",sidechainacc3,chain3nofindacc,chain3nofindres)
         if (int(len(chain3nofindacc)) > 0 or int(len(chain3nofindres)) > 0) :
             successFlag = False;
-
+    (verifysucblock,verifyfailblock) = merkleproof()
+    totalverifyblock = verifysucblock + verifyfailblock
+    merklestr = "merkle proof \n验证主链块数量为" + str(len(totalverifyblock))
+    merklestr += "\n块高列表为:"
+    for a in totalverifyblock:
+        merklestr += str(a)+","
+    merklestr += "\nmerkle proof 验证失败块数量为:" + str(len(verifyfailblock))
+    if len(verifyfailblock) != 0:
+        successFlag = False
+        merklestr += "\n失败块列表为:"
+        for a in verifyfailblock:
+            merklestr += str(a)+","
+    chaininfostr += merklestr
     configindex = curindex + 1
+    confblockheight = curblockheight
     if os.path.isfile("/root/workspace/ultrain-core/scripts/mutichain.cfg") :
         conf.set('config', 'index', str(configindex))
+        conf.set('config', 'blockheight', str(confblockheight))
     else:
         conf.add_section("config")
         conf.set('config', 'index', str(configindex))
+        conf.set('config', 'blockheight', str(confblockheight))
     with open('/root/workspace/ultrain-core/scripts/mutichain.cfg', 'w') as fw:
         conf.write(fw)
 
