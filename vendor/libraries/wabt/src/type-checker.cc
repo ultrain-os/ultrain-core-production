@@ -384,6 +384,20 @@ Result TypeChecker::OnBrIf(Index depth) {
   return result;
 }
 
+Result TypeChecker::OnBrOnExn(Index depth, const TypeVector& types) {
+  Result result = PopAndCheck1Type(Type::ExceptRef, "br_on_exn");
+  Label* label;
+  CHECK_RESULT(GetLabel(depth, &label));
+  if (Failed(CheckTypes(types, label->br_types()))) {
+    PrintError("br_on_exn has inconsistent types: expected %s, got %s",
+               TypesToString(label->br_types()).c_str(),
+               TypesToString(types).c_str());
+    result = Result::Error;
+  }
+  PushType(Type::ExceptRef);
+  return result;
+}
+
 Result TypeChecker::BeginBrTable() {
   br_table_sig_ = nullptr;
   return PopAndCheck1Type(Type::I32, "br_table");
@@ -515,21 +529,13 @@ Result TypeChecker::OnEnd(Label* label,
 
 Result TypeChecker::OnEnd() {
   Result result = Result::Ok;
-  static const char* s_label_type_name[] = {"function",
-                                            "block",
-                                            "loop",
-                                            "if",
-                                            "if false branch",
-                                            "if_except",
-                                            "if_except false branch",
-                                            "try",
-                                            "try catch"};
+  static const char* s_label_type_name[] = {
+      "function", "block", "loop", "if", "if false branch", "try", "try catch"};
   WABT_STATIC_ASSERT(WABT_ARRAY_SIZE(s_label_type_name) == kLabelTypeCount);
   Label* label;
   CHECK_RESULT(TopLabel(&label));
   assert(static_cast<int>(label->label_type) < kLabelTypeCount);
-  if (label->label_type == LabelType::If ||
-      label->label_type == LabelType::IfExcept) {
+  if (label->label_type == LabelType::If) {
     // An if without an else will just pass the params through, so the result
     // types must be the same as the param types. It has the same behavior as
     // an empty else block.
@@ -546,19 +552,6 @@ Result TypeChecker::OnIf(const TypeVector& param_types,
   result |= PopAndCheckSignature(param_types, "if");
   PushLabel(LabelType::If, param_types, result_types);
   PushTypes(param_types);
-  return result;
-}
-
-Result TypeChecker::OnIfExcept(const TypeVector& param_types,
-                               const TypeVector& result_types,
-                               const TypeVector& except_sig) {
-  Result result = PopAndCheck1Type(Type::ExceptRef, "if_except");
-  result |= PopAndCheckSignature(param_types, "if_except");
-  PushLabel(LabelType::IfExcept, param_types, result_types);
-  // TODO(binji): Not quite sure how multi-value and exception proposals are
-  // meant to interact here.
-  PushTypes(param_types);
-  PushTypes(except_sig);
   return result;
 }
 
@@ -603,7 +596,7 @@ Result TypeChecker::OnMemoryCopy() {
   return CheckOpcode3(Opcode::MemoryCopy);
 }
 
-Result TypeChecker::OnMemoryDrop(uint32_t segment) {
+Result TypeChecker::OnDataDrop(uint32_t segment) {
   return Result::Ok;
 }
 
@@ -628,12 +621,45 @@ Result TypeChecker::OnTableCopy() {
   return CheckOpcode3(Opcode::TableCopy);
 }
 
-Result TypeChecker::OnTableDrop(uint32_t segment) {
+Result TypeChecker::OnElemDrop(uint32_t segment) {
   return Result::Ok;
 }
 
 Result TypeChecker::OnTableInit(uint32_t segment) {
   return CheckOpcode3(Opcode::TableInit);
+}
+
+Result TypeChecker::OnTableGet(Index segment) {
+  Result result = PopAndCheck1Type(Type::I32, "table.get");
+  PushType(Type::Anyref); // TODO: should be the table's type
+  return result;
+}
+
+Result TypeChecker::OnTableSet(Index segment) {
+  // TODO: anyref here should be the table's type
+  return PopAndCheck2Types(Type::I32, Type::Anyref, "table.set");
+}
+
+Result TypeChecker::OnTableGrow(Index segment) {
+  Result result = PopAndCheck2Types(Type::I32, Type::Anyref, "table.grow");
+  PushType(Type::I32);
+  return result;
+}
+
+Result TypeChecker::OnTableSize(Index segment) {
+  PushType(Type::I32);
+  return Result::Ok;
+}
+
+Result TypeChecker::OnRefNullExpr() {
+  PushType(Type::Anyref);
+  return Result::Ok;
+}
+
+Result TypeChecker::OnRefIsNullExpr() {
+  Result result = PopAndCheck1Type(Type::Anyref, "ref.is_null");
+  PushType(Type::I32);
+  return result;
 }
 
 Result TypeChecker::OnRethrow() {

@@ -39,8 +39,6 @@ class ExprVisitor {
     Block,
     IfTrue,
     IfFalse,
-    IfExceptTrue,
-    IfExceptFalse,
     Loop,
     Try,
     Catch,
@@ -71,6 +69,7 @@ class ExprVisitor::Delegate {
   virtual Result EndBlockExpr(BlockExpr*) = 0;
   virtual Result OnBrExpr(BrExpr*) = 0;
   virtual Result OnBrIfExpr(BrIfExpr*) = 0;
+  virtual Result OnBrOnExnExpr(BrOnExnExpr*) = 0;
   virtual Result OnBrTableExpr(BrTableExpr*) = 0;
   virtual Result OnCallExpr(CallExpr*) = 0;
   virtual Result OnCallIndirectExpr(CallIndirectExpr*) = 0;
@@ -83,9 +82,6 @@ class ExprVisitor::Delegate {
   virtual Result BeginIfExpr(IfExpr*) = 0;
   virtual Result AfterIfTrueExpr(IfExpr*) = 0;
   virtual Result EndIfExpr(IfExpr*) = 0;
-  virtual Result BeginIfExceptExpr(IfExceptExpr*) = 0;
-  virtual Result AfterIfExceptTrueExpr(IfExceptExpr*) = 0;
-  virtual Result EndIfExceptExpr(IfExceptExpr*) = 0;
   virtual Result OnLoadExpr(LoadExpr*) = 0;
   virtual Result OnLocalGetExpr(LocalGetExpr*) = 0;
   virtual Result OnLocalSetExpr(LocalSetExpr*) = 0;
@@ -93,14 +89,20 @@ class ExprVisitor::Delegate {
   virtual Result BeginLoopExpr(LoopExpr*) = 0;
   virtual Result EndLoopExpr(LoopExpr*) = 0;
   virtual Result OnMemoryCopyExpr(MemoryCopyExpr*) = 0;
-  virtual Result OnMemoryDropExpr(MemoryDropExpr*) = 0;
+  virtual Result OnDataDropExpr(DataDropExpr*) = 0;
   virtual Result OnMemoryFillExpr(MemoryFillExpr*) = 0;
   virtual Result OnMemoryGrowExpr(MemoryGrowExpr*) = 0;
   virtual Result OnMemoryInitExpr(MemoryInitExpr*) = 0;
   virtual Result OnMemorySizeExpr(MemorySizeExpr*) = 0;
   virtual Result OnTableCopyExpr(TableCopyExpr*) = 0;
-  virtual Result OnTableDropExpr(TableDropExpr*) = 0;
+  virtual Result OnElemDropExpr(ElemDropExpr*) = 0;
   virtual Result OnTableInitExpr(TableInitExpr*) = 0;
+  virtual Result OnTableGetExpr(TableGetExpr*) = 0;
+  virtual Result OnTableSetExpr(TableSetExpr*) = 0;
+  virtual Result OnTableGrowExpr(TableGrowExpr*) = 0;
+  virtual Result OnTableSizeExpr(TableSizeExpr*) = 0;
+  virtual Result OnRefNullExpr(RefNullExpr*) = 0;
+  virtual Result OnRefIsNullExpr(RefIsNullExpr*) = 0;
   virtual Result OnNopExpr(NopExpr*) = 0;
   virtual Result OnReturnExpr(ReturnExpr*) = 0;
   virtual Result OnReturnCallExpr(ReturnCallExpr*) = 0;
@@ -132,6 +134,7 @@ class ExprVisitor::DelegateNop : public ExprVisitor::Delegate {
   Result EndBlockExpr(BlockExpr*) override { return Result::Ok; }
   Result OnBrExpr(BrExpr*) override { return Result::Ok; }
   Result OnBrIfExpr(BrIfExpr*) override { return Result::Ok; }
+  Result OnBrOnExnExpr(BrOnExnExpr*) override { return Result::Ok; }
   Result OnBrTableExpr(BrTableExpr*) override { return Result::Ok; }
   Result OnCallExpr(CallExpr*) override { return Result::Ok; }
   Result OnCallIndirectExpr(CallIndirectExpr*) override { return Result::Ok; }
@@ -144,9 +147,6 @@ class ExprVisitor::DelegateNop : public ExprVisitor::Delegate {
   Result BeginIfExpr(IfExpr*) override { return Result::Ok; }
   Result AfterIfTrueExpr(IfExpr*) override { return Result::Ok; }
   Result EndIfExpr(IfExpr*) override { return Result::Ok; }
-  Result BeginIfExceptExpr(IfExceptExpr*) override { return Result::Ok; }
-  Result AfterIfExceptTrueExpr(IfExceptExpr*) override { return Result::Ok; }
-  Result EndIfExceptExpr(IfExceptExpr*) override { return Result::Ok; }
   Result OnLoadExpr(LoadExpr*) override { return Result::Ok; }
   Result OnLocalGetExpr(LocalGetExpr*) override { return Result::Ok; }
   Result OnLocalSetExpr(LocalSetExpr*) override { return Result::Ok; }
@@ -154,14 +154,20 @@ class ExprVisitor::DelegateNop : public ExprVisitor::Delegate {
   Result BeginLoopExpr(LoopExpr*) override { return Result::Ok; }
   Result EndLoopExpr(LoopExpr*) override { return Result::Ok; }
   Result OnMemoryCopyExpr(MemoryCopyExpr*) override { return Result::Ok; }
-  Result OnMemoryDropExpr(MemoryDropExpr*) override { return Result::Ok; }
+  Result OnDataDropExpr(DataDropExpr*) override { return Result::Ok; }
   Result OnMemoryFillExpr(MemoryFillExpr*) override { return Result::Ok; }
   Result OnMemoryGrowExpr(MemoryGrowExpr*) override { return Result::Ok; }
   Result OnMemoryInitExpr(MemoryInitExpr*) override { return Result::Ok; }
   Result OnMemorySizeExpr(MemorySizeExpr*) override { return Result::Ok; }
   Result OnTableCopyExpr(TableCopyExpr*) override { return Result::Ok; }
-  Result OnTableDropExpr(TableDropExpr*) override { return Result::Ok; }
+  Result OnElemDropExpr(ElemDropExpr*) override { return Result::Ok; }
   Result OnTableInitExpr(TableInitExpr*) override { return Result::Ok; }
+  Result OnTableGetExpr(TableGetExpr*) override { return Result::Ok; }
+  Result OnTableSetExpr(TableSetExpr*) override { return Result::Ok; }
+  Result OnTableGrowExpr(TableGrowExpr*) override { return Result::Ok; }
+  Result OnTableSizeExpr(TableSizeExpr*) override { return Result::Ok; }
+  Result OnRefNullExpr(RefNullExpr*) override { return Result::Ok; }
+  Result OnRefIsNullExpr(RefIsNullExpr*) override { return Result::Ok; }
   Result OnNopExpr(NopExpr*) override { return Result::Ok; }
   Result OnReturnExpr(ReturnExpr*) override { return Result::Ok; }
   Result OnReturnCallExpr(ReturnCallExpr*) override { return Result::Ok; }

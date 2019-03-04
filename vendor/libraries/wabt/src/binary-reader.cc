@@ -119,7 +119,7 @@ class BinaryReader {
                    Limits* out_elem_limits) WABT_WARN_UNUSED;
   Result ReadMemory(Limits* out_page_limits) WABT_WARN_UNUSED;
   Result ReadGlobalHeader(Type* out_type, bool* out_mutable) WABT_WARN_UNUSED;
-  Result ReadExceptionType(TypeVector& sig) WABT_WARN_UNUSED;
+  Result ReadEventType(Index* out_sig_index) WABT_WARN_UNUSED;
   Result ReadFunctionBody(Offset end_offset) WABT_WARN_UNUSED;
   Result ReadNameSection(Offset section_size) WABT_WARN_UNUSED;
   Result ReadRelocSection(Offset section_size) WABT_WARN_UNUSED;
@@ -137,7 +137,8 @@ class BinaryReader {
   Result ReadElemSection(Offset section_size) WABT_WARN_UNUSED;
   Result ReadCodeSection(Offset section_size) WABT_WARN_UNUSED;
   Result ReadDataSection(Offset section_size) WABT_WARN_UNUSED;
-  Result ReadExceptionSection(Offset section_size) WABT_WARN_UNUSED;
+  Result ReadDataCountSection(Offset section_size) WABT_WARN_UNUSED;
+  Result ReadEventSection(Offset section_size) WABT_WARN_UNUSED;
   Result ReadSections() WABT_WARN_UNUSED;
   Result ReportUnexpectedOpcode(Opcode opcode, const char* message = nullptr);
 
@@ -158,14 +159,15 @@ class BinaryReader {
   Index num_table_imports_ = 0;
   Index num_memory_imports_ = 0;
   Index num_global_imports_ = 0;
-  Index num_exception_imports_ = 0;
+  Index num_event_imports_ = 0;
   Index num_function_signatures_ = 0;
   Index num_tables_ = 0;
   Index num_memories_ = 0;
   Index num_globals_ = 0;
   Index num_exports_ = 0;
   Index num_function_bodies_ = 0;
-  Index num_exceptions_ = 0;
+  Index num_events_ = 0;
+  Index data_count_ = kInvalidIndex;
 
   using ReadEndRestoreGuard =
       ValueRestoreGuard<size_t, &BinaryReader::read_end_>;
@@ -381,6 +383,12 @@ bool BinaryReader::IsConcreteType(Type type) {
     case Type::V128:
       return options_.features.simd_enabled();
 
+    case Type::ExceptRef:
+      return options_.features.exceptions_enabled();
+
+    case Type::Anyref:
+      return options_.features.reference_types_enabled();
+
     default:
       return false;
   }
@@ -488,8 +496,9 @@ Result BinaryReader::ReadInitExpr(Index index, bool require_i32) {
 
 Result BinaryReader::ReadTable(Type* out_elem_type, Limits* out_elem_limits) {
   CHECK_RESULT(ReadType(out_elem_type, "table elem type"));
-  ERROR_UNLESS(*out_elem_type == Type::Anyfunc,
-               "table elem type must by anyfunc");
+  ERROR_UNLESS(
+      *out_elem_type == Type::Funcref || *out_elem_type == Type::Anyref,
+      "table elem type must by funcref or anyref");
 
   uint32_t flags;
   uint32_t initial;
@@ -753,11 +762,19 @@ Result BinaryReader::ReadFunctionBody(Offset end_offset) {
         CHECK_RESULT(ReadIndex(&sig_index, "call_indirect signature index"));
         ERROR_UNLESS(sig_index < num_signatures_,
                      "invalid call_indirect signature index");
-        uint8_t reserved;
-        CHECK_RESULT(ReadU8(&reserved, "call_indirect reserved"));
-        ERROR_UNLESS(reserved == 0, "call_indirect reserved value must be 0");
-        CALLBACK(OnCallIndirectExpr, sig_index);
-        CALLBACK(OnOpcodeUint32Uint32, sig_index, reserved);
+        Index table_index = 0;
+        if (options_.features.reference_types_enabled()) {
+          CHECK_RESULT(ReadIndex(&table_index, "call_indirect table index"));
+          ERROR_UNLESS(table_index < NumTotalTables(),
+                       "invalid call_indirect table index");
+        } else {
+          uint8_t reserved;
+          CHECK_RESULT(ReadU8(&reserved, "call_indirect reserved"));
+          ERROR_UNLESS(reserved == 0,
+                           "call_indirect reserved value must be 0");
+        }
+        CALLBACK(OnCallIndirectExpr, sig_index, table_index);
+        CALLBACK(OnOpcodeUint32Uint32, sig_index, table_index);
         break;
       }
 
@@ -773,17 +790,23 @@ Result BinaryReader::ReadFunctionBody(Offset end_offset) {
       }
 
       case Opcode::ReturnCallIndirect: {
-
         Index sig_index;
         CHECK_RESULT(ReadIndex(&sig_index, "return_call_indirect"));
         ERROR_UNLESS(sig_index < num_signatures_,
                      "invalid return_call_indirect signature index");
-        uint8_t reserved;
-        CHECK_RESULT(ReadU8(&reserved, "return_call_indirect reserved"));
-        ERROR_UNLESS(reserved == 0,
-                     "return_call_indirect reserved value must be 0");
-        CALLBACK(OnReturnCallIndirectExpr, sig_index);
-        CALLBACK(OnOpcodeUint32Uint32, sig_index, reserved);
+        Index table_index = 0;
+        if (options_.features.reference_types_enabled()) {
+          CHECK_RESULT(ReadIndex(&table_index, "return_call_indirect table index"));
+          ERROR_UNLESS(table_index < NumTotalTables(),
+                       "invalid return_call_indirect table index");
+        } else {
+          uint8_t reserved;
+          CHECK_RESULT(ReadU8(&reserved, "return_call_indirect reserved"));
+          ERROR_UNLESS(reserved == 0,
+                           "return_call_indirect reserved value must be 0");
+        }
+        CALLBACK(OnReturnCallIndirectExpr, sig_index, table_index);
+        CALLBACK(OnOpcodeUint32Uint32, sig_index, table_index);
         break;
       }
 
@@ -1176,20 +1199,19 @@ Result BinaryReader::ReadFunctionBody(Offset end_offset) {
 
       case Opcode::Throw: {
         Index index;
-        CHECK_RESULT(ReadIndex(&index, "exception index"));
+        CHECK_RESULT(ReadIndex(&index, "event index"));
         CALLBACK(OnThrowExpr, index);
         CALLBACK(OnOpcodeIndex, index);
         break;
       }
 
-      case Opcode::IfExcept: {
-        Type sig_type;
-        CHECK_RESULT(ReadType(&sig_type, "if signature type"));
-        ERROR_UNLESS(IsBlockType(sig_type),
-                     "expected valid block signature type");
-        Index except_index;
-        CHECK_RESULT(ReadIndex(&except_index, "exception index"));
-        CALLBACK(OnIfExceptExpr, sig_type, except_index);
+      case Opcode::BrOnExn: {
+        Index depth;
+        Index index;
+        CHECK_RESULT(ReadIndex(&depth, "br_on_exn depth"));
+        CHECK_RESULT(ReadIndex(&index, "event index"));
+        CALLBACK(OnBrOnExnExpr, depth, index);
+        CALLBACK(OnOpcodeIndexIndex, depth, index);
         break;
       }
 
@@ -1341,51 +1363,56 @@ Result BinaryReader::ReadFunctionBody(Offset end_offset) {
       }
 
       case Opcode::TableInit: {
+        Index segment;
+        CHECK_RESULT(ReadIndex(&segment, "elem segment index"));
         uint8_t reserved;
         CHECK_RESULT(ReadU8(&reserved, "reserved table index"));
         ERROR_UNLESS(reserved == 0, "reserved value must be 0");
-        Index segment;
-        CHECK_RESULT(ReadIndex(&segment, "elem segment index"));
         CALLBACK(OnTableInitExpr, segment);
         CALLBACK(OnOpcodeUint32Uint32, segment, reserved);
         break;
       }
 
       case Opcode::MemoryInit: {
+        Index segment;
+        CHECK_RESULT(ReadIndex(&segment, "elem segment index"));
         uint8_t reserved;
         CHECK_RESULT(ReadU8(&reserved, "reserved memory index"));
         ERROR_UNLESS(reserved == 0, "reserved value must be 0");
-        Index segment;
-        CHECK_RESULT(ReadIndex(&segment, "elem segment index"));
         CALLBACK(OnMemoryInitExpr, segment);
         CALLBACK(OnOpcodeUint32Uint32, segment, reserved);
         break;
       }
 
-      case Opcode::MemoryDrop:
-      case Opcode::TableDrop: {
+      case Opcode::DataDrop:
+      case Opcode::ElemDrop: {
         Index segment;
         CHECK_RESULT(ReadIndex(&segment, "segment index"));
-        if (opcode == Opcode::MemoryDrop) {
-          CALLBACK(OnMemoryDropExpr, segment);
+        if (opcode == Opcode::DataDrop) {
+          CALLBACK(OnDataDropExpr, segment);
         } else {
-          CALLBACK(OnTableDropExpr, segment);
+          CALLBACK(OnElemDropExpr, segment);
         }
         CALLBACK(OnOpcodeUint32, segment);
         break;
       }
 
-      case Opcode::MemoryCopy:
       case Opcode::MemoryFill: {
         uint8_t reserved;
         CHECK_RESULT(ReadU8(&reserved, "reserved memory index"));
         ERROR_UNLESS(reserved == 0, "reserved value must be 0");
-        if (opcode == Opcode::MemoryCopy) {
-          CALLBACK(OnMemoryCopyExpr);
-        } else {
-          CALLBACK(OnMemoryFillExpr);
-        }
+        CALLBACK(OnMemoryFillExpr);
         CALLBACK(OnOpcodeUint32, reserved);
+        break;
+      }
+      case Opcode::MemoryCopy: {
+        uint8_t reserved;
+        CHECK_RESULT(ReadU8(&reserved, "reserved memory index"));
+        ERROR_UNLESS(reserved == 0, "reserved value must be 0");
+        CHECK_RESULT(ReadU8(&reserved, "reserved memory index"));
+        ERROR_UNLESS(reserved == 0, "reserved value must be 0");
+        CALLBACK(OnMemoryCopyExpr);
+        CALLBACK(OnOpcodeUint32Uint32, reserved, reserved);
         break;
       }
 
@@ -1393,8 +1420,54 @@ Result BinaryReader::ReadFunctionBody(Offset end_offset) {
         uint8_t reserved;
         CHECK_RESULT(ReadU8(&reserved, "reserved table index"));
         ERROR_UNLESS(reserved == 0, "reserved value must be 0");
+        CHECK_RESULT(ReadU8(&reserved, "reserved table index"));
+        ERROR_UNLESS(reserved == 0, "reserved value must be 0");
         CALLBACK(OnTableCopyExpr);
-        CALLBACK(OnOpcodeUint32, reserved);
+        CALLBACK(OnOpcodeUint32Uint32, reserved, reserved);
+        break;
+      }
+
+      case Opcode::TableGet: {
+        Index table;
+        CHECK_RESULT(ReadIndex(&table, "table index"));
+        CALLBACK(OnTableGetExpr, table);
+        CALLBACK(OnOpcodeUint32, table);
+        break;
+      }
+
+      case Opcode::TableSet: {
+        Index table;
+        CHECK_RESULT(ReadIndex(&table, "table index"));
+        CALLBACK(OnTableSetExpr, table);
+        CALLBACK(OnOpcodeUint32, table);
+        break;
+      }
+
+      case Opcode::TableGrow: {
+        Index table;
+        CHECK_RESULT(ReadIndex(&table, "table index"));
+        CALLBACK(OnTableGrowExpr, table);
+        CALLBACK(OnOpcodeUint32, table);
+        break;
+      }
+
+      case Opcode::TableSize: {
+        Index table;
+        CHECK_RESULT(ReadIndex(&table, "table index"));
+        CALLBACK(OnTableSizeExpr, table);
+        CALLBACK(OnOpcodeUint32, table);
+        break;
+      }
+
+      case Opcode::RefNull: {
+        CALLBACK(OnRefNullExpr);
+        CALLBACK0(OnOpcodeBare);
+        break;
+      }
+
+      case Opcode::RefIsNull: {
+        CALLBACK(OnRefIsNullExpr);
+        CALLBACK0(OnOpcodeBare);
         break;
       }
 
@@ -1606,15 +1679,25 @@ Result BinaryReader::ReadLinkingSection(Offset section_size) {
           CALLBACK(OnSymbol, i, sym_type, flags);
           switch (sym_type) {
             case SymbolType::Function:
-            case SymbolType::Global: {
+            case SymbolType::Global:
+            case SymbolType::Event:  {
               uint32_t index = 0;
               CHECK_RESULT(ReadU32Leb128(&index, "index"));
-              if ((flags & WABT_SYMBOL_FLAG_UNDEFINED) == 0)
+              if ((flags & WABT_SYMBOL_FLAG_UNDEFINED) == 0 ||
+                  (flags & WASM_SYMBOL_EXPLICIT_NAME) != 0)
                 CHECK_RESULT(ReadStr(&name, "symbol name"));
-              if (sym_type == SymbolType::Function) {
-                CALLBACK(OnFunctionSymbol, i, flags, name, index);
-              } else {
-                CALLBACK(OnGlobalSymbol, i, flags, name, index);
+              switch (sym_type) {
+                case SymbolType::Function:
+                  CALLBACK(OnFunctionSymbol, i, flags, name, index);
+                  break;
+                case SymbolType::Global:
+                  CALLBACK(OnGlobalSymbol, i, flags, name, index);
+                  break;
+                case SymbolType::Event:
+                  CALLBACK(OnEventSymbol, i, flags, name, index);
+                  break;
+                default:
+                  WABT_UNREACHABLE;
               }
               break;
             }
@@ -1677,33 +1760,27 @@ Result BinaryReader::ReadLinkingSection(Offset section_size) {
   return Result::Ok;
 }
 
-Result BinaryReader::ReadExceptionType(TypeVector& sig) {
-  Index num_values;
-  CHECK_RESULT(ReadCount(&num_values, "exception type count"));
-  sig.resize(num_values);
-  for (Index j = 0; j < num_values; ++j) {
-    Type value_type;
-    CHECK_RESULT(ReadType(&value_type, "exception value type"));
-    ERROR_UNLESS(IsConcreteType(value_type),
-                 "excepted valid exception value type (got %d)",
-                 static_cast<int>(value_type));
-    sig[j] = value_type;
-  }
+Result BinaryReader::ReadEventType(Index* out_sig_index) {
+  uint32_t attribute;
+  CHECK_RESULT(ReadU32Leb128(&attribute, "event attribute"));
+  ERROR_UNLESS(attribute == 0, "event attribute must be 0");
+  CHECK_RESULT(ReadIndex(out_sig_index, "event signature index"));
   return Result::Ok;
 }
 
-Result BinaryReader::ReadExceptionSection(Offset section_size) {
-  CALLBACK(BeginExceptionSection, section_size);
-  CHECK_RESULT(ReadCount(&num_exceptions_, "exception count"));
-  CALLBACK(OnExceptionCount, num_exceptions_);
+Result BinaryReader::ReadEventSection(Offset section_size) {
+  CALLBACK(BeginEventSection, section_size);
+  CHECK_RESULT(ReadCount(&num_events_, "event count"));
+  CALLBACK(OnEventCount, num_events_);
 
-  for (Index i = 0; i < num_exceptions_; ++i) {
-    TypeVector sig;
-    CHECK_RESULT(ReadExceptionType(sig));
-    CALLBACK(OnExceptionType, i, sig);
+  for (Index i = 0; i < num_events_; ++i) {
+    Index event_index = num_event_imports_ + i;
+    Index sig_index;
+    CHECK_RESULT(ReadEventType(&sig_index));
+    CALLBACK(OnEventType, event_index, sig_index);
   }
 
-  CALLBACK(EndExceptionSection);
+  CALLBACK(EndEventSection);
   return Result::Ok;
 }
 
@@ -1724,9 +1801,6 @@ Result BinaryReader::ReadCustomSection(Offset section_size) {
     CHECK_RESULT(ReadRelocSection(section_size));
   } else if (section_name == WABT_BINARY_SECTION_LINKING) {
     CHECK_RESULT(ReadLinkingSection(section_size));
-  } else if (options_.features.exceptions_enabled() &&
-             section_name == WABT_BINARY_SECTION_EXCEPTION) {
-    CHECK_RESULT(ReadExceptionSection(section_size));
   } else {
     // This is an unknown custom section, skip it.
     state_.offset = read_end_;
@@ -1843,15 +1917,15 @@ Result BinaryReader::ReadImportSection(Offset section_size) {
         break;
       }
 
-      case ExternalKind::Except: {
+      case ExternalKind::Event: {
         ERROR_UNLESS(options_.features.exceptions_enabled(),
-                     "invalid import exception kind: exceptions not allowed");
-        TypeVector sig;
-        CHECK_RESULT(ReadExceptionType(sig));
+                     "invalid import event kind: exceptions not allowed");
+        Index sig_index;
+        CHECK_RESULT(ReadEventType(&sig_index));
         CALLBACK(OnImport, i, module_name, field_name);
-        CALLBACK(OnImportException, i, module_name, field_name,
-                 num_exception_imports_, sig);
-        num_exception_imports_++;
+        CALLBACK(OnImportEvent, i, module_name, field_name, num_event_imports_,
+                 sig_index);
+        num_event_imports_++;
         break;
       }
     }
@@ -1880,8 +1954,10 @@ Result BinaryReader::ReadFunctionSection(Offset section_size) {
 Result BinaryReader::ReadTableSection(Offset section_size) {
   CALLBACK(BeginTableSection, section_size);
   CHECK_RESULT(ReadCount(&num_tables_, "table count"));
-  ERROR_UNLESS(num_tables_ <= 1, "table count (%" PRIindex ") must be 0 or 1",
-               num_tables_);
+  if (!options_.features.reference_types_enabled()) {
+    ERROR_UNLESS(num_tables_ <= 1, "table count (%" PRIindex ") must be 0 or 1",
+                 num_tables_);
+  }
   CALLBACK(OnTableCount, num_tables_);
   for (Index i = 0; i < num_tables_; ++i) {
     Index table_index = num_table_imports_ + i;
@@ -1960,10 +2036,10 @@ Result BinaryReader::ReadExportSection(Offset section_size) {
         ERROR_UNLESS(item_index < NumTotalGlobals(),
                      "invalid export global index: %" PRIindex, item_index);
         break;
-      case ExternalKind::Except:
-        // Note: Can't check if index valid, exceptions section comes later.
+      case ExternalKind::Event:
+        // Note: Can't check if index valid, the event section comes later.
         ERROR_UNLESS(options_.features.exceptions_enabled(),
-                     "invalid export exception kind: exceptions not allowed");
+                     "invalid export event kind: exceptions not allowed");
         break;
     }
 
@@ -2071,6 +2147,9 @@ Result BinaryReader::ReadDataSection(Offset section_size) {
   CALLBACK(OnDataSegmentCount, num_data_segments);
   ERROR_UNLESS(num_data_segments == 0 || NumTotalMemories() > 0,
                "data section without memory section");
+  // If the DataCount section is not present, then data_count_ will be invalid.
+  ERROR_UNLESS(data_count_ == kInvalidIndex || data_count_ == num_data_segments,
+               "data segment count does not equal count in DataCount section");
   for (Index i = 0; i < num_data_segments; ++i) {
     uint32_t flags_u32;
     CHECK_RESULT(ReadU32Leb128(&flags_u32, "data segment flags"));
@@ -2098,6 +2177,16 @@ Result BinaryReader::ReadDataSection(Offset section_size) {
   return Result::Ok;
 }
 
+Result BinaryReader::ReadDataCountSection(Offset section_size) {
+  CALLBACK(BeginDataCountSection, section_size);
+  Index data_count;
+  CHECK_RESULT(ReadIndex(&data_count, "data count"));
+  CALLBACK(OnDataCount, data_count);
+  CALLBACK0(EndDataCountSection);
+  data_count_ = data_count;
+  return Result::Ok;
+}
+
 Result BinaryReader::ReadSections() {
   Result result = Result::Ok;
 
@@ -2109,8 +2198,7 @@ Result BinaryReader::ReadSections() {
     ReadEndRestoreGuard guard(this);
     read_end_ = state_.offset + section_size;
     if (section_code >= kBinarySectionCount) {
-      PrintError("invalid section code: %u; max is %u", section_code,
-                 kBinarySectionCount - 1);
+      PrintError("invalid section code: %u", section_code);
       return Result::Error;
     }
 
@@ -2119,10 +2207,11 @@ Result BinaryReader::ReadSections() {
     ERROR_UNLESS(read_end_ <= state_.size,
                  "invalid section size: extends past end");
 
-    ERROR_UNLESS(last_known_section_ == BinarySection::Invalid ||
-                     section == BinarySection::Custom ||
-                     section > last_known_section_,
-                 "section %s out of order", GetSectionName(section));
+    ERROR_UNLESS(
+        last_known_section_ == BinarySection::Invalid ||
+            section == BinarySection::Custom ||
+            GetSectionOrder(section) > GetSectionOrder(last_known_section_),
+        "section %s out of order", GetSectionName(section));
 
     ERROR_UNLESS(!did_read_names_section_ || section == BinarySection::Custom,
                  "%s section can not occur after Name section",
@@ -2183,6 +2272,18 @@ Result BinaryReader::ReadSections() {
         break;
       case BinarySection::Data:
         section_result = ReadDataSection(section_size);
+        result |= section_result;
+        break;
+      case BinarySection::Event:
+        ERROR_UNLESS(options_.features.exceptions_enabled(),
+                     "invalid section code: %u", section);
+        section_result = ReadEventSection(section_size);
+        result |= section_result;
+        break;
+      case BinarySection::DataCount:
+        ERROR_UNLESS(options_.features.bulk_memory_enabled(),
+                     "invalid section code: %u", section);
+        section_result = ReadDataCountSection(section_size);
         result |= section_result;
         break;
       case BinarySection::Invalid:

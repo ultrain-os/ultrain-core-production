@@ -68,7 +68,7 @@ bool Opcode::IsEnabled(const Features& features) const {
     case Opcode::Catch:
     case Opcode::Throw:
     case Opcode::Rethrow:
-    case Opcode::IfExcept:
+    case Opcode::BrOnExn:
       return features.exceptions_enabled();
 
     case Opcode::ReturnCallIndirect:
@@ -303,13 +303,21 @@ bool Opcode::IsEnabled(const Features& features) const {
       return features.simd_enabled();
 
     case Opcode::MemoryInit:
-    case Opcode::MemoryDrop:
+    case Opcode::DataDrop:
     case Opcode::MemoryCopy:
     case Opcode::MemoryFill:
     case Opcode::TableInit:
-    case Opcode::TableDrop:
+    case Opcode::ElemDrop:
     case Opcode::TableCopy:
       return features.bulk_memory_enabled();
+
+    case Opcode::TableGet:
+    case Opcode::TableSet:
+    case Opcode::TableGrow:
+    case Opcode::TableSize:
+    case Opcode::RefNull:
+    case Opcode::RefIsNull:
+      return features.reference_types_enabled();
 
     // Interpreter opcodes are never "enabled".
     case Opcode::InterpAlloca:

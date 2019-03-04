@@ -39,15 +39,16 @@ namespace wabt {
 Reloc::Reloc(RelocType type, Offset offset, Index index, int32_t addend)
     : type(type), offset(offset), index(index), addend(addend) {}
 
-const char* g_kind_name[] = {"func", "table", "memory", "global", "except"};
+const char* g_kind_name[] = {"func", "table", "memory", "global", "event"};
 WABT_STATIC_ASSERT(WABT_ARRAY_SIZE(g_kind_name) == kExternalKindCount);
 
 const char* g_reloc_type_name[] = {
-    "R_WEBASSEMBLY_FUNCTION_INDEX_LEB",  "R_WEBASSEMBLY_TABLE_INDEX_SLEB",
-    "R_WEBASSEMBLY_TABLE_INDEX_I32",     "R_WEBASSEMBLY_MEMORY_ADDR_LEB",
-    "R_WEBASSEMBLY_MEMORY_ADDR_SLEB",    "R_WEBASSEMBLY_MEMORY_ADDR_I32",
-    "R_WEBASSEMBLY_TYPE_INDEX_LEB",      "R_WEBASSEMBLY_GLOBAL_INDEX_LEB",
-    "R_WEBASSEMBLY_FUNCTION_OFFSET_I32", "R_WEBASSEMBLY_SECTION_OFFSET_I32",
+    "R_WASM_FUNCTION_INDEX_LEB",  "R_WASM_TABLE_INDEX_SLEB",
+    "R_WASM_TABLE_INDEX_I32",     "R_WASM_MEMORY_ADDR_LEB",
+    "R_WASM_MEMORY_ADDR_SLEB",    "R_WASM_MEMORY_ADDR_I32",
+    "R_WASM_TYPE_INDEX_LEB",      "R_WASM_GLOBAL_INDEX_LEB",
+    "R_WASM_FUNCTION_OFFSET_I32", "R_WASM_SECTION_OFFSET_I32",
+    "R_WASM_EVENT_INDEX_LEB",
 };
 WABT_STATIC_ASSERT(WABT_ARRAY_SIZE(g_reloc_type_name) == kRelocTypeCount);
 

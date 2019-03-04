@@ -160,8 +160,6 @@ enum class LabelType {
   Loop,
   If,
   Else,
-  IfExcept,
-  IfExceptElse,
   Try,
   Catch,
 
@@ -206,7 +204,8 @@ enum class Type : int32_t {
   F32 = -0x03,        // 0x7d
   F64 = -0x04,        // 0x7c
   V128 = -0x05,       // 0x7b
-  Anyfunc = -0x10,    // 0x70
+  Funcref = -0x10,    // 0x70
+  Anyref = -0x11,     // 0x6f
   ExceptRef = -0x18,  // 0x68
   Func = -0x20,       // 0x60
   Void = -0x40,       // 0x40
@@ -226,9 +225,10 @@ enum class RelocType {
   GlobalIndexLEB = 7,     // e.g. Immediate of get_global inst
   FunctionOffsetI32 = 8,  // e.g. Code offset in DWARF metadata
   SectionOffsetI32 = 9,   // e.g. Section offset in DWARF metadata
+  EventIndexLEB = 10,     // e.g. Used in throw instructions
 
   First = FuncIndexLEB,
-  Last = SectionOffsetI32,
+  Last = EventIndexLEB,
 };
 static const int kRelocTypeCount = WABT_ENUM_COUNT(RelocType);
 
@@ -253,11 +253,13 @@ enum class SymbolType {
   Data = 1,
   Global = 2,
   Section = 3,
+  Event = 4,
 };
 
 #define WABT_SYMBOL_FLAG_UNDEFINED 0x10
 #define WABT_SYMBOL_MASK_VISIBILITY 0x4
 #define WABT_SYMBOL_MASK_BINDING 0x3
+#define WASM_SYMBOL_EXPLICIT_NAME 0x40
 
 enum class SymbolVisibility {
   Default = 0,
@@ -276,10 +278,10 @@ enum class ExternalKind {
   Table = 1,
   Memory = 2,
   Global = 3,
-  Except = 4,
+  Event = 4,
 
   First = Func,
-  Last = Except,
+  Last = Event,
 };
 static const int kExternalKindCount = WABT_ENUM_COUNT(ExternalKind);
 
@@ -333,6 +335,8 @@ static WABT_INLINE const char* GetSymbolTypeName(SymbolType type) {
       return "data";
     case SymbolType::Section:
       return "section";
+    case SymbolType::Event:
+      return "event";
   }
   WABT_UNREACHABLE;
 }
@@ -351,8 +355,8 @@ static WABT_INLINE const char* GetTypeName(Type type) {
       return "f64";
     case Type::V128:
       return "v128";
-    case Type::Anyfunc:
-      return "anyfunc";
+    case Type::Funcref:
+      return "funcref";
     case Type::Func:
       return "func";
     case Type::ExceptRef:
@@ -361,6 +365,8 @@ static WABT_INLINE const char* GetTypeName(Type type) {
       return "void";
     case Type::Any:
       return "any";
+    case Type::Anyref:
+      return "anyref";
     default:
       return "<type index>";
   }

@@ -71,7 +71,7 @@
 000003d: 0000 0000 00                              ; section size (guess)
 0000042: 01                                        ; num tables
 ; table 0
-0000043: 70                                        ; anyfunc
+0000043: 70                                        ; funcref
 0000044: 01                                        ; limits: flags
 0000045: 02                                        ; limits: initial
 0000046: 02                                        ; limits: max
@@ -119,7 +119,7 @@
 000007a: 01                                        ; local index
 000007b: 11                                        ; call_indirect
 000007c: 00                                        ; signature index
-000007d: 00                                        ; call_indirect reserved
+000007d: 00                                        ; table index
 000007e: 1a                                        ; drop
 000007f: 0b                                        ; end
 0000071: 8a80 8080 00                              ; FIXUP func body size
@@ -151,7 +151,7 @@ no-canonicalize.wasm:	file format wasm 0x1
 
 Code Disassembly:
 
-000076 <f1>:
+000076 func[1] <f1>:
  000077: 20 00                      | local.get 0
  000079: 20 01                      | local.get 1
  00007b: 11 00 00                   | call_indirect 0 0

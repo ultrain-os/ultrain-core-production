@@ -77,31 +77,6 @@ Result ExprVisitor::VisitExpr(Expr* root_expr) {
         break;
       }
 
-      case State::IfExceptTrue: {
-        auto if_except_expr = cast<IfExceptExpr>(expr);
-        auto& iter = expr_iter_stack_.back();
-        if (iter != if_except_expr->true_.exprs.end()) {
-          PushDefault(&*iter++);
-        } else {
-          CHECK_RESULT(delegate_->AfterIfExceptTrueExpr(if_except_expr));
-          PopExprlist();
-          PushExprlist(State::IfExceptFalse, expr, if_except_expr->false_);
-        }
-        break;
-      }
-
-      case State::IfExceptFalse: {
-        auto if_except_expr = cast<IfExceptExpr>(expr);
-        auto& iter = expr_iter_stack_.back();
-        if (iter != if_except_expr->false_.end()) {
-          PushDefault(&*iter++);
-        } else {
-          CHECK_RESULT(delegate_->EndIfExceptExpr(if_except_expr));
-          PopExprlist();
-        }
-        break;
-      }
-
       case State::Loop: {
         auto loop_expr = cast<LoopExpr>(expr);
         auto& iter = expr_iter_stack_.back();
@@ -205,6 +180,10 @@ Result ExprVisitor::HandleDefaultState(Expr* expr) {
       CHECK_RESULT(delegate_->OnBrIfExpr(cast<BrIfExpr>(expr)));
       break;
 
+    case ExprType::BrOnExn:
+      CHECK_RESULT(delegate_->OnBrOnExnExpr(cast<BrOnExnExpr>(expr)));
+      break;
+
     case ExprType::BrTable:
       CHECK_RESULT(delegate_->OnBrTableExpr(cast<BrTableExpr>(expr)));
       break;
@@ -248,13 +227,6 @@ Result ExprVisitor::HandleDefaultState(Expr* expr) {
       break;
     }
 
-    case ExprType::IfExcept: {
-      auto if_except_expr = cast<IfExceptExpr>(expr);
-      CHECK_RESULT(delegate_->BeginIfExceptExpr(if_except_expr));
-      PushExprlist(State::IfExceptTrue, expr, if_except_expr->true_.exprs);
-      break;
-    }
-
     case ExprType::Load:
       CHECK_RESULT(delegate_->OnLoadExpr(cast<LoadExpr>(expr)));
       break;
@@ -282,8 +254,8 @@ Result ExprVisitor::HandleDefaultState(Expr* expr) {
       CHECK_RESULT(delegate_->OnMemoryCopyExpr(cast<MemoryCopyExpr>(expr)));
       break;
 
-    case ExprType::MemoryDrop:
-      CHECK_RESULT(delegate_->OnMemoryDropExpr(cast<MemoryDropExpr>(expr)));
+    case ExprType::DataDrop:
+      CHECK_RESULT(delegate_->OnDataDropExpr(cast<DataDropExpr>(expr)));
       break;
 
     case ExprType::MemoryFill:
@@ -306,12 +278,36 @@ Result ExprVisitor::HandleDefaultState(Expr* expr) {
       CHECK_RESULT(delegate_->OnTableCopyExpr(cast<TableCopyExpr>(expr)));
       break;
 
-    case ExprType::TableDrop:
-      CHECK_RESULT(delegate_->OnTableDropExpr(cast<TableDropExpr>(expr)));
+    case ExprType::ElemDrop:
+      CHECK_RESULT(delegate_->OnElemDropExpr(cast<ElemDropExpr>(expr)));
       break;
 
     case ExprType::TableInit:
       CHECK_RESULT(delegate_->OnTableInitExpr(cast<TableInitExpr>(expr)));
+      break;
+
+    case ExprType::TableGet:
+      CHECK_RESULT(delegate_->OnTableGetExpr(cast<TableGetExpr>(expr)));
+      break;
+
+    case ExprType::TableSet:
+      CHECK_RESULT(delegate_->OnTableSetExpr(cast<TableSetExpr>(expr)));
+      break;
+
+    case ExprType::TableGrow:
+      CHECK_RESULT(delegate_->OnTableGrowExpr(cast<TableGrowExpr>(expr)));
+      break;
+
+    case ExprType::TableSize:
+      CHECK_RESULT(delegate_->OnTableSizeExpr(cast<TableSizeExpr>(expr)));
+      break;
+
+    case ExprType::RefNull:
+      CHECK_RESULT(delegate_->OnRefNullExpr(cast<RefNullExpr>(expr)));
+      break;
+
+    case ExprType::RefIsNull:
+      CHECK_RESULT(delegate_->OnRefIsNullExpr(cast<RefIsNullExpr>(expr)));
       break;
 
     case ExprType::Nop:

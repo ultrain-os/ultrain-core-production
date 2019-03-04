@@ -31,7 +31,7 @@
 0000014: 00                                        ; section size (guess)
 0000015: 01                                        ; num tables
 ; table 0
-0000016: 70                                        ; anyfunc
+0000016: 70                                        ; funcref
 0000017: 01                                        ; limits: flags
 0000018: 01                                        ; limits: initial
 0000019: 01                                        ; limits: max
@@ -61,7 +61,7 @@
 000002b: 00                                        ; i32 literal
 000002c: 11                                        ; call_indirect
 000002d: 00                                        ; signature index
-000002e: 00                                        ; call_indirect reserved
+000002e: 00                                        ; table index
 000002f: 0b                                        ; end
 0000026: 09                                        ; FIXUP func body size
 0000024: 0b                                        ; FIXUP section size

@@ -1578,12 +1578,18 @@ void CWriter::Write(const ExprList& exprs) {
       }
 
       case ExprType::MemoryCopy:
-      case ExprType::MemoryDrop:
+      case ExprType::DataDrop:
       case ExprType::MemoryInit:
       case ExprType::MemoryFill:
       case ExprType::TableCopy:
-      case ExprType::TableDrop:
+      case ExprType::ElemDrop:
       case ExprType::TableInit:
+      case ExprType::TableGet:
+      case ExprType::TableSet:
+      case ExprType::TableGrow:
+      case ExprType::TableSize:
+      case ExprType::RefNull:
+      case ExprType::RefIsNull:
         UNIMPLEMENTED("...");
         break;
 
@@ -1657,7 +1663,7 @@ void CWriter::Write(const ExprList& exprs) {
       case ExprType::AtomicStore:
       case ExprType::AtomicWait:
       case ExprType::AtomicNotify:
-      case ExprType::IfExcept:
+      case ExprType::BrOnExn:
       case ExprType::Rethrow:
       case ExprType::ReturnCall:
       case ExprType::ReturnCallIndirect:

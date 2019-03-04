@@ -166,6 +166,7 @@ enum class ExprType {
   Block,
   Br,
   BrIf,
+  BrOnExn,
   BrTable,
   Call,
   CallIndirect,
@@ -176,19 +177,20 @@ enum class ExprType {
   GlobalGet,
   GlobalSet,
   If,
-  IfExcept,
   Load,
   LocalGet,
   LocalSet,
   LocalTee,
   Loop,
   MemoryCopy,
-  MemoryDrop,
+  DataDrop,
   MemoryFill,
   MemoryGrow,
   MemoryInit,
   MemorySize,
   Nop,
+  RefIsNull,
+  RefNull,
   Rethrow,
   Return,
   ReturnCall,
@@ -198,8 +200,12 @@ enum class ExprType {
   SimdShuffleOp,
   Store,
   TableCopy,
-  TableDrop,
+  ElemDrop,
   TableInit,
+  TableGet,
+  TableGrow,
+  TableSize,
+  TableSet,
   Ternary,
   Throw,
   Try,
@@ -265,6 +271,8 @@ typedef ExprMixin<ExprType::Rethrow> RethrowExpr;
 typedef ExprMixin<ExprType::Return> ReturnExpr;
 typedef ExprMixin<ExprType::Select> SelectExpr;
 typedef ExprMixin<ExprType::Unreachable> UnreachableExpr;
+typedef ExprMixin<ExprType::RefNull> RefNullExpr;
+typedef ExprMixin<ExprType::RefIsNull> RefIsNullExpr;
 
 template <ExprType TypeEnum>
 class OpcodeExpr : public ExprMixin<TypeEnum> {
@@ -320,9 +328,13 @@ typedef VarExpr<ExprType::ReturnCall> ReturnCallExpr;
 typedef VarExpr<ExprType::Throw> ThrowExpr;
 
 typedef VarExpr<ExprType::MemoryInit> MemoryInitExpr;
-typedef VarExpr<ExprType::MemoryDrop> MemoryDropExpr;
+typedef VarExpr<ExprType::DataDrop> DataDropExpr;
 typedef VarExpr<ExprType::TableInit> TableInitExpr;
-typedef VarExpr<ExprType::TableDrop> TableDropExpr;
+typedef VarExpr<ExprType::ElemDrop> ElemDropExpr;
+typedef VarExpr<ExprType::TableGet> TableGetExpr;
+typedef VarExpr<ExprType::TableSet> TableSetExpr;
+typedef VarExpr<ExprType::TableGrow> TableGrowExpr;
+typedef VarExpr<ExprType::TableSize> TableSizeExpr;
 
 class CallIndirectExpr : public ExprMixin<ExprType::CallIndirect> {
  public:
@@ -330,13 +342,16 @@ class CallIndirectExpr : public ExprMixin<ExprType::CallIndirect> {
       : ExprMixin<ExprType::CallIndirect>(loc) {}
 
   FuncDeclaration decl;
+  Var table;
 };
 
 class ReturnCallIndirectExpr : public ExprMixin<ExprType::ReturnCallIndirect> {
  public:
   explicit ReturnCallIndirectExpr(const Location &loc = Location())
       : ExprMixin<ExprType::ReturnCallIndirect>(loc) {}
-      FuncDeclaration decl;
+
+  FuncDeclaration decl;
+  Var table;
 };
 
 template <ExprType TypeEnum>
@@ -361,17 +376,6 @@ class IfExpr : public ExprMixin<ExprType::If> {
   Location false_end_loc;
 };
 
-class IfExceptExpr : public ExprMixin<ExprType::IfExcept> {
- public:
-  explicit IfExceptExpr(const Location& loc = Location())
-      : ExprMixin<ExprType::IfExcept>(loc) {}
-
-  Block true_;
-  ExprList false_;
-  Location false_end_loc;
-  Var except_var;
-};
-
 class TryExpr : public ExprMixin<ExprType::Try> {
  public:
   explicit TryExpr(const Location& loc = Location())
@@ -379,6 +383,15 @@ class TryExpr : public ExprMixin<ExprType::Try> {
 
   Block block;
   ExprList catch_;
+};
+
+class BrOnExnExpr : public ExprMixin<ExprType::BrOnExn> {
+ public:
+  BrOnExnExpr(const Location& loc = Location())
+      : ExprMixin<ExprType::BrOnExn>(loc) {}
+
+  Var label_var;
+  Var event_var;
 };
 
 class BrTableExpr : public ExprMixin<ExprType::BrTable> {
@@ -425,11 +438,11 @@ typedef LoadStoreExpr<ExprType::AtomicRmwCmpxchg> AtomicRmwCmpxchgExpr;
 typedef LoadStoreExpr<ExprType::AtomicWait> AtomicWaitExpr;
 typedef LoadStoreExpr<ExprType::AtomicNotify> AtomicNotifyExpr;
 
-struct Exception {
-  explicit Exception(string_view name) : name(name.to_string()) {}
+struct Event {
+  explicit Event(string_view name) : name(name.to_string()) {}
 
   std::string name;
-  TypeVector sig;
+  FuncDeclaration decl;
 };
 
 class LocalTypes {
@@ -524,10 +537,12 @@ struct Global {
 };
 
 struct Table {
-  explicit Table(string_view name) : name(name.to_string()) {}
+  explicit Table(string_view name)
+      : name(name.to_string()), elem_type(Type::Funcref) {}
 
   std::string name;
   Limits elem_limits;
+  Type elem_type;
 };
 
 struct ElemSegment {
@@ -616,12 +631,12 @@ class GlobalImport : public ImportMixin<ExternalKind::Global> {
   Global global;
 };
 
-class ExceptionImport : public ImportMixin<ExternalKind::Except> {
+class EventImport : public ImportMixin<ExternalKind::Event> {
  public:
-  explicit ExceptionImport(string_view name = string_view())
-      : ImportMixin<ExternalKind::Except>(), except(name) {}
+  explicit EventImport(string_view name = string_view())
+      : ImportMixin<ExternalKind::Event>(), event(name) {}
 
-  Exception except;
+  Event event;
 };
 
 struct Export {
@@ -641,7 +656,7 @@ enum class ModuleFieldType {
   Memory,
   DataSegment,
   Start,
-  Except
+  Event
 };
 
 class ModuleField : public intrusive_list_base<ModuleField> {
@@ -760,13 +775,13 @@ class DataSegmentModuleField
   DataSegment data_segment;
 };
 
-class ExceptionModuleField : public ModuleFieldMixin<ModuleFieldType::Except> {
+class EventModuleField : public ModuleFieldMixin<ModuleFieldType::Event> {
  public:
-  explicit ExceptionModuleField(const Location& loc = Location(),
-                                string_view name = string_view())
-      : ModuleFieldMixin<ModuleFieldType::Except>(loc), except(name) {}
+  explicit EventModuleField(const Location& loc = Location(),
+                            string_view name = string_view())
+      : ModuleFieldMixin<ModuleFieldType::Event>(loc), event(name) {}
 
-  Exception except;
+  Event event;
 };
 
 class StartModuleField : public ModuleFieldMixin<ModuleFieldType::Start> {
@@ -796,8 +811,8 @@ struct Module {
   const Global* GetGlobal(const Var&) const;
   Global* GetGlobal(const Var&);
   const Export* GetExport(string_view) const;
-  Exception* GetExcept(const Var&) const;
-  Index GetExceptIndex(const Var&) const;
+  Event* GetEvent(const Var&) const;
+  Index GetEventIndex(const Var&) const;
   const DataSegment* GetDataSegment(const Var&) const;
   DataSegment* GetDataSegment(const Var&);
   Index GetDataSegmentIndex(const Var&) const;
@@ -813,7 +828,7 @@ struct Module {
   // TODO(binji): move this into a builder class?
   void AppendField(std::unique_ptr<DataSegmentModuleField>);
   void AppendField(std::unique_ptr<ElemSegmentModuleField>);
-  void AppendField(std::unique_ptr<ExceptionModuleField>);
+  void AppendField(std::unique_ptr<EventModuleField>);
   void AppendField(std::unique_ptr<ExportModuleField>);
   void AppendField(std::unique_ptr<FuncModuleField>);
   void AppendField(std::unique_ptr<FuncTypeModuleField>);
@@ -829,7 +844,7 @@ struct Module {
   std::string name;
   ModuleFieldList fields;
 
-  Index num_except_imports = 0;
+  Index num_event_imports = 0;
   Index num_func_imports = 0;
   Index num_table_imports = 0;
   Index num_memory_imports = 0;
@@ -837,7 +852,7 @@ struct Module {
 
   // Cached for convenience; the pointers are shared with values that are
   // stored in either ModuleField or Import.
-  std::vector<Exception*> excepts;
+  std::vector<Event*> events;
   std::vector<Func*> funcs;
   std::vector<Global*> globals;
   std::vector<Import*> imports;
@@ -849,7 +864,7 @@ struct Module {
   std::vector<DataSegment*> data_segments;
   std::vector<Var*> starts;
 
-  BindingHash except_bindings;
+  BindingHash event_bindings;
   BindingHash func_bindings;
   BindingHash global_bindings;
   BindingHash export_bindings;

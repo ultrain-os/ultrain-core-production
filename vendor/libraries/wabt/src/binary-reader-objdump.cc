@@ -46,10 +46,12 @@ class BinaryReaderObjdumpBase : public BinaryReaderNop {
   Result OnRelocCount(Index count, Index section_index) override;
 
  protected:
-  const char* GetFunctionName(Index index) const;
-  const char* GetGlobalName(Index index) const;
-  const char* GetSectionName(Index index) const;
-  string_view GetSymbolName(Index symbol_index) const;
+  string_view GetFunctionName(Index index) const;
+  string_view GetGlobalName(Index index) const;
+  string_view GetSectionName(Index index) const;
+  string_view GetEventName(Index index) const;
+  string_view GetSymbolName(Index index) const;
+  string_view GetSegmentName(Index index) const;
   void PrintRelocation(const Reloc& reloc, Offset offset) const;
   Offset GetSectionStart(BinarySection section_code) const {
     return section_starts_[static_cast<size_t>(section_code)];
@@ -120,29 +122,47 @@ Result BinaryReaderObjdumpBase::BeginModule(uint32_t version) {
   return Result::Ok;
 }
 
-const char* BinaryReaderObjdumpBase::GetFunctionName(Index index) const {
+string_view BinaryReaderObjdumpBase::GetFunctionName(Index index) const {
   if (index >= objdump_state_->function_names.size() ||
       objdump_state_->function_names[index].empty()) {
-    return nullptr;
+    return {};
   }
 
-  return objdump_state_->function_names[index].c_str();
+  return objdump_state_->function_names[index];
 }
 
-const char* BinaryReaderObjdumpBase::GetGlobalName(Index index) const {
+string_view BinaryReaderObjdumpBase::GetGlobalName(Index index) const {
   if (index >= objdump_state_->global_names.size() ||
       objdump_state_->global_names[index].empty()) {
-    return nullptr;
+    return {};
   }
 
-  return objdump_state_->global_names[index].c_str();
+  return objdump_state_->global_names[index];
 }
 
-const char* BinaryReaderObjdumpBase::GetSectionName(Index index) const {
+string_view BinaryReaderObjdumpBase::GetSectionName(Index index) const {
   assert(index < objdump_state_->section_names.size() &&
          !objdump_state_->section_names[index].empty());
 
-  return objdump_state_->section_names[index].c_str();
+  return objdump_state_->section_names[index];
+}
+
+string_view BinaryReaderObjdumpBase::GetEventName(Index index) const {
+  if (index >= objdump_state_->event_names.size() ||
+      objdump_state_->event_names[index].empty()) {
+    return {};
+  }
+
+  return objdump_state_->event_names[index];
+}
+
+string_view BinaryReaderObjdumpBase::GetSegmentName(Index index) const {
+  if (index >= objdump_state_->segment_names.size() ||
+      objdump_state_->segment_names[index].empty()) {
+    return {};
+  }
+
+  return objdump_state_->segment_names[index];
 }
 
 string_view BinaryReaderObjdumpBase::GetSymbolName(Index symbol_index) const {
@@ -157,6 +177,8 @@ string_view BinaryReaderObjdumpBase::GetSymbolName(Index symbol_index) const {
       return GetGlobalName(sym.index);
     case SymbolType::Section:
       return GetSectionName(sym.index);
+    case SymbolType::Event:
+      return GetEventName(sym.index);
   }
   WABT_UNREACHABLE;
 }
@@ -246,7 +268,20 @@ class BinaryReaderObjdumpPrepass : public BinaryReaderObjdumpBase {
                          uint32_t flags,
                          Index section_index) override {
     objdump_state_->symtab[index] = {
-        SymbolType::Section, GetSectionName(section_index), section_index};
+        SymbolType::Section, std::string(GetSectionName(section_index)),
+        section_index};
+    return Result::Ok;
+  }
+
+  Result OnEventSymbol(Index index,
+                        uint32_t flags,
+                        string_view name,
+                        Index event_index) override {
+    if (!name.empty()) {
+      SetEventName(event_index, name);
+    }
+    objdump_state_->symtab[index] = {SymbolType::Event, name.to_string(),
+                                     event_index};
     return Result::Ok;
   }
 
@@ -294,9 +329,19 @@ class BinaryReaderObjdumpPrepass : public BinaryReaderObjdumpBase {
     return Result::Ok;
   }
 
+  Result OnSegmentInfo(Index index,
+                       string_view name,
+                       uint32_t alignment_log2,
+                       uint32_t flags) override {
+    SetSegmentName(index, name);
+    return Result::Ok;
+  }
+
  protected:
   void SetFunctionName(Index index, string_view name);
   void SetGlobalName(Index index, string_view name);
+  void SetEventName(Index index, string_view name);
+  void SetSegmentName(Index index, string_view name);
 };
 
 void BinaryReaderObjdumpPrepass::SetFunctionName(Index index,
@@ -310,6 +355,18 @@ void BinaryReaderObjdumpPrepass::SetGlobalName(Index index, string_view name) {
   if (objdump_state_->global_names.size() <= index)
     objdump_state_->global_names.resize(index + 1);
   objdump_state_->global_names[index] = name.to_string();
+}
+
+void BinaryReaderObjdumpPrepass::SetEventName(Index index, string_view name) {
+  if (objdump_state_->event_names.size() <= index)
+    objdump_state_->event_names.resize(index + 1);
+  objdump_state_->event_names[index] = name.to_string();
+}
+
+void BinaryReaderObjdumpPrepass::SetSegmentName(Index index, string_view name) {
+  if (objdump_state_->segment_names.size() <= index)
+    objdump_state_->segment_names.resize(index + 1);
+  objdump_state_->segment_names[index] = name.to_string();
 }
 
 Result BinaryReaderObjdumpPrepass::OnReloc(RelocType type,
@@ -339,6 +396,7 @@ class BinaryReaderObjdumpDisassemble : public BinaryReaderObjdumpBase {
   Result OnOpcode(Opcode Opcode) override;
   Result OnOpcodeBare() override;
   Result OnOpcodeIndex(Index value) override;
+  Result OnOpcodeIndexIndex(Index value, Index value2) override;
   Result OnOpcodeUint32(uint32_t value) override;
   Result OnOpcodeUint32Uint32(uint32_t value, uint32_t value2) override;
   Result OnOpcodeUint64(uint64_t value) override;
@@ -350,7 +408,6 @@ class BinaryReaderObjdumpDisassemble : public BinaryReaderObjdumpBase {
   Result OnBrTableExpr(Index num_targets,
                        Index* target_depths,
                        Index default_target_depth) override;
-  Result OnIfExceptExpr(Type sig_type, Index except_index) override;
   Result OnEndExpr() override;
   Result OnEndFunc() override;
 
@@ -514,16 +571,23 @@ Result BinaryReaderObjdumpDisassemble::OnOpcodeBare() {
 
 Result BinaryReaderObjdumpDisassemble::OnOpcodeIndex(Index value) {
   Offset immediate_len = state->offset - current_opcode_offset;
-  const char* name;
-  if (current_opcode == Opcode::Call && (name = GetFunctionName(value))) {
-    LogOpcode(immediate_len, "%d <%s>", value, name);
+  string_view name;
+  if (current_opcode == Opcode::Call && !(name = GetFunctionName(value)).empty()) {
+    LogOpcode(immediate_len, "%d <" PRIstringview ">", value, WABT_PRINTF_STRING_VIEW_ARG(name));
   } else if ((current_opcode == Opcode::GlobalGet ||
               current_opcode == Opcode::GlobalSet) &&
-             (name = GetGlobalName(value))) {
-    LogOpcode(immediate_len, "%d <%s>", value, name);
+             !(name = GetGlobalName(value)).empty()) {
+    LogOpcode(immediate_len, "%d <" PRIstringview ">", value, WABT_PRINTF_STRING_VIEW_ARG(name));
   } else {
     LogOpcode(immediate_len, "%d", value);
   }
+  return Result::Ok;
+}
+
+Result BinaryReaderObjdumpDisassemble::OnOpcodeIndexIndex(Index value,
+                                                          Index value2) {
+  Offset immediate_len = state->offset - current_opcode_offset;
+  LogOpcode(immediate_len, "%" PRIindex " %" PRIindex, value, value2);
   return Result::Ok;
 }
 
@@ -579,39 +643,27 @@ Result BinaryReaderObjdumpDisassemble::OnBrTableExpr(
   return Result::Ok;
 }
 
-Result BinaryReaderObjdumpDisassemble::OnIfExceptExpr(Type sig_type,
-                                                      Index except_index) {
-  Offset immediate_len = state->offset - current_opcode_offset;
-  if (sig_type != Type::Void) {
-    LogOpcode(immediate_len, "%s %u", BlockSigToString(sig_type).c_str(),
-              except_index);
-  } else {
-    LogOpcode(immediate_len, "%u", except_index);
-  }
-  indent_level++;
-  return Result::Ok;
-}
-
 Result BinaryReaderObjdumpDisassemble::OnEndFunc() {
   LogOpcode(0, nullptr);
   return Result::Ok;
 }
 
 Result BinaryReaderObjdumpDisassemble::OnEndExpr() {
-  indent_level--;
-  assert(indent_level >= 0);
+  if (indent_level > 0) {
+    indent_level--;
+  }
   LogOpcode(0, nullptr);
   return Result::Ok;
 }
 
 Result BinaryReaderObjdumpDisassemble::BeginFunctionBody(Index index,
                                                          Offset size) {
-  const char* name = GetFunctionName(index);
-  if (name) {
-    printf("%06" PRIzx " <%s>:\n", state->offset, name);
-  } else {
-    printf("%06" PRIzx " func[%" PRIindex "]:\n", state->offset, index);
+  printf("%06" PRIzx " func[%" PRIindex "]", state->offset, index);
+  auto name = GetFunctionName(index);
+  if (!name.empty()) {
+    printf(" <" PRIstringview ">", WABT_PRINTF_STRING_VIEW_ARG(name));
   }
+  printf(":\n");
 
   last_opcode_end = 0;
   return Result::Ok;
@@ -690,11 +742,11 @@ class BinaryReaderObjdump : public BinaryReaderObjdumpBase {
                         Index global_index,
                         Type type,
                         bool mutable_) override;
-  Result OnImportException(Index import_index,
-                           string_view module_name,
-                           string_view field_name,
-                           Index except_index,
-                           TypeVector& sig) override;
+  Result OnImportEvent(Index import_index,
+                       string_view module_name,
+                       string_view field_name,
+                       Index event_index,
+                       Index sig_index) override;
 
   Result OnFunctionCount(Index count) override;
   Result OnFunction(Index index, Index sig_index) override;
@@ -717,6 +769,7 @@ class BinaryReaderObjdump : public BinaryReaderObjdumpBase {
                   string_view name) override;
 
   Result OnStartFunction(Index func_index) override;
+  Result OnDataCount(Index count) override;
 
   Result OnFunctionBodyCount(Index count) override;
   Result BeginFunctionBody(Index index, Offset size) override;
@@ -796,6 +849,10 @@ class BinaryReaderObjdump : public BinaryReaderObjdumpBase {
   Result OnSectionSymbol(Index index,
                          uint32_t flags,
                          Index section_index) override;
+  Result OnEventSymbol(Index index,
+                       uint32_t flags,
+                       string_view name,
+                       Index event_index) override;
   Result OnSegmentInfoCount(Index count) override;
   Result OnSegmentInfo(Index index,
                        string_view name,
@@ -804,8 +861,8 @@ class BinaryReaderObjdump : public BinaryReaderObjdumpBase {
   Result OnInitFunctionCount(Index count) override;
   Result OnInitFunction(uint32_t priority, Index function_index) override;
 
-  Result OnExceptionCount(Index count) override;
-  Result OnExceptionType(Index index, TypeVector& sig) override;
+  Result OnEventCount(Index count) override;
+  Result OnEventType(Index index, Index sig_index) override;
 
  private:
   Result HandleInitExpr(const InitExpr& expr);
@@ -866,9 +923,10 @@ Result BinaryReaderObjdump::BeginSection(BinarySection section_code,
     case ObjdumpMode::Details:
       if (section_match) {
         printf("%s", name);
-        // All known section types except the start section have a count
-        // in which case this line gets completed in OnCount().
+        // All known section types except the Start and DataCount sections have
+        // a count in which case this line gets completed in OnCount().
         if (section_code == BinarySection::Start ||
+            section_code == BinarySection::DataCount ||
             section_code == BinarySection::Custom) {
           printf(":\n");
         }
@@ -969,8 +1027,9 @@ Result BinaryReaderObjdump::OnFunctionCount(Index count) {
 
 Result BinaryReaderObjdump::OnFunction(Index index, Index sig_index) {
   PrintDetails(" - func[%" PRIindex "] sig=%" PRIindex, index, sig_index);
-  if (const char* name = GetFunctionName(index)) {
-    PrintDetails(" <%s>", name);
+  auto name = GetFunctionName(index);
+  if (!name.empty()) {
+    PrintDetails(" <" PRIstringview ">", WABT_PRINTF_STRING_VIEW_ARG(name));
   }
   PrintDetails("\n");
   return Result::Ok;
@@ -994,6 +1053,15 @@ Result BinaryReaderObjdump::OnStartFunction(Index func_index) {
   return Result::Ok;
 }
 
+Result BinaryReaderObjdump::OnDataCount(Index count) {
+  if (options_->mode == ObjdumpMode::Headers) {
+    printf("count: %" PRIindex "\n", count);
+  } else {
+    PrintDetails(" - data count: %" PRIindex "\n", count);
+  }
+  return Result::Ok;
+}
+
 Result BinaryReaderObjdump::OnImportCount(Index count) {
   return OnCount(count);
 }
@@ -1004,8 +1072,9 @@ Result BinaryReaderObjdump::OnImportFunc(Index import_index,
                                          Index func_index,
                                          Index sig_index) {
   PrintDetails(" - func[%" PRIindex "] sig=%" PRIindex, func_index, sig_index);
-  if (const char* name = GetFunctionName(func_index)) {
-    PrintDetails(" <%s>", name);
+  auto name = GetFunctionName(func_index);
+  if (!name.empty()) {
+    PrintDetails(" <" PRIstringview ">", WABT_PRINTF_STRING_VIEW_ARG(name));
   }
   PrintDetails(" <- " PRIstringview "." PRIstringview "\n",
                WABT_PRINTF_STRING_VIEW_ARG(module_name),
@@ -1059,19 +1128,14 @@ Result BinaryReaderObjdump::OnImportGlobal(Index import_index,
   return Result::Ok;
 }
 
-Result BinaryReaderObjdump::OnImportException(Index import_index,
-                                              string_view module_name,
-                                              string_view field_name,
-                                              Index except_index,
-                                              TypeVector& sig) {
-  PrintDetails(" - except[%" PRIindex "] (", except_index);
-  for (Index i = 0; i < sig.size(); ++i) {
-    if (i != 0) {
-      PrintDetails(", ");
-    }
-    PrintDetails("%s", GetTypeName(sig[i]));
-  }
-  PrintDetails(") <- " PRIstringview "." PRIstringview "\n",
+Result BinaryReaderObjdump::OnImportEvent(Index import_index,
+                                          string_view module_name,
+                                          string_view field_name,
+                                          Index event_index,
+                                          Index sig_index) {
+  PrintDetails(" - event[%" PRIindex "] sig=%" PRIindex, event_index,
+               sig_index);
+  PrintDetails(" <- " PRIstringview "." PRIstringview "\n",
                WABT_PRINTF_STRING_VIEW_ARG(module_name),
                WABT_PRINTF_STRING_VIEW_ARG(field_name));
   return Result::Ok;
@@ -1117,8 +1181,9 @@ Result BinaryReaderObjdump::OnExport(Index index,
                                      string_view name) {
   PrintDetails(" - %s[%" PRIindex "]", GetKindName(kind), item_index);
   if (kind == ExternalKind::Func) {
-    if (const char* name = GetFunctionName(item_index)) {
-      PrintDetails(" <%s>", name);
+    auto name = GetFunctionName(item_index);
+    if (!name.empty()) {
+      PrintDetails(" <" PRIstringview ">", WABT_PRINTF_STRING_VIEW_ARG(name));
     }
   }
 
@@ -1131,8 +1196,9 @@ Result BinaryReaderObjdump::OnElemSegmentFunctionIndex(Index segment_index,
                                                        Index func_index) {
   PrintDetails("  - elem[%" PRIindex "] = func[%" PRIindex "]",
                elem_offset_ + elem_index_, func_index);
-  if (const char* name = GetFunctionName(func_index)) {
-    PrintDetails(" <%s>", name);
+  auto name = GetFunctionName(func_index);
+  if (!name.empty()) {
+    PrintDetails(" <" PRIstringview ">", WABT_PRINTF_STRING_VIEW_ARG(name));
   }
   PrintDetails("\n");
   elem_index_++;
@@ -1177,7 +1243,7 @@ void BinaryReaderObjdump::PrintInitExpr(const InitExpr& expr) {
       break;
     case InitExprType::F64: {
       char buffer[WABT_MAX_DOUBLE_HEX];
-      WriteFloatHex(buffer, sizeof(buffer), expr.value.f64);
+      WriteDoubleHex(buffer, sizeof(buffer), expr.value.f64);
       PrintDetails(" - init f64=%s\n", buffer);
       break;
     }
@@ -1325,7 +1391,12 @@ Result BinaryReaderObjdump::OnDataSegmentData(Index index,
     return Result::Ok;
   }
 
-  PrintDetails(" - segment[%" PRIindex "] size=%" PRIaddress, index, size);
+  PrintDetails(" - segment[%" PRIindex "]", index);
+  auto name = GetSegmentName(index);
+  if (!name.empty()) {
+    PrintDetails(" <" PRIstringview ">", WABT_PRINTF_STRING_VIEW_ARG(name));
+  }
+  PrintDetails(" size=%" PRIaddress, size);
   PrintInitExpr(data_init_expr_);
 
   out_stream_->WriteMemoryDump(src_data, size, data_offset_, PrintChars::Yes,
@@ -1377,8 +1448,8 @@ Result BinaryReaderObjdump::OnDylinkNeeded(string_view so_name) {
 
 Result BinaryReaderObjdump::OnRelocCount(Index count, Index section_index) {
   BinaryReaderObjdumpBase::OnRelocCount(count, section_index);
-  PrintDetails("  - relocations for section: %d (%s) [%d]\n", section_index,
-               GetSectionName(section_index), count);
+  PrintDetails("  - relocations for section: %d (" PRIstringview ") [%d]\n", section_index,
+               WABT_PRINTF_STRING_VIEW_ARG(GetSectionName(section_index)), count);
   return Result::Ok;
 }
 
@@ -1453,7 +1524,7 @@ Result BinaryReaderObjdump::OnDataSymbol(Index index,
                                          Index segment,
                                          uint32_t offset,
                                          uint32_t size) {
-  PrintDetails("   - [%d] D <" PRIstringview ">", index,
+  PrintDetails("   - %d: D <" PRIstringview ">", index,
                WABT_PRINTF_STRING_VIEW_ARG(name));
   if (!(flags & WABT_SYMBOL_FLAG_UNDEFINED))
     PrintDetails(" segment=%" PRIindex " offset=%d size=%d", segment, offset,
@@ -1466,13 +1537,11 @@ Result BinaryReaderObjdump::OnFunctionSymbol(Index index,
                                              uint32_t flags,
                                              string_view name,
                                              Index func_index) {
-  std::string sym_name = name.to_string();
-  if (sym_name.empty()) {
-    sym_name = GetFunctionName(func_index);
+  if (name.empty()) {
+    name = GetFunctionName(func_index);
   }
-  assert(!sym_name.empty());
-  PrintDetails("   - [%d] F <" PRIstringview "> func=%" PRIindex, index,
-               WABT_PRINTF_STRING_VIEW_ARG(sym_name), func_index);
+  PrintDetails("   - %d: F <" PRIstringview "> func=%" PRIindex, index,
+               WABT_PRINTF_STRING_VIEW_ARG(name), func_index);
   PrintSymbolFlags(flags);
   return Result::Ok;
 }
@@ -1481,15 +1550,11 @@ Result BinaryReaderObjdump::OnGlobalSymbol(Index index,
                                            uint32_t flags,
                                            string_view name,
                                            Index global_index) {
-  std::string sym_name = name.to_string();
-  if (sym_name.empty()) {
-    if (const char* Name = GetGlobalName(global_index)) {
-      sym_name = Name;
-    }
+  if (name.empty()) {
+    name = GetGlobalName(global_index);
   }
-  assert(!sym_name.empty());
-  PrintDetails("   - [%d] G <" PRIstringview "> global=%" PRIindex, index,
-               WABT_PRINTF_STRING_VIEW_ARG(sym_name), global_index);
+  PrintDetails("   - %d: G <" PRIstringview "> global=%" PRIindex, index,
+               WABT_PRINTF_STRING_VIEW_ARG(name), global_index);
   PrintSymbolFlags(flags);
   return Result::Ok;
 }
@@ -1497,10 +1562,23 @@ Result BinaryReaderObjdump::OnGlobalSymbol(Index index,
 Result BinaryReaderObjdump::OnSectionSymbol(Index index,
                                             uint32_t flags,
                                             Index section_index) {
-  const char* sym_name = GetSectionName(section_index);
-  assert(sym_name);
-  PrintDetails("   - [%d] S <%s> section=%" PRIindex, index, sym_name,
+  auto sym_name = GetSectionName(section_index);
+  assert(!sym_name.empty());
+  PrintDetails("   - %d: S <" PRIstringview "> section=%" PRIindex, index, WABT_PRINTF_STRING_VIEW_ARG(sym_name),
                section_index);
+  PrintSymbolFlags(flags);
+  return Result::Ok;
+}
+
+Result BinaryReaderObjdump::OnEventSymbol(Index index,
+                                          uint32_t flags,
+                                          string_view name,
+                                          Index event_index) {
+  if (name.empty()) {
+    name = GetEventName(event_index);
+  }
+  PrintDetails("   - [%d] E <" PRIstringview "> event=%" PRIindex, index,
+               WABT_PRINTF_STRING_VIEW_ARG(name), event_index);
   PrintSymbolFlags(flags);
   return Result::Ok;
 }
@@ -1530,22 +1608,15 @@ Result BinaryReaderObjdump::OnInitFunction(uint32_t priority,
   return Result::Ok;
 }
 
-Result BinaryReaderObjdump::OnExceptionCount(Index count) {
+Result BinaryReaderObjdump::OnEventCount(Index count) {
   return OnCount(count);
 }
 
-Result BinaryReaderObjdump::OnExceptionType(Index index, TypeVector& sig) {
+Result BinaryReaderObjdump::OnEventType(Index index, Index sig_index) {
   if (!ShouldPrintDetails()) {
     return Result::Ok;
   }
-  printf(" - except[%" PRIindex "] (", index);
-  for (Index i = 0; i < sig.size(); ++i) {
-    if (i != 0) {
-      printf(", ");
-    }
-    printf("%s", GetTypeName(sig[i]));
-  }
-  printf(")\n");
+  printf(" - event[%" PRIindex "] sig=%" PRIindex "\n", index, sig_index);
   return Result::Ok;
 }
 

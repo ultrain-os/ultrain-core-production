@@ -690,11 +690,20 @@ void Thread::Trace(Stream* stream) {
       break;
     }
 
+    case Opcode::TableGet:
+    case Opcode::TableSet:
+    case Opcode::TableGrow:
+    case Opcode::TableSize:
+    case Opcode::RefNull:
+    case Opcode::RefIsNull:
+      WABT_UNREACHABLE;
+      break;
+
     case Opcode::MemoryInit:
       WABT_UNREACHABLE;
       break;
 
-    case Opcode::MemoryDrop:
+    case Opcode::DataDrop:
       WABT_UNREACHABLE;
       break;
 
@@ -710,7 +719,7 @@ void Thread::Trace(Stream* stream) {
       WABT_UNREACHABLE;
       break;
 
-    case Opcode::TableDrop:
+    case Opcode::ElemDrop:
       WABT_UNREACHABLE;
       break;
 
@@ -721,11 +730,11 @@ void Thread::Trace(Stream* stream) {
     // The following opcodes are either never generated or should never be
     // executed.
     case Opcode::Block:
+    case Opcode::BrOnExn:
     case Opcode::Catch:
     case Opcode::Else:
     case Opcode::End:
     case Opcode::If:
-    case Opcode::IfExcept:
     case Opcode::InterpData:
     case Opcode::Invalid:
     case Opcode::Loop:

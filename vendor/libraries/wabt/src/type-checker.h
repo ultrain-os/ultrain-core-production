@@ -69,6 +69,7 @@ class TypeChecker {
   Result OnBlock(const TypeVector& param_types, const TypeVector& result_types);
   Result OnBr(Index depth);
   Result OnBrIf(Index depth);
+  Result OnBrOnExn(Index depth, const TypeVector& types);
   Result BeginBrTable();
   Result OnBrTableTarget(Index depth);
   Result EndBrTable();
@@ -87,23 +88,26 @@ class TypeChecker {
   Result OnGlobalGet(Type);
   Result OnGlobalSet(Type);
   Result OnIf(const TypeVector& param_types, const TypeVector& result_types);
-  Result OnIfExcept(const TypeVector& param_types,
-                    const TypeVector& result_types,
-                    const TypeVector& except_sig);
   Result OnLoad(Opcode);
   Result OnLocalGet(Type);
   Result OnLocalSet(Type);
   Result OnLocalTee(Type);
   Result OnLoop(const TypeVector& param_types, const TypeVector& result_types);
   Result OnMemoryCopy();
-  Result OnMemoryDrop(Index);
+  Result OnDataDrop(Index);
   Result OnMemoryFill();
   Result OnMemoryGrow();
   Result OnMemoryInit(Index);
   Result OnMemorySize();
   Result OnTableCopy();
-  Result OnTableDrop(Index);
+  Result OnElemDrop(Index);
   Result OnTableInit(Index);
+  Result OnTableGet(Index);
+  Result OnTableSet(Index);
+  Result OnTableGrow(Index);
+  Result OnTableSize(Index);
+  Result OnRefNullExpr();
+  Result OnRefIsNullExpr();
   Result OnRethrow();
   Result OnReturn();
   Result OnSelect();

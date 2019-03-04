@@ -44,7 +44,7 @@ WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x06, Try, "try")
 WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x07, Catch, "catch")
 WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x08, Throw, "throw")
 WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x09, Rethrow, "rethrow")
-WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x0a, IfExcept, "if_except")
+WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x0a, BrOnExn, "br_on_exn")
 WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x0b, End, "end")
 WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x0c, Br, "br")
 WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x0d, BrIf, "br_if")
@@ -240,12 +240,20 @@ WABT_OPCODE(I64,  F64,  ___,  ___,  0,  0xfc, 0x07, I64TruncSatF64U, "i64.trunc_
 
 /* Bulk-memory (--enable-bulk-memory) */
 WABT_OPCODE(___, I32,  I32,  I32,  0,  0xfc, 0x08, MemoryInit, "memory.init")
-WABT_OPCODE(___, ___,  ___,  ___,  0,  0xfc, 0x09, MemoryDrop,  "memory.drop")
-WABT_OPCODE(___, I32,  I32,  I32,  0,  0xfc, 0x0a, MemoryCopy, "memory.copy")
+WABT_OPCODE(___, ___,  ___,  ___,  0,  0xfc, 0x09, DataDrop, "data.drop")
+WABT_OPCODE(___, I32,  I32,  I32,  0,  0xfc, 0x0a, MemoryCopy,"memory.copy")
 WABT_OPCODE(___, I32,  I32,  I32,  0,  0xfc, 0x0b, MemoryFill, "memory.fill")
 WABT_OPCODE(___, I32,  I32,  I32,  0,  0xfc, 0x0c, TableInit, "table.init")
-WABT_OPCODE(___, ___,  ___,  ___,  0,  0xfc, 0x0d, TableDrop, "table.drop")
+WABT_OPCODE(___, ___,  ___,  ___,  0,  0xfc, 0x0d, ElemDrop, "elem.drop")
 WABT_OPCODE(___, I32,  I32,  I32,  0,  0xfc, 0x0e, TableCopy, "table.copy")
+
+/* Referene types (--enable-reference-types) */
+WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x25, TableGet, "table.get")
+WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0x26, TableSet, "table.set")
+WABT_OPCODE(___,  ___,  ___,  ___,  0,  0xfc, 0x0f, TableGrow, "table.grow")
+WABT_OPCODE(___,  ___,  ___,  ___,  0,  0xfc, 0x10, TableSize, "table.size")
+WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0xd0, RefNull, "ref.null")
+WABT_OPCODE(___,  ___,  ___,  ___,  0,  0,    0xd1, RefIsNull, "ref.is_null")
 
 /* Simd opcodes (--enable-simd) */
 WABT_OPCODE(V128, I32,  ___,  ___,  16, 0xfd, 0x00, V128Load,  "v128.load")
