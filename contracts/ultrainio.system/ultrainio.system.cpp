@@ -127,9 +127,6 @@ namespace ultrainiosystem {
             INLINE_ACTION_SENDER(ultrainiosystem::system_contract, undelegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
                { N(utrio.stake),(*prod).owner} );
          }
-         _producers.modify( prod, [&](auto& p) {
-               p.set_disabled();
-            });
       }
    }
    void system_contract::votecommittee() {
