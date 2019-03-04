@@ -258,8 +258,8 @@ namespace ultrainiosystem {
                     std::vector<char> vc = std::get<1>(t);
                     std::string blsData;
                     blsData.assign(vc.begin(), vc.end());
-                    int verify = verify_header_extensions(chain_name, k, blsData.c_str(), blsData.length());
-                    ultrainio_assert(verify == 0, "verify header ext error.");
+//                    int verify = verify_header_extensions(chain_name, k, blsData.c_str(), blsData.length());
+//                    ultrainio_assert(verify == 0, "verify header ext error.");
                 }
             }
 
@@ -394,7 +394,7 @@ namespace ultrainiosystem {
                     temp_header.committee_mroot = headers[idx].committee_mroot;
                     temp_header.transaction_mroot = headers[idx].transaction_mroot;
                     _subchain.unconfirmed_blocks.push_back(temp_header);
-                   
+
                     _subchain.unconfirmed_blocks.shrink_to_fit();
                 });
             }

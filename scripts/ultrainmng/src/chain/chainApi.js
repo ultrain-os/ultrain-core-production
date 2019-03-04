@@ -51,13 +51,13 @@ const getSubChainId = async (configSub) => {
 const getChainName = async (configSub) => {
     let chainName = null;
     try {
-        let res = await getTableAllData(configSub,constant.contractConstants.ULTRAINIO,constant.contractConstants.ULTRAINIO,constant.tableConstants.GLOBAL,null);
-        logger.debug("global table :",res);
+        let res = await getTableAllData(configSub, constant.contractConstants.ULTRAINIO, constant.contractConstants.ULTRAINIO, constant.tableConstants.GLOBAL, null);
+        logger.debug("global table :", res);
         if (utils.isNotNull(res) && res.rows.length > 0) {
             chainName = res.rows[0].chain_name;
         }
     } catch (e) {
-        logger.error("getChainName error,",e);
+        logger.error("getChainName error,", e);
     }
 
     return chainName;
@@ -169,7 +169,7 @@ async function contractInteract(config, contractName, actionName, params, accoun
         return data;
     } catch (err) {
         logger.debug('contractInteract error :', actionName);
-        logger.error(''+actionName+' error :', err);
+        logger.error('' + actionName + ' error :', err);
     }
     return null;
 }
@@ -429,7 +429,7 @@ getSubchainResource = async (chainName, chainConfig) => {
 
     try {
         const params = {"chain_name": chainName};
-        const rs =  await axios.post(chainConfig.config.httpEndpoint + "/v1/chain/get_subchain_resource", params);
+        const rs = await axios.post(chainConfig.config.httpEndpoint + "/v1/chain/get_subchain_resource", params);
         return rs.data;
     } catch (e) {
         logger.error("getSubchainResource error:", e);
@@ -445,10 +445,10 @@ getSubchainResource = async (chainName, chainConfig) => {
  */
 const getChainBlockDuration = async (config) => {
     try {
-        const rs =  await axios.post(config.httpEndpoint + "/v1/chain/get_chain_info", {});
+        const rs = await axios.post(config.httpEndpoint + "/v1/chain/get_chain_info", {});
         return rs.data.block_interval_ms;
     } catch (e) {
-        logger.error("getChainBlockDuration error,",e);
+        logger.error("getChainBlockDuration error,", e);
     }
 
     return null;
@@ -461,15 +461,15 @@ const getChainBlockDuration = async (config) => {
  * @param param
  * @returns {Promise<*>}
  */
-monitorCheckIn = async (url,param) => {
+monitorCheckIn = async (url, param) => {
     try {
-        logger.info("monitorCheckIn param:",qs.stringify(param));
+        logger.info("monitorCheckIn param:", qs.stringify(param));
         //var url = "http://172.16.10.5:8078/filedist/checkIn";
-        const rs =  await axios.post(url+"/filedist/checkIn", qs.stringify(param));
-        logger.info("monitorCheckIn result:",rs.data);
+        const rs = await axios.post(url + "/filedist/checkIn", qs.stringify(param));
+        logger.info("monitorCheckIn result:", rs.data);
         return rs.data;
     } catch (e) {
-        logger.error("monitorCheckIn error,",e);
+        logger.error("monitorCheckIn error,", e);
     }
 }
 
@@ -479,14 +479,14 @@ monitorCheckIn = async (url,param) => {
  * @param param
  * @returns {Promise<*>}
  */
-checkDeployFile = async (url,param) => {
+checkDeployFile = async (url, param) => {
     try {
-        logger.debug("checkDeployFile param:",qs.stringify(param));
-        const rs =  await axios.post(url+"/filedist/checkDeployInfo", qs.stringify(param));
-        logger.info("checkDeployFile result:",rs.data);
+        logger.debug("checkDeployFile param:", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/checkDeployInfo", qs.stringify(param));
+        logger.info("checkDeployFile result:", rs.data);
         return rs.data;
     } catch (e) {
-        logger.error("checkDeployFile error,",e);
+        logger.error("checkDeployFile error,", e);
     }
 }
 
@@ -496,16 +496,91 @@ checkDeployFile = async (url,param) => {
  * @param param
  * @returns {Promise<*>}
  */
-finsihDeployFile = async (url,param) => {
+finsihDeployFile = async (url, param) => {
     try {
-        logger.debug("finishDeployInfo param:",qs.stringify(param));
-        const rs =  await axios.post(url+"/filedist/finishDeployInfo", qs.stringify(param));
-        logger.info("finishDeployInfo result:",rs.data);
+        logger.debug("finishDeployInfo param:", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/finishDeployInfo", qs.stringify(param));
+        logger.info("finishDeployInfo result:", rs.data);
         return rs.data;
     } catch (e) {
-        logger.error("finishDeployInfo error,",e);
+        logger.error("finishDeployInfo error,", e);
     }
 }
+
+/**
+ *
+ * @returns {Promise<void>}
+ */
+getSubchainList = async (chainConfig) => {
+    let apiArray = [];
+    try {
+        if (utils.isNotNull(chainConfig.seedIpConfig)) {
+            for (let i = 0; i < chainConfig.seedIpConfig.length; i++) {
+                //logger.debug(chainConfig.seedIpConfig[i])
+                apiArray.push({
+                    "chainName":chainConfig.seedIpConfig[i].chainName,
+                    "httpEndpoint":chainConfig.seedIpConfig[i].subchainHttpEndpoint
+                })
+            }
+        }
+    } catch (e) {
+        logger.error("getSubchainList error,", e);
+    }
+
+    return apiArray;
+}
+
+getSyncBlockChainList = async (chainConfig,isMainChain) => {
+    if (isMainChain) {
+        return await getSubchainList(chainConfig);
+    } else {
+        return [{
+            "chainName":constant.chainNameConstants.MAIN_CHAIN_NAME,
+            "httpEndpoint":chainConfig.config.httpEndpoint
+        }];
+    }
+}
+
+
+/**
+ * 获取目标chain中已同步的块信息
+ * @param configTemp
+ * @param targetChainHttp
+ * @param targetChainName
+ * @param searchChainName
+ * @returns {Promise<*>}
+ */
+const getTargetChainBlockNum = async (configTemp,targetChainHttp,targetChainName,searchChainName) => {
+
+    try {
+        configTemp.httpEndpoint = targetChainHttp;
+        var u3Temp = createU3({...configTemp, sign: true, broadcast: true});
+        var subchainBlockNumResult = await u3Temp.getSubchainBlockNum({"chain_name": searchChainName});
+        return subchainBlockNumResult;
+    } catch (e) {
+        logger.error("getTargetChainBlockNum error:", utils.logNetworkError(e))
+    }
+}
+
+/**
+ *
+ * @param url
+ * @param param
+ * @returns {Promise<*>}
+ */
+addSwitchLog = async (url, param) => {
+    try {
+        logger.debug("addSwitchLog param:", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/addSwitchLog", qs.stringify(param));
+        logger.info("addSwitchLog result:", rs.data);
+        return rs.data;
+    } catch (e) {
+        logger.error("addSwitchLog error,", e);
+    }
+}
+
+
+
 
 
 
@@ -530,5 +605,9 @@ module.exports = {
     checkDeployFile,
     finsihDeployFile,
     getChainPeerKey,
-    getChainName
+    getChainName,
+    getSubchainList,
+    getSyncBlockChainList,
+    getTargetChainBlockNum,
+    addSwitchLog
 }

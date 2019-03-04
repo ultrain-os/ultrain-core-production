@@ -478,5 +478,7 @@ module.exports = {
     checkIn,
     isDeploying,
     disableDeploy,
-    enableDeploy
+    enableDeploy,
+    buildParam,
+    getMonitorUrl
 }

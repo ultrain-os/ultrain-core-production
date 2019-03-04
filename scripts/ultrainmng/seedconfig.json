@@ -9,7 +9,7 @@
       "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU"
     ],
     "subchainHttpEndpoint": "http://172.16.10.5:8888",
-    "monitorServerEndpoint": "http://172.16.10.7:8078"
+    "monitorServerEndpoint": "http://172.16.10.5:8078"
   },
   {
     "chainName": "12",
@@ -21,6 +21,6 @@
       "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU"
     ],
     "subchainHttpEndpoint": "http://172.16.10.5:8899",
-    "monitorServerEndpoint": "http://172.16.10.8:8078"
+    "monitorServerEndpoint": "http://172.16.10.5:8078"
   }
 ]

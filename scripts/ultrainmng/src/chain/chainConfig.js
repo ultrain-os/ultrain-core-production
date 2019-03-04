@@ -104,6 +104,29 @@ ChainConfig.configSub = {
     symbol: 'UGAS',
 };
 
+//子链配置
+ChainConfig.configTemp = {
+    httpEndpoint: '',
+    httpEndpoint_history: '',
+    keyProvider: [], // WIF string or array of keys..
+
+    chainId: "", // 32 byte (64 char) hex string
+    // chainId: '2616bfbc21e11d60d10cb798f00893c2befba10e2338b7277bb3865d2e658f58', // 32 byte (64 char) hex string
+    expireInSeconds: 60,
+    broadcast: true,
+    sign: true,
+
+    debug: false,
+    verbose: false,
+    logger: {
+        log: logUtil.log,
+        error: logUtil.error,
+        debug: logUtil.debug
+    },
+    binaryen: require('binaryen'),
+    symbol: 'UGAS',
+};
+
 /**
  * 主链和子链的u3对象
  */
@@ -173,6 +196,7 @@ ChainConfig.syncConfig = async function () {
         this.mySkAsCommittee = configIniTarget["my-sk-as-committee"];
         this.config.keyProvider = [configIniTarget["my-sk-as-account"]];
         this.configSub.keyProvider = [configIniTarget["my-sk-as-account"]];
+        this.configTemp.keyProvider = [configIniTarget["my-sk-as-account"]];
 
         logger.error("this.myAccountAsCommittee ", this.myAccountAsCommittee);
 
@@ -309,6 +333,8 @@ ChainConfig.syncSeedIpConfig = function () {
 
 //目前在正确的子链上
 ChainConfig.isInRightChain = function () {
+
+    logger.info("this,chainid:"+this.chainId+" this.configSub.chainId:"+this.configSub.chainId);
 
     //主链未同步到我属于子链的创世块
     if (constant.chainIdConstants.NONE_CHAIN == this.chainId || utils.isNull(this.chainId)) {

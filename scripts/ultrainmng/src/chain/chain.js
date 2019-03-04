@@ -540,6 +540,7 @@ async function syncChainInfo() {
             }
         } else {
             syncChainChanging = false;
+            logger.info("i am in right chain");
         }
 
         //如果不在进行链切换且本地访问不到本地链信息，需要重启下
@@ -590,10 +591,14 @@ function clearCacheData() {
  */
 async function switchChain() {
 
-
-
     loggerChainChanging.info("starting to switch chain...");
+    let param = [];
     try {
+
+        param = await monitor.buildParam();
+        param.chainNameFrom = chainConfig.localChainName;
+        param.chainNameTo = chainConfig.chainName;
+        param.startTime = new Date().getTime();
 
         //停止nod程序
         loggerChainChanging.info("shuting down nod...")
@@ -633,6 +638,7 @@ async function switchChain() {
         if (utils.isNull(seedIpInfo)) {
             loggerChainChanging.error("seed ip info is null");
             syncChainChanging = false;
+            monitor.enableDeploy();
             return;
         }
 
@@ -789,13 +795,22 @@ async function switchChain() {
 
         //结束设置结束flag
         syncChainChanging = false;
+        monitor.enableDeploy();
         loggerChainChanging.info("switching chain successfully...");
+        param.endTime = new Date().getTime();
+        param.status = 1;
+        param.result = "success";
+        await chainApi.addSwitchLog(monitor.getMonitorUrl(),param);
     } catch (e) {
 
         loggerChainChanging.info("fail to switch chain...", e);
         //结束设置结束flag
         syncChainChanging = false;
         monitor.enableDeploy();
+        param.endTime = new Date().getTime();
+        param.status = 0;
+        param.result = "error,"+e.toString();
+        await chainApi.addSwitchLog(monitor.getMonitorUrl(),param);
     }
 }
 

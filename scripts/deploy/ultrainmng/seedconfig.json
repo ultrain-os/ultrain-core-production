@@ -11,7 +11,7 @@
       "UTR77phXVHqBtKm1b7NZbyhHt839oRB67Mr2A8pRmavNkTFcPq6yy"
     ],
     "subchainHttpEndpoint": "http://172.31.7.20:8888",
-    "monitorServerEndpoint": "http://172.31.9.38:8078"
+    "monitorServerEndpoint": "http://54.153.3.119:8078"
   },
   {
     "chainName": "12",
@@ -25,7 +25,7 @@
       "UTR6ruimZSqg9uWsAXo6JiP6dtjCeNSYH5158VvVTxUpcuyC1FADM"
     ],
     "subchainHttpEndpoint": "http://172.31.12.250:8888",
-    "monitorServerEndpoint": "http://172.31.6.209:8078"
+    "monitorServerEndpoint": "http://54.153.3.119:8078"
   },
   {
     "chainName": "13",
@@ -39,6 +39,6 @@
       "UTR5517AaVg7qgz7VdDCurDrXwfdVQ2TSj1ToCWxCnvfxXhyZkpYa"
     ],
     "subchainHttpEndpoint": "http://172.31.8.22:8888",
-    "monitorServerEndpoint": "http://172.31.10.173:8078"
+    "monitorServerEndpoint": "http://54.153.3.119:8078"
   }
 ]
