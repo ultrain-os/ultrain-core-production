@@ -189,7 +189,10 @@ namespace ultrainio {
         boost::asio::steady_timer::duration   speedmonitor_period;
         boost::asio::steady_timer::duration   block_handler_period{std::chrono::seconds{1}};
         const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
-
+        boost::asio::steady_timer::duration   producerslist_update_interval{std::chrono::seconds{32}};
+        unique_ptr<boost::asio::steady_timer> producerslist_update_timer;
+        void start_producerslist_update_timer();
+        void reset_producerslist();
         bool                          network_version_match = false;
         chain_id_type                 chain_id;
         fc::sha256                    node_id;
@@ -278,6 +281,7 @@ namespace ultrainio {
          */
         void ticker();
         bool is_genesis_finish = false;
+	std::vector<chain::public_key_type> producers_pk;
 	bool is_producer_account_pk(chain::public_key_type const& pk);
 	bool authen_whitelist_and_producer(const fc::sha256& hash,const chain::public_key_type& pk,const chain::signature_type& sig);
         /** \brief Determine if a peer is allowed to connect.
@@ -2341,6 +2345,14 @@ connection::connection(string endpoint, msg_priority pri)
 	       start_speedlimit_monitor_timer();
         });
     }
+    void net_plugin_impl::start_producerslist_update_timer( )
+    {
+        producerslist_update_timer->expires_from_now(producerslist_update_interval);
+        producerslist_update_timer->async_wait( [this](boost::system::error_code ec) {
+            reset_producerslist();
+	    start_producerslist_update_timer();
+        });
+    }
     void net_plugin_impl::start_conn_timer( ) {
         connector_check->expires_from_now( connector_period);
         connector_check->async_wait( [this](boost::system::error_code ec) {
@@ -2429,6 +2441,7 @@ connection::connection(string endpoint, msg_priority pri)
       sizeprint_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       speedmonitor_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       block_handler_check.reset(new boost::asio::steady_timer( app().get_io_service()));
+      producerslist_update_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
       start_txn_timer();
       int round_interval = app().get_plugin<producer_uranus_plugin>().get_round_interval();
@@ -2579,6 +2592,16 @@ connection::connection(string endpoint, msg_priority pri)
    }
    bool net_plugin_impl::is_producer_account_pk(chain::public_key_type const& pk)
    {
+       auto found_producer_key = std::find(producers_pk.begin(), producers_pk.end(), pk);
+       if(found_producer_key == producers_pk.end())
+       {
+	       return false;
+       }
+       return true;
+   }
+
+   void net_plugin_impl::reset_producerslist()
+   {
         const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         struct chain_apis::read_only::get_producers_params params;
         params.json=true;
@@ -2587,8 +2610,8 @@ connection::connection(string endpoint, msg_priority pri)
         params.is_filter_chain = true;
         params.filter_enabled = true;
         std::vector<string> producers_account;
-        std::vector<chain::public_key_type> producers_pk;
-        try {
+        producers_pk.clear();
+	try {
             auto result = ro_api.get_producers(params);
             if(!result.rows.empty()) {
                 for( const auto& r : result.rows ) {
@@ -2614,26 +2637,21 @@ connection::connection(string endpoint, msg_priority pri)
        catch (fc::exception& e) {
             ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
         }
-       auto found_producer_key = std::find(producers_pk.begin(), producers_pk.end(), pk);
-       if(found_producer_key == producers_pk.end())
-       {
-	       return false;
-       }  
-       return true;
    }
    bool net_plugin_impl::authen_whitelist_and_producer(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig)
    {
         if(!is_genesis_finish)
         {
             const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-            bool is_genesis_fin = ro_api.is_genesis_finished();
-            if(!is_genesis_fin)
+            is_genesis_finish  = ro_api.is_genesis_finished();
+            if(!is_genesis_finish)
             {
                 return true;
             }
             else
             {
-                is_genesis_finish =true;
+                reset_producerslist();
+                start_producerslist_update_timer();
             }
         }
         chain::public_key_type peer_key;
@@ -2653,7 +2671,7 @@ connection::connection(string endpoint, msg_priority pri)
         bool is_producer_pk = is_producer_account_pk(pk);    
        if( allowed_it == allowed_peers.end() && (!is_producer_pk))
        {
-	   elog("an unauthorized key");
+           elog("an unauthorized key");
            return false;
        }
        return true;
