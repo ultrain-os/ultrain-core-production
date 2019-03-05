@@ -306,7 +306,7 @@ struct txn_test_gen_plugin_impl {
       //create the actions here
       hello.account = N(hello);
       hello.name = NEX(hi);
-      hello.authorization = vector<permission_level>{{name("user.111"),config::active_name}};
+      hello.authorization = vector<permission_level>{{name("hello"),config::active_name}};
       hello.data = hello_serializer->variant_to_binary("hi",fc::json::from_string("{\"user\":\"hhh\"}"), abi_serializer_max_time);
       timer_timeout = period;
       //batch = batch_size/2;
@@ -345,6 +345,7 @@ struct txn_test_gen_plugin_impl {
 
           fc::crypto::private_key a_priv_key(std::string("5JfSeQ3Jr8RyL7HThWsgctLmovDHGhBCnm7e6dQo3rV3TQ73oHB"));
           fc::crypto::private_key b_priv_key(std::string("5KXoGjfRKb6qiJUR29jDPrt9DpUXPTMS1gpJpoSH8iN6axak89g"));
+          fc::crypto::private_key hello_priv_key(std::string("5KZ7mnSHiKN8VaJF7aYf3ymCRKyfr4NiTiqKC5KLxkyM56KdQEP"));
 
          static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
          //         abi_serializer ultrainio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());
@@ -410,7 +411,7 @@ struct txn_test_gen_plugin_impl {
                      trx.set_reference_block(reference_block_id);
                      trx.expiration = cc.head_block_time() + fc::seconds(60);
                      trx.max_net_usage_words = 100;
-                     trx.sign(a_priv_key, chainid);
+                     trx.sign(hello_priv_key, chainid);
                      trxs.emplace_back(std::move(trx));
                  }
              }
