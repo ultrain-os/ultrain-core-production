@@ -14,16 +14,11 @@
       "type": "uint64"
     },
     {
-      "new_type_name": "u32",
-      "type": "uint32"
+      "new_type_name": "i32",
+      "type": "int32"
     }
   ],
   "structs": [
-    {
-      "fields": [],
-      "base": "",
-      "name": "clearDB"
-    },
     {
       "fields": [
         {
@@ -49,13 +44,22 @@
     {
       "fields": [],
       "base": "",
-      "name": "removeCandidate"
+      "name": "unregister"
+    },
+    {
+      "fields": [],
+      "base": "",
+      "name": "redeem"
     },
     {
       "fields": [
         {
           "name": "pk_proof",
           "type": "string"
+        },
+        {
+          "name": "blockNum",
+          "type": "u64"
         }
       ],
       "base": "",
@@ -69,16 +73,12 @@
     {
       "fields": [
         {
-          "name": "name",
-          "type": "account_name"
-        },
-        {
-          "name": "val",
+          "name": "bckNum",
           "type": "u64"
         }
       ],
       "base": "",
-      "name": "Vote"
+      "name": "queryBck"
     },
     {
       "fields": [
@@ -87,48 +87,92 @@
           "type": "account_name"
         },
         {
-          "name": "vrf_pk",
-          "type": "string"
+          "name": "belongBckNums",
+          "type": "u64[]"
         },
         {
-          "name": "age",
-          "type": "u32"
+          "name": "voteVals",
+          "type": "u64[]"
+        },
+        {
+          "name": "deposit",
+          "type": "u64"
+        },
+        {
+          "name": "regisBckNum",
+          "type": "u64"
+        },
+        {
+          "name": "unregisBckNum",
+          "type": "u64"
+        },
+        {
+          "name": "role",
+          "type": "i32"
         }
       ],
       "base": "",
-      "name": "Candidate"
+      "name": "Voter"
+    },
+    {
+      "fields": [
+        {
+          "name": "waiters",
+          "type": "account_name[]"
+        }
+      ],
+      "base": "",
+      "name": "Waiter"
+    },
+    {
+      "fields": [
+        {
+          "name": "blockNum",
+          "type": "u64"
+        },
+        {
+          "name": "val",
+          "type": "u64"
+        },
+        {
+          "name": "code",
+          "type": "i32"
+        }
+      ],
+      "base": "",
+      "name": "RandRecord"
     }
   ],
   "actions": [
     {
       "ricardian_contract": "",
-      "name": "clearDB",
-      "type": "clearDB",
-      "ability": "normal"
-    },
-    {
-      "ricardian_contract": "",
       "name": "transfer",
-      "type": "transfer",
-      "ability": "normal"
+      "type": "transfer"
     },
     {
       "ricardian_contract": "",
-      "name": "removeCandidate",
-      "type": "removeCandidate",
-      "ability": "normal"
+      "name": "unregister",
+      "type": "unregister"
+    },
+    {
+      "ricardian_contract": "",
+      "name": "redeem",
+      "type": "redeem"
     },
     {
       "ricardian_contract": "",
       "name": "vote",
-      "type": "vote",
-      "ability": "normal"
+      "type": "vote"
     },
     {
       "ricardian_contract": "",
       "name": "query",
-      "type": "query",
-      "ability": "pureview"
+      "type": "query"
+    },
+    {
+      "ricardian_contract": "",
+      "name": "queryBck",
+      "type": "queryBck"
     }
   ],
   "tables": [
@@ -140,8 +184,8 @@
       "keys_types": [
         "uint64"
       ],
-      "name": "vote",
-      "type": "Vote"
+      "name": "voter",
+      "type": "Voter"
     },
     {
       "index_type": "i64",
@@ -151,8 +195,19 @@
       "keys_types": [
         "uint64"
       ],
-      "name": "candidate",
-      "type": "Candidate"
+      "name": "waiter",
+      "type": "Waiter"
+    },
+    {
+      "index_type": "i64",
+      "keys_names": [
+        "currency"
+      ],
+      "keys_types": [
+        "uint64"
+      ],
+      "name": "rand",
+      "type": "RandRecord"
     }
   ]
 }

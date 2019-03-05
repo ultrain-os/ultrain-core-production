@@ -166,8 +166,13 @@ def stepRegProducers():
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
     stepInitSimpleTest()
     sleep(2)
-    for a in rand_acc_lst:
-        retry(args.clultrain + 'transfer %s utrio.rand \'2.0000 UGAS\' \'as candidate\' -p %s' % ( a, a))
+    for i in range(len(rand_acc_lst)):
+        value = 0.2000
+        if i < 6:
+            value = 2.0000
+        retry(args.clultrain + 'transfer %s utrio.rand \'%.4f UGAS\' \'as candidate\' -p %s' % ( rand_acc_lst[i],value, rand_acc_lst[i]))
+
+
     #if args.subchain and args.subchain != '0' :
     masterproducerinfo = ""
     for i in range(1, args.num_master_prods + 1):
@@ -176,6 +181,7 @@ def stepRegProducers():
     retry(args.clultrain + ' push action ultrainio setmasterchaininfo \'{"chaininfo":{"owner": "ultrainio",\
         "master_prods":[%s],"block_height":%s}}\' -p ultrainio ' % \
         ( masterproducerinfo, args.num_master_block) )
+
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
