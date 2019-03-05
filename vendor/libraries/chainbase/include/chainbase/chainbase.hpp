@@ -351,8 +351,6 @@ namespace chainbase {
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
 
-             ilog("test####start_undo_session:    ${s}  ${t}", ("s", _stack.back().revision)("t", _stack.back().revision));
-
                if( _cache_on){
                   _cache.emplace_back( _indices.get_allocator() );
                }
@@ -372,7 +370,6 @@ namespace chainbase {
             if( !enabled() ) return;
 
             if( _cache.size() ) _cache.pop_back();
-            ilog("test####start_undo_session:    ${s}  ${t}", ("s", _cache.size())("t", _cache.size()));
 
             const auto& head = _stack.back();
 
@@ -417,11 +414,8 @@ namespace chainbase {
           *  This method does not change the state of the index, only the state of the undo buffer.
           */
          void squash_cache(){
-             std::cout<<"#####squash_cache before size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
-             ilog("test####squash_cache before size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
+             ilog("#####squash_cache before size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
              if( !_cache_on|| _cache.size()<2  ) {return;};
-             std::cout<<"#####squash_cache size:"<< _cache.size()<<" _revision:"<<_revision<<" \n";
-             ilog("test####squash_cache size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
              auto& cache = _cache.back();
              auto& prev_cache = *(_cache.end()-2);
 
@@ -465,7 +459,6 @@ namespace chainbase {
                  prev_cache.removed_ids.emplace( id );
              }
              _cache.pop_back();
-             ilog("test####squash_cache pop size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
          }
 
          void squash()
@@ -577,8 +570,7 @@ namespace chainbase {
           */
          void commit( int64_t revision )
          {
-            // std::cout<<"#####commit  revision: "<< revision<<" \n";
-            ilog("test####commit  revision: ${s}  ${t}", ("s", revision)("t", _cache.size()));
+            ilog("####commit  revision: ${s}  ${t}", ("s", revision)("t", _cache.size()));
             while( _stack.size() && _stack[0].revision <= revision )
             {
                _stack.pop_front();
@@ -597,7 +589,9 @@ namespace chainbase {
                      _indices_backup.erase( itr);
                      item = head.removed_ids.erase(item);
                      continue;
-                 }
+                 } else {
+                     BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: in removed_ids, Could not find object!!" ) );
+                  }
                  ++item;
              }
 
@@ -611,7 +605,9 @@ namespace chainbase {
                      if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a nstraint was violated" ) );
                       item = head.modify_values.erase(item);
                       continue;
-                 }
+                 } else {
+                     BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: in modify_values, Could not find object!!" ) );
+                  }
                  ++item;
              }
 
@@ -630,8 +626,9 @@ namespace chainbase {
          {
             if ( !_cache_on|| !_cache.size()) return false;
             auto& head = _cache.front();
+
+            if (_indices_backup.size() == 0) BOOST_THROW_EXCEPTION( std::logic_error( "process_table: NO any record in process_table!!" ) );
             auto row = _indices_backup.begin();
-            assert( _indices_backup.size() > 0 );
 
              if (head.removed_ids.count(row->id) )
              {
@@ -646,7 +643,7 @@ namespace chainbase {
                  auto ok = _indices_backup.modify( row, [&]( value_type& v ) {
                                           v = std::move( itr->second );
                                                            });
-                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a queness constraint was violated" ) );
+                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_table: Could not modify object, most likely a queness constraint was violated" ) );
                  head.modify_values.erase(row->id);
                  return false;
              }
@@ -677,7 +674,7 @@ namespace chainbase {
                          auto ok = _indices_backup.modify( itr , [&]( value_type& v ) {
                                  v = std::move( item->second );
                                  });
-                         if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a nstraint was violated" ) );
+                         if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_table-1: Could not modify object, most likely a nstraint was violated" ) );
                           item = head.modify_values.erase(item);
                          continue;
                      }
@@ -688,14 +685,14 @@ namespace chainbase {
                  {
                      if(c(*item)){
                          bool ok = _indices_backup.emplace( std::move( item->second ) ).second;
-                         ilog("test emplace");
-                         if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a nstraint was violated" ) );
+                         if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_table-1: Could not restore object, most likely a nstraint was violated" ) );
                          item = head.new_values.erase(item);
                          continue;
                      }
                      ++item;
                  }
              }
+
          std::pair<bool,typename value_type::id_type> process_create()
          {
              if ( !_cache_on|| !_cache.size()) return {false,0};
@@ -708,9 +705,9 @@ namespace chainbase {
 
 
              bool ok = _indices_backup.emplace( std::move(item->second)).second;;
-             if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a nstraint was violated" ) );
+             if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_create: Could not restore object, most likely a nstraint was violated" ) );
              create.erase(item->first);
-             return {true,id};
+             return {true, id};
          }
          /**
           * Unwinds all undo states
