@@ -14,6 +14,7 @@ namespace ultrainio {
     }
 
     CheckPoint::CheckPoint() {}
+
     CheckPoint::CheckPoint(const BlockHeader& blockHeader) : m_blockHeader(blockHeader) {
         ExtensionsType ext = m_blockHeader.header_extensions;
         for (auto& e : ext) {
@@ -33,5 +34,9 @@ namespace ultrainio {
 
     CommitteeSet CheckPoint::committeeSet() const {
         return m_committeeSet;
+    }
+
+    const BlockHeader& CheckPoint::blockHeader() const {
+        return m_blockHeader;
     }
 }

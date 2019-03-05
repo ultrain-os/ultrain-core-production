@@ -1,7 +1,5 @@
 #include <lightclient/BlsVoterSet.h>
 
-#include <fc/io/json.hpp>
-
 namespace ultrainio {
     // BlsVoterSet
     BlsVoterSet::BlsVoterSet() {}
@@ -17,15 +15,16 @@ namespace ultrainio {
     }
 
     void BlsVoterSet::init(const std::string& s) {
-        fc::variant v = fc::json::from_string(s);
-        fc::variants vs = v.get_array();
-        this->fromVariants(vs);
+        std::stringstream ss(s);
+        if (!fromStringStream(ss)) {
+            accountPool.clear();
+        }
     }
 
     std::string BlsVoterSet::toString() const {
-        fc::variants va;
-        this->toVariants(va);
-        return fc::json::to_string(va);
+        std::stringstream ss;
+        toStringStream(ss);
+        return ss.str();
     }
 
     std::vector<char> BlsVoterSet::toVectorChar() const {
@@ -39,34 +38,48 @@ namespace ultrainio {
         return accountPool.empty();
     }
 
-    void BlsVoterSet::toVariants(fc::variants& v) const {
-        commonEchoMsg.toVariants(v);
-        uint32_t n = accountPool.size();
-        v.push_back(fc::variant(n));
+    void BlsVoterSet::toStringStream(std::stringstream& ss) const {
+        commonEchoMsg.toStringStream(ss);
+        int n = accountPool.size();
+        ss << n << " ";
         for (int i = 0; i < n; i++) {
-            v.push_back(fc::variant(std::string(accountPool[i])));
+            ss << std::string(accountPool[i]) << " ";
         }
 #ifdef CONSENSUS_VRF
         for (int i = 0; i < n; i++) {
-            v.push_back(fc::variant(std::string(proofPool[i])));
+            ss << proofPool[i] << " ";
         }
 #endif
-        v.push_back(fc::variant(sigX));
+        ss << sigX << " ";
     }
 
-    void BlsVoterSet::fromVariants(const fc::variants& v) {
-        int nextIndex = commonEchoMsg.fromVariants(v);
-        uint32_t n = v[nextIndex++].as<uint32_t>();
+    bool BlsVoterSet::fromStringStream(std::stringstream& ss) {
+        if (!commonEchoMsg.fromStringStream(ss)) {
+            return false;
+        }
+        int n = 0;
+        if (!(ss >> n)) {
+            return false;
+        }
+        std::string item;
         for (int i = 0; i < n; i++) {
-            accountPool.push_back(v[nextIndex++].as_string());
+            if (!(ss >> item)) {
+                return false;
+            }
+            accountPool.push_back(item);
         }
 #ifdef CONSENSUS_VRF
         for (int i = 0; i < n; i++) {
-            proofPool.push_back(v[nextIndex++].as_string());
+            if (!(ss >> item)) {
+                return false;
+            }
+            proofPool.push_back(item)
         }
 #endif
-        // sigX
-        sigX = v[nextIndex].as_string();
+        if (!(ss >> sigX)) {
+            return false;
+        }
+        return true;
     }
 
     bool BlsVoterSet::operator == (const BlsVoterSet& rhs) const {

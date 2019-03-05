@@ -9,13 +9,15 @@ namespace ultrainio {
     public:
         static bool isCheckPoint(const BlockHeader& blockHeader);
 
+        CheckPoint();
+
         CheckPoint(const BlockHeader& blockHeader);
 
         uint32_t blockNum() const;
 
         CommitteeSet committeeSet() const;
 
-        CheckPoint();
+        const BlockHeader& blockHeader() const;
     private:
         BlockHeader m_blockHeader;
 

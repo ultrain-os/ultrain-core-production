@@ -8,6 +8,7 @@ add_library( ultrainio_lightclient
         src/ConfirmPoint.cpp
         src/EpochEndPoint.cpp
         src/LightClient.cpp
+        src/LightClientCallback.cpp
         src/LightClientMgr.cpp
         src/LightClientProducer.cpp
         ${HEADERS} )

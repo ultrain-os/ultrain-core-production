@@ -72,7 +72,16 @@ namespace {
     }
 }
 
+//#include <lightclient/LightClientCallback.h>
+//#include <lightclient/LightClient.h>
+
 namespace ultrainio {
+//    class LightClientCallbackTest : public LightClientCallback {
+//        void onConfirmed(const std::list<BlockHeader>& bhList) {
+//            ilog("confirm from ${s} to ${e}", ("s", bhList.front().block_num())("e", bhList.back().block_num()));
+//        }
+//    };
+
     Scheduler::~Scheduler() {}
 
     Scheduler::Scheduler() : m_ba0Block(), m_proposerMsgMap(), m_echoMsgMap(),
@@ -82,6 +91,8 @@ namespace ultrainio {
         m_memleakCheck.reset(new boost::asio::steady_timer(app().get_io_service()));
         start_memleak_check();
         m_fast_timestamp = 0;
+//        std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(0);
+//        lightClient->addCallback(std::make_shared<LightClientCallbackTest>());
     }
 
     chain::checksum256_type Scheduler::getCommitteeMroot(uint32_t block_num) {
@@ -1960,7 +1971,10 @@ namespace ultrainio {
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
         std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
-        lightClientProducerPtr->acceptBlockHeader(chain.head_block_header(), m_currentVoterSet.toBlsVoterSet());
+        lightClientProducerPtr->accept(chain.head_block_header(), m_currentVoterSet.toBlsVoterSet());
+        //ilog("lightClient::accept");
+        //std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(0);
+        //lightClient->accept(chain.head_block_header());
         MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
     }
 

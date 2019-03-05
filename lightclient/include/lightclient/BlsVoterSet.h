@@ -29,8 +29,8 @@ namespace ultrainio {
     private:
         void init(const std::string& s);
 
-        void toVariants(fc::variants&) const;
+        void toStringStream(std::stringstream&) const;
 
-        void fromVariants(const fc::variants&);
+        bool fromStringStream(std::stringstream&);
     };
 }

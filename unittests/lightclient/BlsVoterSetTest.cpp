@@ -31,6 +31,7 @@ BOOST_AUTO_TEST_SUITE(blsvoterset_test_suite)
         std::string restoreS = blsVoterSet.toString();
         cout << "restoreS " << restoreS << std::endl;
         BlsVoterSet restoreBlsVoterSet(restoreS);
+        BOOST_CHECK(restoreBlsVoterSet.empty() == false);
         BOOST_CHECK(blsVoterSet == restoreBlsVoterSet);
     }
     BOOST_AUTO_TEST_SUITE_END()

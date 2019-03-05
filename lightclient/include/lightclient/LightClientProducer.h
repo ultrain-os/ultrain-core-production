@@ -16,7 +16,7 @@ namespace ultrainio {
 
         BlockIdType getLatestCheckPointId() const;
 
-        void acceptBlockHeader(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
+        void accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
 
     private:
 
@@ -29,5 +29,9 @@ namespace ultrainio {
         std::list<BlockHeader> m_shouldBeConfirmedList;
 
         std::list<BlsVoterSet> m_shouldBeConfirmedBlsVoterSetList;
+
+        int m_confirmedInterval = 20;
+
+        uint32_t m_lastShouldBeConfirmedBlockNum = -1;
     };
 }

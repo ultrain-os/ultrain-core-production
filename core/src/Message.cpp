@@ -2,31 +2,43 @@
 
 namespace ultrainio {
     // CommonEchoMsg
-
-    void CommonEchoMsg::toVariants(fc::variants& v) const {
-        fc::variant blockIdV;
-        fc::to_variant(blockId, blockIdV);
-        v.push_back(blockIdV);
-        v.push_back(fc::variant(static_cast<int>(phase)));
-        v.push_back(fc::variant(baxCount));
+    void CommonEchoMsg::toStringStream(std::stringstream& ss) const {
+        ss << std::string(blockId) << " ";
+        ss << static_cast<int>(phase) << " ";
+        ss << baxCount << " ";
 #ifdef CONSENSUS_VRF
-        v.push_back(fc::variant(proposerPriority));
+        ss << proposerPriority << " ";
 #else
-        v.push_back(fc::variant(std::string(proposer)));
+        ss << std::string(proposer) << " ";
 #endif
     }
 
-    int CommonEchoMsg::fromVariants(const fc::variants& v) {
-        int nextIndex = 0;
-        blockId = v[nextIndex++].as<fc::sha256>();
-        phase = ConsensusPhase(v[nextIndex++].as<int>());
-        baxCount = v[nextIndex++].as<uint32_t>();
+    bool CommonEchoMsg::fromStringStream(std::stringstream& ss) {
+        std::string blockIdStr;
+        if (!(ss >> blockIdStr)) {
+            return false;
+        }
+        blockId = BlockIdType(blockIdStr);
+        int phaseInt;
+        if (!(ss >> phaseInt)) {
+            return false;
+        }
+        phase = static_cast<ConsensusPhase>(phaseInt);
+        if (!(ss >> baxCount)) {
+            return false;
+        }
 #ifdef CONSENSUS_VRF
-        proposerPriority = v[nextIndex++].as<uint32_t>();
+        if (!(ss >> proposerPriority)) {
+            return false;
+        }
 #else
-        proposer = AccountName(v[nextIndex++].as_string());
+        std::string proposerStr;
+        if (!(ss >> proposerStr)) {
+            return false;
+        }
+        proposer = proposerStr;
 #endif
-        return nextIndex;
+        return true;
     }
 
     bool CommonEchoMsg::operator == (const CommonEchoMsg& rhs) const {

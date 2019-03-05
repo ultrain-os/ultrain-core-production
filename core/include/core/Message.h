@@ -56,9 +56,9 @@ namespace ultrainio {
 #else
         AccountName proposer;
 #endif
-        void toVariants(fc::variants&) const;
+        void toStringStream(std::stringstream& ss) const;
 
-        int fromVariants(const fc::variants&);
+        bool fromStringStream(std::stringstream& ss);
 
         bool operator == (const CommonEchoMsg&) const;
     };

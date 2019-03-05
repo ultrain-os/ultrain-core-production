@@ -13,8 +13,6 @@ namespace ultrainio {
 
     void CommitteeSet::init(const std::string& s) {
         std::stringstream ss(s);
-        std::string tempStr;
-        uint8_t idx = 0;
         CommitteeInfo committeeInfo;
         while(committeeInfo.fromStrStream(ss)) {
            m_committeeInfoV.push_back(committeeInfo);
