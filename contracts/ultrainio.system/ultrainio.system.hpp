@@ -356,6 +356,7 @@ namespace ultrainiosystem {
 
          //defind in delegate.cpp
          void change_cons( account_name from, account_name receiver, asset stake_cons_quantity);
+         void process_undelegate_request(account_name from, asset unstake_quantity);
 
          //defined in voting.hpp
          static ultrainio_global_state get_default_parameters();

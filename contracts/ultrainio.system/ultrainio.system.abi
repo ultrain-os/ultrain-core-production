@@ -343,8 +343,7 @@
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"to", "type":"account_name"},
-         {"name":"cons_weight", "type":"asset"},
-         {"name":"refund_account", "type":"account_name"}
+         {"name":"cons_weight", "type":"asset"}
       ]
     },{
       "name": "refund_cons",

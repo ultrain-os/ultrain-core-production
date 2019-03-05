@@ -5,28 +5,19 @@
 #include "ultrainio.system.hpp"
 
 #include <ultrainiolib/ultrainio.hpp>
-#include <ultrainiolib/print.hpp>
 #include <ultrainiolib/datastream.hpp>
 #include <ultrainiolib/serialize.hpp>
-#include <ultrainiolib/multi_index.hpp>
 #include <ultrainiolib/privileged.h>
 #include <ultrainiolib/transaction.hpp>
 
 #include <ultrainio.token/ultrainio.token.hpp>
 
-
 #include <cmath>
 #include <map>
 
 namespace ultrainiosystem {
-   using ultrainio::asset;
-   using ultrainio::indexed_by;
-   using ultrainio::const_mem_fun;
-   using ultrainio::bytes;
-   using ultrainio::print;
-   using ultrainio::permission_level;
-   using std::map;
-   using std::pair;
+   using namespace ultrainio;
+   using namespace std;
 
    static constexpr time refund_delay = 3*60;//3*24*3600;
 
@@ -37,21 +28,18 @@ namespace ultrainiosystem {
       account_name  from;
       account_name  to;
       asset         cons_weight;
-      account_name  refund_account;
-      uint64_t  primary_key()const { return to; }
+      uint64_t  primary_key() const { return to; }
 
-      // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE( delegated_consensus, (from)(to)(cons_weight)(refund_account) )
-
+      ULTRAINLIB_SERIALIZE( delegated_consensus, (from)(to)(cons_weight) )
    };
-   struct refund_cons {
+
+    struct refund_cons {
       account_name  owner;
       time          request_time;
-      ultrainio::asset  cons_amount;
+      asset         cons_amount;
 
-      uint64_t  primary_key()const { return owner; }
+      uint64_t  primary_key() const { return owner; }
 
-      // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE( refund_cons, (owner)(request_time)(cons_amount) )
    };
 
@@ -59,110 +47,56 @@ namespace ultrainiosystem {
     *  user staked consensus
     */
    typedef ultrainio::multi_index< N(delcons), delegated_consensus> del_consensus_table;
-   typedef ultrainio::multi_index< N(refundscons), refund_cons>      refunds_cons_table;
+   typedef ultrainio::multi_index< N(refundscons), refund_cons>     refunds_cons_table;
 
-   void validate_b1_vesting( int64_t stake ) {
-      const int64_t base_time = 1527811200; /// 2018-06-01
-      const int64_t max_claimable = 100'000'000'0000ll;
-      const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10*seconds_per_year) );
+   void system_contract::change_cons(account_name from, account_name receiver, asset stake_cons_delta) {
+       require_auth(from);
 
-      ultrainio_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
-   }
+       ultrainio_assert(_gstate.is_master_chain() ||  // on master chain
+                        from == _self || // ultrainio account
+                        name{from}.to_string().find( "utrio." ) == 0, // system account
+                        "only master chain or privilaged account allow (un)delegate consensus" );
 
-   void system_contract::change_cons( account_name from, account_name receiver, asset stake_cons_delta)
-   {
-      ultrainio_assert( _gstate.is_master_chain() || from == _self || name{from}.to_string().find( "utrio." ) == 0, "only master chain allow delegate consensus" );
-      require_auth( from );
-      ultrainio_assert( stake_cons_delta.amount >= 1000000 || stake_cons_delta.amount < 0 , "should stake at least 100 amount" );
+       ultrainio_assert(stake_cons_delta.amount >= 1000000 ||
+                        stake_cons_delta.amount < 0 , "should stake at least 100 amount" );
+
       // update consensus stake delegated from "from" to "receiver"
-      del_consensus_table     del_tbl( _self, from);
-      auto itr = del_tbl.find( receiver );
-      if( itr == del_tbl.end() ) {
+      del_consensus_table     del_tbl(_self, from);
+      auto itr = del_tbl.find(receiver);
+
+      if (stake_cons_delta.amount < 0) {
+          ultrainio_assert(itr != del_tbl.end(), "no delegate record found for undelgating action" );
+      }
+
+      if (itr == del_tbl.end()) {
          itr = del_tbl.emplace( [&]( auto& dbo ){
                dbo.from          = from;
                dbo.to            = receiver;
-               dbo.cons_weight    = stake_cons_delta;
+               dbo.cons_weight   = stake_cons_delta;
             });
-      }
-      else {
-         del_tbl.modify( itr, [&]( auto& dbo ){
-               if(stake_cons_delta.amount < 0)
-               {
-                  stake_cons_delta = asset(0) - dbo.cons_weight;
+      } else {
+         del_tbl.modify( itr, [&]( auto& dbo  ) {
+               if (stake_cons_delta.amount < 0) {
+                  stake_cons_delta = -dbo.cons_weight;
                   dbo.cons_weight = asset(0);
-               }else{
-                  dbo.cons_weight    += stake_cons_delta;
+               } else {
+                  dbo.cons_weight += stake_cons_delta;
                }
             });
       }
-      ultrainio_assert( asset(0) <= itr->cons_weight, "insufficient staked consensous bandwidth" );
+
+      ultrainio_assert( asset(0) <= itr->cons_weight, "insufficient staked consensous" );
       if ( itr->cons_weight == asset(0)) {
          del_tbl.erase( itr );
       }
+
       account_name source_stake_from = from;
-      // create refund_cons or update from existing refund_cons
       if ( N(utrio.stake) != source_stake_from ) { //for ultrainio both transfer and refund make no sense
-         refunds_cons_table refunds_tbl( _self, from );
-         auto req = refunds_tbl.find( from );
-
-         //create/update/delete refund_cons
-         auto cons_balance = stake_cons_delta;
-         bool need_deferred_trx = false;
-
-         // redundant assertion also at start of change_cons to protect against misuse of change_cons
-         bool is_undelegating = cons_balance.amount < 0;
-
-         if( is_undelegating ) {
-            if ( req != refunds_tbl.end() ) { //need to update refund_cons
-               refunds_tbl.modify( req, [&]( refund_cons& r ) {
-                  if ( cons_balance < asset(0)) {
-                     r.request_time = now();
-                  }
-                  r.cons_amount -= cons_balance;
-                  if ( r.cons_amount < asset(0) ) {
-                     cons_balance = -r.cons_amount;
-                     r.cons_amount = asset(0);
-                  } else {
-                     cons_balance = asset(0);
-                  }
-               });
-
-               ultrainio_assert( asset(0) <= req->cons_amount, "negative refund_cons amount" ); //should never happen
-
-               if ( req->cons_amount == asset(0)) {
-                  refunds_tbl.erase( req );
-                  need_deferred_trx = false;
-               } else {
-                  need_deferred_trx = true;
-               }
-
-            } else if ( cons_balance < asset(0) ) { //need to create refund_cons
-               refunds_tbl.emplace( [&]( refund_cons& r ) {
-                  r.owner = from;
-                  if ( cons_balance < asset(0) ) {
-                     r.cons_amount = -cons_balance;
-                     cons_balance = asset(0);
-                  }
-                  r.request_time = now();
-               });
-               need_deferred_trx = true;
-            } // else stake increase requested with no existing row in refunds_tbl -> nothing to do with refunds_tbl
-         }
-
-         if ( need_deferred_trx ) {
-            ultrainio::transaction out;
-            out.actions.emplace_back( permission_level{ from, N(active) }, _self, NEX(refundcons), from );
-            out.delay_sec = refund_delay;
-            cancel_deferred( from ); // TODO: Remove this line when replacing deferred trxs is fixed
-            out.send( from, _self, true );
-         } else {
-            cancel_deferred( from );
-         }
-
-         auto transfer_amount = cons_balance;
-         if ( asset(0) < transfer_amount ) {
+          if (stake_cons_delta.amount < 0) {
+              process_undelegate_request(from, stake_cons_delta);
+          } else {
             INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {source_stake_from, N(active)},
-               { source_stake_from, N(utrio.stake), asset(transfer_amount), std::string("stake bandwidth") } );
+               { source_stake_from, N(utrio.stake), asset(stake_cons_delta), std::string("stake consensus") } );
          }
       }
 
@@ -209,7 +143,48 @@ namespace ultrainiosystem {
       }
    }
 
-   void system_contract::syncresource(account_name receiver, uint64_t combosize, uint32_t block_height) {
+
+    void system_contract::process_undelegate_request(account_name from,
+                                                     asset unstake_quantity) {
+        ultrainio_assert( unstake_quantity < asset(0), "unstaked consensous asset must be negative" );
+        refunds_cons_table refunds_tbl( _self, from );
+        bool need_deferred_trx = false;
+        auto req = refunds_tbl.find( from );
+        // create refund_cons or update from existing refund_cons
+        if ( req != refunds_tbl.end() ) { //need to update refund_cons
+             refunds_tbl.modify( req, [&]( refund_cons& r ) {
+                r.request_time = now();
+                r.cons_amount -= unstake_quantity;
+             });
+
+             ultrainio_assert( asset(0) <= req->cons_amount, "negative refund_cons amount" ); //should never happen
+
+             if ( req->cons_amount == asset(0)) {
+                 refunds_tbl.erase( req );
+                 need_deferred_trx = false;
+             } else {
+                 need_deferred_trx = true;
+             }
+         } else { //need to create refund_cons
+             refunds_tbl.emplace( [&]( refund_cons& r ) {
+                r.owner = from;
+                r.cons_amount = -unstake_quantity;
+                r.request_time = now();
+             });
+             need_deferred_trx = true;
+         }
+
+        uint128_t trxid = from + N(refund_cons);
+        cancel_deferred(trxid);
+        if ( need_deferred_trx ) {
+            ultrainio::transaction out;
+            out.actions.emplace_back( permission_level{ from, N(active) }, _self, NEX(refundcons), from );
+            out.delay_sec = refund_delay;
+            out.send( trxid, _self, true );
+        }
+    }
+
+  void system_contract::syncresource(account_name receiver, uint64_t combosize, uint32_t block_height) {
        resources_lease_table _reslease_tbl( _self, master_chain_name );//In side chain, always treat itself as master
        auto resiter = _reslease_tbl.find(receiver);
        if(resiter != _reslease_tbl.end()) {
@@ -332,17 +307,21 @@ namespace ultrainiosystem {
       } // tot_itr can be invalid, should go out of scope
    }
 
-void system_contract::delegatecons( account_name from, account_name receiver,asset stake_cons_quantity)
+void system_contract::delegatecons(account_name from, account_name receiver, asset stake_cons_quantity)
    {
-      ultrainio_assert( stake_cons_quantity >= asset(0), "must stake a positive amount" );
+      ultrainio_assert( stake_cons_quantity > asset(0), "must stake a positive amount" );
       change_cons( from, receiver, stake_cons_quantity);
    } // delegatecons
 
-   void system_contract::undelegatecons( account_name from, account_name receiver)
-   {
-      ultrainio_assert( get_enable_producers_number() > _gstate.min_committee_member_number, " The number of committees is about to be smaller than the minimum number and therefore cannot be undelegatecons" );
-      change_cons( from, receiver, asset(-1));
-   } // undelegatecons
+    void system_contract::undelegatecons( account_name from, account_name receiver) {
+        auto prod = _producers.find(receiver);
+        ultrainio_assert( (prod != _producers.end()), "Unable to undelegate cons for non-producer" );
+        if (prod->is_enabled) { // undelegate cons for disabled producer is fine.
+            ultrainio_assert(get_enable_producers_number() > _gstate.min_committee_member_number,
+                             "The number of committee member is too small, undelegatecons suspended for now");
+        }
+        change_cons(from, receiver, asset(-1));
+    } // undelegatecons
 
    void system_contract::refundcons(const account_name owner ) {
       require_auth( owner );
