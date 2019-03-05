@@ -415,18 +415,27 @@
          {"name":"max_ram_size",                  "type":"uint64"},
          {"name":"min_activated_stake",           "type":"int64"},
          {"name":"min_committee_member_number",   "type":"uint32"},
-         {"name":"total_ram_bytes_used",      "type":"uint64"},
+         {"name":"total_ram_bytes_used",          "type":"uint64"},
          {"name":"start_blcok",                   "type":"uint64"},
-         {"name":"block_reward_vec",               "type":"block_reward[]"},
+         {"name":"block_reward_vec",              "type":"block_reward[]"},
          {"name":"pervote_bucket",                "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
-         {"name":"total_unpaid_balance",           "type":"uint64"},
+         {"name":"total_unpaid_balance",          "type":"uint64"},
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"last_name_close",               "type":"block_timestamp_type"},
-         {"name":"max_resources_number",            "type":"uint16"},
-         {"name":"total_resources_used_number",        "type":"uint16"},
-         {"name":"newaccount_fee",            "type":"uint32"},
-         {"name":"chain_name",            "type":"uint64"}
+         {"name":"max_resources_number",          "type":"uint16"},
+         {"name":"total_resources_used_number",   "type":"uint16"},
+         {"name":"newaccount_fee",                "type":"uint32"},
+         {"name":"chain_name",                    "type":"uint64"},
+         {"name": "table_extension",              "type": "extension[]"}
+      ]
+    },{
+      "name": "producer_brief",
+      "base": "",
+      "fields": [
+         {"name":"owner",           "type":"account_name"},
+         {"name":"location",        "type":"uint64"},
+         {"name":"in_disable",      "type":"bool"}
       ]
     },{
       "name": "role_base",
@@ -437,20 +446,26 @@
          {"name":"bls_key",         "type":"string"}
       ]
     },{
-      "name": "producer_info",
+      "name": "disabled_producer",
       "base": "role_base",
       "fields": [
          {"name":"total_cons_staked",     "type":"int64"},
-         {"name":"is_enabled",      "type":"bool"},
          {"name":"url",             "type":"string"},
-         {"name":"unpaid_balance",   "type":"uint64"},
          {"name":"total_produce_block",   "type":"uint64"},
          {"name":"location",        "type":"uint64"},
          {"name":"last_operate_blocknum", "type":"uint64"},
          {"name":"delegated_cons_blocknum", "type":"uint64"},
-         {"name":"claim_rewards_account", "type":"account_name"},
+         {"name":"claim_rewards_account", "type":"account_name"}
+      ]
+    },{
+      "name": "producer_info",
+      "base": "disabled_producer",
+      "fields": [
+         {"name":"is_enabled",      "type":"bool"},
+         {"name":"unpaid_balance",   "type":"uint64"},
          {"name":"vote_number",     "type":"uint64"},
-         {"name":"last_vote_blocenum", "type":"uint64"}
+         {"name":"last_vote_blocenum", "type":"uint64"},
+         {"name": "table_extension", "type": "extension[]"}
       ]
     },{
      "name": "chaintype",
@@ -460,7 +475,8 @@
         {"name": "stable_min_producers",   "type": "uint16"},
         {"name": "stable_max_producers",   "type": "uint16"},
         {"name": "sched_inc_step",         "type": "uint16"},
-        {"name": "consensus_period",       "type": "uint16"}
+        {"name": "consensus_period",       "type": "uint16"},
+        {"name": "table_extension",        "type": "extension[]"}
        ]
     },{
      "name": "user_info",
@@ -503,7 +519,8 @@
         {"name": "proposer",                      "type": "account_name"},
         {"name": "block_id",                      "type": "block_id_type"},
         {"name": "block_number",                  "type": "uint32"},
-        {"name": "transaction_mroot",             "type": "checksum256"}
+        {"name": "transaction_mroot",             "type": "checksum256"},
+        {"name": "table_extension",               "type": "extension[]"}
        ]
     },{
      "name": "unconfirmed_block_header",
@@ -525,6 +542,7 @@
         {"name": "is_active",                     "type": "bool"},
         {"name": "is_synced",                     "type": "bool"},
         {"name": "is_schedulable",                "type": "bool"},
+        {"name": "committee_sum",                 "type": "uint16"},
         {"name": "committee_members",             "type": "role_base[]"},
         {"name": "updated_info",                  "type": "updated_committee"},
         {"name": "changing_info",                 "type": "changing_committee"},
@@ -534,7 +552,8 @@
         {"name": "committee_mroot",               "type": "checksum256"},
         {"name": "confirmed_block_number",        "type": "uint32"},
         {"name": "highest_block_number",          "type": "uint32"},
-        {"name": "unconfirmed_blocks",            "type": "unconfirmed_block_header[]"}
+        {"name": "unconfirmed_blocks",            "type": "unconfirmed_block_header[]"},
+        {"name": "table_extension",               "type": "extension[]"}
        ]
     },{
      "name": "pending_miner",
@@ -566,7 +585,8 @@
       "fields": [
         {"name": "block_num",                "type": "uint64"},
         {"name": "hash_v",                   "type": "hash_vote[]"},
-        {"name": "accounts",                 "type": "account_name[]"}
+        {"name": "accounts",                 "type": "account_name[]"},
+        {"name": "table_extension",          "type": "extension[]"}
        ]
     },{
       "name": "regproducer",
@@ -943,6 +963,18 @@
       "type": "block_header_digest",
       "index_type": "i64",
       "key_names": ["block_number"],
+      "key_types": ["uint64"]
+    },{
+      "name": "briefprod",
+      "type": "producer_brief",
+      "index_type": "i64",
+      "key_names": ["owner"],
+      "key_types": ["uint64"]
+    },{
+      "name": "disableprods",
+      "type": "disabled_producer",
+      "index_type": "i64",
+      "key_names": ["owner"],
       "key_types": ["uint64"]
     }
    ],

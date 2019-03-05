@@ -44,6 +44,9 @@ namespace ultrainiosystem {
     ///@abi action
     void system_contract::reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size) {
         require_auth(current_sender());
+        auto ite_chain = _subchains.find(subchain);
+        ultrainio_assert(ite_chain != _subchains.end(), "subchain not found");
+        producers_table _producers(_self, subchain);
         auto propos = _producers.find(current_sender());
 
         ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->location == subchain, "enabled producer not found this proposer" );
@@ -52,8 +55,6 @@ namespace ultrainiosystem {
         };
         ultrainio_assert(checkBlockNum(blocknum), "report an invalid blocknum ws");
 
-        auto ite_chain = _subchains.find(subchain);
-        ultrainio_assert(ite_chain != _subchains.end(), "subchain not found");
         ultrainio_assert(blocknum <= ite_chain->confirmed_block_number, "report a blocknum larger than current block");
         ultrainio_assert(ite_chain->confirmed_block_number - blocknum <= default_worldstate_interval, "report a too old blocknum");
 
@@ -136,7 +137,6 @@ namespace ultrainiosystem {
         require_auth(N(ultrainio));
         ultrainio_assert(chain_name != default_chain_name, "subchian cannot named as default.");
         ultrainio_assert(chain_name != master_chain_name, "subchian cannot named as 0");
-        ultrainio_assert(chain_name != pending_queue, "subchian cannot named as uint64::max");
         auto itor = _subchains.find(chain_name);
         ultrainio_assert(itor == _subchains.end(), "there has been a subchian with this name");
         chaintypes_table type_tbl(_self, _self);
@@ -200,6 +200,7 @@ namespace ultrainiosystem {
             bool found_prod = false;
             bool need_report = true;
             if(block_proposer != N() && block_proposer != N(genesis)) {
+                producers_table _producers(_self, chain_name);
                 auto prod = _producers.find(block_proposer);
                 ultrainio_assert(prod != _producers.end(), "the prososer is not a valid producer");
                 auto itor = ite_chain->committee_members.begin();
@@ -366,7 +367,7 @@ namespace ultrainiosystem {
                         }
                         //record proposer for rewards
                         if(ite_confirm_block->to_be_paid) {
-                            reportblocknumber( ite_chain->chain_type, ite_confirm_block->proposer, 1);
+                            reportblocknumber( ite_chain->chain_name, ite_chain->chain_type, ite_confirm_block->proposer, 1);
                         }
                         //save confirmed block
                         confirmed_header.proposer          = ite_confirm_block->proposer;
@@ -441,6 +442,7 @@ namespace ultrainiosystem {
             _subchain.unconfirmed_blocks.shrink_to_fit();
         });
         print( "clearchain chain_name:", chain_name, " users_only:", users_only, "\n" );
+        producers_table _producers(_self, chain_name);
         auto ite = _producers.begin();
         for(; ite != _producers.end(); ++ite) {
             if(ite->location == chain_name) {
@@ -457,17 +459,13 @@ namespace ultrainiosystem {
         auto ite_chain = _subchains.find(chain_name);
         ultrainio_assert(ite_chain != _subchains.end(), "this subchian is not existed");
         ultrainio_assert(!is_empowered(user, chain_name), "user has been empowered to this chain before");
-        bool is_prod = false;
-        auto prod = _producers.find(user);
-        if(prod == _producers.end()) {
+        auto briefprod = _briefproducers.find(user);
+        bool is_prod = true;
+        if(briefprod == _briefproducers.end()) {
+            is_prod = false;
             ultrainio_assert(owner_pk.size() == 53 || owner_pk.size() == 0, "owner public key should be of size 53 or empty");
             ultrainio_assert(active_pk.size() == 53 || active_pk.size() == 0, "avtive public key should be of size 53 or empty");
         }
-        else {
-            is_prod = true;
-        }
-        //todo, check whether this subchain is active.
-
         empower_to_chain(user, chain_name);
 
         user_info tempuser;
@@ -492,152 +490,58 @@ namespace ultrainiosystem {
         });
     }
 
-    void system_contract::add_to_pending_queue(account_name producer, const std::string& public_key, const std::string& bls_key) {
-        auto itor = _producers.find(producer);
-        ultrainio_assert(itor != _producers.end(), "need to register as a producer first");
-
-        std::vector<role_base>* p_que;
-        if(!_pending_que.exists()) {
-            std::vector<role_base> temp_que;
-            p_que = &temp_que;
-        }
-        else {
-            auto _pending = _pending_que.get();
-            auto ite = _pending.begin();
-            for(; ite != _pending.end(); ++ite) {
-                if(ite->owner == producer) {
-                    break;
-                }
-            }
-            if(ite != _pending.end() ) {
-                return; //don't use assert
-            }
-            p_que = &_pending;
-        }
-        role_base temp_node;
-        temp_node.owner = producer;
-        temp_node.producer_key   = public_key;
-        temp_node.bls_key   = bls_key;
-        p_que->push_back(temp_node);
-        uint16_t stable_min = 0;
-        //loop all inactive subchain, start it if miners sum meet its requirement.
-        auto ite_subchain = _subchains.begin();
-        for(; ite_subchain != _subchains.end(); ++ite_subchain) {
-            if(!ite_subchain->is_active) {
-                chaintypes_table type_tbl(_self, _self);
-                auto type_iter = type_tbl.find(ite_subchain->chain_type);
-                ultrainio_assert(type_iter != type_tbl.end(), "chian type of subchian is not existed");
-                if(type_iter->stable_min_producers <= p_que->size()) {
-                    stable_min = type_iter->stable_min_producers;
-                    break;
-                }
-            }
-        }
-        if(ite_subchain != _subchains.end()) {
-            _subchains.modify(ite_subchain, [&](subchain& info) {
-                //move miners from pending que to this sub chian
-                uint32_t i = 0;
-                auto ite_miner = p_que->begin();
-                for(; ite_miner != p_que->end() && i <= stable_min; ++i) {
-                    //update location of producer
-                    auto ite_producer = _producers.find(ite_miner->owner);
-                    ultrainio_assert( ite_producer != _producers.end(), "cannot find producer in database" );
-                    _producers.modify(ite_producer, [&](auto & v) {
-                        v.location = info.chain_name;
-                    });
-                    //move to subchain
-                    info.committee_members.push_back(*ite_miner);
-                    ite_miner = p_que->erase(ite_miner);
-                }
-                info.is_active = true;
+    void system_contract::add_to_chain(uint64_t chain_name, const producer_info& producer) {
+        if (chain_name != master_chain_name) {
+            auto ite_chain = _subchains.find(chain_name);
+            ultrainio_assert(ite_chain != _subchains.end(), "destination sidechain is not existed" );
+            chaintypes_table type_tbl(_self, _self);
+            auto typeiter = type_tbl.find(ite_chain->chain_type);
+            ultrainio_assert(typeiter != type_tbl.end(), "destination sidechain type is not existed");
+            ultrainio_assert(ite_chain->committee_sum < typeiter->stable_max_producers,
+                "destination sidechain already has enough producers");
+            _subchains.modify(ite_chain, [&](subchain& info) {
+                role_base temp_prod;
+                temp_prod.owner = producer.owner;
+                temp_prod.producer_key = producer.producer_key;
+                temp_prod.bls_key = producer.bls_key;
+                info.changing_info.new_added_members.push_back(temp_prod);
+                info.committee_sum += 1;
             });
         }
 
-        _pending_que.set(*p_que);
+        producers_table _producer_chain(_self, chain_name);
+        auto prod = _producer_chain.find( producer.owner );
+        ultrainio_assert(prod == _producer_chain.end(), "producer has existed in destination chain");
+        _producer_chain.emplace([&]( producer_info& _prod ) {
+            _prod = producer;
+            _prod.location = chain_name;
+        });
     }
 
-    void system_contract::remove_from_pending_queue(account_name producer) {
-        ultrainio_assert(_pending_que.exists(), "no pending queue exsited.");
+    void system_contract::remove_from_chain(uint64_t chain_name, account_name producer_name) {
+        producers_table _producer_chain(_self, chain_name);
+        auto prod = _producer_chain.find( producer_name );
+        ultrainio_assert(prod != _producer_chain.end(), "producer is not existed in source chain");
 
-        auto _pending = _pending_que.get();
-        auto ite = _pending.begin();
-        for(; ite != _pending.end(); ++ite) {
-            if(ite->owner == producer) {
-                break;
-            }
+        if (chain_name != master_chain_name) {
+            auto ite_chain = _subchains.find(chain_name);
+            ultrainio_assert(ite_chain != _subchains.end(), "source sidechain is not existed");
+            chaintypes_table type_tbl(_self, _self);
+            auto typeiter = type_tbl.find(ite_chain->chain_type);
+            ultrainio_assert(typeiter != type_tbl.end(), "source subchain type is not existed");
+            ultrainio_assert(ite_chain->committee_sum > typeiter->stable_min_producers,
+                "the producers in source sidechain is not enough for removing");
+
+            _subchains.modify(ite_chain, [&](subchain& info) {
+                role_base temp_prod;
+                temp_prod.owner = prod->owner;
+                temp_prod.producer_key = prod->producer_key;
+                temp_prod.bls_key = prod->bls_key;
+                info.changing_info.removed_members.push_back(temp_prod);
+                info.committee_sum -= 1;
+            });
         }
-        if(ite == _pending.end()) {
-            return; //don't use assert
-        }
-        _pending.erase(ite);
-        _pending_que.set(_pending);
-    }
-
-    void system_contract::add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key, const std::string& bls_key) {
-        if(chain_name == default_chain_name) {
-            //todo, loop all stable subchain, add to the one with least miners
-            //todo, update location of producer
-            return;
-        }
-        auto ite_chain = _subchains.find(chain_name);
-        ultrainio_assert(ite_chain != _subchains.end(), "The specific chain is not existed." );
-
-        for(const auto& miner : ite_chain->committee_members) {
-            if(miner.owner == producer) {
-                _subchains.modify(ite_chain, [&](subchain& info) {
-                    auto ite_miner = info.changing_info.removed_members.begin();
-                    for(; ite_miner != info.changing_info.removed_members.end(); ++ite_miner) {
-                        if(miner.owner == producer) {
-                            info.changing_info.removed_members.erase(ite_miner);
-                            break;
-                        }
-                        info.changing_info.removed_members.shrink_to_fit();
-                    }
-                } );
-                return; //don't use assert.
-            }
-        }
-        //check changing info
-        for(const auto& miner : ite_chain->changing_info.new_added_members) {
-            if(miner.owner == producer) {
-                return;
-            }
-        }
-        _subchains.modify(ite_chain, [&](subchain& info) {
-            role_base temp_node;
-            temp_node.owner = producer;
-            temp_node.producer_key   = public_key;
-            temp_node.bls_key   = bls_key;
-            info.changing_info.new_added_members.push_back(temp_node);
-        } );
-    }
-
-    void system_contract::remove_from_subchain(uint64_t chain_name, account_name producer) {
-        auto ite_chain = _subchains.find(chain_name);
-        ultrainio_assert(ite_chain != _subchains.end(), "The subchain is not existed.");
-
-        //ultrainio_assert(ite_chain->committee_members.size() - 1 >= ite_chain->get_subchain_min_miner_num(),
-        //                 "this subschain cannot remove producers");
-        _subchains.modify(ite_chain, [&](subchain& info){
-            auto ite_add = info.changing_info.new_added_members.begin();
-            for(; ite_add != info.changing_info.new_added_members.end() ; ++ite_add) {
-                if(ite_add->owner == producer) {
-                    info.changing_info.new_added_members.erase(ite_add);
-                    return;
-                }
-            }
-
-            auto ite_producer = info.committee_members.begin();
-            bool found = false;
-            for(; ite_producer != info.committee_members.end(); ++ite_producer) {
-                if(ite_producer->owner == producer) {
-                    found = true;
-                    break;
-                }
-            }
-            ultrainio_assert(found, "The producer is not existed on this subchain.");
-            info.changing_info.removed_members.push_back(*ite_producer);
-        } );
+        _producer_chain.erase(prod);
     }
 
     void system_contract::activate_committee_update() {
@@ -646,8 +550,8 @@ namespace ultrainiosystem {
             auto temp = _schedsetting.get();
             period_minutes = int32_t(temp.committee_confirm_period);
         }
-        auto block_height = head_block_number() + 1;
-        if(block_height > 180 && block_height%(period_minutes * 6) != 0 ) {
+        int32_t curblocknum = (int32_t)head_block_number() + 1;
+        if(curblocknum > 180 && curblocknum%(period_minutes * 6) != 0 ) {
             return;
         }
         auto ite_chain = _subchains.begin();
@@ -737,7 +641,7 @@ namespace ultrainiosystem {
             sched_period_minute = int32_t(temp.schedule_period);
         }
 
-        auto block_height = head_block_number() + 1;
+        auto block_height = int32_t(head_block_number() + 1);
         if( block_height%(sched_period_minute * 6) != 0) {
             return;
         }
@@ -851,6 +755,7 @@ namespace ultrainiosystem {
         //get a producder for scheduling out
         uint32_t totalsize = schedule_producers.size();
         auto producer = schedule_producers[x % totalsize];
+        producers_table _producers(_self, from_iter->chain_name);
         auto producer_iter = _producers.find(producer);
         if(producer_iter == _producers.end()) {
             print("[schedule] error: producer to move out is not found in _producers\n");
@@ -871,11 +776,8 @@ namespace ultrainiosystem {
             empower_to_chain(producer, to_iter->chain_name);
         }
         //move producer
-        _producers.modify( producer_iter, [&]( producer_info& info ) {
-               info.location     = to_iter->chain_name;
-        });
-        remove_from_subchain(from_iter->chain_name, producer);
-        add_to_subchain(to_iter->chain_name, producer, producer_iter->producer_key, producer_iter->bls_key);
+        add_to_chain(to_iter->chain_name, *producer_iter);
+        remove_from_chain(from_iter->chain_name, producer);
 
         return true;
     }
@@ -961,6 +863,34 @@ namespace ultrainiosystem {
                     subchain_block_tbl.erase(block_ite);
                 }
             }
+        }
+    }
+
+    uint64_t system_contract::getdefaultchain() {
+        auto ite_chain = _subchains.begin();
+        auto ite_min = _subchains.end();
+        uint32_t max_gap = 0;
+        chaintypes_table type_tbl(_self, _self);
+        for(; ite_chain != _subchains.end(); ++ite_chain) {
+            if(!ite_chain->is_schedulable) {
+                continue;
+            }
+            uint32_t my_committee_num = ite_chain->committee_sum;
+            auto ite_type = type_tbl.find(ite_chain->chain_type);
+            ultrainio_assert(ite_type != type_tbl.end(), "error: chain type is not existed");
+            if(my_committee_num <=  ite_type->stable_max_producers ) {
+                if (ite_type->stable_max_producers - my_committee_num > max_gap) {
+                   max_gap = ite_type->stable_max_producers - my_committee_num;
+                   ite_min = ite_chain;
+                }
+            }
+        }
+        if(ite_min == _subchains.end()) {
+            //there's no schedulable or addable sidechain existed currently
+            return master_chain_name;
+        }
+        else {
+            return ite_min->chain_name;
         }
     }
 } //namespace ultrainiosystem

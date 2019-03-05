@@ -19,6 +19,8 @@ namespace ultrainiosystem {
        * At startup the initial producer may not be one that is registered / elected
        * and therefore there may be no producer object for them.
        */
+      producers_table _producers(_self, master_chain_name);
+
       if ( !_gstate.start_block){
          uint32_t i {};
          for(auto itr = _producers.begin(); i <= _gstate.min_committee_member_number && itr != _producers.end(); ++itr, ++i){}
@@ -54,7 +56,8 @@ namespace ultrainiosystem {
       distributreward();
    }
 
-   void system_contract::reportblocknumber( uint64_t chain_type, account_name producer, uint64_t number) {
+   void system_contract::reportblocknumber( uint64_t chain_name, uint64_t chain_type, account_name producer, uint64_t number) {
+      producers_table _producers(_self, chain_name);
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
         uint64_t curblockreward = 0;
@@ -90,15 +93,19 @@ namespace ultrainiosystem {
          INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
                                                       {pay_account, asset(new_tokens - fee_tokens.amount), std::string("issue tokens for claimrewards")} );
       }
-      for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
-         if( itr->unpaid_balance > 0 ){
-            auto producer_unpaid_balance = (int64_t)itr->unpaid_balance;
-            print("\nclaimrewards producer:",name{itr->owner}," producer_pay:",producer_unpaid_balance,"\n");
-            _producers.modify( itr, [&](auto& p) {
-               p.unpaid_balance = 0;
-            });
-            INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
-                                                        { pay_account, itr->owner, asset(producer_unpaid_balance), std::string("producer block pay") } );
+      std::vector<uint64_t> chain_name_vct = getallchainname();
+      for(uint32_t i = 0; i < chain_name_vct.size(); ++i) {
+         producers_table _producers(_self, chain_name_vct[i]);
+         for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
+            if( itr->unpaid_balance > 0 ){
+               auto producer_unpaid_balance = (int64_t)itr->unpaid_balance;
+               print("\nclaimrewards producer:",name{itr->owner}," producer_pay:",producer_unpaid_balance,"\n");
+               _producers.modify( itr, [&](auto& p) {
+                  p.unpaid_balance = 0;
+               });
+               INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
+                                                           { pay_account, itr->owner, asset(producer_unpaid_balance), std::string("producer block pay") } );
+            }
          }
       }
    }

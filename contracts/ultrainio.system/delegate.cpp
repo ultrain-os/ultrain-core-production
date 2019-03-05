@@ -100,44 +100,100 @@ namespace ultrainiosystem {
          }
       }
 
-      // if on master chain, update voting power; else add to pending chain or subchain.
+      // if on master chain, update voting power; else add to subchain.
       {
          asset total_update = stake_cons_delta;
-         auto it = _producers.find(receiver);
-         ultrainio_assert( (it != _producers.end()), "Unable to delegate cons, you need to regproducer" );
-         uint64_t curblocknum = (uint64_t)head_block_number() + 1;
-         if(stake_cons_delta.amount < 0){
-            print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," delegated_cons_blocknum:",it->delegated_cons_blocknum);//
-            if((name{from}.to_string().find( "utrio." ) != 0 ) && (from != _self)){
-               const uint32_t seconds_per_block     = block_interval_seconds();
-               uint32_t blocks_per_month            = seconds_per_day / seconds_per_block / 2;//seconds_per_year / seconds_per_block / 12;
-               ultrainio_assert( (curblocknum - it->delegated_cons_blocknum) > blocks_per_month , "should stake at least more than one month" );
-            }
-         }
-         auto enabled = ((it->total_cons_staked+total_update.amount) >=
-                  _gstate.min_activated_stake);
-         _producers.modify(it, [&](auto & v) {
-                  v.total_cons_staked += total_update.amount;
-                  v.is_enabled = enabled;
-                  v.delegated_cons_blocknum = curblocknum;
-                  });
-         if(it->is_on_master_chain()) {
-            _gstate.total_activated_stake += total_update.amount;
-         }
-         else if (enabled) {
-             if(it->is_in_pending_queue()) {
-                 add_to_pending_queue(it->owner, it->producer_key, it->bls_key);
+         auto briefprod = _briefproducers.find(receiver);
+         ultrainio_assert(briefprod != _briefproducers.end(), "this account is not a producer, please regproducer first");
+         if(briefprod->in_disable) {
+            disabled_producers_table dp_tbl(_self, _self);
+            auto dis_prod = dp_tbl.find(receiver);
+            ultrainio_assert(dis_prod != dp_tbl.end(), "receiver is not found in its location");
+            uint64_t curblocknum = (uint64_t)head_block_number() + 1;
+             if(stake_cons_delta.amount < 0){
+                 print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," delegated_cons_blocknum:",dis_prod->delegated_cons_blocknum);//
+                 if((name{from}.to_string().find( "utrio." ) != 0 ) && (from != _self)){
+                     const uint32_t seconds_per_block     = block_interval_seconds();
+                     uint32_t blocks_per_month            = seconds_per_day / seconds_per_block / 2;//seconds_per_year / seconds_per_block / 12;
+                     ultrainio_assert( (curblocknum - dis_prod->delegated_cons_blocknum) > blocks_per_month , "should stake at least more than one month" );
+                 }
+             }
+             if(dis_prod->is_on_master_chain()) {
+                 _gstate.total_activated_stake += total_update.amount;
+             }
+             auto enabled = ((dis_prod->total_cons_staked + total_update.amount) >= _gstate.min_activated_stake);
+             if(enabled) {
+                producer_info new_en_prod;
+                new_en_prod.owner                   = dis_prod->owner;
+                new_en_prod.producer_key            = dis_prod->producer_key;
+                new_en_prod.bls_key                 = dis_prod->bls_key;
+                new_en_prod.total_cons_staked       = dis_prod->total_cons_staked + total_update.amount;
+                new_en_prod.url                     = dis_prod->url;
+                new_en_prod.total_produce_block     = dis_prod->total_produce_block;
+                new_en_prod.location                = dis_prod->location;
+                new_en_prod.last_operate_blocknum   = dis_prod->last_operate_blocknum;
+                new_en_prod.delegated_cons_blocknum = curblocknum;
+                new_en_prod.claim_rewards_account   = 0;
+                new_en_prod.is_enabled              = true;
+                new_en_prod.unpaid_balance          = 0;
+                new_en_prod.vote_number             = 0;
+                new_en_prod.last_vote_blocknum      = 0;
+                add_to_chain(dis_prod->location, new_en_prod);
+                dp_tbl.erase(dis_prod);
+                _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
+                    producer_brf.in_disable = false;
+                });
              }
              else {
-                 add_to_subchain(it->location, it->owner, it->producer_key, it->bls_key);
+                dp_tbl.modify(dis_prod, [&]( disabled_producer& disproducer ) {
+                    disproducer.total_cons_staked += total_update.amount;
+                    disproducer.delegated_cons_blocknum = curblocknum;
+                });
              }
          }
          else {
-             if(it->is_in_pending_queue()) {
-                 remove_from_pending_queue(it->owner);
+             producers_table _producers(_self, briefprod->location);
+             const auto& it = _producers.find( receiver );
+             ultrainio_assert(it != _producers.end(), "receiver is not found in its location");
+
+             uint64_t curblocknum = (uint64_t)head_block_number() + 1;
+             if(stake_cons_delta.amount < 0){
+                 print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," delegated_cons_blocknum:",it->delegated_cons_blocknum);//
+                 if((name{from}.to_string().find( "utrio." ) != 0 ) && (from != _self)){
+                     const uint32_t seconds_per_block     = block_interval_seconds();
+                     uint32_t blocks_per_month            = seconds_per_day / seconds_per_block / 2;//seconds_per_year / seconds_per_block / 12;
+                     ultrainio_assert( (curblocknum - it->delegated_cons_blocknum) > blocks_per_month , "should stake at least more than one month" );
+                 }
+             }
+             if(it->is_on_master_chain()) {
+                 _gstate.total_activated_stake += total_update.amount;
+             }
+             auto enabled = ((it->total_cons_staked + total_update.amount) >= _gstate.min_activated_stake);
+             if(enabled || it->unpaid_balance > 0) {
+                 _producers.modify(it, [&](auto & v) {
+                     v.total_cons_staked += total_update.amount;
+                     v.is_enabled = enabled;
+                     v.delegated_cons_blocknum = curblocknum;
+                 });
              }
              else {
-                 remove_from_subchain(it->location, it->owner);
+                 disabled_producers_table dp_tbl(_self, _self);
+                 dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
+                     dis_prod.owner                   = it->owner;
+                     dis_prod.producer_key            = it->producer_key;
+                     dis_prod.bls_key                 = it->bls_key;
+                     dis_prod.total_cons_staked       = it->total_cons_staked + total_update.amount;
+                     dis_prod.url                     = it->url;
+                     dis_prod.total_produce_block     = it->total_produce_block;
+                     dis_prod.location                = 0;
+                     dis_prod.last_operate_blocknum   = it->last_operate_blocknum;
+                     dis_prod.delegated_cons_blocknum = curblocknum;
+                     dis_prod.claim_rewards_account   = 0;
+                 });
+                 remove_from_chain(briefprod->location, receiver);
+                 _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
+                     producer_brf.in_disable = true;
+                 });
              }
          }
       }
@@ -214,7 +270,7 @@ namespace ultrainiosystem {
                           uint64_t combosize, uint64_t days, uint64_t location){
       require_auth( from );
       ultrainio_assert( _gstate.is_master_chain() || from == _self, "only master chain allow sync resourcelease" );
-      ultrainio_assert(location != pending_queue && location != default_chain_name, "wrong location");
+      ultrainio_assert(location != default_chain_name, "wrong location");
       auto chain_itr = _subchains.end();
       if(location != master_chain_name) {
          chain_itr = _subchains.find(location);
@@ -314,11 +370,16 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
    } // delegatecons
 
     void system_contract::undelegatecons( account_name from, account_name receiver) {
-        auto prod = _producers.find(receiver);
-        ultrainio_assert( (prod != _producers.end()), "Unable to undelegate cons for non-producer" );
-        if (prod->is_enabled) { // undelegate cons for disabled producer is fine.
-            ultrainio_assert(get_enable_producers_number() > _gstate.min_committee_member_number,
+        auto briefprod = _briefproducers.find(receiver);
+        ultrainio_assert(briefprod != _briefproducers.end(), "Unable to undelegate cons for non-producer" );
+        if (!briefprod->in_disable) {
+            producers_table _producers(_self, briefprod->location);
+            auto prod = _producers.find(receiver);
+            ultrainio_assert( (prod != _producers.end()), "Producer is not found in its location" );
+            if (prod->is_enabled) { // undelegate cons for disabled producer is fine.
+                ultrainio_assert(get_enable_producers_number() > _gstate.min_committee_member_number,
                              "The number of committee member is too small, undelegatecons suspended for now");
+            }
         }
         change_cons(from, receiver, asset(-1));
     } // undelegatecons

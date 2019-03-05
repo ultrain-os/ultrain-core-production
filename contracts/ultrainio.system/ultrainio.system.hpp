@@ -23,7 +23,7 @@ namespace ultrainiosystem {
    using ultrainio::block_timestamp;
    using ultrainio::print;
    const uint64_t master_chain_name = 0;
-   const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
+//   const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
    const uint64_t default_chain_name = N(default);  //default chain, will be assigned by system.
 
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
@@ -63,6 +63,15 @@ namespace ultrainiosystem {
        ULTRAINLIB_SERIALIZE(chain_resource, (max_resources_number)(total_resources_used_number)(max_ram_size)(total_ram_bytes_used) )
    };
 
+   struct producer_brief {
+      account_name          owner;
+      uint64_t              location;
+      bool                  in_disable = true;
+      uint64_t primary_key()const { return owner; }
+
+      ULTRAINLIB_SERIALIZE(producer_brief, (owner)(location)(in_disable) )
+   };
+
    struct role_base {
       account_name          owner;
       std::string           producer_key; /// a packed public key objec
@@ -71,28 +80,38 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE(role_base, (owner)(producer_key)(bls_key) )
    };
 
-   struct producer_info : public role_base {
+   struct disabled_producer : public role_base{
       int64_t               total_cons_staked = 0;
-      bool                  is_enabled = false;
       std::string           url;
-      uint64_t              unpaid_balance = 0;
       uint64_t              total_produce_block = 0;
       uint64_t              location = 0;
       uint64_t              last_operate_blocknum = 0;
       uint64_t              delegated_cons_blocknum = 0;
       account_name          claim_rewards_account;
+
+      uint64_t primary_key()const { return owner; }
+      bool     is_on_master_chain() const  {return location == master_chain_name;}
+      bool     is_on_subchain() const      {return location != master_chain_name && location != default_chain_name;}
+
+      // explicit serialization macro is not necessary, used here only to improve compilation time
+      //ULTRAINLIB_SERIALIZE(disabled_producer, (owner)(producer_key)(bls_key)(total_cons_staked)(url)(total_produce_block)
+      ULTRAINLIB_SERIALIZE_DERIVED( disabled_producer, role_base, (total_cons_staked)(url)(total_produce_block)
+                        (location)(last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account) )
+   };
+
+   struct producer_info : public disabled_producer {
+      bool                  is_enabled = false;
+      uint64_t              unpaid_balance = 0;
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
       ultrainio::extensions_type           table_extension;
-      uint64_t primary_key()const { return owner;                                   }
+
+      uint64_t primary_key()const { return owner; }
       void     set_disabled()       { producer_key = std::string(); bls_key = std::string(); is_enabled = false; }
-      bool     is_on_master_chain() const  {return location == master_chain_name;}
-      bool     is_in_pending_queue() const  {return location == pending_queue;}
-      bool     is_on_subchain() const      {return location != master_chain_name && location != pending_queue;}
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_enabled)(url)
-                        (unpaid_balance)(total_produce_block)(location)(last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account)(vote_number)(last_vote_blocknum)(table_extension) )
+      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, disabled_producer, (is_enabled)
+                        (unpaid_balance)(vote_number)(last_vote_blocknum)(table_extension) )
    };
 
    struct pending_miner {
@@ -137,14 +156,14 @@ namespace ultrainiosystem {
        uint64_t  primary_key()const { return block_num; }
        ULTRAINLIB_SERIALIZE( subchain_ws_hash , (block_num)(hash_v)(accounts)(table_extension) )
    };
+   typedef ultrainio::multi_index<N(briefprod),producer_brief> producer_brief_table;
    typedef ultrainio::multi_index<N(pendingminer),pending_miner> pendingminers;
    typedef ultrainio::multi_index<N(pendingacc),pending_acc> pendingaccounts;
    typedef ultrainio::multi_index<N(pendingres),pending_res> pendingresource;
+   typedef ultrainio::multi_index<N(disableprods), disabled_producer> disabled_producers_table;
    typedef ultrainio::multi_index<N(producers), producer_info> producers_table;
 
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
-
-   typedef ultrainio::singleton<N(pendingque), std::vector<role_base>> pending_queue_singleton;
    typedef ultrainio::multi_index< N(wshash), subchain_ws_hash>      subchain_hash_table;
 
    struct chaintype {
@@ -211,6 +230,7 @@ namespace ultrainiosystem {
        bool                      is_active;
        bool                      is_synced;
        bool                      is_schedulable;
+       uint16_t                  committee_sum;
        std::vector<role_base>    committee_members;
        updated_committee         updated_info;
        changing_committee        changing_info;
@@ -226,7 +246,7 @@ namespace ultrainiosystem {
        auto primary_key()const { return chain_name; }
 
        ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_active)(is_synced)(is_schedulable)
-                                      (committee_members)(updated_info)(changing_info)(recent_users)(total_user_num)(chain_id)
+                                      (committee_sum)(committee_members)(updated_info)(changing_info)(recent_users)(total_user_num)(chain_id)
                                       (committee_mroot)(confirmed_block_number)(highest_block_number)(unconfirmed_blocks)(table_extension) )
    };
    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
@@ -263,15 +283,14 @@ namespace ultrainiosystem {
 
    class system_contract : public native {
       private:
-         producers_table        _producers;
          global_state_singleton _global;
 
          ultrainio_global_state   _gstate;
-         pending_queue_singleton  _pending_que;
          subchains_table          _subchains;
          pendingminers            _pendingminer;
          pendingaccounts          _pendingaccount;
          pendingresource          _pendingres;
+         producer_brief_table     _briefproducers;
          sched_set_singleton      _schedsetting;
 
       public:
@@ -362,16 +381,12 @@ namespace ultrainiosystem {
          static ultrainio_global_state get_default_parameters();
 
          //defined in reward.cpp
-         void reportblocknumber( uint64_t chain_type, account_name producer, uint64_t number);
+         void reportblocknumber( uint64_t chain_name, uint64_t chain_type, account_name producer, uint64_t number);
 
          //defined in scheduler.cpp
-         void add_to_pending_queue(account_name producer, const std::string& public_key, const std::string& bls_key);
+         void add_to_chain(uint64_t chain_name, const producer_info& producer);
 
-         void remove_from_pending_queue(account_name producer);
-
-         void add_to_subchain(uint64_t chain_name, account_name producer, const std::string& public_key, const std::string& bls_key);
-
-         void remove_from_subchain(uint64_t chain_name, account_name producer);
+         void remove_from_chain(uint64_t chain_name, account_name producer_name);
 
          void activate_committee_update(); //called in onblock, loop for all subchains and activate their committee update
 
@@ -389,12 +404,16 @@ namespace ultrainiosystem {
 
          void distributreward();
 
-         void checkvotefrequency(ultrainiosystem::producers_table::const_iterator propos);
+         void checkvotefrequency(ultrainiosystem::producers_table& prod_tbl, ultrainiosystem::producers_table::const_iterator propos);
 
          bool move_producer(checksum256 head_id, subchains_table::const_iterator from_iter,
                             subchains_table::const_iterator to_iter, uint16_t index);
 
          uint32_t get_enable_producers_number();
+
+         uint64_t getdefaultchain();
+
+         std::vector<uint64_t> getallchainname();
    };
 
 } /// ultrainiosystem
