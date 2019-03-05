@@ -11,6 +11,7 @@
 #include <ultrainiolib/singleton.hpp>
 #include <ultrainiolib/block_header.hpp>
 #include <ultrainiolib/ultrainio.hpp>
+#include <ultrainiolib/types.hpp>
 #include <string>
 #include <vector>
 
@@ -44,12 +45,13 @@ namespace ultrainiosystem {
       uint16_t             total_resources_used_number = 0;
       uint32_t             newaccount_fee = 2000;
       uint64_t             chain_name = 0;
+      ultrainio::extensions_type           table_extension;
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( ultrainio_global_state, ultrainio::blockchain_parameters,
                                 (max_ram_size)(min_activated_stake)(min_committee_member_number)
                                 (total_ram_bytes_used)(start_block)(block_reward_vec)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_balance)(total_activated_stake)
-                                (last_name_close)(max_resources_number)(total_resources_used_number)(newaccount_fee)(chain_name) )
+                                (last_name_close)(max_resources_number)(total_resources_used_number)(newaccount_fee)(chain_name)(table_extension) )
    };
 
    struct chain_resource {
@@ -81,6 +83,7 @@ namespace ultrainiosystem {
       account_name          claim_rewards_account;
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
+      ultrainio::extensions_type           table_extension;
       uint64_t primary_key()const { return owner;                                   }
       void     set_disabled()       { producer_key = std::string(); bls_key = std::string(); is_enabled = false; }
       bool     is_on_master_chain() const  {return location == master_chain_name;}
@@ -89,7 +92,7 @@ namespace ultrainiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, role_base, (total_cons_staked)(is_enabled)(url)
-                        (unpaid_balance)(total_produce_block)(location)(last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account)(vote_number)(last_vote_blocknum) )
+                        (unpaid_balance)(total_produce_block)(location)(last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account)(vote_number)(last_vote_blocknum)(table_extension) )
    };
 
    struct pending_miner {
@@ -130,8 +133,9 @@ namespace ultrainiosystem {
        uint64_t             block_num;
        std::vector<hash_vote>    hash_v;
        std::vector<account_name> accounts;
+       ultrainio::extensions_type           table_extension;
        uint64_t  primary_key()const { return block_num; }
-       ULTRAINLIB_SERIALIZE( subchain_ws_hash , (block_num)(hash_v)(accounts) )
+       ULTRAINLIB_SERIALIZE( subchain_ws_hash , (block_num)(hash_v)(accounts)(table_extension) )
    };
    typedef ultrainio::multi_index<N(pendingminer),pending_miner> pendingminers;
    typedef ultrainio::multi_index<N(pendingacc),pending_acc> pendingaccounts;
@@ -149,10 +153,11 @@ namespace ultrainiosystem {
        uint16_t stable_max_producers;
        uint16_t sched_inc_step;
        uint16_t consensus_period;
+       ultrainio::extensions_type           table_extension;
 
        auto primary_key() const { return type_id; }
 
-       ULTRAINLIB_SERIALIZE(chaintype, (type_id)(stable_min_producers)(stable_max_producers)(sched_inc_step)(consensus_period) )
+       ULTRAINLIB_SERIALIZE(chaintype, (type_id)(stable_min_producers)(stable_max_producers)(sched_inc_step)(consensus_period)(table_extension) )
    };
    typedef ultrainio::multi_index< N(chaintypes), chaintype > chaintypes_table;
 
@@ -180,10 +185,11 @@ namespace ultrainiosystem {
        block_id_type             block_id;
        uint32_t                  block_number = 0;
        checksum256               transaction_mroot;
+       ultrainio::extensions_type           table_extension;
 
        auto primary_key() const { return uint64_t(block_number); }
 
-       ULTRAINLIB_SERIALIZE(block_header_digest, (proposer)(block_id)(block_number)(transaction_mroot))
+       ULTRAINLIB_SERIALIZE(block_header_digest, (proposer)(block_id)(block_number)(transaction_mroot)(table_extension))
    };
 
    typedef ultrainio::multi_index<N(blockheaders), block_header_digest> block_table;
@@ -215,12 +221,13 @@ namespace ultrainiosystem {
        uint32_t                  confirmed_block_number;
        uint32_t                  highest_block_number;
        std::vector<unconfirmed_block_header>  unconfirmed_blocks; //actually the last confirmed block is also stored in this vector
+       ultrainio::extensions_type           table_extension;
 
        auto primary_key()const { return chain_name; }
 
        ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_active)(is_synced)(is_schedulable)
                                       (committee_members)(updated_info)(changing_info)(recent_users)(total_user_num)(chain_id)
-                                      (committee_mroot)(confirmed_block_number)(highest_block_number)(unconfirmed_blocks) )
+                                      (committee_mroot)(confirmed_block_number)(highest_block_number)(unconfirmed_blocks)(table_extension) )
    };
    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
 
