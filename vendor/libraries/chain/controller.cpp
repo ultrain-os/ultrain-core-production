@@ -1682,6 +1682,10 @@ block_timestamp_type controller::get_proper_next_block_timestamp() const {
   return my->get_proper_next_block_timestamp();
 }
 
+uint32_t controller::first_block_num()const {
+   return my->blog.first_block_num();
+}
+
 uint32_t controller::head_block_num()const {
    return my->head->block_num;
 }

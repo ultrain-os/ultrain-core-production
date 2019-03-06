@@ -43,7 +43,7 @@ public:
    bool handle_message(const ProposeMsg& propose);
    bool handle_message(const fc::sha256& node_id, const ReqSyncMsg& msg);
    bool handle_message(const Block& block, bool last_block);
-   bool handle_message(const fc::sha256& node_id, const ReqLastBlockNumMsg& msg);
+   bool handle_message(const fc::sha256& node_id, const ReqBlockNumRangeMsg& msg);
    bool handle_message(const fc::sha256& node_id, const SyncStopMsg& msg);
    bool sync_fail(const ultrainio::ReqSyncMsg& sync_msg);
    bool sync_cancel();

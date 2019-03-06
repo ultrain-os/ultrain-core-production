@@ -257,8 +257,8 @@ namespace ultrainio {
 
         void handle_message( connection_ptr c, const ultrainio::EchoMsg &msg);
         void handle_message( connection_ptr c, const ultrainio::ProposeMsg& msg);
-        void handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg);
-        void handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg);
+        void handle_message( connection_ptr c, const ultrainio::ReqBlockNumRangeMsg& msg);
+        void handle_message( connection_ptr c, const ultrainio::RspBlockNumRangeMsg& msg);
         void handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg);
         void handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg);
         void handle_message( connection_ptr c, const ultrainio::SyncStopMsg& msg);
@@ -266,7 +266,7 @@ namespace ultrainio {
         void start_broadcast(const net_message& msg, msg_priority p);
         void send_block(const fc::sha256& node_id, const net_message& msg);
         bool send_req_sync(const ultrainio::ReqSyncMsg& msg);
-        void send_last_block_num(const fc::sha256& node_id, const net_message& msg);
+        void send_block_num_range(const fc::sha256& node_id, const net_message& msg);
         void stop_sync_block();
 
         void start_conn_timer( );
@@ -524,7 +524,7 @@ namespace ultrainio {
         block_id_type           fork_head;
         uint32_t                fork_head_num = 0;
         optional<request_message> last_req;
-        RspLastBlockNumMsg      last_block_info;
+        RspBlockNumRangeMsg     block_num_range;
         uint32_t pack_count_rcv = 0;
         uint32_t pack_count_drop = 0;
         uint32_t retry_connect_count = 0;
@@ -647,10 +647,13 @@ namespace ultrainio {
         uint32_t                         seq_num;
         uint32_t                         last_received_block;
         uint32_t                         last_checked_block;
+        uint32_t                         sync_src_count;
+        std::set<connection_ptr>         conns_without_block;
         std::vector<connection_ptr>      rsp_conns;
         connection_ptr                   sync_conn;
         ultrainio::ReqSyncMsg            sync_block_msg;
         uint32_t                         end_block_num;
+        //uint32_t                         first_block_num;
         std::list<Block>                 block_msg_queue;
         bool                             selecting_src = false;
         boost::asio::steady_timer::duration   src_block_period;
@@ -713,87 +716,21 @@ namespace ultrainio {
             });
         }
 
-        connection_ptr select_strong_sync_src(uint32_t least_conn_count) {
-            std::vector<connection_ptr> honest_conns;
-            for (auto it = rsp_conns.begin(); it != rsp_conns.end(); ++it) {
-                honest_conns.clear();
-
-                ilog("rsp conns:${s} block num:${b}", ("s", (*it)->peer_name())("b", (*it)->last_block_info.blockNum));
-                if ((*it)->last_block_info.blockNum != std::numeric_limits<uint32_t>::max()) {
-                    honest_conns.emplace_back(*it);
-
-                    for (auto next_it = std::next(it); next_it != rsp_conns.end(); ++next_it) {
-                        if ((*it)->last_block_info.blockNum == (*next_it)->last_block_info.blockNum
-                            && (*it)->last_block_info.blockHash == (*next_it)->last_block_info.blockHash
-                            && (*it)->last_block_info.prevBlockHash == (*next_it)->last_block_info.prevBlockHash) {
-                            honest_conns.emplace_back(*next_it);
-                        }
-                    }
-
-                    if (honest_conns.size() > least_conn_count) {
-                        break;
-                    }
-                }
-            }
-
-            if (honest_conns.size() >= least_conn_count) {
-                uint32_t r = rand_engine()%honest_conns.size();
-                ilog("select random ${r}th strong connection to sync block. peer:${p}", ("r", r)("p", honest_conns[r]->peer_name()));
-                return honest_conns[r];
-            }
-
-            return nullptr;
-        }
-
-        connection_ptr select_weak_sync_src() {
-            std::map<uint32_t, std::vector<connection_ptr> > block_conns_map;
-            for (auto& con : rsp_conns) {
-                std::vector<connection_ptr>& conns = block_conns_map[con->last_block_info.blockNum];
-                conns.emplace_back(con);
-            }
-
-            size_t count = 0;
-            auto it = block_conns_map.begin();
-            for (; it != block_conns_map.end(); ++it) {
-                if (it->second.size() > count) {
-                    count = it->second.size();
-                }
-            }
-
-            ilog("select weak sync src. The most connections count of the same block number is ${cnt}", ("cnt", count));
-
-            if (count == 0) {
-                return nullptr;
-            }
-
-            std::vector<std::vector<connection_ptr>* > most_conns;
-            for (it = block_conns_map.begin(); it != block_conns_map.end(); ++it) {
-                if (it->second.size() == count) {
-                    most_conns.emplace_back(&(it->second));
-                }
-            }
-
-            std::vector<connection_ptr>* src_cons = most_conns[0];
-            for (size_t i = 1; i < most_conns.size(); i++) {
-                if ((*most_conns[i])[0]->last_block_info.blockNum > (*src_cons)[0]->last_block_info.blockNum) {
-                    src_cons = most_conns[i];
-                }
-            }
-
-            uint32_t r = rand_engine()%src_cons->size();
-            ilog("select random ${r}th weak connection to sync block. peer:${p}", ("r", r)("p", (*src_cons)[r]->peer_name()));
-            return (*src_cons)[r];
-        }
-
         connection_ptr select_longest_sync_src() {
             std::vector<connection_ptr> longest_conns;
             uint32_t block_num = 0;
             for (auto& con : rsp_conns) {
-                if (con->last_block_info.blockNum > block_num) {
+                if (con->block_num_range.firstNum == 0 || con->block_num_range.firstNum > sync_block_msg.startBlockNum) { // can't provide all the blocks
+                    ilog("${p} can't provide all the blocks", ("p", con->peer_name()));
+                    conns_without_block.insert(con);
+                    if (conns_without_block.size() == sync_src_count) {
+                        ULTRAIN_ASSERT(false, chain::unlinkable_block_exception, "No block in neighbors. Help!!!");
+                    }
+                } else if (con->block_num_range.lastNum > block_num) {
                     longest_conns.clear();
                     longest_conns.emplace_back(con);
-                    block_num = con->last_block_info.blockNum;
-                } else if (con->last_block_info.blockNum == block_num) {
+                    block_num = con->block_num_range.lastNum;
+                } else if (con->block_num_range.lastNum == block_num) {
                     longest_conns.emplace_back(con);
                 }
             }
@@ -812,12 +749,14 @@ namespace ultrainio {
             selecting_src = false;
             last_received_block = 0;
             last_checked_block = 0;
+            sync_src_count = 0;
+            conns_without_block.clear();
 
-            if (sync_block_msg.endBlockNum > con->last_block_info.blockNum) {
+            if (sync_block_msg.endBlockNum > con->block_num_range.lastNum) {
                 if (sync_block_msg.endBlockNum == std::numeric_limits<uint32_t>::max()) {
-                    sync_block_msg.endBlockNum = con->last_block_info.blockNum + 1;
+                    sync_block_msg.endBlockNum = con->block_num_range.lastNum + 1;
                 }else {
-                    sync_block_msg.endBlockNum = con->last_block_info.blockNum;
+                    sync_block_msg.endBlockNum = con->block_num_range.lastNum;
                 }
             }
             end_block_num = sync_block_msg.endBlockNum;
@@ -896,7 +835,7 @@ connection::connection(string endpoint, msg_priority pri)
         fork_head(),
         fork_head_num(0),
         last_req(),
-        last_block_info()
+        block_num_range()
     {
         wlog( "created connection to ${n}", ("n", endpoint) );
         initialize();
@@ -920,7 +859,7 @@ connection::connection(string endpoint, msg_priority pri)
         fork_head(),
         fork_head_num(0),
         last_req(),
-        last_block_info()
+        block_num_range()
     {
         wlog( "accepted network connection" );
         initialize();
@@ -1708,11 +1647,11 @@ connection::connection(string endpoint, msg_priority pri)
         }
     }
 
-    void net_plugin_impl::send_last_block_num(const fc::sha256& node_id, const net_message& msg) {
+    void net_plugin_impl::send_block_num_range(const fc::sha256& node_id, const net_message& msg) {
         for (auto &c : connections) {
             if (c->priority == msg_priority_trx && c->current()) {
                 if (c->node_id == node_id) {
-                    ilog("send last block num to peer: ${p}", ("p", c->peer_name()));
+                    ilog("send block num range to peer: ${p}", ("p", c->peer_name()));
                     c->enqueue(msg);
                     break;
                 }
@@ -1735,25 +1674,29 @@ connection::connection(string endpoint, msg_priority pri)
         conn_list.reserve(connections.size());
         for (auto& c:connections) {
             if (c->priority == msg_priority_trx && c->current()) {
-                c->last_block_info.blockNum = 0;
-                c->last_block_info.blockHash = "";
-                c->last_block_info.prevBlockHash = "";
+                c->block_num_range.firstNum = 0;
+                c->block_num_range.lastNum = 0;
+                c->block_num_range.blockHash = "";
+                c->block_num_range.prevBlockHash = "";
                 conn_list.emplace_back(c);
             }
         }
 
-        ReqLastBlockNumMsg req_last_block_msg;
-        req_last_block_msg.seqNum = ++sync_block_master->seq_num;
+        ReqBlockNumRangeMsg block_num_range_msg;
+        block_num_range_msg.seqNum = ++sync_block_master->seq_num;
+        sync_block_master->sync_src_count = conn_list.size();
+        sync_block_master->conns_without_block.clear();
         for (auto c:conn_list) {
             if(c->current()) {
-                ilog ("send req last block num to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
-                c->enqueue(net_message(req_last_block_msg));
+                ilog ("send req block num range to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                c->enqueue(net_message(block_num_range_msg));
             }
         }
 
+        //sync_block_master->first_block_num = 0;
         sync_block_master->end_block_num = 0;
         sync_block_master->sync_block_msg = msg;
-        sync_block_master->sync_block_msg.seqNum = req_last_block_msg.seqNum;
+        sync_block_master->sync_block_msg.seqNum = block_num_range_msg.seqNum;
         sync_block_master->selecting_src = true;
 
         sync_block_master->src_block_check->expires_from_now(sync_block_master->src_block_period);
@@ -2227,13 +2170,13 @@ connection::connection(string endpoint, msg_priority pri)
        }
    }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqLastBlockNumMsg& msg) {
-        ilog("receive req last block num msg!!! from peer ${p} seq: ${s}", ("p", c->peer_name())("s", msg.seqNum));
+    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqBlockNumRangeMsg& msg) {
+        ilog("receive req block num range msg!!! from peer ${p} seq: ${s}", ("p", c->peer_name())("s", msg.seqNum));
         app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
     }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::RspLastBlockNumMsg& msg) {
-        ilog("receive rsp last block num msg!!! from peer ${p} seq: ${s} block num: ${b}", ("p", c->peer_name())("s", msg.seqNum)("b", msg.blockNum));
+    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::RspBlockNumRangeMsg& msg) {
+        ilog("receive rsp block num range msg!!! from peer ${p} seq: ${s} block num: ${f} - ${l}", ("p", c->peer_name())("s", msg.seqNum)("f", msg.firstNum)("l", msg.lastNum));
         ilog("sync block master selecting src:${s} seq:${seq}", ("s", sync_block_master->selecting_src)("seq", sync_block_master->seq_num));
         if (!sync_block_master->selecting_src || msg.seqNum != sync_block_master->seq_num) {
             return;
@@ -2241,11 +2184,11 @@ connection::connection(string endpoint, msg_priority pri)
 
         for (auto& con : sync_block_master->rsp_conns) {
             if (con == c) {
-                elog("duplicate rsp last block num msg from peer ${p}", ("p", c->peer_name()));
+                elog("duplicate rsp block num range msg from peer ${p}", ("p", c->peer_name()));
                 return;
             }
         }
-        c->last_block_info = msg;
+        c->block_num_range = msg;
         sync_block_master->rsp_conns.emplace_back(c);
 
         if (sync_block_master->rsp_conns.size() < connections.size()) {
@@ -3175,9 +3118,9 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
        return my->send_req_sync(msg);
    }
 
-   void net_plugin::send_last_block_num(const fc::sha256& node_id, const ultrainio::RspLastBlockNumMsg& msg) {
-       ilog("send last block num:${n} hash:${h} prev hash:${ph}", ("n", msg.blockNum)("h", msg.blockHash)("ph", msg.prevBlockHash));
-       my->send_last_block_num(node_id, net_message(msg));
+   void net_plugin::send_block_num_range(const fc::sha256& node_id, const ultrainio::RspBlockNumRangeMsg& msg) {
+      ilog("send block num range:${f} - ${l} hash:${h} prev hash:${ph}", ("f", msg.firstNum)("l", msg.lastNum)("h", msg.blockHash)("ph", msg.prevBlockHash));
+      my->send_block_num_range(node_id, net_message(msg));
    }
 
    void net_plugin::stop_sync_block() {

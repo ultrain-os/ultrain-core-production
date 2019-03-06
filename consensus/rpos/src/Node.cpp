@@ -27,7 +27,7 @@ using namespace std;
 
 namespace ultrainio {
 
-    char version[]="ce3f5e";
+    char version[]="a8b06a";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -210,7 +210,7 @@ namespace ultrainio {
 
         msg.startBlockNum = getLastBlocknum();
         if (msg.startBlockNum == INVALID_BLOCK_NUM) {
-            msg.startBlockNum = 0;
+            msg.startBlockNum = 1;
         } else {
             msg.startBlockNum++;
         }
@@ -566,7 +566,7 @@ namespace ultrainio {
         return m_schedulerPtr->handleMessage(nodeId, msg);
     }
 
-    bool UranusNode::handleMessage(const fc::sha256 &nodeId, const ReqLastBlockNumMsg &msg) {
+    bool UranusNode::handleMessage(const fc::sha256 &nodeId, const ReqBlockNumRangeMsg &msg) {
         return m_schedulerPtr->handleMessage(nodeId, msg);
     }
 
@@ -661,8 +661,8 @@ namespace ultrainio {
         return app().get_plugin<net_plugin>().send_req_sync(msg);
     }
 
-    void UranusNode::sendMessage(const fc::sha256 &nodeId, const RspLastBlockNumMsg &msg) {
-        app().get_plugin<net_plugin>().send_last_block_num(nodeId, msg);
+    void UranusNode::sendMessage(const fc::sha256 &nodeId, const RspBlockNumRangeMsg &msg) {
+        app().get_plugin<net_plugin>().send_block_num_range(nodeId, msg);
     }
 
     bool UranusNode::isFastBlock() {

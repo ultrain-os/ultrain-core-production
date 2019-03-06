@@ -7,6 +7,7 @@
 #include <core/types.h>
 
 namespace ultrainio {
+
     enum ConsensusPhase {
         kPhaseInit = 0,
         kPhaseBA0,
@@ -20,29 +21,26 @@ namespace ultrainio {
         uint32_t endBlockNum;
     };
 
-    struct ReqLastBlockNumMsg {
+    struct ReqBlockNumRangeMsg {
         uint32_t seqNum;
     };
 
-    struct RspLastBlockNumMsg {
+    struct RspBlockNumRangeMsg {
         uint32_t seqNum;
-        uint32_t blockNum;
+        uint32_t firstNum;
+        uint32_t lastNum;
         std::string blockHash;
         std::string prevBlockHash;
     };
 
-    // Keep account & signature in the struct and we will use them soon.
     struct SyncBlockMsg {
         uint32_t seqNum;
-        AccountName account;
-        std::string signature;
         Block block;
+        std::vector<std::string> proof;
     };
 
     struct SyncStopMsg {
         uint32_t seqNum;
-        AccountName account;
-        std::string signature;
     };
 
     struct ProposeMsg {
@@ -91,7 +89,7 @@ FC_REFLECT_DERIVED( ultrainio::UnsignedEchoMsg, (ultrainio::CommonEchoMsg), (bls
 
 FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature))
 FC_REFLECT( ultrainio::ReqSyncMsg, (seqNum)(startBlockNum)(endBlockNum) )
-FC_REFLECT( ultrainio::ReqLastBlockNumMsg, (seqNum))
-FC_REFLECT( ultrainio::RspLastBlockNumMsg, (seqNum)(blockNum)(blockHash)(prevBlockHash))
-FC_REFLECT( ultrainio::SyncBlockMsg, (seqNum)(block))
+FC_REFLECT( ultrainio::ReqBlockNumRangeMsg, (seqNum))
+FC_REFLECT( ultrainio::RspBlockNumRangeMsg, (seqNum)(firstNum)(lastNum)(blockHash)(prevBlockHash))
+FC_REFLECT( ultrainio::SyncBlockMsg, (seqNum)(block)(proof))
 FC_REFLECT( ultrainio::SyncStopMsg, (seqNum))

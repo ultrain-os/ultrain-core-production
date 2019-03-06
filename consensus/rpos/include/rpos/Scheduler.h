@@ -124,7 +124,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrain
 
         bool handleMessage(const fc::sha256 &nodeId, const ReqSyncMsg &msg);
 
-        bool handleMessage(const fc::sha256 &nodeId, const ReqLastBlockNumMsg &msg);
+        bool handleMessage(const fc::sha256 &nodeId, const ReqBlockNumRangeMsg &msg);
 
         bool handleMessage(const Block &msg);
 

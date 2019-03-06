@@ -157,15 +157,14 @@ namespace ultrainio {
                                       time_message,
                                       notice_message,
                                       request_message,
-                                      //signed_block,
                                       packed_transaction,
                                       ProposeMsg,
                                       EchoMsg,
                                       ReqSyncMsg,
                                       SyncBlockMsg,
                                       SyncStopMsg,
-                                      ReqLastBlockNumMsg,
-                                      RspLastBlockNumMsg>;
+                                      ReqBlockNumRangeMsg,
+                                      RspBlockNumRangeMsg>;
 
 } // namespace ultrainio
 

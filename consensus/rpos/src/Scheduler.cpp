@@ -22,7 +22,6 @@
 #include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/global_property_object.hpp>
 #include <ultrainio/chain/name.hpp>
-#include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/config.hpp>
 
 #include <base/Memory.h>
@@ -870,7 +869,9 @@ namespace ultrainio {
                 UranusNode::getInstance()->sendMessage(nodeId, sync_block);
             } else if (num == end_block_num) { // try to send last block next time
                 break;
-            } // else: skip the block if not exist
+            } else {// else: skip the block if not exist
+                wlog("block ${n} does not exist", ("n", num));
+            }
         }
 
         if (num <= end_block_num) {
@@ -883,18 +884,27 @@ namespace ultrainio {
         return true;
     }
 
-    bool Scheduler::handleMessage(const fc::sha256 &nodeId, const ReqLastBlockNumMsg &msg) {
-        RspLastBlockNumMsg rsp_msg;
+    bool Scheduler::handleMessage(const fc::sha256 &nodeId, const ReqBlockNumRangeMsg &msg) {
+        RspBlockNumRangeMsg rsp_msg;
         rsp_msg.seqNum = msg.seqNum;
-        rsp_msg.blockNum = getLastBlocknum();
 
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
-        auto b = chain.fetch_block_by_number(rsp_msg.blockNum);
+        rsp_msg.firstNum = chain.first_block_num();
+        ilog("first_block: ${f} head_block: ${h}", ("f", rsp_msg.firstNum)("h", chain.head_block_num()));
+        if (!chain.fetch_block_by_number(rsp_msg.firstNum)) { // no block in db, only world status
+            ilog("no block in db, only world status");
+            rsp_msg.firstNum = 0;
+            rsp_msg.lastNum = 0;
+            return true;
+        }
+
+        rsp_msg.lastNum = chain.head_block_num();
+        auto b = chain.fetch_block_by_number(rsp_msg.lastNum);
         if (b) {
             rsp_msg.blockHash = b->id();
             rsp_msg.prevBlockHash = b->previous;
         } else {
-            rsp_msg.blockNum = INVALID_BLOCK_NUM;
+            rsp_msg.lastNum = INVALID_BLOCK_NUM;
         }
 
         UranusNode::getInstance()->sendMessage(nodeId, rsp_msg);
@@ -1652,14 +1662,14 @@ namespace ultrainio {
 
         //not to run trxs multiple times in same block
         if (m_ba0VerifiedBlkId == id) {
-           m_voterPreRunBa0InProgress = true;
-           ilog("Block ${blk} has been verified before", ("blk", id));
-           return true;
+            m_voterPreRunBa0InProgress = true;
+            ilog("Block ${blk} has been verified before", ("blk", id));
+            return true;
         }
 
         if (m_ba0FailedBlkId == id) {
-           ilog("Block ${blk} has been failed before", ("blk", id));
-           return false;
+            ilog("Block ${blk} has been failed before", ("blk", id));
+            return false;
         }
 
         chain.abort_block();
