@@ -25,7 +25,14 @@ namespace ultrainiosystem {
    const uint64_t master_chain_name = 0;
 //   const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
    const uint64_t default_chain_name = N(default);  //default chain, will be assigned by system.
-
+   bool operator!=(const checksum256& sha256_1, const checksum256& sha256_2) {
+      for(auto i = 0; i < 32; ++i) {
+         if(sha256_1.hash[i] != sha256_2.hash[i]) {
+               return true;
+         }
+      }
+      return false;
+   }
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_used; }
       bool is_master_chain()const { return chain_name == 0; }
@@ -204,11 +211,12 @@ namespace ultrainiosystem {
        block_id_type             block_id;
        uint32_t                  block_number = 0;
        checksum256               transaction_mroot;
+       std::vector<checksum256>  trx_hashs;
        ultrainio::extensions_type           table_extension;
 
        auto primary_key() const { return uint64_t(block_number); }
 
-       ULTRAINLIB_SERIALIZE(block_header_digest, (proposer)(block_id)(block_number)(transaction_mroot)(table_extension))
+       ULTRAINLIB_SERIALIZE(block_header_digest, (proposer)(block_id)(block_number)(transaction_mroot)(trx_hashs)(table_extension))
    };
 
    typedef ultrainio::multi_index<N(blockheaders), block_header_digest> block_table;
@@ -369,7 +377,7 @@ namespace ultrainiosystem {
 
          void recycleresource(const account_name owner ,uint64_t lease_num);
 
-         void synctransfer( std::string transaction_mroot, uint32_t block_number, std::string tx_id );
+         void synctransfer( uint64_t chain_name, uint32_t block_number, std::vector<std::string> merkle_proofs, std::vector<char> tx_bytes );
       private:
          // Implementation details:
 

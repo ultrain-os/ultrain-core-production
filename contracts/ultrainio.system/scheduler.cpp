@@ -1,15 +1,6 @@
 #include "ultrainio.system.hpp"
 #include <list>
 
-bool operator!=(const checksum256& sha256_1, const checksum256& sha256_2) {
-    for(auto i = 0; i < 32; ++i) {
-        if(sha256_1.hash[i] != sha256_2.hash[i]) {
-            return true;
-        }
-    }
-    return false;
-}
-
 namespace ultrainiosystem {
 
     //const uint32_t relayer_deposit_threshold = 100000;

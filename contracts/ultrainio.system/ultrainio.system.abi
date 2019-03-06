@@ -520,6 +520,7 @@
         {"name": "block_id",                      "type": "block_id_type"},
         {"name": "block_number",                  "type": "uint32"},
         {"name": "transaction_mroot",             "type": "checksum256"},
+        {"name": "trx_hashs",                     "type": "checksum256[]"},
         {"name": "table_extension",               "type": "extension[]"}
        ]
     },{
@@ -681,9 +682,10 @@
       "name": "synctransfer",
       "base": "",
       "fields": [
-          {"name": "transaction_mroot","type": "string"},
+          {"name": "chain_name","type": "uint64"},
           {"name": "block_number","type": "uint32"},
-          {"name": "tx_id","type": "string"}
+          {"name": "merkle_proofs","type": "string[]"},
+          {"name": "tx_bytes","type": "uint8[]"}
         ]
     },{
       "name": "connector",

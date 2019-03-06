@@ -61,6 +61,7 @@ namespace ultrainio { namespace chain {
        block_id_type             block_id;
        uint32_t                  block_number;
        checksum256_type          transaction_mroot;
+       std::vector<checksum256_type>  trx_hashs;
        extensions_type           table_extension;
    };
 
@@ -112,7 +113,7 @@ FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_number)(total_resour
 FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(is_producer) )
 FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )
 FC_REFLECT(ultrainio::chain::updated_committee, (deprecated_committee)(unactivated_committee)(take_effect_at_block) )
-FC_REFLECT(ultrainio::chain::block_header_digest, (proposer)(block_id)(block_number)(transaction_mroot)(table_extension) )
+FC_REFLECT(ultrainio::chain::block_header_digest, (proposer)(block_id)(block_number)(transaction_mroot)(trx_hashs)(table_extension) )
 FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_block_header, (ultrainio::chain::block_header_digest), (fork_id)(to_be_paid)
                     (is_leaf)(committee_mroot) )
 FC_REFLECT(ultrainio::chain::subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_active)(is_synced)(is_schedulable)

@@ -27,29 +27,56 @@ namespace ultrainiosystem {
 
             ULTRAINLIB_SERIALIZE(TransferActionParam, (from)(to)(val)(memo))
     };
+   static std::string checksum256_to_string( const uint8_t* d, uint32_t s )
+   {
+      std::string r;
+      const char* to_hex="0123456789abcdef";
+      uint8_t* c = (uint8_t*)d;
+      for( uint32_t i = 0; i < s; ++i )
+            (r += to_hex[(c[i]>>4)]) += to_hex[(c[i] &0x0f)];
+      return r;
+   }
+   void system_contract::synctransfer( uint64_t chain_name, uint32_t block_number, std::vector<std::string> merkle_proofs, std::vector<char> tx_bytes ) {
+      require_auth(current_sender());
+      block_table subchain_block_tbl(_self, chain_name);
+      auto block_ite = subchain_block_tbl.find(block_number);
+      ultrainio_assert(block_ite != subchain_block_tbl.end(), "can not find this subchain block_number");
+      merkle_proof mklp;
+      mklp.proofs = merkle_proofs;
+      mklp.tx_bytes = tx_bytes;
+      std::string merkle_mroot = checksum256_to_string( block_ite->transaction_mroot.hash, sizeof(block_ite->transaction_mroot.hash));
+      bool r = mklp.verify(merkle_mroot);
+      print("synctransfer merkle_mroot:",merkle_mroot, " block_number:", block_number);
+      ultrainio_assert(r, "syncTransfer failed: verify merkle proof failed.");
 
-   void system_contract::synctransfer( std::string transaction_mroot, uint32_t block_number, std::string tx_id ) {
-          merkle_proof mklp = merkle_proof::get_merkle_proof(block_number, tx_id);
-          bool r = mklp.verify(transaction_mroot);
-          ultrainio_assert(r, "syncTransfer failed: verify merkle proof failed.");
-
-          transaction tx = mklp.recover_transaction();
-          ultrainio_assert(tx.actions.size() > 0, "no context related actions contains in this transaction.");
-
-          for (const auto& act : tx.actions) {
-              if (act.account == N(utrio.token) && act.name == NEX(transfer)) {
-                 TransferActionParam tap = unpack<TransferActionParam>(act.data);
-                 ultrainio_assert(tap.to == N(utrio.bank), " account to is not utrio.bank");
-                 INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {_self, N(active)},
-                    { N(utrio.bank), tap.from, tap.val, std::string("sync transfer") } );
-                 print("from : ", name{tap.from});
-                 print(", to: ", name{tap.to});
-                 print(", asset: "); tap.val.print();
-                 print(", memo: "); print(tap.memo);
-                 return;
-              }
-          }
-
-          print("No transfer action found in transaction.");
+      transaction tx = mklp.recover_transaction();
+      checksum256 txn_hash;
+      sha256((&tx_bytes[0]), tx_bytes.size(), &txn_hash);
+      for(auto &his_txn_hash : block_ite->trx_hashs){
+         ultrainio_assert(his_txn_hash != txn_hash, "syncTransfer failed: current transfer transaction already synchronized");
       }
+      subchain_block_tbl.modify( block_ite, [&]( block_header_digest& header ) {
+         header.trx_hashs.push_back(txn_hash);
+         });
+      ultrainio_assert(tx.actions.size() > 0, "no context related actions contains in this transaction.");
+
+      for (const auto& act : tx.actions) {
+         if (act.account == N(utrio.token) && act.name == NEX(transfer)) {
+            TransferActionParam tap = unpack<TransferActionParam>(act.data);
+            ultrainio_assert(tap.to == N(utrio.bank), " account to is not utrio.bank");
+            ultrainio_assert(tap.memo == std::to_string(_gstate.chain_name), "The synchronized chain is not correct");
+            asset cur_tokens = ultrainio::token(N(utrio.token)).get_balance( N(utrio.bank),symbol_type(CORE_SYMBOL).name());
+            ultrainio_assert( cur_tokens >= tap.val, " utrio.bank account insufficient funds" );
+            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.bank), N(active)},
+               { N(utrio.bank), tap.from, tap.val, std::string("sync transfer") } );
+            print("from : ", name{tap.from});
+            print(", to: ", name{tap.to});
+            print(", asset: "); tap.val.print();
+            print(", memo: "); print(tap.memo);
+            return;
+         }
+      }
+
+      print("No transfer action found in transaction.");
+   }
 } //namespace ultrainiosystem
