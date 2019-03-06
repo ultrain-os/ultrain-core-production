@@ -168,7 +168,7 @@ namespace ultrainiosystem {
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
-      uint32_t  enableprodnum = get_enable_producers_number();
+      uint32_t  enableprodnum = get_enabled_producers_number();
       ultrainio_assert( enableprodnum > _gstate.min_committee_member_number || proposeminer[0].adddel_miner, " The number of committees is about to be smaller than the minimum number and therefore cannot be voted away" );
       print("votecommittee enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeminer.size(),"\n");
       for(auto minerinfo : proposeminer){
@@ -292,7 +292,7 @@ void system_contract::voteaccount() {
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
-      uint32_t  enableprodnum = get_enable_producers_number();
+      uint32_t  enableprodnum = get_enabled_producers_number();
       print("voteaccount enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeaccount.size(),"\n");
       for(auto accinfo : proposeaccount){
          ultrainio_assert( !is_account( accinfo.account ), "vote create account already exist");
@@ -375,7 +375,7 @@ void system_contract::voteresourcelease() {
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
-      uint32_t  enableprodnum = get_enable_producers_number();
+      uint32_t  enableprodnum = get_enabled_producers_number();
       print("voteresourcelease enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," proposeresource_info size:",proposeresource.size(),"\n");
       for(auto resinfo : proposeresource){
          ultrainio_assert( is_account( resinfo.account ), "vote resoucelease account not exist");

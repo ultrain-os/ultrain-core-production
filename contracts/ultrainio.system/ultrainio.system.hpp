@@ -436,8 +436,8 @@ namespace ultrainiosystem {
 
 
          //defined in producer.cpp
-         uint32_t get_enable_producers_number();
-         std::vector<uint64_t> getallchainname();
+         uint32_t get_enabled_producers_number();
+         std::vector<uint64_t> get_all_chainname();
    };
 
 } /// ultrainiosystem

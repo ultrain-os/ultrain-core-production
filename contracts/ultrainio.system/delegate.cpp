@@ -378,7 +378,7 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
             producers_table _producers(_self, briefprod->location);
             auto prod = _producers.find(receiver);
             ultrainio_assert( (prod != _producers.end()), "Producer is not found in its location" );
-            ultrainio_assert(get_enable_producers_number() > _gstate.min_committee_member_number,
+            ultrainio_assert(get_enabled_producers_number() > _gstate.min_committee_member_number,
                         "The number of committee member is too small, undelegatecons suspended for now");
         }
         change_cons(from, receiver, asset(-1));

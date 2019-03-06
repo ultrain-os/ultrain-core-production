@@ -93,7 +93,7 @@ namespace ultrainiosystem {
          INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
                                                       {pay_account, asset(new_tokens - fee_tokens.amount), std::string("issue tokens for claimrewards")} );
       }
-      std::vector<uint64_t> chain_name_vct = getallchainname();
+      std::vector<uint64_t> chain_name_vct = get_all_chainname();
       for(uint32_t i = 0; i < chain_name_vct.size(); ++i) {
          producers_table _producers(_self, chain_name_vct[i]);
          for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
