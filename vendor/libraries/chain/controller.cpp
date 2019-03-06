@@ -55,7 +55,7 @@ using contract_database_index_set = index_set<
    index256_index
 >;
 
-#define WS_INTERVAL 3
+#define WS_INTERVAL 20
 
 // these are the default numbers, and it could be changed during startup.
 //int chain::config::block_interval_ms = 10*1000;
@@ -103,6 +103,7 @@ struct controller_impl {
    uint32_t                       worldstate_head_block = 0;
    uint32_t                       worldstate_previous_block = 0;
    bool                           worldstate_thread_running = false;
+   boost::thread                  worldstate_thread;
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    std::shared_ptr<ws_file_manager>                       ws_manager_ptr;
@@ -190,6 +191,8 @@ struct controller_impl {
       ws_manager_ptr->set_local_max_count(15);
    }
 
+   if (db.get_data("worldstate_previous_block", worldstate_previous_block))
+      ilog("Get worldstate_previous_block from  db: ${s}", ("s", worldstate_previous_block));
    }
 
    /**
@@ -224,7 +227,7 @@ struct controller_impl {
       uint32_t block_height = fork_head.block_num;
 
       //thread to generate worldstate file
-      boost::thread worldstate([this,fork_head,block_height](){
+      worldstate_thread = boost::thread([this,fork_head,block_height](){
          auto begin = fc::time_point::now();
          try {
             add_to_worldstate(db, block_height, fork_head);
@@ -246,7 +249,6 @@ struct controller_impl {
          auto end = fc::time_point::now();
          ilog("worldstate thread end, cost time: ${time}", ("time", end - begin));
       });
-      worldstate.detach();
       worldstate_thread_running = true;
 
       auto end=fc::time_point::now();
@@ -376,6 +378,13 @@ struct controller_impl {
    }
 
    ~controller_impl() {
+      if(worldstate_thread_running && worldstate_thread.joinable()) {
+         ilog("Worldstate thread is runging, waiting!!!");
+         worldstate_thread.join();
+      }
+
+      db.save_data("worldstate_previous_block", worldstate_previous_block);
+
       pending.reset();
 
       db.flush();

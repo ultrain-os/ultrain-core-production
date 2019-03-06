@@ -414,7 +414,7 @@ namespace chainbase {
           *  This method does not change the state of the index, only the state of the undo buffer.
           */
          void squash_cache(){
-             ilog("#####squash_cache before size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
+            //  ilog("#####squash_cache before size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
              if( !_cache_on|| _cache.size()<2  ) {return;};
              auto& cache = _cache.back();
              auto& prev_cache = *(_cache.end()-2);
@@ -570,7 +570,7 @@ namespace chainbase {
           */
          void commit( int64_t revision )
          {
-            ilog("####commit  revision: ${s}  ${t}", ("s", revision)("t", _cache.size()));
+            // ilog("####commit  revision: ${s}  ${t}", ("s", revision)("t", _cache.size()));
             while( _stack.size() && _stack[0].revision <= revision )
             {
                _stack.pop_front();
@@ -1059,6 +1059,28 @@ namespace chainbase {
              for( auto i : _index_list ) i->set_revision( revision );
          }
 
+         template<typename VarType>
+         void save_data(std::string var_name, const VarType& var)  {
+            std::string type_name = boost::core::demangle( typeid(VarType).name() )  + var_name;
+            auto var_ptr = _segment->find< VarType >( type_name.c_str() ).first;
+            if( !var_ptr ) {
+               _segment->find_or_construct< VarType >( type_name.c_str() )(var);
+            } else {
+               *var_ptr = var;
+            }
+         }
+
+         template<typename VarType>
+         bool get_data(std::string var_name, VarType& var)  {
+            std::string type_name = boost::core::demangle( typeid(VarType).name() )  + var_name;
+            auto var_ptr = _segment->find< VarType >( type_name.c_str()).first;
+            if( !var_ptr ) {
+               return false;
+            } else {
+               var = *var_ptr;
+               return  true;
+            }
+         }
 
          template<typename MultiIndexType>
          void add_index() {
