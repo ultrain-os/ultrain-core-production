@@ -676,6 +676,8 @@ namespace ultrainio {
         void reset() {
             last_received_block = 0;
             last_checked_block = 0;
+            sync_src_count = 0;
+            conns_without_block.clear();
             rsp_conns.clear();
             sync_conn = nullptr;
             memset(&sync_block_msg, 0, sizeof(sync_block_msg));
