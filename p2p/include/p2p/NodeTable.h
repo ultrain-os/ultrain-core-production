@@ -79,7 +79,7 @@ public:
     /// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeID is empty.
     void addNode(Node const& _node, NodeRelation _relation = NodeRelation::Unknown);
     void printallbucket();
-
+    void addNodePkList(NodeID const& _id,chain::public_key_type const& _pk);
 
     /// Returns list of node ids active in node table.
     std::list<NodeID> nodes() const;
@@ -184,6 +184,7 @@ private:
     NodeIPEndpoint m_hostNodeEndpoint;
 
     std::unordered_map<NodeID, std::shared_ptr<NodeEntry>> m_nodes;     ///< Known Node Endpoints
+    std::unordered_map<NodeID, chain::public_key_type> m_pknodes;     ///< Known Node Endpoints
 
 
     std::array<NodeBucket, s_bins> m_state;                             ///< State of p2p node network.
@@ -196,6 +197,7 @@ private:
     std::shared_ptr<NodeSocket> m_socket;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
     vector<string> m_seeds;
     void requireSeeds(const std::vector <std::string> &seeds);
+    bool isnodevalid(Node const& _node);
 }; // end of class NodeTable
 
 } // end of namespace p2p

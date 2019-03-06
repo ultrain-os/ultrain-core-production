@@ -518,6 +518,7 @@ namespace ultrainio {
         bool                    connecting = false;
         uint16_t                protocol_version  = 0;
         string                  peer_addr;
+        chain::public_key_type  peer_pk;
         unique_ptr<boost::asio::steady_timer> response_expected;
         optional<request_message> pending_fetch;
         go_away_reason          no_retry = no_reason;
@@ -1971,7 +1972,30 @@ connection::connection(string endpoint, msg_priority pri)
             c->enqueue(go_away_message(authentication));
             return;
          }
+	 
+	 if((c->priority != msg_priority_rpos)&&(c->priority != msg_priority_trx))
+	 {
+		 elog("wrong priority  Closing connection.");
+		 c->enqueue(go_away_message(authentication));
+	 }
+         //check for duplicate key access
+         for(auto &it : connections) 
+	 {
+		 if(it->connected() && (it->peer_pk == msg.key) && (it->priority == c->priority))
+		 {
+             boost::system::error_code ec;
+             if(it->socket->remote_endpoint(ec).address() != c->socket->remote_endpoint(ec).address())
+             {
+             
+			      ilog("duplicate pk");
+			      go_away_message gam(duplicate);
+			      gam.node_id = node_id;
+			      c->enqueue(gam);
+			      return;
+             }
+         }
 
+	 }
          bool on_fork = false;
          fc_dlog(logger, "lib_num = ${ln} peer_lib = ${pl}",("ln",lib_num)("pl",peer_lib));
 
@@ -1999,7 +2023,7 @@ connection::connection(string endpoint, msg_priority pri)
             c->send_handshake();
          }
       }
-
+      c->peer_pk = msg.key;
       c->last_handshake_recv = msg;
       c->_logger_variant.reset();
    }

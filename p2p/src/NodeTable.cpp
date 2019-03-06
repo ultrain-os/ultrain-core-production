@@ -108,7 +108,25 @@ void NodeTable::doIDRequest()
     });
 
 }
-
+void NodeTable::addNodePkList(NodeID const& _id,chain::public_key_type const& _pk)
+{
+    if (_id == fc::sha256())
+    {
+            elog("do not add node without nodeID");
+            return ;
+    }
+    if (m_hostNodeID == _id)
+    {
+        ilog("do not add local nodeID");
+        return;
+    }
+    if(m_pknodes.count(_id))
+    {
+	    return ;
+    }
+    ilog("addNodePkList");
+    m_pknodes[_id] = _pk;
+}
 void NodeTable::addNode(Node const& _node, NodeRelation _relation)
 {
     //TODO:JWN:can restore somehow,then the relation is Known
@@ -410,6 +428,7 @@ void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
 			[_n](weak_ptr<NodeEntry> const& _bucketEntry) { return _bucketEntry == _n; });
 
 	m_nodes.erase(_n->m_id);
+	m_pknodes.erase(_n->m_id);
 	// notify host
 	ilog("p2p.nodes.drop id ${id} ep ${ep}",("id",_n->m_id)("ep",_n->m_endpoint.address()));
 	nodedropevent(_n->m_endpoint);
@@ -447,6 +466,14 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
         elog("wrong chain");
 	return ;
     }
+    for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
+    {
+	    if((it->second == pong.pk) && (it->first != pong.sourceid))
+	    {
+		    elog("duplicate pong p2p pk");
+		    return ;
+	    }
+    } 
     fc::sha256 digest_pong = fc::sha256::hash<p2p::UnsignedPong>(pong);
     bool isvalid = *pktcheckevent(digest_pong,pong.pk,chain::signature_type(pong.signature));
     if(!isvalid)
@@ -504,6 +531,14 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
 	    elog("wrong chain");
 	    return ;
     }
+    for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
+    {
+	    if((it->second == in.pk) && (it->first != in.fromID))
+	    {
+		    elog("duplicate find p2p pk");
+		    return ;
+	    }
+    }
     fc::sha256 digest = fc::sha256::hash<p2p::UnsignedFindNode>(in);
     bool isvalid = *pktcheckevent(digest,in.pk,chain::signature_type(in.signature));
     if(!isvalid)
@@ -542,6 +577,25 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
        noteActiveNode(in.fromID, from);
     }
 }
+bool  NodeTable::isnodevalid(Node const& _node)
+{
+    if (!_node.m_endpoint)
+    {
+	elog("do not add node without ep info");
+        return false;
+    }
+    // ping address to recover nodeid if nodeid is empty
+    if (_node.m_id == fc::sha256())
+    {
+	    elog("do not add node without nodeID");
+	    return false ;
+    }
+    if (m_hostNodeID == _node.m_id)
+    {
+        return false;
+    }
+    return true;
+}
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in ) {
     //ilog("handle nei size ${size} srcnodeid ${nodeid} from ${src} dest ${des} ",("size",in.neighbours.size())("nodeid",in.fromID)("src",in.fromep)("des",in.tartgetep));
     if(in.fromID == fc::sha256())
@@ -558,6 +612,14 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     {
 	    elog("wrong chain");
 	    return ;
+    }
+    for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
+    {
+	    if((it->second == in.pk) && (it->first != in.fromID))
+	    {
+		    elog("duplicate nei p2p pk");
+		    return ;
+	    }
     }
     fc::sha256 digest = fc::sha256::hash<p2p::UnsignedNeighbours>(in);
     bool isvalid = *pktcheckevent(digest,in.pk,chain::signature_type(in.signature));
@@ -585,11 +647,21 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
                 return ;
     }
     for (auto const& n : in.neighbours)
-        addNode(Node(n.node, n.endpoint));
+    {
+	    if(isnodevalid(Node(n.node, n.endpoint)))
+	    {
+		    if(!m_nodes.count(n.node))
+		    {
+			    auto nodeEntry = make_shared<NodeEntry>(m_hostNodeID,n.node,n.endpoint);
+			    ping(*nodeEntry);
+		    }
+	    }
+    }    
     noteActiveNode(in.fromID, from);
 }
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingmsg ) {
-    if(pingmsg.sourceid == fc::sha256())
+ilog("handle ping nodeid ${nodeid} from ${ep} srcep ${src} desep ${des}",("nodeid",pingmsg.sourceid)("ep",_from.address().to_string())("src",pingmsg.source.address())("des",pingmsg.dest.address())); 
+if(pingmsg.sourceid == fc::sha256())
     {
         ilog("ping msg has no id");
         return ;
@@ -598,6 +670,14 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingm
     {
 	    elog("wrong chain");
 	    return;
+    }
+    for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
+    {
+	    if((it->second == pingmsg.pk) && (it->first != pingmsg.sourceid))
+	    {
+		    elog("duplicate p2p pk");
+		    return ;
+	    }
     }
     fc::sha256 digest = fc::sha256::hash<p2p::UnsignedPingNode>(pingmsg);
     bool isvalid = *pktcheckevent(digest,pingmsg.pk,chain::signature_type(pingmsg.signature));
@@ -627,13 +707,11 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingm
     from.m_address = _from.address().to_string();
     from.m_udpPort = _from.port();
     from.m_listenPorts = pingmsg.source.m_listenPorts;
-    ilog("handle ping nodeid ${nodeid} from ${ep} srcep ${src} desep ${des}",("nodeid",pingmsg.sourceid)("ep",from.address())("src",pingmsg.source.address())("des",pingmsg.dest.address()));
     if (m_hostNodeID == pingmsg.sourceid)
     {
-        ilog("from local");
         return;
     }
-
+    addNodePkList(pingmsg.sourceid,pingmsg.pk);
     addNode(Node(pingmsg.sourceid, from));
 
     Pong p;
