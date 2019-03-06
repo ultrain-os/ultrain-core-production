@@ -26,14 +26,6 @@ namespace ultrainiosystem {
    using ultrainio::singleton;
    using ultrainio::transaction;
 
-   /**
-    *  This method will create a producer_config and producer_info object for 'producer'
-    *
-    *  @pre producer is not already registered
-    *  @pre producer to register is an account
-    *  @pre authority of producer to register
-    *
-    */
     void system_contract::regproducer( const account_name producer, const std::string& producer_key, const std::string& bls_key, account_name rewards_account, const std::string& url, uint64_t location ) {
         ultrainio_assert( url.size() < 512, "url too long" );
         // key is hex encoded
