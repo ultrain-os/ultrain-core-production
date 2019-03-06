@@ -123,6 +123,10 @@ namespace ultrainiosystem {
              }
              auto enabled = ((dis_prod->total_cons_staked + total_update.amount) >= _gstate.min_activated_stake);
              if(enabled) {
+                uint64_t assigned_location = dis_prod->location;
+                if(assigned_location == default_chain_name) {
+                    assigned_location = getdefaultchain();
+                }
                 producer_info new_en_prod;
                 new_en_prod.owner                   = dis_prod->owner;
                 new_en_prod.producer_key            = dis_prod->producer_key;
@@ -130,17 +134,18 @@ namespace ultrainiosystem {
                 new_en_prod.total_cons_staked       = dis_prod->total_cons_staked + total_update.amount;
                 new_en_prod.url                     = dis_prod->url;
                 new_en_prod.total_produce_block     = dis_prod->total_produce_block;
-                new_en_prod.location                = dis_prod->location;
+                new_en_prod.location                = assigned_location;
                 new_en_prod.last_operate_blocknum   = dis_prod->last_operate_blocknum;
                 new_en_prod.delegated_cons_blocknum = curblocknum;
                 new_en_prod.claim_rewards_account   = dis_prod->claim_rewards_account;
                 new_en_prod.unpaid_balance          = 0;
                 new_en_prod.vote_number             = 0;
                 new_en_prod.last_vote_blocknum      = 0;
-                add_to_chain(dis_prod->location, new_en_prod);
+                add_to_chain(assigned_location, new_en_prod);
                 dp_tbl.erase(dis_prod);
                 _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                     producer_brf.in_disable = false;
+                    producer_brf.location = assigned_location;
                 });
              }
              else {
@@ -195,12 +200,10 @@ namespace ultrainiosystem {
                  _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                      producer_brf.in_disable = true;
                  });
-                 _producers.erase(it);
              }
          }
       }
    }
-
 
     void system_contract::process_undelegate_request(account_name from,
                                                      asset unstake_quantity) {

@@ -363,6 +363,8 @@ public:
       uint32_t    limit = 50;
       bool        is_filter_chain = true;
       uint64_t    show_chain_num = 0;
+      bool        all_chain = true;
+      uint64_t    chain_name;
    };
 
    struct get_producers_result {
@@ -708,11 +710,9 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_block_num_result, (co
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(genesis_time)(quit_before_num) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );
-
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
-
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num)(all_chain)(chain_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(more)(min_stake_thresh)(min_committee_member_number) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,

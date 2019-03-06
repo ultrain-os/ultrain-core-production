@@ -506,6 +506,7 @@ namespace ultrainiosystem {
         _producer_chain.emplace([&]( producer_info& _prod ) {
             _prod = producer;
             _prod.location = chain_name;
+            //TODO, record operation block for manual action
         });
     }
 
@@ -767,8 +768,14 @@ namespace ultrainiosystem {
             empower_to_chain(producer, to_iter->chain_name);
         }
         //move producer
-        add_to_chain(to_iter->chain_name, *producer_iter);
-        remove_from_chain(from_iter->chain_name, producer);
+        auto briefprod = _briefproducers.find(producer);
+        if(briefprod != _briefproducers.end()) {
+            add_to_chain(to_iter->chain_name, *producer_iter);
+            remove_from_chain(from_iter->chain_name, producer);
+            _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
+                producer_brf.location = to_iter->chain_name;
+            });
+        }
 
         return true;
     }

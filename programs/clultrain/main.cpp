@@ -874,17 +874,23 @@ struct list_producers_subcommand {
    uint32_t limit = 50;
    std::string lower;
    bool   is_filter_chain = false;
+   uint64_t chain_name = std::numeric_limits<uint64_t>::max();
    uint64_t  show_chain_num = 0;
    list_producers_subcommand(CLI::App* actionRoot) {
       auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
+      list_producers->add_option("chain_name", chain_name, localized("Specify a chain so that only its producers will be shown"));
       list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format"));
       list_producers->add_option("-l,--limit", limit, localized("The maximum number of rows to return"));
       list_producers->add_option("-L,--lower", lower, localized("lower bound value of key, defaults to first"));
       list_producers->add_flag("-f,--filterchain", is_filter_chain, localized("The maximum number of rows to return"));
       list_producers->add_option("-s,--showchainnum", show_chain_num, localized("lower bound value of key, defaults to first"));
       list_producers->set_callback([this] {
+         bool show_all = true;
+         if(chain_name != std::numeric_limits<uint64_t>::max()) {
+            show_all = false;
+         }
          auto rawResult = call(get_producers_func, fc::mutable_variant_object
-            ("json", true)("lower_bound", lower)("limit", limit)("is_filter_chain", is_filter_chain)("show_chain_num", show_chain_num));
+            ("json", true)("lower_bound", lower)("limit", limit)("is_filter_chain", is_filter_chain)("show_chain_num", show_chain_num)("all_chain", show_all)("chain_name", chain_name));
          if ( print_json ) {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;

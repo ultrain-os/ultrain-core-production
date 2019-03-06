@@ -1139,38 +1139,54 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
    const abi_def abi = ultrainio::chain_apis::get_abi(db, N(ultrainio));
    const auto table_type = get_table_type(abi, N(producers));
+   const auto subchian_table_type = get_table_type( abi, N(subchains) );
    const abi_serializer abis{ abi, abi_serializer_max_time };
    ULTRAIN_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
    const auto& d = db.db();
 
    static const uint8_t secondary_index_num = 0;
-   const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), 0, N(producers)));
-   const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), 0, N(producers) | secondary_index_num));
-   ULTRAIN_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
-
-   const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
-   decltype(table_id->id) next_tid(table_id->id._id + 1);
-   auto lower = kv_index.lower_bound(boost::make_tuple(table_id->id));
-   auto upper = kv_index.lower_bound(boost::make_tuple(next_tid));
-
-
+   std::vector<uint64_t> scopes;
+   if(p.all_chain) {
+       scopes.emplace_back(master_chain_name); //add master
+       //add side chains
+       walk_key_value_table(N(ultrainio), N(ultrainio), N(subchains), [&](const key_value_object& obj){
+           ultrainio::chain::subchain subchain_data;
+           fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+           fc::raw::unpack(ds, subchain_data);
+           scopes.emplace_back(subchain_data.chain_name);
+           return true;
+       });
+   }
+   else {
+       scopes.emplace_back(p.chain_name);
+   }
    read_only::get_producers_result result;
-   const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
-   vector<char> data;
+   for(auto i = 0; i < scopes.size(); ++i) {
+       const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), scopes[i], N(producers)));
+       const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), scopes[i], N(producers) | secondary_index_num));
+       ULTRAIN_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
 
-   std::for_each(lower,upper, [&](const key_value_object& obj) {
-        copy_inline_row(obj, data);
-        auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
-        if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {
-            return;
-        }
-        if (p.json)
-           result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
-        else
-           result.rows.emplace_back(fc::variant(data));
-   });
+       const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
+       decltype(table_id->id) next_tid(table_id->id._id + 1);
+       auto lower = kv_index.lower_bound(boost::make_tuple(table_id->id));
+       auto upper = kv_index.lower_bound(boost::make_tuple(next_tid));
 
+       const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
+       vector<char> data;
+
+       std::for_each(lower,upper, [&](const key_value_object& obj) {
+           copy_inline_row(obj, data);
+           auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
+           if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {
+               return;
+           }
+           if (p.json)
+               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
+           else
+               result.rows.emplace_back(fc::variant(data));
+       });
+   }
    auto gstate = get_global_row(d, abi, abis, abi_serializer_max_time);
    ilog("global ${gl}", ("gl", gstate));
 
@@ -1234,6 +1250,8 @@ bool read_only::is_genesis_finished() const{
             params.lower_bound="";
             params.show_chain_num = 0;
             params.is_filter_chain = true;
+            params.all_chain = true;
+            params.chain_name = 0;
             auto result = get_producers(params);
             genesis_finished = result.rows.size()>=result.min_committee_member_number? true: false;
         }

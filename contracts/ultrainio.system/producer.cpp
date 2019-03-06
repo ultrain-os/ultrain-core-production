@@ -26,7 +26,7 @@ namespace ultrainiosystem {
         // key is hex encoded
         ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
         require_auth( producer );
-
+        uint64_t curblocknum = (uint64_t)head_block_number() + 1;
         auto briefprod = _briefproducers.find(producer);
         if(briefprod == _briefproducers.end()) {
             //new producer, add to disabled table for now
@@ -38,11 +38,14 @@ namespace ultrainiosystem {
                 dis_prod.bls_key                 = bls_key;
                 dis_prod.url                     = url;
                 dis_prod.location                = location;
+                dis_prod.last_operate_blocknum   = curblocknum;
+                dis_prod.delegated_cons_blocknum = 0;
                 dis_prod.claim_rewards_account   = rewards_account;
             });
             _briefproducers.emplace([&]( producer_brief& brief_prod ) {
                 brief_prod.owner        = producer;
                 brief_prod.location     = location;
+                brief_prod.in_disable   = true;
             });
         } else {
             ultrainio_assert(location != default_chain_name, "default name is not allowed when updating producer");
@@ -54,14 +57,45 @@ namespace ultrainiosystem {
             if (briefprod->in_disable) {
                 disabled_producers_table dp_tbl(_self, _self);
                 auto it_disable = dp_tbl.find(producer);
-                dp_tbl.modify(it_disable, [&]( disabled_producer& dis_prod ) {
-                    dis_prod.producer_key            = producer_key;
-                    dis_prod.bls_key                 = bls_key;
-                    dis_prod.url                     = url;
-                    dis_prod.location                = location;
-                    // claim_rewards_account is not allowed to be updated
-                });
-            } else {
+                ultrainio_assert(it_disable != dp_tbl.end(), "error: producer is not in disabled table");
+                if(it_disable->total_cons_staked >= _gstate.min_activated_stake) {
+                    uint64_t assigned_location = it_disable->location;
+                    if(assigned_location == default_chain_name) {
+                        assigned_location = getdefaultchain();
+                    }
+                    producer_info new_en_prod;
+                    new_en_prod.owner                   = it_disable->owner;
+                    new_en_prod.producer_key            = it_disable->producer_key;
+                    new_en_prod.bls_key                 = it_disable->bls_key;
+                    new_en_prod.total_cons_staked       = it_disable->total_cons_staked;
+                    new_en_prod.url                     = it_disable->url;
+                    new_en_prod.total_produce_block     = it_disable->total_produce_block;
+                    new_en_prod.location                = assigned_location;
+                    new_en_prod.last_operate_blocknum   = curblocknum;
+                    new_en_prod.delegated_cons_blocknum = it_disable->delegated_cons_blocknum;
+                    new_en_prod.claim_rewards_account   = it_disable->claim_rewards_account;
+                    new_en_prod.unpaid_balance          = 0;
+                    new_en_prod.vote_number             = 0;
+                    new_en_prod.last_vote_blocknum      = 0;
+                    add_to_chain(assigned_location, new_en_prod);
+                    dp_tbl.erase(it_disable);
+                    _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
+                        producer_brf.in_disable = false;
+                        producer_brf.location = assigned_location;
+                    });
+                }
+                else {
+                    //still disable
+                    dp_tbl.modify(it_disable, [&]( disabled_producer& dis_prod ) {
+                        dis_prod.producer_key            = producer_key;
+                        dis_prod.bls_key                 = bls_key;
+                        dis_prod.url                     = url;
+                        dis_prod.location                = location;
+                        dis_prod.last_operate_blocknum   = curblocknum;
+                    });
+                }
+            }
+            else {
                 if(location != master_chain_name) {
                     ultrainio_assert(_subchains.find(location) != _subchains.end(),
                                      "wrong location, subchain is not existed");
@@ -110,7 +144,7 @@ namespace ultrainiosystem {
       }
       auto briefprod = _briefproducers.find(producer);
       ultrainio_assert(briefprod != _briefproducers.end(), "this account is not a producer");
-      ultrainio_assert(!briefprod->in_disable, "this producer has been unregistered before");
+      ultrainio_assert(!briefprod->in_disable, "this producer is not enabled");
 
       producers_table _producers(_self, briefprod->location);
       const auto& prod = _producers.find( producer );
@@ -119,26 +153,20 @@ namespace ultrainiosystem {
       ultrainio_assert( (curblocknum - prod->last_operate_blocknum) > 2 ,
                         "wait at least 2 blocks before this unregprod operation" );
 
+      //pay unpaid_balance
+      if(prod->unpaid_balance > 0 && _gstate.is_master_chain()) {
+         claim_reward_to_account(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
+      }
       disabled_producers_table dp_tbl(_self, _self);
       dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
           dis_prod = *prod;
           dis_prod.last_operate_blocknum = curblocknum;
       });
+      _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
+          producer_brf.in_disable = true;
+      });
       remove_from_chain(briefprod->location, producer);
-      //pay unpaid_balance
-      if(prod->unpaid_balance > 0 && _gstate.is_master_chain()) {
-         claim_reward_to_account(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
-      }
-      _producers.erase(prod);
-/*
-      if(prod.is_on_pending_chian()) {
-          remove_from_pendingchain(producer);
-      }
-      else if(prod.is_on_subchain()) {
-          //todo
-      }
-*/
-    }
+   }
 
     inline uint32_t system_contract::get_enabled_producers_number(){
       uint32_t  enabled_prod_num = 0;
