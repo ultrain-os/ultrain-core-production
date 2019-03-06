@@ -84,27 +84,26 @@ namespace ultrainiosystem {
       producers_table _producers(_self, briefprod->location);
       const auto& prod = _producers.find( producer );
       ultrainio_assert(prod != _producers.end(), "producer is not found in its location");
-      if (prod->unpaid_balance > 0) {
-          _producers.modify( prod, [&](auto& p) {
-              p.set_disabled();
-          });
+
+      disabled_producers_table dp_tbl(_self, _self);
+      dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
+         dis_prod.owner                   = prod->owner;
+         dis_prod.producer_key            = prod->producer_key;
+         dis_prod.bls_key                 = prod->bls_key;
+         dis_prod.total_cons_staked       = prod->total_cons_staked;
+         dis_prod.url                     = prod->url;
+         dis_prod.total_produce_block     = prod->total_produce_block;
+         dis_prod.location                = prod->location;
+         dis_prod.last_operate_blocknum   = prod->last_operate_blocknum;
+         dis_prod.delegated_cons_blocknum = prod->delegated_cons_blocknum;
+         dis_prod.claim_rewards_account   = prod->claim_rewards_account;
+      });
+      remove_from_chain(briefprod->location, producer);
+      //pay unpaid_balance
+      if(prod->unpaid_balance > 0) {
+         claimrewardtoaccount(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
       }
-      else {
-          disabled_producers_table dp_tbl(_self, _self);
-          dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
-              dis_prod.owner                   = prod->owner;
-              dis_prod.producer_key            = prod->producer_key;
-              dis_prod.bls_key                 = prod->bls_key;
-              dis_prod.total_cons_staked       = prod->total_cons_staked;
-              dis_prod.url                     = prod->url;
-              dis_prod.total_produce_block     = prod->total_produce_block;
-              dis_prod.location                = prod->location;
-              dis_prod.last_operate_blocknum   = prod->last_operate_blocknum;
-              dis_prod.delegated_cons_blocknum = prod->delegated_cons_blocknum;
-              dis_prod.claim_rewards_account   = 0;
-          });
-          remove_from_chain(briefprod->location, producer);
-      }
+      _producers.erase(prod);
    }
 
    void system_contract::checkvotefrequency(ultrainiosystem::producers_table& prod_tbl, ultrainiosystem::producers_table::const_iterator propos){
@@ -125,7 +124,7 @@ namespace ultrainiosystem {
       if(miner.adddel_miner){
          producers_table _producers(_self, master_chain_name);
          auto prod = _producers.find( miner.account );
-         if(prod != _producers.end() && prod->is_enabled){
+         if(prod != _producers.end()){
             print("\nupdateactiveminers curproducer existed  proposerminer:",name{(*prod).owner});
             return;
          }
@@ -167,7 +166,7 @@ namespace ultrainiosystem {
       require_auth( proposer );
       producers_table _producers(_self, master_chain_name);
       auto propos = _producers.find( proposer );
-      ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+      ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
       uint32_t  enableprodnum = get_enable_producers_number();
       ultrainio_assert( enableprodnum > _gstate.min_committee_member_number || proposeminer[0].adddel_miner, " The number of committees is about to be smaller than the minimum number and therefore cannot be voted away" );
@@ -291,7 +290,7 @@ void system_contract::voteaccount() {
       require_auth( proposer );
       producers_table _producers(_self, master_chain_name);
       auto propos = _producers.find( proposer );
-      ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+      ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
       uint32_t  enableprodnum = get_enable_producers_number();
       print("voteaccount enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeaccount.size(),"\n");
@@ -374,7 +373,7 @@ void system_contract::voteresourcelease() {
       require_auth( proposer );
       producers_table _producers(_self, master_chain_name);
       auto propos = _producers.find( proposer );
-      ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+      ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
       uint32_t  enableprodnum = get_enable_producers_number();
       print("voteresourcelease enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," proposeresource_info size:",proposeresource.size(),"\n");

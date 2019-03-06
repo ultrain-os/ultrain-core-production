@@ -461,7 +461,6 @@
       "name": "producer_info",
       "base": "disabled_producer",
       "fields": [
-         {"name":"is_enabled",      "type":"bool"},
          {"name":"unpaid_balance",   "type":"uint64"},
          {"name":"vote_number",     "type":"uint64"},
          {"name":"last_vote_blocenum", "type":"uint64"},

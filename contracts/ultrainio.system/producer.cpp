@@ -77,7 +77,6 @@ namespace ultrainiosystem {
                     dis_prod.bls_key                 = bls_key;
                     dis_prod.url                     = url;
                     dis_prod.location                = location;
-                    dis_prod.claim_rewards_account   = rewards_account;
                 });
             }
             else {
@@ -101,12 +100,6 @@ namespace ultrainiosystem {
                         info.url          = url;
                         info.location     = location;
                         //TODO, is the bloew check needed?
-                        if(info.total_cons_staked >= _gstate.min_activated_stake) {
-                            info.is_enabled = true;
-                        }
-                        else {
-                            info.is_enabled = false;
-                        }
                     });
                 }
             }
@@ -139,31 +132,27 @@ namespace ultrainiosystem {
       const auto& prod = _producers.find( producer );
       ultrainio_assert(prod != _producers.end(), "producer is not found in its location");
       uint64_t curblocknum = (uint64_t)head_block_number() + 1;
-      if(prod->unpaid_balance > 0) {
-          print("unregprod curblocknum:",curblocknum," last_operate_blocknum:",prod->last_operate_blocknum);
-          ultrainio_assert( (curblocknum - prod->last_operate_blocknum) > 2 , "interval operate at least more than two number block high" );
-          _producers.modify( prod, [&]( producer_info& info ){
-              info.set_disabled();
-              info.last_operate_blocknum = curblocknum;
-          });
-      }
-      else {
-          disabled_producers_table dp_tbl(_self, _self);
-          dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
-              dis_prod.owner                   = prod->owner;
-              dis_prod.producer_key            = prod->producer_key;
-              dis_prod.bls_key                 = prod->bls_key;
-              dis_prod.total_cons_staked       = prod->total_cons_staked;
-              dis_prod.url                     = prod->url;
-              dis_prod.total_produce_block     = prod->total_produce_block;
-              dis_prod.location                = prod->location;
-              dis_prod.last_operate_blocknum   = curblocknum;
-              dis_prod.delegated_cons_blocknum = prod->delegated_cons_blocknum;
-              dis_prod.claim_rewards_account   = 0;
-          });
-          remove_from_chain(briefprod->location, producer);
-      }
+      ultrainio_assert( (curblocknum - prod->last_operate_blocknum) > 2 , "interval operate at least more than two number block high" );
 
+      disabled_producers_table dp_tbl(_self, _self);
+      dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
+         dis_prod.owner                   = prod->owner;
+         dis_prod.producer_key            = prod->producer_key;
+         dis_prod.bls_key                 = prod->bls_key;
+         dis_prod.total_cons_staked       = prod->total_cons_staked;
+         dis_prod.url                     = prod->url;
+         dis_prod.total_produce_block     = prod->total_produce_block;
+         dis_prod.location                = prod->location;
+         dis_prod.last_operate_blocknum   = curblocknum;
+         dis_prod.delegated_cons_blocknum = prod->delegated_cons_blocknum;
+         dis_prod.claim_rewards_account   = prod->claim_rewards_account;
+      });
+      remove_from_chain(briefprod->location, producer);
+      //pay unpaid_balance
+      if(prod->unpaid_balance > 0) {
+         claimrewardtoaccount(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
+      }
+      _producers.erase(prod);
 /*
       if(prod.is_on_pending_chian()) {
           remove_from_pendingchain(producer);
@@ -176,8 +165,7 @@ namespace ultrainiosystem {
       uint32_t  enableprodnum = 0;
       producers_table _producers(_self, master_chain_name);
       for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
-         if(itr->is_enabled)
-            ++enableprodnum;
+         ++enableprodnum;
       }
       return enableprodnum;
    }

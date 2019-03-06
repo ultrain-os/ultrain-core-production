@@ -1162,9 +1162,6 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    std::for_each(lower,upper, [&](const key_value_object& obj) {
         copy_inline_row(obj, data);
         auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
-        if(p.filter_enabled && !(producer["is_enabled"].as_bool())) {
-            return;
-        }
         if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {
             return;
         }
@@ -1235,7 +1232,6 @@ bool read_only::is_genesis_finished() const{
             get_producers_params params;
             params.json=true;
             params.lower_bound="";
-            params.filter_enabled = true;
             params.show_chain_num = 0;
             params.is_filter_chain = true;
             auto result = get_producers(params);

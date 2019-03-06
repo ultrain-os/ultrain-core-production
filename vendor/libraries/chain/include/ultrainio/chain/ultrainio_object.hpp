@@ -23,7 +23,6 @@ namespace ultrainio { namespace chain {
 
     // keep this the same as defined in ultrainio.system.hpp;
     struct producer_info : public disabled_producer {
-      bool                  is_enabled = false;
       uint64_t              unpaid_balance = 0;
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
@@ -107,7 +106,7 @@ namespace ultrainio { namespace chain {
 FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key)(bls_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::disabled_producer, (ultrainio::chain::role_base), (total_cons_staked)(url)(total_produce_block)
                     (location)(last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account) )
-FC_REFLECT_DERIVED(ultrainio::chain::producer_info, (ultrainio::chain::disabled_producer), (is_enabled)
+FC_REFLECT_DERIVED(ultrainio::chain::producer_info, (ultrainio::chain::disabled_producer),
                     (unpaid_balance)(vote_number)(last_vote_blocknum)(table_extension))
 FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_number)(total_resources_used_number)(max_ram_size)(total_ram_bytes_used) )
 FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(is_producer) )

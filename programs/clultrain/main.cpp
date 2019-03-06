@@ -875,7 +875,6 @@ struct list_producers_subcommand {
    std::string lower;
    bool   is_filter_chain = false;
    uint64_t  show_chain_num = 0;
-   bool        filter_enabled = false;
    list_producers_subcommand(CLI::App* actionRoot) {
       auto list_producers = actionRoot->add_subcommand("listproducers", localized("List producers"));
       list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format"));
@@ -883,10 +882,9 @@ struct list_producers_subcommand {
       list_producers->add_option("-L,--lower", lower, localized("lower bound value of key, defaults to first"));
       list_producers->add_flag("-f,--filterchain", is_filter_chain, localized("The maximum number of rows to return"));
       list_producers->add_option("-s,--showchainnum", show_chain_num, localized("lower bound value of key, defaults to first"));
-      list_producers->add_flag("-e,--enable", filter_enabled, localized("filter_enabled"));
       list_producers->set_callback([this] {
          auto rawResult = call(get_producers_func, fc::mutable_variant_object
-            ("json", true)("lower_bound", lower)("limit", limit)("is_filter_chain", is_filter_chain)("show_chain_num", show_chain_num)("filter_enabled", filter_enabled));
+            ("json", true)("lower_bound", lower)("limit", limit)("is_filter_chain", is_filter_chain)("show_chain_num", show_chain_num));
          if ( print_json ) {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;
@@ -899,13 +897,12 @@ struct list_producers_subcommand {
          uint64_t total_unpaid_balance = 0;
          uint64_t total_produce_blocks = 0;
          std::map<uint64_t,uint64_t>  chaininfo;
-         printf("%-13s %-54s  %-16s  %-10s  %-8s  %-13s    %-12s\n", "Producer", "Producer key", "Consensus_weight", "is_enabled", "location","unpaid_balance","total_blocks");
+         printf("%-13s %-54s  %-16s  %-8s  %-13s    %-12s\n", "Producer", "Producer key", "Consensus_weight", "location","unpaid_balance","total_blocks");
          for ( auto& row : result.rows ){
-            printf("%-13.13s %-54.54s  %-16ld  %-10u  %-8lu  %-.4f UGAS       %-12lu\n",
+            printf("%-13.13s %-54.54s  %-16ld  %-8lu  %-.4f UGAS       %-12lu\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["total_cons_staked"].as_int64(),
-                   row["is_enabled"].as_bool(),
                    row["location"].as_uint64(),
                    ((double)row["unpaid_balance"].as_uint64())/10000,
                    row["total_produce_block"].as_uint64()

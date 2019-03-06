@@ -2553,7 +2553,6 @@ connection::connection(string endpoint, msg_priority pri)
         params.lower_bound="";
         params.show_chain_num = 0;
         params.is_filter_chain = true;
-        params.filter_enabled = true;
         std::vector<string> producers_account;
         producers_pk.clear();
 	try {

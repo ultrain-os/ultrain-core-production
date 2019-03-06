@@ -133,8 +133,7 @@ namespace ultrainiosystem {
                 new_en_prod.location                = dis_prod->location;
                 new_en_prod.last_operate_blocknum   = dis_prod->last_operate_blocknum;
                 new_en_prod.delegated_cons_blocknum = curblocknum;
-                new_en_prod.claim_rewards_account   = 0;
-                new_en_prod.is_enabled              = true;
+                new_en_prod.claim_rewards_account   = dis_prod->claim_rewards_account;
                 new_en_prod.unpaid_balance          = 0;
                 new_en_prod.vote_number             = 0;
                 new_en_prod.last_vote_blocknum      = 0;
@@ -169,14 +168,16 @@ namespace ultrainiosystem {
                  _gstate.total_activated_stake += total_update.amount;
              }
              auto enabled = ((it->total_cons_staked + total_update.amount) >= _gstate.min_activated_stake);
-             if(enabled || it->unpaid_balance > 0) {
+             if(enabled) {
                  _producers.modify(it, [&](auto & v) {
                      v.total_cons_staked += total_update.amount;
-                     v.is_enabled = enabled;
                      v.delegated_cons_blocknum = curblocknum;
                  });
              }
              else {
+                 if(it->unpaid_balance > 0){
+                     claimrewardtoaccount(it->claim_rewards_account, asset((int64_t)it->unpaid_balance));
+                 }
                  disabled_producers_table dp_tbl(_self, _self);
                  dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
                      dis_prod.owner                   = it->owner;
@@ -188,12 +189,13 @@ namespace ultrainiosystem {
                      dis_prod.location                = 0;
                      dis_prod.last_operate_blocknum   = it->last_operate_blocknum;
                      dis_prod.delegated_cons_blocknum = curblocknum;
-                     dis_prod.claim_rewards_account   = 0;
+                     dis_prod.claim_rewards_account   = it->claim_rewards_account;
                  });
                  remove_from_chain(briefprod->location, receiver);
                  _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                      producer_brf.in_disable = true;
                  });
+                 _producers.erase(it);
              }
          }
       }
@@ -376,10 +378,8 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
             producers_table _producers(_self, briefprod->location);
             auto prod = _producers.find(receiver);
             ultrainio_assert( (prod != _producers.end()), "Producer is not found in its location" );
-            if (prod->is_enabled) { // undelegate cons for disabled producer is fine.
-                ultrainio_assert(get_enable_producers_number() > _gstate.min_committee_member_number,
-                             "The number of committee member is too small, undelegatecons suspended for now");
-            }
+            ultrainio_assert(get_enable_producers_number() > _gstate.min_committee_member_number,
+                        "The number of committee member is too small, undelegatecons suspended for now");
         }
         change_cons(from, receiver, asset(-1));
     } // undelegatecons

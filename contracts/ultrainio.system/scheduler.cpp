@@ -40,7 +40,7 @@ namespace ultrainiosystem {
         producers_table _producers(_self, subchain);
         auto propos = _producers.find(current_sender());
 
-        ultrainio_assert( propos != _producers.end() && propos->is_enabled && propos->location == subchain, "enabled producer not found this proposer" );
+        ultrainio_assert( propos != _producers.end() && propos->location == subchain, "enabled producer not found this proposer" );
         auto checkBlockNum = [&](uint64_t  bn) -> bool {
             return (bn%default_worldstate_interval) == 0;
         };
@@ -60,7 +60,7 @@ namespace ultrainiosystem {
 
             uint32_t  pro_cnt = 0;
             for(auto itr = _producers.begin(); itr != _producers.end(); itr++) {
-                if(itr->is_enabled && itr->location == subchain) {
+                if( itr->location == subchain ) {
                     pro_cnt++;
                 }
             }

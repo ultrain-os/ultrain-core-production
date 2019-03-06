@@ -107,17 +107,15 @@ namespace ultrainiosystem {
    };
 
    struct producer_info : public disabled_producer {
-      bool                  is_enabled = false;
       uint64_t              unpaid_balance = 0;
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
       ultrainio::extensions_type           table_extension;
 
       uint64_t primary_key()const { return owner; }
-      void     set_disabled()       { producer_key = std::string(); bls_key = std::string(); is_enabled = false; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, disabled_producer, (is_enabled)
+      ULTRAINLIB_SERIALIZE_DERIVED( producer_info, disabled_producer,
                         (unpaid_balance)(vote_number)(last_vote_blocknum)(table_extension) )
    };
 
@@ -390,6 +388,7 @@ namespace ultrainiosystem {
 
          //defined in reward.cpp
          void reportblocknumber( uint64_t chain_name, uint64_t chain_type, account_name producer, uint64_t number);
+         void claimrewardtoaccount(account_name rewardaccount, asset balance);
 
          //defined in scheduler.cpp
          void add_to_chain(uint64_t chain_name, const producer_info& producer);

@@ -128,4 +128,16 @@ namespace ultrainiosystem {
       rewardtrans.send( trxid, _self, true );
       print("distributreward currenttime:",current_time()," trxid:",trxid);
    }
+
+   void system_contract::claimrewardtoaccount(account_name rewardaccount, asset balance){
+      uint64_t pay_account = N(utrio.fee);
+      asset fee_tokens = ultrainio::token(N(utrio.token)).get_balance( pay_account,symbol_type(CORE_SYMBOL).name());
+      print("\nclaimrewards balance:",balance," fee_tokens:",fee_tokens.amount,"\n");
+      if(fee_tokens < balance){
+         INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
+                                                      {pay_account, (balance - fee_tokens), std::string("issue tokens for claimrewards")} );
+      }
+      INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
+                                                   { pay_account, rewardaccount, balance, std::string("producer block pay") } );
+   }
 } //namespace ultrainiosystem

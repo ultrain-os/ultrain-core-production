@@ -276,7 +276,6 @@ namespace ultrainio {
         params.lower_bound="";
         params.show_chain_num = chainNum;
         params.is_filter_chain = true;
-        params.filter_enabled = true;
         try {
             auto result = ro_api.get_producers(params);
             if(!result.rows.empty()) {

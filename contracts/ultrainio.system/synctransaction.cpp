@@ -46,7 +46,6 @@ namespace ultrainiosystem {
       mklp.tx_bytes = tx_bytes;
       std::string merkle_mroot = checksum256_to_string( block_ite->transaction_mroot.hash, sizeof(block_ite->transaction_mroot.hash));
       bool r = mklp.verify(merkle_mroot);
-      print("synctransfer merkle_mroot:",merkle_mroot, " block_number:", block_number);
       ultrainio_assert(r, "syncTransfer failed: verify merkle proof failed.");
 
       transaction tx = mklp.recover_transaction();
@@ -69,14 +68,11 @@ namespace ultrainiosystem {
             ultrainio_assert( cur_tokens >= tap.val, " utrio.bank account insufficient funds" );
             INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.bank), N(active)},
                { N(utrio.bank), tap.from, tap.val, std::string("sync transfer") } );
-            print("from : ", name{tap.from});
+            print("synctransfer  from : ", name{tap.from});
             print(", to: ", name{tap.to});
             print(", asset: "); tap.val.print();
             print(", memo: "); print(tap.memo);
-            return;
          }
       }
-
-      print("No transfer action found in transaction.");
    }
 } //namespace ultrainiosystem
