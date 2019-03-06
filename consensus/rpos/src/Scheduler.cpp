@@ -157,6 +157,7 @@ namespace ultrainio {
         uint32_t blockNum = getLastBlocknum();
         m_ba0Block = Block();
         m_ba0VerifiedBlkId = BlockIdType();
+        m_ba0FailedBlkId = BlockIdType();
         clearPreRunStatus();
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
@@ -1656,6 +1657,11 @@ namespace ultrainio {
            return true;
         }
 
+        if (m_ba0FailedBlkId == id) {
+           ilog("Block ${blk} has been failed before", ("blk", id));
+           return false;
+        }
+
         chain.abort_block();
 
         ilog("---- Scheduler::verifyBa0Block with trx number ${count}",
@@ -1704,6 +1710,7 @@ namespace ultrainio {
                 if (i % 100 == 0 &&
                     (fc::time_point::now() - start_timestamp) > fc::seconds(5)) {
                     ilog("----- voter code exec exceeds the max allowed time, break");
+                    m_ba0FailedBlkId = id;
                     chain.abort_block();
                     return false;
                 }
@@ -1719,6 +1726,7 @@ namespace ultrainio {
                            "Verify Ba0 block not generating expected transaction_mroot");
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
+            m_ba0FailedBlkId = id;
             chain.abort_block();
             return false;
         }

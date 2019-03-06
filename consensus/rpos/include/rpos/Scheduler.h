@@ -241,6 +241,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrain
         // data member
         Block m_ba0Block;
         BlockIdType m_ba0VerifiedBlkId = BlockIdType();
+        BlockIdType m_ba0FailedBlkId = BlockIdType();
         bool m_voterPreRunBa0InProgress = false;
         int m_currentPreRunBa0TrxIndex = -1;
         int m_initTrxCount = 0;
