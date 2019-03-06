@@ -1165,7 +1165,10 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    for(auto i = 0; i < scopes.size(); ++i) {
        const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), scopes[i], N(producers)));
        const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), scopes[i], N(producers) | secondary_index_num));
-       ULTRAIN_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
+       if(table_id == nullptr || secondary_table_id == nullptr) {
+           ULTRAIN_ASSERT(scopes[i] != master_chain_name, chain::contract_table_query_exception, "Missing master producers table");
+           continue;
+       }
 
        const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
        decltype(table_id->id) next_tid(table_id->id._id + 1);
