@@ -409,7 +409,7 @@ namespace ultrainiosystem {
                                  uint64_t chain_type,
                                  account_name producer,
                                  uint64_t number);
-         void claimrewardtoaccount(account_name rewardaccount, asset balance);
+         void claim_reward_to_account(account_name rewardaccount, asset balance);
          void distributreward();
 
 

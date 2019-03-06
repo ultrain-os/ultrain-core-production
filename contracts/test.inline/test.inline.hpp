@@ -1,6 +1,5 @@
 #include <ultrainiolib/ultrainio.hpp>
 #include <ultrainiolib/privileged.h>
-#include <ultrainiolib/producer_schedule.hpp>
 
 namespace ultrainio {
 

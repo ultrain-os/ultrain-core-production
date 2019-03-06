@@ -20,7 +20,6 @@ namespace ultrainiosystem {
     _pendingres( _self, _self ),
     _briefproducers(_self,_self),
     _schedsetting(_self, _self) {
-      //print( "construct system\n" );
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
    }
 
@@ -30,19 +29,16 @@ namespace ultrainiosystem {
       return dp;
    }
 
-
    system_contract::~system_contract() {
-      //print( "destruct system\n" );
       _global.set( _gstate );
-      //ultrainio_exit(0);
    }
 
    void system_contract::setsysparams( const ultrainio::ultrainio_system_params& params) {
         require_auth( _self );
-        if(params.chain_type == 0) //master chain
-        {
+        if (params.chain_type == 0) { //master chain
             _gstate.max_ram_size = params.max_ram_size;
-            ultrainio_assert( params.max_ram_size > _gstate.total_ram_bytes_used, "attempt to set max below reserved" );
+            ultrainio_assert( params.max_ram_size > _gstate.total_ram_bytes_used,
+                              "attempt to set max below reserved" );
             _gstate.min_activated_stake = params.min_activated_stake;
             _gstate.min_committee_member_number = params.min_committee_member_number;
             if(params.block_reward_vec.size() > 0){
@@ -53,9 +49,9 @@ namespace ultrainiosystem {
             _gstate.chain_name = params.chain_name;
             _gstate.max_resources_number = params.max_resources_number;
             _global.set( _gstate );
-        }else {
+        } else {
             auto ite_chain = _subchains.find(params.chain_name);
-            ultrainio_assert(ite_chain != _subchains.end(), "this chian is not existed");
+            ultrainio_assert(ite_chain != _subchains.end(), "this chian does not exist");
             _subchains.modify(ite_chain, [&](subchain& info) {
                 info.global_resource.max_ram_size = params.max_ram_size;
                 info.global_resource.max_resources_number = params.max_resources_number;
@@ -75,6 +71,7 @@ namespace ultrainiosystem {
       set_privileged( account, ispriv );
    }
 
+   // TODO: consolidate with unregprod()
    void system_contract::rmvproducer( account_name producer ) {
       require_auth( _self );
       auto briefprod = _briefproducers.find(producer);
@@ -87,21 +84,13 @@ namespace ultrainiosystem {
 
       disabled_producers_table dp_tbl(_self, _self);
       dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
-         dis_prod.owner                   = prod->owner;
-         dis_prod.producer_key            = prod->producer_key;
-         dis_prod.bls_key                 = prod->bls_key;
-         dis_prod.total_cons_staked       = prod->total_cons_staked;
-         dis_prod.url                     = prod->url;
-         dis_prod.total_produce_block     = prod->total_produce_block;
-         dis_prod.location                = prod->location;
-         dis_prod.last_operate_blocknum   = prod->last_operate_blocknum;
-         dis_prod.delegated_cons_blocknum = prod->delegated_cons_blocknum;
-         dis_prod.claim_rewards_account   = prod->claim_rewards_account;
+          dis_prod = *prod;
+
       });
       remove_from_chain(briefprod->location, producer);
       //pay unpaid_balance
-      if(prod->unpaid_balance > 0) {
-         claimrewardtoaccount(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
+      if(prod->unpaid_balance > 0 && _gstate.is_master_chain()) {
+         claim_reward_to_account(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
       }
       _producers.erase(prod);
    }

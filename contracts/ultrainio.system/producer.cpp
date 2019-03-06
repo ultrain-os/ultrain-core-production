@@ -126,8 +126,8 @@ namespace ultrainiosystem {
       });
       remove_from_chain(briefprod->location, producer);
       //pay unpaid_balance
-      if(prod->unpaid_balance > 0) {
-         claimrewardtoaccount(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
+      if(prod->unpaid_balance > 0 && _gstate.is_master_chain()) {
+         claim_reward_to_account(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
       }
       _producers.erase(prod);
 /*
