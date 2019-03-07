@@ -1586,7 +1586,8 @@ connection::connection(string endpoint, msg_priority pri)
                      ilog ("checking max client, visitors = ${v} num clients ${n}",("v",visitors)("n",num_clients));
                      num_clients = visitors;
                   }
-                  if( from_addr < max_nodes_per_host && (max_client_count == 0 || num_clients < max_client_count )) {
+                  if( (from_addr < max_nodes_per_host && (max_client_count == 0 || num_clients < max_client_count ))
+                      || std::find(udp_seed_ip.begin(), udp_seed_ip.end(), paddr.to_string()) != udp_seed_ip.end() ) { // always accept seed connection
                      ++num_clients;
                      connection_ptr c = std::make_shared<connection>(socket, p);
                      connections.insert( c );
@@ -2475,7 +2476,11 @@ connection::connection(string endpoint, msg_priority pri)
                it = connections.erase(it);
                continue;
             } else {
-               (*it)->retry_connect_count++;
+               boost::system::error_code ec;
+               std::string addr{(*it)->socket->remote_endpoint(ec).address().to_string()};
+               if (std::find(udp_seed_ip.begin(), udp_seed_ip.end(), addr) == udp_seed_ip.end()) { // skip the addr of seeds, so always reconnect seeds
+                  (*it)->retry_connect_count++;
+               }
                connect(*it);
             }
          }
