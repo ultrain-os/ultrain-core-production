@@ -162,6 +162,14 @@ namespace ultrainiosystem {
        uint64_t  primary_key()const { return block_num; }
        ULTRAINLIB_SERIALIZE( subchain_ws_hash , (block_num)(hash_v)(accounts)(table_extension) )
    };
+
+   struct master_chain_info {
+      account_name            owner;
+      std::vector<role_base>  master_prods;
+      uint64_t                block_height = 0;
+      auto primary_key()const { return owner; }
+      ULTRAINLIB_SERIALIZE(master_chain_info, (owner)(master_prods)(block_height) )
+    };
    typedef ultrainio::multi_index<N(briefprod),producer_brief> producer_brief_table;
    typedef ultrainio::multi_index<N(pendingminer),pending_miner> pendingminers;
    typedef ultrainio::multi_index<N(pendingacc),pending_acc> pendingaccounts;
@@ -171,7 +179,7 @@ namespace ultrainiosystem {
 
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
    typedef ultrainio::multi_index< N(wshash), subchain_ws_hash>      subchain_hash_table;
-
+   typedef ultrainio::multi_index<N(masterinfos),master_chain_info> master_chain_infos;
    struct chaintype {
        uint64_t type_id;
        uint16_t stable_min_producers;
@@ -274,10 +282,9 @@ namespace ultrainiosystem {
       uint16_t             max_resources_number;
       uint32_t             newaccount_fee;
       uint64_t             chain_name;
-      std::vector<role_base> master_producers;
       uint64_t  primary_key()const { return chain_type; }
       ULTRAINLIB_SERIALIZE( ultrainio_system_params,(chain_type)(max_ram_size)(min_activated_stake)
-                            (min_committee_member_number)(block_reward_vec)(max_resources_number)(newaccount_fee)(chain_name)(master_producers) )
+                            (min_committee_member_number)(block_reward_vec)(max_resources_number)(newaccount_fee)(chain_name) )
    };
 
    struct resources_lease {
@@ -394,6 +401,7 @@ namespace ultrainiosystem {
 
          // functions defined in ultrainio.system.cpp
          void setsysparams( const ultrainio_system_params& params );
+         void setmasterchaininfo( const master_chain_info& chaininfo );
          void setparams( const ultrainio::blockchain_parameters& params );
          void setpriv( account_name account, uint8_t ispriv );
          void rmvproducer( account_name producer );

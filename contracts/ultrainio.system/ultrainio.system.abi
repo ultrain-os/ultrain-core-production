@@ -406,8 +406,15 @@
          {"name":"block_reward_vec",              "type":"block_reward[]"},
          {"name":"max_resources_number",           "type":"uint16"},
          {"name":"newaccount_fee",                 "type":"uint32"},
-         {"name":"chain_name",                     "type":"uint64"},
-         {"name":"master_producers",              "type":"role_base[]"}
+         {"name":"chain_name",                     "type":"uint64"}
+      ]
+    },{
+      "name": "master_chain_info",
+      "base": "",
+      "fields": [
+         {"name":"owner",                    "type":"account_name"},
+         {"name":"master_prods",             "type":"role_base[]"},
+         {"name":"block_height",             "type":"uint64"}
       ]
     },{
       "name": "ultrainio_global_state",
@@ -614,6 +621,12 @@
         {"name":"params",     "type":"ultrainio_system_params"}
       ]
     },{
+      "name": "setmasterchaininfo",
+      "base": "",
+      "fields": [
+        {"name":"chaininfo",     "type":"master_chain_info"}
+      ]
+    },{
       "name": "claimrewards",
       "base": "",
       "fields": [
@@ -775,6 +788,10 @@
    },{
       "name": "setsysparams",
       "type": "setsysparams",
+      "ricardian_contract": ""
+   },{
+      "name": "setmasterchaininfo",
+      "type": "setmasterchaininfo",
       "ricardian_contract": ""
    },{
       "name": "bidname",
@@ -966,6 +983,12 @@
     },{
       "name": "disableprods",
       "type": "disabled_producer",
+      "index_type": "i64",
+      "key_names": ["owner"],
+      "key_types": ["uint64"]
+    },{
+      "name": "masterinfos",
+      "type": "master_chain_info",
       "index_type": "i64",
       "key_names": ["owner"],
       "key_types": ["uint64"]

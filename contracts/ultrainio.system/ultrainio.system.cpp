@@ -48,14 +48,6 @@ namespace ultrainiosystem {
             _gstate.newaccount_fee = params.newaccount_fee;
             _gstate.chain_name = params.chain_name;
             _gstate.max_resources_number = params.max_resources_number;
-            disabled_producers_table dp_tbl(_self, N(masterprod));
-            for(auto const& masterprod: params.master_producers){
-                 dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
-                     dis_prod.owner                   = masterprod.owner;
-                     dis_prod.producer_key            = masterprod.producer_key;
-                     dis_prod.bls_key                 = masterprod.bls_key;
-                 });
-            }
             _global.set( _gstate );
         } else {
             auto ite_chain = _subchains.find(params.chain_name);
@@ -67,6 +59,13 @@ namespace ultrainiosystem {
         }
    }
 
+   void system_contract::setmasterchaininfo( const master_chain_info& chaininfo ){
+      require_auth( _self );
+      master_chain_infos masterinfos(_self, _self);
+      masterinfos.emplace( [&]( master_chain_info& info ) {
+         info = chaininfo;
+      });
+   }
    void system_contract::setparams( const ultrainio::blockchain_parameters& params ) {
       require_auth( N(ultrainio) );
       (ultrainio::blockchain_parameters&)(_gstate) = params;
@@ -528,7 +527,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
-     (setsysparams)(setparams)(setpriv)(votecommittee)(voteaccount)(voteresourcelease)
+     (setsysparams)(setmasterchaininfo)(setparams)(setpriv)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
      // producer.cpp

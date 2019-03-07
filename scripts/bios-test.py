@@ -168,16 +168,20 @@ def stepRegProducers():
     sleep(2)
     for a in rand_acc_lst:
         retry(args.clultrain + 'transfer %s utrio.rand \'2.0000 UGAS\' \'as candidate\' -p %s' % ( a, a))
+    #if args.subchain and args.subchain != '0' :
     masterproducerinfo = ""
-    for i in range(1,6):
-        masterproducerinfo += '{"owner":%s,"producer_key":"%s","bls_key":"%s"},' % (("master"+initaccount[i]), pk_list[i], bls_pk_list[i] )
+    for i in range(1, args.num_master_prods + 1):
+        masterproducerinfo += '{"owner":"%s","producer_key":"%s","bls_key":"%s"},' % (("master"+initaccount[i]), pk_list[i], bls_pk_list[i] )
     masterproducerinfo = masterproducerinfo[:-1]
+    retry(args.clultrain + ' push action ultrainio setmasterchaininfo \'{"chaininfo":{"owner": "ultrainio",\
+        "master_prods":[%s],"block_height":%s}}\' -p ultrainio ' % \
+        ( masterproducerinfo, args.num_master_block) )
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":%s,"master_producers":[%s]}}\' -p ultrainio ' % \
+        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":%s}}\' -p ultrainio ' % \
             (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
-            newaccount_fee, args.subchain, masterproducerinfo) )
+            newaccount_fee, args.subchain) )
     sleep(5)
 
 def stepCreateinitAccounts():
@@ -340,6 +344,8 @@ parser.add_argument('--log-path', metavar='', help="Path to log file", default='
 parser.add_argument('--symbol', metavar='', help="The utrio.system symbol", default='UGAS')
 parser.add_argument('--num-producers', metavar='', help="Number of producers to register", type=int, default=5, dest="num_producers")
 parser.add_argument('--non-producers', metavar='', help="Number of non-producers to create", type=int, default=1, dest="non_producers")
+parser.add_argument('--num-master-prods', metavar='', help="Number of master producers to register", type=int, default=5, dest="num_master_prods")
+parser.add_argument('--num-master-block', metavar='', help="Number of master chain block height ", type=int, default=0, dest="num_master_block")
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
 parser.add_argument('-p','--programpath', metavar='', help="set programpath params")
