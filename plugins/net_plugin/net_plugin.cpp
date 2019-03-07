@@ -2344,6 +2344,18 @@ connection::connection(string endpoint, msg_priority pri)
     {
         //TODO:P2P udp linkage p2p
         ilog("onNodeTableDropEven addr ${addr}",("addr",_n.address()));
+	boost::system::error_code ec;	
+	auto it = connections.begin();
+	while(it != connections.end())
+	{
+	    if((*it)->socket->remote_endpoint(ec).address().to_string() == _n.m_address)
+	    {
+		    close(*it);
+		    connections.erase(it);
+             }
+             ++it;
+	}
+
     }
     void net_plugin_impl::start_block_handler_timer( ) {
         block_handler_check->expires_from_now(block_handler_period);

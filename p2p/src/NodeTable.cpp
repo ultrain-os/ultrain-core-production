@@ -429,10 +429,15 @@ void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
 
 	m_nodes.erase(_n->m_id);
 	m_pknodes.erase(_n->m_id);
-	// notify host
+        auto sentPingBad = m_PingsBad.find(_n->m_id);
+        if(sentPingBad != m_PingsBad.end())
+	{
+		nodedropevent(_n->m_endpoint);
+	}
+        m_PingsBad.erase(_n->m_id);
+// notify host
 	ilog("p2p.nodes.drop id ${id} ep ${ep}",("id",_n->m_id)("ep",_n->m_endpoint.address()));
-	nodedropevent(_n->m_endpoint);
-    printallbucket();
+	printallbucket();
 }
 
 NodeTable::NodeBucket& NodeTable::bucket_UNSAFE(NodeEntry const* _n)
@@ -479,6 +484,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
     if(!isvalid)
     {
         elog("pong msg check fail:may not in whitelist or not a producer");
+        recordBadNode(pong.sourceid); 
         return ;
     }
     auto const& sourceId = pong.sourceid;
@@ -544,6 +550,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
     if(!isvalid)
     {
             elog("FindNode msg check fail:may not in whitelist or not a producer");
+            recordBadNode(in.fromID); 
             return ;
     }
     vector<shared_ptr<NodeEntry>> nearest = nearestNodeEntries(in.targetID);
@@ -626,6 +633,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     if(!isvalid)
     {
         elog("Neighbours msg check fail:may not in whitelist or not a producer");
+        recordBadNode(in.fromID); 
         return ;
     }
     NodeIPEndpoint from;
@@ -684,7 +692,8 @@ if(pingmsg.sourceid == fc::sha256())
     if(!isvalid)
     {
 	    elog("ping msg check fail:may not in whitelist or not a producer");
-	    return ;
+        recordBadNode(pingmsg.sourceid); 
+        return ;
     }
     if(pingmsg.sourceid != fc::sha256())
     {
@@ -727,7 +736,19 @@ if(pingmsg.sourceid == fc::sha256())
     m_socket->send_msg(p,(bi::udp::endpoint)p.destep);
     noteActiveNode(pingmsg.sourceid, from);
 }
+void NodeTable::recordBadNode(NodeID const& _id)
+{
+    auto sentPingBad = m_PingsBad.find(_id);
+    if(sentPingBad == m_PingsBad.end())
+    {
+        m_PingsBad[_id] = 1;
+    }else
+    {
+        int badtimes = sentPingBad->second;
+        m_PingsBad[_id] = badtimes +1 ;
+    }
 
+}
 void NodeTable::doDiscovery()
 {
     discover_timer->expires_from_now( discoverinterval);

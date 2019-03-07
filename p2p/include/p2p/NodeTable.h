@@ -190,6 +190,7 @@ private:
     std::array<NodeBucket, s_bins> m_state;                             ///< State of p2p node network.
 
     std::unordered_map<NodeID, NodeValidation> m_sentPings; 
+    std::unordered_map<NodeID, int> m_PingsBad; 
 
     std::unordered_map<bi::address, fc::time_point> m_pubkDiscoverPings;///< List of pending pings where node entry wasn't created due to unkown pubk.
 
@@ -198,6 +199,7 @@ private:
     vector<string> m_seeds;
     void requireSeeds(const std::vector <std::string> &seeds);
     bool isnodevalid(Node const& _node);
+    void recordBadNode(NodeID const& _id);
 }; // end of class NodeTable
 
 } // end of namespace p2p
