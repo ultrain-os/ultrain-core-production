@@ -21,7 +21,13 @@ namespace ultrainio {
         if (blockHeader.block_num() <= BlockHeader::num_from_id(m_latestConfirmedBlockId)) {
             return;
         }
+        // TODO sign check and previous check
         if (std::string(blockHeader.proposer) == std::string("genesis")) { // see rpos/Genesis.cpp
+            if (m_callback) {
+                m_confirmedList.push_back(blockHeader);
+                m_callback->onConfirmed(m_confirmedList);
+                clearConfirmedList();
+            }
             return;
         }
 
@@ -138,8 +144,10 @@ namespace ultrainio {
             epochEndPointItor++;
         }
 
-        if (m_confirmedList.size() > 0 && m_callback) {
-            m_callback->onConfirmed(m_confirmedList);
+        if (m_confirmedList.size() > 0) {
+            if (m_callback) {
+                m_callback->onConfirmed(m_confirmedList);
+            }
             clearConfirmedList();
         }
 
