@@ -1989,7 +1989,7 @@ connection::connection(string endpoint, msg_priority pri)
              {
              
 			      ilog("duplicate pk");
-			      go_away_message gam(duplicate);
+			      go_away_message gam(no_reason);
 			      gam.node_id = node_id;
 			      c->enqueue(gam);
 			      return;
