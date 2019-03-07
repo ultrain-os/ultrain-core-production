@@ -11,6 +11,11 @@ namespace ultrainio {
         return m_chainName;
     }
 
+    void LightClient::accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
+        accept(blockHeader);
+        confirm(blsVoterSet);
+    }
+
     void LightClient::accept(const BlockHeader& blockHeader) {
         std::cout << " LightClient::accept " << blockHeader.block_num() << " latest is " << BlockHeader::num_from_id(m_latestConfirmedBlockId) << std::endl;
         if (blockHeader.block_num() <= BlockHeader::num_from_id(m_latestConfirmedBlockId)) {
@@ -74,70 +79,76 @@ namespace ultrainio {
 
         if (ConfirmPoint::isConfirmPoint(blockHeader)) {
             ConfirmPoint confirmPoint(blockHeader);
-            BlockIdType blockId = confirmPoint.confirmedBlockId();
-            // TODO verify bls
-            // update confirmed list
-            m_latestConfirmedBlockId = blockId;
-            uint32_t confirmedBlockNum = BlockHeader::num_from_id(m_latestConfirmedBlockId);
-
-            // handle unconfirmed list
-            auto unconfirmItor = m_unconfirmedList.begin();
-            while (unconfirmItor != m_unconfirmedList.end()) {
-                if (blockId == unconfirmItor->id()) {
-                    auto t = unconfirmItor;
-                    unconfirmItor++;
-                    blockId = t->previous;
-                    m_confirmedList.push_front(*t);
-                    m_unconfirmedList.erase(t);
-                    continue;
-                }
-                unconfirmItor++;
-            }
-            // TODO punish
-            unconfirmItor = m_unconfirmedList.begin();
-            while (unconfirmItor != m_unconfirmedList.end()) {
-                if (unconfirmItor->block_num() <= confirmedBlockNum) {
-                    m_unconfirmedList.erase(unconfirmItor, m_unconfirmedList.end());
-                    break;
-                }
-                unconfirmItor++;
-            }
-
-            // handle unconfirmed CheckPoint list
-            auto checkPointItor = m_unconfirmedCheckPointList.begin();
-            while (checkPointItor != m_unconfirmedCheckPointList.end()) {
-                if (checkPointItor->blockNum() <= confirmedBlockNum) {
-                    m_unconfirmedCheckPointList.erase(checkPointItor, m_unconfirmedCheckPointList.end());
-                    break;
-                }
-                checkPointItor++;
-            }
-            if (m_unconfirmedCheckPointList.size() > 0
-                    && m_unconfirmedCheckPointList.back().blockHeader().previous == m_latestConfirmedBlockId) {
-                std::cout << "committee set blockNum : " << m_unconfirmedCheckPointList.back().blockNum() << std::endl;
-                workingCommitteeSet = m_unconfirmedCheckPointList.back().committeeSet();
-            }
-
-            // handle unconfirmed EpochEndPoint list
-            auto epochEndPointItor = m_unconfirmedEpochEndPointList.begin();
-            while (epochEndPointItor != m_unconfirmedEpochEndPointList.end()) {
-                if (epochEndPointItor->blockNum() <= confirmedBlockNum) {
-                    m_unconfirmedEpochEndPointList.erase(epochEndPointItor, m_unconfirmedEpochEndPointList.end());
-                    break;
-                }
-                epochEndPointItor++;
-            }
-
-            if (m_confirmedList.size() > 0 && m_callback) {
-                m_callback->onConfirmed(m_confirmedList);
-                clearConfirmedList();
-            }
-
-            std::cout << "unconfirmed BlockNum max : " << ((m_unconfirmedList.size() > 0) ? m_unconfirmedList.back().block_num() : -1) << std::endl;
-            std::cout << "unconfirmed BlockNum min : " << ((m_unconfirmedList.size() > 0) ? m_unconfirmedList.front().block_num() : -1) << std::endl;
-            std::cout << "unconfirmed CheckPoint size : " << m_unconfirmedCheckPointList.size() << std::endl;
-            std::cout << "unconfirmed EpochEndPoint size : " << m_unconfirmedEpochEndPointList.size() << std::endl;
+            confirm(confirmPoint.blsVoterSet());
         }
+    }
+
+    void LightClient::confirm(const BlsVoterSet& blsVoterSet) {
+        BlockIdType blockId = blsVoterSet.commonEchoMsg.blockId;
+        // TODO verify bls
+        // update confirmed list
+        m_latestConfirmedBlockId = blockId;
+        uint32_t confirmedBlockNum = BlockHeader::num_from_id(m_latestConfirmedBlockId);
+
+        // handle unconfirmed list
+        auto unconfirmItor = m_unconfirmedList.begin();
+        while (unconfirmItor != m_unconfirmedList.end()) {
+            if (blockId == unconfirmItor->id()) {
+                auto t = unconfirmItor;
+                unconfirmItor++;
+                blockId = t->previous;
+                m_confirmedList.push_front(*t);
+                m_unconfirmedList.erase(t);
+                continue;
+            }
+            unconfirmItor++;
+        }
+        // TODO punish
+        unconfirmItor = m_unconfirmedList.begin();
+        while (unconfirmItor != m_unconfirmedList.end()) {
+            if (unconfirmItor->block_num() <= confirmedBlockNum) {
+                m_unconfirmedList.erase(unconfirmItor, m_unconfirmedList.end());
+                break;
+            }
+            unconfirmItor++;
+        }
+
+        // handle unconfirmed CheckPoint list
+        auto checkPointItor = m_unconfirmedCheckPointList.begin();
+        while (checkPointItor != m_unconfirmedCheckPointList.end()) {
+            if (checkPointItor->blockNum() <= confirmedBlockNum) {
+                m_unconfirmedCheckPointList.erase(checkPointItor, m_unconfirmedCheckPointList.end());
+                break;
+            }
+            checkPointItor++;
+        }
+        if (m_unconfirmedCheckPointList.size() > 0
+            && m_unconfirmedCheckPointList.back().blockHeader().previous == m_latestConfirmedBlockId) {
+            std::cout << "committee set blockNum : " << m_unconfirmedCheckPointList.back().blockNum() << std::endl;
+            workingCommitteeSet = m_unconfirmedCheckPointList.back().committeeSet();
+        }
+
+        // handle unconfirmed EpochEndPoint list
+        auto epochEndPointItor = m_unconfirmedEpochEndPointList.begin();
+        while (epochEndPointItor != m_unconfirmedEpochEndPointList.end()) {
+            if (epochEndPointItor->blockNum() <= confirmedBlockNum) {
+                m_unconfirmedEpochEndPointList.erase(epochEndPointItor, m_unconfirmedEpochEndPointList.end());
+                break;
+            }
+            epochEndPointItor++;
+        }
+
+        if (m_confirmedList.size() > 0 && m_callback) {
+            m_callback->onConfirmed(m_confirmedList);
+            clearConfirmedList();
+        }
+
+        std::cout << "unconfirmed BlockNum max : "
+                  << ((m_unconfirmedList.size() > 0) ? m_unconfirmedList.back().block_num() : -1) << std::endl;
+        std::cout << "unconfirmed BlockNum min : "
+                  << ((m_unconfirmedList.size() > 0) ? m_unconfirmedList.front().block_num() : -1) << std::endl;
+        std::cout << "unconfirmed CheckPoint size : " << m_unconfirmedCheckPointList.size() << std::endl;
+        std::cout << "unconfirmed EpochEndPoint size : " << m_unconfirmedEpochEndPointList.size() << std::endl;
     }
 
     void LightClient::addCallback(std::shared_ptr<LightClientCallback> cb) {

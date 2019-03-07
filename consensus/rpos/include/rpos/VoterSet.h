@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <core/BlsVoterSet.h>
 #include <core/types.h>
-#include <lightclient/BlsVoterSet.h>
 
 namespace ultrainio {
     struct VoterSet {

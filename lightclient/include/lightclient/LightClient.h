@@ -17,10 +17,14 @@ namespace ultrainio {
 
         void accept(const BlockHeader& blockHeader);
 
+        void accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
+
         void addCallback(std::shared_ptr<LightClientCallback> cb);
 
     private:
         void clearConfirmedList();
+
+        void confirm(const BlsVoterSet& blsVoterSet);
 
         // chain name
         uint64_t m_chainName;

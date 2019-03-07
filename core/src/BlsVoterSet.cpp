@@ -1,4 +1,4 @@
-#include <lightclient/BlsVoterSet.h>
+#include <core/BlsVoterSet.h>
 
 namespace ultrainio {
     // BlsVoterSet

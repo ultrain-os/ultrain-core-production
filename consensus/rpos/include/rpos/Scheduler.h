@@ -11,11 +11,11 @@
 #include <ultrainio/chain/transaction_metadata.hpp>
 #include <ultrainio/chain/types.hpp>
 
+#include <core/BlsVoterSet.h>
 #include <core/Message.h>
 #include <core/types.h>
 #include <boost/asio/steady_timer.hpp>
 
-#include <lightclient/BlsVoterSet.h>
 #include <rpos/VoterSet.h>
 
 namespace ultrainio {

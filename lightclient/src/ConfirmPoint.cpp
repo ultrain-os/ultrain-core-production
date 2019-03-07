@@ -28,4 +28,8 @@ namespace ultrainio {
     BlockIdType ConfirmPoint::confirmedBlockId() const {
         return m_blsVoterSet.commonEchoMsg.blockId;
     }
+
+    const BlsVoterSet& ConfirmPoint::blsVoterSet() const {
+        return m_blsVoterSet;
+    }
 }

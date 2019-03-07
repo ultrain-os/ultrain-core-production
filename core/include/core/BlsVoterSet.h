@@ -34,3 +34,9 @@ namespace ultrainio {
         bool fromStringStream(std::stringstream&);
     };
 }
+
+#ifdef CONSENSUS_VRF
+FC_REFLECT( ultrainio::BlsVoterSet, (commonEchoMsg)(accountPool)(proofPool)(sigX))
+#else
+FC_REFLECT( ultrainio::BlsVoterSet, (commonEchoMsg)(accountPool)(sigX))
+#endif
