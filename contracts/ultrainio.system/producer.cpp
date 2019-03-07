@@ -151,12 +151,12 @@ namespace ultrainiosystem {
     }
 
    void system_contract::unregprod( const account_name producer ) {
-      require_auth( producer );
-      ultrainio_assert( get_enabled_producers_number() > _gstate.min_committee_member_number,
+      ultrainio_assert( _gstate.cur_committee_number > _gstate.min_committee_member_number,
                         "The number of committee member is too small, unregprod suspended for now");
       if (has_auth(_self)) {
          require_auth(_self);
       } else{
+         require_auth( producer );
          ultrainio_assert( _gstate.is_master_chain(), "only master chain allow unregprod" );
       }
       auto briefprod = _briefproducers.find(producer);
@@ -183,16 +183,11 @@ namespace ultrainiosystem {
           producer_brf.in_disable = true;
       });
       remove_from_chain(briefprod->location, producer);
-   }
-
-    inline uint32_t system_contract::get_enabled_producers_number(){
-      uint32_t  enabled_prod_num = 0;
-      producers_table _producers(_self, master_chain_name);
-      for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
-         ++enabled_prod_num;
+      //pay unpaid_balance
+      if(prod->unpaid_balance > 0 && _gstate.is_master_chain()) {
+         claim_reward_to_account(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
       }
-      return enabled_prod_num;
-    }
+   }
 
     std::vector<uint64_t> system_contract::get_all_chainname() {
         std::vector<uint64_t> scopes;

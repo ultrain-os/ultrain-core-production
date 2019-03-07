@@ -1120,8 +1120,9 @@ std::vector<read_only::get_user_bulletin_result> read_only::get_user_bulletin(co
     return result;
 }
 
-static fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms ) {
+static fc::variant get_global_row( const database& db, const abi_def& abi, const fc::microseconds& abi_serializer_max_time_ms ) {
    const auto table_type = get_table_type(abi, N(global));
+   const abi_serializer abis{ abi, abi_serializer_max_time_ms };
    ULTRAIN_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
    const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), N(ultrainio), N(global)));
@@ -1190,7 +1191,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
                result.rows.emplace_back(fc::variant(data));
        });
    }
-   auto gstate = get_global_row(d, abi, abis, abi_serializer_max_time);
+   auto gstate = get_global_row(d, abi, abi_serializer_max_time);
    ilog("global ${gl}", ("gl", gstate));
 
    result.min_stake_thresh = gstate["min_activated_stake"].as_int64();
@@ -1245,24 +1246,19 @@ read_only::get_random_result read_only::get_random(const read_only::get_random_p
 }
 
 bool read_only::is_genesis_finished() const{
-    static bool genesis_finished {};
-    if (!genesis_finished){
-        try {
-            get_producers_params params;
-            params.json=true;
-            params.lower_bound="";
-            params.show_chain_num = 0;
-            params.is_filter_chain = true;
-            params.all_chain = true;
-            params.chain_name = 0;
-            auto result = get_producers(params);
-            genesis_finished = result.rows.size()>=result.min_committee_member_number? true: false;
-        }
-        catch (fc::exception& e) {
-            ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
-        }
+    const abi_def abi = ultrainio::chain_apis::get_abi(db, N(ultrainio));
+    const auto& d = db.db();
+    try {
+        auto gstate = get_global_row(d, abi, abi_serializer_max_time);
+        ilog("global ${gl}", ("gl", gstate));
+        auto committee_num = gstate["cur_committee_number"].as_uint64();
+        auto min_committee_num = gstate["min_committee_member_number"].as_uint64();
+        return committee_num >= min_committee_num;
     }
-    return genesis_finished;
+    catch (fc::exception& e) {
+        ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
+        return false;
+    }
 }
 
 template<typename Api>

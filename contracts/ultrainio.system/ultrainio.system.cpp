@@ -71,30 +71,6 @@ namespace ultrainiosystem {
       set_privileged( account, ispriv );
    }
 
-   // TODO: consolidate with unregprod()
-   void system_contract::rmvproducer( account_name producer ) {
-      require_auth( _self );
-      auto briefprod = _briefproducers.find(producer);
-      ultrainio_assert(briefprod != _briefproducers.end(), "this account is not a producer");
-      ultrainio_assert(!briefprod->in_disable, "this producer has been removed before");
-
-      producers_table _producers(_self, briefprod->location);
-      const auto& prod = _producers.find( producer );
-      ultrainio_assert(prod != _producers.end(), "producer is not found in its location");
-
-      disabled_producers_table dp_tbl(_self, _self);
-      dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
-          dis_prod = *prod;
-
-      });
-      remove_from_chain(briefprod->location, producer);
-      //pay unpaid_balance
-      if(prod->unpaid_balance > 0 && _gstate.is_master_chain()) {
-         claim_reward_to_account(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
-      }
-      _producers.erase(prod);
-   }
-
    void system_contract::checkvotefrequency(ultrainiosystem::producers_table& prod_tbl, ultrainiosystem::producers_table::const_iterator propos){
       uint64_t cur_block_num = (uint64_t)head_block_number() + 1;
       if((cur_block_num - propos->last_vote_blocknum) < 60){
@@ -157,7 +133,7 @@ namespace ultrainiosystem {
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
-      uint32_t  enableprodnum = get_enabled_producers_number();
+      uint32_t  enableprodnum = _gstate.cur_committee_number;
       ultrainio_assert( enableprodnum > _gstate.min_committee_member_number || proposeminer[0].adddel_miner, " The number of committees is about to be smaller than the minimum number and therefore cannot be voted away" );
       print("votecommittee enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeminer.size(),"\n");
       for(auto minerinfo : proposeminer){
@@ -281,7 +257,7 @@ void system_contract::voteaccount() {
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
-      uint32_t  enableprodnum = get_enabled_producers_number();
+      uint32_t  enableprodnum = _gstate.cur_committee_number;
       print("voteaccount enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeaccount.size(),"\n");
       for(auto accinfo : proposeaccount){
          ultrainio_assert( !is_account( accinfo.account ), "vote create account already exist");
@@ -364,7 +340,7 @@ void system_contract::voteresourcelease() {
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
-      uint32_t  enableprodnum = get_enabled_producers_number();
+      uint32_t  enableprodnum = _gstate.cur_committee_number;
       print("voteresourcelease enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," proposeresource_info size:",proposeresource.size(),"\n");
       for(auto resinfo : proposeresource){
          ultrainio_assert( is_account( resinfo.account ), "vote resoucelease account not exist");
@@ -544,7 +520,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
-     (setsysparams)(setparams)(setpriv)(rmvproducer)(votecommittee)(voteaccount)(voteresourcelease)
+     (setsysparams)(setparams)(setpriv)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
      // producer.cpp

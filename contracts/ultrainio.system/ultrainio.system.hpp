@@ -49,6 +49,7 @@ namespace ultrainiosystem {
       uint16_t             total_resources_used_number = 0;
       uint32_t             newaccount_fee = 2000;
       uint64_t             chain_name = 0;
+      uint32_t             cur_committee_number = 0;
       ultrainio::extensions_type           table_extension;
 
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,
@@ -56,7 +57,7 @@ namespace ultrainiosystem {
                                    (total_ram_bytes_used)(start_block)(block_reward_vec)
                                    (pervote_bucket)(perblock_bucket)(total_unpaid_balance)
                                    (total_activated_stake)(last_name_close)(max_resources_number)
-                                   (total_resources_used_number)(newaccount_fee)(chain_name)(table_extension) )
+                                   (total_resources_used_number)(newaccount_fee)(chain_name)(cur_committee_number)(table_extension) )
    };
 
    struct chain_resource {
@@ -436,7 +437,6 @@ namespace ultrainiosystem {
 
 
          //defined in producer.cpp
-         uint32_t get_enabled_producers_number();
          std::vector<uint64_t> get_all_chainname();
    };
 

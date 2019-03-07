@@ -180,7 +180,7 @@ namespace ultrainiosystem {
                  });
              }
              else {
-                 if(it->unpaid_balance > 0){
+                 if(it->unpaid_balance > 0 && _gstate.is_master_chain()){
                      claim_reward_to_account(it->claim_rewards_account, asset((int64_t)it->unpaid_balance));
                  }
                  disabled_producers_table dp_tbl(_self, _self);
@@ -381,7 +381,7 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
             producers_table _producers(_self, briefprod->location);
             auto prod = _producers.find(receiver);
             ultrainio_assert( (prod != _producers.end()), "Producer is not found in its location" );
-            ultrainio_assert(get_enabled_producers_number() > _gstate.min_committee_member_number,
+            ultrainio_assert(_gstate.cur_committee_number > _gstate.min_committee_member_number,
                         "The number of committee member is too small, undelegatecons suspended for now");
         }
         change_cons(from, receiver, asset(-1));

@@ -498,6 +498,8 @@ namespace ultrainiosystem {
                 info.changing_info.new_added_members.push_back(temp_prod);
                 info.committee_sum += 1;
             });
+        }else{
+           _gstate.cur_committee_number++;
         }
 
         producers_table _producer_chain(_self, chain_name);
@@ -532,6 +534,9 @@ namespace ultrainiosystem {
                 info.changing_info.removed_members.push_back(temp_prod);
                 info.committee_sum -= 1;
             });
+        }else{
+           ultrainio_assert(_gstate.cur_committee_number > 0, "local chain cur_committee_number is abnormal");
+           _gstate.cur_committee_number--;
         }
         _producer_chain.erase(prod);
     }

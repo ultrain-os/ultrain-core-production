@@ -427,6 +427,7 @@
          {"name":"total_resources_used_number",   "type":"uint16"},
          {"name":"newaccount_fee",                "type":"uint32"},
          {"name":"chain_name",                    "type":"uint64"},
+         {"name":"cur_committee_number",           "type":"uint32"},
          {"name": "table_extension",              "type": "extension[]"}
       ]
     },{
@@ -622,12 +623,6 @@
       "fields": [
         {"name":"account",    "type":"account_name"},
         {"name":"is_priv",    "type":"int8"}
-      ]
-    },{
-      "name": "rmvproducer",
-      "base": "",
-      "fields": [
-        {"name":"producer", "type":"account_name"}
       ]
     },{
       "name": "set_account_limits",
@@ -831,10 +826,6 @@
    },{
       "name": "setpriv",
       "type": "setpriv",
-      "ricardian_contract": ""
-   },{
-      "name": "rmvproducer",
-      "type": "rmvproducer",
       "ricardian_contract": ""
    },{
       "name": "setalimits",
