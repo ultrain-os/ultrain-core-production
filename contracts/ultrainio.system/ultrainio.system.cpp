@@ -472,6 +472,12 @@ void system_contract::voteresourcelease() {
       uint64_t endtime = current_time();
       print("cleanvotetable expend time:",(endtime - starttime));
    }
+
+    bool system_contract::accept_block_header(uint64_t chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_len) {
+      bytes header_bytes = pack(header);
+      return lightclient_accept_block_header(chain_name, header_bytes.data(), header_bytes.size(), confirmed_bh_hash, hash_len);
+    }
+
    /**
     *  Called after a new account is created. This code enforces resource-limits rules
     *  for new accounts as well as new account naming conventions.

@@ -330,6 +330,8 @@ namespace ultrainiosystem {
          producer_brief_table     _briefproducers;
          sched_set_singleton      _schedsetting;
 
+         bool accept_block_header(uint64_t chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_size);
+
       public:
          system_contract( account_name s );
          ~system_contract();
@@ -473,7 +475,7 @@ namespace ultrainiosystem {
     void head_block_id(char* buffer, uint32_t buffer_size);
     void empower_to_chain(account_name user, uint64_t chain_name);
     bool is_empowered(account_name user, uint64_t chain_name);
-    bool lightclient_accept_block_header(uint64_t chain_name, const char* bh, int bh_len, char* confirmed_bh_buffer, int buffer_len);
+    bool lightclient_accept_block_header(uint64_t chain_name, const char* bh, size_t bh_size, char* confirmed_bh_buffer, size_t buffer_size);
 
    #ifdef __cplusplus
    }

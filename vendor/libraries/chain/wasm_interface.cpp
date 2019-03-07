@@ -2117,7 +2117,7 @@ class multi_chain_api : public context_aware_api {
           return false;
       }
 
-      bool lightclient_accept_block_header(uint64_t chain_name, null_terminated_ptr bh, int bh_size, array_ptr<char> confirmed_bh_buffer, size_t buffer_len) {
+      bool lightclient_accept_block_header(uint64_t chain_name, array_ptr<char> bh, size_t bh_size, array_ptr<char> confirmed_bh_buffer, size_t buffer_len) {
           return true;
       }
 };
