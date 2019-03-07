@@ -2126,16 +2126,16 @@ vector<digest_type> controller::merkle_proof_of(const uint32_t& block_number, co
    return merkle_proof;
 }
 
-static void print_log(const vector<digest_type>& merkle_proof, const vector<char>& trx_receipt_bytes) {
-   std::cout << "controller::verify_merkle_proof, merkle_proof: " << std::endl;
-   for (const auto& dg : merkle_proof) {
-      std::cout <<"\t" << string(dg) << std::endl;
-   }
-
-   std::cout << "controller::verify_merkle_proof, trx_receipt_bytes.length = "<< trx_receipt_bytes.size() << std::endl;
-   for (auto c: trx_receipt_bytes) std::cout << std::hex << (int(c) & 0xff) << " ";
-   std::cout << std::endl;
-}
+// static void print_log(const vector<digest_type>& merkle_proof, const vector<char>& trx_receipt_bytes) {
+//    std::cout << "controller::verify_merkle_proof, merkle_proof: " << std::endl;
+//    for (const auto& dg : merkle_proof) {
+//       std::cout <<"\t" << string(dg) << std::endl;
+//    }
+//
+//    std::cout << "controller::verify_merkle_proof, trx_receipt_bytes.length = "<< trx_receipt_bytes.size() << std::endl;
+//    for (auto c: trx_receipt_bytes) std::cout << std::hex << (int(c) & 0xff) << " ";
+//    std::cout << std::endl;
+// }
 
 bool controller::verify_merkle_proof(const vector<digest_type>& merkle_proof, const digest_type& transaction_mroot, const vector<char>& trx_receipt_bytes) const {
 
