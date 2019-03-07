@@ -449,7 +449,7 @@ namespace ultrainiosystem {
     void head_block_id(char* buffer, uint32_t buffer_size);
     void empower_to_chain(account_name user, uint64_t chain_name);
     bool is_empowered(account_name user, uint64_t chain_name);
-    int verify_header_extensions(uint64_t chain_name, int ext_key, const char* ext_value, size_t value_len);
+    bool lightclient_accept_block_header(uint64_t chain_name, const char* bh, int bh_len, char* confirmed_bh_buffer, int buffer_len);
 
    #ifdef __cplusplus
    }

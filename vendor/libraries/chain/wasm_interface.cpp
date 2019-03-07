@@ -2117,9 +2117,8 @@ class multi_chain_api : public context_aware_api {
           return false;
       }
 
-      int verify_header_extensions(uint64_t chain_name, int ext_key, array_ptr<const char> ext_value, size_t value_len) {
-          std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
-          return cb->on_header_extensions_verify(chain_name, ext_key, std::string(ext_value, value_len));
+      bool lightclient_accept_block_header(uint64_t chain_name, null_terminated_ptr bh, int bh_size, array_ptr<char> confirmed_bh_buffer, size_t buffer_len) {
+          return true;
       }
 };
 
@@ -2444,7 +2443,7 @@ REGISTER_INTRINSICS(big_int_api,
 REGISTER_INTRINSICS(multi_chain_api,
       (empower_to_chain,    void(int64_t, int64_t))
       (is_empowered,   int(int64_t, int64_t))
-      (verify_header_extensions, int(int64_t, int, int, int))
+      (lightclient_accept_block_header, int(int64_t, int, int, int, int))
 );
 
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {

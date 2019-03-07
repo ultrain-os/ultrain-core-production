@@ -19,9 +19,9 @@ namespace ultrainio {
 
         void addCallback(std::shared_ptr<LightClientCallback> cb);
 
-        void clear();
-
     private:
+        void clearConfirmedList();
+
         // chain name
         uint64_t m_chainName;
 

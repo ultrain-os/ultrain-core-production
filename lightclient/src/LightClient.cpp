@@ -130,7 +130,7 @@ namespace ultrainio {
 
             if (m_confirmedList.size() > 0 && m_callback) {
                 m_callback->onConfirmed(m_confirmedList);
-                clear();
+                clearConfirmedList();
             }
 
             std::cout << "unconfirmed BlockNum max : " << ((m_unconfirmedList.size() > 0) ? m_unconfirmedList.back().block_num() : -1) << std::endl;
@@ -144,7 +144,7 @@ namespace ultrainio {
         m_callback = cb;
     }
 
-    void LightClient::clear() {
+    void LightClient::clearConfirmedList() {
         m_confirmedList.clear();
     }
 }
