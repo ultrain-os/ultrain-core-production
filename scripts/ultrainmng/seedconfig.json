@@ -1,8 +1,22 @@
 [
   {
+    "chainName": "0",
+    "seedIp": [
+      "172.17.0.15",
+      "172.17.0.16"
+    ],
+    "peerKeys": [
+      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
+      "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU"
+    ],
+    "subchainHttpEndpoint": "http://172.16.10.5:9999",
+    "monitorServerEndpoint": "http://172.16.10.5:8078"
+  },
+  {
     "chainName": "11",
     "seedIp": [
-      "172.17.0.17"
+      "172.17.0.24",
+      "172.17.0.25"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
@@ -14,7 +28,8 @@
   {
     "chainName": "12",
     "seedIp": [
-      "172.17.0.24"
+      "172.17.0.35",
+      "172.17.0.36"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",

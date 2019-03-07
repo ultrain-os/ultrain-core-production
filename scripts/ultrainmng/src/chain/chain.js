@@ -4,7 +4,7 @@ var logger = require("../config/logConfig").getLogger("Chain");
 var loggerChainChanging = require("../config/logConfig").getLogger("ChainChanging");
 var chainConfig = require("./chainConfig")
 var chainApi = require("./chainApi")
-var timeConstats = require("../common/constant/constants").timeConstats
+var constants = require("../common/constant/constants")
 var chainNameConstants = require("../common/constant/constants").chainNameConstants
 var contractConstants = require("../common/constant/constants").contractConstants
 var tableConstants = require("../common/constant/constants").tableConstants
@@ -91,7 +91,7 @@ async function syncUser() {
     logger.info("sync user start");
     if (syncChainData == true) {
         //获取新增用户bulletin-并发送投票到子链
-        let userBulletinList = await getUserBulletin(chainConfig.u3, chainConfig.localChainName);
+        let userBulletinList = await getUserBulletin(chainConfig.config, chainConfig.localChainName);
         logger.info("user userBulletinList:", userBulletinList);
 
         if (utils.isNullList(userBulletinList)) {
@@ -136,7 +136,7 @@ async function syncUser() {
             })
 
             //检查子链是否已经有改账户
-            if (utils.isNull(hitFlag) && utils.isNull(await chainApi.getAccount(chainConfig.configSub, newUser.owner))) {
+            if (utils.isNull(hitFlag) && utils.isNull(await chainApi.getAccount(constants.LOCAL_NOD_URL, newUser.owner))) {
                 logger.info("account(" + newUser.owner + ") is not ready,need vote..");
 
                 //查询是否已经投过票
@@ -217,7 +217,7 @@ async function syncBlock() {
 
             logger.info("start to push block..");
             let blockNum = 0;
-            let subchainBlockNumResult = await chainConfig.u3.getSubchainBlockNum({"chain_name": chainConfig.localChainName.toString()});
+            let subchainBlockNumResult = await chainApi.getSubchainBlockNum(chainConfig.config,chainConfig.localChainName);
             logger.info("mainchain block num:",subchainBlockNumResult);
 
             let confirmed_block = subchainBlockNumResult.confirmed_block;
@@ -339,15 +339,17 @@ async function syncBlock() {
  * @returns {Promise<void>}
  */
 async function syncCommitee() {
+
+    try {
     logger.info("syncCommitee start");
     //获取本地prodcuers信息
-    let producerList = await chainApi.getProducerLists(chainConfig.configSub);
+    let producerList = await chainApi.getProducerLists(constants.LOCAL_NOD_URL);
     logger.info("subchain producers: ", producerList);
     if (utils.isNotNull(producerList)) {
         localProducers = producerList;
     }
 
-    let remoteProducers = await chainConfig.u3.getSubchainCommittee({"chain_name": chainConfig.localChainName.toString()});
+    let remoteProducers = await chainApi.getSubchainCommittee(chainConfig.config,chainConfig.localChainName);
     logger.info("subchain commitee from mainchain: ", remoteProducers);
 
     //有变化的成员列表（包括删除/新增的）
@@ -369,9 +371,9 @@ async function syncCommitee() {
             let params = [];
             params.push(changeMembers[i]);
             //判断需要投票的委员会的账号是否已在子链上
-            if (utils.isNull(await chainApi.getAccount(chainConfig.configSub, committeeUser))) {
+            if (utils.isNull(await chainApi.getAccount(constants.LOCAL_NOD_URL, committeeUser))) {
                 logger.info("account(" + committeeUser + ") is not exist in subchain,should add him first");
-                let account = await chainApi.getAccount(chainConfig.config, committeeUser);
+                let account = await chainApi.getAccount(constants.LOCAL_NOD_URL, committeeUser);
                 logger.info("account info:",account);
                 logger.info("account info:",account.permissions[0].required_auth);
                 //查询是否已经投过票
@@ -432,6 +434,8 @@ async function syncCommitee() {
         }
         //调用votecommittee来投票
         logger.info("syncCommitee end");
+    } } catch (e) {
+        logger.error("sync committee error:",e);
     }
 }
 
@@ -450,15 +454,18 @@ async function syncChainInfo() {
             return;
         }
 
+        //定期更新configsub
+        await chainApi.checkSubchainSeed(chainConfig);
+
         //同步链名称（子链id,链名称等）
         let chainName = null;
         let chainId = null;
         let genesisTime = null;
         if (utils.isNull(chainConfig.configSub.chainId)) {
-            chainConfig.configSub.chainId = await chainApi.getSubChainId(chainConfig.configSub);
+            chainConfig.configSub.chainId = await chainApi.getChainId(chainConfig.configSub);
         }
         logger.debug("configSub.chainId=", chainConfig.configSub.chainId);
-        let chainInfo = await chainApi.getChainInfo(chainConfig.u3, chainConfig.myAccountAsCommittee);
+        let chainInfo = await chainApi.getChainInfo(chainConfig.config, chainConfig.myAccountAsCommittee);
         logger.info("chain info from mainchain:", chainInfo);
         if (utils.isNotNull(chainInfo)) {
             chainName = chainInfo.location;
@@ -481,6 +488,8 @@ async function syncChainInfo() {
         if (isMainChain()) {
             syncChainData = false;
             logger.error(chainConfig.myAccountAsCommittee + " runing in main chain, need not work");
+            //check alive
+            await checkNodAlive();
             return;
         }
 
@@ -488,6 +497,8 @@ async function syncChainInfo() {
         if (chainConfig.isNoneProducer()) {
             syncChainData = false;
             logger.error(chainConfig.myAccountAsCommittee + " runing is none-producer, need not work");
+            //check alive
+            await checkNodAlive();
             return;
         }
 
@@ -543,29 +554,8 @@ async function syncChainInfo() {
             logger.info("i am in right chain");
         }
 
-        //如果不在进行链切换且本地访问不到本地链信息，需要重启下
-        let wssinfo = " ";
-        let wssFilePath = "";
-        let result = null;
-        if (syncChainChanging == false) {
-            logger.info("check nod is alive ....");
-            let rsdata = await NodUltrain.checkAlive();
-            logger.debug("check alive data:", rsdata);
-            if (utils.isNull(rsdata)) {
-                if (nodFailedTimes >= maxNodFailedTimes) {
-                    nodFailedTimes = 0;
-                    logger.info("nod is not runing ,need restart it..");
-                    await restartNod();
-                    logger.info("nod restart end..");
-                } else {
-                    nodFailedTimes ++;
-                    logger.info("nod is not alive,count("+nodFailedTimes+")");
-                }
-            }
-        }
-
-
-
+        //check nod alive
+        await checkNodAlive();
 
     } catch (e) {
         logger.error("sync chain error:", e);
@@ -573,6 +563,31 @@ async function syncChainInfo() {
 
     logger.info("sync chain info and committee end");
 
+}
+
+/**
+ * 检查nod是否还存活
+ * @returns {Promise<void>}
+ */
+async function checkNodAlive() {
+
+    //如果不在进行链切换且本地访问不到本地链信息，需要重启下
+    if (syncChainChanging == false) {
+        logger.info("checking nod is alive ....");
+        let rsdata = await NodUltrain.checkAlive();
+        logger.debug("check alive data:", rsdata);
+        if (utils.isNull(rsdata)) {
+            if (nodFailedTimes >= maxNodFailedTimes) {
+                nodFailedTimes = 0;
+                logger.info("nod is not runing ,need restart it..");
+                await restartNod();
+                logger.info("nod restart end..");
+            } else {
+                nodFailedTimes ++;
+                logger.info("nod is not alive,count("+nodFailedTimes+")");
+            }
+        }
+    }
 }
 
 /**
@@ -593,6 +608,7 @@ async function switchChain() {
 
     loggerChainChanging.info("starting to switch chain...");
     let param = [];
+    let logMsg = "";
     try {
 
         param = await monitor.buildParam();
@@ -605,8 +621,10 @@ async function switchChain() {
         let result = await NodUltrain.stop(120000);
         if (result == false) {
             loggerChainChanging.info("nod is stopped");
+            logMsg = utils.addLogStr(logMsg,"nod is stopped");
         } else {
             loggerChainChanging.info("nod is not stopped");
+            logMsg = utils.addLogStr(logMsg,"nod is not stopped");
         }
 
         //停止worldstate的程序
@@ -614,14 +632,17 @@ async function switchChain() {
             result = await WorldState.stop(120000);
             if (result) {
                 logger.info("worldstate is stopped");
+                logMsg = utils.addLogStr(logMsg,"worldstate is stopped");
             } else {
                 logger.info("worldstate is not stopped");
+                logMsg = utils.addLogStr(logMsg,"worldstate is not stopped");
             }
         }
 
         //删除block和shared_memory.bin数据
         await NodUltrain.removeData();
         loggerChainChanging.info("remove block data and shared_memory.bin");
+        logMsg = utils.addLogStr(logMsg,"remove block data");
         sleep.msleep(5000);
 
 
@@ -629,6 +650,7 @@ async function switchChain() {
         if (chainConfig.configFileData.local.worldstate == true) {
             await WorldState.clearDB();
             loggerChainChanging.info("remove worldstate data files");
+            logMsg = utils.addLogStr(logMsg,"remove worldstate file");
             sleep.msleep(5000);
         }
 
@@ -637,8 +659,13 @@ async function switchChain() {
         logger.info("get chainid(" + chainConfig.chainName + ")'s seed ip info:", seedIpInfo);
         if (utils.isNull(seedIpInfo)) {
             loggerChainChanging.error("seed ip info is null");
+            logMsg = utils.addLogStr(logMsgm,"seed ip info is null");
             syncChainChanging = false;
             monitor.enableDeploy();
+            param.endTime = new Date().getTime();
+            param.status = 0;
+            param.result = logMsg;
+            await chainApi.addSwitchLog(monitor.getMonitorUrl(),param);
             return;
         }
 
@@ -647,6 +674,7 @@ async function switchChain() {
         logger.info("get chainid(" + chainConfig.chainName + ")'s peer info:", chainPeerInfo);
         if (utils.isNull(chainPeerInfo)) {
             loggerChainChanging.error("chainPeerInfo is null");
+            logMsg = utils.addLogStr(logMsg,"chainPeerInfo is null");
         }
 
 
@@ -655,11 +683,14 @@ async function switchChain() {
         //重启世界状态并拉块
         if (chainConfig.configFileData.local.worldstate == true) {
             logger.info("start world state");
+            logMsg = utils.addLogStr(logMsg,"start world state");
             result = await WorldState.start(chainConfig.chainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath,chainConfig.localTest);
             if (result == true) {
                 logger.info("start ws success");
+                logMsg = utils.addLogStr(logMsg,"start ws success");
             } else {
                 logger.info("start ws error");
+                logMsg = utils.addLogStr(logMsg,"start ws error");
                 // syncChainChanging = false;
                 // return;
             }
@@ -674,6 +705,7 @@ async function switchChain() {
                 logger.info("get worldstate data:", worldstatedata);
             } else {
                 logger.error("can not get world state file,or data is null");
+                logMsg = utils.addLogStr(logMsg,"ws data is null");
             }
 
             if (worldstatedata != null) {
@@ -686,8 +718,10 @@ async function switchChain() {
                 result = await WorldState.syncWorldState(hash, blockNum, filesize, chainConfig.chainId);
                 if (result == true) {
                     logger.info("sync worldstate request success");
+                    logMsg = utils.addLogStr(logMsg,"sync ws req success");
                 } else {
                     logger.info("sync worldstate request failed");
+                    logMsg = utils.addLogStr(logMsg,"sync ws req error");
                 }
 
                 loggerChainChanging.info("polling worldstate sync status ..")
@@ -703,7 +737,9 @@ async function switchChain() {
                 result = await WorldState.pollingkWSState(1000, 300000);
                 if (result == false) {
                     logger.error("require ws error："+wssinfo);
+                    logMsg = utils.addLogStr(logMsg,"require ws error");
                 } else {
+                    logMsg = utils.addLogStr(logMsg,"require ws success");
                     logger.info("require ws success");
                     logger.info("wssinfo:" + wssinfo);
                     //check file exist
@@ -719,6 +755,7 @@ async function switchChain() {
                 //判断配置是否需要拉块
                 if (chainConfig.configFileData.local.wsSyncBlock == true) {
                     logger.info("wsSyncBlock is true，need sync block");
+                    logMsg = utils.addLogStr(logMsg,"require block start");
                     /**
                      * 调用block
                      */
@@ -739,14 +776,17 @@ async function switchChain() {
                     result = await WorldState.pollingBlockState(1000, 300000);
                     if (result == false) {
                         logger.info("require block error");
+                        logMsg = utils.addLogStr(logMsg,"require block error");
                     } else {
                         logger.info("require block success");
+                        logMsg = utils.addLogStr(logMsg,"require block success");
                     }
 
                     sleep.msleep(1000);
 
                 } else {
                     logger.info("wsSyncBlock is false，need not sync block");
+                    logMsg = utils.addLogStr(logMsg,"require block not need");
                     sleep.msleep(3000);
                 }
             }
@@ -760,8 +800,9 @@ async function switchChain() {
         logger.info("subchainEndPoint:", subchainEndPoint);
         logger.info("genesisTime:", chainConfig.genesisTime);
         logger.info("get chainid(" + chainConfig.chainName + ")'s", subchainMonitorService);
-        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint, chainConfig.genesisTime, subchainMonitorService,chainPeerInfo);
+        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint, chainConfig.genesisTime, subchainMonitorService,chainPeerInfo,chainConfig.chainName);
         if (result == true) {
+            logMsg = utils.addLogStr(logMsg,"update nod config success");
             loggerChainChanging.info("update nod config file success")
             //重新加载配置文件信息
             loggerChainChanging.info("reload config files")
@@ -769,6 +810,7 @@ async function switchChain() {
             loggerChainChanging.info("reload config files ready")
         } else {
             loggerChainChanging.error("update nod config file error")
+            logMsg = utils.addLogStr(logMsg,"update nod config file error");
         }
 
 
@@ -785,21 +827,25 @@ async function switchChain() {
         //启动nod
         result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath,wssinfo,chainConfig.localTest);
         if (result == true) {
-            loggerChainChanging.info("nod start success")
+            loggerChainChanging.info("nod start success");
+            logMsg = utils.addLogStr(logMsg,"nod start success");
         } else {
             loggerChainChanging.error("node start error");
+            logMsg = utils.addLogStr(logMsg,"nod start error");
         }
 
         //等待配置信息同步完成-重新加载配置
+        chainConfig.clearChainInfo();
         await chainConfig.waitSyncConfig()
 
         //结束设置结束flag
         syncChainChanging = false;
         monitor.enableDeploy();
+        logMsg = utils.addLogStr(logMsg,"switching chain end");
         loggerChainChanging.info("switching chain successfully...");
         param.endTime = new Date().getTime();
         param.status = 1;
-        param.result = "success";
+        param.result = logMsg;
         await chainApi.addSwitchLog(monitor.getMonitorUrl(),param);
     } catch (e) {
 

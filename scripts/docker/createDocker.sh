@@ -22,7 +22,7 @@ PORT_MAP=$4
 FILE_DIR=$5
 
 #max docker count
-MAX_DOCKER_COUNT=7
+MAX_DOCKER_COUNT=8
 
 # arg num check
 if [ $# != 5 ] ; then

@@ -18,43 +18,49 @@ var sleep = require("sleep")
  * @param config
  * @returns {Promise<*>}
  */
-const getMainChainId = async (config) => {
+const getChainId = async (config) => {
 
     try {
         var u3 = createU3({...config, sign: true, broadcast: true});
         var blockInfo = await u3.getBlockInfo("1");
-        //logger.debug("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
         return blockInfo.action_mroot;
     } catch (e) {
-        logger.error("get main chain id error:", utils.logNetworkError(e))
+        logger.error("getChainId error:", utils.logNetworkError(e));
+        let seedHttpList = config.seedHttpList;
+        if (seedHttpList.length > 0) {
+            for (let i=0;i<seedHttpList.length;i++) {
+                config.httpEndpoint = seedHttpList[i];
+                var u3 = createU3({...config, sign: true, broadcast: true});
+                try {
+                    var blockInfo = await u3.getBlockInfo("1");
+                    return blockInfo.action_mroot;
+                } catch (e) {
+                    logger.error("getChainId error:", utils.logNetworkError(e));
+                }
+            }
+        }
     }
+
+    return null;
 
 }
 
+
 /**
- * 获取子网子链Chain Idf
+ * 获取当前链的chainName
  * @param configSub
  * @returns {Promise<*>}
  */
-const getSubChainId = async (configSub) => {
-
-    try {
-        var u3Sub = createU3({...configSub, sign: true, broadcast: true});
-        var blockInfo = await u3Sub.getBlockInfo("1");
-        //logger.debug("block info  blockInfo.action_mroot=", blockInfo.action_mroot);
-        return blockInfo.action_mroot;
-    } catch (e) {
-        logger.error("get sub chain id error:", utils.logNetworkError(e))
-    }
-}
-
-const getChainName = async (configSub) => {
+const getChainName = async () => {
     let chainName = null;
     try {
-        let res = await getTableAllData(configSub, constant.contractConstants.ULTRAINIO, constant.contractConstants.ULTRAINIO, constant.tableConstants.GLOBAL, null);
-        logger.debug("global table :", res);
-        if (utils.isNotNull(res) && res.rows.length > 0) {
-            chainName = res.rows[0].chain_name;
+
+        const params = {"code": constant.contractConstants.ULTRAINIO, "scope": constant.contractConstants.ULTRAINIO, "table": constant.tableConstants.GLOBAL, "json": true, "key_type": "name"};
+        logger.info(params);
+        let res = await axios.post(constant.LOCAL_NOD_URL+"/v1/chain/get_table_records", params);
+        logger.info("global table :", res.data);
+        if (utils.isNotNull(res) && res.data.rows.length > 0) {
+            chainName = res.data.rows[0].chain_name;
         }
     } catch (e) {
         logger.error("getChainName error,", e);
@@ -68,28 +74,37 @@ const getChainName = async (configSub) => {
  * @param user
  * @returns {Promise<*|number|Location|string|WorkerLocation>}
  */
-const getChainInfo = async function initChainName(u3, user) {
+const getChainInfo = async function initChainName(config, user) {
 
     let result = null;
+    logger.info("getChainInfo config :",config);
     try {
+        var u3 = createU3({...config, sign: true, broadcast: true});
         result = await u3.getProducerInfo({"owner": user});
         logger.debug("getChainInfo", result);
     } catch (e) {
         logger.error("getChainInfo error:", utils.logNetworkError(e));
+        logger.error("getChainInfo error,use seed to request",config.seedHttpList);
+        let seedHttpList = config.seedHttpList;
+        if (seedHttpList.length > 0) {
+            for (let i=0;i<seedHttpList.length;i++) {
+                config.httpEndpoint = seedHttpList[i];
+                logger.info("getChainInfo config :",config);
+                var u3 = createU3({...config, sign: true, broadcast: true});
+                try {
+                    result = await u3.getProducerInfo({"owner": user});
+                    return result;
+                } catch (e) {
+                    logger.error("getChainInfo:", utils.logNetworkError(e));
+                }
+            }
+        }
     }
 
     return result;
 
 }
 
-/**
- * 根据官网数据获取主网ip地址
- * @returns {Promise<*>}
- */
-async function getRemoteIpAddress(url) {
-    const rs = await axios.get(url);
-    return rs.data;
-}
 
 /**
  * 获取账号
@@ -97,9 +112,9 @@ async function getRemoteIpAddress(url) {
  * @param accountName
  * @returns {Promise<null>}
  */
-async function getAccount(config, accountName) {
+async function getAccount(prefix,accountName) {
     try {
-        const rs = await axios.post(config.httpEndpoint + "/v1/chain/get_account_info", {"account_name": accountName});
+        const rs = await axios.post(prefix+"/v1/chain/get_account_info", {"account_name": accountName});
         return rs.data;
     } catch (e) {
         //logger.error("getAccount("+accountName+") error",e);
@@ -112,10 +127,10 @@ async function getAccount(config, accountName) {
  * 获取本地producer列表
  * @returns {Promise<Array>}
  */
-async function getProducerLists(configSub) {
-    const params = {"json": "true", "lower_bound": "0", "limit": 100};
-    const rs = await axios.post(configSub.httpEndpoint + "/v1/chain/get_producers", params);
-    // const rs = await axios.post("http://172.16.10.5:8899/v1/chain/get_producers", params);
+async function getProducerLists(prefix) {
+    const params = {"json": "true", "lower_bound": "0", "limit": 10000};
+    logger.debug("getProducerLists,"+prefix);
+    const rs = await axios.post(prefix + "/v1/chain/get_producers", params);
 
     logger.debug("getProducerLists:", rs.data.rows);
     var result = [];
@@ -148,13 +163,14 @@ async function getProducerLists(configSub) {
 async function contractInteract(config, contractName, actionName, params, accountName, privateKey) {
     try {
 
-        //logger.error("contractInteract",privateKey);
+        logger.debug("contractInteract start ",contractName);
         const keyProvider = [privateKey];
         const u3 = createU3({...config, keyProvider});
 
         logger.debug("keyProvider:", keyProvider);
 
         const contract = await u3.contract(contractName);
+        //let ee = error;
         //logger.debug("contract=", JSON.stringify(contract.fc.abi.structs));
         if (!contract) {
             throw new Error("can't found contract " + contractName);
@@ -170,6 +186,34 @@ async function contractInteract(config, contractName, actionName, params, accoun
     } catch (err) {
         logger.debug('contractInteract error :', actionName);
         logger.error('' + actionName + ' error :', err);
+
+
+        let seedHttpList = config.seedHttpList;
+        if (seedHttpList.length > 0) {
+            logger.info("start to use other seed http to request");
+            for (let i=0;i<seedHttpList.length;i++) {
+                config.httpEndpoint = seedHttpList[i];
+                var u3 = createU3({...config, sign: true, broadcast: true});
+                try {
+                    const contract = await u3.contract(contractName);
+                    //logger.debug("contract=", JSON.stringify(contract.fc.abi.structs));
+                    if (!contract) {
+                        throw new Error("can't found contract " + contractName);
+                    }
+                    if (!contract[actionName] || typeof contract[actionName] !== 'function') {
+                        throw new Error("action doesn't exist:" + actionName);
+                    }
+                    const data = await contract[actionName](params, {
+                        authorization: [`${accountName}@active`],
+                    });
+                    logger.debug('contractInteract success :', actionName);
+                    return data;
+                } catch (e) {
+                    logger.error("contractInteract:", utils.logNetworkError(e));
+                }
+            }
+        }
+
     }
     return null;
 }
@@ -179,11 +223,26 @@ async function contractInteract(config, contractName, actionName, params, accoun
  * 通过主链获取子链的userbulletin
  * @returns {Promise<*>}
  */
-getUserBulletin = async (u3, chain_name) => {
+getUserBulletin = async (config, chain_name) => {
     try {
+        var u3 = createU3({...config, sign: true, broadcast: true});
         return await u3.getUserBulletin({"chain_name": parseInt(chain_name, 10)});
     } catch (e) {
-        logger.error("get user bulletin error :", e.code);
+        logger.error("get user bulletin error :", e);
+        let seedHttpList = config.seedHttpList;
+        if (seedHttpList.length > 0) {
+            logger.info("start to use other seed http to request");
+            for (let i=0;i<seedHttpList.length;i++) {
+                config.httpEndpoint = seedHttpList[i];
+                var u3 = createU3({...config, sign: true, broadcast: true});
+                try {
+                    return await u3.getUserBulletin({"chain_name": parseInt(chain_name, 10)});
+                } catch (e) {
+                    logger.error("getUserBulletin:", utils.logNetworkError(e));
+                }
+            }
+        }
+
     }
 
     return null;
@@ -212,7 +271,27 @@ getChainSeedIP = async (chainName, chainConfig) => {
     } catch (e) {
         logger.error("get chain seed ip error:", e);
     }
-    return utils.getLocalIPAdress();
+    return null;
+}
+
+/**
+ * 获取链httplist
+ * @param chainName
+ * @param chainConfig
+ * @returns {Promise<Array>}
+ */
+getChainHttpList = async (chainName, chainConfig) => {
+
+    let seedList = await getChainSeedIP(chainName,chainConfig);
+    let chainHttpList = [];
+    if (utils.isNullList(seedList) == false) {
+        for (let i=0;i<seedList.length;i++) {
+            let url = "http://"+seedList[i]+":8888";
+            chainHttpList.push(url);
+        }
+    }
+
+    return chainHttpList;
 }
 
 /**
@@ -241,18 +320,45 @@ getChainPeerKey = async (chainName, chainConfig) => {
 }
 
 /**
- * 根据链id获取链已上传的ws的height和hash
- * @returns {Promise<void>}
+ *
+ * @param prefix
+ * @param path
+ * @param param
+ * @param backUplist
+ * @returns {Promise<*>}
  */
-getSubchainWSHash = async (config, chainName) => {
+multiRequest = async function (prefix, path, params, prefixlist) {
+    logger.info("multiRequest:",prefix);
+    logger.info("multiRequest:",prefixlist);
+    let res = null;
     try {
-        const params = {"chainName": chainName, "height": "0"};
-        return await axios.post(config.httpEndpoint + "/v1/chain/get_subchain_ws_hash", params);
+        res = await axios.post(prefix + path, params);
+        if (res.status == 200) {
+            logger.debug("multiRequest("+path+") success:",res);
+            return res;
+        } else {
+            logger.error("multiRequest("+path+") error:",res);
+        }
     } catch (e) {
-        logger.error("getSubchainWSHash error:", e);
+        logger.error("multiRequest error:", e);
+        if (prefixlist.length > 0) {
+            for (let i=0;i<prefixlist.length;i++) {
+                let newPrefix = prefixlist[i];
+                try {
+                    logger.info("multiRequest("+path+"), user new url:"+newPrefix);
+                    res = await axios.post(newPrefix + path, params);
+                    if (res.status == 200) {
+                        return res;
+                    }
+                } catch (e) {
+                    logger.error("multiRequest error:", e);
+                    logger.error("multiRequest("+path+") error:",res);
+                }
+            }
+        }
     }
 
-    return null;
+    return res;
 }
 
 /**
@@ -283,7 +389,7 @@ getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound,
         if (utils.isNotNull(upper_bound)) {
             params.upper_bound = upper_bound;
         }
-        let res = await axios.post(config.httpEndpoint + "/v1/chain/get_table_records", params);
+        let res = await multiRequest(config.httpEndpoint,"/v1/chain/get_table_records",params,config.seedHttpList);
         // logger.debug(res);
         return res.data;
     } catch (e) {
@@ -429,7 +535,7 @@ getSubchainResource = async (chainName, chainConfig) => {
 
     try {
         const params = {"chain_name": chainName};
-        const rs = await axios.post(chainConfig.config.httpEndpoint + "/v1/chain/get_subchain_resource", params);
+        let rs = await multiRequest(chainConfig.config.httpEndpoint,"/v1/chain/get_subchain_resource", params,chainConfig.config.seedHttpList);
         return rs.data;
     } catch (e) {
         logger.error("getSubchainResource error:", e);
@@ -445,7 +551,7 @@ getSubchainResource = async (chainName, chainConfig) => {
  */
 const getChainBlockDuration = async (config) => {
     try {
-        const rs = await axios.post(config.httpEndpoint + "/v1/chain/get_chain_info", {});
+        const rs = await multiRequest(config.httpEndpoint,"/v1/chain/get_chain_info", {},config.seedHttpList);
         return rs.data.block_interval_ms;
     } catch (e) {
         logger.error("getChainBlockDuration error,", e);
@@ -464,7 +570,6 @@ const getChainBlockDuration = async (config) => {
 monitorCheckIn = async (url, param) => {
     try {
         logger.info("monitorCheckIn param:", qs.stringify(param));
-        //var url = "http://172.16.10.5:8078/filedist/checkIn";
         const rs = await axios.post(url + "/filedist/checkIn", qs.stringify(param));
         logger.info("monitorCheckIn result:", rs.data);
         return rs.data;
@@ -580,15 +685,108 @@ addSwitchLog = async (url, param) => {
 }
 
 
+/**
+ *
+ * @returns {Promise<*>}
+ */
+getSubchainBlockNum = async (config, chain_name) => {
+    try {
+        var u3 = createU3({...config, sign: true, broadcast: true});
+        return await u3.getSubchainBlockNum({"chain_name": chain_name});
+    } catch (e) {
+        logger.error("getSubchainBlockNum :", e);
+        let seedHttpList = config.seedHttpList;
+        if (seedHttpList.length > 0) {
+            logger.info("start to use other seed http to request getSubchainBlockNum");
+            for (let i=0;i<seedHttpList.length;i++) {
+                config.httpEndpoint = seedHttpList[i];
+                var u3 = createU3({...config, sign: true, broadcast: true});
+                try {
+                    return await u3.getSubchainBlockNum({"chain_name": chain_name});
+                } catch (e) {
+                    logger.error("getSubchainBlockNum:", utils.logNetworkError(e));
+                }
+            }
+        }
+
+    }
+
+    return null;
+
+}
+
+
+/**
+ *
+ * @returns {Promise<*>}
+ */
+getSubchainCommittee = async (config, chain_name) => {
+    try {
+        var u3 = createU3({...config, sign: true, broadcast: true});
+        return await u3.getSubchainCommittee({"chain_name": chain_name});
+    } catch (e) {
+        logger.error("getSubchainCommittee :", e);
+        let seedHttpList = config.seedHttpList;
+        if (seedHttpList.length > 0) {
+            logger.info("start to use other seed http to request getSubchainCommittee");
+            for (let i=0;i<seedHttpList.length;i++) {
+                config.httpEndpoint = seedHttpList[i];
+                var u3 = createU3({...config, sign: true, broadcast: true});
+                try {
+                    return await u3.getSubchainCommittee({"chain_name": chain_name});
+                } catch (e) {
+                    logger.error("getSubchainCommittee:", utils.logNetworkError(e));
+                }
+            }
+        }
+
+    }
+
+    return null;
+
+}
+
+checkSubchainSeed = async (chainConfig) => {
+
+    let path = chainConfig.configSub.httpEndpoint+"/v1/chain/get_chain_info"
+    try {
+        let res = await axios.post(path);
+        logger.info("checkSubchainSeed success");
+        return;
+    } catch (e) {
+        logger.error("checkSubchainSeed error :", e);
+        let seedHttpList = chainConfig.configSub.seedHttpList;
+        if (seedHttpList.length > 0) {
+            logger.info("start to use other seed http to request checkSubchainSeed");
+            for (let i=0;i<seedHttpList.length;i++) {
+                chainConfig.configSub.httpEndpoint = seedHttpList[i];
+                path = chainConfig.configSub.httpEndpoint+"/v1/chain/get_chain_info"
+                try {
+                    let res = await axios.post(path);
+                    chainConfig.u3Sub = createU3({...chainConfig.configSub, sign: true, broadcast: true});
+                } catch (e) {
+                    logger.error("checkSubchainSeed error:", utils.logNetworkError(e));
+                }
+            }
+        }
+
+    }
+
+    return null;
+}
+
+
+
+
+
+
 
 
 
 
 module.exports = {
-    getMainChainId,
-    getSubChainId,
+    getChainId,
     getChainInfo,
-    getRemoteIpAddress,
     getProducerLists,
     contractInteract,
     getUserBulletin,
@@ -609,5 +807,9 @@ module.exports = {
     getSubchainList,
     getSyncBlockChainList,
     getTargetChainBlockNum,
-    addSwitchLog
+    addSwitchLog,
+    getChainHttpList,
+    getSubchainBlockNum,
+    getSubchainCommittee,
+    checkSubchainSeed
 }

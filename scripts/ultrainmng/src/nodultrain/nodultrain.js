@@ -30,7 +30,7 @@ NodUltrain.configFilePath = "/root/.local/share/ultrainio/nodultrain/config/conf
  * @param monitorServer
  * @returns {boolean}
  */
-NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,monitorServcer,chainPeerInfo) {
+NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,monitorServcer,chainPeerInfo,chainName) {
     try {
         var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
 
@@ -57,6 +57,9 @@ NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,moni
         for (var i=0;i<chainPeerInfo.length;i++) {
             iniFile.addKeyValue(iniConstants.PEER_KEY, chainPeerInfo[i]);
         }
+
+        //更新chainname
+        iniFile.setValue(iniConstants.chainName,chainName);
 
         iniFile.setValue(iniConstants.SUBCHAIN_HTTP_ENDPOINT, subchainHttpEndpoint);
         iniFile.setValue(iniConstants.GENESIS_TIME, genesisTime);

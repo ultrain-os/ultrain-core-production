@@ -158,6 +158,16 @@ function ipListToStr(iplist,port,splitChar) {
     return result;
 }
 
+/**
+ *
+ * @param str
+ * @param logstr
+ */
+function addLogStr(str,logstr) {
+    let time  =new Date().getTime();
+    return str + time+":"+logstr +"\n";
+}
+
 
 module.exports = {
     isNull,
@@ -168,5 +178,6 @@ module.exports = {
     isNullList,
     getLocalIPAdress,
     ipListToStr,
-    getPublicIp
+    getPublicIp,
+    addLogStr,
 }

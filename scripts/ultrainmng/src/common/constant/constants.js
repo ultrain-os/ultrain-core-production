@@ -93,6 +93,7 @@ var iniConstants = {
     WSS_PATH: "wsspath",
     MONITOR: "monitor",
     PEER_KEY: "peer-key",
+    CHAIN_NAME: "chain-name",
 }
 
 /**
@@ -135,6 +136,9 @@ var statusConstants = {
     UNSTART: 0
 }
 
+var LOCAL_NOD_URL = "http://127.0.0.1:8888";
+
+
 
 module.exports = {
     cmdConstants,
@@ -151,5 +155,6 @@ module.exports = {
     cacheKeyConstants,
     filenameConstants,
     algorithmConstants,
-    statusConstants
+    statusConstants,
+    LOCAL_NOD_URL,
 }

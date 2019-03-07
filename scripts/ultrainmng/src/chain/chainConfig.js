@@ -77,8 +77,8 @@ ChainConfig.config = {
         debug: logUtil.debug
     },
     binaryen: require('binaryen'),
-    symbol: 'UGAS'
-
+    symbol: 'UGAS',
+    seedHttpList:[]
 };
 
 //子链配置
@@ -102,6 +102,7 @@ ChainConfig.configSub = {
     },
     binaryen: require('binaryen'),
     symbol: 'UGAS',
+    seedHttpList:[]
 };
 
 //子链配置
@@ -151,12 +152,12 @@ ChainConfig.syncConfig = async function () {
         chainUtil.checkFileExist(this.configPath);
 
         var configIniLocal = ini.parse(fs.readFileSync(this.configPath, constant.encodingConstants.UTF8));
-        logger.debug('configIniLocal=', configIniLocal);
+        logger.info('configIniLocal=', configIniLocal);
         this.configFileData.local = configIniLocal;
 
         //读取nodultrain程序中的config.ini
         var configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path, constant.encodingConstants.UTF8));
-        logger.debug('configIniTarget(nodultrain)=', configIniTarget);
+        logger.info('configIniTarget(nodultrain)=', configIniTarget);
         this.configFileData.target = configIniTarget;
 
         logger.debug("this.configFileData data:", this.configFileData);
@@ -168,14 +169,9 @@ ChainConfig.syncConfig = async function () {
             this.configSub.httpEndpoint = configIniLocal.subchainHttpEndpoint;
         }
 
-
         logger.info("subchain httpEndpoint:", this.configSub.httpEndpoint)
 
-
         //获取主链请求的http地址-默认使用
-        // const ip = await chainApi.getRemoteIpAddress(configIniLocal.url);
-        // logger.debug('getRemoteIpAddress=', ip);
-        // this.config.httpEndpoint = `${configIniLocal.prefix}${ip}${configIniLocal.endpoint}`;
         if (utils.isNotNull(configIniTarget["mainchainHttpEndpoint"])) {
             this.config.httpEndpoint = configIniTarget["mainchainHttpEndpoint"];
         }
@@ -207,22 +203,27 @@ ChainConfig.syncConfig = async function () {
         }
 
         logger.info("mainchain httpEndpoint:", this.config.httpEndpoint)
-
-        //现在处在主链
-        // if (utils.isNotNull(configIniTarget.masterchain)) {
-        //     this.chainName = chainNameConstants.MAIN_CHAIN_NAME;
-        // }
-
         logger.info("user info : " + this.myAccountAsCommittee + "");
 
         try {
-            //
-            this.config.chainId = await chainApi.getMainChainId(this.config);
+            this.config.seedHttpList = await  chainApi.getChainHttpList(constant.chainNameConstants.MAIN_CHAIN_NAME,this);
+
+
+            this.config.chainId = await chainApi.getChainId(this.config);
             logger.info("config.chainId=", this.config.chainId);
-            this.configSub.chainId = await chainApi.getSubChainId(this.configSub);
+            this.configSub.chainId = await chainApi.getChainId(this.configSub);
             logger.info("configSub.chainId=", this.configSub.chainId);
-            this.localChainName = await chainApi.getChainName(this.configSub);
+            this.localChainName = await chainApi.getChainName();
+            if (utils.isNull(this.localChainName)) {
+                this.localChainName = this.configFileData.target["chain-name"];
+            }
             logger.info("chain name :"+this.localChainName);
+
+            this.configSub.seedHttpList= await chainApi.getChainHttpList(this.localChainName,this);
+
+
+
+
             mainChainBlockDuration = await chainApi.getChainBlockDuration(this.config);
             if (utils.isNotNull(mainChainBlockDuration)) {
                 this.mainChainBlockDuration = mainChainBlockDuration;
@@ -234,6 +235,9 @@ ChainConfig.syncConfig = async function () {
                 this.subChainBlockDuration = subChainBlockDuration;
             }
             logger.info("subChainBlockDuration:",this.subChainBlockDuration);
+
+            logger.info("this.config:",this.config);
+            logger.info("this.configsub:",this.configSub);
         } catch (e) {
             logger.error("target node crashed, check main node or sub node", utils.logNetworkError(e))
         }
@@ -368,6 +372,10 @@ ChainConfig.isNoneProducer = function () {
 
 
 ChainConfig.syncSeedIpConfig();
+
+ChainConfig.clearChainInfo = function() {
+    this.localChainName = null;
+}
 
 
 module.exports = ChainConfig

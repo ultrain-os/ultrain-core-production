@@ -5,6 +5,7 @@ var logger = require("../../config/logConfig").getLogger("VoteUtil")
 var utils = require('../../common/util/utils')
 var chainApi = require("../chainApi")
 var chainUtil = require("./chainUtil")
+var constants = require("../../common/constant/constants")
 
 /**
  * 判断是否需要给用户投票
@@ -187,7 +188,7 @@ async function genVoteResList(subResList, mainResList, chainConfig) {
             //主链对象在子链找不到（子链到底 || 主链对象owner<子链当前对象owner）
             if (utils.isNull(subResObj) || mainResObj.owner < subResObj.owner) {
                 //查看子链上是否有该用户才处理
-                if (!utils.isNull(await chainApi.getAccount(chainConfig.configSub, mainResObj.owner))) {
+                if (!utils.isNull(await chainApi.getAccount(constants.LOCAL_NOD_URL, mainResObj.owner))) {
                     result.push(mainResObj);
                 } else {
                     logger.info("can't find account:"+mainResObj.owner);

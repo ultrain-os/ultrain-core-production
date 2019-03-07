@@ -113,9 +113,11 @@ def write_config_file():
         if not os.path.isfile(fname):  # file does not exist
             cmd = "cp template.txt " + fname
             os.system(cmd)
-        if con.name[len(con.name) - 1::len(con.name)] != '7':
+        #producer node
+        if con.name[len(con.name) - 1::len(con.name)] < '7':
             insert_keys(fname, index_key)
-        if con.name[len(con.name) - 1::len(con.name)] == '7':
+        # seed nod
+        if con.name[len(con.name) - 1::len(con.name)] >= '7':
             insert_keys(fname, index_key)
             insert_non_producing(fname)
         update_ultrainmng_config(fname, hosts[dockerinfo])
@@ -127,7 +129,9 @@ def write_config_file():
         else:
             insert_peer(fname, hosts[dockerinfo][0].ip);
 
+        insert_chain_name_config(fname);
         insertPeerKey(fname);
+
 
         index_key += 1
     os.system("rm -f  template.txt")
@@ -200,6 +204,14 @@ def insert_monitor_config(fname):
     content.insert(index_line + 1, newcontent)
     writefile(fname, content)
 
+def insert_chain_name_config(fname):
+    content = readfile(fname)
+    newcontent = "chain-name=0\n";
+    if args.subchain:
+        newcontent = "chain-name="+args.subchain;
+    index_line = content.index("#chain_name\n")
+    content.insert(index_line + 1, newcontent)
+    writefile(fname, content)
 
 def insert_non_producing(fname):
     content = readfile(fname)
