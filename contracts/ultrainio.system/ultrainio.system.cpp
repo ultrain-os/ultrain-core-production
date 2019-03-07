@@ -33,7 +33,7 @@ namespace ultrainiosystem {
       _global.set( _gstate );
    }
 
-   void system_contract::setsysparams( const ultrainio::ultrainio_system_params& params) {
+   void system_contract::setsysparams( const ultrainio_system_params& params) {
         require_auth( _self );
         if (params.chain_type == 0) { //master chain
             _gstate.max_ram_size = params.max_ram_size;
@@ -48,6 +48,14 @@ namespace ultrainiosystem {
             _gstate.newaccount_fee = params.newaccount_fee;
             _gstate.chain_name = params.chain_name;
             _gstate.max_resources_number = params.max_resources_number;
+            disabled_producers_table dp_tbl(_self, N(masterprod));
+            for(auto const& masterprod: params.master_producers){
+                 dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
+                     dis_prod.owner                   = masterprod.owner;
+                     dis_prod.producer_key            = masterprod.producer_key;
+                     dis_prod.bls_key                 = masterprod.bls_key;
+                 });
+            }
             _global.set( _gstate );
         } else {
             auto ite_chain = _subchains.find(params.chain_name);

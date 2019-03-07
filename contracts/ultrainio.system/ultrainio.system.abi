@@ -406,7 +406,8 @@
          {"name":"block_reward_vec",              "type":"block_reward[]"},
          {"name":"max_resources_number",           "type":"uint16"},
          {"name":"newaccount_fee",                 "type":"uint32"},
-         {"name":"chain_name",                     "type":"uint64"}
+         {"name":"chain_name",                     "type":"uint64"},
+         {"name":"master_producers",              "type":"role_base[]"}
       ]
     },{
       "name": "ultrainio_global_state",

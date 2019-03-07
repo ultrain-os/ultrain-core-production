@@ -264,6 +264,22 @@ namespace ultrainiosystem {
    };
    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
 
+   struct ultrainio_system_params {
+      ultrainio_system_params(){}
+      uint64_t             chain_type;
+      uint64_t             max_ram_size;
+      int64_t              min_activated_stake;
+      uint32_t             min_committee_member_number;
+      std::vector<block_reward> block_reward_vec;
+      uint16_t             max_resources_number;
+      uint32_t             newaccount_fee;
+      uint64_t             chain_name;
+      std::vector<role_base> master_producers;
+      uint64_t  primary_key()const { return chain_type; }
+      ULTRAINLIB_SERIALIZE( ultrainio_system_params,(chain_type)(max_ram_size)(min_activated_stake)
+                            (min_committee_member_number)(block_reward_vec)(max_resources_number)(newaccount_fee)(chain_name)(master_producers) )
+   };
+
    struct resources_lease {
       account_name   owner;
       uint64_t       lease_num = 0;
@@ -377,7 +393,7 @@ namespace ultrainiosystem {
                             checksum256 committee_mrt);
 
          // functions defined in ultrainio.system.cpp
-         void setsysparams( const ultrainio::ultrainio_system_params& params );
+         void setsysparams( const ultrainio_system_params& params );
          void setparams( const ultrainio::blockchain_parameters& params );
          void setpriv( account_name account, uint8_t ispriv );
          void rmvproducer( account_name producer );
