@@ -138,7 +138,6 @@ namespace ultrainio { namespace chain {
                     while(more) {// insert the record to backup
                         uint64_t old_id = 0, size = 0;
                         get_id_reader()->read_id_row(old_id, size);
-                        // ilog("test id reader: ${t} ${s}", ("t", old_id)("s", size));
 
                         index_utils<index_t>::create(worldstate_db, [&]( auto &row ) {
                             row.id._id = old_id;
@@ -162,10 +161,8 @@ namespace ultrainio { namespace chain {
                 get_writer()->write_section<value_t>([&]( auto& section ){
                     index_utils<index_t>::walk(worldstate_db, [&]( const auto &row ) {
                         get_id_writer()->write_row_id(row.id._id, 0);
-                        // ilog("test id writer:  ${t} ${s}", ("t", row.id._id)("s", 0));
-
                         section.add_row(row, worldstate_db, data);
-                        auto length = get_writer()->write_length();
+                        // auto length = get_writer()->write_length();
                     });
                 });
 

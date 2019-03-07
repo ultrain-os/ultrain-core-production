@@ -551,18 +551,18 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
        my->_genesis_time = options.at("genesis-time").as<std::string>();
    }
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
-   if( options.count( "worldstates-dir" )) {
-      auto wd = options.at( "worldstates-dir" ).as<bfs::path>();
-      if( wd.is_relative()) {
-         my->_worldstates_dir = app().data_dir() / wd;
-         if (!fc::exists(my->_worldstates_dir)) {
-            fc::create_directories(my->_worldstates_dir);
-         }
-     } else {
-         my->_worldstates_dir = wd;
-     }
-     FC_ASSERT( fc::is_directory(my->_worldstates_dir) );
-   }
+   // if( options.count( "worldstates-dir" )) {
+   //    auto wd = options.at( "worldstates-dir" ).as<bfs::path>();
+   //    if( wd.is_relative()) {
+   //       my->_worldstates_dir = app().data_dir() / wd;
+   //       if (!fc::exists(my->_worldstates_dir)) {
+   //          fc::create_directories(my->_worldstates_dir);
+   //       }
+   //   } else {
+   //       my->_worldstates_dir = wd;
+   //   }
+   //   FC_ASSERT( fc::is_directory(my->_worldstates_dir) );
+   // }
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
       try {

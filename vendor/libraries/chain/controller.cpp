@@ -240,6 +240,7 @@ struct controller_impl {
          } catch( const std::exception& e ) {
             elog("worldstate thread error: ${e}", ("e",e.what()));
          } catch (const fc::exception &e) {
+            elog("worldstate thread error:");
             edump((e.to_detail_string()));
          } catch( ... ) {
             elog("worldstate thread error: unknown exception");
@@ -258,7 +259,6 @@ struct controller_impl {
    void on_irreversible( const block_state_ptr& s ) {
       if( !blog.head() )
          blog.read_head();
-      ilog("on_irreversible");
       const auto& log_head = blog.head();
       bool append_to_blog = false;
       if (!log_head) {
@@ -431,10 +431,10 @@ struct controller_impl {
    }
 
    void store_one_contract_table(chainbase::database& worldstate_db, worldstate_writer::section_writer& writer_section, std::shared_ptr<ws_helper> ws_helper_ptr){
+      ilog("store_one_contract_table");
       int count = 0;
       index_utils<table_id_multi_index>::walk(worldstate_db, [&]( const table_id_object& table_row ){
          ws_helper_ptr->get_id_writer()->write_row_id(table_row.id._id, 0);
-         ilog("test id ${t}", ("t",table_row.id._id ));
          // add a row for the table
          writer_section.add_row(table_row, worldstate_db);
          count++;
@@ -480,14 +480,12 @@ struct controller_impl {
                ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
 
                table_id_object::id_type t_id;
-               ilog("test table_id");
                auto& cache_node = worldstate_db.get_mutable_index<table_id_multi_index>().cache().front();
+               ilog("re-add_contract remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+               ilog("re-add_contract Cache count: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().cache().size()));
+               ilog("re-add_contract Backup size: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices().size()));
 
-               while (more) {
-                  ilog("re-add_contract remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
-                  ilog("re-add_contract Cache count: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().cache().size()));
-                  ilog("re-add_contract Backup size: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices().size()));
-
+               while (more) {                  
                   //1.read 1 table_id row from old ws file, insert to backup indices
                   uint64_t old_id = 0, size = 0;
                   id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
@@ -516,7 +514,6 @@ struct controller_impl {
 
                   //4.store table_id and contract_database_index_set to ws new file
                   store_one_contract_table(worldstate_db, writer_section, ws_helper_ptr);
-                  ilog("store_one_contract_table done");
 
                   //5.handle done, clear table_id backup indices and contract_database_index_set
                   (const_cast<table_id_multi_index&>(worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices())).clear();
@@ -524,7 +521,6 @@ struct controller_impl {
                      using index_t = typename decltype(utils)::index_t;
                      (const_cast<index_t&>(worldstate_db.get_mutable_index<index_t>().backup_indices())).clear();
                   });
-                  ilog("clear done");
                }
 
                ws_helper_ptr->get_id_reader()->clear_id_section();
@@ -539,7 +535,7 @@ struct controller_impl {
 
             //1.new create row,  insert to backup
             auto result_paire = worldstate_db.get_mutable_index<table_id_multi_index>().process_create();
-            ilog("test process_create ${x} ${t}", ("x", std::get<0>(result_paire))("t", std::get<1>(result_paire)));
+            ilog("process_create ${x} ${t}", ("x", std::get<0>(result_paire))("t", std::get<1>(result_paire)));
             if(!std::get<0>(result_paire))
                break;
 
@@ -551,15 +547,12 @@ struct controller_impl {
             contract_database_index_set::walk_indices([&]( auto utils ) {
                using index_t = typename decltype(utils)::index_t;
                worldstate_db.get_mutable_index<index_t>().process_table([&](auto& item)->bool{
-                  ilog("test compare");
                   return item.second.t_id == t_id;
                });
             });
-            ilog("test");
 
             //4.store table_id and contract_database_index_set to ws new file
             store_one_contract_table(worldstate_db, writer_section, ws_helper_ptr);
-            ilog("test");
 
             //5.handle done, clear table_id backup indices and contract_database_index_set
             (const_cast<table_id_multi_index&>(worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices())).clear();
@@ -567,7 +560,6 @@ struct controller_impl {
                using index_t = typename decltype(utils)::index_t;
                (const_cast<index_t&>(worldstate_db.get_mutable_index<index_t>().backup_indices())).clear();
             });
-            ilog("test");
          } while(1);
       });
       ws_helper_ptr->get_id_writer()->write_end_id_section();
@@ -637,6 +629,11 @@ struct controller_impl {
       if (worldstate_previous_block > 0 && worldstate_previous_block %  conf.worldstate_interval != 0)
          old_ws_file += ".tmp";
 
+      if (worldstate_previous_block > 0) {
+         ULTRAIN_ASSERT(fc::exists(old_ws_file + ".ws") && fc::exists(old_ws_file + ".id"), worldstate_exception, "Don't exist file: ${s} or ${t}", 
+            ("s", old_ws_file + ".ws")("t", old_ws_file + ".id"));
+      }
+
       auto ws_helper_ptr = std::make_shared<ws_helper>(old_ws_file, new_ws_file);
 
       ws_helper_ptr->get_writer()->write_section<chain_worldstate_header>([this,&worldstate_db]( auto &section ){
@@ -650,7 +647,6 @@ struct controller_impl {
       ws_helper_ptr->get_writer()->write_section<block_state>([this,&worldstate_db, fork_head]( auto &section ){
          section.template add_row<block_header_state>(fork_head, worldstate_db);
       });
-
 
       //How to create new ws file by old ws file and operation cache:
       //1.Read all old rows from old ws file, and then restore to backup indices;
@@ -675,13 +671,13 @@ struct controller_impl {
       //save worldstate file
       ws_helper_ptr.reset();
       std::string new_ws_file_name = new_ws_file + ".ws";
-      info.file_size = bfs::file_size(new_ws_file_name);
+      info.file_size = fc::file_size(new_ws_file_name);
       info.hash_string = ws_manager_ptr->calculate_file_hash(new_ws_file_name).str();
       ws_manager_ptr->save_info(info);
 
       //Remove old ws files if temp
       if (worldstate_previous_block > 0 && worldstate_previous_block %  conf.worldstate_interval != 0) {
-         // fc::remove(ws_manager_ptr->get_file_path_by_info(info.chain_id, worldstate_previous_block)+".info");
+         fc::remove(ws_manager_ptr->get_file_path_by_info(info.chain_id, worldstate_previous_block)+".info");
          fc::remove(old_ws_file+".id");
          fc::remove(old_ws_file+".ws");
       }
@@ -738,12 +734,16 @@ struct controller_impl {
       ws_info info;
       info.chain_id = tmp_chain_id;
       info.block_height = head->block_num;
-      std::string ws_file = ws_manager_ptr->get_file_path_by_info(tmp_chain_id, head->block_num);
-      fc::rename(worldstate_path, bfs::path(ws_file+".ws") );
-      fc::rename(id_file, bfs::path(ws_file+".id") );
+      std::string file_name = ws_manager_ptr->get_file_path_by_info(tmp_chain_id, head->block_num);
+      fc::path ws_file(file_name + ".ws");
+      if (ws_file != fc::path(worldstate_path)){
+         if (fc::exists(ws_file)) fc::remove(ws_file);
+         fc::copy(worldstate_path, bfs::path(ws_file) );
+      }
+      fc::rename(id_file, bfs::path(file_name +".id") );
 
-      info.file_size = bfs::file_size(ws_file + ".ws");
-      info.hash_string = ws_manager_ptr->calculate_file_hash(ws_file+".ws").str();
+      info.file_size = fc::file_size(ws_file);
+      info.hash_string = ws_manager_ptr->calculate_file_hash(ws_file.string()).str();
       ws_manager_ptr->save_info(info);
 
       worldstate_previous_block = head->block_num;
@@ -843,7 +843,6 @@ struct controller_impl {
     * @post regardless of the success of commit block there is no active pending block
     */
    void commit_block( bool add_to_fork_db ) {
-      ilog("test commit_block ${t}", ("t", add_to_fork_db));
       auto reset_pending_on_exit = fc::make_scoped_exit([this]{
          pending.reset();
       });
@@ -866,10 +865,11 @@ struct controller_impl {
       }
 
       bool ws = conf.worldstate_control && (0 == fork_db.head()->block_num % WS_INTERVAL) && worldstate_allowed && !worldstate_thread_running;
-      ilog("commit_block ${s} ${t} ${x} ${y}", ("s", ws)("t",fork_db.head()->block_num)("x", worldstate_allowed)("y", !worldstate_thread_running));
+      ilog("commit_block ws: ${s} ${t} ${x} ${y}", ("s", ws)("t",fork_db.head()->block_num)("x", worldstate_allowed)("y", !worldstate_thread_running));
 
       // push the state for pending.
       pending->push(ws);
+
       // block syncing and listner branch, worldstate allowed for listner but not for syncing
       if ( ws ) {
          create_worldstate();
@@ -1144,7 +1144,6 @@ struct controller_impl {
                                            bool explicit_billed_cpu_time = false )
    {
       ULTRAIN_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
-      ilog("push_transaction");
       transaction_trace_ptr trace;
       try {
          transaction_context trx_context(self, trx->trx, trx->id);
@@ -1232,7 +1231,6 @@ struct controller_impl {
             }
 
             event_restore.cancel();
-            ilog("push_transaction done");
             return trace;
          } catch (const fc::exception& e) {
             ilog("-----------exception in push_transaction ${e}", ("e", e.to_detail_string()));
@@ -1244,7 +1242,6 @@ struct controller_impl {
             unapplied_transactions.erase( trx->signed_id );
          }
 
-         ilog("push_transaction done");
          return trace;
       } FC_CAPTURE_AND_RETHROW((trace))
    } /// push_transaction
@@ -1256,13 +1253,11 @@ struct controller_impl {
       ULTRAIN_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                 ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-      ilog("test start_block");
       auto guard_pending = fc::make_scoped_exit([this](){
          pending.reset();
       });
 
       pending = db.start_undo_session(true);
-      ilog("test start block undo done");
       pending->_block_status = s;
 
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
@@ -1300,7 +1295,6 @@ struct controller_impl {
    } /// assign_header_to_block
 
     void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
-       ilog("test apply_block");
       try {
          ULTRAIN_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
          start_block( b->timestamp, b->committee_mroot, s );
@@ -1377,7 +1371,6 @@ struct controller_impl {
 
    void push_block( const signed_block_ptr& b, controller::block_status s ) {
     //  idump((fc::json::to_pretty_string(*b)));
-      ilog("test push_block");
       ULTRAIN_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
       try {
          ULTRAIN_ASSERT( b, block_validate_exception, "trying to push empty block" );
@@ -1572,7 +1565,6 @@ struct controller_impl {
 
    void finalize_block()
    {
-      ilog("test finalize_block");
       ULTRAIN_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
       try {
 
@@ -1625,7 +1617,6 @@ struct controller_impl {
    void create_block_summary(const block_id_type& id) {
       auto block_num = block_header::num_from_id(id);
       auto sid = block_num & 0xffff;
-      ilog("test create_block_summary ${s}", ("s", block_num));
       db.modify( db.get<block_summary_object,by_id>(sid), [&](block_summary_object& bso ) {
           bso.block_id = id;
       });

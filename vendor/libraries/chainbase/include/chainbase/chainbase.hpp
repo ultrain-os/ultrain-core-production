@@ -28,7 +28,6 @@
 #include <stdexcept>
 #include <typeindex>
 #include <typeinfo>
-#include <fc/log/logger.hpp>
 
 #ifndef CHAINBASE_NUM_RW_LOCKS
    #define CHAINBASE_NUM_RW_LOCKS 10
@@ -414,7 +413,6 @@ namespace chainbase {
           *  This method does not change the state of the index, only the state of the undo buffer.
           */
          void squash_cache(){
-            //  ilog("#####squash_cache before size:    ${s}  ${t}", ("s", _cache.size())("t", _revision));
              if( !_cache_on|| _cache.size()<2  ) {return;};
              auto& cache = _cache.back();
              auto& prev_cache = *(_cache.end()-2);
@@ -570,7 +568,6 @@ namespace chainbase {
           */
          void commit( int64_t revision )
          {
-            // ilog("####commit  revision: ${s}  ${t}", ("s", revision)("t", _cache.size()));
             while( _stack.size() && _stack[0].revision <= revision )
             {
                _stack.pop_front();

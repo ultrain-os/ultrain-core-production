@@ -141,6 +141,9 @@ ws_file_writer::~ws_file_writer()
 
 void ws_file_writer::destory()
 {
+    if(m_is_write && m_fd.is_open())
+        m_fd.flush();
+
     if(m_fd.is_open())
         m_fd.close();
 
@@ -191,7 +194,8 @@ bool ws_file_writer::is_valid()
 }
 
 void ws_file_writer::write_finished(){
-
+    if(m_is_write && m_fd.is_open())
+        m_fd.flush();
 }
 
 void ws_file_writer::open_write()
@@ -211,8 +215,10 @@ void ws_file_writer::open_read()
     if(!m_is_write)
         return;
 
-    if(m_fd.is_open())
+    if(m_fd.is_open()) {
+        m_fd.flush();
         m_fd.close();
+    }
 
     m_fd.open(m_file_name.c_str(), std::ios::in | std::ios::binary);    
     m_is_write = false;
@@ -334,12 +340,6 @@ std::shared_ptr<ws_file_reader> ws_file_manager::get_reader(ws_info node, uint32
 
 std::shared_ptr<ws_file_writer>  ws_file_manager::get_writer(ws_info node, uint32_t len_per_slice)
 {
-    // auto node_list = get_local_ws_info();
-    // for(auto &it : node_list){
-    //     if(it == node){
-    //         return nullptr;
-    //     }
-    // }
     return std::make_shared<ws_file_writer>(node, len_per_slice, m_dir_path,  *this);
 }
 
@@ -416,8 +416,8 @@ void ws_file_manager::start_delete_timer()
             std::string ws_file_name  = m_dir_path + "/" +  name + ".ws";
             std::string info_file_name  = m_dir_path + "/" +  name + ".info";
             std::string id_file_name  = m_dir_path + "/" +  name + ".id";
-            // fc::remove(path(id_file_name));
-            // fc::remove(path(info_file_name));
+            fc::remove(path(id_file_name));
+            fc::remove(path(info_file_name));
             fc::remove(path(ws_file_name));
         } 
     });

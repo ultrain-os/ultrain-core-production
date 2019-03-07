@@ -90,25 +90,24 @@ int main(int argc, const char **argv) {
 
         boost::filesystem::path temp = boost::filesystem::unique_path();
         chainbase::database db(temp, database::read_write, 1024);
-        // std::cerr << temp.native() << " \n";
+        std::cerr << temp.native() << " \n";
 
         map<account_name, abi_def> contract_abi;
         const fc::microseconds max_serialization_time{100000};
 
-        // worldstate->read_section<chain_worldstate_header>([&db,&out]( auto &section ){
-        //   chain_worldstate_header header;
-        //   section.read_row(header, db);
-        // });
+        worldstate->read_section<chain_worldstate_header>([&db,&out]( auto &section ){
+          chain_worldstate_header header;
+          section.read_row(header, db);
+        });
 
-        // worldstate->read_section<block_state>([&db,&out]( auto &section ){
-        //   block_header_state head_header_state;
-        //   section.read_row(head_header_state, db);
-        // });
+        worldstate->read_section<block_state>([&db,&out]( auto &section ){
+          block_header_state head_header_state;
+          section.read_row(head_header_state, db);
+        });
 
-        out << "accounts\n";
+        out << "\naccounts\n";
         //account_object
-        int count  = 0;
-        worldstate->read_section<account_object>([&db,&contract_abi,&out, &count]( auto& section ) {
+        worldstate->read_section<account_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   account_object row;
@@ -126,205 +125,187 @@ int main(int argc, const char **argv) {
                   mvo["abi"] = vabi;
                   }
 
-                  out << count++ << ": "<< fc::json::to_string(mvo)<<"\n";
+                  out << fc::json::to_string(mvo)<<"\n";
                 }
         });
 
         //account_sequence_object
-        out << "account_sequence_object\n";
-        count=0;
-        worldstate->read_section<account_sequence_object>([&db,&contract_abi,&out, &count]( auto& section ) {
+        worldstate->read_section<account_sequence_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   account_sequence_object row;
                   more = section.read_row(row, db);
-                  out << count++ << ": "<< fc::json::to_string(row)<<"\n";
                 }
         });
 
         //global_property_object
-        out << "global_property_object\n";
-        count=0;
-        worldstate->read_section<global_property_object>([&db,&contract_abi,&out, &count]( auto& section ) {
+        worldstate->read_section<global_property_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   global_property_object row;
                   more = section.read_row(row, db);
-                  out << count++ << ": "<< fc::json::to_string(row)<<"\n";
                 }
         });
 
         //dynamic_global_property_object
-        out << "dynamic_global_property_object\n";
-        count=0;
-        worldstate->read_section<dynamic_global_property_object>([&db,&contract_abi,&out, &count]( auto& section ) {
+        worldstate->read_section<dynamic_global_property_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   dynamic_global_property_object row;
                   more = section.read_row(row, db);
-                  out << count++ << ": "<< fc::json::to_string(row)<<"\n";
                 }
         });
 
         //block_summary_object
-        out << "block_summary_object\n";
-        count=0;
-        worldstate->read_section<block_summary_object>([&db,&contract_abi,&out, &count]( auto& section ) {
+        worldstate->read_section<block_summary_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   block_summary_object row;
                   more = section.read_row(row, db);
-                  out << count++ << ": "<< fc::json::to_string(row)<<"\n";
                 }
         });
 
         //transaction_object
-        out << "transaction_object\n";
-        count=0;
-        worldstate->read_section<transaction_object>([&db,&contract_abi,&out, &count]( auto& section ) {
+        worldstate->read_section<transaction_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   transaction_object row;
                   more = section.read_row(row, db);
-                  out << count++ << ": "<< fc::json::to_string(row)<<"\n";
                 }
         });
 
         //generated_transaction_object
-        out << "generated_transaction_object\n";
-        count=0;
-        worldstate->read_section<generated_transaction_object>([&db,&contract_abi,&out, &count]( auto& section ) {
+        worldstate->read_section<generated_transaction_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   generated_transaction_object row;
                   more = section.read_row(row, db);
-                  out << count++ << ": "<< fc::json::to_string(row)<<"\n";
                 }
         });
 
-        // out << "\ntables\n";
-        // worldstate->read_section("contract_tables", [&db,&contract_abi,&out,&max_serialization_time]( auto& section ) {
-        //         bool more = !section.empty();
-        //         while (more) {
-        //           table_id_object::id_type t_id;
-        //           table_id_object table;
-        //           section.read_row(table, db);
-        //           t_id = table.id;
-        //           const auto& abi = contract_abi[table.code];
-        //           abi_serializer abis(abi,max_serialization_time);
-        //           string table_type = abis.get_table_type(table.table);
-        //           vector<char> data;
+        out << "\ntables\n";
+        worldstate->read_section("contract_tables", [&db,&contract_abi,&out,&max_serialization_time]( auto& section ) {
+                bool more = !section.empty();
+                while (more) {
+                  table_id_object::id_type t_id;
+                  table_id_object table;
+                  section.read_row(table, db);
+                  t_id = table.id;
+                  const auto& abi = contract_abi[table.code];
+                  abi_serializer abis(abi,max_serialization_time);
+                  string table_type = abis.get_table_type(table.table);
+                  vector<char> data;
 
-        //           out<<"\ntid:"<<fc::json::to_string(table)<<"\n";
-        //           out<<"rows:\n";
+                  out<<"\ntid:"<<fc::json::to_string(table)<<"\n";
+                  out<<"rows:\n";
 
-        //           unsigned_int size;
+                  unsigned_int size;
 
-        //           more = section.read_row(size, db);
-        //           for (size_t idx = 0; idx < size.value; idx++) {
-        //               key_value_object row;
-        //               row.t_id = t_id;
-        //               more = section.read_row(row, db);
+                  more = section.read_row(size, db);
+                  for (size_t idx = 0; idx < size.value; idx++) {
+                      key_value_object row;
+                      row.t_id = t_id;
+                      more = section.read_row(row, db);
 
-        //               out<< row.primary_key << ":";
-        //               if(!table_type.size()) {
-        //                   out << "{\"hex_data\":\"" << fc::to_hex(row.value.data(), row.value.size()) << "\n";
-        //               } else {
-        //                   data.resize( row.value.size() );
-        //                   memcpy(data.data(), row.value.data(), row.value.size());
-        //                   out << "{\"data\":"
-        //                       << fc::json::to_string( abis.binary_to_variant(table_type, data, max_serialization_time))
-        //                       <<"\n";
-        //               }
+                      out<< row.primary_key << ":";
+                      if(!table_type.size()) {
+                          out << "{\"hex_data\":\"" << fc::to_hex(row.value.data(), row.value.size()) << "\n";
+                      } else {
+                          data.resize( row.value.size() );
+                          memcpy(data.data(), row.value.data(), row.value.size());
+                          out << "{\"data\":"
+                              << fc::json::to_string( abis.binary_to_variant(table_type, data, max_serialization_time))
+                              <<"\n";
+                      }
 
-        //           }
+                  }
 
-        //           more = section.read_row(size, db);
-        //           for (size_t idx = 0; idx < size.value; idx++) {
-        //               index64_object row;
-        //               row.t_id = t_id;
-        //               more = section.read_row(row, db);
-        //           }
+                  more = section.read_row(size, db);
+                  for (size_t idx = 0; idx < size.value; idx++) {
+                      index64_object row;
+                      row.t_id = t_id;
+                      more = section.read_row(row, db);
+                  }
 
-        //           more = section.read_row(size, db);
-        //           for (size_t idx = 0; idx < size.value; idx++) {
-        //               index128_object row;
-        //               row.t_id = t_id;
-        //               more = section.read_row(row, db);
-        //           }
+                  more = section.read_row(size, db);
+                  for (size_t idx = 0; idx < size.value; idx++) {
+                      index128_object row;
+                      row.t_id = t_id;
+                      more = section.read_row(row, db);
+                  }
 
-        //           more = section.read_row(size, db);
-        //           for (size_t idx = 0; idx < size.value; idx++) {
-        //               index_double_object row;
-        //               row.t_id = t_id;
-        //               more = section.read_row(row, db);
-        //           }
+                  more = section.read_row(size, db);
+                  for (size_t idx = 0; idx < size.value; idx++) {
+                      index_double_object row;
+                      row.t_id = t_id;
+                      more = section.read_row(row, db);
+                  }
 
-        //           more = section.read_row(size, db);
-        //           for (size_t idx = 0; idx < size.value; idx++) {
-        //               index_long_double_object row;
-        //               row.t_id = t_id;
-        //               more = section.read_row(row, db);
-        //           }
+                  more = section.read_row(size, db);
+                  for (size_t idx = 0; idx < size.value; idx++) {
+                      index_long_double_object row;
+                      row.t_id = t_id;
+                      more = section.read_row(row, db);
+                  }
 
-        //           more = section.read_row(size, db);
-        //           for (size_t idx = 0; idx < size.value; idx++) {
-        //               index256_object row;
-        //               row.t_id = t_id;
-        //               more = section.read_row(row, db);
-        //           }
-        //         }
-        // });
+                  more = section.read_row(size, db);
+                  for (size_t idx = 0; idx < size.value; idx++) {
+                      index256_object row;
+                      row.t_id = t_id;
+                      more = section.read_row(row, db);
+                  }
+                }
+        });
 
-        // //permission
-        // worldstate->read_section<permission_object>([&db,&out]( auto& section ) {
-        //         bool more = !section.empty();
-        //         while(more) {
-        //              permission_object row;
-        //              more = section.read_row(row, db);
-        //         }
-        // });
+        //permission
+        worldstate->read_section<permission_object>([&db,&out]( auto& section ) {
+                bool more = !section.empty();
+                while(more) {
+                     permission_object row;
+                     more = section.read_row(row, db);
+                }
+        });
 
-        // worldstate->read_section<permission_link_object>([&db,&out]( auto& section ) {
-        //         bool more = !section.empty();
-        //         while(more) {
-        //              permission_link_object row;
-        //              more = section.read_row(row, db);
-        //         }
-        // });
+        worldstate->read_section<permission_link_object>([&db,&out]( auto& section ) {
+                bool more = !section.empty();
+                while(more) {
+                     permission_link_object row;
+                     more = section.read_row(row, db);
+                }
+        });
 
-        // //resource
-        // worldstate->read_section<resource_limits_object>([&db,&out]( auto& section ) {
-        //         bool more = !section.empty();
-        //         while(more) {
-        //          resource_limits_object row;
-        //          more = section.read_row(row, db);
-        //          }
-        // });
+        //resource
+        worldstate->read_section<resource_limits_object>([&db,&out]( auto& section ) {
+                bool more = !section.empty();
+                while(more) {
+                 resource_limits_object row;
+                 more = section.read_row(row, db);
+                 }
+        });
 
-        // worldstate->read_section<resource_usage_object>([&db,&out]( auto& section ) {
-        //         bool more = !section.empty();
-        //         while(more) {
-        //          resource_usage_object row;
-        //          more = section.read_row(row, db);
-        //          }
-        // });
+        worldstate->read_section<resource_usage_object>([&db,&out]( auto& section ) {
+                bool more = !section.empty();
+                while(more) {
+                 resource_usage_object row;
+                 more = section.read_row(row, db);
+                 }
+        });
 
-        // worldstate->read_section<resource_limits_state_object>([&db,&out]( auto& section ) {
-        //         bool more = !section.empty();
-        //         while(more) {
-        //          resource_limits_state_object row;
-        //          more = section.read_row(row, db);
-        //          }
-        // });
+        worldstate->read_section<resource_limits_state_object>([&db,&out]( auto& section ) {
+                bool more = !section.empty();
+                while(more) {
+                 resource_limits_state_object row;
+                 more = section.read_row(row, db);
+                 }
+        });
 
-        // worldstate->read_section<resource_limits_config_object>([&db,&out]( auto& section ) {
-        //         bool more = !section.empty();
-        //         while(more) {
-        //          resource_limits_config_object row;
-        //          more = section.read_row(row, db);
-        //          }
-        // });
+        worldstate->read_section<resource_limits_config_object>([&db,&out]( auto& section ) {
+                bool more = !section.empty();
+                while(more) {
+                 resource_limits_config_object row;
+                 more = section.read_row(row, db);
+                 }
+        });
 
         ifs.close();
         ofs.close();
