@@ -1035,12 +1035,12 @@ std::string read_only::get_subchain_ws_hash(const read_only::get_subchain_ws_has
 read_only::get_producer_info_result read_only::get_producer_info(const read_only::get_producer_info_params& p) const {
     const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
 
-    name table = N(producers);
+    name table = N(briefprod);
     auto index_type = get_table_type( abi, table );
     read_only::get_producer_info_result result;
     result.location = std::numeric_limits<uint64_t>::max();
     walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
-       producer_info producer_data;
+       producer_brief producer_data;
        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
        fc::raw::unpack(ds, producer_data);
        if(p.owner == producer_data.owner) {
@@ -1713,7 +1713,7 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
                   copy_inline_row(*itres, data);
                   chain_resource_func(data, chain_name);
                }
-            }            
+            }
          });
       }
    }

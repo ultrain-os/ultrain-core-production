@@ -5,6 +5,11 @@ namespace ultrainio { namespace chain {
     const uint64_t master_chain_name = 0;
 
     // keep this the same as defined in ultrainio.system.hpp;
+    struct producer_brief {
+      account_name          owner;
+      uint64_t              location;
+      bool                  in_disable = true;
+   };
     struct role_base {
       account_name          owner;
       std::string           producer_key; /// a packed public key objec
@@ -103,6 +108,7 @@ namespace ultrainio { namespace chain {
 
 }} // namespace ultrainio::chain
 
+FC_REFLECT(ultrainio::chain::producer_brief, (owner)(location)(in_disable) )
 FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key)(bls_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::disabled_producer, (ultrainio::chain::role_base), (total_cons_staked)(url)(total_produce_block)
                     (location)(last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account) )
