@@ -408,7 +408,7 @@ struct controller_impl {
 
          unsigned_int size;
          more = section_reader.read_row(size, db);
-         ilog("contract table size: ${t}", ("t", size ));
+         // ilog("contract table size: ${t}", ("t", size ));
 
          /*Import, read a ignore value*/
          uint64_t ignore1 = 0, ignore2 = 0;
@@ -417,7 +417,7 @@ struct controller_impl {
          for (size_t idx = 0; idx < size.value; idx++) {
             uint64_t old_id = 0, size = 0;
             id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
-            ilog("contract table old_id ${t}", ("t", old_id ));
+            // ilog("contract table old_id ${t}", ("t", old_id ));
             utils_t::create(db, [&](auto& row) {
                row.t_id = t_id;
                row.id._id = old_id;

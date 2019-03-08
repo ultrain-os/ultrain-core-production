@@ -39,7 +39,7 @@ namespace ultrainio { namespace chain {
          using worldstate_type = worldstate_permission_object;
 
          static worldstate_permission_object to_worldstate_row(const permission_object& value, const chainbase::database& db, void* data) {
-            ilog("to_worldstate_row, id: ${t}", ("t", value.id._id));
+            // ilog("to_worldstate_row, id: ${t}", ("t", value.id._id));
 
             worldstate_permission_object res;
             res.name = value.name;
@@ -66,7 +66,7 @@ namespace ultrainio { namespace chain {
 
                ULTRAIN_ASSERT( data != nullptr, worldstate_exception, "Data is nullptr, request data!");
                ws_helper* ptr = (ws_helper*)data;
-               ilog("usage.id:  ${t}", ("t", usage.id._id));
+               // ilog("usage.id:  ${t}", ("t", usage.id._id));
                ptr->get_id_writer()->write_row_id(usage.id._id, 0);
             } else {
                res.last_used = time_point();
@@ -80,7 +80,7 @@ namespace ultrainio { namespace chain {
             value.last_updated = row.last_updated;
             value.auth = row.auth;
             
-            ilog("from_worldstate_row, id: ${t}", ("t", value.id._id));
+            // ilog("from_worldstate_row, id: ${t}", ("t", value.id._id));
             value.parent = 0;
             if (value.id == 0) {
                ULTRAIN_ASSERT(row.parent == permission_name(), worldstate_exception, "Unexpected parent name on reserved permission 0");
@@ -123,7 +123,7 @@ namespace ultrainio { namespace chain {
                } else {
                   uint64_t old_id = 0, size = 0;
                   ptr->get_id_reader()->read_id_row(old_id, size);
-                  ilog("read_id usage.id:  ${t}  ${s}", ("t", old_id)("s", size));
+                  // ilog("read_id usage.id:  ${t}  ${s}", ("t", old_id)("s", size));
                   const auto& usage = db.backup_create<permission_usage_object>([&](auto& p) {
                      p.last_used = row.last_used;
                      p.id._id = old_id;
