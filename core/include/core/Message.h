@@ -36,7 +36,7 @@ namespace ultrainio {
     struct SyncBlockMsg {
         uint32_t seqNum;
         Block block;
-        std::vector<std::string> proof;
+        std::string proof;
     };
 
     struct SyncStopMsg {

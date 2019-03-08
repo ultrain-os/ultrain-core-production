@@ -28,10 +28,10 @@
 #include <lightclient/BlockHeaderExtKey.h>
 #include <lightclient/CommitteeSet.h>
 #include <lightclient/EpochEndPoint.h>
+#include <lightclient/LightClientProducer.h>
 #include <lightclient/LightClient.h>
 #include <lightclient/LightClientCallback.h>
 #include <lightclient/LightClientMgr.h>
-#include <lightclient/LightClientProducer.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/MsgBuilder.h>
@@ -864,7 +864,8 @@ namespace ultrainio {
             }
         }
 
-        uint32_t end_block_num = msg.endBlockNum <= getLastBlocknum() + 1 ? msg.endBlockNum : getLastBlocknum() + 1;
+        uint32_t last_block_num = getLastBlocknum();
+        uint32_t end_block_num = msg.endBlockNum <= last_block_num + 1 ? msg.endBlockNum : last_block_num + 1;
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         uint32_t max_count = m_maxPacketsOnce / 3;
         uint32_t send_count = 0;
@@ -876,6 +877,10 @@ namespace ultrainio {
             auto b = chain.fetch_block_by_number(num);
             if (b) {
                 sync_block.block = *b;
+                if (num == last_block_num) {
+                    sync_block.proof = m_currentVoterSet.toBlsVoterSet().toString();
+                    ilog("send last block, voter set: ${s}", ("s", m_currentVoterSet.toBlsVoterSet().toString()));
+                }
                 UranusNode::getInstance()->sendMessage(nodeId, sync_block);
             } else if (num == end_block_num) { // try to send last block next time
                 break;
@@ -888,7 +893,7 @@ namespace ultrainio {
             if (end_block_num > num + m_maxSyncBlocks) {
                 end_block_num = num + m_maxSyncBlocks;
             }
-            m_syncTaskQueue.emplace_back(nodeId, num, end_block_num, msg.seqNum);
+            m_syncTaskQueue.emplace_back(last_block_num, m_currentVoterSet.toBlsVoterSet(), nodeId, num, end_block_num, msg.seqNum);
         }
 
         return true;
@@ -2069,6 +2074,13 @@ namespace ultrainio {
                 auto b = chain.fetch_block_by_number(it->startBlock);
                 if (b) {
                     sync_block.block = *b;
+                    if (it->startBlock == it->checkBlock) {
+                        sync_block.proof = it->bvs.toString();
+                        ilog("send checked block in task: ${s}", ("s", sync_block.proof));
+                    } else if (it->startBlock == last_num) {
+                        sync_block.proof = m_currentVoterSet.toBlsVoterSet().toString();
+                        ilog("send last block in task: ${s}", ("s", sync_block.proof));
+                    }
                     UranusNode::getInstance()->sendMessage(it->nodeId, sync_block);
                 } else if (it->startBlock == last_num) { // try to send last block next time
                     break;

@@ -11,9 +11,9 @@
 #include <ultrainio/chain/transaction_metadata.hpp>
 #include <ultrainio/chain/types.hpp>
 
-#include <core/BlsVoterSet.h>
 #include <core/Message.h>
 #include <core/types.h>
+#include <core/BlsVoterSet.h>
 #include <boost/asio/steady_timer.hpp>
 
 #include <rpos/VoterSet.h>
@@ -68,12 +68,16 @@ namespace ultrainio {
     };
 
     struct SyncTask {
+        uint32_t checkBlock;
+        BlsVoterSet bvs;
         fc::sha256 nodeId;
         uint32_t startBlock;
         uint32_t endBlock;
         uint32_t seqNum;
 
-        SyncTask(const fc::sha256 &_nodeId, uint32_t _startBlock, uint32_t _endBlock, uint32_t _seqNum) : nodeId(_nodeId) {
+        SyncTask(uint32_t _checkBlock, const BlsVoterSet &_bvs, const fc::sha256 &_nodeId, uint32_t _startBlock, uint32_t _endBlock, uint32_t _seqNum)
+                : bvs{_bvs}, nodeId(_nodeId) {
+            checkBlock = _checkBlock;
             startBlock = _startBlock;
             endBlock = _endBlock;
             seqNum = _seqNum;

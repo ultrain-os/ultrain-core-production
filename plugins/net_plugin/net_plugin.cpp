@@ -32,6 +32,10 @@
 #include <rpos/MsgMgr.h>
 #include <rpos/Utils.h>
 
+#include <lightclient/LightClientCallback.h>
+#include <lightclient/LightClient.h>
+#include <lightclient/LightClientMgr.h>
+
 #if defined( __linux__ )
 #include <malloc.h>
 #endif
@@ -173,6 +177,7 @@ namespace ultrainio {
         bool                             done = false;
         unique_ptr< dispatch_manager >   dispatcher;
         unique_ptr< sync_block_manager > sync_block_master;
+        shared_ptr< LightClient >        light_client;
         int                        max_waitblocknum_seconds;
         int                        max_waitblock_seconds ;
 
@@ -222,7 +227,6 @@ namespace ultrainio {
         std::shared_ptr<p2p::NodeTable> node_table = nullptr;
 
         std::shared_ptr<p2p::NodeTable> get_node_table() { return node_table; }
-        void onNodeTableAddEvent(const p2p::NodeIPEndpoint& _n);
         void onNodeTableDropEvent(const p2p::NodeIPEndpoint& _n);
 	template<typename VerifierFunc>
         void send_all( const net_message &msg, VerifierFunc verify );
@@ -282,10 +286,10 @@ namespace ultrainio {
          */
         void ticker();
         bool is_genesis_finish = false;
-	std::vector<chain::public_key_type> producers_pk;
-	bool is_producer_account_pk(chain::public_key_type const& pk);
-	bool authen_whitelist_and_producer(const fc::sha256& hash,const chain::public_key_type& pk,const chain::signature_type& sig);
-	bool authen_tcp_whitelist(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig);
+        std::vector<chain::public_key_type> producers_pk;
+        bool is_producer_account_pk(chain::public_key_type const& pk);
+        bool authen_whitelist_and_producer(const fc::sha256& hash,const chain::public_key_type& pk,const chain::signature_type& sig);
+        bool authen_tcp_whitelist(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig);
         /** \brief Determine if a peer is allowed to connect.
          *
          * Checks current connection mode and key authentication.
@@ -656,7 +660,8 @@ namespace ultrainio {
         connection_ptr                   sync_conn;
         ultrainio::ReqSyncMsg            sync_block_msg;
         uint32_t                         end_block_num;
-        //uint32_t                         first_block_num;
+        uint32_t                         first_safe_block_num;
+        uint32_t                         last_safe_block_num;
         std::list<Block>                 block_msg_queue;
         bool                             selecting_src = false;
         boost::asio::steady_timer::duration   src_block_period;
@@ -685,6 +690,8 @@ namespace ultrainio {
             sync_conn = nullptr;
             memset(&sync_block_msg, 0, sizeof(sync_block_msg));
             end_block_num = 0;
+            first_safe_block_num = 0;
+            last_safe_block_num = 0;
             selecting_src = false;
             block_msg_queue.clear();
 
@@ -756,6 +763,8 @@ namespace ultrainio {
             last_checked_block = 0;
             sync_src_count = 0;
             conns_without_block.clear();
+            first_safe_block_num = 0;
+            last_safe_block_num = 0;
 
             if (sync_block_msg.endBlockNum > con->block_num_range.lastNum) {
                 if (sync_block_msg.endBlockNum == std::numeric_limits<uint32_t>::max()) {
@@ -780,6 +789,10 @@ namespace ultrainio {
             ilog("start handle blocks.");
             while(!block_msg_queue.empty()) {
                 auto& b = block_msg_queue.front();
+                if (b.block_num() < first_safe_block_num || b.block_num() > last_safe_block_num) {
+                    break;
+                }
+
                 bool is_last_block = (b.block_num() == end_block_num);
                 app().get_plugin<producer_uranus_plugin>().handle_message(b, is_last_block);
                 if (is_last_block) {
@@ -795,6 +808,43 @@ namespace ultrainio {
                 }
             }
         }
+
+        void confirm_safe_blocks(const std::list<BlockHeader>& safe_blocks) {
+            ilog("Blocks from ${s} to ${e} have been checked. first safe: ${fs} last safe: ${ls}", 
+                 ("s", safe_blocks.front().block_num())
+                 ("e", safe_blocks.back().block_num())
+                 ("fs", first_safe_block_num)
+                 ("ls", last_safe_block_num));
+
+            if (last_safe_block_num == 0) {
+                first_safe_block_num = safe_blocks.front().block_num();
+                last_safe_block_num = safe_blocks.back().block_num();
+            } else if (last_safe_block_num + 1 == safe_blocks.front().block_num()) {
+                last_safe_block_num = safe_blocks.back().block_num();
+            } else {
+                elog("Error!!! Confirmed block nums are not continuous.");
+            }
+        }
+    };
+
+    class CheckBlockCallback : public LightClientCallback {
+    public:
+        CheckBlockCallback(sync_block_manager& sbm) : m_sbm{sbm} {
+
+        }
+
+        ~CheckBlockCallback() {
+        }
+      
+        virtual void onConfirmed(const std::list<BlockHeader>& checkedBlocks) {
+            if (checkedBlocks.empty()) {
+                elog("Error!!! No block checked.");
+                return;
+            }
+            m_sbm.confirm_safe_blocks(checkedBlocks);
+        }
+    private:
+        sync_block_manager& m_sbm;
     };
 
     class dispatch_manager {
@@ -1699,7 +1749,6 @@ connection::connection(string endpoint, msg_priority pri)
             }
         }
 
-        //sync_block_master->first_block_num = 0;
         sync_block_master->end_block_num = 0;
         sync_block_master->sync_block_msg = msg;
         sync_block_master->sync_block_msg.seqNum = block_num_range_msg.seqNum;
@@ -2251,6 +2300,12 @@ connection::connection(string endpoint, msg_priority pri)
         if (sync_block_master->end_block_num > 0) {
             sync_block_master->last_received_block = msg.block.block_num();
             sync_block_master->block_msg_queue.emplace_back(msg.block);
+            if (msg.proof.empty()) {
+                light_client->accept(msg.block);
+            } else {
+                ilog("receive block with proof: ${pf}", ("pf", msg.proof));
+                light_client->accept(msg.block, BlsVoterSet(msg.proof));
+            }
         }
     }
 
@@ -2337,28 +2392,21 @@ connection::connection(string endpoint, msg_priority pri)
             }
         });
     }
-    void net_plugin_impl::onNodeTableAddEvent(p2p::NodeIPEndpoint const& _n)
-   {
-     //TODO:P2P udp linkage p2p
-       ilog("onNodeTableAddEven addr ${addr}",("addr",_n.address())); 
-   }
-    void net_plugin_impl::onNodeTableDropEvent(p2p::NodeIPEndpoint const& _n)
-    {
+
+    void net_plugin_impl::onNodeTableDropEvent(p2p::NodeIPEndpoint const& _n) {
         //TODO:P2P udp linkage p2p
         ilog("onNodeTableDropEven addr ${addr}",("addr",_n.address()));
-	boost::system::error_code ec;	
-	auto it = connections.begin();
-	while(it != connections.end())
-	{
-	    if((*it)->socket->remote_endpoint(ec).address().to_string() == _n.m_address)
-	    {
-		    close(*it);
-		    connections.erase(it);
-             }
-             ++it;
+        boost::system::error_code ec;	
+        auto it = connections.begin();
+        while(it != connections.end()) {
+            if((*it)->socket->remote_endpoint(ec).address().to_string() == _n.m_address) {
+                close(*it);
+                connections.erase(it);
+            }
+            ++it;
 	}
-
     }
+
     void net_plugin_impl::start_block_handler_timer( ) {
         block_handler_check->expires_from_now(block_handler_period);
         block_handler_check->async_wait( [this](boost::system::error_code ec) {
@@ -2927,6 +2975,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          my->max_waitblock_seconds = options.at( "max-waitblock-seconds" ).as<int>();
          my->dispatcher.reset( new dispatch_manager );
          my->sync_block_master.reset( new sync_block_manager(my->max_waitblocknum_seconds, my->max_waitblock_seconds) );
+         my->light_client = LightClientMgr::getInstance()->getLightClient(0);
+         my->light_client->addCallback(std::make_shared<CheckBlockCallback>(*my->sync_block_master));
 
          my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
          my->txn_exp_period = def_txn_expire_wait;
@@ -3119,9 +3169,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          cc.irreversible_block.connect( boost::bind(&net_plugin_impl::irreversible_block, my.get(), _1));
          cc.accepted_transaction.connect( boost::bind(&net_plugin_impl::accepted_transaction, my.get(), _1));
          cc.applied_transaction.connect( boost::bind(&net_plugin_impl::applied_transaction, my.get(), _1));
-         my->node_table->nodeaddevent.connect( boost::bind(&net_plugin_impl::onNodeTableAddEvent, my.get(), _1));
          my->node_table->nodedropevent.connect( boost::bind(&net_plugin_impl::onNodeTableDropEvent, my.get(), _1));
-	 my->node_table->pktcheckevent.connect(boost::bind(&net_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3));
+         my->node_table->pktcheckevent.connect(boost::bind(&net_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3));
       }
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
 
