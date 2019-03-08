@@ -213,9 +213,13 @@ ChainConfig.syncConfig = async function () {
             logger.info("config.chainId=", this.config.chainId);
             this.configSub.chainId = await chainApi.getChainId(this.configSub);
             logger.info("configSub.chainId=", this.configSub.chainId);
-            this.localChainName = await chainApi.getChainName();
+            this.localChainName = await chainApi.getChainName(this.configSub.httpEndpoint);
+            logger.info("get chainName form table : ",this.localChainName);
             if (utils.isNull(this.localChainName)) {
+                logger.info("get chainName form table is null,use local chainName");
                 this.localChainName = this.configFileData.target["chain-name"];
+            } else {
+                logger.info("get chainName form table is not null,use local chainName:",this.localChainName);
             }
             logger.info("chain name :"+this.localChainName);
 

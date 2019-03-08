@@ -12,6 +12,7 @@ var scopeConstants = require("../common/constant/constants").scopeConstants
 var actionConstants = require("../common/constant/constants").actionConstants
 var chainIdConstants = require("../common/constant/constants").chainIdConstants
 var pathConstants = require("../common/constant/constants").pathConstants
+var iniConstants = require("../common/constant/constants").iniConstants
 var sleep = require("sleep")
 var utils = require("../common/util/utils")
 var committeeUtil = require("./util/committeeUtil");
@@ -136,7 +137,7 @@ async function syncUser() {
             })
 
             //检查子链是否已经有改账户
-            if (utils.isNull(hitFlag) && utils.isNull(await chainApi.getAccount(constants.LOCAL_NOD_URL, newUser.owner))) {
+            if (utils.isNull(hitFlag) && utils.isNull(await chainApi.getAccount(chainConfig.configSub.httpEndpoint, newUser.owner))) {
                 logger.info("account(" + newUser.owner + ") is not ready,need vote..");
 
                 //查询是否已经投过票
@@ -343,7 +344,7 @@ async function syncCommitee() {
     try {
     logger.info("syncCommitee start");
     //获取本地prodcuers信息
-    let producerList = await chainApi.getProducerLists(constants.LOCAL_NOD_URL);
+    let producerList = await chainApi.getProducerLists(chainConfig.configSub.httpEndpoint);
     logger.info("subchain producers: ", producerList);
     if (utils.isNotNull(producerList)) {
         localProducers = producerList;
@@ -371,11 +372,10 @@ async function syncCommitee() {
             let params = [];
             params.push(changeMembers[i]);
             //判断需要投票的委员会的账号是否已在子链上
-            if (utils.isNull(await chainApi.getAccount(constants.LOCAL_NOD_URL, committeeUser))) {
+            if (utils.isNull(await chainApi.getAccount(chainConfig.configSub.httpEndpoint, committeeUser))) {
                 logger.info("account(" + committeeUser + ") is not exist in subchain,should add him first");
-                let account = await chainApi.getAccount(constants.LOCAL_NOD_URL, committeeUser);
+                let account = await chainApi.getAccount(chainConfig.config.httpEndpoint, committeeUser);
                 logger.info("account info:",account);
-                logger.info("account info:",account.permissions[0].required_auth);
                 //查询是否已经投过票
                 let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, committeeUser, null, null);
                 logger.debug(tableData)
@@ -387,7 +387,7 @@ async function syncCommitee() {
                     const params = {
                         proposer: chainConfig.myAccountAsCommittee,
                         proposeaccount: [{
-                            account: account.account_name,
+                            account: committeeUser,
                             owner_key: chainUtil.getOwnerPkByAccount(account,"owner"),
                             active_key: chainUtil.getOwnerPkByAccount(account,"active"),
                             location: 0,
@@ -509,6 +509,7 @@ async function syncChainInfo() {
         if (chainConfig.chainName == chainNameConstants.INVAILD_CHAIN_NAME) {
             syncChainData = false;
             logger.error(chainConfig.myAccountAsCommittee + " is a invalid name in main chain,need not work");
+            await checkNodAlive();
             return;
         }
 
@@ -701,7 +702,8 @@ async function switchChain() {
             var worldstatedata = null;
             let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.WORLDSTATE_HASH, "block_num");
             if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
-                worldstatedata = mainChainData.rows[mainChainData.rows.length - 1];
+                //worldstatedata = mainChainData.rows[mainChainData.rows.length - 1];
+                worldstatedata = voteUtil.getMaxValidWorldState(mainChainData.rows);
                 logger.info("get worldstate data:", worldstatedata);
             } else {
                 logger.error("can not get world state file,or data is null");
@@ -920,9 +922,12 @@ async function restartNod() {
                 let maxBlockHeight = 0;
                 let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.localChainName, tableConstants.WORLDSTATE_HASH, "block_num");
                 if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
-                    worldstatedata = mainChainData.rows[mainChainData.rows.length - 1];
+                    //worldstatedata = mainChainData.rows[mainChainData.rows.length - 1];
+                    worldstatedata = voteUtil.getMaxValidWorldState(mainChainData.rows);
                     logger.info("get worldstate data:", worldstatedata);
-                    maxBlockHeight = worldstatedata.block_num;
+                    if (worldstatedata != null) {
+                        maxBlockHeight = worldstatedata.block_num;
+                    }
                 } else {
                     logger.error("can not get world state file,or data is null");
                 }
@@ -941,7 +946,7 @@ async function restartNod() {
                             wssinfo = "--worldstate " + pathConstants.WSS_LOCAL_DATA + chainConfig.chainId + "-" + WorldState.status.block_height + ".ws";
                             localHashIsMax = true;
                         } else {
-                            logger.info("file path not exists:", filepath);
+                            logger.info("file path not exists:", wssFilePath);
                         }
                     } else {
                         logger.info("block height is not equal,not use local ws file to start");
@@ -1219,17 +1224,14 @@ async function syncWorldState() {
                 let needUpload = true;
                 if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
                     logger.info("mainChainData:" + mainChainData);
-                    for (var i = mainChainData.rows.length - 1; i >= 0; i--) {
-                        logger.info("main chain's world state (main chain block num :" + mainChainData.rows[i].block_num + " subchain node block num :" + WorldState.status.block_height + ")");
-                        if (mainChainData.rows[i].block_num >= WorldState.status.block_height) {
-                            logger.info("main chain's world state is newest,need not upload:(main chain block num :" + mainChainData.rows[i].block_num + " subchain node block num :" + WorldState.status.block_height + ")");
+                    let worldstatedata = voteUtil.getMaxValidWorldState(mainChainData.rows);
+                    if (worldstatedata != null) {
+                        logger.info("main chain's world state (main chain block num :" + worldstatedata.block_num + " subchain node block num :" + WorldState.status.block_height + ")");
+                        if (worldstatedata.block_num >= WorldState.status.block_height) {
+                            logger.info("main chain's world state is newest,need not upload:(main chain block num :" + worldstatedata.block_num + " subchain node block num :" + WorldState.status.block_height + ")");
                             needUpload = false;
-                            break;
                         }
-
-
                     }
-
                 } else {
                     logger.info("main chain's world state is null,need upload");
                     needUpload = true;

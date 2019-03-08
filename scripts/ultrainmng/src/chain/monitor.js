@@ -219,7 +219,7 @@ async function cmdDeploy(deployBatch) {
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 enableDeploy();
             } else {
-                logger.info("exec success :",cmd);
+                logger.info("exec success :",stdout);
                 param.status = statusConstants.SUCCESS;
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 enableDeploy();
@@ -417,12 +417,12 @@ async function fileProcessNod(deployFile, localpath) {
                                     enableDeploy();
                                 } else {
                                     logger.info("exccmd success:" + cmd);
-                                    result = await NodUltrain.start(1200000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest);
-                                    if (result == true) {
-                                        logger.info("nod start success")
-                                    } else {
-                                        logger.error("node start error");
-                                    }
+                                    // result = await NodUltrain.start(1200000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest);
+                                    // if (result == true) {
+                                    //     logger.info("nod start success")
+                                    // } else {
+                                    //     logger.error("node start error");
+                                    // }
                                     enableDeploy();
                                 }
                             });

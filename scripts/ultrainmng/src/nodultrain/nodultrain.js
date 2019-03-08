@@ -59,7 +59,7 @@ NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,moni
         }
 
         //更新chainname
-        iniFile.setValue(iniConstants.chainName,chainName);
+        iniFile.setValue(iniConstants.CHAIN_NAME,chainName);
 
         iniFile.setValue(iniConstants.SUBCHAIN_HTTP_ENDPOINT, subchainHttpEndpoint);
         iniFile.setValue(iniConstants.GENESIS_TIME, genesisTime);
@@ -70,6 +70,8 @@ NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,moni
         return false;
     }
 }
+
+
 
 /**
  * 关闭nod

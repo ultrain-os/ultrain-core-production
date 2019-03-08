@@ -188,7 +188,7 @@ async function genVoteResList(subResList, mainResList, chainConfig) {
             //主链对象在子链找不到（子链到底 || 主链对象owner<子链当前对象owner）
             if (utils.isNull(subResObj) || mainResObj.owner < subResObj.owner) {
                 //查看子链上是否有该用户才处理
-                if (!utils.isNull(await chainApi.getAccount(constants.LOCAL_NOD_URL, mainResObj.owner))) {
+                if (!utils.isNull(await chainApi.getAccount(chainConfig.configSub.httpEndpoint, mainResObj.owner))) {
                     result.push(mainResObj);
                 } else {
                     logger.info("can't find account:"+mainResObj.owner);
@@ -276,10 +276,43 @@ function findVoteCommitee(tableData, user, voteUser,adddel_miner) {
     return false;
 }
 
+function getMaxValidWorldState(rows) {
+
+    let result = {block_num : -1, hash_v : []};
+
+    try {
+        if (utils.isNullList(rows)) {
+            return null;
+        } else {
+            for (var i = rows.length - 1; i >= 0; i--) {
+                let obj = rows[i];
+                if (utils.isNullList(obj.hash_v) == false) {
+                    for (var t = 0; t < obj.hash_v.length; t++) {
+                        if (obj.hash_v[t].valid == 1) {
+                            result.block_num = obj.block_num;
+                            result.hash_v.push(obj.hash_v[t]);
+                            return result;
+                        }
+                    }
+
+                }
+
+            }
+
+        }
+
+    } catch (e) {
+        logger.error("getMaxValidWorldState error:",e);
+    }
+
+    return null;
+}
+
 
 module.exports = {
     findVoteRecord,
     genVoteResList,
     findVoteCommitee,
-    findVoteRes
+    findVoteRes,
+    getMaxValidWorldState,
 }

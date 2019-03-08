@@ -1,44 +1,44 @@
 [
   {
-    "chainName": "11",
+    "chainName": "0",
     "seedIp": [
-      "172.31.7.20",
-      "172.31.32.236"
+      "172.17.0.22",
+      "172.17.0.26"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6k8qHBrc1CYxNUdbHSThtWid5E4xwNLF9kxk8bXuHV1q3BaQ39",
-      "UTR77phXVHqBtKm1b7NZbyhHt839oRB67Mr2A8pRmavNkTFcPq6yy"
+      "UTR63tRkbAg8KjqYBbiVnH8U5NMnCi4RFX3my3JMdqvxQv9qQZdv7",
+      "UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z"
     ],
-    "subchainHttpEndpoint": "http://172.31.7.20:8888",
-    "monitorServerEndpoint": "http://54.153.3.119:8078"
+    "subchainHttpEndpoint": "http://172.17.0.22:8888",
+    "monitorServerEndpoint": "http://172.17.0.124:8078"
+  },
+  {
+    "chainName": "11",
+    "seedIp": [
+      "172.17.0.23",
+      "172.17.0.25"
+    ],
+    "peerKeys": [
+      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
+      "UTR6ZZ2zjyygDDe7SEwzVhBZ65AXLemauZU4AyhpD79zqvppTSCzv",
+      "UTR6LYiacD5oC1y1xBdFFTcPA1BaonrpjhBvhxrQ5SzuK8vwMvstf"
+    ],
+    "subchainHttpEndpoint": "http://172.17.0.23:8888",
+    "monitorServerEndpoint": "http://172.17.0.124:8078"
   },
   {
     "chainName": "12",
     "seedIp": [
-      "172.31.12.250",
-      "172.31.32.217"
+      "172.17.0.24",
+      "172.17.0.85"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR5xrJz8r5WDBErKkT8qjsUYLTAGMM5FWcMiE3Hzk3jKvd14NhSK",
-      "UTR6ruimZSqg9uWsAXo6JiP6dtjCeNSYH5158VvVTxUpcuyC1FADM"
+      "UTR6ZZ2zjyygDDe7SEwzVhBZ65AXLemauZU4AyhpD79zqvppTSCzv",
+      "UTR6LYiacD5oC1y1xBdFFTcPA1BaonrpjhBvhxrQ5SzuK8vwMvstf"
     ],
-    "subchainHttpEndpoint": "http://172.31.12.250:8888",
-    "monitorServerEndpoint": "http://54.153.3.119:8078"
-  },
-  {
-    "chainName": "13",
-    "seedIp": [
-      "172.31.8.22",
-      "172.31.32.241"
-    ],
-    "peerKeys": [
-      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR8PD6cNkD8f8VqbAUHdmWvqDhXK6f6jsAQXEfgCZkZpSEEhnDzz",
-      "UTR5517AaVg7qgz7VdDCurDrXwfdVQ2TSj1ToCWxCnvfxXhyZkpYa"
-    ],
-    "subchainHttpEndpoint": "http://172.31.8.22:8888",
-    "monitorServerEndpoint": "http://54.153.3.119:8078"
+    "subchainHttpEndpoint": "http://172.17.0.24:8888",
+    "monitorServerEndpoint": "http://172.17.0.124:8078"
   }
 ]
