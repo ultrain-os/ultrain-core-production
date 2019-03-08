@@ -2206,7 +2206,7 @@ namespace ultrainio {
         chain.enable_event_register(v);
     }
 
-    bool Scheduler::on_accept_block_header(uint64_t chainName, const BlockHeader& blockHeader, BlockIdType id) {
+    bool Scheduler::on_accept_block_header(uint64_t chainName, const BlockHeader& blockHeader, BlockIdType& id) {
         ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}", ("chainName", chainName)("blockNum", blockHeader.block_num()));
         std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(chainName);
         id = lightClient->accept(blockHeader);

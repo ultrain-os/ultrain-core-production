@@ -238,30 +238,6 @@ namespace ultrainio {
         }
     }
 
-    bool StakeVoteBase::getBlsPublicKeyBatch(uint64_t chainName, const std::vector<AccountName>& accounts, unsigned char** pks) {
-        std::shared_ptr<CommitteeState> committeeState = getCommitteeState(chainName);
-        if (!committeeState) {
-            ilog("committeeState is nullptr for subchain : ${chainName}", ("chainName", chainName));
-            return false;
-        }
-        for (int i = 0; i < accounts.size(); i++) {
-            AccountName account = accounts.at(i);
-            bool found = false;
-            for (CommitteeInfo info : committeeState->cinfo) {
-                if (info.accountName == account) {
-                    Hex::fromHex<unsigned char>(info.blsPk, pks[i], Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                ilog("can not find account : ${account}'bls pk", ("account", std::string(account)));
-                return false;
-            }
-        }
-        return true;
-    }
-
     bool StakeVoteBase::isGenesisLeader(const AccountName& account) const {
         return account.good() && account == AccountName(Genesis::kGenesisAccount);
     }

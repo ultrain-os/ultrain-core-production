@@ -71,8 +71,6 @@ namespace ultrainio {
 
         bool getBlsPublicKey(const AccountName& account, unsigned char* blsPublicKey, int pkSize) const;
 
-        bool getBlsPublicKeyBatch(uint64_t chainName, const std::vector<AccountName>& accounts, unsigned char** pks);
-
         SHA256 getCommitteeMroot() const;
 
         CommitteeSet getCommitteeSet() const;
