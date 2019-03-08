@@ -152,6 +152,7 @@ namespace ultrainio {
         vector<string>                   rpos_active_peers;
         vector<string>                   trx_active_peers;
         vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
+        vector<chain::public_key_type>   allowed_tcp_peers; ///< peer keys allowed to connect
         std::map<chain::public_key_type,
                  chain::private_key_type> private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
         vector<string>                   udp_seed_ip;
@@ -284,6 +285,7 @@ namespace ultrainio {
 	std::vector<chain::public_key_type> producers_pk;
 	bool is_producer_account_pk(chain::public_key_type const& pk);
 	bool authen_whitelist_and_producer(const fc::sha256& hash,const chain::public_key_type& pk,const chain::signature_type& sig);
+	bool authen_tcp_whitelist(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig);
         /** \brief Determine if a peer is allowed to connect.
          *
          * Checks current connection mode and key authentication.
@@ -2623,6 +2625,28 @@ connection::connection(string endpoint, msg_priority pri)
             ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
         }
    }
+   bool net_plugin_impl::authen_tcp_whitelist(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig)
+   {
+       chain::public_key_type peer_key;
+       try {
+           peer_key = crypto::public_key(sig,hash, true);
+       }
+       catch (fc::exception& /*e*/) {
+           elog("unrecover key error");
+           return false;
+       }
+       if(peer_key != pk)
+       {
+           elog("unauthenticated key");
+           return false;
+       }
+       auto allowed_it = std::find(allowed_tcp_peers.begin(), allowed_tcp_peers.end(), pk);
+       if(allowed_it != allowed_tcp_peers.end())
+       {
+           return true;
+       }
+       return false;
+   }
    bool net_plugin_impl::authen_whitelist_and_producer(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig)
    {
         if(!is_genesis_finish)
@@ -2742,8 +2766,13 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 					("peer", msg.p2p_address));
 			return false;
 		}
-		bool isvalid = authen_whitelist_and_producer(hash,msg.key,msg.sig);
-		return isvalid; 
+		bool is_tcp_allowed = authen_tcp_whitelist(hash,msg.key,msg.sig);
+		if(is_tcp_allowed)
+		{
+			return true;
+		}
+		bool is_p2p_valid = authen_whitelist_and_producer(hash,msg.key,msg.sig);
+		return is_p2p_valid; 
 	}
 	else
 	{
@@ -2854,6 +2883,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
          ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
+         ( "tcp-peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer only tcp allowed to connect.  May be used multiple times.")
          ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
@@ -3015,6 +3045,12 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
             const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
             for( const std::string& key_string : key_strings ) {
                my->allowed_peers.push_back( chain::public_key_type( key_string ));
+            }
+         }
+         if( options.count( "tcp-peer-key" )) {
+            const std::vector<std::string> tcp_key_strings = options["tcp-peer-key"].as<std::vector<std::string>>();
+            for( const std::string& tcp_key_string : tcp_key_strings ) {
+               my->allowed_tcp_peers.push_back( chain::public_key_type( tcp_key_string ));
             }
          }
 	 for(auto peer: my->allowed_peers)
