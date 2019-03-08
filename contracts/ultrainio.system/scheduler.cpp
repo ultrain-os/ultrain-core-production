@@ -65,40 +65,68 @@ namespace ultrainiosystem {
         if(wshash != hashTable.end()) {
             auto & hashv = wshash->hash_v;
             auto & acc   = wshash->accounts;
-            auto ret = std::find(acc.begin(), acc.end(), current_sender());
+            auto ret = acc.find(current_sender());
             ultrainio_assert(ret == acc.end(), "the committee_members already report such ws hash");
 
             auto it = hashv.begin();
             for(; it != hashv.end(); it++) {
                 if(hash == it->hash && file_size == it->file_size) {
+                    ultrainio_assert(it->valid != true, "the hash value has been voted as valid");
                     if((it->votes+1) >= vote_threshold) {
-                        hashTable.modify(wshash, [&](auto &p) {
-                            p.hash_v[static_cast<unsigned int>(it - hashv.begin())].votes++;
-                            p.hash_v[static_cast<unsigned int>(it - hashv.begin())].valid = true;
-                            p.accounts.emplace_back(current_sender());
+                        //now let's make sure accounts voted for this hash all are current committee members
+                        uint32_t cnt = 0;
+                        for(auto itac : it->accounts) {
+                            auto vacc = _producers.find(itac);
+                            if( vacc == _producers.end()) {
+                                hashTable.modify(wshash, [&](auto &p) {
+                                    auto pos = static_cast<unsigned int>(it - hashv.begin());
+                                    p.hash_v[pos].votes--;
+                                    p.hash_v[pos].accounts.erase(itac);
+                                    p.accounts.erase(itac);
+                                });
+                                cnt++;
+                            }
+                        }
+                        if(cnt == 0) {
+                            hashTable.modify(wshash, [&](auto &p) {
+                                auto pos = static_cast<unsigned int>(it - hashv.begin());
+                                p.hash_v[pos].votes++;
+                                p.hash_v[pos].valid = true;
+                                p.hash_v[pos].accounts.emplace(current_sender());
+                                p.accounts.emplace(current_sender());
                             });
+                        } else {
+                            hashTable.modify(wshash, [&](auto &p) {
+                                auto pos = static_cast<unsigned int>(it - hashv.begin());
+                                p.hash_v[pos].votes++;
+                                p.hash_v[pos].accounts.emplace(current_sender());
+                                p.accounts.emplace(current_sender());
+                            });
+                        }
                     } else {
                         hashTable.modify(wshash, [&](auto &p) {
-                            p.hash_v[static_cast<unsigned int>(it - hashv.begin())].votes++;
-                            p.accounts.emplace_back(current_sender());
-                            });
+                            auto pos = static_cast<unsigned int>(it - hashv.begin());
+                            p.hash_v[pos].votes++;
+                            p.hash_v[pos].accounts.emplace(current_sender());
+                            p.accounts.emplace(current_sender());
+                       });
                     }
                     break;
                 }
             }
             if(it == hashv.end()) {
                 hashTable.modify(wshash, [&](auto& p) {
-                    p.hash_v.emplace_back(hash, file_size, 1, false);
-                    p.accounts.emplace_back(current_sender());
+                    p.hash_v.emplace_back(hash, file_size, 1, false, current_sender());
+                    p.accounts.emplace(current_sender());
                 });
             }
         }
         else {
             hashTable.emplace([&](auto &p) {
-                    p.block_num = blocknum;
-                    p.hash_v.emplace_back(hash, file_size, 1, false);
-                    p.accounts.emplace_back(current_sender());
-                    });
+                p.block_num = blocknum;
+                p.hash_v.emplace_back(hash, file_size, 1, false, current_sender());
+                p.accounts.emplace(current_sender());
+            });
 
             // delete item which is old enough but need to keep it if it is the only one with valid flag
             if (blocknum > uint64_t(MAX_WS_COUNT * default_worldstate_interval)){

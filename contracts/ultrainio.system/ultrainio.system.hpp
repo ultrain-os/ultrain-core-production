@@ -142,14 +142,15 @@ namespace ultrainiosystem {
          ULTRAINLIB_SERIALIZE(pending_res, (owner)(proposal_resource)(provided_approvals) )
       };
    struct hash_vote {
-       hash_vote(checksum256 hash_p, uint64_t size, uint64_t vote, bool val)
-           :hash(hash_p),file_size(size),votes(vote),valid(val){}
+       hash_vote(checksum256 hash_p, uint64_t size, uint64_t vote, bool val, account_name acc)
+           :hash(hash_p),file_size(size),votes(vote),valid(val){accounts.emplace(acc);}
        hash_vote(){}
-       checksum256      hash;
-       uint64_t         file_size;
-       uint64_t         votes;
-       bool             valid;
-       ULTRAINLIB_SERIALIZE(hash_vote , (hash)(file_size)(votes)(valid) )
+       checksum256            hash;
+       uint64_t               file_size;
+       uint64_t               votes;
+       bool                   valid;
+       std::set<account_name> accounts;
+       ULTRAINLIB_SERIALIZE(hash_vote , (hash)(file_size)(votes)(valid)(accounts) )
    };
 
    static constexpr uint32_t default_worldstate_interval = 60;
@@ -158,7 +159,7 @@ namespace ultrainiosystem {
    struct subchain_ws_hash {
        uint64_t             block_num;
        std::vector<hash_vote>    hash_v;
-       std::vector<account_name> accounts;
+       std::set<account_name> accounts;
        ultrainio::extensions_type           table_extension;
        uint64_t  primary_key()const { return block_num; }
        ULTRAINLIB_SERIALIZE( subchain_ws_hash , (block_num)(hash_v)(accounts)(table_extension) )
