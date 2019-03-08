@@ -30,7 +30,7 @@ namespace ultrainio { namespace chain {
          using value_type = std::decay_t<T>;
          using worldstate_type = value_type;
 
-         static const worldstate_type& to_worldstate_row( const value_type& value, const chainbase::database& ) {
+         static const worldstate_type& to_worldstate_row( const value_type& value, const chainbase::database&, void* data = nullptr) {
             return value;
          };
       };
@@ -121,8 +121,12 @@ namespace ultrainio { namespace chain {
          class section_writer {
             public:
                template<typename T>
-               void add_row( const T& row, const chainbase::database& db ) {
-                  _writer.write_row(detail::make_row_writer(detail::worldstate_row_traits<T>::to_worldstate_row(row, db)));
+               void add_row( const T& row, const chainbase::database& db, void* data = nullptr ) {
+                  _writer.write_row(detail::make_row_writer(detail::worldstate_row_traits<T>::to_worldstate_row(row, db, data)));
+               }
+
+               void add_row( std::vector<char>& in_data ) {
+                  _writer.write_row(in_data);
                }
 
             private:
@@ -153,6 +157,7 @@ namespace ultrainio { namespace chain {
       protected:
          virtual void write_start_section( const std::string& section_name ) = 0;
          virtual void write_row( const detail::abstract_worldstate_row_writer& row_writer ) = 0;
+         virtual void write_row( std::vector<char>& in_data ) {};
          virtual void write_end_section() = 0;
    };
 
@@ -236,16 +241,16 @@ namespace ultrainio { namespace chain {
                }
 
                template<typename T>
-               auto read_row( T& out, chainbase::database& ) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
+               auto read_row( T& out, chainbase::database&, bool backup = false, void* data = nullptr) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
                   return read_row(out);
                }
 
                template<typename T>
-               auto read_row( T& out, chainbase::database& db ) -> std::enable_if_t<!std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
+               auto read_row( T& out, chainbase::database& db, bool backup, void* data) -> std::enable_if_t<!std::is_same<std::decay_t<T>, typename detail::worldstate_row_traits<T>::worldstate_type>::value,bool> {
                   auto temp = typename detail::worldstate_row_traits<T>::worldstate_type();
                   auto reader = detail::make_row_reader(temp);
                   bool result = _reader.read_row(reader);
-                  detail::worldstate_row_traits<T>::from_worldstate_row(std::move(temp), out, db);
+                  detail::worldstate_row_traits<T>::from_worldstate_row(std::move(temp), out, db, backup, data);
                   return result;
                }
 
@@ -281,12 +286,18 @@ namespace ultrainio { namespace chain {
          return has_section(suffix + detail::worldstate_section_traits<T>::section_name());
       }
 
+      template<typename T>
+      bool get_section_info(uint64_t& section_size, uint64_t& row_count, int& data_pos, const std::string& suffix = std::string()) {
+         return get_section_info(section_size, row_count, data_pos, suffix + detail::worldstate_section_traits<T>::section_name());
+      }
+
       virtual void validate() const = 0;
 
       virtual ~worldstate_reader(){};
 
       protected:
          virtual bool has_section( const std::string& section_name ) = 0;
+         virtual bool get_section_info(uint64_t& section_size, uint64_t& row_count, int& data_pos, const std::string& section_name){ return false; };
          virtual void set_section( const std::string& section_name ) = 0;
          virtual bool read_row( detail::abstract_worldstate_row_reader& row_reader ) = 0;
          virtual bool empty( ) = 0;
@@ -333,8 +344,10 @@ namespace ultrainio { namespace chain {
 
          void write_start_section( const std::string& section_name ) override;
          void write_row( const detail::abstract_worldstate_row_writer& row_writer ) override;
+         void write_row( std::vector<char>& in_data ) override;
          void write_end_section( ) override;
          void finalize();
+         uint64_t write_length();
 
          static const uint32_t magic_number = 0x30510550;
 
@@ -343,6 +356,7 @@ namespace ultrainio { namespace chain {
          std::streampos          header_pos;
          std::streampos          section_pos;
          uint64_t                row_count;
+         uint64_t	               length_write;
 
    };
 
@@ -352,10 +366,13 @@ namespace ultrainio { namespace chain {
 
          void validate() const override;
          bool has_section( const string& section_name ) override;
+         bool get_section_info(uint64_t& section_size, uint64_t& row_count, int& data_pos, const std::string& section_name) override;
          void set_section( const string& section_name ) override;
          bool read_row( detail::abstract_worldstate_row_reader& row_reader ) override;
          bool empty ( ) override;
          void clear_section() override;
+         uint64_t read_length();
+         bool read_row(uint64_t size, std::vector<char>& out_data);
 
       private:
          bool validate_section() const;
@@ -364,6 +381,7 @@ namespace ultrainio { namespace chain {
          std::streampos header_pos;
          uint64_t       num_rows;
          uint64_t       cur_row;
+         uint64_t	      length_read;
    };
 
    class integrity_hash_worldstate_writer : public worldstate_writer {
@@ -378,6 +396,45 @@ namespace ultrainio { namespace chain {
       private:
          fc::sha256::encoder&  enc;
 
+   };
+
+   class ostream_worldstate_id_writer {
+      public:
+         explicit ostream_worldstate_id_writer(std::ostream& worldstate_id_ostream);
+         void write_start_id_section( const std::string& section_name );
+         void write_row_id( const uint64_t id, const uint64_t size);
+         void write_end_id_section( );
+         void finalize();
+
+         static const uint32_t magic_number = 0x30510550;
+
+      private:
+         detail::ostream_wrapper worldstate_id_ostream;
+         std::streampos          header_pos;
+         std::streampos          section_pos;
+         uint64_t                row_count;
+
+   };
+
+   class istream_worldstate_id_reader {
+      public:
+         explicit istream_worldstate_id_reader(std::istream& worldstate_id_ostream);
+
+         void validate() const;
+         bool has_id_section( const string& section_name );
+         void read_start_id_section( const string& section_name );
+         bool read_id_row(uint64_t& id, uint64_t& size);
+         bool empty ( );
+         void clear_id_section();
+         bool is_more();
+
+      private:
+         bool validate_id_section() const;
+
+         std::istream&  worldstate_id_ostream;
+         std::streampos header_pos;
+         uint64_t       num_rows;
+         uint64_t       cur_row;
    };
 
 }}

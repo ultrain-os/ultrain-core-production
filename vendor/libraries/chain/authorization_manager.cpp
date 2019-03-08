@@ -12,6 +12,7 @@
 #include <ultrainio/chain/global_property_object.hpp>
 #include <ultrainio/chain/contract_types.hpp>
 #include <ultrainio/chain/generated_transaction_object.hpp>
+#include <ultrainio/chain/worldstate_file_manager.hpp>
 
 namespace ultrainio { namespace chain {
    using authorization_index_set = index_set<
@@ -37,30 +38,49 @@ namespace ultrainio { namespace chain {
          using value_type = permission_object;
          using worldstate_type = worldstate_permission_object;
 
-         static worldstate_permission_object to_worldstate_row(const permission_object& value, const chainbase::database& db) {
+         static worldstate_permission_object to_worldstate_row(const permission_object& value, const chainbase::database& db, void* data) {
+            // ilog("to_worldstate_row, id: ${t}", ("t", value.id._id));
+
             worldstate_permission_object res;
             res.name = value.name;
             res.owner = value.owner;
             res.last_updated = value.last_updated;
             res.auth = value.auth.to_authority();
 
-           // lookup parent name
-            const auto& parent = *(db.get_index<permission_index>().backup_indices().find(value.parent));
+            // lookup parent name
+            const auto& idx = db.get_index<permission_index>().backup_indices();
+            auto itr = idx.find( value.parent );
+            ULTRAIN_ASSERT( itr != idx.end(), worldstate_exception, "Not find the expected parent: ${s}", ("s", value.parent._id));
+      
+            const auto& parent = *itr;
             res.parent = parent.name;
 
-           // lookup the usage object
-            const auto& usage = *(db.get_index<permission_usage_index>().backup_indices().find(value.usage_id));
-            res.last_used = usage.last_used;
+            // lookup the usage object
+            if(value.id != 0){
+               const auto& idx_usage = db.get_index<permission_usage_index>().backup_indices();
+               auto itr_usage = idx_usage.find( value.usage_id );
+               ULTRAIN_ASSERT( itr_usage != idx_usage.end(), worldstate_exception, "Not find the expected idx_usage: ${s}", ("s", value.usage_id._id));
+    
+               const auto& usage = *itr_usage;
+               res.last_used = usage.last_used;
 
+               ULTRAIN_ASSERT( data != nullptr, worldstate_exception, "Data is nullptr, request data!");
+               ws_helper* ptr = (ws_helper*)data;
+               // ilog("usage.id:  ${t}", ("t", usage.id._id));
+               ptr->get_id_writer()->write_row_id(usage.id._id, 0);
+            } else {
+               res.last_used = time_point();
+            }
             return res;
          }
 
-         static void from_worldstate_row(worldstate_permission_object&& row, permission_object& value, chainbase::database& db) {
+         static void from_worldstate_row(worldstate_permission_object&& row, permission_object& value, chainbase::database& db, bool backup, void* data = nullptr) {
             value.name = row.name;
             value.owner = row.owner;
             value.last_updated = row.last_updated;
             value.auth = row.auth;
-
+            
+            // ilog("from_worldstate_row, id: ${t}", ("t", value.id._id));
             value.parent = 0;
             if (value.id == 0) {
                ULTRAIN_ASSERT(row.parent == permission_name(), worldstate_exception, "Unexpected parent name on reserved permission 0");
@@ -73,17 +93,43 @@ namespace ultrainio { namespace chain {
                ULTRAIN_ASSERT(row.last_updated == time_point(),  worldstate_exception, "Unexpected auth last updated on reserved permission 0");
                value.parent = 0;
             } else if ( row.parent != permission_name()){
-               const auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(row.owner, row.parent));
+               if(!backup) {
+                  const auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(row.owner, row.parent));
 
-               ULTRAIN_ASSERT(parent.id != 0, worldstate_exception, "Unexpected mapping to reserved permission 0");
-               value.parent = parent.id;
+                  ULTRAIN_ASSERT(parent.id != 0, worldstate_exception, "Unexpected mapping to reserved permission 0");
+                  value.parent = parent.id;
+               } else {
+                  const auto& idx = db.get_index<permission_index>().backup_indices().template get<by_owner>();
+                  auto itr = idx.find(boost::make_tuple(row.owner, row.parent));
+                  ULTRAIN_ASSERT( itr != idx.end(), worldstate_exception, "Not find the expected parent: ${s}", ("s", row.parent));
+
+                  const auto& parent = *itr;
+                  ULTRAIN_ASSERT(parent.id != 0, worldstate_exception, "Unexpected mapping to reserved permission 0");
+                  value.parent = parent.id;
+               }
+               
             }
+
             if (value.id != 0) {
-               // create the usage object
-               const auto& usage = db.create<permission_usage_object>([&](auto& p) {
-                  p.last_used = row.last_used;
-               });
-               value.usage_id = usage.id;
+               ULTRAIN_ASSERT( data != nullptr, worldstate_exception, "Data is nullptr, request data!");
+               ws_helper* ptr = (ws_helper*)data;
+
+               if(!backup) {// create the usage object
+                  const auto& usage = db.create<permission_usage_object>([&](auto& p) { 
+                     p.last_used = row.last_used;
+                  });
+                  ptr->get_id_writer()->write_row_id(usage.id._id, 0);
+                  value.usage_id = usage.id;
+               } else {
+                  uint64_t old_id = 0, size = 0;
+                  ptr->get_id_reader()->read_id_row(old_id, size);
+                  // ilog("read_id usage.id:  ${t}  ${s}", ("t", old_id)("s", size));
+                  const auto& usage = db.backup_create<permission_usage_object>([&](auto& p) {
+                     p.last_used = row.last_used;
+                     p.id._id = old_id;
+                  });
+                  value.usage_id = usage.id;
+               }
             } else {
                value.usage_id = 0;
             }
@@ -91,25 +137,46 @@ namespace ultrainio { namespace chain {
       };
    }
 
-   void authorization_manager::add_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const {
-      authorization_index_set::walk_indices([this, &worldstate_db, &worldstate]( auto utils ){
-         using section_t = typename decltype(utils)::index_t::value_type;
+   void authorization_manager::add_to_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db) {
+      authorization_index_set::walk_indices([&]( auto utils ){
+         using index_t = typename decltype(utils)::index_t;
+         using value_t = typename index_t::value_type;
 
          // skip the permission_usage_index as its inlined with permission_index
-         if (std::is_same<section_t, permission_usage_object>::value) {
+         if (std::is_same<value_t, permission_usage_object>::value) {
             return;
+         }         
+
+         auto& cache_node = worldstate_db.get_mutable_index<index_t>().cache().front();
+         ilog("index: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
+         ilog("remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+         ilog("Cache count: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().cache().size()));
+         ilog("Backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
+         
+         //1:  add to backup if exit old ws file
+         ws_helper_ptr->restore_backup_indices<index_t>(worldstate_db, true, (void*)ws_helper_ptr.get());
+    
+         //2:  squach backup and cache
+         worldstate_db.get_mutable_index<index_t>().process_cache();
+         if (std::is_same<value_t, permission_object>::value) {
+            worldstate_db.get_mutable_index<permission_usage_index>().process_cache();
          }
 
-         worldstate->write_section<section_t>([this, &worldstate_db]( auto& section ){
-            decltype(utils)::walk(worldstate_db, [this, &worldstate_db, &section]( const auto &row ) {
-               section.add_row(row, worldstate_db);
-            });
-         });
+         //3. read all record from backup, write to new ws file
+         ws_helper_ptr->store_backup_indices<index_t>(worldstate_db, (void*)ws_helper_ptr.get());
+
+         // 4. clear backup_indices
+         (const_cast<index_t&>(worldstate_db.get_mutable_index<index_t>().backup_indices())).clear();
+         if (std::is_same<value_t, permission_object>::value) {
+            (const_cast<permission_usage_index&>(worldstate_db.get_mutable_index<permission_usage_index>().backup_indices())).clear();
+         }
+         ilog("done");
       });
    }
 
-   void authorization_manager::read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
-      authorization_index_set::walk_indices([this, &worldstate]( auto utils ){
+   void authorization_manager::read_from_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db ) {
+      authorization_index_set::walk_indices([&]( auto utils ){
+         using index_t = typename decltype(utils)::index_t;
          using section_t = typename decltype(utils)::index_t::value_type;
 
          // skip the permission_usage_index as its inlined with permission_index
@@ -117,14 +184,7 @@ namespace ultrainio { namespace chain {
             return;
          }
 
-         worldstate->read_section<section_t>([this]( auto& section ) {
-            bool more = !section.empty();
-            while(more) {
-               decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
-                  more = section.read_row(row, _db);
-               });
-            }
-         });
+         ws_helper_ptr->read_table_from_worldstate<index_t>(worldstate_db, (void*)ws_helper_ptr.get());
       });
    }
 

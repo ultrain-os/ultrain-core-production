@@ -11,6 +11,7 @@
 #include <sstream>
 #include <fc/crypto/sha256.hpp>
 #include <fc/io/json.hpp>
+#include <fc/scoped_exit.hpp>
 #include <appbase/application.hpp>
 
 namespace bfs = boost::filesystem;
@@ -50,7 +51,15 @@ bool from_file_name(fc::path name, fc::sha256& chain_id, uint32_t& block_height)
     fc::variant chain_var(text.substr(0, pos));
     fc::from_variant(chain_var, chain_id);
 
-    fc::variant height_var(text.substr(pos+1, text.size() - pos - 1));
+    int end = pos;
+    while(text[end] != '-' && text[end] != '.' && end < text.size()){
+        end++;
+    }
+
+    if(end >= text.size())
+        return false;
+
+    fc::variant height_var(text.substr(pos+1, end));
     fc::from_variant(height_var, block_height);
     return true;   
 }
@@ -132,6 +141,9 @@ ws_file_writer::~ws_file_writer()
 
 void ws_file_writer::destory()
 {
+    if(m_is_write && m_fd.is_open())
+        m_fd.flush();
+
     if(m_fd.is_open())
         m_fd.close();
 
@@ -182,7 +194,8 @@ bool ws_file_writer::is_valid()
 }
 
 void ws_file_writer::write_finished(){
-
+    if(m_is_write && m_fd.is_open())
+        m_fd.flush();
 }
 
 void ws_file_writer::open_write()
@@ -202,8 +215,10 @@ void ws_file_writer::open_read()
     if(!m_is_write)
         return;
 
-    if(m_fd.is_open())
+    if(m_fd.is_open()) {
+        m_fd.flush();
         m_fd.close();
+    }
 
     m_fd.open(m_file_name.c_str(), std::ios::in | std::ios::binary);    
     m_is_write = false;
@@ -246,7 +261,7 @@ bool ws_file_manager::load_local_info_file(const std::string file_name, ws_info&
 
 std::string ws_file_manager::get_file_path_by_info(fc::sha256& chain_id, uint32_t block_height)
 {
-    std::string ws_file_name  = m_dir_path + "/" +  to_file_name(chain_id, block_height) + ".ws";
+    std::string ws_file_name  = m_dir_path + "/" +  to_file_name(chain_id, block_height);
     return ws_file_name;
 }
 
@@ -325,12 +340,6 @@ std::shared_ptr<ws_file_reader> ws_file_manager::get_reader(ws_info node, uint32
 
 std::shared_ptr<ws_file_writer>  ws_file_manager::get_writer(ws_info node, uint32_t len_per_slice)
 {
-    // auto node_list = get_local_ws_info();
-    // for(auto &it : node_list){
-    //     if(it == node){
-    //         return nullptr;
-    //     }
-    // }
     return std::make_shared<ws_file_writer>(node, len_per_slice, m_dir_path,  *this);
 }
 
@@ -368,47 +377,132 @@ void ws_file_manager::start_delete_timer()
             return;
         } 
 
-        auto node_list = get_local_ws_info();
-        if (node_list.size() > m_max_ws_count){
-            node_list.sort([](const ws_info &a, const ws_info &b){
-                return a.block_height > b.block_height;
-            });
+        auto start_again = fc::make_scoped_exit([this](){
+            ilog("delete worldstate files timer end");
+            start_delete_timer();
+         });
 
-            auto count = m_max_ws_count;
-            for(auto &node : node_list){
-                auto reader_itor = m_reader_map.find(node);
-                auto is_activate_itor = m_is_reader_activate_map.find(node);
-                if (is_activate_itor != m_is_reader_activate_map.end() ) {
-                    if(m_is_reader_activate_map[node] == true){
-                        //set to false, erase from map in next timeout
-                        m_is_reader_activate_map[node] = false;
-                        continue;
-                    } else {
-                        if (reader_itor != m_reader_map.end()) {
-                            m_is_reader_activate_map.erase(node);
-                            m_reader_map.erase(node);
-                        }
-                    }               
-                }
+        auto node_list = get_local_ws_info();        
 
-                if (m_max_ws_count == -1) //not set max count, keep all files
-                    continue;
+        if (node_list.size() < m_max_ws_count)
+            return;
 
-                if(count > 0){
-                    count--;
-                    continue;
-                }
-
-                std::string name = to_file_name(node.chain_id, node.block_height);
-                std::string ws_file_name  = m_dir_path + "/" +  name + ".ws";
-                std::string info_file_name  = m_dir_path + "/" +  name + ".info";
-                fc::remove(path(info_file_name));
-                fc::remove(path(ws_file_name));
-            }
+        node_list.sort([](const ws_info &a, const ws_info &b){
+            return a.block_height > b.block_height;
+        });        
+        
+        auto count = m_max_ws_count;
+        for(auto &node : node_list){
+            if (m_reader_map.count(node) == 0 || m_is_reader_activate_map.count(node) == 0)//File was not open
+                continue;
+            
+            if ( m_is_reader_activate_map[node] == true) { //file was used, set to false, erase from map in next timeout
+                m_is_reader_activate_map[node] = false;
+            } else {
+                m_is_reader_activate_map.erase(node);
+                m_reader_map.erase(node);
+            }            
         }
-        start_delete_timer();
-        ilog("delete  worldstate files timer end");
+
+        if(m_max_ws_count == -1) return;
+
+        for(auto &node : node_list){
+            if (m_reader_map.count(node) != 0)//File was open
+                continue;
+
+            if((count--) > 0) continue;
+
+            std::string name = to_file_name(node.chain_id, node.block_height);
+            std::string ws_file_name  = m_dir_path + "/" +  name + ".ws";
+            std::string info_file_name  = m_dir_path + "/" +  name + ".info";
+            std::string id_file_name  = m_dir_path + "/" +  name + ".id";
+            fc::remove(path(id_file_name));
+            fc::remove(path(info_file_name));
+            fc::remove(path(ws_file_name));
+        } 
     });
+}
+
+ws_helper::ws_helper(std::string old_ws, std::string new_ws)
+:m_old_ws_path(old_ws)
+,m_new_ws_path(new_ws)
+{
+    //output stream
+    if(!old_ws.empty() && bfs::exists(m_old_ws_path + ".ws") && bfs::exists(m_old_ws_path + ".id")){
+        m_reader_fd = std::ifstream(m_old_ws_path + ".ws", (std::ios::in | std::ios::binary));
+        m_reader = std::make_shared<istream_worldstate_reader>(m_reader_fd);
+        m_reader->validate();
+
+        m_id_reader_fd = std::ifstream(m_old_ws_path + ".id", (std::ios::in | std::ios::binary));
+        m_id_reader = std::make_shared<istream_worldstate_id_reader>(m_id_reader_fd);
+        m_id_reader->validate();
+    }
+
+    //input stream
+    m_writer_fd = std::ofstream(m_new_ws_path + ".ws", (std::ios::out | std::ios::binary));
+    m_writer = std::make_shared<ostream_worldstate_writer>(m_writer_fd);
+
+    m_id_writer_fd = std::ofstream(m_new_ws_path + ".id", (std::ios::out | std::ios::binary));
+    m_id_writer = std::make_shared<ostream_worldstate_id_writer>(m_id_writer_fd);
+}
+
+ws_helper::ws_helper(std::string ws_file, std::string id_file, bool isReload)
+{
+    ULTRAIN_ASSERT(isReload == true, worldstate_exception, "reload mode, [isReload] must be true!");
+    ULTRAIN_ASSERT(!ws_file.empty() &&  bfs::exists(ws_file), worldstate_exception, "reload mode, ws have to exist!");
+
+    //output stream
+    m_reader_fd = std::ifstream(ws_file, (std::ios::in | std::ios::binary));
+    m_reader = std::make_shared<istream_worldstate_reader>(m_reader_fd);
+    m_reader->validate();
+
+    //input stream
+    m_id_writer_fd = std::ofstream(id_file, (std::ios::out | std::ios::binary));
+    m_id_writer = std::make_shared<ostream_worldstate_id_writer>(m_id_writer_fd);
+}
+
+ws_helper::~ws_helper()
+{
+    if (m_id_reader)    m_id_reader.reset();
+    if (m_reader)   m_reader.reset();
+
+    if (m_id_writer)    m_id_writer->finalize();
+    
+    if (m_writer)   m_writer->finalize();
+
+    if (m_reader_fd.is_open())  m_reader_fd.close();
+        
+    if (m_id_reader_fd.is_open())   m_id_reader_fd.close();
+
+    if (m_writer_fd.is_open()) { 
+        m_writer_fd.flush();
+        m_writer_fd.close();
+    }
+
+    if (m_id_writer_fd.is_open()) {
+        m_id_writer_fd.flush();
+        m_id_writer_fd.close();
+    }
+}
+
+std::shared_ptr<istream_worldstate_reader> ws_helper::get_reader()
+{
+    return m_reader;
+}
+
+std::shared_ptr<istream_worldstate_id_reader> ws_helper::get_id_reader()
+{
+    return m_id_reader;
+}
+
+std::shared_ptr<ostream_worldstate_writer> ws_helper::get_writer()
+{
+    return m_writer;
+}
+
+std::shared_ptr<ostream_worldstate_id_writer> ws_helper::get_id_writer()
+{
+    return m_id_writer;
 }
 
 }}

@@ -591,10 +591,7 @@ void chain_plugin::plugin_startup()
 { try {
    try {
       if (my->worldstate_path) {
-         auto infile = std::ifstream(my->worldstate_path->generic_string(), (std::ios::in | std::ios::binary));
-         auto reader = std::make_shared<istream_worldstate_reader>(infile);
-         my->chain->startup(reader);
-         infile.close();
+         my->chain->startup(*(my->worldstate_path));
       } else {
          my->chain->startup();
       }

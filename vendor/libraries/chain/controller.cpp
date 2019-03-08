@@ -55,6 +55,8 @@ using contract_database_index_set = index_set<
    index256_index
 >;
 
+#define WS_INTERVAL 20
+
 // these are the default numbers, and it could be changed during startup.
 //int chain::config::block_interval_ms = 10*1000;
 //int chain::config::block_interval_us = 10*1000*1000;
@@ -70,8 +72,8 @@ struct pending_state {
 
    controller::block_status           _block_status = controller::block_status::incomplete;
 
-   void push() {
-      _db_session.push();
+   void push(bool ws =false) {
+      _db_session.push(ws);
    }
 };
 
@@ -98,6 +100,9 @@ struct controller_impl {
    bool                           can_receive_event = false;
    const uint32_t                 event_lifetime = 20; ///< 20 blocks' time, which = 10 seconds by default configuration
    uint32_t                       worldstate_head_block = 0;
+   uint32_t                       worldstate_previous_block = 0;
+   bool                           worldstate_thread_running = false;
+   boost::thread                  worldstate_thread;
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    std::shared_ptr<ws_file_manager>                       ws_manager_ptr;
@@ -183,6 +188,8 @@ struct controller_impl {
       ws_manager_ptr->set_local_max_count(15);
    }
 
+   if (db.get_data("worldstate_previous_block", worldstate_previous_block))
+      ilog("Get worldstate_previous_block from  db: ${s}", ("s", worldstate_previous_block));
    }
 
    /**
@@ -215,14 +222,12 @@ struct controller_impl {
       auto begin = fc::time_point::now();
       block_state fork_head = *fork_db.head();
       uint32_t block_height = fork_head.block_num;
-      db.set_cache();
 
       //thread to generate worldstate file
-      boost::thread worldstate([this,fork_head,block_height](){
+      worldstate_thread = boost::thread([this,fork_head,block_height](){
          auto begin = fc::time_point::now();
          try {
             add_to_worldstate(db, block_height, fork_head);
-            db.cancel_cache();
          } catch( const boost::interprocess::bad_alloc& e ) {
             elog("worldstate thread error: bad alloc");
          } catch( const boost::exception& e ) {
@@ -231,22 +236,26 @@ struct controller_impl {
             elog( "worldstate thread error: ${e}", ("e",e.what()));
          } catch( const std::exception& e ) {
             elog("worldstate thread error: ${e}", ("e",e.what()));
+         } catch (const fc::exception &e) {
+            elog("worldstate thread error:");
+            edump((e.to_detail_string()));
          } catch( ... ) {
             elog("worldstate thread error: unknown exception");
          }
+
+         worldstate_thread_running = false;
          auto end = fc::time_point::now();
          ilog("worldstate thread end, cost time: ${time}", ("time", end - begin));
       });
-      worldstate.detach();
+      worldstate_thread_running = true;
 
       auto end=fc::time_point::now();
-      ilog("create_worldstate total_time cost time: ${time_delta}", ("time_delta", end - begin));
+      ilog("start world state thread end, cost time: ${time_delta}", ("time_delta", end - begin));
    }
 
    void on_irreversible( const block_state_ptr& s ) {
       if( !blog.head() )
          blog.read_head();
-
       const auto& log_head = blog.head();
       bool append_to_blog = false;
       if (!log_head) {
@@ -320,7 +329,7 @@ struct controller_impl {
       replaying = false;
    }
 
-   void init(const worldstate_reader_ptr& worldstate) {
+   void init(const bfs::path& worldstate_path) {
 
       /**
       *  The fork database needs an initial block_state to be set before
@@ -328,11 +337,9 @@ struct controller_impl {
       *  in the database (whose head block state should be irreversible) or
       *  it would be the genesis state.
       */
-      if (worldstate) {
+      if (bfs::exists(worldstate_path)) {
          ULTRAIN_ASSERT(!head, fork_database_exception, "");
-         worldstate->validate();
-
-         read_from_worldstate(worldstate);
+         read_from_worldstate(worldstate_path);
 
          auto end = blog.read_head();
          if( !end ) {
@@ -368,6 +375,13 @@ struct controller_impl {
    }
 
    ~controller_impl() {
+      if(worldstate_thread_running && worldstate_thread.joinable()) {
+         ilog("Worldstate thread is runging, waiting!!!");
+         worldstate_thread.join();
+      }
+
+      db.save_data("worldstate_previous_block", worldstate_previous_block);
+
       pending.reset();
 
       db.flush();
@@ -381,52 +395,210 @@ struct controller_impl {
       resource_limits.add_indices(db);
    }
 
-   void add_contract_tables_to_worldstate( const worldstate_writer_ptr& worldstate, const chainbase::database& worldstate_db) const {
-      worldstate->write_section("contract_tables", [this, &worldstate_db]( auto& section ) {
-         index_utils<table_id_multi_index>::walk(worldstate_db, [this, &worldstate_db, &section]( const table_id_object& table_row ){
-            // add a row for the table
-            section.add_row(table_row, worldstate_db);
+   bool restore_contract_database_index(chainbase::database& worldstate_db, worldstate_reader::section_reader& section_reader,
+               table_id_object::id_type& t_id, std::shared_ptr<ws_helper> ws_helper_ptr){
+      bool more = false;
+      bool id_more = false;
+      ilog("restore_contract_database_index");
+      contract_database_index_set::walk_indices([&](auto utils) {
+         using utils_t = decltype(utils);
 
-            // followed by a size row and then N data rows for each type of table
-            contract_database_index_set::walk_indices([this, &worldstate_db, &section, &table_row]( auto utils ) {
-               using utils_t = decltype(utils);
-               using value_t = typename decltype(utils)::index_t::value_type;
-               using by_table_id = object_to_table_id_tag_t<value_t>;
+         unsigned_int size;
+         more = section_reader.read_row(size, db);
+         // ilog("contract table size: ${t}", ("t", size ));
 
-               auto tid_key = boost::make_tuple(table_row.id);
-               auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
+         /*Import, read a ignore value*/
+         uint64_t ignore1 = 0, ignore2 = 0;
+         ws_helper_ptr->get_id_reader()->read_id_row(ignore1, ignore2);
 
-               unsigned_int size = utils_t::template size_range<by_table_id>(worldstate_db, tid_key, next_tid_key);
-               section.add_row(size, worldstate_db);
+         for (size_t idx = 0; idx < size.value; idx++) {
+            uint64_t old_id = 0, size = 0;
+            id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
+            // ilog("contract table old_id ${t}", ("t", old_id ));
+            utils_t::create(db, [&](auto& row) {
+               row.t_id = t_id;
+               row.id._id = old_id;
+               more = section_reader.read_row(row, db);
+            }, true);
+            ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ${x} ${t}", ("x", more)("t", id_more));
+         }
+      });
 
-               utils_t::template walk_range<by_table_id>(worldstate_db, tid_key, next_tid_key, [this, &worldstate_db, &section]( const auto &row ) {
-                  section.add_row(row, worldstate_db);
-               });
+      return more;
+   }
+
+   void store_one_contract_table(chainbase::database& worldstate_db, worldstate_writer::section_writer& writer_section, std::shared_ptr<ws_helper> ws_helper_ptr){
+      ilog("store_one_contract_table");
+      int count = 0;
+      index_utils<table_id_multi_index>::walk(worldstate_db, [&]( const table_id_object& table_row ){
+         ws_helper_ptr->get_id_writer()->write_row_id(table_row.id._id, 0);
+         // add a row for the table
+         writer_section.add_row(table_row, worldstate_db);
+         count++;
+
+         // followed by a size row and then N data rows for each type of table
+         contract_database_index_set::walk_indices([&]( auto utils ) {
+            using utils_t = decltype(utils);
+            using value_t = typename decltype(utils)::index_t::value_type;
+            using by_table_id = object_to_table_id_tag_t<value_t>;
+
+            auto tid_key = boost::make_tuple(table_row.id);
+            auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
+
+            unsigned_int size = utils_t::template size_range<by_table_id>(worldstate_db, tid_key, next_tid_key);
+            writer_section.add_row(size, worldstate_db);
+
+            /*Import, insert a ignore value,keep same relative pos with ws file*/
+            ws_helper_ptr->get_id_writer()->write_row_id(0, 0);
+
+            utils_t::template walk_range<by_table_id>(worldstate_db, tid_key, next_tid_key, [&]( const auto &row ) {
+               ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, 0);
+               writer_section.add_row(row, worldstate_db);
             });
          });
       });
+      ULTRAIN_ASSERT(count <= 1, worldstate_exception, "The table_id count should not more than 1, because we handle only one every time!!");
    }
 
-   void read_contract_tables_from_worldstate( const worldstate_reader_ptr& worldstate ) {
-      worldstate->read_section("contract_tables", [this]( auto& section ) {
+   void add_contract_tables_to_worldstate(std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db) {
+      ULTRAIN_ASSERT(ws_helper_ptr->get_writer() && ws_helper_ptr->get_id_writer(), worldstate_exception, "Ws writer is not exist!");
+      ilog("add_contract_tables_to_worldstate");
+
+      ws_helper_ptr->get_id_writer()->write_start_id_section("contract_tables");
+
+      ws_helper_ptr->get_writer()->write_section("contract_tables", [&]( auto& writer_section ){
+         if(ws_helper_ptr->get_id_reader() && ws_helper_ptr->get_reader()) {
+            ilog("Exist old ws file");
+            ws_helper_ptr->get_reader()->read_section("contract_tables", [&]( auto& reader_section ) {
+               ws_helper_ptr->get_id_reader()->read_start_id_section("contract_tables");
+
+               bool more = !reader_section.empty();
+               bool id_more = !ws_helper_ptr->get_id_reader()->empty();
+               ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
+
+               table_id_object::id_type t_id;
+               auto& cache_node = worldstate_db.get_mutable_index<table_id_multi_index>().cache().front();
+               ilog("re-add_contract remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+               ilog("re-add_contract Cache count: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().cache().size()));
+               ilog("re-add_contract Backup size: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices().size()));
+
+               while (more) {                  
+                  //1.read 1 table_id row from old ws file, insert to backup indices
+                  uint64_t old_id = 0, size = 0;
+                  id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
+                  ilog("add table-id: ${x}", ("x", old_id));
+                  index_utils<table_id_multi_index>::create(worldstate_db, [&](auto& row) {
+                     row.id._id = old_id;
+                     reader_section.read_row(row, db);
+                     t_id = row.id;
+                     ilog("t_id id ${t}", ("t",row.id._id ));
+                  }, true);
+
+                  //2.restore all contract_database_index_set rows from ws old file where its' table_id equal t_id
+                  more = restore_contract_database_index(worldstate_db, reader_section, t_id, ws_helper_ptr);
+
+                  //3.process table_id table and all contract_database_index_set
+                  auto ret = worldstate_db.get_mutable_index<table_id_multi_index>().process_table();
+                  ilog("process_table ret: ${t}", ("t", ret));
+
+                  contract_database_index_set::walk_indices([&]( auto utils ) {
+                     using index_t = typename decltype(utils)::index_t;
+                     worldstate_db.get_mutable_index<index_t>().process_table([&](auto& item)->bool{
+                        return item.second.t_id == t_id;
+                     });
+                  });
+                  ilog("process_table done");
+
+                  //4.store table_id and contract_database_index_set to ws new file
+                  store_one_contract_table(worldstate_db, writer_section, ws_helper_ptr);
+
+                  //5.handle done, clear table_id backup indices and contract_database_index_set
+                  (const_cast<table_id_multi_index&>(worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices())).clear();
+                  contract_database_index_set::walk_indices([&]( auto utils ) {
+                     using index_t = typename decltype(utils)::index_t;
+                     (const_cast<index_t&>(worldstate_db.get_mutable_index<index_t>().backup_indices())).clear();
+                  });
+               }
+
+               ws_helper_ptr->get_id_reader()->clear_id_section();
+            });
+         }
+
+         auto& cache_node = worldstate_db.get_mutable_index<table_id_multi_index>().cache().front();
+         do {
+            ilog("add_contract remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+            ilog("add_contract Cache count: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().cache().size()));
+            ilog("add_contract Backup size: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices().size()));
+
+            //1.new create row,  insert to backup
+            auto result_paire = worldstate_db.get_mutable_index<table_id_multi_index>().process_create();
+            ilog("process_create ${x} ${t}", ("x", std::get<0>(result_paire))("t", std::get<1>(result_paire)));
+            if(!std::get<0>(result_paire))
+               break;
+
+            auto t_id = std::get<1>(result_paire);
+
+            //2. don't need  restore from old ws file, because no any contract_database record in old ws file
+
+            //3.process all contract_database_index_set
+            contract_database_index_set::walk_indices([&]( auto utils ) {
+               using index_t = typename decltype(utils)::index_t;
+               worldstate_db.get_mutable_index<index_t>().process_table([&](auto& item)->bool{
+                  return item.second.t_id == t_id;
+               });
+            });
+
+            //4.store table_id and contract_database_index_set to ws new file
+            store_one_contract_table(worldstate_db, writer_section, ws_helper_ptr);
+
+            //5.handle done, clear table_id backup indices and contract_database_index_set
+            (const_cast<table_id_multi_index&>(worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices())).clear();
+            contract_database_index_set::walk_indices([&]( auto utils ) {
+               using index_t = typename decltype(utils)::index_t;
+               (const_cast<index_t&>(worldstate_db.get_mutable_index<index_t>().backup_indices())).clear();
+            });
+         } while(1);
+      });
+      ws_helper_ptr->get_id_writer()->write_end_id_section();
+
+      worldstate_db.get_mutable_index<table_id_multi_index>().cache().pop_front();
+      contract_database_index_set::walk_indices([&]( auto utils ) {
+         using index_t = typename decltype(utils)::index_t;
+         worldstate_db.get_mutable_index<index_t>().cache().pop_front();
+      });
+      ilog("add_contract_tables_to_worldstate end");
+   }
+
+   void read_contract_tables_from_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db ) {
+      ULTRAIN_ASSERT(ws_helper_ptr->get_reader(), worldstate_exception, "Ws reaer is not exist!");
+      ilog("read_contract_tables_from_worldstate");
+
+      ws_helper_ptr->get_id_writer()->write_start_id_section("contract_tables");
+      ws_helper_ptr->get_reader()->read_section("contract_tables", [&]( auto& section ) {
          bool more = !section.empty();
          while (more) {
             // read the row for the table
             table_id_object::id_type t_id;
-            index_utils<table_id_multi_index>::create(db, [this, &section, &t_id](auto& row) {
+            index_utils<table_id_multi_index>::create(db, [&](auto& row) {
+               ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, 0);
+               
                section.read_row(row, db);
                t_id = row.id;
             });
 
             // read the size and data rows for each type of table
-            contract_database_index_set::walk_indices([this, &section, &t_id, &more](auto utils) {
+            contract_database_index_set::walk_indices([&](auto utils) {
                using utils_t = decltype(utils);
 
                unsigned_int size;
                more = section.read_row(size, db);
+               /*Import, insert a ignore value,keep same relative pos with ws file*/
+               ws_helper_ptr->get_id_writer()->write_row_id(0, 0);
 
                for (size_t idx = 0; idx < size.value; idx++) {
-                  utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
+                  utils_t::create(db, [&](auto& row) {
+                     ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, 0);
+
                      row.t_id = t_id;
                      more = section.read_row(row, db);
                   });
@@ -434,73 +606,96 @@ struct controller_impl {
             });
          }
       });
+      ws_helper_ptr->get_id_writer()->write_end_id_section();
+      ilog("read_contract_tables_from_worldstate end");
    }
 
-   void add_to_worldstate(const chainbase::database& worldstate_db, uint32_t block_height, const block_state& fork_head) const{
+   void add_to_worldstate(chainbase::database& worldstate_db, uint32_t block_height, const block_state& fork_head){
+      ilog("start add_to_worldstate blockNum: ${t}",  ("t", block_height));
       if(!ws_manager_ptr) return;
 
       ws_info info;
       info.chain_id = self.get_chain_id();
       info.block_height = block_height;
 
-      std::string worldstate_path = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height);
-      auto worldstate_out = std::ofstream(worldstate_path, (std::ios::out | std::ios::binary));
-      auto worldstate = std::make_shared<ostream_worldstate_writer>(worldstate_out);
+      std::string new_ws_file = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height);
+      std::string old_ws_file = worldstate_previous_block > 0 ? ws_manager_ptr->get_file_path_by_info(info.chain_id, worldstate_previous_block) : "";
+      if (block_height %  conf.worldstate_interval != 0)
+         new_ws_file += ".tmp";
 
-      //generate worldstate
-      worldstate->write_section<chain_worldstate_header>([this,&worldstate_db]( auto &section ){
+      if (worldstate_previous_block > 0 && worldstate_previous_block %  conf.worldstate_interval != 0)
+         old_ws_file += ".tmp";
+
+      if (worldstate_previous_block > 0) {
+         ULTRAIN_ASSERT(fc::exists(old_ws_file + ".ws") && fc::exists(old_ws_file + ".id"), worldstate_exception, "Don't exist file: ${s} or ${t}", 
+            ("s", old_ws_file + ".ws")("t", old_ws_file + ".id"));
+      }
+
+      auto ws_helper_ptr = std::make_shared<ws_helper>(old_ws_file, new_ws_file);
+
+      ws_helper_ptr->get_writer()->write_section<chain_worldstate_header>([this,&worldstate_db]( auto &section ){
          section.add_row(chain_worldstate_header(), worldstate_db);
       });
 
-      worldstate->write_section<genesis_state>([this,&worldstate_db]( auto &section ){
+      ws_helper_ptr->get_writer()->write_section<genesis_state>([this,&worldstate_db]( auto &section ){
          section.add_row(conf.genesis, worldstate_db);
       });
 
-      worldstate->write_section<block_state>([this,&worldstate_db, fork_head]( auto &section ){
+      ws_helper_ptr->get_writer()->write_section<block_state>([this,&worldstate_db, fork_head]( auto &section ){
          section.template add_row<block_header_state>(fork_head, worldstate_db);
       });
 
-      controller_index_set::walk_indices([this,&worldstate_db, worldstate]( auto utils ){
-         using value_t = typename decltype(utils)::index_t::value_type;
+      //How to create new ws file by old ws file and operation cache:
+      //1.Read all old rows from old ws file, and then restore to backup indices;
+      //2.Squach backup indices and cache,
+      //3.store the backup indices records to new ws file
+      controller_index_set::walk_indices([this,&worldstate_db, &ws_helper_ptr]( auto utils ){
+         using index_t = typename decltype(utils)::index_t;
+         using value_t = typename index_t::value_type;
 
          // skip the table_id_object as its inlined with contract tables section
          if (std::is_same<value_t, table_id_object>::value) {
             return;
          }
 
-         worldstate->write_section<value_t>([this,&worldstate_db]( auto& section ){
-            decltype(utils)::walk(worldstate_db, [this,&worldstate_db, &section]( const auto &row ) {
-               section.add_row(row, worldstate_db);
-            });
-         });
+         ws_helper_ptr->add_table_to_worldstate<index_t>(worldstate_db);
       });
 
-      add_contract_tables_to_worldstate(worldstate,worldstate_db);
-
-      authorization.add_to_worldstate(worldstate,worldstate_db);
-      resource_limits.add_to_worldstate(worldstate,worldstate_db);
-
-      //flush worldstate file
-      worldstate->finalize();
-      worldstate_out.flush();
-      worldstate_out.close();
+      add_contract_tables_to_worldstate(ws_helper_ptr,worldstate_db);
+      authorization.add_to_worldstate(ws_helper_ptr, worldstate_db);
+      resource_limits.add_to_worldstate(ws_helper_ptr, worldstate_db);
 
       //save worldstate file
-      info.file_size = bfs::file_size(worldstate_path);
-      info.hash_string = ws_manager_ptr->calculate_file_hash(worldstate_path).str();
+      ws_helper_ptr.reset();
+      std::string new_ws_file_name = new_ws_file + ".ws";
+      info.file_size = fc::file_size(new_ws_file_name);
+      info.hash_string = ws_manager_ptr->calculate_file_hash(new_ws_file_name).str();
       ws_manager_ptr->save_info(info);
+
+      //Remove old ws files if temp
+      if (worldstate_previous_block > 0 && worldstate_previous_block %  conf.worldstate_interval != 0) {
+         fc::remove(ws_manager_ptr->get_file_path_by_info(info.chain_id, worldstate_previous_block)+".info");
+         fc::remove(old_ws_file+".id");
+         fc::remove(old_ws_file+".ws");
+      }
+
+      worldstate_previous_block = block_height;
       ilog("add_to_worldstate ws info: ${info}", ("info", info));
    }
 
-   void read_from_worldstate( const worldstate_reader_ptr& worldstate ) {
+   void read_from_worldstate( const bfs::path& worldstate_path ) {
+      auto& worldstate_db = db;
+      fc::sha256 tmp_chain_id = self.get_chain_id();
+      std::string id_file = ws_manager_ptr->get_file_path_by_info(tmp_chain_id, 0) + ".id";
+      auto ws_helper_ptr = std::make_shared<ws_helper>(worldstate_path.string(), id_file, true);
 
-      worldstate->read_section<chain_worldstate_header>([this]( auto &section ){
+      ws_helper_ptr->get_reader()->read_section<chain_worldstate_header>([this]( auto &section ){
          chain_worldstate_header header;
          section.read_row(header, db);
          header.validate();
       });
 
-      worldstate->read_section<block_state>([this]( auto &section ){
+      ws_helper_ptr->get_reader()->read_section<block_state>([this]( auto &section ){
           block_header_state head_header_state;
           section.read_row(head_header_state, db);
 
@@ -513,29 +708,42 @@ struct controller_impl {
           worldstate_head_block = head->block_num;
       });
 
-      controller_index_set::walk_indices([this, &worldstate]( auto utils ){
-         using value_t = typename decltype(utils)::index_t::value_type;
+      controller_index_set::walk_indices([&]( auto utils ){
+         using index_t = typename decltype(utils)::index_t;
+         using value_t = typename index_t::value_type;
 
          // skip the table_id_object as its inlined with contract tables section
          if (std::is_same<value_t, table_id_object>::value) {
             return;
          }
 
-         worldstate->read_section<value_t>([this]( auto& section ) {
-            bool more = !section.empty();
-            while(more) {
-               decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
-                  more = section.read_row(row, db);
-               });
-            }
-         });
+         ws_helper_ptr->read_table_from_worldstate<index_t>(worldstate_db);
       });
 
-      read_contract_tables_from_worldstate(worldstate);
-      authorization.read_from_worldstate(worldstate);
-      resource_limits.read_from_worldstate(worldstate);
+      read_contract_tables_from_worldstate(ws_helper_ptr, worldstate_db);
+      authorization.read_from_worldstate(ws_helper_ptr, worldstate_db);
+      resource_limits.read_from_worldstate(ws_helper_ptr, worldstate_db);
 
       db.set_revision( head->block_num );
+      ws_helper_ptr.reset();
+      
+      //copy the file, save in local path
+      ws_info info;
+      info.chain_id = tmp_chain_id;
+      info.block_height = head->block_num;
+      std::string file_name = ws_manager_ptr->get_file_path_by_info(tmp_chain_id, head->block_num);
+      fc::path ws_file(file_name + ".ws");
+      if (ws_file != fc::path(worldstate_path)){
+         if (fc::exists(ws_file)) fc::remove(ws_file);
+         fc::copy(worldstate_path, bfs::path(ws_file) );
+      }
+      fc::rename(id_file, bfs::path(file_name +".id") );
+
+      info.file_size = fc::file_size(ws_file);
+      info.hash_string = ws_manager_ptr->calculate_file_hash(ws_file.string()).str();
+      ws_manager_ptr->save_info(info);
+
+      worldstate_previous_block = head->block_num;
       ilog("read_from_worldstate, block_num: ${block_num}", ("block_num", head->block_num));
     }
 
@@ -636,6 +844,7 @@ struct controller_impl {
          pending.reset();
       });
 
+
       try {
          if (add_to_fork_db) {
             pending->_pending_block_state->validated = true;
@@ -644,14 +853,6 @@ struct controller_impl {
             head = fork_db.head();
             ULTRAIN_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
          }
-
-         // block syncing and listner branch, worldstate allowed for listner but not for syncing
-         if ( (conf.worldstate_control)
-               && (0 == fork_db.head()->block_num % conf.worldstate_interval)
-               && (worldstate_allowed) ) {
-            create_worldstate();
-         }
-
          emit( self.accepted_block, pending->_pending_block_state );
       } catch (...) {
          // dont bother resetting pending, instead abort the block
@@ -660,8 +861,16 @@ struct controller_impl {
          throw;
       }
 
+      bool ws = conf.worldstate_control && (0 == fork_db.head()->block_num % WS_INTERVAL) && worldstate_allowed && !worldstate_thread_running;
+      ilog("commit_block ws: ${s} ${t} ${x} ${y}", ("s", ws)("t",fork_db.head()->block_num)("x", worldstate_allowed)("y", !worldstate_thread_running));
+
       // push the state for pending.
-      pending->push();
+      pending->push(ws);
+
+      // block syncing and listner branch, worldstate allowed for listner but not for syncing
+      if ( ws ) {
+         create_worldstate();
+      }
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
@@ -932,7 +1141,6 @@ struct controller_impl {
                                            bool explicit_billed_cpu_time = false )
    {
       ULTRAIN_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
-
       transaction_trace_ptr trace;
       try {
          transaction_context trx_context(self, trx->trx, trx->id);
@@ -1047,7 +1255,6 @@ struct controller_impl {
       });
 
       pending = db.start_undo_session(true);
-
       pending->_block_status = s;
 
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
@@ -1596,12 +1803,12 @@ void controller::add_indices() {
    my->add_indices();
 }
 
-void controller::startup( const worldstate_reader_ptr& worldstate ) {
+void controller::startup( bfs::path worldstate_path ) {
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init(worldstate);
+   my->init(worldstate_path);
 }
 
 chainbase::database& controller::db()const { return my->db; }
@@ -1823,8 +2030,8 @@ void controller::write_worldstate() const {
    return my->create_worldstate();
 }
 
-void controller::read_worldstate( const worldstate_reader_ptr& worldstate ) {
-    return my->read_from_worldstate(worldstate);
+void controller::read_worldstate( const bfs::path& worldstate_path ) {
+    return my->read_from_worldstate(worldstate_path);
 }
 
 sha256 controller::calculate_integrity_hash()const { try {

@@ -19,6 +19,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
 #include <boost/throw_exception.hpp>
+#include <boost/tuple/tuple_io.hpp>
 
 #include <array>
 #include <atomic>
@@ -151,7 +152,7 @@ namespace chainbase {
          id_type                      old_next_id = 0;
          int64_t                      revision = 0;
    };
-   
+
    template< typename value_type >
    class cache_state
    {
@@ -213,8 +214,8 @@ namespace chainbase {
          typedef undo_state< value_type >                              undo_state_type;
          typedef cache_state< value_type >                              cache_state_type;
 
-         generic_index( allocator<value_type> a )
-         :_stack(a),_cache(a),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
+         generic_index( allocator<value_type> a, bool cache_on=true )
+         :_stack(a),_cache(a),_cache_on(cache_on),_indices( a ),_indices_backup( a ),_size_of_value_type( sizeof(typename MultiIndexType::node_type) ),_size_of_this(sizeof(*this)){}
 
          void validate()const {
             if( sizeof(typename MultiIndexType::node_type) != _size_of_value_type || sizeof(*this) != _size_of_this )
@@ -226,6 +227,19 @@ namespace chainbase {
           * Set the ID to the next available ID, then increment _next_id and fire off on_create().
           */
          template<typename Constructor>
+         const value_type& backup_emplace( Constructor&& c ) {
+            auto constructor = [&]( value_type& v ) {
+               c( v );
+            };
+
+            auto insert_result = _indices_backup.emplace( constructor, _indices_backup.get_allocator() );
+            if( !insert_result.second ) {
+               BOOST_THROW_EXCEPTION( std::logic_error("could not insert backup object, most likely a uniqueness constraint was violated") );
+            }
+            return *insert_result.first;
+         }
+
+         template<typename Constructor>
          const value_type& emplace( Constructor&& c ) {
             auto new_id = _next_id;
 
@@ -235,12 +249,13 @@ namespace chainbase {
             };
 
             auto insert_result = _indices.emplace( constructor, _indices.get_allocator() );
+
             if( !insert_result.second ) {
                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
             }
 
             ++_next_id;
-            backup_create(*insert_result.first);
+            cache_create(*insert_result.first);
             on_create( *insert_result.first );
             return *insert_result.first;
          }
@@ -250,12 +265,12 @@ namespace chainbase {
             on_modify( obj );
             auto ok = _indices.modify( _indices.iterator_to( obj ), m );
             if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "modify: Could not modify object, most likely a uniqueness constraint was violated" ) );
-            backup_modify( obj );
+            cache_modify( obj );
          }
 
          void remove( const value_type& obj ) {
             on_remove( obj );
-            backup_remove( obj );
+            cache_remove( obj );
             _indices.erase( _indices.iterator_to( obj ) );
          }
 
@@ -269,12 +284,17 @@ namespace chainbase {
          template<typename CompatibleKey>
          const value_type& get( CompatibleKey&& key )const {
             auto ptr = find( key );
-            if( !ptr ) BOOST_THROW_EXCEPTION( std::out_of_range("key not found") );
+            if( !ptr ) {
+               std::stringstream ss;
+               ss << "key not found (" << boost::core::demangle( typeid( key ).name() ) << "): " << key;
+               BOOST_THROW_EXCEPTION( std::out_of_range( ss.str().c_str() ) );
+            }
             return *ptr;
          }
 
          const index_type& indices()const { return _indices; }
          const index_type& backup_indices() const { return _indices_backup;}
+         // void backup_clear() { return _indices_backup.clear();}
 
          class session {
             public:
@@ -288,7 +308,14 @@ namespace chainbase {
                }
 
                /** leaves the UNDO state on the stack when session goes out of scope */
-               void push()   { _apply = false; }
+               void push( bool ws = false )   {
+                   _apply = false;
+                   if (_index._flag)
+                   {_index._flag = false;return;}
+                   _index.squash_cache();
+                   if ( ws )
+                       _index._flag = true;
+               }
                /** combines this session with the prior session */
                void squash() { if( _apply ) _index.squash(); _apply = false; }
                void undo()   { if( _apply ) _index.undo();  _apply = false; }
@@ -322,16 +349,10 @@ namespace chainbase {
                _stack.emplace_back( _indices.get_allocator() );
                _stack.back().old_next_id = _next_id;
                _stack.back().revision = ++_revision;
-               if( _cache_on)
-               {
-                   _is_cached=true;
-                   _cache.emplace_back( _indices_backup.get_allocator() );
-               }else if(_is_cached)
-               {
-                   flush(true);
-                   _is_cached = false;
-               }
 
+               if( _cache_on){
+                  _cache.emplace_back( _indices.get_allocator() );
+               }
                return session( *this, _revision );
             } else {
                return session( *this, -1 );
@@ -347,28 +368,25 @@ namespace chainbase {
          void undo() {
             if( !enabled() ) return;
 
-            if( _is_cached && _cache.size() ) _cache.pop_back();
+            if( _cache.size() ) _cache.pop_back();
 
             const auto& head = _stack.back();
 
-            /*The order of operation must be create, modify, remove.That is because it maybe conflict 
+            /*The order of operation must be create, modify, remove.That is because it maybe conflict
             between diff operations of unique key.
             Ex: class A have a int unique key t
                t1 = 1;
-               Oper A:  
+               Oper A:
                   modify: t1 --> 3;
                Oper B:
                   create: t2 = 1;
 
                In this case, undo() must be undo  Oper B , then undo oper A. Otherwise, it will faild when modify t1
-               from 3 to 1; 
+               from 3 to 1;
             */
             for( auto id : head.new_ids )
             {
                _indices.erase( _indices.find( id ) );
-
-               if ( !_backup_on ) continue;
-               if( !_is_cached ) _indices_backup.erase( _indices_backup.find( id ) );
             }
             _next_id = head.old_next_id;
 
@@ -377,25 +395,11 @@ namespace chainbase {
                   v = item.second;
                });
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "undo: Could not modify object, most likely a uniqueness constraint was violated" ) );
-
-               if ( !_backup_on ) continue;
-               if( !_is_cached ) {
-                   ok = _indices_backup.modify( _indices_backup.find( item.second.id ), [&]( value_type& v ) {
-                                            v = std::move( item.second );
-                                    });
-                   if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "undo backup: Could not modify object, most likely a uniqueness constraint was violated" ) );
-               }
             }
 
             for( auto& item : head.removed_values ) {
                bool ok = _indices.emplace( item.second ).second;
                if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "undo: Could not restore object, most likely a uniqueness constraint was violated" ) );
-
-               if ( !_backup_on ) continue;
-               if( !_is_cached ) {
-                   ok = _indices_backup.emplace( std::move( item.second ) ).second;
-                  if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "undo backup: Could not restore object, most likely a uniqueness constraint was violated" ) );
-               }
             }
 
             _stack.pop_back();
@@ -409,11 +413,9 @@ namespace chainbase {
           *  This method does not change the state of the index, only the state of the undo buffer.
           */
          void squash_cache(){
-             if ( !_backup_on ) return;
-             if( !_is_cached || ( _cache.size()<2 ) ) return;
-
+             if( !_cache_on|| _cache.size()<2  ) {return;};
              auto& cache = _cache.back();
-             auto& prev_cache = _cache[_cache.size()-2];
+             auto& prev_cache = *(_cache.end()-2);
 
              for( const auto& item : cache.modify_values )
              {
@@ -455,7 +457,6 @@ namespace chainbase {
                  prev_cache.removed_ids.emplace( id );
              }
              _cache.pop_back();
-
          }
 
          void squash()
@@ -463,6 +464,7 @@ namespace chainbase {
             if( !enabled() ) return;
             if( _stack.size() == 1 ) {
                _stack.pop_front();
+               --_revision;
                return;
             }
 
@@ -557,9 +559,8 @@ namespace chainbase {
             }
 
             _stack.pop_back();
-            --_revision;
-
             squash_cache();
+            --_revision;
          }
 
          /**
@@ -575,57 +576,135 @@ namespace chainbase {
 
          void process_cache()
          {
-            if ( !_backup_on ) return;
-            auto& head= _cache.front();
+             if ( !_cache_on|| !_cache.size()) return;
+             auto& head= _cache.front();
 
-            /*The order of operation must be remove, modify, create.That is because it maybe conflict 
-            between diff operations of unique key.
-            */
-            for(auto id :head.removed_ids)
-            {
-               _indices_backup.erase( _indices_backup.find( id ) );
-            }
+             for(auto item = head.removed_ids.begin();item != head.removed_ids.end() && !_indices_backup.empty();)
+             {
+                 auto itr = _indices_backup.find( *item );
+                 if(itr != _indices_backup.end()){
+                     _indices_backup.erase( itr);
+                     item = head.removed_ids.erase(item);
+                     continue;
+                 } else {
+                     BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: in removed_ids, Could not find object!!" ) );
+                  }
+                 ++item;
+             }
 
-            for(auto& item :head.modify_values)
-            {
-               auto ok = _indices_backup.modify( _indices_backup.find( item.second.id ), [&]( value_type& v ) {
-                        v = std::move( item.second );
-               });
-               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a uniqueness constraint was violated" ) );
-            }
+             for(auto item = head.modify_values.begin();item != head.modify_values.end() && !_indices_backup.empty();)
+             {
+                 auto itr = _indices_backup.find(item->second.id);
+                 if(itr != _indices_backup.end()){
+                     auto ok = _indices_backup.modify( itr , [&]( value_type& v ) {
+                                     v = std::move( item->second );
+                                             });
+                     if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not modify object, most likely a nstraint was violated" ) );
+                      item = head.modify_values.erase(item);
+                      continue;
+                 } else {
+                     BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: in modify_values, Could not find object!!" ) );
+                  }
+                 ++item;
+             }
 
-            for(auto& item :head.new_values)
-            {
-               bool ok = _indices_backup.emplace( std::move( item.second ) ).second;
-               if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a uniqueness constraint was violated" ) );
-            }
+             for(auto item = head.new_values.begin();item != head.new_values.end();)
+             {
 
-            _cache.pop_front();
+                 bool ok = _indices_backup.emplace( std::move( item->second ) ).second;
+                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_cache: Could not restore object, most likely a nstraint was violated" ) );
+                 item =  head.new_values.erase(item);
+             }
+
+             _cache.pop_front();
          }
 
-         void flush(bool flag = false)
+         bool process_table()
          {
-            if( flag )
-               while( _cache.size() )
-                  process_cache();
-            else
-               while( _cache.size() > 5 )
-                 process_cache();
+            if ( !_cache_on|| !_cache.size()) return false;
+            auto& head = _cache.front();
+
+            if (_indices_backup.size() == 0) BOOST_THROW_EXCEPTION( std::logic_error( "process_table: NO any record in process_table!!" ) );
+            auto row = _indices_backup.begin();
+
+             if (head.removed_ids.count(row->id) )
+             {
+                 head.removed_ids.erase(row->id);
+                 _indices_backup.erase( row );
+                 return true;
+             }
+
+             auto itr = head.modify_values.find(row->id);
+             if (itr != head.modify_values.end() )
+             {
+                 auto ok = _indices_backup.modify( row, [&]( value_type& v ) {
+                                          v = std::move( itr->second );
+                                                           });
+                 if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_table: Could not modify object, most likely a queness constraint was violated" ) );
+                 head.modify_values.erase(row->id);
+                 return false;
+             }
+             return false;
          }
 
-         void set_backup(bool on = false ){
-            _backup_on = on;
-         }
+         template<typename C>
+             void process_table(C&& c)
+             {
+                 if ( !_cache_on|| !_cache.size()) return;
+                 auto& head= _cache.front();
 
-         void set_cache(){
-            if ( !_backup_on ) return;
-            _cache_on  = true;
-         }
+                 for(auto item = head.removed_ids.begin();item != head.removed_ids.end() && !_indices_backup.empty();)
+                 {
+                     auto itr = _indices_backup.find( *item );
+                     if(itr != _indices_backup.end()){
+                         _indices_backup.erase( itr);
+                         item = head.removed_ids.erase(item);
+                         continue;
+                     }
+                     ++item;
+                 }
 
-         void cancel_cache(){
-            if ( !_backup_on ) return;
-            flush();
-            _cache_on  = false;
+                 for(auto item = head.modify_values.begin();item != head.modify_values.end() && !_indices_backup.empty();)
+                 {
+                     auto itr = _indices_backup.find(item->second.id);
+                     if(itr != _indices_backup.end()){
+                         auto ok = _indices_backup.modify( itr , [&]( value_type& v ) {
+                                 v = std::move( item->second );
+                                 });
+                         if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_table-1: Could not modify object, most likely a nstraint was violated" ) );
+                          item = head.modify_values.erase(item);
+                         continue;
+                     }
+                     ++item;
+                 }
+
+                 for(auto item = head.new_values.begin();item != head.new_values.end();)
+                 {
+                     if(c(*item)){
+                         bool ok = _indices_backup.emplace( std::move( item->second ) ).second;
+                         if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_table-1: Could not restore object, most likely a nstraint was violated" ) );
+                         item = head.new_values.erase(item);
+                         continue;
+                     }
+                     ++item;
+                 }
+             }
+
+         std::pair<bool,typename value_type::id_type> process_create()
+         {
+             if ( !_cache_on|| !_cache.size()) return {false,0};
+             auto& create= _cache.front().new_values;
+
+             if (create.empty()) return {false,0};
+
+             auto item = create.begin();
+             auto id=item->second.id;
+
+
+             bool ok = _indices_backup.emplace( std::move(item->second)).second;;
+             if( !ok ) BOOST_THROW_EXCEPTION( std::logic_error( "process_create: Could not restore object, most likely a nstraint was violated" ) );
+             create.erase(item->first);
+             return {true, id};
          }
          /**
           * Unwinds all undo states
@@ -638,8 +717,14 @@ namespace chainbase {
 
          void set_revision( uint64_t revision )
          {
-            if( _stack.size() != 0 ) BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
-            _revision = revision;
+            if( _stack.size() != 0 )
+               BOOST_THROW_EXCEPTION( std::logic_error("cannot set revision while there is an existing undo stack") );
+
+            if( revision > std::numeric_limits<int64_t>::max() )
+               BOOST_THROW_EXCEPTION( std::logic_error("revision to set is too high") );
+
+            _revision = static_cast<int64_t>(revision);
+            _cache.emplace_back( _indices.get_allocator() );
          }
 
          void remove_object( int64_t id )
@@ -648,6 +733,21 @@ namespace chainbase {
             if( !val ) BOOST_THROW_EXCEPTION( std::out_of_range( boost::lexical_cast<std::string>(id) ) );
             remove( *val );
          }
+
+         std::pair<int64_t, int64_t> undo_stack_revision_range()const {
+            int64_t begin = _revision;
+            int64_t end   = _revision;
+
+            if( _stack.size() > 0 ) {
+               begin = _stack.front().revision - 1;
+               end   = _stack.back().revision;
+            }
+
+            return {begin, end};
+         }
+
+         const auto& stack()const { return _stack; }
+         auto& cache() { return _cache; }
 
       private:
          bool enabled()const { return _stack.size(); }
@@ -696,52 +796,36 @@ namespace chainbase {
             head.new_ids.insert( v.id );
          }
 
-         void backup_remove( const value_type& v ) {
-            if ( !_backup_on ) return;
-            if( _is_cached ){
-               if (!_cache.size()) return;
-               auto& head = _cache.back();
-               if( !head.new_values.erase(v.id) ){
-                  head.modify_values.erase(v.id);
-                  head.removed_ids.insert(v.id);
-               }
-            }else
-               _indices_backup.erase( _indices_backup.find( v.id ) );
-         }
-
-         void backup_modify( const value_type& v ) {
-            if ( !_backup_on ) return;
-            if( _is_cached ){
-                if (!_cache.size()) return;
-                auto& head = _cache.back();
-                auto it = head.new_values.find(v.id);
-                if( it != head.new_values.end() )
-                {
-                    it->second=v;
-                    return;
-                }
-                it = head.modify_values.find(v.id);
-                if( it != head.modify_values.end() )
-                {
-                    it->second=v;
-                    return;
-                }
-                head.modify_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
-            }else
-                if( !_indices_backup.modify( _indices_backup.find( v.id ), [&]( value_type& obj ) {
-                            obj = v;
-                            } ))
-                    BOOST_THROW_EXCEPTION( std::logic_error( "backup_modify: Could not modify object, most likely a uniqueness constraint was violated" ) );
-         }
-
-         void backup_create( const value_type& v ) {
-            if ( !_backup_on ) return;
-            if( _is_cached ){
-                if (!_cache.size()) return;
-                _cache.back().new_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
+         void cache_remove( const value_type& v ) {
+            if ( !_cache_on|| !_cache.size() ) return;
+            auto& head = _cache.back();
+            if( !head.new_values.erase(v.id) ){
+               head.modify_values.erase(v.id);
+               head.removed_ids.insert(v.id);
             }
-            else if( !_indices_backup.emplace( v ).second )
-                BOOST_THROW_EXCEPTION( std::logic_error("could not insert object, most likely a uniqueness constraint was violated") );
+         }
+
+         void cache_modify( const value_type& v ) {
+            if ( !_cache_on|| !_cache.size() ) return;
+            auto& head = _cache.back();
+            auto it = head.new_values.find(v.id);
+            if( it != head.new_values.end() )
+            {
+                it->second=v;
+                return;
+            }
+            it = head.modify_values.find(v.id);
+            if( it != head.modify_values.end() )
+            {
+                it->second=v;
+                return;
+            }
+            head.modify_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
+         }
+
+         void cache_create( const value_type& v ) {
+            if ( !_cache_on|| !_cache.size() ) return;
+            _cache.back().new_values.emplace( std::pair< typename value_type::id_type, const value_type& >( v.id, v ) );
          }
 
 
@@ -753,10 +837,12 @@ namespace chainbase {
           *
           *  Commit will discard all revisions prior to the committed revision.
           */
-         bool                            _backup_on = false, _is_cached = false, _cache_on = false;
+         bool                            _flag = false;
+         uint64_t                        _cache_on;
          int64_t                         _revision = 0;
          typename value_type::id_type    _next_id = 0;
-         index_type                      _indices,_indices_backup;
+         index_type                      _indices;
+         mutable index_type              _indices_backup;
          uint32_t                        _size_of_value_type = 0;
          uint32_t                        _size_of_this = 0;
    };
@@ -764,7 +850,7 @@ namespace chainbase {
    class abstract_session {
       public:
          virtual ~abstract_session(){};
-         virtual void push()             = 0;
+         virtual void push(bool ws=false)= 0;
          virtual void squash()           = 0;
          virtual void undo()             = 0;
          virtual int64_t revision()const  = 0;
@@ -776,7 +862,7 @@ namespace chainbase {
       public:
          session_impl( SessionType&& s ):_session( std::move( s ) ){}
 
-         virtual void push() override  { _session.push();  }
+         virtual void push(bool ws=false) override{ _session.push(ws);  }
          virtual void squash() override{ _session.squash(); }
          virtual void undo() override  { _session.undo();  }
          virtual int64_t revision()const override  { return _session.revision();  }
@@ -796,12 +882,11 @@ namespace chainbase {
          virtual void    undo()const = 0;
          virtual void    squash()const = 0;
          virtual void    commit( int64_t revision )const = 0;
-         virtual void    set_cache()const = 0;
-         virtual void    cancel_cache()const = 0;
          virtual void    undo_all()const = 0;
          virtual uint32_t type_id()const  = 0;
          virtual uint64_t row_count()const = 0;
          virtual const std::string& type_name()const = 0;
+         virtual std::pair<int64_t, int64_t> undo_stack_revision_range()const = 0;
 
          virtual void remove_object( int64_t id ) = 0;
 
@@ -824,12 +909,11 @@ namespace chainbase {
          virtual void     undo()const  override { _base.undo(); }
          virtual void     squash()const  override { _base.squash(); }
          virtual void     commit( int64_t revision )const  override { _base.commit(revision); }
-         virtual void     set_cache()const override { _base.set_cache(); }
-         virtual void     cancel_cache()const override { _base.cancel_cache(); }
          virtual void     undo_all() const override {_base.undo_all(); }
          virtual uint32_t type_id()const override { return BaseIndex::value_type::type_id; }
          virtual uint64_t row_count()const override { return _base.indices().size(); }
          virtual const std::string& type_name() const override { return BaseIndex_name; }
+         virtual std::pair<int64_t, int64_t> undo_stack_revision_range()const override { return _base.undo_stack_revision_range(); }
 
          virtual void     remove_object( int64_t id ) override { return _base.remove_object( id ); }
       private:
@@ -889,7 +973,7 @@ namespace chainbase {
 
          using database_index_row_count_multiset = std::multiset<std::pair<unsigned, std::string>>;
 
-         database(const bfs::path& dir, open_flags write = read_only, uint64_t shared_file_size = 0, bool ws = false, bool allow_dirty = false);
+         database(const bfs::path& dir, open_flags write = read_only, uint64_t shared_file_size = 0, bool ws = true, bool allow_dirty = false);
          ~database();
          database(database&&) = default;
          database& operator=(database&&) = default;
@@ -926,9 +1010,9 @@ namespace chainbase {
                   undo();
                }
 
-               void push()
+               void push(bool ws=false)
                {
-                  for( auto& i : _index_sessions ) i->push();
+                  for( auto& i : _index_sessions ) i->push(ws);
                   _index_sessions.clear();
                }
 
@@ -965,8 +1049,6 @@ namespace chainbase {
          void squash();
          void commit( int64_t revision );
          void undo_all();
-         void set_cache();
-         void cancel_cache() const;
 
          void set_revision( uint64_t revision )
          {
@@ -974,44 +1056,99 @@ namespace chainbase {
              for( auto i : _index_list ) i->set_revision( revision );
          }
 
+         template<typename VarType>
+         void save_data(std::string var_name, const VarType& var)  {
+            std::string type_name = boost::core::demangle( typeid(VarType).name() )  + var_name;
+            auto var_ptr = _segment->find< VarType >( type_name.c_str() ).first;
+            if( !var_ptr ) {
+               _segment->find_or_construct< VarType >( type_name.c_str() )(var);
+            } else {
+               *var_ptr = var;
+            }
+         }
+
+         template<typename VarType>
+         bool get_data(std::string var_name, VarType& var)  {
+            std::string type_name = boost::core::demangle( typeid(VarType).name() )  + var_name;
+            auto var_ptr = _segment->find< VarType >( type_name.c_str()).first;
+            if( !var_ptr ) {
+               return false;
+            } else {
+               var = *var_ptr;
+               return  true;
+            }
+         }
 
          template<typename MultiIndexType>
          void add_index() {
-             const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
-             typedef generic_index<MultiIndexType>          index_type;
-             typedef typename index_type::allocator_type    index_alloc;
+            const uint16_t type_id = generic_index<MultiIndexType>::value_type::type_id;
+            typedef generic_index<MultiIndexType>          index_type;
+            typedef typename index_type::allocator_type    index_alloc;
 
-             std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
+            std::string type_name = boost::core::demangle( typeid( typename index_type::value_type ).name() );
 
-             if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
-                BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
-             }
+            if( !( _index_map.size() <= type_id || _index_map[ type_id ] == nullptr ) ) {
+               BOOST_THROW_EXCEPTION( std::logic_error( type_name + "::type_id is already in use" ) );
+            }
 
-             index_type* idx_ptr =  nullptr;
-             if( !_read_only ) {
-                idx_ptr = _segment->find_or_construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ) );
-             } else {
-                idx_ptr = _segment->find< index_type >( type_name.c_str() ).first;
-                if( !idx_ptr ) BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in read only database" ) );
+            index_type* idx_ptr = _segment->find< index_type >( type_name.c_str() ).first;
+            bool first_time_adding = false;
+            if( !idx_ptr ) {
+               if( _read_only ) {
+                  BOOST_THROW_EXCEPTION( std::runtime_error( "unable to find index for " + type_name + " in read only database" ) );
+               }
+               first_time_adding = true;
+               idx_ptr = _segment->construct< index_type >( type_name.c_str() )( index_alloc( _segment->get_segment_manager() ), _ws);
              }
 
              idx_ptr->validate();
-             idx_ptr->set_backup(_ws);
 
-             if( type_id >= _index_map.size() )
-                _index_map.resize( type_id + 1 );
+            // Ensure the undo stack of added index is consistent with the other indices in the database
+            if( _index_list.size() > 0 ) {
+               auto expected_revision_range = _index_list.front()->undo_stack_revision_range();
+               auto added_index_revision_range = idx_ptr->undo_stack_revision_range();
 
-             auto new_index = new index<index_type>( *idx_ptr );
-             _index_map[ type_id ].reset( new_index );
-             _index_list.push_back( new_index );
+               if( added_index_revision_range.first != expected_revision_range.first ||
+                   added_index_revision_range.second != expected_revision_range.second ) {
+
+                  if( !first_time_adding ) {
+                     BOOST_THROW_EXCEPTION( std::logic_error(
+                        "existing index for " + type_name + " has an undo stack (revision range [" +
+                        std::to_string(added_index_revision_range.first) + ", " + std::to_string(added_index_revision_range.second) +
+                        "]) that is inconsistent with other indices in the database (revision range [" +
+                        std::to_string(expected_revision_range.first) + ", " + std::to_string(expected_revision_range.second) +
+                        "]); corrupted database?"
+                     ) );
+                  }
+
+                  if( _read_only ) {
+                     BOOST_THROW_EXCEPTION( std::logic_error(
+                        "new index for " + type_name +
+                        " requires an undo stack that is consistent with other indices in the database; cannot fix in read-only mode"
+                     ) );
+                  }
+
+                  idx_ptr->set_revision( static_cast<uint64_t>(expected_revision_range.first) );
+                  while( idx_ptr->revision() < expected_revision_range.second ) {
+                     idx_ptr->start_undo_session(true).push();
+                  }
+               }
+            }
+
+            if( type_id >= _index_map.size() )
+               _index_map.resize( type_id + 1 );
+
+            auto new_index = new index<index_type>( *idx_ptr );
+            _index_map[ type_id ].reset( new_index );
+            _index_list.push_back( new_index );
          }
 
          auto get_segment_manager() -> decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager()) {
             return _segment->get_segment_manager();
          }
 
-         void* get_segment_address() {
-            return _segment->get_address();
+         auto get_segment_manager()const -> std::add_const_t< decltype( ((bip::managed_mapped_file*)nullptr)->get_segment_manager() ) > {
+            return _segment->get_segment_manager();
          }
 
          size_t get_free_memory()const
@@ -1079,8 +1216,11 @@ namespace chainbase {
          {
              CHAINBASE_REQUIRE_READ_LOCK("get", ObjectType);
              auto obj = find< ObjectType, IndexedByType >( std::forward< CompatibleKey >( key ) );
-             if( !obj )
-                BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key" ) );
+             if( !obj ) {
+                std::stringstream ss;
+                ss << "unknown key (" << boost::core::demangle( typeid( key ).name() ) << "): " << key;
+                BOOST_THROW_EXCEPTION( std::out_of_range( ss.str().c_str() ) );
+             }
              return *obj;
          }
 
@@ -1089,8 +1229,11 @@ namespace chainbase {
          {
              CHAINBASE_REQUIRE_READ_LOCK("get", ObjectType);
              auto obj = find< ObjectType >( key );
-             if( !obj )
-                BOOST_THROW_EXCEPTION( std::out_of_range( "unknown key") );
+             if( !obj ) {
+                std::stringstream ss;
+                ss << "unknown key (" << boost::core::demangle( typeid( key ).name() ) << "): " << key._id;
+                BOOST_THROW_EXCEPTION( std::out_of_range( ss.str().c_str() ) );
+             }
              return *obj;
          }
 
@@ -1116,6 +1259,14 @@ namespace chainbase {
              CHAINBASE_REQUIRE_WRITE_LOCK("create", ObjectType);
              typedef typename get_index_type<ObjectType>::type index_type;
              return get_mutable_index<index_type>().emplace( std::forward<Constructor>(con) );
+         }
+
+         template<typename ObjectType, typename Constructor>
+         const ObjectType& backup_create( Constructor&& con )
+         {
+             CHAINBASE_REQUIRE_WRITE_LOCK("backup_create", ObjectType);
+             typedef typename get_index_type<ObjectType>::type index_type;
+             return get_mutable_index<index_type>().backup_emplace( std::forward<Constructor>(con) );
          }
 
          template< typename Lambda >
@@ -1170,7 +1321,7 @@ namespace chainbase {
             return callback();
          }
 
-         database_index_row_count_multiset row_count_per_index() {
+         database_index_row_count_multiset row_count_per_index()const {
             database_index_row_count_multiset ret;
             for(const auto& ai_ptr : _index_map) {
                if(!ai_ptr)
@@ -1199,15 +1350,15 @@ namespace chainbase {
 
          bfs::path                                                   _data_dir;
 
-         mutable int32_t                                             _read_lock_count = 0;
+#ifdef CHAINBASE_CHECK_LOCKING
+         int32_t                                                     _read_lock_count = 0;
          int32_t                                                     _write_lock_count = 0;
          bool                                                        _enable_require_locking = false;
-
-         bool                                                        _ws = false;
+#endif
+         bool                                                        _ws;
          void                                                        _msync_database();
    };
 
    template<typename Object, typename... Args>
    using shared_multi_index_container = boost::multi_index_container<Object,Args..., chainbase::allocator<Object> >;
 }  // namepsace chainbase
-
