@@ -56,7 +56,6 @@ namespace ultrainiosystem {
                 dis_prod.producer_key            = producer_key;
                 dis_prod.bls_key                 = bls_key;
                 dis_prod.url                     = url;
-                dis_prod.location                = location;
                 dis_prod.last_operate_blocknum   = curblocknum;
                 dis_prod.delegated_cons_blocknum = 0;
                 dis_prod.claim_rewards_account   = rewards_account;
@@ -69,12 +68,6 @@ namespace ultrainiosystem {
         } else {
             if(location == default_chain_name) {
                 location = briefprod->location;
-            }
-            else if (briefprod->location != location) {
-                //location changed
-                _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
-                    producer_brf.location = location;
-                });
             }
 
             if (briefprod->in_disable) {
@@ -89,7 +82,6 @@ namespace ultrainiosystem {
                     new_en_prod.total_cons_staked       = it_disable->total_cons_staked;
                     new_en_prod.url                     = url;
                     new_en_prod.total_produce_block     = it_disable->total_produce_block;
-                    new_en_prod.location                = location;
                     new_en_prod.last_operate_blocknum   = curblocknum;
                     new_en_prod.delegated_cons_blocknum = it_disable->delegated_cons_blocknum;
                     new_en_prod.claim_rewards_account   = it_disable->claim_rewards_account;
@@ -100,6 +92,7 @@ namespace ultrainiosystem {
                     dp_tbl.erase(it_disable);
                     _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                         producer_brf.in_disable = false;
+                        producer_brf.location = location;
                     });
                 }
                 else {
@@ -108,7 +101,6 @@ namespace ultrainiosystem {
                         dis_prod.producer_key            = producer_key;
                         dis_prod.bls_key                 = bls_key;
                         dis_prod.url                     = url;
-                        dis_prod.location                = location;
                         dis_prod.last_operate_blocknum   = curblocknum;
                     });
                 }
@@ -122,11 +114,13 @@ namespace ultrainiosystem {
                 producers_table _producers(_self, briefprod->location);
                 auto prod = _producers.find(producer);
                 ultrainio_assert(prod != _producers.end(), "producer not found");
-                if(prod->location != location) {
-                    ultrainio_assert(!prod->is_on_master_chain(), "cannot move producers from master chain");
+                if(briefprod->location != location) {
+                    ultrainio_assert(!briefprod->is_on_master_chain(), "cannot move producers from master chain");
                     add_to_chain(location, *prod);
-                    remove_from_chain(prod->location, prod->owner);
-                    //location in _briefproducers has been modified above
+                    remove_from_chain(briefprod->location, producer);
+                    _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
+                        producer_brf.location = location;
+                    });
                 } else {
                     _producers.modify( prod, [&]( producer_info& info ) {
                         info.producer_key = producer_key;

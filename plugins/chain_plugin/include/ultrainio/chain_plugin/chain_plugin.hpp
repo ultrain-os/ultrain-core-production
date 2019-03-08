@@ -361,14 +361,20 @@ public:
       bool        json = false;
       string      lower_bound;
       uint32_t    limit = 50;
-      bool        is_filter_chain = true;
-      uint64_t    show_chain_num = 0;
       bool        all_chain = true;
       uint64_t    chain_name;
    };
 
+   struct producer_with_location {
+      uint64_t    chain_name;
+      fc::variant prod_detail;
+
+      producer_with_location() {chain_name = chain::master_chain_name;}
+      producer_with_location(uint64_t location, fc::variant vt): chain_name(location), prod_detail(vt) {}
+   };
+
    struct get_producers_result {
-      vector<fc::variant> rows; ///< one row per item, either encoded as hex string or JSON object
+      vector<producer_with_location> rows; ///< one row per item, either encoded as hex string or JSON object
       string              more; ///< fill lower_bound with this value to fetch more rows
       int64_t             min_stake_thresh {};
       uint32_t            min_committee_member_number {};
@@ -712,7 +718,8 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (locatio
 FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(is_filter_chain)(show_chain_num)(all_chain)(chain_name) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(all_chain)(chain_name) )
+FC_REFLECT( ultrainio::chain_apis::read_only::producer_with_location, (chain_name)(prod_detail))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(more)(min_stake_thresh)(min_committee_member_number) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,

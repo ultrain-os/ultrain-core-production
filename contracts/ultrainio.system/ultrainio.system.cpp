@@ -138,7 +138,7 @@ namespace ultrainiosystem {
       require_auth( proposer );
       producers_table _producers(_self, master_chain_name);
       auto propos = _producers.find( proposer );
-      ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+      ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
       uint32_t  enableprodnum = _gstate.cur_committee_number;
       ultrainio_assert( enableprodnum > _gstate.min_committee_member_number || proposeminer[0].adddel_miner, " The number of committees is about to be smaller than the minimum number and therefore cannot be voted away" );
@@ -262,7 +262,7 @@ void system_contract::voteaccount() {
       require_auth( proposer );
       producers_table _producers(_self, master_chain_name);
       auto propos = _producers.find( proposer );
-      ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+      ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
       uint32_t  enableprodnum = _gstate.cur_committee_number;
       print("voteaccount enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," accountsize:",proposeaccount.size(),"\n");
@@ -345,7 +345,7 @@ void system_contract::voteresourcelease() {
       require_auth( proposer );
       producers_table _producers(_self, master_chain_name);
       auto propos = _producers.find( proposer );
-      ultrainio_assert( propos != _producers.end() && propos->is_on_master_chain(), "enabled producer not found this proposer" );
+      ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
       uint32_t  enableprodnum = _gstate.cur_committee_number;
       print("voteresourcelease enableprodnum size:", enableprodnum," proposer:",ultrainio::name{proposer}," proposeresource_info size:",proposeresource.size(),"\n");

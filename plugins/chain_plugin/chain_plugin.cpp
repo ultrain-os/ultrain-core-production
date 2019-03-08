@@ -944,31 +944,23 @@ vector<read_only::get_subchain_committee_result> read_only::get_subchain_committ
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
    ULTRAIN_ASSERT(p.chain_name != master_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
 
-   name table = N(subchains);
+   name table = N(producers);
    auto index_type = get_table_type( abi, table );
 
    vector<get_subchain_committee_result> result;
-   walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+   walk_key_value_table(N(ultrainio), p.chain_name, table, [&](const key_value_object& obj){
 //       ULTRAIN_ASSERT( obj.value.size() >= sizeof(ultrainio::chain::subchain), chain::asset_type_exception, "Invalid subchain data on table");
 
-       ultrainio::chain::subchain subchain_data;
+       ultrainio::chain::producer_info producer_data;
        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-       fc::raw::unpack(ds, subchain_data);
+       fc::raw::unpack(ds, producer_data);
 
-       if(p.chain_name == subchain_data.chain_name) {
-          std::vector<role_base>::iterator ite = subchain_data.committee_members.begin();
-          for (; ite != subchain_data.committee_members.end(); ++ite) {
-              read_only::get_subchain_committee_result tmp;
-              tmp.owner = ite->owner.to_string();
-              tmp.miner_pk = ite->producer_key;
-              tmp.bls_pk = ite->bls_key;
-              result.push_back(tmp);
-          }
-          return false;
-      }
-      else {
-          return true;
-      }
+       read_only::get_subchain_committee_result tmp;
+       tmp.owner = producer_data.owner.to_string();
+       tmp.miner_pk = producer_data.producer_key;
+       tmp.bls_pk = producer_data.bls_key;
+       result.push_back(tmp);
+       return true;
    });
 
    return result;
@@ -1052,7 +1044,7 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
        }
     });
 
-    if(result.location == 0) {
+    if(result.location == chain::master_chain_name) {
         result.chain_id = db.get_chain_id();
         result.genesis_time = block_timestamp(); //TODO, modify as master genesis time
     }
@@ -1182,13 +1174,10 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
        std::for_each(lower,upper, [&](const key_value_object& obj) {
            copy_inline_row(obj, data);
            auto producer = abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time);
-           if(p.is_filter_chain && (producer["location"].as_uint64() != p.show_chain_num)) {
-               return;
-           }
            if (p.json)
-               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
+               result.rows.emplace_back(scopes[i], abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
            else
-               result.rows.emplace_back(fc::variant(data));
+               result.rows.emplace_back(scopes[i], fc::variant(data));
        });
    }
    auto gstate = get_global_row(d, abi, abi_serializer_max_time);

@@ -2592,15 +2592,15 @@ connection::connection(string endpoint, msg_priority pri)
         struct chain_apis::read_only::get_producers_params params;
         params.json=true;
         params.lower_bound="";
-        params.show_chain_num = 0;
-        params.is_filter_chain = true;
+        params.all_chain = false;
+        params.chain_name = chain::master_chain_name;
         std::vector<string> producers_account;
         producers_pk.clear();
 	try {
             auto result = ro_api.get_producers(params);
             if(!result.rows.empty()) {
                 for( const auto& r : result.rows ) {
-                    producers_account.push_back(r["owner"].as_string());
+                    producers_account.push_back(r.prod_detail["owner"].as_string());
                 }
 
             }

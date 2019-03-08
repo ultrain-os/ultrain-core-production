@@ -118,12 +118,12 @@ namespace ultrainiosystem {
                      ultrainio_assert( (curblocknum - dis_prod->delegated_cons_blocknum) > blocks_per_month , "should stake at least more than one month" );
                  }
              }
-             if(dis_prod->is_on_master_chain()) {
+             if(briefprod->is_on_master_chain()) {
                  _gstate.total_activated_stake += total_update.amount;
              }
              auto enabled = ((dis_prod->total_cons_staked + total_update.amount) >= _gstate.min_activated_stake);
              if(enabled) {
-                uint64_t assigned_location = dis_prod->location;
+                uint64_t assigned_location = briefprod->location;
                 if(assigned_location == default_chain_name) {
                     assigned_location = getdefaultchain();
                 }
@@ -134,7 +134,6 @@ namespace ultrainiosystem {
                 new_en_prod.total_cons_staked       = dis_prod->total_cons_staked + total_update.amount;
                 new_en_prod.url                     = dis_prod->url;
                 new_en_prod.total_produce_block     = dis_prod->total_produce_block;
-                new_en_prod.location                = assigned_location;
                 new_en_prod.last_operate_blocknum   = dis_prod->last_operate_blocknum;
                 new_en_prod.delegated_cons_blocknum = curblocknum;
                 new_en_prod.claim_rewards_account   = dis_prod->claim_rewards_account;
@@ -169,7 +168,7 @@ namespace ultrainiosystem {
                      ultrainio_assert( (curblocknum - it->delegated_cons_blocknum) > blocks_per_month , "should stake at least more than one month" );
                  }
              }
-             if(it->is_on_master_chain()) {
+             if(briefprod->is_on_master_chain()) {
                  _gstate.total_activated_stake += total_update.amount;
              }
              auto enabled = ((it->total_cons_staked + total_update.amount) >= _gstate.min_activated_stake);
@@ -191,7 +190,6 @@ namespace ultrainiosystem {
                      dis_prod.total_cons_staked       = it->total_cons_staked + total_update.amount;
                      dis_prod.url                     = it->url;
                      dis_prod.total_produce_block     = it->total_produce_block;
-                     dis_prod.location                = 0;
                      dis_prod.last_operate_blocknum   = it->last_operate_blocknum;
                      dis_prod.delegated_cons_blocknum = curblocknum;
                      dis_prod.claim_rewards_account   = it->claim_rewards_account;

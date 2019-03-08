@@ -274,16 +274,16 @@ namespace ultrainio {
         auto statePtr(std::make_shared<CommitteeState>());
         params.json=true;
         params.lower_bound="";
-        params.show_chain_num = chainNum;
-        params.is_filter_chain = true;
+        params.all_chain = false;
+        params.chain_name = chainNum;
         try {
             auto result = ro_api.get_producers(params);
             if(!result.rows.empty()) {
                 for( const auto& r : result.rows ) {
-                    cinfo.accountName = r["owner"].as_string();
-                    cinfo.pk = r["producer_key"].as_string();
-                    cinfo.blsPk = r["bls_key"].as_string();
-                    //cinfo.stakesCount = r["total_cons_staked"].as_int64();
+                    cinfo.accountName = r.prod_detail["owner"].as_string();
+                    cinfo.pk = r.prod_detail["producer_key"].as_string();
+                    cinfo.blsPk = r.prod_detail["bls_key"].as_string();
+                    //cinfo.stakesCount = r.prod_detail["total_cons_staked"].as_int64();
                     statePtr->cinfo.push_back(cinfo);
                 }
                 ilog("#########################there are ${p} committee member enabled", ("p", result.rows.size()));

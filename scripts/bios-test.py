@@ -303,7 +303,7 @@ def stepexecrand():
     randpath = "/root/workspace"
     if args.programpath:
         randpath = args.programpath
-    listprods = args.clultrain + 'system listproducers'
+    listprods = retry(args.clultrain + 'system listproducers')
     # os.system("cd %s/ultrain-core/scripts/rand;  ./rand.sh c  sleep 2;  ./rand.sh r  sleep 2;\
     #   nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
     os.system("cd %s/ultrain-core/scripts/rand; \

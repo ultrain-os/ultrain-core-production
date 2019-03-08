@@ -369,7 +369,7 @@
       "fields": [
          {"name":"is_schedule_enabled",      "type":"bool"},
          {"name":"schedule_period",          "type":"uint16"},
-         {"name":"committee_confirm_period", "type":"uint16"}
+         {"name":"expire_minutes",           "type":"uint16"}
       ]
     },{
       "name": "blockchain_parameters",
@@ -461,7 +461,6 @@
          {"name":"total_cons_staked",     "type":"int64"},
          {"name":"url",             "type":"string"},
          {"name":"total_produce_block",   "type":"uint64"},
-         {"name":"location",        "type":"uint64"},
          {"name":"last_operate_blocknum", "type":"uint64"},
          {"name":"delegated_cons_blocknum", "type":"uint64"},
          {"name":"claim_rewards_account", "type":"account_name"}
@@ -513,14 +512,6 @@
         {"name": "new_added_members",             "type": "role_base[]"}
        ]
     },{
-     "name": "updated_committee",
-      "base": "",
-      "fields": [
-        {"name": "deprecated_committee",          "type": "role_base[]"},
-        {"name": "unactivated_committee",         "type": "account_name[]"},
-        {"name": "take_effect_at_block",          "type": "uint32"}
-       ]
-    },{
       "name": "block_header_digest",
       "base": "",
       "fields": [
@@ -538,7 +529,9 @@
         {"name": "fork_id",                       "type": "uint16"},
         {"name": "to_be_paid",                    "type": "bool"},
         {"name": "is_leaf",                       "type": "bool"},
-        {"name": "committee_mroot",               "type": "checksum256"}
+        {"name": "is_synced",                     "type": "bool"},
+        {"name": "committee_mroot",               "type": "checksum256"},
+        {"name": "committee_info",                "type": "string"}
        ]
     },{
      "name": "subchain",
@@ -548,13 +541,12 @@
         {"name": "chain_type",                    "type": "uint64"},
         {"name": "genesis_time",                  "type": "block_timestamp_type"},
         {"name": "global_resource",               "type": "chain_resource"},
-        {"name": "is_active",                     "type": "bool"},
         {"name": "is_synced",                     "type": "bool"},
         {"name": "is_schedulable",                "type": "bool"},
-        {"name": "committee_sum",                 "type": "uint16"},
-        {"name": "committee_members",             "type": "role_base[]"},
-        {"name": "updated_info",                  "type": "updated_committee"},
+        {"name": "committee_num",                 "type": "uint16"},
+        {"name": "deprecated_committee",          "type": "role_base[]"},
         {"name": "changing_info",                 "type": "changing_committee"},
+        {"name": "changing_block_num",            "type": "uint32"},
         {"name": "recent_users",                  "type": "user_info[]"},
         {"name": "total_user_num",                "type": "uint32"},
         {"name": "chain_id",                      "type": "checksum256"},
