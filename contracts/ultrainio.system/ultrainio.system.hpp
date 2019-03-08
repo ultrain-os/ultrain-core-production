@@ -237,7 +237,7 @@ namespace ultrainiosystem {
        std::string               committee_info; //parse it when it's confirmed
 
        ULTRAINLIB_SERIALIZE_DERIVED(unconfirmed_block_header, block_header_digest,
-                                    (fork_id)(to_be_paid)(is_leaf)(committee_mroot))
+                                    (fork_id)(to_be_paid)(is_leaf)(is_synced)(committee_mroot)(committee_info))
    };
 
    struct subchain {
