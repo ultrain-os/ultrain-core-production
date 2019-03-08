@@ -35,19 +35,29 @@ namespace ultrainiosystem {
     ///@abi action
     void system_contract::reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size) {
         require_auth(current_sender());
-        auto ite_chain = _subchains.find(subchain);
-        ultrainio_assert(ite_chain != _subchains.end(), "subchain not found");
+
+        uint32_t confirmed_blocknum = 0;
+        uint32_t vote_threshold = 0;
+        if (subchain == master_chain_name) {
+            confirmed_blocknum = (uint32_t)head_block_number();
+            vote_threshold = (uint32_t)ceil((double)_gstate.cur_committee_number * 2 / 3);
+        } else {
+            auto ite_chain = _subchains.find(subchain);
+            ultrainio_assert(ite_chain != _subchains.end(), "subchain not found");
+            confirmed_blocknum = ite_chain->confirmed_block_number;
+            vote_threshold = (uint32_t)ceil((double)ite_chain->committee_num * 2 / 3);
+        }
+
         producers_table _producers(_self, subchain);
         auto propos = _producers.find(current_sender());
-
         ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
+
         auto checkBlockNum = [&](uint64_t  bn) -> bool {
             return (bn%default_worldstate_interval) == 0;
         };
         ultrainio_assert(checkBlockNum(blocknum), "report an invalid blocknum ws");
-
-        ultrainio_assert(blocknum <= ite_chain->confirmed_block_number, "report a blocknum larger than current block");
-        ultrainio_assert(ite_chain->confirmed_block_number - blocknum <= default_worldstate_interval, "report a too old blocknum");
+        ultrainio_assert(blocknum <= confirmed_blocknum, "report a blocknum larger than current block");
+        ultrainio_assert(confirmed_blocknum - blocknum <= default_worldstate_interval, "report a too old blocknum");
 
         subchain_hash_table     hashTable(_self, subchain);
 
@@ -58,12 +68,10 @@ namespace ultrainiosystem {
             auto ret = std::find(acc.begin(), acc.end(), current_sender());
             ultrainio_assert(ret == acc.end(), "the committee_members already report such ws hash");
 
-            uint32_t  pro_cnt = uint32_t(ite_chain->committee_num);
-
             auto it = hashv.begin();
             for(; it != hashv.end(); it++) {
                 if(hash == it->hash && file_size == it->file_size) {
-                    if((it->votes+1) >= ceil((double)pro_cnt*2/3)) {
+                    if((it->votes+1) >= vote_threshold) {
                         hashTable.modify(wshash, [&](auto &p) {
                             p.hash_v[static_cast<unsigned int>(it - hashv.begin())].votes++;
                             p.hash_v[static_cast<unsigned int>(it - hashv.begin())].valid = true;
