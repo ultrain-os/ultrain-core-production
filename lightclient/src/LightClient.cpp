@@ -11,24 +11,26 @@ namespace ultrainio {
         return m_chainName;
     }
 
-    void LightClient::accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
+    BlockIdType LightClient::accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
         accept(blockHeader);
         confirm(blsVoterSet);
+        return m_latestConfirmedBlockId;
     }
 
-    void LightClient::accept(const BlockHeader& blockHeader) {
+    BlockIdType LightClient::accept(const BlockHeader& blockHeader) {
         std::cout << " LightClient::accept " << blockHeader.block_num() << " latest is " << BlockHeader::num_from_id(m_latestConfirmedBlockId) << std::endl;
         if (blockHeader.block_num() <= BlockHeader::num_from_id(m_latestConfirmedBlockId)) {
-            return;
+            return m_latestConfirmedBlockId;
         }
         // TODO sign check and previous check
         if (std::string(blockHeader.proposer) == std::string("genesis")) { // see rpos/Genesis.cpp
             if (m_callback) {
+                m_latestConfirmedBlockId = blockHeader.id();
                 m_confirmedList.push_back(blockHeader);
                 m_callback->onConfirmed(m_confirmedList);
                 clearConfirmedList();
             }
-            return;
+            return m_latestConfirmedBlockId;
         }
 
         auto unconfirmItor = m_unconfirmedList.begin();
@@ -40,7 +42,7 @@ namespace ultrainio {
             if (unconfirmItor->block_num() >= blockHeader.block_num()) {
                 if (unconfirmItor->id() == blockHeader.id()) {
                     // duplicate accept
-                    return;
+                    return m_latestConfirmedBlockId;
                 }
             } else {
                 m_unconfirmedList.insert(unconfirmItor, blockHeader);
@@ -87,6 +89,7 @@ namespace ultrainio {
             ConfirmPoint confirmPoint(blockHeader);
             confirm(confirmPoint.blsVoterSet());
         }
+        return m_latestConfirmedBlockId;
     }
 
     void LightClient::confirm(const BlsVoterSet& blsVoterSet) {

@@ -2117,8 +2117,16 @@ class multi_chain_api : public context_aware_api {
           return false;
       }
 
-      bool lightclient_accept_block_header(uint64_t chain_name, array_ptr<char> bh, size_t bh_size, array_ptr<char> confirmed_bh_buffer, size_t buffer_len) {
-          return true;
+      bool lightclient_accept_block_header(uint64_t chain_name, array_ptr<char> bh_raw, size_t bh_size, array_ptr<char> confirmed_bh_buffer, size_t buffer_len) {
+          std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
+          datastream<char*> ds(bh_raw, bh_size);
+          chain::block_header bh;
+          fc::raw::unpack(ds, bh);
+          chain::block_id_type id;
+          bool res = cb->on_accept_block_header(chain_name, bh, id);
+          datastream<char*> confirmed_ds(confirmed_bh_buffer, buffer_len);
+          fc::raw::pack(ds, id);
+          return res;
       }
 };
 

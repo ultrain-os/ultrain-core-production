@@ -209,7 +209,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrain
         void enableEventRegister(bool v);
 
         // implement callback
-        int on_header_extensions_verify(uint64_t chainName, int extKey, const std::string& extValue);
+        bool on_accept_block_header(uint64_t chainName, const BlockHeader& blockHeader, BlockIdType id);
     private:
         // This function is time consuming, please cache the result empty block.
         std::shared_ptr<Block> generateEmptyBlock();

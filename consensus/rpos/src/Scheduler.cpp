@@ -28,8 +28,10 @@
 #include <lightclient/BlockHeaderExtKey.h>
 #include <lightclient/CommitteeSet.h>
 #include <lightclient/EpochEndPoint.h>
-#include <lightclient/LightClientProducer.h>
+#include <lightclient/LightClient.h>
+#include <lightclient/LightClientCallback.h>
 #include <lightclient/LightClientMgr.h>
+#include <lightclient/LightClientProducer.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/MsgBuilder.h>
@@ -71,9 +73,6 @@ namespace {
                  ba0_block.header_extensions == block->header_extensions);
     }
 }
-
-//#include <lightclient/LightClientCallback.h>
-//#include <lightclient/LightClient.h>
 
 namespace ultrainio {
 //    class LightClientCallbackTest : public LightClientCallback {
@@ -2207,35 +2206,11 @@ namespace ultrainio {
         chain.enable_event_register(v);
     }
 
-    int Scheduler::on_header_extensions_verify(uint64_t chainName, int extKey, const std::string& extValue) {
-        ilog("enter on_header_extensions_verify chain id : ${chainName} extKey : ${extKey} extValue : ${extValue}", ("chainName", chainName)("extKey", extKey)("extValue", extValue));
-        if (static_cast<BlockHeaderExtKey>(extKey) == kBlsVoterSet) {
-            BlsVoterSet blsVoterSet(extValue);
-            if (blsVoterSet.empty()) {
-                return -1;
-            }
-            if (blsVoterSet.accountPool.size() == 1 && std::string(blsVoterSet.accountPool.at(0)) == Genesis::kGenesisAccount) {
-                return 0;
-            }
-            unsigned char** pks = (unsigned char**)malloc(sizeof(unsigned char*) * blsVoterSet.accountPool.size());
-            for (int i = 0; i < blsVoterSet.accountPool.size(); i++) {
-                pks[i] = (unsigned char*)malloc(sizeof(unsigned char) * Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
-            }
-            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
-            if (!stakeVotePtr->getBlsPublicKeyBatch(chainName, blsVoterSet.accountPool, pks)) { // todo(qinxiaofen)
-                ilog("validate subchain : ${subchain} bls error actually", ("subchain", chainName));
-                Memory::freeMultiDim<unsigned char>(pks, blsVoterSet.accountPool.size());
-                return 0;
-            }
-            bool validated = Validator::verify(blsVoterSet.sigX, blsVoterSet.commonEchoMsg, pks, blsVoterSet.accountPool.size());
-            if (!validated) {
-                ilog("validate subchain : ${subchain} bls error actually", ("subchain", chainName));
-            }
-            Memory::freeMultiDim<unsigned char>(pks, blsVoterSet.accountPool.size());
-            ilog("validate subchain blockheader success");
-            return 0;
-        }
-        return -1;
+    bool Scheduler::on_accept_block_header(uint64_t chainName, const BlockHeader& blockHeader, BlockIdType id) {
+        ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}", ("chainName", chainName)("blockNum", blockHeader.block_num()));
+        std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(chainName);
+        id = lightClient->accept(blockHeader);
+        return true;
     }
 
     bool Scheduler::isDuplicate(const ProposeMsg& proposeMsg) {

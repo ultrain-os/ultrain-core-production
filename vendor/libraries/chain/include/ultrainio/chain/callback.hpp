@@ -3,11 +3,13 @@
 #include <stdint.h>
 #include <string>
 
+#include <ultrainio/chain/block_header.hpp>
+
 namespace ultrainio { namespace chain {
     // interface
     class callback {
     public:
         virtual ~callback();
-        virtual int on_header_extensions_verify(uint64_t chain_name, int ext_key, const std::string& ext_value) = 0;
+        virtual bool on_accept_block_header(uint64_t chain_name, const chain::block_header&, chain::block_id_type id) = 0;
     };
 } } // namespace ultrainio::chain

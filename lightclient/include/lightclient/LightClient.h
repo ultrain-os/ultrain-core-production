@@ -15,9 +15,9 @@ namespace ultrainio {
 
         uint64_t chainName() const;
 
-        void accept(const BlockHeader& blockHeader);
+        BlockIdType accept(const BlockHeader& blockHeader);
 
-        void accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
+        BlockIdType accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
 
         void addCallback(std::shared_ptr<LightClientCallback> cb);
 
