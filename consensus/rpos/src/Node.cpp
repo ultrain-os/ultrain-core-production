@@ -27,7 +27,7 @@ using namespace std;
 
 namespace ultrainio {
 
-    char version[]="209940";
+    char version[]="66bc9c";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -620,10 +620,10 @@ namespace ultrainio {
         m_ready = true;
         m_syncing = false;
 
-        if ((sync_msg.startBlockNum == sync_msg.endBlockNum)
+        if ((sync_msg.startBlockNum + 5 >= sync_msg.endBlockNum) // Only the latest blocks are missing, so we can try to produce them. 
             && (sync_msg.endBlockNum == getLastBlocknum() + 1)
             && (m_phase == kPhaseInit)) {
-            ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local.",
+            ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local, let me try to produce them.",
                  ("s", sync_msg.startBlockNum)("e", sync_msg.endBlockNum)("last", getLastBlocknum()));
             if (StakeVoteBase::committeeHasWorked()) {
                 runLoop(getRoundInterval());
