@@ -5,6 +5,7 @@
 #include <lightclient/CommitteeSet.h>
 #include <lightclient/ConfirmPoint.h>
 #include <lightclient/EpochEndPoint.h>
+#include <lightclient/LightClientCallback.h>
 
 namespace ultrainio {
     class LightClientCallback;
@@ -22,9 +23,22 @@ namespace ultrainio {
         void addCallback(std::shared_ptr<LightClientCallback> cb);
 
     private:
-        void clearConfirmedList();
 
         void confirm(const BlsVoterSet& blsVoterSet);
+
+        void onError(const LightClientError& error, const BlockHeader&);
+
+        void onConfirmed(const std::list<BlockHeader>&);
+
+        bool exceedLargestUnconfirmedBlockNum(const BlockHeader&) const;
+
+        bool lessConfirmedBlockNum(const BlockHeader&) const;
+
+        bool check(const BlockHeader&);
+
+        void handleGenesis(const BlockHeader&);
+
+        bool isGenesis(const BlockHeader&);
 
         // chain name
         uint64_t m_chainName;
