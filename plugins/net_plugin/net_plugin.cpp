@@ -789,7 +789,7 @@ namespace ultrainio {
             ilog("start handle blocks.");
             while(!block_msg_queue.empty()) {
                 auto& b = block_msg_queue.front();
-                if (b.block_num() < first_safe_block_num || b.block_num() > last_safe_block_num) {
+                if (b.block_num() > last_safe_block_num) {
                     break;
                 }
 
