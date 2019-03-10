@@ -530,6 +530,7 @@ namespace ultrainiosystem {
                 temp_prod.producer_key = producer.producer_key;
                 temp_prod.bls_key = producer.bls_key;
                 info.changing_info.new_added_members.push_back(temp_prod);
+                info.is_schedulable = false;
                 info.committee_num += 1;
             });
         }else{
@@ -565,6 +566,10 @@ namespace ultrainiosystem {
                 temp_prod.producer_key = prod->producer_key;
                 temp_prod.bls_key = prod->bls_key;
                 info.changing_info.removed_members.push_back(temp_prod);
+                info.is_schedulable = false;
+                if(!info.is_synced) {
+                    info.deprecated_committee.push_back(temp_prod);
+                }
                 info.committee_num -= 1;
             });
         }else{
