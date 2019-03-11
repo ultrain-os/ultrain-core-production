@@ -85,7 +85,7 @@ def load_parameters():
             adjustaccounts.append("master" + a)
     elif args.subchain:
         for a in accounts[1:]:
-            adjustaccounts.append("user" + "." + args.subchain + a)
+            adjustaccounts.append(args.subchain + a)
     else:
         for a in accounts[1:]:
             adjustaccounts.append("user" + a)

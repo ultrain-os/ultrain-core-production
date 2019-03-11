@@ -2,12 +2,12 @@
 
 namespace ultrainio { namespace chain {
 
-    const uint64_t master_chain_name = 0;
+    const name master_chain_name{N(ultrainio)};
 
     // keep this the same as defined in ultrainio.system.hpp;
     struct producer_brief {
       account_name          owner;
-      uint64_t              location;
+      name                  location;
       bool                  in_disable = true;
     };
     struct role_base {
@@ -30,7 +30,7 @@ namespace ultrainio { namespace chain {
       uint64_t              unpaid_balance = 0;
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
-      extensions_type           table_extension;
+      extensions_type       table_extension;
    };
 
    struct chain_resource {
@@ -72,7 +72,7 @@ namespace ultrainio { namespace chain {
    };
 
     struct subchain {
-       uint64_t                  chain_name;
+       name                      chain_name;
        uint64_t                  chain_type;
        chain::block_timestamp    genesis_time;
        chain_resource            global_resource;

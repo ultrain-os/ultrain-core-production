@@ -155,7 +155,7 @@ namespace ultrainiosystem {
         }
     }
     /// @abi action
-    void system_contract::regsubchain(uint64_t chain_name, uint64_t chain_type) {
+    void system_contract::regsubchain(name chain_name, uint64_t chain_type) {
         require_auth(N(ultrainio));
         ultrainio_assert(chain_name != default_chain_name, "subchian cannot named as default.");
         ultrainio_assert(chain_name != master_chain_name, "subchian cannot named as 0");
@@ -185,7 +185,7 @@ namespace ultrainiosystem {
     }
 
     /// @abi action
-    void system_contract::acceptheader (uint64_t chain_name,
+    void system_contract::acceptheader (name chain_name,
                                   const std::vector<ultrainio::block_header>& headers) {
         require_auth(current_sender());
         ultrainio_assert(headers.size() <= 10, "too many blocks are reported.");
@@ -442,7 +442,7 @@ namespace ultrainiosystem {
         }
     }
 
-    void system_contract::clearchain(uint64_t chain_name, bool users_only) {
+    void system_contract::clearchain(name chain_name, bool users_only) {
         require_auth(N(ultrainio));
         auto ite_chain = _subchains.find(chain_name);
         ultrainio_assert(ite_chain != _subchains.end(), "This subchian is not existed.");
@@ -468,7 +468,7 @@ namespace ultrainiosystem {
             _subchain.unconfirmed_blocks.clear();
             _subchain.unconfirmed_blocks.shrink_to_fit();
         });
-        print( "clearchain chain_name:", chain_name, " users_only:", users_only, "\n" );
+        print( "clearchain chain_name:", name{chain_name}, " users_only:", users_only, "\n" );
         producers_table _producers(_self, chain_name);
         auto ite = _producers.begin();
         for(; ite != _producers.end(); ++ite) {
@@ -479,7 +479,7 @@ namespace ultrainiosystem {
         }
     }
 
-    void system_contract::empoweruser(account_name user, uint64_t chain_name, const std::string& owner_pk, const std::string& active_pk) {
+    void system_contract::empoweruser(account_name user, name chain_name, const std::string& owner_pk, const std::string& active_pk) {
         require_auth(user);
         auto ite_chain = _subchains.find(chain_name);
         ultrainio_assert(ite_chain != _subchains.end(), "this subchian is not existed");
@@ -515,7 +515,7 @@ namespace ultrainiosystem {
         });
     }
 
-    void system_contract::add_to_chain(uint64_t chain_name, const producer_info& producer) {
+    void system_contract::add_to_chain(name chain_name, const producer_info& producer) {
         if (chain_name != master_chain_name) {
             auto ite_chain = _subchains.find(chain_name);
             ultrainio_assert(ite_chain != _subchains.end(), "destination sidechain is not existed" );
@@ -546,7 +546,7 @@ namespace ultrainiosystem {
         });
     }
 
-    void system_contract::remove_from_chain(uint64_t chain_name, account_name producer_name) {
+    void system_contract::remove_from_chain(name chain_name, account_name producer_name) {
         producers_table _producer_chain(_self, chain_name);
         auto prod = _producer_chain.find( producer_name );
         ultrainio_assert(prod != _producer_chain.end(), "producer is not existed in source chain");
@@ -660,9 +660,9 @@ namespace ultrainiosystem {
         print("[schedule] step 1:\n");
         auto out_iter = out_list.begin();
         for(; out_iter != min_sched_chain && compare_gt(*out_iter, *min_sched_chain) ; ++out_iter) {
-            print("[schedule] out_chain: ", out_iter->chain_ite->chain_name);
+            print("[schedule] out_chain: ", name{out_iter->chain_ite->chain_name});
             print(" can move out: ", uint32_t(out_iter->sched_out_num));
-            print(" producers to in_chain: ", min_sched_chain->chain_ite->chain_name, "\n");
+            print(" producers to in_chain: ", name{min_sched_chain->chain_ite->chain_name}, "\n");
             for(uint16_t out_idx = 0; out_idx < out_iter->sched_out_num; ++out_idx ) {
                 if(!move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, out_idx) ) {
                     continue;
@@ -686,8 +686,8 @@ namespace ultrainiosystem {
         ++chain_to;
         print("[schedule] step 2:\n");
         for(; chain_to != out_list.end(); ++chain_from, ++chain_to) {
-            print("[schedule] from_chain: ", chain_from->chain_ite->chain_name);
-            print(", to_chain: ", chain_to->chain_ite->chain_name, "\n");
+            print("[schedule] from_chain: ", name{chain_from->chain_ite->chain_name});
+            print(", to_chain: ", name{chain_to->chain_ite->chain_name}, "\n");
             if(!move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, 0) ) {
                 continue;
             }
@@ -695,8 +695,8 @@ namespace ultrainiosystem {
         chain_from = out_list.end();
         --chain_from;
         chain_to = out_list.begin();
-        print("[schedule] from chain: ", chain_from->chain_ite->chain_name);
-        print(", to chain: ", chain_to->chain_ite->chain_name, "\n");
+        print("[schedule] from chain: ", name{chain_from->chain_ite->chain_name});
+        print(", to chain: ", name{chain_to->chain_ite->chain_name}, "\n");
         move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, 0);
     }
 
@@ -719,7 +719,7 @@ namespace ultrainiosystem {
             print("[schedule] error: producer to move out is not found in _producers\n");
             return false;
         }
-        print("[schedule] move ", name{producer}, " to ", to_iter->chain_name, "\n");
+        print("[schedule] move ", name{producer}, " to ", name{to_iter->chain_name}, "\n");
         //check user before move
         if(!is_empowered(producer, to_iter->chain_name)) {
             user_info tempuser;
@@ -783,7 +783,7 @@ namespace ultrainiosystem {
         }
     }
 
-    void system_contract::forcesetblock(uint64_t chain_name, block_header_digest header_dig, checksum256 committee_mrt) {
+    void system_contract::forcesetblock(name chain_name, block_header_digest header_dig, checksum256 committee_mrt) {
         //set confirm block of subchain
         require_auth(N(ultrainio));
         auto ite_chain = _subchains.find(chain_name);
@@ -830,7 +830,7 @@ namespace ultrainiosystem {
         }
     }
 
-    uint64_t system_contract::getdefaultchain() {
+    name system_contract::getdefaultchain() {
         auto ite_chain = _subchains.begin();
         auto ite_min = _subchains.end();
         uint32_t max_gap = 0;

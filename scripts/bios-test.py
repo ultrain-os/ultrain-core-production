@@ -113,6 +113,7 @@ def stepStartWallet():
     importKeys()
 
 def createSystemAccounts():
+    os.system("killall  rand.sh")
     while True:
         j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_block_info",data = json.dumps({"block_num_or_id":"3"})).text)
         if ("proposer" in j):
@@ -159,7 +160,7 @@ def stepInitSimpleTest():
 
 def stepRegProducers():
     for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com 0 -u' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
+        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "ultrainio" -u' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
     retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
     sleep(2)
     for i in range(1, args.num_producers+1):
@@ -181,14 +182,13 @@ def stepRegProducers():
     retry(args.clultrain + ' push action ultrainio setmasterchaininfo \'{"chaininfo":{"owner": "ultrainio",\
         "master_prods":[%s],"block_height":%s}}\' -p ultrainio ' % \
         ( masterproducerinfo, args.num_master_block) )
-
+    sleep(15)
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":%s}}\' -p ultrainio ' % \
-            (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
-            newaccount_fee, args.subchain) )
-    sleep(5)
+        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s"}}\' -p ultrainio ' % \
+        (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
+        newaccount_fee, args.subchain) )
 
 def stepCreateinitAccounts():
     for i in range(1, args.num_producers+1):
@@ -196,7 +196,7 @@ def stepCreateinitAccounts():
 
     for a in initialAccounts:
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
-    retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100  0')
+    retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100  "ultrainio"')
     retry(args.clultrain + 'transfer ultrainio utrio.rand "10000 UGAS" ')
     retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
     for a in rand_acc_lst:
@@ -300,7 +300,7 @@ def stepregproducersTest():
         retry(args.clultrain + 'transfer ultrainio %s  "100.0000 UGAS"' % a)
     sleep(10)
     for i in range(0, pklen):
-        retry(args.clultrain + 'system regproducer %s %s https://%s.com 0 ' % (cur_accounts[i], miner_pk_list[i], cur_accounts[i]))
+        retry(args.clultrain + 'system regproducer %s %s https://%s.com  "ultrainio"' % (cur_accounts[i], miner_pk_list[i], cur_accounts[i]))
     sleep(10)
     for i in range(0, pklen):
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "1000000.0000 UGAS" ' % (cur_accounts[i]))
@@ -309,10 +309,10 @@ def stepexecrand():
     randpath = "/root/workspace"
     if args.programpath:
         randpath = args.programpath
-    listprods = retry(args.clultrain + 'system listproducers')
+    listprods = args.clultrain + 'system listproducers'
     # os.system("cd %s/ultrain-core/scripts/rand;  ./rand.sh c  sleep 2;  ./rand.sh r  sleep 2;\
     #   nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
-    os.system("killall  rand.sh; cd %s/ultrain-core/scripts/rand; \
+    os.system("cd %s/ultrain-core/scripts/rand; \
       nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
 # Command Line Arguments
 
@@ -356,7 +356,7 @@ parser.add_argument('-a', '--all', action='store_true', help="Do everything mark
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
 parser.add_argument('-p','--programpath', metavar='', help="set programpath params")
 parser.add_argument('-m', '--masterchain', action='store_true', help="set current master chain")
-parser.add_argument('-sub', '--subchain', type=str, default="0", help="set subchain name info")
+parser.add_argument('-sub', '--subchain', type=str, default="ultrainio", help="set subchain name info")
 for (flag, command, function, inAll, help) in commands:
     prefix = ''
     if inAll: prefix += '*'
@@ -380,9 +380,9 @@ adjustaccounts = ["genesis",]
 if args.masterchain:
     for a in accounts[1:]:
         adjustaccounts.append("master"+a)
-elif args.subchain and args.subchain != '0' :
+elif args.subchain and args.subchain != 'ultrainio' :
    for a in accounts[1:]:
-      adjustaccounts.append("user"+"."+args.subchain+a)
+      adjustaccounts.append(args.subchain+a)
 else:
     for a in accounts[1:]:
         adjustaccounts.append("user"+a)

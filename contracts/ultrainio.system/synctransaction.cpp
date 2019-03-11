@@ -36,7 +36,7 @@ namespace ultrainiosystem {
             (r += to_hex[(c[i]>>4)]) += to_hex[(c[i] &0x0f)];
       return r;
    }
-   void system_contract::synctransfer( uint64_t chain_name, uint32_t block_number, std::vector<std::string> merkle_proofs, std::vector<char> tx_bytes ) {
+   void system_contract::synctransfer( name chain_name, uint32_t block_number, std::vector<std::string> merkle_proofs, std::vector<char> tx_bytes ) {
       require_auth(current_sender());
       block_table subchain_block_tbl(_self, chain_name);
       auto block_ite = subchain_block_tbl.find(block_number);

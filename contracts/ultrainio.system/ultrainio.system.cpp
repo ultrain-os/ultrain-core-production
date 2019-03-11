@@ -473,7 +473,7 @@ void system_contract::voteresourcelease() {
       print("cleanvotetable expend time:",(endtime - starttime));
    }
 
-    bool system_contract::accept_block_header(uint64_t chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_len) {
+    bool system_contract::accept_block_header(name chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_len) {
       bytes header_bytes = pack(header);
       return lightclient_accept_block_header(chain_name, header_bytes.data(), header_bytes.size(), confirmed_bh_hash, hash_len);
     }

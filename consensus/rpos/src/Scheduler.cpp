@@ -1362,7 +1362,7 @@ namespace ultrainio {
             chain.set_action_merkle_hack();
             chain.set_trx_merkle_hack();
             // EpochEndPoint iff CommitteeSet changed
-            std::shared_ptr<CommitteeState> committeeState = StakeVoteBase::getCommitteeState(0);
+            std::shared_ptr<CommitteeState> committeeState = StakeVoteBase::getCommitteeState(chain::master_chain_name);
             if (committeeState && committeeState->cinfo.size() > 0) {
                 CommitteeSet committeeSet(committeeState->cinfo);
                 if (committeeSet.committeeMroot() != committeeMroot) {

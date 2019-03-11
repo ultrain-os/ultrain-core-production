@@ -21,7 +21,7 @@ namespace ultrainiosystem {
                                       const std::string& bls_key,
                                       account_name rewards_account,
                                       const std::string& url,
-                                      uint64_t location ) {
+                                      name location ) {
         ultrainio_assert( url.size() < 512, "url too long" );
         // key is hex encoded
         ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
@@ -183,8 +183,8 @@ namespace ultrainiosystem {
       }
    }
 
-    std::vector<uint64_t> system_contract::get_all_chainname() {
-        std::vector<uint64_t> scopes;
+    std::vector<name> system_contract::get_all_chainname() {
+        std::vector<name> scopes;
         scopes.emplace_back(master_chain_name);
         for(auto ite_chain = _subchains.begin(); ite_chain != _subchains.end(); ++ite_chain) {
             scopes.emplace_back(ite_chain->chain_name);

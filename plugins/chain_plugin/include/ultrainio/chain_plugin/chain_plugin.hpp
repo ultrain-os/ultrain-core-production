@@ -50,7 +50,7 @@ struct permission {
 };
 
 struct resourcelease {
-   uint64_t       chain_name = 0;
+   name           chain_name;
    uint64_t       lease_num = 0;
    std::string    start_time;
    std::string    end_time;
@@ -291,7 +291,7 @@ public:
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
    struct get_subchain_committee_params {
-      uint64_t         chain_name;
+      name         chain_name;
    };
 
    struct get_subchain_committee_result {
@@ -318,7 +318,7 @@ public:
    get_subchain_block_num_result get_subchain_block_num(const get_subchain_block_num_params& p) const;
 
    struct get_subchain_ws_hash_params {
-      uint64_t         chain_name;  //todo, will change it to name type later
+      name             chain_name;  //todo, will change it to name type later
       uint32_t         height;
    };
 
@@ -329,7 +329,7 @@ public:
    };
 
    struct get_producer_info_result {
-       uint64_t      location;
+       name          location;
        std::string   chain_id;
        chain::block_timestamp genesis_time;
        uint32_t      quit_before_num;
@@ -360,13 +360,12 @@ public:
    struct get_producers_params {
       bool        json = false;
       string      lower_bound;
-      uint32_t    limit = 50;
-      bool        all_chain = true;
-      uint64_t    chain_name;
+      bool        all_chain = false;
+      name        chain_name = chain::master_chain_name;
    };
 
    struct producer_with_location {
-      uint64_t    chain_name;
+      name    chain_name;
       fc::variant prod_detail;
 
       producer_with_location() {chain_name = chain::master_chain_name;}
@@ -718,7 +717,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (locatio
 FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit)(all_chain)(chain_name) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(all_chain)(chain_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::producer_with_location, (chain_name)(prod_detail))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(more)(min_stake_thresh)(min_committee_member_number) );
 

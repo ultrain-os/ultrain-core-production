@@ -123,7 +123,7 @@ namespace ultrainiosystem {
              }
              auto enabled = ((dis_prod->total_cons_staked + total_update.amount) >= _gstate.min_activated_stake);
              if(enabled) {
-                uint64_t assigned_location = briefprod->location;
+                name assigned_location = briefprod->location;
                 if(assigned_location == default_chain_name) {
                     assigned_location = getdefaultchain();
                 }
@@ -270,7 +270,7 @@ namespace ultrainiosystem {
    }
 
    void system_contract::resourcelease( account_name from, account_name receiver,
-                          uint64_t combosize, uint64_t days, uint64_t location){
+                          uint64_t combosize, uint64_t days, name location){
       require_auth( from );
       ultrainio_assert( _gstate.is_master_chain() || from == _self, "only master chain allow sync resourcelease" );
       ultrainio_assert(location != default_chain_name, "wrong location");
@@ -297,7 +297,7 @@ namespace ultrainiosystem {
       else {
           bytes = (chain_itr->global_resource.max_ram_size-2ll*1024*1024*1024)/chain_itr->global_resource.max_resources_number;
       }
-      print("resourcelease receiver:", name{receiver}, " combosize:",combosize," days:",days," location:",location);
+      print("resourcelease receiver:", name{receiver}, " combosize:",combosize," days:",days," location:",name{location});
       ultrainio_assert( days <= (365*30+7), "resource lease buy days must reserve a positive and less than 30 years" );
 
       // update totals of "receiver"
@@ -354,9 +354,9 @@ namespace ultrainiosystem {
          }
          auto resourcefee = (int64_t)ceil((double)10000*640*cuttingfee/0.3/365);
          ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
-
-         INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {from,N(active)},
-                                             { from, N(utrio.fee), asset(resourcefee), std::string("buy resource lease") } );
+         if( _gstate.is_master_chain() || from != _self )
+            INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {from,N(active)},
+                                { from, N(utrio.fee), asset(resourcefee), std::string("buy resource lease") } );
          print("resourcelease calculatefee receiver:", name{receiver}," resourcenum_time:",cuttingfee, " resourcefee:",resourcefee);
          ultrainio_assert( 0 < reslease_itr->lease_num, "insufficient resource lease" );
          if (chain_itr == _subchains.end()) {

@@ -17,10 +17,9 @@
 
 namespace ultrainiosystem {
    using namespace ultrainio;
-
-   const uint64_t master_chain_name = 0;
+   const name master_chain_name{N(ultrainio)};
 //   const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
-   const uint64_t default_chain_name = N(default);  //default chain, will be assigned by system.
+   const name default_chain_name{N(default)};  //default chain, will be assigned by system.
 
    bool operator!=(const checksum256& sha256_1, const checksum256& sha256_2) {
       for(auto i = 0; i < 32; ++i) {
@@ -32,7 +31,7 @@ namespace ultrainiosystem {
    }
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_used; }
-      bool is_master_chain()const { return chain_name == 0; }
+      bool is_master_chain()const { return chain_name == name{N(ultrainio)}; }
       uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
       int64_t              min_activated_stake   = 42'000'0000;
       uint32_t             min_committee_member_number = 1000;
@@ -48,7 +47,7 @@ namespace ultrainiosystem {
       uint16_t             max_resources_number = 10000;
       uint16_t             total_resources_used_number = 0;
       uint32_t             newaccount_fee = 2000;
-      uint64_t             chain_name = 0;
+      name                 chain_name = name{N(ultrainio)};
       uint32_t             cur_committee_number = 0;
       ultrainio::extensions_type           table_extension;
 
@@ -72,7 +71,7 @@ namespace ultrainiosystem {
 
    struct producer_brief {
       account_name          owner;
-      uint64_t              location = 0;
+      name                  location{N(ultrainio)};
       bool                  in_disable = true;
       uint64_t primary_key()const { return owner; }
 
@@ -96,7 +95,7 @@ namespace ultrainiosystem {
       int64_t               total_cons_staked = 0;
       std::string           url;
       uint64_t              unpaid_balance = 0;
-      uint64_t              total_produce_block;
+      uint64_t              total_produce_block = 0;
       uint64_t              last_operate_blocknum = 0;
       uint64_t              delegated_cons_blocknum = 0;
       account_name          claim_rewards_account;
@@ -242,7 +241,7 @@ namespace ultrainiosystem {
    };
 
    struct subchain {
-       uint64_t                  chain_name;
+       name                      chain_name;
        uint64_t                  chain_type;
        block_timestamp           genesis_time;
        chain_resource            global_resource;
@@ -281,7 +280,7 @@ namespace ultrainiosystem {
       std::vector<block_reward> block_reward_vec;
       uint16_t             max_resources_number;
       uint32_t             newaccount_fee;
-      uint64_t             chain_name;
+      name                 chain_name;
       uint64_t  primary_key()const { return chain_type; }
       ULTRAINLIB_SERIALIZE( ultrainio_system_params,(chain_type)(max_ram_size)(min_activated_stake)
                             (min_committee_member_number)(block_reward_vec)(max_resources_number)(newaccount_fee)(chain_name) )
@@ -330,7 +329,7 @@ namespace ultrainiosystem {
          producer_brief_table     _briefproducers;
          sched_set_singleton      _schedsetting;
 
-         bool accept_block_header(uint64_t chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_size);
+         bool accept_block_header(name chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_size);
 
       public:
          system_contract( account_name s );
@@ -346,7 +345,7 @@ namespace ultrainiosystem {
           *  unstaked tokens belonging to owner
           */
          void resourcelease( account_name from, account_name receiver,
-                             uint64_t combosize, uint64_t days, uint64_t location = master_chain_name);
+                             uint64_t combosize, uint64_t days, name location = master_chain_name);
          void recycleresource(const account_name owner ,uint64_t lease_num);
 
 
@@ -356,7 +355,7 @@ namespace ultrainiosystem {
                            const std::string& bls_key,
                            account_name rewards_account,
                            const std::string& url,
-                           uint64_t location );
+                           name location );
          void unregprod( const account_name producer );
 
 
@@ -371,13 +370,13 @@ namespace ultrainiosystem {
                            uint16_t max_producer_num,
                            uint16_t sched_step,
                            uint16_t consensus_period);
-         void regsubchain(uint64_t chain_name, uint64_t chain_type);
+         void regsubchain(name chain_name, uint64_t chain_type);
          void acceptmaster(const std::vector<ultrainio::block_header>& headers);
-         void acceptheader(uint64_t chain_name,
+         void acceptheader(name chain_name,
                            const std::vector<ultrainio::block_header>& headers);
-         void clearchain(uint64_t chain_name, bool users_only);
+         void clearchain(name chain_name, bool users_only);
          void empoweruser(account_name user,
-                          uint64_t chain_name,
+                          name chain_name,
                           const std::string& owner_pk,
                           const std::string& active_pk);
          void reportsubchainhash(uint64_t subchain,
@@ -385,7 +384,7 @@ namespace ultrainiosystem {
                                  checksum256 hash,
                                  uint64_t file_size);
          void setsched(bool is_enabled, uint16_t sched_period, uint16_t confirm_period);
-         void forcesetblock(uint64_t chain_name,
+         void forcesetblock(name chain_name,
                             block_header_digest header_dig,
                             checksum256 committee_mrt);
 
@@ -401,7 +400,7 @@ namespace ultrainiosystem {
 
 
          // functions defined in synctransaction.cpp
-         void synctransfer( uint64_t chain_name,
+         void synctransfer( name chain_name,
                             uint32_t block_number,
                             std::vector<std::string> merkle_proofs,
                             std::vector<char> tx_bytes );
@@ -419,7 +418,7 @@ namespace ultrainiosystem {
 
 
          //defined in reward.cpp
-         void reportblocknumber( uint64_t chain_name,
+         void reportblocknumber( name chain_name,
                                  uint64_t chain_type,
                                  account_name producer,
                                  uint64_t number);
@@ -428,8 +427,8 @@ namespace ultrainiosystem {
 
 
          //defined in scheduler.cpp
-         void add_to_chain(uint64_t chain_name, const producer_info& producer);
-         void remove_from_chain(uint64_t chain_name, account_name producer_name);
+         void add_to_chain(name chain_name, const producer_info& producer);
+         void remove_from_chain(name chain_name, account_name producer_name);
          //called in onblock, loop for all subchains and activate their committee update
          void schedule(); //called in onblock every 24h defaultly.
          void checkbulletin();
@@ -437,7 +436,7 @@ namespace ultrainiosystem {
                             subchains_table::const_iterator from_iter,
                             subchains_table::const_iterator to_iter,
                             uint16_t index);
-         uint64_t getdefaultchain();
+         name getdefaultchain();
 
 
          //defined in ultrainio.system.cpp
@@ -449,7 +448,7 @@ namespace ultrainiosystem {
 
 
          //defined in producer.cpp
-         std::vector<uint64_t> get_all_chainname();
+         std::vector<name> get_all_chainname();
    };
 
 } /// ultrainiosystem
@@ -459,9 +458,9 @@ namespace ultrainiosystem {
    #endif
 
     void head_block_id(char* buffer, uint32_t buffer_size);
-    void empower_to_chain(account_name user, uint64_t chain_name);
-    bool is_empowered(account_name user, uint64_t chain_name);
-    bool lightclient_accept_block_header(uint64_t chain_name, const char* bh, size_t bh_size, char* confirmed_bh_buffer, size_t buffer_size);
+    void empower_to_chain(account_name user, ultrainio::name chain_name);
+    bool is_empowered(account_name user, ultrainio::name chain_name);
+    bool lightclient_accept_block_header(ultrainio::name chain_name, const char* bh, size_t bh_size, char* confirmed_bh_buffer, size_t buffer_size);
 
    #ifdef __cplusplus
    }

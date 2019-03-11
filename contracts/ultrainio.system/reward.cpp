@@ -55,7 +55,7 @@ namespace ultrainiosystem {
       distributreward();
    }
 
-   void system_contract::reportblocknumber( uint64_t chain_name, uint64_t chain_type, account_name producer, uint64_t number) {
+   void system_contract::reportblocknumber( name chain_name, uint64_t chain_type, account_name producer, uint64_t number) {
       producers_table _producers(_self, chain_name);
       auto prod = _producers.find(producer);
       if ( prod != _producers.end() ) {
@@ -96,7 +96,7 @@ namespace ultrainiosystem {
             {pay_account, asset(new_tokens - fee_tokens.amount), std::string("issue tokens for claimrewards")} );
       }
 
-      std::vector<uint64_t> chain_name_vec = get_all_chainname();
+      std::vector<name> chain_name_vec = get_all_chainname();
       for (auto chain_name : chain_name_vec) {
          producers_table _producers(_self, chain_name);
          for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){

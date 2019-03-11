@@ -2648,8 +2648,8 @@ connection::connection(string endpoint, msg_priority pri)
         struct chain_apis::read_only::get_producers_params params;
         params.json=true;
         params.lower_bound="";
-        params.all_chain = false;
         params.chain_name = chain::master_chain_name;
+        params.all_chain = false;
         producers_account.clear();
 	try {
             auto result = ro_api.get_producers(params);

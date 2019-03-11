@@ -1136,7 +1136,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    const auto& d = db.db();
 
    static const uint8_t secondary_index_num = 0;
-   std::vector<uint64_t> scopes;
+   std::vector<name> scopes;
    if(p.all_chain) {
        scopes.emplace_back(master_chain_name); //add master
        //add side chains
@@ -1178,8 +1178,6 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
        });
    }
    auto gstate = get_global_row(d, abi, abi_serializer_max_time);
-   ilog("global ${gl}", ("gl", gstate));
-
    result.min_stake_thresh = gstate["min_activated_stake"].as_int64();
    result.min_committee_member_number = gstate["min_committee_member_number"].as_uint64();
    return result;
@@ -1658,7 +1656,7 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
             result.producer_info = abis.binary_to_variant( "producer_info", data, abi_serializer_max_time );
          }
       }
-      auto chain_resource_func = [&](const vector<char>& data, uint64_t chain_name){
+      auto chain_resource_func = [&](const vector<char>& data, name chain_name){
          auto resleaseinfo = abis.binary_to_variant( "resources_lease", data, abi_serializer_max_time );
          read_only::get_block_info_params blockinfoparams{resleaseinfo["start_block_height"].as_string()};
          auto blockinfo = get_block_info(blockinfoparams);
@@ -1688,7 +1686,7 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
             vector<char> data;
             copy_inline_row(obj, data);
             auto subchain = abis.binary_to_variant(abis.get_table_type(N(subchains)), data, abi_serializer_max_time);
-            uint64_t chain_name = subchain["chain_name"].as_uint64();
+            name chain_name = subchain["chain_name"].as_uint64();
             const auto* res_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, chain_name, N(reslease) ));
             if (res_id != nullptr) {
                const auto &idx = d.get_index<key_value_index, by_scope_primary>();
