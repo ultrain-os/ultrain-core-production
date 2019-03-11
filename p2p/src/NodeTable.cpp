@@ -108,7 +108,7 @@ void NodeTable::doIDRequest()
     });
 
 }
-void NodeTable::addNodePkList(NodeID const& _id,chain::public_key_type const& _pk)
+void NodeTable::addNodePkList(NodeID const& _id,chain::public_key_type const& _pk,chain::account_name const& account)
 {
     if (_id == fc::sha256())
     {
@@ -125,7 +125,7 @@ void NodeTable::addNodePkList(NodeID const& _id,chain::public_key_type const& _p
 	    return ;
     }
     ilog("addNodePkList");
-    m_pknodes[_id] = _pk;
+    m_pknodes[_id] = {_pk,account};
 }
 void NodeTable::addNode(Node const& _node, NodeRelation _relation)
 {
@@ -232,6 +232,7 @@ void NodeTable::doDiscover(NodeID _node, unsigned _round, shared_ptr<set<shared_
             p.tartgetep = node->m_endpoint;
             p.chain_id = m_chainid;
             p.pk = m_pk;
+	    p.account = m_account;
             fc::sha256 digest = fc::sha256::hash<UnsignedFindNode>(p);
             p.signature = std::string(m_sk.sign(digest)); 
             m_socket->send_msg(p,(bi::udp::endpoint)node->m_endpoint);
@@ -331,6 +332,7 @@ void NodeTable::ping(NodeIPEndpoint _to,NodeID _toID)
     p.destid = _toID;
     p.chain_id = m_chainid;
     p.pk = m_pk; 
+    p.account = m_account;
     fc::sha256 digest = fc::sha256::hash<UnsignedPingNode>(p); 
     p.signature = std::string(m_sk.sign(digest));
     m_socket->send_msg(p,(bi::udp::endpoint)_to);
@@ -473,14 +475,14 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
     }
     for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
     {
-	    if((it->second == pong.pk) && (it->first != pong.sourceid))
+	    if((it->second.account == pong.account) && (it->first != pong.sourceid))
 	    {
 		    elog("duplicate pong p2p pk");
 		    return ;
 	    }
     } 
     fc::sha256 digest_pong = fc::sha256::hash<p2p::UnsignedPong>(pong);
-    bool isvalid = *pktcheckevent(digest_pong,pong.pk,chain::signature_type(pong.signature));
+    bool isvalid = *pktcheckevent(digest_pong,pong.pk,chain::signature_type(pong.signature),pong.account);
     if(!isvalid)
     {
         elog("pong msg check fail:may not in whitelist or not a producer");
@@ -494,8 +496,12 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
         ilog("Unexpected PONG from ${addr}",("addr",_from.address().to_string()));
         return;
     }
-    auto const sourceNodeEntry = nodeEntry(sourceId);
-    assert(sourceNodeEntry.get());//TODO::JWN
+     auto it = m_nodes.find(sourceId);
+     if(it == m_nodes.end())
+     {
+         return ;
+     }
+    auto sourceNodeEntry = it->second ;
     sourceNodeEntry->pongexpiredtime = fc::time_point::now() + fc::microseconds(c_bondingTimeMSeconds);
     auto const& optionalReplacementID = sentPing->second.replacementNodeID;
     if (optionalReplacementID)
@@ -539,14 +545,14 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
     }
     for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
     {
-	    if((it->second == in.pk) && (it->first != in.fromID))
+	    if((it->second.account == in.account) && (it->first != in.fromID))
 	    {
 		    elog("duplicate find p2p pk");
 		    return ;
 	    }
     }
     fc::sha256 digest = fc::sha256::hash<p2p::UnsignedFindNode>(in);
-    bool isvalid = *pktcheckevent(digest,in.pk,chain::signature_type(in.signature));
+    bool isvalid = *pktcheckevent(digest,in.pk,chain::signature_type(in.signature),in.account);
     if(!isvalid)
     {
             elog("FindNode msg check fail:may not in whitelist or not a producer");
@@ -569,6 +575,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
        out.destid = in.fromID;
        out.chain_id = m_chainid;
        out.pk = m_pk;
+       out.account = m_account;
        auto _limit = nlimit ? std::min(nearest.size(), (size_t)(offset + nlimit)) : nearest.size();
        for (auto i = offset; i < _limit; i++)
        {
@@ -622,14 +629,14 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     }
     for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
     {
-	    if((it->second == in.pk) && (it->first != in.fromID))
+	    if((it->second.account == in.account) && (it->first != in.fromID))
 	    {
 		    elog("duplicate nei p2p pk");
 		    return ;
 	    }
     }
     fc::sha256 digest = fc::sha256::hash<p2p::UnsignedNeighbours>(in);
-    bool isvalid = *pktcheckevent(digest,in.pk,chain::signature_type(in.signature));
+    bool isvalid = *pktcheckevent(digest,in.pk,chain::signature_type(in.signature),in.account);
     if(!isvalid)
     {
         elog("Neighbours msg check fail:may not in whitelist or not a producer");
@@ -681,14 +688,14 @@ if(pingmsg.sourceid == fc::sha256())
     }
     for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
     {
-	    if((it->second == pingmsg.pk) && (it->first != pingmsg.sourceid))
+	    if((it->second.account == pingmsg.account) && (it->first != pingmsg.sourceid))
 	    {
 		    elog("duplicate p2p pk");
 		    return ;
 	    }
     }
     fc::sha256 digest = fc::sha256::hash<p2p::UnsignedPingNode>(pingmsg);
-    bool isvalid = *pktcheckevent(digest,pingmsg.pk,chain::signature_type(pingmsg.signature));
+    bool isvalid = *pktcheckevent(digest,pingmsg.pk,chain::signature_type(pingmsg.signature),pingmsg.account);
     if(!isvalid)
     {
 	    elog("ping msg check fail:may not in whitelist or not a producer");
@@ -720,7 +727,7 @@ if(pingmsg.sourceid == fc::sha256())
     {
         return;
     }
-    addNodePkList(pingmsg.sourceid,pingmsg.pk);
+    addNodePkList(pingmsg.sourceid,pingmsg.pk,pingmsg.account);
     addNode(Node(pingmsg.sourceid, from));
 
     Pong p;
@@ -731,6 +738,7 @@ if(pingmsg.sourceid == fc::sha256())
     p.destid = pingmsg.sourceid; 
     p.chain_id = m_chainid;
     p.pk = m_pk;
+    p.account = m_account;
     fc::sha256 digest_pong = fc::sha256::hash<UnsignedPong>(p);
     p.signature = std::string(m_sk.sign(digest_pong));    
     m_socket->send_msg(p,(bi::udp::endpoint)p.destep);

@@ -49,6 +49,7 @@ public:
    bool sync_cancel();
    int  get_round_interval();
    string get_account_sk();
+   string get_account_name();
    void pause();
    void resume();
    bool paused() const;

@@ -595,6 +595,10 @@ string producer_uranus_plugin::get_account_sk()
 {
         return my->_my_sk_as_account;
 }
+string producer_uranus_plugin::get_account_name()
+{
+        return my->_my_account_as_committee;
+}
 bool producer_uranus_plugin::handle_message(const EchoMsg& echo) {
    return UranusNode::getInstance()->handleMessage(echo);
 }

@@ -285,11 +285,13 @@ namespace ultrainio {
         /** \brief Peer heartbeat ticker.
          */
         void ticker();
-        bool is_genesis_finish = false;
-        std::vector<chain::public_key_type> producers_pk;
-        bool is_producer_account_pk(chain::public_key_type const& pk);
-        bool authen_whitelist_and_producer(const fc::sha256& hash,const chain::public_key_type& pk,const chain::signature_type& sig);
-        bool authen_tcp_whitelist(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig);
+        bool is_genesis_finished = false;
+        bool is_genesis_finish();
+        std::vector<string> producers_account;
+        bool is_producer_account_pk(chain::account_name const& account);
+        bool is_pk_signature_match(chain::public_key_type const& pk,fc::sha256 const& hash,chain::signature_type const& sig);
+        bool authen_whitelist_and_producer(const fc::sha256& hash,const chain::public_key_type& pk,const chain::signature_type& sig,chain::account_name const& account);
+        bool is_account_pk_match(chain::public_key_type const& pk,chain::account_name const& account);
         /** \brief Determine if a peer is allowed to connect.
          *
          * Checks current connection mode and key authentication.
@@ -525,6 +527,7 @@ namespace ultrainio {
         uint16_t                protocol_version  = 0;
         string                  peer_addr;
         chain::public_key_type  peer_pk;
+        chain::account_name peer_account;
         unique_ptr<boost::asio::steady_timer> response_expected;
         optional<request_message> pending_fetch;
         go_away_reason          no_retry = no_reason;
@@ -2033,8 +2036,9 @@ connection::connection(string endpoint, msg_priority pri)
          //check for duplicate key access
          for(auto &it : connections) 
 	 {
-		 if(it->connected() && (it->peer_pk == msg.key) && (it->priority == c->priority))
+		 if(it->connected() && (it->peer_account == msg.account) && (it->priority == c->priority))
 		 {
+             ilog("account ${account} ${account1}",("account",it->peer_account)("account1",msg.account));
              boost::system::error_code ec;
              if(it->socket->remote_endpoint(ec).address() != c->socket->remote_endpoint(ec).address())
              {
@@ -2076,6 +2080,7 @@ connection::connection(string endpoint, msg_priority pri)
          }
       }
       c->peer_pk = msg.key;
+      c->peer_account = msg.account;
       c->last_handshake_recv = msg;
       c->_logger_variant.reset();
    }
@@ -2626,10 +2631,11 @@ connection::connection(string endpoint, msg_priority pri)
          dispatcher->bcast_transaction(*ptx);
       }
    }
-   bool net_plugin_impl::is_producer_account_pk(chain::public_key_type const& pk)
+   bool net_plugin_impl::is_producer_account_pk(chain::account_name const& account)
    {
-       auto found_producer_key = std::find(producers_pk.begin(), producers_pk.end(), pk);
-       if(found_producer_key == producers_pk.end())
+
+       auto found_producer_account = std::find(producers_account.begin(), producers_account.end(), account.to_string());
+       if(found_producer_account == producers_account.end())
        {
 	       return false;
        }
@@ -2644,8 +2650,7 @@ connection::connection(string endpoint, msg_priority pri)
         params.lower_bound="";
         params.all_chain = false;
         params.chain_name = chain::master_chain_name;
-        std::vector<string> producers_account;
-        producers_pk.clear();
+        producers_account.clear();
 	try {
             auto result = ro_api.get_producers(params);
             if(!result.rows.empty()) {
@@ -2654,6 +2659,7 @@ connection::connection(string endpoint, msg_priority pri)
                 }
 
             }
+#if 0
             for(auto account:producers_account)
             {
                 struct chain_apis::read_only::get_account_info_params get_account_para;
@@ -2667,65 +2673,53 @@ connection::connection(string endpoint, msg_priority pri)
                     }
                 }
             }
-
+#endif
         }
        catch (fc::exception& e) {
             ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
         }
    }
-   bool net_plugin_impl::authen_tcp_whitelist(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig)
+   bool net_plugin_impl::is_genesis_finish()
    {
-       chain::public_key_type peer_key;
-       try {
-           peer_key = crypto::public_key(sig,hash, true);
-       }
-       catch (fc::exception& /*e*/) {
-           elog("unrecover key error");
-           return false;
-       }
-       if(peer_key != pk)
+       if(!is_genesis_finished)
        {
-           elog("unauthenticated key");
-           return false;
+           const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+           is_genesis_finished  = ro_api.is_genesis_finished();
+           if(!is_genesis_finished)
+           {
+               return false;
+           }
+           else
+           {
+               reset_producerslist();
+               start_producerslist_update_timer();
+           }
        }
-       auto allowed_it = std::find(allowed_tcp_peers.begin(), allowed_tcp_peers.end(), pk);
-       if(allowed_it != allowed_tcp_peers.end())
-       {
-           return true;
-       }
-       return false;
+       return true;
+
    }
-   bool net_plugin_impl::authen_whitelist_and_producer(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig)
+   bool net_plugin_impl::authen_whitelist_and_producer(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig,chain::account_name const& account)
    {
-        if(!is_genesis_finish)
+        bool is_genesis_fin = is_genesis_finish();
+        if(!is_genesis_fin)
         {
-            const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-            is_genesis_finish  = ro_api.is_genesis_finished();
-            if(!is_genesis_finish)
-            {
-                return true;
-            }
-            else
-            {
-                reset_producerslist();
-                start_producerslist_update_timer();
-            }
+            return true;
+        } 
+       /*pk match the signature*/
+        bool is_pk_signature_matched = is_pk_signature_match(pk,hash,sig);
+        if(!is_pk_signature_matched)
+        {
+           return false;
         }
-        chain::public_key_type peer_key;
-        try {
-            peer_key = crypto::public_key(sig,hash, true);
-        }
-        catch (fc::exception& /*e*/) {
-            elog("unrecover key error");
+        /*pk match the account*/
+        bool is_account_pk_matched = is_account_pk_match(pk,account);
+        if(!is_account_pk_matched)
+        {
             return false;
         }
-        if(peer_key != pk)
-        {
-            elog("unauthenticated key");
-            return false;
-        }
+        /*pk or username in whitelist or producers*/
         auto allowed_it = std::find(allowed_peers.begin(), allowed_peers.end(), pk);
-        bool is_producer_pk = is_producer_account_pk(pk);    
+        bool is_producer_pk = is_producer_account_pk(account);    
        if( allowed_it == allowed_peers.end() && (!is_producer_pk))
        {
            elog("an unauthorized key");
@@ -2793,6 +2787,47 @@ connection::connection(string endpoint, msg_priority pri)
       return true;
    }
 #endif
+bool net_plugin_impl::is_pk_signature_match(chain::public_key_type const& pk,fc::sha256 const& hash,chain::signature_type const& sig)
+{
+    /*pk match the signature*/
+    chain::public_key_type peer_key;
+    try {
+        peer_key = crypto::public_key(sig,hash, true);
+    }
+    catch (fc::exception& /*e*/) {
+        elog("unrecover key error");
+        return false;
+    }
+    if(peer_key != pk)
+    {
+        elog("unauthenticated key");
+        return false;
+    }
+    return true;
+}
+bool net_plugin_impl::is_account_pk_match(chain::public_key_type const& pk,chain::account_name const& account)
+{
+/*pk match the account*/
+    const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+    struct chain_apis::read_only::get_account_info_params get_account_para;
+    std::vector<chain::public_key_type> producers_pk;
+    get_account_para.account_name =account;
+    auto result = ro_api.get_account_info(get_account_para);
+    for ( auto& perm : result.permissions )
+    {
+        for(auto& key_wei: perm.required_auth.keys)
+        {
+            producers_pk.push_back(key_wei.key);
+        }
+    }
+    auto found_producer_key = std::find(producers_pk.begin(), producers_pk.end(), pk);
+    if(found_producer_key == producers_pk.end())
+    {
+        return false;
+    }
+    return true;
+
+}
 bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 	if(allowed_connections == None)
 		return false;
@@ -2814,19 +2849,44 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 					("peer", msg.p2p_address));
 			return false;
 		}
-		bool is_tcp_allowed = authen_tcp_whitelist(hash,msg.key,msg.sig);
-		if(is_tcp_allowed)
-		{
-			return true;
-		}
-		bool is_p2p_valid = authen_whitelist_and_producer(hash,msg.key,msg.sig);
-		return is_p2p_valid; 
+        bool is_genesis_fin = is_genesis_finish();
+        if(!is_genesis_fin)
+        {
+            return true;
+        }
+         /*pk match the signature*/
+        bool is_pk_signature_matched = is_pk_signature_match(msg.key,hash,msg.sig);
+        if(!is_pk_signature_matched)
+        {
+            return false;
+        }
+         /*pk match the account*/
+        bool is_account_pk_matched = is_account_pk_match(msg.key,msg.account);
+        if(!is_account_pk_matched)
+        {
+            return false;
+        }
+        auto allowed_tcp_white = std::find(allowed_tcp_peers.begin(), allowed_tcp_peers.end(),msg.key);
+        if(allowed_tcp_white != allowed_tcp_peers.end())
+        {
+            return true;
+        }
+	/*pk or username in whitelist or producers*/
+        auto allowed_p2p_white = std::find(allowed_peers.begin(), allowed_peers.end(), msg.key);
+        bool is_producer_pk = is_producer_account_pk(msg.account);
+        if( allowed_p2p_white == allowed_peers.end() && (!is_producer_pk))
+        {
+            elog("an unauthorized key");
+            return false;
+        }
+        return true;    
 	}
 	else
 	{
 		elog( "Peer sent a handshake with blank signature and token, but this node accepts only authenticated connections.");
 		return false;
 	}
+    return true;
 }
    chain::public_key_type net_plugin_impl::get_authentication_key() const {
       if(!private_keys.empty())
@@ -2857,6 +2917,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       //hello.key = my_impl->get_authentication_key();
       auto sk_account = private_key_type(app().get_plugin<producer_uranus_plugin>().get_account_sk());
       hello.key = sk_account.get_public_key();      
+      auto name_account = app().get_plugin<producer_uranus_plugin>().get_account_name();
+      hello.account = name_account;
       hello.time = std::chrono::system_clock::now().time_since_epoch().count();
       hello.token = fc::sha256::hash(hello.time);
       //hello.sig = my_impl->sign_compact(hello.key, hello.token);
@@ -3170,7 +3232,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          cc.accepted_transaction.connect( boost::bind(&net_plugin_impl::accepted_transaction, my.get(), _1));
          cc.applied_transaction.connect( boost::bind(&net_plugin_impl::applied_transaction, my.get(), _1));
          my->node_table->nodedropevent.connect( boost::bind(&net_plugin_impl::onNodeTableDropEvent, my.get(), _1));
-         my->node_table->pktcheckevent.connect(boost::bind(&net_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3));
+         my->node_table->pktcheckevent.connect(boost::bind(&net_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3,_4));
       }
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
 
@@ -3186,6 +3248,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       auto sk_account = private_key_type(app().get_plugin<producer_uranus_plugin>().get_account_sk());
       my->node_table->set_nodetable_sk(sk_account);
       my->node_table->set_nodetable_pk(sk_account.get_public_key());
+      auto name_account = app().get_plugin<producer_uranus_plugin>().get_account_name();
+      my->node_table->set_nodetable_account(chain::account_name(name_account));
       my->node_table->init(my->udp_seed_ip,std::ref(app().get_io_service()));
       if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
          logger = fc::get_logger_map()[logger_name];

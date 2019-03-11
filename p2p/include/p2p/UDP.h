@@ -22,6 +22,7 @@ namespace p2p
         NodeID destid;
         string chain_id;
         chain::public_key_type pk;/*public_key*/
+	chain::account_name account;
     };
     struct PingNode:public UnsignedPingNode
     {
@@ -39,6 +40,7 @@ namespace p2p
 	NodeID destid;
 	string chain_id;
         chain::public_key_type pk;/*public_key*/
+	chain::account_name account;
     };
     struct Pong:public UnsignedPong
     {
@@ -54,6 +56,7 @@ namespace p2p
         NodeIPEndpoint tartgetep;
         string chain_id;
         chain::public_key_type pk;/*public_key*/
+	chain::account_name account;
     };
     struct FindNode:public UnsignedFindNode
     {
@@ -74,6 +77,7 @@ namespace p2p
         std::vector<Neighbour> neighbours;
         string chain_id;
         chain::public_key_type pk;/*public_key*/
+	chain::account_name account;
     };
     struct Neighbours:public  UnsignedNeighbours
     {
@@ -369,12 +373,12 @@ void UDPSocket<Handler, MaxDatagramSize>::disconnectWithError(boost::system::err
 
 }
 //FC_REFLECT( ultrainio::p2p::UDPDatagram, (data)(locus_ip)(locus_port))
-FC_REFLECT( ultrainio::p2p::UnsignedPingNode, (sourceid)(destid)(type)(source)(dest)(chain_id)(pk))
+FC_REFLECT( ultrainio::p2p::UnsignedPingNode, (sourceid)(destid)(type)(source)(dest)(chain_id)(pk)(account))
 FC_REFLECT_DERIVED( ultrainio::p2p::PingNode, (ultrainio::p2p::UnsignedPingNode), (signature))
-FC_REFLECT( ultrainio::p2p::UnsignedPong, (type)(fromep)(destep)(sourceid)(destid)(chain_id)(pk))
+FC_REFLECT( ultrainio::p2p::UnsignedPong, (type)(fromep)(destep)(sourceid)(destid)(chain_id)(pk)(account))
 FC_REFLECT_DERIVED( ultrainio::p2p::Pong, (ultrainio::p2p::UnsignedPong), (signature))
-FC_REFLECT( ultrainio::p2p::UnsignedFindNode, (type)(fromID)(targetID)(destid)(fromep)(tartgetep)(chain_id)(pk))
+FC_REFLECT( ultrainio::p2p::UnsignedFindNode, (type)(fromID)(targetID)(destid)(fromep)(tartgetep)(chain_id)(pk)(account))
 FC_REFLECT_DERIVED( ultrainio::p2p::FindNode, (ultrainio::p2p::UnsignedFindNode), (signature))
 FC_REFLECT( ultrainio::p2p::Neighbour, (node)(endpoint))
-FC_REFLECT( ultrainio::p2p::UnsignedNeighbours, (type)(fromID)(destid)(fromep)(tartgetep)(neighbours)(chain_id)(pk))
+FC_REFLECT( ultrainio::p2p::UnsignedNeighbours, (type)(fromID)(destid)(fromep)(tartgetep)(neighbours)(chain_id)(pk)(account))
 FC_REFLECT_DERIVED( ultrainio::p2p::Neighbours, (ultrainio::p2p::UnsignedNeighbours), (signature))

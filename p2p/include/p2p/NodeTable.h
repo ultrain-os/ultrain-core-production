@@ -79,7 +79,7 @@ public:
     /// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeID is empty.
     void addNode(Node const& _node, NodeRelation _relation = NodeRelation::Unknown);
     void printallbucket();
-    void addNodePkList(NodeID const& _id,chain::public_key_type const& _pk);
+    void addNodePkList(NodeID const& _id,chain::public_key_type const& _pk,chain::account_name const& _account);
 
     /// Returns list of node ids active in node table.
     std::list<NodeID> nodes() const;
@@ -89,11 +89,13 @@ public:
     Node node(NodeID const& _id);
     signal<void(const NodeIPEndpoint&)> nodeaddevent;
     signal<void(const NodeIPEndpoint&)> nodedropevent;
-    signal<bool(const fc::sha256&,const chain::public_key_type&,const chain::signature_type&)> pktcheckevent;
+    signal<bool(const fc::sha256&,const chain::public_key_type&,const chain::signature_type&,chain::account_name const& _account)> pktcheckevent;
     chain::public_key_type m_pk;
     chain::private_key_type m_sk;
     void set_nodetable_pk(chain::public_key_type pk){m_pk = pk;}
     void set_nodetable_sk(chain::private_key_type sk){m_sk = sk;}
+    chain::account_name m_account;
+    void set_nodetable_account(chain::account_name _account){m_account = _account ;}
 #if defined(BOOST_AUTO_TEST_SUITE) || defined(_MSC_VER) // MSVC includes access specifier in symbol name
 protected:
 #else
@@ -184,7 +186,12 @@ private:
     NodeIPEndpoint m_hostNodeEndpoint;
 
     std::unordered_map<NodeID, std::shared_ptr<NodeEntry>> m_nodes;     ///< Known Node Endpoints
-    std::unordered_map<NodeID, chain::public_key_type> m_pknodes;     ///< Known Node Endpoints
+    struct node_feature
+    {
+          chain::public_key_type pk;
+          chain::account_name account;
+    };
+    std::unordered_map<NodeID, node_feature> m_pknodes;     ///< Known Node Endpoints
 
 
     std::array<NodeBucket, s_bins> m_state;                             ///< State of p2p node network.

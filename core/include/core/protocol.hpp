@@ -39,6 +39,7 @@ namespace ultrainio {
       string                     os;
       string                     agent;
       int16_t                    generation;
+      chain::account_name        account;
    };
 
 
@@ -177,7 +178,7 @@ FC_REFLECT( ultrainio::handshake_message,
             (time)(token)(sig)(p2p_address)
             (last_irreversible_block_num)(last_irreversible_block_id)
             (head_num)(head_id)
-            (os)(agent)(generation) )
+            (os)(agent)(generation)(account) )
 FC_REFLECT( ultrainio::go_away_message, (reason)(node_id) )
 FC_REFLECT( ultrainio::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( ultrainio::notice_message, (known_trx)(known_blocks) )
