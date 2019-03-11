@@ -2812,13 +2812,19 @@ bool net_plugin_impl::is_account_pk_match(chain::public_key_type const& pk,chain
     struct chain_apis::read_only::get_account_info_params get_account_para;
     std::vector<chain::public_key_type> producers_pk;
     get_account_para.account_name =account;
-    auto result = ro_api.get_account_info(get_account_para);
-    for ( auto& perm : result.permissions )
-    {
-        for(auto& key_wei: perm.required_auth.keys)
+    try {
+        auto result = ro_api.get_account_info(get_account_para);
+        for ( auto& perm : result.permissions )
         {
-            producers_pk.push_back(key_wei.key);
+            for(auto& key_wei: perm.required_auth.keys)
+            {
+                producers_pk.push_back(key_wei.key);
+            }
         }
+    }
+    catch (fc::exception& e) {
+        ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
+        return false;
     }
     auto found_producer_key = std::find(producers_pk.begin(), producers_pk.end(), pk);
     if(found_producer_key == producers_pk.end())
