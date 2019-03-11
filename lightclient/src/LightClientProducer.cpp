@@ -1,5 +1,8 @@
 #include <lightclient/LightClientProducer.h>
 
+#include <ultrainio/chain/controller.hpp>
+#include <lightclient/BlockHeaderExtKey.h>
+
 namespace ultrainio {
     LightClientProducer::LightClientProducer() {}
 
@@ -13,7 +16,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool LightClientProducer::hasNextTobeConfirmedBlsVoterSet() const {
+    bool LightClientProducer::hasNextTobeConfirmedBls() const {
         if (m_shouldBeConfirmedBlsVoterSetList.size() > 0) {
             BlockIdType blockId = m_shouldBeConfirmedBlsVoterSetList.front().commonEchoMsg.blockId;
             for (auto e : m_shouldBeConfirmedList) {
@@ -25,12 +28,33 @@ namespace ultrainio {
         return false;
     }
 
-    BlsVoterSet LightClientProducer::nextTobeConfirmedBlsVoterSet() const {
+    BlsVoterSet LightClientProducer::nextTobeConfirmedBls() const {
         return m_shouldBeConfirmedBlsVoterSetList.front();
     }
 
-    BlockIdType LightClientProducer::getLatestCheckPointId() const {
-        return m_latestCheckPointId;
+    void LightClientProducer::handleCheckPoint(chain::controller& chain, const CommitteeSet& committeeSet) {
+        chain.add_header_extensions_entry(kCommitteeSet, committeeSet.toVectorChar());
+        if (BlockIdType() != m_latestCheckPointId) {
+            std::string s = std::string(m_latestCheckPointId);
+            std::vector<char> vc(s.begin(), s.begin());
+            chain.add_header_extensions_entry(kPreCheckPointId, vc);
+        }
+        ilog("add kCommitteeSet in blockNum : ${blockNum} : ${committeeset}", ("blockNum", chain.head_block_num() + 1)("committeeset", committeeSet.toString()));
+    }
+
+    void LightClientProducer::handleConfirmPoint(ultrainio::chain::controller &chain) {
+        chain.add_header_extensions_entry(kBlsVoterSet, nextTobeConfirmedBls().toVectorChar());
+        ilog("add kBlsVoterSet to confirm ${confirmedBlockNum} in blockNum : ${blockNum}, set : ${set}",
+             ("confirmedBlockNum", BlockHeader::num_from_id(nextTobeConfirmedBls().commonEchoMsg.blockId))
+             ("blockNum", chain.head_block_num() + 1)("set", nextTobeConfirmedBls().toVectorChar()));
+    }
+
+    void LightClientProducer::handleEpochEndPoint(chain::controller& chain, const SHA256& mroot) {
+        std::string s = std::string();
+        std::vector<char> v(s.size());
+        v.assign(s.begin(), s.end());
+        chain.add_header_extensions_entry(kNextCommitteeMroot, v);
+        ilog("add kNextCommitteeMroot, new mroot = ${new} in ${blockNum}", ("new", mroot)("blockNum", chain.head_block_num() + 1));
     }
 
     void LightClientProducer::accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {

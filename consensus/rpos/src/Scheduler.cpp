@@ -25,7 +25,6 @@
 #include <ultrainio/chain/config.hpp>
 
 #include <base/Memory.h>
-#include <lightclient/BlockHeaderExtKey.h>
 #include <lightclient/CommitteeSet.h>
 #include <lightclient/EpochEndPoint.h>
 #include <lightclient/LightClientProducer.h>
@@ -57,20 +56,11 @@ namespace fc {
 namespace {
     const fc::string logger_name("Scheduler");
     fc::logger _log;
-
-    // TODO(shenyufeng) need more precise compare
-    bool IsBa0TheRightBlock(const ultrainio::chain::signed_block &ba0_block,
-                            const ultrainio::chain::signed_block_ptr &block) {
-        return  (ba0_block.proposer == block->proposer &&
-#ifdef CONSENSUS_VRF
-                ba0_block.proposerProof == block->proposerProof &&
-#endif
-                 ba0_block.timestamp == block->timestamp &&
-                 ba0_block.transaction_mroot == block->transaction_mroot &&
-                 ba0_block.action_mroot == block->action_mroot &&
-                 ba0_block.committee_mroot == block->committee_mroot &&
-                 ba0_block.previous == block->previous &&
-                 ba0_block.header_extensions == block->header_extensions);
+    bool theSameOne(const ultrainio::chain::signed_block& lhs, const ultrainio::chain::signed_block_ptr& rhs) {
+        if (&lhs == rhs.get()) {
+            return true;
+        }
+        return lhs.id() == rhs->id();
     }
 }
 
@@ -1301,28 +1291,16 @@ namespace ultrainio {
 
             // CheckPoint
             std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
-            BlockHeader headBlockHeader = chain.head_block_header();
-            if (EpochEndPoint::isEpochEndPoint(headBlockHeader)) { // CheckPoint iff the before one is EpochEndHeader
+            if (EpochEndPoint::isEpochEndPoint(chain.head_block_header())) { // CheckPoint iff the before one is EpochEndHeader
                 std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(chain.head_block_num() + 1);
                 ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
                 CommitteeSet committeeSet = stakeVotePtr->getCommitteeSet();
-                chain.add_header_extensions_entry(kCommitteeSet, committeeSet.toVectorChar());
-                BlockIdType blockIdType = lightClientProducerPtr->getLatestCheckPointId();
-                if (BlockIdType() != blockIdType) {
-                    std::string s = std::string(blockIdType);
-                    std::vector<char> vc(s.begin(), s.begin());
-                    chain.add_header_extensions_entry(kPreCheckPointId, vc);
-                }
-                ilog("add kCommitteeSet in blockNum : ${blockNum} : ${committeeset}", ("blockNum", chain.head_block_num() + 1)("committeeset", committeeSet.toString()));
+                lightClientProducerPtr->handleCheckPoint(chain, committeeSet);
             }
 
             // ConfirmPoint
-            if (lightClientProducerPtr->hasNextTobeConfirmedBlsVoterSet()) {
-                chain.add_header_extensions_entry(kBlsVoterSet, lightClientProducerPtr->nextTobeConfirmedBlsVoterSet().toVectorChar());
-                ilog("add kBlsVoterSet to confirm ${confirmedBlockNum} in blockNum : ${blockNum}, set : ${set}",
-                        ("confirmedBlockNum", BlockHeader::num_from_id(lightClientProducerPtr->nextTobeConfirmedBlsVoterSet().commonEchoMsg.blockId))
-                        ("blockNum", chain.head_block_num() + 1)
-                        ("set", lightClientProducerPtr->nextTobeConfirmedBlsVoterSet().toVectorChar()));
+            if (lightClientProducerPtr->hasNextTobeConfirmedBls()) {
+                lightClientProducerPtr->handleConfirmPoint(chain);
             }
 
             // TODO(yufengshen): We have to cap the block size, cpu/net resource when packing a block.
@@ -1365,13 +1343,9 @@ namespace ultrainio {
             std::shared_ptr<CommitteeState> committeeState = StakeVoteBase::getCommitteeState(chain::master_chain_name);
             if (committeeState && committeeState->cinfo.size() > 0) {
                 CommitteeSet committeeSet(committeeState->cinfo);
-                if (committeeSet.committeeMroot() != committeeMroot) {
-                    std::string s = std::string(committeeSet.committeeMroot());
-                    std::vector<char> v(s.size());
-                    v.assign(s.begin(), s.end());
-                    chain.add_header_extensions_entry(kNextCommitteeMroot, v);
-                    ilog("add kNextCommitteeMroot old mroot = ${old}, new mroot = ${new} in ${blockNum}",
-                            ("old", committeeMroot)("new", committeeSet.committeeMroot())("blockNum", chain.head_block_num() + 1));
+                SHA256 newMRoot = committeeSet.committeeMroot();
+                if (newMRoot != committeeMroot) {
+                    lightClientProducerPtr->handleEpochEndPoint(chain, newMRoot);
                 }
             }
             // Construct the block msg from pbs.
@@ -1889,8 +1863,7 @@ namespace ultrainio {
                            chain::chain_exception,
                            "Voter wont' have ba0 pre-run");
             // first check if ba1 block is indeed ba0 block.
-            const chain::signed_block &b = m_ba0Block;
-            if (IsBa0TheRightBlock(b, block)) {
+            if (theSameOne(m_ba0Block, block)) {
                 ilog("------ Finish voter pre-running ba0 block");
                 chain.finalize_block();
                 chain.assign_header_to_block();
@@ -1903,7 +1876,7 @@ namespace ultrainio {
         // We are already pre-running ba0_block
         if (pbs && m_currentPreRunBa0TrxIndex >= 0 && !force_push_whole_block) {
             // first check if ba1 block is indeed ba0 block.
-            const chain::signed_block &b = m_ba0Block;
+            //const chain::signed_block &b = m_ba0Block;
             /*
             ilog("------ compare ${pk1} ${pk2}, ${pf1} ${pf2}, ${num1} ${num2}, ${t1} ${t2}, ${s1} ${s2}",
                  ("pk1", b.proposerPk)("pk2", block->proposerPk)
@@ -1912,11 +1885,11 @@ namespace ultrainio {
                  ("t1", b.timestamp)("t2", block->timestamp)
                  ("s2", block->producer));
             */
-            if (IsBa0TheRightBlock(b, block)) {
+            if (theSameOne(m_ba0Block, block)) {
                 ilog("------ Finish pre-running ba0 block from ${count}", ("count", m_currentPreRunBa0TrxIndex));
                 try {
-                    for (; m_currentPreRunBa0TrxIndex < b.transactions.size(); m_currentPreRunBa0TrxIndex++) {
-                        const auto &receipt = b.transactions[m_currentPreRunBa0TrxIndex];
+                    for (; m_currentPreRunBa0TrxIndex < m_ba0Block.transactions.size(); m_currentPreRunBa0TrxIndex++) {
+                        const auto &receipt = m_ba0Block.transactions[m_currentPreRunBa0TrxIndex];
                         if (receipt.trx.contains<chain::packed_transaction>()) {
                             auto &pt = receipt.trx.get<chain::packed_transaction>();
                             auto mtrx = std::make_shared<chain::transaction_metadata>(pt);
@@ -2173,6 +2146,11 @@ namespace ultrainio {
         // deterministic about the empty block's timestamp.
         auto block_timestamp = chain.head_block_time() + fc::milliseconds(chain::config::block_interval_ms);
         chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1));
+        if (EpochEndPoint::isEpochEndPoint(chain.head_block_header())) {
+            std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(chain.head_block_num() + 1);
+            lightClientProducerPtr->handleCheckPoint(chain, stakeVotePtr->getCommitteeSet());
+        }
         chain.set_action_merkle_hack();
         // empty block does not have trx, so we don't need this?
         chain.set_trx_merkle_hack();

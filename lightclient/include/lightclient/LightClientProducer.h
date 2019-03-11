@@ -6,21 +6,31 @@
 #include <lightclient/EpochEndPoint.h>
 
 namespace ultrainio {
+
+    // forward declare
+    namespace chain {
+        class controller;
+    }
+
     class LightClientProducer {
     public:
         LightClientProducer();
 
-        bool hasNextTobeConfirmedBlsVoterSet() const;
-
-        BlsVoterSet nextTobeConfirmedBlsVoterSet() const;
-
-        BlockIdType getLatestCheckPointId() const;
+        bool hasNextTobeConfirmedBls() const;
 
         void accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
+
+        void handleCheckPoint(chain::controller& chain, const CommitteeSet& committeeSet);
+
+        void handleConfirmPoint(chain::controller& chain);
+
+        void handleEpochEndPoint(chain::controller& chain, const SHA256& mroot);
 
     private:
 
         bool shouldBeConfirmed(const BlockHeader& blockHeader) const;
+
+        BlsVoterSet nextTobeConfirmedBls() const;
 
         BlockIdType m_latestCheckPointId;
 
