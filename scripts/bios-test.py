@@ -180,11 +180,11 @@ def stepRegProducers():
     if args.subchain and args.subchain != "ultrainio" :
         masterproducerinfo = ""
         for i in range(1, args.num_master_prods + 1):
-            masterproducerinfo += '{"owner":"%s","producer_key":"%s","bls_key":"%s"},' % ((initaccount[i]), pk_list[i], bls_pk_list[i] )
+            masterproducerinfo += '{"owner":"%s","producer_key":"%s","bls_key":"%s"},' % (("master"+initaccount[i]), pk_list[i], bls_pk_list[i] )
         masterproducerinfo = masterproducerinfo[:-1]
         retry(args.clultrain + ' push action ultrainio setmasterchaininfo \'{"chaininfo":{"owner": "ultrainio",\
-            "master_prods":[%s],"block_height":%s}}\' -p ultrainio ' % \
-            ( masterproducerinfo, args.num_master_block) )
+            "master_prods":[%s],"block_height":%s,"block_id":"%s","master_chain_ext":[]}}\' -p ultrainio ' % \
+            ( masterproducerinfo, args.num_master_block, args.master_block_id) )
     sleep(15)
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
@@ -355,6 +355,7 @@ parser.add_argument('--num-producers', metavar='', help="Number of producers to 
 parser.add_argument('--non-producers', metavar='', help="Number of non-producers to create", type=int, default=1, dest="non_producers")
 parser.add_argument('--num-master-prods', metavar='', help="Number of master producers to register", type=int, default=5, dest="num_master_prods")
 parser.add_argument('--num-master-block', metavar='', help="Number of master chain block height ", type=int, default=0, dest="num_master_block")
+parser.add_argument('--master-block-id', metavar='', help="Number of master chain block height id ", type=str, default="", dest="master_block_id")
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for clultrain')
 parser.add_argument('-p','--programpath', metavar='', help="set programpath params")
