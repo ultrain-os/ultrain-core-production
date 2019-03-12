@@ -206,7 +206,7 @@ def insert_monitor_config(fname):
 
 def insert_chain_name_config(fname):
     content = readfile(fname)
-    newcontent = "chain-name=0\n";
+    newcontent = "chain-name=ultrainio\n";
     if args.subchain:
         newcontent = "chain-name="+args.subchain;
     index_line = content.index("#chain_name\n")
@@ -251,9 +251,11 @@ def insertPeerKey(fname):
     content = readfile(fname)
     newcontent = "peer-key = %s\n" % (account_pk_list[0])
     newcontent1 = "peer-key = %s\n" % (account_pk_list[6])
+    newcontent2 = "peer-key = %s\n" % (account_pk_list[7])
     index_line = content.index("# Optional public key of peer allowed to connect\n")
     content.insert(index_line + 1, newcontent)
     content.insert(index_line + 2, newcontent1)
+    content.insert(index_line + 3, newcontent2)
     writefile(fname, content)
 
 

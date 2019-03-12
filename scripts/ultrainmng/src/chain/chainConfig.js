@@ -293,6 +293,11 @@ ChainConfig.isReady = function () {
         return false;
     }
 
+    if (this.configSub.chainId == null) {
+        logger.error("(this.configSub.chainId can't be null:"+this.configSub.chainId);
+        return false;
+    }
+
 
 
     return true;

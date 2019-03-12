@@ -23,7 +23,7 @@ function buildCommittee(resultJson, jsonArray, add, result) {
                     public_key: resultJson[i].miner_pk,
                     bls_key: resultJson[i].bls_pk,
                     url: "https://" + resultJson[i].owner + ".com",
-                    location: 0,
+                    location: "ultrainio",
                     adddel_miner: add,
                     approve_num: 0
                 });
@@ -50,7 +50,7 @@ function buildCommittee(resultJson, jsonArray, add, result) {
                 public_key: resultJson[i].miner_pk,
                 bls_key: resultJson[i].bls_pk,
                 url: "https://" + resultJson[i].owner + ".com",
-                location: 0,
+                location: "ultrainio",
                 adddel_miner: add,
                 approve_num: 0
             });

@@ -3,6 +3,7 @@ const fs = require('fs');
 var logger = require("../config/logConfig").getLogger("Monitor");
 var chainConfig = require("./chainConfig")
 var chainApi = require("./chainApi")
+var constants = require("../common/constant/constants")
 var cacheKeyConstants = require("../common/constant/constants").cacheKeyConstants
 var filenameConstants = require("../common/constant/constants").filenameConstants
 var iniConstants = require("../common/constant/constants").iniConstants
@@ -27,6 +28,10 @@ var hashCache = new CacheObj(false, null);
 var HASH_EXPIRE_TIME_MS = 1000 * 60;
 
 var deploySyncFlag = false;
+
+var seedCount = 10;
+
+var enableRestart = 1;
 
 /**
  *
@@ -115,6 +120,10 @@ async function buildParam() {
     if (chainConfig.isNoneProducer()) {
         isProducer = 0;
     }
+
+    var extMsg = {
+        "enableRestart": enableRestart
+    }
     var param = {
         "chainId": chainConfig.localChainName,
         "ipLocal": utils.getLocalIPAdress(),
@@ -122,7 +131,9 @@ async function buildParam() {
         "user": user,
         "nodVersion": nodFileHash,
         "mngVersion": mngFileHash,
-        "isProducer": isProducer
+        "isProducer": isProducer,
+        "time": new Date().getTime(),
+        "ext" : JSON.stringify(extMsg),
     };
 
     return param;
@@ -144,15 +155,71 @@ async function checkIn() {
 
     let param = await buildParam();
 
+    param.sign = generateSign(param.time,generateSignParam(param));
+
     await chainApi.monitorCheckIn(getMonitorUrl(), param);
 
     logger.info("monitor checkin end");
 
     await getDeployFile();
+
+    //await syncSeedInfo();
 }
 
 /**
- * deploy file
+ *
+ * @returns {Promise<void>}
+ */
+async function syncSeedInfo() {
+
+    if (checkNeedSync() == false) {
+        return
+    }
+
+    logger.info("syncSeedInfo start,seedCount:"+seedCount);
+
+    if (seedCount < 10) {
+        seedCount++;
+        return;
+    }
+
+    //reset
+    seedCount = 1;
+
+
+    let deployInfo = await chainApi.getSeedInfo(getMonitorUrl(), {});
+    if (chainApi.verifySign(deployInfo) == true) {
+        let data = deployInfo.data;
+
+        if (utils.isNullList(data)) {
+            logger.error("seed info is null, need not update");
+        }
+
+        if (JSON.stringify(data) == JSON.stringify(chainConfig.seedIpConfig)) {
+            logger.info("seed info is equal, need not update");
+            return;
+        }
+
+        var filepath = pathConstants.MNG_CONFIG+"seedconfig.json";
+        chainConfig.seedIpConfig = data;
+        fs.writeFile(filepath, JSON.stringify(data), {flag: 'w'}, function (err) {
+            if(err) {
+                logger.error("write seed config file error:");
+            } else {
+                logger.info("write seed config file success:");
+            }
+
+
+        });
+    }  else {
+        logger.error("syncSeedInfo sign error");
+    }
+
+
+}
+
+/**
+ * deploy filehh
  * @returns {Promise<void>}
  */
 async function getDeployFile() {
@@ -169,11 +236,17 @@ async function getDeployFile() {
         return;
     }
 
+
     logger.info("getDeployFile start");
     let param = await buildParam();
+    param.sign = generateSign(param.time,generateSignParam(param));
     let deployInfo = await chainApi.checkDeployFile(getMonitorUrl(), param);
 
     logger.info("get deploy info:", deployInfo);
+
+    if (chainApi.verifySign(deployInfo) == false) {
+        logger.error("get deploy(check sign) error:");
+    }
 
     /**
      *
@@ -207,6 +280,33 @@ async function cmdDeploy(deployBatch) {
         logger.info("start to deploy cmd (" + deployCmd.name +  ")");
         logger.info("start to exe cmd (" + deployCmd.content +  ")");
 
+        //系统命令
+        let systemCmd = false;
+
+        //设置重启-1
+        if (deployCmd.content == constants.cmdConstants.ENABLE_RESTART) {
+            enableRestart = 1;
+            systemCmd = true;
+        }
+
+        //设置重启-0
+        if (deployCmd.content == constants.cmdConstants.DISABLE_RESTART) {
+            enableRestart = 0;
+            systemCmd = true;
+        }
+
+        if (systemCmd == true) {
+            let param = await buildParam();
+            param.batchId = deployBatch.id;
+            param.status = statusConstants.SUCCESS;
+            param.sign = generateSign(param.time,generateSignParamWithStatus(param));
+            param.ext = "success";
+            await chainApi.finsihDeployFile(getMonitorUrl(), param);
+            enableDeploy();
+            return;
+        }
+
+        //其它命令
         process.exec(deployCmd.content, async function (error, stdout, stderr, finish) {
 
             let param = await buildParam();
@@ -217,10 +317,15 @@ async function cmdDeploy(deployBatch) {
                 param.status = statusConstants.EXCEPTION;
                 param.ext = error.toString();
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                param.sign = generateSign(param.time,generateSignParamWithStatus(param));
                 enableDeploy();
             } else {
                 logger.info("exec success :",stdout);
                 param.status = statusConstants.SUCCESS;
+                if (utils.isNotNull(stdout) && stdout != undefined) {
+                    param.ext = stdout.toString();
+                }
+                param.sign = generateSign(param.time,generateSignParamWithStatus(param));
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 enableDeploy();
             }
@@ -295,6 +400,7 @@ async function fileDeploy(deployBatch) {
             param.status = statusConstants.SUCCESS;
             param.batchId = deployBatch.id;
             logger.info("finsih deploy param:",param);
+            param.data = generateSignParamWithStatus(param);
             await chainApi.finsihDeployFile(getMonitorUrl(), param);
             return;
         } else {
@@ -417,12 +523,12 @@ async function fileProcessNod(deployFile, localpath) {
                                     enableDeploy();
                                 } else {
                                     logger.info("exccmd success:" + cmd);
-                                    // result = await NodUltrain.start(1200000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest);
-                                    // if (result == true) {
-                                    //     logger.info("nod start success")
-                                    // } else {
-                                    //     logger.error("node start error");
-                                    // }
+                                    result = await NodUltrain.start(600000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest);
+                                    if (result == true) {
+                                        logger.info("nod start success")
+                                    } else {
+                                        logger.error("node start error");
+                                    }
                                     enableDeploy();
                                 }
                             });
@@ -473,6 +579,48 @@ function enableDeploy() {
     deploySyncFlag = false;
 }
 
+function generateSignParam(param) {
+    let data = "";
+    try {
+        data = "chainId="+param.chainId+"&user="+param.user+"&nodVersion="+param.nodVersion+"&mngVersion="+param.mngVersion+"&isProducer="+param.isProducer;
+    } catch (e) {
+        logger.error("generate sign error,",e);
+    }
+
+    return data;
+}
+
+
+function generateSignParamWithStatus(param) {
+    let data = "";
+    try {
+        data = generateSignParam(param);
+        data = data+"&status="+param.status;
+    } catch (e) {
+        logger.error("generate sign error,",e);
+    }
+
+    return data;
+}
+
+function generateSign(time,data) {
+    let result = data+"&time="+time+"&key="+constants.PRIVATE_KEY;
+    logger.info("result:"+result);
+    let sign = hashUtil.calcMd5(result);
+    return sign;
+}
+
+/**
+ *
+ * @returns {boolean}
+ */
+function needCheckNod() {
+    if (enableRestart == 1) {
+        return true;
+    }
+
+    return false;
+}
 
 module.exports = {
     checkIn,
@@ -480,5 +628,8 @@ module.exports = {
     disableDeploy,
     enableDeploy,
     buildParam,
-    getMonitorUrl
+    getMonitorUrl,
+    generateSignParamWithStatus,
+    generateSign,
+    needCheckNod,
 }

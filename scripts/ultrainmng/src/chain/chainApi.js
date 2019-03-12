@@ -11,6 +11,7 @@ var logger = require("../config/logConfig").getLogger("ChainApi");
 var logUtil = require("../common/util/logUtil")
 var constant = require("../common/constant/constants")
 var utils = require("../common/util/utils");
+var hashUtil = require("../common/util/hashUtil");
 var sleep = require("sleep")
 
 /**
@@ -136,7 +137,7 @@ async function getAccount(prefix, accountName) {
  * @returns {Promise<Array>}
  */
 async function getProducerLists(prefix) {
-    const params = {"json": "true", "lower_bound": "0", "limit": 10000};
+    const params = {"json": "true", "lower_bound": "0", "limit": 10000,"chain_name":constant.chainNameConstants.MAIN_CHAIN_NAME};
     logger.debug("getProducerLists," + prefix);
     const rs = await axios.post(prefix + "/v1/chain/get_producers", params);
 
@@ -145,7 +146,7 @@ async function getProducerLists(prefix) {
     var rows = rs.data.rows;
     for (var i in rows) {
         var row = rows[i];
-        if (row.chain_name == 0) {
+        if (row.chain_name == constant.chainNameConstants.MAIN_CHAIN_NAME) {
             result.push({
                 owner: row.prod_detail.owner,
                 miner_pk: row.prod_detail.producer_key,
@@ -235,7 +236,7 @@ async function contractInteract(config, contractName, actionName, params, accoun
 getUserBulletin = async (config, chain_name) => {
     try {
         var u3 = createU3({...config, sign: true, broadcast: true});
-        return await u3.getUserBulletin({"chain_name": parseInt(chain_name, 10)});
+        return await u3.getUserBulletin({"chain_name": chain_name});
     } catch (e) {
         logger.error("get user bulletin error :", e);
         let seedHttpList = config.seedHttpList;
@@ -245,7 +246,7 @@ getUserBulletin = async (config, chain_name) => {
                 config.httpEndpoint = seedHttpList[i];
                 var u3 = createU3({...config, sign: true, broadcast: true});
                 try {
-                    return await u3.getUserBulletin({"chain_name": parseInt(chain_name, 10)});
+                    return await u3.getUserBulletin({"chain_name": chain_name});
                 } catch (e) {
                     logger.error("getUserBulletin:", utils.logNetworkError(e));
                 }
@@ -595,7 +596,7 @@ monitorCheckIn = async (url, param) => {
  */
 checkDeployFile = async (url, param) => {
     try {
-        logger.debug("checkDeployFile param:", qs.stringify(param));
+        logger.info("checkDeployFile param:", qs.stringify(param));
         const rs = await axios.post(url + "/filedist/checkDeployInfo", qs.stringify(param));
         logger.info("checkDeployFile result:", rs.data);
         return rs.data;
@@ -784,6 +785,62 @@ checkSubchainSeed = async (chainConfig) => {
     return null;
 }
 
+/**
+ *
+ * @param data
+ * @param sign
+ * @returns {boolean}
+ */
+verifySign = (data,sign) => {
+    try {
+        let apiTime = data.time;
+        let nowTime = new Date().getTime();
+        if (apiTime - nowTime >= constant.API_MAX_INTEVAL_TIME || nowTime - apiTime >= constant.API_MAX_INTEVAL_TIME) {
+            logger.error("api time is not valid(api time("+apiTime+") : local time:("+nowTime+")");
+            return false;
+        }
+        logger.info("api time is  valid(api time("+apiTime+") : local time:("+nowTime+")");
+        let sign = data.sign;
+        logger.info("check sign:",sign);
+        data.sign = "sign";
+        let res = JSON.stringify(data);
+        logger.debug("check sign new data:",res);
+        let rawStr = res+constant.PRIVATE_KEY;
+        logger.debug("check sign raw string:",rawStr);
+        let checkSign = hashUtil.calcMd5(rawStr);
+        logger.debug("check sign md5:",checkSign);
+
+        if (sign == checkSign) {
+            logger.info("sign("+sign+") == checksign("+checkSign+")")
+            return true;
+        }
+
+        logger.error("sign("+sign+") != checksign("+checkSign+")")
+    } catch (e) {
+        logger.error("verify sign error:",e);
+    }
+
+    return false;
+
+}
+
+/**
+ * get seed info
+ * @param url
+ * @param param
+ * @returns {Promise<*>}
+ */
+getSeedInfo = async (url, param) => {
+    try {
+        logger.info("getSeedInfo param:", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/getSeedInfo", qs.stringify(param));
+        logger.info("monitor getSeedInfo result:", rs.data);
+        return rs.data;
+    } catch (e) {
+        logger.error("getSeedInfo error,", e);
+    }
+}
+
 
 module.exports = {
     getChainId,
@@ -812,5 +869,7 @@ module.exports = {
     getChainHttpList,
     getSubchainBlockNum,
     getSubchainCommittee,
-    checkSubchainSeed
+    checkSubchainSeed,
+    verifySign,
+    getSeedInfo,
 }

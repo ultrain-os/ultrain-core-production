@@ -123,7 +123,7 @@ async function syncUser() {
                     account: newUser.owner,
                     owner_key: newUser.owner_pk,
                     active_key: newUser.active_pk,
-                    location: 0,
+                    location: constants.chainNameConstants.MAIN_CHAIN_NAME,
                     approve_num: 0,
                     updateable: utils.isNotNull(newUser.updateable) ? newUser.updateable : 1 //该账号后续部署合约能否被更新
                 }]
@@ -316,7 +316,7 @@ async function syncBlock() {
              */
             if (results) {
                 const params = {
-                    chain_name: parseInt(chainConfig.localChainName, 10),
+                    chain_name: chainConfig.localChainName,
                     headers: results
                 };
 
@@ -390,7 +390,7 @@ async function syncCommitee() {
                             account: committeeUser,
                             owner_key: chainUtil.getOwnerPkByAccount(account,"owner"),
                             active_key: chainUtil.getOwnerPkByAccount(account,"active"),
-                            location: 0,
+                            location: constants.chainNameConstants.MAIN_CHAIN_NAME,
                             approve_num: 0,
                             updateable: 1 //该账号后续部署合约能否被更新
                         }]
@@ -571,6 +571,13 @@ async function syncChainInfo() {
  * @returns {Promise<void>}
  */
 async function checkNodAlive() {
+
+    if (monitor.needCheckNod() == false) {
+        logger.error("monitor enable restart == false,need not check nod alive");
+        return;
+    }
+
+    logger.info("monitor enable restart == true,need not check nod alive");
 
     //如果不在进行链切换且本地访问不到本地链信息，需要重启下
     if (syncChainChanging == false) {
@@ -848,6 +855,7 @@ async function switchChain() {
         param.endTime = new Date().getTime();
         param.status = 1;
         param.result = logMsg;
+        param.sign = monitor.generateSign(param.time,monitor.generateSignParamWithStatus(param));
         await chainApi.addSwitchLog(monitor.getMonitorUrl(),param);
     } catch (e) {
 
@@ -858,6 +866,7 @@ async function switchChain() {
         param.endTime = new Date().getTime();
         param.status = 0;
         param.result = "error,"+e.toString();
+        param.sign = monitor.generateSign(param.time,monitor.generateSignParamWithStatus(param));
         await chainApi.addSwitchLog(monitor.getMonitorUrl(),param);
     }
 }
@@ -880,13 +889,16 @@ async function restartNod() {
     syncChainChanging = true;
     monitor.disableDeploy();
 
+
+    logger.info("start to restart nod");
     try {
 
         let wssinfo = " ";
         let wssFilePath = " ";
         //使用world state to recover
-        if (chainConfig.configFileData.local.worldstate == true) {
+        if (chainConfig.configFileData.local.worldstate == true && chainConfig.isNoneProducer() == false) {
 
+            logger.info("world state is on("+chainConfig.configFileData.local.worldstate+") && this nod is not none-producer("+chainConfig.configFileData.target["is-non-producing-node"]+") ,need  use ws to recover",);
             //停止worldstate的程序
             if (chainConfig.configFileData.local.worldstate == true) {
                 result = await WorldState.stop(120000);
@@ -939,11 +951,11 @@ async function restartNod() {
                     logger.info("local ws max block heght(" + WorldState.status.block_height + "),mainchain max block height(" + maxBlockHeight + ")")
                     if (WorldState.status.block_height == maxBlockHeight) {
                         logger.info("block height is equal, check ws file");
-                        wssFilePath = pathConstants.WSS_LOCAL_DATA + chainConfig.chainId + "-" + WorldState.status.block_height + ".ws";
+                        wssFilePath = pathConstants.WSS_LOCAL_DATA + chainConfig.configSub.chainId + "-" + WorldState.status.block_height + ".ws";
                         logger.info("file path:", wssFilePath);
                         if (fs.existsSync(wssFilePath)) {
                             logger.info("file path exists:", wssFilePath);
-                            wssinfo = "--worldstate " + pathConstants.WSS_LOCAL_DATA + chainConfig.chainId + "-" + WorldState.status.block_height + ".ws";
+                            wssinfo = "--worldstate " + pathConstants.WSS_LOCAL_DATA + chainConfig.configSub.chainId + "-" + WorldState.status.block_height + ".ws";
                             localHashIsMax = true;
                         } else {
                             logger.info("file path not exists:", wssFilePath);
@@ -963,7 +975,7 @@ async function restartNod() {
                     let blockNum = worldstatedata.block_num;
                     let filesize = worldstatedata.hash_v[0].file_size;
                     logger.info("start to require ws : (block num : " + blockNum + " " + "hash:" + hash);
-                    result = await WorldState.syncWorldState(hash, blockNum, filesize, chainConfig.chainId);
+                    result = await WorldState.syncWorldState(hash, blockNum, filesize, chainConfig.configSub.chainId);
                     if (result == true) {
                         logger.info("sync worldstate request success");
                     } else {
@@ -977,8 +989,8 @@ async function restartNod() {
                     /**
                      * 轮询检查同步世界状态情况
                      */
-                    wssFilePath = pathConstants.WSS_DATA + chainConfig.chainId + "-" + blockNum + ".ws";
-                    wssinfo = "--worldstate " + pathConstants.WSS_DATA + chainConfig.chainId + "-" + blockNum + ".ws";
+                    wssFilePath = pathConstants.WSS_DATA + chainConfig.configSub.chainId + "-" + blockNum + ".ws";
+                    wssinfo = "--worldstate " + pathConstants.WSS_DATA + chainConfig.configSub.chainId + "-" + blockNum + ".ws";
 
                     result = await WorldState.pollingkWSState(1000, 300000);
                     if (result == false) {
@@ -1002,8 +1014,8 @@ async function restartNod() {
                         /**
                          * 调用block
                          */
-                        logger.info("start to sync block:(chainid:" + chainConfig.chainId + ",block num:" + blockNum);
-                        result = await WorldState.syncBlocks(chainConfig.chainId, blockNum);
+                        logger.info("start to sync block:(chainid:" + chainConfig.configSub.chainId + ",block num:" + blockNum);
+                        result = await WorldState.syncBlocks(chainConfig.configSub.chainId, blockNum);
                         if (result == false) {
                             logger.info("sync block request error");
                         } else {
@@ -1033,7 +1045,8 @@ async function restartNod() {
 
             }
         } else {
-            logger.info("world state is not on", chainConfig.configFileData.local.worldstate);
+
+            logger.info("world state may be off("+chainConfig.configFileData.local.worldstate+") || this nod is none-producer("+chainConfig.configFileData.target["is-non-producing-node"]+") ,need not use ws to recover",);
         }
 
         //启动nod
@@ -1170,7 +1183,7 @@ async function syncResource(allFlag) {
                             account: changeResObj.owner,
                             lease_num: changeResObj.lease_num,
                             block_height_interval: chainUtil.calcSubchainIntevalBlockHeight(changeResObj.start_block_height,changeResObj.end_block_height,chainConfig.mainChainBlockDuration,chainConfig.subChainBlockDuration),
-                            location: 0,
+                            location: constants.chainNameConstants.MAIN_CHAIN_NAME,
                             approve_num: 0
                         }]
                     };
@@ -1220,10 +1233,10 @@ async function syncWorldState() {
                 //let mainChainData = await chainApi.getTableInfo(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.WORLDSTATE_HASH,1000,null,null,null);
                 let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.localChainName, tableConstants.WORLDSTATE_HASH, "block_num");
 
-                logger.debug("mainChainData:", mainChainData);
+                logger.error("mainChainData:", mainChainData);
                 let needUpload = true;
                 if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
-                    logger.info("mainChainData:" + mainChainData);
+                    logger.debug("mainChainData:",mainChainData);
                     let worldstatedata = voteUtil.getMaxValidWorldState(mainChainData.rows);
                     if (worldstatedata != null) {
                         logger.info("main chain's world state (main chain block num :" + worldstatedata.block_num + " subchain node block num :" + WorldState.status.block_height + ")");

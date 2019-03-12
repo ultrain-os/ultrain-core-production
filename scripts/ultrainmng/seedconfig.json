@@ -1,9 +1,8 @@
 [
   {
-    "chainName": "0",
+    "chainName": "ultrainio",
     "seedIp": [
-      "172.17.0.15",
-      "172.17.0.16"
+      "172.17.0.15"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
@@ -15,8 +14,7 @@
   {
     "chainName": "11",
     "seedIp": [
-      "172.17.0.24",
-      "172.17.0.25"
+      "172.17.0.22"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
@@ -28,8 +26,7 @@
   {
     "chainName": "12",
     "seedIp": [
-      "172.17.0.35",
-      "172.17.0.36"
+      "172.17.0.30"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",

@@ -229,7 +229,7 @@ public:
    struct get_table_records_params {
       bool        json = false;
       name        code;
-      string      scope;
+      name        scope;
       name        table;
 //      string      table_type;
       string      table_key;
@@ -451,7 +451,7 @@ public:
       read_only::get_table_records_result result;
       const auto& d = db.db();
 
-      uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
+      uint64_t scope = p.scope;
 
       abi_serializer abis;
       abis.set_abi(abi, abi_serializer_max_time);
@@ -521,7 +521,7 @@ public:
       read_only::get_table_records_result result;
       const auto& d = db.db();
 
-      uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
+      uint64_t scope = p.scope;
 
       abi_serializer abis;
       abis.set_abi(abi, abi_serializer_max_time);

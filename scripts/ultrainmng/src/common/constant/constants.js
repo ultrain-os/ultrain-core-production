@@ -15,8 +15,9 @@ var cmdConstants = {
     START_NODULTRAIN: "sh /root/workspace/ultrain-core/scripts/_runultrain.sh /root/workspace",//启动nod程序
     START_NODULTRAIN_FILE: "/root/ultrainmng/tool/_runultrain.sh",
     START_WORLDSTATE_FILE: "/root/ultrainmng/tool/_runworldstate.sh",
-    START_NODULTRAIN_ARG: ["/root/workspace"]
-
+    START_NODULTRAIN_ARG: ["/root/workspace"],
+    ENABLE_RESTART: "enableRestart",
+    DISABLE_RESTART: "disableRestart",
 }
 
 //编码常量
@@ -27,8 +28,8 @@ var encodingConstants = {
 
 //链常量
 var chainNameConstants = {
-    MAIN_CHAIN_NAME: "0",
-    INVAILD_CHAIN_NAME: "18446744073709551615", //非法链
+    MAIN_CHAIN_NAME: "ultrainio",
+    INVAILD_CHAIN_NAME: "zzzzzzzzzzzzj", //非法链
 }
 
 //时间常量（单位ms）
@@ -64,7 +65,7 @@ var tableConstants = {
 
 //scode常量
 var scopeConstants = {
-    SCOPE_MAIN_CHAIN: 0,//主链scope
+    SCOPE_MAIN_CHAIN: "ultrainio",//主链scope
 }
 
 //chainid常量
@@ -137,7 +138,9 @@ var statusConstants = {
 }
 
 var LOCAL_NOD_URL = "http://127.0.0.1:8888";
-
+var PRIVATE_KEY = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC6TQALgms1BnT02fowOtSGGCQ1ed1GVWvzODASnDMlyRsbiwnsMROf7YZ7umA4ma5n9erPyw27ile7JDjsQo1GbUZn2tAbjg1G7VPgkxp9QZp8uXquTI9bDEYXIeYQS9f71mh8DkR3VOUru8+j5uCOqmF+jiDMOt8qf5Yyhw5fbQIDAQAB";
+//API验证时间前后不超过1小时（单位ms）
+var API_MAX_INTEVAL_TIME = 1000 * 60 * 60;
 
 
 module.exports = {
@@ -157,4 +160,6 @@ module.exports = {
     algorithmConstants,
     statusConstants,
     LOCAL_NOD_URL,
+    PRIVATE_KEY,
+    API_MAX_INTEVAL_TIME
 }
