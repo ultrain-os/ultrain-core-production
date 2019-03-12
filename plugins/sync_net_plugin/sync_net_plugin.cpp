@@ -765,16 +765,6 @@ namespace ultrainio {
         }
 
         m_require_ws_info = info;
-
-        //check local ws firstly, if not exist, send req by tcp connect
-        // auto infoList = ws_file_manager.get_local_ws_info();  
-        // for(auto& it : infoList){
-        //     if (it == info){
-        //         sync_reset(success);
-        //         ilog("Success: local exist ws file!!");
-        //         return true;
-        //     }
-        // }
         
         ReqLastWsInfoMsg reqLastWsInfoMsg;
         reqLastWsInfoMsg.chain_id = info.chain_id;
@@ -805,7 +795,7 @@ namespace ultrainio {
             ilog("get ws-sync rsp from peer ${p}, but not in rsp waiting states", ("p", c->peer_name()));
             return;
         }
-
+        idump((msg));
         const ultrainio::chain::ws_info& info = msg.info;
         if(info.block_height == 0){ // no data
             num_of_no_data++;
@@ -958,7 +948,7 @@ namespace ultrainio {
     }
 
     void sync_ws_manager::receive_ws_sync_req(connection_ptr c, const ReqLastWsInfoMsg &msg) {
-        ilog("recieved ws-sync info request from  ${peer_address}", ("peer_address", c->peer_name()));
+        ilog("recieved ws-sync info request from  ${peer_address}, msg: ${msg}", ("peer_address", c->peer_name())("msg", msg));
         auto infoList = ws_file_manager.get_local_ws_info();
        
         RspLastWsInfoMsg rspLastWsInfoMsg;

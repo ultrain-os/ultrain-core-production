@@ -224,7 +224,7 @@ namespace ultrainio {
 
 FC_REFLECT( ultrainio::wss::select_ids<fc::sha256>, (mode)(pending)(ids) )
 FC_REFLECT( ultrainio::wss::handshake_message,
-            (network_version)(time)(p2p_address)
+            (network_version)(node_id)(time)(p2p_address)
             (os)(agent)(generation) )
 FC_REFLECT( ultrainio::wss::go_away_message, (reason)(node_id) )
 FC_REFLECT( ultrainio::wss::time_message, (org)(rec)(xmt)(dst) )
