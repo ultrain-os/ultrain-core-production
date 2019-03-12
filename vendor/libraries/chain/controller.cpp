@@ -482,7 +482,7 @@ struct controller_impl {
                ilog("re-add_contract Cache count: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().cache().size()));
                ilog("re-add_contract Backup size: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices().size()));
 
-               while (more) {                  
+               while (more) {
                   //1.read 1 table_id row from old ws file, insert to backup indices
                   uint64_t old_id = 0, size = 0;
                   id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
@@ -581,7 +581,7 @@ struct controller_impl {
             table_id_object::id_type t_id;
             index_utils<table_id_multi_index>::create(db, [&](auto& row) {
                ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, 0);
-               
+
                section.read_row(row, db);
                t_id = row.id;
             });
@@ -627,7 +627,7 @@ struct controller_impl {
          old_ws_file += ".tmp";
 
       if (worldstate_previous_block > 0) {
-         ULTRAIN_ASSERT(fc::exists(old_ws_file + ".ws") && fc::exists(old_ws_file + ".id"), worldstate_exception, "Don't exist file: ${s} or ${t}", 
+         ULTRAIN_ASSERT(fc::exists(old_ws_file + ".ws") && fc::exists(old_ws_file + ".id"), worldstate_exception, "Don't exist file: ${s} or ${t}",
             ("s", old_ws_file + ".ws")("t", old_ws_file + ".id"));
       }
 
@@ -726,7 +726,7 @@ struct controller_impl {
 
       db.set_revision( head->block_num );
       ws_helper_ptr.reset();
-      
+
       //copy the file, save in local path
       ws_info info;
       info.chain_id = tmp_chain_id;
@@ -1250,6 +1250,8 @@ struct controller_impl {
       ULTRAIN_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                 ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
+      ilog("----------- START BLOCK");
+
       auto guard_pending = fc::make_scoped_exit([this](){
          pending.reset();
       });
@@ -1269,6 +1271,7 @@ struct controller_impl {
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
+            ilog("push onblock transaction");
             push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage, true );
          } catch( const boost::interprocess::bad_alloc& e  ) {
             elog( "on block transaction failed due to a bad allocation" );

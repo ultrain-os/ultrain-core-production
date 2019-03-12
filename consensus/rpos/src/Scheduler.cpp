@@ -2140,6 +2140,7 @@ namespace ultrainio {
     }
 
     std::shared_ptr<Block> Scheduler::generateEmptyBlock() {
+        ilog("Scheduler::generateEmptyBlock()");
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.abort_block();
         // get_proper_next_block_timestamp() probably can't be used here, we have to be
