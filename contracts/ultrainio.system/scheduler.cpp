@@ -369,6 +369,7 @@ namespace ultrainiosystem {
                         if(ite_confirm_block->committee_mroot != _subchain.committee_mroot) {
                             _subchain.committee_mroot = ite_confirm_block->committee_mroot;
                             _subchain.is_schedulable  = true;
+                            _subchain.changing_info.clear();
                         }
                         _subchain.is_synced = ite_confirm_block->is_synced;
                         if(_subchain.is_synced) {
@@ -409,18 +410,6 @@ namespace ultrainiosystem {
                     temp_header.proposer      = headers[idx].proposer;
                     temp_header.committee_mroot = headers[idx].committee_mroot;
                     temp_header.transaction_mroot = headers[idx].transaction_mroot;
-                    for (const auto& t : exts) {
-                        uint16_t k = std::get<0>(t);
-                        if (k == 2) { // committee set
-                            std::vector<char> vc = std::get<1>(t);
-                            temp_header.committee_info.assign(vc.begin(), vc.end());
-                            //TODO, remove the confirmed updates in changing_info
-                            if(_subchain.changing_info.empty()) {
-                                _subchain.is_schedulable = true;
-                            }
-                            break;
-                        }
-                    }
                     _subchain.unconfirmed_blocks.push_back(temp_header);
                     _subchain.unconfirmed_blocks.shrink_to_fit();
                 });
@@ -515,7 +504,7 @@ namespace ultrainiosystem {
         });
     }
 
-    void system_contract::add_to_chain(name chain_name, const producer_info& producer) {
+    void system_contract::add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number) {
         if (chain_name != master_chain_name) {
             auto ite_chain = _subchains.find(chain_name);
             ultrainio_assert(ite_chain != _subchains.end(), "destination sidechain is not existed" );
@@ -524,6 +513,19 @@ namespace ultrainiosystem {
             ultrainio_assert(typeiter != type_tbl.end(), "destination sidechain type is not existed");
             ultrainio_assert(ite_chain->committee_num < typeiter->stable_max_producers,
                 "destination sidechain already has enough producers");
+            //check if this account has been empowered to this chain
+            if(!is_empowered(producer.owner, chain_name)) {
+                user_info tempuser;
+                tempuser.user_name = producer.owner;
+                tempuser.is_producer = true;
+                tempuser.emp_time = now();
+
+                _subchains.modify(ite_chain, [&]( auto& _chain ) {
+                    _chain.recent_users.push_back(tempuser);
+                    _chain.total_user_num += 1;
+                });
+                empower_to_chain(producer.owner, chain_name);
+            }
             _subchains.modify(ite_chain, [&](subchain& info) {
                 role_base temp_prod;
                 temp_prod.owner = producer.owner;
@@ -542,7 +544,7 @@ namespace ultrainiosystem {
         ultrainio_assert(prod == _producer_chain.end(), "producer has existed in destination chain");
         _producer_chain.emplace([&]( producer_info& _prod ) {
             _prod = producer;
-            //TODO, record operation block for manual action
+            _prod.last_operate_blocknum = current_block_number;
         });
     }
 
@@ -659,21 +661,31 @@ namespace ultrainiosystem {
 
         print("[schedule] step 1:\n");
         auto out_iter = out_list.begin();
-        for(; out_iter != min_sched_chain && compare_gt(*out_iter, *min_sched_chain) ; ++out_iter) {
+        for(; out_iter != min_sched_chain && out_iter != out_list.end() && compare_gt(*out_iter, *min_sched_chain) ; ++out_iter) {
             print("[schedule] out_chain: ", name{out_iter->chain_ite->chain_name});
-            print(" can move out: ", uint32_t(out_iter->sched_out_num));
+            print(" can move out at most: ", uint32_t(out_iter->sched_out_num));
             print(" producers to in_chain: ", name{min_sched_chain->chain_ite->chain_name}, "\n");
+            bool quit_loop = false;
             for(uint16_t out_idx = 0; out_idx < out_iter->sched_out_num; ++out_idx ) {
-                if(!move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, out_idx) ) {
+                if(!move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, uint64_t(block_height)) ) {
                     continue;
                 }
+                ++out_iter->gap_to_next_level;
                 --min_sched_chain->gap_to_next_level;
                 if(0 == min_sched_chain->gap_to_next_level) {
+                    if(min_sched_chain == out_list.begin()) {
+                        quit_loop = true;
+                        break;
+                    }
                     --min_sched_chain; //one chain can only increase one level in a scheduling loop
                     if(min_sched_chain == out_iter) {
+                        quit_loop = true;
                         break;
                     }
                 }
+            }
+            if(quit_loop) {
+                break;
             }
         }
         //sort by random factor
@@ -688,7 +700,7 @@ namespace ultrainiosystem {
         for(; chain_to != out_list.end(); ++chain_from, ++chain_to) {
             print("[schedule] from_chain: ", name{chain_from->chain_ite->chain_name});
             print(", to_chain: ", name{chain_to->chain_ite->chain_name}, "\n");
-            if(!move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, 0) ) {
+            if(!move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_height)) ) {
                 continue;
             }
         }
@@ -697,19 +709,24 @@ namespace ultrainiosystem {
         chain_to = out_list.begin();
         print("[schedule] from chain: ", name{chain_from->chain_ite->chain_name});
         print(", to chain: ", name{chain_to->chain_ite->chain_name}, "\n");
-        move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, 0);
+        move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_height));
     }
 
     bool system_contract::move_producer(checksum256 head_id, subchains_table::const_iterator from_iter,
-                                        subchains_table::const_iterator to_iter, uint16_t index) {
-        index = index % 25;
-        uint32_t x = uint32_t(head_id.hash[31 - index]);
+                                        subchains_table::const_iterator to_iter, uint64_t current_block_number) {
+        uint32_t x = uint32_t(head_id.hash[31]);
         //filter the the producers which has been scheduled out in this loop.
         std::vector<account_name> schedule_producers;
         producers_table _producers(_self, from_iter->chain_name);
         auto prod = _producers.begin();
         for(; prod != _producers.end(); ++prod) {
-            schedule_producers.push_back(prod->owner);
+            if(prod->last_operate_blocknum < current_block_number) {
+                schedule_producers.push_back(prod->owner);
+            }
+        }
+        if(schedule_producers.empty()) {
+            print("[schedule] error: no movable producer\n");
+            return false;
         }
         //get a producder for scheduling out
         uint32_t totalsize = schedule_producers.size();
@@ -720,23 +737,10 @@ namespace ultrainiosystem {
             return false;
         }
         print("[schedule] move ", name{producer}, " to ", name{to_iter->chain_name}, "\n");
-        //check user before move
-        if(!is_empowered(producer, to_iter->chain_name)) {
-            user_info tempuser;
-            tempuser.user_name = producer;
-            tempuser.is_producer = true;
-            tempuser.emp_time = now();
-
-            _subchains.modify(to_iter, [&]( auto& _chain ) {
-                _chain.recent_users.push_back(tempuser);
-                _chain.total_user_num += 1;
-            });
-            empower_to_chain(producer, to_iter->chain_name);
-        }
         //move producer
         auto briefprod = _briefproducers.find(producer);
         if(briefprod != _briefproducers.end()) {
-            add_to_chain(to_iter->chain_name, *producer_iter);
+            add_to_chain(to_iter->chain_name, *producer_iter, current_block_number);
             remove_from_chain(from_iter->chain_name, producer);
             _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                 producer_brf.location = to_iter->chain_name;

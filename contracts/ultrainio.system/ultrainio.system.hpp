@@ -207,8 +207,14 @@ namespace ultrainiosystem {
        std::vector<role_base> removed_members;
        std::vector<role_base> new_added_members;
 
-       bool empty() {
+       bool empty() const {
            return removed_members.empty() && new_added_members.empty();
+       }
+
+       //temporary workaround, will remove one by one after light client activated
+       void clear() {
+           removed_members.clear();
+           new_added_members.clear();
        }
    };
 
@@ -427,7 +433,7 @@ namespace ultrainiosystem {
 
 
          //defined in scheduler.cpp
-         void add_to_chain(name chain_name, const producer_info& producer);
+         void add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number);
          void remove_from_chain(name chain_name, account_name producer_name);
          //called in onblock, loop for all subchains and activate their committee update
          void schedule(); //called in onblock every 24h defaultly.
@@ -435,7 +441,7 @@ namespace ultrainiosystem {
          bool move_producer(checksum256 head_id,
                             subchains_table::const_iterator from_iter,
                             subchains_table::const_iterator to_iter,
-                            uint16_t index);
+                            uint64_t current_block_number);
          name getdefaultchain();
 
 

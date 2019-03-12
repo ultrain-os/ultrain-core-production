@@ -88,7 +88,7 @@ namespace ultrainiosystem {
                     new_en_prod.unpaid_balance          = 0;
                     new_en_prod.vote_number             = 0;
                     new_en_prod.last_vote_blocknum      = 0;
-                    add_to_chain(location, new_en_prod);
+                    add_to_chain(location, new_en_prod, curblocknum);
                     dp_tbl.erase(it_disable);
                     _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                         producer_brf.in_disable = false;
@@ -116,7 +116,7 @@ namespace ultrainiosystem {
                 ultrainio_assert(prod != _producers.end(), "producer not found");
                 if(briefprod->location != location) {
                     ultrainio_assert(!briefprod->is_on_master_chain(), "cannot move producers from master chain");
-                    add_to_chain(location, *prod);
+                    add_to_chain(location, *prod, curblocknum);
                     remove_from_chain(briefprod->location, producer);
                     _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                         producer_brf.location = location;

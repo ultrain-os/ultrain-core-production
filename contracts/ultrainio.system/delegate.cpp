@@ -140,7 +140,7 @@ namespace ultrainiosystem {
                 new_en_prod.unpaid_balance          = 0;
                 new_en_prod.vote_number             = 0;
                 new_en_prod.last_vote_blocknum      = 0;
-                add_to_chain(assigned_location, new_en_prod);
+                add_to_chain(assigned_location, new_en_prod, curblocknum);
                 dp_tbl.erase(dis_prod);
                 _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                     producer_brf.in_disable = false;

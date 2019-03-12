@@ -470,7 +470,7 @@ void system_contract::voteresourcelease() {
             ++resiter;
       }
       uint64_t endtime = current_time();
-      print("cleanvotetable expend time:",(endtime - starttime));
+      print("cleanvotetable expend time:",(endtime - starttime), "\n");
    }
 
     bool system_contract::accept_block_header(name chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_len) {
