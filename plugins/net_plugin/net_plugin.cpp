@@ -2826,6 +2826,16 @@ bool net_plugin_impl::is_account_pk_match(chain::public_key_type const& pk,chain
         ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
         return false;
     }
+    catch(const std::exception& e)
+    {
+          elog( "there is no this name: ${e}", ("e",e.what()));
+          return false;
+    }
+    catch(...)
+    {
+        ilog("there is no this name,unkown");
+        return false;
+    }
     auto found_producer_key = std::find(producers_pk.begin(), producers_pk.end(), pk);
     if(found_producer_key == producers_pk.end())
     {
