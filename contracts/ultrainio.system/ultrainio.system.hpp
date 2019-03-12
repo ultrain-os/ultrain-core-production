@@ -379,7 +379,7 @@ namespace ultrainiosystem {
                           name chain_name,
                           const std::string& owner_pk,
                           const std::string& active_pk);
-         void reportsubchainhash(uint64_t name,
+         void reportsubchainhash(name subchain,
                                  uint64_t blocknum,
                                  checksum256 hash,
                                  uint64_t file_size);
