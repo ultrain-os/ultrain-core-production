@@ -33,7 +33,7 @@ namespace ultrainiosystem {
         }
     }
     ///@abi action
-    void system_contract::reportsubchainhash(uint64_t subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size) {
+    void system_contract::reportsubchainhash(name subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size) {
         require_auth(current_sender());
 
         uint32_t confirmed_blocknum = 0;

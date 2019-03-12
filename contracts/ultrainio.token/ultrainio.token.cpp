@@ -6,8 +6,8 @@
 #include "ultrainio.token.hpp"
 
 namespace ultrainio {
-const int  interval_sec = 10;
-const int  operatefee = 100;
+static int  interval_sec = 12*60*60;
+static int  operatefee = 100;
 void token::create( account_name issuer,
                     asset        maximum_supply )
 {
