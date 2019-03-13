@@ -7,6 +7,7 @@
 #include <rpos/NodeInfo.h>
 #include <rpos/StakeVoteBase.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <ultrainio/chain/version.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
 
 namespace ultrainio {
@@ -173,7 +174,7 @@ namespace ultrainio {
             periodic_report_static_data staticConfig;
             std::shared_ptr<UranusNode> pNode = m_pNode.lock();
             if (pNode) {
-                staticConfig.version           = version;
+                staticConfig.version           = std::string(version) + "+" + chain::get_version_str();
                 staticConfig.nonProducingNode  = pNode->getNonProducingNode();
                 staticConfig.genesisLeaderPk   = Genesis::s_genesisPk;
                 staticConfig.publicKey         = std::string(StakeVoteBase::getMyPrivateKey().getPublicKey());
@@ -235,7 +236,7 @@ namespace ultrainio {
         void ba1BlockProducingTime() {
             m_ba1BlockTime = boost::posix_time::to_iso_string(boost::posix_time::second_clock::local_time());
 
-            auto pos = m_ba1BlockTime.find('T');  
+            auto pos = m_ba1BlockTime.find('T');
             m_ba1BlockTime.replace(pos, 1, std::string(" "));
             m_ba1BlockTime.replace(pos + 3, 0, std::string(":"));
             m_ba1BlockTime.replace(pos + 6, 0, std::string(":"));

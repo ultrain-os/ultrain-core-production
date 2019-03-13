@@ -8,6 +8,7 @@
 
 #include <fc/log/logger.hpp>
 
+#include <ultrainio/chain/version.hpp>
 #include <ultrainio/chain/callback_manager.hpp>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
@@ -22,12 +23,13 @@
 #include <appbase/application.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
 
+
 using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
 
-    char version[]="da43a5";
+    char version[]="dd3f70";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -47,7 +49,8 @@ namespace ultrainio {
                                                                  m_phase(kPhaseInit), m_baxCount(0), m_timer(ioservice),
                                                                  m_preRunTimer(ioservice),
                                                                  m_schedulerPtr(std::make_shared<Scheduler>()) {
-        ilog("Code version is ${s}", ("s", version));
+        std::string ver = std::string(version) + "+" + chain::get_version_str();
+        ilog("Code version is ${s}", ("s", ver));
         ultrainio::chain::callback_manager::get_self()->register_callback(m_schedulerPtr);
     };
 
@@ -620,7 +623,7 @@ namespace ultrainio {
         m_ready = true;
         m_syncing = false;
 
-        if ((sync_msg.startBlockNum + 5 >= sync_msg.endBlockNum) // Only the latest blocks are missing, so we can try to produce them. 
+        if ((sync_msg.startBlockNum + 5 >= sync_msg.endBlockNum) // Only the latest blocks are missing, so we can try to produce them.
             && (sync_msg.endBlockNum == getLastBlocknum() + 1)
             && (m_phase == kPhaseInit)) {
             ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local, let me try to produce them.",
