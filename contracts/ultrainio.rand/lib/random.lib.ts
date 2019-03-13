@@ -1,6 +1,5 @@
 import { NAME } from "ultrain-ts-lib/src/account";
 import { intToString } from "ultrain-ts-lib/src/utils";
-import { Log } from "ultrain-ts-lib/src/log";
 import { SHA256 } from "ultrain-ts-lib/src/crypto";
 import { Action } from "ultrain-ts-lib/src/action";
 import { Block } from "ultrain-ts-lib/src/block";
@@ -254,7 +253,7 @@ export class Random {
         this.saveAndClearPartRands(i, randVal, code);
       }
       lastRand = rand;
-      Log.s("generateRand: ").s(lastRand.toString()).flush();
+      // Log.s("generateRand: ").s(lastRand.toString()).flush();
     }
     return lastRand;
   }
@@ -269,7 +268,6 @@ export class Random {
   private saveAndClearPartRands(bckNum: u64, randNum: u64, code: i32): void {
     var rand = new RandRecord();
     rand.setFields(bckNum, randNum, code);
-    Log.s("saveAndClearPartRands").s(rand.toString()).flush();
     if (!this.randDB.exists(bckNum)) {
       this.randDB.emplace(Action.sender, rand); // To do the payer user should to be discuss
     }

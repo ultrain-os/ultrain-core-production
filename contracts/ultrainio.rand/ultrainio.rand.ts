@@ -109,7 +109,7 @@ class RandContract extends Contract {
     if (memo != "as candidate") return; // not transfer to join the candidate list
     ultrain_assert(!this.voteDB.exists(user), "cannot add existing candidate.");
 
-    Log.s("User: ").s(RNAME(user)).s(" begin to register.").flush();
+    // Log.s("User: ").s(RNAME(user)).s(" begin to register.").flush();
 
     var voter = new Voter();
     voter.name = user;
@@ -133,7 +133,7 @@ class RandContract extends Contract {
     voter.regisBckNum = this.curtBckNum();
     voter.unregisBckNum = 0;
     this.voteDB.emplace(this.receiver, voter);
-    Log.s("User: ").s(RNAME(user)).s(" register successfully.").flush();
+    // Log.s("User: ").s(RNAME(user)).s(" register successfully.").flush();
   }
 
   private curtBckNum(): u64 {
@@ -196,10 +196,8 @@ class RandContract extends Contract {
 
   private getExistRand(blockNum: u64): u64 {
     var rand = new RandRecord();
-    Log.s("block number: ").i(blockNum).flush();
     ultrain_assert(this.randDB.exists(blockNum), "The random of block height has not generated.");
     this.randDB.get(blockNum, rand);
-    Log.s("getExistRand block: ").i(blockNum).s("val:").s(rand.toString());
     return rand.val;
   }
 
@@ -218,7 +216,6 @@ class RandContract extends Contract {
   public triggerRandGenerate(): void {
     var blockNum = Block.number;
     if (!this.randDB.exists(blockNum)) {
-      Log.s("trigger vote saving random nunmber blocknum:").i(blockNum).flush();
       this.random.generateRand(blockNum, true);
     }
   }
@@ -236,7 +233,7 @@ class RandContract extends Contract {
     var sender = Action.sender;
     ultrain_assert(this.voteDB.exists(sender), "You should be a candidate first.");
     var index = this.indexOf(blockNum);
-    Log.s("User: ").s(RNAME(sender)).s(" begins to vote. The index: ").i(index).s("bck num:").i(blockNum).flush();
+    // Log.s("User: ").s(RNAME(sender)).s(" begins to vote. The index: ").i(index).s("bck num:").i(blockNum).flush();
 
     // To check the voting whether expried.
     var curtBckNum = Block.number + 1;
@@ -280,10 +277,9 @@ class RandContract extends Contract {
     seedStr = seedStr.concat("0".repeat(64 - seedStr.length));
 
     var pkStr = Account.publicKeyOf(Action.sender, 'hex');
-    Log.s("m : ").s(seedStr).flush();
-    Log.s("pkstr: ").s(pkStr).flush();
+    // Log.s("m : ").s(seedStr).flush();
+    // Log.s("pkstr: ").s(pkStr).flush();
     ultrain_assert(verify_with_pk(pkStr, pk_proof, seedStr), "please provide a valid VRF proof." + pkStr + " " + pk_proof + " " + seedStr);
-
     var sha256 = new SHA256();
     var hash = sha256.hash(pk_proof.substring(0, 66)); // proof = (r_33byte, c_16_byte, s_32byte)
     var vrf: u64 = <u64>parseInt(hash.substring(0, 14), 16); // convert hex_6digits string to u64

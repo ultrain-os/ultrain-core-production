@@ -1,86 +1,43 @@
 #! /bin/bash
-
 randDir="./"; clDir="../../build/programs/clultrain"
 cvrf="./vrf_client"
-
-msg="234567" # TODO: add "vrf" prefix to all msg for security
+random="234567" # TODO: add "vrf" prefix to all random for security
 readarray -t ult_pkLst < pk.lst; readarray -t ult_skLst < sk.lst; readarray -t ult_accountLst < account.lst
 
 wallet_url=" --wallet-url http://127.0.0.1:6666 "
 
-# 1. rand.sh c
-# 2. rand.sh r
-# 3. rand.sh e
+# 1. rand.sh e
 
 VOTER_NUM=${#ult_accountLst[@]}
 case "$1" in
-  "c") # create account
-	i=0
-	while [ $i -lt $VOTER_NUM ]
-	do
-	    $clDir/clultrain --wallet-url http://127.0.0.1:6666 wallet import  --private-key ${ult_skLst[$i]}
-	    sleep 1
-	    $clDir/clultrain --wallet-url http://127.0.0.1:6666 create account ultrainio ${ult_accountLst[$i]} ${ult_pkLst[$i]} -u -p ultrainio
-		sleep 1
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 transfer ultrainio ${ult_accountLst[$i]} "300000.0000 UGAS" -p ultrainio
-		sleep 1
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 system resourcelease ${ult_accountLst[$i]} ${ult_accountLst[$i]} 10 100
-		i=`expr $i + 1`
-		printf "\n\n"
-	done
-	sleep 10
-	;;
-  "r")
-	#4 candidates
-	VOTER_NUM=16; i=0
-	while [ $i -lt $VOTER_NUM ]
-	do
-		printf "\n\n"
-		#$clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand removeCandidate '' -p ${ult_accountLst[$i]};
-		sleep 1 #remove, in case already registed
-		# if [ $i -lt 6 ]; then
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 transfer ${ult_accountLst[$i]} utrio.rand "2.0000 UGAS" "as candidate" -p ${ult_accountLst[$i]};
-		# else 
-		sleep 1
-		i=`expr $i + 1`
-		$clDir/clultrain --wallet-url http://127.0.0.1:6666 transfer ${ult_accountLst[$i]} utrio.rand "0.2000 UGAS" "as candidate" -p ${ult_accountLst[$i]};
-		# fi;
-		sleep 1
-
-		i=`expr $i + 1`
-		printf "\n\n"
-	done
-	sleep 10
-	;;
   "e") #vote
 	i=0;j=1; VOTE_TIMES=200000; VOTER_NUM=16;
-	while [ $j -lt $VOTE_TIMES ];do
+	while [ true ];do
                 printf "times : "$j"\n"
 		while [ $i -lt $VOTER_NUM ];do
 			printf "\n\n"
 			sk="$(perl $randDir/b58.pl ${ult_skLst[$i]})" #decode sk from base58 to hex
 			printf "sk="$sk"\n"
-			# query latest rand
 
 			res=$($clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand query '' -p ${ult_accountLst[$i]})
+			# TODO submit vote value removing duplicate voting transactoins
 			echo "return:"$res
-			msg=$(echo $res | grep -oP "=> [0-9,]+" | cut -d',' -f 2)
+			random=$(echo $res | grep -oP "=> [0-9,]+" | cut -d',' -f 2)
 			bcknum=$(echo $res | grep -oP "=> [0-9]+" | cut -d' ' -f 2)
 			pk="$(perl $randDir/b58.pl ${ult_pkLst[$i]})"
-			echo "public key: "$pk
-			if [ $((${#msg} % 2)) -eq 1 ]; then
-				msg=$msg"0"
+			if [ $((${#random} % 2)) -eq 1 ]; then
+				random=$random"0"
 			fi
-			echo "final seed: "$msg
-			if [ $sk ]; then
-				pout="$($cvrf -p $sk  $msg)"
-				echo "pout: "$pout
+			echo "final seed: "$random
+			if [ $random ]; then
+				pout="$($cvrf -p $sk  $random)"
 				IFS=';' read -ra data1 <<< "$pout"
-				echo "data1[1]: "${data1[1]}
-				echo "data1[2]: "${data1[2]}
-				echo "account: "${ult_accountLst[$i]}
-				# cannot parse $ in '', only in ""
-				echo "block number: "${bcknum}
+				# echo "pout: "$pout
+				# echo "public key: "$pk
+				# echo "data1[1]: "${data1[1]}
+				# echo "data1[2]: "${data1[2]}
+				# echo "account: "${ult_accountLst[$i]}
+				# echo "block number: "${bcknum}
 				$clDir/clultrain --wallet-url http://127.0.0.1:6666 push action utrio.rand vote '["'"${data1[1]}"'", "'"${bcknum}"'"]' -p ${ult_accountLst[$i]}
 			fi
 			i=`expr $i + 1`
@@ -91,4 +48,3 @@ case "$1" in
 	done
     ;;
 esac
-

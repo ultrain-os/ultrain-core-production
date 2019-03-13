@@ -147,32 +147,38 @@
     {
       "ricardian_contract": "",
       "name": "transfer",
-      "type": "transfer"
+      "type": "transfer",
+      "ability": "normal"
     },
     {
       "ricardian_contract": "",
       "name": "unregister",
-      "type": "unregister"
+      "type": "unregister",
+      "ability": "normal"
     },
     {
       "ricardian_contract": "",
       "name": "redeem",
-      "type": "redeem"
+      "type": "redeem",
+      "ability": "normal"
     },
     {
       "ricardian_contract": "",
       "name": "vote",
-      "type": "vote"
+      "type": "vote",
+      "ability": "normal"
     },
     {
       "ricardian_contract": "",
       "name": "query",
-      "type": "query"
+      "type": "query",
+      "ability": "pureview"
     },
     {
       "ricardian_contract": "",
       "name": "queryBck",
-      "type": "queryBck"
+      "type": "queryBck",
+      "ability": "pureview"
     }
   ],
   "tables": [
