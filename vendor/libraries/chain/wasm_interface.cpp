@@ -2091,9 +2091,11 @@ class call_depth_api : public context_aware_api {
       }
 };
 
-class multi_chain_api : public context_aware_api {
+
+// These apis are privileged apis.
+class multi_chain_api : public privileged_api {
    public:
-      multi_chain_api( apply_context& ctx ):context_aware_api(ctx, true) {}
+      multi_chain_api( apply_context& ctx ) : privileged_api(ctx) {}
 
       void empower_to_chain(account_name user, uint64_t chain_name) {
          const auto& a = context.db.get<account_object, by_name>( user );
@@ -2448,6 +2450,7 @@ REGISTER_INTRINSICS(big_int_api,
       (big_int_probab_prime,int(int, int, int))
 );
 
+// These apis are privileged apis.
 REGISTER_INTRINSICS(multi_chain_api,
       (empower_to_chain,    void(int64_t, int64_t))
       (is_empowered,   int(int64_t, int64_t))
