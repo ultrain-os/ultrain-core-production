@@ -49,7 +49,10 @@ var failedAccountPramList = [];
 
 //nod请求失败次数
 var nodFailedTimes=0;
-var maxNodFailedTimes=1;
+var maxNodFailedTimes=5;
+
+//每一轮用户/资源投票数
+var maxVoteCountOneRound = 5;
 
 //清除失败用户
 function clearFailedUser(user) {
@@ -91,6 +94,10 @@ async function syncUser() {
 
     logger.info("sync user start");
     if (syncChainData == true) {
+
+        //投票计数，一轮不超过最大值
+        let voteCount =0;
+
         //获取新增用户bulletin-并发送投票到子链
         let userBulletinList = await getUserBulletin(chainConfig.config, chainConfig.localChainName);
         logger.info("user userBulletinList:", userBulletinList);
@@ -115,6 +122,12 @@ async function syncUser() {
         }
 
         for (var i in userBulletinList) {
+
+            if (voteCount > maxVoteCountOneRound) {
+                logger.error("vote count >=("+maxVoteCountOneRound+"),stop sync user.");
+                break;
+            }
+
             userCountRes.totalNum++;
             var newUser = userBulletinList[i];
             const params = {
@@ -144,6 +157,7 @@ async function syncUser() {
                 let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, newUser.owner, null, null);
                 logger.debug(tableData)
                 if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, newUser.owner,) == false) {
+
                     //未找到投过票的记录，需要投票
                     logger.info("account(" + newUser.owner + ") has not been voted by " + chainConfig.myAccountAsCommittee + ", start voting....");
 
@@ -156,6 +170,9 @@ async function syncUser() {
                     if (res == null) {
                         failedAccountPramList.push(newUser);
                     }
+
+                    //投票次数
+                    voteCount++;
                 } else {
                     //已投票不处理
                     logger.info("account(" + newUser.owner + ") has been voted by " + chainConfig.myAccountAsCommittee + "");
@@ -346,12 +363,20 @@ async function syncCommitee() {
     //获取本地prodcuers信息
     let producerList = await chainApi.getProducerLists(chainConfig.configSub.httpEndpoint);
     logger.info("subchain producers: ", producerList);
-    if (utils.isNotNull(producerList)) {
+    if (utils.isNotNull(producerList) && producerList.length > 0) {
         localProducers = producerList;
+    } else {
+        logger.error("get subchain producers is null,sync committee end",producerList);
+        return;
     }
 
     let remoteProducers = await chainApi.getSubchainCommittee(chainConfig.config,chainConfig.localChainName);
     logger.info("subchain commitee from mainchain: ", remoteProducers);
+
+    if (utils.isNullList(remoteProducers)) {
+        logger.error("get subchain commitee from mainchain is null,sync committee end",remoteProducers);
+        return;
+    }
 
     //有变化的成员列表（包括删除/新增的）
     var seed = committeeUtil.genSeedByChainId(chainConfig.configSub.chainId);
@@ -454,8 +479,12 @@ async function syncChainInfo() {
             return;
         }
 
+        logger.info("[seed check] start to check seed is alive");
         //定期更新configsub
         await chainApi.checkSubchainSeed(chainConfig);
+
+        //定期更新config
+        await chainApi.checkMainchainSeed(chainConfig);
 
         //同步链名称（子链id,链名称等）
         let chainName = null;
@@ -465,6 +494,13 @@ async function syncChainInfo() {
             chainConfig.configSub.chainId = await chainApi.getChainId(chainConfig.configSub);
         }
         logger.debug("configSub.chainId=", chainConfig.configSub.chainId);
+
+        if (utils.isNull(chainConfig.config.chainId)) {
+            chainConfig.config.chainId = await chainApi.getChainId(chainConfig.config);
+        }
+        logger.debug("config.chainId=", chainConfig.config.chainId);
+
+
         let chainInfo = await chainApi.getChainInfo(chainConfig.config, chainConfig.myAccountAsCommittee);
         logger.info("chain info from mainchain:", chainInfo);
         if (utils.isNotNull(chainInfo)) {
@@ -529,11 +565,11 @@ async function syncChainInfo() {
 
         var rightChain = chainConfig.isInRightChain()
         if (!rightChain) {
-            syncChainData = false;
             //我已不属于这条链，准备迁走
             if (isStrillInCommittee)  {
                 logger.error("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee,can't be transfer,wait...")
             } else {
+                syncChainData = false;
                 logger.info(chainConfig.myAccountAsCommittee + " are not in subchain committee , need trandfer to chain(" + chainName + "）, start transfer...");
                 if (monitor.isDeploying() == true) {
                     logger.error("monitor isDeploying, wait to switchChain");
@@ -572,12 +608,17 @@ async function syncChainInfo() {
  */
 async function checkNodAlive() {
 
+    if (chainConfig.configFileData.local.enableRestart == false) {
+        logger.error("local config enable restart == false, need not check nod alive");
+        return;
+    }
+
     if (monitor.needCheckNod() == false) {
         logger.error("monitor enable restart == false,need not check nod alive");
         return;
     }
 
-    logger.info("monitor enable restart == true,need not check nod alive");
+    logger.info("monitor enable restart == true,need check nod alive");
 
     //如果不在进行链切换且本地访问不到本地链信息，需要重启下
     if (syncChainChanging == false) {
@@ -1110,6 +1151,8 @@ async function syncResource(allFlag) {
     logger.info("syncResource start");
     if (syncChainData == true) {
 
+        let voteCount = 0;
+
         let changeList = [];
         /**
          * 全表对比
@@ -1166,6 +1209,12 @@ async function syncResource(allFlag) {
 
             //获取已透过的所有结果
             for (var i = 0; i < changeList.length; i++) {
+
+                if (voteCount > maxVoteCountOneRound) {
+                    logger.error("vote count >=("+maxVoteCountOneRound+"),stop res sync.");
+                    break;
+                }
+
                 var changeResObj = changeList[i];
                 logger.debug("change res:", changeResObj);
 
@@ -1191,6 +1240,8 @@ async function syncResource(allFlag) {
                     console.info("vote resource params:", params);
                     let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_RESOURCE_LEASE, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
                     logger.debug(chainConfig.myAccountAsCommittee + "  vote " + changeResObj.owner + "(resource:" + changeResObj.lease_num + ") result:", res);
+
+                    voteCount++;
 
                 }
 

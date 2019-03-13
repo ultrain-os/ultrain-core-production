@@ -2,11 +2,13 @@
   {
     "chainName": "ultrainio",
     "seedIp": [
-      "172.17.0.15"
+      "172.17.0.15",
+      "172.17.0.16"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU"
+      "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU",
+      "UTR6k8qHBrc1CYxNUdbHSThtWid5E4xwNLF9kxk8bXuHV1q3BaQ39"
     ],
     "subchainHttpEndpoint": "http://172.16.10.5:9999",
     "monitorServerEndpoint": "http://172.16.10.5:8078"
@@ -14,11 +16,13 @@
   {
     "chainName": "11",
     "seedIp": [
-      "172.17.0.22"
+      "172.17.0.23",
+      "172.17.0.24"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU"
+      "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU",
+      "UTR6k8qHBrc1CYxNUdbHSThtWid5E4xwNLF9kxk8bXuHV1q3BaQ39"
     ],
     "subchainHttpEndpoint": "http://172.16.10.5:8888",
     "monitorServerEndpoint": "http://172.16.10.5:8078"
@@ -26,11 +30,13 @@
   {
     "chainName": "12",
     "seedIp": [
-      "172.17.0.30"
+      "172.17.0.32",
+      "172.17.0.33"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU"
+      "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU",
+      "UTR6k8qHBrc1CYxNUdbHSThtWid5E4xwNLF9kxk8bXuHV1q3BaQ39"
     ],
     "subchainHttpEndpoint": "http://172.16.10.5:8899",
     "monitorServerEndpoint": "http://172.16.10.5:8078"

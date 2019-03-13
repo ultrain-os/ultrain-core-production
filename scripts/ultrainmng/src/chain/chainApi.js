@@ -27,19 +27,6 @@ const getChainId = async (config) => {
         return blockInfo.action_mroot;
     } catch (e) {
         logger.error("getChainId error:", utils.logNetworkError(e));
-        let seedHttpList = config.seedHttpList;
-        if (seedHttpList.length > 0) {
-            for (let i = 0; i < seedHttpList.length; i++) {
-                config.httpEndpoint = seedHttpList[i];
-                var u3 = createU3({...config, sign: true, broadcast: true});
-                try {
-                    var blockInfo = await u3.getBlockInfo("1");
-                    return blockInfo.action_mroot;
-                } catch (e) {
-                    logger.error("getChainId error:", utils.logNetworkError(e));
-                }
-            }
-        }
     }
 
     return null;
@@ -72,7 +59,7 @@ const getChainName = async (url) => {
             logger.info("getChainName from table ",res.data.rows[0]);
         }
     } catch (e) {
-        logger.error("getChainName error,", e);
+        logger.error("getChainName error,", utils.logNetworkError(e));
     }
 
     return chainName;
@@ -86,28 +73,13 @@ const getChainName = async (url) => {
 const getChainInfo = async function initChainName(config, user) {
 
     let result = null;
-    logger.info("getChainInfo config :", config);
+    logger.debug("getChainInfo config :", config);
     try {
         var u3 = createU3({...config, sign: true, broadcast: true});
         result = await u3.getProducerInfo({"owner": user});
         logger.debug("getChainInfo", result);
     } catch (e) {
         logger.error("getChainInfo error:", utils.logNetworkError(e));
-        logger.error("getChainInfo error,use seed to request", config.seedHttpList);
-        let seedHttpList = config.seedHttpList;
-        if (seedHttpList.length > 0) {
-            for (let i = 0; i < seedHttpList.length; i++) {
-                config.httpEndpoint = seedHttpList[i];
-                logger.info("getChainInfo config :", config);
-                var u3 = createU3({...config, sign: true, broadcast: true});
-                try {
-                    result = await u3.getProducerInfo({"owner": user});
-                    return result;
-                } catch (e) {
-                    logger.error("getChainInfo:", utils.logNetworkError(e));
-                }
-            }
-        }
     }
 
     return result;
@@ -123,10 +95,13 @@ const getChainInfo = async function initChainName(config, user) {
  */
 async function getAccount(prefix, accountName) {
     try {
-        const rs = await axios.post(prefix + "/v1/chain/get_account_info", {"account_name": accountName});
-        return rs.data;
+        const rs = await axios.post(prefix + "/v1/chain/get_account_exist ", {"account_name": accountName});
+        let res =  rs.data;
+        if (res.is_exist == true) {
+            return true;
+        }
     } catch (e) {
-        logger.error("getAccount("+accountName+") error",e);
+        logger.error("getAccount("+accountName+") error",utils.logNetworkError(e));
     }
     return null;
 
@@ -137,26 +112,37 @@ async function getAccount(prefix, accountName) {
  * @returns {Promise<Array>}
  */
 async function getProducerLists(prefix) {
-    const params = {"json": "true", "lower_bound": "0", "limit": 10000,"chain_name":constant.chainNameConstants.MAIN_CHAIN_NAME};
-    logger.debug("getProducerLists," + prefix);
-    const rs = await axios.post(prefix + "/v1/chain/get_producers", params);
 
-    logger.debug("getProducerLists:", rs.data.rows);
     var result = [];
-    var rows = rs.data.rows;
-    for (var i in rows) {
-        var row = rows[i];
-        if (row.chain_name == constant.chainNameConstants.MAIN_CHAIN_NAME) {
-            result.push({
-                owner: row.prod_detail.owner,
-                miner_pk: row.prod_detail.producer_key,
-                bls_pk: row.prod_detail.bls_key,
-            });
+    try {
+        const params = {
+            "json": "true",
+            "lower_bound": "0",
+            "limit": 10000,
+            "chain_name": constant.chainNameConstants.MAIN_CHAIN_NAME
+        };
+        logger.debug("getProducerLists," + prefix);
+        const rs = await axios.post(prefix + "/v1/chain/get_producers", params);
+
+        logger.debug("getProducerLists:", rs.data.rows);
+        var rows = rs.data.rows;
+        for (var i in rows) {
+            var row = rows[i];
+            if (row.chain_name == constant.chainNameConstants.MAIN_CHAIN_NAME) {
+                result.push({
+                    owner: row.prod_detail.owner,
+                    miner_pk: row.prod_detail.producer_key,
+                    bls_pk: row.prod_detail.bls_key,
+                });
+            }
+
         }
 
-    }
+        //logger.debug("getProducerLists result=", result);
 
-    //logger.debug("getProducerLists result=", result);
+    } catch (e) {
+        logger.error("getProducerLists error:",utils.logNetworkError(e));
+    }
     return result;
 }
 
@@ -196,34 +182,6 @@ async function contractInteract(config, contractName, actionName, params, accoun
     } catch (err) {
         logger.debug('contractInteract error :', actionName);
         logger.error('' + actionName + ' error :', err);
-
-
-        let seedHttpList = config.seedHttpList;
-        if (seedHttpList.length > 0) {
-            logger.info("start to use other seed http to request");
-            for (let i = 0; i < seedHttpList.length; i++) {
-                config.httpEndpoint = seedHttpList[i];
-                var u3 = createU3({...config, sign: true, broadcast: true});
-                try {
-                    const contract = await u3.contract(contractName);
-                    //logger.debug("contract=", JSON.stringify(contract.fc.abi.structs));
-                    if (!contract) {
-                        throw new Error("can't found contract " + contractName);
-                    }
-                    if (!contract[actionName] || typeof contract[actionName] !== 'function') {
-                        throw new Error("action doesn't exist:" + actionName);
-                    }
-                    const data = await contract[actionName](params, {
-                        authorization: [`${accountName}@active`],
-                    });
-                    logger.debug('contractInteract success :', actionName);
-                    return data;
-                } catch (e) {
-                    logger.error("contractInteract:", utils.logNetworkError(e));
-                }
-            }
-        }
-
     }
     return null;
 }
@@ -238,21 +196,7 @@ getUserBulletin = async (config, chain_name) => {
         var u3 = createU3({...config, sign: true, broadcast: true});
         return await u3.getUserBulletin({"chain_name": chain_name});
     } catch (e) {
-        logger.error("get user bulletin error :", e);
-        let seedHttpList = config.seedHttpList;
-        if (seedHttpList.length > 0) {
-            logger.info("start to use other seed http to request");
-            for (let i = 0; i < seedHttpList.length; i++) {
-                config.httpEndpoint = seedHttpList[i];
-                var u3 = createU3({...config, sign: true, broadcast: true});
-                try {
-                    return await u3.getUserBulletin({"chain_name": chain_name});
-                } catch (e) {
-                    logger.error("getUserBulletin:", utils.logNetworkError(e));
-                }
-            }
-        }
-
+        logger.error("get user bulletin error :", utils.logNetworkError(e));
     }
 
     return null;
@@ -338,8 +282,8 @@ getChainPeerKey = async (chainName, chainConfig) => {
  * @returns {Promise<*>}
  */
 multiRequest = async function (prefix, path, params, prefixlist) {
-    logger.info("multiRequest:", prefix);
-    logger.info("multiRequest:", prefixlist);
+    logger.debug("multiRequest:", prefix);
+    logger.debug("multiRequest:", prefixlist);
     let res = null;
     try {
         res = await axios.post(prefix + path, params);
@@ -350,22 +294,22 @@ multiRequest = async function (prefix, path, params, prefixlist) {
             logger.error("multiRequest(" + path + ") error:", res);
         }
     } catch (e) {
-        logger.error("multiRequest error:", e);
-        if (prefixlist.length > 0) {
-            for (let i = 0; i < prefixlist.length; i++) {
-                let newPrefix = prefixlist[i];
-                try {
-                    logger.info("multiRequest(" + path + "), user new url:" + newPrefix);
-                    res = await axios.post(newPrefix + path, params);
-                    if (res.status == 200) {
-                        return res;
-                    }
-                } catch (e) {
-                    logger.error("multiRequest error:", e);
-                    logger.error("multiRequest(" + path + ") error:", res);
-                }
-            }
-        }
+        logger.error("multiRequest("+path+") error:", utils.logNetworkError(e));
+        // if (prefixlist.length > 0) {
+        //     for (let i = 0; i < prefixlist.length; i++) {
+        //         let newPrefix = prefixlist[i];
+        //         try {
+        //             logger.info("multiRequest(" + path + "), user new url:" + newPrefix);
+        //             res = await axios.post(newPrefix + path, params);
+        //             if (res.status == 200) {
+        //                 return res;
+        //             }
+        //         } catch (e) {
+        //             logger.error("multiRequest error:", e);
+        //             logger.error("multiRequest(" + path + ") error:", res);
+        //         }
+        //     }
+        // }
     }
 
     return res;
@@ -457,7 +401,7 @@ getTableAllData = async (config, code, scope, table, pk) => {
 
         }
     } catch (e) {
-        logger.error("getTableAllData error:", e);
+        logger.error("getTableAllData error:", utils.logNetworkError(e));
     }
 
     logger.debug("getTableAllData(" + table + "):", tableObj);
@@ -548,7 +492,7 @@ getSubchainResource = async (chainName, chainConfig) => {
         let rs = await multiRequest(chainConfig.config.httpEndpoint, "/v1/chain/get_subchain_resource", params, chainConfig.config.seedHttpList);
         return rs.data;
     } catch (e) {
-        logger.error("getSubchainResource error:", e);
+        logger.error("getSubchainResource error:", utils.logNetworkError(e));
     }
 
     return null;
@@ -564,7 +508,7 @@ const getChainBlockDuration = async (config) => {
         const rs = await multiRequest(config.httpEndpoint, "/v1/chain/get_chain_info", {}, config.seedHttpList);
         return rs.data.block_interval_ms;
     } catch (e) {
-        logger.error("getChainBlockDuration error,", e);
+        logger.error("getChainBlockDuration error,", utils.logNetworkError(e));
     }
 
     return null;
@@ -584,7 +528,7 @@ monitorCheckIn = async (url, param) => {
         logger.info("monitorCheckIn result:", rs.data);
         return rs.data;
     } catch (e) {
-        logger.error("monitorCheckIn error,", e);
+        logger.error("monitorCheckIn error,", utils.logNetworkError(e));
     }
 }
 
@@ -601,7 +545,7 @@ checkDeployFile = async (url, param) => {
         logger.info("checkDeployFile result:", rs.data);
         return rs.data;
     } catch (e) {
-        logger.error("checkDeployFile error,", e);
+        logger.error("checkDeployFile error,", utils.logNetworkError(e));
     }
 }
 
@@ -618,7 +562,7 @@ finsihDeployFile = async (url, param) => {
         logger.info("finishDeployInfo result:", rs.data);
         return rs.data;
     } catch (e) {
-        logger.error("finishDeployInfo error,", e);
+        logger.error("finishDeployInfo error,", utils.logNetworkError(e));
     }
 }
 
@@ -690,7 +634,7 @@ addSwitchLog = async (url, param) => {
         logger.info("addSwitchLog result:", rs.data);
         return rs.data;
     } catch (e) {
-        logger.error("addSwitchLog error,", e);
+        logger.error("addSwitchLog error,", utils.logNetworkError(e));
     }
 }
 
@@ -705,20 +649,6 @@ getSubchainBlockNum = async (config, chain_name) => {
         return await u3.getSubchainBlockNum({"chain_name": chain_name});
     } catch (e) {
         logger.error("getSubchainBlockNum :", e);
-        let seedHttpList = config.seedHttpList;
-        if (seedHttpList.length > 0) {
-            logger.info("start to use other seed http to request getSubchainBlockNum");
-            for (let i = 0; i < seedHttpList.length; i++) {
-                config.httpEndpoint = seedHttpList[i];
-                var u3 = createU3({...config, sign: true, broadcast: true});
-                try {
-                    return await u3.getSubchainBlockNum({"chain_name": chain_name});
-                } catch (e) {
-                    logger.error("getSubchainBlockNum:", utils.logNetworkError(e));
-                }
-            }
-        }
-
     }
 
     return null;
@@ -736,16 +666,48 @@ getSubchainCommittee = async (config, chain_name) => {
         return await u3.getSubchainCommittee({"chain_name": chain_name});
     } catch (e) {
         logger.error("getSubchainCommittee :", e);
-        let seedHttpList = config.seedHttpList;
+    }
+
+    return null;
+
+}
+
+var maxCheckSeedTime =3;
+
+var checkSubSeedTime =0;
+
+var checkMainSeedTime = 0;
+
+checkSubchainSeed = async (chainConfig) => {
+
+    let path = chainConfig.configSub.httpEndpoint + "/v1/chain/get_chain_info"
+    try {
+        let res = await axios.post(path);
+        logger.info("[seed check] checkSubchainSeed success,use seed:"+chainConfig.configSub.httpEndpoint);
+        checkSubSeedTime = 0;
+        return;
+    } catch (e) {
+        logger.error("[seed check] checkSubchainSeed error("+chainConfig.configSub.httpEndpoint+") :", utils.logNetworkError(e));
+        checkSubSeedTime++;
+        if (checkSubSeedTime <= maxCheckSeedTime) {
+            logger.error("[seed check] check subchain seed time("+checkSubSeedTime+") <= max("+maxCheckSeedTime+"),wait next...");
+            return;
+        }
+
+        checkSubSeedTime = 0;
+
+        let seedHttpList = chainConfig.configSub.seedHttpList;
         if (seedHttpList.length > 0) {
-            logger.info("start to use other seed http to request getSubchainCommittee");
+            logger.info("[seed check] start to use other seed http to request checkSubchainSeed");
             for (let i = 0; i < seedHttpList.length; i++) {
-                config.httpEndpoint = seedHttpList[i];
-                var u3 = createU3({...config, sign: true, broadcast: true});
+                chainConfig.configSub.httpEndpoint = seedHttpList[i];
+                path = chainConfig.configSub.httpEndpoint + "/v1/chain/get_chain_info"
                 try {
-                    return await u3.getSubchainCommittee({"chain_name": chain_name});
+                    let res = await axios.post(path);
+                    chainConfig.u3Sub = createU3({...chainConfig.configSub, sign: true, broadcast: true});
+                    logger.info("[seed check] checkSubchainSeed("+path+") success,use new seed:"+chainConfig.configSub.httpEndpoint);
                 } catch (e) {
-                    logger.error("getSubchainCommittee:", utils.logNetworkError(e));
+                    logger.error("[seed check] checkSubchainSeed("+path+") error:", utils.logNetworkError(e));
                 }
             }
         }
@@ -753,29 +715,38 @@ getSubchainCommittee = async (config, chain_name) => {
     }
 
     return null;
-
 }
 
-checkSubchainSeed = async (chainConfig) => {
+checkMainchainSeed = async (chainConfig) => {
 
-    let path = chainConfig.configSub.httpEndpoint + "/v1/chain/get_chain_info"
+    let path = chainConfig.config.httpEndpoint + "/v1/chain/get_chain_info"
     try {
         let res = await axios.post(path);
-        logger.info("checkSubchainSeed success");
+        logger.info("[seed check] checkMainchainSeed success,use seed:"+chainConfig.config.httpEndpoint);
+        checkMainSeedTime = 0;
         return;
     } catch (e) {
-        logger.error("checkSubchainSeed error :", e);
-        let seedHttpList = chainConfig.configSub.seedHttpList;
+        logger.info("[seed check] start to use other seed http to request checkMainchainSeed");
+
+        checkMainSeedTime++;
+        if (checkMainSeedTime <= maxCheckSeedTime) {
+            logger.error("[seed check] check mainchain seed time("+checkMainSeedTime+") <= max("+maxCheckSeedTime+"),wait next...");
+            return;
+        }
+
+        checkMainSeedTime = 0;
+        let seedHttpList = chainConfig.config.seedHttpList;
         if (seedHttpList.length > 0) {
-            logger.info("start to use other seed http to request checkSubchainSeed");
+            logger.info("[seed check] start to use other seed http to request checkMainchainSeed");
             for (let i = 0; i < seedHttpList.length; i++) {
-                chainConfig.configSub.httpEndpoint = seedHttpList[i];
-                path = chainConfig.configSub.httpEndpoint + "/v1/chain/get_chain_info"
+                chainConfig.config.httpEndpoint = seedHttpList[i];
+                path = chainConfig.config.httpEndpoint + "/v1/chain/get_chain_info"
                 try {
                     let res = await axios.post(path);
-                    chainConfig.u3Sub = createU3({...chainConfig.configSub, sign: true, broadcast: true});
+                    chainConfig.u3Sub = createU3({...chainConfig.config, sign: true, broadcast: true});
+                    logger.info("[seed check] checkMainchainSeed("+path+") success,use new seed:"+chainConfig.config.httpEndpoint);
                 } catch (e) {
-                    logger.error("checkSubchainSeed error:", utils.logNetworkError(e));
+                    logger.error("[seed check] checkMainchainSeed("+path+") error:", utils.logNetworkError(e));
                 }
             }
         }
@@ -799,9 +770,9 @@ verifySign = (data,sign) => {
             logger.error("api time is not valid(api time("+apiTime+") : local time:("+nowTime+")");
             return false;
         }
-        logger.info("api time is  valid(api time("+apiTime+") : local time:("+nowTime+")");
+        logger.debug("api time is  valid(api time("+apiTime+") : local time:("+nowTime+")");
         let sign = data.sign;
-        logger.info("check sign:",sign);
+        logger.debug("check sign:",sign);
         data.sign = "sign";
         let res = JSON.stringify(data);
         logger.debug("check sign new data:",res);
@@ -811,7 +782,7 @@ verifySign = (data,sign) => {
         logger.debug("check sign md5:",checkSign);
 
         if (sign == checkSign) {
-            logger.info("sign("+sign+") == checksign("+checkSign+")")
+            logger.debug("sign("+sign+") == checksign("+checkSign+")")
             return true;
         }
 
@@ -837,7 +808,7 @@ getSeedInfo = async (url, param) => {
         logger.info("monitor getSeedInfo result:", rs.data);
         return rs.data;
     } catch (e) {
-        logger.error("getSeedInfo error,", e);
+        logger.error("getSeedInfo error,", utils.logNetworkError(e));
     }
 }
 
@@ -872,4 +843,5 @@ module.exports = {
     checkSubchainSeed,
     verifySign,
     getSeedInfo,
+    checkMainchainSeed,
 }

@@ -14,6 +14,7 @@ var constant = require("../common/constant/constants")
 var chainNameConstants = require("../common/constant/constants").chainNameConstants
 var pathConstants = require("../common/constant/constants").pathConstants
 var utils = require("../common/util/utils");
+var hashUtil = require("../common/util/hashUtil");
 var chainApi = require("./chainApi")
 var sleep = require("sleep")
 var chainUtil = require("./util/chainUtil")
@@ -206,27 +207,29 @@ ChainConfig.syncConfig = async function () {
         logger.info("user info : " + this.myAccountAsCommittee + "");
 
         try {
-            this.config.seedHttpList = await  chainApi.getChainHttpList(constant.chainNameConstants.MAIN_CHAIN_NAME,this);
 
+            this.localChainName = this.configFileData.target["chain-name"];
+            logger.info("get chainName form config : ",this.localChainName);
+            logger.info("chain name :"+this.localChainName);
+
+            this.config.seedHttpList = await  chainApi.getChainHttpList(constant.chainNameConstants.MAIN_CHAIN_NAME,this);
+            let randomSeed = this.randomSeed("0",this.myAccountAsCommittee,this.config.seedHttpList);
+            logger.info("random mainchain seed :",randomSeed);
+            if (utils.isNotNull(randomSeed)) {
+                this.config.httpEndpoint = randomSeed;
+            }
+
+            this.configSub.seedHttpList= await chainApi.getChainHttpList(this.localChainName,this);
+            randomSeed = this.randomSeed(this.localChainName,this.myAccountAsCommittee,this.configSub.seedHttpList);
+            logger.info("random subchain seed :",randomSeed);
+            if (utils.isNotNull(randomSeed)) {
+                this.configSub.httpEndpoint = randomSeed;
+            }
 
             this.config.chainId = await chainApi.getChainId(this.config);
             logger.info("config.chainId=", this.config.chainId);
             this.configSub.chainId = await chainApi.getChainId(this.configSub);
             logger.info("configSub.chainId=", this.configSub.chainId);
-            this.localChainName = await chainApi.getChainName(this.configSub.httpEndpoint);
-            logger.info("get chainName form table : ",this.localChainName);
-            if (utils.isNull(this.localChainName)) {
-                logger.info("get chainName form table is null,use local chainName");
-                this.localChainName = this.configFileData.target["chain-name"];
-            } else {
-                logger.info("get chainName form table is not null,use local chainName:",this.localChainName);
-            }
-            logger.info("chain name :"+this.localChainName);
-
-            this.configSub.seedHttpList= await chainApi.getChainHttpList(this.localChainName,this);
-
-
-
 
             mainChainBlockDuration = await chainApi.getChainBlockDuration(this.config);
             if (utils.isNotNull(mainChainBlockDuration)) {
@@ -262,6 +265,31 @@ ChainConfig.syncConfig = async function () {
 }
 
 /**
+ *
+ * @param chainId
+ * @param user
+ * @param seedList
+ * @returns {*}
+ */
+ChainConfig.randomSeed = function(chainName,user,seedList) {
+    let str = chainName+"-"+user;
+    let length = seedList.length;
+    if (length <= 0) {
+        return null;
+    }
+
+    if (length == 1) {
+        return seedList[0];
+    }
+
+    let md5 = hashUtil.calcMd5(str);
+    var firstChar = md5.toString().substr(0,1);
+    let num =  firstChar.charCodeAt()%length;
+
+    return seedList[num];
+}
+
+/**
  * 检查链的配置已经初始化成功了
  */
 ChainConfig.isReady = function () {
@@ -293,10 +321,10 @@ ChainConfig.isReady = function () {
         return false;
     }
 
-    if (this.configSub.chainId == null) {
-        logger.error("(this.configSub.chainId can't be null:"+this.configSub.chainId);
-        return false;
-    }
+    // if (this.configSub.chainId == null) {
+    //     logger.error("(this.configSub.chainId can't be null:"+this.configSub.chainId);
+    //     return false;
+    // }
 
 
 
@@ -354,9 +382,16 @@ ChainConfig.isInRightChain = function () {
         return true;
     }
 
-    //子链未获取到chainid，暂不切链
+    //子链未获取到chainid，比较chainName
     if (utils.isNull(this.configSub.chainId)) {
-        return true;
+        logger.error("subchain chainis is none : compare chain name:");
+        if (this.localChainName == this.chainName) {
+            logger.error("chain name(local : "+this.localChainName+", target: "+this.chainName+" ) is equal,i am in right chain");
+            return true;
+        } else {
+            logger.error("chain name(local : "+this.localChainName+", target: "+this.chainName+" ) is not equal, i am in wrong chain");
+        }
+
     }
 
     if (this.chainId == this.configSub.chainId) {

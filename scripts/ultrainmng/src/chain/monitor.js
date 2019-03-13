@@ -40,15 +40,15 @@ var enableRestart = 1;
 async function getNodVersion() {
     let hashFile = hashCache.get(cacheKeyConstants.NOD_FILE_KEY);
     if (utils.isNull(hashFile)) {
-        logger.info("cache not hit :" + cacheKeyConstants.NOD_FILE_KEY);
+        logger.debug("cache not hit :" + cacheKeyConstants.NOD_FILE_KEY);
         let nodFilePath = chainConfig.configFileData.local.nodpath + "/" + filenameConstants.NOD_EXE_FILE;
         hashFile = hashUtil.calcHash(nodFilePath, algorithmConstants.SHA1);
         if (utils.isNotNull(hashFile)) {
             hashCache.put(cacheKeyConstants.NOD_FILE_KEY, hashFile, HASH_EXPIRE_TIME_MS);
-            logger.info("cache info :", hashCache.getAll());
+            logger.debug("cache info :", hashCache.getAll());
         }
     } else {
-        logger.info("cache hit :" + cacheKeyConstants.NOD_FILE_KEY, hashFile);
+        logger.debug("cache hit :" + cacheKeyConstants.NOD_FILE_KEY, hashFile);
     }
     return hashFile;
 }
@@ -60,14 +60,14 @@ async function getNodVersion() {
 async function getMngVersion() {
     let hashFile = hashCache.get(cacheKeyConstants.MNG_FILE_KEY);
     if (utils.isNull(hashFile)) {
-        logger.info("cache not hit :" + cacheKeyConstants.MNG_FILE_KEY);
+        logger.debug("cache not hit :" + cacheKeyConstants.MNG_FILE_KEY);
         let nodFilePath = chainConfig.configFileData.local.mngpath + "/" + filenameConstants.MNG_FILE;
         hashFile = hashUtil.calcHash(nodFilePath, algorithmConstants.SHA1);
         if (utils.isNotNull(hashFile)) {
             hashCache.put(cacheKeyConstants.MNG_FILE_KEY, hashFile, HASH_EXPIRE_TIME_MS);
         }
     } else {
-        logger.info("cache hit :" + cacheKeyConstants.MNG_FILE_KEY, hashFile);
+        logger.debug("cache hit :" + cacheKeyConstants.MNG_FILE_KEY, hashFile);
     }
     return hashFile;
 }
@@ -605,7 +605,7 @@ function generateSignParamWithStatus(param) {
 
 function generateSign(time,data) {
     let result = data+"&time="+time+"&key="+constants.PRIVATE_KEY;
-    logger.info("result:"+result);
+    logger.debug("result:"+result);
     let sign = hashUtil.calcMd5(result);
     return sign;
 }
