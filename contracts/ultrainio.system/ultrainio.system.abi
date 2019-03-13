@@ -407,7 +407,8 @@
          {"name":"block_reward_vec",              "type":"block_reward[]"},
          {"name":"max_resources_number",           "type":"uint16"},
          {"name":"newaccount_fee",                 "type":"uint32"},
-         {"name":"chain_name",                     "type":"name"}
+         {"name":"chain_name",                     "type":"name"},
+         {"name":"worldstate_interval",            "type":"uint64"}
       ]
     },{
       "name": "master_chain_info",
@@ -437,6 +438,7 @@
          {"name":"newaccount_fee",                "type":"uint32"},
          {"name":"chain_name",                    "type":"name"},
          {"name":"cur_committee_number",           "type":"uint32"},
+         {"name":"worldstate_interval",           "type":"uint64"},
          {"name": "table_extension",              "type": "extension[]"}
       ]
     },{

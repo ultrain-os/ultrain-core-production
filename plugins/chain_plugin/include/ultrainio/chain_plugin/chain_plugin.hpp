@@ -390,6 +390,7 @@ public:
    get_producers_result get_producers( const get_producers_params& params )const;
 
    bool is_genesis_finished()const;
+   uint64_t get_worldstate_interval()const;
 
    struct get_scheduled_transactions_params {
       bool        json = false;

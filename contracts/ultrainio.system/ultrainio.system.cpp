@@ -48,6 +48,7 @@ namespace ultrainiosystem {
             _gstate.newaccount_fee = params.newaccount_fee;
             _gstate.chain_name = params.chain_name;
             _gstate.max_resources_number = params.max_resources_number;
+            _gstate.worldstate_interval = params.worldstate_interval;
             _global.set( _gstate );
         } else {
             auto ite_chain = _subchains.find(params.chain_name);

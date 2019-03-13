@@ -57,7 +57,6 @@ namespace ultrainio { namespace chain {
             uint64_t                 state_size             =  chain::config::default_state_size;
             uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
             path                     worldstate_dir         =  chain::config::default_worldstate_dir_name;
-            uint64_t                 worldstate_interval    =  chain::config::default_worldstate_interval;
             bool                     worldstate_control     =  false;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;

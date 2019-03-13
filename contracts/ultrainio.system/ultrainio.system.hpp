@@ -49,6 +49,7 @@ namespace ultrainiosystem {
       uint32_t             newaccount_fee = 2000;
       name                 chain_name = name{N(ultrainio)};
       uint32_t             cur_committee_number = 0;
+      uint64_t             worldstate_interval  = 1000;
       ultrainio::extensions_type           table_extension;
 
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,
@@ -56,7 +57,8 @@ namespace ultrainiosystem {
                                    (total_ram_bytes_used)(start_block)(block_reward_vec)
                                    (pervote_bucket)(perblock_bucket)(total_unpaid_balance)
                                    (total_activated_stake)(last_name_close)(max_resources_number)
-                                   (total_resources_used_number)(newaccount_fee)(chain_name)(cur_committee_number)(table_extension) )
+                                   (total_resources_used_number)(newaccount_fee)(chain_name)
+                                   (cur_committee_number)(worldstate_interval)(table_extension) )
    };
 
    struct chain_resource {
@@ -152,7 +154,6 @@ namespace ultrainiosystem {
        ULTRAINLIB_SERIALIZE(hash_vote , (hash)(file_size)(votes)(valid)(accounts) )
    };
 
-   static constexpr uint32_t default_worldstate_interval = 60;
    static constexpr uint32_t MAX_WS_COUNT                = 5;
 
    struct subchain_ws_hash {
@@ -287,9 +288,11 @@ namespace ultrainiosystem {
       uint16_t             max_resources_number;
       uint32_t             newaccount_fee;
       name                 chain_name;
+      uint64_t             worldstate_interval;
       uint64_t  primary_key()const { return chain_type; }
       ULTRAINLIB_SERIALIZE( ultrainio_system_params,(chain_type)(max_ram_size)(min_activated_stake)
-                            (min_committee_member_number)(block_reward_vec)(max_resources_number)(newaccount_fee)(chain_name) )
+                            (min_committee_member_number)(block_reward_vec)(max_resources_number)
+                            (newaccount_fee)(chain_name)(worldstate_interval) )
    };
 
    struct resources_lease {

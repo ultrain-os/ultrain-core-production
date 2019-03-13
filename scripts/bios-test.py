@@ -20,6 +20,7 @@ reward_tensecperiod = 10000
 reward_twosecperiod = 2000
 newaccount_fee = 2000
 max_ram_size = 12 * 1024 *1024 *1024
+worldstate_interval = 1000
 defaultclu = '%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
 defaultkul = '%s/ultrain-core/build/programs/kultraind/kultraind'
 defaultcontracts_dir = '%s/ultrain-core/build/contracts/'
@@ -187,9 +188,9 @@ def stepRegProducers():
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s"}}\' -p ultrainio ' % \
+        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s}}\' -p ultrainio ' % \
         (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
-        newaccount_fee, args.subchain) )
+        newaccount_fee, args.subchain, worldstate_interval) )
 
 def stepCreateinitAccounts():
     for i in range(1, args.num_producers+1):

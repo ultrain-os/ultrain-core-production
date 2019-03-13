@@ -1243,6 +1243,22 @@ bool read_only::is_genesis_finished() const{
     }
 }
 
+uint64_t read_only::get_worldstate_interval() const{
+    const abi_def abi = ultrainio::chain_apis::get_abi(db, N(ultrainio));
+    const auto& d = db.db();
+    try {
+        auto gstate = get_global_row(d, abi, abi_serializer_max_time);
+        auto interval = gstate["worldstate_interval"].as_uint64();
+        return interval;
+    } catch ( const fc::exception& e ){
+        elog( "get_worldstate_interval: ${e}", ("e",e.to_detail_string()));
+        return 0;
+    } catch (...) {
+        elog("error thrown from get_worldstate_interval");
+        return 0;
+    }
+}
+
 template<typename Api>
 struct resolver_factory {
    static auto make(const Api* api, const fc::microseconds& max_serialization_time) {

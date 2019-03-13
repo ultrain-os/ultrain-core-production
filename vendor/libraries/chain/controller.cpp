@@ -17,6 +17,7 @@
 #include <ultrainio/chain/authorization_manager.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
 #include <ultrainio/chain/chain_worldstate.hpp>
+#include <ultrainio/chain_plugin/chain_plugin.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -614,16 +615,22 @@ struct controller_impl {
       ilog("start add_to_worldstate blockNum: ${t}",  ("t", block_height));
       if(!ws_manager_ptr) return;
 
+      const static auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+      auto worldstate_interval = ro_api.get_worldstate_interval();
+      if (worldstate_interval < WS_INTERVAL * 3) {
+          worldstate_interval = WS_INTERVAL * 3;
+      }
+
       ws_info info;
       info.chain_id = self.get_chain_id();
       info.block_height = block_height;
 
       std::string new_ws_file = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height);
       std::string old_ws_file = worldstate_previous_block > 0 ? ws_manager_ptr->get_file_path_by_info(info.chain_id, worldstate_previous_block) : "";
-      if (block_height %  conf.worldstate_interval != 0)
+      if (block_height % worldstate_interval != 0)
          new_ws_file += ".tmp";
 
-      if (worldstate_previous_block > 0 && worldstate_previous_block %  conf.worldstate_interval != 0)
+      if (worldstate_previous_block > 0 && fc::exists(old_ws_file + ".tmp.ws"))
          old_ws_file += ".tmp";
 
       if (worldstate_previous_block > 0) {
@@ -673,7 +680,7 @@ struct controller_impl {
       ws_manager_ptr->save_info(info);
 
       //Remove old ws files if temp
-      if (worldstate_previous_block > 0 && worldstate_previous_block %  conf.worldstate_interval != 0) {
+      if (worldstate_previous_block > 0 && worldstate_previous_block % worldstate_interval != 0) {
          fc::remove(ws_manager_ptr->get_file_path_by_info(info.chain_id, worldstate_previous_block)+".info");
          fc::remove(old_ws_file+".id");
          fc::remove(old_ws_file+".ws");

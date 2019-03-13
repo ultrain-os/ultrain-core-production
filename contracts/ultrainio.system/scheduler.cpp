@@ -53,11 +53,11 @@ namespace ultrainiosystem {
         ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
 
         auto checkBlockNum = [&](uint64_t  bn) -> bool {
-            return (bn%default_worldstate_interval) == 0;
+            return (bn%_gstate.worldstate_interval) == 0;
         };
         ultrainio_assert(checkBlockNum(blocknum), "report an invalid blocknum ws");
         ultrainio_assert(blocknum <= confirmed_blocknum, "report a blocknum larger than current block");
-        ultrainio_assert(confirmed_blocknum - blocknum <= default_worldstate_interval, "report a too old blocknum");
+        ultrainio_assert(confirmed_blocknum - blocknum <= _gstate.worldstate_interval, "report a too old blocknum");
 
         subchain_hash_table     hashTable(_self, subchain);
 
@@ -129,9 +129,9 @@ namespace ultrainiosystem {
             });
 
             // delete item which is old enough but need to keep it if it is the only one with valid flag
-            if (blocknum > uint64_t(MAX_WS_COUNT * default_worldstate_interval)){
+            if (blocknum > uint64_t(MAX_WS_COUNT * _gstate.worldstate_interval)){
                 uint64_t latest_valid = 0;
-                uint64_t expired = blocknum - uint64_t(MAX_WS_COUNT * default_worldstate_interval);
+                uint64_t expired = blocknum - uint64_t(MAX_WS_COUNT * _gstate.worldstate_interval);
                 std::vector<uint64_t> expired_nums;
 
                 for(auto itr = hashTable.begin(); itr != hashTable.end(); itr++) {
