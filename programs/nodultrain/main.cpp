@@ -45,6 +45,7 @@ void configure_logging(const bfs::path& config_path)
    } catch (const std::exception& e) {
       elog("${e}", ("e",e.what()));
    } catch (...) {
+      elog("unknown exception when configure_logging");
       // empty
    }
 }
@@ -107,8 +108,10 @@ int main(int argc, char** argv)
       app().startup();
       app().exec();
    } catch( const extract_genesis_state_exception& e ) {
+      elog("extract_genesis_state_exception: ${e}", ("e", e.what()));
       return EXTRACTED_GENESIS;
    } catch( const node_management_success& e ) {
+      elog("node_management_success: ${e}", ("e", e.what()));
       return NODE_MANAGEMENT_SUCCESS;
    } catch( const fc::exception& e ) {
       if( e.code() == fc::std_exception_code ) {

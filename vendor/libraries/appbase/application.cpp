@@ -234,6 +234,27 @@ void application::exec() {
      sigpipe_set->cancel();
    });
 
+   std::shared_ptr<boost::asio::signal_set> sigill_set(new boost::asio::signal_set(*io_serv, SIGILL));
+   sigill_set->async_wait([sigill_set,this](const boost::system::error_code& err, int num) {
+     cout << "receive SIGILL\n";
+     quit();
+     sigill_set->cancel();
+   });
+
+   std::shared_ptr<boost::asio::signal_set> sigtrap_set(new boost::asio::signal_set(*io_serv, SIGTRAP));
+   sigtrap_set->async_wait([sigtrap_set,this](const boost::system::error_code& err, int num) {
+     cout << "receive SIGTRAP\n";
+     quit();
+     sigtrap_set->cancel();
+   });
+
+   std::shared_ptr<boost::asio::signal_set> sigabrt_set(new boost::asio::signal_set(*io_serv, SIGABRT));
+   sigabrt_set->async_wait([sigabrt_set,this](const boost::system::error_code& err, int num) {
+     cout << "receive SIGABRT\n";
+     quit();
+     sigabrt_set->cancel();
+   });
+
    io_serv->run();
 
    shutdown(); /// perform synchronous shutdown
