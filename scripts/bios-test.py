@@ -132,6 +132,7 @@ def stepInstallSystemContracts():
 def stepCreateTokens():
     retry(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 UGAS"]\' -p utrio.token')
     retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "900000000.0000 UGAS", "memo"]\' -p ultrainio')
+    retry(args.clultrain + 'push action utrio.token set_chargeparams \'{"symbol":"UGAS","precision":"4","operate_interval":"%s","operate_fee":"%s"}\'  -p  utrio.token'  % ( 60,100))
     sleep(2)
 
 def stepSetSystemContract():
@@ -200,7 +201,7 @@ def stepCreateinitAccounts():
     retry(args.clultrain + 'transfer ultrainio utrio.rand "10000 UGAS" ')
     retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
     for a in rand_acc_lst:
-        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"2.0000"))
+        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"3.0000"))
 def stepResign():
     resign('ultrainio', 'utrio.null')
 #    for a in accountsToResign:

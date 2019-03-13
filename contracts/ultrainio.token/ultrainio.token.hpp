@@ -37,6 +37,8 @@ namespace ultrainio {
                              asset        quantity,
                              string       memo );
 
+         void set_chargeparams( std::string symbol, uint8_t precision, uint32_t operate_interval, uint32_t operate_fee);
+
          inline asset get_supply( symbol_name sym )const;
 
          inline asset get_balance( account_name owner, symbol_name sym )const;
@@ -52,6 +54,8 @@ namespace ultrainio {
             asset          supply;
             asset          max_supply;
             account_name   issuer;
+            uint32_t       operate_interval_sec = 60;  //default transfer interval of more than one minute does not charge
+            uint32_t       operate_fee = 100;
 
             uint64_t primary_key()const { return supply.symbol.name(); }
          };
@@ -59,7 +63,7 @@ namespace ultrainio {
          typedef ultrainio::multi_index<N(accounts), account> accounts;
          typedef ultrainio::multi_index<N(stat), currency_stats> stats;
 
-         void sub_balance( account_name owner, asset value );
+         void sub_balance( account_name owner, asset value, const currency_stats& st );
          void add_balance( account_name owner, asset value );
 
       public:

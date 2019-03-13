@@ -199,7 +199,7 @@ def getaccresinfo(ip,acclist,nofindacc,leasenum,days,reslist):
         nofindacc.append(a)
     num = 1;
     for a in acclist:
-        j = json.loads(requests.get("http://"+ip+"/v1/chain/get_table_records",data = json.dumps({"code":"ultrainio","scope":"0","table":"reslease","json":"true","limit":1000,"table_key":a})).text)
+        j = json.loads(requests.get("http://"+ip+"/v1/chain/get_table_records",data = json.dumps({"code":"ultrainio","scope":"ultrainio","table":"reslease","json":"true","limit":1000,"table_key":a})).text)
         if len(j["rows"])== 0 :
             reslist.append(a)
             continue

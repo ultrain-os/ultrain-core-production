@@ -6,8 +6,6 @@
 #include "ultrainio.token.hpp"
 
 namespace ultrainio {
-const int  interval_sec = 10;
-const int  operatefee = 100;
 void token::create( account_name issuer,
                     asset        maximum_supply )
 {
@@ -81,7 +79,7 @@ void token::transfer( account_name from,
     ultrainio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
 
 
-    sub_balance( from, quantity );
+    sub_balance( from, quantity, st );
     add_balance( to, quantity );
 }
 
@@ -103,20 +101,33 @@ void token::safe_transfer( account_name from,
     ultrainio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
 
 
-    sub_balance( from, quantity );
+    sub_balance( from, quantity, st );
     add_balance( to, quantity );
 }
 
+void token::set_chargeparams( std::string symbol, uint8_t precision, uint32_t operate_interval, uint32_t operate_fee)
+{
+    require_auth( _self );
+    symbol_name sym = string_to_symbol(precision, symbol.c_str()) >> 8;
+    stats statstable( _self, sym );
+    auto stat = statstable.find( sym );
+    ultrainio_assert( stat != statstable.end(), "symbol not exists" );
+    statstable.modify( stat, [&]( currency_stats& s ) {
+        s.operate_interval_sec = operate_interval;
+        s.operate_fee = operate_fee;
+    });
+}
 
-void token::sub_balance( account_name owner, asset value ) {
+void token::sub_balance( account_name owner, asset value, const currency_stats& st ) {
    accounts from_acnts( _self, owner );
 
    const auto& from = from_acnts.get( value.symbol.name(), "no balance object found" );
    uint32_t cur_block_height= (uint32_t)head_block_number();
-   if((cur_block_height - from.last_block_height < interval_sec/block_interval_seconds()) && (owner != N(ultrainio)) && name{owner}.to_string().find( "utrio." ) != 0){
-      asset fee( operatefee, value.symbol );
-      if(value.amount > 100000)
-         fee = value/1000;
+   if((cur_block_height - from.last_block_height < st.operate_interval_sec/block_interval_seconds()) && (owner != N(ultrainio)) && name{owner}.to_string().find( "utrio." ) != 0){
+      asset fee( st.operate_fee, value.symbol );
+      int64_t p10 = (int64_t)value.symbol.precision();
+      if(value.amount > p10*10)
+         fee = value*10/p10;
       ultrainio_assert( fee.amount > 0, "fee must a positive value" );
       add_balance( N(utrio.fee), fee );
       value += fee;
@@ -152,4 +163,4 @@ void token::add_balance( account_name owner, asset value )
 
 } /// namespace ultrainio
 
-ULTRAINIO_ABI( ultrainio::token, (create)(issue)(transfer)(safe_transfer) )
+ULTRAINIO_ABI( ultrainio::token, (create)(issue)(transfer)(safe_transfer)(set_chargeparams) )

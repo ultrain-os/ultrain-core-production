@@ -23,6 +23,15 @@
         {"name":"memo", "type":"string"}
       ]
     },{
+      "name": "set_chargeparams",
+      "base": "",
+      "fields": [
+        {"name":"symbol", "type":"string"},
+        {"name":"precision", "type":"uint8"},
+        {"name":"operate_interval", "type":"uint32"},
+        {"name":"operate_fee", "type":"uint32"}
+      ]
+    },{
      "name": "create",
      "base": "",
      "fields": [
@@ -50,7 +59,9 @@
       "fields": [
         {"name":"supply", "type":"asset"},
         {"name":"max_supply", "type":"asset"},
-        {"name":"issuer", "type":"account_name"}
+        {"name":"issuer", "type":"account_name"},
+        {"name":"charge_interval_sec", "type":"uint32"},
+        {"name":"operate_fee", "type":"uint32"}
       ]
     }
   ],
@@ -61,6 +72,10 @@
     },{
       "name": "safe_transfer",
       "type": "safe_transfer",
+      "ricardian_contract": ""
+    }, {
+      "name": "set_chargeparams",
+      "type": "set_chargeparams",
       "ricardian_contract": ""
     }, {
       "name": "issue",
