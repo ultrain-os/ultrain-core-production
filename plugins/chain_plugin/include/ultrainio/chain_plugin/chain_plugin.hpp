@@ -143,6 +143,14 @@ public:
    };
    get_account_results get_account_info( const get_account_info_params& params )const;
 
+   struct account_exist_result {
+      bool is_exist = false;
+   };
+   struct get_account_exist_params {
+      name account_name;
+   };
+   account_exist_result get_account_exist( const get_account_exist_params& params )const;
+
    struct get_contract_results {
       name                   account_name;
       string                 wast;
@@ -725,11 +733,13 @@ FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
         (account_name)(head_block_num)(head_block_time)(privileged)(updateable)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
                 net_limit)(cpu_limit)(ram_usage)(permissions)(
                 self_delegated_consensus)(refund_cons)(producer_info)(chain_resource))
+FC_REFLECT(ultrainio::chain_apis::read_only::account_exist_result,(is_exist))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_params, (json)(lower_bound)(limit) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_scheduled_transactions_result, (transactions)(more) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_contract_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_abi_results, (account_name)(abi) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_account_info_params, (account_name) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_account_exist_params, (account_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_contract_params, (account_name)(code_as_wasm) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_abi_params, (account_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_raw_code_and_abi_params, (account_name) )

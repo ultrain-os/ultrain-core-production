@@ -1305,7 +1305,7 @@ void get_account( const string& accountName, bool json_format ) {
       std::cout << std::endl;
 
       if ( res.producer_info.is_object() ) {
-         std::cout << "consensus bandwidth:" << std::endl;
+         std::cout << "consensus weight:" << std::endl;
          auto& obj = res.producer_info.get_object();
          uint64_t total_cons_staked = obj["total_cons_staked"].as_uint64();
          asset total_cons = asset(total_cons_staked);

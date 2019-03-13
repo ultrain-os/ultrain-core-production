@@ -1724,6 +1724,11 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
    return result;
 }
 
+read_only::account_exist_result read_only::get_account_exist( const get_account_exist_params& params )const {
+    account_exist_result result;
+    result.is_exist = nullptr != db.db().find<account_object,by_name>( params.account_name );
+    return result;
+}
 
 static variant action_abi_to_variant( const abi_def& abi, type_name action_type ) {
    variant v;

@@ -85,6 +85,7 @@ namespace ultrainio { namespace client { namespace http {
    const string get_block_func = chain_func_base + "/get_block_info";
    const string get_block_header_state_func = chain_func_base + "/get_block_header_state";
    const string get_account_func = chain_func_base + "/get_account_info";
+   const string get_account_exist = chain_func_base + "/get_account_exist";
    const string get_table_func = chain_func_base + "/get_table_records";
    const string get_table_by_scope_func = chain_func_base + "/get_table_by_scope";
    const string get_code_func = chain_func_base + "/get_contract";
