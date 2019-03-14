@@ -19,7 +19,7 @@ namespace ultrainiosystem {
    using namespace ultrainio;
    using namespace std;
 
-   static constexpr time refund_delay = 3*60;//3*24*3600;
+   static constexpr time refund_delay = 3*24*3600;
 
    /**
     *  Every user 'from' has a scope/table that uses every receipient 'to' as the primary key.
@@ -114,7 +114,7 @@ namespace ultrainiosystem {
                  print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," delegated_cons_blocknum:",dis_prod->delegated_cons_blocknum);//
                  if((name{from}.to_string().find( "utrio." ) != 0 ) && (from != _self)){
                      const uint32_t seconds_per_block     = block_interval_seconds();
-                     uint32_t blocks_per_month            = seconds_per_day / seconds_per_block / 2;//seconds_per_year / seconds_per_block / 12;
+                     uint32_t blocks_per_month            = seconds_per_year / seconds_per_block / 12;
                      ultrainio_assert( (curblocknum - dis_prod->delegated_cons_blocknum) > blocks_per_month , "should stake at least more than one month" );
                  }
              }

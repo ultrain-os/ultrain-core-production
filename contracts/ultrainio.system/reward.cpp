@@ -52,7 +52,7 @@ namespace ultrainiosystem {
       cleanvotetable();
       checkbulletin();
       schedule();
-      distributreward();
+      //distributreward();  //3.15 Do not automatically send rewards
    }
 
    void system_contract::reportblocknumber( name chain_name, uint64_t chain_type, account_name producer, uint64_t number) {
