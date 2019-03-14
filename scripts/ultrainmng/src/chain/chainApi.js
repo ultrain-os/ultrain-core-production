@@ -706,6 +706,7 @@ checkSubchainSeed = async (chainConfig) => {
                     let res = await axios.post(path);
                     chainConfig.u3Sub = createU3({...chainConfig.configSub, sign: true, broadcast: true});
                     logger.info("[seed check] checkSubchainSeed("+path+") success,use new seed:"+chainConfig.configSub.httpEndpoint);
+                    return null;
                 } catch (e) {
                     logger.error("[seed check] checkSubchainSeed("+path+") error:", utils.logNetworkError(e));
                 }
@@ -745,6 +746,7 @@ checkMainchainSeed = async (chainConfig) => {
                     let res = await axios.post(path);
                     chainConfig.u3Sub = createU3({...chainConfig.config, sign: true, broadcast: true});
                     logger.info("[seed check] checkMainchainSeed("+path+") success,use new seed:"+chainConfig.config.httpEndpoint);
+                    return null;
                 } catch (e) {
                     logger.error("[seed check] checkMainchainSeed("+path+") error:", utils.logNetworkError(e));
                 }

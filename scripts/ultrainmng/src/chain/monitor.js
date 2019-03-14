@@ -121,8 +121,15 @@ async function buildParam() {
         isProducer = 0;
     }
 
+    let enableRestartRes = enableRestart;
+    if (enableRestartRes == 1) {
+        if (chainConfig.configFileData.local["enableRestart"]==false) {
+            enableRestartRes = 0;
+        }
+    }
+
     var extMsg = {
-        "enableRestart": enableRestart
+        "enableRestart": enableRestartRes
     }
     var param = {
         "chainId": chainConfig.localChainName,
