@@ -292,10 +292,10 @@ namespace ultrainiosystem {
       ultrainio_assert( combosize <= uint64_t(max_availableused_size), availableuserstr.c_str() );
       uint64_t bytes = 0;
       if(chain_itr == _subchains.end()) {
-          bytes = (_gstate.max_ram_size-2ll*1024*1024*1024)/_gstate.max_resources_number;
+          bytes = _gstate.max_ram_size/_gstate.max_resources_number;
       }
       else {
-          bytes = (chain_itr->global_resource.max_ram_size-2ll*1024*1024*1024)/chain_itr->global_resource.max_resources_number;
+          bytes = chain_itr->global_resource.max_ram_size/chain_itr->global_resource.max_resources_number;
       }
       print("resourcelease receiver:", name{receiver}, " combosize:",combosize," days:",days," location:",name{location});
       ultrainio_assert( days <= (365*30+7), "resource lease buy days must reserve a positive and less than 30 years" );
@@ -409,7 +409,7 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
       set_resource_limits( owner, ram_bytes, 0, 0 );
       if(_gstate.total_resources_used_number >= lease_num)
          _gstate.total_resources_used_number -= lease_num;
-      uint64_t bytes = (_gstate.max_ram_size-2ll*1024*1024*1024)/_gstate.max_resources_number;
+      uint64_t bytes = _gstate.max_ram_size/_gstate.max_resources_number;
       if(_gstate.total_ram_bytes_used >= (lease_num*bytes - (uint64_t)ram_bytes))
          _gstate.total_ram_bytes_used =_gstate.total_ram_bytes_used - lease_num*bytes + (uint64_t)ram_bytes;
    }
@@ -466,7 +466,7 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
                resources_lease_table _reslease_sub( _self, chain_iter->chain_name);
                for(auto reslease_iter = _reslease_sub.begin(); reslease_iter != _reslease_sub.end(); ) {
                   if(reslease_iter->end_block_height <= block_height) {
-                        uint64_t bytes = (chain_iter->global_resource.max_ram_size-2ll*1024*1024*1024)/chain_iter->global_resource.max_resources_number;
+                        uint64_t bytes = chain_iter->global_resource.max_ram_size/chain_iter->global_resource.max_resources_number;
                         if(chain_iter->global_resource.total_resources_used_number >= reslease_iter->lease_num) {
                            _subchains.modify(chain_iter, [&]( auto& subchain ) {
                               subchain.global_resource.total_resources_used_number -= reslease_iter->lease_num;
