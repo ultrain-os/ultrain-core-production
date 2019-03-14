@@ -311,10 +311,11 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
 
           auto id = trx->id();
 
-          if (from_network) {
-              send_response(std::static_pointer_cast<fc::exception>(std::make_shared<discard_network_trx_for_non_producing_node>(FC_LOG_MESSAGE(error, "network trx discarded for this is non-producing node") )));
-              return;
-          }
+          // This is not good in the case of api node + producer node, where api node must pre-run trx for producer node.
+          //          if (from_network) {
+          //              send_response(std::static_pointer_cast<fc::exception>(std::make_shared<discard_network_trx_for_non_producing_node>(FC_LOG_MESSAGE(error, "network trx discarded for this is non-producing node") )));
+          //              return;
+          //          }
 
           if (UranusNode::getInstance() && UranusNode::getInstance()->isSyncing()) {
               send_response(std::static_pointer_cast<fc::exception>(std::make_shared<node_is_syncing>(FC_LOG_MESSAGE(error, "trx discarded, node is in block syncing status") )));
