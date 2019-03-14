@@ -2054,8 +2054,8 @@ connection::connection(string endpoint, msg_priority pri)
 	 }
          bool on_fork = false;
          fc_dlog(logger, "lib_num = ${ln} peer_lib = ${pl}",("ln",lib_num)("pl",peer_lib));
-
-         if( peer_lib <= lib_num && peer_lib > 0) {
+         uint32_t first_in_local = cc.first_block_num();
+         if( peer_lib <= lib_num && peer_lib > 0 && peer_lib >= first_in_local) {
             try {
                block_id_type peer_lib_id =  cc.get_block_id_for_num( peer_lib);
                on_fork =( msg.last_irreversible_block_id != peer_lib_id);
