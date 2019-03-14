@@ -44,12 +44,13 @@ namespace ultrainiosystem {
       uint64_t             total_unpaid_balance = 0;
       int64_t              total_activated_stake = 0;
       block_timestamp      last_name_close;
-      uint16_t             max_resources_number = 10000;
-      uint16_t             total_resources_used_number = 0;
+      uint64_t             max_resources_number = 10000;
+      uint64_t             total_resources_used_number = 0;
       uint32_t             newaccount_fee = 2000;
       name                 chain_name = name{N(ultrainio)};
       uint32_t             cur_committee_number = 0;
       uint64_t             worldstate_interval  = 1000;
+      uint32_t             resource_fee = 100000;
       ultrainio::extensions_type           table_extension;
 
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,
@@ -58,12 +59,12 @@ namespace ultrainiosystem {
                                    (pervote_bucket)(perblock_bucket)(total_unpaid_balance)
                                    (total_activated_stake)(last_name_close)(max_resources_number)
                                    (total_resources_used_number)(newaccount_fee)(chain_name)
-                                   (cur_committee_number)(worldstate_interval)(table_extension) )
+                                   (cur_committee_number)(worldstate_interval)(resource_fee)(table_extension) )
    };
 
    struct chain_resource {
-       uint16_t             max_resources_number = 10000;
-       uint16_t             total_resources_used_number = 0;
+       uint64_t             max_resources_number = 10000;
+       uint64_t             total_resources_used_number = 0;
        uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
        uint64_t             total_ram_bytes_used = 0;
 
@@ -285,14 +286,16 @@ namespace ultrainiosystem {
       int64_t              min_activated_stake;
       uint32_t             min_committee_member_number;
       std::vector<block_reward> block_reward_vec;
-      uint16_t             max_resources_number;
+      uint64_t             max_resources_number;
       uint32_t             newaccount_fee;
       name                 chain_name;
       uint64_t             worldstate_interval;
+      uint32_t             resource_fee;
+      ultrainio::extensions_type   table_extension;
       uint64_t  primary_key()const { return chain_type; }
       ULTRAINLIB_SERIALIZE( ultrainio_system_params,(chain_type)(max_ram_size)(min_activated_stake)
                             (min_committee_member_number)(block_reward_vec)(max_resources_number)
-                            (newaccount_fee)(chain_name)(worldstate_interval) )
+                            (newaccount_fee)(chain_name)(worldstate_interval)(resource_fee)(table_extension) )
    };
 
    struct resources_lease {

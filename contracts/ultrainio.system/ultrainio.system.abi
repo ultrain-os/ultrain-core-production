@@ -405,10 +405,12 @@
          {"name":"min_activated_stake",           "type":"int64"},
          {"name":"min_committee_member_number",   "type":"uint32"},
          {"name":"block_reward_vec",              "type":"block_reward[]"},
-         {"name":"max_resources_number",           "type":"uint16"},
+         {"name":"max_resources_number",           "type":"uint64"},
          {"name":"newaccount_fee",                 "type":"uint32"},
          {"name":"chain_name",                     "type":"name"},
-         {"name":"worldstate_interval",            "type":"uint64"}
+         {"name":"worldstate_interval",            "type":"uint64"},
+         {"name":"resource_fee",                   "type":"uint32"},
+         {"name": "table_extension",               "type": "extension[]"}
       ]
     },{
       "name": "master_chain_info",
@@ -433,12 +435,13 @@
          {"name":"total_unpaid_balance",          "type":"uint64"},
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"last_name_close",               "type":"block_timestamp_type"},
-         {"name":"max_resources_number",          "type":"uint16"},
-         {"name":"total_resources_used_number",   "type":"uint16"},
+         {"name":"max_resources_number",          "type":"uint64"},
+         {"name":"total_resources_used_number",   "type":"uint64"},
          {"name":"newaccount_fee",                "type":"uint32"},
          {"name":"chain_name",                    "type":"name"},
          {"name":"cur_committee_number",           "type":"uint32"},
          {"name":"worldstate_interval",           "type":"uint64"},
+         {"name":"resource_fee",                  "type":"uint32"},
          {"name": "table_extension",              "type": "extension[]"}
       ]
     },{
@@ -502,8 +505,8 @@
      "name": "chain_resource",
       "base": "",
       "fields": [
-        {"name": "max_resources_number",            "type": "uint16"},
-        {"name": "total_resources_used_number",        "type": "uint16"},
+        {"name": "max_resources_number",            "type": "uint64"},
+        {"name": "total_resources_used_number",        "type": "uint64"},
         {"name": "max_ram_size",                  "type": "uint64"},
         {"name": "total_ram_bytes_used",      "type": "uint64"}
        ]

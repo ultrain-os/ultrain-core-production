@@ -21,6 +21,7 @@ reward_twosecperiod = 2000
 newaccount_fee = 2000
 max_ram_size = 12 * 1024 *1024 *1024
 worldstate_interval = 1000
+resourcelease_fee = 35068
 defaultclu = '%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
 defaultkul = '%s/ultrain-core/build/programs/kultraind/kultraind'
 defaultcontracts_dir = '%s/ultrain-core/build/contracts/'
@@ -176,21 +177,21 @@ def stepRegProducers():
         retry(args.clultrain + 'transfer %s utrio.rand \'%.4f UGAS\' \'as candidate\' -p %s' % ( rand_acc_lst[i],value, rand_acc_lst[i]))
 
 
-    #if args.subchain and args.subchain != '0' :
-    masterproducerinfo = ""
-    for i in range(1, args.num_master_prods + 1):
-        masterproducerinfo += '{"owner":"%s","producer_key":"%s","bls_key":"%s"},' % (("master"+initaccount[i]), pk_list[i], bls_pk_list[i] )
-    masterproducerinfo = masterproducerinfo[:-1]
-    retry(args.clultrain + ' push action ultrainio setmasterchaininfo \'{"chaininfo":{"owner": "ultrainio",\
-        "master_prods":[%s],"block_height":%s}}\' -p ultrainio ' % \
-        ( masterproducerinfo, args.num_master_block) )
+    if args.subchain and args.subchain != "ultrainio" :
+        masterproducerinfo = ""
+        for i in range(1, args.num_master_prods + 1):
+            masterproducerinfo += '{"owner":"%s","producer_key":"%s","bls_key":"%s"},' % ((initaccount[i]), pk_list[i], bls_pk_list[i] )
+        masterproducerinfo = masterproducerinfo[:-1]
+        retry(args.clultrain + ' push action ultrainio setmasterchaininfo \'{"chaininfo":{"owner": "ultrainio",\
+            "master_prods":[%s],"block_height":%s}}\' -p ultrainio ' % \
+            ( masterproducerinfo, args.num_master_block) )
     sleep(15)
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s}}\' -p ultrainio ' % \
+        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[]}}\' -p ultrainio ' % \
         (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
-        newaccount_fee, args.subchain, worldstate_interval) )
+        newaccount_fee, args.subchain, worldstate_interval, resourcelease_fee) )
 
 def stepCreateinitAccounts():
     for i in range(1, args.num_producers+1):

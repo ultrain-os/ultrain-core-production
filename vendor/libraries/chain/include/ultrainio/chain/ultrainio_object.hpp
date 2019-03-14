@@ -34,8 +34,8 @@ namespace ultrainio { namespace chain {
    };
 
    struct chain_resource {
-       uint16_t             max_resources_number = 10000;
-       uint16_t             total_resources_used_number = 0;
+       uint64_t             max_resources_number = 10000;
+       uint64_t             total_resources_used_number = 0;
        uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
        uint64_t             total_ram_bytes_used = 0;
    };

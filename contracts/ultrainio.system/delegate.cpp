@@ -164,7 +164,7 @@ namespace ultrainiosystem {
                  print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," delegated_cons_blocknum:",it->delegated_cons_blocknum);//
                  if((name{from}.to_string().find( "utrio." ) != 0 ) && (from != _self)){
                      const uint32_t seconds_per_block     = block_interval_seconds();
-                     uint32_t blocks_per_month            = seconds_per_day / seconds_per_block / 2;//seconds_per_year / seconds_per_block / 12;
+                     uint32_t blocks_per_month            = seconds_per_year / seconds_per_block / 12;
                      ultrainio_assert( (curblocknum - it->delegated_cons_blocknum) > blocks_per_month , "should stake at least more than one month" );
                  }
              }
@@ -352,7 +352,7 @@ namespace ultrainiosystem {
                   tot.modify_block_height = (uint32_t)head_block_number();
                });
          }
-         auto resourcefee = (int64_t)ceil((double)10000*640*cuttingfee/0.3/365);
+         auto resourcefee = (int64_t)(_gstate.resource_fee * cuttingfee);
          ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
          if( _gstate.is_master_chain() || from != _self )
             INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {from,N(active)},
