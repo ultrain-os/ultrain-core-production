@@ -240,7 +240,9 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
             if( !_ec ) {
                 if(_len>pending_message_buffer.bytes_to_write())
                 {
-                    
+                   pending_message_buffer.reset();
+                   doRead();
+                   return; 
                 }
                 pending_message_buffer.advance_write_ptr(_len);
                 while (pending_message_buffer.bytes_to_read() > 0) {
@@ -256,14 +258,16 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
 
                         if(message_length > def_send_buffer_size*2 || message_length == 0) {
                             elog("incoming message length unexpected (${i})", ("i", message_length));
-                            return;
+                            pending_message_buffer.reset();
+                            break;
                         }
 
                         auto total_message_bytes = message_length + udpmessage_header_size;
                         if (bytes_in_buffer >= total_message_bytes) {
                             pending_message_buffer.advance_read_ptr(udpmessage_header_size);
                             if (!process_next_message(m_recvEndpoint)) {
-                                return;
+                                pending_message_buffer.advance_read_ptr_from_index(index, message_length);
+                                break;
                             }
                         } else {
                             auto outstanding_message_bytes = total_message_bytes - bytes_in_buffer;
@@ -300,8 +304,18 @@ bool UDPSocket<Handler, MaxDatagramSize>::process_next_message(bi::udp::endpoint
         udpmsgHandler m(m_host, m_recvEndpoint );
         msg.visit(m);
     } catch(  const fc::exception& e ) {
-        edump((e.to_detail_string() ));
-
+	    edump((e.to_detail_string() ));
+	    return false;
+    }
+    catch(const std::exception& e)
+    {
+	    elog( "error: ${e}", ("e",e.what()));
+	    return false;
+    }
+    catch(...)
+    {
+	    elog("process_next error,unkown");
+	    return false;
     }
     return true;
 }

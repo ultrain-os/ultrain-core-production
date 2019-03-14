@@ -47,7 +47,6 @@ namespace fc {
      *  that is next to be read.
      */
     index_t read_index() const { return read_ind; }
-
     /*
      *  Returns the current write index referencing the byte in the buffer
      *  that is next to be written to.
@@ -159,6 +158,22 @@ namespace fc {
      */
     void advance_read_ptr(uint32_t bytes) {
       advance_index(read_ind, bytes);
+      if (read_ind == write_ind) {
+        reset();
+      } else if (read_ind.first > 0) {
+        while (read_ind.first > 0) {
+          pool().destroy(buffers.front());
+          buffers.pop_front();
+          sanity_check--;
+          read_ind.first--;
+          write_ind.first--;
+        }
+      }
+    }
+
+    void advance_read_ptr_from_index(index_t ind, uint32_t bytes) {
+      advance_index(ind, bytes);
+      read_ind = ind;
       if (read_ind == write_ind) {
         reset();
       } else if (read_ind.first > 0) {
