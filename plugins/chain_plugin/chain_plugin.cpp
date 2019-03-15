@@ -1018,6 +1018,66 @@ read_only::get_subchain_block_num_result read_only::get_subchain_block_num(const
    return result;
 }
 
+read_only::get_subchain_unconfirmed_header_result read_only::get_subchain_unconfirmed_header(const read_only::get_subchain_unconfirmed_header_params& p) const {
+    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+
+    name table = N(subchains);
+    auto index_type = get_table_type( abi, table );
+
+    read_only::get_subchain_unconfirmed_header_result result;
+    walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj) {
+        subchain subchain_data;
+        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+        fc::raw::unpack(ds, subchain_data);
+        if(p.subchain_name == subchain_data.chain_name) {
+            for (auto e : subchain_data.unconfirmed_blocks) {
+                result.unconfirmed_headers.push_back(e);
+            }
+            return false;
+        }
+        else {
+            return true;
+        }
+    });
+    return result;
+}
+
+read_only::get_master_block_num_result read_only::get_master_block_num(const read_only::get_master_block_num_params& p) const {
+   const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+
+   name table = N(masterchain);
+   auto index_type = get_table_type( abi, table );
+
+   read_only::get_master_block_num_result result;
+   walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
+   //    ULTRAIN_ASSERT( obj.value.size() >= sizeof(subchain), chain::asset_type_exception, "Invalid master data on table");
+
+       master_chain master_data;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, master_data);
+       if("ultrainio" == master_data.owner) {
+           result.confirmed_block.number = master_data.confirmed_block_number;
+           auto ite_block = master_data.unconfirmed_blocks.begin();
+           for(; ite_block != master_data.unconfirmed_blocks.end(); ++ite_block) {
+               if(ite_block->is_leaf) {
+                   block_num_and_id temp_num_id;
+                   temp_num_id.number   = ite_block->block_number;
+                   temp_num_id.block_id = ite_block->block_id;
+                   result.forks.push_back(temp_num_id);
+               }
+               if(ite_block->block_number == result.confirmed_block.number) {
+                   result.confirmed_block.block_id = ite_block->block_id;
+               }
+           }
+           return false;
+       }
+       else {
+           return true;
+       }
+   });
+   return result;
+}
+
 std::string read_only::get_subchain_ws_hash(const read_only::get_subchain_ws_hash_params& p) const {
         return "hash";
 }

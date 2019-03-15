@@ -504,6 +504,47 @@ class privileged_api : public context_aware_api {
          });
       }
 
+      void empower_to_chain(account_name user, uint64_t chain_name) {
+         const auto& a = context.db.get<account_object, by_name>( user );
+         for(auto i = 0; i < a.chain_names.size(); ++i) {
+             if(a.chain_names[i] == chain_name) {
+                 return;
+             }
+         }
+         context.db.modify( a, [&]( auto& ma ){
+            ma.chain_names.push_back(chain_name);
+         });
+      }
+
+      bool is_empowered(account_name user, uint64_t chain_name) const {
+         const auto& a = context.db.get<account_object, by_name>( user );
+         for(auto i = 0; i < a.chain_names.size(); ++i) {
+             if(a.chain_names[i] == chain_name) {
+                 return true;
+             }
+         }
+          return false;
+      }
+
+      bool lightclient_accept_block_header(uint64_t chain_name, array_ptr<char> bh_raw, size_t bh_size, array_ptr<char> confirmed_bh_buffer, size_t buffer_len) {
+          std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
+          datastream<char*> ds(bh_raw, bh_size);
+          chain::block_header bh;
+          fc::raw::unpack(ds, bh);
+          chain::block_id_type id;
+          bool res = cb->on_accept_block_header(chain_name, bh, id);
+          datastream<char*> confirmed_ds(confirmed_bh_buffer, buffer_len);
+          fc::raw::pack(confirmed_ds, id);
+          return res;
+      }
+
+      bool lightclient_accept_initial_header(uint64_t chain_name, array_ptr<char> id_buffer, size_t id_size, array_ptr<char> previous_cmt, size_t cmt_size, array_ptr<char> bh_raw, size_t bh_size, array_ptr<char> confirmed_bh_buffer, size_t buffer_len) {
+          std::string committee_set_str(previous_cmt.value, cmt_size);
+          std::string pre_id(id_buffer.value, id_size);
+          std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
+          return cb->on_set_master_start_point(chain_name, committee_set_str, block_id_type(pre_id));
+      }
+
 };
 
 class softfloat_api : public context_aware_api {
@@ -2091,47 +2132,6 @@ class call_depth_api : public context_aware_api {
       }
 };
 
-
-// These apis are privileged apis.
-class multi_chain_api : public privileged_api {
-   public:
-      multi_chain_api( apply_context& ctx ) : privileged_api(ctx) {}
-
-      void empower_to_chain(account_name user, uint64_t chain_name) {
-         const auto& a = context.db.get<account_object, by_name>( user );
-         for(auto i = 0; i < a.chain_names.size(); ++i) {
-             if(a.chain_names[i] == chain_name) {
-                 return;
-             }
-         }
-         context.db.modify( a, [&]( auto& ma ){
-            ma.chain_names.push_back(chain_name);
-         });
-      }
-
-      bool is_empowered(account_name user, uint64_t chain_name) const {
-         const auto& a = context.db.get<account_object, by_name>( user );
-         for(auto i = 0; i < a.chain_names.size(); ++i) {
-             if(a.chain_names[i] == chain_name) {
-                 return true;
-             }
-         }
-          return false;
-      }
-
-      bool lightclient_accept_block_header(uint64_t chain_name, array_ptr<char> bh_raw, size_t bh_size, array_ptr<char> confirmed_bh_buffer, size_t buffer_len) {
-          std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
-          datastream<char*> ds(bh_raw, bh_size);
-          chain::block_header bh;
-          fc::raw::unpack(ds, bh);
-          chain::block_id_type id;
-          bool res = cb->on_accept_block_header(chain_name, bh, id);
-          datastream<char*> confirmed_ds(confirmed_bh_buffer, buffer_len);
-          fc::raw::pack(ds, id);
-          return res;
-      }
-};
-
 #ifdef ULTRAIN_SUPPORT_TYPESCRIPT
 REGISTER_INTRINSICS(typescript_action_api,
   (ts_log_print_s,              void(int)     )
@@ -2231,6 +2231,10 @@ REGISTER_INTRINSICS(privileged_api,
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
+   (empower_to_chain,                 void(int64_t, int64_t)                )
+   (is_empowered,                     int(int64_t, int64_t)                 )
+   (lightclient_accept_block_header,  int(int64_t, int, int, int, int)      )
+   (lightclient_accept_initial_header,  int(int64_t, int, int, int, int, int, int, int, int))
 );
 
 REGISTER_INJECTED_INTRINSICS(transaction_context,
@@ -2448,13 +2452,6 @@ REGISTER_INTRINSICS(big_int_api,
       (big_int_gcd,         void(int, int, int, int, int))
       (big_int_mul,         void(int, int, int, int, int))
       (big_int_probab_prime,int(int, int, int))
-);
-
-// These apis are privileged apis.
-REGISTER_INTRINSICS(multi_chain_api,
-      (empower_to_chain,    void(int64_t, int64_t))
-      (is_empowered,   int(int64_t, int64_t))
-      (lightclient_accept_block_header, int(int64_t, int, int, int, int))
 );
 
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {

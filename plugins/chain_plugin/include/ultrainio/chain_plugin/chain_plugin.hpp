@@ -325,6 +325,21 @@ public:
    };
    get_subchain_block_num_result get_subchain_block_num(const get_subchain_block_num_params& p) const;
 
+   struct get_subchain_unconfirmed_header_params {
+       name subchain_name;
+   };
+
+   struct get_subchain_unconfirmed_header_result {
+       std::vector<chain::block_header> unconfirmed_headers;
+   };
+
+   get_subchain_unconfirmed_header_result get_subchain_unconfirmed_header(const get_subchain_unconfirmed_header_params& p) const;
+
+   using get_master_block_num_params = empty;
+   using get_master_block_num_result = get_subchain_block_num_result;
+
+   get_master_block_num_result get_master_block_num(const get_master_block_num_params& p) const;
+
    struct get_subchain_ws_hash_params {
       name             chain_name;  //todo, will change it to name type later
       uint32_t         height;
@@ -721,6 +736,8 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (ow
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_ws_hash_params, (chain_name)(height) );
 FC_REFLECT( ultrainio::chain_apis::read_only::block_num_and_id, (number)(block_id));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_block_num_result, (confirmed_block)(forks));
+FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_unconfirmed_header_params, (subchain_name));
+FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_unconfirmed_header_result, (unconfirmed_headers));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(genesis_time)(quit_before_num) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );

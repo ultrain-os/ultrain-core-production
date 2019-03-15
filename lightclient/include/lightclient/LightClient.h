@@ -16,9 +16,17 @@ namespace ultrainio {
 
         uint64_t chainName() const;
 
-        BlockIdType accept(const BlockHeader& blockHeader);
+        void reset();
 
-        BlockIdType accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
+        void accept(const std::list<BlockHeader>& blockHeaderList, const BlockIdType& latestConfirmedBlockId);
+
+        void accept(const BlockHeader& blockHeader);
+
+        void accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
+
+        BlockIdType getLatestConfirmedBlockId() const;
+
+        bool setStartPoint(const CommitteeSet& committeeSet, const BlockIdType& blockId);
 
         void addCallback(std::shared_ptr<LightClientCallback> cb);
 
@@ -45,7 +53,7 @@ namespace ultrainio {
 
         std::shared_ptr<LightClientCallback> m_callback;
 
-        CommitteeSet workingCommitteeSet;
+        CommitteeSet m_workingCommitteeSet;
 
         BlockIdType m_latestConfirmedBlockId;
 

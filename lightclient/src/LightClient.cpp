@@ -11,29 +11,43 @@ namespace ultrainio {
         return m_chainName;
     }
 
-    BlockIdType LightClient::accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
+    bool LightClient::setStartPoint(const CommitteeSet& committeeSet, const BlockIdType& blockId) {
+        ilog("set start point confirmed num : ${num}, id : ${id}", ("num", BlockHeader::num_from_id(blockId))("id", blockId));
+        reset();
+        m_workingCommitteeSet = committeeSet;
+        m_latestConfirmedBlockId = blockId;
+        return true;
+    }
+
+    void LightClient::accept(const std::list<BlockHeader>& blockHeaderList, const BlockIdType& latestConfirmedBlockId) {
+        m_latestConfirmedBlockId = latestConfirmedBlockId;
+        for (auto blockHeader : blockHeaderList) {
+            accept(blockHeader);
+        }
+    }
+
+    void LightClient::accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
         ilog("accept BlockHeader num : ${blockNum}, my id : ${myId}, BlsVoterSet confirm num : ${confirmedBlockNum} id : ${id}, latest confirm : ${latest}",
                 ("blockNum", blockHeader.block_num())("myId", blockHeader.id())("confirmedBlockNum", BlockHeader::num_from_id(blsVoterSet.commonEchoMsg.blockId))
                 ("id", blsVoterSet.commonEchoMsg.blockId)("latest", BlockHeader::num_from_id(m_latestConfirmedBlockId)));
         if (blockHeader.id() != blsVoterSet.commonEchoMsg.blockId) {
             ilog("BlsVoterSet confirm ${id} while blockHeader id is ${blockId}", ("id", blsVoterSet.commonEchoMsg.blockId)("blockId", blockHeader.id()));
             onError(kBlsVoterSetNotMatch, blockHeader);
-            return m_latestConfirmedBlockId;
+            return;
         }
         accept(blockHeader);
         confirm(blsVoterSet);
-        return m_latestConfirmedBlockId;
     }
 
-    BlockIdType LightClient::accept(const BlockHeader& blockHeader) {
+    void LightClient::accept(const BlockHeader& blockHeader) {
         ilog("accept BlockHeader num : ${blockNum}, id : ${id} latest confirm : ${latest}",
              ("blockNum", blockHeader.block_num())("id", blockHeader.id())("latest", BlockHeader::num_from_id(m_latestConfirmedBlockId)));
         if (!check(blockHeader)) {
-            return m_latestConfirmedBlockId;
+            return;
         }
         if (isGenesis(blockHeader)) {
             handleGenesis(blockHeader);
-            return m_latestConfirmedBlockId;
+            return;
         }
 
         auto unconfirmItor = m_unconfirmedList.begin();
@@ -45,7 +59,7 @@ namespace ultrainio {
             if (unconfirmItor->block_num() >= blockHeader.block_num()) {
                 if (unconfirmItor->id() == blockHeader.id()) {
                     // duplicate accept
-                    return m_latestConfirmedBlockId;
+                    return;
                 }
             } else {
                 m_unconfirmedList.insert(unconfirmItor, blockHeader);
@@ -92,7 +106,6 @@ namespace ultrainio {
             ConfirmPoint confirmPoint(blockHeader);
             confirm(confirmPoint.blsVoterSet());
         }
-        return m_latestConfirmedBlockId;
     }
 
     void LightClient::confirm(const BlsVoterSet& blsVoterSet) {
@@ -143,10 +156,9 @@ namespace ultrainio {
             checkPointItor++;
         }
         if (m_unconfirmedCheckPointList.size() > 0
-            && m_unconfirmedCheckPointList.back().blockHeader().previous == maybeConfirmedBlockId) {
-            // TODO do more check
-            workingCommitteeSet = m_unconfirmedCheckPointList.back().committeeSet();
-            ilog("new CommitteeSet : ${set}", ("set", workingCommitteeSet.toString()));
+            && m_unconfirmedCheckPointList.back().blockHeader().previous == m_latestConfirmedBlockId) {
+            std::cout << "committee set blockNum : " << m_unconfirmedCheckPointList.back().blockNum() << std::endl;
+            m_workingCommitteeSet = m_unconfirmedCheckPointList.back().committeeSet();
         }
 
         // handle unconfirmed EpochEndPoint list
@@ -189,18 +201,11 @@ namespace ultrainio {
     }
 
     bool LightClient::isGenesis(const BlockHeader& blockHeader) {
-        return std::string(blockHeader.proposer) == std::string("genesis"); // see rpos/Genesis.cpp
+        return std::string(blockHeader.proposer) == std::string("genesis") || blockHeader.block_num() <= 2; // see rpos/Genesis.cpp
     }
 
     void LightClient::handleGenesis(const BlockHeader& blockHeader) {
         // TODO sign check
-        // genesis
-        if (blockHeader.block_num() > 2 && m_latestConfirmedBlockId != blockHeader.previous) {
-            ilog("previous is ${previous} while latest confirmed is ${latest}",
-                 ("previous", blockHeader.previous)("latest", m_latestConfirmedBlockId));
-            onError(kPreviousError, blockHeader);
-            return;
-        }
         m_latestConfirmedBlockId = blockHeader.id();
         ULTRAIN_ASSERT(m_confirmedList.size() == 0, chain::chain_exception, "m_confirmedList size != 0");
         std::list<BlockHeader> genesisBlockHeader;
@@ -232,5 +237,18 @@ namespace ultrainio {
         if (m_callback) {
             m_callback->onConfirmed(blockHeaderList);
         }
+    }
+
+    BlockIdType LightClient::getLatestConfirmedBlockId() const {
+        return m_latestConfirmedBlockId;
+    }
+
+    void LightClient::reset() {
+        m_workingCommitteeSet = CommitteeSet();
+        m_latestConfirmedBlockId = SHA256();
+        m_unconfirmedList.clear();
+        m_unconfirmedCheckPointList.clear();
+        m_unconfirmedEpochEndPointList.clear();
+        m_confirmedList.clear();
     }
 }

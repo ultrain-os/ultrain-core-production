@@ -2198,10 +2198,43 @@ namespace ultrainio {
     }
 
     bool Scheduler::on_accept_block_header(uint64_t chainName, const BlockHeader& blockHeader, BlockIdType& id) {
-        ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}", ("chainName", chainName)("blockNum", blockHeader.block_num()));
+        ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}", ("chainName", name(chainName))("blockNum", blockHeader.block_num()));
         std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(chainName);
-        id = lightClient->accept(blockHeader);
+        if (blockHeader.block_num() < 2 || std::string(blockHeader.proposer) == std::string("genesis")) {
+            lightClient->accept(blockHeader);
+        } else {
+            std::vector<BlockHeader> headers = getUnconfirmedHeaderFromDb(name(chainName));
+            if (headers.size() > 0) {
+                lightClient->setStartPoint(CommitteeSet(), headers.front().id());
+            }
+            for (auto e : headers) {
+                lightClient->accept(e);
+            }
+            lightClient->accept(blockHeader);
+        }
+        id = lightClient->getLatestConfirmedBlockId();
+        lightClient->reset();
         return true;
+    }
+
+    bool Scheduler::on_set_master_start_point(uint64_t chain_name, const std::string& committeeSetStr, const BlockIdType& blockId) {
+        CommitteeSet committeeSet(committeeSetStr);
+        std::shared_ptr<LightClient> lightClientPtr = LightClientMgr::getInstance()->getLightClient(chain_name);
+        return lightClientPtr->setStartPoint(committeeSet, blockId);
+    }
+
+    std::vector<BlockHeader> Scheduler::getUnconfirmedHeaderFromDb(const chain::name& chainName) {
+        try {
+            const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+            struct chain_apis::read_only::get_subchain_unconfirmed_header_params params;
+            params.subchain_name = chainName;
+            auto result = ro_api.get_subchain_unconfirmed_header(params);
+            ilog("chainName name = ${name}", ("name", chainName.to_string()));
+            return result.unconfirmed_headers;
+        } catch (fc::exception& e) {
+            ilog("There may be no unconfirmed block header : ${e}", ("e", e.to_string()));
+        }
+        return std::vector<BlockHeader>();
     }
 
     bool Scheduler::isDuplicate(const ProposeMsg& proposeMsg) {
