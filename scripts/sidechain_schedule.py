@@ -85,6 +85,11 @@ def setSchedule():
         return
     retry(args.clultrain + 'push action ultrainio setsched \'{"is_enabled": "1", "sched_period": "'+args.schedPeriod+'", "confirm_period": "'+args.confirmPeriod+'"}\' -p ultrainio@active')
 
+
+def closeSchedule():
+    print "close schedule"
+    retry(args.clultrain + 'push action ultrainio setsched \'{"is_enabled": "0", "sched_period": "600", "confirm_period": "5"}\' -p ultrainio@active')
+
 def serachTable(contract,scope,table):
     return "get table "+contract+" "+scope+" "+table
 
@@ -100,6 +105,7 @@ def showSubchains():
 commands = [
     ('T', 'transfer', transferReg, False, "transfer a producer to another chain"),
     ('S', 'set', setSchedule, False, "set side chain schedule info"),
+    ('C', 'close', closeSchedule, False, "close auto schdule"),
     ('SHOW', 'show', showSubchains, False, "show subchains info")
 ];
 parser = argparse.ArgumentParser()
