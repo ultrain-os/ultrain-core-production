@@ -40,3 +40,4 @@ contracts-console = 1
 plugin = ultrainio::chain_plugin
 plugin = ultrainio::chain_api_plugin
 plugin = ultrainio::http_plugin
+plugin = ultrainio::monitor_api_plugin
