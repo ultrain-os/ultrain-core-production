@@ -41,7 +41,5 @@ namespace ultrainio {
         std::list<BlsVoterSet> m_shouldBeConfirmedBlsVoterSetList;
 
         int m_confirmedInterval = 20;
-
-        uint32_t m_lastShouldBeConfirmedBlockNum = -1;
     };
 }

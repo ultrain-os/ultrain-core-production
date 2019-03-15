@@ -10,7 +10,7 @@ namespace ultrainio {
         if (EpochEndPoint::isEpochEndPoint(blockHeader)) {
             return true;
         }
-        if (m_lastShouldBeConfirmedBlockNum > 0 && ((blockHeader.block_num() - m_lastShouldBeConfirmedBlockNum) % m_confirmedInterval == 0)) {
+        if (blockHeader.block_num() % m_confirmedInterval == 0) {
             return true;
         }
         return false;
@@ -61,7 +61,6 @@ namespace ultrainio {
         // need Confirmed
         if (shouldBeConfirmed(blockHeader)) {
             m_shouldBeConfirmedList.push_back(blockHeader);
-            m_lastShouldBeConfirmedBlockNum = blockHeader.block_num();
             if (!blsVoterSet.empty() && blsVoterSet.commonEchoMsg.blockId == blockHeader.id()) {
                 m_shouldBeConfirmedBlsVoterSetList.push_back(blsVoterSet);
             }
@@ -110,7 +109,6 @@ namespace ultrainio {
                 blsItor++;
             }
         }
-        std::cout << "m_lastShouldBeConfirmedBlockNum = " << m_lastShouldBeConfirmedBlockNum << std::endl;
         std::cout << "m_shouldBeConfirmedList size = " <<m_shouldBeConfirmedList.size() << std::endl;
     }
 }
