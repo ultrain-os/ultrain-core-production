@@ -3,7 +3,29 @@
 
 namespace ultrainiosystem {
 
-    //const uint32_t relayer_deposit_threshold = 100000;
+    struct committee_delta {
+        std::set<account_name>    removed;
+        std::set<account_name>    added;
+
+        committee_delta(const std::vector<account_name>& previous, const std::vector<account_name>& current):
+        removed(previous.begin(), previous.end()), added(current.begin(), current.end()) {
+            workout_delta();
+        }
+
+        void workout_delta() {
+            //erase all same items, the left in previous set are all removed, and the left in current set are all new added
+            for (auto it_pre = removed.begin(); it_pre != removed.end();) {
+                auto it_cur = added.find(*it_pre);
+                if(it_cur != added.end()) {
+                    it_pre = removed.erase(it_pre);
+                    added.erase(it_cur);
+                }
+                else {
+                    ++it_pre;
+                }
+            }
+        }
+    };
 
     ///@abi action
     void system_contract::regchaintype(uint64_t type_id, uint16_t min_producer_num, uint16_t max_producer_num,
@@ -166,22 +188,149 @@ namespace ultrainiosystem {
         ultrainio_assert(type_iter != type_tbl.end(), "this chain type is not existed");
 
         _subchains.emplace( [&]( auto& new_subchain ) {
-            new_subchain.chain_name        = chain_name;
-            new_subchain.chain_type        = chain_type;
-            new_subchain.is_synced         = false;
-            new_subchain.is_schedulable    = false;
-            new_subchain.total_user_num    = 0;
-            new_subchain.chain_id          = checksum256();
-            new_subchain.committee_mroot   = checksum256();
-            new_subchain.confirmed_block_number    = 0;
-            new_subchain.highest_block_number    = 0;
+            new_subchain.chain_name         = chain_name;
+            new_subchain.chain_type         = chain_type;
+            new_subchain.is_synced          = false;
+            new_subchain.is_schedulable     = false;
+            new_subchain.committee_num      = 0;
+            new_subchain.changing_block_num = 0;
+            new_subchain.total_user_num     = 0;
+            new_subchain.chain_id           = checksum256();
+            new_subchain.committee_mroot    = checksum256();
+            new_subchain.confirmed_block_number = 0;
         });
     }
 
     /// @abi action
-    void acceptmaster(const std::vector<ultrainio::block_header>& headers) {
+    void system_contract::acceptmaster(const std::vector<ultrainio::block_header>& headers) {
         require_auth(current_sender());
         ultrainio_assert(headers.size() <= 10, "too many blocks are reported.");
+        master_chain_infos masterinfos(_self, _self);
+        ultrainio_assert(masterinfos.exists(), "master chain info has not been set");
+        master_chain master_info = masterinfos.get();
+        uint32_t confirmed_number_before = master_info.confirmed_block_number;
+        checksum256 final_confirmed_id;
+        for(uint32_t idx = 0; idx < headers.size(); ++idx) {
+            bool has_accepted = false;
+            auto block_number = headers[idx].block_num();
+            if(block_number <= master_info.confirmed_block_number) {
+                //ignore blocks whose number has been confirmed
+                continue;
+            }
+            auto block_id = headers[idx].id();
+
+            //check if it has been accepted, if not, find its previous block
+            uint32_t pre_block_index = std::numeric_limits<uint32_t>::max();
+            if(!master_info.unconfirmed_blocks.empty()) {
+                uint32_t i = master_info.unconfirmed_blocks.size() - 1;
+                //more efficient to find from the end of the vector
+                while(true) {
+                    if(master_info.unconfirmed_blocks[i].block_id == block_id &&
+                       master_info.unconfirmed_blocks[i].block_number == block_number) {
+                        //duplicated block
+                        has_accepted = true;
+                        break;
+                    }
+                    if(master_info.unconfirmed_blocks[i].block_id == headers[idx].previous &&
+                        block_number == master_info.unconfirmed_blocks[i].block_number + 1) {
+                        //previous block is found, duplicated block couldn't be added at front of it's previous
+                        //so it can break from the loop
+                        pre_block_index = i;
+                        final_confirmed_id = master_info.unconfirmed_blocks[i].block_id; // to be deleted
+                        break;
+                    }
+                    if(i == 0) {
+                        break;
+                    }
+                    i--;
+                }
+                if(has_accepted || pre_block_index >= master_info.unconfirmed_blocks.size()) {
+                    continue;
+                }
+            }
+
+            char confirm_id[32];
+            //TODO, need check whether use master_chain_name or master_info.owner
+            if(master_info.confirmed_block_number == master_info.block_height) {
+                checksum256 preid;//TODO, replace it with master_info.block_id
+                if(!accept_initial_header(master_chain_name, preid, master_info.master_prods,
+                                          headers[idx], confirm_id, sizeof(confirm_id))) {
+                    continue;
+                }
+            }
+            else if(!accept_block_header(master_chain_name, headers[idx], confirm_id, sizeof(confirm_id))) {
+                //verification failed in light client
+                continue;
+            }
+            memcpy(final_confirmed_id.hash, confirm_id, sizeof(confirm_id));
+
+            //handle confirmed block
+            auto ite_confirm_block = master_info.unconfirmed_blocks.begin();
+            for(; ite_confirm_block != master_info.unconfirmed_blocks.end(); ++ite_confirm_block) {
+                if(ite_confirm_block->block_id == final_confirmed_id) {
+                    break;
+                }
+            }
+            ultrainio_assert(ite_confirm_block != master_info.unconfirmed_blocks.end(), "error, confirm block of master is not found");
+
+            master_info.confirmed_block_number = ite_confirm_block->block_number;
+            if(ite_confirm_block->committee_mroot != master_info.committee_mroot) {
+                master_info.committee_mroot = ite_confirm_block->committee_mroot;
+                master_info.master_prods.swap(ite_confirm_block->committee_set);
+            }
+            //save current block
+            master_info.unconfirmed_blocks[pre_block_index].is_leaf = false;
+            unconfirmed_master_header uncfm_header(headers[idx], block_id, block_number);
+            master_info.unconfirmed_blocks.push_back(uncfm_header);
+        }
+        masterinfos.set(master_info);
+        //delete ancient confirmed blocks to keep only recent 1000 blocks
+        if (confirmed_number_before < master_info.confirmed_block_number ) {
+            //confirm block updated
+            block_table subchain_block_tbl(_self, master_chain_name);
+            //remove old blocks, only keep the recent 1000 blocks
+            if(master_info.confirmed_block_number > 1000) {
+                uint32_t start_num = 0;
+                if(confirmed_number_before > 1000) {
+                    start_num = confirmed_number_before - 1000;
+                }
+                for(uint32_t j = start_num; j < master_info.confirmed_block_number - 1000; ++j) {
+                    auto block_ite = subchain_block_tbl.find(uint64_t(j));
+                    if(block_ite != subchain_block_tbl.end()) {
+                        subchain_block_tbl.erase(block_ite);
+                    }
+                }
+            }
+
+            auto ite_uncfm_block = master_info.unconfirmed_blocks.begin();
+            for(; ite_uncfm_block != master_info.unconfirmed_blocks.end(); ) {
+                if(ite_uncfm_block->block_number > master_info.confirmed_block_number) {
+                    ++ite_uncfm_block;
+                }
+                // cannot filter fork blocks who have a follow-up block, we can only filter fork block as a leaf
+                else if((ite_uncfm_block->block_number < master_info.confirmed_block_number &&
+                         !ite_uncfm_block->is_leaf) ||
+                        (ite_uncfm_block->block_number == master_info.confirmed_block_number &&
+                         ite_uncfm_block->block_id == final_confirmed_id) ) {
+
+                    //add to block table
+                    auto block_ite = subchain_block_tbl.find(uint64_t(ite_uncfm_block->block_number));
+                    if(block_ite == subchain_block_tbl.end()) {
+                        print("error: a block number is confirmed twice\n");
+                    }
+                    subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
+                        new_confirmed_header = block_header_digest(ite_uncfm_block->proposer, ite_uncfm_block->block_id,
+                                            ite_uncfm_block->block_number, ite_uncfm_block->transaction_mroot);
+                    });
+                    ite_uncfm_block = master_info.unconfirmed_blocks.erase(ite_uncfm_block);
+                }
+                else {
+                    //fork branch, remove it
+                    ite_uncfm_block = master_info.unconfirmed_blocks.erase(ite_uncfm_block);
+                }
+            }
+        }
+        masterinfos.set(master_info);
     }
 
     /// @abi action
@@ -192,6 +341,9 @@ namespace ultrainiosystem {
         auto ite_chain = _subchains.find(chain_name);
         ultrainio_assert(ite_chain != _subchains.end(), "subchian is not existed.");
         bool synced = headers.size() == 10 ? false : true;
+        uint32_t confirmed_number_before = ite_chain->confirmed_block_number;
+        checksum256 final_confirmed_id;
+        bool new_confirm = false;
         for(uint32_t idx = 0; idx < headers.size(); ++idx) {
             bool has_accepted = false;
             auto block_number = headers[idx].block_num();
@@ -200,44 +352,66 @@ namespace ultrainiosystem {
                 continue;
             }
             auto block_id = headers[idx].id();
-            uint16_t pre_id = 0;
-            auto ite_parent_block = ite_chain->unconfirmed_blocks.end();
 
             //check if it has been accepted, if not, find its previous block
-            auto ite_block = ite_chain->unconfirmed_blocks.begin();
-            for(; ite_block != ite_chain->unconfirmed_blocks.end(); ++ite_block) {
-                if(ite_block->block_id == block_id && block_number == ite_block->block_number) {
-                    has_accepted = true;
-                    break;
+            uint32_t pre_block_index = std::numeric_limits<uint32_t>::max();
+            if(!ite_chain->unconfirmed_blocks.empty()) {
+                uint32_t i = ite_chain->unconfirmed_blocks.size() - 1;
+                //more efficient to find from the end of the vector
+                while(true) {
+                    if(ite_chain->unconfirmed_blocks[i].block_id == block_id &&
+                       ite_chain->unconfirmed_blocks[i].block_number == block_number) {
+                        //duplicated block
+                        has_accepted = true;
+                        break;
+                    }
+                    if(ite_chain->unconfirmed_blocks[i].block_id == headers[idx].previous &&
+                        block_number == ite_chain->unconfirmed_blocks[i].block_number + 1) {
+                        //previous block is found, duplicated block couldn't be added at front of it's previous
+                        pre_block_index = i;
+                        break;
+                    }
+                    if(i == 0) {
+                        break;
+                    }
+                    i--;
                 }
-                else if(ite_block->block_id == headers[idx].previous && block_number == ite_block->block_number + 1) {
-                    //found previous block
-                    pre_id = ite_block->fork_id;
-                    ite_parent_block = ite_block;
+                if(has_accepted) {
+                    continue;
                 }
             }
-            if(has_accepted) {
-                continue;
+            if(block_number > 1 && pre_block_index >= ite_chain->unconfirmed_blocks.size() ) {
+                    print("previous block is not found\n");
+                    continue;
             }
 
+            const account_name block_proposer = headers[idx].proposer;
+            if(block_proposer == N(genesis) || block_number == 1 || !headers[idx].header_extensions.empty()) {
+                char confirm_id[32];
+                if(!accept_block_header(chain_name, headers[idx], confirm_id, sizeof(confirm_id))) {
+                    //verification failed in light client
+                    continue;
+                }
+                memcpy(final_confirmed_id.hash, confirm_id, sizeof(confirm_id));
+                new_confirm = true;
+            }
             //find proposer and check if it should be paid for proposing this block.
-            account_name block_proposer = headers[idx].proposer;
             bool found_prod = false;
-            bool need_report = true;
+            bool need_report = false;
             if(block_proposer != N() && block_proposer != N(genesis)) {
                 auto briefprod = _briefproducers.find(block_proposer);
                 if(briefprod == _briefproducers.end()) {
                     print("acceptheader: block proposer is not a valid producer\n");
-                    need_report = false;
                 }
                 //1. find proposer in current committee
                 producers_table _producers(_self, chain_name);
                 auto prod = _producers.find(block_proposer);
                 if(prod != _producers.end() ) {
                     found_prod = true;
+                    need_report = true;
                 }
                 //2. if not found, find in deprecated committee(only for un-synced state)
-                if(!found_prod && !ite_chain->deprecated_committee.empty() ) {
+                else if(!ite_chain->deprecated_committee.empty() ) {
                     for(auto ite_prod = ite_chain->deprecated_committee.begin();
                         ite_prod != ite_chain->deprecated_committee.end(); ++ite_prod) {
                         if(ite_prod->owner == block_proposer) {
@@ -247,187 +421,148 @@ namespace ultrainiosystem {
                         }
                     }
                 }
+                //3. still not found, find in changing info
                 if(!found_prod) {
-                    //no reward for the producer. assert is not suggested to be used here
-                    need_report = false;
-                }
-            }
-            else {
-                need_report = false; //Don't pay for null block and all blocks produced by genesis
-            }
-
-            // veirfy block header ext
-            const ultrainio::extensions_type& exts = headers[idx].header_extensions;
-            print("acceptheader verify block header exts.size : ", exts.size(), "\n");
-            for (const auto& t : exts) {
-                uint16_t k = std::get<0>(t);
-                if (k == 0) { // check point, verify bls
-                    std::vector<char> vc = std::get<1>(t);
-                    std::string blsData;
-                    blsData.assign(vc.begin(), vc.end());
-//                    int verify = verify_header_extensions(chain_name, k, blsData.c_str(), blsData.length());
-//                    ultrainio_assert(verify == 0, "verify header ext error.");
-                }
-                else if(k == 2) { //confirm point, verify committee member and committee_mroot
+                    for(auto ite_rm = ite_chain->changing_info.removed_members.begin();
+                        ite_rm != ite_chain->changing_info.removed_members.end(); ++ite_rm) {
+                        if(ite_rm->owner == block_proposer) {
+                            found_prod = true;
+                            need_report = true; //TODO, check expire time by operating time
+                            break;
+                        }
+                    }
                 }
             }
 
-            block_header_digest confirmed_header;
-            //add block head to table
-            if(1 == block_number) {
-                //same block case has been filtered above, so the genesis block should be the first one in this subchain
-                ultrainio_assert(ite_chain->unconfirmed_blocks.empty(), "a sidechain can only accept one genesis block");
-                _subchains.modify(ite_chain, [&]( auto& _subchain ) {
-                    _subchain.chain_id          = headers[idx].action_mroot; //save chain id
-                    _subchain.genesis_time      = headers[idx].timestamp;
-                    _subchain.is_schedulable    = true;
-                    _subchain.confirmed_block_number = 1;
-                    _subchain.highest_block_number = 1;
+            _subchains.modify(ite_chain, [&]( auto& _subchain ) {
+                unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, need_report, synced);
+                if(block_number > 1) {
+                    _subchain.unconfirmed_blocks[pre_block_index].is_leaf = false;
+                }
+                _subchain.unconfirmed_blocks.push_back(uncfm_header);
 
-                    unconfirmed_block_header temp_header;
-                    temp_header.fork_id       = 0x0001;
-                    temp_header.block_id      = block_id;
-                    temp_header.block_number  = 1;
-                    temp_header.to_be_paid    = need_report;
-                    temp_header.is_leaf       = true;
-                    temp_header.proposer      = headers[idx].proposer;
-                    temp_header.committee_mroot = headers[idx].committee_mroot;
-                    temp_header.transaction_mroot = headers[idx].transaction_mroot;
-                    _subchain.unconfirmed_blocks.push_back(temp_header);
-                });
-
-                confirmed_header.proposer          = headers[idx].proposer;
-                confirmed_header.block_id          = block_id;
-                confirmed_header.block_number      = 1;
-                confirmed_header.transaction_mroot = headers[idx].transaction_mroot;
-            }
-            else {
-                ultrainio_assert(pre_id != 0 && ite_parent_block != ite_chain->unconfirmed_blocks.end(), "previous block is not found");
-                _subchains.modify(ite_chain, [&]( auto& _subchain ) {
-                    uint16_t my_sequence = 1;
-                    if(_subchain.highest_block_number >= block_number ) {
-                        //fork happened, find right id of current block
-                        uint16_t temp_id = my_sequence + uint16_t(pre_id << 4);
-                        auto ite_block_s = ++ite_parent_block;//loop from it's parent, children are all behind of their previous block
-                        for(; ite_block_s != _subchain.unconfirmed_blocks.end(); ++ite_block_s) {
-                            if(ite_block_s->fork_id == temp_id) {
-                                ++my_sequence;
-                                ultrainio_assert(my_sequence < 16, "too many forks"); //hex can only support maximum 15 forks
-                                ++temp_id;
-                            }
-                        }
-                    }
-                    else{
-                        _subchain.highest_block_number = block_number;
+                if(!new_confirm) {
+                    return;
+                }
+                auto ite_confirm_block = _subchain.unconfirmed_blocks.end();
+                // currenr block is confirmed immediately，it must be block 1 or producerd by genesis
+                if(final_confirmed_id == block_id) {
+                    if(1 == block_number) {
+                        //same block case has been filtered above
+                        ultrainio_assert(_subchain.unconfirmed_blocks.size() == 1, "a sidechain can only accept one genesis block");
+                        _subchain.chain_id          = headers[idx].action_mroot; //save chain id
+                        _subchain.genesis_time      = headers[idx].timestamp;
+                        _subchain.is_schedulable    = true;
                     }
 
-                    //need update latest confirm block
-                    if(pre_id > 0x1110) {
-                        uint16_t confirm_id = (pre_id & 0x0F00) >> 8;
-                        if(block_number > 4) {
-                            _subchain.confirmed_block_number = block_number - 3;
+                    ite_confirm_block = _subchain.unconfirmed_blocks.end();
+                    --ite_confirm_block;
+                }
+                else {
+                    ite_confirm_block = _subchain.unconfirmed_blocks.begin();
+                    for(; ite_confirm_block != _subchain.unconfirmed_blocks.end(); ++ite_confirm_block) {
+                        if(ite_confirm_block->block_id == final_confirmed_id) {
+                            break;
                         }
-                        auto ite_confirm_block = _subchain.unconfirmed_blocks.end();
-                        //update all blocks' id, and erase obsolete blocks, also get the confirm block info
-                        auto ite_block_a = _subchain.unconfirmed_blocks.begin();
-                        for(; ite_block_a != _subchain.unconfirmed_blocks.end(); ) {
-                            uint16_t x_id = 0;
-                            if(ite_block_a->fork_id <= 0x000F) {
-                                //need removed
-                            }
-                            else if(ite_block_a->fork_id <= 0x00FF) {
-                                ite_block_a->fork_id &= 0x000F;
-                                if(ite_block_a->fork_id == confirm_id) {
-                                    ite_confirm_block = ite_block_a;
-                                }
-                                  x_id = ite_block_a->fork_id;
-                            }
-                            else if(ite_block_a->fork_id <= 0x0FFF) {
-                                ite_block_a->fork_id &= 0x00FF;
-                                x_id = (ite_block_a->fork_id & 0x00F0) >> 4;
-                            }
-                            else{
-                                if(pre_id == ite_block_a->fork_id) {
-                                    ite_block_a->is_leaf = false;
-                                }
-                                ite_block_a->fork_id &= 0x0FFF;
-                                x_id = (ite_block_a->fork_id & 0x0F00) >> 8;
-                            }
+                    }
+                }
+                ultrainio_assert(ite_confirm_block != _subchain.unconfirmed_blocks.end(), "error, confirm block is not found");
 
-                            //remove all children if it's not derived from current confirm block
-                            if(x_id != confirm_id) {
-                                ite_block_a = _subchain.unconfirmed_blocks.erase(ite_block_a);
-                            }
-                            else {
-                                ++ite_block_a;
-                            }
+                if (confirmed_number_before == ite_confirm_block->block_number) {
+                    return;
+                }
+                //handle new confirmed block
+                _subchain.confirmed_block_number = ite_confirm_block->block_number;
+                if(ite_confirm_block->committee_mroot != _subchain.committee_mroot) {
+                    _subchain.committee_mroot = ite_confirm_block->committee_mroot;
+                    //get committee delta
+                    committee_delta compare_delta(_subchain.committee_set, ite_confirm_block->committee_set);
+                    for(auto it_rm = _subchain.changing_info.removed_members.begin();
+                             it_rm != _subchain.changing_info.removed_members.end();) {
+                        if(compare_delta.removed.find(it_rm->owner) != compare_delta.removed.end()) {
+                            it_rm = _subchain.changing_info.removed_members.erase(it_rm);
                         }
-                        ultrainio_assert(ite_confirm_block != _subchain.unconfirmed_blocks.end(), "error, confirm block is not found");
-
-                        _subchain.confirmed_block_number = ite_confirm_block->block_number;
-                        //TODO, remove the below 3 lines, more detail check of confirm point
-                        if(ite_confirm_block->committee_mroot != _subchain.committee_mroot) {
-                            _subchain.committee_mroot = ite_confirm_block->committee_mroot;
-                            _subchain.is_schedulable  = true;
-                            _subchain.changing_info.clear();
-                        }
-                        _subchain.is_synced = ite_confirm_block->is_synced;
-                        if(_subchain.is_synced) {
-                            _subchain.deprecated_committee.clear();
-                        }
-                        //record proposer for rewards
-                        if(ite_confirm_block->to_be_paid) {
-                            reportblocknumber( ite_chain->chain_name, ite_chain->chain_type, ite_confirm_block->proposer, 1);
-                        }
-                        //save confirmed block
-                        confirmed_header.proposer          = ite_confirm_block->proposer;
-                        confirmed_header.block_id          = ite_confirm_block->block_id;
-                        confirmed_header.block_number      = ite_confirm_block->block_number;
-                        confirmed_header.transaction_mroot = ite_confirm_block->transaction_mroot;
-                    }
-                    else {
-                        auto ite_block_b = _subchain.unconfirmed_blocks.begin();
-                        for(; ite_block_b != _subchain.unconfirmed_blocks.end(); ++ite_block_b) {
-                            if(ite_block_b->fork_id == pre_id) {
-                                ite_block_b->is_leaf = false;
-                                break;
-                            }
+                        else {
+                            ++it_rm;
                         }
                     }
-                    //add in current block
-                    unconfirmed_block_header temp_header;
-                    temp_header.fork_id       = my_sequence + uint16_t(pre_id << 4);
-                    temp_header.block_id      = block_id;
-                    temp_header.block_number  = block_number;
-                    temp_header.to_be_paid    = need_report;
-                    temp_header.is_leaf       = true;
-                    if(idx == headers.size() - 1) {
-                        temp_header.is_synced     = synced; //update sync state of this block at the end of this action
+                    for(auto it_add = _subchain.changing_info.new_added_members.begin();
+                             it_add != _subchain.changing_info.new_added_members.end();) {
+                        if(compare_delta.added.find(it_add->owner) != compare_delta.added.end()) {
+                            it_add = _subchain.changing_info.new_added_members.erase(it_add);
+                        }
+                        else {
+                            ++it_add;
+                       }
                     }
-                    else {
-                        temp_header.is_synced = _subchain.is_synced; //keep previous value
+                    if(_subchain.changing_info.empty()) {
+                        _subchain.is_schedulable = true;
                     }
-                    temp_header.proposer      = headers[idx].proposer;
-                    temp_header.committee_mroot = headers[idx].committee_mroot;
-                    temp_header.transaction_mroot = headers[idx].transaction_mroot;
-                    _subchain.unconfirmed_blocks.push_back(temp_header);
-                    _subchain.unconfirmed_blocks.shrink_to_fit();
-                });
-            }
-            if(confirmed_header.block_number != 0){
-                block_table subchain_block_tbl(_self, chain_name);
-                auto block_ite = subchain_block_tbl.find(uint64_t(confirmed_header.block_number));
-                ultrainio_assert(block_ite == subchain_block_tbl.end(), "a block number can not be confirmed twice");
-                if(confirmed_header.block_number > 1000) {
-                    block_ite = subchain_block_tbl.find(uint64_t(confirmed_header.block_number - 1000));
+                    _subchain.committee_set.swap(ite_confirm_block->committee_set);//confirmed block will be erased
+                }
+                if(!_subchain.is_synced && ite_confirm_block->is_synced && !_subchain.deprecated_committee.empty()) {
+                    _subchain.deprecated_committee.clear();
+                }
+                _subchain.is_synced = ite_confirm_block->is_synced;
+            });
+        }
+        if (new_confirm && confirmed_number_before < ite_chain->confirmed_block_number ) {
+            //confirm block updated
+            block_table subchain_block_tbl(_self, chain_name);
+            //remove old blocks, only keep the recent 1000 blocks
+            if(ite_chain->confirmed_block_number > 1000) {
+                uint32_t start_num = 0;
+                if(confirmed_number_before > 1000) {
+                    start_num = confirmed_number_before - 1000;
+                }
+                for(uint32_t j = start_num; j < ite_chain->confirmed_block_number - 1000; ++j) {
+                    auto block_ite = subchain_block_tbl.find(uint64_t(j));
                     if(block_ite != subchain_block_tbl.end()) {
                         subchain_block_tbl.erase(block_ite);
                     }
                 }
-                subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
-                    new_confirmed_header = confirmed_header;
-                });
             }
+            _subchains.modify(ite_chain, [&]( auto& _subchain ) {
+                auto ite_uncfm_block = _subchain.unconfirmed_blocks.begin();
+                for(; ite_uncfm_block != _subchain.unconfirmed_blocks.end(); ) {
+                    if(ite_uncfm_block->block_number > _subchain.confirmed_block_number) {
+                        ++ite_uncfm_block;
+                    }
+                    // cannot filter fork blocks who have a follow-up block, we can only filter fork block as a leaf
+                    else if((confirmed_number_before < ite_uncfm_block->block_number &&
+                             ite_uncfm_block->block_number < _subchain.confirmed_block_number &&
+                             !ite_uncfm_block->is_leaf) ||
+                            (ite_uncfm_block->block_number == _subchain.confirmed_block_number &&
+                             ite_uncfm_block->block_id == final_confirmed_id) ) {
+
+                        //add to block table
+                        auto block_ite = subchain_block_tbl.find(uint64_t(ite_uncfm_block->block_number));
+                        if(block_ite != subchain_block_tbl.end()) {
+                            //pay for the first one, since it's hard to distigush which is right
+                            print("error: a block number is confirmed twice\n");
+                        }
+                        else if(ite_uncfm_block->to_be_paid) {
+                            //apply reward for its proposer
+                            reportblocknumber(chain_name, ite_chain->chain_type, ite_uncfm_block->proposer, 1);
+                        }
+                        subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
+                            new_confirmed_header = block_header_digest(ite_uncfm_block->proposer, ite_uncfm_block->block_id,
+                                                   ite_uncfm_block->block_number, ite_uncfm_block->transaction_mroot);
+                        });
+                        if(ite_uncfm_block->block_number == _subchain.confirmed_block_number) {
+                            //don't remove current confirmed block
+                            ++ite_uncfm_block;
+                        }
+                        else {
+                            ite_uncfm_block = _subchain.unconfirmed_blocks.erase(ite_uncfm_block);
+                        }
+                    }
+                    else {
+                        //confirmed_number_before(has been added before, but still kept in subchain) or fork branch, just remove it
+                        ite_uncfm_block = _subchain.unconfirmed_blocks.erase(ite_uncfm_block);
+                    }
+                }
+            });
         }
     }
 
@@ -449,11 +584,9 @@ namespace ultrainiosystem {
             _subchain.is_synced         = false;
             _subchain.is_schedulable    = false;
             _subchain.total_user_num    = 0;
-            _subchain.changing_block_num  = 0;
             _subchain.chain_id          = checksum256();
             _subchain.committee_mroot   = checksum256();
             _subchain.confirmed_block_number = 0;
-            _subchain.highest_block_number = 0;
             _subchain.unconfirmed_blocks.clear();
             _subchain.unconfirmed_blocks.shrink_to_fit();
         });
@@ -465,6 +598,11 @@ namespace ultrainiosystem {
                 p.unpaid_balance = 0;
                 p.total_produce_block = 0;
             });
+        }
+        block_table subchain_block_tbl(_self, chain_name);
+        auto it_blk = subchain_block_tbl.begin();
+        while (it_blk != subchain_block_tbl.end()) {
+            it_blk = subchain_block_tbl.erase(it_blk);
         }
     }
 
@@ -585,9 +723,11 @@ namespace ultrainiosystem {
         uint16_t                          sched_out_num = 0;
         uint16_t                          gap_to_next_level = 0;
         uint8_t                           sched_random_factor = 0; //used for random order
+        uint16_t                          inc_step = 1;
         subchains_table::const_iterator   chain_ite;
 
-        chain_sched_info(uint16_t out, uint16_t gap_to_nl, uint8_t random_factor, subchains_table::const_iterator ite):sched_out_num(out),gap_to_next_level(gap_to_nl),sched_random_factor(random_factor),chain_ite(ite) {}
+        chain_sched_info(uint16_t out, uint16_t gap_to_nl, uint8_t random_factor, uint16_t is, subchains_table::const_iterator ite)
+         :sched_out_num(out),gap_to_next_level(gap_to_nl),sched_random_factor(random_factor),inc_step(is),chain_ite(ite) {}
     };
 
     bool compare_gt(const chain_sched_info& chain1, const chain_sched_info& chain2) {
@@ -644,7 +784,7 @@ namespace ultrainiosystem {
             auto out_num = (chain_iter->committee_num - type_iter->stable_min_producers)/type_iter->sched_inc_step;
             auto gap = type_iter->sched_inc_step - (chain_iter->committee_num - type_iter->stable_min_producers)%type_iter->sched_inc_step;
             uint8_t rf = head_block_hash.hash[31 - index_in_list % 30] + uint8_t(index_in_list / 30);//first 2 bytes are always 0, so here we use 30 =32 -2
-            out_list.emplace_back(out_num, gap, rf, chain_iter);
+            out_list.emplace_back(out_num, gap, rf, type_iter->sched_inc_step, chain_iter);
         }
 
         print( "[schedule] out list size: ", out_list.size(), "\n" );
@@ -657,14 +797,13 @@ namespace ultrainiosystem {
 
         ////start 1st scheduling, this step is for balance
         auto min_sched_chain  = out_list.end();
-        min_sched_chain--;
+        --min_sched_chain;
 
         print("[schedule] step 1:\n");
         auto out_iter = out_list.begin();
-        for(; out_iter != min_sched_chain && out_iter != out_list.end() && compare_gt(*out_iter, *min_sched_chain) ; ++out_iter) {
+        for(; out_iter != min_sched_chain && out_iter != out_list.end() && compare_gt(*out_iter, *min_sched_chain); ++out_iter) {
             print("[schedule] out_chain: ", name{out_iter->chain_ite->chain_name});
-            print(" can move out at most: ", uint32_t(out_iter->sched_out_num));
-            print(" producers to in_chain: ", name{min_sched_chain->chain_ite->chain_name}, "\n");
+            print(" can move out at most: ", uint32_t(out_iter->sched_out_num), " producers\n");
             bool quit_loop = false;
             for(uint16_t out_idx = 0; out_idx < out_iter->sched_out_num; ++out_idx ) {
                 if(!move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, uint64_t(block_height)) ) {
@@ -682,6 +821,17 @@ namespace ultrainiosystem {
                         quit_loop = true;
                         break;
                     }
+                }
+                if(out_iter->gap_to_next_level > out_iter->inc_step) {
+                   out_iter->gap_to_next_level -= out_iter->inc_step;
+                   if (out_iter->sched_out_num > 0 ) {
+                       out_iter->sched_out_num -= 1;
+                   }
+                }
+                if(!compare_gt(*out_iter, *min_sched_chain)) {
+                    //get balanced
+                    quit_loop = true;
+                    break;
                 }
             }
             if(quit_loop) {
@@ -787,6 +937,7 @@ namespace ultrainiosystem {
         }
     }
 
+//TODO, need whole block header info
     void system_contract::forcesetblock(name chain_name, block_header_digest header_dig, checksum256 committee_mrt) {
         //set confirm block of subchain
         require_auth(N(ultrainio));
@@ -795,13 +946,11 @@ namespace ultrainiosystem {
         uint32_t current_confirmed_number = ite_chain->confirmed_block_number;
         _subchains.modify(ite_chain, [&]( auto& _subchain ) {
             _subchain.confirmed_block_number = header_dig.block_number;
-            _subchain.highest_block_number   = header_dig.block_number;
             _subchain.unconfirmed_blocks.clear();
             _subchain.is_synced = false;
             _subchain.is_schedulable = true;
 
             unconfirmed_block_header temp_header;
-            temp_header.fork_id       = 0x0001;
             temp_header.block_id      = header_dig.block_id;
             temp_header.block_number  = header_dig.block_number;
             temp_header.to_be_paid    = false;

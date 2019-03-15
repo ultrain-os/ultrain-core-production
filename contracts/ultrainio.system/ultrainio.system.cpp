@@ -64,9 +64,8 @@ namespace ultrainiosystem {
    void system_contract::setmasterchaininfo( const master_chain_info& chaininfo ){
       require_auth( _self );
       master_chain_infos masterinfos(_self, _self);
-      masterinfos.emplace( [&]( master_chain_info& info ) {
-         info = chaininfo;
-      });
+      ultrainio_assert(!masterinfos.exists(), "master chain info has been set");
+      masterinfos.set(master_chain(chaininfo));
    }
    void system_contract::setparams( const ultrainio::blockchain_parameters& params ) {
       require_auth( N(ultrainio) );
@@ -480,6 +479,25 @@ void system_contract::voteresourcelease() {
       return lightclient_accept_block_header(chain_name, header_bytes.data(), header_bytes.size(), confirmed_bh_hash, hash_len);
     }
 
+    bool system_contract::accept_initial_header(name chain_name, const checksum256& previous_id, const std::vector<role_base>& committee_set , const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_len) {
+      std::stringstream ss;
+      for(size_t i = 0; i < committee_set.size(); ++i) {
+          ultrainstd::CommitteeInfo committeeInfo(name{committee_set[i].owner}.to_string(), committee_set[i].producer_key, committee_set[i].bls_key);
+          committeeInfo.toStrStream(ss);
+          if(i != committee_set.size() - 1 ) {
+              ss << " ";
+          }
+      }
+      bytes committee_set_bytes;
+      committee_set_bytes.resize(ss.str().size());
+      committee_set_bytes.assign(ss.str().begin(), ss.str().end());
+      bytes header_bytes = pack(header);
+      char blockid[32];
+      size_t size = std::min(sizeof(blockid), sizeof(previous_id));
+      memcpy(blockid, previous_id.hash, size);
+      return lightclient_accept_initial_header(chain_name, blockid, size, committee_set_bytes.data(), committee_set_bytes.size(), header_bytes.data(), header_bytes.size(), confirmed_bh_hash, hash_len );
+    }
+
    /**
     *  Called after a new account is created. This code enforces resource-limits rules
     *  for new accounts as well as new account naming conventions.
@@ -543,7 +561,8 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // reward.cpp
      (onblock)(claimrewards)
      // scheduler.cpp
-     (regchaintype)(regsubchain)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)(setsched)(forcesetblock)
+     (regchaintype)(regsubchain)(acceptmaster)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)
+     (setsched)(forcesetblock)
      // synctransaction.cpp
      (synctransfer)
 )

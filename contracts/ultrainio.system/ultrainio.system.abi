@@ -153,7 +153,7 @@
       "fields": [
         {"name": "is_enabled",                 "type": "bool"},
         {"name": "sched_period",               "type": "uint16"},
-        {"name": "confirm_period",             "type": "uint16"}
+        {"name": "expire_time",                "type": "uint16"}
        ]
     },{
         "name": "extension",
@@ -175,6 +175,12 @@
         {"name": "committee_mroot",   "type": "checksum256"},
         {"name": "header_extensions", "type": "extension[]"}
      ]
+    },{
+      "name": "acceptmaster",
+      "base": "",
+      "fields": [
+        {"name": "headers",             "type": "block_header[]"}
+      ]
     },{
       "name": "acceptheader",
       "base": "",
@@ -418,7 +424,9 @@
       "fields": [
          {"name":"owner",                    "type":"account_name"},
          {"name":"master_prods",             "type":"role_base[]"},
-         {"name":"block_height",             "type":"uint64"}
+         {"name":"block_height",             "type":"uint64"},
+         {"name":"block_id",                 "type":"string"},
+         {"name":"master_chain_ext",          "type":"extension[]"}
       ]
     },{
       "name": "ultrainio_global_state",
@@ -530,14 +538,16 @@
        ]
     },{
      "name": "unconfirmed_block_header",
-      "base": "block_header_digest",
+      "base": "block_header",
       "fields": [
-        {"name": "fork_id",                       "type": "uint16"},
+        {"name": "block_id",                      "type": "block_id_type"},
+        {"name": "block_number",                  "type": "uint32"},
         {"name": "to_be_paid",                    "type": "bool"},
         {"name": "is_leaf",                       "type": "bool"},
         {"name": "is_synced",                     "type": "bool"},
-        {"name": "committee_mroot",               "type": "checksum256"},
-        {"name": "committee_info",                "type": "string"}
+        {"name": "committee_set",                 "type": "account_name[]"},
+        {"name": "trx_hashs",                     "type": "checksum256[]"},
+        {"name": "table_extension",               "type": "extension[]"}
        ]
     },{
      "name": "subchain",
@@ -558,8 +568,25 @@
         {"name": "chain_id",                      "type": "checksum256"},
         {"name": "committee_mroot",               "type": "checksum256"},
         {"name": "confirmed_block_number",        "type": "uint32"},
-        {"name": "highest_block_number",          "type": "uint32"},
+        {"name": "committee_set",                 "type": "account_name[]"},
         {"name": "unconfirmed_blocks",            "type": "unconfirmed_block_header[]"},
+        {"name": "table_extension",               "type": "extension[]"}
+       ]
+    },{
+      "name": "unconfirmed_master_header",
+      "base": "block_header_digest",
+      "fields": [
+        {"name": "is_leaf",                    "type": "bool"},
+        {"name": "committee_mroot",            "type": "checksum256"},
+        {"name": "committee_set",              "type": "role_base[]"}
+       ]
+    },{
+      "name": "master_chain",
+      "base": "master_chain_info",
+      "fields": [
+        {"name": "committee_mroot",               "type": "checksum256"},
+        {"name": "confirmed_block_number",        "type": "uint32"},
+        {"name": "unconfirmed_blocks",            "type": "unconfirmed_master_header[]"},
         {"name": "table_extension",               "type": "extension[]"}
        ]
     },{
@@ -820,6 +847,10 @@
       "type": "regsubchain",
       "ricardian_contract": ""
    },{
+      "name": "acceptmaster",
+      "type": "acceptmaster",
+      "ricardian_contract": ""
+   },{
       "name": "acceptheader",
       "type": "acceptheader",
       "ricardian_contract": ""
@@ -985,11 +1016,11 @@
       "key_names": ["owner"],
       "key_types": ["uint64"]
     },{
-      "name": "masterinfos",
-      "type": "master_chain_info",
+      "name": "masterchain",
+      "type": "master_chain",
       "index_type": "i64",
-      "key_names": ["owner"],
-      "key_types": ["uint64"]
+      "key_names": [],
+      "key_types": []
     }
    ],
    "ricardian_clauses": [],

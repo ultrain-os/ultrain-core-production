@@ -8,8 +8,10 @@
 #include <ultrainiolib/datastream.hpp>
 #include <ultrainiolib/time.hpp>
 #include <ultrainiolib/serialize.hpp>
-#include <string>
+#include <ultrainiolib/committee_info.hpp>
 #include <iostream>
+#include <vector>
+#include <string>
 
 namespace ultrainio {
 
@@ -21,6 +23,13 @@ namespace ultrainio {
             | (((x >> 0x08) & 0xFF) << 0x10)
             | (((x        ) & 0xFF) << 0x18);
     }
+
+    enum BlockHeaderExtKey {
+        kPreCheckPointId = 0,
+        kNextCommitteeMroot,
+        kCommitteeSet,
+        kBlsVoterSet
+    };
 
     struct block_header {
       block_timestamp_type             timestamp;
@@ -71,5 +80,15 @@ namespace ultrainio {
           return endian_reverse_u32(_hash64);
       }
     };
+
+    vector<account_name> get_committee(const string& committee_str) {
+        vector<account_name> committee_vct;
+        std::stringstream ss(committee_str);
+        ultrainstd::CommitteeInfo committeeInfo;
+        while(committeeInfo.fromStrStream(ss)) {
+            committee_vct.push_back(string_to_name(committeeInfo.accountName.c_str()));
+        }
+        return committee_vct;
+    }
 
 }

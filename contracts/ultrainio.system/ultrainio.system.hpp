@@ -91,8 +91,20 @@ namespace ultrainiosystem {
       std::string           producer_key; /// a packed public key objec
       std::string           bls_key;
 
+      role_base() {}
+      role_base(account_name acc, std::string pk, std::string bk):owner(acc),producer_key(pk),bls_key(bk) {}
       ULTRAINLIB_SERIALIZE(role_base, (owner)(producer_key)(bls_key) )
    };
+
+   vector<role_base> get_committee_set(const string& committee_str) {
+        vector<role_base> committee_vct;
+        std::stringstream ss(committee_str);
+        ultrainstd::CommitteeInfo committeeInfo;
+        while(committeeInfo.fromStrStream(ss)) {
+            committee_vct.emplace_back(N(committeeInfo.accountName), committeeInfo.pk, committeeInfo.blsPk);
+        }
+        return committee_vct;
+    }
 
    struct disabled_producer : public role_base{
       int64_t               total_cons_staked = 0;
@@ -167,12 +179,14 @@ namespace ultrainiosystem {
    };
 
    struct master_chain_info {
-      account_name            owner;
-      std::vector<role_base>  master_prods;
-      uint64_t                block_height = 0;
-      auto primary_key()const { return owner; }
-      ULTRAINLIB_SERIALIZE(master_chain_info, (owner)(master_prods)(block_height) )
-    };
+       account_name                         owner;
+       std::vector<role_base>               master_prods;
+       uint64_t                             block_height = 0;
+       std::string                          block_id;
+       ultrainio::extensions_type           master_chain_ext;
+       ULTRAINLIB_SERIALIZE(master_chain_info, (owner)(master_prods)(block_height)(block_id)(master_chain_ext) )
+   };
+
    typedef ultrainio::multi_index<N(briefprod),producer_brief> producer_brief_table;
    typedef ultrainio::multi_index<N(pendingminer),pending_miner> pendingminers;
    typedef ultrainio::multi_index<N(pendingacc),pending_acc> pendingaccounts;
@@ -181,7 +195,6 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index<N(producers), producer_info> producers_table;
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
    typedef ultrainio::multi_index< N(wshash), subchain_ws_hash>      subchain_hash_table;
-   typedef ultrainio::multi_index<N(masterinfos),master_chain_info> master_chain_infos;
    struct chaintype {
        uint64_t type_id;
        uint16_t stable_min_producers;
@@ -230,22 +243,42 @@ namespace ultrainiosystem {
 
        auto primary_key() const { return uint64_t(block_number); }
 
+       block_header_digest() {}
+       block_header_digest(const account_name& pper, const block_id_type& b_id, uint32_t b_n, const checksum256& tx_mroot):
+                proposer(pper), block_id(b_id), block_number(b_n), transaction_mroot(tx_mroot) {}
+
        ULTRAINLIB_SERIALIZE(block_header_digest, (proposer)(block_id)(block_number)
                             (transaction_mroot)(trx_hashs)(table_extension))
    };
 
    typedef ultrainio::multi_index<N(blockheaders), block_header_digest> block_table;
 
-   struct unconfirmed_block_header : public block_header_digest {
-       uint16_t                  fork_id;
-       bool                      to_be_paid;    //should block proposer be paid when this block was confirmed
-       bool                      is_leaf;       //leaf in the fork tree
-       bool                      is_synced;
-       checksum256               committee_mroot;
-       std::string               committee_info; //parse it when it's confirmed
+   struct unconfirmed_block_header : public ultrainio::block_header {
+       block_id_type              block_id;
+       uint32_t                   block_number = 0;
+       bool                       to_be_paid;    //should block proposer be paid when this block was confirmed
+       bool                       is_leaf = true;       //leaf in the fork tree
+       bool                       is_synced;
+       std::vector<account_name>  committee_set;
+       std::vector<checksum256>   trx_hashs;
+       ultrainio::extensions_type           table_extension;
 
-       ULTRAINLIB_SERIALIZE_DERIVED(unconfirmed_block_header, block_header_digest,
-                                    (fork_id)(to_be_paid)(is_leaf)(is_synced)(committee_mroot)(committee_info))
+       unconfirmed_block_header() {}
+       unconfirmed_block_header(const ultrainio::block_header& header, const block_id_type& b_id, uint32_t b_n,
+                                bool need_pay, bool is_sync) : ultrainio::block_header(header), block_id(b_id),
+                                block_number(b_n), to_be_paid(need_pay), is_leaf(true), is_synced(is_sync) {
+           for (const auto& e : header_extensions) {
+               BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
+               if (key == kCommitteeSet) {
+                   const std::vector<char>& vc = std::get<1>(e);
+                   committee_set = get_committee(std::string(vc.begin(), vc.end()));
+                   break;
+               }
+           }
+       }
+
+       ULTRAINLIB_SERIALIZE_DERIVED(unconfirmed_block_header, ultrainio::block_header,(block_id)(block_number)
+                                    (to_be_paid)(is_leaf)(is_synced)(committee_set)(trx_hashs)(table_extension))
    };
 
    struct subchain {
@@ -257,27 +290,64 @@ namespace ultrainiosystem {
        bool                      is_schedulable;
        uint16_t                  committee_num;
        std::vector<role_base>    deprecated_committee;//keep history producers for un-synced chain, clear it once synced
-       changing_committee        changing_info; //has changed but not be confirmed by subchian's block header.
+       changing_committee        changing_info; //has changed but not be confirmed by subchain's block header.
        uint32_t                  changing_block_num; //last block number in master when changing its committee
        std::vector<user_info>    recent_users;
        uint32_t                  total_user_num;
        checksum256               chain_id;
        checksum256               committee_mroot;
        uint32_t                  confirmed_block_number;
-       uint32_t                  highest_block_number;
-       //actually the last confirmed block is also stored in this vector
+       std::vector<account_name> committee_set;//current committee set reported by subchain
        std::vector<unconfirmed_block_header>  unconfirmed_blocks;
        ultrainio::extensions_type           table_extension;
 
        auto primary_key()const { return chain_name; }
 
        ULTRAINLIB_SERIALIZE(subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_synced)
-                            (is_schedulable)(committee_num)(deprecated_committee)
-                            (changing_info)(changing_block_num)(recent_users)(total_user_num)(chain_id)
-                            (committee_mroot)(confirmed_block_number)(highest_block_number)
-                            (unconfirmed_blocks)(table_extension) )
+                            (is_schedulable)(committee_num)(deprecated_committee)(changing_info)
+                            (changing_block_num)(recent_users)(total_user_num)(chain_id)(committee_mroot)
+                            (confirmed_block_number)(committee_set)(unconfirmed_blocks)(table_extension) )
    };
    typedef ultrainio::multi_index<N(subchains), subchain> subchains_table;
+
+   struct unconfirmed_master_header : public ultrainio::block_header {
+       block_id_type              block_id;
+       uint32_t                   block_number = 0;
+       bool                       is_leaf = true;       //leaf in the fork tree
+       std::vector<role_base>     committee_set;
+       std::vector<checksum256>   trx_hashs;
+       ultrainio::extensions_type           table_extension;
+
+       unconfirmed_master_header() {}
+       unconfirmed_master_header(const ultrainio::block_header& header, const block_id_type& b_id, uint32_t b_n)
+                                : ultrainio::block_header(header), block_id(b_id), block_number(b_n), is_leaf(true) {
+           for (const auto& e : header_extensions) {
+               BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
+               if (key == kCommitteeSet) {
+                   const std::vector<char>& vc = std::get<1>(e);
+                   committee_set = get_committee_set(std::string(vc.begin(), vc.end()));
+                   break;
+               }
+           }
+       }
+   };
+
+   struct master_chain : public master_chain_info {
+       checksum256               committee_mroot;
+       uint32_t                  confirmed_block_number;
+       std::vector<unconfirmed_master_header>  unconfirmed_blocks;
+       ultrainio::extensions_type              table_extension;
+
+       master_chain() {}
+       master_chain(const master_chain_info& super): master_chain_info(super), committee_mroot(checksum256()),
+                    confirmed_block_number(uint32_t(super.block_height)) {
+           //TODO, calculte initial committee mroot by master_chain_info
+       }
+
+       ULTRAINLIB_SERIALIZE_DERIVED(master_chain, master_chain_info, (committee_mroot)(confirmed_block_number)
+                                    (unconfirmed_blocks)(table_extension))
+   };
+   typedef ultrainio::singleton<N(masterchain),master_chain> master_chain_infos;
 
    struct ultrainio_system_params {
       ultrainio_system_params(){}
@@ -342,6 +412,7 @@ namespace ultrainiosystem {
          sched_set_singleton      _schedsetting;
 
          bool accept_block_header(name chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_size);
+         bool accept_initial_header(name chain_name, const checksum256& previous_id, const std::vector<role_base>& committee_set , const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_len);
 
       public:
          system_contract( account_name s );
@@ -395,7 +466,7 @@ namespace ultrainiosystem {
                                  uint64_t blocknum,
                                  checksum256 hash,
                                  uint64_t file_size);
-         void setsched(bool is_enabled, uint16_t sched_period, uint16_t confirm_period);
+         void setsched(bool is_enabled, uint16_t sched_period, uint16_t expire_time);
          void forcesetblock(name chain_name,
                             block_header_digest header_dig,
                             checksum256 committee_mrt);
@@ -473,6 +544,7 @@ namespace ultrainiosystem {
     void empower_to_chain(account_name user, ultrainio::name chain_name);
     bool is_empowered(account_name user, ultrainio::name chain_name);
     bool lightclient_accept_block_header(ultrainio::name chain_name, const char* bh, size_t bh_size, char* confirmed_bh_buffer, size_t buffer_size);
+    bool lightclient_accept_initial_header(ultrainio::name chain_name, char* id_buffer, size_t id_size, char* previous_cmt, size_t cmt_size, char* bh_raw, size_t bh_size, char* confirmed_bh_buffer, size_t buffer_len);
 
    #ifdef __cplusplus
    }
