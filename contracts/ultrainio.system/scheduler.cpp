@@ -589,6 +589,8 @@ namespace ultrainiosystem {
             _subchain.confirmed_block_number = 0;
             _subchain.unconfirmed_blocks.clear();
             _subchain.unconfirmed_blocks.shrink_to_fit();
+            _subchain.changing_info.clear();
+            _subchain.deprecated_committee.clear();
         });
         print( "clearchain chain_name:", name{chain_name}, " users_only:", users_only, "\n" );
         producers_table _producers(_self, chain_name);
