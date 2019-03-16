@@ -520,6 +520,7 @@ namespace ultrainiosystem {
                             subchains_table::const_iterator to_iter,
                             uint64_t current_block_number);
          name getdefaultchain();
+         bool checkblockproposer(account_name block_proposer, subchains_table::const_iterator chain_iter);
 
 
          //defined in ultrainio.system.cpp

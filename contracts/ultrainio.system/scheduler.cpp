@@ -333,6 +333,39 @@ namespace ultrainiosystem {
         masterinfos.set(master_info);
     }
 
+    bool system_contract::checkblockproposer(account_name block_proposer, subchains_table::const_iterator chain_iter) {
+        //find proposer and check if it should be paid for proposing this block.
+        if(block_proposer != N() && block_proposer != N(genesis)) {
+            auto briefprod = _briefproducers.find(block_proposer);
+            if(briefprod == _briefproducers.end()) {
+                print("acceptheader: block proposer is not a valid producer\n");
+                return false;
+            }
+            //1. find proposer in current committee
+            producers_table _producers(_self, chain_iter->chain_name);
+            auto prod = _producers.find(block_proposer);
+            if(prod != _producers.end() ) {
+                return true;
+            }
+            //2. if not found, find in deprecated committee(only for un-synced state)
+            else if(!chain_iter->deprecated_committee.empty() ) {
+                for(auto ite_prod = chain_iter->deprecated_committee.begin();
+                    ite_prod != chain_iter->deprecated_committee.end(); ++ite_prod) {
+                    if(ite_prod->owner == block_proposer) {
+                         return false; //TODO, unsynced state is always no reward, is it reasonable and acceptable?
+                    }
+                }
+            }
+            //3. still not found, find in changing info
+            for(auto ite_rm = chain_iter->changing_info.removed_members.begin();
+            ite_rm != chain_iter->changing_info.removed_members.end(); ++ite_rm) {
+                if(ite_rm->owner == block_proposer) {
+                    return true; //TODO, check expire time by operating time
+                }
+            }
+        }
+        return false;
+    }
     /// @abi action
     void system_contract::acceptheader (name chain_name,
                                   const std::vector<ultrainio::block_header>& headers) {
@@ -395,44 +428,7 @@ namespace ultrainiosystem {
                 memcpy(final_confirmed_id.hash, confirm_id, sizeof(confirm_id));
                 new_confirm = true;
             }
-            //find proposer and check if it should be paid for proposing this block.
-            bool found_prod = false;
-            bool need_report = false;
-            if(block_proposer != N() && block_proposer != N(genesis)) {
-                auto briefprod = _briefproducers.find(block_proposer);
-                if(briefprod == _briefproducers.end()) {
-                    print("acceptheader: block proposer is not a valid producer\n");
-                }
-                //1. find proposer in current committee
-                producers_table _producers(_self, chain_name);
-                auto prod = _producers.find(block_proposer);
-                if(prod != _producers.end() ) {
-                    found_prod = true;
-                    need_report = true;
-                }
-                //2. if not found, find in deprecated committee(only for un-synced state)
-                else if(!ite_chain->deprecated_committee.empty() ) {
-                    for(auto ite_prod = ite_chain->deprecated_committee.begin();
-                        ite_prod != ite_chain->deprecated_committee.end(); ++ite_prod) {
-                        if(ite_prod->owner == block_proposer) {
-                            need_report = false; //TODO, unsynced state is always no reward, is it reasonable and acceptable?
-                            found_prod = true;
-                            break;
-                        }
-                    }
-                }
-                //3. still not found, find in changing info
-                if(!found_prod) {
-                    for(auto ite_rm = ite_chain->changing_info.removed_members.begin();
-                        ite_rm != ite_chain->changing_info.removed_members.end(); ++ite_rm) {
-                        if(ite_rm->owner == block_proposer) {
-                            found_prod = true;
-                            need_report = true; //TODO, check expire time by operating time
-                            break;
-                        }
-                    }
-                }
-            }
+            bool need_report = checkblockproposer(block_proposer, ite_chain);
 
             _subchains.modify(ite_chain, [&]( auto& _subchain ) {
                 unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, need_report, synced);
@@ -473,33 +469,6 @@ namespace ultrainiosystem {
                 }
                 //handle new confirmed block
                 _subchain.confirmed_block_number = ite_confirm_block->block_number;
-                if(ite_confirm_block->committee_mroot != _subchain.committee_mroot) {
-                    _subchain.committee_mroot = ite_confirm_block->committee_mroot;
-                    //get committee delta
-                    committee_delta compare_delta(_subchain.committee_set, ite_confirm_block->committee_set);
-                    for(auto it_rm = _subchain.changing_info.removed_members.begin();
-                             it_rm != _subchain.changing_info.removed_members.end();) {
-                        if(compare_delta.removed.find(it_rm->owner) != compare_delta.removed.end()) {
-                            it_rm = _subchain.changing_info.removed_members.erase(it_rm);
-                        }
-                        else {
-                            ++it_rm;
-                        }
-                    }
-                    for(auto it_add = _subchain.changing_info.new_added_members.begin();
-                             it_add != _subchain.changing_info.new_added_members.end();) {
-                        if(compare_delta.added.find(it_add->owner) != compare_delta.added.end()) {
-                            it_add = _subchain.changing_info.new_added_members.erase(it_add);
-                        }
-                        else {
-                            ++it_add;
-                       }
-                    }
-                    if(_subchain.changing_info.empty()) {
-                        _subchain.is_schedulable = true;
-                    }
-                    _subchain.committee_set.swap(ite_confirm_block->committee_set);//confirmed block will be erased
-                }
                 if(!_subchain.is_synced && ite_confirm_block->is_synced && !_subchain.deprecated_committee.empty()) {
                     _subchain.deprecated_committee.clear();
                 }
@@ -549,6 +518,37 @@ namespace ultrainiosystem {
                             new_confirmed_header = block_header_digest(ite_uncfm_block->proposer, ite_uncfm_block->block_id,
                                                    ite_uncfm_block->block_number, ite_uncfm_block->transaction_mroot);
                         });
+                        //handle committee update
+                        if(ite_uncfm_block->committee_mroot != _subchain.committee_mroot) {
+                            if(ite_uncfm_block->committee_set.empty()) {
+                                print("error: committee mroot changed but committee set is empty");
+                            }
+                            _subchain.committee_mroot = ite_uncfm_block->committee_mroot;
+                            //get committee delta
+                            committee_delta compare_delta(_subchain.committee_set, ite_uncfm_block->committee_set);
+                            for(auto it_rm = _subchain.changing_info.removed_members.begin();
+                                     it_rm != _subchain.changing_info.removed_members.end();) {
+                                if(compare_delta.removed.find(it_rm->owner) != compare_delta.removed.end()) {
+                                    it_rm = _subchain.changing_info.removed_members.erase(it_rm);
+                                }
+                                else {
+                                    ++it_rm;
+                                }
+                            }
+                            for(auto it_add = _subchain.changing_info.new_added_members.begin();
+                                     it_add != _subchain.changing_info.new_added_members.end();) {
+                                if(compare_delta.added.find(it_add->owner) != compare_delta.added.end()) {
+                                    it_add = _subchain.changing_info.new_added_members.erase(it_add);
+                                }
+                                else {
+                                    ++it_add;
+                               }
+                            }
+                            if(_subchain.changing_info.empty()) {
+                                _subchain.is_schedulable = true;
+                            }
+                            _subchain.committee_set.swap(ite_uncfm_block->committee_set);//confirmed block will be erased
+                        }
                         if(ite_uncfm_block->block_number == _subchain.confirmed_block_number) {
                             //don't remove current confirmed block
                             ++ite_uncfm_block;
