@@ -3,30 +3,6 @@
 
 namespace ultrainiosystem {
 
-    struct committee_delta {
-        std::set<account_name>    removed;
-        std::set<account_name>    added;
-
-        committee_delta(const std::vector<account_name>& previous, const std::vector<account_name>& current):
-        removed(previous.begin(), previous.end()), added(current.begin(), current.end()) {
-            workout_delta();
-        }
-
-        void workout_delta() {
-            //erase all same items, the left in previous set are all removed, and the left in current set are all new added
-            for (auto it_pre = removed.begin(); it_pre != removed.end();) {
-                auto it_cur = added.find(*it_pre);
-                if(it_cur != added.end()) {
-                    it_pre = removed.erase(it_pre);
-                    added.erase(it_cur);
-                }
-                else {
-                    ++it_pre;
-                }
-            }
-        }
-    };
-
     ///@abi action
     void system_contract::regchaintype(uint64_t type_id, uint16_t min_producer_num, uint16_t max_producer_num,
                                        uint16_t sched_step, uint16_t consensus_period) {
@@ -525,10 +501,10 @@ namespace ultrainiosystem {
                             }
                             _subchain.committee_mroot = ite_uncfm_block->committee_mroot;
                             //get committee delta
-                            committee_delta compare_delta(_subchain.committee_set, ite_uncfm_block->committee_set);
+                            std::set<account_name> new_committee_set(ite_uncfm_block->committee_set.begin(), ite_uncfm_block->committee_set.end());
                             for(auto it_rm = _subchain.changing_info.removed_members.begin();
                                      it_rm != _subchain.changing_info.removed_members.end();) {
-                                if(compare_delta.removed.find(it_rm->owner) != compare_delta.removed.end()) {
+                                if(new_committee_set.find(it_rm->owner) == new_committee_set.end()) {
                                     it_rm = _subchain.changing_info.removed_members.erase(it_rm);
                                 }
                                 else {
@@ -537,7 +513,7 @@ namespace ultrainiosystem {
                             }
                             for(auto it_add = _subchain.changing_info.new_added_members.begin();
                                      it_add != _subchain.changing_info.new_added_members.end();) {
-                                if(compare_delta.added.find(it_add->owner) != compare_delta.added.end()) {
+                                if(new_committee_set.find(it_add->owner) != new_committee_set.end()) {
                                     it_add = _subchain.changing_info.new_added_members.erase(it_add);
                                 }
                                 else {
@@ -589,7 +565,7 @@ namespace ultrainiosystem {
             _subchain.confirmed_block_number = 0;
             _subchain.unconfirmed_blocks.clear();
             _subchain.unconfirmed_blocks.shrink_to_fit();
-            _subchain.changing_info.clear();
+            //_subchain.changing_info.clear();
             _subchain.deprecated_committee.clear();
         });
         print( "clearchain chain_name:", name{chain_name}, " users_only:", users_only, "\n" );
