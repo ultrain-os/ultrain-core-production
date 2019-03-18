@@ -34,7 +34,9 @@ NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,moni
     try {
         var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
 
-        iniFile.setValue(iniConstants.MONITOR_SERVER_ENDPOINT, monitorServcer);
+        // if (utils.isNotNull(monitorServcer)) {
+        //     iniFile.setValue(iniConstants.MONITOR_SERVER_ENDPOINT, monitorServcer);
+        // }
 
         if (utils.isNotNull(iniFile.getValue(iniConstants.UDP_SEED))) {
             logger.info("nod has udp config,set udp seed");
@@ -61,7 +63,7 @@ NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,moni
         //更新chainname
         iniFile.setValue(iniConstants.CHAIN_NAME,chainName);
 
-        iniFile.setValue(iniConstants.SUBCHAIN_HTTP_ENDPOINT, subchainHttpEndpoint);
+        //iniFile.setValue(iniConstants.SUBCHAIN_HTTP_ENDPOINT, subchainHttpEndpoint);
         iniFile.setValue(iniConstants.GENESIS_TIME, genesisTime);
         iniFile.writefile(this.configFilePath, Constants.encodingConstants.UTF8);
         return true;

@@ -480,6 +480,24 @@ async function syncChainInfo() {
         }
 
         logger.info("[seed check] start to check seed is alive");
+        //检查主链seed是否有变化
+        let mainSeedList = await chainApi.getChainHttpList(chainNameConstants.MAIN_CHAIN_NAME,chainConfig);
+        if (mainSeedList.length > 0 && mainSeedList.length != chainConfig.config.seedHttpList.length) {
+            logger.error("mainSeedList.length("+mainSeedList.length+") != config.seedHttpList("+chainConfig.config.seedHttpList.length+"),need update main seedList:",mainSeedList);
+            chainConfig.config.seedHttpList = mainSeedList;
+        } else {
+            logger.info("mainSeedList.length("+mainSeedList.length+") == config.seedHttpList("+chainConfig.config.seedHttpList.length+"),need not update main seedList:",chainConfig.config.seedHttpList);
+        }
+
+        //检查子链seed是否有变化
+        let subSeedList = await chainApi.getChainHttpList(chainConfig.localChainName,chainConfig);
+        if (subSeedList.length > 0 && subSeedList.length != chainConfig.configSub.seedHttpList.length) {
+            logger.error("subSeedList.length("+subSeedList.length+") != configSub.seedHttpList("+chainConfig.configSub.seedHttpList.length+"),need update subchain seedList:",subSeedList);
+            chainConfig.configSub.seedHttpList = subSeedList;
+        } else {
+            logger.info("subSeedList.length("+subSeedList.length+") == configSub.seedHttpList("+chainConfig.configSub.seedHttpList.length+"),need not update sub seedList:",chainConfig.configSub.seedHttpList);
+        }
+
         //定期更新configsub
         await chainApi.checkSubchainSeed(chainConfig);
 
@@ -608,17 +626,13 @@ async function syncChainInfo() {
  */
 async function checkNodAlive() {
 
-    if (chainConfig.configFileData.local.enableRestart == false) {
-        logger.error("local config enable restart == false, need not check nod alive");
+    //配置文件和monitor配置同时关闭才生效
+    if (chainConfig.configFileData.local.enableRestart == false && monitor.needCheckNod() == false) {
+        logger.error("local config enable restart == false && monitor enable restart == false, need not check nod alive");
         return;
     }
 
-    if (monitor.needCheckNod() == false) {
-        logger.error("monitor enable restart == false,need not check nod alive");
-        return;
-    }
-
-    logger.info("monitor enable restart == true,need check nod alive");
+    logger.info("local config enable restart == true || monitor enable restart == true,need check nod alive");
 
     //如果不在进行链切换且本地访问不到本地链信息，需要重启下
     if (syncChainChanging == false) {

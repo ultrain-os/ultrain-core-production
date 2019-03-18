@@ -163,20 +163,6 @@ ChainConfig.syncConfig = async function () {
 
         logger.debug("this.configFileData data:", this.configFileData);
 
-        //子链请求地址配置-默认先从nod的config中获取，如果没有用本地的
-        if (utils.isNotNull(configIniTarget.subchainHttpEndpoint)) {
-            this.configSub.httpEndpoint = configIniTarget.subchainHttpEndpoint;
-        } else {
-            this.configSub.httpEndpoint = configIniLocal.subchainHttpEndpoint;
-        }
-
-        logger.info("subchain httpEndpoint:", this.configSub.httpEndpoint)
-
-        //获取主链请求的http地址-默认使用
-        if (utils.isNotNull(configIniTarget["mainchainHttpEndpoint"])) {
-            this.config.httpEndpoint = configIniTarget["mainchainHttpEndpoint"];
-        }
-
         /**
          * 获取配置中localtest配置
          */

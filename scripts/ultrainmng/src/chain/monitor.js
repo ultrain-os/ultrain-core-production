@@ -31,7 +31,7 @@ var deploySyncFlag = false;
 
 var seedCount = 10;
 
-var enableRestart = 1;
+var enableRestart = 0;
 
 /**
  *
@@ -121,11 +121,9 @@ async function buildParam() {
         isProducer = 0;
     }
 
-    let enableRestartRes = enableRestart;
-    if (enableRestartRes == 1) {
-        if (chainConfig.configFileData.local["enableRestart"]==false) {
+    let enableRestartRes = 1;
+    if (enableRestart == 0 && chainConfig.configFileData.local["enableRestart"]==false) {
             enableRestartRes = 0;
-        }
     }
 
     var extMsg = {
@@ -170,7 +168,10 @@ async function checkIn() {
 
     await getDeployFile();
 
-    //await syncSeedInfo();
+    if (chainConfig.configFileData.local.seedFileUpdate == true) {
+        await syncSeedInfo();
+    }
+
 }
 
 /**
@@ -209,14 +210,13 @@ async function syncSeedInfo() {
 
         var filepath = pathConstants.MNG_CONFIG+"seedconfig.json";
         chainConfig.seedIpConfig = data;
+
         fs.writeFile(filepath, JSON.stringify(data), {flag: 'w'}, function (err) {
             if(err) {
                 logger.error("write seed config file error:");
             } else {
                 logger.info("write seed config file success:");
             }
-
-
         });
     }  else {
         logger.error("syncSeedInfo sign error");

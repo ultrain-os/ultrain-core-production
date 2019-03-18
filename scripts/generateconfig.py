@@ -7,7 +7,7 @@ from account_info import *
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--masterchain', action='store_true', help="set current master chain")
 parser.add_argument('-sub', '--subchain', type=str, help="set subchain name info")
-parser.add_argument('-mainHttp', '--mainchainHttp', type=str, help="set mainchainHttpEndpoint for ultranmng")
+# parser.add_argument('-mainHttp', '--mainchainHttp', type=str, help="set mainchainHttpEndpoint for ultranmng")
 parser.add_argument('-httpAlias', '--httpAlias', type=str, help="set http alias for noultrain")
 parser.add_argument('-ws', '--worldstate', action='store_true', help="enable worldstate ")
 parser.add_argument('-tcp', '--tcp', action='store_true', help="enable tcp,ignore udp")
@@ -120,7 +120,7 @@ def write_config_file():
         if con.name[len(con.name) - 1::len(con.name)] >= '7':
             insert_keys(fname, index_key)
             insert_non_producing(fname)
-        update_ultrainmng_config(fname, hosts[dockerinfo])
+        #update_ultrainmng_config(fname, hosts[dockerinfo])
         insert_worldstate_config(fname)
         insert_monitor_config(fname)
         print(hostip, con.ip, con.id)
