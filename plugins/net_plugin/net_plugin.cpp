@@ -3266,7 +3266,10 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       my->node_table->set_nodetable_pk(sk_account.get_public_key());
       auto name_account = app().get_plugin<producer_uranus_plugin>().get_account_name();
       my->node_table->set_nodetable_account(chain::account_name(name_account));
-      my->node_table->init(my->udp_seed_ip,std::ref(app().get_io_service()));
+      if (!my->udp_seed_ip.empty())
+      {      
+	      my->node_table->init(my->udp_seed_ip,std::ref(app().get_io_service()));
+      }
       if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
          logger = fc::get_logger_map()[logger_name];
    }
