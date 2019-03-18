@@ -24,6 +24,7 @@
 #include <ultrainio/chain/authorization_manager.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
 
+#include <regex>
 namespace ultrainio { namespace chain {
 
 
@@ -92,7 +93,11 @@ void apply_ultrainio_newaccount(apply_context& context) {
    // Check if the creator is privileged
    const auto &creator = db.get<account_object, by_name>(create.creator);
    if( !creator.privileged ) {
-      ULTRAIN_ASSERT( name_str.size() == 12, action_validate_exception, "account names can only be 12 chars long" );
+      ULTRAIN_ASSERT( name_str.size() >= 5 &&
+                     name_str.size() <= 12 &&
+                     std::regex_match(name_str.c_str(), std::regex(".*?[a-z]+.*?")) &&
+                     std::regex_match(name_str.c_str(), std::regex(".*?[1-5]+.*?"))
+                     , action_validate_exception, "account names must contain lowercase letters and Numbers (1-5), and must be between 5-12 in length" );
       ULTRAIN_ASSERT( name_str.find( "utrio." ) != 0, action_validate_exception,
                   "only privileged accounts can have names that start with 'utrio.'" );
    } else {
