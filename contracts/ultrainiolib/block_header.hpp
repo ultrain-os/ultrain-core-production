@@ -24,13 +24,6 @@ namespace ultrainio {
             | (((x        ) & 0xFF) << 0x18);
     }
 
-    enum BlockHeaderExtKey {
-        kPreCheckPointId = 0,
-        kNextCommitteeMroot,
-        kCommitteeSet,
-        kBlsVoterSet
-    };
-
     struct block_header {
       block_timestamp_type             timestamp;
       account_name                     proposer;

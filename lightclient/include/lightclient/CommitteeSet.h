@@ -3,6 +3,7 @@
 #include <string>
 
 #include <core/types.h>
+#include <lightclient/CommitteeDelta.h>
 #include <lightclient/CommitteeInfo.h>
 
 namespace ultrainio {
@@ -12,11 +13,12 @@ namespace ultrainio {
         CommitteeSet();
         CommitteeSet(const std::string& s);
         CommitteeSet(const std::vector<char>& vc);
-        CommitteeSet(const std::vector<CommitteeInfo> committeeInfoV);
+        CommitteeSet(const std::vector<CommitteeInfo>& committeeInfoV);
         SHA256 committeeMroot() const;
         std::vector<char> toVectorChar() const;
         std::string toString() const;
         bool operator == (const CommitteeSet& rhs) const;
+        CommitteeDelta diff(const CommitteeSet& pre) const;
 
     private:
         std::vector<CommitteeInfo> m_committeeInfoV;

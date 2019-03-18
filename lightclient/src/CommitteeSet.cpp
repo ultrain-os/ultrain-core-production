@@ -19,7 +19,7 @@ namespace ultrainio {
         }
     }
 
-    CommitteeSet::CommitteeSet(const std::vector<CommitteeInfo> committeeInfoV)
+    CommitteeSet::CommitteeSet(const std::vector<CommitteeInfo>& committeeInfoV)
             : m_committeeInfoV(committeeInfoV) {}
 
     SHA256 CommitteeSet::committeeMroot() const {
@@ -50,5 +50,23 @@ namespace ultrainio {
             return true;
         }
         return m_committeeInfoV == rhs.m_committeeInfoV;
+    }
+
+    CommitteeDelta CommitteeSet::diff(const CommitteeSet& pre) const {
+        std::list<CommitteeInfo> addCommitteeInfo;
+        std::list<CommitteeInfo> removedCommitteeInfo;
+        for (auto itor = m_committeeInfoV.begin(); itor != m_committeeInfoV.end(); itor++) {
+            addCommitteeInfo.push_front(*itor);
+        }
+        for (auto itor = pre.m_committeeInfoV.begin(); itor != pre.m_committeeInfoV.end(); itor++) {
+            addCommitteeInfo.remove(*itor);
+            removedCommitteeInfo.push_front(*itor);
+        }
+
+        for (auto itor = m_committeeInfoV.begin(); itor != m_committeeInfoV.end(); itor++) {
+            removedCommitteeInfo.remove(*itor);
+        }
+
+        return CommitteeDelta(addCommitteeInfo, removedCommitteeInfo);
     }
 }

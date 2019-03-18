@@ -1,6 +1,5 @@
 #pragma once
 
-#include <core/BlsVoterSet.h>
 #include <core/types.h>
 #include <lightclient/CommitteeSet.h>
 

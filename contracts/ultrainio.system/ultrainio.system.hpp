@@ -14,6 +14,7 @@
 #include <ultrainiolib/types.hpp>
 #include <string>
 #include <vector>
+#include "BlockHeaderExtKey.h"
 
 namespace ultrainiosystem {
    using namespace ultrainio;

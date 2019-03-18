@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/lightclient/*.h")
 
 add_library( ultrainio_lightclient
         src/CheckPoint.cpp
+        src/CommitteeDelta.cpp
         src/CommitteeInfo.cpp
         src/CommitteeSet.cpp
         src/ConfirmPoint.cpp
