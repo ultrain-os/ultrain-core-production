@@ -9,5 +9,6 @@ databak/
 dist/
 /coverage
 .nyc_output
+package-lock.json
 
 
