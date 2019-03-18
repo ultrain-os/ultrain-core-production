@@ -1052,10 +1052,10 @@ read_only::get_master_block_num_result read_only::get_master_block_num(const rea
    walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
    //    ULTRAIN_ASSERT( obj.value.size() >= sizeof(subchain), chain::asset_type_exception, "Invalid master data on table");
 
-       master_chain master_data;
+       subchain master_data;
        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
        fc::raw::unpack(ds, master_data);
-       if("ultrainio" == master_data.owner) {
+       if("master" == master_data.chain_name) {
            result.confirmed_block.number = master_data.confirmed_block_number;
            auto ite_block = master_data.unconfirmed_blocks.begin();
            for(; ite_block != master_data.unconfirmed_blocks.end(); ++ite_block) {
@@ -1213,6 +1213,8 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    }
    read_only::get_producers_result result;
    for(auto i = 0; i < scopes.size(); ++i) {
+       if(scopes[i] == N(master))
+           continue;
        const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), scopes[i], N(producers)));
        const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), scopes[i], N(producers) | secondary_index_num));
        if(table_id == nullptr || secondary_table_id == nullptr) {

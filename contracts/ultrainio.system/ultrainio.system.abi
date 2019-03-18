@@ -581,15 +581,6 @@
         {"name": "committee_set",              "type": "role_base[]"}
        ]
     },{
-      "name": "master_chain",
-      "base": "master_chain_info",
-      "fields": [
-        {"name": "committee_mroot",               "type": "checksum256"},
-        {"name": "confirmed_block_number",        "type": "uint32"},
-        {"name": "unconfirmed_blocks",            "type": "unconfirmed_master_header[]"},
-        {"name": "table_extension",               "type": "extension[]"}
-       ]
-    },{
      "name": "pending_miner",
       "base": "",
       "fields": [
@@ -1016,11 +1007,11 @@
       "key_names": ["owner"],
       "key_types": ["uint64"]
     },{
-      "name": "masterchain",
-      "type": "master_chain",
+      "name": "masterinfos",
+      "type": "master_chain_info",
       "index_type": "i64",
-      "key_names": [],
-      "key_types": []
+      "key_names": ["owner"],
+      "key_types": ["uint64"]
     }
    ],
    "ricardian_clauses": [],

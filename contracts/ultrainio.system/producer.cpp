@@ -26,6 +26,7 @@ namespace ultrainiosystem {
         // key is hex encoded
         ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
         if(location != master_chain_name) {
+            ultrainio_assert(location != N(master) , "wrong location");
             if(location != default_chain_name) {
                 ultrainio_assert(_subchains.find(location) != _subchains.end(),
                                  "wrong location, subchain is not existed");
@@ -187,6 +188,8 @@ namespace ultrainiosystem {
         std::vector<name> scopes;
         scopes.emplace_back(master_chain_name);
         for(auto ite_chain = _subchains.begin(); ite_chain != _subchains.end(); ++ite_chain) {
+            if(ite_chain->chain_name == N(master))
+                continue;
             scopes.emplace_back(ite_chain->chain_name);
         }
         return scopes;

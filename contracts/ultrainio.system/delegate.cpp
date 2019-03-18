@@ -273,7 +273,7 @@ namespace ultrainiosystem {
                           uint64_t combosize, uint64_t days, name location){
       require_auth( from );
       ultrainio_assert( _gstate.is_master_chain() || from == _self, "only master chain allow sync resourcelease" );
-      ultrainio_assert(location != default_chain_name, "wrong location");
+      ultrainio_assert(location != default_chain_name && location != N(master) , "wrong location");
       auto chain_itr = _subchains.end();
       if(location != master_chain_name) {
          chain_itr = _subchains.find(location);
@@ -462,6 +462,8 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
 
       auto chain_iter = _subchains.begin();
       for(; chain_iter != _subchains.end(); ++chain_iter) {
+            if(chain_iter->chain_name == N(master))
+                continue;
             if(chain_iter->global_resource.total_resources_used_number > 0) {
                resources_lease_table _reslease_sub( _self, chain_iter->chain_name);
                for(auto reslease_iter = _reslease_sub.begin(); reslease_iter != _reslease_sub.end(); ) {

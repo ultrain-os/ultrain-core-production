@@ -117,13 +117,6 @@ namespace ultrainio { namespace chain {
         extensions_type  master_chain_ext;
     };
 
-   struct master_chain : public master_chain_info {
-       checksum256_type               committee_mroot;
-       uint32_t                       confirmed_block_number;
-       std::vector<unconfirmed_master_header>  unconfirmed_blocks;
-       extensions_type                table_extension;
-   };
-
 }} // namespace ultrainio::chain
 
 FC_REFLECT(ultrainio::chain::producer_brief, (owner)(location)(in_disable) )
@@ -145,5 +138,3 @@ FC_REFLECT(ultrainio::chain::resources_lease, (owner)(lease_num)(start_block_hei
 FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_master_header, (ultrainio::chain::block_header_digest), (is_leaf)
                     (committee_mroot)(committee_set) )
 FC_REFLECT(ultrainio::chain::master_chain_info, (owner)(master_prods)(block_height)(block_id)(master_chain_ext) )
-FC_REFLECT_DERIVED(ultrainio::chain::master_chain, (ultrainio::chain::master_chain_info), (committee_mroot)(confirmed_block_number)
-                     (unconfirmed_blocks)(table_extension) )

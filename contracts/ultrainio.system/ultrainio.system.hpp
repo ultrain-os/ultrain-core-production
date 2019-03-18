@@ -184,6 +184,7 @@ namespace ultrainiosystem {
        uint64_t                             block_height = 0;
        std::string                          block_id;
        ultrainio::extensions_type           master_chain_ext;
+       uint64_t  primary_key()const { return owner; }
        ULTRAINLIB_SERIALIZE(master_chain_info, (owner)(master_prods)(block_height)(block_id)(master_chain_ext) )
    };
 
@@ -195,6 +196,7 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index<N(producers), producer_info> producers_table;
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
    typedef ultrainio::multi_index< N(wshash), subchain_ws_hash>      subchain_hash_table;
+   typedef ultrainio::multi_index<N(masterinfos),master_chain_info> master_chain_infos;
    struct chaintype {
        uint64_t type_id;
        uint16_t stable_min_producers;
@@ -331,23 +333,6 @@ namespace ultrainiosystem {
            }
        }
    };
-
-   struct master_chain : public master_chain_info {
-       checksum256               committee_mroot;
-       uint32_t                  confirmed_block_number;
-       std::vector<unconfirmed_master_header>  unconfirmed_blocks;
-       ultrainio::extensions_type              table_extension;
-
-       master_chain() {}
-       master_chain(const master_chain_info& super): master_chain_info(super), committee_mroot(checksum256()),
-                    confirmed_block_number(uint32_t(super.block_height)) {
-           //TODO, calculte initial committee mroot by master_chain_info
-       }
-
-       ULTRAINLIB_SERIALIZE_DERIVED(master_chain, master_chain_info, (committee_mroot)(confirmed_block_number)
-                                    (unconfirmed_blocks)(table_extension))
-   };
-   typedef ultrainio::singleton<N(masterchain),master_chain> master_chain_infos;
 
    struct ultrainio_system_params {
       ultrainio_system_params(){}

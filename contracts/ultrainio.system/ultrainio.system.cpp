@@ -64,8 +64,12 @@ namespace ultrainiosystem {
    void system_contract::setmasterchaininfo( const master_chain_info& chaininfo ){
       require_auth( _self );
       master_chain_infos masterinfos(_self, _self);
-      ultrainio_assert(!masterinfos.exists(), "master chain info has been set");
-      masterinfos.set(master_chain(chaininfo));
+      auto it_masterchain = masterinfos.find(chaininfo.owner);
+      ultrainio_assert(it_masterchain == masterinfos.end(), "masterinfos already exist");
+      masterinfos.emplace( [&]( master_chain_info& info ) {
+         info = chaininfo;
+         info.owner = chaininfo.owner;
+      });
    }
    void system_contract::setparams( const ultrainio::blockchain_parameters& params ) {
       require_auth( N(ultrainio) );

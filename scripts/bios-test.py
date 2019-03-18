@@ -176,7 +176,6 @@ def stepRegProducers():
             value = 2.0000
         retry(args.clultrain + 'transfer %s utrio.rand \'%.4f UGAS\' \'as candidate\' -p %s' % ( rand_acc_lst[i],value, rand_acc_lst[i]))
 
-
     if args.subchain and args.subchain != "ultrainio" :
         masterproducerinfo = ""
         for i in range(1, args.num_master_prods + 1):
@@ -192,6 +191,7 @@ def stepRegProducers():
         "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[]}}\' -p ultrainio ' % \
         (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
         newaccount_fee, args.subchain, worldstate_interval, resourcelease_fee) )
+    sleep(5)
 
 def stepCreateinitAccounts():
     for i in range(1, args.num_producers+1):

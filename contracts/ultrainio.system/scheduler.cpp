@@ -181,9 +181,9 @@ namespace ultrainiosystem {
     void system_contract::acceptmaster(const std::vector<ultrainio::block_header>& headers) {
         require_auth(current_sender());
         ultrainio_assert(headers.size() <= 10, "too many blocks are reported.");
-        master_chain_infos masterinfos(_self, _self);
-        ultrainio_assert(masterinfos.exists(), "master chain info has not been set");
-        master_chain master_info = masterinfos.get();
+        auto ite_masterchain = _subchains.find(N(master));
+        ultrainio_assert(ite_masterchain != _subchains.end(), "subchian is not existed.");
+        subchain master_info(*ite_masterchain);
         uint32_t confirmed_number_before = master_info.confirmed_block_number;
         checksum256 final_confirmed_id;
         for(uint32_t idx = 0; idx < headers.size(); ++idx) {
@@ -226,10 +226,14 @@ namespace ultrainiosystem {
             }
 
             char confirm_id[32];
+            master_chain_infos masterinfos(_self, _self);
+            auto initmasteriter = masterinfos.find(N(ultrainio));
+            ultrainio_assert(initmasteriter != masterinfos.end(), "master_chain_infos is not existed.");
             //TODO, need check whether use master_chain_name or master_info.owner
-            if(master_info.confirmed_block_number == master_info.block_height) {
+            if(master_info.confirmed_block_number == initmasteriter->block_height) {
                 checksum256 preid;//TODO, replace it with master_info.block_id
-                if(!accept_initial_header(master_chain_name, preid, master_info.master_prods,
+
+                if(!accept_initial_header(master_chain_name, preid, initmasteriter->master_prods,
                                           headers[idx], confirm_id, sizeof(confirm_id))) {
                     continue;
                 }
@@ -252,14 +256,16 @@ namespace ultrainiosystem {
             master_info.confirmed_block_number = ite_confirm_block->block_number;
             if(ite_confirm_block->committee_mroot != master_info.committee_mroot) {
                 master_info.committee_mroot = ite_confirm_block->committee_mroot;
-                master_info.master_prods.swap(ite_confirm_block->committee_set);
+                master_info.committee_set.swap(ite_confirm_block->committee_set);
             }
             //save current block
             master_info.unconfirmed_blocks[pre_block_index].is_leaf = false;
-            unconfirmed_master_header uncfm_header(headers[idx], block_id, block_number);
+            unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, false, false);
             master_info.unconfirmed_blocks.push_back(uncfm_header);
         }
-        masterinfos.set(master_info);
+        _subchains.modify(ite_masterchain, [&]( auto& masterchain ) {
+            masterchain = master_info;
+        });
         //delete ancient confirmed blocks to keep only recent 1000 blocks
         if (confirmed_number_before < master_info.confirmed_block_number ) {
             //confirm block updated
@@ -306,7 +312,9 @@ namespace ultrainiosystem {
                 }
             }
         }
-        masterinfos.set(master_info);
+        _subchains.modify(ite_masterchain, [&]( auto& masterchain ) {
+            masterchain = master_info;
+        });
     }
 
     bool system_contract::checkblockproposer(account_name block_proposer, subchains_table::const_iterator chain_iter) {
@@ -746,6 +754,8 @@ namespace ultrainiosystem {
         uint32_t index_in_list = 0;
         auto chain_iter = _subchains.begin();
         for(; chain_iter != _subchains.end(); ++chain_iter, ++index_in_list) {
+            if(chain_iter->chain_name == N(master))
+                continue;
             auto type_iter = type_tbl.find(chain_iter->chain_type);
             if(type_iter == type_tbl.end()) {
                 print("[schedule] error: the chain type is not existed\n");
@@ -896,6 +906,8 @@ namespace ultrainiosystem {
         auto ct = now();
         auto chain_it = _subchains.begin();
         for(; chain_it != _subchains.end(); ++chain_it) {
+            if(chain_it->chain_name == N(master))
+                continue;
             if(!chain_it->recent_users.empty()) {
                 if( (ct > chain_it->recent_users[0].emp_time) && (ct - chain_it->recent_users[0].emp_time >= 30*60 ) ) {
                     _subchains.modify(chain_it, [&](auto& _subchain) {
@@ -970,6 +982,8 @@ namespace ultrainiosystem {
             if(!ite_chain->is_schedulable) {
                 continue;
             }
+            if(ite_chain->chain_name == N(master))
+                continue;
             uint32_t my_committee_num = ite_chain->committee_num;
             auto ite_type = type_tbl.find(ite_chain->chain_type);
             ultrainio_assert(ite_type != type_tbl.end(), "error: chain type is not existed");
