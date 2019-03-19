@@ -425,62 +425,81 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
       resources_lease_table _reslease_tbl( _self, master_chain_name);
       for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
          if(leaseiter->end_block_height <= block_height){
-            print("checkresexpire reslease name:",name{leaseiter->owner}, " end_block_height:",leaseiter->end_block_height," cur block_height:",block_height);
+            const auto& owner = leaseiter->owner;
+            print("checkresexpire reslease name: ",name{owner},
+                  " end_block_height: ",leaseiter->end_block_height,
+                  " cur block_height: ",block_height);
             //drop contract account table
-            db_drop_table(leaseiter->owner);
+
+            db_drop_table(owner);
+            vector<permission_level> pem = { { owner, N(active) },
+                                             { N(ultrainio),     N(active) } };
+
             //clear contract account code
-            ultrainio::transaction codetrans;
-            codetrans.actions.emplace_back( permission_level{ leaseiter->owner, N(active) }, _self, NEX(setcode), std::make_tuple(leaseiter->owner, 0, 0, bytes()) );
-            codetrans.actions[0].authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
-            codetrans.delay_sec = 1;
-            uint128_t trxid = now() + leaseiter->owner + N(setcode);
-            cancel_deferred(trxid);
-            codetrans.send( trxid, _self, true );
-            print("checkresexpire set code:",current_time()," trxid:",trxid);
-            //clear contract account abi
-            ultrainio::transaction abitrans;
-            abitrans.actions.emplace_back( permission_level{ leaseiter->owner, N(active) }, _self, NEX(setabi), std::make_tuple(leaseiter->owner, bytes()) );
-            abitrans.actions[0].authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
-            abitrans.delay_sec = 1;
-            trxid = now() +leaseiter->owner + N(setabi);
-            cancel_deferred(trxid);
-            abitrans.send( trxid, _self, true );
-            print("checkresexpire set abi:",current_time()," trxid:",trxid);
-            //recycle resource
-            ultrainio::transaction recyclerestrans;
-            recyclerestrans.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(recycleresource), std::make_tuple(leaseiter->owner, leaseiter->lease_num) );
-            recyclerestrans.delay_sec = 3;
-            trxid = now() +leaseiter->owner + N(recycleres);
-            cancel_deferred(trxid);
-            recyclerestrans.send( trxid, _self, true );
-            print("checkresexpire recycleres:",current_time()," trxid:",trxid);
+            {
+                ultrainio::transaction codetrans;
+                codetrans.actions.emplace_back(pem, _self, NEX(setcode), std::make_tuple(owner, 0, 0, bytes()) );
+                codetrans.delay_sec = 1;
+                uint128_t trxid = now() + owner + N(setcode);
+                cancel_deferred(trxid);
+                codetrans.send( trxid, _self, true );
+                print("checkresexpire set code:",current_time()," trxid:",trxid);
+            }
+            {
+                //clear contract account abi
+                ultrainio::transaction abitrans;
+                abitrans.actions.emplace_back(pem, _self, NEX(setabi), std::make_tuple(owner, bytes()) );
+                abitrans.delay_sec = 1;
+                uint128_t trxid = now() + owner + N(setabi);
+                cancel_deferred(trxid);
+                abitrans.send( trxid, _self, true );
+                print("checkresexpire set abi:",current_time()," trxid:",trxid);
+            }
+            {
+                //recycle resource
+                ultrainio::transaction recyclerestrans;
+                recyclerestrans.actions.emplace_back( permission_level{ _self, N(active) }, _self,
+                                                      NEX(recycleresource), std::make_tuple(owner, leaseiter->lease_num) );
+                recyclerestrans.delay_sec = 3;
+                uint128_t trxid = now() + owner + N(recycleres);
+                cancel_deferred(trxid);
+                recyclerestrans.send( trxid, _self, true );
+                print("checkresexpire recycleres:",current_time()," trxid:",trxid);
+            }
+
             leaseiter = _reslease_tbl.erase(leaseiter);
          } else {
             ++leaseiter;
          }
       }
 
-      auto chain_iter = _subchains.begin();
-      for(; chain_iter != _subchains.end(); ++chain_iter) {
-            if(chain_iter->chain_name == N(master))
-                continue;
-            if(chain_iter->global_resource.total_resources_used_number > 0) {
-               resources_lease_table _reslease_sub( _self, chain_iter->chain_name);
-               for(auto reslease_iter = _reslease_sub.begin(); reslease_iter != _reslease_sub.end(); ) {
-                  if(reslease_iter->end_block_height <= block_height) {
-                        uint64_t bytes = chain_iter->global_resource.max_ram_size/chain_iter->global_resource.max_resources_number;
-                        if(chain_iter->global_resource.total_resources_used_number >= reslease_iter->lease_num) {
-                           _subchains.modify(chain_iter, [&]( auto& subchain ) {
-                              subchain.global_resource.total_resources_used_number -= reslease_iter->lease_num;
-                              subchain.global_resource.total_ram_bytes_used -= reslease_iter->lease_num*bytes;
-                           });
-                        }
-                        reslease_iter = _reslease_sub.erase(reslease_iter);
-                  } else {
-                        ++reslease_iter;
-                  }
-               }
-            }
+      for(auto chain_iter = _subchains.begin(); chain_iter != _subchains.end(); ++chain_iter) {
+          if (chain_iter->chain_name == N(master))
+              continue;
+          const auto& chain_gs = chain_iter->global_resource;
+          if (chain_gs.total_resources_used_number <= 0)
+              continue;
+          uint64_t bytes_per_combo = chain_gs.max_ram_size / chain_gs.max_resources_number;
+          resources_lease_table _reslease_sub(_self, chain_iter->chain_name);
+          for(auto reslease_iter = _reslease_sub.begin(); reslease_iter != _reslease_sub.end(); ) {
+              if(reslease_iter->end_block_height <= block_height) {
+                  auto old_lease_num = reslease_iter->lease_num;
+                  uint64_t lease_bytes = old_lease_num * bytes_per_combo;
+                  uint64_t new_lease_number = (chain_gs.total_resources_used_number >= old_lease_num) ?
+                      (chain_gs.total_resources_used_number - old_lease_num) : 0;
+                  uint64_t new_used_ram = (chain_gs.total_ram_bytes_used >= lease_bytes) ?
+                      (chain_gs.total_ram_bytes_used - lease_bytes) : 0;
+
+                  _subchains.modify(chain_iter, [&]( auto& subchain ) {
+                     subchain.global_resource.total_resources_used_number = new_lease_number;
+                     subchain.global_resource.total_ram_bytes_used        = new_used_ram;
+                  });
+
+                  reslease_iter = _reslease_sub.erase(reslease_iter);
+              } else {
+                  ++reslease_iter;
+              }
+          }
       }
       uint64_t endtime = current_time();
       print("checkresexpire expend time:",(endtime - starttime));
