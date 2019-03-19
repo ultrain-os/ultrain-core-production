@@ -241,7 +241,7 @@ async function syncBlock() {
     logger.info("sync block start");
 
     //一次最大块数
-    var blockSyncMaxNum = 10;
+    var blockSyncMaxNum = chainConfig.getLocalConfigInfo("blockSyncMaxNum",10);
 
     if (syncChainData == true) {
         chainConfig.u3Sub.getChainInfo(async (error, info) => {
@@ -666,7 +666,9 @@ async function checkNodAlive() {
     if (syncChainChanging == false) {
         logger.info("checking nod is alive ....");
         let rsdata = await NodUltrain.checkAlive();
+
         logger.debug("check alive data:", rsdata);
+
         if (utils.isNull(rsdata)) {
             if (nodFailedTimes >= getmaxNodFailedTimes()) {
                 nodFailedTimes = 0;
@@ -676,7 +678,17 @@ async function checkNodAlive() {
             } else {
                 nodFailedTimes ++;
                 logger.info("nod is not alive,count("+nodFailedTimes+")");
+                NodUltrain.getNewestLog(chainConfig.getLocalConfigInfo("nodLogPath","/root/log"),function (log) {
+                    nodLogData = log;
+                    if (utils.isNotNull(nodLogData)) {
+                        let l = nodLogData.length;
+                        logger.info("get nod log data:",nodLogData.substring(l-100));
+                    }
+
+                });
             }
+        } else {
+            nodLogData = "";
         }
     }
 }
@@ -955,6 +967,7 @@ async function switchChain() {
 }
 
 
+var nodLogData = "";
 /**
  * 重启nod
  * @returns {Promise<void>}
@@ -1199,8 +1212,10 @@ async function restartNod() {
     param.endTime = new Date().getTime();
     param.result = logMsg;
     //todo
-    param.log = " ";
+    param.log = nodLogData;
     await chainApi.addRestartLog(monitor.getMonitorUrl(),param);
+
+    nodLogData = "";
 
     syncChainChanging = false;
 

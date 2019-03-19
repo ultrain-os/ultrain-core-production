@@ -12,6 +12,8 @@ const path = require('path');
 var hashUtil = require("../common/util/hashUtil")
 var algorithmConstants = require("../common/constant/constants").algorithmConstants
 var process = require('child_process');
+const fs = require('fs');
+var os = require('os');
 
 /**
  * nod相关交互类
@@ -197,6 +199,39 @@ NodUltrain.updateExeFile = async function (localpath,targetpath,hashFile) {
     }
 
     return false;
+}
+
+NodUltrain.getNewestLog = function(logDir,callback) {
+    try {
+
+        let files=fs.readdirSync(logDir);
+
+        os.hostname()
+        let command = "ls -lt "+logDir+" | grep -v mng | grep -v wss | grep -v ws | grep -v total | grep "+os.hostname()+" | head -n 1 | awk '{print $NF}'";
+
+        process.exec(command, function (error, stdout, stderr, finish) {
+            if (error) {
+                logger.error("getNewestLog error:",error);
+            } else {
+                let fileName = stdout;
+                let filePath = logDir+"/"+fileName;
+                logger.info("get nod filenpath:",filePath);
+                    let cmd = "tail -n 30 "+filePath;
+
+                    process.exec(cmd, function (error, stdout, stderr, finish) {
+                        if (error) {
+                            logger.error("getNewestLog error:",error);
+                        } else {
+                            logger.debug("nod log :",stdout);
+                            callback(stdout);
+                        }
+                    });
+
+            }
+        });
+    } catch (e) {
+        logger.error("getNewestLog errpr",e);
+    }
 }
 
 

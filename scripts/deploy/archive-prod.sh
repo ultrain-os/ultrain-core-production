@@ -22,6 +22,7 @@ cp $ULTRAIN_PATH/scripts/ultrainmng/node_modules $DEPLOY_PATH/deploy/ultrainmng/
 cp $ULTRAIN_PATH/scripts/deploy/ultrainmng/config.ini $DEPLOY_PATH/deploy/ultrainmng/config.ini
 cp $ULTRAIN_PATH/scripts/deploy/ultrainmng/seedconfig.json $DEPLOY_PATH/deploy/ultrainmng/seedconfig.json
 cp $ULTRAIN_PATH/scripts/ultrainmng/tool $DEPLOY_PATH/deploy/ultrainmng/tool -rf
+cp $ULTRAIN_PATH/scripts/deploy/ultrainmng/_runultrain.sh $DEPLOY_PATH/deploy/ultrainmng/tool/_runultrain.sh
 mkdir $DEPLOY_PATH/deploy/ultrainmng/src
 cp $ULTRAIN_PATH/scripts/ultrainmng/deploy/sideChainService.js $DEPLOY_PATH/deploy/ultrainmng/src/sideChainService.js
 cd $DEPLOY_PATH/deploy && tar -czvf ultrainmng.tar ./ultrainmng/

@@ -671,6 +671,21 @@ getSubchainBlockNum = async (config, chain_name) => {
 
 }
 
+/**
+ * 获取子链中主链的块高
+ * @returns {Promise<*>}
+ */
+getMasterBlockNum = async (config) => {
+
+    try {
+        const rs = await multiRequest(config.httpEndpoint, "/v1/chain/get_master_block_num", {}, config.seedHttpList);
+        return rs.data;
+    } catch (e) {
+        logger.error("getMasterBlockNum error,", utils.logNetworkError(e));
+    }
+
+}
+
 
 /**
  *
@@ -863,4 +878,5 @@ module.exports = {
     getSeedInfo,
     checkMainchainSeed,
     addRestartLog,
+    getMasterBlockNum,
 }

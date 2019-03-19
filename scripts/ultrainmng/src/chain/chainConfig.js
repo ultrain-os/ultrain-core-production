@@ -407,5 +407,19 @@ ChainConfig.clearChainInfo = function() {
     this.localChainName = null;
 }
 
+/**
+ *
+ * @param key
+ * @param defaultValue
+ * @returns {*}
+ */
+ChainConfig.getLocalConfigInfo = function(key,defaultValue) {
+    if (utils.isNotNull(this.configFileData.local[key])) {
+        return this.configFileData.local[key];
+    }
+
+    return defaultValue;
+}
+
 
 module.exports = ChainConfig

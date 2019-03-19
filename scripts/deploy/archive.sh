@@ -21,6 +21,7 @@ cp $ULTRAIN_PATH/scripts/ultrainmng $DEPLOY_PATH/deploy/ultrainmng -r
 rm $DEPLOY_PATH/deploy/ultrainmng/deploy -rf
 cp $ULTRAIN_PATH/scripts/deploy/ultrainmng/config.ini $DEPLOY_PATH/deploy/ultrainmng/config.ini
 cp $ULTRAIN_PATH/scripts/deploy/ultrainmng/seedconfig.json $DEPLOY_PATH/deploy/ultrainmng/seedconfig.json
+cp $ULTRAIN_PATH/scripts/deploy/ultrainmng/_runultrain.sh $DEPLOY_PATH/deploy/ultrainmng/tool/_runultrain.sh
 cd $DEPLOY_PATH/deploy && tar -czvf ultrainmng.tar ./ultrainmng/
 rm $DEPLOY_PATH/deploy/ultrainmng -rf
 mkdir $DEPLOY_PATH/deploy/ultrainmng -p
