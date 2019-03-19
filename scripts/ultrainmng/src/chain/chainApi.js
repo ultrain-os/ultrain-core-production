@@ -638,6 +638,22 @@ addSwitchLog = async (url, param) => {
     }
 }
 
+/**
+ *
+ * @param url
+ * @param param
+ * @returns {Promise<*>}
+ */
+addRestartLog = async (url, param) => {
+    try {
+        logger.debug("addRestartLog param:", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/addRestartLog", qs.stringify(param));
+        logger.info("addRestartLog result:", rs.data);
+        return rs.data;
+    } catch (e) {
+        logger.error("addRestartLog error,", utils.logNetworkError(e));
+    }
+}
 
 /**
  *
@@ -846,4 +862,5 @@ module.exports = {
     verifySign,
     getSeedInfo,
     checkMainchainSeed,
+    addRestartLog,
 }

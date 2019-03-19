@@ -54,6 +54,34 @@ var maxNodFailedTimes=5;
 //每一轮用户/资源投票数
 var maxVoteCountOneRound = 5;
 
+
+/**
+ *
+ * @returns {*}
+ */
+function getmaxNodFailedTimes() {
+
+    if (utils.isNotNull(chainConfig.configFileData.local.maxNodFailedTimes)) {
+        return chainConfig.configFileData.local.maxNodFailedTimes;
+    }
+
+    return maxNodFailedTimes;
+
+}
+
+/**
+ *
+ * @returns {*}
+ */
+function getMaxVoteCountOneRound() {
+
+    if (utils.isNotNull(chainConfig.configFileData.local.maxVoteCountOneRound)) {
+        return chainConfig.configFileData.local.maxVoteCountOneRound;
+    }
+
+    return maxVoteCountOneRound;
+}
+
 //清除失败用户
 function clearFailedUser(user) {
     if (failedAccountPramList.length == 0) {
@@ -123,8 +151,8 @@ async function syncUser() {
 
         for (var i in userBulletinList) {
 
-            if (voteCount > maxVoteCountOneRound) {
-                logger.error("vote count >=("+maxVoteCountOneRound+"),stop sync user.");
+            if (voteCount > getMaxVoteCountOneRound()) {
+                logger.error("vote count >=("+getMaxVoteCountOneRound()+"),stop sync user.");
                 break;
             }
 
@@ -640,7 +668,7 @@ async function checkNodAlive() {
         let rsdata = await NodUltrain.checkAlive();
         logger.debug("check alive data:", rsdata);
         if (utils.isNull(rsdata)) {
-            if (nodFailedTimes >= maxNodFailedTimes) {
+            if (nodFailedTimes >= getmaxNodFailedTimes()) {
                 nodFailedTimes = 0;
                 logger.info("nod is not runing ,need restart it..");
                 await restartNod();
@@ -946,21 +974,30 @@ async function restartNod() {
 
 
     logger.info("start to restart nod");
+    let param = [];
+    let logMsg = "";
     try {
 
         let wssinfo = " ";
         let wssFilePath = " ";
+        param = await monitor.buildParam();
+        param.chainName = chainConfig.localChainName;
+        param.startTime = new Date().getTime();
         //使用world state to recover
         if (chainConfig.configFileData.local.worldstate == true && chainConfig.isNoneProducer() == false) {
 
             logger.info("world state is on("+chainConfig.configFileData.local.worldstate+") && this nod is not none-producer("+chainConfig.configFileData.target["is-non-producing-node"]+") ,need  use ws to recover",);
+            logMsg = utils.addLogStr(logMsg,"world state is on("+chainConfig.configFileData.local.worldstate+") && this nod is not none-producer("+chainConfig.configFileData.target["is-non-producing-node"]+") ,need  use ws to recover");
+
             //停止worldstate的程序
             if (chainConfig.configFileData.local.worldstate == true) {
                 result = await WorldState.stop(120000);
                 if (result) {
                     logger.info("worldstate is stopped");
+                    logMsg = utils.addLogStr(logMsg,"worldstate is stopped");
                 } else {
                     logger.info("worldstate is not stopped");
+                    logMsg = utils.addLogStr(logMsg,"worldstate is not stopped");
                 }
             }
 
@@ -970,15 +1007,18 @@ async function restartNod() {
             let wsStarted = true;
             if (utils.isNull(seedIpInfo)) {
                 loggerChainChanging.error("seed ip info is null");
+                logMsg = utils.addLogStr(logMsg,"seed ip info is null(chainName:"+chainConfig.localChainName+")");
             } else {
                 logger.info("start world state");
                 result = await WorldState.start(chainConfig.localChainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath, chainConfig.localTest);
                 if (result == true) {
                     logger.info("start ws success");
                     logger.info("world state is on , use world state to revocer");
+                    logMsg = utils.addLogStr(logMsg,"start ws success");
                 } else {
                     logger.info("start ws error");
                     logger.info("world state is off");
+                    logMsg = utils.addLogStr(logMsg,"start ws error");
                     wsStarted = false;
                 }
             }
@@ -997,6 +1037,7 @@ async function restartNod() {
                     }
                 } else {
                     logger.error("can not get world state file,or data is null");
+                    logMsg = utils.addLogStr(logMsg,"can not get world state file,or data is null");
                 }
 
                 //查看本地ws最大文件
@@ -1004,22 +1045,30 @@ async function restartNod() {
                 if (utils.isNotNull(WorldState.status)) {
                     logger.info("local ws status:", WorldState.status);
                     logger.info("local ws max block heght(" + WorldState.status.block_height + "),mainchain max block height(" + maxBlockHeight + ")")
+
+                    logMsg = utils.addLogStr(logMsg,"local ws max block heght(" + WorldState.status.block_height + "),mainchain max block height(" + maxBlockHeight + ")");
                     if (WorldState.status.block_height == maxBlockHeight) {
                         logger.info("block height is equal, check ws file");
+                        logMsg = utils.addLogStr(logMsg,"block height is equal, check ws file");
                         wssFilePath = pathConstants.WSS_LOCAL_DATA + chainConfig.configSub.chainId + "-" + WorldState.status.block_height + ".ws";
                         logger.info("file path:", wssFilePath);
                         if (fs.existsSync(wssFilePath)) {
                             logger.info("file path exists:", wssFilePath);
+                            logMsg = utils.addLogStr(logMsg,"file path  exists:", wssFilePath);
                             wssinfo = "--worldstate " + pathConstants.WSS_LOCAL_DATA + chainConfig.configSub.chainId + "-" + WorldState.status.block_height + ".ws";
                             localHashIsMax = true;
                         } else {
                             logger.info("file path not exists:", wssFilePath);
+                            logMsg = utils.addLogStr(logMsg,"file path not exists:", wssFilePath);
+
                         }
                     } else {
                         logger.info("block height is not equal,not use local ws file to start");
+                        logMsg = utils.addLogStr(logMsg,"block height is not equal,not use local ws file to start");
                     }
                 } else {
                     logger.info("local ws status is null");
+                    logMsg = utils.addLogStr(logMsg,"local ws status is null");
                 }
 
                 //本地没有最新，拉取最新的
@@ -1102,12 +1151,15 @@ async function restartNod() {
         } else {
 
             logger.info("world state may be off("+chainConfig.configFileData.local.worldstate+") || this nod is none-producer("+chainConfig.configFileData.target["is-non-producing-node"]+") ,need not use ws to recover",);
+
+            logMsg = utils.addLogStr(logMsg,"world state may be off("+chainConfig.configFileData.local.worldstate+") || this nod is none-producer("+chainConfig.configFileData.target["is-non-producing-node"]+") ,need not use ws to recover");
         }
 
         //启动nod
         await NodUltrain.stop(120000);
         sleep.msleep(1000);
         logger.info("clear Nod DB data before restart it..");
+        logMsg = utils.addLogStr(logMsg,"clear Nod DB data");
         await NodUltrain.removeData();
 
         // if (chainConfig.configFileData.local.worldstate == true) {
@@ -1118,23 +1170,37 @@ async function restartNod() {
         if (fs.existsSync(wssFilePath)) {
             logger.info("file exists :", wssFilePath);
             logger.info("start nod use wss:", wssinfo);
+            logMsg = utils.addLogStr(logMsg,"file exists :"+wssFilePath+", start nod use wss:"+wssinfo);
         } else {
             logger.error("file not exists :", wssFilePath);
             logger.info("start nod not use wss:", wssinfo);
+            logMsg = utils.addLogStr(logMsg,"file not exists :"+wssFilePath+", start nod not use wss:");
             wssinfo = " "
         }
 
         //启动nod
         result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath, wssinfo, chainConfig.localTest);
         if (result == true) {
-            logger.info("nod start success")
+            logger.info("nod start success");
+            logMsg = utils.addLogStr(logMsg,"nod start success");
         } else {
             logger.error("node start error");
+            logMsg = utils.addLogStr(logMsg,"nod start error");
         }
 
+        param.status = 1;
+
     } catch (e) {
+        param.status = 0;
+        logMsg = utils.addLogStr(logMsg,"exception:"+e.toString());
         logger.error("restartNod error,",e);
     }
+
+    param.endTime = new Date().getTime();
+    param.result = logMsg;
+    //todo
+    param.log = " ";
+    await chainApi.addRestartLog(monitor.getMonitorUrl(),param);
 
     syncChainChanging = false;
 
@@ -1224,8 +1290,8 @@ async function syncResource(allFlag) {
             //获取已透过的所有结果
             for (var i = 0; i < changeList.length; i++) {
 
-                if (voteCount > maxVoteCountOneRound) {
-                    logger.error("vote count >=("+maxVoteCountOneRound+"),stop res sync.");
+                if (voteCount > getMaxVoteCountOneRound()) {
+                    logger.error("vote count >=("+getMaxVoteCountOneRound()+"),stop res sync.");
                     break;
                 }
 

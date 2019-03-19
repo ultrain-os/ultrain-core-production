@@ -164,8 +164,12 @@ function ipListToStr(iplist,port,splitChar) {
  * @param logstr
  */
 function addLogStr(str,logstr) {
-    let time  =new Date().getTime();
+    let time  = getLocalTime();
     return str + time+":"+logstr +"\n";
+}
+
+function getLocalTime() {
+    return new Date(parseInt(new Date().getTime()) * 1).toLocaleString().replace(/:\d{1,2}$/,' ');
 }
 
 
