@@ -461,7 +461,8 @@ namespace ultrainiosystem {
          void setsysparams( const ultrainio_system_params& params );
          void setmasterchaininfo( const master_chain_info& chaininfo );
          void setparams( const ultrainio::blockchain_parameters& params );
-         void setpriv( account_name account, uint8_t ispriv );
+         void setpriv( account_name account, uint8_t is_priv );
+         void setupdateabled( account_name account, uint8_t is_update );
          void rmvproducer( account_name producer );
          void votecommittee();
          void voteaccount();

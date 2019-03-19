@@ -65,6 +65,14 @@ extern "C" {
    void set_privileged( account_name account, bool is_priv );
 
    /**
+    * @brief Set the contract updateabled status of an account
+    * Set the contract updateabled status of an account
+    * @param account - name of the account whose updateabled status to be set
+    * @param is_update - updateabled status
+    */
+   void set_updateabled( account_name account, bool is_update );
+
+   /**
     * @brief Set the blockchain parameters
     * Set the blockchain parameters
     * @param data - pointer to blockchain parameters packed as bytes

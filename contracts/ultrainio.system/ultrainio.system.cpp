@@ -78,9 +78,21 @@ namespace ultrainiosystem {
       set_blockchain_parameters( params );
    }
 
-   void system_contract::setpriv( account_name account, uint8_t ispriv ) {
+   void system_contract::setpriv( account_name account, uint8_t is_priv ) {
       require_auth( _self );
-      set_privileged( account, ispriv );
+      set_privileged( account, is_priv );
+   }
+
+   void system_contract::setupdateabled( account_name account, uint8_t is_update ) {
+      if(has_auth(_self)){
+         require_auth( _self );
+      }else{
+         require_auth( account );
+         ultrainio_assert( !is_update, "the contract account can only be set to unupdatable" );
+         INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {account,N(active)},
+            { account, N(utrio.fee), asset(1000), std::string("setupdateabled") } );  //0.1 UGAS service charge
+      }
+      set_updateabled( account, is_update );
    }
 
    void system_contract::checkvotefrequency(ultrainiosystem::producers_table& prod_tbl, ultrainiosystem::producers_table::const_iterator propos){
@@ -557,7 +569,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
-     (setsysparams)(setmasterchaininfo)(setparams)(setpriv)(votecommittee)(voteaccount)(voteresourcelease)
+     (setsysparams)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
      // producer.cpp

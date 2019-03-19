@@ -504,6 +504,13 @@ class privileged_api : public context_aware_api {
          });
       }
 
+      void set_updateabled( account_name n, bool is_update ) {
+         const auto& a = context.db.get<account_object, by_name>( n );
+         context.db.modify( a, [&]( auto& ma ){
+            ma.updateable = is_update;
+         });
+      }
+
       void empower_to_chain(account_name user, uint64_t chain_name) {
          const auto& a = context.db.get<account_object, by_name>( user );
          for(auto i = 0; i < a.chain_names.size(); ++i) {
@@ -2231,6 +2238,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
+   (set_updateabled,                  void(int64_t, int)                    )
    (empower_to_chain,                 void(int64_t, int64_t)                )
    (is_empowered,                     int(int64_t, int64_t)                 )
    (lightclient_accept_block_header,  int(int64_t, int, int, int, int)      )

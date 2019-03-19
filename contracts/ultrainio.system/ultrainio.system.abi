@@ -655,6 +655,13 @@
         {"name":"is_priv",    "type":"int8"}
       ]
     },{
+      "name": "setupdateabled",
+      "base": "",
+      "fields": [
+        {"name":"account",    "type":"account_name"},
+        {"name":"is_update",    "type":"int8"}
+      ]
+    },{
       "name": "set_account_limits",
       "base": "",
       "fields": [
@@ -864,6 +871,10 @@
    },{
       "name": "setpriv",
       "type": "setpriv",
+      "ricardian_contract": ""
+   },{
+      "name": "setupdateabled",
+      "type": "setupdateabled",
       "ricardian_contract": ""
    },{
       "name": "setalimits",
