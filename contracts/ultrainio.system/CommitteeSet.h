@@ -2,8 +2,7 @@
 
 #include <string>
 
-#include "CommitteeInfo.h"
-
+#include "CommitteeDelta.h"
 namespace ultrainiosystem {
     class CommitteeSet {
     public:
@@ -29,7 +28,7 @@ namespace ultrainiosystem {
 
         std::string toString() const {
             std::stringstream ss;
-            for (int i = 0; i < m_committeeInfoV.size(); i++) {
+            for (size_t i = 0; i < m_committeeInfoV.size(); i++) {
                 m_committeeInfoV[i].toStrStream(ss);
                 if (i != m_committeeInfoV.size() -1) {
                     ss << " ";
@@ -61,6 +60,10 @@ namespace ultrainiosystem {
             }
 
             return CommitteeDelta(addCommitteeInfo, removedCommitteeInfo);
+        }
+
+        void swap(std::vector<CommitteeInfo>& cmt_vct) {
+            m_committeeInfoV.swap(cmt_vct);
         }
 
     private:

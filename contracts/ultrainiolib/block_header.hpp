@@ -8,7 +8,6 @@
 #include <ultrainiolib/datastream.hpp>
 #include <ultrainiolib/time.hpp>
 #include <ultrainiolib/serialize.hpp>
-#include <ultrainiolib/committee_info.hpp>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -73,15 +72,4 @@ namespace ultrainio {
           return endian_reverse_u32(_hash64);
       }
     };
-
-    vector<account_name> get_committee(const string& committee_str) {
-        vector<account_name> committee_vct;
-        std::stringstream ss(committee_str);
-        ultrainstd::CommitteeInfo committeeInfo;
-        while(committeeInfo.fromStrStream(ss)) {
-            committee_vct.push_back(string_to_name(committeeInfo.accountName.c_str()));
-        }
-        return committee_vct;
-    }
-
 }

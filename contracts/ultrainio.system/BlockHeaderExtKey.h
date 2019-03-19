@@ -7,4 +7,5 @@ namespace ultrainiosystem {
         kCommitteeSet,
         kBlsVoterSet
     };
-}
+} //ultrainiosystem
+

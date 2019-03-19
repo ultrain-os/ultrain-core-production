@@ -2,29 +2,51 @@
 
 #include <string>
 #include <sstream>
+#include <ultrainiolib/types.hpp>
 
 namespace ultrainiosystem {
     struct CommitteeInfo {
-        std::string accountName;
-        std::string pk;
-        std::string blsPk;
-        bool isEmpty() {
-            return accountName.empty() || pk.empty() || blsPk.empty();
+        account_name owner;
+        std::string  producer_key;
+        std::string  bls_key;
+
+        ULTRAINLIB_SERIALIZE(CommitteeInfo, (owner)(producer_key)(bls_key) )
+
+        CommitteeInfo() {}
+        CommitteeInfo(account_name an, const std::string& key, const std::string& bk): owner(an),
+                      producer_key(key), bls_key(bk) {}
+
+        bool isEmpty() const {
+            std::string accountStr = ultrainio::name{owner}.to_string();
+            return accountStr.empty() || producer_key.empty() || bls_key.empty();
         }
+
         void toStrStream(std::stringstream& ss) const {
-            ss << accountName << " ";
-            ss << pk << " ";
-            ss << blsPk;
+            if(isEmpty()) {
+                return;
+            }
+            std::string accountStr = ultrainio::name{owner}.to_string(); //to remove
+            ss << accountStr << " ";    //to remove
+            //ss << owner << " ";
+            ss << producer_key << " ";
+            ss << bls_key;
         }
 
         bool fromStrStream(std::stringstream& ss) {
-            if(!(ss >> accountName)) {
+            std::string accountStr;
+            if(!(ss >> accountStr)) {
                 return false;
             }
-            if(!(ss >> pk)) {
+            owner = ultrainio::string_to_name(accountStr.c_str());
+            //to remove above
+            /*
+            if(!(ss >> owner)) {
+                return false;
+            }*/
+            if(!(ss >> producer_key)) {
                 return false;
             }
-            if(!(ss >> blsPk)) {
+            if(!(ss >> bls_key)) {
                 return false;
             }
 
@@ -35,7 +57,7 @@ namespace ultrainiosystem {
             if (this == &rhs) {
                 return true;
             }
-            return accountName == rhs.accountName && pk == rhs.pk && blsPk == rhs.blsPk;
+            return owner == rhs.owner && producer_key == rhs.producer_key && bls_key == rhs.bls_key;
         }
     };
 }

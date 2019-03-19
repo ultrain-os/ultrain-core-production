@@ -403,6 +403,14 @@
 
       ]
     },{
+      "name": "role_base",
+      "base": "",
+      "fields": [
+         {"name":"owner",           "type":"account_name"},
+         {"name":"producer_key",    "type":"string"},
+         {"name":"bls_key",         "type":"string"}
+      ]
+    },{
       "name": "ultrainio_system_params",
       "base": "",
       "fields": [
@@ -425,8 +433,8 @@
          {"name":"owner",                    "type":"account_name"},
          {"name":"master_prods",             "type":"role_base[]"},
          {"name":"block_height",             "type":"uint64"},
-         {"name":"block_id",                 "type":"string"},
-         {"name":"master_chain_ext",          "type":"extension[]"}
+         {"name":"block_id",                 "type":"block_id_type"},
+         {"name":"master_chain_ext",         "type":"extension[]"}
       ]
     },{
       "name": "ultrainio_global_state",
@@ -459,14 +467,6 @@
          {"name":"owner",           "type":"account_name"},
          {"name":"location",        "type":"name"},
          {"name":"in_disable",      "type":"bool"}
-      ]
-    },{
-      "name": "role_base",
-      "base": "",
-      "fields": [
-         {"name":"owner",           "type":"account_name"},
-         {"name":"producer_key",    "type":"string"},
-         {"name":"bls_key",         "type":"string"}
       ]
     },{
       "name": "disabled_producer",
@@ -545,12 +545,12 @@
         {"name": "to_be_paid",                    "type": "bool"},
         {"name": "is_leaf",                       "type": "bool"},
         {"name": "is_synced",                     "type": "bool"},
-        {"name": "committee_set",                 "type": "account_name[]"},
+        {"name": "committee_set",                 "type": "role_base[]"},
         {"name": "trx_hashs",                     "type": "checksum256[]"},
         {"name": "table_extension",               "type": "extension[]"}
        ]
     },{
-     "name": "subchain",
+     "name": "chain_info",
       "base": "",
       "fields": [
         {"name": "chain_name",                    "type": "name"},
@@ -562,23 +562,14 @@
         {"name": "committee_num",                 "type": "uint16"},
         {"name": "deprecated_committee",          "type": "role_base[]"},
         {"name": "changing_info",                 "type": "changing_committee"},
-        {"name": "changing_block_num",            "type": "uint32"},
         {"name": "recent_users",                  "type": "user_info[]"},
         {"name": "total_user_num",                "type": "uint32"},
         {"name": "chain_id",                      "type": "checksum256"},
         {"name": "committee_mroot",               "type": "checksum256"},
         {"name": "confirmed_block_number",        "type": "uint32"},
-        {"name": "committee_set",                 "type": "account_name[]"},
+        {"name": "committee_set",                 "type": "role_base[]"},
         {"name": "unconfirmed_blocks",            "type": "unconfirmed_block_header[]"},
         {"name": "table_extension",               "type": "extension[]"}
-       ]
-    },{
-      "name": "unconfirmed_master_header",
-      "base": "block_header_digest",
-      "fields": [
-        {"name": "is_leaf",                    "type": "bool"},
-        {"name": "committee_mroot",            "type": "checksum256"},
-        {"name": "committee_set",              "type": "role_base[]"}
        ]
     },{
      "name": "pending_miner",
@@ -958,8 +949,8 @@
       "key_names": [],
       "key_types": []
     },{
-      "name": "subchains",
-      "type": "subchain",
+      "name": "chains",
+      "type": "chain_info",
       "index_type": "i64",
       "key_names": ["chain_name"],
       "key_types": ["uint64"]

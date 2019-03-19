@@ -28,12 +28,12 @@ namespace ultrainiosystem {
         if(location != master_chain_name) {
             ultrainio_assert(location != N(master) , "wrong location");
             if(location != default_chain_name) {
-                ultrainio_assert(_subchains.find(location) != _subchains.end(),
+                ultrainio_assert(_chains.find(location) != _chains.end(),
                                  "wrong location, subchain is not existed");
                 require_auth(_self);
             }
             else{
-                ultrainio_assert(_subchains.begin() != _subchains.end(),
+                ultrainio_assert(_chains.begin() != _chains.end(),
                                  "no side chain is existed currently, registering to side chain is not accepted");
                 if (has_auth(_self)) {
                     require_auth(_self);
@@ -108,7 +108,7 @@ namespace ultrainiosystem {
             }
             else {
                 if(location != master_chain_name) {
-                    ultrainio_assert(_subchains.find(location) != _subchains.end(),
+                    ultrainio_assert(_chains.find(location) != _chains.end(),
                                      "wrong location, subchain is not existed");
                 }
                 //if location changes
@@ -187,7 +187,7 @@ namespace ultrainiosystem {
     std::vector<name> system_contract::get_all_chainname() {
         std::vector<name> scopes;
         scopes.emplace_back(master_chain_name);
-        for(auto ite_chain = _subchains.begin(); ite_chain != _subchains.end(); ++ite_chain) {
+        for(auto ite_chain = _chains.begin(); ite_chain != _chains.end(); ++ite_chain) {
             if(ite_chain->chain_name == N(master))
                 continue;
             scopes.emplace_back(ite_chain->chain_name);

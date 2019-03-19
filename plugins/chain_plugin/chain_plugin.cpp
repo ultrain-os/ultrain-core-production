@@ -985,14 +985,14 @@ read_only::get_subchain_block_num_result read_only::get_subchain_block_num(const
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
    ULTRAIN_ASSERT(p.chain_name != master_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
 
-   name table = N(subchains);
+   name table = N(chains);
    auto index_type = get_table_type( abi, table );
 
    read_only::get_subchain_block_num_result result;
    walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
    //    ULTRAIN_ASSERT( obj.value.size() >= sizeof(subchain), chain::asset_type_exception, "Invalid subchain data on table");
 
-       subchain subchain_data;
+       chain_info subchain_data;
        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
        fc::raw::unpack(ds, subchain_data);
        if(p.chain_name == subchain_data.chain_name) {
@@ -1021,12 +1021,12 @@ read_only::get_subchain_block_num_result read_only::get_subchain_block_num(const
 read_only::get_subchain_unconfirmed_header_result read_only::get_subchain_unconfirmed_header(const read_only::get_subchain_unconfirmed_header_params& p) const {
     const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
 
-    name table = N(subchains);
+    name table = N(chains);
     auto index_type = get_table_type( abi, table );
 
     read_only::get_subchain_unconfirmed_header_result result;
     walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj) {
-        subchain subchain_data;
+        chain_info subchain_data;
         fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
         fc::raw::unpack(ds, subchain_data);
         if(p.subchain_name == subchain_data.chain_name) {
@@ -1045,14 +1045,14 @@ read_only::get_subchain_unconfirmed_header_result read_only::get_subchain_unconf
 read_only::get_master_block_num_result read_only::get_master_block_num(const read_only::get_master_block_num_params& p) const {
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
 
-   name table = N(masterchain);
+   name table = N(chains);
    auto index_type = get_table_type( abi, table );
 
    read_only::get_master_block_num_result result;
    walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
-   //    ULTRAIN_ASSERT( obj.value.size() >= sizeof(subchain), chain::asset_type_exception, "Invalid master data on table");
+   //    ULTRAIN_ASSERT( obj.value.size() >= sizeof(chain_info), chain::asset_type_exception, "Invalid master data on table");
 
-       subchain master_data;
+       chain_info master_data;
        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
        fc::raw::unpack(ds, master_data);
        if("master" == master_data.chain_name) {
@@ -1106,10 +1106,10 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
         result.genesis_time = block_timestamp(); //TODO, modify as master genesis time
     }
     else if (result.location != std::numeric_limits<uint64_t>::max()) {
-        table = N(subchains);
+        table = N(chains);
         auto index_type = get_table_type( abi, table );
         walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
-            subchain subchain_data;
+            chain_info subchain_data;
             fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
             fc::raw::unpack(ds, subchain_data);
             if(result.location == subchain_data.chain_name) {
@@ -1129,12 +1129,12 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
 std::vector<read_only::get_user_bulletin_result> read_only::get_user_bulletin(const read_only::get_user_bulletin_params& p) const {
     const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
 
-    name table = N(subchains);
+    name table = N(chains);
     auto index_type = get_table_type( abi, table );
     const auto& d = db.db();
     std::vector<read_only::get_user_bulletin_result> result;
     walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
-       subchain subchain_data;
+       chain_info subchain_data;
        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
        fc::raw::unpack(ds, subchain_data);
        if(p.chain_name == subchain_data.chain_name) {
@@ -1189,7 +1189,7 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
    const abi_def abi = ultrainio::chain_apis::get_abi(db, N(ultrainio));
    const auto table_type = get_table_type(abi, N(producers));
-   const auto subchian_table_type = get_table_type( abi, N(subchains) );
+   const auto subchian_table_type = get_table_type( abi, N(chains) );
    const abi_serializer abis{ abi, abi_serializer_max_time };
    ULTRAIN_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
@@ -1200,8 +1200,8 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    if(p.all_chain) {
        scopes.emplace_back(master_chain_name); //add master
        //add side chains
-       walk_key_value_table(N(ultrainio), N(ultrainio), N(subchains), [&](const key_value_object& obj){
-           ultrainio::chain::subchain subchain_data;
+       walk_key_value_table(N(ultrainio), N(ultrainio), N(chains), [&](const key_value_object& obj){
+           ultrainio::chain::chain_info subchain_data;
            fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
            fc::raw::unpack(ds, subchain_data);
            scopes.emplace_back(subchain_data.chain_name);
@@ -1775,7 +1775,7 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
          }
       }
 
-      auto table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(subchains) ));
+      auto table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(chains) ));
       if (table_id != nullptr) {
          const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
          decltype(table_id->id) next_tid(table_id->id._id + 1);
@@ -1784,7 +1784,7 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
          std::for_each(lower,upper, [&](const key_value_object& obj) {
             vector<char> data;
             copy_inline_row(obj, data);
-            auto subchain = abis.binary_to_variant(abis.get_table_type(N(subchains)), data, abi_serializer_max_time);
+            auto subchain = abis.binary_to_variant(abis.get_table_type(N(chains)), data, abi_serializer_max_time);
             name chain_name = subchain["chain_name"].as_string();
             const auto* res_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, chain_name, N(reslease) ));
             if (res_id != nullptr) {

@@ -69,12 +69,12 @@ namespace ultrainio { namespace chain {
        bool                       to_be_paid;    //should block proposer be paid when this block was confirmed
        bool                       is_leaf;
        bool                       is_synced;
-       std::vector<account_name>  committee_set;
+       std::vector<role_base>     committee_set;
        std::vector<checksum256_type>   trx_hashs;
        extensions_type           table_extension;
    };
 
-    struct subchain {
+    struct chain_info {
        name                      chain_name;
        uint64_t                  chain_type;
        chain::block_timestamp    genesis_time;
@@ -84,13 +84,12 @@ namespace ultrainio { namespace chain {
        uint16_t                  committee_num;
        std::vector<role_base>    deprecated_committee;//keep history producers for un-synced chain, clear it once synced
        changing_committee        changing_info;
-       uint32_t                  changing_block_num; //last block number in master when changing its committee
        std::vector<user_info>    recent_users;
        uint32_t                  total_user_num;
        checksum256_type          chain_id;
        checksum256_type          committee_mroot;
        uint32_t                  confirmed_block_number;
-       std::vector<account_name> committee_set;//current committee set reported by subchain
+       std::vector<role_base>    committee_set;//current committee set reported by chain
        std::vector<unconfirmed_block_header>  unconfirmed_blocks;
        extensions_type           table_extension;
     };
@@ -103,17 +102,11 @@ namespace ultrainio { namespace chain {
       uint32_t                 modify_block_height;
     };
 
-    struct unconfirmed_master_header : public block_header_digest {
-        bool                       is_leaf = true;       //leaf in the fork tree
-        checksum256_type           committee_mroot;
-        std::vector<role_base>     committee_set;
-    };
-
     struct master_chain_info {
         account_name            owner;
         std::vector<role_base>  master_prods;
         uint64_t                block_height = 0;
-        std::string                 block_id;
+        checksum256_type        block_id;
         extensions_type  master_chain_ext;
     };
 
@@ -131,10 +124,8 @@ FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_mem
 FC_REFLECT(ultrainio::chain::block_header_digest, (proposer)(block_id)(block_number)(transaction_mroot)(trx_hashs)(table_extension) )
 FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_block_header, (ultrainio::chain::block_header), (block_id)(block_number)(to_be_paid)
                     (is_leaf)(is_synced)(committee_set)(trx_hashs)(table_extension) )
-FC_REFLECT(ultrainio::chain::subchain, (chain_name)(chain_type)(genesis_time)(global_resource)(is_synced)(is_schedulable)
-                    (committee_num)(deprecated_committee)(changing_info)(changing_block_num)(recent_users)(total_user_num)(chain_id)
+FC_REFLECT(ultrainio::chain::chain_info, (chain_name)(chain_type)(genesis_time)(global_resource)(is_synced)(is_schedulable)
+                    (committee_num)(deprecated_committee)(changing_info)(recent_users)(total_user_num)(chain_id)
                     (committee_mroot)(confirmed_block_number)(committee_set)(unconfirmed_blocks)(table_extension) )
 FC_REFLECT(ultrainio::chain::resources_lease, (owner)(lease_num)(start_block_height)(end_block_height)(modify_block_height) )
-FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_master_header, (ultrainio::chain::block_header_digest), (is_leaf)
-                    (committee_mroot)(committee_set) )
 FC_REFLECT(ultrainio::chain::master_chain_info, (owner)(master_prods)(block_height)(block_id)(master_chain_ext) )

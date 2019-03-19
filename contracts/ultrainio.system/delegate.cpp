@@ -274,10 +274,10 @@ namespace ultrainiosystem {
       require_auth( from );
       ultrainio_assert( _gstate.is_master_chain() || from == _self, "only master chain allow sync resourcelease" );
       ultrainio_assert(location != default_chain_name && location != N(master) , "wrong location");
-      auto chain_itr = _subchains.end();
+      auto chain_itr = _chains.end();
       if(location != master_chain_name) {
-         chain_itr = _subchains.find(location);
-         ultrainio_assert(chain_itr != _subchains.end(), "this subchian location is not existed");
+         chain_itr = _chains.find(location);
+         ultrainio_assert(chain_itr != _chains.end(), "this subchian location is not existed");
          ultrainio_assert(is_empowered(receiver, location), "the receiver is not yet empowered to this chain before");
       }else{
           ultrainio_assert( from == _self, "master chain not allow buy resourcelease" );
@@ -285,13 +285,13 @@ namespace ultrainiosystem {
       resources_lease_table _reslease_tbl( _self,location );
 
       auto max_availableused_size = _gstate.max_resources_number - _gstate.total_resources_used_number;
-      if(chain_itr != _subchains.end()) {
+      if(chain_itr != _chains.end()) {
           max_availableused_size = chain_itr->global_resource.max_resources_number - chain_itr->global_resource.total_resources_used_number;
       }
       std::string availableuserstr = "resources lease package available amount:"+ std::to_string(max_availableused_size);
       ultrainio_assert( combosize <= uint64_t(max_availableused_size), availableuserstr.c_str() );
       uint64_t bytes = 0;
-      if(chain_itr == _subchains.end()) {
+      if(chain_itr == _chains.end()) {
           bytes = _gstate.max_ram_size/_gstate.max_resources_number;
       }
       else {
@@ -307,12 +307,12 @@ namespace ultrainiosystem {
          if( reslease_itr ==  _reslease_tbl.end() ) {
             ultrainio_assert( (combosize > 0) && (days > 0), "resource lease buy days and numbler must > 0" );
             cuttingfee = days*combosize;
-            if(chain_itr == _subchains.end()) {
+            if(chain_itr == _chains.end()) {
                 _gstate.total_resources_used_number += combosize;
                 _gstate.total_ram_bytes_used += (uint64_t)combosize*bytes;
             }
             else {
-                _subchains.modify(chain_itr, [&]( auto& _subchain ) {
+                _chains.modify(chain_itr, [&]( auto& _subchain ) {
                     _subchain.global_resource.total_resources_used_number += combosize;
                     _subchain.global_resource.total_ram_bytes_used += (uint64_t)combosize*bytes;
                 });
@@ -331,12 +331,12 @@ namespace ultrainiosystem {
                ultrainio_assert(reslease_itr->end_block_height > (uint32_t)head_block_number(), "resource lease endtime already expired" );
                double remain_time = block_interval_seconds()*(reslease_itr->end_block_height - (uint32_t)head_block_number())/(double)seconds_per_day;
                cuttingfee = uint64_t(ceil(remain_time))*combosize;
-               if(chain_itr == _subchains.end()) {
+               if(chain_itr == _chains.end()) {
                    _gstate.total_resources_used_number += combosize;
                    _gstate.total_ram_bytes_used += (uint64_t)combosize*bytes;
                }
                else {
-                   _subchains.modify(chain_itr, [&]( auto& _subchain ) {
+                   _chains.modify(chain_itr, [&]( auto& _subchain ) {
                        _subchain.global_resource.total_resources_used_number += combosize;
                        _subchain.global_resource.total_ram_bytes_used += (uint64_t)combosize*bytes;
                    });
@@ -359,7 +359,7 @@ namespace ultrainiosystem {
                                 { from, N(utrio.fee), asset(resourcefee), std::string("buy resource lease") } );
          print("resourcelease calculatefee receiver:", name{receiver}," resourcenum_time:",cuttingfee, " resourcefee:",resourcefee);
          ultrainio_assert( 0 < reslease_itr->lease_num, "insufficient resource lease" );
-         if (chain_itr == _subchains.end()) {
+         if (chain_itr == _chains.end()) {
              set_resource_limits( receiver, int64_t(bytes*reslease_itr->lease_num), int64_t(reslease_itr->lease_num), int64_t(reslease_itr->lease_num) );
              print("current resource limit  receiver:", name{receiver}, " net_weight:",reslease_itr->lease_num," cpu:",reslease_itr->lease_num," ram:",int64_t(bytes*reslease_itr->lease_num));
          }
@@ -473,7 +473,7 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
          }
       }
 
-      for(auto chain_iter = _subchains.begin(); chain_iter != _subchains.end(); ++chain_iter) {
+      for(auto chain_iter = _chains.begin(); chain_iter != _chains.end(); ++chain_iter) {
           if (chain_iter->chain_name == N(master))
               continue;
           const auto& chain_gs = chain_iter->global_resource;
@@ -490,7 +490,7 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
                   uint64_t new_used_ram = (chain_gs.total_ram_bytes_used >= lease_bytes) ?
                       (chain_gs.total_ram_bytes_used - lease_bytes) : 0;
 
-                  _subchains.modify(chain_iter, [&]( auto& subchain ) {
+                  _chains.modify(chain_iter, [&]( auto& subchain ) {
                      subchain.global_resource.total_resources_used_number = new_lease_number;
                      subchain.global_resource.total_ram_bytes_used        = new_used_ram;
                   });

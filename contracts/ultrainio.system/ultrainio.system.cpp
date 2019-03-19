@@ -14,7 +14,7 @@ namespace ultrainiosystem {
    system_contract::system_contract( account_name s )
    :native(s),
     _global(_self,_self),
-    _subchains(_self,_self),
+    _chains(_self,_self),
     _pendingminer( _self, _self ),
     _pendingaccount( _self, _self ),
     _pendingres( _self, _self ),
@@ -52,9 +52,9 @@ namespace ultrainiosystem {
             _gstate.resource_fee = params.resource_fee;
             _global.set( _gstate );
         } else {
-            auto ite_chain = _subchains.find(params.chain_name);
-            ultrainio_assert(ite_chain != _subchains.end(), "this chian does not exist");
-            _subchains.modify(ite_chain, [&](subchain& info) {
+            auto ite_chain = _chains.find(params.chain_name);
+            ultrainio_assert(ite_chain != _chains.end(), "this chian does not exist");
+            _chains.modify(ite_chain, [&](chain_info& info) {
                 info.global_resource.max_ram_size = params.max_ram_size;
                 info.global_resource.max_resources_number = params.max_resources_number;
             } );
@@ -70,6 +70,21 @@ namespace ultrainiosystem {
          info = chaininfo;
          info.owner = chaininfo.owner;
       });
+
+      auto it = _chains.find(N(master));
+      ultrainio_assert(it == _chains.end(), "master chain already exist");
+      _chains.emplace( [&]( auto& masterchain ) {
+          masterchain.chain_name         = name{N(master)};
+          masterchain.chain_type         = 0; //0 is for master chain, not created in chaintypes table
+          masterchain.is_synced          = false;
+          masterchain.is_schedulable     = false;
+          masterchain.committee_num      = 0;
+          masterchain.total_user_num     = 0;
+          masterchain.chain_id           = checksum256();
+          masterchain.committee_mroot    = checksum256();
+          masterchain.confirmed_block_number = uint32_t(chaininfo.block_height);
+      });
+
    }
    void system_contract::setparams( const ultrainio::blockchain_parameters& params ) {
       require_auth( N(ultrainio) );
@@ -498,7 +513,7 @@ void system_contract::voteresourcelease() {
     bool system_contract::accept_initial_header(name chain_name, const checksum256& previous_id, const std::vector<role_base>& committee_set , const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_len) {
       std::stringstream ss;
       for(size_t i = 0; i < committee_set.size(); ++i) {
-          ultrainstd::CommitteeInfo committeeInfo(name{committee_set[i].owner}.to_string(), committee_set[i].producer_key, committee_set[i].bls_key);
+          CommitteeInfo committeeInfo(committee_set[i].owner, committee_set[i].producer_key, committee_set[i].bls_key);
           committeeInfo.toStrStream(ss);
           if(i != committee_set.size() - 1 ) {
               ss << " ";
