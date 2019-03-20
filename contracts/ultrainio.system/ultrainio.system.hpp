@@ -377,7 +377,7 @@ namespace ultrainiosystem {
           */
          void resourcelease( account_name from, account_name receiver,
                              uint64_t combosize, uint64_t days, name location = master_chain_name);
-         void recycleresource(const account_name owner ,uint64_t lease_num);
+         void recycleresource(const account_name owner);
 
 
          // functions defined in producer.cpp
