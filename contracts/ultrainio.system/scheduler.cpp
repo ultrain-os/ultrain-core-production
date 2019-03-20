@@ -286,7 +286,7 @@ namespace ultrainiosystem {
             }
 
             const account_name block_proposer = headers[idx].proposer;
-            if(!lc_checked && (block_proposer == N(genesis) || block_number == 1 || !headers[idx].header_extensions.empty())) {
+            if(!lc_checked && (block_proposer == N(genesis) || !headers[idx].header_extensions.empty())) {
                 char confirm_id[32];
                 if(!accept_block_header(chain_name, headers[idx], confirm_id, sizeof(confirm_id))) {
                     continue;
@@ -298,7 +298,7 @@ namespace ultrainiosystem {
 
             _chains.modify(ite_chain, [&]( auto& _subchain ) {
                 unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, need_report, synced);
-                if(block_number > 1) {
+                if(block_number > initial_block_number) {
                     _subchain.unconfirmed_blocks[pre_block_index].is_leaf = false;
                 }
                 _subchain.unconfirmed_blocks.push_back(uncfm_header);
@@ -309,14 +309,6 @@ namespace ultrainiosystem {
                 auto ite_confirm_block = _subchain.unconfirmed_blocks.end();
                 // currenr block is confirmed immediately，it must be block 1 or producerd by genesis
                 if(final_confirmed_id == block_id) {
-                    if(1 == block_number) {
-                        //same block case has been filtered above
-                        ultrainio_assert(_subchain.unconfirmed_blocks.size() == 1, "a sidechain can only accept one genesis block");
-                        _subchain.chain_id          = headers[idx].action_mroot; //save chain id
-                        _subchain.genesis_time      = headers[idx].timestamp;
-                        _subchain.is_schedulable    = true;
-                    }
-
                     ite_confirm_block = _subchain.unconfirmed_blocks.end();
                     --ite_confirm_block;
                 }
@@ -394,32 +386,15 @@ namespace ultrainiosystem {
                             CommitteeSet new_committee_set(ite_uncfm_block->committee_set);
                             CommitteeSet pre_committee_set(_subchain.committee_set);
                             auto cmt_delta = new_committee_set.diff(pre_committee_set);
-                            for(auto it_rm = _subchain.changing_info.removed_members.begin();
-                                     it_rm != _subchain.changing_info.removed_members.end();) {
-                                if(cmt_delta.checkRemoved(*it_rm)) {
-                                    it_rm = _subchain.changing_info.removed_members.erase(it_rm);
-                                }
-                                else {
-                                    ++it_rm;
-                                }
-                            }
-                            for(auto it_add = _subchain.changing_info.new_added_members.begin();
-                                     it_add != _subchain.changing_info.new_added_members.end();) {
-                                if(cmt_delta.checkAdded(*it_add)) {
-                                    it_add = _subchain.changing_info.new_added_members.erase(it_add);
-                                }
-                                else {
-                                    ++it_add;
-                               }
-                            }
-                            if(_subchain.changing_info.empty()) {
-                                _subchain.is_schedulable = true;
-                            }
-                            if(!cmt_delta.empty()) {
-                                print("un-expected committee update happened");
-                            }
+                            _subchain.handle_committee_update(cmt_delta);
                             _subchain.committee_set.swap(ite_uncfm_block->committee_set);//confirmed block will be erased
                         }
+                        if(1 == ite_uncfm_block->block_number) {
+                            _subchain.chain_id          = ite_uncfm_block->action_mroot; //save chain id
+                            _subchain.genesis_time      = ite_uncfm_block->timestamp;
+                            _subchain.is_schedulable    = true;
+                        }
+
                         if(ite_uncfm_block->block_number == _subchain.confirmed_block_number) {
                             //don't remove current confirmed block
                             ++ite_uncfm_block;

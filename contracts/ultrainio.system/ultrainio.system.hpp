@@ -294,6 +294,29 @@ namespace ultrainiosystem {
                             (is_schedulable)(committee_num)(deprecated_committee)(changing_info)
                             (recent_users)(total_user_num)(chain_id)(committee_mroot)(confirmed_block_number)
                             (committee_set)(unconfirmed_blocks)(table_extension) )
+
+       void handle_committee_update(CommitteeDelta& cmt_delta) {
+           for(auto it_rm = changing_info.removed_members.begin(); it_rm != changing_info.removed_members.end();) {
+               if(cmt_delta.checkRemoved(*it_rm)) {
+                   it_rm = changing_info.removed_members.erase(it_rm);
+               } else {
+                    ++it_rm;
+               }
+           }
+           for(auto it_add = changing_info.new_added_members.begin(); it_add != changing_info.new_added_members.end();) {
+               if(cmt_delta.checkAdded(*it_add)) {
+                   it_add = changing_info.new_added_members.erase(it_add);
+               } else {
+                   ++it_add;
+               }
+           }
+           if(changing_info.empty()) {
+               is_schedulable = true;
+           }
+           if(!cmt_delta.empty()) {
+               print("error: un-expected committee update happened \n");
+           }
+       }
    };
    typedef ultrainio::multi_index<N(chains), chain_info> chains_table;
 

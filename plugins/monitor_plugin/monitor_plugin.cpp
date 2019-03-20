@@ -64,7 +64,6 @@ class monitor_plugin_impl {
     bool            needReportTask = true;
     uint32_t        reportInterval;
     vector<string>  supplied_peers;
-    std::thread     m_report_thrd;
 
     monitor_apis::monitor_only m_monitorHandler;
 
@@ -82,9 +81,6 @@ monitor_plugin_impl::monitor_plugin_impl() : firstLoop(true) {
 void monitor_plugin_impl::shutdown() {
     if(m_reportTaskTimer) {
         m_reportTaskTimer->cancel();
-    }
-    if(m_report_thrd.joinable()) {
-        m_report_thrd.join();
     }
 }
 
@@ -121,10 +117,7 @@ void monitor_plugin_impl::processReportTask() {
                    call(this->monitor_central_server, this->call_path_dynamic, *dynamicData);
                };
     std::thread thrd(foo);
-    m_report_thrd.swap(thrd);
-    if(thrd.joinable()) {
-        thrd.join();
-    }
+    thrd.detach();
   }
   catch(chain::node_not_found_exception& e) {
     auto exceptionInfo = std::string("exception happened, node not initialized.");
