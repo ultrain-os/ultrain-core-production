@@ -130,56 +130,86 @@ int main(int argc, const char **argv) {
         });
 
         //account_sequence_object
+        out << "\n\naccount_sequence_object\n";
         worldstate->read_section<account_sequence_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   account_sequence_object row;
                   more = section.read_row(row, db);
+                  fc::variant v;
+                  fc::to_variant(row, v);
+                  fc::mutable_variant_object mvo(v);
+                  out << fc::json::to_string(mvo)<<"\n";
                 }
         });
 
         //global_property_object
+        out << "\n\nglobal_property_object\n";
         worldstate->read_section<global_property_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   global_property_object row;
                   more = section.read_row(row, db);
+                  fc::variant v;
+                  fc::to_variant(row, v);
+                  fc::mutable_variant_object mvo(v);
+                  out << fc::json::to_string(mvo)<<"\n";
                 }
         });
 
         //dynamic_global_property_object
+        out << "\n\ndynamic_global_property_object\n";
         worldstate->read_section<dynamic_global_property_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   dynamic_global_property_object row;
                   more = section.read_row(row, db);
+                  fc::variant v;
+                  fc::to_variant(row, v);
+                  fc::mutable_variant_object mvo(v);
+                  out << fc::json::to_string(mvo)<<"\n";
                 }
         });
 
         //block_summary_object
+        out << "\n\nblock_summary_object\n";
         worldstate->read_section<block_summary_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   block_summary_object row;
                   more = section.read_row(row, db);
+                  fc::variant v;
+                  fc::to_variant(row, v);
+                  fc::mutable_variant_object mvo(v);
+                  out << fc::json::to_string(mvo)<<"\n";
                 }
         });
 
         //transaction_object
+        out << "\n\ntransaction_object\n";
         worldstate->read_section<transaction_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   transaction_object row;
                   more = section.read_row(row, db);
+                  fc::variant v;
+                  fc::to_variant(row, v);
+                  fc::mutable_variant_object mvo(v);
+                  out << fc::json::to_string(mvo)<<"\n";
                 }
         });
 
         //generated_transaction_object
+        out << "\n\ngenerated_transaction_object\n";
         worldstate->read_section<generated_transaction_object>([&db,&contract_abi,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                   generated_transaction_object row;
                   more = section.read_row(row, db);
+                  fc::variant v;
+                  fc::to_variant(row, v);
+                  fc::mutable_variant_object mvo(v);
+                  out << fc::json::to_string(mvo)<<"\n";
                 }
         });
 
@@ -271,44 +301,73 @@ int main(int argc, const char **argv) {
                 }
         });
 
+        //permission_link_object
+        out << "\n\npermission_link_object\n";
         worldstate->read_section<permission_link_object>([&db,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                      permission_link_object row;
                      more = section.read_row(row, db);
+                     fc::variant v;
+                     fc::to_variant(row, v);
+                     fc::mutable_variant_object mvo(v);
+                     out << fc::json::to_string(mvo)<<"\n";
                 }
         });
 
         //resource
+        out << "\n\nresource_limits_object\n";
         worldstate->read_section<resource_limits_object>([&db,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                  resource_limits_object row;
                  more = section.read_row(row, db);
+                 fc::variant v;
+                 fc::to_variant(row, v);
+                 fc::mutable_variant_object mvo(v);
+                 out << fc::json::to_string(mvo)<<"\n";
                  }
         });
 
+        //resource_usage_object
+        out << "\n\nresource_usage_object\n";
         worldstate->read_section<resource_usage_object>([&db,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                  resource_usage_object row;
                  more = section.read_row(row, db);
+                 fc::variant v;
+                 fc::to_variant(row, v);
+                 fc::mutable_variant_object mvo(v);
+                 out << fc::json::to_string(mvo)<<"\n";
                  }
         });
 
+        //resource_limits_state_object
+        out << "\n\nresource_limits_state_object\n";
         worldstate->read_section<resource_limits_state_object>([&db,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                  resource_limits_state_object row;
                  more = section.read_row(row, db);
+                 fc::variant v;
+                 fc::to_variant(row, v);
+                 fc::mutable_variant_object mvo(v);
+                 out << fc::json::to_string(mvo)<<"\n";
                  }
         });
 
+        //resource_limits_config_object
+        out << "\n\nresource_limits_config_object\n";
         worldstate->read_section<resource_limits_config_object>([&db,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                  resource_limits_config_object row;
                  more = section.read_row(row, db);
+                 fc::variant v;
+                 fc::to_variant(row, v);
+                 fc::mutable_variant_object mvo(v);
+                 out << fc::json::to_string(mvo)<<"\n";
                  }
         });
 
