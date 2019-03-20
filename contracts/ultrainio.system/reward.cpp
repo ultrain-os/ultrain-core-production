@@ -52,7 +52,7 @@ namespace ultrainiosystem {
       cleanvotetable();
       checkbulletin();
       schedule();
-      //distributreward();  //3.15 Do not automatically send rewards
+      distributreward();  //automatically send rewards
    }
 
    void system_contract::reportblocknumber( name chain_name, uint64_t chain_type, account_name producer, uint64_t number) {
@@ -102,12 +102,12 @@ namespace ultrainiosystem {
          for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
             if( itr->unpaid_balance > 0 ) {
                auto producer_unpaid_balance = (int64_t)itr->unpaid_balance;
-               print("\nclaimrewards producer:",name{itr->owner}," producer_pay:",producer_unpaid_balance,"\n");
+               print("\nclaimrewards producer:",name{itr->owner}," reward_account:",name{itr->claim_rewards_account}," producer_pay_balance:",producer_unpaid_balance,"\n");
                _producers.modify( itr, [&](auto& p) {
                   p.unpaid_balance = 0;
                });
                INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
-                  { pay_account, itr->owner, asset(producer_unpaid_balance), std::string("producer block pay") } );
+                  { pay_account, itr->claim_rewards_account, asset(producer_unpaid_balance), std::string("producer block pay") } );
             }
          }
       }
@@ -117,7 +117,7 @@ namespace ultrainiosystem {
       if(!_gstate.is_master_chain())
          return;
       uint32_t block_height = (uint32_t)head_block_number() + 1;
-      uint32_t interval_num = seconds_per_day/block_interval_seconds();
+      uint32_t interval_num = seconds_per_day/block_interval_seconds()/24;   //TEST:Send rewards once an hour
       if(block_height < 120 || block_height%interval_num != 0) {
          return;
       }
