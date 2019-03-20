@@ -437,6 +437,9 @@ bytes apply_context::get_packed_transaction() {
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
    account_name p = account_name(receiver);
+   if(delta < 0 && receiver == N(ultrainio)){
+      p = payer;
+   }
 //    if( delta > 0 ) {
 //       if( !(privileged || payer == account_name(receiver)) ) {
 //          require_authorization( payer );
@@ -496,8 +499,9 @@ int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_n
    return db_store_i64( receiver, scope, table, payer, id, buffer, buffer_size);
 }
 
-int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, account_name payer, uint64_t id, const char* buffer, size_t buffer_size ) {
 //   require_write_lock( scope );
+   payer = code;
    const auto& tab = find_or_create_table( code, scope, table, payer );
    auto tableid = tab.id;
 
@@ -524,7 +528,7 @@ int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, 
 
 void apply_context::db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
    const key_value_object& obj = keyval_cache.get( iterator );
-
+   payer = receiver;
    const auto& table_obj = keyval_cache.get_table( obj.t_id );
    ULTRAIN_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
 
