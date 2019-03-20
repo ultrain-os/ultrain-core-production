@@ -341,8 +341,8 @@ static bool ECVRF_verify(
 bool verify_with_pk(char* pk_str, char* proof_str, char* message)
 {
     // initialize vrf environment
-    ilog("verify_with_pk: pk = ${pk_str}, proof_str = ${proof_str}, message = ${message}",
-            ("pk_str", std::string(pk_str, 66))("proof_str", std::string(proof_str, 162))("message", (std::string(message, 64))));
+    //ilog("verify_with_pk: pk = ${pk_str}, proof_str = ${proof_str}, message = ${message}",
+            //"pk_str", std::string(pk_str, 66))("proof_str", std::string(proof_str, 162))("message", (std::string(message, 64))));
 
     ecvrf_suite* vrf = ecvrf_p256();
     if (!vrf) {
@@ -365,7 +365,7 @@ bool verify_with_pk(char* pk_str, char* proof_str, char* message)
     str2arr(msg_arr, message, sizeof(msg_arr));
 
     bool valid = ECVRF_verify(vrf, pubkey, msg_arr, sizeof(msg_arr), proof, vrf->proof_size);
-    ilog("valid = ${valid}\n", ("valid", valid));
+    //ilog("valid = ${valid}\n", ("valid", valid));
 
     EC_POINT_clear_free(pubkey);
     ecvfr_free(vrf);

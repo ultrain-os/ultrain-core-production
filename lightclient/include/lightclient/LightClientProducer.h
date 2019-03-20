@@ -18,7 +18,7 @@ namespace ultrainio {
 
         bool hasNextTobeConfirmedBls() const;
 
-        void accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
+        void acceptNewHeader(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
 
         void handleCheckPoint(chain::controller& chain, const CommitteeSet& committeeSet);
 

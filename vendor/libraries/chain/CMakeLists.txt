@@ -45,9 +45,10 @@ add_library( ultrainio_chain
              worldstate
              worldstate_file_manager
 
-	     webassembly/wabt.cpp
+             webassembly/wabt.cpp
              config.cpp
-	     block_timestamp.cpp
+             block_timestamp.cpp
+             bls_votes.cpp
 #             get_config.cpp
 #             global_property_object.cpp
 #

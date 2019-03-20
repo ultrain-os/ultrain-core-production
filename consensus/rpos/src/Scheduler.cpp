@@ -1948,7 +1948,7 @@ namespace ultrainio {
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
         std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
-        lightClientProducerPtr->accept(chain.head_block_header(), m_currentVoterSet.toBlsVoterSet());
+        lightClientProducerPtr->acceptNewHeader(chain.head_block_header(), m_currentVoterSet.toBlsVoterSet());
         //ilog("lightClient::accept");
         //std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(0);
         //lightClient->accept(chain.head_block_header());

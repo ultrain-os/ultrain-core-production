@@ -57,7 +57,7 @@ namespace ultrainio {
         ilog("add kNextCommitteeMroot, new mroot = ${new} in ${blockNum}", ("new", mroot)("blockNum", chain.head_block_num() + 1));
     }
 
-    void LightClientProducer::accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
+    void LightClientProducer::acceptNewHeader(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
         // need Confirmed
         if (shouldBeConfirmed(blockHeader)) {
             m_shouldBeConfirmedList.push_back(blockHeader);
