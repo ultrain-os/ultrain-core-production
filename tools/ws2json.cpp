@@ -258,11 +258,16 @@ int main(int argc, const char **argv) {
         });
 
         //permission
+        out << "\n\npermission_object\n";
         worldstate->read_section<permission_object>([&db,&out]( auto& section ) {
                 bool more = !section.empty();
                 while(more) {
                      permission_object row;
                      more = section.read_row(row, db);
+                     fc::variant v;
+                     fc::to_variant(row, v);
+                     fc::mutable_variant_object mvo(v);
+                     out << fc::json::to_string(mvo)<<"\n";
                 }
         });
 
