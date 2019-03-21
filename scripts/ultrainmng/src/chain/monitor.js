@@ -323,8 +323,8 @@ async function cmdDeploy(deployBatch) {
                 logger.error('exec error: ' + error);
                 param.status = statusConstants.EXCEPTION;
                 param.ext = error.toString();
-                await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 param.sign = generateSign(param.time,generateSignParamWithStatus(param));
+                await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 enableDeploy();
             } else {
                 logger.info("exec success :",stdout);
@@ -407,7 +407,7 @@ async function fileDeploy(deployBatch) {
             param.status = statusConstants.SUCCESS;
             param.batchId = deployBatch.id;
             logger.info("finsih deploy param:",param);
-            param.data = generateSignParamWithStatus(param);
+            param.sign = generateSign(param.time,generateSignParamWithStatus(param));
             await chainApi.finsihDeployFile(getMonitorUrl(), param);
             return;
         } else {
