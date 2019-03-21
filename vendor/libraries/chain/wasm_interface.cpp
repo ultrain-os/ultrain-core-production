@@ -389,9 +389,12 @@ class typescript_crypto_api : public context_aware_api {
 
          if (trx_receipt.trx.contains<packed_transaction>()) {
             bytes tx_raw_data = trx_receipt.trx.get<packed_transaction>().get_raw_transaction();
-            if (buffer_size < tx_raw_data.size()) return tx_raw_data.size();
+            auto required_size = tx_raw_data.size() + sizeof(uint8_t);
+            if (buffer_size < required_size) return required_size;
 
+            uint8_t status = uint8_t(trx_receipt.status);
             memcpy(buffer, tx_raw_data.data(), tx_raw_data.size());
+            memcpy(buffer.value + tx_raw_data.size(), (const char*)&status, sizeof(uint8_t));
             return 0;
          }
 

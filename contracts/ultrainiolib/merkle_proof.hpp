@@ -11,6 +11,19 @@
 #include <string>
 
 namespace ultrainio {
+    struct stateful_transaction : public transaction {
+        enum status_enum {
+         executed  = 0, ///< succeed, no error handler executed
+         soft_fail = 1, ///< objectively failed (not executed), error handler executed
+         hard_fail = 2, ///< objectively failed and error handler objectively failed thus no state change
+         delayed   = 3, ///< transaction delayed/deferred/scheduled for future execution
+         expired   = 4  ///< transaction expired and storage space refuned to user
+        };
+        uint8_t status = soft_fail;
+
+        ULTRAINLIB_SERIALIZE_DERIVED( stateful_transaction, transaction, (status) )
+    };
+
     struct merkle_proof {
         constexpr static size_t max_stack_buffer_size = 512;
 
@@ -27,7 +40,7 @@ namespace ultrainio {
             return r != 0;
         }
 
-        transaction recover_transaction() {
+        stateful_transaction recover_transaction() {
             void* buffer = alloca(max_stack_buffer_size);
             size_t size = max_stack_buffer_size;
             int ret = ts_recover_transaction(buffer, size, (const char*)(&tx_bytes[0]), tx_bytes.size());
@@ -39,7 +52,7 @@ namespace ultrainio {
                 ultrainio_assert(ret == 0, "read packed_transaction raw data failed.");
             }
 
-            transaction tx;
+            stateful_transaction tx;
             datastream<char *> ds((char*) buffer, size);
             ds >> tx;
 

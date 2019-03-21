@@ -52,7 +52,8 @@ class merkle_proof_contract : public ultrainio::contract {
 
           ultrainio_assert(r, "verifyTransfer failed: verify merkle proof failed.");
 
-          transaction tx = mklp.recover_transaction();
+          stateful_transaction tx = mklp.recover_transaction();
+          ultrainio_assert(tx.status == stateful_transaction::executed, "this transaction is not executed.");
           ultrainio_assert(tx.actions.size() > 0, "no context related actions contains in this transaction.");
 
           for (const auto& act : tx.actions) {
