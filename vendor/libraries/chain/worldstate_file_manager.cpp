@@ -371,14 +371,12 @@ void ws_file_manager::start_delete_timer()
 {    
     m_ws_delete_check->expires_from_now(m_ws_delete_period);
     m_ws_delete_check->async_wait([this](boost::system::error_code ec) {
-        ilog("delete worldstate files timer start");
         if (ec.value() == boost::asio::error::operation_aborted) { //cancelled
             ilog("delete timer cancelled");
             return;
         } 
 
         auto start_again = fc::make_scoped_exit([this](){
-            ilog("delete worldstate files timer end");
             start_delete_timer();
          });
 
