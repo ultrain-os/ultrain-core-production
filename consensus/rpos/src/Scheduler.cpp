@@ -80,6 +80,8 @@ namespace ultrainio {
         m_memleakCheck.reset(new boost::asio::steady_timer(app().get_io_service()));
         start_memleak_check();
         m_fast_timestamp = 0;
+        chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
+        m_lightClientProducer = std::make_shared<LightClientProducer>(chain.get_bls_votes_manager());
 //        std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(0);
 //        lightClient->addCallback(std::make_shared<LightClientCallbackTest>());
     }
@@ -1290,17 +1292,17 @@ namespace ultrainio {
             }
 
             // CheckPoint
-            std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
             if (EpochEndPoint::isEpochEndPoint(chain.head_block_header())) { // CheckPoint iff the before one is EpochEndHeader
                 std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(chain.head_block_num() + 1);
                 ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
                 CommitteeSet committeeSet = stakeVotePtr->getCommitteeSet();
-                lightClientProducerPtr->handleCheckPoint(chain, committeeSet);
+                m_lightClientProducer->handleCheckPoint(chain, committeeSet);
             }
 
             // ConfirmPoint
-            if (lightClientProducerPtr->hasNextTobeConfirmedBls()) {
-                lightClientProducerPtr->handleConfirmPoint(chain);
+            BlsVoterSet blsVoterSet;
+            if (m_lightClientProducer->hasNextTobeConfirmedBls(blsVoterSet) && !blsVoterSet.empty()) {
+                m_lightClientProducer->handleConfirmPoint(chain, blsVoterSet);
             }
 
             // TODO(yufengshen): We have to cap the block size, cpu/net resource when packing a block.
@@ -1341,11 +1343,11 @@ namespace ultrainio {
             chain.set_trx_merkle_hack();
             // EpochEndPoint iff CommitteeSet changed
             std::shared_ptr<CommitteeState> committeeState = StakeVoteBase::getCommitteeState(chain::master_chain_name);
-            if (committeeState && committeeState->cinfo.size() > 0) {
+            if (committeeState && committeeState->chainStateNormal && committeeState->cinfo.size() > 0) {
                 CommitteeSet committeeSet(committeeState->cinfo);
                 SHA256 newMRoot = committeeSet.committeeMroot();
                 if (newMRoot != committeeMroot) {
-                    lightClientProducerPtr->handleEpochEndPoint(chain, newMRoot);
+                    m_lightClientProducer->handleEpochEndPoint(chain, newMRoot);
                 }
             }
             // Construct the block msg from pbs.
@@ -1947,8 +1949,7 @@ namespace ultrainio {
              ("num", block->block_num())
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
-        std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
-        lightClientProducerPtr->acceptNewHeader(chain.head_block_header(), m_currentVoterSet.toBlsVoterSet());
+        m_lightClientProducer->acceptNewHeader(chain.head_block_header(), m_currentVoterSet.toBlsVoterSet());
         //ilog("lightClient::accept");
         //std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(0);
         //lightClient->accept(chain.head_block_header());
@@ -2148,9 +2149,8 @@ namespace ultrainio {
         auto block_timestamp = chain.head_block_time() + fc::milliseconds(chain::config::block_interval_ms);
         chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1));
         if (EpochEndPoint::isEpochEndPoint(chain.head_block_header())) {
-            std::shared_ptr<LightClientProducer> lightClientProducerPtr = LightClientMgr::getInstance()->getLightClientProducer();
             std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(chain.head_block_num() + 1);
-            lightClientProducerPtr->handleCheckPoint(chain, stakeVotePtr->getCommitteeSet());
+            m_lightClientProducer->handleCheckPoint(chain, stakeVotePtr->getCommitteeSet());
         }
         chain.set_action_merkle_hack();
         // empty block does not have trx, so we don't need this?
@@ -2163,6 +2163,7 @@ namespace ultrainio {
         blockPtr->transaction_mroot = bh.transaction_mroot;
         blockPtr->action_mroot = bh.action_mroot;
         blockPtr->committee_mroot = bh.committee_mroot;
+        blockPtr->proposer = name("utrio.empty");
         // Discard the temp block.
         chain.abort_block();
         return blockPtr;
@@ -2200,7 +2201,7 @@ namespace ultrainio {
     bool Scheduler::on_accept_block_header(uint64_t chainName, const BlockHeader& blockHeader, BlockIdType& id) {
         ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}", ("chainName", name(chainName))("blockNum", blockHeader.block_num()));
         std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(chainName);
-        if (blockHeader.block_num() < 2 || std::string(blockHeader.proposer) == std::string("genesis")) {
+        if (std::string(blockHeader.proposer) == std::string("genesis")) {
             lightClient->accept(blockHeader);
         } else {
             std::vector<BlockHeader> headers = getUnconfirmedHeaderFromDb(name(chainName));

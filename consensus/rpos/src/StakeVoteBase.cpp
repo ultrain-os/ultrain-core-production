@@ -70,10 +70,10 @@ namespace ultrainio {
     }
 
     SHA256 StakeVoteBase::getCommitteeMroot() const {
-        if (!m_committeeStatePtr) {
-            return SHA256();
+        if (m_committeeStatePtr && m_committeeStatePtr->chainStateNormal && m_committeeStatePtr->cinfo.size() > 0) {
+            return CommitteeSet(m_committeeStatePtr->cinfo).committeeMroot();
         }
-        return CommitteeSet(m_committeeStatePtr->cinfo).committeeMroot();
+        return SHA256();
     }
 
     CommitteeSet StakeVoteBase::getCommitteeSet() const {

@@ -7,6 +7,7 @@ add_library( ultrainio_lightclient
         src/CommitteeSet.cpp
         src/ConfirmPoint.cpp
         src/EpochEndPoint.cpp
+        src/Helper.cpp
         src/LightClient.cpp
         src/LightClientCallback.cpp
         src/LightClientMgr.cpp

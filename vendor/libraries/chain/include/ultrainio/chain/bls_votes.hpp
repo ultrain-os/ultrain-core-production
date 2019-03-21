@@ -28,6 +28,8 @@ namespace ultrainio { namespace chain { namespace bls_votes {
 
         uint32_t latest_confirmed_block_num = 0;
 
+        block_id_type latest_check_point_id;
+
         std::vector<bls_votes_info> should_be_confirmed;
     };
 
@@ -47,13 +49,13 @@ namespace ultrainio { namespace chain { namespace bls_votes {
 
         void initialize_database();
 
-        bool has_should_be_confirmed_bls(std::string& bls);
+        bool has_should_be_confirmed_bls(std::string& bls) const;
 
-        bool should_be_confirmed(uint32_t block_num);
+        bool should_be_confirmed(uint32_t block_num) const;
 
         void add_confirmed_bls_votes(uint32_t block_num, bool end_epoch, bool valid_bls, const std::string& bls_str);
 
-        bool check_can_confirm(uint32_t block_nun);
+        bool check_can_confirm(uint32_t block_nun) const;
 
         void confirm(uint32_t block_num);
 
@@ -61,6 +63,8 @@ namespace ultrainio { namespace chain { namespace bls_votes {
         void clean_no_end_epoch(uint32_t block_num, uint32_t confirmed_block_num);
 
         chainbase::database& _db;
+
+        int confirm_point_interval = 20;
     };
 
 } } } // ultrainio::chain::bls_votes

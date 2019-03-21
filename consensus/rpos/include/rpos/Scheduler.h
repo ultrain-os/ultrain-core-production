@@ -86,6 +86,8 @@ namespace ultrainio {
 
     typedef std::map<chain::block_id_type, echo_message_info> echo_msg_buff;
 
+    class LightClientProducer;
+
 class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrainio::chain::callback {
     public:
         ~Scheduler();
@@ -274,6 +276,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrain
         std::list<SyncTask> m_syncTaskQueue;
         uint32_t m_fast_timestamp;
         VoterSet m_currentVoterSet;
+        std::shared_ptr<LightClientProducer> m_lightClientProducer;
         friend class UranusControllerMonitor;
     };
 }

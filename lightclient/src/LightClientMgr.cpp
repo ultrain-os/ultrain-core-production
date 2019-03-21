@@ -23,11 +23,4 @@ namespace ultrainio {
         m_lightClientList.push_back(lightClient);
         return lightClient;
     }
-
-    std::shared_ptr<LightClientProducer> LightClientMgr::getLightClientProducer() {
-        if (!m_lightClientProducer) {
-            m_lightClientProducer = std::make_shared<LightClientProducer>();
-        }
-        return m_lightClientProducer;
-    }
 }

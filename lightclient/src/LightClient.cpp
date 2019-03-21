@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <lightclient/LightClientCallback.h>
+#include <lightclient/Helper.h>
 
 namespace ultrainio {
     LightClient::LightClient(uint64_t chainName) : m_chainName(chainName) {}
@@ -45,7 +46,7 @@ namespace ultrainio {
         if (!check(blockHeader)) {
             return;
         }
-        if (isGenesis(blockHeader)) {
+        if (Helper::isGenesis(blockHeader)) {
             handleGenesis(blockHeader);
             return;
         }
@@ -198,10 +199,6 @@ namespace ultrainio {
             return false;
         }
         return true;
-    }
-
-    bool LightClient::isGenesis(const BlockHeader& blockHeader) {
-        return std::string(blockHeader.proposer) == std::string("genesis") || blockHeader.block_num() <= 2; // see rpos/Genesis.cpp
     }
 
     void LightClient::handleGenesis(const BlockHeader& blockHeader) {

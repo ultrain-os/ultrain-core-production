@@ -188,7 +188,7 @@ namespace ultrainiosystem {
 
     bool system_contract::checkblockproposer(account_name block_proposer, chains_table::const_iterator chain_iter) {
         //find proposer and check if it should be paid for proposing this block.
-        if(block_proposer != N() && block_proposer != N(genesis)) {
+        if(block_proposer != N(utrio.empty) && block_proposer != N(genesis)) {
             auto briefprod = _briefproducers.find(block_proposer);
             if(briefprod == _briefproducers.end()) {
                 print("block proposer is not a valid producer\n");

@@ -46,8 +46,6 @@ namespace ultrainio {
 
         void handleGenesis(const BlockHeader&);
 
-        bool isGenesis(const BlockHeader&);
-
         // chain name
         uint64_t m_chainName;
 

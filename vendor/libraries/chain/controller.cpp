@@ -16,6 +16,7 @@
 
 #include <ultrainio/chain/authorization_manager.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
+#include <ultrainio/chain/bls_votes.hpp>
 #include <ultrainio/chain/chain_worldstate.hpp>
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 
@@ -35,6 +36,7 @@ namespace ultrainio { namespace chain {
 
 using namespace appbase;
 using resource_limits::resource_limits_manager;
+using bls_votes::bls_votes_manager;
 
 using controller_index_set = index_set<
    account_index,
@@ -90,6 +92,7 @@ struct controller_impl {
    wasm_interface                 wasmif;
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
+   bls_votes_manager              bls_votes;
    controller::config             conf;
    chain_id_type                  chain_id;
    bool                           replaying = false;
@@ -157,6 +160,7 @@ struct controller_impl {
     wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
     authorization( s, db ),
+    bls_votes( db ),
     conf( cfg ),
     chain_id( cfg.genesis.compute_chain_id() ),
     read_mode( cfg.read_mode )
@@ -394,6 +398,7 @@ struct controller_impl {
 
       authorization.add_indices(db);
       resource_limits.add_indices(db);
+      bls_votes.add_indices(db);
    }
 
    bool restore_contract_database_index(chainbase::database& worldstate_db, worldstate_reader::section_reader& section_reader,
@@ -771,6 +776,7 @@ struct controller_impl {
       block_header_state genheader;
       genheader.header.timestamp      = conf.genesis.initial_timestamp;
       genheader.header.action_mroot   = conf.genesis.compute_chain_id();
+      genheader.header.proposer       = name("genesis");
       genheader.id                    = genheader.header.id();
       genheader.block_num             = genheader.header.block_num();
 
@@ -833,6 +839,7 @@ struct controller_impl {
 
       authorization.initialize_database();
       resource_limits.initialize_database();
+      bls_votes.initialize_database();
 
       authority system_auth(conf.genesis.initial_key);
       create_native_account( config::system_account_name, system_auth, system_auth, true, true );
@@ -1780,6 +1787,11 @@ const authorization_manager&   controller::get_authorization_manager()const
 authorization_manager&         controller::get_mutable_authorization_manager()
 {
    return my->authorization;
+}
+
+bls_votes_manager&             controller::get_bls_votes_manager()
+{
+   return my->bls_votes;
 }
 
 #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS

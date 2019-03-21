@@ -15,7 +15,7 @@ namespace ultrainio { namespace chain { namespace bls_votes {
         });
     }
 
-    bool bls_votes_manager::has_should_be_confirmed_bls(std::string& bls) {
+    bool bls_votes_manager::has_should_be_confirmed_bls(std::string& bls) const {
         const auto& o = _db.get<bls_votes_object>();
         bool result = false;
         if (o.should_be_confirmed.size() > 0) {
@@ -25,13 +25,18 @@ namespace ultrainio { namespace chain { namespace bls_votes {
         return result;
     }
 
-    bool bls_votes_manager::should_be_confirmed(uint32_t block_num) {
+    bool bls_votes_manager::should_be_confirmed(uint32_t block_num) const {
         const auto& o = _db.get<bls_votes_object>();
+        ilog("latest_confirmed_block_num : ${latest}", ("latest", o.latest_confirmed_block_num));
+        for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {
+            ilog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
+                    ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", itor->bls_str));
+        }
         if (o.should_be_confirmed.size() > 0) {
-            if (o.should_be_confirmed.back().block_num + 100 == block_num) {
+            if (o.should_be_confirmed.back().block_num + confirm_point_interval == block_num) {
                 return true;
             }
-        } else if (o.latest_confirmed_block_num + 100 == block_num) {
+        } else if (o.latest_confirmed_block_num + confirm_point_interval == block_num) {
             return true;
         }
         return false;
@@ -44,7 +49,7 @@ namespace ultrainio { namespace chain { namespace bls_votes {
         });
     }
 
-    bool bls_votes_manager::check_can_confirm(uint32_t block_num) {
+    bool bls_votes_manager::check_can_confirm(uint32_t block_num) const {
         // no end epoch before
         const auto& o = _db.get<bls_votes_object>();
         if (o.latest_confirmed_block_num >= block_num) {
@@ -65,6 +70,11 @@ namespace ultrainio { namespace chain { namespace bls_votes {
         const auto& o = _db.get<bls_votes_object>();
 
         _db.modify(o, [&](bls_votes_object& obj) {
+            ilog("latest_confirmed_block_num : ${latest}", ("latest", o.latest_confirmed_block_num));
+            for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {
+                ilog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
+                     ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", itor->bls_str));
+            }
             auto begin = obj.should_be_confirmed.begin();
             auto itor = begin;
             for (; itor != obj.should_be_confirmed.end(); itor++) {
@@ -77,10 +87,14 @@ namespace ultrainio { namespace chain { namespace bls_votes {
             }
             if (itor != begin) {
                 obj.should_be_confirmed.erase(begin, itor);
-                ilog("remove from ${from} to ${to}", ("from", begin->block_num)("to", itor->block_num));
             }
             if (confirmed_block_num != 0) {
                 obj.latest_confirmed_block_num = confirmed_block_num;
+            }
+            ilog("latest_confirmed_block_num : ${latest}", ("latest", o.latest_confirmed_block_num));
+            for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {
+                ilog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
+                     ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", itor->bls_str));
             }
         });
     }

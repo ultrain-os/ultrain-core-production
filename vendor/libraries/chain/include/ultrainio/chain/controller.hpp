@@ -23,6 +23,10 @@ namespace ultrainio { namespace chain {
       class resource_limits_manager;
    };
 
+   namespace bls_votes {
+       class bls_votes_manager;
+   }
+
    struct controller_impl;
    using chainbase::database;
    using boost::signals2::signal;
@@ -32,6 +36,7 @@ namespace ultrainio { namespace chain {
    class permission_object;
    class account_object;
    using resource_limits::resource_limits_manager;
+   using bls_votes::bls_votes_manager;
    using apply_handler = std::function<void(apply_context&)>;
 
    class fork_database;
@@ -166,6 +171,7 @@ namespace ultrainio { namespace chain {
          resource_limits_manager&              get_mutable_resource_limits_manager();
          const authorization_manager&          get_authorization_manager()const;
          authorization_manager&                get_mutable_authorization_manager();
+         bls_votes_manager&                    get_bls_votes_manager();
 
          uint32_t             first_block_num()const;
          uint32_t             head_block_num()const;
