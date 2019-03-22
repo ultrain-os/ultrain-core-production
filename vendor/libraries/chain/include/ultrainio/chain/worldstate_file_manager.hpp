@@ -95,6 +95,7 @@ namespace ultrainio { namespace chain {
             std::string get_file_path_by_info(fc::sha256& chain_id, uint32_t block_height);
             void save_info(ws_info& node, std::string relative_dir="");
             void set_local_max_count(int number);
+            void set_latest_vaild_ws(uint32_t vaild_block_height);
         private:
             bool load_local_info_file(const std::string file_name, ws_info& node);
             void start_delete_timer();
@@ -105,6 +106,7 @@ namespace ultrainio { namespace chain {
             unique_ptr<boost::asio::steady_timer> m_ws_delete_check;
             std::map<ws_info, std::shared_ptr<ws_file_reader>> m_reader_map;
             std::map<ws_info, bool> m_is_reader_activate_map;
+            uint32_t latest_vaild_node;
     };
 
 

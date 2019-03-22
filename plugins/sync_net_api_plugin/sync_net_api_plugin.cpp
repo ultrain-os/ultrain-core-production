@@ -79,12 +79,8 @@ void sync_net_api_plugin::plugin_startup() {
 
        CALL(wss, sync_net_mgr, require_ws,
             INVOKE_R_R(sync_net_mgr, require_ws, chain::ws_info), 201),
-       CALL(wss, sync_net_mgr, sync_ws,
-            INVOKE_R_R(sync_net_mgr, sync_ws, sync_wss_params), 201),
        CALL(wss, sync_net_mgr, require_block,
             INVOKE_R_R_R(sync_net_mgr, require_block, std::string, uint32_t), 201),
-       CALL(wss, sync_net_mgr, sync_block,
-            INVOKE_R_R(sync_net_mgr, sync_block, uint32_t), 201),
        CALL(wss, sync_net_mgr, ws_status,
             INVOKE_R_R(sync_net_mgr, ws_status, std::string), 201),
        CALL(wss, sync_net_mgr, test_latancy,
@@ -92,6 +88,8 @@ void sync_net_api_plugin::plugin_startup() {
 
        CALL(wss, sync_net_mgr, latest_wsinfo,
             INVOKE_R_V(sync_net_mgr, latest_wsinfo), 201),
+       CALL(wss, sync_net_mgr, set_vaild_ws,
+            INVOKE_V_R(sync_net_mgr, set_vaild_ws, uint32_t), 200),
 
        CALL(wss, sync_net_mgr, repair_blog,
             INVOKE_R_R_R(sync_net_mgr, repair_blog, std::string, uint32_t), 201),

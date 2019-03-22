@@ -373,7 +373,7 @@ namespace ultrainio { namespace chain {
          void clear_section() override;
          uint64_t read_length();
          bool read_row(uint64_t size, std::vector<char>& out_data);
-
+         int current_pos() {return worldstate.tellg();};
       private:
          bool validate_section() const;
 

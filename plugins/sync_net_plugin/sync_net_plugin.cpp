@@ -2203,14 +2203,6 @@ namespace ultrainio {
             return "fail";
     }
 
-    string sync_net_plugin::sync_ws(const sync_wss_params& syncWssParams) {
-        // ilog ("chain id : ${id}", ("id", syncWssParams.chainId));
-        // for(const auto& host : syncWssParams.hosts){
-        //     ilog ("host : ${host}", ("host", host));
-        // }
-        return "get triger and hosts list";
-    }
-
     string sync_net_plugin::require_block(const std::string& chain_id_text, uint32_t end) {
         fc::sha256 chain_id(chain_id_text);
         auto ret = my->m_sync_blocks_manager->send_blocks_sync_req(my->connections, chain_id, end);
@@ -2218,11 +2210,6 @@ namespace ultrainio {
             return "success";
         else
             return "fail";
-    }
-
-    string sync_net_plugin::sync_block(uint32_t block_height) {
-
-        return "get block";
     }
 
     status_code sync_net_plugin::ws_status(string id){
@@ -2307,6 +2294,11 @@ namespace ultrainio {
 
        return node_list.front();
    }
+
+    void sync_net_plugin::set_vaild_ws(uint32_t vaild_block_height){
+        my->m_sync_ws_manager->ws_file_manager.set_latest_vaild_ws(vaild_block_height);
+        return;
+    }
 
    connection_ptr sync_net_plugin_impl::find_connection( string host )const {
       for( const auto& c : connections )

@@ -58,7 +58,7 @@ using contract_database_index_set = index_set<
    index256_index
 >;
 
-#define WS_INTERVAL 20
+#define WS_INTERVAL 100
 
 // these are the default numbers, and it could be changed during startup.
 //int chain::config::block_interval_ms = 10*1000;
@@ -190,7 +190,6 @@ struct controller_impl {
 
    if (conf.worldstate_control){
       ws_manager_ptr = std::make_shared<ws_file_manager>();
-      ws_manager_ptr->set_local_max_count(15);
    }
 
    if (db.get_data("worldstate_previous_block", worldstate_previous_block))
@@ -622,8 +621,8 @@ struct controller_impl {
 
       const static auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
       auto worldstate_interval = ro_api.get_worldstate_interval();
-      if (worldstate_interval < WS_INTERVAL * 3) {
-          worldstate_interval = WS_INTERVAL * 3;
+      if (worldstate_interval < WS_INTERVAL * 1) {
+          worldstate_interval = WS_INTERVAL * 1;
       }
 
       ws_info info;

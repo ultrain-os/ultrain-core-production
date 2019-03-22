@@ -49,14 +49,13 @@ namespace ultrainio {
         vector<connection_status>    connections()const;
 
         string                       require_ws(const chain::ws_info& info);
-        string                       sync_ws(const sync_wss_params& syncWssParams);
         string                       require_block(const std::string& chain_id_text,uint32_t end);
-        string                       sync_block(uint32_t block_height);
         status_code                  ws_status(string id);
         string                       test_latancy();
         string                       repair_blog(string path,int32_t height);
 
-        chain::ws_info                      latest_wsinfo();
+        chain::ws_info               latest_wsinfo();
+        void                         set_vaild_ws(uint32_t vaild_block_height);
 
         size_t num_peers() const;
     private:

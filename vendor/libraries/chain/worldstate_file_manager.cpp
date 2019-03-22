@@ -226,7 +226,7 @@ void ws_file_writer::open_read()
 
 ws_file_manager::ws_file_manager(std::string dir)
 :m_dir_path(dir)
-,m_max_ws_count(MAX_WS_COUNT)
+,m_max_ws_count(-1)
 {
     if(m_dir_path.empty()){
         m_dir_path = (fc::app_path() / WS_DATA_DIR).string();
@@ -235,6 +235,8 @@ ws_file_manager::ws_file_manager(std::string dir)
     if (!bfs::is_directory(m_dir_path)){
         bfs::create_directories(m_dir_path);
     }
+
+    latest_vaild_node = 0;
 
     m_ws_delete_period = {std::chrono::seconds{30}};
     m_ws_delete_check.reset(new boost::asio::steady_timer(appbase::app().get_io_service()));
@@ -367,6 +369,12 @@ void ws_file_manager::set_local_max_count(int number)
     m_max_ws_count = number;
 }
 
+void ws_file_manager::set_latest_vaild_ws(uint32_t vaild_block_height)
+{
+    if (latest_vaild_node <  vaild_block_height)
+        latest_vaild_node = vaild_block_height;
+}
+
 void ws_file_manager::start_delete_timer()
 {    
     m_ws_delete_check->expires_from_now(m_ws_delete_period);
@@ -408,7 +416,11 @@ void ws_file_manager::start_delete_timer()
             if (m_reader_map.count(node) != 0)//File was open
                 continue;
 
-            if((count--) > 0) continue;
+            --count;
+            if(count >= 0) continue;
+
+            if (latest_vaild_node > 0 && latest_vaild_node <= node.block_height)
+                continue;
 
             std::string name = to_file_name(node.chain_id, node.block_height);
             std::string ws_file_name  = m_dir_path + "/" +  name + ".ws";
@@ -417,6 +429,7 @@ void ws_file_manager::start_delete_timer()
             fc::remove(path(id_file_name));
             fc::remove(path(info_file_name));
             fc::remove(path(ws_file_name));
+            ilog("Remove file: ${s}", ("s", ws_file_name));
         } 
     });
 }
