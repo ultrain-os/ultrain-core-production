@@ -22,7 +22,7 @@ namespace ultrainiosystem {
    const name master_chain_name{N(ultrainio)};
 //   const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
    const name default_chain_name{N(default)};  //default chain, will be assigned by system.
-   const uint32_t latest_block_num = 1000;
+   const uint32_t latest_block_num = 30000;
 
    bool operator!=(const checksum256& sha256_1, const checksum256& sha256_2) {
       for(auto i = 0; i < 32; ++i) {
@@ -221,8 +221,6 @@ namespace ultrainiosystem {
    };
 
    struct block_header_digest {
-       account_name              proposer;
-       block_id_type             block_id;
        uint32_t                  block_number = 0;
        checksum256               transaction_mroot;
        std::vector<checksum256>  trx_hashs;
@@ -231,11 +229,9 @@ namespace ultrainiosystem {
        auto primary_key() const { return uint64_t(block_number); }
 
        block_header_digest() {}
-       block_header_digest(const account_name& pper, const block_id_type& b_id, uint32_t b_n, const checksum256& tx_mroot):
-                proposer(pper), block_id(b_id), block_number(b_n), transaction_mroot(tx_mroot) {}
+       block_header_digest(uint32_t b_n, const checksum256& tx_mroot): block_number(b_n), transaction_mroot(tx_mroot) {}
 
-       ULTRAINLIB_SERIALIZE(block_header_digest, (proposer)(block_id)(block_number)
-                            (transaction_mroot)(trx_hashs)(table_extension))
+       ULTRAINLIB_SERIALIZE(block_header_digest, (block_number)(transaction_mroot)(trx_hashs)(table_extension))
    };
 
    typedef ultrainio::multi_index<N(blockheaders), block_header_digest> block_table;
@@ -383,7 +379,6 @@ namespace ultrainiosystem {
          sched_set_singleton      _schedsetting;
 
          bool accept_block_header(name chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_size);
-         bool accept_initial_header(name chain_name, const checksum256& previous_id, const std::vector<role_base>& committee_set , const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_len);
 
       public:
          system_contract( account_name s );
@@ -439,8 +434,8 @@ namespace ultrainiosystem {
                                  uint64_t file_size);
          void setsched(bool is_enabled, uint16_t sched_period, uint16_t expire_time);
          void forcesetblock(name chain_name,
-                            block_header_digest header_dig,
-                            checksum256 committee_mrt);
+                            const block_header& header,
+                            const std::vector<role_base>& cmt_set);
 
          // functions defined in ultrainio.system.cpp
          void setsysparams( const ultrainio_system_params& params );
@@ -489,7 +484,7 @@ namespace ultrainiosystem {
          bool move_producer(checksum256 head_id,
                             chains_table::const_iterator from_iter,
                             chains_table::const_iterator to_iter,
-                            uint64_t current_block_number);
+                            uint64_t current_block_number, uint32_t num);
          name getdefaultchain();
          bool checkblockproposer(account_name block_proposer, chains_table::const_iterator chain_iter);
 
@@ -516,7 +511,6 @@ namespace ultrainiosystem {
     void empower_to_chain(account_name user, ultrainio::name chain_name);
     bool is_empowered(account_name user, ultrainio::name chain_name);
     bool lightclient_accept_block_header(ultrainio::name chain_name, const char* bh, size_t bh_size, char* confirmed_bh_buffer, size_t buffer_size);
-    bool lightclient_accept_initial_header(ultrainio::name chain_name, char* id_buffer, size_t id_size, char* previous_cmt, size_t cmt_size, char* bh_raw, size_t bh_size, char* confirmed_bh_buffer, size_t buffer_len);
 
    #ifdef __cplusplus
    }

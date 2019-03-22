@@ -548,13 +548,6 @@ class privileged_api : public context_aware_api {
           return res;
       }
 
-      bool lightclient_accept_initial_header(uint64_t chain_name, array_ptr<char> id_buffer, size_t id_size, array_ptr<char> previous_cmt, size_t cmt_size, array_ptr<char> bh_raw, size_t bh_size, array_ptr<char> confirmed_bh_buffer, size_t buffer_len) {
-          std::string committee_set_str(previous_cmt.value, cmt_size);
-          std::string pre_id(id_buffer.value, id_size);
-          std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
-          return cb->on_set_master_start_point(chain_name, committee_set_str, block_id_type(pre_id));
-      }
-
 };
 
 class softfloat_api : public context_aware_api {
@@ -2245,7 +2238,6 @@ REGISTER_INTRINSICS(privileged_api,
    (empower_to_chain,                 void(int64_t, int64_t)                )
    (is_empowered,                     int(int64_t, int64_t)                 )
    (lightclient_accept_block_header,  int(int64_t, int, int, int, int)      )
-   (lightclient_accept_initial_header,  int(int64_t, int, int, int, int, int, int, int, int))
 );
 
 REGISTER_INJECTED_INTRINSICS(transaction_context,

@@ -78,13 +78,18 @@ namespace ultrainiosystem {
           masterchain.chain_type         = 0; //0 is for master chain, not created in chaintypes table
           masterchain.is_synced          = false;
           masterchain.is_schedulable     = false;
-          masterchain.committee_num      = 0;
+          masterchain.committee_num      = uint16_t(chaininfo.master_prods.size());
           masterchain.total_user_num     = 0;
           masterchain.chain_id           = checksum256();
           masterchain.committee_mroot    = checksum256();
           masterchain.confirmed_block_number = uint32_t(chaininfo.block_height);
+          masterchain.committee_set      = chaininfo.master_prods;
+          unconfirmed_block_header uncfm_block;
+          uncfm_block.block_id = chaininfo.block_id;
+          uncfm_block.block_number = uint32_t(chaininfo.block_height);
+          uncfm_block.is_leaf = true;
+          masterchain.unconfirmed_blocks.push_back(uncfm_block);
       });
-
    }
    void system_contract::setparams( const ultrainio::blockchain_parameters& params ) {
       require_auth( N(ultrainio) );
@@ -508,25 +513,6 @@ void system_contract::voteresourcelease() {
     bool system_contract::accept_block_header(name chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_len) {
       bytes header_bytes = pack(header);
       return lightclient_accept_block_header(chain_name, header_bytes.data(), header_bytes.size(), confirmed_bh_hash, hash_len);
-    }
-
-    bool system_contract::accept_initial_header(name chain_name, const checksum256& previous_id, const std::vector<role_base>& committee_set , const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_len) {
-      std::stringstream ss;
-      for(size_t i = 0; i < committee_set.size(); ++i) {
-          CommitteeInfo committeeInfo(committee_set[i].owner, committee_set[i].producer_key, committee_set[i].bls_key);
-          committeeInfo.toStrStream(ss);
-          if(i != committee_set.size() - 1 ) {
-              ss << " ";
-          }
-      }
-      bytes committee_set_bytes;
-      committee_set_bytes.resize(ss.str().size());
-      committee_set_bytes.assign(ss.str().begin(), ss.str().end());
-      bytes header_bytes = pack(header);
-      char blockid[32];
-      size_t size = std::min(sizeof(blockid), sizeof(previous_id));
-      memcpy(blockid, previous_id.hash, size);
-      return lightclient_accept_initial_header(chain_name, blockid, size, committee_set_bytes.data(), committee_set_bytes.size(), header_bytes.data(), header_bytes.size(), confirmed_bh_hash, hash_len );
     }
 
    /**
