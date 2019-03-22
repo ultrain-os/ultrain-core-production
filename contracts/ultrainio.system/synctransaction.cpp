@@ -48,15 +48,14 @@ namespace ultrainiosystem {
       bool r = mklp.verify(merkle_mroot);
       ultrainio_assert(r, "syncTransfer failed: verify merkle proof failed.");
 
-      transaction tx = mklp.recover_transaction();
+      stateful_transaction tx = mklp.recover_transaction();
+      ultrainio_assert(tx.status == stateful_transaction::executed, "this transaction is not executed.");
       checksum256 txn_hash;
       sha256((&tx_bytes[0]), tx_bytes.size(), &txn_hash);
-      for(auto &his_txn_hash : block_ite->trx_hashs){
-         ultrainio_assert(his_txn_hash != txn_hash, "syncTransfer failed: current transfer transaction already synchronized");
-      }
+      ultrainio_assert(block_ite->trx_hashs.count(txn_hash) != 1, "syncTransfer failed: current transfer transaction already synchronized");
       subchain_block_tbl.modify( block_ite, [&]( block_header_digest& header ) {
-         header.trx_hashs.push_back(txn_hash);
-         });
+         header.trx_hashs.insert(txn_hash);
+      });
       ultrainio_assert(tx.actions.size() > 0, "no context related actions contains in this transaction.");
 
       for (const auto& act : tx.actions) {

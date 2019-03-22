@@ -14,6 +14,7 @@
 #include <ultrainiolib/types.hpp>
 #include <string>
 #include <vector>
+#include <set>
 #include "BlockHeaderExtKey.h"
 #include "CommitteeSet.h"
 
@@ -223,7 +224,7 @@ namespace ultrainiosystem {
    struct block_header_digest {
        uint32_t                  block_number = 0;
        checksum256               transaction_mroot;
-       std::vector<checksum256>  trx_hashs;
+       std::set<checksum256>     trx_hashs;
        ultrainio::extensions_type           table_extension;
 
        auto primary_key() const { return uint64_t(block_number); }
