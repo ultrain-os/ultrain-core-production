@@ -676,6 +676,7 @@ struct controller_impl {
       add_contract_tables_to_worldstate(ws_helper_ptr,worldstate_db);
       authorization.add_to_worldstate(ws_helper_ptr, worldstate_db);
       resource_limits.add_to_worldstate(ws_helper_ptr, worldstate_db);
+      bls_votes.add_to_worldstate(ws_helper_ptr, worldstate_db);
 
       //save worldstate file
       ws_helper_ptr.reset();
@@ -735,6 +736,7 @@ struct controller_impl {
       read_contract_tables_from_worldstate(ws_helper_ptr, worldstate_db);
       authorization.read_from_worldstate(ws_helper_ptr, worldstate_db);
       resource_limits.read_from_worldstate(ws_helper_ptr, worldstate_db);
+      bls_votes.read_from_worldstate(ws_helper_ptr, worldstate_db);
 
       db.set_revision( head->block_num );
       ws_helper_ptr.reset();

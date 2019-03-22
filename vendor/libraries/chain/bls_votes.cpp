@@ -15,6 +15,49 @@ namespace ultrainio { namespace chain { namespace bls_votes {
         });
     }
 
+    worldstate_bls_voters_object bls_votes_manager::to_worldstate_row(const bls_votes_object& value, const chainbase::database& db, void* data) {
+        worldstate_bls_voters_object res;
+        res.latest_confirmed_block_num = value.latest_confirmed_block_num;
+        res.latest_check_point_id = value.latest_check_point_id;
+        for (auto e : value.should_be_confirmed) {
+            bls_votes_info info;
+            info.block_num = e.block_num;
+            info.end_epoch = e.end_epoch;
+            info.valid_bls = false;
+            res.should_be_confirmed.push_back(info);
+        }
+        return res;
+    }
+
+    void bls_votes_manager::from_worldstate_row(worldstate_bls_voters_object&& row, bls_votes_object& value, chainbase::database& db, bool backup, void* data) {
+        value.latest_confirmed_block_num = row.latest_confirmed_block_num;
+        value.latest_check_point_id = row.latest_check_point_id;
+        for (auto e : row.should_be_confirmed) {
+            bls_votes_info info;
+            info.block_num = e.block_num;
+            info.end_epoch = e.end_epoch;
+            info.valid_bls = e.valid_bls;
+            info.bls_str = e.bls_str;
+            value.should_be_confirmed.push_back(info);
+        }
+    }
+
+    void bls_votes_manager::add_to_worldstate(std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database &worldstate_db) {
+        bls_index_set::walk_indices([this, &worldstate_db, &ws_helper_ptr](auto utils) {
+            using index_t = typename decltype(utils)::index_t;
+            using value_t = typename index_t::value_type;
+            ilog("add_to_worldstate ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
+            ws_helper_ptr->add_table_to_worldstate<index_t>(worldstate_db);
+        });
+    }
+
+    void bls_votes_manager::read_from_worldstate(std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database &worldstate_db) {
+        bls_index_set::walk_indices([&](auto utils) {
+            using index_t = typename decltype(utils)::index_t;
+            ws_helper_ptr->read_table_from_worldstate<index_t>(worldstate_db);
+        });
+    }
+
     bool bls_votes_manager::has_should_be_confirmed_bls(std::string& bls) const {
         const auto& o = _db.get<bls_votes_object>();
         bool result = false;

@@ -18,7 +18,7 @@ namespace ultrainio {
 
         void reset();
 
-        void accept(const std::list<BlockHeader>& blockHeaderList, const BlockIdType& latestConfirmedBlockId);
+        //void accept(const std::list<BlockHeader>& blockHeaderList, const BlockIdType& latestConfirmedBlockId);
 
         void accept(const BlockHeader& blockHeader);
 
