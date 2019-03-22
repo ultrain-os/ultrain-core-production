@@ -237,6 +237,15 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
           // For producer we don't pre-run the trx cause it will run at the fixed timepoint
           // (just before ba0 propose msg)
           if (!_is_non_producing_node) {
+              // non-producer does not allow local triggerred trx.
+              if (!from_network) {
+                  ilog("on_incoming_transaction_async drop local");
+                  auto e = std::make_shared<transaction_exception>(
+                      FC_LOG_MESSAGE(error, "drop local transaction on producer node"));
+                  _transaction_ack_channel.publish(MAKE_TRANSACTION_ACK_TUPLE(e, nullptr, trx));
+                  return;
+              }
+
               transaction_metadata_ptr trx_ptr = std::make_shared<transaction_metadata>(*trx);
               auto block_time = chain.head_block_state()->header.timestamp.to_time_point();
 
