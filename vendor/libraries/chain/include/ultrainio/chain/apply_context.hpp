@@ -192,32 +192,33 @@ class apply_context {
             int store( uint64_t scope, uint64_t table, const account_name& payer,
                        uint64_t id, secondary_key_proxy_const_type value )
             {
-               ULTRAIN_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
+                auto p = context.receiver;
 
 //               context.require_write_lock( scope );
 
-               const auto& tab = context.find_or_create_table( context.receiver, scope, table, payer );
+               const auto& tab = context.find_or_create_table( context.receiver, scope, table, p );
 
                const auto& obj = context.db.create<ObjectType>( [&]( auto& o ){
                   o.t_id          = tab.id;
                   o.primary_key   = id;
                   secondary_key_helper_t::set(o.secondary_key, value);
-                  o.payer         = payer;
+                  o.payer         = p;
                });
 
                context.db.modify( tab, [&]( auto& t ) {
                  ++t.count;
                });
 
-               context.update_db_usage( payer, config::billable_size_v<ObjectType> );
+               context.update_db_usage( p, config::billable_size_v<ObjectType> );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
             }
 
             void remove( int iterator ) {
+               auto payer = context.receiver;
                const auto& obj = itr_cache.get( iterator );
-               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ) );
+               context.update_db_usage( payer, -( config::billable_size_v<ObjectType> ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                ULTRAIN_ASSERT( table_obj.code == context.receiver, table_access_violation, "db access violation" );
@@ -230,13 +231,14 @@ class apply_context {
                context.db.remove( obj );
 
                if (table_obj.count == 0) {
-                  context.remove_table(table_obj);
+                  context.remove_table(payer, table_obj);
                }
 
                itr_cache.remove( iterator );
             }
 
             void update( int iterator, account_name payer, secondary_key_proxy_const_type secondary ) {
+               payer = context.receiver;
                const auto& obj = itr_cache.get( iterator );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
@@ -245,13 +247,6 @@ class apply_context {
 //               context.require_write_lock( table_obj.scope );
 
                if( payer == account_name() ) payer = obj.payer;
-
-               int64_t billing_size =  config::billable_size_v<ObjectType>;
-
-               if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(billing_size) );
-                  context.update_db_usage( payer, +(billing_size) );
-               }
 
                context.db.modify( obj, [&]( auto& o ) {
                  secondary_key_helper_t::set(o.secondary_key, secondary);
@@ -576,7 +571,7 @@ class apply_context {
       int db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id);
       const table_id_object* find_table( name code, name scope, name table );
       const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
-      void                   remove_table( const table_id_object& tid );
+      void  remove_table( account_name payer,const table_id_object& tid );
 
       int  db_store_i64( uint64_t code, uint64_t scope, uint64_t table, account_name payer, uint64_t id, const char* buffer, size_t buffer_size );
 

@@ -420,8 +420,8 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
    });
 }
 
-void apply_context::remove_table( const table_id_object& tid ) {
-   update_db_usage(tid.payer, - config::billable_size_v<table_id_object>);
+void apply_context::remove_table(account_name payer, const table_id_object& tid ) {
+   update_db_usage(payer, - config::billable_size_v<table_id_object>);
    db.remove(tid);
 }
 
@@ -436,7 +436,7 @@ bytes apply_context::get_packed_transaction() {
 }
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
-   account_name p = account_name(receiver);
+   auto p = receiver;
    if(delta < 0 && receiver == N(ultrainio)){
       p = payer;
    }
@@ -565,7 +565,7 @@ void apply_context::db_remove_i64( int iterator ) {
 
 //   require_write_lock( table_obj.scope );
 
-   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>) );
+   update_db_usage( receiver,  -(obj.value.size() + config::billable_size_v<key_value_object>) );
 
    db.modify( table_obj, [&]( auto& t ) {
       --t.count;
@@ -573,7 +573,7 @@ void apply_context::db_remove_i64( int iterator ) {
    db.remove( obj );
 
    if (table_obj.count == 0) {
-      remove_table(table_obj);
+      remove_table(receiver, table_obj);
    }
 
    keyval_cache.remove( iterator );
@@ -722,6 +722,8 @@ uint64_t apply_context::db_iterator_i64(uint64_t code, uint64_t scope, uint64_t 
 template<typename IndexType, typename ObjectType>
 int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id) {
    if(!t_id) return -1;
+   account_name systemname(config::system_account_name);
+   ULTRAIN_ASSERT( systemname == receiver, table_access_violation, "db access violation" );
    const auto& idx = db.template get_index<IndexType, by_primary>();
    decltype(t_id->id) next_tid(t_id->id._id + 1);
    auto lower = idx.lower_bound(boost::make_tuple(t_id->id, 0));
@@ -762,12 +764,12 @@ int apply_context::db_drop_i64(uint64_t code, uint64_t scope, uint64_t table) {
    for (const auto& it = boost::make_reverse_iterator(upper); count > 0; --count) {
       const key_value_object& obj = *it;
       int64_t usage_delta = (obj.value.size() + config::billable_size_v<key_value_object>);
-      update_db_usage( obj.payer,  -(usage_delta) );
+      update_db_usage( receiver,  -(usage_delta) );
       db.remove(obj);
    };
 
    keyval_cache.purge_table_cache(table_obj->id);
-   remove_table(*table_obj);
+   remove_table(receiver,*table_obj);
 
    return 0;
 }
@@ -803,7 +805,7 @@ int apply_context::db_drop_table(uint64_t code) {
               continue;
           }
           usage_delta = (obj.value.size() + config::billable_size_v<key_value_object>);
-          update_db_usage( obj.payer,  -(usage_delta) );
+          update_db_usage( code,  -(usage_delta) );
           db.remove(obj);
           lower = idx.lower_bound(boost::make_tuple(table_obj.id));
        }
@@ -812,7 +814,7 @@ int apply_context::db_drop_table(uint64_t code) {
        db_drop_secondary_index<index256_index,index256_object>(&table_obj);
        db_drop_secondary_index<index_double_index,index_double_object>(&table_obj);
        db_drop_secondary_index<index_long_double_index,index_long_double_object>(&table_obj);
-       remove_table(table_obj);
+       remove_table(code, table_obj);
        table_lower = table_idx.lower_bound(boost::make_tuple(code, 0, 0));
    }
    return 0;

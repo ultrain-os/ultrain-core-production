@@ -35,7 +35,10 @@ namespace ultrainiosystem {
     }
     ///@abi action
     void system_contract::reportsubchainhash(name subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size) {
-        require_auth(current_sender());
+        auto sender = current_sender();
+        producers_table _producers(_self, subchain);
+        auto propos = _producers.find(sender);
+        ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
 
         uint32_t confirmed_blocknum = 0;
         uint32_t vote_threshold = 0;
@@ -48,10 +51,6 @@ namespace ultrainiosystem {
             confirmed_blocknum = ite_chain->confirmed_block_number;
             vote_threshold = (uint32_t)ceil((double)ite_chain->committee_num * 2 / 3);
         }
-
-        producers_table _producers(_self, subchain);
-        auto propos = _producers.find(current_sender());
-        ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
 
         auto checkBlockNum = [&](uint64_t  bn) -> bool {
             return (bn%_gstate.worldstate_interval) == 0;
@@ -66,7 +65,7 @@ namespace ultrainiosystem {
         if(wshash != hashTable.end()) {
             auto & hashv = wshash->hash_v;
             auto & acc   = wshash->accounts;
-            auto ret = acc.find(current_sender());
+            auto ret = acc.find(sender);
             ultrainio_assert(ret == acc.end(), "the committee_members already report such ws hash");
 
             auto it = hashv.begin();
@@ -93,23 +92,23 @@ namespace ultrainiosystem {
                                 auto pos = static_cast<unsigned int>(it - hashv.begin());
                                 p.hash_v[pos].votes++;
                                 p.hash_v[pos].valid = true;
-                                p.hash_v[pos].accounts.emplace(current_sender());
-                                p.accounts.emplace(current_sender());
+                                p.hash_v[pos].accounts.emplace(sender);
+                                p.accounts.emplace(sender);
                             });
                         } else {
                             hashTable.modify(wshash, [&](auto &p) {
                                 auto pos = static_cast<unsigned int>(it - hashv.begin());
                                 p.hash_v[pos].votes++;
-                                p.hash_v[pos].accounts.emplace(current_sender());
-                                p.accounts.emplace(current_sender());
+                                p.hash_v[pos].accounts.emplace(sender);
+                                p.accounts.emplace(sender);
                             });
                         }
                     } else {
                         hashTable.modify(wshash, [&](auto &p) {
                             auto pos = static_cast<unsigned int>(it - hashv.begin());
                             p.hash_v[pos].votes++;
-                            p.hash_v[pos].accounts.emplace(current_sender());
-                            p.accounts.emplace(current_sender());
+                            p.hash_v[pos].accounts.emplace(sender);
+                            p.accounts.emplace(sender);
                        });
                     }
                     break;
@@ -117,16 +116,16 @@ namespace ultrainiosystem {
             }
             if(it == hashv.end()) {
                 hashTable.modify(wshash, [&](auto& p) {
-                    p.hash_v.emplace_back(hash, file_size, 1, false, current_sender());
-                    p.accounts.emplace(current_sender());
+                    p.hash_v.emplace_back(hash, file_size, 1, false, sender);
+                    p.accounts.emplace(sender);
                 });
             }
         }
         else {
             hashTable.emplace([&](auto &p) {
                 p.block_num = blocknum;
-                p.hash_v.emplace_back(hash, file_size, 1, false, current_sender());
-                p.accounts.emplace(current_sender());
+                p.hash_v.emplace_back(hash, file_size, 1, false, sender);
+                p.accounts.emplace(sender);
             });
 
             // delete item which is old enough but need to keep it if it is the only one with valid flag
