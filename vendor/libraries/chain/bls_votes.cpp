@@ -78,12 +78,10 @@ namespace ultrainio { namespace chain { namespace bls_votes {
             auto begin = obj.should_be_confirmed.begin();
             auto itor = begin;
             for (; itor != obj.should_be_confirmed.end(); itor++) {
-                if (itor->block_num > block_num || itor->end_epoch) {
-                    if (itor->block_num <= block_num) {
-                        elog("try to clear end epoch ${num}", ("num", itor->block_num));
-                    }
+                if (itor->block_num > block_num) {
                     break;
                 }
+                ilog("clear num : ${num}", ("num", itor->block_num));
             }
             if (itor != begin) {
                 obj.should_be_confirmed.erase(begin, itor);

@@ -2204,12 +2204,13 @@ namespace ultrainio {
         if (std::string(blockHeader.proposer) == std::string("genesis")) {
             lightClient->accept(blockHeader);
         } else {
-            std::vector<BlockHeader> headers = getUnconfirmedHeaderFromDb(name(chainName));
-            if (headers.size() > 0) {
-                lightClient->setStartPoint(CommitteeSet(), headers.front().id());
-            }
-            for (auto e : headers) {
-                lightClient->accept(e);
+            std::vector<BlockHeader> unconfirmedheaders;
+            BlockIdType confirmedBlockId;
+            if (getUnconfirmedHeaderFromDb(name(chainName), unconfirmedheaders, confirmedBlockId)) {
+                lightClient->setStartPoint(CommitteeSet(), confirmedBlockId);
+                for (auto e : unconfirmedheaders) {
+                    lightClient->accept(e);
+                }
             }
             lightClient->accept(blockHeader);
         }
@@ -2224,18 +2225,20 @@ namespace ultrainio {
         return lightClientPtr->setStartPoint(committeeSet, blockId);
     }
 
-    std::vector<BlockHeader> Scheduler::getUnconfirmedHeaderFromDb(const chain::name& chainName) {
+    bool Scheduler::getUnconfirmedHeaderFromDb(const chain::name& chainName, std::vector<BlockHeader>& unconfirmedBlockHeader, BlockIdType& confirmedBlockId) {
         try {
             const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
             struct chain_apis::read_only::get_subchain_unconfirmed_header_params params;
-            params.subchain_name = chainName;
+            params.chain_name = chainName;
             auto result = ro_api.get_subchain_unconfirmed_header(params);
+            unconfirmedBlockHeader = result.unconfirmed_headers;
+            confirmedBlockId = result.confirmed_block_id;
             ilog("chainName name = ${name}", ("name", chainName.to_string()));
-            return result.unconfirmed_headers;
+            return true;
         } catch (fc::exception& e) {
             ilog("There may be no unconfirmed block header : ${e}", ("e", e.to_string()));
         }
-        return std::vector<BlockHeader>();
+        return false;
     }
 
     bool Scheduler::isDuplicate(const ProposeMsg& proposeMsg) {

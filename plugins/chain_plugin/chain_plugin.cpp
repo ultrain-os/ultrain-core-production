@@ -1029,9 +1029,15 @@ read_only::get_subchain_unconfirmed_header_result read_only::get_subchain_unconf
         chain_info subchain_data;
         fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
         fc::raw::unpack(ds, subchain_data);
-        if(p.subchain_name == subchain_data.chain_name) {
+        if(p.chain_name == subchain_data.chain_name) {
+            bool first = true;
             for (auto e : subchain_data.unconfirmed_blocks) {
-                result.unconfirmed_headers.push_back(e);
+                if (first) {
+                    result.confirmed_block_id = e.block_id;
+                    first = false;
+                } else {
+                    result.unconfirmed_headers.push_back(e);
+                }
             }
             return false;
         }
