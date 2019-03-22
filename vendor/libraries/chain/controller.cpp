@@ -1532,9 +1532,9 @@ struct controller_impl {
       }
    } /// push_block
 
-   void abort_block() {
+   void abort_block(bool drop_trx = false) {
       if( pending ) {
-         if ( read_mode == db_read_mode::SPECULATIVE ) {
+         if ( read_mode == db_read_mode::SPECULATIVE && !drop_trx) {
              for( const auto& t : pending->_pending_block_state->trxs ) {
                unapplied_transactions[t->signed_id] = t;
              }
@@ -1860,8 +1860,8 @@ void controller::commit_block() {
    my->commit_block(true);
 }
 
-void controller::abort_block() {
-   my->abort_block();
+void controller::abort_block(bool drop_trx) {
+   my->abort_block(drop_trx);
 }
 
 void controller::push_block( const signed_block_ptr& b, block_status s ) {

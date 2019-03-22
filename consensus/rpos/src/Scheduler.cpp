@@ -1128,7 +1128,7 @@ namespace ultrainio {
                 } else {
                     count++;
                     m_initTrxCount++;
-                    if (m_initTrxCount % (Config::s_maxPhaseSeconds * 100) == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                    if (fc::time_point::now() > hard_cpu_deadline) {
                         ilog("-----runScheduledTrxs code exec exceeds the hard cpu deadline, break");
                         break;
                     }
@@ -1192,7 +1192,7 @@ namespace ultrainio {
 
                 m_initTrxCount++;
                 count++;
-                if (m_initTrxCount % (Config::s_maxPhaseSeconds * 100) == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                if (fc::time_point::now() > hard_cpu_deadline) {
                     ilog("----- code exec exceeds the hard cpu deadline, break");
                     break;
                 }
@@ -1264,7 +1264,7 @@ namespace ultrainio {
 
                 m_initTrxCount++;
                 count++;
-                if (m_initTrxCount % (Config::s_maxPhaseSeconds * 100) == 0 && fc::time_point::now() > hard_cpu_deadline) {
+                if (fc::time_point::now() > hard_cpu_deadline) {
                     ilog("----- code exec exceeds the hard cpu deadline, break");
                     break;
                 }
@@ -1375,7 +1375,7 @@ namespace ultrainio {
                  );
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
-            chain.abort_block();
+            chain.abort_block(true);
             throw;
         }
         return true;
@@ -1708,11 +1708,10 @@ namespace ultrainio {
                     // So we can terminate early
                     throw *trace->except;
                 }
-                if (i % 100 == 0 &&
-                    (fc::time_point::now() - start_timestamp) > fc::seconds(5)) {
+                if ((fc::time_point::now() - start_timestamp) > fc::seconds(5)) {
                     ilog("----- voter code exec exceeds the max allowed time, break");
                     m_ba0FailedBlkId = id;
-                    chain.abort_block();
+                    chain.abort_block(true);
                     return false;
                 }
             }
@@ -1728,7 +1727,7 @@ namespace ultrainio {
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
             m_ba0FailedBlkId = id;
-            chain.abort_block();
+            chain.abort_block(true);
             return false;
         }
         // TODO(yufengshen): SHOULD CHECK the signature and block's validity.
@@ -1823,7 +1822,7 @@ namespace ultrainio {
             }
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
-            chain.abort_block();
+            chain.abort_block(true);
             m_currentPreRunBa0TrxIndex = -1;
             return false;
         }

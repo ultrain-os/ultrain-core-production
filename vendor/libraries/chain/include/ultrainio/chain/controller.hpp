@@ -99,7 +99,7 @@ namespace ultrainio { namespace chain {
           */
          void start_block( block_timestamp_type time, chain::checksum256_type);
 
-         void abort_block();
+         void abort_block(bool drop_trx = false);
          void set_emit_signal();
          void clear_emit_signal();
          void enable_worldstate_creation();
