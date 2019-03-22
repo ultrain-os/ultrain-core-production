@@ -73,8 +73,6 @@ namespace ultrainio { namespace chain { namespace bls_votes {
         void read_from_worldstate(std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db);
 
     private:
-        void clean_no_end_epoch(uint32_t block_num, uint32_t confirmed_block_num);
-
         chainbase::database& _db;
 
         int confirm_point_interval = 20;

@@ -25,6 +25,7 @@ namespace ultrainio {
                         info.block_num = e.block_num;
                         info.end_epoch = e.end_epoch;
                         info.valid_bls = false;
+                        info.bls_str = std::string();
                         res.should_be_confirmed.push_back(info);
                     }
                     return res;
@@ -107,6 +108,8 @@ namespace ultrainio {
 
             void bls_votes_manager::add_confirmed_bls_votes(uint32_t block_num, bool end_epoch, bool valid_bls,
                                                             const std::string &bls_str) {
+                ilog("add_confirmed_bls_votes block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
+                     ("num", block_num)("end_epoch", end_epoch)("bls_valid", valid_bls)("bls", bls_str));
                 const auto &o = _db.get<bls_votes_object>();
                 _db.modify(o, [&](bls_votes_object &obj) {
                     obj.should_be_confirmed.emplace_back(block_num, end_epoch, valid_bls, bls_str);
@@ -114,6 +117,7 @@ namespace ultrainio {
             }
 
             bool bls_votes_manager::check_can_confirm(uint32_t block_num) const {
+                ilog("check block_num : ${num}", ("block_num", block_num));
                 // no end epoch before
                 const auto &o = _db.get<bls_votes_object>();
                 if (o.latest_confirmed_block_num >= block_num) {
@@ -128,10 +132,6 @@ namespace ultrainio {
             }
 
             void bls_votes_manager::confirm(uint32_t block_num) {
-                clean_no_end_epoch(block_num, block_num);
-            }
-
-            void bls_votes_manager::clean_no_end_epoch(uint32_t block_num, uint32_t confirmed_block_num) {
                 const auto &o = _db.get<bls_votes_object>();
 
                 _db.modify(o, [&](bls_votes_object &obj) {
@@ -152,8 +152,8 @@ namespace ultrainio {
                     if (itor != begin) {
                         obj.should_be_confirmed.erase(begin, itor);
                     }
-                    if (confirmed_block_num != 0) {
-                        obj.latest_confirmed_block_num = confirmed_block_num;
+                    if (block_num != 0) {
+                        obj.latest_confirmed_block_num = block_num;
                     }
                     ilog("latest_confirmed_block_num : ${latest}", ("latest", o.latest_confirmed_block_num));
                     for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {

@@ -49,12 +49,17 @@ namespace ultrainio {
     }
 
     void LightClientProducer::acceptNewHeader(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
-        if (Helper::isGenesis(blockHeader)) {
+        if (Helper::isGenesis(blockHeader)) { // check sign?
             m_BlsVotesMgr.confirm(blockHeader.block_num());
             return;
         }
         if (shouldBeConfirmed(blockHeader)) {
-            m_BlsVotesMgr.add_confirmed_bls_votes(blockHeader.block_num(), EpochEndPoint::isEpochEndPoint(blockHeader), !blsVoterSet.empty(), blsVoterSet.toString());
+            std::string blsStr;
+            bool validBls = !blsVoterSet.empty();
+            if (validBls) {
+                blsStr = blsVoterSet.toString();
+            }
+            m_BlsVotesMgr.add_confirmed_bls_votes(blockHeader.block_num(), EpochEndPoint::isEpochEndPoint(blockHeader), validBls, blsStr);
         }
 
 //        if (CheckPoint::isCheckPoint(blockHeader)) {
