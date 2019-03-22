@@ -1245,6 +1245,9 @@ struct controller_impl {
             return trace;
          } catch (const fc::exception& e) {
             ilog("-----------exception in push_transaction ${e}", ("e", e.to_detail_string()));
+            for (const auto& a : trx->trx.actions) {
+                ilog("-----------exception in push_transaction account ${a1} ${a2}", ("a1", a.account)("a2", a.name));
+            }
             trace->except = e;
             trace->except_ptr = std::current_exception();
          }
