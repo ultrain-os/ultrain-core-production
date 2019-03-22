@@ -113,6 +113,13 @@ int main(int argc, char** argv)
    } catch( const node_management_success& e ) {
       elog("node_management_success: ${e}", ("e", e.what()));
       return NODE_MANAGEMENT_SUCCESS;
+   } catch (const chain::guard_exception& e ) {
+      if (e.code() == chain::database_guard_exception::code_value) {
+          elog("Database has reached an unsafe level of usage, shutting down to avoid corrupting the database.  "
+               "Please increase the value set for \"chain-state-db-size-mb\" and restart the process!");
+      }
+      dlog("Details: ${details}", ("details", e.to_detail_string()));
+      app().quit();
    } catch( const fc::exception& e ) {
       if( e.code() == fc::std_exception_code ) {
          if( e.top_message().find( "database dirty flag set" ) != std::string::npos ) {

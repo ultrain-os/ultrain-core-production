@@ -1136,7 +1136,7 @@ namespace ultrainio {
                         break;
                     }
                 }
-            }FC_LOG_AND_DROP();
+            } FC_CAPTURE_AND_RETHROW();
         }
         return count;
     }
@@ -1199,7 +1199,7 @@ namespace ultrainio {
                 if (m_initTrxCount >= chain::config::default_max_propose_trx_count) {
                     break;
                 }
-            } FC_LOG_AND_DROP();
+            } FC_CAPTURE_AND_RETHROW();
         }
         return count;
     }
@@ -1271,7 +1271,7 @@ namespace ultrainio {
                 if (m_initTrxCount >= chain::config::default_max_propose_trx_count) {
                     break;
                 }
-            } FC_LOG_AND_DROP();
+            } FC_CAPTURE_AND_RETHROW();
         }
         return count;
     }
@@ -1373,6 +1373,11 @@ namespace ultrainio {
                  ("signature", short_sig(block.signature))
                  ("mroot", block.committee_mroot)
                  );
+        } catch (const chain::guard_exception& e ) {
+            edump((e.to_detail_string()));
+            chain.abort_block(true);
+            app().get_plugin<chain_plugin>().handle_guard_exception(e);
+            throw;
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
             chain.abort_block(true);
@@ -1929,7 +1934,11 @@ namespace ultrainio {
                 chain.set_emit_signal();
                 chain.start_receive_event();
             }
-            chain.push_block(block);
+            try {
+                chain.push_block(block);
+            } catch (const chain::guard_exception& e ) {
+                app().get_plugin<chain_plugin>().handle_guard_exception(e);
+            }
             if (UranusNode::getInstance()->getNonProducingNode()) {
                 chain.clear_emit_signal();
                 chain.notify_event();
