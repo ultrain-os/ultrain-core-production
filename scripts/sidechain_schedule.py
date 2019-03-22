@@ -83,12 +83,12 @@ def setSchedule():
     if args.schedPeriod is None or args.confirmPeriod is None :
         print "schedPeriod or confirmPeriod is none.."
         return
-    retry(args.clultrain + 'push action ultrainio setsched \'{"is_enabled": "1", "sched_period": "'+args.schedPeriod+'", "confirm_period": "'+args.confirmPeriod+'"}\' -p ultrainio@active')
+    retry(args.clultrain + 'push action ultrainio setsched \'{"is_enabled": "1", "sched_period": "'+args.schedPeriod+'", "expire_time": "'+args.confirmPeriod+'"}\' -p ultrainio@active')
 
 
 def closeSchedule():
     print "close schedule"
-    retry(args.clultrain + 'push action ultrainio setsched \'{"is_enabled": "0", "sched_period": "600", "confirm_period": "5"}\' -p ultrainio@active')
+    retry(args.clultrain + 'push action ultrainio setsched \'{"is_enabled": "0", "sched_period": "600", "expire_time": "5"}\' -p ultrainio@active')
 
 def serachTable(contract,scope,table):
     return "get table "+contract+" "+scope+" "+table

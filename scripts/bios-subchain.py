@@ -152,7 +152,7 @@ def addChainType():
 
 
 def showSubchain():
-    run(args.clultrain + ' get table ultrainio ultrainio subchains',False);
+    run(args.clultrain + ' get table ultrainio ultrainio chains',False);
 
 # Command Line Arguments
 commands = [
