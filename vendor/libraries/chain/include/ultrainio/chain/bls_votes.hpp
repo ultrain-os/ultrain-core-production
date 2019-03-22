@@ -52,10 +52,6 @@ namespace ultrainio { namespace chain { namespace bls_votes {
 
     class bls_votes_manager {
     public:
-        static worldstate_bls_voters_object to_worldstate_row(const bls_votes_object& value, const chainbase::database& db, void* data);
-
-        static void from_worldstate_row(worldstate_bls_voters_object&& row, bls_votes_object& value, chainbase::database& db, bool backup, void* data = nullptr);
-
         explicit bls_votes_manager(chainbase::database& db) : _db(db) {}
 
         void add_indices(chainbase::database& db);
@@ -89,4 +85,5 @@ namespace ultrainio { namespace chain { namespace bls_votes {
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::bls_votes::bls_votes_object,        ultrainio::chain::bls_votes::bls_votes_index)
 
 FC_REFLECT(ultrainio::chain::bls_votes::bls_votes_info, (block_num)(end_epoch)(valid_bls)(bls_str))
-FC_REFLECT(ultrainio::chain::bls_votes::bls_votes_object, (latest_confirmed_block_num)(should_be_confirmed))
+FC_REFLECT(ultrainio::chain::bls_votes::bls_votes_object, (latest_confirmed_block_num)(latest_check_point_id)(should_be_confirmed))
+FC_REFLECT(ultrainio::chain::bls_votes::worldstate_bls_voters_object, (latest_confirmed_block_num)(latest_check_point_id)(should_be_confirmed))
