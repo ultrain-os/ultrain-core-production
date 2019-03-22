@@ -177,7 +177,7 @@ export class Random {
 
     // Maybe a hidden problem, the recursive randTemp value.
     var recursive: i32 = 0;
-    var recursiveDepth: i32 = 20; // *tips*: this recursive depth maybe not the best value
+    var recursiveDepth: i32 = 10; // *tips*: this recursive depth maybe not the best value
 
     var rand = new RandRecord();
     rand.blockNum = headBckNum;
@@ -234,9 +234,24 @@ export class Random {
       this.randDB.get(headBckNum, rand);
       return rand;
     }
-   
+
     var lastRand = this.getRandlastRand();
     var lastBckNum = lastRand.blockNum;
+
+    var lastRound: u64 = 13;
+    if (headBckNum > lastBckNum + lastRound) {
+      // lastBckNum = (headBckNum - (headBckNum - lastBckNum) % lastRound) -1;
+      let preRand = lastRand.val;
+      let mainVoterValue = this.hash(headBckNum);
+      let waitorVoterValue = this.hash(mainVoterValue);
+      let randVal = preRand ^ mainVoterValue ^ waitorVoterValue;
+      lastRand.setFields(headBckNum, randVal, 7);
+      if (isUpt) {
+        this.saveAndClearPartRands(headBckNum, randVal, 7);
+      }
+      return lastRand;
+    } 
+
     var waiterVote = new RandRecord();
     for (let i = lastBckNum + 1; i <= headBckNum; i++) {
       let mainVote = this.getMainVoteVal(i, lastRand.val);
@@ -253,7 +268,6 @@ export class Random {
         this.saveAndClearPartRands(i, randVal, code);
       }
       lastRand = rand;
-      // Log.s("generateRand: ").s(lastRand.toString()).flush();
     }
     return lastRand;
   }

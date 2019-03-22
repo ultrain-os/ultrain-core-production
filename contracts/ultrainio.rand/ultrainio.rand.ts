@@ -94,7 +94,6 @@ class RandContract extends Contract {
    */
   @action
   transfer(from: account_name, to: account_name, value: Asset, memo: string): void {
-    Log.s("A candidate ").s(RNAME(from)).s(" register to: ").s(RNAME(to)).flush();
     this.register(from, value, memo);
   }
 
@@ -108,8 +107,6 @@ class RandContract extends Contract {
     if (user == this.receiver) return; // yourself, omit it.
     if (memo != "as candidate") return; // not transfer to join the candidate list
     ultrain_assert(!this.voteDB.exists(user), "cannot add existing candidate.");
-
-    // Log.s("User: ").s(RNAME(user)).s(" begin to register.").flush();
 
     var voter = new Voter();
     voter.name = user;
@@ -133,7 +130,6 @@ class RandContract extends Contract {
     voter.regisBckNum = this.curtBckNum();
     voter.unregisBckNum = 0;
     this.voteDB.emplace(this.receiver, voter);
-    // Log.s("User: ").s(RNAME(user)).s(" register successfully.").flush();
   }
 
   private curtBckNum(): u64 {
