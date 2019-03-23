@@ -1074,6 +1074,13 @@ async function switchChain() {
         } else {
             loggerChainChanging.error("update nod config file error")
             logMsg = utils.addLogStr(logMsg,"update nod config file error");
+            syncChainChanging = false;
+            monitor.enableDeploy();
+            param.endTime = new Date().getTime();
+            param.status = 0;
+            param.result = logMsg;
+            await chainApi.addSwitchLog(monitor.getMonitorUrl(),param);
+            return;
         }
 
 
