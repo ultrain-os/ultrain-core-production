@@ -2,43 +2,49 @@
   {
     "chainName": "ultrainio",
     "seedIp": [
-      "172.17.0.22",
-      "172.17.0.26"
-    ],
-    "peerKeys": [
-      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR63tRkbAg8KjqYBbiVnH8U5NMnCi4RFX3my3JMdqvxQv9qQZdv7",
-      "UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z"
-    ],
-    "subchainHttpEndpoint": "http://172.17.0.22:8888",
-    "monitorServerEndpoint": "http://172.17.0.124:8078"
-  },
-  {
-    "chainName": "11",
-    "seedIp": [
-      "172.17.0.23",
+      "172.17.0.26",
       "172.17.0.25"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6ZZ2zjyygDDe7SEwzVhBZ65AXLemauZU4AyhpD79zqvppTSCzv",
-      "UTR6LYiacD5oC1y1xBdFFTcPA1BaonrpjhBvhxrQ5SzuK8vwMvstf"
+      "UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z",
+      "UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD"
+    ]
+  },
+  {
+    "chainName": "11",
+    "seedIp": [
+      "172.17.0.91",
+      "172.17.0.60"
     ],
-    "subchainHttpEndpoint": "http://172.17.0.23:8888",
-    "monitorServerEndpoint": "http://172.17.0.124:8078"
+    "peerKeys": [
+      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
+      "UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z",
+      "UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD"
+    ]
   },
   {
     "chainName": "12",
+    "seedIp": [
+      "172.17.0.93",
+      "172.17.0.81"
+    ],
+    "peerKeys": [
+      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
+      "UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z",
+      "UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD"
+    ]
+  },
+  {
+    "chainName": "13",
     "seedIp": [
       "172.17.0.24",
       "172.17.0.85"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6ZZ2zjyygDDe7SEwzVhBZ65AXLemauZU4AyhpD79zqvppTSCzv",
-      "UTR6LYiacD5oC1y1xBdFFTcPA1BaonrpjhBvhxrQ5SzuK8vwMvstf"
-    ],
-    "subchainHttpEndpoint": "http://172.17.0.24:8888",
-    "monitorServerEndpoint": "http://172.17.0.124:8078"
+      "UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z",
+      "UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD"
+    ]
   }
 ]
