@@ -121,7 +121,7 @@ function clearFailedUser(user) {
 async function syncUser() {
 
     logger.info("sync user start");
-    if (syncChainData == true) {
+    if (syncChainData == true && isMainChain() == false) {
 
         //投票计数，一轮不超过最大值
         let voteCount =0;
@@ -243,7 +243,7 @@ async function syncBlock() {
     //一次最大块数
     var blockSyncMaxNum = chainConfig.getLocalConfigInfo("blockSyncMaxNum",10);
 
-    if (syncChainData == true) {
+    if (syncChainData == true && isMainChain() == false) {
         chainConfig.u3Sub.getChainInfo(async (error, info) => {
             if (error) {
                 logger.error(error);
@@ -552,6 +552,11 @@ async function syncCommitee() {
         return;
     }
 
+    //主链只需要查委员会，不需要投票
+    if (isMainChain()) {
+        return;
+    }
+
     let remoteProducers = await chainApi.getSubchainCommittee(chainConfig.config,chainConfig.localChainName);
     logger.info("subchain commitee from mainchain: ", remoteProducers);
 
@@ -722,11 +727,9 @@ async function syncChainInfo() {
 
         //如果是主链，啥都不操作
         if (isMainChain()) {
-            syncChainData = false;
             logger.error(chainConfig.myAccountAsCommittee + " runing in main chain, need not work");
             //check alive
             await checkNodAlive();
-            return;
         }
 
         //如果是非出块节点，啥都不操作
@@ -750,9 +753,8 @@ async function syncChainInfo() {
         }
 
         //同步委员会
-        if (isMainChain() == false) {
-            await syncCommitee();
-        }
+        await syncCommitee();
+
         var isStrillInCommittee = committeeUtil.isStayInCommittee(localProducers, chainConfig.myAccountAsCommittee);
         //检查自己是否不在委员会里面
         if (!isStrillInCommittee) {
@@ -763,32 +765,35 @@ async function syncChainInfo() {
             logger.info("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee")
         }
 
-        var rightChain = chainConfig.isInRightChain()
-        if (!rightChain) {
-            //我已不属于这条链，准备迁走
-            if (isStrillInCommittee)  {
-                logger.error("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee,can't be transfer,wait...")
-            } else {
-                syncChainData = false;
-                logger.info(chainConfig.myAccountAsCommittee + " are not in subchain committee , need trandfer to chain(" + chainName + "）, start transfer...");
-                if (monitor.isDeploying() == true) {
-                    logger.error("monitor isDeploying, wait to switchChain");
-                    sleep.msleep(1000);
+        //非主链需要检查是否要调度
+        if (isMainChain() == false) {
+            var rightChain = chainConfig.isInRightChain()
+            if (!rightChain) {
+                //我已不属于这条链，准备迁走
+                if (isStrillInCommittee) {
+                    logger.error("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee,can't be transfer,wait...")
                 } else {
-                    sleep.msleep(1000);
-                    syncChainChanging = true;
-                    monitor.disableDeploy();
+                    syncChainData = false;
+                    logger.info(chainConfig.myAccountAsCommittee + " are not in subchain committee , need trandfer to chain(" + chainName + "）, start transfer...");
+                    if (monitor.isDeploying() == true) {
+                        logger.error("monitor isDeploying, wait to switchChain");
+                        sleep.msleep(1000);
+                    } else {
+                        sleep.msleep(1000);
+                        syncChainChanging = true;
+                        monitor.disableDeploy();
 
-                    //清除数据
-                    clearCacheData()
-                    //开始迁移
-                    await switchChain();
-                    return;
+                        //清除数据
+                        clearCacheData()
+                        //开始迁移
+                        await switchChain();
+                        return;
+                    }
                 }
+            } else {
+                syncChainChanging = false;
+                logger.info("i am in right chain");
             }
-        } else {
-            syncChainChanging = false;
-            logger.info("i am in right chain");
         }
 
         //check nod alive
@@ -1398,7 +1403,7 @@ async function syncNewestResource() {
  */
 async function syncResource(allFlag) {
     logger.info("syncResource start");
-    if (syncChainData == true) {
+    if (syncChainData == true && isMainChain() == false) {
 
         let voteCount = 0;
 
@@ -1569,6 +1574,8 @@ async function syncWorldState() {
         } catch (e) {
             logger.error("syncWorldState error:", e);
         }
+    } else {
+        logger.info("syncWorldState not need:",syncChainData);
     }
 
     logger.info("syncWorldState end");
