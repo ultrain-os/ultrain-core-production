@@ -33,6 +33,8 @@ var seedCount = 10;
 
 var enableRestart = 0;
 
+var enableSyncUserRes = 1;
+
 /**
  *
  * @returns {string}
@@ -127,7 +129,8 @@ async function buildParam() {
     }
 
     var extMsg = {
-        "enableRestart": enableRestartRes
+        "enableRestart": enableRestartRes,
+        "enableSyncUserRes": enableSyncUserRes
     }
     var param = {
         "chainId": chainConfig.localChainName,
@@ -301,6 +304,19 @@ async function cmdDeploy(deployBatch) {
             enableRestart = 0;
             systemCmd = true;
         }
+
+        //开启同步用户和资源-1
+        if (deployCmd.content == constants.cmdConstants.ENABLE_SYNC_USER_RES) {
+            enableSyncUserRes = 1;
+            systemCmd = true;
+        }
+
+        //关闭同步用户和资源-1
+        if (deployCmd.content == constants.cmdConstants.DISABLE_SYNC_USER_RES) {
+            enableSyncUserRes = 0;
+            systemCmd = true;
+        }
+
 
         if (systemCmd == true) {
             let param = await buildParam();
@@ -629,6 +645,18 @@ function needCheckNod() {
     return false;
 }
 
+/**
+ *
+ * @returns {boolean}
+ */
+function needSyncUserRes() {
+    if (enableSyncUserRes == 1) {
+        return true;
+    }
+
+    return false;
+}
+
 module.exports = {
     checkIn,
     isDeploying,
@@ -639,4 +667,5 @@ module.exports = {
     generateSignParamWithStatus,
     generateSign,
     needCheckNod,
+    needSyncUserRes,
 }

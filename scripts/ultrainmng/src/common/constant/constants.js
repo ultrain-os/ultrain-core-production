@@ -18,6 +18,8 @@ var cmdConstants = {
     START_NODULTRAIN_ARG: ["/root/workspace"],
     ENABLE_RESTART: "enableRestart",
     DISABLE_RESTART: "disableRestart",
+    ENABLE_SYNC_USER_RES: "enableUserRes",
+    DISABLE_SYNC_USER_RES: "disableUserRes",
 }
 
 //编码常量

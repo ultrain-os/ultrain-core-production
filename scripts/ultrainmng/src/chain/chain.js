@@ -123,6 +123,14 @@ async function syncUser() {
     logger.info("sync user start");
     if (syncChainData == true && isMainChain() == false) {
 
+        /**
+         * 手动开关不同步
+         */
+        if (monitor.needSyncUserRes() == false) {
+            logger.error("sync user is disabled by flag control");
+            return;
+        }
+
         //投票计数，一轮不超过最大值
         let voteCount =0;
 
@@ -1411,6 +1419,14 @@ async function syncNewestResource() {
 async function syncResource(allFlag) {
     logger.info("syncResource start");
     if (syncChainData == true && isMainChain() == false) {
+
+        /**
+         * 手动开关不同步
+         */
+        if (monitor.needSyncUserRes() == false) {
+            logger.error("sync resource is disabled by flag control");
+            return;
+        }
 
         let voteCount = 0;
 
