@@ -2304,6 +2304,11 @@ connection::connection(string endpoint, msg_priority pri)
 
         if (sync_block_master->end_block_num > 0) {
             sync_block_master->last_received_block = msg.block.block_num();
+            if (sync_block_master->last_received_block == sync_block_master->sync_block_msg.startBlockNum) {
+                controller &cc = chain_plug->chain();
+                std::shared_ptr<StakeVoteBase> stake = MsgMgr::getInstance()->getVoterSys(cc.head_block_num() + 1);
+                light_client->setStartPoint(stake->getCommitteeSet(), cc.head_block_id());
+            }
             sync_block_master->block_msg_queue.emplace_back(msg.block);
             if (msg.proof.empty()) {
                 light_client->accept(msg.block);
