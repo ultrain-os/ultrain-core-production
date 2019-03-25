@@ -445,7 +445,7 @@
          {"name":"total_ram_bytes_used",          "type":"uint64"},
          {"name":"start_blcok",                   "type":"uint64"},
          {"name":"block_reward_vec",              "type":"block_reward[]"},
-         {"name":"pervote_bucket",                "type":"int64"},
+         {"name":"total_cur_chain_block",         "type":"int64"},
          {"name":"perblock_bucket",               "type":"int64"},
          {"name":"total_unpaid_balance",          "type":"uint64"},
          {"name":"total_activated_stake",         "type":"int64"},

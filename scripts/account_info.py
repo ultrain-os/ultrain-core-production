@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 
 systemAccounts = [
-    'utrio.bpay',
     'utrio.msig',
-    'utrio.names',
-    'utrio.saving',
     'utrio.stake',
     'utrio.token',
-    'utrio.vpay',
+    'utrio.resfee',
     'utrio.fee',
     'utrio.rand',
     'utrio.bank',
@@ -21,17 +18,6 @@ initialAccounts = [
     'root3',
     'root4',
     'root5',
-]
-
-accountsToResign = [
-    'utrio.bpay',
-    'utrio.msig',
-    'utrio.names',
-    'utrio.saving',
-    'utrio.stake',
-    'utrio.token',
-    'utrio.vpay',
-    'ultrainio',
 ]
 
 accounts = [

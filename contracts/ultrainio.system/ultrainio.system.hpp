@@ -43,7 +43,7 @@ namespace ultrainiosystem {
 
       uint64_t             start_block =0;
       std::vector<ultrainio::block_reward> block_reward_vec;
-      int64_t              pervote_bucket = 0;
+      int64_t              total_cur_chain_block = 0;
       int64_t              perblock_bucket = 0;
       uint64_t             total_unpaid_balance = 0;
       int64_t              total_activated_stake = 0;
@@ -60,7 +60,7 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,
                                    (max_ram_size)(min_activated_stake)(min_committee_member_number)
                                    (total_ram_bytes_used)(start_block)(block_reward_vec)
-                                   (pervote_bucket)(perblock_bucket)(total_unpaid_balance)
+                                   (total_cur_chain_block)(perblock_bucket)(total_unpaid_balance)
                                    (total_activated_stake)(last_name_close)(max_resources_number)
                                    (total_resources_used_number)(newaccount_fee)(chain_name)
                                    (cur_committee_number)(worldstate_interval)(resource_fee)(table_extension) )
@@ -95,7 +95,6 @@ namespace ultrainiosystem {
    struct disabled_producer : public CommitteeInfo {
       int64_t               total_cons_staked = 0;
       std::string           url;
-      uint64_t              unpaid_balance = 0;
       uint64_t              total_produce_block = 0;
       uint64_t              last_operate_blocknum = 0;
       uint64_t              delegated_cons_blocknum = 0;

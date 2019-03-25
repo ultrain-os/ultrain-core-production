@@ -83,15 +83,11 @@ pubsyskey=`grep "^Public key:" $logfile | tail -1 | sed "s/^Public key://"`
 prisyskey=`grep "^Private key:" $logfile | tail -1 | sed "s/^Private key://"`
 echo ultrainio.* keys: $prisyskey $pubsyskey >> $logfile
 wcmd import -n ignition --private-key $prisyskey
-ecmd create account ultrainio ultrainio.bpay $pubsyskey $pubsyskey
 ecmd create account ultrainio ultrainio.msig $pubsyskey $pubsyskey
-ecmd create account ultrainio ultrainio.names $pubsyskey $pubsyskey
-ecmd create account ultrainio ultrainio.ram $pubsyskey $pubsyskey
-ecmd create account ultrainio ultrainio.ramfee $pubsyskey $pubsyskey
-ecmd create account ultrainio ultrainio.saving $pubsyskey $pubsyskey
 ecmd create account ultrainio ultrainio.stake $pubsyskey $pubsyskey
 ecmd create account ultrainio ultrainio.token $pubsyskey $pubsyskey
-ecmd create account ultrainio ultrainio.vpay $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.resfee $pubsyskey $pubsyskey
+ecmd create account ultrainio ultrainio.fee $pubsyskey $pubsyskey
 ecmd create account ultrainio ultrainio.sudo $pubsyskey $pubsyskey
 
 ecmd set contract ultrainio.token contracts/ultrainio.token contracts/ultrainio.token/ultrainio.token.wast contracts/ultrainio.token/ultrainio.token.abi

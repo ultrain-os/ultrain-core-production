@@ -186,7 +186,6 @@ namespace ultrainiosystem {
 
     std::vector<name> system_contract::get_all_chainname() {
         std::vector<name> scopes;
-        scopes.emplace_back(master_chain_name);
         for(auto ite_chain = _chains.begin(); ite_chain != _chains.end(); ++ite_chain) {
             if(ite_chain->chain_name == N(master))
                 continue;

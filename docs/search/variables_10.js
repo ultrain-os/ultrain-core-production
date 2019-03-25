@@ -21,7 +21,7 @@ var searchData=
   ['perblock_5frate',['perblock_rate',['../namespaceultrainiosystem.html#aa7ee4511d113e54dd159aaaf8956c5a1',1,'ultrainiosystem']]],
   ['permission',['permission',['../structultrainiosystem_1_1permission__level__weight.html#ac98d5c5795870835a76e2c1d73bda998',1,'ultrainiosystem::permission_level_weight::permission()'],['../structultrainio_1_1permission__level.html#a60acff25628eb7c1bdfe2ca17c3ec112',1,'ultrainio::permission_level::permission()'],['../structaccount__permission.html#a325949ab97fd287558359b7314d22088',1,'account_permission::permission()'],['../structcheck__auth__msg.html#a09aa8655dadac9f474521b7edf63a45c',1,'check_auth_msg::permission()'],['../structtest__permission__last__used__msg.html#a8229bb4d02434d35d0bee6c720273a78',1,'test_permission_last_used_msg::permission()']]],
   ['permission_5fname',['permission_name',['../structdtt__action.html#aecb1add2992fbccd795118b9445b2e33',1,'dtt_action']]],
-  ['pervote_5fbucket',['pervote_bucket',['../structultrainiosystem_1_1ultrainio__global__state.html#a1533ba61f8191c5323d28a19684fe0bd',1,'ultrainiosystem::ultrainio_global_state']]],
+  ['pervote_5fbucket',['total_cur_chain_block',['../structultrainiosystem_1_1ultrainio__global__state.html#a1533ba61f8191c5323d28a19684fe0bd',1,'ultrainiosystem::ultrainio_global_state']]],
   ['phone',['phone',['../structtest__model.html#aef24416a78161629f1f7348029efa630',1,'test_model']]],
   ['piecewise_5fconstruct',['piecewise_construct',['../utility_8cpp.html#adaf367dd0b5cfd7d21d7449947806d7b',1,'utility.cpp']]],
   ['pio2_5fhi',['pio2_hi',['../____invtrigl_8h.html#a53f1eb160560e1ddbebfb9aeac16c57a',1,'__invtrigl.h']]],

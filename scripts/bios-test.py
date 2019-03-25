@@ -206,8 +206,6 @@ def stepCreateinitAccounts():
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"3.0000"))
 def stepResign():
     resign('ultrainio', 'utrio.null')
-#    for a in accountsToResign:
-#        resign(a, 'utrio.null')
 
 def resourceTransaction(fromacc,recacc,value):
     retry(args.clultrain + 'system delegatebw  %s %s "%s UGAS"  "%s UGAS"'  % (fromacc,recacc,5000/value,5000/value))

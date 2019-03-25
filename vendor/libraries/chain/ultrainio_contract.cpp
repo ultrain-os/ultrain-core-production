@@ -132,6 +132,7 @@ void apply_ultrainio_newaccount(apply_context& context) {
 
    int64_t ram_delta = config::overhead_per_account_ram_bytes;
    ram_delta += 2*config::billable_size_v<permission_object>;
+   ilog("apply_ultrainio_newaccount : permission_object = ${ram_delta}, account = ${account}, owner_permission = ${owner_permission}, active_permission= ${active_permission}", ("ram_delta", ram_delta)("account", create.name)("owner_permission", owner_permission.auth.get_billable_size())("active_permission", active_permission.auth.get_billable_size()));
    ram_delta += owner_permission.auth.get_billable_size();
    ram_delta += active_permission.auth.get_billable_size();
 

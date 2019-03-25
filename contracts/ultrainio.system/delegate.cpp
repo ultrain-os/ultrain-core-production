@@ -356,7 +356,7 @@ namespace ultrainiosystem {
          ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
          if( _gstate.is_master_chain() || from != _self )
             INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {from,N(active)},
-                                { from, N(utrio.fee), asset(resourcefee), std::string("buy resource lease") } );
+                                { from, N(utrio.resfee), asset(resourcefee), std::string("buy resource lease") } );
          print("resourcelease calculatefee receiver:", name{receiver}," resourcenum_time:",cuttingfee, " resourcefee:",resourcefee);
          ultrainio_assert( 0 < reslease_itr->lease_num, "insufficient resource lease" );
          if (chain_itr == _chains.end()) {

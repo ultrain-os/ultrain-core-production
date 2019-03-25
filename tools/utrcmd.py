@@ -25,7 +25,7 @@ print("pri:"+PrivKey)
 oscmd=clultrain+" wallet import "+ PrivKey
 os.system(oscmd)
 time.sleep(1)
-usrList=["user","tester","exchange","utrio.names","utrio.ram"," utrio.ramfee","utrio.bpay","utrio.msig","utrio.upay","utrio.saving","utrio.stake","utrio.token","utrio.vpay"]
+usrList=["user","tester","exchange","utrio.msig","utrio.stake","utrio.token","utrio.resfee,"utrio.fee"]
 for username in usrList:
     oscmd=clultrain+" create account ultrainio "+username+ " "+PubKey+" "+PubKey
     print (oscmd)

@@ -108,7 +108,7 @@ var searchData=
   ['permissions_2epass_2ecpp',['permissions.pass.cpp',['../permissions_8pass_8cpp.html',1,'']]],
   ['perror',['perror',['../musl_2upstream_2include_2stdio_8h.html#ad5f1d47e8cc6b2c92be35a2402ad4ed5',1,'perror(const char *):&#160;perror.c'],['../perror_8c.html#a80b37b56a5a42139dccaef56da4bf82a',1,'perror(const char *msg):&#160;perror.c']]],
   ['perror_2ec',['perror.c',['../perror_8c.html',1,'']]],
-  ['pervote_5fbucket',['pervote_bucket',['../structultrainiosystem_1_1ultrainio__global__state.html#a1533ba61f8191c5323d28a19684fe0bd',1,'ultrainiosystem::ultrainio_global_state']]],
+  ['pervote_5fbucket',['total_cur_chain_block',['../structultrainiosystem_1_1ultrainio__global__state.html#a1533ba61f8191c5323d28a19684fe0bd',1,'ultrainiosystem::ultrainio_global_state']]],
   ['phone',['phone',['../structtest__model.html#aef24416a78161629f1f7348029efa630',1,'test_model']]],
   ['piecewise_2epass_2ecpp',['piecewise.pass.cpp',['../piecewise_8pass_8cpp.html',1,'']]],
   ['piecewise_5fconstruct',['piecewise_construct',['../utility_8cpp.html#adaf367dd0b5cfd7d21d7449947806d7b',1,'utility.cpp']]],
