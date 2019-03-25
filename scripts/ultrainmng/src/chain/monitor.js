@@ -317,6 +317,77 @@ async function cmdDeploy(deployBatch) {
             systemCmd = true;
         }
 
+        //增加nod配置并重新启动
+        if (deployCmd.content == constants.cmdConstants.ADD_NOD_CONFIG) {
+
+            let param = await buildParam();
+            param.batchId = deployBatch.id;
+
+            let logMsg = "";
+
+            let configList = JSON.parse(deployCmd.arg);
+
+            logger.info("ADD_NOD_CONFIG log,data:", configList);
+
+
+            let hasReady = NodUltrain.checkConfigInfo(configList);
+            if (hasReady) {
+                logger.info("add config has already existed");
+                param.status = statusConstants.EXCEPTION;
+                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+                param.ext = "add config has already existed";
+                await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                enableDeploy();
+                return;
+            } else {
+                logger.info("add config has not already existed,need update info");
+                logMsg = utils.addLogStr(logMsg, "add config has not already existed,need update info");
+
+                try {
+                    let stopFlag = await NodUltrain.stop(600000);
+                    if (stopFlag == true) {
+                        logMsg = utils.addLogStr(logMsg, "stop nod success");
+                        let updateConfigFlag = NodUltrain.addConfigInfo(configList);
+                        if (updateConfigFlag == true) {
+                            logMsg = utils.addLogStr(logMsg, "update nod config success");
+                            let result = await NodUltrain.start(600000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest);
+                            if (result == true) {
+                                logMsg = utils.addLogStr(logMsg, "start nod  success");
+                                //成功
+                                param.status = statusConstants.SUCCESS;
+                                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+                                param.ext = logMsg;
+                                await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                                enableDeploy();
+                                return;
+                            } else {
+                                logMsg = utils.addLogStr(logMsg, "start nod error");
+                            }
+
+                        } else {
+                            logMsg = utils.addLogStr(logMsg, "update config error");
+                        }
+
+                    } else {
+                        logMsg = utils.addLogStr(logMsg, "stop nod error");
+                    }
+
+                } catch (e) {
+                    logger.error("add nod config error,", e);
+                }
+
+                //失败
+                param.status = statusConstants.EXCEPTION;
+                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+                param.ext = logMsg;
+                await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                enableDeploy();
+                return;
+            }
+
+            return;
+        }
+
 
         if (systemCmd == true) {
             let param = await buildParam();

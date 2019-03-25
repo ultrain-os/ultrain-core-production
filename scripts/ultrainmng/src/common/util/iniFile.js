@@ -26,7 +26,7 @@ class IniFile {
      * @param key
      */
     getValue(key) {
-        
+
         let value = null;
         for (var i=0;i<this.lines.length;i++) {
             let line = this.lines[i];
@@ -103,6 +103,28 @@ class IniFile {
         }
 
         return value;
+    }
+
+    /**
+     *
+     * @param key
+     * @param value
+     * @returns {boolean}
+     */
+    checkKVExist(key, value) {
+        for (var i=0;i<this.lines.length;i++) {
+            let line = this.lines[i];
+            if (this.isCommentLine(line)) {
+                continue;
+            }
+
+            var array = this.convertKV(line);
+            if (utils.isNotNull(array) && array[0].trim() == key && array[1].trim() == value) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

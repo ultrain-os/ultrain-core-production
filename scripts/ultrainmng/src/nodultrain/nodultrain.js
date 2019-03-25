@@ -25,6 +25,76 @@ NodUltrain.statusCheckTime = 500;
 
 NodUltrain.configFilePath = "/root/.local/share/ultrainio/nodultrain/config/config.ini";
 
+NodUltrain.checkConfigInfo = function(updateArr) {
+    try {
+        let ready = true;
+        var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
+        logger.info("add nod config, updateArr:",updateArr);
+        if (updateArr.length > 0) {
+            for (let t = 0;t<updateArr.length;t++) {
+                let kv = updateArr[t];
+                logger.info("check add nod confg info:",kv);
+                let kvArray = kv.split("=");
+                if (kvArray.length == 2) {
+                    let key = kvArray[0];
+                    let value = kvArray[1];
+                    if (iniFile.checkKVExist(key,value) == false) {
+                        return false;
+                    }
+                }
+            }
+        } else {
+            logger.error("add nod config, updateArr is null:",updateArr);
+        }
+
+        return ready;
+
+    } catch (e) {
+        logger.error("getConfigInfo error,",e);
+    }
+}
+
+/**
+ *
+ * @param data
+ * @returns {boolean}
+ */
+NodUltrain.addConfigInfo = function(updateArr) {
+    try {
+        let updateFlag = false;
+        var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
+        if (updateArr.length > 0) {
+            for (let t = 0;t<updateArr.length;t++) {
+                let kv = updateArr[t];
+                logger.info("check add nod confg info:",kv);
+                let kvArray = kv.split("=");
+                if (kvArray.length == 2) {
+                    let key = kvArray[0];
+                    let value = kvArray[1];
+                    if (iniFile.checkKVExist(key,value) == false) {
+                        logger.info("kv("+key+":"+value+") is not exist,need add");
+                        iniFile.addKeyValue(key,value);
+                        updateFlag = true;
+                    } else {
+                        logger.info("kv("+key+":"+value+") is exist,need not add");
+                    }
+                }
+            }
+
+            if (updateFlag == true) {
+                iniFile.writefile(this.configFilePath, Constants.encodingConstants.UTF8);
+                return true;
+            }
+        }
+
+
+    } catch (e) {
+        logger.error("addConfigInfo error,",e);
+
+    }
+
+    return false;
+}
 
 /**
  * 更新nod配置文件

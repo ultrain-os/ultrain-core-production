@@ -20,6 +20,7 @@ var cmdConstants = {
     DISABLE_RESTART: "disableRestart",
     ENABLE_SYNC_USER_RES: "enableUserRes",
     DISABLE_SYNC_USER_RES: "disableUserRes",
+    ADD_NOD_CONFIG: "ADD_NOD_CONFIG",
 }
 
 //编码常量
