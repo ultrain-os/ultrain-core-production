@@ -34,8 +34,8 @@ namespace ultrainio {
         return v;
     }
 
-    bool BlsVoterSet::empty() const {
-        return accountPool.empty();
+    bool BlsVoterSet::valid() const {
+        return !accountPool.empty();
     }
 
     void BlsVoterSet::toStringStream(std::stringstream& ss) const {

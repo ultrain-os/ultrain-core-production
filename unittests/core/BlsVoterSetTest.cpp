@@ -9,7 +9,7 @@ using namespace ultrainio;
 using namespace std;
 
 BOOST_AUTO_TEST_SUITE(blsvoterset_test_suite)
-    BOOST_AUTO_TEST_CASE(toVariants) {
+    BOOST_AUTO_TEST_CASE(toString) {
         CommonEchoMsg commonEchoMsg;
         commonEchoMsg.blockId = fc::sha256("0000052af4157bf7f13c9f08305d6510053dbb58b1c33d0ea38a3e302c6e3287");
         commonEchoMsg.phase = kPhaseBA1;
@@ -31,7 +31,14 @@ BOOST_AUTO_TEST_SUITE(blsvoterset_test_suite)
         std::string restoreS = blsVoterSet.toString();
         cout << "restoreS " << restoreS << std::endl;
         BlsVoterSet restoreBlsVoterSet(restoreS);
-        BOOST_CHECK(restoreBlsVoterSet.empty() == false);
+        BOOST_CHECK(restoreBlsVoterSet.valid() == true);
         BOOST_CHECK(blsVoterSet == restoreBlsVoterSet);
     }
+
+    BOOST_AUTO_TEST_CASE(valid) {
+        std::string s;
+        BlsVoterSet blsVoterSet(s);
+        BOOST_CHECK(blsVoterSet.valid() == false);
+    }
+    
     BOOST_AUTO_TEST_SUITE_END()

@@ -55,7 +55,7 @@ namespace ultrainio {
         }
         if (shouldBeConfirmed(blockHeader)) {
             std::string blsStr;
-            bool validBls = !blsVoterSet.empty();
+            bool validBls = blsVoterSet.valid();
             if (validBls) {
                 blsStr = blsVoterSet.toString();
             }

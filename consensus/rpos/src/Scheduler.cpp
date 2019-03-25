@@ -1301,7 +1301,7 @@ namespace ultrainio {
 
             // ConfirmPoint
             BlsVoterSet blsVoterSet;
-            if (m_lightClientProducer->hasNextTobeConfirmedBls(blsVoterSet) && !blsVoterSet.empty()) {
+            if (m_lightClientProducer->hasNextTobeConfirmedBls(blsVoterSet) && blsVoterSet.valid()) {
                 m_lightClientProducer->handleConfirmPoint(chain, blsVoterSet);
             }
 

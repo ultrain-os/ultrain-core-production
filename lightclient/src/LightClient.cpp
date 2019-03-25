@@ -20,13 +20,6 @@ namespace ultrainio {
         return true;
     }
 
-//    void LightClient::accept(const std::list<BlockHeader>& blockHeaderList, const BlockIdType& latestConfirmedBlockId) {
-//        m_latestConfirmedBlockId = latestConfirmedBlockId;
-//        for (auto blockHeader : blockHeaderList) {
-//            accept(blockHeader);
-//        }
-//    }
-
     void LightClient::accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
         ilog("accept BlockHeader num : ${blockNum}, my id : ${myId}, BlsVoterSet confirm num : ${confirmedBlockNum} id : ${id}, latest confirm : ${latest}",
                 ("blockNum", blockHeader.block_num())("myId", blockHeader.id())("confirmedBlockNum", BlockHeader::num_from_id(blsVoterSet.commonEchoMsg.blockId))
@@ -110,7 +103,7 @@ namespace ultrainio {
     }
 
     void LightClient::confirm(const BlsVoterSet& blsVoterSet) {
-        if (blsVoterSet.empty()) {
+        if (!blsVoterSet.valid()) {
             return;
         }
         // TODO verify bls

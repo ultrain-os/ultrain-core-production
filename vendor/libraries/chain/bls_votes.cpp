@@ -81,7 +81,7 @@ namespace ultrainio {
             bool bls_votes_manager::has_should_be_confirmed_bls(std::string &bls) const {
                 const auto &o = _db.get<bls_votes_object>();
                 bool result = false;
-                if (o.should_be_confirmed.size() > 0) {
+                if (o.should_be_confirmed.size() > 0 && o.should_be_confirmed.front().valid_bls) {
                     result = true;
                     bls = o.should_be_confirmed.front().bls_str;
                 }
@@ -98,6 +98,10 @@ namespace ultrainio {
                 }
                 if (o.should_be_confirmed.size() > 0) {
                     if (o.should_be_confirmed.back().block_num + confirm_point_interval == block_num) {
+                        wlog("there are too many unconfirmed block;");
+                        for (auto e : o.should_be_confirmed) {
+                            wlog("unconfirmed block num : ${num} end epoch : ${epoch}", ("num", e.block_num)("epoch", e.end_epoch));
+                        }
                         return true;
                     }
                 } else if (o.latest_confirmed_block_num + confirm_point_interval == block_num) {
@@ -117,8 +121,7 @@ namespace ultrainio {
             }
 
             bool bls_votes_manager::check_can_confirm(uint32_t block_num) const {
-                ilog("check block_num : ${num}", ("block_num", block_num));
-                // no end epoch before
+                ilog("check block_num : ${num}", ("num", block_num));
                 const auto &o = _db.get<bls_votes_object>();
                 if (o.latest_confirmed_block_num >= block_num) {
                     elog("confirm block num ${block_num} great than confirmed ${confirmed}",
