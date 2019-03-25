@@ -43,8 +43,8 @@ namespace ultrainio { namespace chain {
     class ws_file_reader
     {
         public:
-            std::vector<char> get_data(uint32_t slice_id, bool& isEof);            
-            ws_file_reader(ws_info node, std::string dir, uint32_t len_per_slice);
+            std::vector<char> get_data(uint32_t slice_id, uint32_t len_per_slice, bool& isEof);
+            ws_file_reader(ws_info node, std::string dir);
             ~ws_file_reader();
             
         private:
@@ -53,7 +53,6 @@ namespace ultrainio { namespace chain {
             ws_info m_info;
             std::ifstream m_fd;
             std::string m_dir_path;
-            uint32_t m_len_per_slice;
             friend class ws_file_manager;
     };
 
@@ -89,7 +88,7 @@ namespace ultrainio { namespace chain {
             ~ws_file_manager();        
         public:   
             std::list<ws_info> get_local_ws_info();
-            std::shared_ptr<ws_file_reader> get_reader(ws_info node, uint32_t len_per_slice);
+            std::shared_ptr<ws_file_reader> get_reader(ws_info node);
             std::shared_ptr<ws_file_writer> get_writer(ws_info node, uint32_t len_per_slice);
             fc::sha256 calculate_file_hash(std::string file_name);
             std::string get_file_path_by_info(fc::sha256& chain_id, uint32_t block_height);

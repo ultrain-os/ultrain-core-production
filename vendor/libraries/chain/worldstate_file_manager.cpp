@@ -65,10 +65,9 @@ bool from_file_name(fc::path name, fc::sha256& chain_id, uint32_t& block_height)
 }
 
 
-ws_file_reader::ws_file_reader(ws_info node, std::string dir, uint32_t len_per_slice)
+ws_file_reader::ws_file_reader(ws_info node, std::string dir)
 :m_info(node)
 ,m_dir_path(dir)
-,m_len_per_slice(len_per_slice)
 {
 
     std::string filePath = m_dir_path + "/" + to_file_name(m_info.chain_id, m_info.block_height) + ".ws";
@@ -88,19 +87,19 @@ void ws_file_reader::destory()
     // delete this;
 }
 
-std::vector<char> ws_file_reader::get_data(uint32_t slice_id, bool& isEof)
+std::vector<char> ws_file_reader::get_data(uint32_t slice_id, uint32_t len_per_slice, bool& isEof)
 {
-    if(slice_id*m_len_per_slice >= m_info.file_size) {
+    if(slice_id*len_per_slice >= m_info.file_size) {
         return std::vector<char>();
     }
 
     try {
         std::vector<char>  ret_data;
         int readCnt = 0;
-        m_fd.seekg(slice_id*m_len_per_slice, std::ios::beg);
+        m_fd.seekg(slice_id*len_per_slice, std::ios::beg);
         
-        ret_data.resize(m_len_per_slice);
-        m_fd.read(ret_data.data(), m_len_per_slice);
+        ret_data.resize(len_per_slice);
+        m_fd.read(ret_data.data(), len_per_slice);
         readCnt = m_fd.gcount();
         ret_data.resize(readCnt);
         isEof = m_fd.eof();
@@ -320,7 +319,7 @@ void ws_file_manager::save_info(ws_info& node, std::string relative_dir)
     fc::json::save_to_file(node, info_file_name, true);
 }
 
-std::shared_ptr<ws_file_reader> ws_file_manager::get_reader(ws_info node, uint32_t len_per_slice)
+std::shared_ptr<ws_file_reader> ws_file_manager::get_reader(ws_info node)
 {
     auto it = m_reader_map.find(node);
     if (it != m_reader_map.end()) {
@@ -331,7 +330,7 @@ std::shared_ptr<ws_file_reader> ws_file_manager::get_reader(ws_info node, uint32
     auto node_list = get_local_ws_info();
     for(auto &it : node_list){
         if(it == node){
-            m_reader_map[node] = std::make_shared<ws_file_reader>(node, m_dir_path, len_per_slice);
+            m_reader_map[node] = std::make_shared<ws_file_reader>(node, m_dir_path);
             m_is_reader_activate_map[node] = true;
             return m_reader_map[node];       
         }

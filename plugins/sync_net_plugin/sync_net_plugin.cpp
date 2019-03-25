@@ -987,7 +987,7 @@ namespace ultrainio {
         if (msg.index < 5 || msg.index % 1000 == 0)
             ilog("recieved ReqWsFileMsg, ${msg}", ("msg", msg));
 
-        auto reader = ws_file_manager.get_reader(msg.info, msg.lenPerSlice);
+        auto reader = ws_file_manager.get_reader(msg.info);
         if (!reader){
             ilog("reader error ");
             FileTransferPacket file_tp_msg;
@@ -1000,7 +1000,7 @@ namespace ultrainio {
         bool isEof = false;
         FileTransferPacket file_tp_msg;
         
-        auto data = reader->get_data(msg.index, isEof);
+        auto data = reader->get_data(msg.index, msg.lenPerSlice, isEof);
         if(data.size() <= 0){
             ilog("reader error, no data ");
             file_tp_msg.chunkLen = 0;
