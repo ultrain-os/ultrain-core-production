@@ -29,7 +29,6 @@
 #include <lightclient/EpochEndPoint.h>
 #include <lightclient/LightClientProducer.h>
 #include <lightclient/LightClient.h>
-#include <lightclient/LightClientCallback.h>
 #include <lightclient/LightClientMgr.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
@@ -65,11 +64,6 @@ namespace {
 }
 
 namespace ultrainio {
-//    class LightClientCallbackTest : public LightClientCallback {
-//        void onConfirmed(const std::list<BlockHeader>& bhList) {
-//            ilog("confirm from ${s} to ${e}", ("s", bhList.front().block_num())("e", bhList.back().block_num()));
-//        }
-//    };
 
     Scheduler::~Scheduler() {}
 
@@ -82,8 +76,6 @@ namespace ultrainio {
         m_fast_timestamp = 0;
         chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
         m_lightClientProducer = std::make_shared<LightClientProducer>(chain.get_bls_votes_manager());
-//        std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(0);
-//        lightClient->addCallback(std::make_shared<LightClientCallbackTest>());
     }
 
     chain::checksum256_type Scheduler::getCommitteeMroot(uint32_t block_num) {
@@ -1958,9 +1950,6 @@ namespace ultrainio {
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
         m_lightClientProducer->acceptNewHeader(chain.head_block_header(), m_currentVoterSet.toBlsVoterSet());
-        //ilog("lightClient::accept");
-        //std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(0);
-        //lightClient->accept(chain.head_block_header());
         MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
     }
 
@@ -2225,12 +2214,6 @@ namespace ultrainio {
         id = lightClient->getLatestConfirmedBlockId();
         lightClient->reset();
         return true;
-    }
-
-    bool Scheduler::on_set_master_start_point(uint64_t chain_name, const std::string& committeeSetStr, const BlockIdType& blockId) {
-        CommitteeSet committeeSet(committeeSetStr);
-        std::shared_ptr<LightClient> lightClientPtr = LightClientMgr::getInstance()->getLightClient(chain_name);
-        return lightClientPtr->setStartPoint(committeeSet, blockId);
     }
 
     bool Scheduler::getUnconfirmedHeaderFromDb(const chain::name& chainName, std::vector<BlockHeader>& unconfirmedBlockHeader, BlockIdType& confirmedBlockId) {

@@ -217,7 +217,6 @@ class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrain
         // implement callback
         bool on_accept_block_header(uint64_t chainName, const BlockHeader& blockHeader, BlockIdType& id);
 
-        bool on_set_master_start_point(uint64_t chain_name, const std::string& committeeSetStr, const BlockIdType& blockId);
     private:
 
         bool getUnconfirmedHeaderFromDb(const chain::name&, std::vector<BlockHeader>& unconfirmedBlockHeader, BlockIdType& confirmedBlockId);
