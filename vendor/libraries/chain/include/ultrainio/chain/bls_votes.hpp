@@ -10,14 +10,15 @@
 
 namespace ultrainio { namespace chain { namespace bls_votes {
 
+    struct shared_bls_votes_info;
     struct bls_votes_info {
-        uint32_t block_num;
+        uint32_t block_num = 0;
 
-        bool end_epoch;
+        bool end_epoch = false;
 
-        bool valid_bls;
+        bool valid_bls = false;
 
-        std::string bls_str;
+        std::string bls_str = std::string();
 
         bls_votes_info() {}
 
@@ -25,8 +26,26 @@ namespace ultrainio { namespace chain { namespace bls_votes {
                 : block_num(_block_num), end_epoch(_end_epoch), valid_bls(_valid_bls), bls_str(_bls_str) {}
     };
 
+    struct shared_bls_votes_info {
+        template <typename Allocator>
+        shared_bls_votes_info(uint32_t _block_num, bool _end_epoch, bool _valid_bls, const std::string& _bls_str, chainbase::allocator<Allocator> alloc)
+                : block_num(_block_num), end_epoch(_end_epoch), valid_bls(_valid_bls), bls_str(_bls_str.begin(), _bls_str.end(), alloc) {}
+
+        uint32_t block_num = 0;
+
+        bool end_epoch = false;
+
+        bool valid_bls = false;
+
+        shared_string bls_str;
+
+        bls_votes_info to_info() {
+            return bls_votes_info(this->block_num, this->end_epoch, this->valid_bls, std::string(this->bls_str.begin(), this->bls_str.end()));
+        }
+    };
+
     struct bls_votes_object : public chainbase::object<bls_votes_object_type, bls_votes_object> {
-        OBJECT_CTOR(bls_votes_object)
+        OBJECT_CTOR(bls_votes_object, (should_be_confirmed))
 
         id_type id;
 
@@ -34,7 +53,7 @@ namespace ultrainio { namespace chain { namespace bls_votes {
 
         block_id_type latest_check_point_id;
 
-        std::vector<bls_votes_info> should_be_confirmed;
+        shared_vector<shared_bls_votes_info> should_be_confirmed;
     };
 
     using bls_votes_index = chainbase::shared_multi_index_container<
