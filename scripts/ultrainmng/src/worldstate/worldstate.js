@@ -105,6 +105,12 @@ WorldState.requestWSState = async function () {
     return await this.requestData("/wss/ws_status", "\"ws\"");
 }
 
+WorldState.setValidWs = async function(vaildNum) {
+    let res =  await this.requestData("/wss/set_vaild_ws", "\""+vaildNum+"\"");
+    logger.info("set wss vaild num:",res);
+    return res;
+}
+
 /**
  * 轮询同步时间状态
  * @param code

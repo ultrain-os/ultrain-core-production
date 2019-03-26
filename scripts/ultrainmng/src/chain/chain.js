@@ -1550,6 +1550,7 @@ async function syncWorldState() {
     logger.info("syncWorldState start");
 
     if (syncChainData == true) {
+        let vaildMaxWSNum=0;
         try {
             //同步状态
             await WorldState.syncStatus();
@@ -1567,6 +1568,7 @@ async function syncWorldState() {
                     logger.debug("mainChainData:",mainChainData);
                     let worldstatedata = voteUtil.getMaxValidWorldState(mainChainData.rows);
                     if (worldstatedata != null) {
+                        vaildMaxWSNum = worldstatedata.block_num;
                         logger.info("main chain's world state (main chain block num :" + worldstatedata.block_num + " subchain node block num :" + WorldState.status.block_height + ")");
                         if (worldstatedata.block_num >= WorldState.status.block_height) {
                             logger.info("main chain's world state is newest,need not upload:(main chain block num :" + worldstatedata.block_num + " subchain node block num :" + WorldState.status.block_height + ")");
@@ -1592,6 +1594,16 @@ async function syncWorldState() {
                 }
             } else {
                 logger.info("local world state is none ,need not upload");
+            }
+
+            /**
+             *
+             */
+            if (vaildMaxWSNum > 0) {
+                logger.info("vaildMaxWSNum is "+vaildMaxWSNum+", need set wss..");
+                await WorldState.setValidWs(vaildMaxWSNum);
+            } else {
+                logger.info("vaildMaxWSNum is "+vaildMaxWSNum+", need not set wss..");
             }
 
         } catch (e) {
