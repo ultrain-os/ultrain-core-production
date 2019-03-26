@@ -118,7 +118,7 @@ namespace ultrainiosystem {
       uint64_t              unpaid_balance = 0;
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
-      ultrainio::extensions_type           table_extension;
+      exten_types           table_extension;
 
       uint64_t primary_key()const { return owner; }
 
@@ -165,7 +165,7 @@ namespace ultrainiosystem {
        uint64_t             block_num;
        std::vector<hash_vote>    hash_v;
        std::set<account_name> accounts;
-       ultrainio::extensions_type           table_extension;
+       exten_types           table_extension;
        uint64_t  primary_key()const { return block_num; }
        ULTRAINLIB_SERIALIZE( subchain_ws_hash , (block_num)(hash_v)(accounts)(table_extension) )
    };
@@ -175,7 +175,7 @@ namespace ultrainiosystem {
        std::vector<role_base>               master_prods;
        uint64_t                             block_height = 0;
        block_id_type                        block_id;
-       ultrainio::extensions_type           master_chain_ext;
+       exten_types                          master_chain_ext;
        uint64_t  primary_key()const { return owner; }
        ULTRAINLIB_SERIALIZE(master_chain_info, (owner)(master_prods)(block_height)(block_id)(master_chain_ext) )
    };
@@ -195,7 +195,7 @@ namespace ultrainiosystem {
        uint16_t stable_max_producers;
        uint16_t sched_inc_step;
        uint16_t consensus_period;
-       ultrainio::extensions_type           table_extension;
+       exten_types  table_extension;
 
        auto primary_key() const { return type_id; }
 
@@ -289,7 +289,7 @@ namespace ultrainiosystem {
        uint32_t                  confirmed_block_number;
        std::vector<role_base>    committee_set;//current committee set reported by chain
        std::vector<unconfirmed_block_header>  unconfirmed_blocks;
-       ultrainio::extensions_type           table_extension;
+       exten_types                table_extension;
 
        auto primary_key()const { return chain_name; }
 

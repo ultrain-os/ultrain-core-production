@@ -29,7 +29,7 @@ using namespace std;
 
 namespace ultrainio {
 
-    char version[]="a6dc8e";
+    char version[]="a96045";
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
     std::shared_ptr<UranusNode> UranusNode::initAndGetInstance(boost::asio::io_service &ioservice) {

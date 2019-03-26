@@ -4,7 +4,12 @@
 namespace ultrainio { namespace chain {
 
     const name master_chain_name{N(ultrainio)};
-
+    struct exten_type {
+        exten_type(){}
+        uint16_t         key;
+        std::string      value;
+    };
+   typedef std::vector<exten_type>  extension_types;
     // keep this the same as defined in ultrainio.system.hpp;
     struct producer_brief {
       account_name          owner;
@@ -31,7 +36,7 @@ namespace ultrainio { namespace chain {
       uint64_t              unpaid_amount = 0;
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
-      extensions_type       table_extension;
+      extension_types       table_extension;
    };
 
    struct chain_resource {
@@ -89,7 +94,7 @@ namespace ultrainio { namespace chain {
        uint32_t                  confirmed_block_number;
        std::vector<role_base>    committee_set;//current committee set reported by chain
        std::vector<unconfirmed_block_header>  unconfirmed_blocks;
-       extensions_type           table_extension;
+       extension_types           table_extension;
     };
 
     struct resources_lease {
@@ -105,11 +110,11 @@ namespace ultrainio { namespace chain {
         std::vector<role_base>  master_prods;
         uint64_t                block_height = 0;
         checksum256_type        block_id;
-        extensions_type  master_chain_ext;
+        extension_types         master_chain_ext;
     };
 
 }} // namespace ultrainio::chain
-
+FC_REFLECT(ultrainio::chain::exten_type, (key)(value) )
 FC_REFLECT(ultrainio::chain::producer_brief, (owner)(location)(in_disable) )
 FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key)(bls_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::disabled_producer, (ultrainio::chain::role_base), (total_cons_staked)(url)(total_produce_block)

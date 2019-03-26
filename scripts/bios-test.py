@@ -185,6 +185,7 @@ def stepRegProducers():
             "master_prods":[%s],"block_height":%s,"block_id":"%s","master_chain_ext":[]}}\' -p ultrainio ' % \
             ( masterproducerinfo, args.num_master_block, args.master_block_id) )
     sleep(15)
+    #table_extension key:1  updateauth  the value UGAS of each permission
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\

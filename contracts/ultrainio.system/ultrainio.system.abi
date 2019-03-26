@@ -440,7 +440,7 @@
          {"name":"master_prods",             "type":"role_base[]"},
          {"name":"block_height",             "type":"uint64"},
          {"name":"block_id",                 "type":"block_id_type"},
-         {"name":"master_chain_ext",         "type":"extension[]"}
+         {"name":"master_chain_ext",         "type":"exten_type[]"}
       ]
     },{
       "name": "ultrainio_global_state",
@@ -461,7 +461,7 @@
          {"name":"total_resources_used_number",   "type":"uint64"},
          {"name":"newaccount_fee",                "type":"uint32"},
          {"name":"chain_name",                    "type":"name"},
-         {"name":"cur_committee_number",           "type":"uint32"},
+         {"name":"cur_committee_number",          "type":"uint32"},
          {"name":"worldstate_interval",           "type":"uint64"},
          {"name":"resource_fee",                  "type":"uint32"},
          {"name": "table_extension",              "type": "exten_type[]"}
@@ -492,7 +492,7 @@
          {"name":"unpaid_balance",   "type":"uint64"},
          {"name":"vote_number",     "type":"uint64"},
          {"name":"last_vote_blocenum", "type":"uint64"},
-         {"name": "table_extension", "type": "extension[]"}
+         {"name": "table_extension", "type": "exten_type[]"}
       ]
     },{
      "name": "chaintype",
@@ -503,7 +503,7 @@
         {"name": "stable_max_producers",   "type": "uint16"},
         {"name": "sched_inc_step",         "type": "uint16"},
         {"name": "consensus_period",       "type": "uint16"},
-        {"name": "table_extension",        "type": "extension[]"}
+        {"name": "table_extension",        "type": "exten_type[]"}
        ]
     },{
      "name": "user_info",
@@ -573,7 +573,7 @@
         {"name": "confirmed_block_number",        "type": "uint32"},
         {"name": "committee_set",                 "type": "role_base[]"},
         {"name": "unconfirmed_blocks",            "type": "unconfirmed_block_header[]"},
-        {"name": "table_extension",               "type": "extension[]"}
+        {"name": "table_extension",               "type": "exten_type[]"}
        ]
     },{
      "name": "pending_miner",
@@ -606,7 +606,7 @@
         {"name": "block_num",                "type": "uint64"},
         {"name": "hash_v",                   "type": "hash_vote[]"},
         {"name": "accounts",                 "type": "account_name[]"},
-        {"name": "table_extension",          "type": "extension[]"}
+        {"name": "table_extension",          "type": "exten_type[]"}
        ]
     },{
       "name": "regproducer",
