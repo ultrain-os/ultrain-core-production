@@ -53,10 +53,10 @@ namespace ultrainiosystem {
                           const authority& active*/ );
 
 
-         void updateauth( account_name     account/*,
+         void updateauth( account_name     account,
                                  permission_name  permission,
                                  permission_name  parent,
-                                 const authority& data*/ );
+                                 const authority& data);
 
          void deleteauth( /*account_name account, permission_name permission*/ ) {}
 

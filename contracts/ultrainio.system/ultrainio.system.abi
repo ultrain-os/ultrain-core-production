@@ -21,6 +21,13 @@
    }],
    "____comment": "ultrainio.bios structs: set_account_limits, setpriv, set_global_limits, producer_key, set_producers, require_auth are provided so abi available for deserialization in future.",
    "structs": [{
+      "name": "exten_type",
+      "base": "",
+      "fields": [
+        {"name": "key", "type": "uint16"},
+        {"name": "value", "type":"string"}
+      ]
+    },{
       "name": "permission_level",
       "base": "",
       "fields": [
@@ -423,7 +430,7 @@
          {"name":"chain_name",                     "type":"name"},
          {"name":"worldstate_interval",            "type":"uint64"},
          {"name":"resource_fee",                   "type":"uint32"},
-         {"name": "table_extension",               "type": "extension[]"}
+         {"name": "table_extension",               "type": "exten_type[]"}
       ]
     },{
       "name": "master_chain_info",
@@ -457,7 +464,7 @@
          {"name":"cur_committee_number",           "type":"uint32"},
          {"name":"worldstate_interval",           "type":"uint64"},
          {"name":"resource_fee",                  "type":"uint32"},
-         {"name": "table_extension",              "type": "extension[]"}
+         {"name": "table_extension",              "type": "exten_type[]"}
       ]
     },{
       "name": "producer_brief",

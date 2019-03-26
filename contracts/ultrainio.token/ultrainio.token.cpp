@@ -121,9 +121,10 @@ void token::set_chargeparams( std::string symbol, uint8_t precision, uint32_t op
 void token::sub_balance( account_name owner, asset value, const currency_stats& st ) {
    accounts from_acnts( _self, owner );
 
-   const auto& from = from_acnts.get( value.symbol.name(), "no balance object found" );
+   const auto& from = from_acnts.get( value.symbol.name(), "there may be a charge for this account, but the balance is 0" );
    uint32_t cur_block_height= (uint32_t)head_block_number();
-   if((cur_block_height - from.last_block_height < st.operate_interval_sec/block_interval_seconds()) && (owner != N(ultrainio)) && name{owner}.to_string().find( "utrio." ) != 0){
+   if((cur_block_height - from.last_block_height < st.operate_interval_sec/block_interval_seconds())
+      && (owner != N(ultrainio)) && name{owner}.to_string().find( "utrio." ) != 0){
       asset fee( st.operate_fee, value.symbol );
       int64_t p10 = (int64_t)value.symbol.precision();
       if(value.amount > p10*10)
@@ -133,7 +134,7 @@ void token::sub_balance( account_name owner, asset value, const currency_stats& 
       value += fee;
    }
 
-   ultrainio_assert( from.balance.amount >= value.amount, "overdrawn balance" );
+   ultrainio_assert( from.balance.amount >= value.amount, "there may be a charge for this account, but overdrawn balance" );
 
    if( from.balance.amount == value.amount ) {
       from_acnts.erase( from );

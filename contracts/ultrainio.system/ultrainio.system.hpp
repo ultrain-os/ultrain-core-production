@@ -17,7 +17,7 @@
 #include <set>
 #include "BlockHeaderExtKey.h"
 #include "CommitteeSet.h"
-
+#define UNUSED(a) (void*)(a);
 namespace ultrainiosystem {
    using namespace ultrainio;
    const name master_chain_name{N(ultrainio)};
@@ -33,6 +33,13 @@ namespace ultrainiosystem {
       }
       return false;
    }
+   struct exten_type {
+       exten_type(){}
+       uint16_t         key;
+       std::string      value;
+       ULTRAINLIB_SERIALIZE(exten_type , (key)(value) )
+   };
+   typedef std::vector<exten_type>  exten_types;
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_used; }
       bool is_master_chain()const { return chain_name == name{N(ultrainio)}; }
@@ -55,7 +62,7 @@ namespace ultrainiosystem {
       uint32_t             cur_committee_number = 0;
       uint64_t             worldstate_interval  = 1000;
       uint32_t             resource_fee = 100000;
-      ultrainio::extensions_type           table_extension;
+      exten_types          table_extension;
 
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,
                                    (max_ram_size)(min_activated_stake)(min_committee_member_number)
@@ -328,7 +335,7 @@ namespace ultrainiosystem {
       name                 chain_name;
       uint64_t             worldstate_interval;
       uint32_t             resource_fee;
-      ultrainio::extensions_type   table_extension;
+      exten_types          table_extension;
       uint64_t  primary_key()const { return chain_type; }
       ULTRAINLIB_SERIALIZE( ultrainio_system_params,(chain_type)(max_ram_size)(min_activated_stake)
                             (min_committee_member_number)(block_reward_vec)(max_resources_number)

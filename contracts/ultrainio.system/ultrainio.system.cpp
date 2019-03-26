@@ -50,6 +50,7 @@ namespace ultrainiosystem {
             _gstate.max_resources_number = params.max_resources_number;
             _gstate.worldstate_interval = params.worldstate_interval;
             _gstate.resource_fee = params.resource_fee;
+            _gstate.table_extension.assign(params.table_extension.begin(),params.table_extension.end());
             _global.set( _gstate );
         } else {
             auto ite_chain = _chains.find(params.chain_name);
@@ -542,20 +543,31 @@ void system_contract::voteresourcelease() {
                                                                  { creator, N(utrio.fee), asset(newaccount_fee), std::string("create account") } );
       }
 
-      //user_resources_table  userres( _self, newact);
-
-      //userres.emplace( [&]( auto& res ) {
-      //  res.owner = newact;
-      //});
-
       set_resource_limits( newact, 0, 0, 0 );
    }
-   void native::updateauth( account_name     account/*,
+   void native::updateauth( account_name     account,
                   permission_name  permission,
                   permission_name  parent,
-                  const authority& data*/ ){
-         INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {account,N(active)},
-            { account, N(utrio.fee), asset(10000), std::string("update auth") } );
+                  const authority& data ){
+         UNUSED(permission);
+         UNUSED(parent);
+         global_state_singleton globalparams( _self,_self);
+         int32_t updateauth_fee = 0;
+         if(globalparams.exists()){
+            ultrainio_global_state  _gstate = globalparams.get();
+            for(auto extension : _gstate.table_extension){
+               if(extension.key != 1)
+                  continue;
+               std::string  str = extension.value;
+               updateauth_fee = std::stoi(str);
+            }
+         }
+         int64_t authsize = data.keys.size() + data.accounts.size() + data.waits.size();
+         ultrainio_assert(authsize > 0, "update authority amount has to be greater than zero");
+         if(updateauth_fee > 0){
+            INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {account,N(active)},
+               { account, N(utrio.fee), asset(updateauth_fee * authsize), std::string("update auth") } );
+         }
       }
 
    void native::deletetable( account_name code ) {
