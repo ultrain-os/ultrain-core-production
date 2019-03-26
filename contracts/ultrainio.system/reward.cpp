@@ -42,7 +42,7 @@ namespace ultrainiosystem {
       checkresexpire();
       cleanvotetable();
       checkbulletin();
-      schedule();
+      pre_schedule();
       distributreward();  //automatically send rewards
    }
 

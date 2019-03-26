@@ -212,7 +212,17 @@ namespace ultrainiosystem {
             for(auto ite_rm = chain_iter->changing_info.removed_members.begin();
             ite_rm != chain_iter->changing_info.removed_members.end(); ++ite_rm) {
                 if(ite_rm->owner == block_proposer) {
-                    return true; //TODO, check expire time by operating time
+                    uint32_t block_height = uint32_t(head_block_number() + 1);
+                    uint16_t expire_time = 5;
+                    if(_schedsetting.exists()) {
+                        auto temp = _schedsetting.get();
+                        expire_time = temp.expire_minutes;
+                    }
+                    if(block_height > ite_rm->block_num && block_height - ite_rm->block_num <= 6 * expire_time) {
+                        return true;
+                    } else {
+                        return false;
+                    }
                 }
             }
         }
@@ -531,7 +541,7 @@ namespace ultrainiosystem {
         });
     }
 
-    void system_contract::remove_from_chain(name chain_name, account_name producer_name) {
+    void system_contract::remove_from_chain(name chain_name, account_name producer_name, uint64_t current_block_number) {
         producers_table _producer_chain(_self, chain_name);
         auto prod = _producer_chain.find( producer_name );
         ultrainio_assert(prod != _producer_chain.end(), "producer is not existed in source chain");
@@ -546,10 +556,11 @@ namespace ultrainiosystem {
                 "the producers in source sidechain is not enough for removing");
 
             _chains.modify(ite_chain, [&](chain_info& info) {
-                role_base temp_prod;
+                changing_producer temp_prod;
                 temp_prod.owner = prod->owner;
                 temp_prod.producer_key = prod->producer_key;
                 temp_prod.bls_key = prod->bls_key;
+                temp_prod.block_num = uint32_t(current_block_number);
                 info.changing_info.removed_members.push_back(temp_prod);
                 info.is_schedulable = false;
                 if(!info.is_synced) {
@@ -583,8 +594,8 @@ namespace ultrainiosystem {
         return false;
     }
 
-    void system_contract::schedule() {
-        int32_t sched_period_minute = 60*24;
+    void system_contract::pre_schedule() {
+       int32_t sched_period_minute = 60*24;
         if(_schedsetting.exists()) {
             auto temp = _schedsetting.get();
             if(!temp.is_schedule_enabled) {
@@ -598,7 +609,19 @@ namespace ultrainiosystem {
             return;
         }
 
-        print( "[schedule] start, master block num: ", block_height, "\n");
+        uint128_t trxid = _self + N(schedule);
+        cancel_deferred(trxid);
+        ultrainio::transaction out;
+        out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(schedule), "on time" );
+        out.delay_sec = 20;
+        out.send( trxid, _self, true );
+    }
+
+    void system_contract::schedule(const std::string& trigger) {
+        require_auth( _self );
+
+        auto block_num = int32_t(head_block_number() + 1);
+        print( "[schedule] start, trigger: ", trigger.c_str(), "; master block num: ", block_num, "\n");
 
         //get current head block hash
         char blockid[32];
@@ -653,7 +676,7 @@ namespace ultrainiosystem {
             print(" can move out at most: ", uint32_t(out_iter->sched_out_num), " producers\n");
             bool quit_loop = false;
             for(uint16_t out_idx = 0; out_idx < out_iter->sched_out_num; ++out_idx ) {
-                if(!move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, uint64_t(block_height), out_idx) ) {
+                if(!move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, uint64_t(block_num), out_idx) ) {
                     continue;
                 }
                 ++out_iter->gap_to_next_level;
@@ -698,7 +721,7 @@ namespace ultrainiosystem {
         for(; chain_to != out_list.end(); ++chain_from, ++chain_to, ++chain_num) {
             print("[schedule] from_chain: ", name{chain_from->chain_ite->chain_name});
             print(", to_chain: ", name{chain_to->chain_ite->chain_name}, "\n");
-            if(!move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_height), chain_num) ) {
+            if(!move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_num), chain_num) ) {
                 continue;
             }
         }
@@ -707,7 +730,7 @@ namespace ultrainiosystem {
         chain_to = out_list.begin();
         print("[schedule] from chain: ", name{chain_from->chain_ite->chain_name});
         print(", to chain: ", name{chain_to->chain_ite->chain_name}, "\n");
-        move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_height), chain_num);
+        move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_num), chain_num);
     }
 
     bool system_contract::move_producer(checksum256 head_id, chains_table::const_iterator from_iter,
@@ -740,7 +763,7 @@ namespace ultrainiosystem {
         auto briefprod = _briefproducers.find(producer);
         if(briefprod != _briefproducers.end()) {
             add_to_chain(to_iter->chain_name, *producer_iter, current_block_number);
-            remove_from_chain(from_iter->chain_name, producer);
+            remove_from_chain(from_iter->chain_name, producer, current_block_number);
             _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                 producer_brf.location = to_iter->chain_name;
             });
@@ -788,7 +811,6 @@ namespace ultrainiosystem {
         }
     }
 
-//TODO, need whole block header info
     void system_contract::forcesetblock(name chain_name, const block_header& header, const std::vector<role_base>& cmt_set) {
         //set confirm block of a chain
         require_auth(N(ultrainio));

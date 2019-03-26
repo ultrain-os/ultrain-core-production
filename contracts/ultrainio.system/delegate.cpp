@@ -194,7 +194,7 @@ namespace ultrainiosystem {
                      dis_prod.delegated_cons_blocknum = curblocknum;
                      dis_prod.claim_rewards_account   = it->claim_rewards_account;
                  });
-                 remove_from_chain(briefprod->location, receiver);
+                 remove_from_chain(briefprod->location, receiver, curblocknum);
                  _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                      producer_brf.in_disable = true;
                  });

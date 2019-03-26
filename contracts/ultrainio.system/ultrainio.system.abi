@@ -472,7 +472,9 @@
       "fields": [
          {"name":"owner",           "type":"account_name"},
          {"name":"location",        "type":"name"},
-         {"name":"in_disable",      "type":"bool"}
+         {"name":"in_disable",      "type":"bool"},
+         {"name":"destination",     "type":"name"},
+         {"name":"schedule_status",     "type":"uint8"}
       ]
     },{
       "name": "disabled_producer",
@@ -524,11 +526,17 @@
         {"name": "max_ram_size",                  "type": "uint64"},
         {"name": "total_ram_bytes_used",      "type": "uint64"}
        ]
+   },{
+     "name": "changing_producer",
+      "base": "role_base",
+      "fields": [
+        {"name": "block_num",      "type": "uint32"}
+       ]
     },{
      "name": "changing_committee",
       "base": "",
       "fields": [
-        {"name": "removed_members",               "type": "role_base[]"},
+        {"name": "removed_members",               "type": "changing_producer[]"},
         {"name": "new_added_members",             "type": "role_base[]"}
        ]
     },{
@@ -678,6 +686,12 @@
         {"name": "chain_name",                 "type": "name"},
         {"name": "header_dig",                 "type": "block_header_digest"},
         {"name": "committee_mrt",              "type": "checksum256"}
+       ]
+   },{
+      "name": "schedule",
+      "base": "",
+      "fields": [
+        {"name": "trigger",              "type": "string"}
        ]
     },{
       "name": "producer_key",
@@ -894,6 +908,10 @@
     },{
       "name": "forcesetblock",
       "type": "forcesetblock",
+      "ricardian_contract": ""
+    },{
+      "name": "schedule",
+      "type": "schedule",
       "ricardian_contract": ""
     },{
       "name": "setparams",

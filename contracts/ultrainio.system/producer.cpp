@@ -118,7 +118,7 @@ namespace ultrainiosystem {
                 if(briefprod->location != location) {
                     ultrainio_assert(!briefprod->is_on_master_chain(), "cannot move producers from master chain");
                     add_to_chain(location, *prod, curblocknum);
-                    remove_from_chain(briefprod->location, producer);
+                    remove_from_chain(briefprod->location, producer, curblocknum);
                     _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                         producer_brf.location = location;
                     });
@@ -177,7 +177,7 @@ namespace ultrainiosystem {
       _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
           producer_brf.in_disable = true;
       });
-      remove_from_chain(briefprod->location, producer);
+      remove_from_chain(briefprod->location, producer, curblocknum);
       //pay unpaid_balance
       if(prod->unpaid_balance > 0 && _gstate.is_master_chain()) {
          claim_reward_to_account(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));

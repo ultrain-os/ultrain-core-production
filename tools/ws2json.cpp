@@ -21,6 +21,7 @@
 #define OBJECT_CTOR(...) public:
 #define shared_string vector<char>
 #define shared_authority authority
+#define shared_vector vector
 namespace ultrainio { namespace chain { namespace config {
        template<>
               constexpr uint64_t billable_size_v<authority> = 1;

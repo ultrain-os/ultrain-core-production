@@ -13,7 +13,7 @@
 namespace ultrainio { namespace chain {
 
    class account_object : public chainbase::object<account_object_type, account_object> {
-      OBJECT_CTOR(account_object,(code)(abi))
+      OBJECT_CTOR(account_object,(chain_names)(code)(abi))
 
       id_type              id;
       account_name         name;
@@ -25,7 +25,7 @@ namespace ultrainio { namespace chain {
       time_point           last_code_update;
       digest_type          code_version;
       block_timestamp_type creation_date;
-      vector<uint64_t>     chain_names;
+      shared_vector<ultrainio::chain::name>  chain_names;
 
       shared_string  code;
       shared_string  abi;

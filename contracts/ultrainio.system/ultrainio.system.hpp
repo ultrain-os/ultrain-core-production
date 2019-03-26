@@ -83,10 +83,16 @@ namespace ultrainiosystem {
                             (max_ram_size)(total_ram_bytes_used) )
    };
 
+   const uint8_t not_in_scheduling = 0;
+   const uint8_t moving_out = 1;
+   const uint8_t moving_in = 2;
+
    struct producer_brief {
       account_name          owner;
       name                  location{N(ultrainio)};
       bool                  in_disable = true;
+      name                  destination{N(ultrainio)};
+      uint8_t               schedule_status;
       uint64_t primary_key()const { return owner; }
 
       bool     is_on_master_chain() const  {return location == master_chain_name;}
@@ -94,7 +100,7 @@ namespace ultrainiosystem {
           return (location != master_chain_name) && (location != default_chain_name);
       }
 
-      ULTRAINLIB_SERIALIZE(producer_brief, (owner)(location)(in_disable) )
+      ULTRAINLIB_SERIALIZE(producer_brief, (owner)(location)(in_disable)(destination)(schedule_status) )
    };
 
    using role_base = CommitteeInfo;
@@ -212,8 +218,12 @@ namespace ultrainiosystem {
       bool              is_producer; //producer will also use pk same with master chain
    };
 
+   struct changing_producer : public CommitteeInfo {
+      uint32_t          block_num;  //master block number when it happens
+   };
+
    struct changing_committee {
-       std::vector<role_base> removed_members;
+       std::vector<changing_producer> removed_members;
        std::vector<role_base> new_added_members;
 
        bool empty() const {
@@ -443,6 +453,7 @@ namespace ultrainiosystem {
          void forcesetblock(name chain_name,
                             const block_header& header,
                             const std::vector<role_base>& cmt_set);
+         void schedule(const std::string& trigger);
 
          // functions defined in ultrainio.system.cpp
          void setsysparams( const ultrainio_system_params& params );
@@ -485,8 +496,8 @@ namespace ultrainiosystem {
 
          //defined in scheduler.cpp
          void add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number);
-         void remove_from_chain(name chain_name, account_name producer_name);
-         void schedule(); //called in onblock every 24h defaultly.
+         void remove_from_chain(name chain_name, account_name producer_name, uint64_t current_block_number);
+         void pre_schedule(); //called in onblock every 24h defaultly.
          void checkbulletin();
          bool move_producer(checksum256 head_id,
                             chains_table::const_iterator from_iter,

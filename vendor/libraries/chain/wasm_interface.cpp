@@ -514,7 +514,7 @@ class privileged_api : public context_aware_api {
          });
       }
 
-      void empower_to_chain(account_name user, uint64_t chain_name) {
+      void empower_to_chain(account_name user, name chain_name) {
          const auto& a = context.db.get<account_object, by_name>( user );
          for(auto i = 0; i < a.chain_names.size(); ++i) {
              if(a.chain_names[i] == chain_name) {

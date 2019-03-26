@@ -15,6 +15,8 @@ namespace ultrainio { namespace chain {
       account_name          owner;
       name                  location;
       bool                  in_disable = true;
+      name                  destination;
+      uint8_t               schedule_status;
     };
     struct role_base {
       account_name          owner;
@@ -54,8 +56,12 @@ namespace ultrainio { namespace chain {
       bool              is_producer;
    };
 
+   struct changing_producer : public role_base {
+      uint32_t          block_num;  //master block number when it happens
+   };
+
    struct changing_committee {
-       std::vector<role_base> removed_members;
+       std::vector<changing_producer> removed_members;
        std::vector<role_base> new_added_members;
    };
 
@@ -115,7 +121,7 @@ namespace ultrainio { namespace chain {
 
 }} // namespace ultrainio::chain
 FC_REFLECT(ultrainio::chain::exten_type, (key)(value) )
-FC_REFLECT(ultrainio::chain::producer_brief, (owner)(location)(in_disable) )
+FC_REFLECT(ultrainio::chain::producer_brief, (owner)(location)(in_disable)(destination)(schedule_status) )
 FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key)(bls_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::disabled_producer, (ultrainio::chain::role_base), (total_cons_staked)(url)(total_produce_block)
                     (last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account) )
@@ -123,6 +129,7 @@ FC_REFLECT_DERIVED(ultrainio::chain::producer_info, (ultrainio::chain::disabled_
                     (unpaid_amount)(vote_number)(last_vote_blocknum)(table_extension))
 FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_number)(total_resources_used_number)(max_ram_size)(total_ram_bytes_used) )
 FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(is_producer) )
+FC_REFLECT_DERIVED(ultrainio::chain::changing_producer, (ultrainio::chain::role_base), (block_num) )
 FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )
 FC_REFLECT(ultrainio::chain::block_header_digest, (block_number)(transaction_mroot)(trx_hashs)(table_extension) )
 FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_block_header, (ultrainio::chain::block_header), (block_id)(block_number)(to_be_paid)
