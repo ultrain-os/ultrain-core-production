@@ -929,7 +929,7 @@ async function switchChain() {
         logger.info("get chainid(" + chainConfig.chainName + ")'s seed ip info:", seedIpInfo);
         if (utils.isNull(seedIpInfo)) {
             loggerChainChanging.error("seed ip info is null");
-            logMsg = utils.addLogStr(logMsgm,"seed ip info is null");
+            logMsg = utils.addLogStr(logMsg,"seed ip info is null");
             syncChainChanging = false;
             monitor.enableDeploy();
             param.endTime = new Date().getTime();

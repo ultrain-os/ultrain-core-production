@@ -839,10 +839,17 @@ getSeedInfo = async (url, param) => {
         logger.info("getSeedInfo param:", qs.stringify(param));
         const rs = await axios.post(url + "/filedist/getSeedInfo", qs.stringify(param));
         logger.info("monitor getSeedInfo result:", rs.data);
-        return rs.data;
+        let data =  rs.data;
+        if (data.code ==0) {
+            return rs.data;
+        } else {
+            logger.error("getSeedInfo error:",rs.data);
+        }
     } catch (e) {
         logger.error("getSeedInfo error,", utils.logNetworkError(e));
     }
+
+    return null;
 }
 
 

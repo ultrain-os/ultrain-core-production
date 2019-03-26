@@ -199,11 +199,12 @@ async function syncSeedInfo() {
 
 
     let deployInfo = await chainApi.getSeedInfo(getMonitorUrl(), {});
-    if (chainApi.verifySign(deployInfo) == true) {
+    if (utils.isNotNull(deployInfo) && chainApi.verifySign(deployInfo) == true) {
         let data = deployInfo.data;
-
-        if (utils.isNullList(data)) {
-            logger.error("seed info is null, need not update");
+        logger.info("seed data list:",data);
+        if (utils.isNullList(data) || data.length == 0) {
+            logger.error("seed info is null or invalid, need not update");
+            return;
         }
 
         if (JSON.stringify(data) == JSON.stringify(chainConfig.seedIpConfig)) {
