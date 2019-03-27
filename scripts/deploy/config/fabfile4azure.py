@@ -83,7 +83,7 @@ def starthosts():
 
 @parallel
 def startmng():
-    run("pm2 start /root/ultrainmng/src/sideChainService.js && sleep 1")
+    run("pm2 start /root/ultrainmng/src/sideChainService.js -o /root/log/sideChainService.pm2.log -e root/log/sideChainService.pm2.error.log && sleep 1")
 
 @parallel
 def upgrademng():
@@ -102,6 +102,7 @@ def stophosts():
     run('killall -2 wssultrain')
     run("killall logrotate.sh")
     run("pm2 stop sideChainService")
+    run("pm2 delete sideChainService")
 
 @parallel
 def getIPs():

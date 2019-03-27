@@ -729,6 +729,10 @@ function needSyncUserRes() {
     return false;
 }
 
+async function pm2LogFlush() {
+    await ShellCmd.execCmd("pm2 flush");
+}
+
 module.exports = {
     checkIn,
     isDeploying,
@@ -740,4 +744,5 @@ module.exports = {
     generateSign,
     needCheckNod,
     needSyncUserRes,
+    pm2LogFlush,
 }
