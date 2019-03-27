@@ -98,7 +98,7 @@ namespace ultrainio { namespace chain { namespace bls_votes {
     private:
         chainbase::database& _db;
 
-        int confirm_point_interval = 20;
+        int confirm_point_interval = 100;
     };
 
 } } } // ultrainio::chain::bls_votes
