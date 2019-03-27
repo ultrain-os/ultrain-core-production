@@ -1684,15 +1684,15 @@ namespace ultrainio {
             for (int i = 0; i < block.transactions.size(); i++) {
                 const auto &receipt = block.transactions[i];
                 chain::transaction_trace_ptr trace;
-                // Malicious producer setting wrong cpu_usage_us.
-                ULTRAIN_ASSERT(receipt.cpu_usage_us >= cfg.min_transaction_cpu_usage,
-                               chain::block_trx_min_cpu_usage_exception,
-                               "trx in proposed block has wrong cpu_usage_us set ${n}",
-                               ("n", receipt.cpu_usage_us));
                 // This passed in deadline is used to guard for non-stopping while loop.
                 auto max_cpu_usage = fc::microseconds(cfg.max_transaction_cpu_usage);
                 auto max_deadline = fc::time_point::now() + max_cpu_usage;
                 if (receipt.trx.contains<chain::packed_transaction>()) {
+                    // Malicious producer setting wrong cpu_usage_us.
+                    ULTRAIN_ASSERT(receipt.cpu_usage_us >= cfg.min_transaction_cpu_usage,
+                                   chain::block_trx_min_cpu_usage_exception,
+                                   "trx in proposed block has wrong cpu_usage_us set ${n}",
+                                   ("n", receipt.cpu_usage_us));
                     auto &pt = receipt.trx.get<chain::packed_transaction>();
                     auto mtrx = std::make_shared<chain::transaction_metadata>(pt);
                     trace = chain.push_transaction(mtrx, max_deadline, receipt.cpu_usage_us);
@@ -1700,7 +1700,11 @@ namespace ultrainio {
                     trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
                                                              max_deadline, receipt.cpu_usage_us);
                 }
-                if (trace && trace->except) {
+
+                bool transaction_failed =  trace && trace->except;
+                bool transaction_can_fail = (receipt.status == chain::transaction_receipt_header::hard_fail &&
+                                             receipt.trx.contains<chain::transaction_id_type>());
+                if (transaction_failed && !transaction_can_fail) {
                     // So we can terminate early
                     throw *trace->except;
                 }
@@ -1811,7 +1815,11 @@ namespace ultrainio {
                                                      max_deadline, receipt.cpu_usage_us);
                 }
 
-                if (trace && trace->except) {
+                bool transaction_failed =  trace && trace->except;
+                bool transaction_can_fail = (receipt.status == chain::transaction_receipt_header::hard_fail &&
+                                             receipt.trx.contains<chain::transaction_id_type>());
+
+                if (transaction_failed && !transaction_can_fail) {
                     // So we can terminate early
                     throw *trace->except;
                 }
@@ -1887,14 +1895,23 @@ namespace ultrainio {
                 try {
                     for (; m_currentPreRunBa0TrxIndex < m_ba0Block.transactions.size(); m_currentPreRunBa0TrxIndex++) {
                         const auto &receipt = m_ba0Block.transactions[m_currentPreRunBa0TrxIndex];
+                        chain::transaction_trace_ptr trace;
                         if (receipt.trx.contains<chain::packed_transaction>()) {
                             auto &pt = receipt.trx.get<chain::packed_transaction>();
                             auto mtrx = std::make_shared<chain::transaction_metadata>(pt);
                             // Now set the deadline to infinity is fine since voter has already voted for this one.
-                            chain.push_transaction(mtrx, fc::time_point::maximum(), receipt.cpu_usage_us);
+                            trace = chain.push_transaction(mtrx, fc::time_point::maximum(), receipt.cpu_usage_us);
                         } else if (receipt.trx.contains<chain::transaction_id_type>()) {
-                            chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
+                            trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
                                                              fc::time_point::maximum(), receipt.cpu_usage_us);
+                        }
+
+                        bool transaction_failed =  trace && trace->except;
+                        bool transaction_can_fail = (receipt.status == chain::transaction_receipt_header::hard_fail &&
+                                                     receipt.trx.contains<chain::transaction_id_type>());
+                        if (transaction_failed && !transaction_can_fail) {
+                            // So we can terminate early
+                            throw *trace->except;
                         }
                     }
 
