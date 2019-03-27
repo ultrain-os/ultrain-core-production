@@ -516,6 +516,23 @@ const getChainBlockDuration = async (config) => {
 }
 
 /**
+ *
+ * @param config
+ * @returns {Promise<*>}
+ */
+const getHeadBlockNum = async (config) => {
+    try {
+        const rs = await multiRequest(config.httpEndpoint, "/v1/chain/get_chain_info", {}, config.seedHttpList);
+        return rs.data.head_block_num;
+    } catch (e) {
+        logger.error("getHeadBlockNum error,", utils.logNetworkError(e));
+    }
+
+    return null;
+
+}
+
+/**
  * monitor check in
  * @param url
  * @param param
@@ -886,4 +903,5 @@ module.exports = {
     checkMainchainSeed,
     addRestartLog,
     getMasterBlockNum,
+    getHeadBlockNum,
 }

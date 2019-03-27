@@ -241,148 +241,146 @@ async function syncUser() {
 async function syncBlock() {
 
     if (monitor.isDeploying()) {
-        logger.info("monitor.isDeploying()",monitor.isDeploying());
+        logger.info("monitor.isDeploying()", monitor.isDeploying());
     } else {
-        logger.info("monitor.isDeploying()",monitor.isDeploying());
+        logger.info("monitor.isDeploying()", monitor.isDeploying());
     }
 
     logger.info("sync block start");
 
     //一次最大块数
-    var blockSyncMaxNum = chainConfig.getLocalConfigInfo("blockSyncMaxNum",10);
+    var blockSyncMaxNum = chainConfig.getLocalConfigInfo("blockSyncMaxNum", 10);
 
     if (syncChainData == true && isMainChain() == false) {
-        chainConfig.u3Sub.getChainInfo(async (error, info) => {
-            if (error) {
-                logger.error(error);
-                return;
-            }
 
-            var traceMode = true;
-            //获取本地最新的块头，获取服务端最新的块头
-            var subBlockNumMax = info.head_block_num;
-            let result = await chainConfig.u3Sub.getBlockInfo((subBlockNumMax).toString());
-
-            //判断是否要上传块头
-            if (blockUtil.needPushBlock(result,chainConfig.myAccountAsCommittee,chainConfig.configFileData.local.syncBlockRatio) == false) {
-                logger.info("finish sync block..");
-                return;
-            }
-
-            logger.info("start to push block..");
-            let blockNum = 0;
-            let subchainBlockNumResult = await chainApi.getSubchainBlockNum(chainConfig.config,chainConfig.localChainName);
-            logger.info("mainchain block num:",subchainBlockNumResult);
-
-            let confirmed_block = subchainBlockNumResult.confirmed_block;
-            let forks = subchainBlockNumResult.forks;
-            let findFlag = false;
-            if (utils.isNullList(forks) == false) {
-                for (let i = 0; i < forks.length; i++) {
-                    let fork = forks[i];
-                    let block_id = fork.block_id;
-                    logger.info("fork:",fork);
-                    let localBlockId = 0;
-                    try {
-                        let result = await chainConfig.u3Sub.getBlockInfo(fork.number.toString());
-                        logger.debug("block info",result);
-                        localBlockId = result.id;
-                    } catch (e) {
-                        logger.error("get block("+fork.number+") error,",e);
-                    }
-
-                    if (block_id == localBlockId) {
-                        findFlag = true;
-                        logger.info("block id("+block_id+") == local block id("+localBlockId+"),match");
-                        blockNum = fork.number;
-                        break;
-                    } else {
-                        logger.info("block id("+block_id+") != local block id("+localBlockId+"),mot match");
-                    }
-
-                }
-            } else {
-                findFlag = true;
-            }
-
-            //如果找不到块，不上传块头
-            if (findFlag == false) {
-                logger.error("can't find matched block info , nedd not sync block");
-                return;
-            }
-
-            logger.info("subchain head block num=", subBlockNumMax);
-            logger.info("mainchain(subchain:" + chainConfig.localChainName + ") max blockNum =" + blockNum);
-
-
-
-            //初始化block Num
-            let blockNumInt = parseInt(blockNum, 10) + 1;
-            var traceBlcokCount = subBlockNumMax - blockNumInt;
-            logger.debug("trace block num count =", traceBlcokCount);
-
-            if (subBlockNumMax - blockNumInt >= blockSyncMaxNum) {
-                subBlockNumMax = blockNumInt + blockSyncMaxNum;
-            }
-
-            logger.info("need upload block range [" + blockNumInt + " -> " + subBlockNumMax - 1 + "]");
-            let results = [];
-            let blockListStr = "(";
-            for (var i = blockNumInt; i < subBlockNumMax; i++) {
-                let result = await chainConfig.u3Sub.getBlockInfo((i).toString());
-                logger.debug("block " + i + ": (proposer:", result.proposer + ")");
-                logger.debug("header_extensions:",result.header_extensions);
-                var extensions = [];
-                if (result.header_extensions.length > 0 ) {
-                    result.header_extensions.forEach(function (item,index) {
-                        extensions.push({"type":item[0],"data":item[1]})
-                    })
-                }
-
-                //logger.info("extensions:",extensions);
-                /**
-                 * 需要上传
-                 */
-
-                logger.debug("add push array(block num ：" + i + ")");
-                results.push({
-                    "timestamp": result.timevalue,
-                    "proposer": result.proposer,
-                    // "proposerProof": proposerProof,
-                    "version": result.version,
-                    "previous": result.previous,
-                    "transaction_mroot": result.transaction_mroot,
-                    "action_mroot": result.action_mroot,
-                    "committee_mroot": result.committee_mroot,
-                    "header_extensions": extensions,
-                    //blockNum : i
-                });
-                blockListStr += i + ",";
-
-
-            }
-            blockListStr += ")";
-            logger.info("local uncommit blocklist :", blockListStr);
-
-            /**
-             * 块头上传
-             */
-            if (results) {
-                const params = {
-                    chain_name: chainConfig.localChainName,
-                    headers: results
-                };
-
-                logger.debug("block params:",params);
-                logger.info("pushing block to head (chain_name :" + chainConfig.localChainName + " count :" + results.length + ")");
-                await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "acceptheader", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
-            }
-
-            //同步主链块头
-            await syncMasterBlock();
+        var subBlockNumMax = await chainApi.getHeadBlockNum(chainConfig.configSub);
+        if (subBlockNumMax == null) {
+            logger.error("subBlockNumMax is null,abort sync block");
             return;
+        }
+        logger.info("subBlockNumMax:"+subBlockNumMax);
+        var traceMode = true;
+        //获取本地最新的块头，获取服务端最新的块头
+        let result = await chainConfig.u3Sub.getBlockInfo((subBlockNumMax).toString());
 
-        });
+        //判断是否要上传块头
+        if (blockUtil.needPushBlock(result, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
+            logger.info("finish sync block..");
+            return;
+        }
+
+        logger.info("start to push block..");
+        let blockNum = 0;
+        let subchainBlockNumResult = await chainApi.getSubchainBlockNum(chainConfig.config, chainConfig.localChainName);
+        logger.info("mainchain block num:", subchainBlockNumResult);
+
+        let confirmed_block = subchainBlockNumResult.confirmed_block;
+        let forks = subchainBlockNumResult.forks;
+        let findFlag = false;
+        if (utils.isNullList(forks) == false) {
+            for (let i = 0; i < forks.length; i++) {
+                let fork = forks[i];
+                let block_id = fork.block_id;
+                logger.info("fork:", fork);
+                let localBlockId = 0;
+                try {
+                    let result = await chainConfig.u3Sub.getBlockInfo(fork.number.toString());
+                    logger.debug("block info", result);
+                    localBlockId = result.id;
+                } catch (e) {
+                    logger.error("get block(" + fork.number + ") error,", e);
+                }
+
+                if (block_id == localBlockId) {
+                    findFlag = true;
+                    logger.info("block id(" + block_id + ") == local block id(" + localBlockId + "),match");
+                    blockNum = fork.number;
+                    break;
+                } else {
+                    logger.info("block id(" + block_id + ") != local block id(" + localBlockId + "),mot match");
+                }
+
+            }
+        } else {
+            findFlag = true;
+        }
+
+        //如果找不到块，不上传块头
+        if (findFlag == false) {
+            logger.error("can't find matched block info , nedd not sync block");
+            return;
+        }
+
+        logger.info("subchain head block num=", subBlockNumMax);
+        logger.info("mainchain(subchain:" + chainConfig.localChainName + ") max blockNum =" + blockNum);
+
+
+        //初始化block Num
+        let blockNumInt = parseInt(blockNum, 10) + 1;
+        var traceBlcokCount = subBlockNumMax - blockNumInt;
+        logger.debug("trace block num count =", traceBlcokCount);
+
+        if (subBlockNumMax - blockNumInt >= blockSyncMaxNum) {
+            subBlockNumMax = blockNumInt + blockSyncMaxNum;
+        }
+
+        logger.info("need upload block range [" + blockNumInt + " -> " + subBlockNumMax - 1 + "]");
+        let results = [];
+        let blockListStr = "(";
+        for (var i = blockNumInt; i < subBlockNumMax; i++) {
+            let result = await chainConfig.u3Sub.getBlockInfo((i).toString());
+            logger.debug("block " + i + ": (proposer:", result.proposer + ")");
+            logger.debug("header_extensions:", result.header_extensions);
+            var extensions = [];
+            if (result.header_extensions.length > 0) {
+                result.header_extensions.forEach(function (item, index) {
+                    extensions.push({"type": item[0], "data": item[1]})
+                })
+            }
+
+            //logger.info("extensions:",extensions);
+            /**
+             * 需要上传
+             */
+
+            logger.debug("add push array(block num ：" + i + ")");
+            results.push({
+                "timestamp": result.timevalue,
+                "proposer": result.proposer,
+                // "proposerProof": proposerProof,
+                "version": result.version,
+                "previous": result.previous,
+                "transaction_mroot": result.transaction_mroot,
+                "action_mroot": result.action_mroot,
+                "committee_mroot": result.committee_mroot,
+                "header_extensions": extensions,
+                //blockNum : i
+            });
+            blockListStr += i + ",";
+
+
+        }
+        blockListStr += ")";
+        logger.info("local uncommit blocklist :", blockListStr);
+
+        /**
+         * 块头上传
+         */
+        if (results) {
+            const params = {
+                chain_name: chainConfig.localChainName,
+                headers: results
+            };
+
+            logger.debug("block params:", params);
+            logger.info("pushing block to head (chain_name :" + chainConfig.localChainName + " count :" + results.length + ")");
+            await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "acceptheader", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+        }
+
+        //同步主链块头
+        await syncMasterBlock();
+        return;
+
 
     } else {
         logger.error("sync block is not needed")
