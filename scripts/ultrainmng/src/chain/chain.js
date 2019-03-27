@@ -429,7 +429,7 @@ async function syncMasterBlock() {
         logger.info("subchain max block num:", subchainBlockNumResult);
 
         let confirmed_block = subchainBlockNumResult.confirmed_block;
-        let forks = subchaifnBlockNumResult.forks;
+        let forks = subchainBlockNumResult.forks;
         let findFlag = false;
         if (utils.isNullList(forks) == false) {
             for (let i = 0; i < forks.length; i++) {
