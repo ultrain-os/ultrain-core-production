@@ -37,8 +37,8 @@ if __name__ == "__main__":
 		os.system("fab -f fabfile4azure stophosts")
         elif args.action == "startmng":
                 os.system("fab -f fabfile4azure startmng")
-        elif args.action == "upgrademng":
-                os.system("fab -f fabfile4azure upgrademng")
+        elif args.action == "stopmng":
+                os.system("fab -f fabfile4azure stopmng")
 	elif args.action == "deploy":
 		os.system("fab -f fabfile4azure deployfile")
         elif args.action == "urgent":

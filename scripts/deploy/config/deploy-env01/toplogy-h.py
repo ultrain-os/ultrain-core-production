@@ -5,6 +5,7 @@ import datetime
 import time
 import random
 import copy
+from specialHost import *
 #import pymysql
 
 class Host(object):
@@ -73,20 +74,20 @@ def load_parameters():
 		host = Host(allIPs[i], allNames[i], )
 		allHosts.append(host)
 
-        with open('keypair.txt') as f:
-                keys = f.read().splitlines()
-        allAccounts = keys[6::8]
-        allPriKeys = keys[0::8]
-        allPubKeys = keys[1::8]
-        allAsk = keys[2::8]
-        allApk = keys[3::8]
-        allBsk = keys[4::8]
-        allBpk = keys[5::8]
+	with open('keypair.txt') as f:
+		keys = f.read().splitlines()
+	allAccounts = keys[6::8]
+	allPriKeys = keys[0::8]
+	allPubKeys = keys[1::8]
+	allAsk = keys[2::8]
+	allApk = keys[3::8]
+	allBsk = keys[4::8]
+	allBpk = keys[5::8]
 
 	print(allIDs)
 	print(allNames)
 	print(allIPs)
-        #print(allBsk)
+#print(allBsk)
 
 def get_offline_nodes():
 	offline_list = []
@@ -99,24 +100,24 @@ def get_offline_nodes():
 								 charset='utf8'
 								 )
 
-		# my_cousor = my_con.cursor()
-		# sql_select_all = 'select  distinct node_ip from log_info_dynamic;'
-		# sql_select_online = "select  distinct \
-		# 					node_ip	\
-		# 					from log_info_dynamic \
-		# 					where gmt_modify between date_add(now(), interval - 2777 minute) and now()"
-		#
-		# my_cousor.execute(sql_select_all)
-		# get_all = my_cousor.fetchall()
-		# my_cousor.execute(sql_select_online)
-		# get_online = my_cousor.fetchall()
-		#
-		# get_offline = list(set(get_all).difference(set(get_online)))
-		#
-		# offline_list = [i[0] for i in get_online]
-		#
-		# my_cousor.close()
-		# my_con.close()
+	# my_cousor = my_con.cursor()
+	# sql_select_all = 'select  distinct node_ip from log_info_dynamic;'
+	# sql_select_online = "select  distinct \
+	# 					node_ip	\
+	# 					from log_info_dynamic \
+	# 					where gmt_modify between date_add(now(), interval - 2777 minute) and now()"
+	#
+	# my_cousor.execute(sql_select_all)
+	# get_all = my_cousor.fetchall()
+	# my_cousor.execute(sql_select_online)
+	# get_online = my_cousor.fetchall()
+	#
+	# get_offline = list(set(get_all).difference(set(get_online)))
+	#
+	# offline_list = [i[0] for i in get_online]
+	#
+	# my_cousor.close()
+	# my_con.close()
 	except pymysql.InternalError as e:
 		print("mysql is not avialable.")
 
@@ -154,9 +155,6 @@ def write_dot_file():
 def write_config_file():
 	insert_genesis_time()
 	index_key = 0
-	genesisHost="172.17.0.59"
-	seedHosts=["172.17.0.91","172.17.0.60"]
-	mongoHosts=[]
 	for host in allHosts:
 		os.system("rm -rf config/" + host.ip)
 		os.system("mkdir config/" + host.ip)
@@ -181,16 +179,18 @@ def write_config_file():
 		# add udp seed(except mongo)
 		if host.ip not in mongoHosts:
 			insert_udp_seed(fname,host.ip,seedHosts)
+			insert_world_state(fname)
 
 		# add mongo host info
 		if host.ip  in mongoHosts:
 			insert_non_producing(fname)
 			insert_seed_peer_address(fname,host.ip,seedHosts);
+			insert_mongo_config(fname)
 
-		#print(host.ip,host.name,allAccounts[index_key-1][8:],allAsk[index_key-1][4:],allApk[index_key-1][4:])
-		#for peer in host.peers:
-		#	print(host.ip,peer)
-		#	insert_peer(fname,peer)
+#print(host.ip,host.name,allAccounts[index_key-1][8:],allAsk[index_key-1][4:],allApk[index_key-1][4:])
+#for peer in host.peers:
+#	print(host.ip,peer)
+#	insert_peer(fname,peer)
 
 def readfile(fname):
 	fileold = open(fname, "r")
@@ -218,9 +218,9 @@ def insert_genesis_time():
 def insert_leader_sk(fname):
 	content = readfile(fname)
 	newcontent = "my-account-as-committee = %s\nmy-sk-as-committee = %s\nmy-sk-as-account = %s\nmy-bls-sk = %s\n" % ("genesis", \
-				"5079f570cde7801c70a19fb2c7e292d09923218f2684c8a1121c2da7a02a5dc3369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35", \
-                                "5KkYKJbWHZ9zneyQMLPUZVFEeszCZmRCXNf5CbQQdPFL9FfsuED", \
-                                "26bf5ac96faa98fa97be285639d17fbca7d8f5ef")
+																													 "5079f570cde7801c70a19fb2c7e292d09923218f2684c8a1121c2da7a02a5dc3369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35", \
+																													 "5KkYKJbWHZ9zneyQMLPUZVFEeszCZmRCXNf5CbQQdPFL9FfsuED", \
+																													 "26bf5ac96faa98fa97be285639d17fbca7d8f5ef")
 	index_line = content.index("#insert_my_keys\n")
 	content.insert(index_line+1, newcontent)
 	writefile(fname,content)
@@ -231,7 +231,8 @@ def insert_non_producing(fname):
 	print(newcontent)
 	index_line = content.index("#insert_if_producing-node\n")
 	content.insert(index_line+1, newcontent)
-	content.insert(index_line+2, "plugin = ultrainio::txn_test_gen_plugin\n")
+	content.insert(index_line+2, "plugin = ultrainio::chain_api_plugin\n")
+	content.insert(index_line+3, "contracts-console = 1\n")
 
 	writefile(fname,content)
 
@@ -255,6 +256,15 @@ def insert_seed_peer_address(fname,ip,seedHosts):
 			print(newcontent)
 	writefile(fname,content)
 
+def insert_mongo_config(fname):
+	content = readfile(fname)
+	index_line = content.index("#mongo-config\n")
+	content.insert(index_line+1, "http-validate-host = false\n");
+	content.insert(index_line+2, "access-control-allow-origin = *\n");
+	content.insert(index_line+3, "mongodb-uri = mongodb://root:Uranus@127.0.0.1:27017/ultrain\n");
+	content.insert(index_line+4, "plugin = ultrainio::mongo_db_plugin\n");
+	writefile(fname,content)
+
 def insert_udp_seed(fname,ip,seedHosts):
 	content = readfile(fname)
 	index_line = content.index("#insert_udp_seeds\n")
@@ -263,6 +273,12 @@ def insert_udp_seed(fname,ip,seedHosts):
 		newcontent = "udp-seed  = %s\n" % (seedIp)
 		content.insert(index_line+index, newcontent)
 		index = index+1;
+	writefile(fname,content)
+
+def insert_world_state(fname):
+	content = readfile(fname)
+	index_line = content.index("#world-state\n")
+	content.insert(index_line+1, "worldstate-control = true\n")
 	writefile(fname,content)
 
 def insert_peer(fname, peer):
@@ -274,10 +290,10 @@ def insert_peer(fname, peer):
 	writefile(fname,content)
 
 def insert_keys(fname,index_key):
-        #print(allBsk[index_key][7:])
+	#print(allBsk[index_key][7:])
 	content = readfile(fname)
-        newcontent = "my-account-as-committee = %s\nmy-sk-as-committee = %s\nmy-sk-as-account = %s\nmy-bls-sk = %s\n" % \
-                (allAccounts[index_key][8:],allPriKeys[index_key][4:],allAsk[index_key][4:],allBsk[index_key][7:])
+	newcontent = "my-account-as-committee = %s\nmy-sk-as-committee = %s\nmy-sk-as-account = %s\nmy-bls-sk = %s\n" % \
+				 (allAccounts[index_key][8:],allPriKeys[index_key][4:],allAsk[index_key][4:],allBsk[index_key][7:])
 	index_line = content.index("#insert_my_keys\n")
 	content.insert(index_line+1, newcontent)
 	writefile(fname, content)

@@ -28,16 +28,15 @@ peer-key = UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD
 #insert_my_keys
 
 # print contract's output to console (ultrainio::chain_plugin)
-contracts-console = 1
 
-plugin = ultrainio::chain_plugin
-plugin = ultrainio::chain_api_plugin
-plugin = ultrainio::http_plugin
-plugin = ultrainio::monitor_api_plugin
+plugin = ultrainio::chain_info_api_plugin
 
-worldstate-control = true
 
 #max-clients
+
+#mongo-config
+
+#world-state
 
 #chain_name
 chain-name=ultrainio

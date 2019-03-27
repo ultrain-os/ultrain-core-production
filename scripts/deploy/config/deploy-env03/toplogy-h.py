@@ -5,6 +5,7 @@ import datetime
 import time
 import random
 import copy
+from specialHost import *
 #import pymysql
 
 class Host(object):
@@ -154,9 +155,6 @@ def write_dot_file():
 def write_config_file():
 	insert_genesis_time()
 	index_key = 0
-	genesisHost="172.17.0.104"
-	seedHosts=["172.17.0.24","172.17.0.85"]
-	mongoHosts=[]
 	for host in allHosts:
 		os.system("rm -rf config/" + host.ip)
 		os.system("mkdir config/" + host.ip)
@@ -181,11 +179,13 @@ def write_config_file():
 		# add udp seed(except mongo)
 		if host.ip not in mongoHosts:
 			insert_udp_seed(fname,host.ip,seedHosts)
+			insert_world_state(fname)
 
 		# add mongo host info
 		if host.ip  in mongoHosts:
 			insert_non_producing(fname)
 			insert_seed_peer_address(fname,host.ip,seedHosts);
+			insert_mongo_config(fname)
 
 #print(host.ip,host.name,allAccounts[index_key-1][8:],allAsk[index_key-1][4:],allApk[index_key-1][4:])
 #for peer in host.peers:
@@ -231,7 +231,8 @@ def insert_non_producing(fname):
 	print(newcontent)
 	index_line = content.index("#insert_if_producing-node\n")
 	content.insert(index_line+1, newcontent)
-	content.insert(index_line+2, "plugin = ultrainio::txn_test_gen_plugin\n")
+	content.insert(index_line+2, "plugin = ultrainio::chain_api_plugin\n")
+	content.insert(index_line+3, "contracts-console = 1\n")
 
 	writefile(fname,content)
 
@@ -255,6 +256,15 @@ def insert_seed_peer_address(fname,ip,seedHosts):
 			print(newcontent)
 	writefile(fname,content)
 
+def insert_mongo_config(fname):
+	content = readfile(fname)
+	index_line = content.index("#mongo-config\n")
+	content.insert(index_line+1, "http-validate-host = false\n");
+	content.insert(index_line+2, "access-control-allow-origin = *\n");
+	content.insert(index_line+3, "mongodb-uri = mongodb://root:Uranus@127.0.0.1:27017/ultrain\n");
+	content.insert(index_line+4, "plugin = ultrainio::mongo_db_plugin\n");
+	writefile(fname,content)
+
 def insert_udp_seed(fname,ip,seedHosts):
 	content = readfile(fname)
 	index_line = content.index("#insert_udp_seeds\n")
@@ -263,6 +273,12 @@ def insert_udp_seed(fname,ip,seedHosts):
 		newcontent = "udp-seed  = %s\n" % (seedIp)
 		content.insert(index_line+index, newcontent)
 		index = index+1;
+	writefile(fname,content)
+
+def insert_world_state(fname):
+	content = readfile(fname)
+	index_line = content.index("#world-state\n")
+	content.insert(index_line+1, "worldstate-control = true\n")
 	writefile(fname,content)
 
 def insert_peer(fname, peer):

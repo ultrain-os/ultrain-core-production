@@ -17,6 +17,7 @@ contract-emit-string-length = 512
 
 #insert_udp_seeds
 
+
 # Optional public key of peer allowed to connect
 peer-key = UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y
 peer-key = UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z
@@ -27,19 +28,14 @@ peer-key = UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD
 #insert_my_keys
 
 # print contract's output to console (ultrainio::chain_plugin)
-contracts-console = 1
 
-subchainHttpEndpoint = http://172.17.0.24:8888
-mainchainHttpEndpoint = http://172.17.0.22:8888
-
-plugin = ultrainio::chain_plugin
-plugin = ultrainio::chain_api_plugin
-plugin = ultrainio::http_plugin
-plugin = ultrainio::monitor_api_plugin
+plugin = ultrainio::chain_info_api_plugin
 
 worldstate-control = true
 
 #max-clients
+
+#mongo-config
 
 #chain_name
 chain-name=13

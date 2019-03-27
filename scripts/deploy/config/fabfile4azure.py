@@ -86,6 +86,10 @@ def startmng():
     run("pm2 start /root/ultrainmng/src/sideChainService.js -o /root/log/sideChainService.pm2.log -e root/log/sideChainService.pm2.error.log && sleep 1")
 
 @parallel
+def stopmng():
+    run("pm2 stop sideChainService")
+
+@parallel
 def upgrademng():
     run("rm -rf /root/ultrainmng")
     put("ultrainmng.tar","/root/")

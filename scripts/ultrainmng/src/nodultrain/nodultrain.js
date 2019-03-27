@@ -206,7 +206,7 @@ NodUltrain.start = async function (totalTime,nodPath,wssinfo,local) {
 //检查是否已启动
 NodUltrain.checkAlive = async function () {
 
-    let path = "http://127.0.0.1:8888/v1/chain/get_chain_info"
+    let path = "http://127.0.0.1:8888/v1/chain_info/get_chain_info"
     try {
         logger.debug("send http request :"+path);
         const rs = await axios.post(path);

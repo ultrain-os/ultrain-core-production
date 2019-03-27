@@ -505,7 +505,7 @@ getSubchainResource = async (chainName, chainConfig) => {
  */
 const getChainBlockDuration = async (config) => {
     try {
-        const rs = await multiRequest(config.httpEndpoint, "/v1/chain/get_chain_info", {}, config.seedHttpList);
+        const rs = await multiRequest(config.httpEndpoint, "/v1/chain_info/get_chain_info", {}, config.seedHttpList);
         return rs.data.block_interval_ms;
     } catch (e) {
         logger.error("getChainBlockDuration error,", utils.logNetworkError(e));
@@ -522,7 +522,7 @@ const getChainBlockDuration = async (config) => {
  */
 const getHeadBlockNum = async (config) => {
     try {
-        const rs = await multiRequest(config.httpEndpoint, "/v1/chain/get_chain_info", {}, config.seedHttpList);
+        const rs = await multiRequest(config.httpEndpoint, "/v1/chain_info/get_chain_info", {}, config.seedHttpList);
         return rs.data.head_block_num;
     } catch (e) {
         logger.error("getHeadBlockNum error,", utils.logNetworkError(e));
@@ -728,7 +728,7 @@ var checkMainSeedTime = 0;
 
 checkSubchainSeed = async (chainConfig) => {
 
-    let path = chainConfig.configSub.httpEndpoint + "/v1/chain/get_chain_info"
+    let path = chainConfig.configSub.httpEndpoint + "/v1/chain_info/get_chain_info"
     try {
         let res = await axios.post(path);
         logger.info("[seed check] checkSubchainSeed success,use seed:"+chainConfig.configSub.httpEndpoint);
@@ -749,7 +749,7 @@ checkSubchainSeed = async (chainConfig) => {
             logger.info("[seed check] start to use other seed http to request checkSubchainSeed");
             for (let i = 0; i < seedHttpList.length; i++) {
                 chainConfig.configSub.httpEndpoint = seedHttpList[i];
-                path = chainConfig.configSub.httpEndpoint + "/v1/chain/get_chain_info"
+                path = chainConfig.configSub.httpEndpoint + "/v1/chain_info/get_chain_info"
                 try {
                     let res = await axios.post(path);
                     chainConfig.u3Sub = createU3({...chainConfig.configSub, sign: true, broadcast: true});
@@ -768,7 +768,7 @@ checkSubchainSeed = async (chainConfig) => {
 
 checkMainchainSeed = async (chainConfig) => {
 
-    let path = chainConfig.config.httpEndpoint + "/v1/chain/get_chain_info"
+    let path = chainConfig.config.httpEndpoint + "/v1/chain_info/get_chain_info"
     try {
         let res = await axios.post(path);
         logger.info("[seed check] checkMainchainSeed success,use seed:"+chainConfig.config.httpEndpoint);
@@ -789,7 +789,7 @@ checkMainchainSeed = async (chainConfig) => {
             logger.info("[seed check] start to use other seed http to request checkMainchainSeed");
             for (let i = 0; i < seedHttpList.length; i++) {
                 chainConfig.config.httpEndpoint = seedHttpList[i];
-                path = chainConfig.config.httpEndpoint + "/v1/chain/get_chain_info"
+                path = chainConfig.config.httpEndpoint + "/v1/chain_info/get_chain_info"
                 try {
                     let res = await axios.post(path);
                     chainConfig.u3Sub = createU3({...chainConfig.config, sign: true, broadcast: true});
