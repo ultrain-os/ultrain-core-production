@@ -110,8 +110,8 @@ def delegateStark():
         endindex = args.producerNum;
     for i in range(startl,endindex+1):
         userName = args.subchain + accounts[i];
-        print "rdelegatecons:" + userName + " 553333.0000 UGAS"
-        retry(args.clultrain + 'push action ultrainio delegatecons \'{"from":"utrio.stake", "receiver":"'+userName+'", "stake_cons_quantity":"553333.0000 UGAS"}\' -p utrio.stake@active')
+        print "delegatecons:" + userName + " 42000.0000 UGAS"
+        retry(args.clultrain + 'push action ultrainio delegatecons \'{"from":"utrio.stake", "receiver":"'+userName+'", "stake_cons_quantity":"42000.0000 UGAS"}\' -p utrio.stake@active')
         sleep(0.5)
     print "delegateStark end..."
     sleep(2)
@@ -159,7 +159,7 @@ commands = [
     ('A', 'addSubChainType', addChainType, True, "add a new subchain type"),
     ('N', 'newSubchain', addSubchain, True, "add a new subchain"),
     ('U', 'addUser', addSubChainUser, True, "add subchain users in mainchain"),
-    ('B', 'addBalance', addBalanceToUser, True, "add balance to subchain users"),
+    ('B', 'addBalance', addBalanceToUser, False, "add balance to subchain users"),
     ('P', 'regProd', regProducer, True, "register producers"),
     ('D', 'delegate', delegateStark, True, "delegate cons"),
     ('S', 'show', showSubchain, True, "show sunchains"),
