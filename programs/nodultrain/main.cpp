@@ -118,7 +118,8 @@ int main(int argc, char** argv)
                "Please increase the value set for \"chain-state-db-size-mb\" and restart the process!");
       }
       dlog("Details: ${details}", ("details", e.to_detail_string()));
-      app().quit();
+      app().shutdown();
+      return OTHER_FAIL;
    } catch( const fc::exception& e ) {
       if( e.code() == fc::std_exception_code ) {
          if( e.top_message().find( "database dirty flag set" ) != std::string::npos ) {
@@ -130,6 +131,7 @@ int main(int argc, char** argv)
          }
       }
       elog( "${e}", ("e", e.to_detail_string()));
+      app().shutdown();
       return OTHER_FAIL;
    } catch( const boost::interprocess::bad_alloc& e ) {
       elog("bad alloc");

@@ -671,7 +671,7 @@ void chain_plugin::handle_guard_exception(const chain::guard_exception& e) const
    log_guard_exception(e);
 
    // quit the app
-   app().quit();
+   app().shutdown();
 }
 
 namespace chain_apis {

@@ -1368,7 +1368,6 @@ namespace ultrainio {
         } catch (const chain::guard_exception& e ) {
             edump((e.to_detail_string()));
             chain.abort_block(true);
-            app().get_plugin<chain_plugin>().handle_guard_exception(e);
             throw;
         } catch (const fc::exception &e) {
             edump((e.to_detail_string()));
@@ -1926,11 +1925,9 @@ namespace ultrainio {
                 chain.set_emit_signal();
                 chain.start_receive_event();
             }
-            try {
-                chain.push_block(block);
-            } catch (const chain::guard_exception& e ) {
-                app().get_plugin<chain_plugin>().handle_guard_exception(e);
-            }
+
+            chain.push_block(block);
+
             if (UranusNode::getInstance()->getNonProducingNode()) {
                 chain.clear_emit_signal();
                 chain.notify_event();
