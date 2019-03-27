@@ -2212,25 +2212,30 @@ namespace ultrainio {
     bool Scheduler::on_accept_block_header(uint64_t chainName, const BlockHeader& blockHeader, BlockIdType& id) {
         ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}", ("chainName", name(chainName))("blockNum", blockHeader.block_num()));
         std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(chainName);
+        lightClient->reset();
         if (std::string(blockHeader.proposer) == std::string("genesis")) {
             lightClient->accept(blockHeader);
+            id = lightClient->getLatestConfirmedBlockId();
+            return true;
         } else {
             std::vector<BlockHeader> unconfirmedheaders;
             BlockIdType confirmedBlockId;
-            if (getUnconfirmedHeaderFromDb(name(chainName), unconfirmedheaders, confirmedBlockId)) {
+            CommitteeSet committeeSet;
+            if (getUnconfirmedHeaderFromDb(name(chainName), unconfirmedheaders, confirmedBlockId, committeeSet)) {
                 lightClient->setStartPoint(CommitteeSet(), confirmedBlockId);
                 for (auto e : unconfirmedheaders) {
                     lightClient->accept(e);
                 }
+                lightClient->accept(blockHeader);
+                id = lightClient->getLatestConfirmedBlockId();
+                return true;
             }
-            lightClient->accept(blockHeader);
         }
         id = lightClient->getLatestConfirmedBlockId();
-        lightClient->reset();
-        return true;
+        return false;
     }
 
-    bool Scheduler::getUnconfirmedHeaderFromDb(const chain::name& chainName, std::vector<BlockHeader>& unconfirmedBlockHeader, BlockIdType& confirmedBlockId) {
+    bool Scheduler::getUnconfirmedHeaderFromDb(const chain::name& chainName, std::vector<BlockHeader>& unconfirmedBlockHeader, BlockIdType& confirmedBlockId, CommitteeSet& committeeSet) {
         try {
             const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
             struct chain_apis::read_only::get_subchain_unconfirmed_header_params params;
@@ -2238,6 +2243,7 @@ namespace ultrainio {
             auto result = ro_api.get_subchain_unconfirmed_header(params);
             unconfirmedBlockHeader = result.unconfirmed_headers;
             confirmedBlockId = result.confirmed_block_id;
+            committeeSet = CommitteeSet(result.committee_set);
             ilog("chainName name = ${name}", ("name", chainName.to_string()));
             return true;
         } catch (fc::exception& e) {

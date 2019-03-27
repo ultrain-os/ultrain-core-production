@@ -75,6 +75,18 @@ namespace ultrainio {
                 });
             }
 
+            block_id_type bls_votes_manager::get_latest_check_point_id() const {
+                const auto &o = _db.get<bls_votes_object>();
+                return o.latest_check_point_id;
+            }
+
+            void bls_votes_manager::set_latest_check_point_id(block_id_type id) {
+                const auto &o = _db.get<bls_votes_object>();
+                _db.modify(o, [&](bls_votes_object &obj) {
+                    obj.latest_check_point_id = id;
+                });
+            }
+
             bool bls_votes_manager::has_should_be_confirmed_bls(std::string &bls) const {
                 const auto &o = _db.get<bls_votes_object>();
                 bool result = false;

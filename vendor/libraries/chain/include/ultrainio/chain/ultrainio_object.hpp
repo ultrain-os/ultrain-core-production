@@ -1,3 +1,5 @@
+#pragma once
+
 #include <ultrainio/chain/types.hpp>
 #include <ultrainio/chain/block_header.hpp>
 

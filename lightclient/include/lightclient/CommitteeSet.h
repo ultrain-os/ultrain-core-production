@@ -3,6 +3,7 @@
 #include <string>
 
 #include <core/types.h>
+#include <ultrainio/chain/ultrainio_object.hpp>
 #include <lightclient/CommitteeDelta.h>
 #include <lightclient/CommitteeInfo.h>
 
@@ -14,6 +15,7 @@ namespace ultrainio {
         CommitteeSet(const std::string& s);
         CommitteeSet(const std::vector<char>& vc);
         CommitteeSet(const std::vector<CommitteeInfo>& committeeInfoV);
+        CommitteeSet(const std::vector<chain::role_base>& roleBaseVector);
         SHA256 committeeMroot() const;
         std::vector<char> toVectorChar() const;
         std::string toString() const;

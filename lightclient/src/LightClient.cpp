@@ -13,7 +13,7 @@ namespace ultrainio {
     }
 
     bool LightClient::setStartPoint(const CommitteeSet& committeeSet, const BlockIdType& blockId) {
-        ilog("set start point confirmed num : ${num}, id : ${id}", ("num", BlockHeader::num_from_id(blockId))("id", blockId));
+        ilog("set start point confirmed num : ${num}, id : ${id} committeeSet : ${committeeSet}", ("num", BlockHeader::num_from_id(blockId))("id", blockId)("committeeSet", committeeSet.toString()));
         reset();
         m_workingCommitteeSet = committeeSet;
         m_latestConfirmedBlockId = blockId;

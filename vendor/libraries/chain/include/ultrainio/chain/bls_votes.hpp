@@ -51,7 +51,7 @@ namespace ultrainio { namespace chain { namespace bls_votes {
 
         uint32_t latest_confirmed_block_num = 0;
 
-        block_id_type latest_check_point_id;
+        block_id_type latest_check_point_id = block_id_type();
 
         shared_vector<shared_bls_votes_info> should_be_confirmed;
     };
@@ -76,6 +76,10 @@ namespace ultrainio { namespace chain { namespace bls_votes {
         void add_indices(chainbase::database& db);
 
         void initialize_database();
+
+        block_id_type get_latest_check_point_id() const;
+
+        void set_latest_check_point_id(block_id_type id);
 
         bool has_should_be_confirmed_bls(std::string& bls) const;
 

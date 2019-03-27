@@ -1026,12 +1026,13 @@ read_only::get_subchain_unconfirmed_header_result read_only::get_subchain_unconf
 
     read_only::get_subchain_unconfirmed_header_result result;
     walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj) {
-        chain_info subchain_data;
+        chain_info chain_data;
         fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-        fc::raw::unpack(ds, subchain_data);
-        if(p.chain_name == subchain_data.chain_name) {
+        fc::raw::unpack(ds, chain_data);
+        if(p.chain_name == chain_data.chain_name) {
+            result.committee_set = chain_data.committee_set;
             bool first = true;
-            for (auto e : subchain_data.unconfirmed_blocks) {
+            for (auto e : chain_data.unconfirmed_blocks) {
                 if (first) {
                     result.confirmed_block_id = e.block_id;
                     first = false;

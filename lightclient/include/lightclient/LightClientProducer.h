@@ -35,8 +35,6 @@ namespace ultrainio {
     private:
         bool shouldBeConfirmed(const BlockHeader& blockHeader) const;
 
-        BlockIdType m_latestCheckPointId;
-
         bls_votes_manager& m_BlsVotesMgr;
     };
 }

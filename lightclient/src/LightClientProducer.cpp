@@ -25,11 +25,9 @@ namespace ultrainio {
 
     void LightClientProducer::handleCheckPoint(chain::controller& chain, const CommitteeSet& committeeSet) {
         chain.add_header_extensions_entry(kCommitteeSet, committeeSet.toVectorChar());
-        if (BlockIdType() != m_latestCheckPointId) {
-            std::string s = std::string(m_latestCheckPointId);
-            std::vector<char> vc(s.begin(), s.begin());
-            chain.add_header_extensions_entry(kPreCheckPointId, vc);
-        }
+        std::string s = std::string(m_BlsVotesMgr.get_latest_check_point_id());
+        std::vector<char> vc(s.begin(), s.begin());
+        chain.add_header_extensions_entry(kPreCheckPointId, vc);
         ilog("add kCommitteeSet in blockNum : ${blockNum} : ${committeeset}", ("blockNum", chain.head_block_num() + 1)("committeeset", committeeSet.toString()));
     }
 
@@ -62,9 +60,9 @@ namespace ultrainio {
             m_BlsVotesMgr.add_confirmed_bls_votes(blockHeader.block_num(), EpochEndPoint::isEpochEndPoint(blockHeader), validBls, blsStr);
         }
 
-//        if (CheckPoint::isCheckPoint(blockHeader)) {
-//            m_latestCheckPointId = blockHeader.id();
-//        }
+        if (CheckPoint::isCheckPoint(blockHeader)) {
+            m_BlsVotesMgr.set_latest_check_point_id(blockHeader.id());
+        }
 
         if (ConfirmPoint::isConfirmPoint(blockHeader)) {
             ConfirmPoint confirmPoint(blockHeader);

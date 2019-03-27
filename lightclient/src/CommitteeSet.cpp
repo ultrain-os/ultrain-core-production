@@ -22,6 +22,16 @@ namespace ultrainio {
     CommitteeSet::CommitteeSet(const std::vector<CommitteeInfo>& committeeInfoV)
             : m_committeeInfoV(committeeInfoV) {}
 
+    CommitteeSet::CommitteeSet(const std::vector<chain::role_base>& roleBaseVector) {
+        for (auto e : roleBaseVector) {
+            CommitteeInfo info;
+            info.accountName = std::string(e.owner);
+            info.blsPk = e.bls_key;
+            info.pk = e.producer_key;
+            m_committeeInfoV.push_back(info);
+        }
+    }
+
     SHA256 CommitteeSet::committeeMroot() const {
         // MUST BE the same with StakeOverBase
         return SHA256::hash(toString());
