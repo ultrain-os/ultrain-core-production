@@ -1,0 +1,48 @@
+{
+   "version": "ultrainio::abi/1.0",
+   "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+   }],
+  "structs": [{
+      "name": "bulletin_info",
+      "base": "",
+      "fields": [
+        {"name":"receiver", "type":"account_name"},
+        {"name":"quantity", "type":"asset"}
+      ]
+    },{
+      "name": "bulletin_bank",
+      "base": "",
+      "fields": [
+        {"name":"block_height", "type":"uint64"}
+        {"name":"bulletin_infos", "type":"bulletin_info[]"}
+      ]
+    },{
+      "name": "transfer",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
+      ]
+    }
+  ],
+  "actions": [{
+      "name": "transfer",
+      "type": "transfer",
+      "ricardian_contract": ""
+    }
+  ],
+  "tables": [{
+      "name": "bulletinbank",
+      "type": "bulletin_bank",
+      "index_type": "i64",
+      "key_names" : ["block_height"],
+      "key_types" : ["uint64"]
+    }
+  ],
+  "ricardian_clauses": [],
+  "abi_extensions": []
+}

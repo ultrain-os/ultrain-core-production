@@ -62,7 +62,7 @@ namespace ultrainiosystem {
          if (act.account == N(utrio.token) && act.name == NEX(transfer)) {
             TransferActionParam tap = unpack<TransferActionParam>(act.data);
             ultrainio_assert(tap.to == N(utrio.bank), " account to is not utrio.bank");
-            ultrainio_assert(tap.memo == std::to_string(_gstate.chain_name), "The synchronized chain is not correct");
+            ultrainio_assert(string_to_name(tap.memo.c_str()) == _gstate.chain_name, "The synchronized chain is not correct");
             asset cur_tokens = ultrainio::token(N(utrio.token)).get_balance( N(utrio.bank),symbol_type(CORE_SYMBOL).name());
             ultrainio_assert( cur_tokens >= tap.val, " utrio.bank account insufficient funds" );
             INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.bank), N(active)},

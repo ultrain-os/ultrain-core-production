@@ -129,6 +129,7 @@ def stepInstallSystemContracts():
     retry(args.clultrain + 'set contract utrio.token ' + args.contracts_dir + 'ultrainio.token/')
     retry(args.clultrain + 'set contract utrio.msig ' + args.contracts_dir + 'ultrainio.msig/')
     retry(args.clultrain + 'set contract utrio.rand ' + args.contracts_dir + 'ultrainio.rand/')
+    retry(args.clultrain + 'set contract utrio.bank ' + args.contracts_dir + 'ultrainio.bank/')
     sleep(2)
 
 def stepCreateTokens():
@@ -164,12 +165,12 @@ def stepInitSimpleTest():
 def stepRegProducers():
     for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "ultrainio" -u' % (accounts[i], pk_list[i], bls_pk_list[i], "hello", accounts[i]))
-    retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
+    #retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
     sleep(2)
     for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
-    stepInitSimpleTest()
-    sleep(2)
+    #stepInitSimpleTest()
+    #sleep(2)
     for i in range(len(rand_acc_lst)):
         value = 0.2000
         if i < 6:
@@ -195,18 +196,20 @@ def stepRegProducers():
     sleep(5)
 
 def stepCreateinitAccounts():
-    for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
+    # for i in range(1, args.num_producers+1):
+    #     retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
 
-    for a in initialAccounts:
-        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
-    retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100  "ultrainio"')
+    # for a in initialAccounts:
+    #     retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
+    # retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100  "ultrainio"')
     retry(args.clultrain + 'transfer ultrainio utrio.rand "10000 UGAS" ')
     retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
     for a in rand_acc_lst:
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"3.0000"))
 def stepResign():
-    resign('ultrainio', 'utrio.null')
+    #resign('ultrainio', 'utrio.null')
+    resign('utrio.stake', 'utrio.null')
+    resign('utrio.bank', 'utrio.null')
 
 def resourceTransaction(fromacc,recacc,value):
     retry(args.clultrain + 'system delegatebw  %s %s "%s UGAS"  "%s UGAS"'  % (fromacc,recacc,5000/value,5000/value))
@@ -331,7 +334,7 @@ commands = [
     ('I', 'initsimpletest', stepInitSimpleTest,         False,    "Simple transfer contract call test"),
     ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
-     ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
+    ('q', 'resign',         stepResign,                False,    "Resign utrio"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
     ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction"),
     ('u', 'unregproducers',  stepunregproducersTest,    False,    "stepunregproducersTest"),
