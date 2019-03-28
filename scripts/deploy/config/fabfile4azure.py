@@ -90,6 +90,10 @@ def stopmng():
     run("pm2 stop sideChainService")
 
 @parallel
+def deletemng():
+    run("pm2 delete sideChainService")
+
+@parallel
 def upgrademng():
     run("rm -rf /root/ultrainmng")
     put("ultrainmng.tar","/root/")

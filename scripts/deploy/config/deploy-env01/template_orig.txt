@@ -30,6 +30,7 @@ peer-key = UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD
 # print contract's output to console (ultrainio::chain_plugin)
 
 plugin = ultrainio::chain_info_api_plugin
+plugin = ultrainio::monitor_plugin
 
 
 #max-clients

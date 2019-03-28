@@ -36,4 +36,5 @@ contract-emit-string-length = 1024
 # Optional public key of peer allowed to connect
 
 plugin = ultrainio::chain_info_api_plugin
+plugin = ultrainio::monitor_plugin
 
