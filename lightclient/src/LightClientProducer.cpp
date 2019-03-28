@@ -21,6 +21,10 @@ namespace ultrainio {
         return m_BlsVotesMgr.should_be_confirmed(blockHeader.block_num());
     }
 
+    bool LightClientProducer::checkCanConfirm(uint32_t blockNum) const {
+        return m_BlsVotesMgr.check_can_confirm(blockNum);
+    }
+
     bool LightClientProducer::hasNextTobeConfirmedBls(BlsVoterSet& blsVoterSet) const {
         std::string blsStr;
         bool res = m_BlsVotesMgr.has_should_be_confirmed_bls(blsStr);
@@ -72,7 +76,7 @@ namespace ultrainio {
         if (ConfirmPoint::isConfirmPoint(blockHeader)) {
             ConfirmPoint confirmPoint(blockHeader);
             uint32_t confirmedBlockNum = BlockHeader::num_from_id(confirmPoint.confirmedBlockId());
-            if (m_BlsVotesMgr.check_can_confirm(confirmedBlockNum)) {
+            if (checkCanConfirm(confirmedBlockNum)) {
                 m_BlsVotesMgr.confirm(confirmedBlockNum);
             }
         }

@@ -24,6 +24,8 @@ namespace ultrainio {
 
         LightClientProducer(bls_votes_manager& blsVotesManager);
 
+        bool checkCanConfirm(uint32_t blockNum) const;
+
         bool hasNextTobeConfirmedBls(BlsVoterSet& blsVoterSet) const;
 
         void acceptNewHeader(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);

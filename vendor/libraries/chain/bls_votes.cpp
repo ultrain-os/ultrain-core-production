@@ -112,11 +112,9 @@ namespace ultrainio {
                     ilog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
                          ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", std::string(itor->bls_str.begin(), itor->bls_str.end())));
                 }
-                if (o.should_be_confirmed.size() > 0) {
-                    if (o.should_be_confirmed.back().block_num + s_confirm_point_interval == block_num) {
-                        wlog("there are too many unconfirmed block;");
-                        return true;
-                    }
+                if (o.should_be_confirmed.size() > 0 && o.should_be_confirmed.back().block_num + s_confirm_point_interval == block_num) {
+                    wlog("there are too many unconfirmed block;");
+                    return true;
                 } else if (o.latest_confirmed_block_num + s_confirm_point_interval == block_num) {
                     return true;
                 }
@@ -135,24 +133,26 @@ namespace ultrainio {
             }
 
             bool bls_votes_manager::check_can_confirm(uint32_t block_num) const {
-                ilog("check block_num : ${num}", ("num", block_num));
                 const auto &o = _db.get<bls_votes_object>();
                 if (o.latest_confirmed_block_num >= block_num) {
                     elog("confirm block num ${block_num} great than confirmed ${confirmed}",
                          ("block_num", block_num)("confirmed", o.latest_confirmed_block_num));
                     return false;
                 }
-                if (o.should_be_confirmed.size() > 0) {
-                    if (o.should_be_confirmed.front().block_num == block_num) {
-                        return true;
-                    }
+                if (o.should_be_confirmed.size() > 0 && o.should_be_confirmed.front().block_num == block_num) {
+                    return true;
+                }
+                elog("latest_confirmed_block_num : ${latest}", ("latest", o.latest_confirmed_block_num));
+                for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {
+                    elog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
+                         ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", std::string(itor->bls_str.begin(), itor->bls_str.end())));
                 }
                 return false;
             }
 
             void bls_votes_manager::confirm(uint32_t block_num) {
+                ilog("confirm block num : ${num}", ("num", block_num));
                 const auto &o = _db.get<bls_votes_object>();
-
                 _db.modify(o, [&](bls_votes_object &obj) {
                     auto begin = obj.should_be_confirmed.begin();
                     auto itor = begin;
@@ -160,18 +160,12 @@ namespace ultrainio {
                         if (itor->block_num > block_num) {
                             break;
                         }
-                        ilog("clear num : ${num}", ("num", itor->block_num));
                     }
                     if (itor != begin) {
                         obj.should_be_confirmed.erase(begin, itor);
                     }
                     if (block_num != 0) {
                         obj.latest_confirmed_block_num = block_num;
-                    }
-                    ilog("latest_confirmed_block_num : ${latest}", ("latest", o.latest_confirmed_block_num));
-                    for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {
-                        ilog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
-                             ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", std::string(itor->bls_str.begin(), itor->bls_str.end())));
                     }
                 });
             }

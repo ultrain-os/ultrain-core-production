@@ -623,6 +623,14 @@ namespace ultrainio {
                  ("m1", c_mroot) ("m2", propose.block.committee_mroot));
             return false;
         }
+
+        if (ConfirmPoint::isConfirmPoint(propose.block)) {
+            BlockIdType blockId = ConfirmPoint(propose.block).confirmedBlockId();
+            if (!m_lightClientProducer->checkCanConfirm(BlockHeader::num_from_id(blockId))) {
+                elog("try to confirm wrong block num : ${num}", ("num", BlockHeader::num_from_id(blockId)));
+                return false;
+            }
+        }
 #ifdef CONSENSUS_VRF
         Proof proposerProof(propose.block.proposerProof);
         BlockIdType blockId = UranusNode::getInstance()->getPreviousHash();
@@ -1348,7 +1356,6 @@ namespace ultrainio {
             const auto &pbs = chain.pending_block_state();
             FC_ASSERT(pbs, "pending_block_state does not exist but it should, another plugin may have corrupted it");
             const auto &bh = pbs->header;
-            ilog("proposer : ${proposer}", ("proposer", std::string(pbs->header.proposer)));
             block.timestamp = bh.timestamp;
             block.proposer = bh.proposer;
 #ifdef CONSENSUS_VRF
@@ -1362,7 +1369,6 @@ namespace ultrainio {
             block.committee_mroot = bh.committee_mroot;
             block.header_extensions = bh.header_extensions;
             block.signature = std::string(Signer::sign<BlockHeader>(block, StakeVoteBase::getMyPrivateKey()));
-            ilog("pending id : ${id}, block id : ${blockId}", ("id", bh.id())("blockId", block.id()));
             ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature} committee mroot ${mroot}",
                  ("num", block.transactions.size())
                  ("proposer", std::string(block.proposer))
