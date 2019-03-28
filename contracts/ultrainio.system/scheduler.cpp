@@ -640,7 +640,7 @@ namespace ultrainiosystem {
             //3. not synced: current block reported to master is far from the head block on chain
             //4. schedule is off
             if((chain_iter->committee_num < uint32_t(type_iter->stable_min_producers)) ||
-               /*!(chain_iter->is_schedulable) || !(chain_iter->is_synced) || */!(chain_iter->schedule_on)) {
+               !(chain_iter->is_schedulable) || !(chain_iter->is_synced) || !(chain_iter->schedule_on)) {
                 continue;
             }
             auto out_num = (chain_iter->committee_num - type_iter->stable_min_producers)/type_iter->sched_inc_step;
