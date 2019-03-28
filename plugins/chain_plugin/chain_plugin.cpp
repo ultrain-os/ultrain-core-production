@@ -1246,9 +1246,6 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
                result.rows.emplace_back(scopes[i], fc::variant(data));
        });
    }
-   auto gstate = get_global_row(d, abi, abi_serializer_max_time);
-   result.min_stake_thresh = gstate["min_activated_stake"].as_int64();
-   result.min_committee_member_number = gstate["min_committee_member_number"].as_uint64();
    return result;
 }
 
@@ -1308,6 +1305,9 @@ bool read_only::is_genesis_finished() const{
     }
     catch (fc::exception& e) {
         ilog("is_genesis_finished there may be no producer registered: ${e}", ("e", e.to_string()));
+        return false;
+    } catch (...) {
+        elog("is_genesis_finished error thrown from get_global_row ");
         return false;
     }
 }

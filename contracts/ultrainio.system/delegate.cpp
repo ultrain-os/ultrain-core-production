@@ -179,9 +179,6 @@ namespace ultrainiosystem {
                  });
              }
              else {
-                 if(it->unpaid_balance > 0 && _gstate.is_master_chain()){
-                     claim_reward_to_account(it->claim_rewards_account, asset((int64_t)it->unpaid_balance));
-                 }
                  disabled_producers_table dp_tbl(_self, _self);
                  dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
                      dis_prod.owner                   = it->owner;

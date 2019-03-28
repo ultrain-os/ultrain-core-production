@@ -85,8 +85,11 @@ namespace ultrainio {
    asset token::get_balance( account_name owner, symbol_name sym )const
    {
       accounts accountstable( _self, owner );
-      const auto& ac = accountstable.get( sym );
-      return ac.balance;
+      auto symitr = accountstable.find( sym );
+      if(symitr == accountstable.end())
+         return asset(0);
+      else
+         return symitr->balance;
    }
 
 } /// namespace ultrainio

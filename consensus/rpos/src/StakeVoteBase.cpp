@@ -264,16 +264,15 @@ namespace ultrainio {
                 }
                 ilog("#########################there are ${p} committee member enabled", ("p", result.rows.size()));
             }
-            auto is_genesis_finished = [&]() -> bool {
-                return result.rows.size() >= result.min_committee_member_number? true: false;
-            };
-            statePtr->chainStateNormal = is_genesis_finished();
-            statePtr->chainMinStakeThresh = result.min_stake_thresh;
+            statePtr->chainStateNormal = ro_api.is_genesis_finished();
         }
         catch (fc::exception& e) {
             ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
             return nullptr;
-        }
+        } catch (...) {
+            elog("error thrown from getCommitteeState ");
+            return nullptr;
+         }
         return statePtr;
     }
 

@@ -63,7 +63,7 @@ namespace ultrainiosystem {
         }
          _gstate.total_unpaid_balance += curblockreward;
          _producers.modify( prod, [&](auto& p ) {
-               p.unpaid_balance += curblockreward;
+               p.unpaid_balance += number * curblockreward;
                p.total_produce_block += number;
          });
          print( "reportblocknumber number:", number, " producer:", name{producer}, " produce_block:", prod->total_produce_block,"\n" );
@@ -71,6 +71,8 @@ namespace ultrainiosystem {
    }
 
    void system_contract::claimrewards() {
+      if(!_gstate.is_master_chain())
+         return;
       require_auth(_self);
       ultrainio_assert( _gstate.cur_committee_number >= _gstate.min_committee_member_number,
          "The current number of committees must be greater than the minimum to be eligible for new awards");
@@ -78,10 +80,10 @@ namespace ultrainiosystem {
       uint64_t pay_account = N(utrio.resfee);
       asset resfee_tokens =
           ultrainio::token(N(utrio.token)).get_balance( pay_account,symbol_type(CORE_SYMBOL).name());
-      print("\nclaimrewards unpaid_balance:",_gstate.total_unpaid_balance," resfee_tokens:",resfee_tokens.amount,"\n");
+      print("\nclaimrewards subchain total_unpaid_balance:",_gstate.total_unpaid_balance," resfee_tokens:",resfee_tokens.amount,"\n");
       ultrainio_assert( resfee_tokens.amount >= 0,
             "resfee_tokens shouldn't be less than 0" );
-
+      int64_t subchain_paid_balance = 0;
       if( resfee_tokens.amount < (int64_t)_gstate.total_unpaid_balance){
          INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
             {pay_account, asset((int64_t)_gstate.total_unpaid_balance - resfee_tokens.amount), std::string("issue tokens for claimrewards")} );
@@ -93,6 +95,7 @@ namespace ultrainiosystem {
             if( itr->unpaid_balance == 0 )
                continue;
             auto producer_unpaid_balance = (int64_t)floor((double)itr->unpaid_balance * 99 /100);
+            subchain_paid_balance += producer_unpaid_balance;
             print("\nclaimrewards subchainname:",name{chain_name}," producer:",name{itr->owner},
             " reward_account:",name{itr->claim_rewards_account}," unpaid_balance:",itr->unpaid_balance,
             " producer_pay_balance:",producer_unpaid_balance,"\n");
@@ -104,25 +107,31 @@ namespace ultrainiosystem {
          }
       }
 
-      if(_gstate.total_unpaid_balance >= 100){
-         int64_t master_pay_fee = (int64_t)floor((double)_gstate.total_unpaid_balance /100) ;
+      int64_t master_pay_fee = (int64_t)floor((double)_gstate.total_unpaid_balance /100) ;
+      asset fee_tokens =
+          ultrainio::token(N(utrio.token)).get_balance( N(utrio.fee),symbol_type(CORE_SYMBOL).name());
+
+      if(master_pay_fee > 0){
+         fee_tokens += asset(master_pay_fee);
          INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
             { pay_account, N(utrio.fee), asset(master_pay_fee), std::string("master producers block pay") } );
       }
-
-      asset fee_tokens =
-          ultrainio::token(N(utrio.token)).get_balance( N(utrio.fee),symbol_type(CORE_SYMBOL).name());
       if(fee_tokens.amount <= 0)
          return;
+
+      int64_t master_paid_balance = 0;
       producers_table _producers(_self, master_chain_name);
       for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
          if(itr->total_produce_block == 0 || _gstate.total_cur_chain_block <= 0)
             continue;
          auto producer_unpaid_balance = (int64_t)floor((double)itr->total_produce_block * fee_tokens.amount/_gstate.total_cur_chain_block );
+         master_paid_balance += producer_unpaid_balance;
          print("\nclaimrewards master producer:",name{itr->owner}," reward_account:",name{itr->claim_rewards_account}," cur_producer_block:",itr->total_produce_block," producer_pay_balance:",producer_unpaid_balance,"\n");
-         INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {N(utrio.fee),N(active)},
-            { N(utrio.fee), itr->claim_rewards_account, asset(producer_unpaid_balance), std::string("producer block pay") } );
+         if(producer_unpaid_balance > 0)
+            INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {N(utrio.fee),N(active)},
+               { N(utrio.fee), itr->claim_rewards_account, asset(producer_unpaid_balance), std::string("producer block pay") } );
       }
+      print("\nclaimrewards total subchain_paid_balance:",subchain_paid_balance," master_paid_balance:",master_paid_balance," fee_tokens:",fee_tokens.amount,"\n");
       _gstate.total_unpaid_balance = 0;
    }
 
@@ -130,7 +139,7 @@ namespace ultrainiosystem {
       if(!_gstate.is_master_chain())
          return;
       uint32_t block_height = (uint32_t)head_block_number() + 1;
-      uint32_t interval_num = seconds_per_day/block_interval_seconds()/24/12;   //TEST:Send rewards once an hour
+      uint32_t interval_num = seconds_per_day/block_interval_seconds()/24/2;   //TEST:Send rewards once half an hour
       if(block_height < 20 || block_height%interval_num != 0) {
          return;
       }
@@ -146,18 +155,4 @@ namespace ultrainiosystem {
       print("distributreward currenttime:",current_time()," trxid:",trxid);
    }
 
-   void system_contract::claim_reward_to_account(account_name rewardaccount, asset balance){
-      uint64_t pay_account = N(utrio.fee);
-      asset fee_tokens =
-          ultrainio::token(N(utrio.token)).get_balance( pay_account,symbol_type(CORE_SYMBOL).name());
-      print("\nclaim_reward_to_account balance:",balance," fee_tokens:",fee_tokens.amount,"\n");
-
-      if(fee_tokens < balance) {
-         INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
-            {pay_account, (balance - fee_tokens), std::string("issue tokens for claim_reward_to_account")} );
-      }
-
-      INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
-            {pay_account, rewardaccount, balance, std::string("producer block pay") } );
-   }
 } //namespace ultrainiosystem

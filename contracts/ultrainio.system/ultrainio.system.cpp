@@ -51,7 +51,6 @@ namespace ultrainiosystem {
             _gstate.worldstate_interval = params.worldstate_interval;
             _gstate.resource_fee = params.resource_fee;
             _gstate.table_extension.assign(params.table_extension.begin(),params.table_extension.end());
-            _global.set( _gstate );
         } else {
             auto ite_chain = _chains.find(params.chain_name);
             ultrainio_assert(ite_chain != _chains.end(), "this chian does not exist");

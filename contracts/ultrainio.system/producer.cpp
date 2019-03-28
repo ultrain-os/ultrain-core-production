@@ -165,10 +165,6 @@ namespace ultrainiosystem {
       ultrainio_assert( (curblocknum - prod->last_operate_blocknum) > 2 ,
                         "wait at least 2 blocks before this unregprod operation" );
 
-      //pay unpaid_balance
-      if(prod->unpaid_balance > 0 && _gstate.is_master_chain()) {
-         claim_reward_to_account(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
-      }
       disabled_producers_table dp_tbl(_self, _self);
       dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
           dis_prod = *prod;
@@ -178,10 +174,6 @@ namespace ultrainiosystem {
           producer_brf.in_disable = true;
       });
       remove_from_chain(briefprod->location, producer, curblocknum);
-      //pay unpaid_balance
-      if(prod->unpaid_balance > 0 && _gstate.is_master_chain()) {
-         claim_reward_to_account(prod->claim_rewards_account, asset((int64_t)prod->unpaid_balance));
-      }
    }
 
     std::vector<name> system_contract::get_all_chainname() {
