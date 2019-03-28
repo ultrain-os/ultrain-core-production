@@ -472,9 +472,7 @@
       "fields": [
          {"name":"owner",           "type":"account_name"},
          {"name":"location",        "type":"name"},
-         {"name":"in_disable",      "type":"bool"},
-         {"name":"destination",     "type":"name"},
-         {"name":"schedule_status",     "type":"uint8"}
+         {"name":"in_disable",      "type":"bool"}
       ]
     },{
       "name": "disabled_producer",
@@ -506,6 +504,12 @@
         {"name": "sched_inc_step",         "type": "uint16"},
         {"name": "consensus_period",       "type": "uint16"},
         {"name": "table_extension",        "type": "exten_type[]"}
+       ]
+   },{
+     "name": "lwc_parameters",
+     "base": "",
+     "fields": [
+        {"name": "save_blocks_num",       "type": "uint32"},
        ]
     },{
      "name": "user_info",
@@ -571,6 +575,7 @@
         {"name": "global_resource",               "type": "chain_resource"},
         {"name": "is_synced",                     "type": "bool"},
         {"name": "is_schedulable",                "type": "bool"},
+        {"name": "schedule_on",                   "type": "bool"},
         {"name": "committee_num",                 "type": "uint16"},
         {"name": "deprecated_committee",          "type": "role_base[]"},
         {"name": "changing_info",                 "type": "changing_committee"},
@@ -686,6 +691,19 @@
         {"name": "chain_name",                 "type": "name"},
         {"name": "header_dig",                 "type": "block_header_digest"},
         {"name": "committee_mrt",              "type": "checksum256"}
+       ]
+    },{
+      "name": "setlwcparams",
+      "base": "",
+      "fields": [
+        {"name": "keep_blocks_num",              "type": "uint32"}
+       ]
+    },{
+      "name": "setchainparam",
+      "base": "",
+      "fields": [
+        {"name": "chain_name",                 "type": "name"},
+        {"name": "is_sched_on",               "type": "bool"}
        ]
    },{
       "name": "schedule",
@@ -910,6 +928,14 @@
       "type": "forcesetblock",
       "ricardian_contract": ""
     },{
+      "name": "setlwcparams",
+      "type": "setlwcparams",
+      "ricardian_contract": ""
+    },{
+      "name": "setchainparam",
+      "type": "setchainparam",
+      "ricardian_contract": ""
+    },{
       "name": "schedule",
       "type": "schedule",
       "ricardian_contract": ""
@@ -1036,6 +1062,12 @@
       "index_type": "i64",
       "key_names": ["owner"],
       "key_types": ["uint64"]
+    },{
+      "name": "lwc",
+      "type": "lwc_parameters",
+      "index_type": "i64",
+      "key_names" : [],
+      "key_types" : []
     }
    ],
    "ricardian_clauses": [],

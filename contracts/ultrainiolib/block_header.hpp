@@ -69,7 +69,7 @@ namespace ultrainio {
       static uint32_t   num_from_id(const block_id_type& id) {
           uint64_t _hash64;
           memcpy(&_hash64, id.hash, sizeof(uint64_t) );
-          return endian_reverse_u32(_hash64);
+          return endian_reverse_u32(uint32_t(_hash64));
       }
     };
 }

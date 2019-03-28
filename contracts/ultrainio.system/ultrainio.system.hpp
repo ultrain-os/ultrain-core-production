@@ -21,9 +21,7 @@
 namespace ultrainiosystem {
    using namespace ultrainio;
    const name master_chain_name{N(ultrainio)};
-//   const uint64_t pending_queue = std::numeric_limits<uint64_t>::max();
    const name default_chain_name{N(default)};  //default chain, will be assigned by system.
-   const uint32_t latest_block_num = 30000;
 
    bool operator!=(const checksum256& sha256_1, const checksum256& sha256_2) {
       for(auto i = 0; i < 32; ++i) {
@@ -82,6 +80,12 @@ namespace ultrainiosystem {
                                    (cur_committee_number)(worldstate_interval)(resource_fee)(table_extension) )
    };
 
+   struct lwc_parameters {
+       uint32_t save_blocks_num = 30000;
+
+       ULTRAINLIB_SERIALIZE(lwc_parameters, (save_blocks_num))
+   };
+
    struct chain_resource {
        uint64_t             max_resources_number = 10000;
        uint64_t             total_resources_used_number = 0;
@@ -92,16 +96,10 @@ namespace ultrainiosystem {
                             (max_ram_size)(total_ram_bytes_used) )
    };
 
-   const uint8_t not_in_scheduling = 0;
-   const uint8_t moving_out = 1;
-   const uint8_t moving_in = 2;
-
    struct producer_brief {
       account_name          owner;
       name                  location{N(ultrainio)};
       bool                  in_disable = true;
-      name                  destination{N(ultrainio)};
-      uint8_t               schedule_status;
       uint64_t primary_key()const { return owner; }
 
       bool     is_on_master_chain() const  {return location == master_chain_name;}
@@ -109,7 +107,7 @@ namespace ultrainiosystem {
           return (location != master_chain_name) && (location != default_chain_name);
       }
 
-      ULTRAINLIB_SERIALIZE(producer_brief, (owner)(location)(in_disable)(destination)(schedule_status) )
+      ULTRAINLIB_SERIALIZE(producer_brief, (owner)(location)(in_disable) )
    };
 
    using role_base = CommitteeInfo;
@@ -204,6 +202,8 @@ namespace ultrainiosystem {
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
    typedef ultrainio::multi_index< N(wshash), subchain_ws_hash>      subchain_hash_table;
    typedef ultrainio::multi_index<N(masterinfos),master_chain_info> master_chain_infos;
+   typedef ultrainio::singleton<N(lwc), lwc_parameters>  lwc_singleton;
+
    struct chaintype {
        uint64_t type_id;
        uint16_t stable_min_producers;
@@ -229,6 +229,8 @@ namespace ultrainiosystem {
 
    struct changing_producer : public CommitteeInfo {
       uint32_t          block_num;  //master block number when it happens
+
+      ULTRAINLIB_SERIALIZE_DERIVED( changing_producer, CommitteeInfo, (block_num))
    };
 
    struct changing_committee {
@@ -239,7 +241,6 @@ namespace ultrainiosystem {
            return removed_members.empty() && new_added_members.empty();
        }
 
-       //temporary workaround, will remove one by one after light client activated
        void clear() {
            removed_members.clear();
            new_added_members.clear();
@@ -298,6 +299,7 @@ namespace ultrainiosystem {
        chain_resource            global_resource;
        bool                      is_synced;
        bool                      is_schedulable;
+       bool                      schedule_on = true;
        uint16_t                  committee_num;
        std::vector<role_base>    deprecated_committee;//keep history producers for un-synced chain, clear it once synced
        changing_committee        changing_info; //has changed but not be confirmed by subchain's block header.
@@ -313,7 +315,7 @@ namespace ultrainiosystem {
        auto primary_key()const { return chain_name; }
 
        ULTRAINLIB_SERIALIZE(chain_info, (chain_name)(chain_type)(genesis_time)(global_resource)(is_synced)
-                            (is_schedulable)(committee_num)(deprecated_committee)(changing_info)
+                            (is_schedulable)(schedule_on)(committee_num)(deprecated_committee)(changing_info)
                             (recent_users)(total_user_num)(chain_id)(committee_mroot)(confirmed_block_number)
                             (committee_set)(unconfirmed_blocks)(table_extension) )
 
@@ -394,9 +396,12 @@ namespace ultrainiosystem {
 
    class system_contract : public native {
       private:
-         global_state_singleton _global;
-
+         global_state_singleton   _global;
          ultrainio_global_state   _gstate;
+
+         lwc_singleton            _lwcsingleton;
+         lwc_parameters           _lwc;
+
          chains_table             _chains;
          pendingminers            _pendingminer;
          pendingaccounts          _pendingaccount;
@@ -463,6 +468,8 @@ namespace ultrainiosystem {
                             const block_header& header,
                             const std::vector<role_base>& cmt_set);
          void schedule(const std::string& trigger);
+         void setlwcparams(uint32_t keep_blocks_num);
+         void setchainparam(name chain_name, bool is_sched_on);
 
          // functions defined in ultrainio.system.cpp
          void setsysparams( const ultrainio_system_params& params );

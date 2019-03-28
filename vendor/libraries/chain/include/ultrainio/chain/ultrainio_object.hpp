@@ -17,8 +17,6 @@ namespace ultrainio { namespace chain {
       account_name          owner;
       name                  location;
       bool                  in_disable = true;
-      name                  destination;
-      uint8_t               schedule_status;
     };
     struct role_base {
       account_name          owner;
@@ -92,6 +90,7 @@ namespace ultrainio { namespace chain {
        chain_resource            global_resource;
        bool                      is_synced;
        bool                      is_schedulable;
+       bool                      schedule_on;
        uint16_t                  committee_num;
        std::vector<role_base>    deprecated_committee;//keep history producers for un-synced chain, clear it once synced
        changing_committee        changing_info;
@@ -123,7 +122,7 @@ namespace ultrainio { namespace chain {
 
 }} // namespace ultrainio::chain
 FC_REFLECT(ultrainio::chain::exten_type, (key)(value) )
-FC_REFLECT(ultrainio::chain::producer_brief, (owner)(location)(in_disable)(destination)(schedule_status) )
+FC_REFLECT(ultrainio::chain::producer_brief, (owner)(location)(in_disable) )
 FC_REFLECT(ultrainio::chain::role_base, (owner)(producer_key)(bls_key) )
 FC_REFLECT_DERIVED(ultrainio::chain::disabled_producer, (ultrainio::chain::role_base), (total_cons_staked)(url)(total_produce_block)
                     (last_operate_blocknum)(delegated_cons_blocknum)(claim_rewards_account) )
@@ -137,7 +136,7 @@ FC_REFLECT(ultrainio::chain::block_header_digest, (block_number)(transaction_mro
 FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_block_header, (ultrainio::chain::block_header), (block_id)(block_number)(to_be_paid)
                     (is_leaf)(is_synced)(committee_set)(trx_hashs)(table_extension) )
 FC_REFLECT(ultrainio::chain::chain_info, (chain_name)(chain_type)(genesis_time)(global_resource)(is_synced)(is_schedulable)
-                    (committee_num)(deprecated_committee)(changing_info)(recent_users)(total_user_num)(chain_id)
+                    (schedule_on)(committee_num)(deprecated_committee)(changing_info)(recent_users)(total_user_num)(chain_id)
                     (committee_mroot)(confirmed_block_number)(committee_set)(unconfirmed_blocks)(table_extension) )
 FC_REFLECT(ultrainio::chain::resources_lease, (owner)(lease_num)(start_block_height)(end_block_height)(modify_block_height) )
 FC_REFLECT(ultrainio::chain::master_chain_info, (owner)(master_prods)(block_height)(block_id)(master_chain_ext) )

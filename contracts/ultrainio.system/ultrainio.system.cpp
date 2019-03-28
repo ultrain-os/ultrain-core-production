@@ -14,6 +14,7 @@ namespace ultrainiosystem {
    system_contract::system_contract( account_name s )
    :native(s),
     _global(_self,_self),
+    _lwcsingleton(_self, _self),
     _chains(_self,_self),
     _pendingminer( _self, _self ),
     _pendingaccount( _self, _self ),
@@ -21,6 +22,11 @@ namespace ultrainiosystem {
     _briefproducers(_self,_self),
     _schedsetting(_self, _self) {
       _gstate = _global.exists() ? _global.get() : get_default_parameters();
+      if(_lwcsingleton.exists()) {
+          _lwc = _lwcsingleton.get();
+      } else {
+          _lwc.save_blocks_num = 30000;
+      }
    }
 
    ultrainio_global_state system_contract::get_default_parameters() {
@@ -31,6 +37,7 @@ namespace ultrainiosystem {
 
    system_contract::~system_contract() {
       _global.set( _gstate );
+      _lwcsingleton.set(_lwc);
    }
 
    void system_contract::setsysparams( const ultrainio_system_params& params) {
@@ -591,7 +598,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      (onblock)(claimrewards)
      // scheduler.cpp
      (regchaintype)(regsubchain)(acceptmaster)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)
-     (setsched)(forcesetblock)(schedule)
+     (setsched)(forcesetblock)(schedule)(setlwcparams)(setchainparam)
      // synctransaction.cpp
      (synctransfer)
 )
