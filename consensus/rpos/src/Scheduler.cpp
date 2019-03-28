@@ -394,7 +394,7 @@ namespace ultrainio {
 
     bool Scheduler::updateAndMayResponse(echo_message_info &info, const EchoMsg &echo, bool response) {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
-        ilog("update echo blockId: ${id}", ("id", short_hash(echo.blockId)));
+        //ilog("update echo blockId: ${id}", ("id", short_hash(echo.blockId)));
         auto pkItor = std::find(info.accountPool.begin(), info.accountPool.end(), echo.account);
         if (pkItor == info.accountPool.end()) {
             info.accountPool.push_back(echo.account);
@@ -810,8 +810,8 @@ namespace ultrainio {
         }
 
 
-        dlog("receive echo msg.blockhash = ${blockhash} echo'account = ${account} signature : ${signature}",
-             ("blockhash", short_hash(echo.blockId))("account", std::string(echo.account))("signature", short_sig(echo.signature)));
+        //dlog("receive echo msg.blockhash = ${blockhash} echo'account = ${account} signature : ${signature}",
+          //   ("blockhash", short_hash(echo.blockId))("account", std::string(echo.account))("signature", short_sig(echo.signature)));
         auto itor = m_echoMsgMap.find(echo.blockId);
         if (itor != m_echoMsgMap.end()) {
             bret = updateAndMayResponse(itor->second, echo, true);
@@ -1545,7 +1545,7 @@ namespace ultrainio {
                  ("phase", (uint32_t) itor->second.echoCommonPart.phase)("size", itor->second.accountPool.size())(
                      "totalVoter", itor->second.getTotalVoterWeight())("block_hash", short_hash(itor->second.echoCommonPart.blockId)));
             if (isMin2FEcho(itor->second.getTotalVoterWeight(), phase)) {
-                dlog("found >= 2f + 1 echo, phase+cnt = ${phase}",("phase",phase));
+                //dlog("found >= 2f + 1 echo, phase+cnt = ${phase}",("phase",phase));
 #ifdef CONSENSUS_VRF
                 uint32_t priority = itor->second.echo.proposerPriority;
 #else
@@ -1597,7 +1597,7 @@ namespace ultrainio {
         }
         auto propose_itor = m_proposerMsgMap.find(minBlockId);
         if (propose_itor != m_proposerMsgMap.end()) {
-            dlog("find propose msg ok.");
+            //dlog("find propose msg ok.");
             return propose_itor->second.block;
         }
         dlog("> 2f + 1 echo ${hash} can not find it's propose.", ("hash", minBlockId));

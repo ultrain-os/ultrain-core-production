@@ -29,8 +29,7 @@ using namespace std;
 
 namespace ultrainio {
 
-    char version[]="f2ca04";
-
+    char version[]="014d9d";
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
     std::shared_ptr<UranusNode> UranusNode::initAndGetInstance(boost::asio::io_service &ioservice) {
@@ -279,11 +278,8 @@ namespace ultrainio {
 
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA1, 0);
 
-        dlog("############## ba0 finish blockNum = ${id}, host_name = ${host_name}",
-             ("id", getBlockNum())("host_name", boost::asio::ip::host_name()));
-        dlog("ba0Process voter.hash = ${hash1}",("hash1", short_hash(ba0Block.id())));
-        dlog("ba0Process. prepare ba1. blockNum = ${blockNum}, isVoter = ${isVoter}.", ("blockNum", getBlockNum())
-                ("isVoter",MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
+        dlog("############## ba0 finish blockNum = ${id}, voter.hash = ${hash1}, prepare ba1. isVoter = ${isVoter}",
+             ("id", getBlockNum())("hash1", short_hash(ba0Block.id()))("isVoter",MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
 
         vote(getBlockNum(),kPhaseBA1,0);
 

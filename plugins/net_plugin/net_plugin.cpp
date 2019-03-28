@@ -2229,9 +2229,9 @@ connection::connection(string endpoint, msg_priority pri)
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const EchoMsg &msg) {
-       ilog("receive echo msg!!! message from ${p} block_id: ${id} block num: ${num} phase: ${phase} baxcount: ${baxcount} account: ${account}",
+       ilog("echo from ${p} block_id: ${id} num: ${num} phase: ${phase} baxcount: ${baxcount} account: ${account} sig: ${sig}",
             ("p", c->peer_name())("id", short_hash(msg.blockId))("num", BlockHeader::num_from_id(msg.blockId))
-            ("phase", (uint32_t)msg.phase)("baxcount",msg.baxCount)("account", std::string(msg.account)));
+            ("phase", (uint32_t)msg.phase)("baxcount",msg.baxCount)("account", std::string(msg.account))("sig", short_sig(msg.signature)));
        if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
                if (conn != c && conn->priority == msg_priority_rpos) {
@@ -2242,7 +2242,7 @@ connection::connection(string endpoint, msg_priority pri)
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const ProposeMsg& msg) {
-       ilog("receive propose msg!!! message from ${p} block id: ${id} block num: ${num}",
+       ilog("propose from ${p} block id: ${id} block num: ${num}",
             ("p", c->peer_name())("id", short_hash(msg.block.id()))("num", msg.block.block_num()));
        if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
