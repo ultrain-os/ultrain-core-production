@@ -71,6 +71,8 @@ namespace ultrainio { namespace chain { namespace bls_votes {
 
     class bls_votes_manager {
     public:
+        static void set_confirm_point_interval(int interval);
+
         explicit bls_votes_manager(chainbase::database& db) : _db(db) {}
 
         void add_indices(chainbase::database& db);
@@ -98,7 +100,7 @@ namespace ultrainio { namespace chain { namespace bls_votes {
     private:
         chainbase::database& _db;
 
-        int confirm_point_interval = 100;
+        static int s_confirm_point_interval;
     };
 
 } } } // ultrainio::chain::bls_votes

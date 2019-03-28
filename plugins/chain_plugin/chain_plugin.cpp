@@ -1252,6 +1252,25 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    return result;
 }
 
+read_only::get_confirm_point_interval_result read_only::get_confirm_point_interval(const read_only::get_confirm_point_interval_params& p) const {
+    const abi_def abi = ultrainio::chain_apis::get_abi(db, N(ultrainio));
+    const auto& d = db.db();
+    read_only::get_confirm_point_interval_result result;
+    try {
+        auto gstate = get_global_row(d, abi, abi_serializer_max_time);
+        exten_types ext = gstate["table_extension"].as<exten_types>();
+        for (auto v : ext) {
+            if (v.key == global_state_exten_type_key::confirm_point_interval) {
+                result.confirm_point_interval = std::stoi(v.value);
+                break;
+            }
+        }
+    } catch (fc::exception& e) {
+        elog("get_confirm_point_interval exception : ${e}", ("e", e.to_string()));
+    }
+    return result;
+}
+
 static fc::variant get_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms, const name& key) {
     const auto table_type = get_table_type(abi, N(rand));
     ULTRAIN_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table rand", ("type",table_type));

@@ -33,13 +33,16 @@ namespace ultrainiosystem {
       }
       return false;
    }
+
    struct exten_type {
        exten_type(){}
        uint16_t         key;
        std::string      value;
        ULTRAINLIB_SERIALIZE(exten_type , (key)(value) )
    };
+
    typedef std::vector<exten_type>  exten_types;
+
    struct ultrainio_global_state : ultrainio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_used; }
       bool is_master_chain()const { return chain_name == name{N(ultrainio)}; }
@@ -63,6 +66,12 @@ namespace ultrainiosystem {
       uint64_t             worldstate_interval  = 1000;
       uint32_t             resource_fee = 100000;
       exten_types          table_extension;
+
+      enum global_state_exten_type_key {
+          global_state_key_start = 0,
+          update_auth,
+          confirm_point_interval
+      };
 
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,
                                    (max_ram_size)(min_activated_stake)(min_committee_member_number)

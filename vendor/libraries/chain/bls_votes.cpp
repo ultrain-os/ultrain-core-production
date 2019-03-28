@@ -46,6 +46,8 @@ namespace ultrainio {
         namespace bls_votes {
             using bls_index_set = index_set<bls_votes_index>;
 
+            int bls_votes_manager::s_confirm_point_interval = 0;
+
             void bls_votes_manager::add_indices(chainbase::database &db) {
                 bls_index_set::add_indices(db);
                 ilog("add_indices");
@@ -62,9 +64,13 @@ namespace ultrainio {
                                                       chainbase::database &worldstate_db) {
                 bls_index_set::walk_indices([this, &worldstate_db, &ws_helper_ptr](auto utils) {
                     using index_t = typename decltype(utils)::index_t;
-                    using value_t = typename index_t::value_type;
+                    //using value_t = typename index_t::value_type;
                     ws_helper_ptr->add_table_to_worldstate<index_t>(worldstate_db);
                 });
+            }
+
+            void bls_votes_manager::set_confirm_point_interval(int interval) {
+                s_confirm_point_interval = interval;
             }
 
             void bls_votes_manager::read_from_worldstate(std::shared_ptr<ws_helper> ws_helper_ptr,
@@ -100,17 +106,18 @@ namespace ultrainio {
 
             bool bls_votes_manager::should_be_confirmed(uint32_t block_num) const {
                 const auto &o = _db.get<bls_votes_object>();
+                ULTRAIN_ASSERT(s_confirm_point_interval > 0, chain_exception, "not set s_confirm_point_interval");
                 ilog("latest_confirmed_block_num : ${latest}", ("latest", o.latest_confirmed_block_num));
                 for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {
                     ilog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
                          ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", std::string(itor->bls_str.begin(), itor->bls_str.end())));
                 }
                 if (o.should_be_confirmed.size() > 0) {
-                    if (o.should_be_confirmed.back().block_num + confirm_point_interval == block_num) {
+                    if (o.should_be_confirmed.back().block_num + s_confirm_point_interval == block_num) {
                         wlog("there are too many unconfirmed block;");
                         return true;
                     }
-                } else if (o.latest_confirmed_block_num + confirm_point_interval == block_num) {
+                } else if (o.latest_confirmed_block_num + s_confirm_point_interval == block_num) {
                     return true;
                 }
                 return false;
@@ -147,11 +154,6 @@ namespace ultrainio {
                 const auto &o = _db.get<bls_votes_object>();
 
                 _db.modify(o, [&](bls_votes_object &obj) {
-                    ilog("latest_confirmed_block_num : ${latest}", ("latest", o.latest_confirmed_block_num));
-                    for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {
-                        ilog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
-                             ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", std::string(itor->bls_str.begin(), itor->bls_str.end())));
-                    }
                     auto begin = obj.should_be_confirmed.begin();
                     auto itor = begin;
                     for (; itor != obj.should_be_confirmed.end(); itor++) {

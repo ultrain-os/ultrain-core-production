@@ -556,10 +556,11 @@ void system_contract::voteresourcelease() {
          if(globalparams.exists()){
             ultrainio_global_state  _gstate = globalparams.get();
             for(auto extension : _gstate.table_extension){
-               if(extension.key != 1)
-                  continue;
-               std::string  str = extension.value;
-               updateauth_fee = std::stoi(str);
+               if(extension.key == ultrainio_global_state::global_state_exten_type_key::update_auth) {
+                  std::string str = extension.value;
+                  updateauth_fee = std::stoi(str);
+                  break;
+               }
             }
          }
          int64_t authsize = data.keys.size() + data.accounts.size() + data.waits.size();

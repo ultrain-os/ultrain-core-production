@@ -186,11 +186,16 @@ def stepRegProducers():
             "master_prods":[%s],"block_height":%s,"block_id":"%s","master_chain_ext":[]}}\' -p ultrainio ' % \
             ( masterproducerinfo, args.num_master_block, args.master_block_id) )
     sleep(15)
-    #table_extension key:1  updateauth  the value UGAS of each permission
+    #table_extension key, detail see ultrainio.system.hpp
+    #enum global_state_exten_type_key {
+    #    global_state_key_start = 0,
+    #    update_auth,
+    #    confirm_point_interval
+    #};
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"]]}}\' -p ultrainio ' % \
+        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"], [2, "12"]]}}\' -p ultrainio ' % \
         (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
         newaccount_fee, args.subchain, worldstate_interval, resourcelease_fee) )
     sleep(5)
