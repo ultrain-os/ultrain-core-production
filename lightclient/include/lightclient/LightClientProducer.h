@@ -20,6 +20,8 @@ namespace ultrainio {
 
     class LightClientProducer {
     public:
+        static void setConfirmPointInterval(int interval);
+
         LightClientProducer(bls_votes_manager& blsVotesManager);
 
         bool hasNextTobeConfirmedBls(BlsVoterSet& blsVoterSet) const;

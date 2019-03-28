@@ -404,6 +404,29 @@ public:
 
    get_producers_result get_producers( const get_producers_params& params )const;
 
+   struct exten_type {
+       uint16_t         key;
+       std::string      value;
+   };
+   typedef std::vector<exten_type>  exten_types;
+
+   // sync with ultrainio.system.hpp
+   enum global_state_exten_type_key {
+       global_state_key_start = 0,
+       update_auth,
+       confirm_point_interval
+   };
+
+   struct get_confirm_point_interval_params {
+       int dummy;
+   };
+
+   struct get_confirm_point_interval_result {
+       int confirm_point_interval = 12;
+   };
+
+   get_confirm_point_interval_result get_confirm_point_interval(const get_confirm_point_interval_params& p) const;
+
    bool is_genesis_finished()const;
    uint64_t get_worldstate_interval()const;
 
@@ -746,6 +769,9 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(all_chain)(chain_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::producer_with_location, (chain_name)(prod_detail))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(more) );
+FC_REFLECT( ultrainio::chain_apis::read_only::exten_type, (key)(value) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_confirm_point_interval_params, (dummy) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_confirm_point_interval_result, (confirm_point_interval) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
         (account_name)(head_block_num)(head_block_time)(privileged)(updateable)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(

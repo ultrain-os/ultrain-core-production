@@ -6,6 +6,11 @@
 #include <lightclient/Helper.h>
 
 namespace ultrainio {
+
+    void LightClientProducer::setConfirmPointInterval(int interval) {
+        bls_votes_manager::set_confirm_point_interval(interval);
+    }
+
     LightClientProducer::LightClientProducer(bls_votes_manager& blsVotesMgr) : m_BlsVotesMgr(blsVotesMgr) {}
 
     bool LightClientProducer::shouldBeConfirmed(const BlockHeader& blockHeader) const {
