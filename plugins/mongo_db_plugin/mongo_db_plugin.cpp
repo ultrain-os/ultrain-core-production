@@ -915,7 +915,8 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 
    if( start_block_reached ) {
       trans_doc.append( kvp( "trx_id", trx_id_str ),
-                        kvp( "irreversible", b_bool{false} ));
+                        kvp( "irreversible", b_bool{false} ),
+                        kvp( "action_count", b_int32{static_cast<int32_t>(trx.total_actions())} ) );
 
       string signing_keys_json;
       if( t->signing_keys.valid()) {
