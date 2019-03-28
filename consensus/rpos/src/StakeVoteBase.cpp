@@ -14,6 +14,7 @@
 #include <appbase/application.hpp>
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <crypto/Bls.h>
+#include <lightclient/LightClientProducer.h>
 
 using std::string;
 using namespace appbase;
@@ -41,6 +42,9 @@ namespace ultrainio {
             m_committeeStatePtr = getCommitteeState(chain::master_chain_name);
         }
         ULTRAIN_ASSERT(getCommitteeMemberNumber() != 0, chain::chain_exception, "totalStake is 0");
+        const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+        chain_apis::read_only::get_confirm_point_interval_result result = ro_api.get_confirm_point_interval(chain_apis::read_only::get_confirm_point_interval_params());
+        LightClientProducer::setConfirmPointInterval(result.confirm_point_interval);
     }
 
     StakeVoteBase::~StakeVoteBase() {

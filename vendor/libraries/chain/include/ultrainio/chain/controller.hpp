@@ -193,6 +193,8 @@ namespace ultrainio { namespace chain {
          block_timestamp_type get_proper_next_block_timestamp() const;
          // This is a hack ...
          block_state_ptr pending_block_state_hack();
+         void set_version(uint32_t version);
+         void set_proposer(account_name proposer);
          void set_action_merkle_hack();
          void set_trx_merkle_hack();
          void set_header_extensions(const extensions_type&);

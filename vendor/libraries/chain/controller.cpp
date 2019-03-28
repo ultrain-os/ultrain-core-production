@@ -1558,6 +1558,14 @@ struct controller_impl {
       return false;
    }
 
+   void set_version(uint32_t version) {
+      pending->_pending_block_state->header.version = version;
+   }
+
+   void set_proposer(account_name proposer) {
+      pending->_pending_block_state->header.proposer = proposer;
+   }
+
    void set_action_merkle() {
       vector<digest_type> action_digests;
       action_digests.reserve( pending->_actions.size() );
@@ -1962,6 +1970,14 @@ block_state_ptr controller::pending_block_state()const {
 block_state_ptr controller::pending_block_state_hack() {
    if( my->pending ) return my->pending->_pending_block_state;
    return block_state_ptr();
+}
+
+void controller::set_version(uint32_t version) {
+   my->set_version(version);
+}
+
+void controller::set_proposer(account_name proposer) {
+   my->set_proposer(proposer);
 }
 
 void controller::set_action_merkle_hack() {

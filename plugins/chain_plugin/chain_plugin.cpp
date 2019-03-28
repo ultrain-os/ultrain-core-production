@@ -1259,6 +1259,7 @@ read_only::get_confirm_point_interval_result read_only::get_confirm_point_interv
         for (auto v : ext) {
             if (v.key == global_state_exten_type_key::confirm_point_interval) {
                 result.confirm_point_interval = std::stoi(v.value);
+                ilog("read confirm_point_interval from global state : ${value}", ("value", result.confirm_point_interval));
                 break;
             }
         }

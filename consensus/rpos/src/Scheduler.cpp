@@ -1342,16 +1342,19 @@ namespace ultrainio {
                     m_lightClientProducer->handleEpochEndPoint(chain, newMRoot);
                 }
             }
+            chain.set_version(0);
+            chain.set_proposer(StakeVoteBase::getMyAccount());
             // Construct the block msg from pbs.
             const auto &pbs = chain.pending_block_state();
             FC_ASSERT(pbs, "pending_block_state does not exist but it should, another plugin may have corrupted it");
             const auto &bh = pbs->header;
+            ilog("proposer : ${proposer}", ("proposer", std::string(pbs->header.proposer)));
             block.timestamp = bh.timestamp;
-            block.proposer = StakeVoteBase::getMyAccount();
+            block.proposer = bh.proposer;
 #ifdef CONSENSUS_VRF
             block.proposerProof = std::string(MsgMgr::getInstance()->getProposerProof(UranusNode::getInstance()->getBlockNum()));
 #endif
-            block.version = 0;
+            block.version = bh.version;
             block.previous = bh.previous;
             block.transaction_mroot = bh.transaction_mroot;
             block.action_mroot = bh.action_mroot;
@@ -1359,6 +1362,7 @@ namespace ultrainio {
             block.committee_mroot = bh.committee_mroot;
             block.header_extensions = bh.header_extensions;
             block.signature = std::string(Signer::sign<BlockHeader>(block, StakeVoteBase::getMyPrivateKey()));
+            ilog("pending id : ${id}, block id : ${blockId}", ("id", bh.id())("blockId", block.id()));
             ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature} committee mroot ${mroot}",
                  ("num", block.transactions.size())
                  ("proposer", std::string(block.proposer))

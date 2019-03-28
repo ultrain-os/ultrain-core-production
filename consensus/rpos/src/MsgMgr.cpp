@@ -9,10 +9,6 @@
 #include <rpos/Validator.h>
 #include <rpos/Vrf.h>
 
-#include <appbase/application.hpp>
-#include <ultrainio/chain_plugin/chain_plugin.hpp>
-#include <lightclient/LightClientProducer.h>
-
 namespace ultrainio {
     using namespace std;
 
@@ -32,9 +28,6 @@ namespace ultrainio {
         BlockMsgPoolPtr blockMsgPoolPtr = nullptr;
         if (StakeVoteBase::newRound(phase, baxCount)) {
             clearSomeBlockMessage(blockNum);
-            const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-            chain_apis::read_only::get_confirm_point_interval_result result = ro_api.get_confirm_point_interval(chain_apis::read_only::get_confirm_point_interval_params());
-            LightClientProducer::setConfirmPointInterval(result.confirm_point_interval);
         }
         std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
         stakeVotePtr->moveToNewStep(blockNum, phase, baxCount);
