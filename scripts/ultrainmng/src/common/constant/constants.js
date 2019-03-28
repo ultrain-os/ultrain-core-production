@@ -33,6 +33,7 @@ var encodingConstants = {
 var chainNameConstants = {
     MAIN_CHAIN_NAME: "ultrainio",
     INVAILD_CHAIN_NAME: "zzzzzzzzzzzzj", //非法链
+    MAIN_CHAIN_NAME_TRANSFER: "master", //只有转账的时候用它标志主链
 }
 
 //时间常量（单位ms）
@@ -46,7 +47,8 @@ var timeConstats = {
 
 //合约常量
 var contractConstants = {
-    ULTRAINIO: "ultrainio"
+    ULTRAINIO: "ultrainio",
+    UTRIO_BANK:"utrio.bank",
 }
 
 //action常量
@@ -64,6 +66,7 @@ var tableConstants = {
     PENDING_RES: "pendingres", //资源投票表
     WORLDSTATE_HASH: "wshash", //世界状态hash表
     GLOBAL: "global",
+    BULLETIN_BANK: "bulletinbank",
 }
 
 //scode常量

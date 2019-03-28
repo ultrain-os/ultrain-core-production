@@ -235,13 +235,172 @@ async function syncUser() {
 }
 
 /**
+ *
+ * @returns {Promise<void>}
+ */
+async function syncUgas() {
+
+    logger.info("start sync ugas");
+
+    if (monitor.isDeploying()) {
+        logger.error("monitor.isDeploying(),wait...", monitor.isDeploying());
+        return;
+    } else {
+        logger.info("monitor.isDeploying()", monitor.isDeploying());
+    }
+
+    if (syncChainData == true && isMainChain() == false) {
+
+        //增加本轮是否是出块节点的判断
+        var headBlockProposer = await chainApi.getHeadBlockProposer(chainConfig.configSub);
+        //判断是否要上传块头
+        if (chainConfig.myAccountAsCommittee != headBlockProposer) {
+            logger.info("headBlockProposer("+headBlockProposer+") is not myself("+chainConfig.myAccountAsCommittee+"),do not sync ugas");
+            return;
+        }
+
+        //主链到子链
+        await syncMasterUgasToSubchain();
+
+        //子链到主链
+        await syncSubchainUgasToMaster();
+
+
+
+    } else {
+        logger.info("need not sync ugas");
+    }
+
+}
+
+
+/**
+ * 同步主链ugas到子链
+ * @returns {Promise<void>}
+ */
+async function syncMasterUgasToSubchain() {
+
+    logger.info("syncMasterUgasToSubchain start");
+    let bulletinBankData = await chainApi.getTableAllData(chainConfig.config,contractConstants.UTRIO_BANK,chainConfig.localChainName,tableConstants.BULLETIN_BANK,null);
+    if (bulletinBankData.rows.length == 0) {
+        logger.error("bulletinBankData list is null");
+    }
+
+    logger.info("bulletinBankData data rows length:",bulletinBankData.rows.length);
+    for (let i = 0; i < bulletinBankData.rows.length; i++) {
+        try {
+            let bankBlockData = bulletinBankData.rows[i];
+            logger.debug("row " + i + ", bulletinBankData :", bankBlockData);
+            try {
+                let blockHeight = bankBlockData.block_height;
+                let bulletinInfoLength = bankBlockData.bulletin_infos.length;
+                logger.debug("row " + i + ", blockHeight :" + bankBlockData + ",bulletinInfoLength:" + bulletinInfoLength);
+
+                //获取主链的块信息
+                let blockInfo = await chainConfig.u3.getBlockInfo((blockHeight).toString());
+                logger.debug("sync ugas info:", blockInfo);
+                let trans = chainUtil.getTransFromBlockHeader(blockInfo, chainConfig.localChainName);
+                logger.info("find trans length:", trans.length);
+                //调用MerkleProof
+                for (let t = 0; t < trans.length; t++) {
+                    let tranId = trans[t].trx.id;
+                    logger.info("getMerkleProof(blockheight:" + blockHeight + ",trxid:" + tranId);
+                    let merkleProof = await chainApi.getMerkleProof(chainConfig.config, blockHeight, tranId);
+                    logger.info("merkleProof:", merkleProof);
+                    if (utils.isNotNull(merkleProof)) {
+                        logger.info("merkleProof trx_receipt_bytes:", merkleProof.trx_receipt_bytes);
+                        let tx_bytes_array = chainUtil.transferTrxReceiptBytesToArray(merkleProof.trx_receipt_bytes);
+                        logger.info("merkleProof trx_receipt_bytes convert to array length:", tx_bytes_array.length)
+                        logger.info("merkleProof trx_receipt_bytes convert to array:", tx_bytes_array.toString());
+                        let param = {
+                            chain_name: chainNameConstants.MAIN_CHAIN_NAME_TRANSFER, block_number: blockHeight,
+                            merkle_proofs: merkleProof.merkle_proof, tx_bytes: tx_bytes_array
+                        }
+                        logger.info("prepare to push sync transfer trx:", param);
+                        let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "synctransfer", param, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+                        logger.info("synctransfer res:", res);
+                    }
+                }
+            } catch (e) {
+                logger.error("bank block data row error:",e);
+            }
+
+        } catch (e) {
+            logger.error("bank block data error:",e);
+        }
+    }
+
+    logger.info("syncMasterUgasToSubchain end");
+}
+
+/**
+ * 同步子链ugas到主链
+ * @returns {Promise<void>}
+ */
+async function syncSubchainUgasToMaster() {
+
+    logger.info("syncSubchainUgasToMaster start");
+    let bulletinBankData = await chainApi.getTableAllData(chainConfig.configSub,contractConstants.UTRIO_BANK,chainNameConstants.MAIN_CHAIN_NAME,tableConstants.BULLETIN_BANK,null);
+    if (bulletinBankData.rows.length == 0) {
+        logger.error("bulletinBankData master list is null");
+    }
+
+    logger.info("bulletinBankData master data rows length:",bulletinBankData.rows.length);
+    for (let i = 0; i < bulletinBankData.rows.length; i++) {
+        try {
+            let bankBlockData = bulletinBankData.rows[i];
+            logger.debug("row " + i + ", master bulletinBankData :", bankBlockData);
+            try {
+                let blockHeight = bankBlockData.block_height;
+                let bulletinInfoLength = bankBlockData.bulletin_infos.length;
+                logger.debug("master row " + i + ", blockHeight :" + bankBlockData + ",bulletinInfoLength:" + bulletinInfoLength);
+
+                //获取子链的块信息
+                let blockInfo = await chainConfig.u3Sub.getBlockInfo((blockHeight).toString());
+                logger.debug("sync ugas master info:", blockInfo);
+                let trans = chainUtil.getTransFromBlockHeader(blockInfo, chainNameConstants.MAIN_CHAIN_NAME);
+                logger.info("find trans length:", trans.length);
+                //调用MerkleProof
+                for (let t = 0; t < trans.length; t++) {
+                    let tranId = trans[t].trx.id;
+                    logger.info("master getMerkleProof(blockheight:" + blockHeight + ",trxid:" + tranId);
+                    let merkleProof = await chainApi.getMerkleProof(chainConfig.configSub, blockHeight, tranId);
+                    logger.info("master merkleProof:", merkleProof);
+                    if (utils.isNotNull(merkleProof)) {
+                        logger.info("merkleProof trx_receipt_bytes:", merkleProof.trx_receipt_bytes);
+                        let tx_bytes_array = chainUtil.transferTrxReceiptBytesToArray(merkleProof.trx_receipt_bytes);
+                        logger.info("merkleProof mastertrx_receipt_bytes convert to array length:", tx_bytes_array.length)
+                        logger.info("merkleProof master trx_receipt_bytes convert to array:", tx_bytes_array.toString());
+                        let param = {
+                            chain_name: chainConfig.localChainName, block_number: blockHeight,
+                            merkle_proofs: merkleProof.merkle_proof, tx_bytes: tx_bytes_array
+                        }
+                        logger.info("prepare to push sync master transfer trx:", param);
+                        let res = await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "synctransfer", param, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+                        logger.info("synctransfer res:", res);
+                    }
+                }
+            } catch (e) {
+                logger.error("bank block data master row error:",e);
+            }
+
+        } catch (e) {
+            logger.error("bank block data master error:",e);
+        }
+    }
+
+    logger.info("syncSubchainUgasToMaster end");
+}
+
+/**
  * 同步块头
  * @returns {Promise<void>}
  */
 async function syncBlock() {
 
     if (monitor.isDeploying()) {
-        logger.info("monitor.isDeploying()", monitor.isDeploying());
+        logger.error("monitor.isDeploying(),wait...", monitor.isDeploying());
+        return;
     } else {
         logger.info("monitor.isDeploying()", monitor.isDeploying());
     }
@@ -398,7 +557,8 @@ async function syncBlock() {
 async function syncMasterBlock() {
 
     if (monitor.isDeploying()) {
-        logger.info("monitor.isDeploying()", monitor.isDeploying());
+        logger.error("monitor.isDeploying(),wait...", monitor.isDeploying());
+        return;
     } else {
         logger.info("monitor.isDeploying()", monitor.isDeploying());
     }
@@ -1624,4 +1784,5 @@ module.exports = {
     syncWorldState,
     syncAllResource,
     syncNewestResource,
+    syncUgas,
 }

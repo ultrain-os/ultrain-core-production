@@ -1,6 +1,7 @@
 var logger = require("../../config/logConfig").getLogger("ChainUtil")
 var utils = require('../../common/util/utils')
 const fs = require('fs');
+var constants = require('../../common/constant/constants')
 
 /**
  * 创世时间格式化
@@ -132,11 +133,75 @@ function calcSubchainIntevalBlockHeight(mainchainStartBlockNum, mainchainEndBloc
 //
 // logger.info(formatGensisTime(data));
 
+
+/**
+ * 通过块信息获取转账的交易列表
+ * @param blockInfo
+ * @param chainInfo
+ * @returns {Array}
+ */
+function getTransFromBlockHeader(blockInfo,chainName) {
+    let trans = [];
+    try {
+        let transList = blockInfo.transactions;
+        if (transList.length > 0) {
+            for (let i=0;i<transList.length;i++) {
+                let tranInfo = transList[i];
+                if (tranInfo.status == "executed") {
+                    logger.debug("traninfo trx :",tranInfo.trx);
+                    logger.debug("traninfo trx actions :",tranInfo.trx.transaction.actions);
+                    let actions = tranInfo.trx.transaction.actions;
+                    for (let t=0;t<actions.length;t++) {
+                        let action = actions[t];
+                        if (action.data.to == constants.contractConstants.UTRIO_BANK && action.data.memo == chainName) {
+                            logger.info("find useful action:",action);
+                            logger.debug("find useful tran:",tranInfo);
+                            trans.push(tranInfo);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+
+    } catch (e) {
+        logger.error("getTransFromBlockHeader error",e);
+    }
+
+    return trans;
+}
+
+function transferTrxReceiptBytesToArray(bytes) {
+
+    let array = [];
+    try {
+        if (bytes.length % 2 == 0) {
+            let count = bytes.length / 2;
+            let i = 0;
+            while (i<count) {
+                let str = bytes.substr(i*2,2);
+                var num=parseInt(str,16);
+                array.push(num);
+                i++;
+            }
+        }
+
+    } catch (e) {
+        logger.error("transferTrxReceiptBytesToArray error,",e);
+    }
+
+    return array;
+
+}
+
 module.exports = {
     formatGensisTime,
     getOwnerPkByAccount,
     checkFileExist,
     calcBlockDuration,
     isResourceChanged,
-    calcSubchainIntevalBlockHeight
+    calcSubchainIntevalBlockHeight,
+    getTransFromBlockHeader,
+    transferTrxReceiptBytesToArray,
 }

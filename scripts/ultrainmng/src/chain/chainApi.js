@@ -533,6 +533,34 @@ const getHeadBlockNum = async (config) => {
 }
 
 /**
+ *
+ * @param config
+ * @returns {Promise<*>}
+ */
+const getHeadBlockProposer = async (config) => {
+    try {
+        const rs = await multiRequest(config.httpEndpoint, "/v1/chain_info/get_chain_info", {}, config.seedHttpList);
+        return rs.data.head_block_proposer;
+    } catch (e) {
+        logger.error("getHeadBlockProposer error,", utils.logNetworkError(e));
+    }
+
+    return null;
+
+}
+
+const getConfirmedBlockNumber = async (chainName) => {
+    try {
+         getTable
+
+    } catch (e) {
+        logger.error("getConfirmedBlockNumber error:",e)
+    }
+
+    return null;
+}
+
+/**
  * monitor check in
  * @param url
  * @param param
@@ -869,6 +897,23 @@ getSeedInfo = async (url, param) => {
     return null;
 }
 
+/**
+ *
+ * @param config
+ * @param blockNum
+ * @param trxId
+ * @returns {Promise<*>}
+ */
+getMerkleProof = async (config,blockNum,trxId) => {
+    try {
+        const rs = await multiRequest(config.httpEndpoint, "/v1/chain/get_merkle_proof", {block_number:blockNum,trx_id:trxId}, config.seedHttpList);
+        return rs.data;
+    } catch (e) {
+        logger.error("get getMerkleProof error:",utils.logNetworkError(e));
+    }
+
+    return null;
+}
 
 module.exports = {
     getChainId,
@@ -904,4 +949,6 @@ module.exports = {
     addRestartLog,
     getMasterBlockNum,
     getHeadBlockNum,
+    getMerkleProof,
+    getHeadBlockProposer,
 }

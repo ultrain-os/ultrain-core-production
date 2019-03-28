@@ -10,8 +10,8 @@ var utils = require('./common/util/utils')
 //定时配置
 var singleJobSchedule = "*/10 * * * * *";
 
-//清除pm2 日志(每1小时）
-var logJobSchedule = "* 0 * * * *";
+//清除pm2 日志(每1分钟）
+var logJobSchedule = "*/60 * * * * *";
 
 /**
  * 管家程序入口
@@ -72,6 +72,11 @@ async function startEntry() {
     //块同步
     schedule.scheduleJob(syncBlockSchedule, async function () {
         await chain.syncBlock();
+    });
+
+    //ugar同步
+    schedule.scheduleJob(syncBlockSchedule, async function () {
+        await chain.syncUgas();
     });
 
     //资源同步-所有数据
