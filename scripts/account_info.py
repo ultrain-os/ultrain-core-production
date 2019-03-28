@@ -765,23 +765,23 @@ account_sk_list = [
 
 # print account_sk_list[8];
 # print account_pk_list[8];
-rand_acc_lst = [
+rand_acc_lst = [ #Temporarily use 4 accounts to vote
     "jack",
     "tony",
     "beckham",
     "henry",
-    "messi",
-    "guly",
-    "eto",
-    "rose",
-    "tom",
-    "jerry",
-    "test1",
-    "test2",
-    "test3",
-    "test4",
-    "nft",
-    "wenge",
+   #  "messi",
+   #  "guly",
+   #  "eto",
+   #  "rose",
+   #  "tom",
+   #  "jerry",
+   #  "test1",
+   #  "test2",
+   #  "test3",
+   #  "test4",
+   #  "nft",
+   #  "wenge",
 ]
 
 rand_sk_lst = [

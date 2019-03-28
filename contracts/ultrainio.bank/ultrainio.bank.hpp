@@ -41,6 +41,14 @@ namespace ultrainiobank {
                 ULTRAINLIB_SERIALIZE(bulletin_bank, (block_height)(bulletin_infos))
             };
             typedef ultrainio::multi_index<N(bulletinbank), bulletin_bank> bulletinbank;
+            struct chain_balance {
+                name     chain_name;
+                asset    balance;
+                uint64_t primary_key()const { return chain_name; }
+
+                ULTRAINLIB_SERIALIZE(chain_balance, (chain_name)(balance))
+            };
+            typedef ultrainio::multi_index<N(chainbalance), chain_balance> chainbalance;
 
     };
     extern "C" 

@@ -1569,6 +1569,7 @@ int main( int argc, char** argv ) {
    string table;
    string lower;
    string upper;
+   string table_key_type;
    string table_key;
    string key_type;
    bool binary = false;
@@ -1580,6 +1581,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
+   getTable->add_option( "-p,--type", table_key_type, localized("select table key type") );
    getTable->add_option( "-k,--key", table_key, localized("filter index key") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
@@ -1595,7 +1597,8 @@ int main( int argc, char** argv ) {
                          ("code",code)
                          ("scope",scope)
                          ("table",table)
-                         ("table_key",table_key) // not used
+                         ("table_key_type",table_key_type)
+                         ("table_key",table_key)
                          ("lower_bound",lower)
                          ("upper_bound",upper)
                          ("limit",limit)

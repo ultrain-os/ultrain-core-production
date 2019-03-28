@@ -11,7 +11,7 @@ wallet_url=" --wallet-url http://127.0.0.1:6666 "
 VOTER_NUM=${#ult_accountLst[@]}
 case "$1" in
   "e") #vote
-	i=0;j=1; VOTE_TIMES=200000; VOTER_NUM=16;
+	i=0;j=1; VOTE_TIMES=200000; VOTER_NUM=4;
 	while [ true ];do
                 printf "times : "$j"\n"
 		while [ $i -lt $VOTER_NUM ];do
