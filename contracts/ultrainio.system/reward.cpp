@@ -10,9 +10,10 @@ namespace ultrainiosystem {
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
 
       require_auth(N(ultrainio));
-
-      ultrainio_assert( _gstate.cur_committee_number >= _gstate.min_committee_member_number,
-         "The current number of committees must be greater than the minimum to be eligible for new awards");
+      if(_gstate.cur_committee_number < _gstate.min_committee_member_number){
+         print("func onblock:the current number of committees must be greater than the minimum to be eligible for new awards");
+         return;
+      }
 
       /**
        * At startup the initial producer may not be one that is registered / elected

@@ -300,6 +300,7 @@ namespace ultrainiosystem {
       // update totals of "receiver"
       {
          uint64_t cuttingfee = 0;
+         uint32_t cur_block_height = (uint32_t)head_block_number() + 1;
          auto reslease_itr = _reslease_tbl.find( receiver );
          if( reslease_itr ==  _reslease_tbl.end() ) {
             ultrainio_assert( (combosize > 0) && (days > 0), "resource lease buy days and numbler must > 0" );
@@ -317,9 +318,9 @@ namespace ultrainiosystem {
             reslease_itr = _reslease_tbl.emplace( [&]( auto& tot ) {
                   tot.owner = receiver;
                   tot.lease_num = combosize;
-                  tot.start_block_height = (uint32_t)head_block_number();
+                  tot.start_block_height = cur_block_height;
                   tot.end_block_height = tot.start_block_height + (uint32_t)days*seconds_per_day / block_interval_seconds();
-                  tot.modify_block_height = (uint32_t)head_block_number();
+                  tot.modify_block_height = cur_block_height;
                   if(_gstate.is_master_chain() && days*seconds_per_day >= seconds_per_year/2)
                      tot.free_account_number = (uint32_t)combosize* 1000;
                });
@@ -328,8 +329,8 @@ namespace ultrainiosystem {
             ultrainio_assert(((combosize > 0) && (days == 0))||((combosize == 0) && (days > 0)), "resource lease days and numbler can't increase them at the same time" );
             if(combosize > 0)
             {
-               ultrainio_assert(reslease_itr->end_block_height > (uint32_t)head_block_number(), "resource lease endtime already expired" );
-               double remain_time = block_interval_seconds()*(reslease_itr->end_block_height - (uint32_t)head_block_number())/(double)seconds_per_day;
+               ultrainio_assert(reslease_itr->end_block_height > cur_block_height, "resource lease endtime already expired" );
+               double remain_time = block_interval_seconds()*(reslease_itr->end_block_height - cur_block_height)/(double)seconds_per_day;
                cuttingfee = uint64_t(ceil(remain_time))*combosize;
                if(chain_itr == _chains.end()) {
                    _gstate.total_resources_used_number += combosize;
@@ -341,19 +342,22 @@ namespace ultrainiosystem {
                        _subchain.global_resource.total_ram_bytes_used += (uint64_t)combosize*bytes;
                    });
                }
-               if(_gstate.is_master_chain() &&  (reslease_itr->end_block_height > reslease_itr->start_block_height) &&
-                 ((reslease_itr->end_block_height - reslease_itr->start_block_height)* block_interval_seconds() > seconds_per_year/2)){
+               if(_gstate.is_master_chain() &&  (reslease_itr->end_block_height > cur_block_height) &&
+                 ((reslease_itr->end_block_height - cur_block_height)* block_interval_seconds() > seconds_per_year/2)){
                   free_account_number = combosize* 1000;
                }
             } else if(days > 0)
             {
                ultrainio_assert(reslease_itr->lease_num > 0, "resource lease number is not normal" );
                cuttingfee = days*reslease_itr->lease_num;
+               if(_gstate.is_master_chain() && days > seconds_per_year/24/3600/2){
+                  free_account_number = reslease_itr->lease_num* 1000;
+               }
             }
             _reslease_tbl.modify( reslease_itr, [&]( auto& tot ) {
                   tot.lease_num += combosize;
                   tot.end_block_height  += days * seconds_per_day / block_interval_seconds();
-                  tot.modify_block_height = (uint32_t)head_block_number();
+                  tot.modify_block_height = cur_block_height;
                   tot.free_account_number += free_account_number;
                });
          }

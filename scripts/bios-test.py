@@ -215,6 +215,7 @@ def stepCreateinitAccounts():
     retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
     for a in rand_acc_lst:
         retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"3.0000"))
+    retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % ("utrio.bank","10000.0000"))
 def stepResign():
     #resign('ultrainio', 'utrio.null')
     resign('utrio.stake', 'utrio.null')

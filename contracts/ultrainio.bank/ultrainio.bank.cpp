@@ -7,7 +7,7 @@ namespace ultrainiobank {
                     account_name to,
                     asset        quantity,
                     string       memo ){
-        if(from == N(utrio.bank))
+        if(from == N(utrio.bank) || from == N(ultrainio))
             return;
         name  chain_name = name{string_to_name(memo.c_str())};
         ultrainiosystem::global_state_singleton   _global(N(ultrainio),N(ultrainio));
@@ -54,11 +54,15 @@ namespace ultrainiobank {
             });
         }
         print(name{from}," transfer to ", name{to}, "  ", quantity," to_chain:",memo);
-        if(block_height > 1000){
+        if(block_height > 50000){
+            uint32_t loopsize = 0;
             for(auto bulliter = bullbank.begin(); bulliter != bullbank.end(); ){
-                if(bulliter->block_height < (block_height - 1000))
+                if(bulliter->block_height < (block_height - 50000))
                     bulliter = bullbank.erase(bulliter);
                 else
+                    break;
+                loopsize++;
+                if(loopsize > 1000)
                     break;
             }
         }
