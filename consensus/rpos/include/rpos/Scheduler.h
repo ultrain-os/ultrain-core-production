@@ -89,7 +89,7 @@ namespace ultrainio {
     class LightClientProducer;
     class CommitteeSet;
 
-class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrainio::chain::callback {
+class Scheduler : public std::enable_shared_from_this<Scheduler> {
     public:
         ~Scheduler();
         Scheduler();
@@ -215,12 +215,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler>, public ultrain
 
         void enableEventRegister(bool v);
 
-        // implement callback
-        bool on_accept_block_header(uint64_t chainName, const BlockHeader& blockHeader, BlockIdType& id);
-
     private:
-
-        bool getUnconfirmedHeaderFromDb(const chain::name&, std::vector<BlockHeader>& unconfirmedBlockHeader, BlockIdType& confirmedBlockId, CommitteeSet& committeeSet);
 
         // This function is time consuming, please cache the result empty block.
         std::shared_ptr<Block> generateEmptyBlock();

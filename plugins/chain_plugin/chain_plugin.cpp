@@ -23,6 +23,8 @@
 #include <ultrainio/chain/wast_to_wasm.hpp>
 #include <ultrainio/chain/worldstate_file_manager.hpp>
 #include <ultrainio/chain/worldstate.hpp>
+#include <ultrainio/chain/callback.hpp>
+#include <ultrainio/chain/callback_manager.hpp>
 
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>
@@ -31,6 +33,13 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 #include <signal.h>
+
+#include <core/BlsVoterSet.h>
+#include <core/types.h>
+#include <lightclient/CommitteeSet.h>
+#include <lightclient/EpochEndPoint.h>
+#include <lightclient/LightClient.h>
+#include <lightclient/LightClientMgr.h>
 
 namespace ultrainio {
 
@@ -104,6 +113,58 @@ using boost::signals2::scoped_connection;
       NEXT(e.dynamic_copy_exception());\
    }
 
+using ultrainio::LightClient;
+using ultrainio::CommitteeSet;
+using ultrainio::LightClientMgr;
+
+class light_client_callback : public ultrainio::chain::callback {
+public:
+    bool on_accept_block_header(uint64_t chainName, const BlockHeader &blockHeader, BlockIdType &id) {
+        ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}",
+             ("chainName", name(chainName))("blockNum", blockHeader.block_num()));
+        std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(chainName);
+        lightClient->reset();
+        if (std::string(blockHeader.proposer) == std::string("genesis")) {
+            lightClient->accept(blockHeader);
+            id = lightClient->getLatestConfirmedBlockId();
+            return true;
+        } else {
+            std::vector<BlockHeader> unconfirmedheaders;
+            BlockIdType confirmedBlockId;
+            CommitteeSet committeeSet;
+            if (getUnconfirmedHeaderFromDb(name(chainName), unconfirmedheaders, confirmedBlockId, committeeSet)) {
+                lightClient->setStartPoint(CommitteeSet(), confirmedBlockId);
+                for (auto e : unconfirmedheaders) {
+                    lightClient->accept(e);
+                }
+                lightClient->accept(blockHeader);
+                id = lightClient->getLatestConfirmedBlockId();
+                return true;
+            }
+        }
+        id = lightClient->getLatestConfirmedBlockId();
+        return false;
+    }
+
+private:
+    bool getUnconfirmedHeaderFromDb(const chain::name &chainName, std::vector<BlockHeader> &unconfirmedBlockHeader,
+                                    BlockIdType &confirmedBlockId, CommitteeSet &committeeSet) {
+        try {
+            const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+            struct chain_apis::read_only::get_subchain_unconfirmed_header_params params;
+            params.chain_name = chainName;
+            auto result = ro_api.get_subchain_unconfirmed_header(params);
+            unconfirmedBlockHeader = result.unconfirmed_headers;
+            confirmedBlockId = result.confirmed_block_id;
+            committeeSet = CommitteeSet(result.committee_set);
+            ilog("chainName name = ${name}", ("name", chainName.to_string()));
+            return true;
+        } catch (fc::exception &e) {
+            ilog("There may be no unconfirmed block header : ${e}", ("e", e.to_string()));
+        }
+        return false;
+    };
+};
 
 class chain_plugin_impl {
 public:
@@ -278,6 +339,7 @@ fc::time_point calculate_genesis_timestamp( string tstr ) {
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
+   ultrainio::chain::callback_manager::get_self()->register_callback(std::make_shared<light_client_callback>());
    try {
       try {
          genesis_state gs; // Check if ULTRAINIO_ROOT_KEY is bad

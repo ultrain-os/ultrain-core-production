@@ -28,7 +28,6 @@
 #include <lightclient/CommitteeSet.h>
 #include <lightclient/EpochEndPoint.h>
 #include <lightclient/LightClientProducer.h>
-#include <lightclient/LightClient.h>
 #include <lightclient/LightClientMgr.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
@@ -2223,49 +2222,6 @@ namespace ultrainio {
     void Scheduler::enableEventRegister(bool v) {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.enable_event_register(v);
-    }
-
-    bool Scheduler::on_accept_block_header(uint64_t chainName, const BlockHeader& blockHeader, BlockIdType& id) {
-        ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}", ("chainName", name(chainName))("blockNum", blockHeader.block_num()));
-        std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(chainName);
-        lightClient->reset();
-        if (std::string(blockHeader.proposer) == std::string("genesis")) {
-            lightClient->accept(blockHeader);
-            id = lightClient->getLatestConfirmedBlockId();
-            return true;
-        } else {
-            std::vector<BlockHeader> unconfirmedheaders;
-            BlockIdType confirmedBlockId;
-            CommitteeSet committeeSet;
-            if (getUnconfirmedHeaderFromDb(name(chainName), unconfirmedheaders, confirmedBlockId, committeeSet)) {
-                lightClient->setStartPoint(CommitteeSet(), confirmedBlockId);
-                for (auto e : unconfirmedheaders) {
-                    lightClient->accept(e);
-                }
-                lightClient->accept(blockHeader);
-                id = lightClient->getLatestConfirmedBlockId();
-                return true;
-            }
-        }
-        id = lightClient->getLatestConfirmedBlockId();
-        return false;
-    }
-
-    bool Scheduler::getUnconfirmedHeaderFromDb(const chain::name& chainName, std::vector<BlockHeader>& unconfirmedBlockHeader, BlockIdType& confirmedBlockId, CommitteeSet& committeeSet) {
-        try {
-            const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-            struct chain_apis::read_only::get_subchain_unconfirmed_header_params params;
-            params.chain_name = chainName;
-            auto result = ro_api.get_subchain_unconfirmed_header(params);
-            unconfirmedBlockHeader = result.unconfirmed_headers;
-            confirmedBlockId = result.confirmed_block_id;
-            committeeSet = CommitteeSet(result.committee_set);
-            ilog("chainName name = ${name}", ("name", chainName.to_string()));
-            return true;
-        } catch (fc::exception& e) {
-            ilog("There may be no unconfirmed block header : ${e}", ("e", e.to_string()));
-        }
-        return false;
     }
 
     bool Scheduler::isDuplicate(const ProposeMsg& proposeMsg) {
