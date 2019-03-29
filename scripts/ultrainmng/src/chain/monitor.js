@@ -35,6 +35,8 @@ var enableRestart = 0;
 
 var enableSyncUserRes = 1;
 
+var enableSyncUgas = 1;
+
 /**
  *
  * @returns {string}
@@ -130,7 +132,8 @@ async function buildParam() {
 
     var extMsg = {
         "enableRestart": enableRestartRes,
-        "enableSyncUserRes": enableSyncUserRes
+        "enableSyncUserRes": enableSyncUserRes,
+        "enableSyncUgas" : enableSyncUgas,
     }
     var param = {
         "chainId": chainConfig.localChainName,
@@ -317,6 +320,20 @@ async function cmdDeploy(deployBatch) {
             enableSyncUserRes = 0;
             systemCmd = true;
         }
+
+        //开启同步ugas-1
+        if (deployCmd.content == constants.cmdConstants.ENABLE_SYNC_UGAS) {
+            enableSyncUgas = 1;
+            systemCmd = true;
+        }
+
+        //关闭同步ugas-0
+        if (deployCmd.content == constants.cmdConstants.DISABLE_SYNC_UGAS) {
+            enableSyncUgas = 0;
+            systemCmd = true;
+        }
+
+        enableSyncUgas
 
         //增加nod配置并重新启动
         if (deployCmd.content == constants.cmdConstants.ADD_NOD_CONFIG) {
@@ -729,6 +746,18 @@ function needSyncUserRes() {
     return false;
 }
 
+/**
+ *
+ * @returns {boolean}
+ */
+function needSyncUgas() {
+    if (enableSyncUgas == 1) {
+        return true;
+    }
+
+    return false;
+}
+
 async function pm2LogFlush() {
     await ShellCmd.execCmd("pm2 flush");
 }
@@ -745,4 +774,5 @@ module.exports = {
     needCheckNod,
     needSyncUserRes,
     pm2LogFlush,
+    needSyncUgas,
 }

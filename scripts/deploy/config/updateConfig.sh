@@ -8,4 +8,5 @@ cp /root/deploy/scripts/deploy/config/$NAME/template_orig.txt /root/$NAME/
 cp /root/deploy/scripts/deploy/config/$NAME/toplogy-h.py /root/$NAME/
 cp /root/deploy/scripts/deploy/config/controller.py /root/$NAME/
 cp /root/deploy/scripts/deploy/config/fabfile4azure.py /root/$NAME/
+cp /root/deploy/scripts/deploy/config/$NAME/keypiair-real.txt /root/$NAME/
 

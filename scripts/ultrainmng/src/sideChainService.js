@@ -11,7 +11,10 @@ var utils = require('./common/util/utils')
 var singleJobSchedule = "*/10 * * * * *";
 
 //清除pm2 日志(每1分钟）
-var logJobSchedule = "*/60 * * * * *";
+var logJobSchedule = "0 0 */2 * * *";
+
+//清除pm2 日志(每1小时）
+var clearCacheSchedule = "0 */2 * * * *";
 
 /**
  * 管家程序入口
@@ -42,6 +45,9 @@ async function startEntry() {
 
     var pm2logSyncCycle = utils.isNotNull(chainConfig.configFileData.local.pm2logSyncCycle) ?  chainConfig.configFileData.local.pm2logSyncCycle : logJobSchedule;
     logger.info("pm2logSyncCycle ",pm2logSyncCycle);
+
+    var clearCacheSyncCycle = utils.isNotNull(chainConfig.configFileData.local.clearCacheSchedule) ?  chainConfig.configFileData.local.clearCacheSchedule : clearCacheSchedule;
+    logger.info("clearCacheSchedule ",clearCacheSchedule);
 
     //先做一次链信息同步
     logger.info("do sync chain info :")
@@ -102,6 +108,14 @@ async function startEntry() {
     schedule.scheduleJob(pm2logSyncCycle, async function () {
         await monitor.pm2LogFlush();
     });
+
+    logger.info("clearCacheSyncCycle sync:",clearCacheSyncCycle);
+    schedule.scheduleJob(clearCacheSyncCycle, async function () {
+        await chain.clearCache();
+    });
+
+
+
 
 
 }

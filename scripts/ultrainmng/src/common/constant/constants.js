@@ -21,6 +21,8 @@ var cmdConstants = {
     ENABLE_SYNC_USER_RES: "enableUserRes",
     DISABLE_SYNC_USER_RES: "disableUserRes",
     ADD_NOD_CONFIG: "ADD_NOD_CONFIG",
+    ENABLE_SYNC_UGAS: "enableUgas",
+    DISABLE_SYNC_UGAS: "disableUgas",
 }
 
 //编码常量
@@ -67,6 +69,8 @@ var tableConstants = {
     WORLDSTATE_HASH: "wshash", //世界状态hash表
     GLOBAL: "global",
     BULLETIN_BANK: "bulletinbank",
+    CHAINS: "chains",
+    BLOCK_HEADER:"blockheaders",
 }
 
 //scode常量

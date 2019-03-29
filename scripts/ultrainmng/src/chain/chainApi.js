@@ -65,6 +65,26 @@ const getChainName = async (url) => {
     return chainName;
 }
 
+const getBlockHeaderInfo = async (config,scope,table_key) => {
+    let rows = [];
+    try {
+        const params = {
+            "code": constant.contractConstants.ULTRAINIO,
+            "scope": scope,
+            "table": constant.tableConstants.BLOCK_HEADER,
+            "json": true,
+            "table_key_type": "uint64",
+            "table_key": table_key,
+        };
+        let res = await axios.post(config.httpEndpoint + "/v1/chain/get_table_records", params);
+        return res.data.rows;
+    } catch (e) {
+        logger.error("getBlockHeaderInfo error,",e);
+    }
+
+    return rows;
+}
+
 /**
  * 根据user 获取chain name
  * @param user
@@ -951,4 +971,5 @@ module.exports = {
     getHeadBlockNum,
     getMerkleProof,
     getHeadBlockProposer,
+    getBlockHeaderInfo,
 }
