@@ -1,7 +1,6 @@
 import { NAME } from "ultrain-ts-lib/src/account";
 import { intToString } from "ultrain-ts-lib/src/utils";
 import { SHA256 } from "ultrain-ts-lib/src/crypto";
-import { Action } from "ultrain-ts-lib/src/action";
 import { Block } from "ultrain-ts-lib/src/block";
 
 //table + scope for external query
@@ -11,6 +10,9 @@ export const RAND_TABLE = "rand";
 export const CONT_NAME = "utrio.rand";
 export const EPOCH: u64 = 3; // period for rand generation
 export let RAND_KEY = NAME("rand");
+export let MAIN_COUNT_KEY = NAME("mainnum");
+export let MAIN_VOTES_NUM_KEY = NAME("votesnum");
+
 
 const CACHED_RAND_COUNT: u64 = 999;
 
@@ -18,7 +20,7 @@ export class Voter implements Serializable {
   @primaryid
   name: account_name = 0 // The account name
   belongBckNums: Array<u64>; // The vote belong the random block number
-  voteVals: Array<u64>; // The vote value
+  voteVals: Array<u64>; // The voter voted value
   deposit: u64; // The deposit money, the accurate value is new Asset(deposit)
   regisBckNum: u64; // The block number of the voter registered, used to freeze the deposit for some time.
   unregisBckNum: u64; // The block number of the voter unregistered, used to freeze the deposit for some time.
@@ -32,8 +34,12 @@ export class Voter implements Serializable {
   /**
    * In case of user calculated the random privately, so user can't vote immediately after registerd.
    */
-  votable(): bool{
-    return (Block.number > this.regisBckNum + 3 && this.regisBckNum != 0) ? true : false;
+  votable(): boolean {
+    return (Block.number > this.regisBckNum + 3 && this.regisBckNum != 0);
+  }
+
+  isUnregister(): boolean {
+    return this.unregisBckNum != 0;
   }
 
   /**
@@ -41,7 +47,7 @@ export class Voter implements Serializable {
    * because of user making evil can't be found immediately.
    */
   redeemable(): bool {
-    return (Block.number > this.unregisBckNum + 10) ? true : false;
+    return (Block.number > this.unregisBckNum + 10) && this.unregisBckNum != 0;
   }
 
   setMainVoter(): void {
@@ -115,9 +121,9 @@ export class Random {
   randDB: DBManager<RandRecord>;
 
   constructor() {
-    this.voteDB = new DBManager<Voter>(NAME(VOTER_TABLE), NAME(CONT_NAME), NAME(VOTER_TABLE));
-    this.waiterDB = new DBManager<Waiter>(NAME(WAITER_TABLE), NAME(CONT_NAME), NAME(WAITER_TABLE));
-    this.randDB = new DBManager<RandRecord>(NAME(RAND_TABLE), NAME(CONT_NAME), NAME(RAND_TABLE));
+    this.voteDB = DBManager.newInstance<Voter>(NAME(VOTER_TABLE), NAME(CONT_NAME), NAME(VOTER_TABLE));
+    this.waiterDB = DBManager.newInstance<Waiter>(NAME(WAITER_TABLE), NAME(CONT_NAME), NAME(WAITER_TABLE));
+    this.randDB = DBManager.newInstance<RandRecord>(NAME(RAND_TABLE), NAME(CONT_NAME), NAME(RAND_TABLE));
   }
 
   public queryLatest(): RandRecord {
@@ -154,13 +160,59 @@ export class Random {
     var rand = new RandRecord();
     if (randInfo.belongBckNums[index] == headBckNum) {
       rand.val = randInfo.voteVals[index];
-      rand.code = 0;
+      var mainVotes = this.countMainVoter();
+      var voteStatus = this.voteMainVoteNum();
+      rand.code = (mainVotes == voteStatus.voteVals[index]) ? 0 : 1;
     } else {
       rand.val = this.hash(preRand);
       rand.code = 1;
     }
     rand.blockNum = headBckNum;
     return rand;
+  }
+
+  private voteMainVoteNum(): Voter {
+    var votesCount = new Voter();
+    if (this.voteDB.exists(MAIN_VOTES_NUM_KEY)) {
+      this.voteDB.get(MAIN_VOTES_NUM_KEY, votesCount);
+    } 
+    return votesCount
+  }
+
+  public countMainVoter(): u64 {
+    var voter = new Voter();
+    this.voteDB.get(MAIN_COUNT_KEY, voter);
+    return voter.voteVals[0];
+  }
+
+  public updateCountMainVoter(changeQty: u64): void {
+    var voter = new Voter();
+    this.voteDB.get(MAIN_COUNT_KEY, voter);
+    voter.voteVals[0] = voter.voteVals[0] + changeQty;
+    this.voteDB.modify(voter);
+  }
+
+  /** 
+   * Return the random number which the voting by the seed block number
+   *  @param seedBckNum The block number which the seed used.
+   */
+  private belongRandNum(seedBckNum: u64): u64 {
+    return seedBckNum + EPOCH;
+  }
+
+  public updateMainVoteCount(blockNum: u64): void {
+    var votesCount = new Voter();
+    this.voteDB.get(MAIN_VOTES_NUM_KEY, votesCount);
+    var index = this.indexOf(blockNum);
+    var oldBckNum = votesCount.belongBckNums[index];
+
+    if (this.belongRandNum(blockNum) != oldBckNum) {
+      votesCount.voteVals[index] = 1;
+    } else {
+      votesCount.voteVals[index] = votesCount.voteVals[index] + 1;
+    }
+    votesCount.belongBckNums[index] = this.belongRandNum(blockNum);
+    this.voteDB.modify(votesCount);
   }
 
   /**
@@ -234,13 +286,11 @@ export class Random {
       this.randDB.get(headBckNum, rand);
       return rand;
     }
-
-    var lastRand = this.getRandlastRand();
+    var lastRand = this.getLastRand();
     var lastBckNum = lastRand.blockNum;
 
-    var lastRound: u64 = 13;
-    if (headBckNum > lastBckNum + lastRound) {
-      // lastBckNum = (headBckNum - (headBckNum - lastBckNum) % lastRound) -1;
+    const LAST_ROUND: u64 = 13;
+    if (headBckNum > lastBckNum + LAST_ROUND) {
       let preRand = lastRand.val;
       let mainVoterValue = this.hash(headBckNum);
       let waitorVoterValue = this.hash(mainVoterValue);
@@ -283,7 +333,7 @@ export class Random {
     var rand = new RandRecord();
     rand.setFields(bckNum, randNum, code);
     if (!this.randDB.exists(bckNum)) {
-      this.randDB.emplace(Action.sender, rand); // To do the payer user should to be discuss
+      this.randDB.emplace(rand); // To do the payer user should to be discuss
     }
     // Saving the maxinum blocknum
     this.saveRandMaxBckNum(bckNum);
@@ -299,7 +349,7 @@ export class Random {
   /**
    * Get the last generated random number that saved in database
    */
-  private getRandlastRand(): RandRecord {
+  private getLastRand(): RandRecord {
     var rand = new RandRecord();
     this.randDB.get(1, rand);
 
@@ -317,7 +367,7 @@ export class Random {
     this.randDB.get(1, rand);
     if (bckNum > rand.val) {
       rand.val = bckNum;
-      this.randDB.modify(Action.sender, rand);
+      this.randDB.modify(rand);
     }
     return rand.val;
   }
@@ -339,7 +389,7 @@ export class Random {
         }
         rand.val = minBckNum + 2;
       }
-      this.randDB.modify(Action.sender, rand);
+      this.randDB.modify(rand);
     }
   }
 }

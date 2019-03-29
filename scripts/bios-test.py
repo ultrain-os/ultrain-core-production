@@ -177,7 +177,7 @@ def stepRegProducers():
     #sleep(2)
     for i in range(len(rand_acc_lst)):
         value = 0.2000
-        if i < 6:
+        if i % 3 == 0:
             value = 2.0000
         retry(args.clultrain + 'transfer %s utrio.rand \'%.4f UGAS\' \'as candidate\' -p %s' % ( rand_acc_lst[i],value, rand_acc_lst[i]))
 

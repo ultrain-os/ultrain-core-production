@@ -16,10 +16,10 @@ import {
   RAND_TABLE,
   EPOCH,
   Random,
-  RAND_KEY
+  RAND_KEY,
+  MAIN_COUNT_KEY,
+  MAIN_VOTES_NUM_KEY
 } from "./lib/random.lib";
-
-let MAIN_COUNT_KEY = NAME("mainnum");
 
 // parameters
 let MAIN_DEPOSIT_AMOUNT: Asset = new Asset(20000);
@@ -50,18 +50,24 @@ class RandContract extends Contract {
     if (!this.voteDB.exists(RAND_KEY)) { //first time
       let vote = new Voter();
       vote.name = RAND_KEY;
-      this.voteDB.emplace(Action.sender, vote);
+      this.voteDB.emplace(vote);
     }
-
+  
     if (!this.voteDB.exists(MAIN_COUNT_KEY)) {
       let vote = new Voter();
       vote.name = MAIN_COUNT_KEY;
-      this.voteDB.emplace(Action.sender, vote);
+      this.voteDB.emplace(vote);
+    }
+    
+    if (!this.voteDB.exists(MAIN_VOTES_NUM_KEY)) {
+      let vote = new Voter();
+      vote.name = MAIN_VOTES_NUM_KEY;
+      this.voteDB.emplace(vote);
     }
 
     if (!this.waiterDB.exists(0)) {
       let waitorseq = new Waiter();
-      this.waiterDB.emplace(Action.sender, waitorseq);
+      this.waiterDB.emplace(waitorseq);
     }
 
     // Initial the mininum block number and maxinum block num and add default random number.
@@ -71,16 +77,16 @@ class RandContract extends Contract {
       let initBckNum = (Block.number < 2) ? 2 : Block.number;
       rand.blockNum = 0; // The blocknum 0, saving the special data that the minimum block number of rand.
       rand.val = initBckNum; // The minimum rand block number, maybe not exist. The default value is one.
-      this.randDB.emplace(Action.sender, rand);
+      this.randDB.emplace(rand);
 
       rand.blockNum = 1; // The blocknum 1, saving the lastest random number
       rand.val = initBckNum;
-      this.randDB.emplace(Action.sender, rand);
+      this.randDB.emplace(rand);
 
       rand.blockNum = initBckNum; // The blocknum 2, saving the first random number.
       rand.val = this.hash(initBckNum);
       rand.code = 7;
-      this.randDB.emplace(Action.sender, rand);
+      this.randDB.emplace(rand);
     }
   }
 
@@ -112,15 +118,15 @@ class RandContract extends Contract {
     voter.name = user;
     if (value.eq(MAIN_DEPOSIT_AMOUNT)) {
       voter.setMainVoter();
-      ultrain_assert(this.countMainVoter() <= MAIN_NUM, "The total of main should be less than " + intToString(MAIN_NUM));
-      this.updateCountMainVoter(1);
+      ultrain_assert(this.random.countMainVoter() <= MAIN_NUM, "The total of main should be less than " + intToString(MAIN_NUM));
+      this.random.updateCountMainVoter(1);
     } else if (value.eq(WAITER_DEPOSIT_AMOUNT)) {
       voter.setWaiterVoter();
       let waitorseq = new Waiter();
       this.waiterDB.get(0, waitorseq);
       ultrain_assert(waitorseq.waiters.length <= <i32>WAITER_NUM, "The total of waiters should be less than " + intToString(WAITER_NUM));
       waitorseq.waiters.push(user);
-      this.waiterDB.modify(user, waitorseq);
+      this.waiterDB.modify(waitorseq);
     } else {
       Log.s("User: ").s(RNAME(user)).s(" deposited money accurate.").flush();
       ultrain_assert(false, "deposit money is not accurate, require deposit 2.0000 UGAS or 0.2000 UGAS");
@@ -129,25 +135,25 @@ class RandContract extends Contract {
     voter.deposit = value.getAmount();
     voter.regisBckNum = this.curtBckNum();
     voter.unregisBckNum = 0;
-    this.voteDB.emplace(this.receiver, voter);
+    this.voteDB.emplace(voter);
   }
 
   private curtBckNum(): u64 {
     return Block.number + 1;
   }
 
-  private countMainVoter(): u64 {
-    var voter = new Voter();
-    this.voteDB.get(MAIN_COUNT_KEY, voter);
-    return voter.voteVals[0];
-  }
+  // private countMainVoter(): u64 {
+  //   var voter = new Voter();
+  //   this.voteDB.get(MAIN_COUNT_KEY, voter);
+  //   return voter.voteVals[0];
+  // }
 
-  private updateCountMainVoter(changeQty: u64): void {
-    var voter = new Voter();
-    this.voteDB.get(MAIN_COUNT_KEY, voter);
-    voter.voteVals[0] += changeQty;
-    this.voteDB.modify(Action.sender, voter);
-  }
+  // private updateCountMainVoter(changeQty: u64): void {
+  //   var voter = new Voter();
+  //   this.voteDB.get(MAIN_COUNT_KEY, voter);
+  //   voter.voteVals[0] = voter.voteVals[0] = changeQty;
+  //   this.voteDB.modify(voter);
+  // }
 
   /**
    * The user unregister to be voter.
@@ -155,23 +161,24 @@ class RandContract extends Contract {
    */
   @action
   unregister(): void {
-    ultrain_assert(this.voteDB.exists(Action.sender), "cannot remove non-existing candidate.");
+    ultrain_assert(this.voteDB.exists(Action.sender), "cannot unregister non-existing voter.");
     var voter = new Voter();
     this.voteDB.get(Action.sender, voter);
+    ultrain_assert(!voter.isUnregister(), "cannot repeat to unregsiter voter");
     if (voter.isMainVoter()) {
       Asset.transfer(this.receiver, Action.sender, MAIN_DEPOSIT_AMOUNT, "return deposited money");
-      this.updateCountMainVoter(-1);
+      this.random.updateCountMainVoter(-1);
     } else {
       Asset.transfer(this.receiver, Action.sender, WAITER_DEPOSIT_AMOUNT, "return deposited money");
       let waiterseq = new Waiter();
       this.waiterDB.get(0, waiterseq);
-      let waiters =  waiterseq.waiters.filter((value: i32, index: i32, array: Array<account_name>): bool => value != Action.sender);
+      let waiters =  waiterseq.waiters.filter((value: account_name, index: i32, array: Array<account_name>): bool => value != Action.sender);
       waiterseq.waiters = waiters;
-      this.waiterDB.modify(Action.sender, waiterseq);
+      this.waiterDB.modify(waiterseq);
     }
     voter.regisBckNum = 0;
     voter.unregisBckNum = this.curtBckNum();
-    this.voteDB.modify(Action.sender, voter);
+    this.voteDB.modify(voter);
   }
 
   /**
@@ -179,14 +186,14 @@ class RandContract extends Contract {
    */
   @action
   redeem(): void {
-    ultrain_assert(this.voteDB.exists(Action.sender), "cannot remove non-existing candidate.");
+    ultrain_assert(this.voteDB.exists(Action.sender), "cannot redeem non-existing voter.");
     var voter = new Voter();
     this.voteDB.get(Action.sender, voter);
     if (voter.redeemable()) {
       Asset.transfer(this.receiver, Action.sender, new Asset(voter.deposit), "return deposited money");
       this.voteDB.erase(Action.sender);
     } else{
-      ultrain_assert(false, "cannot redeem deposit, you must wait for 10 block generated.");
+      ultrain_assert(false, "cannot redeem deposit, you must wait for some blocks generated or unregister first.");
     }
   }
 
@@ -227,18 +234,18 @@ class RandContract extends Contract {
   @action
   vote(pk_proof: string, blockNum: u64): void {
     var sender = Action.sender;
-    ultrain_assert(this.voteDB.exists(sender), "You should be a candidate first.");
-    var index = this.indexOf(blockNum);
-    // Log.s("User: ").s(RNAME(sender)).s(" begins to vote. The index: ").i(index).s("bck num:").i(blockNum).flush();
+    ultrain_assert(this.voteDB.exists(sender), "You " + RNAME(sender) + " should be a candidate first.");
 
     // To check the voting whether expried.
     var curtBckNum = Block.number + 1;
     ultrain_assert(this.belongRandNum(blockNum) >= curtBckNum, "The current block number is " 
       + intToString(curtBckNum) + ". The vote seed block number: " + intToString(blockNum) + " has expired.");
 
-    this.triggerRandGenerate();
     var voter = new Voter();
     this.voteDB.get(sender, voter);
+    ultrain_assert(voter.votable(), "The voter " + RNAME(sender) +" status is not votable.");
+
+    this.triggerRandGenerate();
     if (voter.isMainVoter()) {
       this.mainVoterVote(sender, pk_proof, blockNum);
     } else if (voter.isWaiterVoter()) {
@@ -260,7 +267,7 @@ class RandContract extends Contract {
       if (this.belongRandNum(seedBckNum) >= curtBlockNum || voteInfo.belongBckNums[index] == 0) {
         voteInfo.belongBckNums[index] = this.belongRandNum(seedBckNum);
         voteInfo.voteVals[index] = vrf;
-        this.voteDB.modify(name, voteInfo);
+        this.voteDB.modify(voteInfo);
       } else {
         ultrain_assert(false, "Your vote was expired.");
       }
@@ -271,7 +278,6 @@ class RandContract extends Contract {
     var seed = this.getExistRand(blockNum);
     var seedStr = intToString(seed);
     seedStr = seedStr.concat("0".repeat(64 - seedStr.length));
-
     var pkStr = Account.publicKeyOf(Action.sender, 'hex');
     // Log.s("m : ").s(seedStr).flush();
     // Log.s("pkstr: ").s(pkStr).flush();
@@ -296,15 +302,17 @@ class RandContract extends Contract {
     this.voteDB.get(RAND_KEY, randVoteInfo);
     var oldBckNum = randVoteInfo.belongBckNums[index];
     if (this.belongRandNum(blockNum) != oldBckNum) {
+      // using the random number as default value
       randVoteInfo.voteVals[index] = this.getExistRand(blockNum);
       randVoteInfo.belongBckNums[index] = this.belongRandNum(blockNum);
     }
     randVoteInfo.voteVals[index] = randVoteInfo.voteVals[index] ^ vrf;
-    this.voteDB.modify(name, randVoteInfo);
-
+    this.voteDB.modify(randVoteInfo);
+    this.random.updateMainVoteCount(blockNum);
     // Issue the bonus for the voter
     Asset.transfer(this.receiver, Action.sender, new Asset(MAIN_BONUS), "bonus money"); //give bonus
   }
+
 
   /**
    * The waiter voter vote.
