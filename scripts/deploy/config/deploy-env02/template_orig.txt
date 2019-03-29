@@ -20,8 +20,6 @@ contract-emit-string-length = 512
 
 # Optional public key of peer allowed to connect
 peer-key = UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y
-peer-key = UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z
-peer-key = UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD
 
 #insert_if_producing-node
 

@@ -47,6 +47,7 @@ allApk=[]
 allBsk=[]
 allBpk=[]
 offlineNodes = []
+accountPublickKeyWhiteList=[]
 
 # for i in range(0,5):
 # 	containers = []
@@ -74,7 +75,7 @@ def load_parameters():
 		host = Host(allIPs[i], allNames[i], )
 		allHosts.append(host)
 
-	with open('keypair.txt') as f:
+	with open(keypairFile) as f:
 		keys = f.read().splitlines()
 	allAccounts = keys[6::8]
 	allPriKeys = keys[0::8]
@@ -154,6 +155,17 @@ def write_dot_file():
 
 def write_config_file():
 	insert_genesis_time()
+
+	#jump genesis
+	index_key = 0
+	# generate account pk white list
+	for host in allHosts:
+		if host.ip != genesisHost:
+			print(host.ip,host.name,allAccounts[index_key][8:],allAsk[index_key][4:],allApk[index_key][4:])
+			if host.ip in seedHosts or host.ip in mongoHosts:
+				accountPublickKeyWhiteList.append(allApk[index_key][4:]);
+			index_key = index_key +1;
+
 	index_key = 0
 	for host in allHosts:
 		os.system("rm -rf config/" + host.ip)
@@ -164,6 +176,8 @@ def write_config_file():
 			cmd = "cp template.txt " + fname
 			os.system(cmd)
 
+		#insert peer key (public key)
+		insert_peer_key(fname,accountPublickKeyWhiteList)
 		if host.ip == genesisHost:
 			insert_leader_sk(fname)
 		else:
@@ -274,6 +288,17 @@ def insert_udp_seed(fname,ip,seedHosts):
 		content.insert(index_line+index, newcontent)
 		index = index+1;
 	writefile(fname,content)
+
+def insert_peer_key(fname,peerKeys):
+	content = readfile(fname)
+	index_line = content.index("# Optional public key of peer allowed to connect\n")
+	index = 1;
+	for key in peerKeys :
+		newcontent = "peer-key = %s\n" % (key)
+		content.insert(index_line+index, newcontent)
+		index = index+1;
+	writefile(fname,content)
+
 
 def insert_world_state(fname):
 	content = readfile(fname)
