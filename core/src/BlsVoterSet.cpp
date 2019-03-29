@@ -39,6 +39,10 @@ namespace ultrainio {
     }
 
     void BlsVoterSet::toStringStream(std::stringstream& ss) const {
+        if (!valid()) {
+            ss << std::string();
+            return;
+        }
         commonEchoMsg.toStringStream(ss);
         int n = accountPool.size();
         ss << n << " ";

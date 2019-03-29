@@ -39,6 +39,9 @@ BOOST_AUTO_TEST_SUITE(blsvoterset_test_suite)
         std::string s;
         BlsVoterSet blsVoterSet(s);
         BOOST_CHECK(blsVoterSet.valid() == false);
+
+        BlsVoterSet origin;
+        BOOST_CHECK(std::string() == origin.toString());
     }
     
     BOOST_AUTO_TEST_SUITE_END()
