@@ -54,7 +54,7 @@ namespace ultrainiobank {
     extern "C" 
     void apply( uint64_t receiver, uint64_t code, uint64_t actH, uint64_t actL ) {
         action_name action(actH, actL); 
-        if( code == N(utrio.token) && action == NEX(transfer) ){
+        if( code == N(utrio.token) && action == NEX(transfer)){
             bank bk(receiver);
             const currency::transfer& t = unpack_action_data<currency::transfer>();
             bk.transfer(t.from, t.to, t.quantity, t.memo);

@@ -320,8 +320,11 @@ namespace ultrainiosystem {
                   tot.start_block_height = (uint32_t)head_block_number();
                   tot.end_block_height = tot.start_block_height + (uint32_t)days*seconds_per_day / block_interval_seconds();
                   tot.modify_block_height = (uint32_t)head_block_number();
+                  if(_gstate.is_master_chain() && days*seconds_per_day >= seconds_per_year/2)
+                     tot.free_account_number = (uint32_t)combosize* 1000;
                });
          } else {
+            uint64_t free_account_number = 0;
             ultrainio_assert(((combosize > 0) && (days == 0))||((combosize == 0) && (days > 0)), "resource lease days and numbler can't increase them at the same time" );
             if(combosize > 0)
             {
@@ -338,6 +341,10 @@ namespace ultrainiosystem {
                        _subchain.global_resource.total_ram_bytes_used += (uint64_t)combosize*bytes;
                    });
                }
+               if(_gstate.is_master_chain() &&  (reslease_itr->end_block_height > reslease_itr->start_block_height) &&
+                 ((reslease_itr->end_block_height - reslease_itr->start_block_height)* block_interval_seconds() > seconds_per_year/2)){
+                  free_account_number = combosize* 1000;
+               }
             } else if(days > 0)
             {
                ultrainio_assert(reslease_itr->lease_num > 0, "resource lease number is not normal" );
@@ -347,6 +354,7 @@ namespace ultrainiosystem {
                   tot.lease_num += combosize;
                   tot.end_block_height  += days * seconds_per_day / block_interval_seconds();
                   tot.modify_block_height = (uint32_t)head_block_number();
+                  tot.free_account_number += free_account_number;
                });
          }
          auto resourcefee = (int64_t)(_gstate.resource_fee * cuttingfee);

@@ -543,8 +543,23 @@ void system_contract::voteresourcelease() {
          newaccount_fee = (int32_t)_gstate.newaccount_fee;
          ultrainio_assert( _gstate.is_master_chain() || creator == _self, "only master chain allow create account" );
       }
+      bool  is_free_create = false;
+      chains_table _chains(_self,_self);
+      for(auto ite_chain = _chains.begin(); ite_chain != _chains.end(); ++ite_chain) {
+         if(ite_chain->chain_name == N(master))
+               continue;
+         resources_lease_table _reslease_tbl( _self,ite_chain->chain_name );
+         auto reslease_itr = _reslease_tbl.find( creator );
+         if( reslease_itr !=  _reslease_tbl.end() && reslease_itr->free_account_number > 0) {
+            _reslease_tbl.modify( reslease_itr, [&]( auto& tot ) {
+                  tot.free_account_number--;
+               });
+            is_free_create = true;
+            break;
+         }
+      }
 
-      if (creator != _self && newaccount_fee > 0) {
+      if (!is_free_create && creator != _self && newaccount_fee > 0) {
           INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {creator,N(active)},
                                                                  { creator, N(utrio.fee), asset(newaccount_fee), std::string("create account") } );
       }

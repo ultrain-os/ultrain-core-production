@@ -250,7 +250,7 @@ namespace ultrainiosystem {
    struct block_header_digest {
        uint32_t                  block_number = 0;
        checksum256               transaction_mroot;
-       std::set<checksum256>     trx_hashs;
+       std::set<std::string>     trx_ids;
        ultrainio::extensions_type           table_extension;
 
        auto primary_key() const { return uint64_t(block_number); }
@@ -258,7 +258,7 @@ namespace ultrainiosystem {
        block_header_digest() {}
        block_header_digest(uint32_t b_n, const checksum256& tx_mroot): block_number(b_n), transaction_mroot(tx_mroot) {}
 
-       ULTRAINLIB_SERIALIZE(block_header_digest, (block_number)(transaction_mroot)(trx_hashs)(table_extension))
+       ULTRAINLIB_SERIALIZE(block_header_digest, (block_number)(transaction_mroot)(trx_ids)(table_extension))
    };
 
    typedef ultrainio::multi_index<N(blockheaders), block_header_digest> block_table;
@@ -369,12 +369,13 @@ namespace ultrainiosystem {
       uint32_t       start_block_height = 0;
       uint32_t       end_block_height = 0;
       uint32_t       modify_block_height = 0;
-
+      uint32_t       free_account_number = 0;
+      exten_types    table_extension;
       uint64_t  primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       ULTRAINLIB_SERIALIZE( resources_lease, (owner)(lease_num)(start_block_height)
-                            (end_block_height)(modify_block_height) )
+                            (end_block_height)(modify_block_height)(free_account_number)(table_extension) )
    };
    typedef ultrainio::multi_index< N(reslease), resources_lease>      resources_lease_table;
 

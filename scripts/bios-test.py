@@ -139,7 +139,7 @@ def stepInstallSystemContracts():
 def stepCreateTokens():
     retry(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 UGAS"]\' -p utrio.token')
     retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "900000000.0000 UGAS", "memo"]\' -p ultrainio')
-    retry(args.clultrain + 'push action utrio.token set_chargeparams \'{"symbol":"UGAS","precision":"4","operate_interval":"%s","operate_fee":"%s"}\'  -p  utrio.token'  % ( 60,100))
+    retry(args.clultrain + 'push action utrio.token set_chargeparams \'{"symbol":"UGAS","precision":"4","operate_interval":"%s","operate_fee":"%s",,"is_forbid_trans":0}\'  -p  utrio.token'  % ( 60,100))
     sleep(2)
 
 def stepSetSystemContract():

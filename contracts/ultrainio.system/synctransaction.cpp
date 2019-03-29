@@ -50,11 +50,10 @@ namespace ultrainiosystem {
 
       stateful_transaction tx = mklp.recover_transaction();
       ultrainio_assert(tx.status == stateful_transaction::executed, "this transaction is not executed.");
-      checksum256 txn_hash;
-      sha256((&tx_bytes[0]), tx_bytes.size(), &txn_hash);
-      ultrainio_assert(block_ite->trx_hashs.count(txn_hash) != 1, "syncTransfer failed: current transfer transaction already synchronized");
+      ultrainio_assert(!tx.tx_id.empty(), "this transaction tx_id is empty.");
+      ultrainio_assert(block_ite->trx_ids.count(tx.tx_id) != 1, "syncTransfer failed: current transfer transaction already synchronized");
       subchain_block_tbl.modify( block_ite, [&]( block_header_digest& header ) {
-         header.trx_hashs.insert(txn_hash);
+         header.trx_ids.insert(tx.tx_id);
       });
       ultrainio_assert(tx.actions.size() > 0, "no context related actions contains in this transaction.");
 

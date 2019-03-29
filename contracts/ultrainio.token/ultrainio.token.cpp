@@ -72,7 +72,7 @@ void token::transfer( account_name from,
 
     require_recipient( from );
     require_recipient( to );
-
+    ultrainio_assert( !st.is_forbid_transfer, " transaction is not allowed" );
     ultrainio_assert( quantity.is_valid(), "invalid quantity" );
     ultrainio_assert( quantity.amount > 0, "must transfer positive quantity" );
     ultrainio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
@@ -94,7 +94,7 @@ void token::safe_transfer( account_name from,
     auto sym = quantity.symbol.name();
     stats statstable( _self, sym );
     const auto& st = statstable.get( sym );
-
+    ultrainio_assert( !st.is_forbid_transfer, " transaction is not allowed" );
     ultrainio_assert( quantity.is_valid(), "invalid quantity" );
     ultrainio_assert( quantity.amount > 0, "must transfer positive quantity" );
     ultrainio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
@@ -105,7 +105,7 @@ void token::safe_transfer( account_name from,
     add_balance( to, quantity );
 }
 
-void token::set_chargeparams( std::string symbol, uint8_t precision, uint32_t operate_interval, uint32_t operate_fee)
+void token::set_chargeparams( std::string symbol, uint8_t precision, uint32_t operate_interval, uint32_t operate_fee, bool is_forbid_trans)
 {
     require_auth( _self );
     symbol_name sym = string_to_symbol(precision, symbol.c_str()) >> 8;
@@ -115,6 +115,7 @@ void token::set_chargeparams( std::string symbol, uint8_t precision, uint32_t op
     statstable.modify( stat, [&]( currency_stats& s ) {
         s.operate_interval_sec = operate_interval;
         s.operate_fee = operate_fee;
+        s.is_forbid_transfer = is_forbid_trans;
     });
 }
 

@@ -29,7 +29,8 @@
         {"name":"symbol", "type":"string"},
         {"name":"precision", "type":"uint8"},
         {"name":"operate_interval", "type":"uint32"},
-        {"name":"operate_fee", "type":"uint32"}
+        {"name":"operate_fee", "type":"uint32"},
+        {"name":"is_forbid_trans", "type":"bool"}
       ]
     },{
      "name": "create",
@@ -61,7 +62,8 @@
         {"name":"max_supply", "type":"asset"},
         {"name":"issuer", "type":"account_name"},
         {"name":"charge_interval_sec", "type":"uint32"},
-        {"name":"operate_fee", "type":"uint32"}
+        {"name":"operate_fee", "type":"uint32"},
+        {"name":"is_forbid_transfer", "type":"bool"}
       ]
     }
   ],

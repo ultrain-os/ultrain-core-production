@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/f37e57",
+   "version": "ultrainio::abi/1.0/46b879",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -375,6 +375,8 @@
          {"name":"start_block_height",  "type":"uint32"},
          {"name":"end_block_height",    "type":"uint32"},
          {"name":"modify_block_height", "type":"uint32"},
+         {"name":"free_account_number", "type":"uint32"},
+         {"name": "table_extension", "type": "exten_type[]"}
       ]
     },{
       "name": "schedule_setting",
@@ -549,7 +551,7 @@
       "fields": [
         {"name": "block_number",                  "type": "uint32"},
         {"name": "transaction_mroot",             "type": "checksum256"},
-        {"name": "trx_hashs",                     "type": "checksum256[]"},
+        {"name": "trx_ids",                       "type": "string[]"},
         {"name": "table_extension",               "type": "extension[]"}
        ]
     },{
