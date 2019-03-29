@@ -20,8 +20,9 @@ namespace ultrainio {
          expired   = 4  ///< transaction expired and storage space refuned to user
         };
         uint8_t status = soft_fail;
+        std::string tx_id = "";
 
-        ULTRAINLIB_SERIALIZE_DERIVED( stateful_transaction, transaction, (status) )
+        ULTRAINLIB_SERIALIZE_DERIVED( stateful_transaction, transaction, (status)(tx_id) )
     };
 
     struct merkle_proof {

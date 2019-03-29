@@ -55,6 +55,7 @@ class merkle_proof_contract : public ultrainio::contract {
           stateful_transaction tx = mklp.recover_transaction();
           ultrainio_assert(tx.status == stateful_transaction::executed, "this transaction is not executed.");
           ultrainio_assert(tx.actions.size() > 0, "no context related actions contains in this transaction.");
+          ultrainio_assert(tx.tx_id == tx_id, "tx_id is not consistent.");
 
           for (const auto& act : tx.actions) {
               if (act.account == N(utrio.token) && act.name == NEX(transfer)) {
