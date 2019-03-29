@@ -29,7 +29,7 @@ using namespace std;
 
 namespace ultrainio {
 
-    char version[]="f37e57";
+    char version[]="0574a7";
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
     std::shared_ptr<UranusNode> UranusNode::initAndGetInstance(boost::asio::io_service &ioservice) {
@@ -370,7 +370,7 @@ namespace ultrainio {
             return;
         }
 
-        dlog("##############ba1Process. finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
+        dlog("##############ba1 finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
              ("block_num", getBlockNum())
              ("hash", short_hash(blockPtr->id()))
              ("head_hash", short_hash(m_schedulerPtr->getPreviousBlockhash())));

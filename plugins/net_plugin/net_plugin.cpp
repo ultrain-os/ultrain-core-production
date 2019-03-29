@@ -792,7 +792,8 @@ namespace ultrainio {
             ilog("start handle blocks.");
             while(!block_msg_queue.empty()) {
                 auto& b = block_msg_queue.front();
-                if (b.block_num() > last_safe_block_num) {
+                if (b.block_num() > last_safe_block_num &&
+                    !(sync_block_msg.startBlockNum == sync_conn->block_num_range.lastNum && sync_block_msg.startBlockNum == b.block_num())) { // skip last block if the chain is bax
                     break;
                 }
 
