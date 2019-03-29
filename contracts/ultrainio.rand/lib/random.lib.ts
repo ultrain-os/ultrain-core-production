@@ -188,7 +188,7 @@ export class Random {
   public updateCountMainVoter(changeQty: u64): void {
     var voter = new Voter();
     this.voteDB.get(MAIN_COUNT_KEY, voter);
-    voter.voteVals[0] = voter.voteVals[0] = changeQty;
+    voter.voteVals[0] = voter.voteVals[0] + changeQty;
     this.voteDB.modify(voter);
   }
 

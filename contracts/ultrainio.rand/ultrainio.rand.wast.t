@@ -6503,8 +6503,6 @@
  )
  (func $contract/lib/random.lib/Random#updateCountMainVoter (; 150 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
   (local $2 i32)
-  (local $3 i32)
-  (local $4 i32)
   i32.const 0
   call $contract/lib/random.lib/Voter#constructor
   local.set $2
@@ -6517,18 +6515,12 @@
   local.get $2
   i32.load offset=12
   i32.const 0
-  block (result i64)
-   local.get $2
-   i32.load offset=12
-   local.tee $3
-   i32.const 0
-   local.tee $4
-   local.get $1
-   call $~lib/array/Array<u64>#__set
-   local.get $3
-   local.get $4
-   call $~lib/array/Array<u64>#__get
-  end
+  local.get $2
+  i32.load offset=12
+  i32.const 0
+  call $~lib/array/Array<u64>#__get
+  local.get $1
+  i64.add
   call $~lib/array/Array<u64>#__set
   local.get $0
   i32.load
