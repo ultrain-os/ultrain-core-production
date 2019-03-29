@@ -260,8 +260,9 @@ async function syncUgas() {
 
         //增加本轮是否是出块节点的判断
         var headBlockProposer = await chainApi.getHeadBlockProposer(chainConfig.configSub);
+
         //判断是否要上传块头
-        if (chainConfig.myAccountAsCommittee != headBlockProposer) {
+        if (blockUtil.needPushBlock(headBlockProposer, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
             logger.info("headBlockProposer("+headBlockProposer+") is not myself("+chainConfig.myAccountAsCommittee+"),do not sync ugas");
             return;
         }
@@ -553,7 +554,7 @@ async function syncBlock() {
         let result = await chainConfig.u3Sub.getBlockInfo((subBlockNumMax).toString());
 
         //判断是否要上传块头
-        if (blockUtil.needPushBlock(result, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
+        if (blockUtil.needPushBlock(result.proposer, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
             logger.info("finish sync block..");
             return;
         }

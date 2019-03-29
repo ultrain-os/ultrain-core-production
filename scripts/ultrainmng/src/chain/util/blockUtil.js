@@ -27,9 +27,9 @@ function randomPushBlock(setRatio) {
  * @param user
  * @returns {boolean}
  */
-function needPushBlock(block, user,setRatio) {
+function needPushBlock(proposer, user,setRatio) {
 
-    if (utils.isNull(block)) {
+    if (utils.isNull(proposer)) {
         return false;
     }
 
@@ -40,7 +40,7 @@ function needPushBlock(block, user,setRatio) {
     /**
      * 创世块
      */
-    if (utils.isNull(block.proposer) || block.proposer == "genesis") {
+    if (utils.isNull(proposer) || proposer == "genesis") {
         logger.info("block.proposer is genesis or null, need push");
         return true;
     }
@@ -48,7 +48,7 @@ function needPushBlock(block, user,setRatio) {
     /**
      * 块的proposer是自己
      */
-    if (block.proposer == user) {
+    if (proposer == user) {
         logger.info("block.proposer is self(" + user + "), need push");
         return true;
     }
@@ -57,10 +57,10 @@ function needPushBlock(block, user,setRatio) {
      * 不是自己出的块，按一定概率上报
      */
     if (randomPushBlock(setRatio) == true) {
-        logger.info("block.proposer("+block.proposer+") is not self(" + user + "),  random("+setRatio*100+"%) success to push");
+        logger.info("block.proposer("+proposer+") is not self(" + user + "),  random("+setRatio*100+"%) success to push");
         return true;
     } else {
-        logger.info("block.proposer("+block.proposer+") is not self(" + user + "),  random("+setRatio*100+"%) failed,need not to push");
+        logger.info("block.proposer("+proposer+") is not self(" + user + "),  random("+setRatio*100+"%) failed,need not to push");
     }
 
     return false;
