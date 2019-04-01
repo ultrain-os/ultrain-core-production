@@ -394,17 +394,19 @@ print(args.clultrain)
 print(args.kultraind)
 print(args.contracts_dir)
 
-adjustaccounts = ["genesis",]
-if args.masterchain:
-    for a in accounts[1:]:
-        adjustaccounts.append("master"+a)
-elif args.subchain and args.subchain != 'ultrainio' :
-   for a in accounts[1:]:
-      adjustaccounts.append(args.subchain+a)
-else:
-    for a in accounts[1:]:
-        adjustaccounts.append("user"+a)
-accounts = adjustaccounts
+if local == True :
+    adjustaccounts = ["genesis",]
+    if args.masterchain:
+        for a in accounts[1:]:
+            adjustaccounts.append("master"+a)
+    elif args.subchain and args.subchain != 'ultrainio' :
+        for a in accounts[1:]:
+            adjustaccounts.append(args.subchain+a)
+    else:
+        for a in accounts[1:]:
+            adjustaccounts.append("user"+a)
+    accounts = adjustaccounts
+
 
 #args.clultrain += '--url http://localhost:%d ' % args.http_port
 

@@ -29,8 +29,8 @@ if os.path.isfile("/root/workspace/ultrain-core/scripts/mutichain.cfg") :
     curindex = conf.getint('config', 'index')
     curblockheight = conf.getint('config', 'blockheight')
 basis_value = curindex*150
-maxnum=5
-prefixStr="test.a."
+maxnum=4
+prefixStr="token.a."
 output=['1']*maxnum
 print "basis_value："
 print basis_value
@@ -81,6 +81,8 @@ sidechainacc3 = schduleaccounts[100:150]
 
 print  schduleaccounts;
 
+
+
 local= True;
 sub1HttpUrlLocal = "172.16.10.5:8888"
 sub2HttpUrlLocal = "172.16.10.5:8899"
@@ -88,6 +90,26 @@ sub3HttpUrlLocal = "172.16.10.5:8888"
 sub1HttpUrl = "172.31.7.20:8888"
 sub2HttpUrl = "172.31.12.250:8888"
 sub3HttpUrl = "172.31.8.22:8888"
+
+def getSubchainUrlPrefix(chainIndex):
+    if (chainIndex == 1) :
+        if local == True :
+            return sub1HttpUrlLocal;
+        else :
+            return  sub1HttpUrl;
+
+    if (chainIndex == 2) :
+        if local == True :
+            return sub2HttpUrlLocal;
+        else :
+            return  sub2HttpUrl;
+
+    if (chainIndex == 3) :
+        if local == True :
+            return sub3HttpUrlLocal;
+        else :
+            return  sub3HttpUrl;
+
 
 
 def run(args):
@@ -126,9 +148,9 @@ def sendEmail(msg,successFlag):
 
     try:
         sender = "739884701@qq.com"
-        subject = '今日测试账户资源同步'
+        subject = '今日测试账户转账ugas同步'
         if local == True:
-            subject = '今日测试账户资源同步(docker环境)'
+            subject = '今日测试账户转账ugas同步(docker环境)'
         status = "--失败"
         if successFlag == True :
             status = "--成功"
@@ -180,177 +202,83 @@ def createmutiaccounts():
             else:
                 retry(args.clultrain + ' system empoweruser %s %s %s %s --delay-sec %s -p %s@active' %(a,"13",args.initacc_pk,args.initacc_pk,str(args.deleysec),"ultrainio"))
 
-def stepmutireslease():
-    if args.subchainNum >= 1:
-        for a in sidechainacc1:
-            retry(args.clultrain + ' system resourcelease ultrainio %s 1  20  %s -p %s@active' %(a,"11",a))
-    if args.subchainNum >= 2:
-        for a in sidechainacc2:
-            retry(args.clultrain + ' system resourcelease ultrainio %s 2  15  %s -p %s@active' %(a,"12",a))
-    if args.subchainNum >= 3:
-        for a in sidechainacc3:
-            retry(args.clultrain + ' system resourcelease ultrainio %s 3  25  %s -p %s@active' %(a,"13",a))
 
-def voteresrelet():
-    #购买资源
-    if args.subchainNum >= 1:
-        for a in sidechainacc1:
-            retry(args.clultrain + ' system resourcelease ultrainio %s 3  0  %s -p %s@active' %(a,"11",a))
-    if args.subchainNum >= 2:
-        for a in sidechainacc2:
-            retry(args.clultrain + ' system resourcelease ultrainio %s 0  15  %s -p %s@active' %(a,"12",a))
-    if args.subchainNum >= 3:
-        for a in sidechainacc3:
-            retry(args.clultrain + ' system resourcelease ultrainio %s 1  0  %s -p %s@active' %(a,"13",a))
-
-def getaccresinfo(ip,acclist,nofindacc,leasenum,days,reslist):
-    for a in acclist:
-        j = json.loads(requests.get("http://"+ip+"/v1/chain/get_account_info",data = json.dumps({"account_name":a})).text)
-        if ("account_name" in j):
-            continue
-        nofindacc.append(a)
-    num = 1;
-    for a in acclist:
-        j = json.loads(requests.get("http://"+ip+"/v1/chain/get_table_records",data = json.dumps({"code":"ultrainio","scope":"ultrainio","table":"reslease","json":"true","limit":1000,"table_key":a})).text)
-        if len(j["rows"])== 0 :
-            reslist.append(a)
-            continue
-        if (a == j["rows"][0]["owner"]) and (leasenum == j["rows"][0]["lease_num"]):
-            print "-----"+str(num);
-            print "expect days:"+str(days);
-            startBlockNum = j["rows"][0]["start_block_height"]
-            endBlockNum = j["rows"][0]["end_block_height"]
-            lease_days = (endBlockNum - startBlockNum)/(6*60*24)
-            print "actual days:"+str(lease_days);
-            print "-----"+str(num);
-            num = num +1;
-            if lease_days == days :
-                continue
-        reslist.append(a)
-
-def getchaincontext(chainname,sidechainacc,chainnofindacc,chainnofindres):
-    chaininfostr = "子链:"+chainname+" \n"+"同步账户数量为"+str(len(sidechainacc))+" \n账户列表为:"
+def initTransfer():
     for a in sidechainacc:
-        chaininfostr += a +","
-    accnum = len(chainnofindacc)
-    chaininfostr += "\n检测剩余未同步数量为:"+str(accnum)
-    if accnum != 0 :
-        chaininfostr += "\n 未同步账户:"
-        for i in range(accnum):
-            chaininfostr += chainnofindacc[i] +","
-    resnum = len(chainnofindres)
-    chaininfostr += "\n同步资源数量为"+str(len(sidechainacc))+"，资源异常数量为:"+str(resnum)
-    if resnum != 0 :
-        chaininfostr += "\n 资源异常账户:"
-        for i in range(resnum):
-            chaininfostr += chainnofindres[i] +","
-    return chaininfostr + "\n\n"
+        retry(args.clultrain + 'transfer ultrainio %s "100 UGAS" "ultrainio"' %(a))
 
-def deleteHistory():
-    if os.path.isfile("/root/workspace/ultrain-core/scripts/mutichain.cfg") :
-        os.remove("/root/workspace/ultrain-core/scripts/mutichain.cfg");
+def transerMasterToSubchain():
+    if args.subchainNum >= 1:
+        for a in sidechainacc1:
+            retry(args.clultrain + 'transfer %s utrio.bank "10 UGAS" "11"' %(a));
+    if args.subchainNum >= 2:
+        for a in sidechainacc2:
+            retry(args.clultrain + 'transfer %s utrio.bank "10 UGAS" "12"' %(a));
+    if args.subchainNum >= 3:
+        for a in sidechainacc3:
+            retry(args.clultrain + 'transfer %s utrio.bank "10 UGAS" "13"' %(a));
 
-def merkleproof():
-    global curblockheight
-    curproofindex = 0
-    verifysucblock = []
-    verifyfailblock = []
-    while True:
-        curproofindex += 1
-        if curproofindex > 1000:
-            break
-        addvalue = random.randint(1, 50)
-        curblockheight += addvalue
-        reqblockinfo = requests.get("http://127.0.0.1:8888/v1/chain/get_block_info",data = json.dumps({"block_num_or_id":str(curblockheight)})).text
-        j = json.loads(reqblockinfo)
-        if not ("proposer" in j):
-            break
-        if len(j["transactions"]) == 0:
-            continue
-        trx_id = j["transactions"][0]["trx"]["id"]
-        transaction_mroot = j["transaction_mroot"]
-        req_getmerkle = requests.get("http://127.0.0.1:8888/v1/chain/get_merkle_proof",data = json.dumps({"block_number":curblockheight,"trx_id":trx_id})).text
-        merkle_j = json.loads(req_getmerkle)
-        merkle_proof = merkle_j["merkle_proof"]
-        trx_receipt_bytes = merkle_j["trx_receipt_bytes"]
-        reqverifymerkle = requests.get("http://127.0.0.1:8888/v1/chain/verify_merkle_proof",data = json.dumps({"transaction_mroot":transaction_mroot,"merkle_proof":merkle_proof,"trx_receipt_bytes":trx_receipt_bytes})).text
-        verfy_j = json.loads(reqverifymerkle)
-        if verfy_j["is_matched"] == True:
-            verifysucblock.append(curblockheight)
-        else :
-            verifyfailblock.append(curblockheight)
-    return (verifysucblock,verifyfailblock)
+def transerSubToMaster():
+    if args.subchainNum == 1:
+        for a in sidechainacc1:
+            retry(args.clultrain + 'transfer %s utrio.bank "10 UGAS" "ultrainio"' %(a));
+    if args.subchainNum == 2:
+        for a in sidechainacc2:
+            retry(args.clultrain + 'transfer %s utrio.bank "10 UGAS" "ultrainio"' %(a));
+    if args.subchainNum == 3:
+        for a in sidechainacc3:
+            retry(args.clultrain + 'transfer %s utrio.bank "10 UGAS" "ultrainio"' %(a));
 
-def verifyaccrestest():
-    successFlag=True;
-    chain1nofindacc = []
-    chain2nofindacc = []
-    chain3nofindacc = []
-    chain1nofindres = []
-    chain2nofindres = []
-    chain3nofindres = []
 
-    url1 = sub1HttpUrl;
-    if local == True :
-        url1 = sub1HttpUrlLocal;
 
-    url2 = sub2HttpUrl;
-    if local == True:
-        url2 = sub2HttpUrlLocal;
 
-    url3 = sub3HttpUrl;
-    if local == True:
-        url3 = sub3HttpUrlLocal;
 
-    if args.subchainNum >=1:
-        print "check chain1 num"
-        getaccresinfo(url1,sidechainacc1,chain1nofindacc,4,20,chain1nofindres)
-        print("chain1 not find account number:",int(len(chain1nofindacc))," notfind resource number:",int(len(chain1nofindres)))
-        chaininfostr = getchaincontext("11",sidechainacc1,chain1nofindacc,chain1nofindres)
-        if (int(len(chain1nofindacc)) > 0 or int(len(chain1nofindres)) > 0) :
+def checkUgasInfo(ip,acclist,compareNum,tolerantNum,errorArray):
+    index = 1;
+    for a in acclist:
+        print "index:"+str(index)
+        print "check:"+a;
+        j = json.loads(requests.get("http://"+ip+"/v1/chain/get_account_info",data = json.dumps({"account_name":a})).text)
+        #balance = j.core_liquid_balance;
+        balanceStr = j["core_liquid_balance"];
+        array = balanceStr.split(' ', 1 )
+        balance = float(array[0])
+        #print balance;
+        if balance > compareNum-tolerantNum and balance < compareNum+tolerantNum :
+            print a+": ugas:"+str(balance)+"->right";
+            #errorArray.append(a+" num:"+str(compareNum)+",real:"+str(balance));
+        else:
+            errorArray.append(a+" num:"+str(compareNum)+",real:"+str(balance));
+            print a+": ugas:"+str(balance)+"->error";
+        index = index+1;
+
+
+
+def verifyUgas():
+    chaininfostr = "";
+    successFlag = True;
+    errorSub1Array=[]
+    errorSub2Array=[]
+    errorSub3Array=[]
+    if args.subchainNum >= 1:
+        checkUgasInfo("127.0.0.1:8888",sidechainacc1,90,1,errorSub1Array);
+        checkUgasInfo(getSubchainUrlPrefix(1),sidechainacc1,10,1,errorSub1Array);
+        chaininfostr+="子链1 未同步正确的ugas的数量："+ str(len(errorSub1Array))+"\n";
+        if len(errorSub1Array) > 0 :
             successFlag = False;
-    if args.subchainNum >=2:
-        print "check chain2 num"
-        getaccresinfo(url2,sidechainacc2,chain2nofindacc,2,30,chain2nofindres)
-        print("chain2 not find account number:",int(len(chain2nofindacc))," notfind resource number:",int(len(chain2nofindres)))
-        chaininfostr += getchaincontext("12",sidechainacc2,chain2nofindacc,chain2nofindres)
-        if (int(len(chain2nofindacc)) > 0 or int(len(chain2nofindres)) > 0) :
+    if args.subchainNum >= 2:
+        checkUgasInfo("127.0.0.1:8888",sidechainacc2,90,1,errorSub2Array);
+        checkUgasInfo(getSubchainUrlPrefix(2),sidechainacc2,10,1,errorSub2Array);
+        chaininfostr+="子链2 未同步正确的ugas的数量："+ str(len(errorSub2Array))+"\n";
+        if len(errorSub2Array) > 0 :
             successFlag = False;
-    if args.subchainNum >=3:
-        print "check chain3 num"
-        getaccresinfo(url3,sidechainacc3,chain3nofindacc,4,25,chain3nofindres)
-        print("chain3 not find account number:",int(len(chain3nofindacc))," notfind resource number:",int(len(chain3nofindres)))
-        chaininfostr += getchaincontext("13",sidechainacc3,chain3nofindacc,chain3nofindres)
-        if (int(len(chain3nofindacc)) > 0 or int(len(chain3nofindres)) > 0) :
+    if args.subchainNum >= 3:
+        checkUgasInfo("127.0.0.1:8888",sidechainacc3,90,1,errorSub3Array);
+        checkUgasInfo(getSubchainUrlPrefix(3),sidechainacc3,10,1,errorSub3Array);
+        chaininfostr+="子链3 未同步正确的ugas的数量："+ str(len(errorSub3Array))+"\n";
+        if len(errorSub3Array) > 0 :
             successFlag = False;
-    (verifysucblock,verifyfailblock) = merkleproof()
-    totalverifyblock = verifysucblock + verifyfailblock
-    merklestr = "merkle proof \n验证主链块数量为" + str(len(totalverifyblock))
-    merklestr += "\n块高列表为:"
-    for a in totalverifyblock:
-        merklestr += str(a)+","
-    merklestr += "\nmerkle proof 验证失败块数量为:" + str(len(verifyfailblock))
-    if len(verifyfailblock) != 0:
-        successFlag = False
-        merklestr += "\n失败块列表为:"
-        for a in verifyfailblock:
-            merklestr += str(a)+","
-    chaininfostr += merklestr
-    configindex = curindex + 1
-    confblockheight = curblockheight
-    if os.path.isfile("/root/workspace/ultrain-core/scripts/mutichain.cfg") :
-        conf.set('config', 'index', str(configindex))
-        conf.set('config', 'blockheight', str(confblockheight))
-    else:
-        conf.add_section("config")
-        conf.set('config', 'index', str(configindex))
-        conf.set('config', 'blockheight', str(confblockheight))
-    with open('/root/workspace/ultrain-core/scripts/mutichain.cfg', 'w') as fw:
-        conf.write(fw)
 
-
-
-    print(chaininfostr)
     sendEmail(chaininfostr,successFlag)
 
 # Command Line Arguments
@@ -359,16 +287,17 @@ parser = argparse.ArgumentParser()
 
 commands = [
     ('c', 'createacc',      createmutiaccounts,       False,    "createmutiaccounts"),
-    ('r', 'reslease',       stepmutireslease,       False,    "stepmutireslease"),
-    ('V', 'voteaccres',     voteresrelet,         False,    "voteresrelet"),
-    ('T', 'verifyaccres',   verifyaccrestest,      False,    "verifyaccrestest"),
-    ('d', 'delete',   deleteHistory,      False,    "delete cfg file"),
+    ('if', 'initTransfer',      initTransfer,       False,    "init transfer"),
+    ('tms', 'transferMasToSub',      transerMasterToSubchain,       False,    "transfer ugas from master to subchain"),
+    ('tsm', 'transferSubToMaster',      transerSubToMaster,       False,    "transfer ugas from subchain to master"),
+    ('verify', 'verify',      verifyUgas,       False,    "verify ugas"),
 ]
 
 parser.add_argument('--initacc-pk', metavar='', help="ULTRAIN Public Key", default='UTR6XRzZpgATJaTtyeSKqGhZ6rH9yYn69f5fkLpjVx6y2mEv5iQTn', dest="initacc_pk")
 parser.add_argument('--initacc-sk', metavar='', help="ULTRAIN Private Key", default='5KZ7mnSHiKN8VaJF7aYf3ymCRKyfr4NiTiqKC5KLxkyM56KdQEP', dest="initacc_sk")
 parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '/root/workspace')
 parser.add_argument('-sn', '--subchainNum', type=int, default=3)
+parser.add_argument('-si', '--subchainIndex', type=int, default=1)
 parser.add_argument('-ds', '--deleysec', type=int, default=0)
 
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')

@@ -407,11 +407,18 @@ async function syncMasterUgasToSubchain() {
                         } else {
                             logger.info("master blockHeightInfo(" + blockHeight + ") trx id : " + tranId + ", is not ready, need push");
 
-
                             let param = {
-                                chain_name: chainNameConstants.MAIN_CHAIN_NAME_TRANSFER, block_number: blockHeight,
+                                chain_name: chainConfig.localChainName, block_number: blockHeight,
+                                merkle_proofs: merkleProof.merkle_proof, tx_bytes: tx_bytes_array.toString()
+                            }
+                            logger.info("prepare to push sync  transfer trx:", param);
+
+                            param = {
+                                chain_name: chainConfig.localChainName, block_number: blockHeight,
                                 merkle_proofs: merkleProof.merkle_proof, tx_bytes: tx_bytes_array
                             }
+
+
                             logger.info("prepare to push sync transfer trx:", param);
                             let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "synctransfer", param, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
                             logger.info("synctransfer res:", res);

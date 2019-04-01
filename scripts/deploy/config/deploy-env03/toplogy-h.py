@@ -277,6 +277,8 @@ def insert_mongo_config(fname):
 	content.insert(index_line+2, "access-control-allow-origin = *\n");
 	content.insert(index_line+3, "mongodb-uri = mongodb://root:Uranus@127.0.0.1:27017/ultrain\n");
 	content.insert(index_line+4, "plugin = ultrainio::mongo_db_plugin\n");
+	content.insert(index_line+5, "plugin = ultrainio::history_api_plugin\n");
+
 	writefile(fname,content)
 
 def insert_udp_seed(fname,ip,seedHosts):

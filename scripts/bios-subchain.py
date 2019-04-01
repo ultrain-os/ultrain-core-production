@@ -29,12 +29,6 @@ endl=5;
 
 local = True;
 
-def getUserName(i):
-    if local == True:
-        return args.subchain + accounts[i];
-    else:
-        return accounts[i];
-
 def sleep(t):
     print('sleep', t, '...')
     time.sleep(t)
@@ -61,6 +55,46 @@ def retry(args):
             sleep(0.5)
         else:
             break
+
+
+def background(args):
+    print('bios-boot-tutorial.py:', args)
+    logFile.write(args + '\n')
+    return subprocess.Popen(args, shell=True)
+
+def stepKillAll():
+    run('killall kultraind || true',False)
+    sleep(1.5)
+
+
+def startWallet():
+    run('rm -rf ' + os.path.abspath(args.wallet_dir),False)
+    run('mkdir -p ' + os.path.abspath(args.wallet_dir),False)
+    background(args.kultraind + ' --unlock-timeout %d --http-server-address 127.0.0.1:6666 --wallet-dir %s' % (unlockTimeout, os.path.abspath(args.wallet_dir)))
+    sleep(1)
+    run(args.clultrain + 'wallet create',False)
+
+def importKeys():
+    run(args.clultrain + 'wallet import --private-key ' + args.private_key,False)
+    run(args.clultrain + 'wallet import --private-key ' + args.initacc_sk,False)
+    run(args.clultrain + 'wallet import --private-key  5KG6NiRGhsEP9vTf4WVe312iVQ3uemEXsstsqkT9Wj1MkdY5uJk',False)
+    for i in range(0, len(account_sk_list)):
+        run(args.clultrain + 'wallet import --private-key ' + account_sk_list[i],False)
+    for i in range(0, len(rand_sk_lst)):
+        run(args.clultrain + 'wallet import --private-key ' + rand_sk_lst[i],False)
+
+def stepStartWallet():
+    startWallet()
+    importKeys()
+
+
+def getUserName(i):
+    if local == True:
+        return args.subchain + accounts[i];
+    else:
+        return accounts[i];
+
+
 
 
 # addSubChainUse
@@ -168,6 +202,8 @@ def showSubchain():
 
 # Command Line Arguments
 commands = [
+    ('k', 'kill',           stepKillAll,                True,    "Kill all nodultrain and kultraind processes"),
+    ('w', 'wallet',         stepStartWallet,            True,    "Start kultraind, create wallet, fill with keys"),
     ('A', 'addSubChainType', addChainType, True, "add a new subchain type"),
     ('N', 'newSubchain', addSubchain, True, "add a new subchain"),
     ('U', 'addUser', addSubChainUser, True, "add subchain users in mainchain"),
@@ -188,6 +224,11 @@ parser.add_argument('--contracts-dir', metavar='', help="Path to contracts direc
                     default=defaultcontracts_dir % '/root/workspace')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
 parser.add_argument('-pn', '--producerNum', type=int, help="set producerNum to create")
+parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
+parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")
+parser.add_argument('--private-Key', metavar='', help="ULTRAIN Private Key", default='5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H', dest="private_key")
+parser.add_argument('--initacc-pk', metavar='', help="ULTRAIN Public Key", default='UTR6XRzZpgATJaTtyeSKqGhZ6rH9yYn69f5fkLpjVx6y2mEv5iQTn', dest="initacc_pk")
+parser.add_argument('--initacc-sk', metavar='', help="ULTRAIN Private Key", default='5KZ7mnSHiKN8VaJF7aYf3ymCRKyfr4NiTiqKC5KLxkyM56KdQEP', dest="initacc_sk")
 
 for (flag, command, function, inAll, help) in commands:
     prefix = ''
