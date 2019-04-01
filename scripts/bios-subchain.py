@@ -27,6 +27,14 @@ defaultcontracts_dir = '%s/ultrain-core/build/contracts/'
 startl=1;
 endl=5;
 
+local = True;
+
+def getUserName(i):
+    if local == True:
+        return args.subchain + accounts[i];
+    else:
+        return accounts[i];
+
 def sleep(t):
     print('sleep', t, '...')
     time.sleep(t)
@@ -62,7 +70,7 @@ def addSubChainUser():
     if args.producerNum :
         endindex = args.producerNum;
     for i in range(startl,endindex+1):
-        userName = args.subchain + accounts[i];
+        userName = getUserName(i);
         pk = account_pk_list[i]
         print "add new user:" + userName + "(" + pk + ") belongs to chain(" + args.subchain + ")"
         retry(args.clultrain + 'create account -u ultrainio ' + userName + ' ' + pk)
@@ -78,7 +86,7 @@ def addBalanceToUser():
     if args.producerNum :
         endindex = args.producerNum;
     for i in range(startl,endindex+1):
-        userName = args.subchain + accounts[i];
+        userName = getUserName(i);
         print "transfer to  user(" + userName + ") 20.0000 UGAS"
         retry(args.clultrain + 'transfer ultrainio ' + userName + ' "20.0000 UGAS"')
         sleep(0.5)
@@ -92,7 +100,7 @@ def regProducer():
     if args.producerNum :
         endindex = args.producerNum;
     for i in range(startl,endindex+1):
-        userName = args.subchain + accounts[i];
+        userName = getUserName(i);
         userPK = account_pk_list[i]
         pk = pk_list[i]
         bls_key = bls_pk_list[i];
@@ -113,7 +121,7 @@ def delegateStark():
     if args.producerNum :
         endindex = args.producerNum;
     for i in range(startl,endindex+1):
-        userName = args.subchain + accounts[i];
+        userName = getUserName(i);
         print "delegatecons:" + userName + " 42000.0000 UGAS"
         retry(args.clultrain + 'push action ultrainio delegatecons \'{"from":"utrio.stake", "receiver":"'+userName+'", "stake_cons_quantity":"42000.0000 UGAS"}\' -p utrio.stake@active')
         sleep(0.5)

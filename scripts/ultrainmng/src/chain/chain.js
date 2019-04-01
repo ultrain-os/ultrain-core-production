@@ -664,7 +664,9 @@ async function syncBlock() {
 
             logger.debug("block params:", params);
             logger.info("pushing block to head (chain_name :" + chainConfig.localChainName + " count :" + results.length + ")");
-            await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "acceptheader", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+            if (results.length > 0) {
+                await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "acceptheader", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+            }
         }
 
         //同步主链块头
@@ -817,7 +819,9 @@ async function syncMasterBlock() {
 
             logger.debug("master block params:", params);
             logger.info("pushing master block to subchain ( count :" + results.length + ")");
-            await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "acceptmaster", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+            if (results.length > 0) {
+                await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "acceptmaster", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+            }
         }
 
 

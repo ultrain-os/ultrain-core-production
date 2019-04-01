@@ -2,13 +2,12 @@
   {
     "chainName": "ultrainio",
     "seedIp": [
-      "172.17.0.26",
-      "172.17.0.25"
+      "172.17.0.26"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z",
-      "UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD"
+      "UTR6fo28u5UbcrkbKG2FsgpRcHXvvcVXuvHbn8exZipPmqiWELi3k",
+      "UTR5WLdrgG23R1aAWz7ZRNdaVg9UwoAk2fP4varAu2SuTzRLAfVgu"
     ]
   },
   {
@@ -19,8 +18,8 @@
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z",
-      "UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD"
+      "UTR8Sjo4jvNEsddeMpaEQbhd6L4AzmkqCNA2CqDQJPwTcJw2bW53U",
+      "UTR76GgQMyRiEAq8suPdtxoia9k1UrrRMPMydsWpxXB91o2f3Rggn"
     ]
   },
   {
@@ -31,8 +30,8 @@
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z",
-      "UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD"
+      "UTR6BCJTz6LmHNxCR8WPhQKcAzkHFjLDK9C9E8mxGxAQfkhmuKJ9X",
+      "UTR6Fs4VHM5kKE1NNRxT3Vmb6aqkjdXcTU5R6TB6LETF8HQcDpZBZ"
     ]
   },
   {
@@ -43,8 +42,8 @@
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6XP4oPPvzpPvApKBKzvFJthY5tdGrBK5hfBbnCPs5qPuvXk87z",
-      "UTR5rX3vVgt9pzu1HrVK7NCqaPP3QRQYD9yFndfAFfiQkZ4mtHFeD"
+      "UTR7eaMTFhu7D8yNtFsQiNtSh5KfdktuATnwQYYQR8qjRNxRshqrW",
+      "UTR6oWv1CBPNCXMtxM7Ghw9K2hw2nhp5jX21wGxovkv7TUMJeYo8E"
     ]
   }
 ]

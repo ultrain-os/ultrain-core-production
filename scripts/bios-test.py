@@ -14,6 +14,7 @@ from account_info import *
 #from account_info_sub2 import *
 #from account_info_sub3 import *
 
+local = True;
 args = None
 logFile = None
 min_committee_staked = 420000000
@@ -181,12 +182,13 @@ def stepRegProducers():
             value = 2.0000
         retry(args.clultrain + 'transfer %s utrio.rand \'%.4f UGAS\' \'as candidate\' -p %s' % ( rand_acc_lst[i],value, rand_acc_lst[i]))
 
-    if args.subchain and args.subchain != "ultrainio" :
-        masterproducerinfo = ""
-        for i in range(1, args.num_master_prods + 1):
-            masterproducerinfo += '{"owner":"%s","producer_key":"%s","bls_key":"%s"},' % (("master"+initaccount[i]), pk_list[i], bls_pk_list[i] )
-        masterproducerinfo = masterproducerinfo[:-1]
-        retry(args.clultrain + ' push action ultrainio setmasterchaininfo \'{"chaininfo":{"owner": "ultrainio",\
+    if local == True :
+        if args.subchain and args.subchain != "ultrainio" :
+            masterproducerinfo = ""
+            for i in range(1, args.num_master_prods + 1):
+                masterproducerinfo += '{"owner":"%s","producer_key":"%s","bls_key":"%s"},' % (("master"+initaccount[i]), pk_list[i], bls_pk_list[i] )
+            masterproducerinfo = masterproducerinfo[:-1]
+            retry(args.clultrain + ' push action ultrainio setmasterchaininfo \'{"chaininfo":{"owner": "ultrainio",\
             "master_prods":[%s],"block_height":%s,"block_id":"%s","master_chain_ext":[]}}\' -p ultrainio ' % \
             ( masterproducerinfo, args.num_master_block, args.master_block_id) )
     sleep(15)
