@@ -13,6 +13,11 @@ namespace ultrainio
 {
 namespace p2p
 {
+    struct Reserved
+    {
+        int key;/*reserve_1:1,reserver_2:2 ...*/
+        std::string content;
+    };
     struct UnsignedPingNode
     {
         uint8_t type ;
@@ -22,7 +27,8 @@ namespace p2p
         NodeID destid;
         string chain_id;
         chain::public_key_type pk;/*public_key*/
-	chain::account_name account;
+        chain::account_name account;
+        vector<Reserved> to_save;
     };
     struct PingNode:public UnsignedPingNode
     {
@@ -35,16 +41,17 @@ namespace p2p
     {
         uint8_t type ;/*2*/
         NodeIPEndpoint destep;
-	NodeIPEndpoint fromep;
-	NodeID sourceid; // sender public key (from signature)
-	NodeID destid;
-	string chain_id;
+        NodeIPEndpoint fromep;
+        NodeID sourceid; // sender public key (from signature)
+        NodeID destid;
+        string chain_id;
         chain::public_key_type pk;/*public_key*/
-	chain::account_name account;
+        chain::account_name account;
+        vector<Reserved> to_save;
     };
     struct Pong:public UnsignedPong
     {
-	string signature;
+        string signature;
     };
     struct UnsignedFindNode
     {
@@ -56,7 +63,8 @@ namespace p2p
         NodeIPEndpoint tartgetep;
         string chain_id;
         chain::public_key_type pk;/*public_key*/
-	chain::account_name account;
+        chain::account_name account;
+        vector<Reserved> to_save;
     };
     struct FindNode:public UnsignedFindNode
     {
@@ -77,7 +85,8 @@ namespace p2p
         std::vector<Neighbour> neighbours;
         string chain_id;
         chain::public_key_type pk;/*public_key*/
-	chain::account_name account;
+        chain::account_name account;
+        vector<Reserved> to_save;
     };
     struct Neighbours:public  UnsignedNeighbours
     {
@@ -387,12 +396,13 @@ void UDPSocket<Handler, MaxDatagramSize>::disconnectWithError(boost::system::err
 
 }
 //FC_REFLECT( ultrainio::p2p::UDPDatagram, (data)(locus_ip)(locus_port))
-FC_REFLECT( ultrainio::p2p::UnsignedPingNode, (sourceid)(destid)(type)(source)(dest)(chain_id)(pk)(account))
+FC_REFLECT( ultrainio::p2p::Reserved, (key)(content))
+FC_REFLECT( ultrainio::p2p::UnsignedPingNode, (sourceid)(destid)(type)(source)(dest)(chain_id)(pk)(account)(to_save))
 FC_REFLECT_DERIVED( ultrainio::p2p::PingNode, (ultrainio::p2p::UnsignedPingNode), (signature))
-FC_REFLECT( ultrainio::p2p::UnsignedPong, (type)(fromep)(destep)(sourceid)(destid)(chain_id)(pk)(account))
+FC_REFLECT( ultrainio::p2p::UnsignedPong, (type)(fromep)(destep)(sourceid)(destid)(chain_id)(pk)(account)(to_save))
 FC_REFLECT_DERIVED( ultrainio::p2p::Pong, (ultrainio::p2p::UnsignedPong), (signature))
-FC_REFLECT( ultrainio::p2p::UnsignedFindNode, (type)(fromID)(targetID)(destid)(fromep)(tartgetep)(chain_id)(pk)(account))
+FC_REFLECT( ultrainio::p2p::UnsignedFindNode, (type)(fromID)(targetID)(destid)(fromep)(tartgetep)(chain_id)(pk)(account)(to_save))
 FC_REFLECT_DERIVED( ultrainio::p2p::FindNode, (ultrainio::p2p::UnsignedFindNode), (signature))
 FC_REFLECT( ultrainio::p2p::Neighbour, (node)(endpoint))
-FC_REFLECT( ultrainio::p2p::UnsignedNeighbours, (type)(fromID)(destid)(fromep)(tartgetep)(neighbours)(chain_id)(pk)(account))
+FC_REFLECT( ultrainio::p2p::UnsignedNeighbours, (type)(fromID)(destid)(fromep)(tartgetep)(neighbours)(chain_id)(pk)(account)(to_save))
 FC_REFLECT_DERIVED( ultrainio::p2p::Neighbours, (ultrainio::p2p::UnsignedNeighbours), (signature))
