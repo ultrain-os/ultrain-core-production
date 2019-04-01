@@ -1,6 +1,19 @@
 #include <core/BlsVoterSet.h>
 
+#include <base/Hex.h>
+#include <base/Memory.h>
+#include <crypto/Bls.h>
+
 namespace ultrainio {
+    template <class T>
+    static bool verify(const std::string& sig, const T& v, unsigned char** pks, int size) {
+        fc::sha256 h = fc::sha256::hash(v);
+        std::shared_ptr<Bls> blsPtr = Bls::getDefault();
+        unsigned char sigX[Bls::BLS_SIGNATURE_COMPRESSED_LENGTH];
+        Hex::fromHex<unsigned char>(sig, sigX, Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
+        return blsPtr->verifyAggregate(pks, size, sigX, Bls::BLS_SIGNATURE_COMPRESSED_LENGTH, (void*)h.str().c_str(), h.str().length());
+    }
+
     // BlsVoterSet
     BlsVoterSet::BlsVoterSet() {}
 
@@ -36,6 +49,20 @@ namespace ultrainio {
 
     bool BlsVoterSet::valid() const {
         return !accountPool.empty();
+    }
+
+    bool BlsVoterSet::verifyBls(std::vector<std::string> blsPkVector) {
+        if (blsPkVector.size() != accountPool.size()) {
+            return false;
+        }
+        unsigned char** pks = (unsigned char**)malloc(sizeof(unsigned char*) * accountPool.size());
+        for (int i = 0; i < accountPool.size(); i++) {
+            pks[i] = (unsigned char*)malloc(sizeof(unsigned char) * Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+            Hex::fromHex<unsigned char>(blsPkVector[i], pks[i], Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+        }
+        bool res = verify(sigX, commonEchoMsg, pks, accountPool.size());
+        Memory::freeMultiDim<unsigned char>(pks, accountPool.size());
+        return res;
     }
 
     void BlsVoterSet::toStringStream(std::stringstream& ss) const {

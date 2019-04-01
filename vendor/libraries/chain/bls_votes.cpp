@@ -44,7 +44,8 @@ namespace ultrainio {
         }
 
         namespace bls_votes {
-            using bls_index_set = index_set<bls_votes_index>;
+            using bls_index_set = index_set<bls_votes_index,
+                                            bls_votes_current_index>;
 
             int bls_votes_manager::s_confirm_point_interval = 0;
 
@@ -54,9 +55,10 @@ namespace ultrainio {
             }
 
             void bls_votes_manager::initialize_database() {
+                ilog("initialize_database");
                 _db.create<bls_votes_object>([&](bls_votes_object &obj) {
-                    ilog("initialize_database");
-                    // set default
+                });
+                _db.create<bls_votes_current_object>([&](bls_votes_current_object &obj) {
                 });
             }
 
@@ -168,6 +170,18 @@ namespace ultrainio {
                         obj.latest_confirmed_block_num = block_num;
                     }
                 });
+            }
+
+            void bls_votes_manager::save_current_bls_votes(const std::string& bls_str) {
+                const auto &o = _db.get<bls_votes_current_object>();
+                _db.modify(o, [&](bls_votes_current_object &obj) {
+                    obj.current_bls_str = shared_string(bls_str.begin(), bls_str.end(), obj.current_bls_str.get_allocator());
+                });
+            }
+
+            std::string bls_votes_manager::get_current_bls_votes() const {
+                const auto& o = _db.get<bls_votes_current_object>();
+                return std::string(o.current_bls_str.begin(), o.current_bls_str.end());
             }
         }
     }

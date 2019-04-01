@@ -36,6 +36,10 @@ namespace ultrainio {
 
         void handleEpochEndPoint(chain::controller& chain, const SHA256& mroot);
 
+        void saveCurrentBlsVoterSet(const BlsVoterSet& );
+
+        BlsVoterSet getCurrentBlsVoterSet() const;
+
     private:
         bool shouldBeConfirmed(const BlockHeader& blockHeader) const;
 

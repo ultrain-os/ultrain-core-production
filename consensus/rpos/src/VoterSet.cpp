@@ -22,7 +22,7 @@ namespace ultrainio {
         unsigned char** blsSignV = (unsigned char**)malloc(n * sizeof(unsigned char*));
         for (int i = 0; i < n; i++) {
             blsSignV[i] = (unsigned char*)malloc(Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
-            Hex::fromHex(this->blsSignPool[i], blsSignV[i], Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
+            Hex::fromHex<unsigned char>(this->blsSignPool[i], blsSignV[i], Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
         }
         unsigned char sigX[Bls::BLS_SIGNATURE_COMPRESSED_LENGTH];
         bool res = blsPtr->aggregate(blsSignV, n, sigX, Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);

@@ -81,4 +81,12 @@ namespace ultrainio {
             }
         }
     }
+
+    void LightClientProducer::saveCurrentBlsVoterSet(const BlsVoterSet& blsVoterSet) {
+        m_BlsVotesMgr.save_current_bls_votes(blsVoterSet.toString());
+    }
+
+    BlsVoterSet LightClientProducer::getCurrentBlsVoterSet() const {
+        return BlsVoterSet(m_BlsVotesMgr.get_current_bls_votes());
+    }
 }

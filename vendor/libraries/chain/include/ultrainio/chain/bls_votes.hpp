@@ -69,6 +69,22 @@ namespace ultrainio { namespace chain { namespace bls_votes {
         std::vector<bls_votes_info> should_be_confirmed;
     };
 
+
+    struct bls_votes_current_object : public chainbase::object<bls_votes_current_object_type, bls_votes_current_object> {
+        OBJECT_CTOR(bls_votes_current_object, (current_bls_str))
+
+        id_type id;
+
+        shared_string current_bls_str;
+    };
+
+    using bls_votes_current_index = chainbase::shared_multi_index_container<
+        bls_votes_current_object,
+        indexed_by<
+            ordered_unique<tag<by_id>, member<bls_votes_current_object, bls_votes_current_object::id_type, &bls_votes_current_object::id>>
+        >
+    >;
+
     class bls_votes_manager {
     public:
         static void set_confirm_point_interval(int interval);
@@ -93,6 +109,10 @@ namespace ultrainio { namespace chain { namespace bls_votes {
 
         void confirm(uint32_t block_num);
 
+        void save_current_bls_votes(const std::string& bls_str);
+
+        std::string get_current_bls_votes() const;
+
         void add_to_worldstate( std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db);
 
         void read_from_worldstate(std::shared_ptr<ws_helper> ws_helper_ptr, chainbase::database& worldstate_db);
@@ -106,7 +126,10 @@ namespace ultrainio { namespace chain { namespace bls_votes {
 } } } // ultrainio::chain::bls_votes
 
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::bls_votes::bls_votes_object,        ultrainio::chain::bls_votes::bls_votes_index)
+CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::bls_votes::bls_votes_current_object,        ultrainio::chain::bls_votes::bls_votes_current_index)
 
 FC_REFLECT(ultrainio::chain::bls_votes::bls_votes_info, (block_num)(end_epoch)(valid_bls)(bls_str))
 FC_REFLECT(ultrainio::chain::bls_votes::bls_votes_object, (latest_confirmed_block_num)(latest_check_point_id)(should_be_confirmed))
 FC_REFLECT(ultrainio::chain::bls_votes::worldstate_bls_voters_object, (latest_confirmed_block_num)(latest_check_point_id)(should_be_confirmed))
+
+FC_REFLECT(ultrainio::chain::bls_votes::bls_votes_current_object, (current_bls_str))

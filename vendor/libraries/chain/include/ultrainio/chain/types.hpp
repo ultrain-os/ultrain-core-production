@@ -152,6 +152,7 @@ namespace ultrainio { namespace chain {
       action_history_object_type,
       reversible_block_object_type,
       bls_votes_object_type,
+      bls_votes_current_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -222,6 +223,7 @@ FC_REFLECT_ENUM(ultrainio::chain::object_type,
                 (action_history_object_type)
                 (reversible_block_object_type)
                 (bls_votes_object_type)
+                (bls_votes_current_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( ultrainio::chain::void_t, )

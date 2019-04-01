@@ -20,6 +20,8 @@ namespace ultrainio {
 
         BlsVoterSet(const std::vector<char>& vc);
 
+        bool verifyBls(std::vector<std::string> blsPkVector);
+
         std::string toString() const;
 
         std::vector<char> toVectorChar() const;
@@ -34,9 +36,3 @@ namespace ultrainio {
         bool fromStringStream(std::stringstream&);
     };
 }
-
-#ifdef CONSENSUS_VRF
-FC_REFLECT( ultrainio::BlsVoterSet, (commonEchoMsg)(accountPool)(proofPool)(sigX))
-#else
-FC_REFLECT( ultrainio::BlsVoterSet, (commonEchoMsg)(accountPool)(sigX))
-#endif

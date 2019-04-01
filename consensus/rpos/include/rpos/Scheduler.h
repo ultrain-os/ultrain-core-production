@@ -270,7 +270,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         std::unique_ptr<boost::asio::steady_timer> m_memleakCheck;
         std::list<SyncTask> m_syncTaskQueue;
         uint32_t m_fast_timestamp;
-        VoterSet m_currentVoterSet;
+        BlsVoterSet m_currentBlsVoterSet;
         std::shared_ptr<LightClientProducer> m_lightClientProducer;
         friend class UranusControllerMonitor;
     };

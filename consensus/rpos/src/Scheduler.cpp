@@ -75,6 +75,7 @@ namespace ultrainio {
         m_fast_timestamp = 0;
         chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
         m_lightClientProducer = std::make_shared<LightClientProducer>(chain.get_bls_votes_manager());
+        m_currentBlsVoterSet = m_lightClientProducer->getCurrentBlsVoterSet();
     }
 
     chain::checksum256_type Scheduler::getCommitteeMroot(uint32_t block_num) {
@@ -875,8 +876,8 @@ namespace ultrainio {
             if (b) {
                 sync_block.block = *b;
                 if (num == last_block_num) {
-                    sync_block.proof = m_currentVoterSet.toBlsVoterSet().toString();
-                    ilog("send last block, voter set: ${s}", ("s", m_currentVoterSet.toBlsVoterSet().toString()));
+                    sync_block.proof = m_currentBlsVoterSet.toString();
+                    ilog("send last block, voter set: ${s}", ("s", m_currentBlsVoterSet.toString()));
                 }
                 UranusNode::getInstance()->sendMessage(nodeId, sync_block);
             } else if (num == end_block_num) { // try to send last block next time
@@ -890,7 +891,7 @@ namespace ultrainio {
             if (end_block_num > num + m_maxSyncBlocks) {
                 end_block_num = num + m_maxSyncBlocks;
             }
-            m_syncTaskQueue.emplace_back(last_block_num, m_currentVoterSet.toBlsVoterSet(), nodeId, num, end_block_num, msg.seqNum);
+            m_syncTaskQueue.emplace_back(last_block_num, m_currentBlsVoterSet, nodeId, num, end_block_num, msg.seqNum);
         }
 
         return true;
@@ -1602,7 +1603,7 @@ namespace ultrainio {
                 voterSet.proofPool = itor->second.proofPool;
 #endif
                 // save VoterSet
-                m_currentVoterSet = voterSet;
+                m_currentBlsVoterSet = voterSet.toBlsVoterSet();
                 break;
             }
         }
@@ -1978,7 +1979,8 @@ namespace ultrainio {
              ("num", block->block_num())
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
-        m_lightClientProducer->acceptNewHeader(chain.head_block_header(), m_currentVoterSet.toBlsVoterSet());
+        m_lightClientProducer->acceptNewHeader(chain.head_block_header(), m_currentBlsVoterSet);
+        m_lightClientProducer->saveCurrentBlsVoterSet(m_currentBlsVoterSet);
         MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
     }
 
@@ -2078,7 +2080,7 @@ namespace ultrainio {
                         sync_block.proof = it->bvs.toString();
                         ilog("send checked block in task: ${s}", ("s", sync_block.proof));
                     } else if (it->startBlock == last_num) {
-                        sync_block.proof = m_currentVoterSet.toBlsVoterSet().toString();
+                        sync_block.proof = m_currentBlsVoterSet.toString();
                         ilog("send last block in task: ${s}", ("s", sync_block.proof));
                     }
                     UranusNode::getInstance()->sendMessage(it->nodeId, sync_block);
