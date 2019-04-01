@@ -20,13 +20,16 @@ namespace ultrainio {
         for (auto& e : ext) {
             BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
             if (key == kNextCommitteeMroot) {
-                std::string r(std::get<1>(e).begin(), std::get<1>(e).end());
-                m_nextCommitteeMroot = SHA256(r);
+                m_nextCommitteeMroot = std::string(std::get<1>(e).begin(), std::get<1>(e).end());
             }
         }
     }
 
     uint32_t EpochEndPoint::blockNum() const {
         return m_blockHeader.block_num();
+    }
+
+    std::string EpochEndPoint::nextCommitteeMroot() const {
+        return m_nextCommitteeMroot;
     }
 }

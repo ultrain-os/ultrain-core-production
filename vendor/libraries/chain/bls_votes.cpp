@@ -109,13 +109,12 @@ namespace ultrainio {
             bool bls_votes_manager::should_be_confirmed(uint32_t block_num) const {
                 const auto &o = _db.get<bls_votes_object>();
                 ULTRAIN_ASSERT(s_confirm_point_interval > 0, chain_exception, "not set s_confirm_point_interval");
-                ilog("latest_confirmed_block_num : ${latest}", ("latest", o.latest_confirmed_block_num));
-                for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {
-                    ilog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
-                         ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", std::string(itor->bls_str.begin(), itor->bls_str.end())));
-                }
                 if (o.should_be_confirmed.size() > 0 && o.should_be_confirmed.back().block_num + s_confirm_point_interval == block_num) {
                     wlog("there are too many unconfirmed block;");
+                    for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {
+                        ilog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
+                             ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", std::string(itor->bls_str.begin(), itor->bls_str.end())));
+                    }
                     return true;
                 } else if (o.latest_confirmed_block_num + s_confirm_point_interval == block_num) {
                     return true;
@@ -145,10 +144,6 @@ namespace ultrainio {
                     return true;
                 }
                 elog("latest_confirmed_block_num : ${latest}", ("latest", o.latest_confirmed_block_num));
-                for (auto itor = o.should_be_confirmed.begin(); itor != o.should_be_confirmed.end(); itor++) {
-                    elog("unconfirmed block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
-                         ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", std::string(itor->bls_str.begin(), itor->bls_str.end())));
-                }
                 return false;
             }
 

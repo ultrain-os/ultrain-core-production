@@ -133,17 +133,17 @@ public:
             BlockIdType confirmedBlockId;
             CommitteeSet committeeSet;
             if (getUnconfirmedHeaderFromDb(name(chainName), unconfirmedheaders, confirmedBlockId, committeeSet)) {
-                lightClient->setStartPoint(CommitteeSet(), confirmedBlockId);
+                lightClient->setStartPoint(committeeSet, confirmedBlockId);
                 for (auto e : unconfirmedheaders) {
                     lightClient->accept(e);
                 }
                 lightClient->accept(blockHeader);
                 id = lightClient->getLatestConfirmedBlockId();
-                return true;
+                return lightClient->getStatus();
             }
         }
         id = lightClient->getLatestConfirmedBlockId();
-        return false;
+        return lightClient->getStatus();
     }
 
 private:
@@ -157,7 +157,7 @@ private:
             unconfirmedBlockHeader = result.unconfirmed_headers;
             confirmedBlockId = result.confirmed_block_id;
             committeeSet = CommitteeSet(result.committee_set);
-            ilog("chainName name = ${name}", ("name", chainName.to_string()));
+            ilog("chainName name = ${name} committee : ${committee} size : ${size}", ("name", chainName.to_string())("committee", committeeSet.toString())("size", result.committee_set.size()));
             return true;
         } catch (fc::exception &e) {
             ilog("There may be no unconfirmed block header : ${e}", ("e", e.to_string()));

@@ -2191,6 +2191,7 @@ namespace ultrainio {
         blockPtr->transaction_mroot = bh.transaction_mroot;
         blockPtr->action_mroot = bh.action_mroot;
         blockPtr->committee_mroot = bh.committee_mroot;
+        blockPtr->header_extensions = bh.header_extensions;
         blockPtr->proposer = name("utrio.empty");
         // Discard the temp block.
         chain.abort_block();

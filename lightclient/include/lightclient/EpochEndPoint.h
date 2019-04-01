@@ -13,9 +13,11 @@ namespace ultrainio {
 
         uint32_t blockNum() const;
 
+        std::string nextCommitteeMroot() const;
+
     private:
         BlockHeader m_blockHeader;
 
-        SHA256 m_nextCommitteeMroot;
+        std::string m_nextCommitteeMroot;
     };
 }

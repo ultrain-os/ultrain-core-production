@@ -7,8 +7,7 @@
 namespace ultrainio {
     enum LightClientError {
         //kNonError = 0,
-        kLessConfirmedBlockNum,
-        kExceedLargestBlockNum,
+        kOutOfRange,
         kPreviousError,
         kBlsVoterSetNotMatch
     };

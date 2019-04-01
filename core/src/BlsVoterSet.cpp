@@ -51,7 +51,7 @@ namespace ultrainio {
         return !accountPool.empty();
     }
 
-    bool BlsVoterSet::verifyBls(std::vector<std::string> blsPkVector) {
+    bool BlsVoterSet::verifyBls(std::vector<std::string> blsPkVector) const {
         if (blsPkVector.size() != accountPool.size()) {
             return false;
         }

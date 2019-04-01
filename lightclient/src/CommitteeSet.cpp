@@ -32,6 +32,25 @@ namespace ultrainio {
         }
     }
 
+    bool CommitteeSet::verify(const BlsVoterSet& blsVoterSet) const {
+        std::vector<std::string> blsPkV = getBlsPk(blsVoterSet.accountPool);
+        return blsVoterSet.verifyBls(blsPkV);
+    }
+
+    std::vector<std::string> CommitteeSet::getBlsPk(const std::vector<AccountName>& accountV) const {
+        std::vector<std::string> pkV;
+        for (auto v : accountV) {
+            for (auto info : m_committeeInfoV) {
+                if (std::string(v) == info.accountName) {
+                    pkV.push_back(info.blsPk);
+                    break;
+                }
+            }
+
+        }
+        return pkV;
+    }
+
     SHA256 CommitteeSet::committeeMroot() const {
         // MUST BE the same with StakeOverBase
         return SHA256::hash(toString());
@@ -60,6 +79,10 @@ namespace ultrainio {
             return true;
         }
         return m_committeeInfoV == rhs.m_committeeInfoV;
+    }
+
+    bool CommitteeSet::operator != (const CommitteeSet& rhs) const {
+        return !(*this == rhs);
     }
 
     CommitteeDelta CommitteeSet::diff(const CommitteeSet& pre) const {

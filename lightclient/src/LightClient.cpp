@@ -20,6 +20,7 @@ namespace ultrainio {
         return true;
     }
 
+    // invoked by fetch block feature
     void LightClient::accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
         ilog("accept BlockHeader num : ${blockNum}, my id : ${myId}, BlsVoterSet confirm num : ${confirmedBlockNum} id : ${id}, latest confirm : ${latest}",
                 ("blockNum", blockHeader.block_num())("myId", blockHeader.id())("confirmedBlockNum", BlockHeader::num_from_id(blsVoterSet.commonEchoMsg.blockId))
@@ -36,14 +37,17 @@ namespace ultrainio {
     void LightClient::accept(const BlockHeader& blockHeader) {
         ilog("accept BlockHeader num : ${blockNum}, id : ${id} latest confirm : ${latest}",
              ("blockNum", blockHeader.block_num())("id", blockHeader.id())("latest", BlockHeader::num_from_id(m_latestConfirmedBlockId)));
-        if (!check(blockHeader)) {
-            return;
-        }
         if (Helper::isGenesis(blockHeader)) {
             handleGenesis(blockHeader);
             return;
         }
 
+        if (isOutOfRange(blockHeader)) {
+            onError(kOutOfRange, blockHeader);
+            return;
+        }
+
+        ULTRAIN_ASSERT(m_workingCommitteeSet != CommitteeSet(), chain::chain_exception, "m_workingCommitteeSet is empty");
         auto unconfirmItor = m_unconfirmedList.begin();
         while (true) {
             if (unconfirmItor == m_unconfirmedList.end()) {
@@ -62,40 +66,6 @@ namespace ultrainio {
             unconfirmItor++;
         }
 
-        if (EpochEndPoint::isEpochEndPoint(blockHeader)) {
-            auto epochEndPointItor = m_unconfirmedEpochEndPointList.begin();
-            while (true) {
-                if (epochEndPointItor == m_unconfirmedEpochEndPointList.end()) {
-                    m_unconfirmedEpochEndPointList.push_back(EpochEndPoint(blockHeader));
-                    break;
-                }
-                if (epochEndPointItor->blockNum() >= blockHeader.block_num()) {
-                    // do not need to do duplicate check
-                } else {
-                    m_unconfirmedEpochEndPointList.insert(epochEndPointItor, EpochEndPoint(blockHeader));
-                    break;
-                }
-                epochEndPointItor++;
-            }
-        }
-
-        if (CheckPoint::isCheckPoint(blockHeader)) {
-            auto checkPointItor = m_unconfirmedCheckPointList.begin();
-            while (true) {
-                if (checkPointItor == m_unconfirmedCheckPointList.begin()) {
-                    m_unconfirmedCheckPointList.push_back(CheckPoint(blockHeader));
-                    break;
-                }
-                if (checkPointItor->blockNum() >= blockHeader.block_num()) {
-                    // also do not need to do duplicate check
-                } else {
-                    m_unconfirmedCheckPointList.insert(checkPointItor, CheckPoint(blockHeader));
-                    break;
-                }
-                checkPointItor++;
-            }
-        }
-
         if (ConfirmPoint::isConfirmPoint(blockHeader)) {
             ConfirmPoint confirmPoint(blockHeader);
             confirm(confirmPoint.blsVoterSet());
@@ -106,29 +76,40 @@ namespace ultrainio {
         if (!blsVoterSet.valid()) {
             return;
         }
-        // TODO verify bls
         BlockIdType maybeConfirmedBlockId = blsVoterSet.commonEchoMsg.blockId;
+        if (BlockHeader::num_from_id(maybeConfirmedBlockId) <= BlockHeader::num_from_id(m_latestConfirmedBlockId)) {
+            return;
+        }
         ilog("maybe confirmed blockNum : ${blockNum} blockId : ${blockId}", ("blockNum", BlockHeader::num_from_id(maybeConfirmedBlockId))("blockId", maybeConfirmedBlockId));
 
+        bool linked = false;
         // handle unconfirmed list
-        BlockIdType blockId = maybeConfirmedBlockId;
+        BlockIdType nextBlockId = maybeConfirmedBlockId;
         auto unconfirmItor = m_unconfirmedList.begin();
         while (unconfirmItor != m_unconfirmedList.end()) {
-            if (blockId == unconfirmItor->id()) {
-                if (maybeConfirmedBlockId == unconfirmItor->id()) {
-                    blockId = unconfirmItor->previous;
-                    unconfirmItor++;
-                    continue;
+            if (nextBlockId == unconfirmItor->id()) {
+                m_confirmedList.push_front(*unconfirmItor);
+                nextBlockId = unconfirmItor->previous;
+                if (nextBlockId == m_latestConfirmedBlockId) {
+                    linked = true;
+                    break;
                 }
-                auto t = unconfirmItor;
-                unconfirmItor++;
-                blockId = t->previous;
-                m_confirmedList.push_front(*t);
-                m_unconfirmedList.erase(t);
-                continue;
             }
             unconfirmItor++;
         }
+        if (!linked) {
+            elog("block header can not link together, bls voter set id : ${id} num : ${num}", ("id", blsVoterSet.commonEchoMsg.blockId)("num", BlockHeader::num_from_id(blsVoterSet.commonEchoMsg.blockId)));
+            return;
+        }
+        if (m_confirmedList.size() <= 1) {
+            elog("no any confirmed block, bls voter set id : ${id}", ("id", blsVoterSet.commonEchoMsg.blockId));
+            return;
+        }
+        if (!verifyBlockHeaderList(m_confirmedList, blsVoterSet)) {
+            m_status = false;
+            return;
+        }
+
         // TODO punish the forked ones
         uint32_t confirmedBlockNum = BlockHeader::num_from_id(maybeConfirmedBlockId) - 1;
         unconfirmItor = m_unconfirmedList.begin();
@@ -140,58 +121,65 @@ namespace ultrainio {
             unconfirmItor++;
         }
 
-        // handle unconfirmed CheckPoint list
-        auto checkPointItor = m_unconfirmedCheckPointList.begin();
-        while (checkPointItor != m_unconfirmedCheckPointList.end()) {
-            if (checkPointItor->blockNum() <= confirmedBlockNum) {
-                m_unconfirmedCheckPointList.erase(checkPointItor, m_unconfirmedCheckPointList.end());
-                break;
-            }
-            checkPointItor++;
-        }
-        if (m_unconfirmedCheckPointList.size() > 0
-            && m_unconfirmedCheckPointList.back().blockHeader().previous == m_latestConfirmedBlockId) {
-            std::cout << "committee set blockNum : " << m_unconfirmedCheckPointList.back().blockNum() << std::endl;
-            m_workingCommitteeSet = m_unconfirmedCheckPointList.back().committeeSet();
-        }
-
-        // handle unconfirmed EpochEndPoint list
-        auto epochEndPointItor = m_unconfirmedEpochEndPointList.begin();
-        while (epochEndPointItor != m_unconfirmedEpochEndPointList.end()) {
-            if (epochEndPointItor->blockNum() <= confirmedBlockNum) {
-                m_unconfirmedEpochEndPointList.erase(epochEndPointItor, m_unconfirmedEpochEndPointList.end());
-                break;
-            }
-            epochEndPointItor++;
-        }
-
-        if (m_confirmedList.size() > 0) {
-            m_latestConfirmedBlockId = m_confirmedList.back().id();
-            onConfirmed(m_confirmedList);
-            m_confirmedList.clear();
-        }
+        m_confirmedList.pop_back();
+        m_latestConfirmedBlockId = m_confirmedList.back().id();
+        onConfirmed(m_confirmedList);
+        m_confirmedList.clear();
 
         ilog("unconfirmed from ${from} to ${to}",
                 ("from", ((m_unconfirmedList.size() > 0) ? m_unconfirmedList.back().block_num() : -1))
                 ("to", ((m_unconfirmedList.size() > 0) ? m_unconfirmedList.front().block_num() : -1)));
-        ilog("unconfirmed CheckPoint size : ${size}", ("size", m_unconfirmedCheckPointList.size()));
-        ilog("unconfirmed EpochEndPoint size : ${size}", ("size", m_unconfirmedEpochEndPointList.size()));
+    }
+
+    bool LightClient::verifyBlockHeaderList(const std::list<BlockHeader>& blockHeaderList, const BlsVoterSet& blsVoterSet) {
+        std::list<ConfirmPoint> confirmPointList;
+        for (auto v : blockHeaderList) {
+            if (ConfirmPoint::isConfirmPoint(v)) {
+                confirmPointList.push_back(ConfirmPoint(v));
+            }
+        }
+        auto itor = blockHeaderList.begin();
+        for (; itor != blockHeaderList.end(); itor++) {
+            bool isConfirmed = false;
+            for (auto v : confirmPointList) {
+                if (itor->id() == v.confirmedBlockId()) {
+                    if (!m_workingCommitteeSet.verify(v.blsVoterSet())) {
+                        elog("verify bls error, id : ${id} num : ${num}", ("id", itor->id())("num", BlockHeader::num_from_id(itor->id())));
+                        return false;
+                    }
+                    isConfirmed = true;
+                }
+            }
+            if (itor->id() == blsVoterSet.commonEchoMsg.blockId) {
+                return m_workingCommitteeSet.verify(blsVoterSet);
+            }
+            if (EpochEndPoint::isEpochEndPoint(*itor)) {
+                if (!isConfirmed) {
+                    elog("DO NOT confirm EpochEndPoint : ${id} num : ${num}", ("id", itor->id())("num", BlockHeader::num_from_id(itor->id())));
+                    return false;
+                }
+                auto checkPointItor = itor;
+                checkPointItor++;
+                if (checkPointItor != blockHeaderList.end()) {
+                    if (!CheckPoint::isCheckPoint(*checkPointItor)) {
+                        elog("CheckPoint is not the next block of EpochEndPoint, id : ${id} num : ${num}", ("id", checkPointItor->id())("num", BlockHeader::num_from_id(checkPointItor->id())));
+                        return false;
+                    }
+                    CheckPoint cp(*checkPointItor);
+                    m_workingCommitteeSet = cp.committeeSet();
+                }
+            }
+        }
+        elog("There are not any confirmed block");
+        return false;
     }
 
     void LightClient::addCallback(std::shared_ptr<LightClientCallback> cb) {
         m_callback = cb;
     }
 
-    bool LightClient::check(const BlockHeader& blockHeader) {
-        if (exceedLargestUnconfirmedBlockNum(blockHeader)) {
-            onError(kExceedLargestBlockNum, blockHeader);
-            return false;
-        }
-        if (lessConfirmedBlockNum(blockHeader)) {
-            onError(kLessConfirmedBlockNum, blockHeader);
-            return false;
-        }
-        return true;
+    bool LightClient::getStatus() const {
+        return m_status;
     }
 
     void LightClient::handleGenesis(const BlockHeader& blockHeader) {
@@ -203,15 +191,13 @@ namespace ultrainio {
         onConfirmed(genesisBlockHeader);
     }
 
-    bool LightClient::exceedLargestUnconfirmedBlockNum(const BlockHeader& blockHeader) const {
-        if (m_unconfirmedList.size() > 0 && (m_unconfirmedList.front().block_num() + 1 < blockHeader.block_num())) {
+    bool LightClient::isOutOfRange(const BlockHeader& blockHeader) const {
+        uint32_t blockNum = blockHeader.block_num();
+        if (m_unconfirmedList.size() > 0 && (blockNum > m_unconfirmedList.front().block_num() + 1)) {
             return true;
         }
-        return false;
-    }
-
-    bool LightClient::lessConfirmedBlockNum(const BlockHeader& blockHeader) const {
-        if (m_latestConfirmedBlockId != BlockIdType() && BlockHeader::num_from_id(m_latestConfirmedBlockId) >= blockHeader.block_num()) {
+        ULTRAIN_ASSERT(m_latestConfirmedBlockId != BlockIdType(), chain::chain_exception, "latest confirmed block id is ${id}", ("id", BlockIdType()));
+        if (blockNum <= BlockHeader::num_from_id(m_latestConfirmedBlockId)) {
             return true;
         }
         return false;
@@ -237,8 +223,7 @@ namespace ultrainio {
         m_workingCommitteeSet = CommitteeSet();
         m_latestConfirmedBlockId = SHA256();
         m_unconfirmedList.clear();
-        m_unconfirmedCheckPointList.clear();
-        m_unconfirmedEpochEndPointList.clear();
         m_confirmedList.clear();
+        m_status = true;
     }
 }

@@ -20,6 +20,7 @@ namespace ultrainio {
 
         void accept(const BlockHeader& blockHeader);
 
+        // invoked by fetch block feature
         void accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
 
         BlockIdType getLatestConfirmedBlockId() const;
@@ -27,6 +28,8 @@ namespace ultrainio {
         bool setStartPoint(const CommitteeSet& committeeSet, const BlockIdType& blockId);
 
         void addCallback(std::shared_ptr<LightClientCallback> cb);
+
+        bool getStatus() const;
 
     private:
 
@@ -36,13 +39,11 @@ namespace ultrainio {
 
         void onConfirmed(const std::list<BlockHeader>&);
 
-        bool exceedLargestUnconfirmedBlockNum(const BlockHeader&) const;
-
-        bool lessConfirmedBlockNum(const BlockHeader&) const;
-
-        bool check(const BlockHeader&);
+        bool isOutOfRange(const BlockHeader&) const;
 
         void handleGenesis(const BlockHeader&);
+
+        bool verifyBlockHeaderList(const std::list<BlockHeader>& blockHeaderList, const BlsVoterSet& blsVoterSet);
 
         // chain name
         uint64_t m_chainName;
@@ -56,12 +57,9 @@ namespace ultrainio {
         // sort by desc
         std::list<BlockHeader> m_unconfirmedList;
 
-        // sort by desc
-        std::list<CheckPoint> m_unconfirmedCheckPointList;
-
-        // sort by desc
-        std::list<EpochEndPoint> m_unconfirmedEpochEndPointList;
-
+        // sort by asc
         std::list<BlockHeader> m_confirmedList;
+
+        bool m_status;
     };
 }

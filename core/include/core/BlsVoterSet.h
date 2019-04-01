@@ -20,7 +20,7 @@ namespace ultrainio {
 
         BlsVoterSet(const std::vector<char>& vc);
 
-        bool verifyBls(std::vector<std::string> blsPkVector);
+        bool verifyBls(std::vector<std::string> blsPkVector) const;
 
         std::string toString() const;
 
