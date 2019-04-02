@@ -37,6 +37,15 @@ namespace ultrainiosystem {
         ULTRAINLIB_SERIALIZE(EmpowerUserParam, (user)(chain_name)(owner_pk)(active_pk))
     };
 
+    struct ResleaseActionParam {
+        public:
+            account_name from;
+            account_name receiver;
+            uint64_t combosize;
+            uint64_t days;
+            name location;
+            ULTRAINLIB_SERIALIZE(ResleaseActionParam, (from)(receiver)(combosize)(days)(location))
+    };
    static std::string checksum256_to_string( const uint8_t* d, uint32_t s )
    {
       std::string r;
@@ -66,8 +75,11 @@ namespace ultrainiosystem {
          header.trx_ids.insert(tx.tx_id);
       });
       ultrainio_assert(tx.actions.size() > 0, "no context related actions contains in this transaction.");
+      execactions( tx.actions );
+   }
 
-      for (const auto& act : tx.actions) {
+   void system_contract::execactions( const vector<action> & actios){
+      for (const auto& act : actios) {
          if (act.account == N(utrio.token) && act.name == NEX(transfer)) {
             TransferActionParam tap = unpack<TransferActionParam>(act.data);
             ultrainio_assert(tap.to == N(utrio.bank), " account to is not utrio.bank");
@@ -92,6 +104,11 @@ namespace ultrainiosystem {
              new_acc.location = name{N(ultrainio)};
              add_subchain_account(new_acc);
              print("sync user", name{eup.user}, "\n");
+         }else if (act.account == N(ultrainio) && act.name == NEX(resourcelease)) {
+            ResleaseActionParam rap = unpack<ResleaseActionParam>(act.data);
+            ultrainio_assert(rap.location == _gstate.chain_name, "The synchronized chain is not correct");
+            INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
+                  { N(ultrainio), rap.receiver, rap.combosize, rap.days, master_chain_name} );
          }
       }
    }
