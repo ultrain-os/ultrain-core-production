@@ -154,31 +154,19 @@ def sendEmail(msg,successFlag):
 
 def createmutiaccounts():
     for a in sidechainacc:
-        if args.deleysec == 0:
-            retry(args.clultrain + 'create account -u ultrainio ' + a + ' ' + args.initacc_pk)
-        else:
-            retry(args.clultrain + 'create account -u ultrainio ' + a + ' ' + args.initacc_pk+" --delay-sec "+str(args.deleysec))
+        retry(args.clultrain + 'create account -u ultrainio ' + a + ' ' + args.initacc_pk)
     sleep(10)
     print "sidechain";
     print sidechainacc1;
     if args.subchainNum >= 1:
         for a in sidechainacc1:
-            if args.deleysec == 0:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"11",args.initacc_pk,args.initacc_pk,a))
-            else:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s --delay-sec %s -p %s@active' %(a,"11",args.initacc_pk,args.initacc_pk,str(args.deleysec),"ultrainio"))
+            retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"11",args.initacc_pk,args.initacc_pk,a))
     if args.subchainNum >= 2:
         for a in sidechainacc2:
-            if args.deleysec == 0:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"12",args.initacc_pk,args.initacc_pk,a))
-            else:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s --delay-sec %s -p %s@active' %(a,"12",args.initacc_pk,args.initacc_pk,str(args.deleysec),"ultrainio"))
+            retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"12",args.initacc_pk,args.initacc_pk,a))
     if args.subchainNum >= 3:
         for a in sidechainacc3:
-            if args.deleysec == 0:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"13",args.initacc_pk,args.initacc_pk,a))
-            else:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s --delay-sec %s -p %s@active' %(a,"13",args.initacc_pk,args.initacc_pk,str(args.deleysec),"ultrainio"))
+            retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"13",args.initacc_pk,args.initacc_pk,a))
 
 def stepmutireslease():
     if args.subchainNum >= 1:
@@ -369,7 +357,6 @@ parser.add_argument('--initacc-pk', metavar='', help="ULTRAIN Public Key", defau
 parser.add_argument('--initacc-sk', metavar='', help="ULTRAIN Private Key", default='5KZ7mnSHiKN8VaJF7aYf3ymCRKyfr4NiTiqKC5KLxkyM56KdQEP', dest="initacc_sk")
 parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '/root/workspace')
 parser.add_argument('-sn', '--subchainNum', type=int, default=3)
-parser.add_argument('-ds', '--deleysec', type=int, default=0)
 
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
 for (flag, command, function, inAll, help) in commands:
