@@ -271,10 +271,8 @@ namespace ultrainiosystem {
        bool                       is_leaf = true;       //leaf in the fork tree
        bool                       is_synced;
        std::string                signature;
-       std::vector<role_base>     committee_set;
-       std::vector<checksum256>   trx_hashs;
        std::string                next_committee_mroot;
-       ultrainio::extensions_type           table_extension;
+       ultrainio::extensions_type   table_extension;
 
        unconfirmed_block_header() {}
        unconfirmed_block_header(const ultrainio::block_header& header, const block_id_type& b_id, uint32_t b_n,
@@ -283,19 +281,19 @@ namespace ultrainiosystem {
            if (header.proposer == N(genesis)) {
                signature = sign;
            }
+       }
+       CommitteeSet get_committee_set() {
            for (const auto& e : header_extensions) {
                BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
                if (key == kCommitteeSet) {
                    const std::vector<char>& vc = std::get<1>(e);
-                   CommitteeSet cmt_set(vc);
-                   cmt_set.swap(this->committee_set);
-                   break;
+                   return CommitteeSet(vc);
                }
            }
        }
 
        ULTRAINLIB_SERIALIZE_DERIVED(unconfirmed_block_header, ultrainio::block_header,(block_id)(block_number)
-                                    (to_be_paid)(is_leaf)(is_synced)(signature)(committee_set)(trx_hashs)(next_committee_mroot)(table_extension))
+                                    (to_be_paid)(is_leaf)(is_synced)(signature)(next_committee_mroot)(table_extension))
    };
 
    struct chain_info {
@@ -474,7 +472,7 @@ namespace ultrainiosystem {
          void setsched(bool is_enabled, uint16_t sched_period, uint16_t expire_time);
          void forcesetblock(name chain_name,
                             const block_header& header,
-                            const std::vector<role_base>& cmt_set);
+                            const std::vector<CommitteeInfo>& cmt_set);
          void schedule(const std::string& trigger);
          void setlwcparams(uint32_t keep_blocks_num);
          void setchainparam(name chain_name, bool is_sched_on);

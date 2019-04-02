@@ -26,6 +26,10 @@ namespace ultrainiosystem {
             return vc;
         }
 
+        bool empty() {
+           return m_committeeInfoV.empty();
+        }
+
         std::string toString() const {
             std::stringstream ss;
             for (size_t i = 0; i < m_committeeInfoV.size(); i++) {

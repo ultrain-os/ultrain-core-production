@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/055134",
+   "version": "ultrainio::abi/1.0/1c6486",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -565,8 +565,8 @@
         {"name": "to_be_paid",                    "type": "bool"},
         {"name": "is_leaf",                       "type": "bool"},
         {"name": "is_synced",                     "type": "bool"},
-        {"name": "committee_set",                 "type": "role_base[]"},
-        {"name": "trx_hashs",                     "type": "checksum256[]"},
+        {"name": "signature",                     "type": "string"},
+        {"name": "next_committee_mroot",          "type": "string"},
         {"name": "table_extension",               "type": "extension[]"}
        ]
     },{

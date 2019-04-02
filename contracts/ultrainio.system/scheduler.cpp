@@ -382,16 +382,16 @@ namespace ultrainiosystem {
                         });
                         //handle committee update
                         if(ite_uncfm_block->committee_mroot != _subchain.committee_mroot) {
-                            if(ite_uncfm_block->committee_set.empty()) {
-                                print("error: committee mroot changed but committee set is empty");
+                            auto new_committee_set = ite_uncfm_block->get_committee_set();
+                            if(new_committee_set.empty()) {
+                                print("error: committee mroot changed but new committee set is empty");
                             }
                             _subchain.committee_mroot = ite_uncfm_block->committee_mroot;
                             //get committee delta
-                            CommitteeSet new_committee_set(ite_uncfm_block->committee_set);
                             CommitteeSet pre_committee_set(_subchain.committee_set);
                             auto cmt_delta = new_committee_set.diff(pre_committee_set);
                             _subchain.handle_committee_update(cmt_delta);
-                            _subchain.committee_set.swap(ite_uncfm_block->committee_set);//confirmed block will be erased
+                            new_committee_set.swap(_subchain.committee_set);
                         }
                         if(1 == ite_uncfm_block->block_number) {
                             _subchain.chain_id          = ite_uncfm_block->action_mroot; //save chain id
@@ -794,15 +794,15 @@ namespace ultrainiosystem {
                 if( (ct > chain_it->recent_users[0].emp_time) && (ct - chain_it->recent_users[0].emp_time >= 30*60 ) ) {
                     _chains.modify(chain_it, [&](auto& _subchain) {
                         auto user_it = _subchain.recent_users.begin();
-                        for(; user_it != _subchain.recent_users.end();) {
-                            if(ct > user_it->emp_time && (ct - user_it->emp_time >= 30*60)) {
-                                user_it = _subchain.recent_users.erase(user_it);
-                            }
-                            else {
-                                ++user_it;
+                        for(; user_it != _subchain.recent_users.end(); ++user_it) {
+                            if(ct > user_it->emp_time && (ct - user_it->emp_time < 30*60)) {
+                                if(user_it != _subchain.recent_users.begin()) {
+                                    _subchain.recent_users.erase(_subchain.recent_users.begin(), user_it);
+                                    _subchain.recent_users.shrink_to_fit();
+                                    break;
+                                }
                             }
                         }
-                        _subchain.recent_users.shrink_to_fit();
                     });
                 }
             }
@@ -835,7 +835,6 @@ namespace ultrainiosystem {
             temp_header.proposer      = header.proposer;
             temp_header.committee_mroot = header.committee_mroot;
             temp_header.transaction_mroot = header.transaction_mroot;
-            temp_header.committee_set = cmt_set;
             _chain.unconfirmed_blocks.push_back(temp_header);
         });
         //handle block table of chain
@@ -857,6 +856,7 @@ namespace ultrainiosystem {
                 if(block_ite != chain_block_tbl.end()) {
                     chain_block_tbl.erase(block_ite);
                 }
+                ++number_to_remove;
             }
         }
     }
