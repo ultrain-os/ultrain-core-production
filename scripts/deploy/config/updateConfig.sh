@@ -9,4 +9,5 @@ cp /root/deploy/scripts/deploy/config/$NAME/toplogy-h.py /root/$NAME/
 cp /root/deploy/scripts/deploy/config/controller.py /root/$NAME/
 cp /root/deploy/scripts/deploy/config/fabfile4azure.py /root/$NAME/
 cp /root/deploy/scripts/deploy/config/$NAME/keypair-real.txt /root/$NAME/
+cp /root/deploy/scripts/deploy/config/wssconfig.ini /root/$NAME/
 

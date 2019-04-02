@@ -18,6 +18,8 @@ docker ps | grep $NAME- | awk '{print $1}' | xargs -i docker exec -d {} bash -c 
 docker ps | grep $NAME- | awk '{print $1}' | xargs -i docker exec -d {} bash -c "$cmd $ULTRAIN_PATH"
 cmd="nohup $ULTRAIN_PATH/ultrain-core/scripts/logrotate.sh &"
 docker ps | grep $NAME- | awk '{print $1}' | xargs -i docker exec -d {} bash -c "$cmd"
+docker ps | grep $NAME- | awk '{print $1}' | xargs -i docker exec -d {} bash -c "mkdir -p /root/.local/share/ultrainio/wssultrain/config"
+docker ps | grep $NAME- | awk '{print $1}' | xargs -i docker exec -d {} bash -c "cp $ULTRAIN_PATH/ultrain-core/scripts/ws/config.ini /root/.local/share/ultrainio/wssultrain/config/config.ini"
 wscmd="$ULTRAIN_PATH/ultrain-core/build/programs/wssultrain/wssultrain --http-server-address 127.0.0.1:7777 > /log/ws-\${HOSTNAME}.log 2>&1 &"
 docker ps | grep $NAME- | awk '{print $1}' | xargs -i docker exec -d {} bash -c "$wscmd"
 docker ps | grep $NAME- | awk '{print $1}' | xargs -i docker exec -d {} bash -c "mkdir -p /root/.local/share/ultrainio/ultrainmng/config"
