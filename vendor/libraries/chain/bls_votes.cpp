@@ -129,6 +129,18 @@ namespace ultrainio {
                 const auto &o = _db.get<bls_votes_object>();
                 _db.modify(o, [&](bls_votes_object &obj) {
                     shared_bls_votes_info info(block_num, end_epoch, valid_bls, bls_str, obj.should_be_confirmed.get_allocator());
+                    if (obj.should_be_confirmed.size() > 0) {
+                        for (auto itor = obj.should_be_confirmed.begin(); itor != obj.should_be_confirmed.end(); itor++) {
+                            if (!itor->end_epoch) {
+                                ilog("erase should be confirmed block, num = ${num}", ("num", itor->block_num));
+                                obj.should_be_confirmed.erase(itor);
+                                itor = obj.should_be_confirmed.begin();
+                                if (itor == obj.should_be_confirmed.end()) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     obj.should_be_confirmed.push_back(info);
                 });
             }
@@ -151,15 +163,14 @@ namespace ultrainio {
                 ilog("confirm block num : ${num}", ("num", block_num));
                 const auto &o = _db.get<bls_votes_object>();
                 _db.modify(o, [&](bls_votes_object &obj) {
-                    auto begin = obj.should_be_confirmed.begin();
-                    auto itor = begin;
+                    auto itor = obj.should_be_confirmed.begin();
                     for (; itor != obj.should_be_confirmed.end(); itor++) {
                         if (itor->block_num > block_num) {
                             break;
                         }
                     }
-                    if (itor != begin) {
-                        obj.should_be_confirmed.erase(begin, itor);
+                    if (itor != obj.should_be_confirmed.begin()) {
+                        obj.should_be_confirmed.erase(obj.should_be_confirmed.begin(), itor);
                     }
                     if (block_num != 0) {
                         obj.latest_confirmed_block_num = block_num;

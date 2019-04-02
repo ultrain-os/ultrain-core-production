@@ -60,25 +60,20 @@ namespace ultrainio {
             m_BlsVotesMgr.confirm(blockHeader.block_num());
             return;
         }
-        if (shouldBeConfirmed(blockHeader)) {
-            std::string blsStr;
-            bool validBls = blsVoterSet.valid();
-            if (validBls) {
-                blsStr = blsVoterSet.toString();
-            }
-            m_BlsVotesMgr.add_confirmed_bls_votes(blockHeader.block_num(), EpochEndPoint::isEpochEndPoint(blockHeader), validBls, blsStr);
-        }
-
-        if (CheckPoint::isCheckPoint(blockHeader)) {
-            m_BlsVotesMgr.set_latest_check_point_id(blockHeader.id());
-        }
 
         if (ConfirmPoint::isConfirmPoint(blockHeader)) {
             ConfirmPoint confirmPoint(blockHeader);
             uint32_t confirmedBlockNum = BlockHeader::num_from_id(confirmPoint.confirmedBlockId());
-            if (checkCanConfirm(confirmedBlockNum)) {
-                m_BlsVotesMgr.confirm(confirmedBlockNum);
-            }
+            ULTRAIN_ASSERT(checkCanConfirm(confirmedBlockNum), chain::chain_exception, "check to confirm block : ${num}", ("num", confirmedBlockNum));
+            m_BlsVotesMgr.confirm(confirmedBlockNum);
+        }
+
+        if (shouldBeConfirmed(blockHeader)) {
+            m_BlsVotesMgr.add_confirmed_bls_votes(blockHeader.block_num(), EpochEndPoint::isEpochEndPoint(blockHeader), blsVoterSet.valid(), blsVoterSet.toString());
+        }
+
+        if (CheckPoint::isCheckPoint(blockHeader)) {
+            m_BlsVotesMgr.set_latest_check_point_id(blockHeader.id());
         }
     }
 

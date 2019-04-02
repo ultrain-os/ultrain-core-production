@@ -6,6 +6,7 @@
 #include <lightclient/ConfirmPoint.h>
 #include <lightclient/EpochEndPoint.h>
 #include <lightclient/LightClientCallback.h>
+#include <lightclient/StartPoint.h>
 
 namespace ultrainio {
     class LightClientCallback;
@@ -26,6 +27,8 @@ namespace ultrainio {
         BlockIdType getLatestConfirmedBlockId() const;
 
         bool setStartPoint(const CommitteeSet& committeeSet, const BlockIdType& blockId);
+
+        void setStartPoint(const StartPoint& startPoint);
 
         void addCallback(std::shared_ptr<LightClientCallback> cb);
 
@@ -61,5 +64,7 @@ namespace ultrainio {
         std::list<BlockHeader> m_confirmedList;
 
         bool m_status;
+
+        StartPoint m_startPoint;
     };
 }
