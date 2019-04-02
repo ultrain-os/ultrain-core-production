@@ -225,6 +225,7 @@ namespace ultrainiosystem {
       std::string       active_key;
       time              emp_time;
       bool              is_producer; //producer will also use pk same with master chain
+      uint64_t          block_height;
    };
 
    struct changing_producer : public CommitteeInfo {

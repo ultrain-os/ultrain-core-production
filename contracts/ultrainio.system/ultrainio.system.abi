@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/c03a50",
+   "version": "ultrainio::abi/1.0/055134",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -522,7 +522,8 @@
         {"name": "owner_key",                     "type": "string"},
         {"name": "active_key",                    "type": "string"},
         {"name": "emp_time",                      "type": "time_point_sec"},
-        {"name": "is_producer",                   "type": "bool"}
+        {"name": "is_producer",                   "type": "bool"},
+        {"name": "block_height",                  "type": "uint64"}
        ]
     },{
      "name": "chain_resource",

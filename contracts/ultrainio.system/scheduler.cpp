@@ -483,6 +483,7 @@ namespace ultrainiosystem {
             tempuser.active_key = active_pk;
         }
         tempuser.emp_time = now();
+        tempuser.block_height = (uint64_t)head_block_number() + 1;
 
         _chains.modify(ite_chain, [&]( auto& _chain ) {
             for(const auto& _user : _chain.recent_users) {
