@@ -9,14 +9,15 @@
 #include <ultrainiolib/time.hpp>
 #include <ultrainiolib/privileged.hpp>
 #include <ultrainiolib/singleton.hpp>
-#include <ultrainiolib/block_header.hpp>
+//#include <ultrainiolib/block_header.hpp>
 #include <ultrainiolib/ultrainio.hpp>
 #include <ultrainiolib/types.hpp>
 #include <string>
 #include <vector>
 #include <set>
-#include "BlockHeaderExtKey.h"
+//#include "BlockHeaderExtKey.h"
 #include "CommitteeSet.h"
+#include "EpochEndPoint.h"
 #define UNUSED(a) (void*)(a);
 namespace ultrainiosystem {
    using namespace ultrainio;
@@ -188,9 +189,10 @@ namespace ultrainiosystem {
        std::vector<role_base>               master_prods;
        uint64_t                             block_height = 0;
        block_id_type                        block_id;
+       checksum256                          committee_mroot;
        exten_types                          master_chain_ext;
        uint64_t  primary_key()const { return owner; }
-       ULTRAINLIB_SERIALIZE(master_chain_info, (owner)(master_prods)(block_height)(block_id)(master_chain_ext) )
+       ULTRAINLIB_SERIALIZE(master_chain_info, (owner)(master_prods)(block_height)(block_id)(committee_mroot)(master_chain_ext) )
    };
 
    typedef ultrainio::multi_index<N(briefprod),producer_brief> producer_brief_table;
@@ -265,23 +267,25 @@ namespace ultrainiosystem {
 
    typedef ultrainio::multi_index<N(blockheaders), block_header_digest> block_table;
 
-   struct unconfirmed_block_header : public ultrainio::block_header {
+   struct unconfirmed_block_header : public ultrainio::signed_block_header {
        block_id_type              block_id;
        uint32_t                   block_number = 0;
        bool                       to_be_paid;    //should block proposer be paid when this block was confirmed
        bool                       is_leaf = true;       //leaf in the fork tree
        bool                       is_synced;
-       std::string                signature;
        std::string                next_committee_mroot;
        ultrainio::extensions_type   table_extension;
 
        unconfirmed_block_header() {}
-       unconfirmed_block_header(const ultrainio::block_header& header, const block_id_type& b_id, uint32_t b_n,
-                                bool need_pay, bool is_sync, const std::string& sign) : ultrainio::block_header(header),
+       unconfirmed_block_header(const ultrainio::signed_block_header& signed_header, const block_id_type& b_id, uint32_t b_n,
+                                bool need_pay, bool is_sync) : ultrainio::signed_block_header(signed_header),
                                 block_id(b_id), block_number(b_n), to_be_paid(need_pay), is_leaf(true), is_synced(is_sync) {
-           if (header.proposer == N(genesis)) {
-               signature = sign;
-           }
+        /*
+           const ultrainio::block_header& header = static_cast<const ultrainio::block_header&>(signed_header);
+           if(EpochEndPoint::isEpochEndPoint(header)) {
+               EpochEndPoint eep(header);
+               next_committee_mroot = eep.nextCommitteeMroot();
+           }*/
        }
        CommitteeSet get_committee_set() {
            for (const auto& e : header_extensions) {
@@ -291,10 +295,11 @@ namespace ultrainiosystem {
                    return CommitteeSet(vc);
                }
            }
+           return CommitteeSet();
        }
 
-       ULTRAINLIB_SERIALIZE_DERIVED(unconfirmed_block_header, ultrainio::block_header,(block_id)(block_number)
-                                    (to_be_paid)(is_leaf)(is_synced)(signature)(next_committee_mroot)(table_extension))
+       ULTRAINLIB_SERIALIZE_DERIVED(unconfirmed_block_header, ultrainio::signed_block_header,(block_id)(block_number)
+                                    (to_be_paid)(is_leaf)(is_synced)(next_committee_mroot)(table_extension))
    };
 
    struct chain_info {
@@ -457,10 +462,9 @@ namespace ultrainiosystem {
                            uint16_t sched_step,
                            uint16_t consensus_period);
          void regsubchain(name chain_name, uint64_t chain_type);
-         void acceptmaster(const std::vector<ultrainio::block_header>& headers);
+         void acceptmaster(const std::vector<ultrainio::signed_block_header>& headers);
          void acceptheader(name chain_name,
-                           const std::vector<ultrainio::block_header>& headers,
-                           const std::string& signature);
+                           const std::vector<ultrainio::signed_block_header>& headers);
          void clearchain(name chain_name, bool users_only);
          void empoweruser(account_name user,
                           name chain_name,

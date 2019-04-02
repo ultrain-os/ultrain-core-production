@@ -181,9 +181,9 @@ namespace ultrainiosystem {
     }
 
     /// @abi action
-    void system_contract::acceptmaster(const std::vector<ultrainio::block_header>& headers) {
+    void system_contract::acceptmaster(const std::vector<ultrainio::signed_block_header>& headers) {
         ultrainio_assert(!_gstate.is_master_chain(), "master chain can not perform this action");
-        acceptheader(name{N(master)}, headers, "");
+        acceptheader(name{N(master)}, headers);
     }
 
     bool system_contract::checkblockproposer(account_name block_proposer, chains_table::const_iterator chain_iter) {
@@ -231,8 +231,7 @@ namespace ultrainiosystem {
     }
     /// @abi action
     void system_contract::acceptheader (name chain_name,
-                                  const std::vector<ultrainio::block_header>& headers,
-                                  const std::string& signature) {
+                                  const std::vector<ultrainio::signed_block_header>& headers) {
         require_auth(current_sender());
         ultrainio_assert(!headers.empty(), "at least one block should be contained");
         ultrainio_assert(headers.size() <= 10, "too many blocks are reported.");
@@ -249,7 +248,7 @@ namespace ultrainiosystem {
             auto block_id = headers[idx].id();
             const account_name block_proposer = headers[idx].proposer;
             if(block_proposer == N(genesis) && block_number > 1) {
-                ultrainio_assert(signature.size() == 128, "signature should be of size 128");
+                ultrainio_assert(headers[idx].signature.size() == 128, "signature should be of size 128");
             }
 
             //check if it has been accepted, if not, find its previous block
@@ -301,7 +300,7 @@ namespace ultrainiosystem {
             bool need_report = chain_name == N(master) ? false : checkblockproposer(block_proposer, ite_chain);
 
             _chains.modify(ite_chain, [&]( auto& _subchain ) {
-                unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, need_report, synced, signature);
+                unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, need_report, synced);
                 if(block_number > initial_block_number) {
                     _subchain.unconfirmed_blocks[pre_block_index].is_leaf = false;
                 }
@@ -790,21 +789,21 @@ namespace ultrainiosystem {
         for(; chain_it != _chains.end(); ++chain_it) {
             if(chain_it->chain_name == N(master))
                 continue;
-            if(!chain_it->recent_users.empty()) {
-                if( (ct > chain_it->recent_users[0].emp_time) && (ct - chain_it->recent_users[0].emp_time >= 30*60 ) ) {
-                    _chains.modify(chain_it, [&](auto& _subchain) {
-                        auto user_it = _subchain.recent_users.begin();
-                        for(; user_it != _subchain.recent_users.end(); ++user_it) {
-                            if(ct > user_it->emp_time && (ct - user_it->emp_time < 30*60)) {
-                                if(user_it != _subchain.recent_users.begin()) {
-                                    _subchain.recent_users.erase(_subchain.recent_users.begin(), user_it);
-                                    _subchain.recent_users.shrink_to_fit();
-                                    break;
-                                }
-                            }
+            if(chain_it->recent_users.empty()) {
+                continue;
+            }
+            if( (ct > chain_it->recent_users[0].emp_time) && (ct - chain_it->recent_users[0].emp_time >= 30*60 ) ) {
+                _chains.modify(chain_it, [&](auto& _subchain) {
+                    auto user_it = _subchain.recent_users.begin();
+                    for(; user_it != _subchain.recent_users.end(); ++user_it) {
+                        if(ct > user_it->emp_time && (ct - user_it->emp_time < 30*60) &&
+                           user_it != _subchain.recent_users.begin()) {
+                            _subchain.recent_users.erase(_subchain.recent_users.begin(), user_it);
+                            _subchain.recent_users.shrink_to_fit();
+                            break;
                         }
-                    });
-                }
+                    }
+                });
             }
         }
     }

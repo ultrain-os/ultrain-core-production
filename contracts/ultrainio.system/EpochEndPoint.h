@@ -23,6 +23,7 @@ namespace ultrainiosystem {
                 BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
                 if (key == kNextCommitteeMroot) {
                     m_nextCommitteeMroot = std::string(std::get<1>(e).begin(), std::get<1>(e).end());
+                    break;
                 }
             }
         }
@@ -36,4 +37,5 @@ namespace ultrainiosystem {
 
         std::string m_nextCommitteeMroot;
     };
-}
+} // ultrainiosystem
+

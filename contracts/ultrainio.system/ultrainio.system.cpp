@@ -88,10 +88,11 @@ namespace ultrainiosystem {
           masterchain.committee_num      = uint16_t(chaininfo.master_prods.size());
           masterchain.total_user_num     = 0;
           masterchain.chain_id           = checksum256();
-          masterchain.committee_mroot    = checksum256();
+          masterchain.committee_mroot    = chaininfo.committee_mroot;
           masterchain.confirmed_block_number = uint32_t(chaininfo.block_height);
           masterchain.committee_set      = chaininfo.master_prods;
           unconfirmed_block_header uncfm_block;
+          uncfm_block.committee_mroot = chaininfo.committee_mroot;
           uncfm_block.block_id = chaininfo.block_id;
           uncfm_block.block_number = uint32_t(chaininfo.block_height);
           uncfm_block.is_leaf = true;

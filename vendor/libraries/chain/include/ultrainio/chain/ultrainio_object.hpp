@@ -74,13 +74,12 @@ namespace ultrainio { namespace chain {
        extensions_type           table_extension;
    };
 
-   struct unconfirmed_block_header : public block_header {
+   struct unconfirmed_block_header : public signed_block_header {
        block_id_type              block_id;
        uint32_t                   block_number = 0;
        bool                       to_be_paid;    //should block proposer be paid when this block was confirmed
        bool                       is_leaf;
        bool                       is_synced;
-       std::string                signature;
        std::string                next_committee_mroot;
        extensions_type            table_extension;
    };
@@ -121,6 +120,7 @@ namespace ultrainio { namespace chain {
         std::vector<role_base>  master_prods;
         uint64_t                block_height = 0;
         checksum256_type        block_id;
+        checksum256_type        committee_mroot;
         extension_types         master_chain_ext;
     };
 
@@ -137,10 +137,10 @@ FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_t
 FC_REFLECT_DERIVED(ultrainio::chain::changing_producer, (ultrainio::chain::role_base), (block_num) )
 FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )
 FC_REFLECT(ultrainio::chain::block_header_digest, (block_number)(transaction_mroot)(trx_ids)(table_extension) )
-FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_block_header, (ultrainio::chain::block_header), (block_id)(block_number)(to_be_paid)
-                    (is_leaf)(is_synced)(signature)(next_committee_mroot)(table_extension) )
+FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_block_header, (ultrainio::chain::signed_block_header), (block_id)(block_number)(to_be_paid)
+                    (is_leaf)(is_synced)(next_committee_mroot)(table_extension) )
 FC_REFLECT(ultrainio::chain::chain_info, (chain_name)(chain_type)(genesis_time)(global_resource)(is_synced)(is_schedulable)
                     (schedule_on)(committee_num)(deprecated_committee)(changing_info)(recent_users)(total_user_num)(chain_id)
                     (committee_mroot)(confirmed_block_number)(committee_set)(unconfirmed_blocks)(table_extension) )
 FC_REFLECT(ultrainio::chain::resources_lease, (owner)(lease_num)(start_block_height)(end_block_height)(modify_block_height)(free_account_number)(table_extension) )
-FC_REFLECT(ultrainio::chain::master_chain_info, (owner)(master_prods)(block_height)(block_id)(master_chain_ext) )
+FC_REFLECT(ultrainio::chain::master_chain_info, (owner)(master_prods)(block_height)(block_id)(committee_mroot)(master_chain_ext) )

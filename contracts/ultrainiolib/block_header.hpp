@@ -72,4 +72,11 @@ namespace ultrainio {
           return endian_reverse_u32(uint32_t(_hash64));
       }
     };
+
+   struct signed_block_header : public block_header
+   {
+      std::string       signature;
+
+      ULTRAINLIB_SERIALIZE_DERIVED(signed_block_header, block_header, (signature))
+   };
 }

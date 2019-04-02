@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/187ef7",
+   "version": "ultrainio::abi/1.0/8690bd",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -181,20 +181,25 @@
         {"name": "action_mroot",      "type": "checksum256"},
         {"name": "committee_mroot",   "type": "checksum256"},
         {"name": "header_extensions", "type": "extension[]"}
-     ]
+      ]
+    },{
+      "name": "signed_block_header",
+      "base": "block_header",
+      "fields": [
+        {"name": "signature",         "type": "string"}
+      ]
     },{
       "name": "acceptmaster",
       "base": "",
       "fields": [
-        {"name": "headers",             "type": "block_header[]"}
+        {"name": "headers",             "type": "signed_block_header[]"}
       ]
     },{
       "name": "acceptheader",
       "base": "",
       "fields": [
         {"name": "chain_name",          "type": "name"},
-        {"name": "headers",             "type": "block_header[]"},
-        {"name": "signature",           "type": "string"}
+        {"name": "headers",             "type": "signed_block_header[]"}
       ]
     },{
       "name": "clearchain",
@@ -444,6 +449,7 @@
          {"name":"master_prods",             "type":"role_base[]"},
          {"name":"block_height",             "type":"uint64"},
          {"name":"block_id",                 "type":"block_id_type"},
+         {"name": "committee_mroot",         "type": "checksum256"},
          {"name":"master_chain_ext",         "type":"exten_type[]"}
       ]
     },{
@@ -560,14 +566,13 @@
        ]
     },{
      "name": "unconfirmed_block_header",
-      "base": "block_header",
+      "base": "signed_block_header",
       "fields": [
         {"name": "block_id",                      "type": "block_id_type"},
         {"name": "block_number",                  "type": "uint32"},
         {"name": "to_be_paid",                    "type": "bool"},
         {"name": "is_leaf",                       "type": "bool"},
         {"name": "is_synced",                     "type": "bool"},
-        {"name": "signature",                     "type": "string"},
         {"name": "next_committee_mroot",          "type": "string"},
         {"name": "table_extension",               "type": "extension[]"}
        ]
