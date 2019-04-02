@@ -691,9 +691,9 @@
       "name": "forcesetblock",
       "base": "",
       "fields": [
-        {"name": "chain_name",                 "type": "name"},
-        {"name": "header_dig",                 "type": "block_header_digest"},
-        {"name": "committee_mrt",              "type": "checksum256"}
+        {"name": "chain_name",             "type": "name"},
+        {"name": "header",                 "type": "block_header"},
+        {"name": "cmt_set",                "type": "role_base[]"}
        ]
     },{
       "name": "setlwcparams",
