@@ -226,6 +226,7 @@ namespace ultrainiosystem {
       time              emp_time;
       bool              is_producer; //producer will also use pk same with master chain
       uint64_t          block_height;
+      bool              updateable = true;
    };
 
    struct changing_producer : public CommitteeInfo {
@@ -464,7 +465,8 @@ namespace ultrainiosystem {
          void empoweruser(account_name user,
                           name chain_name,
                           const std::string& owner_pk,
-                          const std::string& active_pk);
+                          const std::string& active_pk,
+                          bool updateable);
          void reportsubchainhash(name subchain,
                                  uint64_t blocknum,
                                  checksum256 hash,

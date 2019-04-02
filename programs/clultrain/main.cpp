@@ -1133,6 +1133,7 @@ struct empoweruser_subcommand {
    string owner_public_key;
    string active_public_key;
    string chain_name;
+   bool   updateable;
 
    empoweruser_subcommand(CLI::App* actionRoot) {
       auto empower_user = actionRoot->add_subcommand("empoweruser", localized("Empower user's onwer&active permissions to a sidechain"));
@@ -1140,6 +1141,7 @@ struct empoweruser_subcommand {
       empower_user->add_option("chain_name", chain_name, localized("The name of the sidechain which the user will be empowered to"))->required();
       empower_user->add_option("owner_public_key", owner_public_key, localized("Public key of owner permission, the default is the same as master"));
       empower_user->add_option("active_public_key", active_public_key, localized("Public key of active permission, the default is the same as master"));
+      empower_user->add_option("updateable", updateable, localized("Set whether the account is updatable"));
       add_standard_transaction_options(empower_user);
 
       empower_user->set_callback([this] {
@@ -1147,7 +1149,8 @@ struct empoweruser_subcommand {
                   ("user", user_account)
                   ("chain_name", chain_name)
                   ("owner_pk", owner_public_key)
-                  ("active_pk", active_public_key);
+                  ("active_pk", active_public_key)
+                  ("updateable", updateable);
          send_actions({create_action({permission_level{user_account, config::active_name}}, config::system_account_name, NEX(empoweruser), act_payload)});
       });
    }

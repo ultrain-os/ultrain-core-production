@@ -457,7 +457,7 @@ namespace ultrainiosystem {
         }
     }
 
-    void system_contract::empoweruser(account_name user, name chain_name, const std::string& owner_pk, const std::string& active_pk) {
+    void system_contract::empoweruser(account_name user, name chain_name, const std::string& owner_pk, const std::string& active_pk, bool updateable) {
         require_auth(user);
         auto ite_chain = _chains.find(chain_name);
         ultrainio_assert(ite_chain != _chains.end(), "this subchian is not existed");
@@ -484,7 +484,7 @@ namespace ultrainiosystem {
         }
         tempuser.emp_time = now();
         tempuser.block_height = (uint64_t)head_block_number() + 1;
-
+        tempuser.updateable = updateable;
         _chains.modify(ite_chain, [&]( auto& _chain ) {
             for(const auto& _user : _chain.recent_users) {
                 ultrainio_assert(_user.user_name != user, "User has published in this chain recently.");
@@ -504,18 +504,18 @@ namespace ultrainiosystem {
             ultrainio_assert(ite_chain->committee_num < typeiter->stable_max_producers,
                 "destination sidechain already has enough producers");
             //check if this account has been empowered to this chain
-            if(!is_empowered(producer.owner, chain_name)) {
-                user_info tempuser;
-                tempuser.user_name = producer.owner;
-                tempuser.is_producer = true;
-                tempuser.emp_time = now();
-
-                _chains.modify(ite_chain, [&]( auto& _chain ) {
-                    _chain.recent_users.push_back(tempuser);
-                    _chain.total_user_num += 1;
-                });
-                empower_to_chain(producer.owner, chain_name);
-            }
+            // if(!is_empowered(producer.owner, chain_name)) {
+            //     user_info tempuser;
+            //     tempuser.user_name = producer.owner;
+            //     tempuser.is_producer = true;
+            //     tempuser.emp_time = now();
+            //     tempuser.updateable = true;
+            //     _chains.modify(ite_chain, [&]( auto& _chain ) {
+            //         _chain.recent_users.push_back(tempuser);
+            //         _chain.total_user_num += 1;
+            //     });
+            //     empower_to_chain(producer.owner, chain_name);
+            // }
             _chains.modify(ite_chain, [&](chain_info& info) {
                 role_base temp_prod;
                 temp_prod.owner = producer.owner;

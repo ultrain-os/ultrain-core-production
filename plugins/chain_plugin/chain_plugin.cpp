@@ -1227,6 +1227,8 @@ std::vector<read_only::get_user_bulletin_result> read_only::get_user_bulletin(co
                else {
                    tmpuser.active_pk = subchain_data.recent_users[index].active_key;
                }
+               tmpuser.block_height = subchain_data.recent_users[index].block_height;
+               tmpuser.updateable = subchain_data.recent_users[index].updateable;
                result.push_back(tmpuser);
            }
            return false;

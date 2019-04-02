@@ -186,21 +186,21 @@ def createmutiaccounts():
     if args.subchainNum >= 1:
         for a in sidechainacc1:
             if args.deleysec == 0:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"11",args.initacc_pk,args.initacc_pk,a))
+                retry(args.clultrain + ' system empoweruser %s %s %s %s 1 -p %s@active' %(a,"11",args.initacc_pk,args.initacc_pk,a))
             else:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s --delay-sec %s -p %s@active' %(a,"11",args.initacc_pk,args.initacc_pk,str(args.deleysec),"ultrainio"))
+                retry(args.clultrain + ' system empoweruser %s %s %s %s 1 --delay-sec %s -p %s@active' %(a,"11",args.initacc_pk,args.initacc_pk,str(args.deleysec),"ultrainio"))
     if args.subchainNum >= 2:
         for a in sidechainacc2:
             if args.deleysec == 0:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"12",args.initacc_pk,args.initacc_pk,a))
+                retry(args.clultrain + ' system empoweruser %s %s %s %s 1 -p %s@active' %(a,"12",args.initacc_pk,args.initacc_pk,a))
             else:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s --delay-sec %s -p %s@active' %(a,"12",args.initacc_pk,args.initacc_pk,str(args.deleysec),"ultrainio"))
+                retry(args.clultrain + ' system empoweruser %s %s %s %s 1 --delay-sec %s -p %s@active' %(a,"12",args.initacc_pk,args.initacc_pk,str(args.deleysec),"ultrainio"))
     if args.subchainNum >= 3:
         for a in sidechainacc3:
             if args.deleysec == 0:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s -p %s@active' %(a,"13",args.initacc_pk,args.initacc_pk,a))
+                retry(args.clultrain + ' system empoweruser %s %s %s %s 1 -p %s@active' %(a,"13",args.initacc_pk,args.initacc_pk,a))
             else:
-                retry(args.clultrain + ' system empoweruser %s %s %s %s --delay-sec %s -p %s@active' %(a,"13",args.initacc_pk,args.initacc_pk,str(args.deleysec),"ultrainio"))
+                retry(args.clultrain + ' system empoweruser %s %s %s %s 1 --delay-sec %s -p %s@active' %(a,"13",args.initacc_pk,args.initacc_pk,str(args.deleysec),"ultrainio"))
 
 
 def initTransfer():

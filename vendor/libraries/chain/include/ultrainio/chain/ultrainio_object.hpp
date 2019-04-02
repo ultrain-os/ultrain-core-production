@@ -55,6 +55,7 @@ namespace ultrainio { namespace chain {
       time_point_sec    emp_time;
       bool              is_producer;
       uint64_t          block_height;
+      bool              updateable;
    };
 
    struct changing_producer : public role_base {
@@ -132,7 +133,7 @@ FC_REFLECT_DERIVED(ultrainio::chain::disabled_producer, (ultrainio::chain::role_
 FC_REFLECT_DERIVED(ultrainio::chain::producer_info, (ultrainio::chain::disabled_producer),
                     (unpaid_amount)(vote_number)(last_vote_blocknum)(table_extension))
 FC_REFLECT(ultrainio::chain::chain_resource, (max_resources_number)(total_resources_used_number)(max_ram_size)(total_ram_bytes_used) )
-FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(is_producer)(block_height) )
+FC_REFLECT(ultrainio::chain::user_info, (user_name)(owner_key)(active_key)(emp_time)(is_producer)(block_height)(updateable) )
 FC_REFLECT_DERIVED(ultrainio::chain::changing_producer, (ultrainio::chain::role_base), (block_num) )
 FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )
 FC_REFLECT(ultrainio::chain::block_header_digest, (block_number)(transaction_mroot)(trx_ids)(table_extension) )

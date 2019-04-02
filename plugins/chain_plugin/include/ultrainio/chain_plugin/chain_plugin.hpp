@@ -378,6 +378,8 @@ public:
        std::string     owner_pk;
        std::string     active_pk;
        fc::time_point_sec  issue_date;
+       uint64_t        block_height;
+       bool            updateable;
    };
 
    std::vector<get_user_bulletin_result> get_user_bulletin(const get_user_bulletin_params& p) const;
@@ -768,7 +770,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_unconfirmed_header_pa
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_unconfirmed_header_result, (unconfirmed_headers)(confirmed_block_id)(committee_set));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(genesis_time)(quit_before_num) );
-FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date)(block_height)(updateable) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(all_chain)(chain_name) )

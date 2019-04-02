@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/1c6486",
+   "version": "ultrainio::abi/1.0/187ef7",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -210,7 +210,8 @@
         {"name": "user",          "type": "account_name"},
         {"name": "chain_name",    "type": "name"},
         {"name": "owner_pk",      "type": "string"},
-        {"name": "active_pk",     "type": "string"}
+        {"name": "active_pk",     "type": "string"},
+        {"name": "updateable",    "type": "bool"}
       ]
     },{
       "name": "permission_level_weight",
@@ -523,7 +524,8 @@
         {"name": "active_key",                    "type": "string"},
         {"name": "emp_time",                      "type": "time_point_sec"},
         {"name": "is_producer",                   "type": "bool"},
-        {"name": "block_height",                  "type": "uint64"}
+        {"name": "block_height",                  "type": "uint64"},
+        {"name": "updateable",                    "type": "bool"}
        ]
     },{
      "name": "chain_resource",
