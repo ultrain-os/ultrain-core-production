@@ -9,10 +9,6 @@ namespace ultrainio {
 
         EpochEndPoint(const BlockHeader& blockHeader);
 
-        EpochEndPoint();
-
-        uint32_t blockNum() const;
-
         std::string nextCommitteeMroot() const;
 
     private:

@@ -13,8 +13,6 @@ namespace ultrainio {
         return false;
     }
 
-    EpochEndPoint::EpochEndPoint() {}
-
     EpochEndPoint::EpochEndPoint(const BlockHeader& blockHeader) : m_blockHeader (blockHeader) {
         ExtensionsType ext = blockHeader.header_extensions;
         for (auto& e : ext) {
@@ -23,10 +21,6 @@ namespace ultrainio {
                 m_nextCommitteeMroot = std::string(std::get<1>(e).begin(), std::get<1>(e).end());
             }
         }
-    }
-
-    uint32_t EpochEndPoint::blockNum() const {
-        return m_blockHeader.block_num();
     }
 
     std::string EpochEndPoint::nextCommitteeMroot() const {

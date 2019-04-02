@@ -272,6 +272,7 @@ namespace ultrainiosystem {
        std::string                signature;
        std::vector<role_base>     committee_set;
        std::vector<checksum256>   trx_hashs;
+       std::string                next_committee_mroot;
        ultrainio::extensions_type           table_extension;
 
        unconfirmed_block_header() {}
@@ -293,7 +294,7 @@ namespace ultrainiosystem {
        }
 
        ULTRAINLIB_SERIALIZE_DERIVED(unconfirmed_block_header, ultrainio::block_header,(block_id)(block_number)
-                                    (to_be_paid)(is_leaf)(is_synced)(signature)(committee_set)(trx_hashs)(table_extension))
+                                    (to_be_paid)(is_leaf)(is_synced)(signature)(committee_set)(trx_hashs)(next_committee_mroot)(table_extension))
    };
 
    struct chain_info {

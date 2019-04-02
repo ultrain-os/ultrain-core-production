@@ -81,6 +81,7 @@ namespace ultrainio { namespace chain {
        std::string                signature;
        std::vector<role_base>     committee_set;
        std::vector<checksum256_type>   trx_hashs;
+       std::string               next_committee_mroot;
        extensions_type           table_extension;
    };
 
@@ -137,7 +138,7 @@ FC_REFLECT_DERIVED(ultrainio::chain::changing_producer, (ultrainio::chain::role_
 FC_REFLECT(ultrainio::chain::changing_committee, (removed_members)(new_added_members) )
 FC_REFLECT(ultrainio::chain::block_header_digest, (block_number)(transaction_mroot)(trx_ids)(table_extension) )
 FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_block_header, (ultrainio::chain::block_header), (block_id)(block_number)(to_be_paid)
-                    (is_leaf)(is_synced)(signature)(committee_set)(trx_hashs)(table_extension) )
+                    (is_leaf)(is_synced)(signature)(committee_set)(trx_hashs)(next_committee_mroot)(table_extension) )
 FC_REFLECT(ultrainio::chain::chain_info, (chain_name)(chain_type)(genesis_time)(global_resource)(is_synced)(is_schedulable)
                     (schedule_on)(committee_num)(deprecated_committee)(changing_info)(recent_users)(total_user_num)(chain_id)
                     (committee_mroot)(confirmed_block_number)(committee_set)(unconfirmed_blocks)(table_extension) )
