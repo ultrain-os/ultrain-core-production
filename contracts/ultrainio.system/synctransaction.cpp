@@ -27,6 +27,16 @@ namespace ultrainiosystem {
 
             ULTRAINLIB_SERIALIZE(TransferActionParam, (from)(to)(val)(memo))
     };
+
+    struct EmpowerUserParam {
+        account_name    user;
+        name            chain_name;
+        std::string     owner_pk;
+        std::string     active_pk;
+
+        ULTRAINLIB_SERIALIZE(EmpowerUserParam, (user)(chain_name)(owner_pk)(active_pk))
+    };
+
    static std::string checksum256_to_string( const uint8_t* d, uint32_t s )
    {
       std::string r;
@@ -36,7 +46,7 @@ namespace ultrainiosystem {
             (r += to_hex[(c[i]>>4)]) += to_hex[(c[i] &0x0f)];
       return r;
    }
-   void system_contract::synctransfer( name chain_name, uint32_t block_number, std::vector<std::string> merkle_proofs, std::vector<char> tx_bytes ) {
+   void system_contract::synclwctx( name chain_name, uint32_t block_number, std::vector<std::string> merkle_proofs, std::vector<char> tx_bytes ) {
       require_auth(current_sender());
       block_table subchain_block_tbl(_self, chain_name);
       auto block_ite = subchain_block_tbl.find(block_number);
@@ -70,6 +80,18 @@ namespace ultrainiosystem {
             print(", to: ", name{tap.to});
             print(", asset: "); tap.val.print();
             print(", memo: "); print(tap.memo);
+            print("\n");
+         } else if(act.account == N(ultrainio) && act.name == NEX(empoweruser)) {
+             EmpowerUserParam eup = unpack<EmpowerUserParam>(act.data);
+             ultrainio_assert(eup.chain_name == _gstate.chain_name, "The synchronized chain is not correct");
+             proposeaccount_info new_acc;
+             new_acc.account = eup.user;
+             new_acc.owner_key = eup.owner_pk;
+             new_acc.active_key = eup.active_pk;
+             new_acc.updateable = true;
+             new_acc.location = name{N(ultrainio)};
+             add_subchain_account(new_acc);
+             print("sync user", name{eup.user}, "\n");
          }
       }
    }

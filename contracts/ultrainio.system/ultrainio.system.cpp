@@ -615,5 +615,5 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      (regchaintype)(regsubchain)(acceptmaster)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)
      (setsched)(forcesetblock)(schedule)(setlwcparams)(setchainparam)
      // synctransaction.cpp
-     (synctransfer)
+     (synclwctx)
 )

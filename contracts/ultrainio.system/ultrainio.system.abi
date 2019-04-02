@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/1f9710",
+   "version": "ultrainio::abi/1.0/083b70",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -193,7 +193,8 @@
       "base": "",
       "fields": [
         {"name": "chain_name",          "type": "name"},
-        {"name": "headers",             "type": "block_header[]"}
+        {"name": "headers",             "type": "block_header[]"},
+        {"name": "signature",           "type": "string"}
       ]
     },{
       "name": "clearchain",
@@ -739,7 +740,7 @@
         {"name":"params", "type":"blockchain_parameters"}
       ]
     },{
-      "name": "synctransfer",
+      "name": "synclwctx",
       "base": "",
       "fields": [
           {"name": "chain_name","type": "name"},
@@ -946,8 +947,8 @@
       "type": "setparams",
       "ricardian_contract": ""
     },{
-      "name": "synctransfer",
-      "type": "synctransfer",
+      "name": "synclwctx",
+      "type": "synclwctx",
       "ricardian_contract": ""
     }],
    "tables": [{

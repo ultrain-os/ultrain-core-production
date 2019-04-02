@@ -183,7 +183,7 @@ namespace ultrainiosystem {
     /// @abi action
     void system_contract::acceptmaster(const std::vector<ultrainio::block_header>& headers) {
         ultrainio_assert(!_gstate.is_master_chain(), "master chain can not perform this action");
-        acceptheader(name{N(master)}, headers);
+        acceptheader(name{N(master)}, headers, "");
     }
 
     bool system_contract::checkblockproposer(account_name block_proposer, chains_table::const_iterator chain_iter) {
@@ -231,8 +231,10 @@ namespace ultrainiosystem {
     }
     /// @abi action
     void system_contract::acceptheader (name chain_name,
-                                  const std::vector<ultrainio::block_header>& headers) {
+                                  const std::vector<ultrainio::block_header>& headers,
+                                  const std::string& signature) {
         require_auth(current_sender());
+        ultrainio_assert(!headers.empty(), "at least one block should be contained");
         ultrainio_assert(headers.size() <= 10, "too many blocks are reported.");
         auto ite_chain = _chains.find(chain_name);
         ultrainio_assert(ite_chain != _chains.end(), "subchian is not existed.");
@@ -245,6 +247,10 @@ namespace ultrainiosystem {
             auto block_number = headers[idx].block_num();
             ultrainio_assert(block_number > ite_chain->confirmed_block_number, "block has been confirmed");
             auto block_id = headers[idx].id();
+            const account_name block_proposer = headers[idx].proposer;
+            if(block_proposer == N(genesis) && block_number > 1) {
+                ultrainio_assert(signature.size() == 128, "signature should be of size 128");
+            }
 
             //check if it has been accepted, if not, find its previous block
             uint32_t pre_block_index = std::numeric_limits<uint32_t>::max();
@@ -278,7 +284,6 @@ namespace ultrainiosystem {
                     ultrainio_assert(pre_block_index < ite_chain->unconfirmed_blocks.size(), "previous block is not found\n");
             }
 
-            const account_name block_proposer = headers[idx].proposer;
             if((block_proposer == N(genesis) && block_number != initial_block_number) ||
                 ConfirmPoint::isConfirmPoint(headers[idx])) {
                 char confirm_id[32];
@@ -296,7 +301,7 @@ namespace ultrainiosystem {
             bool need_report = chain_name == N(master) ? false : checkblockproposer(block_proposer, ite_chain);
 
             _chains.modify(ite_chain, [&]( auto& _subchain ) {
-                unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, need_report, synced);
+                unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, need_report, synced, signature);
                 if(block_number > initial_block_number) {
                     _subchain.unconfirmed_blocks[pre_block_index].is_leaf = false;
                 }

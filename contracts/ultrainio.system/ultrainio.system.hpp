@@ -269,14 +269,18 @@ namespace ultrainiosystem {
        bool                       to_be_paid;    //should block proposer be paid when this block was confirmed
        bool                       is_leaf = true;       //leaf in the fork tree
        bool                       is_synced;
+       std::string                signature;
        std::vector<role_base>     committee_set;
        std::vector<checksum256>   trx_hashs;
        ultrainio::extensions_type           table_extension;
 
        unconfirmed_block_header() {}
        unconfirmed_block_header(const ultrainio::block_header& header, const block_id_type& b_id, uint32_t b_n,
-                                bool need_pay, bool is_sync) : ultrainio::block_header(header), block_id(b_id),
-                                block_number(b_n), to_be_paid(need_pay), is_leaf(true), is_synced(is_sync) {
+                                bool need_pay, bool is_sync, const std::string& sign) : ultrainio::block_header(header),
+                                block_id(b_id), block_number(b_n), to_be_paid(need_pay), is_leaf(true), is_synced(is_sync) {
+           if (header.proposer == N(genesis)) {
+               signature = sign;
+           }
            for (const auto& e : header_extensions) {
                BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
                if (key == kCommitteeSet) {
@@ -289,7 +293,7 @@ namespace ultrainiosystem {
        }
 
        ULTRAINLIB_SERIALIZE_DERIVED(unconfirmed_block_header, ultrainio::block_header,(block_id)(block_number)
-                                    (to_be_paid)(is_leaf)(is_synced)(committee_set)(trx_hashs)(table_extension))
+                                    (to_be_paid)(is_leaf)(is_synced)(signature)(committee_set)(trx_hashs)(table_extension))
    };
 
    struct chain_info {
@@ -454,7 +458,8 @@ namespace ultrainiosystem {
          void regsubchain(name chain_name, uint64_t chain_type);
          void acceptmaster(const std::vector<ultrainio::block_header>& headers);
          void acceptheader(name chain_name,
-                           const std::vector<ultrainio::block_header>& headers);
+                           const std::vector<ultrainio::block_header>& headers,
+                           const std::string& signature);
          void clearchain(name chain_name, bool users_only);
          void empoweruser(account_name user,
                           name chain_name,
@@ -485,7 +490,7 @@ namespace ultrainiosystem {
 
 
          // functions defined in synctransaction.cpp
-         void synctransfer( name chain_name,
+         void synclwctx( name chain_name,
                             uint32_t block_number,
                             std::vector<std::string> merkle_proofs,
                             std::vector<char> tx_bytes );
