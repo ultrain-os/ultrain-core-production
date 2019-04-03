@@ -330,9 +330,10 @@ public:
    };
 
    struct get_subchain_unconfirmed_header_result {
-       std::vector<chain::block_header> unconfirmed_headers;
        chain::block_id_type confirmed_block_id;
+       std::string next_committee_mroot;
        std::vector<chain::role_base> committee_set;
+       std::vector<chain::signed_block_header> unconfirmed_headers;
    };
 
    get_subchain_unconfirmed_header_result get_subchain_unconfirmed_header(const get_subchain_unconfirmed_header_params& p) const;

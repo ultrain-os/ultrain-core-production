@@ -19,7 +19,7 @@ namespace ultrainio {
 
         void reset();
 
-        void accept(const BlockHeader& blockHeader);
+        void accept(const BlockHeader& blockHeader, const std::string& signature = std::string());
 
         // invoked by fetch block feature
         void accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);

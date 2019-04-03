@@ -420,7 +420,7 @@ namespace ultrainiosystem {
          producer_brief_table     _briefproducers;
          sched_set_singleton      _schedsetting;
 
-         bool accept_block_header(name chain_name, const ultrainio::block_header& header, char* confirmed_bh_hash, size_t hash_size);
+         bool accept_block_header(name chain_name, const ultrainio::signed_block_header& header, char* confirmed_bh_hash, size_t hash_size);
 
       public:
          system_contract( account_name s );

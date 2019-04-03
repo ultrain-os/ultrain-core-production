@@ -40,10 +40,12 @@ namespace ultrainio {
         confirm(blsVoterSet);
     }
 
-    void LightClient::accept(const BlockHeader& blockHeader) {
+    // pass signature when genesis block
+    void LightClient::accept(const BlockHeader& blockHeader, const std::string& signature) {
         ilog("accept BlockHeader num : ${blockNum}, id : ${id} latest confirm : ${latest}",
              ("blockNum", blockHeader.block_num())("id", blockHeader.id())("latest", BlockHeader::num_from_id(m_latestConfirmedBlockId)));
         if (Helper::isGenesis(blockHeader)) {
+            ilog("signature : ${s} for blockNum : ${num}", ("s", signature)("num", blockHeader.block_num()));
             handleGenesis(blockHeader);
             return;
         }
@@ -53,7 +55,11 @@ namespace ultrainio {
             return;
         }
 
-        ULTRAIN_ASSERT(m_workingCommitteeSet != CommitteeSet(), chain::chain_exception, "m_workingCommitteeSet is empty");
+        if (m_workingCommitteeSet == CommitteeSet()) {
+            ULTRAIN_ASSERT(CheckPoint::isCheckPoint(blockHeader), chain::chain_exception, "DO NOT pass check point when working committee set is empty");
+            m_workingCommitteeSet = CheckPoint(blockHeader).committeeSet();
+            ULTRAIN_ASSERT(std::string(m_workingCommitteeSet.committeeMroot()) == m_startPoint.nextCommitteeMroot, chain::chain_exception, "working committee set' MRoot not equal ${root}", ("root", m_startPoint.nextCommitteeMroot));
+        }
         auto unconfirmItor = m_unconfirmedList.begin();
         while (true) {
             if (unconfirmItor == m_unconfirmedList.end()) {

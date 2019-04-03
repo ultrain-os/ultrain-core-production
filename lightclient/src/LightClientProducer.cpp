@@ -56,7 +56,7 @@ namespace ultrainio {
     }
 
     void LightClientProducer::acceptNewHeader(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
-        if (Helper::isGenesis(blockHeader)) { // check sign?
+        if (Helper::isGenesis(blockHeader)) {
             m_BlsVotesMgr.confirm(blockHeader.block_num());
             return;
         }

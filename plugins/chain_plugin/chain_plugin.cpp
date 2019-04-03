@@ -40,6 +40,7 @@
 #include <lightclient/EpochEndPoint.h>
 #include <lightclient/LightClient.h>
 #include <lightclient/LightClientMgr.h>
+#include <lightclient/StartPoint.h>
 
 namespace ultrainio {
 
@@ -119,21 +120,22 @@ using ultrainio::LightClientMgr;
 
 class light_client_callback : public ultrainio::chain::callback {
 public:
-    bool on_accept_block_header(uint64_t chainName, const BlockHeader &blockHeader, BlockIdType &id) {
+    bool on_accept_block_header(uint64_t chainName, const chain::signed_block_header &blockHeader, BlockIdType &id) {
         ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}",
              ("chainName", name(chainName))("blockNum", blockHeader.block_num()));
         std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(chainName);
         lightClient->reset();
         if (std::string(blockHeader.proposer) == std::string("genesis")) {
-            lightClient->accept(blockHeader);
+            lightClient->accept(blockHeader, blockHeader.signature);
             id = lightClient->getLatestConfirmedBlockId();
-            return true;
+            return lightClient->getStatus();
         } else {
-            std::vector<BlockHeader> unconfirmedheaders;
+            std::vector<signed_block_header> unconfirmedheaders;
+            StartPoint startPoint;
             BlockIdType confirmedBlockId;
             CommitteeSet committeeSet;
-            if (getUnconfirmedHeaderFromDb(name(chainName), unconfirmedheaders, confirmedBlockId, committeeSet)) {
-                lightClient->setStartPoint(committeeSet, confirmedBlockId);
+            if (getUnconfirmedHeaderFromDb(name(chainName), unconfirmedheaders, startPoint)) {
+                lightClient->setStartPoint(startPoint);
                 for (auto e : unconfirmedheaders) {
                     lightClient->accept(e);
                 }
@@ -147,17 +149,17 @@ public:
     }
 
 private:
-    bool getUnconfirmedHeaderFromDb(const chain::name &chainName, std::vector<BlockHeader> &unconfirmedBlockHeader,
-                                    BlockIdType &confirmedBlockId, CommitteeSet &committeeSet) {
+    bool getUnconfirmedHeaderFromDb(const chain::name &chainName, std::vector<signed_block_header> &unconfirmedBlockHeader, StartPoint& startPoint) {
         try {
             const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
             struct chain_apis::read_only::get_subchain_unconfirmed_header_params params;
             params.chain_name = chainName;
             auto result = ro_api.get_subchain_unconfirmed_header(params);
             unconfirmedBlockHeader = result.unconfirmed_headers;
-            confirmedBlockId = result.confirmed_block_id;
-            committeeSet = CommitteeSet(result.committee_set);
-            ilog("chainName name = ${name} committee : ${committee} size : ${size}", ("name", chainName.to_string())("committee", committeeSet.toString())("size", result.committee_set.size()));
+            startPoint.lastConfirmedBlockId = result.confirmed_block_id;
+            startPoint.committeeSet = CommitteeSet(result.committee_set);
+            startPoint.nextCommitteeMroot = result.next_committee_mroot;
+            //ilog("chainName name = ${name} committee : ${committee} size : ${size}", ("name", chainName.to_string())("committee", committeeSet.toString())("size", result.committee_set.size()));
             return true;
         } catch (fc::exception &e) {
             ilog("There may be no unconfirmed block header : ${e}", ("e", e.to_string()));
@@ -1097,6 +1099,7 @@ read_only::get_subchain_unconfirmed_header_result read_only::get_subchain_unconf
             for (auto e : chain_data.unconfirmed_blocks) {
                 if (first) {
                     result.confirmed_block_id = e.block_id;
+                    result.next_committee_mroot = e.next_committee_mroot;
                     first = false;
                 } else {
                     result.unconfirmed_headers.push_back(e);

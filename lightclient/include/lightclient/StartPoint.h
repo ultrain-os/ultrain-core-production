@@ -11,7 +11,6 @@ namespace ultrainio {
     public:
         CommitteeSet committeeSet;
         BlockIdType lastConfirmedBlockId;
-        std::string lastConfirmedNextCommitteeMroot = std::string();
-        std::vector<std::string> genesisSignatureVector;
+        std::string nextCommitteeMroot = std::string();
     };
 }
