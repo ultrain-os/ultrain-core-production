@@ -560,7 +560,7 @@ namespace ultrainiosystem {
     void empower_to_chain(account_name user, ultrainio::name chain_name);
     bool is_empowered(account_name user, ultrainio::name chain_name);
     bool lightclient_accept_block_header(ultrainio::name chain_name, const char* bh, size_t bh_size, char* confirmed_bh_buffer, size_t buffer_size);
-
+    void get_account_pubkey(account_name user, char* owner_pub, size_t owner_publen, char* active_pub, size_t active_publen );
    #ifdef __cplusplus
    }
    #endif

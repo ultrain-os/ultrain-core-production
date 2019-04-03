@@ -469,7 +469,7 @@ namespace ultrainiosystem {
             ultrainio_assert(active_pk.size() == 53 || active_pk.size() == 0, "avtive public key should be of size 53 or empty");
         }
         empower_to_chain(user, chain_name);
-
+        //get_account_pubkey(producer.owner, char* owner_pub, size_t owner_publen, char* active_pub, size_t active_publen );
         user_info tempuser;
         tempuser.user_name = user;
         tempuser.is_producer = is_prod;

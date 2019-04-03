@@ -33,8 +33,8 @@ namespace ultrainiosystem {
         name            chain_name;
         std::string     owner_pk;
         std::string     active_pk;
-
-        ULTRAINLIB_SERIALIZE(EmpowerUserParam, (user)(chain_name)(owner_pk)(active_pk))
+        bool            updateable;
+        ULTRAINLIB_SERIALIZE(EmpowerUserParam, (user)(chain_name)(owner_pk)(active_pk)(updateable))
     };
 
     struct ResleaseActionParam {
@@ -79,13 +79,16 @@ namespace ultrainiosystem {
    }
 
    void system_contract::execactions( const vector<action> & actios){
+      uint32_t  exec_succ = 0;
       for (const auto& act : actios) {
          if (act.account == N(utrio.token) && act.name == NEX(transfer)) {
             TransferActionParam tap = unpack<TransferActionParam>(act.data);
-            ultrainio_assert(tap.to == N(utrio.bank), " account to is not utrio.bank");
-            ultrainio_assert(string_to_name(tap.memo.c_str()) == _gstate.chain_name, "The synchronized chain is not correct");
             asset cur_tokens = ultrainio::token(N(utrio.token)).get_balance( N(utrio.bank),symbol_type(CORE_SYMBOL).name());
-            ultrainio_assert( cur_tokens >= tap.val, " utrio.bank account insufficient funds" );
+            if(tap.to != N(utrio.bank) ||
+              string_to_name(tap.memo.c_str()) != _gstate.chain_name ||
+              cur_tokens < tap.val)
+               continue;
+            exec_succ++;
             INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.bank), N(active)},
                { N(utrio.bank), tap.from, tap.val, std::string("sync transfer") } );
             print("synctransfer  from : ", name{tap.from});
@@ -95,21 +98,26 @@ namespace ultrainiosystem {
             print("\n");
          } else if(act.account == N(ultrainio) && act.name == NEX(empoweruser)) {
              EmpowerUserParam eup = unpack<EmpowerUserParam>(act.data);
-             ultrainio_assert(eup.chain_name == _gstate.chain_name, "The synchronized chain is not correct");
+             if(eup.chain_name != _gstate.chain_name)
+                continue;
+             exec_succ++;
              proposeaccount_info new_acc;
              new_acc.account = eup.user;
              new_acc.owner_key = eup.owner_pk;
              new_acc.active_key = eup.active_pk;
-             new_acc.updateable = true;
+             new_acc.updateable = eup.updateable;
              new_acc.location = name{N(ultrainio)};
              add_subchain_account(new_acc);
              print("sync user", name{eup.user}, "\n");
          }else if (act.account == N(ultrainio) && act.name == NEX(resourcelease)) {
             ResleaseActionParam rap = unpack<ResleaseActionParam>(act.data);
-            ultrainio_assert(rap.location == _gstate.chain_name, "The synchronized chain is not correct");
+            if(rap.location != _gstate.chain_name)
+                continue;
+            exec_succ++;
             INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                   { N(ultrainio), rap.receiver, rap.combosize, rap.days, master_chain_name} );
          }
       }
+      ultrainio_assert(exec_succ > 0, "The current transaction has no execution");
    }
 } //namespace ultrainiosystem
