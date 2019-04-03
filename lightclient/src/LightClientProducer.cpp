@@ -14,6 +14,10 @@ namespace ultrainio {
     LightClientProducer::LightClientProducer(bls_votes_manager& blsVotesMgr) : m_BlsVotesMgr(blsVotesMgr) {}
 
     bool LightClientProducer::shouldBeConfirmed(const BlockHeader& blockHeader) const {
+        if (Helper::isGenesis(blockHeader)) {
+            return false;
+        }
+
         if (EpochEndPoint::isEpochEndPoint(blockHeader)) {
             return true;
         }
