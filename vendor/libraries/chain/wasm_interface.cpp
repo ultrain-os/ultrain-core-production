@@ -560,10 +560,10 @@ class privileged_api : public context_aware_api {
       void get_account_pubkey(account_name user, array_ptr<char> owner_pub, size_t owner_publen, array_ptr<char> active_pub, size_t active_publen ) {
          const auto& permission_o = context.db.get<permission_object,by_owner>(boost::make_tuple(user, N(owner)));
          string owner_pk = string(permission_o.auth.keys[0].key);
-         memcpy(owner_pub, owner_pk.c_str(), owner_pk.size());
+         memcpy(owner_pub, owner_pk.c_str(), owner_publen - 1);
          const auto& permission_a = context.db.get<permission_object,by_owner>(boost::make_tuple(user, N(active)));
          string active_pk = string(permission_a.auth.keys[0].key);
-         memcpy(active_pub, active_pk.c_str(), active_pk.size());
+         memcpy(active_pub, active_pk.c_str(), active_publen - 1);
       }
 };
 

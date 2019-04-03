@@ -465,22 +465,13 @@ namespace ultrainiosystem {
         bool is_prod = true;
         if(briefprod == _briefproducers.end()) {
             is_prod = false;
-            ultrainio_assert(owner_pk.size() == 53 || owner_pk.size() == 0, "owner public key should be of size 53 or empty");
-            ultrainio_assert(active_pk.size() == 53 || active_pk.size() == 0, "avtive public key should be of size 53 or empty");
         }
+        ultrainio_assert(owner_pk.size() == 53, "owner public key should be of size 53");
+        ultrainio_assert(active_pk.size() == 53, "avtive public key should be of size 53");
         empower_to_chain(user, chain_name);
-        //get_account_pubkey(producer.owner, char* owner_pub, size_t owner_publen, char* active_pub, size_t active_publen );
         user_info tempuser;
         tempuser.user_name = user;
         tempuser.is_producer = is_prod;
-        if(is_prod) {
-            tempuser.owner_key = "";  //use pk of master mandatorily
-            tempuser.active_key = "";
-        }
-        else {
-            tempuser.owner_key = owner_pk;
-            tempuser.active_key = active_pk;
-        }
         tempuser.emp_time = now();
         tempuser.block_height = (uint64_t)head_block_number() + 1;
         tempuser.updateable = updateable;
@@ -503,18 +494,24 @@ namespace ultrainiosystem {
             ultrainio_assert(ite_chain->committee_num < typeiter->stable_max_producers,
                 "destination sidechain already has enough producers");
             //check if this account has been empowered to this chain
-            // if(!is_empowered(producer.owner, chain_name)) {
-            //     user_info tempuser;
-            //     tempuser.user_name = producer.owner;
-            //     tempuser.is_producer = true;
-            //     tempuser.emp_time = now();
-            //     tempuser.updateable = true;
-            //     _chains.modify(ite_chain, [&]( auto& _chain ) {
-            //         _chain.recent_users.push_back(tempuser);
-            //         _chain.total_user_num += 1;
-            //     });
-            //     empower_to_chain(producer.owner, chain_name);
-            // }
+            if(!is_empowered(producer.owner, chain_name)) {
+                const uint16_t pub_key_size = 54;
+                char* owner_key = (char*)malloc(pub_key_size);
+                char* active_key = (char*)malloc(pub_key_size);
+                get_account_pubkey(producer.owner, owner_key, pub_key_size, active_key, pub_key_size);
+                std::string str_key_o(owner_key);
+                std::string str_key_a(active_key);
+                print("get_account_pubkey receiver:", name{producer.owner}," owner_key:",str_key_o, " active_key:",str_key_a);
+                //send deffer empoweruser transaction
+                ultrainio::transaction trx;
+                trx.actions.emplace_back(
+                    permission_level{ producer.owner, N(active) }, _self, NEX(empoweruser),
+                    std::make_tuple(producer.owner, chain_name, str_key_o, str_key_a, 1) );
+                trx.delay_sec = 1;
+                uint128_t trxid = now() + _self + N(empoweruser);
+                cancel_deferred(trxid);
+                trx.send( trxid, _self, true );
+            }
             _chains.modify(ite_chain, [&](chain_info& info) {
                 role_base temp_prod;
                 temp_prod.owner = producer.owner;
