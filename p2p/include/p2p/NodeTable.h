@@ -172,11 +172,17 @@ private:
 
     boost::asio::steady_timer::duration   nodesrefindinterval{std::chrono::seconds{30}};
     std::unique_ptr<boost::asio::steady_timer> nodesrefindtimer;
+    
+    boost::asio::steady_timer::duration   packlimitcheckinterval{std::chrono::seconds{30}};
+    std::unique_ptr<boost::asio::steady_timer> packlimitchecktimer;
+
     void start_p2p_monitor(ba::io_service& _io);
     void doHandlePingTimeouts();
     void doHandleNodeTimeouts();
+    void doPackLimitTimeouts();
     void doNodeTimeoutCheck();
     void doPingTimeoutCheck();
+    void doPackLimitCheck();
     /// Looks up a random node at @c_bucketRefresh interval.
     void doDiscovery();
     void doIDRequest();

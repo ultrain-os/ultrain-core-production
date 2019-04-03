@@ -852,6 +852,18 @@ void NodeTable::doNodeReFindTimeouts()
             doNodeReFindTimeouts();
             });
 }
+void NodeTable::doPackLimitCheck()
+{
+    m_socket->reset_speedlimit_monitor();
+}
+void NodeTable::doPackLimitTimeouts()
+{
+    packlimitchecktimer->expires_from_now( packlimitcheckinterval);
+    packlimitchecktimer->async_wait( [this](boost::system::error_code ec) {
+            doPackLimitCheck();
+            doPackLimitTimeouts();
+            });
+}
 void NodeTable::start_p2p_monitor(ba::io_service& _io)
 {
     checknodereachable_timer.reset(new boost::asio::steady_timer(_io));
@@ -864,6 +876,8 @@ void NodeTable::start_p2p_monitor(ba::io_service& _io)
     doDiscovery();
     nodesrefindtimer.reset(new boost::asio::steady_timer(_io));
     doNodeReFindTimeouts();
+    packlimitchecktimer.reset(new boost::asio::steady_timer(_io));
+    doPackLimitTimeouts();
 }
 }  // namespace p2p
 }  // namespace ultrainio

@@ -1218,9 +1218,12 @@ connection::connection(string endpoint, msg_priority pri)
     }
 
     bool connection::check_pack_speed_exceed() {
-        static int count_threhold = 10000 * app().get_plugin<producer_uranus_plugin>().get_round_interval();
+        static int count_rpos_threhold =  2000;
+        static int count_trx_threhold =  5000;
+       
         pack_count_rcv ++;
-        if(pack_count_rcv > count_threhold)
+        if(((priority == msg_priority_rpos) && (pack_count_rcv > count_rpos_threhold))
+			||((priority == msg_priority_trx)&&(pack_count_rcv >count_trx_threhold)))
         {
             pack_count_drop++;
             return true;
@@ -1254,7 +1257,6 @@ connection::connection(string endpoint, msg_priority pri)
             {
                 return true;
             }
-
             msgHandler m(impl, shared_from_this() );
             msg.visit(m);
         } catch(  const fc::exception& e ) {
@@ -2388,6 +2390,7 @@ connection::connection(string endpoint, msg_priority pri)
                         ("counnt_rcv",c->pack_count_rcv)
                         ("count_drop",c->pack_count_drop));
                 c->pack_count_rcv=0;
+                c->pack_count_drop = 0;
             }
         }
     }

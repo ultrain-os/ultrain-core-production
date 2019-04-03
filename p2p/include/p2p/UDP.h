@@ -157,6 +157,7 @@ public:
 
     /// Disconnect socket.
     void disconnect() { disconnectWithError(boost::asio::error::connection_reset); }
+    void reset_speedlimit_monitor();
 
 protected:
     void doRead();
@@ -182,6 +183,9 @@ protected:
     std::deque<queued_write>     write_queue;
     fc::message_buffer<4*1024*1024>    pending_message_buffer;
     fc::optional<std::size_t>        outstanding_read_bytes;
+    uint32_t pack_count_rcv = 0;
+    uint32_t pack_count_drop = 0;
+    bool check_pack_speed_exceed();
 };
 
 template <typename Handler, unsigned MaxDatagramSize>
@@ -296,6 +300,27 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
     });
 }
 template <typename Handler, unsigned MaxDatagramSize>
+void UDPSocket<Handler, MaxDatagramSize>::reset_speedlimit_monitor( )
+{
+
+    ilog("pack_udp count_rcv ${counnt_rcv} count_drop ${count_drop}",
+            ("counnt_rcv",pack_count_rcv)
+            ("count_drop",pack_count_drop));
+    pack_count_rcv = 0;
+    pack_count_drop = 0;
+}
+template <typename Handler, unsigned MaxDatagramSize>
+bool UDPSocket<Handler, MaxDatagramSize>::check_pack_speed_exceed() {
+    static int count_threhold = 2000;
+    pack_count_rcv ++;
+    if(pack_count_rcv > count_threhold)
+    {
+        pack_count_drop++;
+        return true;
+    }
+    return false;
+}
+template <typename Handler, unsigned MaxDatagramSize>
 bool UDPSocket<Handler, MaxDatagramSize>::process_next_message(bi::udp::endpoint &m_recvEndpoint) {
     try {
         auto index = pending_message_buffer.read_index();
@@ -309,7 +334,11 @@ bool UDPSocket<Handler, MaxDatagramSize>::process_next_message(bi::udp::endpoint
         auto ds = pending_message_buffer.create_datastream();
         udp_msg msg;
         fc::raw::unpack(ds, msg);
-
+        bool isexceed = check_pack_speed_exceed();
+        if(isexceed)
+        {
+            return true;
+        }
         udpmsgHandler m(m_host, m_recvEndpoint );
         msg.visit(m);
     } catch(  const fc::exception& e ) {
