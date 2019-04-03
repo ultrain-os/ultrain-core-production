@@ -753,6 +753,11 @@ namespace ultrainio {
             if (longest_conns.empty()) {
                 return nullptr;
             }
+            if (longest_conns.front()->block_num_range.lastNum < sync_block_msg.startBlockNum) {
+                // We have a longest chain. Reset end block num, so can transfer to producing block in consensus module.
+                sync_block_msg.endBlockNum = sync_block_msg.startBlockNum;
+                return nullptr;
+            }
 
             uint32_t r = rand_engine()%longest_conns.size();
             ilog("select random ${r}th longest connection to sync block. peer:${p}", ("r", r)("p", longest_conns[r]->peer_name()));
