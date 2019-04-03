@@ -21,9 +21,11 @@ namespace ultrainio {
     }
 
     void LightClient::setStartPoint(const StartPoint& startPoint) {
+        reset();
         m_startPoint = startPoint;
         m_workingCommitteeSet = m_startPoint.committeeSet;
         m_latestConfirmedBlockId = m_startPoint.lastConfirmedBlockId;
+        ilog("set start point confirmed num : ${num}, committeeSet : ${committeeSet}", ("num", BlockHeader::num_from_id(m_latestConfirmedBlockId))("committeeSet", m_workingCommitteeSet.toString()));
     }
 
     // invoked by fetch block feature
