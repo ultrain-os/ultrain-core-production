@@ -177,6 +177,7 @@ namespace ultrainiosystem {
             new_subchain.chain_id           = checksum256();
             new_subchain.committee_mroot    = checksum256();
             new_subchain.confirmed_block_number = 0;
+            new_subchain.confirmed_block_id = checksum256();
         });
     }
 
@@ -293,7 +294,7 @@ namespace ultrainiosystem {
                     memcpy(final_confirmed_id.hash, confirm_id, sizeof(confirm_id));
                 }
                 uint32_t confirm_num = block_header::num_from_id(final_confirmed_id);
-                if(confirm_num > confirmed_number_before) {
+                if(confirm_num > ite_chain->confirmed_block_number) {
                     new_confirm = true;
                 }
             }
@@ -325,11 +326,12 @@ namespace ultrainiosystem {
                 }
                 ultrainio_assert(ite_confirm_block != _subchain.unconfirmed_blocks.end(), "error, confirm block is not found");
 
-                if (confirmed_number_before == ite_confirm_block->block_number) {
+                if (_subchain.confirmed_block_number == ite_confirm_block->block_number) {
                     return;
                 }
                 //handle new confirmed block
                 _subchain.confirmed_block_number = ite_confirm_block->block_number;
+                _subchain.confirmed_block_id = ite_confirm_block->block_id;
                 if(!_subchain.is_synced && ite_confirm_block->is_synced && !_subchain.deprecated_committee.empty()) {
                     _subchain.deprecated_committee.clear();
                 }
@@ -435,6 +437,7 @@ namespace ultrainiosystem {
             _subchain.chain_id          = checksum256();
             _subchain.committee_mroot   = checksum256();
             _subchain.confirmed_block_number = 0;
+            _subchain.confirmed_block_id = checksum256();
             _subchain.unconfirmed_blocks.clear();
             _subchain.unconfirmed_blocks.shrink_to_fit();
             //_subchain.changing_info.clear();
@@ -792,13 +795,16 @@ namespace ultrainiosystem {
             if( (ct > chain_it->recent_users[0].emp_time) && (ct - chain_it->recent_users[0].emp_time >= 30*60 ) ) {
                 _chains.modify(chain_it, [&](auto& _subchain) {
                     auto user_it = _subchain.recent_users.begin();
-                    for(; user_it != _subchain.recent_users.end(); ++user_it) {
-                        if(ct > user_it->emp_time && (ct - user_it->emp_time < 30*60) &&
-                           user_it != _subchain.recent_users.begin()) {
-                            _subchain.recent_users.erase(_subchain.recent_users.begin(), user_it);
-                            _subchain.recent_users.shrink_to_fit();
+                    for(; user_it != _subchain.recent_users.end(); ) {
+                        if(ct > user_it->emp_time && (ct - user_it->emp_time < 30*60)) {
                             break;
+                        } else {
+                            ++user_it;
                         }
+                    }
+                    if(user_it != _subchain.recent_users.begin()) {
+                        _subchain.recent_users.erase(_subchain.recent_users.begin(), user_it);
+                        _subchain.recent_users.shrink_to_fit();
                     }
                 });
             }
@@ -815,6 +821,7 @@ namespace ultrainiosystem {
         _chains.modify(ite_chain, [&]( auto& _chain ) {
             auto block_id = signed_header.id();
             _chain.confirmed_block_number = block_number;
+            _chain.confirmed_block_id = block_id;
             _chain.unconfirmed_blocks.clear();
             _chain.committee_num = uint16_t(cmt_set.size());
             _chain.is_synced = false;

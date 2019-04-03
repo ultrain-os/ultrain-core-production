@@ -319,6 +319,7 @@ namespace ultrainiosystem {
        checksum256               chain_id;
        checksum256               committee_mroot;
        uint32_t                  confirmed_block_number;
+       checksum256               confirmed_block_id;
        std::vector<role_base>    committee_set;//current committee set reported by chain
        std::vector<unconfirmed_block_header>  unconfirmed_blocks;
        exten_types                table_extension;
@@ -328,7 +329,7 @@ namespace ultrainiosystem {
        ULTRAINLIB_SERIALIZE(chain_info, (chain_name)(chain_type)(genesis_time)(global_resource)(is_synced)
                             (is_schedulable)(schedule_on)(committee_num)(deprecated_committee)(changing_info)
                             (recent_users)(total_user_num)(chain_id)(committee_mroot)(confirmed_block_number)
-                            (committee_set)(unconfirmed_blocks)(table_extension) )
+                            (confirmed_block_id)(committee_set)(unconfirmed_blocks)(table_extension) )
 
        void handle_committee_update(CommitteeDelta& cmt_delta) {
            for(auto it_rm = changing_info.removed_members.begin(); it_rm != changing_info.removed_members.end();) {

@@ -100,6 +100,7 @@ namespace ultrainio { namespace chain {
        checksum256_type          chain_id;
        checksum256_type          committee_mroot;
        uint32_t                  confirmed_block_number;
+       checksum256_type          confirmed_block_id;
        std::vector<role_base>    committee_set;//current committee set reported by chain
        std::vector<unconfirmed_block_header>  unconfirmed_blocks;
        extension_types           table_extension;
@@ -141,6 +142,6 @@ FC_REFLECT_DERIVED(ultrainio::chain::unconfirmed_block_header, (ultrainio::chain
                     (is_leaf)(is_synced)(next_committee_mroot)(table_extension) )
 FC_REFLECT(ultrainio::chain::chain_info, (chain_name)(chain_type)(genesis_time)(global_resource)(is_synced)(is_schedulable)
                     (schedule_on)(committee_num)(deprecated_committee)(changing_info)(recent_users)(total_user_num)(chain_id)
-                    (committee_mroot)(confirmed_block_number)(committee_set)(unconfirmed_blocks)(table_extension) )
+                    (committee_mroot)(confirmed_block_number)(confirmed_block_id)(committee_set)(unconfirmed_blocks)(table_extension) )
 FC_REFLECT(ultrainio::chain::resources_lease, (owner)(lease_num)(start_block_height)(end_block_height)(modify_block_height)(free_account_number)(table_extension) )
 FC_REFLECT(ultrainio::chain::master_chain_info, (owner)(master_prods)(block_height)(block_id)(committee_mroot)(master_chain_ext) )

@@ -1061,6 +1061,7 @@ read_only::get_subchain_block_num_result read_only::get_subchain_block_num(const
        fc::raw::unpack(ds, subchain_data);
        if(p.chain_name == subchain_data.chain_name) {
            result.confirmed_block.number = subchain_data.confirmed_block_number;
+           result.confirmed_block.block_id = subchain_data.confirmed_block_id;
            auto ite_block = subchain_data.unconfirmed_blocks.begin();
            for(; ite_block != subchain_data.unconfirmed_blocks.end(); ++ite_block) {
                if(ite_block->is_leaf) {
@@ -1068,9 +1069,6 @@ read_only::get_subchain_block_num_result read_only::get_subchain_block_num(const
                    temp_num_id.number   = ite_block->block_number;
                    temp_num_id.block_id = ite_block->block_id;
                    result.forks.push_back(temp_num_id);
-               }
-               if(ite_block->block_number == result.confirmed_block.number) {
-                   result.confirmed_block.block_id = ite_block->block_id;
                }
            }
            return false;
