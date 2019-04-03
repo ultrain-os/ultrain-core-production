@@ -621,8 +621,8 @@ bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const Req
    return UranusNode::getInstance()->handleMessage(node_id, msg);
 }
 
-bool producer_uranus_plugin::handle_message(const Block& block, bool last_block) {
-   return UranusNode::getInstance()->handleMessage(block, last_block);
+bool producer_uranus_plugin::handle_message(const SyncBlockMsg& msg, bool last_block, bool safe) {
+   return UranusNode::getInstance()->handleMessage(msg, last_block, safe);
 }
 
 bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const ReqBlockNumRangeMsg& msg) {

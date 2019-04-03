@@ -112,7 +112,7 @@ namespace ultrainio {
 
         bool handleMessage(const fc::sha256 &nodeId, const ReqBlockNumRangeMsg &msg);
 
-        bool handleMessage(const Block &block, bool last_block);
+        bool handleMessage(const SyncBlockMsg &msg, bool last_block, bool safe);
 
         bool handleMessage(const fc::sha256 &nodeId, const SyncStopMsg &msg);
 

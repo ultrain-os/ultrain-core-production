@@ -665,7 +665,7 @@ namespace ultrainio {
         uint32_t                         end_block_num;
         uint32_t                         first_safe_block_num;
         uint32_t                         last_safe_block_num;
-        std::list<Block>                 block_msg_queue;
+        std::list<SyncBlockMsg>          block_msg_queue;
         bool                             selecting_src = false;
         boost::asio::steady_timer::duration   src_block_period;
         unique_ptr<boost::asio::steady_timer> src_block_check;
@@ -738,7 +738,7 @@ namespace ultrainio {
                 if (con->block_num_range.firstNum == 0 || con->block_num_range.firstNum > sync_block_msg.startBlockNum) { // can't provide all the blocks
                     ilog("${p} can't provide all the blocks", ("p", con->peer_name()));
                     conns_without_block.insert(con);
-                    if (conns_without_block.size() == sync_src_count) {
+                    if (conns_without_block.size() == sync_src_count && seq_num >= 3) {
                         ULTRAIN_ASSERT(false, chain::unlinkable_block_exception, "No block in neighbors. Help!!!");
                     }
                 } else if (con->block_num_range.lastNum > block_num) {
@@ -791,14 +791,19 @@ namespace ultrainio {
             fc::time_point dead_line = fc::time_point::now() + fc::microseconds(1000000);
             ilog("start handle blocks.");
             while(!block_msg_queue.empty()) {
-                auto& b = block_msg_queue.front();
-                if (b.block_num() > last_safe_block_num &&
-                    !(sync_block_msg.startBlockNum == sync_conn->block_num_range.lastNum && sync_block_msg.startBlockNum == b.block_num())) { // skip last block if the chain is bax
+                auto& b = block_msg_queue.front().block;
+                bool is_safe = b.block_num() <= last_safe_block_num;
+
+                // We can handle the block in 2 cases: 1. the block is confirmed 2. the block is last one and the chain is bax
+                if (!(is_safe || (sync_block_msg.startBlockNum == sync_conn->block_num_range.lastNum && sync_block_msg.startBlockNum == b.block_num()))) {
                     break;
                 }
 
                 bool is_last_block = (b.block_num() == end_block_num);
-                app().get_plugin<producer_uranus_plugin>().handle_message(b, is_last_block);
+                if (!app().get_plugin<producer_uranus_plugin>().handle_message(block_msg_queue.front(), is_last_block, is_safe)) {
+                    return;
+                }
+
                 if (is_last_block) {
                     ilog("is last block reset");
                     reset();
@@ -2304,13 +2309,19 @@ connection::connection(string endpoint, msg_priority pri)
         }
 
         if (sync_block_master->end_block_num > 0) {
+            if (sync_block_master->last_received_block == 0 || sync_block_master->last_received_block + 1 == msg.block.block_num()) {
+                sync_block_master->last_received_block++;
+            } else {
+                elog("receive block with wrong number: ${num}, but last received block num: ${last}", ("num", msg.block.block_num())("last", sync_block_master->last_received_block));
+            }
+
             sync_block_master->last_received_block = msg.block.block_num();
             if (sync_block_master->last_received_block == sync_block_master->sync_block_msg.startBlockNum) {
                 controller &cc = chain_plug->chain();
                 std::shared_ptr<StakeVoteBase> stake = MsgMgr::getInstance()->getVoterSys(cc.head_block_num() + 1);
                 light_client->setStartPoint(stake->getCommitteeSet(), cc.head_block_id());
             }
-            sync_block_master->block_msg_queue.emplace_back(msg.block);
+            sync_block_master->block_msg_queue.emplace_back(msg);
             if (msg.proof.empty()) {
                 light_client->accept(msg.block);
             } else {

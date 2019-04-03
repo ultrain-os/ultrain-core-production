@@ -571,13 +571,13 @@ namespace ultrainio {
         return m_schedulerPtr->getLastBlocknum();
     }
 
-    bool UranusNode::handleMessage(const Block &msg, bool last_block) {
+    bool UranusNode::handleMessage(const SyncBlockMsg &msg, bool last_block, bool safe) {
         uint32_t next_blockNum = 0;
         if (!m_syncing) {
             return true;
         }
 
-        bool result = m_schedulerPtr->handleMessage(msg);
+        bool result = m_schedulerPtr->handleMessage(msg, safe);
         if (!result) {
             m_ready = true;
             m_syncing = false;
@@ -599,7 +599,7 @@ namespace ultrainio {
             fastBlock(next_blockNum);
             return true;
         } else {
-            if ((m_phase == kPhaseBAX) && (msg.block_num() == getLastBlocknum())) {
+            if ((m_phase == kPhaseBAX) && (msg.block.block_num() == getLastBlocknum())) {
                 dlog("handleMessage blockmsg. close bax, blockNum = ${blockNum}.", ("blockNum", getLastBlocknum()));
                 reset();
             }

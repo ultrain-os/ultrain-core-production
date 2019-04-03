@@ -929,7 +929,8 @@ namespace ultrainio {
         return chain.head_block_num();
     }
 
-    bool Scheduler::handleMessage(const Block &block) {
+    bool Scheduler::handleMessage(const SyncBlockMsg &msg, bool safe) {
+        const Block& block = msg.block;
         uint32_t last_num = getLastBlocknum();
         dlog("@@@@@@@@@@@@@@@ last block num in local chain:${last}", ("last", last_num));
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
@@ -937,7 +938,16 @@ namespace ultrainio {
         if (b) {
             if (block.previous == b->id()) {
                 // TODO(yufengshen) -- Do not copy here, should have shared_ptr at the first place.
-                produceBlock(std::make_shared<chain::signed_block>(block), true);
+                if (safe) {
+                    produceBlock(std::make_shared<chain::signed_block>(block), true);
+                } else {
+                    bool result = (!msg.proof.empty() && setBlsVoterSet(msg.proof));
+                    if (!result) {
+                        elog("Bls voter set is wrong, so we can't save the received block. bls proof: ${p}", ("p", msg.proof));
+                        return false;
+                    }
+                    produceBlock(std::make_shared<chain::signed_block>(block), true);
+                }
                 dlog("sync block finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
                      ("block_num", getLastBlocknum())("hash", block.id())("head_hash", block.previous));
                 return true;
@@ -1517,8 +1527,19 @@ namespace ultrainio {
 
             dlog("produceBaxBlock.min_hash = ${hash}",("hash",echo_info->echoCommonPart.blockId));
 
+            VoterSet voterSet;
+            voterSet.commonEchoMsg = echo_info->echoCommonPart;
+            voterSet.accountPool = echo_info->accountPool;
+            voterSet.timePool = echo_info->timePool;
+            voterSet.blsSignPool = echo_info->blsSignPool;
+            voterSet.sigPool = echo_info->sigPool;
+#ifdef CONSENSUS_VRF
+            voterSet.proofPool = echo_info->proofPool;
+#endif
+
             if (isEmpty(echo_info->echoCommonPart.blockId)) {
-                dlog("produceBaxBlock.produce empty Block");
+                dlog("produceBaxBlock.produce empty Block. save VoterSet in bax blockId = ${blockId}", ("blockId", voterSet.commonEchoMsg.blockId));
+                m_currentBlsVoterSet = voterSet.toBlsVoterSet();
                 return emptyBlock();
             }
             auto propose_itor = m_proposerMsgMap.find(echo_info->echoCommonPart.blockId);
@@ -1528,8 +1549,9 @@ namespace ultrainio {
 #else
                     && stakeVotePtr->proposerPriority(propose_itor->second.block.proposer, kPhaseBA0, 0) == min_priority) {
 #endif
-                dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase}",
-                     ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
+                dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase} save VoterSet in bax blockId = ${blockId}",
+                     ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase)("blockId", voterSet.commonEchoMsg.blockId));
+                m_currentBlsVoterSet = voterSet.toBlsVoterSet();
                 return propose_itor->second.block;
             }
             dlog("produceBaxBlock.> 2f + 1 echo. hash = ${hash} can not find it's propose.",("hash",echo_info->echoCommonPart.blockId));
@@ -2225,6 +2247,25 @@ namespace ultrainio {
     void Scheduler::enableEventRegister(bool v) {
         chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         chain.enable_event_register(v);
+    }
+
+    bool Scheduler::setBlsVoterSet(const std::string& bls) {
+        BlsVoterSet b(bls);
+        if (!b.valid()) {
+            elog("receive invalid bls voter set: ${bls}", ("bls", bls));
+            return false;
+        }
+
+        uint32_t last_num = getLastBlocknum();
+        if (BlockHeader::num_from_id(b.commonEchoMsg.blockId) == last_num + 1) {
+            m_currentBlsVoterSet = b;
+            ilog("before save bls voter set. last num: ${num} bls: ${bls}", ("num", last_num)("bls", m_currentBlsVoterSet.toString()));
+            m_lightClientProducer->saveCurrentBlsVoterSet(m_currentBlsVoterSet);
+            return true;
+        } else {
+            elog("error block num in bls voter set: ${num}, but last num: ${last}", ("num", BlockHeader::num_from_id(b.commonEchoMsg.blockId))("last", last_num));
+            return false;
+        }
     }
 
     bool Scheduler::isDuplicate(const ProposeMsg& proposeMsg) {

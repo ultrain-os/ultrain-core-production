@@ -133,7 +133,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         bool handleMessage(const fc::sha256 &nodeId, const ReqBlockNumRangeMsg &msg);
 
-        bool handleMessage(const Block &msg);
+        bool handleMessage(const SyncBlockMsg &msg, bool safe);
 
         bool handleMessage(const fc::sha256 &nodeId, const SyncStopMsg &msg);
 
@@ -214,6 +214,8 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         void insertAccount(echo_message_info &info, const EchoMsg &echo);
 
         void enableEventRegister(bool v);
+
+        bool setBlsVoterSet(const std::string& bls);
 
     private:
 
