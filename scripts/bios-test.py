@@ -21,6 +21,7 @@ min_committee_staked = 420000000
 min_committee_number = 4
 max_resources_number = 10000
 unlockTimeout = 999999999
+maxBodySize = 2 * 1024 * 1024
 reward_tensecperiod = 10000
 reward_twosecperiod = 2000
 newaccount_fee = 2000
@@ -107,7 +108,7 @@ def randomTransfer():
 def startWallet():
     run('rm -rf ' + os.path.abspath(args.wallet_dir))
     run('mkdir -p ' + os.path.abspath(args.wallet_dir))
-    background(args.kultraind + ' --unlock-timeout %d --http-server-address 127.0.0.1:6666 --wallet-dir %s' % (unlockTimeout, os.path.abspath(args.wallet_dir)))
+    background(args.kultraind + ' --max-body-size %d --unlock-timeout %d --http-server-address 127.0.0.1:6666 --wallet-dir %s' % (maxBodySize, unlockTimeout, os.path.abspath(args.wallet_dir)))
     sleep(1)
     run(args.clultrain + 'wallet create')
 
