@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/8690bd",
+   "version": "ultrainio::abi/1.0/a9ecc6",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -700,7 +700,7 @@
       "base": "",
       "fields": [
         {"name": "chain_name",             "type": "name"},
-        {"name": "header",                 "type": "block_header"},
+        {"name": "signed_header",          "type": "signed_block_header"},
         {"name": "cmt_set",                "type": "role_base[]"}
        ]
     },{

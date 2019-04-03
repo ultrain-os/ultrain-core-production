@@ -808,32 +808,25 @@ namespace ultrainiosystem {
         }
     }
 
-    void system_contract::forcesetblock(name chain_name, const block_header& header, const std::vector<role_base>& cmt_set) {
+    void system_contract::forcesetblock(name chain_name, const signed_block_header& signed_header, const std::vector<role_base>& cmt_set) {
         //set confirm block of a chain
         require_auth(N(ultrainio));
         auto ite_chain = _chains.find(chain_name);
         ultrainio_assert(ite_chain != _chains.end(), "chain is not found");
         uint32_t current_confirmed_number = ite_chain->confirmed_block_number;
-        uint32_t block_number = header.block_num();
+        uint32_t block_number = signed_header.block_num();
         _chains.modify(ite_chain, [&]( auto& _chain ) {
-            auto block_id = header.id();
+            auto block_id = signed_header.id();
             _chain.confirmed_block_number = block_number;
             _chain.unconfirmed_blocks.clear();
             _chain.committee_num = uint16_t(cmt_set.size());
             _chain.is_synced = false;
             _chain.is_schedulable = true;
             _chain.changing_info.clear();
-            _chain.committee_mroot = header.committee_mroot;
+            _chain.committee_mroot = signed_header.committee_mroot;
             _chain.committee_set = cmt_set;
 
-            unconfirmed_block_header temp_header;
-            temp_header.block_id      = block_id;
-            temp_header.block_number  = block_number;
-            temp_header.to_be_paid    = false;
-            temp_header.is_leaf       = true;
-            temp_header.proposer      = header.proposer;
-            temp_header.committee_mroot = header.committee_mroot;
-            temp_header.transaction_mroot = header.transaction_mroot;
+            unconfirmed_block_header temp_header(signed_header, block_id, block_number, false, false);
             _chain.unconfirmed_blocks.push_back(temp_header);
         });
         //handle block table of chain
@@ -845,7 +838,7 @@ namespace ultrainiosystem {
                 block_ite = chain_block_tbl.erase(block_ite);
             }
             chain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
-                new_confirmed_header = block_header_digest(block_number, header.committee_mroot);
+                new_confirmed_header = block_header_digest(block_number, signed_header.committee_mroot);
             });
         }
         else {

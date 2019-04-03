@@ -9,15 +9,15 @@
 #include <ultrainiolib/time.hpp>
 #include <ultrainiolib/privileged.hpp>
 #include <ultrainiolib/singleton.hpp>
-//#include <ultrainiolib/block_header.hpp>
+#include <ultrainiolib/block_header.hpp>
 #include <ultrainiolib/ultrainio.hpp>
 #include <ultrainiolib/types.hpp>
 #include <string>
 #include <vector>
 #include <set>
-//#include "BlockHeaderExtKey.h"
+#include "BlockHeaderExtKey.h"
 #include "CommitteeSet.h"
-#include "EpochEndPoint.h"
+//#include "EpochEndPoint.h"
 #define UNUSED(a) (void*)(a);
 namespace ultrainiosystem {
    using namespace ultrainio;
@@ -280,12 +280,13 @@ namespace ultrainiosystem {
        unconfirmed_block_header(const ultrainio::signed_block_header& signed_header, const block_id_type& b_id, uint32_t b_n,
                                 bool need_pay, bool is_sync) : ultrainio::signed_block_header(signed_header),
                                 block_id(b_id), block_number(b_n), to_be_paid(need_pay), is_leaf(true), is_synced(is_sync) {
-        /*
-           const ultrainio::block_header& header = static_cast<const ultrainio::block_header&>(signed_header);
-           if(EpochEndPoint::isEpochEndPoint(header)) {
-               EpochEndPoint eep(header);
-               next_committee_mroot = eep.nextCommitteeMroot();
-           }*/
+           for (const auto& e : signed_header.header_extensions) {
+                BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
+                if (key == kNextCommitteeMroot) {
+                    next_committee_mroot = std::string(std::get<1>(e).begin(), std::get<1>(e).end());
+                    break;
+                }
+           }
        }
        CommitteeSet get_committee_set() {
            for (const auto& e : header_extensions) {
@@ -477,7 +478,7 @@ namespace ultrainiosystem {
                                  uint64_t file_size);
          void setsched(bool is_enabled, uint16_t sched_period, uint16_t expire_time);
          void forcesetblock(name chain_name,
-                            const block_header& header,
+                            const signed_block_header& signed_header,
                             const std::vector<CommitteeInfo>& cmt_set);
          void schedule(const std::string& trigger);
          void setlwcparams(uint32_t keep_blocks_num);
