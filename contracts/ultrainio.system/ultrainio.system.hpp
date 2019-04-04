@@ -549,7 +549,7 @@ namespace ultrainiosystem {
          std::vector<name> get_all_chainname();
 
          // functions defined in synctransaction.cpp
-         void execactions( const vector<action> & actios);
+         void execactions( const vector<action> & actios, name chain_name);
    };
 
 } /// ultrainiosystem

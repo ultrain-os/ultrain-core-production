@@ -50,6 +50,11 @@ namespace ultrainiobank {
             };
             typedef ultrainio::multi_index<N(chainbalance), chain_balance> chainbalance;
 
+            void checktranstobank( account_name from,
+                              asset        quantity,
+                              name chain_name );
+            void checktransfrombank( asset quantity, name chain_name );
+
     };
     extern "C" 
     void apply( uint64_t receiver, uint64_t code, uint64_t actH, uint64_t actL ) {

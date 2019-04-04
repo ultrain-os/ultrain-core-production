@@ -75,10 +75,10 @@ namespace ultrainiosystem {
          header.trx_ids.insert(tx.tx_id);
       });
       ultrainio_assert(tx.actions.size() > 0, "no context related actions contains in this transaction.");
-      execactions( tx.actions );
+      execactions( tx.actions, chain_name );
    }
 
-   void system_contract::execactions( const vector<action> & actios){
+   void system_contract::execactions( const vector<action> & actios, name chain_name){
       uint32_t  exec_succ = 0;
       for (const auto& act : actios) {
          if (act.account == N(utrio.token) && act.name == NEX(transfer)) {
@@ -87,13 +87,20 @@ namespace ultrainiosystem {
                 continue;
             asset cur_tokens = ultrainio::token(N(utrio.token)).get_balance( N(utrio.bank),symbol_type(CORE_SYMBOL).name());
             if(tap.to != N(utrio.bank) ||
-               string_to_name(tap.memo.c_str()) != _gstate.chain_name ||
-               cur_tokens < tap.val) {
+              string_to_name(tap.memo.c_str()) != _gstate.chain_name
+              )
+               continue;
+
+            if( cur_tokens < tap.val && !_gstate.is_master_chain()){ //if master chain no issue tokens
+               INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
+               {N(utrio.bank),(tap.val - cur_tokens), std::string("issue tokens for subchain utrio.bank")} );
+            }else if(cur_tokens < tap.val && _gstate.is_master_chain()){
+                print(" ERROR The utrio.bank of the masterchain should never be smaller than the amount of money to be transferred");
                 continue;
             }
             exec_succ++;
             INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.bank), N(active)},
-               { N(utrio.bank), tap.from, tap.val, std::string("sync transfer") } );
+               { N(utrio.bank), tap.from, tap.val, name{chain_name}.to_string() } );
             print("synctransfer  from : ", name{tap.from}, ", to: ", name{tap.to});
             print(", asset: "); tap.val.print();
             print(", memo: ", tap.memo, "\n");
