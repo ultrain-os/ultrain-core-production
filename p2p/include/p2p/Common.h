@@ -75,6 +75,7 @@ namespace ultrainio
                 }
                 m_listenPorts.emplace_back(port, businessType);
             }
+            MsgExtension ext;
         };
 
         class Node
@@ -102,7 +103,7 @@ namespace ultrainio
     }
 
 }
-FC_REFLECT( ultrainio::p2p::NodeIPEndpoint, (m_address)(m_udpPort)(m_listenPorts))
+FC_REFLECT( ultrainio::p2p::NodeIPEndpoint, (m_address)(m_udpPort)(m_listenPorts)(ext))
 /// std::hash for asio::adress
 #if 1
 namespace std
