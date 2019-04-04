@@ -66,7 +66,10 @@ namespace ultrainio {
                                                       chainbase::database &worldstate_db) {
                 bls_index_set::walk_indices([this, &worldstate_db, &ws_helper_ptr](auto utils) {
                     using index_t = typename decltype(utils)::index_t;
-                    //using value_t = typename index_t::value_type;
+                    using value_t = typename index_t::value_type;
+                    if (!std::is_same<value_t, bls_votes_object>::value) {
+                        return;
+                    }
                     ws_helper_ptr->add_table_to_worldstate<index_t>(worldstate_db);
                 });
             }
@@ -79,6 +82,10 @@ namespace ultrainio {
                                                          chainbase::database &worldstate_db) {
                 bls_index_set::walk_indices([&](auto utils) {
                     using index_t = typename decltype(utils)::index_t;
+                    using value_t = typename index_t::value_type;
+                    if (!std::is_same<value_t, bls_votes_object>::value) {
+                        return;
+                    }
                     ws_helper_ptr->read_table_from_worldstate<index_t>(worldstate_db);
                 });
             }
@@ -116,7 +123,7 @@ namespace ultrainio {
                              ("num", itor->block_num)("end_epoch", itor->end_epoch)("bls_valid", itor->valid_bls)("bls", std::string(itor->bls_str.begin(), itor->bls_str.end())));
                     }
                     return true;
-                } else if (o.latest_confirmed_block_num + s_confirm_point_interval == block_num) {
+                } else if ((block_num - o.latest_confirmed_block_num) % s_confirm_point_interval == 0) {
                     return true;
                 }
                 return false;

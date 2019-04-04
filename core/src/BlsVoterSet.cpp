@@ -53,6 +53,7 @@ namespace ultrainio {
 
     bool BlsVoterSet::verifyBls(std::vector<std::string> blsPkVector) const {
         if (blsPkVector.size() != accountPool.size()) {
+            ilog("size not equal");
             return false;
         }
         unsigned char** pks = (unsigned char**)malloc(sizeof(unsigned char*) * accountPool.size());

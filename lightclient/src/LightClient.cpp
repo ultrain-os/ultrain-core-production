@@ -80,8 +80,6 @@ namespace ultrainio {
         if (BlockHeader::num_from_id(maybeConfirmedBlockId) <= BlockHeader::num_from_id(m_latestConfirmedBlockId)) {
             return;
         }
-        ilog("maybe confirmed blockNum : ${blockNum} blockId : ${blockId}", ("blockNum", BlockHeader::num_from_id(maybeConfirmedBlockId))("blockId", maybeConfirmedBlockId));
-
         bool linked = false;
         // handle unconfirmed list
         BlockIdType nextBlockId = maybeConfirmedBlockId;
@@ -132,6 +130,7 @@ namespace ultrainio {
     }
 
     bool LightClient::verifyBlockHeaderList(const std::list<BlockHeader>& blockHeaderList, const BlsVoterSet& blsVoterSet) {
+        ilog("blsVoterSet : ${set}", ("set", blsVoterSet.toString()));
         std::list<ConfirmPoint> confirmPointList;
         for (auto v : blockHeaderList) {
             if (ConfirmPoint::isConfirmPoint(v)) {
@@ -151,7 +150,9 @@ namespace ultrainio {
                 }
             }
             if (itor->id() == blsVoterSet.commonEchoMsg.blockId) {
-                return m_workingCommitteeSet.verify(blsVoterSet);
+                bool res = m_workingCommitteeSet.verify(blsVoterSet);
+                ilog("verifyBlockHeaderList verify result : ${result}", ("result", res));
+                return res;
             }
 
             // MUST before EpochEndPoint::isEpochEndPoint check
