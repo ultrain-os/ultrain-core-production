@@ -463,7 +463,15 @@ namespace ultrainio { namespace chain {
 
    void transaction_context::schedule_transaction() {
        for( const auto& act : trx.actions ) {
-           ULTRAIN_ASSERT(act.account == N(ultrainio), transaction_exception, "only ultrainio transaction can be delayed" );
+           ULTRAIN_ASSERT(act.account == N(ultrainio), transaction_exception, "only ultrainio contract transaction can be delayed" );
+           bool has_ultrainio = false;
+           for (const auto& u : act.authorization) {
+               if (u.actor == N(ultrainio)) {
+                   has_ultrainio = true;
+                   break;
+               }
+           }
+           ULTRAIN_ASSERT(has_ultrainio, transaction_exception, "only ultrainio can issue delay transaction" );
        }
 
       // Charge ahead of time for the additional net usage needed to retire the delayed transaction
