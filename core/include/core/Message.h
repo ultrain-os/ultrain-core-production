@@ -26,10 +26,12 @@ namespace ultrainio {
         uint32_t seqNum;
         uint32_t startBlockNum;
         uint32_t endBlockNum;
+        MsgExtension ext;
     };
 
     struct ReqBlockNumRangeMsg {
         uint32_t seqNum;
+        MsgExtension ext;
     };
 
     struct RspBlockNumRangeMsg {
@@ -38,16 +40,19 @@ namespace ultrainio {
         uint32_t lastNum;
         std::string blockHash;
         std::string prevBlockHash;
+        MsgExtension ext;
     };
 
     struct SyncBlockMsg {
         uint32_t seqNum;
         Block block;
         std::string proof;
+        MsgExtension ext;
     };
 
     struct SyncStopMsg {
         uint32_t seqNum;
+        MsgExtension ext;
     };
 
     struct UnsignedProposeMsg {
@@ -103,8 +108,8 @@ FC_REFLECT_DERIVED( ultrainio::UnsignedEchoMsg, (ultrainio::CommonEchoMsg), (bls
 #endif
 
 FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature))
-FC_REFLECT( ultrainio::ReqSyncMsg, (seqNum)(startBlockNum)(endBlockNum) )
-FC_REFLECT( ultrainio::ReqBlockNumRangeMsg, (seqNum))
-FC_REFLECT( ultrainio::RspBlockNumRangeMsg, (seqNum)(firstNum)(lastNum)(blockHash)(prevBlockHash))
-FC_REFLECT( ultrainio::SyncBlockMsg, (seqNum)(block)(proof))
-FC_REFLECT( ultrainio::SyncStopMsg, (seqNum))
+FC_REFLECT( ultrainio::ReqSyncMsg, (seqNum)(startBlockNum)(endBlockNum)(ext))
+FC_REFLECT( ultrainio::ReqBlockNumRangeMsg, (seqNum)(ext))
+FC_REFLECT( ultrainio::RspBlockNumRangeMsg, (seqNum)(firstNum)(lastNum)(blockHash)(prevBlockHash)(ext))
+FC_REFLECT( ultrainio::SyncBlockMsg, (seqNum)(block)(proof)(ext))
+FC_REFLECT( ultrainio::SyncStopMsg, (seqNum)(ext))
