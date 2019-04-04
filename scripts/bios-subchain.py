@@ -139,7 +139,7 @@ def regProducer():
         pk = pk_list[i]
         bls_key = bls_pk_list[i];
         print "empoweruser(user:"+userName+" to chain:"+args.subchain+")"
-        retry(args.clultrain+'system empoweruser '+userName+' '+args.subchain+' 1  -p '+userName+'@active');
+        retry(args.clultrain+'system empoweruser '+userName+' '+args.subchain+' "'+userPK+'" "'+userPK+'" 1 -p '+userName+'@active');
         sleep(1)
         print "reg producer:" + userName + "(" + pk + " "+bls_key+ ") belongs to chain(" + args.subchain + ")"
         retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key + ' ' + userName+' https://'+userName+'.com '+args.subchain +' -p ultrainio@active -u')

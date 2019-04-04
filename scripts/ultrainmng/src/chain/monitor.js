@@ -33,9 +33,15 @@ var seedCount = 10;
 
 var enableRestart = 0;
 
-var enableSyncUserRes = 1;
+//使用投票同步用户和资源
+var enableSyncUserRes = 0;
+
+//使用块同步块和资源
+var enableSyncUserResByBlock = 1;
 
 var enableSyncUgas = 1;
+
+var syncBlockHeaderMaxTranNum = 20;
 
 /**
  *
@@ -126,7 +132,7 @@ async function buildParam() {
     }
 
     let enableRestartRes = 1;
-    if (enableRestart == 0 && chainConfig.configFileData.local["enableRestart"]==false) {
+    if (enableRestart == 0 && chainConfig.configFileData.local["c"]==false) {
             enableRestartRes = 0;
     }
 
@@ -134,6 +140,8 @@ async function buildParam() {
         "enableRestart": enableRestartRes,
         "enableSyncUserRes": enableSyncUserRes,
         "enableSyncUgas" : enableSyncUgas,
+        "enableSyncUserResByBlock":enableSyncUserResByBlock,
+        "syncBlockHeaderMaxTranNum":syncBlockHeaderMaxTranNum,
     }
     var param = {
         "chainId": chainConfig.localChainName,
@@ -321,6 +329,18 @@ async function cmdDeploy(deployBatch) {
             systemCmd = true;
         }
 
+        //开启通过块高同步用户和资源-1
+        if (deployCmd.content == constants.cmdConstants.ENABLE_SYNC_USER_RES_BY_BLOCK) {
+            enableSyncUserResByBlock = 1;
+            systemCmd = true;
+        }
+
+        //关闭通过块高同步用户和资源-1
+        if (deployCmd.content == constants.cmdConstants.DISABLE_SYNC_USER_RES_BY_BLOCK) {
+            enableSyncUserResByBlock = 0;
+            systemCmd = true;
+        }
+
         //开启同步ugas-1
         if (deployCmd.content == constants.cmdConstants.ENABLE_SYNC_UGAS) {
             enableSyncUgas = 1;
@@ -333,7 +353,11 @@ async function cmdDeploy(deployBatch) {
             systemCmd = true;
         }
 
-        enableSyncUgas
+        if (deployCmd.content == constants.cmdConstants.SET_SYNC_BLOCK_MAX_COUNT) {
+            syncBlockHeaderMaxTranNum = deployCmd.arg;
+            systemCmd = true;
+        }
+
 
         //增加nod配置并重新启动
         if (deployCmd.content == constants.cmdConstants.ADD_NOD_CONFIG) {
@@ -362,13 +386,13 @@ async function cmdDeploy(deployBatch) {
                 logMsg = utils.addLogStr(logMsg, "add config has not already existed,need update info");
 
                 try {
-                    let stopFlag = await NodUltrain.stop(600000);
+                    let stopFlag = await NodUltrain.stop(600000,chainConfig.nodPort);
                     if (stopFlag == true) {
                         logMsg = utils.addLogStr(logMsg, "stop nod success");
                         let updateConfigFlag = NodUltrain.addConfigInfo(configList);
                         if (updateConfigFlag == true) {
                             logMsg = utils.addLogStr(logMsg, "update nod config success");
-                            let result = await NodUltrain.start(600000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest);
+                            let result = await NodUltrain.start(600000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest,chainConfig.nodPort);
                             if (result == true) {
                                 logMsg = utils.addLogStr(logMsg, "start nod  success");
                                 //成功
@@ -612,12 +636,12 @@ async function fileProcessNod(deployFile, localpath) {
             logger.info("download file(" + hash + ") equals server info(" + deployFile.hash + ")");
             logger.info("start to stop nod before update file");
             sleep.msleep(1000);
-            result = await NodUltrain.stop(1200000);
+            result = await NodUltrain.stop(1200000,chainConfig.nodPort);
             if (result == true) {
                 logger.info("nod stop successfully,start to update file");
                 let targetPath = getTargetPath(deployFile.filename);
                 logger.info("need to update target path :" + targetPath);
-                result = await NodUltrain.stop(1200000);
+                result = await NodUltrain.stop(1200000,chainConfig.nodPort);
 
                 if (result == true) {
                     let cmd = "cp " + localpath + " " + targetPath + " -f";
@@ -635,7 +659,7 @@ async function fileProcessNod(deployFile, localpath) {
                                     enableDeploy();
                                 } else {
                                     logger.info("exccmd success:" + cmd);
-                                    result = await NodUltrain.start(600000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest);
+                                    result = await NodUltrain.start(600000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest,chainConfig.nodPort);
                                     if (result == true) {
                                         logger.info("nod start success")
                                     } else {
@@ -746,6 +770,19 @@ function needSyncUserRes() {
     return false;
 }
 
+
+/**
+ *
+ * @returns {boolean}
+ */
+function needSyncUserResByBlock() {
+    if (enableSyncUserResByBlock == 1) {
+        return true;
+    }
+
+    return false;
+}
+
 /**
  *
  * @returns {boolean}
@@ -762,6 +799,14 @@ async function pm2LogFlush() {
     await ShellCmd.execCmd("pm2 flush");
 }
 
+/**
+ *
+ * @returns {number}
+ */
+function getSyncBlockHeaderMaxTranNum() {
+    return syncBlockHeaderMaxTranNum;
+}
+
 module.exports = {
     checkIn,
     isDeploying,
@@ -775,4 +820,6 @@ module.exports = {
     needSyncUserRes,
     pm2LogFlush,
     needSyncUgas,
+    needSyncUserResByBlock,
+    getSyncBlockHeaderMaxTranNum,
 }

@@ -190,8 +190,8 @@ def stepRegProducers():
                 masterproducerinfo += '{"owner":"%s","producer_key":"%s","bls_key":"%s"},' % (("master"+initaccount[i]), pk_list[i], bls_pk_list[i] )
             masterproducerinfo = masterproducerinfo[:-1]
             retry(args.clultrain + ' push action ultrainio setmasterchaininfo \'{"chaininfo":{"owner": "ultrainio",\
-            "master_prods":[%s],"block_height":%s,"block_id":"%s","master_chain_ext":[]}}\' -p ultrainio ' % \
-            ( masterproducerinfo, args.num_master_block, args.master_block_id) )
+            "master_prods":[%s],"block_height":%s,"block_id":"%s","master_chain_ext":[],"committee_mroot":"%s"}}\' -p ultrainio ' % \
+            ( masterproducerinfo, args.num_master_block, args.master_block_id,args.committee_mroot) )
     sleep(15)
     #table_extension key, detail see ultrainio.system.hpp
     #enum global_state_exten_type_key {
@@ -376,6 +376,7 @@ parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', hel
 parser.add_argument('-p','--programpath', metavar='', help="set programpath params")
 parser.add_argument('-m', '--masterchain', action='store_true', help="set current master chain")
 parser.add_argument('-sub', '--subchain', type=str, default="ultrainio", help="set subchain name info")
+parser.add_argument('--committee_mroot', metavar='', help="committee_mroot", type=str, default="", dest="committee_mroot")
 for (flag, command, function, inAll, help) in commands:
     prefix = ''
     if inAll: prefix += '*'

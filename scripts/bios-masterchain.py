@@ -60,8 +60,8 @@ def addMasterChainInfo():
         masterproducerinfo += '{"owner":"%s","producer_key":"%s","bls_key":"%s"},' % ((initaccount[i]), pk_list[i], bls_pk_list[i] )
     masterproducerinfo = masterproducerinfo[:-1]
     retry(args.clultrain + ' push action ultrainio setmasterchaininfo \'{"chaininfo":{"owner": "ultrainio",\
-        "master_prods":[%s],"block_height":%s,"block_id":"%s","master_chain_ext":[]}}\' -p ultrainio ' % \
-          ( masterproducerinfo, args.num_master_block, args.master_block_id) )
+        "master_prods":[%s],"block_height":%s,"block_id":"%s","master_chain_ext":[],"committee_mroot":"%s"}}\' -p ultrainio ' % \
+          ( masterproducerinfo, args.num_master_block, args.master_block_id,args.committee_mroot) )
 
 # Command Line Arguments
 commands = [
@@ -81,6 +81,7 @@ parser.add_argument('-pn', '--producerNum', type=int, help="set producerNum to c
 parser.add_argument('--num-master-prods', metavar='', help="Number of master producers to register", type=int, default=5, dest="num_master_prods")
 parser.add_argument('--num-master-block', metavar='', help="Number of master chain block height ", type=int, default=0, dest="num_master_block")
 parser.add_argument('--master-block-id', metavar='', help="Number of master chain block height id ", type=str, default="", dest="master_block_id")
+parser.add_argument('--committee_mroot', metavar='', help="committee_mroot", type=str, default="", dest="committee_mroot")
 
 for (flag, command, function, inAll, help) in commands:
     prefix = ''

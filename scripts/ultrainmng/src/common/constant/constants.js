@@ -23,6 +23,9 @@ var cmdConstants = {
     ADD_NOD_CONFIG: "ADD_NOD_CONFIG",
     ENABLE_SYNC_UGAS: "enableUgas",
     DISABLE_SYNC_UGAS: "disableUgas",
+    ENABLE_SYNC_USER_RES_BY_BLOCK: "enableUserResByBlock",
+    DISABLE_SYNC_USER_RES_BY_BLOCK: "disableUserResByBlock",
+    SET_SYNC_BLOCK_MAX_COUNT: "syncBlockMaxCount",
 }
 
 //编码常量
@@ -51,6 +54,7 @@ var timeConstats = {
 var contractConstants = {
     ULTRAINIO: "ultrainio",
     UTRIO_BANK:"utrio.bank",
+    UTRIO_RAND:"utrio.rand",
 }
 
 //action常量
@@ -147,11 +151,9 @@ var statusConstants = {
     UNSTART: 0
 }
 
-var LOCAL_NOD_URL = "http://127.0.0.1:8888";
 var PRIVATE_KEY = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC6TQALgms1BnT02fowOtSGGCQ1ed1GVWvzODASnDMlyRsbiwnsMROf7YZ7umA4ma5n9erPyw27ile7JDjsQo1GbUZn2tAbjg1G7VPgkxp9QZp8uXquTI9bDEYXIeYQS9f71mh8DkR3VOUru8+j5uCOqmF+jiDMOt8qf5Yyhw5fbQIDAQAB";
 //API验证时间前后不超过1小时（单位ms）
 var API_MAX_INTEVAL_TIME = 1000 * 60 * 60;
-
 
 module.exports = {
     cmdConstants,
@@ -169,7 +171,6 @@ module.exports = {
     filenameConstants,
     algorithmConstants,
     statusConstants,
-    LOCAL_NOD_URL,
     PRIVATE_KEY,
-    API_MAX_INTEVAL_TIME
+    API_MAX_INTEVAL_TIME,
 }

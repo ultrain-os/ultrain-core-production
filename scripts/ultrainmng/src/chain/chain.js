@@ -124,15 +124,9 @@ function clearFailedUser(user) {
 async function syncUser() {
 
     logger.info("sync user start");
+
     if (syncChainData == true && isMainChain() == false) {
 
-        /**
-         * 手动开关不同步
-         */
-        if (monitor.needSyncUserRes() == false) {
-            logger.error("sync user is disabled by flag control");
-            return;
-        }
 
         //投票计数，一轮不超过最大值
         let voteCount =0;
@@ -141,99 +135,257 @@ async function syncUser() {
         let userBulletinList = await getUserBulletin(chainConfig.config, chainConfig.localChainName);
         logger.info("user userBulletinList:", userBulletinList);
 
-        if (utils.isNullList(userBulletinList)) {
-            logger.info("userBulletinList is null ,check failed list count :",failedAccountPramList.length);
-            if (failedAccountPramList.length >0) {
-                failedAccountPramList.forEach(function (item,index) {
-                    userBulletinList.push(item);
-                })
 
-                logger.info("retry user userBulletinList:", userBulletinList);
-            }
-        }
+        /**
+         * 使用投票进行同步
+         */
+        if (monitor.needSyncUserRes() == true) {
+            logger.info("sync user by vote is enabled by flag control");
+            if (utils.isNullList(userBulletinList)) {
+                logger.info("userBulletinList is null ,check failed list count :", failedAccountPramList.length);
+                if (failedAccountPramList.length > 0) {
+                    failedAccountPramList.forEach(function (item, index) {
+                        userBulletinList.push(item);
+                    })
 
-        //投票结果
-        var userCountRes = {
-            totalNum: 0,
-            successAccountNum: 0,
-            hasVotedNum: 0,
-            votingNum: 0
-        }
-
-        for (var i in userBulletinList) {
-
-            if (voteCount > getMaxVoteCountOneRound()) {
-                logger.error("vote count >=("+getMaxVoteCountOneRound()+"),stop sync user.");
-                break;
+                    logger.info("retry user userBulletinList:", userBulletinList);
+                }
             }
 
-            userCountRes.totalNum++;
-            var newUser = userBulletinList[i];
-            const params = {
-                proposer: chainConfig.myAccountAsCommittee,
-                proposeaccount: [{
-                    account: newUser.owner,
-                    owner_key: newUser.owner_pk,
-                    active_key: newUser.active_pk,
-                    location: constants.chainNameConstants.MAIN_CHAIN_NAME,
-                    approve_num: 0,
-                    updateable: utils.isNotNull(newUser.updateable) ? newUser.updateable : 1 //该账号后续部署合约能否被更新
-                }]
-            };
+            //投票结果
+            var userCountRes = {
+                totalNum: 0,
+                successAccountNum: 0,
+                hasVotedNum: 0,
+                votingNum: 0
+            }
 
-            logger.info("=======voteAccount to subchain:", newUser.owner);
+            for (var i in userBulletinList) {
 
-            //检查缓存中是否有
-            var hitFlag = successAccountCacheList.has(newUser.owner);
-
-            //检查子链是否已经有改账户
-            if (hitFlag == false && utils.isNull(await chainApi.getAccount(chainConfig.configSub.httpEndpoint, newUser.owner))) {
-                logger.info("account(" + newUser.owner + ") is not ready,need vote..");
-
-                //查询是否已经投过票
-                let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, newUser.owner, null, null);
-                logger.debug(tableData)
-                if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, newUser.owner,) == false) {
-
-                    //未找到投过票的记录，需要投票
-                    logger.info("account(" + newUser.owner + ") has not been voted by " + chainConfig.myAccountAsCommittee + ", start voting....");
-
-                    //发起投票合约action
-                    //logger.debug("vote params ",params);
-                    let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_ACCOUNT, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
-                    logger.debug("account(" + newUser.owner + ") proposer(" + chainConfig.myAccountAsCommittee + "):", res);
-                    userCountRes.votingNum++;
-                    //投票失败，加入到失败的队列中
-                    if (res == null) {
-                        failedAccountPramList.push(newUser);
-                    }
-
-                    //投票次数
-                    voteCount++;
-                } else {
-                    //已投票不处理
-                    logger.info("account(" + newUser.owner + ") has been voted by " + chainConfig.myAccountAsCommittee + "");
-                    userCountRes.hasVotedNum++;
+                if (voteCount > getMaxVoteCountOneRound()) {
+                    logger.error("vote count >=(" + getMaxVoteCountOneRound() + "),stop sync user.");
+                    break;
                 }
 
+                userCountRes.totalNum++;
+                var newUser = userBulletinList[i];
+                const params = {
+                    proposer: chainConfig.myAccountAsCommittee,
+                    proposeaccount: [{
+                        account: newUser.owner,
+                        owner_key: newUser.owner_pk,
+                        active_key: newUser.active_pk,
+                        location: constants.chainNameConstants.MAIN_CHAIN_NAME,
+                        approve_num: 0,
+                        updateable: utils.isNotNull(newUser.updateable) ? (newUser.updateable == true ? 1 :0) : 1 //该账号后续部署合约能否被更新
+                    }]
+                };
 
-            } else {
-                //账号已存在不处理
-                logger.info("account(" + newUser.owner + ") is ready,need not vote..");
-                clearFailedUser(newUser.owner);
-                userCountRes.successAccountNum++;
-                successAccountCacheList.add(newUser.owner);
+                logger.info("vote user params:",params);
+
+                logger.info("=======voteAccount to subchain:", newUser.owner);
+
+                //检查缓存中是否有
+                var hitFlag = successAccountCacheList.has(newUser.owner);
+
+                //检查子链是否已经有改账户
+                if (hitFlag == false && utils.isNull(await chainApi.getAccount(chainConfig.configSub.httpEndpoint, newUser.owner))) {
+                    logger.info("account(" + newUser.owner + ") is not ready,need vote..");
+
+                    //查询是否已经投过票
+                    let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, newUser.owner, null, null);
+                    logger.debug(tableData)
+                    if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, newUser.owner,) == false) {
+
+                        //未找到投过票的记录，需要投票
+                        logger.info("account(" + newUser.owner + ") has not been voted by " + chainConfig.myAccountAsCommittee + ", start voting....");
+
+                        //发起投票合约action
+                        //logger.debug("vote params ",params);
+                        let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_ACCOUNT, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
+                        logger.debug("account(" + newUser.owner + ") proposer(" + chainConfig.myAccountAsCommittee + "):", res);
+                        userCountRes.votingNum++;
+                        //投票失败，加入到失败的队列中
+                        if (res == null) {
+                            failedAccountPramList.push(newUser);
+                        }
+
+                        //投票次数
+                        voteCount++;
+                    } else {
+                        //已投票不处理
+                        logger.info("account(" + newUser.owner + ") has been voted by " + chainConfig.myAccountAsCommittee + "");
+                        userCountRes.hasVotedNum++;
+                    }
+
+
+                } else {
+                    //账号已存在不处理
+                    logger.info("account(" + newUser.owner + ") is ready,need not vote..");
+                    clearFailedUser(newUser.owner);
+                    userCountRes.successAccountNum++;
+                    successAccountCacheList.add(newUser.owner);
+                }
+
+                //chainApi.contractInteract(chainConfig.u3, 'ultrainio', "voteaccount", params, myAccountAsCommittee);
+                logger.info("=======voteAccount to subchain end", newUser.owner);
             }
 
-            //chainApi.contractInteract(chainConfig.u3, 'ultrainio', "voteaccount", params, myAccountAsCommittee);
-            logger.info("=======voteAccount to subchain end", newUser.owner);
+            logger.info("voting user result", userCountRes);
+
+        } else {
+            logger.error("sync user by vote is disabled by flag control");
         }
 
-        logger.info("voting user result", userCountRes);
+        /**
+         * 使用块头进行同步用户
+         */
+        if (monitor.needSyncUserResByBlock() == true) {
+
+            let syncNumCount =0;
+            logger.info("sync user by block is enabled by flag control");
+
+            //增加本轮是否是出块节点的判断
+            var headBlockProposer = await chainApi.getHeadBlockProposer(chainConfig.configSub);
+            //判断是否要上传块头
+            if (headBlockProposer != chainConfig.myAccountAsCommittee) {
+                // if (blockUtil.needPushBlock(headBlockProposer, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
+                logger.info("[Sync user]headBlockProposer("+headBlockProposer+") is not myself("+chainConfig.myAccountAsCommittee+"),do not sync user");
+                return;
+            }
+
+            //投票结果
+            var userCountRes = {
+                totalNum: 0,
+                successAccountNum: 0,
+                syncBlockNum: 0,
+                blockNotReadyNum:0,
+            }
+
+            let maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
+            logger.info("[sync user]maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
+
+            for (var i in userBulletinList) {
+                userCountRes.totalNum++;
+                var newUser = userBulletinList[i];
+
+                if (syncNumCount >= monitor.getSyncBlockHeaderMaxTranNum()) {
+                    logger.error("[sync user]syncNumCount("+syncNumCount+") >= maxnum("+monitor.getSyncBlockHeaderMaxTranNum()+"),need break");
+                    break;
+                }
+
+                //检查缓存中是否有
+                var hitFlag = successAccountCacheList.has(newUser.owner);
+                //检查子链是否已经有改账户
+                if (hitFlag == false && utils.isNull(await chainApi.getAccount(chainConfig.configSub.httpEndpoint, newUser.owner))) {
+                    logger.info("[sync user]account(" + newUser.owner + ") is not ready,need sync block..");
+                    let blockHeight = newUser.block_height;
+                    logger.info("[sync user]check account("+newUser.owner+") is in block("+blockHeight+"),check it is ready...");
+                    //跨高不能小于已同步的块告
+                    if (blockHeight > maxConfirmBlockNum) {
+                        logger.error("([sync user]blockheight:" + blockHeight + "> maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need not work");
+                        userCountRes.blockNotReadyNum++;
+                        continue;
+                    } else {
+                        logger.info("([sync user]blockheight:" + blockHeight + "<= maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need work");
+                    }
+
+                    //获取主链的块信息
+                    let blockInfo = await chainConfig.u3.getBlockInfo((blockHeight).toString());
+                    logger.info("[sync user] block info:", blockInfo);
+                    let trans = chainUtil.getSyncUserTransFromBlockHeader(blockInfo, chainConfig.localChainName,newUser.owner);
+                    logger.info("[sync user]find trans length:", trans.length);
+                    //调用MerkleProof
+                    for (let t = 0; t < trans.length; t++) {
+                        let tranId = trans[t].trx.id;
+                        if (trxCacheSet.has(tranId) == true) {
+                            userCountRes.successAccountNum++;
+                            logger.info("([sync user]blockheight:" + blockHeight + ",trxid:" + tranId + " trx-m-root  is in cache,need not work");
+                            continue;
+                        }
+
+                        syncNumCount++;
+                        if (syncNumCount >= monitor.getSyncBlockHeaderMaxTranNum()) {
+                            logger.error("syncNumCount("+syncNumCount+") >= maxnum("+monitor.getSyncBlockHeaderMaxTranNum()+"),need break");
+                            break;
+                        }
+
+                        logger.info("([sync user]blockheight:" + blockHeight + ",trxid:" + tranId + " is not in cache,need query table check is ready");
+                        logger.info("[sync user]getMerkleProof(blockheight:" + blockHeight + ",trxid:" + tranId);
+                        let merkleProof = await chainApi.getMerkleProof(chainConfig.config, blockHeight, tranId);
+                        logger.info("[sync user]merkleProof:", merkleProof);
+
+                        if (utils.isNotNull(merkleProof)) {
+                            logger.info("[sync user]merkleProof trx_receipt_bytes:", merkleProof.trx_receipt_bytes);
+                            let tx_bytes_array = chainUtil.transferTrxReceiptBytesToArray(merkleProof.trx_receipt_bytes);
+                            logger.info("[sync user]merkleProof trx_receipt_bytes convert to array length:", tx_bytes_array.length)
+                            logger.debug("[sync user]merkleProof trx_receipt_bytes convert to array:", tx_bytes_array.toString());
+
+                            let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,blockHeight);
+                            logger.info("[sync user]master blockHeightInfo("+blockHeight+"):",blockHeightInfo);
+                            let hashIsReady = checkHashIsready(blockHeightInfo,tranId);
+                            if (hashIsReady == true) {
+                                logger.info("[sync user]master blockHeightInfo("+blockHeight+") trx id : "+tranId+", is ready, need not push");
+                                trxCacheSet.add(tranId);
+                                userCountRes.successAccountNum++;
+                            } else {
+                                logger.info("[sync user]master blockHeightInfo(" + blockHeight + ") trx id : " + tranId + ", is not ready, need push");
+
+                                let param = {
+                                    chain_name: chainNameConstants.MAIN_CHAIN_NAME_TRANSFER, block_number: blockHeight,
+                                    merkle_proofs: merkleProof.merkle_proof, tx_bytes: tx_bytes_array.toString()
+                                }
+                                logger.info("[sync user]prepare to push sync  transfer trx:", param);
+
+                                param = {
+                                    chain_name: chainNameConstants.MAIN_CHAIN_NAME_TRANSFER, block_number: blockHeight,
+                                    merkle_proofs: merkleProof.merkle_proof, tx_bytes: tx_bytes_array
+                                }
+
+                                let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "synclwctx", param, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+                                logger.info("[sync user]synclwctx res:", res);
+                                userCountRes.syncBlockNum++;
+                            }
+                        } else {
+                            logger.error("[sync user] merkleProof is null");
+                        }
+
+                    }
+                } else {
+
+                    //账号已存在不处理
+                    logger.info("[sync user]account(" + newUser.owner + ") is ready,need not sync block..");
+                    clearFailedUser(newUser.owner);
+                    userCountRes.successAccountNum++;
+                    successAccountCacheList.add(newUser.owner);
+
+                }
+
+            }
+
+            logger.info("[sync user] sync block user result", userCountRes);
+        }  else {
+            logger.error("sync user by block is disabled by flag control");
+        }
+
     }
 
     //logger.info("successAccountCacheList:",successAccountCacheList);
     logger.info("sync user end");
+}
+
+/**
+ * //判断自己是否是出块节点的判断
+ * @returns {Promise<boolean>}
+ */
+async function isHeadBlockProposer() {
+
+    var headBlockProposer = await chainApi.getHeadBlockProposer(chainConfig.configSub);
+    if (headBlockProposer == chainConfig.mySkAsCommittee) {
+        return true;
+    }
+
+    return false;
 }
 
 /**
@@ -252,7 +404,7 @@ async function syncUgas() {
     }
 
     if (monitor.needSyncUgas() == false) {
-        logger.error("monitor set ugas is false,need not sync ugas");
+        logger.error("[Sync Ugas]monitor set ugas is false,need not sync ugas");
         return;
     }
 
@@ -262,8 +414,9 @@ async function syncUgas() {
         var headBlockProposer = await chainApi.getHeadBlockProposer(chainConfig.configSub);
 
         //判断是否要上传块头
-        if (blockUtil.needPushBlock(headBlockProposer, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
-            logger.info("headBlockProposer("+headBlockProposer+") is not myself("+chainConfig.myAccountAsCommittee+"),do not sync ugas");
+        if (headBlockProposer != chainConfig.myAccountAsCommittee) {
+        // if (blockUtil.needPushBlock(headBlockProposer, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
+            logger.info("[Sync Ugas]headBlockProposer("+headBlockProposer+") is not myself("+chainConfig.myAccountAsCommittee+"),do not sync ugas");
             return;
         }
 
@@ -324,7 +477,7 @@ function checkHashIsready(blockHeightInfo,tranId) {
                 if (trx_ids[i] == tranId) {
                     return true;
                 } else {
-                    logger.info("table tra_id("+trx_ids[i]+") is not equal tra_id("+tranId+"):");
+                    logger.debug("table tra_id("+trx_ids[i]+") is not equal tra_id("+tranId+"):");
                 }
             }
 
@@ -343,16 +496,28 @@ function checkHashIsready(blockHeightInfo,tranId) {
  */
 async function syncMasterUgasToSubchain() {
 
-    logger.info("syncMasterUgasToSubchain start");
+    logger.info("[Sync Ugas-Master]syncMasterUgasToSubchain start");
     let bulletinBankData = await chainApi.getTableAllData(chainConfig.config,contractConstants.UTRIO_BANK,chainConfig.localChainName,tableConstants.BULLETIN_BANK,null);
     if (bulletinBankData.rows.length == 0) {
-        logger.error("bulletinBankData list is null");
+        logger.error("[Sync Ugas-Master]bulletinBankData list is null");
     }
 
     let maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
-    logger.info("maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
+    logger.info("[Sync Ugas-Master]maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
 
-    logger.info("bulletinBankData data rows length:",bulletinBankData.rows.length);
+    let syncNumCount = 0;
+
+    logger.info("[Sync Ugas-Master]bulletinBankData data rows length:",bulletinBankData.rows.length);
+    //投票结果
+    var syncUgas = {
+        totalBlcokNum: 0,
+        successAccountNum: 0,
+        syncBlockNum: 0,
+        blockNotReadyNum:0,
+    }
+
+    syncUgas.totalBlcokNum = bulletinBankData.rows.length;
+
     for (let i = 0; i < bulletinBankData.rows.length; i++) {
         try {
             let bankBlockData = bulletinBankData.rows[i];
@@ -364,75 +529,92 @@ async function syncMasterUgasToSubchain() {
 
                 //跨高不能小于已同步的块告
                 if (blockHeight > maxConfirmBlockNum) {
-                    logger.error("(blockheight:" + blockHeight + "> maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need not work");
+                    logger.error("[Sync Ugas-Master](blockheight:" + blockHeight + "> maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need not work");
+                    syncUgas.blockNotReadyNum++;
                     continue;
                 } else {
-                    logger.info("(blockheight:" + blockHeight + "<= maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need work");
+                    logger.info("[Sync Ugas-Master](blockheight:" + blockHeight + "<= maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need work");
                 }
 
                 //获取主链的块信息
                 let blockInfo = await chainConfig.u3.getBlockInfo((blockHeight).toString());
-                logger.debug("sync ugas info:", blockInfo);
+                logger.debug("[Sync Ugas-Master]sync ugas info:", blockInfo);
                 let trans = chainUtil.getTransFromBlockHeader(blockInfo, chainConfig.localChainName);
-                logger.info("find trans length:", trans.length);
+                logger.info("[Sync Ugas-Master]find trans length:", trans.length);
                 //调用MerkleProof
                 for (let t = 0; t < trans.length; t++) {
                     let tranId = trans[t].trx.id;
 
                     if (trxCacheSet.has(tranId) == true) {
-                        logger.info("(blockheight:" + blockHeight + ",trxid:" + tranId+" trx-m-root  is in cache,need not work");
+                        logger.info("[Sync Ugas-Master](blockheight:" + blockHeight + ",trxid:" + tranId+" trx-m-root  is in cache,need not work");
+                        syncUgas.successAccountNum++;
                         continue;
                     }
 
+                    logger.info("[Sync Ugas-Master](blockheight:" + blockHeight + ",trxid:" + tranId+" is not in cache,need query table check is ready");
 
-
-                    logger.info("(blockheight:" + blockHeight + ",trxid:" + tranId+" is not in cache,need query table check is ready");
-
-                    logger.info("getMerkleProof(blockheight:" + blockHeight + ",trxid:" + tranId);
+                    logger.info("[Sync Ugas-Master]getMerkleProof(blockheight:" + blockHeight + ",trxid:" + tranId);
                     let merkleProof = await chainApi.getMerkleProof(chainConfig.config, blockHeight, tranId);
-                    logger.info("merkleProof:", merkleProof);
+                    logger.info("[Sync Ugas-Master]merkleProof:", merkleProof);
                     if (utils.isNotNull(merkleProof)) {
-                        logger.info("merkleProof trx_receipt_bytes:", merkleProof.trx_receipt_bytes);
+                        logger.debug("[Sync Ugas-Master]merkleProof trx_receipt_bytes:", merkleProof.trx_receipt_bytes);
                         let tx_bytes_array = chainUtil.transferTrxReceiptBytesToArray(merkleProof.trx_receipt_bytes);
-                        logger.info("merkleProof trx_receipt_bytes convert to array length:", tx_bytes_array.length)
+                        logger.debug("[Sync Ugas-Master]merkleProof trx_receipt_bytes convert to array length:", tx_bytes_array.length)
 
-                        logger.debug("merkleProof trx_receipt_bytes convert to array:", tx_bytes_array.toString());
+                        logger.debug("[Sync Ugas-Master]merkleProof trx_receipt_bytes convert to array:", tx_bytes_array.toString());
 
                         let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,blockHeight);
-                        logger.info("master blockHeightInfo("+blockHeight+"):",blockHeightInfo);
+                        logger.debug("[Sync Ugas-Master]master blockHeightInfo("+blockHeight+"):",blockHeightInfo);
                         let hashIsReady = checkHashIsready(blockHeightInfo,tranId);
                         if (hashIsReady == true) {
-                            logger.info("master blockHeightInfo("+blockHeight+") trx id : "+tranId+", is ready, need not push");
+                            logger.info("[Sync Ugas-Master]master blockHeightInfo("+blockHeight+") trx id : "+tranId+", is ready, need not push");
                             trxCacheSet.add(tranId);
+                            syncUgas.successAccountNum++;
                         } else {
-                            logger.info("master blockHeightInfo(" + blockHeight + ") trx id : " + tranId + ", is not ready, need push");
+                            logger.info("[Sync Ugas-Master]master blockHeightInfo(" + blockHeight + ") trx id : " + tranId + ", is not ready, need push");
+
+                            //控制最大次数
+                            syncNumCount++;
+                            if (syncNumCount >= monitor.getSyncBlockHeaderMaxTranNum()) {
+                                logger.error("[Sync Ugas-Master]syncNumCount("+syncNumCount+") >= maxnum("+monitor.getSyncBlockHeaderMaxTranNum()+"),need break");
+                                break;
+                            }
 
                             let param = {
                                 chain_name: chainNameConstants.MAIN_CHAIN_NAME_TRANSFER, block_number: blockHeight,
                                 merkle_proofs: merkleProof.merkle_proof, tx_bytes: tx_bytes_array.toString()
                             }
-                            logger.info("prepare to push sync  transfer trx:", param);
+                            logger.info("[Sync Ugas-Master]prepare to push sync  transfer trx:", param);
 
                             param = {
                                 chain_name: chainNameConstants.MAIN_CHAIN_NAME_TRANSFER, block_number: blockHeight,
                                 merkle_proofs: merkleProof.merkle_proof, tx_bytes: tx_bytes_array
                             }
 
-                            let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "synctransfer", param, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
-                            logger.info("synctransfer res:", res);
+                            let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "synclwctx", param, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+                            logger.info("[Sync Ugas-Master]synclwctx res:", res);
+
+                            syncUgas.syncBlockNum++;
                         }
                     }
                 }
+
+                if (syncNumCount >= monitor.getSyncBlockHeaderMaxTranNum()) {
+                    logger.error("[Sync Ugas-Master]syncNumCount("+syncNumCount+") >= maxnum("+monitor.getSyncBlockHeaderMaxTranNum()+"),need break");
+                    break;
+                }
             } catch (e) {
-                logger.error("bank block data row error:",e);
+                logger.error("[Sync Ugas-Master]bank block data row error:",e);
             }
 
         } catch (e) {
-            logger.error("bank block data error:",e);
+            logger.error("[Sync Ugas-Master]bank block data error:",e);
         }
     }
 
-    logger.info("syncMasterUgasToSubchain end");
+    logger.info("[Sync Ugas-Master]sync res:",syncUgas);
+
+    logger.info("[Sync Ugas-Master]syncMasterUgasToSubchain end");
 }
 
 /**
@@ -441,91 +623,120 @@ async function syncMasterUgasToSubchain() {
  */
 async function syncSubchainUgasToMaster() {
 
-    logger.info("syncSubchainUgasToMaster start");
+    logger.info("[Sync Ugas-Subchain]syncSubchainUgasToMaster start");
     let bulletinBankData = await chainApi.getTableAllData(chainConfig.configSub,contractConstants.UTRIO_BANK,chainNameConstants.MAIN_CHAIN_NAME,tableConstants.BULLETIN_BANK,null);
     if (bulletinBankData.rows.length == 0) {
-        logger.error("bulletinBankData master list is null");
+        logger.error("[Sync Ugas-Subchain]bulletinBankData master list is null");
     }
 
     let maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.config,chainConfig.localChainName);
-    logger.info("maxConfirmBlockNum subchain in master is :",maxConfirmBlockNum);
+    logger.info("[Sync Ugas-Subchain]maxConfirmBlockNum subchain in master is :",maxConfirmBlockNum);
 
-    logger.info("bulletinBankData master data rows length:",bulletinBankData.rows.length);
+    logger.info("[Sync Ugas-Subchain]bulletinBankData master data rows length:",bulletinBankData.rows.length);
+    let syncNumCount = 0;
+    var syncUgas = {
+        totalBlcokNum: 0,
+        successAccountNum: 0,
+        syncBlockNum: 0,
+        blockNotReadyNum:0,
+    }
+
+    syncUgas.totalBlcokNum = bulletinBankData.rows.length;
     for (let i = 0; i < bulletinBankData.rows.length; i++) {
         try {
             let bankBlockData = bulletinBankData.rows[i];
-            logger.debug("row " + i + ", master bulletinBankData :", bankBlockData);
+            logger.debug("[Sync Ugas-Subchain]row " + i + ", master bulletinBankData :", bankBlockData);
             try {
                 let blockHeight = bankBlockData.block_height;
                 let bulletinInfoLength = bankBlockData.bulletin_infos.length;
-                logger.info("master row " + i + ", blockHeight :" + bankBlockData + ",bulletinInfoLength:" + bulletinInfoLength);
+                logger.info("[Sync Ugas-Subchain]master row " + i + ", blockHeight :" + bankBlockData + ",bulletinInfoLength:" + bulletinInfoLength);
 
 
                 //跨高不能小于已同步的块告
                 if (blockHeight > maxConfirmBlockNum) {
-                    logger.error("(subchain("+chainConfig.localChainName+") blockheight:" + blockHeight + "> maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need not work");
+                    logger.error("[Sync Ugas-Subchain](subchain("+chainConfig.localChainName+") blockheight:" + blockHeight + "> maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need not work");
+                    syncUgas.blockNotReadyNum++;
                     continue;
                 } else {
-                    logger.info("(subchain("+chainConfig.localChainName+") blockheight:" + blockHeight + "<= maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need work");
+                    logger.info("[Sync Ugas-Subchain](subchain("+chainConfig.localChainName+") blockheight:" + blockHeight + "<= maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need work");
                 }
 
                 //获取子链的块信息
                 let blockInfo = await chainConfig.u3Sub.getBlockInfo((blockHeight).toString());
-                logger.debug("sync ugas master info:", blockInfo);
+                logger.debug("[Sync Ugas-Subchain]sync ugas master info:", blockInfo);
                 let trans = chainUtil.getTransFromBlockHeader(blockInfo, chainNameConstants.MAIN_CHAIN_NAME);
-                logger.info("find trans length:", trans.length);
+                logger.info("[Sync Ugas-Subchain]find trans length:", trans.length);
                 //调用MerkleProof
                 for (let t = 0; t < trans.length; t++) {
                     let tranId = trans[t].trx.id;
 
                     if (trxCacheSet.has(tranId) == true) {
-                        logger.info("(blockheight:" + blockHeight + ",trxid:" + tranId+" is in cache,need not work");
+                        logger.info("[Sync Ugas-Subchain](blockheight:" + blockHeight + ",trxid:" + tranId+" is in cache,need not work");
+                        syncUgas.successAccountNum++;
                         continue;
                     }
 
-                    logger.info("master getMerkleProof(blockheight:" + blockHeight + ",trxid:" + tranId);
+                    logger.info("[Sync Ugas-Subchain]master getMerkleProof(blockheight:" + blockHeight + ",trxid:" + tranId);
                     let merkleProof = await chainApi.getMerkleProof(chainConfig.configSub, blockHeight, tranId);
-                    logger.info("master merkleProof:", merkleProof);
+                    logger.info("[Sync Ugas-Subchain]master merkleProof:", merkleProof);
                     if (utils.isNotNull(merkleProof)) {
-                        logger.info("merkleProof trx_receipt_bytes:", merkleProof.trx_receipt_bytes);
+                        logger.info("[Sync Ugas-Subchain]merkleProof trx_receipt_bytes:", merkleProof.trx_receipt_bytes);
                         let tx_bytes_array = chainUtil.transferTrxReceiptBytesToArray(merkleProof.trx_receipt_bytes);
-                        logger.info("merkleProof mastertrx_receipt_bytes convert to array length:", tx_bytes_array.length)
-                        logger.debug("merkleProof master trx_receipt_bytes convert to array:", tx_bytes_array.toString());
+                        logger.debug("[Sync Ugas-Subchain]merkleProof mastertrx_receipt_bytes convert to array length:", tx_bytes_array.length)
+                        logger.debug("[Sync Ugas-Subchain]merkleProof master trx_receipt_bytes convert to array:", tx_bytes_array.toString());
 
                         let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.config,chainConfig.localChainName,blockHeight);
-                        logger.info("subchain blockHeightInfo("+blockHeight+"):",blockHeightInfo);
+                        logger.debug("[Sync Ugas-Subchain]subchain blockHeightInfo("+blockHeight+"):",blockHeightInfo);
                         let hashIsReady = checkHashIsready(blockHeightInfo,tranId);
                         if (hashIsReady == true) {
-                            logger.info("subchain blockHeightInfo("+blockHeight+") trx id : "+tranId+", is ready, need not push");
+                            logger.info("[Sync Ugas-Subchain]subchain blockHeightInfo("+blockHeight+") trx id : "+tranId+", is ready, need not push");
                             trxCacheSet.add(tranId);
+                            syncUgas.successAccountNum++;
                         } else {
-                            logger.info("subchain blockHeightInfo(" + blockHeight + ") trx id : " + tranId + ", is not ready, need push");
+
+                            //控制最大次数
+                            syncNumCount++;
+                            if (syncNumCount >= monitor.getSyncBlockHeaderMaxTranNum()) {
+                                logger.error("[Sync Ugas-Subchain]syncNumCount("+syncNumCount+") >= maxnum("+monitor.getSyncBlockHeaderMaxTranNum()+"),need break");
+                                break;
+                            }
+
+                            syncUgas.syncBlockNum++;
+                            logger.info("[Sync Ugas-Subchain]subchain blockHeightInfo(" + blockHeight + ") trx id : " + tranId + ", is not ready, need push");
 
                             let param = {
                                 chain_name: chainConfig.localChainName, block_number: blockHeight,
                                 merkle_proofs: merkleProof.merkle_proof, tx_bytes: tx_bytes_array.toString()
                             }
-                            logger.info("prepare to push sync master transfer trx:", param);
+                            logger.info("[Sync Ugas-Subchain]prepare to push sync master transfer trx:", param);
 
                             param = {
                                 chain_name: chainConfig.localChainName, block_number: blockHeight,
                                 merkle_proofs: merkleProof.merkle_proof, tx_bytes: tx_bytes_array
                             }
-                            let res = await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "synctransfer", param, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
-                            logger.info("synctransfer res:", res);
+                            let res = await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "synclwctx", param, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+                            logger.info("[Sync Ugas-Subchain]synclwctx res:", res);
                         }
                     }
                 }
+
+                if (syncNumCount >= monitor.getSyncBlockHeaderMaxTranNum()) {
+                    logger.error("[Sync Ugas-Subchain]syncNumCount("+syncNumCount+") >= maxnum("+monitor.getSyncBlockHeaderMaxTranNum()+"),need break");
+                    break;
+                }
+
             } catch (e) {
-                logger.error("bank block data master row error:",e);
+                logger.error("[Sync Ugas-Subchain]bank block data master row error:",e);
             }
 
         } catch (e) {
-            logger.error("bank block data master error:",e);
+            logger.error("[Sync Ugas-Subchain]bank block data master error:",e);
         }
     }
 
-    logger.info("syncSubchainUgasToMaster end");
+    logger.info("[Sync Ugas-Subchain] res data:",syncUgas);
+
+    logger.info("[Sync Ugas-Subchain]syncSubchainUgasToMaster end");
 }
 
 /**
@@ -624,7 +835,8 @@ async function syncBlock() {
         let blockListStr = "(";
         for (var i = blockNumInt; i < subBlockNumMax; i++) {
             let result = await chainConfig.u3Sub.getBlockInfo((i).toString());
-            logger.debug("block " + i + ": (proposer:", result.proposer + ")");
+            logger.info("block " + i + ": (proposer:", result.proposer + ")");
+            logger.debug("block:",result);
             logger.debug("header_extensions:", result.header_extensions);
             var extensions = [];
             if (result.header_extensions.length > 0) {
@@ -649,8 +861,10 @@ async function syncBlock() {
                 "action_mroot": result.action_mroot,
                 "committee_mroot": result.committee_mroot,
                 "header_extensions": extensions,
+                "signature": result.signature,
                 //blockNum : i
             });
+
             blockListStr += i + ",";
 
 
@@ -667,7 +881,7 @@ async function syncBlock() {
                 headers: results
             };
 
-            logger.debug("block params:", params);
+            logger.info("block params:", params);
             logger.info("pushing block to head (chain_name :" + chainConfig.localChainName + " count :" + results.length + ")");
             if (results.length > 0) {
                 await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "acceptheader", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
@@ -805,6 +1019,7 @@ async function syncMasterBlock() {
                 "action_mroot": result.action_mroot,
                 "committee_mroot": result.committee_mroot,
                 "header_extensions": extensions,
+                "signature": result.signature,
                 //blockNum : i
             });
             blockListStr += i + ",";
@@ -822,10 +1037,13 @@ async function syncMasterBlock() {
                 headers: results
             };
 
-            logger.debug("master block params:", params);
-            logger.info("pushing master block to subchain ( count :" + results.length + ")");
             if (results.length > 0) {
-                await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "acceptmaster", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+                logger.debug("master block params:", params);
+                logger.info("pushing master block to subchain ( count :" + results.length + ")");
+                if (results.length > 0) {
+                    let resAcceptMaster = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "acceptmaster", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+                    //logger.info("resAcceptMaster res:",resAcceptMaster);
+                }
             }
         }
 
@@ -889,32 +1107,36 @@ async function syncCommitee() {
             params.push(changeMembers[i]);
             //判断需要投票的委员会的账号是否已在子链上
             if (utils.isNull(await chainApi.getAccount(chainConfig.configSub.httpEndpoint, committeeUser))) {
-                logger.info("account(" + committeeUser + ") is not exist in subchain,should add him first");
-                let account = await chainApi.getAccount(chainConfig.config.httpEndpoint, committeeUser);
-                logger.info("account info:",account);
-                //查询是否已经投过票
-                let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, committeeUser, null, null);
-                logger.debug(tableData)
-                if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, committeeUser) == true) {
-                    logger.info("account(" + committeeUser + ") is not exist in subchain,has voted him to user");
+                if (monitor.needSyncUserRes() == true) {
+                    logger.info("account(" + committeeUser + ") is not exist in subchain,should add him first");
+                    let account = await chainApi.getAccount(chainConfig.config.httpEndpoint, committeeUser);
+                    logger.info("account info:", account);
+                    //查询是否已经投过票
+                    let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, committeeUser, null, null);
+                    logger.debug(tableData)
+                    if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, committeeUser) == true) {
+                        logger.info("account(" + committeeUser + ") is not exist in subchain,has voted him to user");
+                    } else {
+                        logger.info("account(" + committeeUser + ") is not exist in subchain,has not voted him to user,start to vote");
+
+                        const params = {
+                            proposer: chainConfig.myAccountAsCommittee,
+                            proposeaccount: [{
+                                account: committeeUser,
+                                owner_key: chainUtil.getOwnerPkByAccount(account, "owner"),
+                                active_key: chainUtil.getOwnerPkByAccount(account, "active"),
+                                location: constants.chainNameConstants.MAIN_CHAIN_NAME,
+                                approve_num: 0,
+                                updateable: 1 //该账号后续部署合约能否被更新
+                            }]
+                        };
+
+                        logger.info("vote account param :", params);
+
+                        let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_ACCOUNT, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
+                    }
                 } else {
-                    logger.info("account(" + committeeUser + ") is not exist in subchain,has not voted him to user,start to vote");
-
-                    const params = {
-                        proposer: chainConfig.myAccountAsCommittee,
-                        proposeaccount: [{
-                            account: committeeUser,
-                            owner_key: chainUtil.getOwnerPkByAccount(account,"owner"),
-                            active_key: chainUtil.getOwnerPkByAccount(account,"active"),
-                            location: constants.chainNameConstants.MAIN_CHAIN_NAME,
-                            approve_num: 0,
-                            updateable: 1 //该账号后续部署合约能否被更新
-                        }]
-                    };
-
-                    logger.info("vote account param :",params);
-
-                    let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_ACCOUNT, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
+                    logger.error("account(" + committeeUser + ") is not exist in subchain,but control flag is false,need not vote him");
                 }
             } else {
                 logger.info("account(" + committeeUser + ") is ready in subchain,need vote him to committee");
@@ -1128,7 +1350,7 @@ async function checkNodAlive() {
     //如果不在进行链切换且本地访问不到本地链信息，需要重启下
     if (syncChainChanging == false) {
         logger.info("checking nod is alive ....");
-        let rsdata = await NodUltrain.checkAlive();
+        let rsdata = await NodUltrain.checkAlive(chainConfig.nodPort);
 
         logger.debug("check alive data:", rsdata);
 
@@ -1192,7 +1414,7 @@ async function switchChain() {
 
         //停止nod程序
         loggerChainChanging.info("shuting down nod...")
-        let result = await NodUltrain.stop(120000);
+        let result = await NodUltrain.stop(120000,chainConfig.nodPort);
         if (result == false) {
             loggerChainChanging.info("nod is stopped");
             logMsg = utils.addLogStr(logMsg,"nod is stopped");
@@ -1407,7 +1629,7 @@ async function switchChain() {
         }
 
         //启动nod
-        result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath,wssinfo,chainConfig.localTest);
+        result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath,wssinfo,chainConfig.localTest,chainConfig.nodPort);
         if (result == true) {
             loggerChainChanging.info("nod start success");
             logMsg = utils.addLogStr(logMsg,"nod start success");
@@ -1647,7 +1869,7 @@ async function restartNod() {
         }
 
         //启动nod
-        await NodUltrain.stop(120000);
+        await NodUltrain.stop(120000,chainConfig.nodPort);
         sleep.msleep(1000);
         logger.info("clear Nod DB data before restart it..");
         logMsg = utils.addLogStr(logMsg,"clear Nod DB data");
@@ -1670,7 +1892,7 @@ async function restartNod() {
         }
 
         //启动nod
-        result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath, wssinfo, chainConfig.localTest);
+        result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath, wssinfo, chainConfig.localTest,chainConfig.nodPort);
         if (result == true) {
             logger.info("nod start success");
             logMsg = utils.addLogStr(logMsg,"nod start success");
@@ -1724,14 +1946,6 @@ async function syncResource(allFlag) {
     logger.info("syncResource start");
     if (syncChainData == true && isMainChain() == false) {
 
-        /**
-         * 手动开关不同步
-         */
-        if (monitor.needSyncUserRes() == false) {
-            logger.error("sync resource is disabled by flag control");
-            return;
-        }
-
         let voteCount = 0;
 
         let changeList = [];
@@ -1740,6 +1954,15 @@ async function syncResource(allFlag) {
          */
         if (allFlag == true) {
             logger.info("sync all resource");
+
+            /**
+             * 手动开关不同步
+             */
+            if (monitor.needSyncUserRes() == false) {
+                logger.error("sync all resource is disabled by flag control");
+                return;
+            }
+
             //获取子链上所有资源的信息
             let subChainResourceList = await chainApi.getTableAllData(chainConfig.configSub, contractConstants.ULTRAINIO, scopeConstants.SCOPE_MAIN_CHAIN, tableConstants.RESOURCE_LEASE, "owner");
             logger.info("subChainResourceList:", subChainResourceList);
@@ -1753,10 +1976,11 @@ async function syncResource(allFlag) {
         } else {
             logger.info("sync newest resource");
             /**
-             * 从公告蓝上获取最新的资源
+             * 从公告栏上获取最新的资源
              */
             let newestChangeList = await chainApi.getSubchainResource(chainConfig.localChainName,chainConfig);
-            logger.info("newestChangeList:",newestChangeList.length)
+            logger.info("newestChangeList:",newestChangeList.length);
+
             if (utils.isNullList(newestChangeList) == false && newestChangeList.length > 0) {
                 for (var i = 0; i < newestChangeList.length; i++) {
                     let resObj = newestChangeList[i];
@@ -1788,45 +2012,177 @@ async function syncResource(allFlag) {
         //获取主链上所有资源的信息
         if (changeList.length > 0) {
 
-            //获取已透过的所有结果
-            for (var i = 0; i < changeList.length; i++) {
+            /**
+             * 手动开关不同步
+             */
+            if (monitor.needSyncUserRes() == false) {
+                logger.error("sync newest resource is disabled by flag control");
+            } else {
+                //获取已透过的所有结果
+                for (var i = 0; i < changeList.length; i++) {
 
-                if (voteCount > getMaxVoteCountOneRound()) {
-                    logger.error("vote count >=("+getMaxVoteCountOneRound()+"),stop res sync.");
-                    break;
+                    if (voteCount > getMaxVoteCountOneRound()) {
+                        logger.error("vote count >=(" + getMaxVoteCountOneRound() + "),stop res sync.");
+                        break;
+                    }
+
+                    var changeResObj = changeList[i];
+                    logger.debug("change res:", changeResObj);
+
+                    let voteResList = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_RES, null, changeResObj.owner, null, null);
+                    logger.debug("voteResList:", voteResList);
+
+                    if (voteUtil.findVoteRes(voteResList, chainConfig.myAccountAsCommittee, changeResObj, chainConfig)) {
+                        logger.info(chainConfig.myAccountAsCommittee + " has voted " + changeResObj.owner + "(resource:" + changeResObj.lease_num + ")");
+                    } else {
+                        logger.info(chainConfig.myAccountAsCommittee + " has not voted " + changeResObj.owner + "(resource:" + changeResObj.lease_num + "), start vote...");
+
+                        const params = {
+                            proposer: chainConfig.myAccountAsCommittee,
+                            proposeresource: [{
+                                account: changeResObj.owner,
+                                lease_num: changeResObj.lease_num,
+                                block_height_interval: chainUtil.calcSubchainIntevalBlockHeight(changeResObj.start_block_height, changeResObj.end_block_height, chainConfig.mainChainBlockDuration, chainConfig.subChainBlockDuration),
+                                location: constants.chainNameConstants.MAIN_CHAIN_NAME,
+                                approve_num: 0
+                            }]
+                        };
+
+                        console.info("vote resource params:", params);
+                        let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_RESOURCE_LEASE, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
+                        logger.debug(chainConfig.myAccountAsCommittee + "  vote " + changeResObj.owner + "(resource:" + changeResObj.lease_num + ") result:", res);
+
+                        voteCount++;
+
+                    }
+
+
+                }
+            }
+
+            //使用块头同步来控制资源同步
+            if (monitor.needSyncUserResByBlock() == true) {
+
+                logger.info("sync newest res by block is enabled by control flag");
+
+                //增加本轮是否是出块节点的判断
+                var headBlockProposer = await chainApi.getHeadBlockProposer(chainConfig.configSub);
+                //判断是否要上传块头
+                if (headBlockProposer != chainConfig.myAccountAsCommittee) {
+                    // if (blockUtil.needPushBlock(headBlockProposer, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
+                    logger.info("[sync newest res]headBlockProposer("+headBlockProposer+") is not myself("+chainConfig.myAccountAsCommittee+"),do not sync newest res");
+                    return;
                 }
 
-                var changeResObj = changeList[i];
-                logger.debug("change res:", changeResObj);
-
-                let voteResList = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_RES, null, changeResObj.owner, null, null);
-                logger.debug("voteResList:", voteResList);
-
-                if (voteUtil.findVoteRes(voteResList, chainConfig.myAccountAsCommittee, changeResObj, chainConfig)) {
-                    logger.info(chainConfig.myAccountAsCommittee + " has voted " + changeResObj.owner + "(resource:" + changeResObj.lease_num + ")");
+                let syncNumCount = 0;
+                if (changeList.length == 0) {
+                    logger.error("[sync newest res] changeList.length  is null");
                 } else {
-                    logger.info(chainConfig.myAccountAsCommittee + " has not voted " + changeResObj.owner + "(resource:" + changeResObj.lease_num + "), start vote...");
 
-                    const params = {
-                        proposer: chainConfig.myAccountAsCommittee,
-                        proposeresource: [{
-                            account: changeResObj.owner,
-                            lease_num: changeResObj.lease_num,
-                            block_height_interval: chainUtil.calcSubchainIntevalBlockHeight(changeResObj.start_block_height,changeResObj.end_block_height,chainConfig.mainChainBlockDuration,chainConfig.subChainBlockDuration),
-                            location: constants.chainNameConstants.MAIN_CHAIN_NAME,
-                            approve_num: 0
-                        }]
-                    };
+                    //执行结果
+                    var syncCountRes = {
+                        totalNum: 0,
+                        successAccountNum: 0,
+                        syncBlockNum: 0,
+                        blockNotReadyNum:0,
+                    }
 
-                    console.info("vote resource params:", params);
-                    let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_RESOURCE_LEASE, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
-                    logger.debug(chainConfig.myAccountAsCommittee + "  vote " + changeResObj.owner + "(resource:" + changeResObj.lease_num + ") result:", res);
+                    let maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
+                    logger.info("[sync newest res]maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
+                    for (var i = 0; i < changeList.length; i++) {
+                        syncCountRes.totalNum++;
+                        let resObj = changeList[i];
+                        let blockHeight = resObj.modify_block_height;
 
-                    voteCount++;
+                        //跨高不能小于已同步的块告
+                        if (blockHeight > maxConfirmBlockNum) {
+                            logger.error("([sync newest res]blockheight:" + blockHeight + "> maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need not work");
+                            syncCountRes.blockNotReadyNum++;
+                            continue;
+                        } else {
+                            logger.info("([sync newest res]blockheight:" + blockHeight + "<= maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need work");
+                        }
 
+                        if (syncNumCount >= monitor.getSyncBlockHeaderMaxTranNum()) {
+                            logger.error("syncNumCount("+syncNumCount+") >= maxnum("+monitor.getSyncBlockHeaderMaxTranNum()+"),need break");
+                            break;
+                        }
+
+                        //获取主链的块信息
+                        let blockInfo = await chainConfig.u3.getBlockInfo((blockHeight).toString());
+                        logger.debug("[sync newest res]block info:", blockInfo);
+                        let trans = chainUtil.getSyncResTransFromBlockHeader(blockInfo, chainConfig.localChainName,resObj.owner);
+                        logger.info("[sync newest res]find trans length:", trans.length);
+                        //调用MerkleProof
+                        for (let t = 0; t < trans.length; t++) {
+                            let tranId = trans[t].trx.id;
+                            if (trxCacheSet.has(tranId) == true) {
+                                logger.info("([sync newest res]blockheight:" + blockHeight + ",trxid:" + tranId + " trx-m-root  is in cache,need not work");
+                                syncCountRes.successAccountNum++;
+                                continue;
+                            }
+
+                            logger.info("([sync newest res]blockheight:" + blockHeight + ",trxid:" + tranId + " is not in cache,need query table check is ready");
+                            logger.debug("[sync newest res]getMerkleProof(blockheight:" + blockHeight + ",trxid:" + tranId);
+                            let merkleProof = await chainApi.getMerkleProof(chainConfig.config, blockHeight, tranId);
+                            logger.debug("[sync newest res]merkleProof:", merkleProof);
+
+                            if (utils.isNotNull(merkleProof)) {
+                                logger.debug("[sync newest res]merkleProof trx_receipt_bytes:", merkleProof.trx_receipt_bytes);
+                                let tx_bytes_array = chainUtil.transferTrxReceiptBytesToArray(merkleProof.trx_receipt_bytes);
+                                logger.debug("[sync newest res]merkleProof trx_receipt_bytes convert to array length:", tx_bytes_array.length)
+                                logger.debug("merkleProof trx_receipt_bytes convert to array:", tx_bytes_array.toString());
+
+                                let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,blockHeight);
+                                logger.debug("[sync newest res]master blockHeightInfo("+blockHeight+"):",blockHeightInfo);
+                                let hashIsReady = checkHashIsready(blockHeightInfo,tranId);
+                                if (hashIsReady == true) {
+                                    logger.info("[sync newest res]master blockHeightInfo("+blockHeight+") trx id : "+tranId+", is ready, need not push");
+                                    trxCacheSet.add(tranId);
+                                    syncCountRes.successAccountNum++;
+                                } else {
+                                    logger.info("[sync newest res]master blockHeightInfo(" + blockHeight + ") trx id : " + tranId + ", is not ready, need push");
+
+
+                                    syncCountRes.syncBlockNum++;
+                                    syncNumCount++;
+                                    if (syncNumCount >= monitor.getSyncBlockHeaderMaxTranNum()) {
+                                        logger.error("[sync newest res]syncNumCount(" + syncNumCount + ") >= maxnum(" + monitor.getSyncBlockHeaderMaxTranNum() + "),need break");
+                                        break;
+                                    }
+
+                                    let param = {
+                                        chain_name: chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,
+                                        block_number: blockHeight,
+                                        merkle_proofs: merkleProof.merkle_proof,
+                                        tx_bytes: tx_bytes_array.toString()
+                                    }
+                                    logger.info("[sync newest res]prepare to push sync  transfer trx:", param);
+
+                                    param = {
+                                        chain_name: chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,
+                                        block_number: blockHeight,
+                                        merkle_proofs: merkleProof.merkle_proof,
+                                        tx_bytes: tx_bytes_array
+                                    }
+
+                                    let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "synclwctx", param, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+                                    logger.info("[sync newest res]synclwctx res:", res);
+                                }
+                            } else {
+                                logger.error("[sync newest res]merkleProof is null");
+                            }
+
+                        }
+
+
+                    }
+
+                    logger.info("[sync newest res] res info:",syncCountRes);
                 }
 
-
+            } else {
+                logger.error("sync newest res by block is disabled by control flag");
             }
         }
     }

@@ -57,6 +57,8 @@ ChainConfig.mainChainBlockDuration = 10000;
 //子链出一块的时间间隔（默认10000ms）
 ChainConfig.subChainBlockDuration = 10000;
 
+ChainConfig.nodPort = "8888";
+
 
 //主链配置
 ChainConfig.config = {

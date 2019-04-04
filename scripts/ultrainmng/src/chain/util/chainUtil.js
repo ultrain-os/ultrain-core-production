@@ -154,7 +154,7 @@ function getTransFromBlockHeader(blockInfo,chainName) {
                     for (let t=0;t<actions.length;t++) {
                         let action = actions[t];
                         if (action.data.to == constants.contractConstants.UTRIO_BANK && action.data.memo == chainName) {
-                            logger.info("find useful action:",action);
+                            logger.debug("find useful action:",action);
                             logger.debug("find useful tran:",tranInfo);
                             trans.push(tranInfo);
                             break;
@@ -171,6 +171,84 @@ function getTransFromBlockHeader(blockInfo,chainName) {
 
     return trans;
 }
+
+
+/**
+ * 通过块信息获取转账的交易列表
+ * @param blockInfo
+ * @param chainInfo
+ * @returns {Array}
+ */
+function getSyncUserTransFromBlockHeader(blockInfo,chainName,user) {
+    let trans = [];
+    try {
+        let transList = blockInfo.transactions;
+        if (transList.length > 0) {
+            for (let i=0;i<transList.length;i++) {
+                let tranInfo = transList[i];
+                if (tranInfo.status == "executed") {
+                    logger.debug("traninfo trx :",tranInfo.trx);
+                    logger.debug("traninfo trx actions :",tranInfo.trx.transaction.actions);
+                    let actions = tranInfo.trx.transaction.actions;
+                    for (let t=0;t<actions.length;t++) {
+                        let action = actions[t];
+                        if (action.name == "empoweruser" && action.data.chain_name == chainName && action.data.user == user) {
+                            logger.debug("[Sync User]find useful action:",action);
+                            logger.debug("find useful tran:",tranInfo);
+                            trans.push(tranInfo);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+
+    } catch (e) {
+        logger.error("getTransFromBlockHeader error",e);
+    }
+
+    return trans;
+}
+
+/**
+ * 通过资源你信息获取转账的交易列表
+ * @param blockInfo
+ * @param chainInfo
+ * @returns {Array}
+ */
+function getSyncResTransFromBlockHeader(blockInfo,chainName,user) {
+    let trans = [];
+    try {
+        let transList = blockInfo.transactions;
+        if (transList.length > 0) {
+            for (let i=0;i<transList.length;i++) {
+                let tranInfo = transList[i];
+                if (tranInfo.status == "executed") {
+                    logger.debug("traninfo trx :",tranInfo.trx);
+                    logger.debug("traninfo trx actions :",tranInfo.trx.transaction.actions);
+                    let actions = tranInfo.trx.transaction.actions;
+                    for (let t=0;t<actions.length;t++) {
+                        let action = actions[t];
+                        if (action.name == "resourcelease" && action.data.location == chainName && action.data.receiver == user) {
+                            logger.debug("find useful action:",action);
+                            logger.debug("find useful tran:",tranInfo);
+                            trans.push(tranInfo);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+
+    } catch (e) {
+        logger.error("getTransFromBlockHeader error",e);
+    }
+
+    return trans;
+}
+
 
 function transferTrxReceiptBytesToArray(bytes) {
 
@@ -204,4 +282,6 @@ module.exports = {
     calcSubchainIntevalBlockHeight,
     getTransFromBlockHeader,
     transferTrxReceiptBytesToArray,
+    getSyncUserTransFromBlockHeader,
+    getSyncResTransFromBlockHeader,
 }

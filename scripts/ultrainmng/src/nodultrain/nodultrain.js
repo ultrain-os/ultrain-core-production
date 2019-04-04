@@ -151,13 +151,13 @@ NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,moni
  * 关闭nod
  * @returns {Promise<boolean>}
  */
-NodUltrain.stop = async function (totalTime) {
+NodUltrain.stop = async function (totalTime,port) {
     let res = await ShellCmd.execCmd(Constants.cmdConstants.KILL_NODULTRAIN);
     sleep.msleep(this.statusCheckTime);
     //校验端口是否不提供服务
     let searchtime = this.statusCheckTime;
     while (totalTime >= searchtime) {
-        let rs = await this.checkAlive();
+        let rs = await this.checkAlive(port);
         if (utils.isNull(rs)) {
             return true;
         }
@@ -175,7 +175,7 @@ NodUltrain.stop = async function (totalTime) {
  * @param nodPath nod执行程序的目录
  * @returns {Promise<boolean>}
  */
-NodUltrain.start = async function (totalTime,nodPath,wssinfo,local) {
+NodUltrain.start = async function (totalTime,nodPath,wssinfo,local,port) {
 
     var shPath= path.join(__dirname, "../../tool/_runultrain.sh");
     if (local == false) {
@@ -192,7 +192,7 @@ NodUltrain.start = async function (totalTime,nodPath,wssinfo,local) {
     //校验端口是否不提供服务
     let searchtime = this.statusCheckTime;
     while (totalTime >= searchtime) {
-        let rs = await this.checkAlive();
+        let rs = await this.checkAlive(port);
         if (utils.isNotNull(rs)) {
             logger.info("nod is runing..",rs)
             return true;
@@ -204,9 +204,9 @@ NodUltrain.start = async function (totalTime,nodPath,wssinfo,local) {
 }
 
 //检查是否已启动
-NodUltrain.checkAlive = async function () {
+NodUltrain.checkAlive = async function (port) {
 
-    let path = "http://127.0.0.1:8888/v1/chain_info/get_chain_info"
+    let path = "http://127.0.0.1:"+port+"/v1/chain_info/get_chain_info"
     try {
         logger.debug("send http request :"+path);
         const rs = await axios.post(path);
@@ -238,10 +238,10 @@ NodUltrain.removeData = async function () {
  * 更新执行程序
  * @returns {Promise<void>}
  */
-NodUltrain.updateExeFile = async function (localpath,targetpath,hashFile) {
+NodUltrain.updateExeFile = async function (localpath,targetpath,hashFile,port) {
     let result = false;
     try {
-        result = this.stop(1200000);
+        result = this.stop(1200000,port);
         if (result == false) {
             logger.error("stop nod error,can't update file");
             return false;

@@ -260,7 +260,7 @@ getChainHttpList = async (chainName, chainConfig) => {
     let chainHttpList = [];
     if (utils.isNullList(seedList) == false) {
         for (let i = 0; i < seedList.length; i++) {
-            let url = "http://" + seedList[i] + ":8888";
+            let url = "http://" + seedList[i] + ":"+chainConfig.nodPort;
             chainHttpList.push(url);
         }
     }
