@@ -234,7 +234,9 @@ namespace ultrainiosystem {
         cancel_deferred(trxid);
         if ( need_deferred_trx ) {
             ultrainio::transaction out;
-            out.actions.emplace_back( permission_level{ from, N(active) }, _self, NEX(refundcons), from );
+            vector<permission_level> pem = { { from, N(active) },
+                                            { N(ultrainio),     N(active) } };
+            out.actions.emplace_back( pem, _self, NEX(refundcons), from );
             out.delay_sec = refund_delay;
             out.send( trxid, _self, true );
         }

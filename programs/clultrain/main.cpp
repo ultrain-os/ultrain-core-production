@@ -1134,8 +1134,8 @@ struct empoweruser_subcommand {
    string owner_public_key;
    string active_public_key;
    string chain_name;
-   bool   updateable;
-
+   bool   updateable = true;
+   bool   superprivflg = false;
    empoweruser_subcommand(CLI::App* actionRoot) {
       auto empower_user = actionRoot->add_subcommand("empoweruser", localized("Empower user's onwer&active permissions to a sidechain"));
       empower_user->add_option("user_account", user_account, localized("Account of the user to be empowered"))->required();
@@ -1143,6 +1143,7 @@ struct empoweruser_subcommand {
       empower_user->add_option("owner_public_key", owner_public_key, localized("Public key of owner permission, the default is the same as master"));
       empower_user->add_option("active_public_key", active_public_key, localized("Public key of active permission, the default is the same as master"));
       empower_user->add_option("updateable", updateable, localized("Set whether the account is updatable"));
+      empower_user->add_flag("-u,--superpriv", superprivflg, localized("empoweruser add privileged (rarely used)"));
       add_standard_transaction_options(empower_user);
 
       empower_user->set_callback([this] {
@@ -1152,7 +1153,10 @@ struct empoweruser_subcommand {
                   ("owner_pk", owner_public_key)
                   ("active_pk", active_public_key)
                   ("updateable", updateable);
-         send_actions({create_action({permission_level{user_account, config::active_name}}, config::system_account_name, NEX(empoweruser), act_payload)});
+         vector<permission_level> permiss_info{permission_level{user_account,config::active_name}};
+         if(superprivflg)
+               permiss_info.push_back(permission_level{N(ultrainio),config::active_name});
+         send_actions({create_action(permiss_info, config::system_account_name, NEX(empoweruser), act_payload)});
       });
    }
 };

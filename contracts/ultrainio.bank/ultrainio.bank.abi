@@ -25,22 +25,9 @@
         {"name":"chain_name", "type":"name"},
         {"name":"balance", "type":"asset"}
       ]
-    },{
-      "name": "transfer",
-      "base": "",
-      "fields": [
-        {"name":"from", "type":"account_name"},
-        {"name":"to", "type":"account_name"},
-        {"name":"quantity", "type":"asset"},
-        {"name":"memo", "type":"string"}
-      ]
     }
   ],
-  "actions": [{
-      "name": "transfer",
-      "type": "transfer",
-      "ricardian_contract": ""
-    }
+  "actions": [
   ],
   "tables": [{
       "name": "bulletinbank",
