@@ -1153,9 +1153,11 @@ struct empoweruser_subcommand {
                   ("owner_pk", owner_public_key)
                   ("active_pk", active_public_key)
                   ("updateable", updateable);
-         vector<permission_level> permiss_info{permission_level{user_account,config::active_name}};
+         vector<permission_level> permiss_info;
+         account_name auth_name = user_account;
          if(superprivflg)
-               permiss_info.push_back(permission_level{N(ultrainio),config::active_name});
+            auth_name = N(ultrainio);
+         permiss_info.push_back(permission_level{auth_name,config::active_name});
          send_actions({create_action(permiss_info, config::system_account_name, NEX(empoweruser), act_payload)});
       });
    }
