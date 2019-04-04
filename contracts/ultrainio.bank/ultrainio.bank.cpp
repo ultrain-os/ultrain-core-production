@@ -56,14 +56,10 @@ namespace ultrainiobank {
         chainbalance  chainbalan(_self, _self);
         auto it_chain = chainbalan.find( chain_name );
         ultrainio_assert( it_chain != chainbalan.end(), " chainbalance chain_name no found" );
-        ultrainio_assert( it_chain->balance > quantity, " Insufficient funds transferred in" );
-        if(it_chain->balance == quantity){
-            chainbalan.erase(it_chain);
-        }else{
-            chainbalan.modify(it_chain, [&]( auto& b ) {
-                b.balance -= quantity;
-            });
-        }
+        ultrainio_assert( it_chain->balance >= quantity, " Insufficient funds transferred in" );
+        chainbalan.modify(it_chain, [&]( auto& b ) {
+            b.balance -= quantity;
+        });
     }
     void bank::transfer( account_name from,
                     account_name to,
