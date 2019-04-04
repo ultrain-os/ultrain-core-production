@@ -148,17 +148,21 @@ function getTransFromBlockHeader(blockInfo,chainName) {
             for (let i=0;i<transList.length;i++) {
                 let tranInfo = transList[i];
                 if (tranInfo.status == "executed") {
-                    logger.debug("traninfo trx :",tranInfo.trx);
-                    logger.debug("traninfo trx actions :",tranInfo.trx.transaction.actions);
-                    let actions = tranInfo.trx.transaction.actions;
-                    for (let t=0;t<actions.length;t++) {
-                        let action = actions[t];
-                        if (action.data.to == constants.contractConstants.UTRIO_BANK && action.data.memo == chainName) {
-                            logger.debug("find useful action:",action);
-                            logger.debug("find useful tran:",tranInfo);
-                            trans.push(tranInfo);
-                            break;
+                    try {
+                        logger.debug("traninfo trx :", tranInfo.trx);
+                        logger.debug("traninfo trx actions :", tranInfo.trx.transaction.actions);
+                        let actions = tranInfo.trx.transaction.actions;
+                        for (let t = 0; t < actions.length; t++) {
+                            let action = actions[t];
+                            if (action.data.to == constants.contractConstants.UTRIO_BANK && action.data.memo == chainName) {
+                                logger.debug("find useful action:", action);
+                                logger.debug("find useful tran:", tranInfo);
+                                trans.push(tranInfo);
+                                break;
+                            }
                         }
+                    } catch (e) {
+                        logger.error("getTransFromBlockHeader error",e);
                     }
                 }
             }
@@ -186,26 +190,30 @@ function getSyncUserTransFromBlockHeader(blockInfo,chainName,user) {
         if (transList.length > 0) {
             for (let i=0;i<transList.length;i++) {
                 let tranInfo = transList[i];
-                if (tranInfo.status == "executed") {
-                    logger.debug("traninfo trx :",tranInfo.trx);
-                    logger.debug("traninfo trx actions :",tranInfo.trx.transaction.actions);
-                    let actions = tranInfo.trx.transaction.actions;
-                    for (let t=0;t<actions.length;t++) {
-                        let action = actions[t];
-                        if (action.name == "empoweruser" && action.data.chain_name == chainName && action.data.user == user) {
-                            logger.debug("[Sync User]find useful action:",action);
-                            logger.debug("find useful tran:",tranInfo);
-                            trans.push(tranInfo);
-                            break;
-                        }
+                try {
+                    if (tranInfo.status == "executed") {
+                        logger.info("traninfo trx :", tranInfo.trx);
+                            logger.info("traninfo trx actions :", tranInfo.trx.transaction.actions);
+                            let actions = tranInfo.trx.transaction.actions;
+                            for (let t = 0; t < actions.length; t++) {
+                                let action = actions[t];
+                                if (action.name == "empoweruser" && action.data.chain_name == chainName && action.data.user == user) {
+                                    logger.debug("[Sync User]find useful action:", action);
+                                    logger.debug("find useful tran:", tranInfo);
+                                    trans.push(tranInfo);
+                                    break;
+                                }
+                            }
                     }
+                } catch (e) {
+                    logger.error("getSyncUserTransFromBlockHeader error",e);
                 }
             }
         }
 
 
     } catch (e) {
-        logger.error("getTransFromBlockHeader error",e);
+        logger.error("getSyncUserTransFromBlockHeader error",e);
     }
 
     return trans;
@@ -223,27 +231,31 @@ function getSyncResTransFromBlockHeader(blockInfo,chainName,user) {
         let transList = blockInfo.transactions;
         if (transList.length > 0) {
             for (let i=0;i<transList.length;i++) {
-                let tranInfo = transList[i];
-                if (tranInfo.status == "executed") {
-                    logger.debug("traninfo trx :",tranInfo.trx);
-                    logger.debug("traninfo trx actions :",tranInfo.trx.transaction.actions);
-                    let actions = tranInfo.trx.transaction.actions;
-                    for (let t=0;t<actions.length;t++) {
-                        let action = actions[t];
-                        if (action.name == "resourcelease" && action.data.location == chainName && action.data.receiver == user) {
-                            logger.debug("find useful action:",action);
-                            logger.debug("find useful tran:",tranInfo);
-                            trans.push(tranInfo);
-                            break;
+                try {
+                    let tranInfo = transList[i];
+                    if (tranInfo.status == "executed") {
+                        logger.debug("traninfo trx :", tranInfo.trx);
+                        logger.debug("traninfo trx actions :", tranInfo.trx.transaction.actions);
+                        let actions = tranInfo.trx.transaction.actions;
+                        for (let t = 0; t < actions.length; t++) {
+                            let action = actions[t];
+                            if (action.name == "resourcelease" && action.data.location == chainName && action.data.receiver == user) {
+                                logger.debug("find useful action:", action);
+                                logger.debug("find useful tran:", tranInfo);
+                                trans.push(tranInfo);
+                                break;
+                            }
                         }
                     }
+                } catch (e) {
+                    logger.error("getSyncResTransFromBlockHeader error",e);
                 }
             }
         }
 
 
     } catch (e) {
-        logger.error("getTransFromBlockHeader error",e);
+        logger.error("getSyncResTransFromBlockHeader error",e);
     }
 
     return trans;
