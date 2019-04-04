@@ -319,10 +319,10 @@ namespace ultrainiosystem {
        checksum256               chain_id;
        checksum256               committee_mroot;
        uint32_t                  confirmed_block_number;
-       checksum256               confirmed_block_id;
+       block_id_type             confirmed_block_id;
        std::vector<role_base>    committee_set;//current committee set reported by chain
        std::vector<unconfirmed_block_header>  unconfirmed_blocks;
-       exten_types                table_extension;
+       exten_types               table_extension;
 
        auto primary_key()const { return chain_name; }
 
@@ -535,7 +535,11 @@ namespace ultrainiosystem {
                             uint64_t current_block_number, uint32_t num);
          name getdefaultchain();
          bool checkblockproposer(account_name block_proposer, chains_table::const_iterator chain_iter);
-
+         uint32_t findpreviousblock(const std::vector<unconfirmed_block_header>& block_vct, uint32_t block_num,
+                                    const block_id_type& block_id, const block_id_type& previous_id);
+         void rmoverdueblocks(name chain_name, uint32_t last_confirm_num, uint32_t confirm_num);
+         uint64_t getinitialblocknum(name chain_name);
+         void handlenewconfirmblock(chain_info& _chain, const block_id_type& confirm_block_id);
 
          //defined in ultrainio.system.cpp
          void getKeydata(const std::string& pubkey,std::array<char,33> & data);

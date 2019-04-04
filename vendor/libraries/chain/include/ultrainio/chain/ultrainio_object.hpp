@@ -100,7 +100,7 @@ namespace ultrainio { namespace chain {
        checksum256_type          chain_id;
        checksum256_type          committee_mroot;
        uint32_t                  confirmed_block_number;
-       checksum256_type          confirmed_block_id;
+       block_id_type             confirmed_block_id;
        std::vector<role_base>    committee_set;//current committee set reported by chain
        std::vector<unconfirmed_block_header>  unconfirmed_blocks;
        extension_types           table_extension;

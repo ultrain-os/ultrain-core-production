@@ -242,7 +242,7 @@ namespace ultrainiosystem {
         uint32_t confirmed_number_before = ite_chain->confirmed_block_number;
         checksum256 final_confirmed_id;
         bool new_confirm = false;
-        uint64_t initial_block_number = 1;
+        uint64_t initial_block_number = getinitialblocknum(chain_name);
         for(uint32_t idx = 0; idx < headers.size(); ++idx) {
             auto block_number = headers[idx].block_num();
             ultrainio_assert(block_number > ite_chain->confirmed_block_number, "block has been confirmed");
@@ -253,33 +253,7 @@ namespace ultrainiosystem {
             }
 
             //check if it has been accepted, if not, find its previous block
-            uint32_t pre_block_index = std::numeric_limits<uint32_t>::max();
-            if(!ite_chain->unconfirmed_blocks.empty()) {
-                uint32_t i = ite_chain->unconfirmed_blocks.size() - 1;
-                //more efficient to find from the end of the vector
-                while(true) {
-                    if(ite_chain->unconfirmed_blocks[i].block_number == block_number) {
-                        //duplicated block
-                        ultrainio_assert(ite_chain->unconfirmed_blocks[i].block_id != block_id, "block has been accepted");
-                    }
-                    if(ite_chain->unconfirmed_blocks[i].block_id == headers[idx].previous &&
-                        block_number == ite_chain->unconfirmed_blocks[i].block_number + 1) {
-                        //previous block is found, duplicated block couldn't be added at front of it's previous
-                        pre_block_index = i;
-                        break;
-                    }
-                    if(i == 0) {
-                        break;
-                    }
-                    i--;
-                }
-            }
-            if(chain_name == N(master)) {
-                master_chain_infos masterinfos(_self, _self);
-                auto initmasteriter = masterinfos.find(N(ultrainio));
-                ultrainio_assert(initmasteriter != masterinfos.end(), "master_chain_infos is not existed.");
-                initial_block_number = initmasteriter->block_height;
-            }
+            uint32_t pre_block_index = findpreviousblock(ite_chain->unconfirmed_blocks, block_number, block_id, headers[idx].previous);
             if(block_number > initial_block_number) {
                 ultrainio_assert(pre_block_index < ite_chain->unconfirmed_blocks.size(), "previous block is not found\n");
             }
@@ -310,73 +284,14 @@ namespace ultrainiosystem {
                 if(!new_confirm) {
                     return;
                 }
-                auto ite_last_confirm_block = _subchain.unconfirmed_blocks.begin();
-                auto ite_confirm_block = _subchain.unconfirmed_blocks.begin();
-                for(; ite_confirm_block != _subchain.unconfirmed_blocks.end(); ++ite_confirm_block) {
-                    if(ite_confirm_block->block_id == final_confirmed_id) {
-                        break;
-                    }
-                    else if(ite_confirm_block->block_id == _subchain.confirmed_block_id) {
-                        ite_last_confirm_block = ite_confirm_block;
-                    }
-                }
-                ultrainio_assert(ite_confirm_block != _subchain.unconfirmed_blocks.end(), "error, confirm block is not found");
-
-                if (_subchain.confirmed_block_number == ite_confirm_block->block_number) {
-                    return;
-                }
-                //handle new confirmed block
-                auto ite_block = ite_last_confirm_block;
-                do{
-                    ++ite_block;
-                    if(ite_block == _subchain.unconfirmed_blocks.end()) {
-                        break;
-                    }
-                    if(ite_block->block_number > ite_confirm_block->block_number ||
-                       ite_block->block_number <= ite_last_confirm_block->block_number) {
-                        continue;
-                    }
-                    if(ite_block->is_leaf && ite_block->block_number < ite_confirm_block->block_number) {
-                        continue;
-                    }
-                    if(ite_block->committee_mroot != _subchain.committee_mroot) {
-                        auto new_committee_set = ite_block->get_committee_set();
-                        if(new_committee_set.empty()) {
-                            print("error: committee mroot changed but new committee set is empty");
-                        }
-                        _subchain.committee_mroot = ite_block->committee_mroot;
-                        //get committee delta
-                        CommitteeSet pre_committee_set(_subchain.committee_set);
-                        auto cmt_delta = new_committee_set.diff(pre_committee_set);
-                        _subchain.handle_committee_update(cmt_delta);
-                        new_committee_set.swap(_subchain.committee_set);
-                    }
-                } while(ite_block != ite_confirm_block);
-                _subchain.confirmed_block_number = ite_confirm_block->block_number;
-                _subchain.confirmed_block_id = ite_confirm_block->block_id;
-                if(!_subchain.is_synced && ite_confirm_block->is_synced && !_subchain.deprecated_committee.empty()) {
-                    _subchain.deprecated_committee.clear();
-                }
-                _subchain.is_synced = ite_confirm_block->is_synced;
+                handlenewconfirmblock(_subchain, final_confirmed_id);
             });
         }
         if (new_confirm && confirmed_number_before < ite_chain->confirmed_block_number ) {
-            //confirm block updated
-            block_table subchain_block_tbl(_self, chain_name);
-            //remove old blocks, only keep the recent 1000 blocks
-            if(ite_chain->confirmed_block_number > _lwc.save_blocks_num) {
-                uint32_t start_num = 0;
-                if(confirmed_number_before > _lwc.save_blocks_num) {
-                    start_num = confirmed_number_before - _lwc.save_blocks_num;
-                }
-                for(uint32_t j = start_num; j < ite_chain->confirmed_block_number - _lwc.save_blocks_num; ++j) {
-                    auto block_ite = subchain_block_tbl.find(uint64_t(j));
-                    if(block_ite != subchain_block_tbl.end()) {
-                        subchain_block_tbl.erase(block_ite);
-                    }
-                }
-            }
+            //handle all confirmed blocks
+            rmoverdueblocks(chain_name, confirmed_number_before, ite_chain->confirmed_block_number);
             _chains.modify(ite_chain, [&]( auto& _subchain ) {
+                block_table subchain_block_tbl(_self, chain_name);
                 auto ite_uncfm_block = _subchain.unconfirmed_blocks.begin();
                 for(; ite_uncfm_block != _subchain.unconfirmed_blocks.end(); ) {
                     if(ite_uncfm_block->block_number > _subchain.confirmed_block_number) {
@@ -502,31 +417,14 @@ namespace ultrainiosystem {
     void system_contract::add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number) {
         if (chain_name != master_chain_name) {
             auto ite_chain = _chains.find(chain_name);
-            ultrainio_assert(ite_chain != _chains.end(), "destination sidechain is not existed" );
+            ultrainio_assert(ite_chain != _chains.end(), "destination chain is not existed" );
             chaintypes_table type_tbl(_self, _self);
             auto typeiter = type_tbl.find(ite_chain->chain_type);
-            ultrainio_assert(typeiter != type_tbl.end(), "destination sidechain type is not existed");
+            ultrainio_assert(typeiter != type_tbl.end(), "destination chain type is not existed");
             ultrainio_assert(ite_chain->committee_num < typeiter->stable_max_producers,
-                "destination sidechain already has enough producers");
+                "destination chain already has enough producers");
             //check if this account has been empowered to this chain
-            if(!is_empowered(producer.owner, chain_name)) {
-                const uint16_t pub_key_size = 54;
-                char* owner_key = (char*)malloc(pub_key_size);
-                char* active_key = (char*)malloc(pub_key_size);
-                get_account_pubkey(producer.owner, owner_key, pub_key_size, active_key, pub_key_size);
-                std::string str_key_o(owner_key);
-                std::string str_key_a(active_key);
-                print("get_account_pubkey receiver:", name{producer.owner}," owner_key:",str_key_o, " active_key:",str_key_a);
-                //send deffer empoweruser transaction
-                ultrainio::transaction trx;
-                trx.actions.emplace_back(
-                    permission_level{ producer.owner, N(active) }, _self, NEX(empoweruser),
-                    std::make_tuple(producer.owner, chain_name, str_key_o, str_key_a, 1) );
-                trx.delay_sec = 1;
-                uint128_t trxid = now() + _self + N(empoweruser);
-                cancel_deferred(trxid);
-                trx.send( trxid, _self, true );
-            }
+            ultrainio_assert(is_empowered(producer.owner, chain_name), "account has not been empower to destination chain");
             _chains.modify(ite_chain, [&](chain_info& info) {
                 role_base temp_prod;
                 temp_prod.owner = producer.owner;
@@ -762,6 +660,10 @@ namespace ultrainiosystem {
         //get a producder for scheduling out
         uint32_t totalsize = schedule_producers.size();
         auto producer = schedule_producers[x % totalsize];
+        if(!is_empowered(producer, to_iter->chain_name)) {
+            print("[schedule] error: ", name{producer}, " is not empowered to chain ", name{to_iter->chain_name}, "\n");
+            return false;
+        }
         auto producer_iter = _producers.find(producer);
         if(producer_iter == _producers.end()) {
             print("[schedule] error: producer to move out is not found in _producers\n");
@@ -897,6 +799,108 @@ namespace ultrainiosystem {
         else {
             return ite_min->chain_name;
         }
+    }
+
+    uint32_t system_contract::findpreviousblock(const std::vector<unconfirmed_block_header>& block_vct, uint32_t block_num,
+                                                const block_id_type& block_id, const block_id_type& previous_id) {
+        uint32_t pre_index = std::numeric_limits<uint32_t>::max();
+        if(block_vct.empty()) {
+            return pre_index;
+        }
+        uint32_t i = block_vct.size();
+        //more efficient to find from the end of the vector
+        do{
+            --i;
+            if(block_vct[i].block_number == block_num) {
+                //duplicated block
+                ultrainio_assert(block_vct[i].block_id != block_id, "block has been accepted");
+            }
+            if(block_vct[i].block_id == previous_id && block_num == block_vct[i].block_number + 1) {
+                //previous block is found, duplicated block couldn't be added at front of it's previous
+                pre_index = i;
+                break;
+            }
+        }while(i > 0);
+        return pre_index;
+    }
+
+    uint64_t system_contract::getinitialblocknum(name chain_name) {
+        if(chain_name == N(master)) {
+            master_chain_infos masterinfos(_self, _self);
+            auto initmasteriter = masterinfos.find(N(ultrainio));
+            ultrainio_assert(initmasteriter != masterinfos.end(), "master_chain_infos is not existed.");
+            return initmasteriter->block_height;
+        }
+        return 1;
+    }
+
+    void system_contract::rmoverdueblocks(name chain_name, uint32_t last_confirm_num, uint32_t confirm_num) {
+        block_table subchain_block_tbl(_self, chain_name);
+        //remove overdue blocks, only keep recent 30000 blocks
+        if(confirm_num > _lwc.save_blocks_num) {
+            uint32_t start_num = 0;
+            if(last_confirm_num > _lwc.save_blocks_num) {
+                start_num = last_confirm_num - _lwc.save_blocks_num;
+            }
+            auto sum = confirm_num - _lwc.save_blocks_num;
+            for(uint32_t j = start_num; j < sum; ++j) {
+                auto block_ite = subchain_block_tbl.find(uint64_t(j));
+                if(block_ite != subchain_block_tbl.end()) {
+                    subchain_block_tbl.erase(block_ite);
+                }
+            }
+        }
+    }
+
+    void system_contract::handlenewconfirmblock(chain_info& _chain, const block_id_type& confirm_block_id) {
+        auto ite_last_confirm_block = _chain.unconfirmed_blocks.begin();
+        auto ite_confirm_block = _chain.unconfirmed_blocks.begin();
+        for(; ite_confirm_block != _chain.unconfirmed_blocks.end(); ++ite_confirm_block) {
+            if(ite_confirm_block->block_id == confirm_block_id) {
+                break;
+            }
+            else if(ite_confirm_block->block_id == _chain.confirmed_block_id) {
+                ite_last_confirm_block = ite_confirm_block;
+            }
+        }
+        ultrainio_assert(ite_confirm_block != _chain.unconfirmed_blocks.end(), "error, confirm block is not found");
+
+        if (_chain.confirmed_block_number == ite_confirm_block->block_number) {
+            return;
+        }
+        //handle new confirmed block
+        auto ite_block = ite_last_confirm_block;
+        do{
+            ++ite_block;
+            if(ite_block == _chain.unconfirmed_blocks.end()) {
+                break;
+            }
+            if(ite_block->block_number > ite_confirm_block->block_number ||
+               ite_block->block_number <= ite_last_confirm_block->block_number) {
+                continue;
+            }
+            if(ite_block->is_leaf && ite_block->block_number < ite_confirm_block->block_number) {
+                continue;
+            }
+            if(ite_block->committee_mroot != _chain.committee_mroot) {
+                auto new_committee_set = ite_block->get_committee_set();
+                if(new_committee_set.empty()) {
+                    print("error: committee mroot changed but new committee set is empty");
+                }
+                _chain.committee_mroot = ite_block->committee_mroot;
+                //get committee delta
+                CommitteeSet pre_committee_set(_chain.committee_set);
+                auto cmt_delta = new_committee_set.diff(pre_committee_set);
+                _chain.handle_committee_update(cmt_delta);
+                new_committee_set.swap(_chain.committee_set);
+            }
+        } while(ite_block != ite_confirm_block);
+        _chain.confirmed_block_number = ite_confirm_block->block_number;
+        _chain.confirmed_block_id = ite_confirm_block->block_id;
+        if(!_chain.is_synced && ite_confirm_block->is_synced && !_chain.deprecated_committee.empty()) {
+            _chain.deprecated_committee.clear();
+        }
+        _chain.is_synced = ite_confirm_block->is_synced;
     }
 
     void system_contract::setlwcparams(uint32_t keep_blocks_num) {

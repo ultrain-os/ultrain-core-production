@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/50991f",
+   "version": "ultrainio::abi/1.0/f686ae",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -595,7 +595,7 @@
         {"name": "chain_id",                      "type": "checksum256"},
         {"name": "committee_mroot",               "type": "checksum256"},
         {"name": "confirmed_block_number",        "type": "uint32"},
-        {"name": "confirmed_block_id",            "type": "checksum256"},
+        {"name": "confirmed_block_id",            "type": "block_id_type"},
         {"name": "committee_set",                 "type": "role_base[]"},
         {"name": "unconfirmed_blocks",            "type": "unconfirmed_block_header[]"},
         {"name": "table_extension",               "type": "exten_type[]"}

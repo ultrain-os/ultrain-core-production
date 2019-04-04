@@ -90,6 +90,7 @@ namespace ultrainiosystem {
           masterchain.chain_id           = checksum256();
           masterchain.committee_mroot    = chaininfo.committee_mroot;
           masterchain.confirmed_block_number = uint32_t(chaininfo.block_height);
+          masterchain.confirmed_block_id = chaininfo.block_id;
           masterchain.committee_set      = chaininfo.master_prods;
           unconfirmed_block_header uncfm_block;
           uncfm_block.committee_mroot = chaininfo.committee_mroot;
