@@ -15,6 +15,13 @@ namespace ultrainio {
         kPhaseBAX
     };
 
+    struct ExtType {
+        uint32_t key;
+        std::string value;
+    };
+
+    typedef std::vector<ExtType> MsgExtension;
+
     struct ReqSyncMsg {
         uint32_t seqNum;
         uint32_t startBlockNum;
@@ -43,8 +50,13 @@ namespace ultrainio {
         uint32_t seqNum;
     };
 
-    struct ProposeMsg {
+    struct UnsignedProposeMsg {
         Block block;
+        MsgExtension ext;
+    };
+
+    struct ProposeMsg : public UnsignedProposeMsg {
+        std::string signature;
     };
 
     struct CommonEchoMsg {
@@ -70,6 +82,7 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
         std::string proof;
 #endif
+        MsgExtension ext;
     };
 
     struct EchoMsg : public UnsignedEchoMsg {
@@ -77,14 +90,16 @@ namespace ultrainio {
     };
 }
 
-FC_REFLECT( ultrainio::ProposeMsg, (block))
+FC_REFLECT( ultrainio::ExtType, (key)(value))
+FC_REFLECT( ultrainio::UnsignedProposeMsg, (block)(ext))
+FC_REFLECT_DERIVED( ultrainio::ProposeMsg, (ultrainio::UnsignedProposeMsg), (signature))
 
 #ifdef CONSENSUS_VRF
 FC_REFLECT( ultrainio::CommonEchoMsg, (blockId)(phase)(baxCount)(proposerPriority))
-FC_REFLECT_DERIVED( ultrainio::UnsignedEchoMsg, (ultrainio::CommonEchoMsg), (blsSignature)(account)(timestamp)(proof))
+FC_REFLECT_DERIVED( ultrainio::UnsignedEchoMsg, (ultrainio::CommonEchoMsg), (blsSignature)(account)(timestamp)(proof)(ext))
 #else
 FC_REFLECT( ultrainio::CommonEchoMsg, (blockId)(phase)(baxCount)(proposer))
-FC_REFLECT_DERIVED( ultrainio::UnsignedEchoMsg, (ultrainio::CommonEchoMsg), (blsSignature)(account)(timestamp))
+FC_REFLECT_DERIVED( ultrainio::UnsignedEchoMsg, (ultrainio::CommonEchoMsg), (blsSignature)(account)(timestamp)(ext))
 #endif
 
 FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature))

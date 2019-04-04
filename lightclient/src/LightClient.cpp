@@ -23,9 +23,6 @@ namespace ultrainio {
 
     // invoked by fetch block feature
     void LightClient::accept(const BlockHeader& blockHeader, const std::string& signature, const BlsVoterSet& blsVoterSet) {
-        ilog("accept BlockHeader num : ${blockNum}, my id : ${myId}, BlsVoterSet confirm num : ${confirmedBlockNum} id : ${id}, latest confirm : ${latest}",
-                ("blockNum", blockHeader.block_num())("myId", blockHeader.id())("confirmedBlockNum", BlockHeader::num_from_id(blsVoterSet.commonEchoMsg.blockId))
-                ("id", blsVoterSet.commonEchoMsg.blockId)("latest", BlockHeader::num_from_id(m_latestConfirmedBlockId)));
         accept(blockHeader, signature);
         if (blsVoterSet.valid() && blsVoterSet.commonEchoMsg.blockId == blockHeader.id()) {
             confirm(blsVoterSet);
