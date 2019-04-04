@@ -550,7 +550,8 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
 
    // TODO(yufenshen): temp hack.
    //   my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
-   my->_max_transaction_time_ms = 200;
+   // This is only for pre-run deadline. Let's make it loose. But better get it from options.
+   my->_max_transaction_time_ms = 500;
    //my->_genesis_delay = options.at("genesis-delay").as<int32_t>();
    my->_genesis_startup_time = options.at("genesis-startup-time").as<int32_t>();
    my->_max_round_seconds = options.at("max-round-seconds").as<int32_t>();

@@ -58,9 +58,9 @@ static const uint32_t block_size_average_window_ms         = 60*1000l;
 
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
-const static uint32_t   default_max_propose_trx_count                 = 12000;
-const static uint32_t   default_max_pending_trx_count                 = 50000;
-const static uint32_t   default_max_unapplied_trx_count               = 50000;
+const static uint32_t   default_max_propose_trx_count                 = 11000;
+const static uint32_t   default_max_pending_trx_count                 = 30000;
+const static uint32_t   default_max_unapplied_trx_count               = 30000;
 extern uint32_t default_max_block_net_usage;
 extern uint32_t default_max_transaction_net_usage;
 //const static uint32_t   default_max_block_net_usage                 = 1024 * 1024 * 2;
@@ -102,7 +102,7 @@ const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multip
 const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call checktime from hashing intrinsic once per this number of bytes
 
 const static ultrainio::chain::wasm_interface::vm_type default_wasm_runtime = ultrainio::chain::wasm_interface::vm_type::wabt;
-const static uint32_t   default_abi_serializer_max_time_ms = 15*1000; ///< default deadline for abi serialization methods
+const static uint32_t   default_abi_serializer_max_time_ms = 30*1000; ///< default deadline for abi serialization methods
 
 const static uint64_t billable_alignment = 16;
 

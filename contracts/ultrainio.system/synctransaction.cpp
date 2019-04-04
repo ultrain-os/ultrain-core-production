@@ -83,19 +83,20 @@ namespace ultrainiosystem {
       for (const auto& act : actios) {
          if (act.account == N(utrio.token) && act.name == NEX(transfer)) {
             TransferActionParam tap = unpack<TransferActionParam>(act.data);
+            if (tap.val.symbol != symbol_type(CORE_SYMBOL))
+                continue;
             asset cur_tokens = ultrainio::token(N(utrio.token)).get_balance( N(utrio.bank),symbol_type(CORE_SYMBOL).name());
             if(tap.to != N(utrio.bank) ||
-              string_to_name(tap.memo.c_str()) != _gstate.chain_name ||
-              cur_tokens < tap.val)
-               continue;
+               string_to_name(tap.memo.c_str()) != _gstate.chain_name ||
+               cur_tokens < tap.val) {
+                continue;
+            }
             exec_succ++;
             INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.bank), N(active)},
                { N(utrio.bank), tap.from, tap.val, std::string("sync transfer") } );
-            print("synctransfer  from : ", name{tap.from});
-            print(", to: ", name{tap.to});
+            print("synctransfer  from : ", name{tap.from}, ", to: ", name{tap.to});
             print(", asset: "); tap.val.print();
-            print(", memo: "); print(tap.memo);
-            print("\n");
+            print(", memo: ", tap.memo, "\n");
          } else if(act.account == N(ultrainio) && act.name == NEX(empoweruser)) {
              EmpowerUserParam eup = unpack<EmpowerUserParam>(act.data);
              if(eup.chain_name != _gstate.chain_name)

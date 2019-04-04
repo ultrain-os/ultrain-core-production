@@ -1335,13 +1335,15 @@ namespace ultrainio {
             fc::time_point hard_cpu_deadline =
                 fc::time_point::now() + fc::microseconds(Config::s_maxTrxMicroSeconds);/*can change in conig file*/
             size_t count1 = runPendingTrxs(pending_trxs, hard_cpu_deadline, block_time);
-            if(fc::time_point::now() < hard_cpu_deadline)
-            {
-                 count2 = runUnappliedTrxs(unapplied_trxs, hard_cpu_deadline, block_time);
+
+            if (fc::time_point::now() < hard_cpu_deadline &&
+                m_initTrxCount < chain::config::default_max_propose_trx_count) {
+                count2 = runUnappliedTrxs(unapplied_trxs, hard_cpu_deadline, block_time);
             }
-            if(fc::time_point::now() < hard_cpu_deadline)
-            {
-                 count3 = runScheduledTrxs(scheduled_trxs, hard_cpu_deadline, block_time);
+
+            if (fc::time_point::now() < hard_cpu_deadline &&
+                m_initTrxCount < chain::config::default_max_propose_trx_count) {
+                count3 = runScheduledTrxs(scheduled_trxs, hard_cpu_deadline, block_time);
             }
 
             ilog("------- run ${count1} ${count2}  ScheduledTrxs:${count3} trxs, taking time ${time}, remaining pending trx ${count4}, remaining unapplied trx ${count5}",
