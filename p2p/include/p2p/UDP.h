@@ -15,7 +15,7 @@ namespace p2p
 {
     struct Reserved
     {
-        int key;/*reserve_1:1,reserver_2:2 ...*/
+        uint32_t key;/*reserve_1:1,reserver_2:2 ...*/
         std::string content;
     };
     struct UnsignedPingNode
