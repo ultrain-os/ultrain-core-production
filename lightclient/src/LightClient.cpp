@@ -18,6 +18,7 @@ namespace ultrainio {
         m_startPoint = startPoint;
         m_workingCommitteeSet = m_startPoint.committeeSet;
         m_latestConfirmedBlockId = m_startPoint.lastConfirmedBlockId;
+        m_nextCommitteeMroot = m_startPoint.nextCommitteeMroot;
         ilog("set start point confirmed num : ${num}, committeeSet : ${committeeSet}", ("num", BlockHeader::num_from_id(m_latestConfirmedBlockId))("committeeSet", m_workingCommitteeSet.toString()));
     }
 
@@ -45,7 +46,7 @@ namespace ultrainio {
         if (m_workingCommitteeSet == CommitteeSet()) {
             ULTRAIN_ASSERT(CheckPoint::isCheckPoint(blockHeader), chain::chain_exception, "DO NOT pass check point when working committee set is empty");
             m_workingCommitteeSet = CheckPoint(blockHeader).committeeSet();
-            ULTRAIN_ASSERT(std::string(m_workingCommitteeSet.committeeMroot()) == m_startPoint.nextCommitteeMroot, chain::chain_exception, "working committee set' MRoot not equal ${root}", ("root", m_startPoint.nextCommitteeMroot));
+            ULTRAIN_ASSERT(std::string(m_workingCommitteeSet.committeeMroot()) == m_nextCommitteeMroot, chain::chain_exception, "working committee set' MRoot not equal ${root}", ("root", m_nextCommitteeMroot));
         }
         auto unconfirmItor = m_unconfirmedList.begin();
         while (true) {
@@ -152,11 +153,24 @@ namespace ultrainio {
             if (itor->id() == blsVoterSet.commonEchoMsg.blockId) {
                 return m_workingCommitteeSet.verify(blsVoterSet);
             }
+
+            // MUST before EpochEndPoint::isEpochEndPoint check
+            if (CheckPoint::isCheckPoint(*itor)) {
+                CheckPoint cp(*itor);
+                m_workingCommitteeSet = cp.committeeSet();
+                if (m_nextCommitteeMroot != std::string(m_workingCommitteeSet.committeeMroot())) {
+                    elog("Check Point error. expect mroot ${expect}, actual : ${actual}", ("expect", m_nextCommitteeMroot)("actual", std::string(m_workingCommitteeSet.committeeMroot())));
+                    return false;
+                }
+            }
+
             if (EpochEndPoint::isEpochEndPoint(*itor)) {
                 if (!isConfirmed) {
                     elog("DO NOT confirm EpochEndPoint : ${id} num : ${num}", ("id", itor->id())("num", BlockHeader::num_from_id(itor->id())));
                     return false;
                 }
+                EpochEndPoint eep(*itor);
+                m_nextCommitteeMroot = eep.nextCommitteeMroot();
                 auto checkPointItor = itor;
                 checkPointItor++;
                 if (checkPointItor != blockHeaderList.end()) {
@@ -164,8 +178,6 @@ namespace ultrainio {
                         elog("CheckPoint is not the next block of EpochEndPoint, id : ${id} num : ${num}", ("id", checkPointItor->id())("num", BlockHeader::num_from_id(checkPointItor->id())));
                         return false;
                     }
-                    CheckPoint cp(*checkPointItor);
-                    m_workingCommitteeSet = cp.committeeSet();
                 }
             }
         }
@@ -191,7 +203,7 @@ namespace ultrainio {
             std::list<BlockHeader> genesisBlockHeader;
             genesisBlockHeader.push_back(blockHeader);
             if (EpochEndPoint::isEpochEndPoint(blockHeader)) {
-                m_startPoint.nextCommitteeMroot = EpochEndPoint(blockHeader).nextCommitteeMroot();
+                m_nextCommitteeMroot = EpochEndPoint(blockHeader).nextCommitteeMroot();
             }
             onConfirmed(genesisBlockHeader);
         //}

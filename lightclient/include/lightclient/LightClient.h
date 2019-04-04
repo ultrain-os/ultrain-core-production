@@ -55,6 +55,8 @@ namespace ultrainio {
 
         BlockIdType m_latestConfirmedBlockId;
 
+        std::string m_nextCommitteeMroot;
+
         // sort by desc
         std::list<BlockHeader> m_unconfirmedList;
 
