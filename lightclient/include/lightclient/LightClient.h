@@ -17,16 +17,12 @@ namespace ultrainio {
 
         uint64_t chainName() const;
 
-        void reset();
-
-        void accept(const BlockHeader& blockHeader, const std::string& signature = std::string());
+        void accept(const BlockHeader& blockHeader, const std::string& signature);
 
         // invoked by fetch block feature
-        void accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet);
+        void accept(const BlockHeader& blockHeader, const std::string& signature, const BlsVoterSet& blsVoterSet);
 
         BlockIdType getLatestConfirmedBlockId() const;
-
-        bool setStartPoint(const CommitteeSet& committeeSet, const BlockIdType& blockId);
 
         void setStartPoint(const StartPoint& startPoint);
 
@@ -36,6 +32,8 @@ namespace ultrainio {
 
     private:
 
+        void reset();
+
         void confirm(const BlsVoterSet& blsVoterSet);
 
         void onError(const LightClientError& error, const BlockHeader&);
@@ -44,7 +42,7 @@ namespace ultrainio {
 
         bool isOutOfRange(const BlockHeader&) const;
 
-        void handleGenesis(const BlockHeader&);
+        void handleGenesis(const BlockHeader&, const std::string&);
 
         bool verifyBlockHeaderList(const std::list<BlockHeader>& blockHeaderList, const BlsVoterSet& blsVoterSet);
 

@@ -35,6 +35,7 @@
 #include <lightclient/LightClientCallback.h>
 #include <lightclient/LightClient.h>
 #include <lightclient/LightClientMgr.h>
+#include <lightclient/StartPoint.h>
 
 #if defined( __linux__ )
 #include <malloc.h>
@@ -2326,15 +2327,12 @@ connection::connection(string endpoint, msg_priority pri)
             if (sync_block_master->last_received_block == sync_block_master->sync_block_msg.startBlockNum) {
                 controller &cc = chain_plug->chain();
                 std::shared_ptr<StakeVoteBase> stake = MsgMgr::getInstance()->getVoterSys(cc.head_block_num() + 1);
-                light_client->setStartPoint(stake->getCommitteeSet(), cc.head_block_id());
+                StartPoint sp(stake->getCommitteeSet(), cc.head_block_id());
+                light_client->setStartPoint(sp);
             }
             sync_block_master->block_msg_queue.emplace_back(msg);
-            if (msg.proof.empty()) {
-                light_client->accept(msg.block);
-            } else {
-                ilog("receive block with proof: ${pf}", ("pf", msg.proof));
-                light_client->accept(msg.block, BlsVoterSet(msg.proof));
-            }
+            BlsVoterSet blsVoterSet(msg.proof);
+            light_client->accept(msg.block, msg.block.signature, blsVoterSet);
         }
     }
 

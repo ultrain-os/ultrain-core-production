@@ -6,8 +6,8 @@
 #include <core/Message.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
-#include <rpos/Validator.h>
-#include <rpos/Signer.h>
+#include <crypto/Validator.h>
+#include <crypto/Signer.h>
 
 using namespace ultrainio;
 using namespace std;

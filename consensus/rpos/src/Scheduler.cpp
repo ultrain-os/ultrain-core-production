@@ -25,6 +25,8 @@
 #include <ultrainio/chain/config.hpp>
 
 #include <base/Memory.h>
+#include <crypto/Signer.h>
+#include <crypto/Validator.h>
 #include <lightclient/CommitteeSet.h>
 #include <lightclient/EpochEndPoint.h>
 #include <lightclient/LightClientProducer.h>
@@ -36,11 +38,8 @@
 #include <rpos/Node.h>
 #include <rpos/PunishMgr.h>
 #include <rpos/Seed.h>
-#include <rpos/Signer.h>
 #include <rpos/StakeVoteBase.h>
-#include <rpos/Validator.h>
 #include <rpos/Vrf.h>
-
 #include <appbase/application.hpp>
 
 using namespace boost::asio;

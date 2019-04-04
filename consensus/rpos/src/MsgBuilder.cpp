@@ -2,10 +2,10 @@
 
 #include <rpos/MsgMgr.h>
 #include <rpos/Node.h>
-#include <rpos/Signer.h>
 #include <rpos/Utils.h>
 #include <rpos/StakeVoteBase.h>
 #include <crypto/Bls.h>
+#include <crypto/Signer.h>
 
 namespace ultrainio {
     EchoMsg MsgBuilder::constructMsg(const Block &block) {

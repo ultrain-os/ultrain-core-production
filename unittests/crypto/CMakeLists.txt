@@ -22,3 +22,13 @@ include_directories ( ${Boost_INCLUDE_DIR} )
 target_link_libraries( pripubkey_test ultrainio_crypto )
 
 add_test(NAME pripubkey_test COMMAND pripubkey_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+#Signer/Validator
+add_executable( signervalidator_test
+        SignerValidatorTest.cpp)
+
+include_directories ( ${Boost_INCLUDE_DIR} )
+
+target_link_libraries( signervalidator_test ultrainio_crypto ultrainio_core)
+
+add_test(NAME signervalidator_test COMMAND signervalidator_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

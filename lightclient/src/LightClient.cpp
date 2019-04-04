@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include <crypto/Validator.h>
 #include <lightclient/LightClientCallback.h>
 #include <lightclient/Helper.h>
 
@@ -10,14 +11,6 @@ namespace ultrainio {
 
     uint64_t LightClient::chainName() const {
         return m_chainName;
-    }
-
-    bool LightClient::setStartPoint(const CommitteeSet& committeeSet, const BlockIdType& blockId) {
-        ilog("set start point confirmed num : ${num}, id : ${id} committeeSet : ${committeeSet}", ("num", BlockHeader::num_from_id(blockId))("id", blockId)("committeeSet", committeeSet.toString()));
-        reset();
-        m_workingCommitteeSet = committeeSet;
-        m_latestConfirmedBlockId = blockId;
-        return true;
     }
 
     void LightClient::setStartPoint(const StartPoint& startPoint) {
@@ -29,31 +22,26 @@ namespace ultrainio {
     }
 
     // invoked by fetch block feature
-    void LightClient::accept(const BlockHeader& blockHeader, const BlsVoterSet& blsVoterSet) {
+    void LightClient::accept(const BlockHeader& blockHeader, const std::string& signature, const BlsVoterSet& blsVoterSet) {
         ilog("accept BlockHeader num : ${blockNum}, my id : ${myId}, BlsVoterSet confirm num : ${confirmedBlockNum} id : ${id}, latest confirm : ${latest}",
                 ("blockNum", blockHeader.block_num())("myId", blockHeader.id())("confirmedBlockNum", BlockHeader::num_from_id(blsVoterSet.commonEchoMsg.blockId))
                 ("id", blsVoterSet.commonEchoMsg.blockId)("latest", BlockHeader::num_from_id(m_latestConfirmedBlockId)));
-        if (blockHeader.id() != blsVoterSet.commonEchoMsg.blockId) {
-            ilog("BlsVoterSet confirm ${id} while blockHeader id is ${blockId}", ("id", blsVoterSet.commonEchoMsg.blockId)("blockId", blockHeader.id()));
-            onError(kBlsVoterSetNotMatch, blockHeader);
-            return;
+        accept(blockHeader, signature);
+        if (blsVoterSet.valid() && blsVoterSet.commonEchoMsg.blockId == blockHeader.id()) {
+            confirm(blsVoterSet);
         }
-        accept(blockHeader);
-        confirm(blsVoterSet);
     }
 
-    // pass signature when genesis block
     void LightClient::accept(const BlockHeader& blockHeader, const std::string& signature) {
-        ilog("accept BlockHeader num : ${blockNum}, id : ${id} latest confirm : ${latest}",
-             ("blockNum", blockHeader.block_num())("id", blockHeader.id())("latest", BlockHeader::num_from_id(m_latestConfirmedBlockId)));
+        ilog("accept BlockHeader num : ${blockNum}, id : ${id} latest confirm : ${latest} signature : ${s}",
+             ("blockNum", blockHeader.block_num())("id", blockHeader.id())("latest", BlockHeader::num_from_id(m_latestConfirmedBlockId))("s", signature));
         if (Helper::isGenesis(blockHeader)) {
-            ilog("signature : ${s} for blockNum : ${num}", ("s", signature)("num", blockHeader.block_num()));
-            handleGenesis(blockHeader);
+            handleGenesis(blockHeader, signature);
             return;
         }
 
         if (isOutOfRange(blockHeader)) {
-            onError(kOutOfRange, blockHeader);
+            onError(LightClientError::kOutOfRange, blockHeader);
             return;
         }
 
@@ -196,13 +184,20 @@ namespace ultrainio {
         return m_status;
     }
 
-    void LightClient::handleGenesis(const BlockHeader& blockHeader) {
-        // TODO sign check
-        m_latestConfirmedBlockId = blockHeader.id();
-        ULTRAIN_ASSERT(m_confirmedList.size() == 0, chain::chain_exception, "m_confirmedList size != 0");
-        std::list<BlockHeader> genesisBlockHeader;
-        genesisBlockHeader.push_back(blockHeader);
-        onConfirmed(genesisBlockHeader);
+    void LightClient::handleGenesis(const BlockHeader& blockHeader, const std::string& signature) {
+//        if (!Validator::verify<BlockHeader>(Signature(signature), blockHeader, PublicKey(m_startPoint.genesisPk))) {
+//            elog("signature : ${s} for blockNum : ${num}", ("s", signature)("num", blockHeader.block_num()));
+//            onError(LightClientError::kSignatureError ,blockHeader);
+//            m_status = false;
+//        } else {
+            m_latestConfirmedBlockId = blockHeader.id();
+            std::list<BlockHeader> genesisBlockHeader;
+            genesisBlockHeader.push_back(blockHeader);
+            if (EpochEndPoint::isEpochEndPoint(blockHeader)) {
+                m_startPoint.nextCommitteeMroot = EpochEndPoint(blockHeader).nextCommitteeMroot();
+            }
+            onConfirmed(genesisBlockHeader);
+        //}
     }
 
     bool LightClient::isOutOfRange(const BlockHeader& blockHeader) const {

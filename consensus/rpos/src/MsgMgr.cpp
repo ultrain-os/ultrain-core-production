@@ -6,7 +6,6 @@
 #include <rpos/Node.h>
 #include <rpos/Seed.h>
 #include <rpos/StakeVoteBase.h>
-#include <rpos/Validator.h>
 #include <rpos/Vrf.h>
 
 namespace ultrainio {
