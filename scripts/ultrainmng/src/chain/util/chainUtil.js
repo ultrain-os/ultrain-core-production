@@ -192,8 +192,8 @@ function getSyncUserTransFromBlockHeader(blockInfo,chainName,user) {
                 let tranInfo = transList[i];
                 try {
                     if (tranInfo.status == "executed") {
-                        logger.info("traninfo trx :", tranInfo.trx);
-                            logger.info("traninfo trx actions :", tranInfo.trx.transaction.actions);
+                        logger.debug("traninfo trx :", tranInfo.trx);
+                            logger.debug("traninfo trx actions :", tranInfo.trx.transaction.actions);
                             let actions = tranInfo.trx.transaction.actions;
                             for (let t = 0; t < actions.length; t++) {
                                 let action = actions[t];
