@@ -67,18 +67,23 @@ def empowerUser():
     print "subchain list:";
     print chainList;
     userName = "ultrainio"
+    index = 1
     for i in range(0, len(chainList)):
         print "start to find chain("+str(chainList[i])+" producers:)";
-        producersObj = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_table_records",data = json.dumps({"code":"ultrainio","scope":""+chainList[i]+"","table":"producers","json":"true"})).text)
+        producersObj = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_table_records",data = json.dumps({"code":"ultrainio","limit":"500","scope":""+chainList[i]+"","table":"producers","json":"true"})).text)
         producers = producersObj["rows"];
+        print producers;
+        sleep(1);
         for j in range(0, len(producers)):
             accountObj = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name": producers[j]["owner"]})).text)
             userPK =  accountObj["permissions"][0]["required_auth"]["keys"][0]["key"];
-            print "chain("+str(chainList[i])+") producer:"+str(producers[j]["owner"]+" userPK:"+userPK);
+            #print "chain("+str(chainList[i])+") producer:"+str(producers[j]["owner"]+" userPK:"+userPK+" index:"+str(index));
             for t in range(0, len(chainList)):
                 if chainList[i] != chainList[t]:
-                    print "prepare empower(chain("+str(chainList[i])+") producer:"+str(producers[j]["owner"]+") to chain:"+chainList[t]);
+                    print "prepare empower(chain("+str(chainList[i])+") producer:"+str(producers[j]["owner"]+") to chain:"+chainList[t])+" index:"+str(index);
+                    index = index +1;
                     retry(args.clultrain+'system empoweruser '+str(producers[j]["owner"])+' '+chainList[t]+' "'+userPK+'" "'+userPK+'" 1 -u');
+                    sleep(0.5);
 
 
 # Command Line Arguments
