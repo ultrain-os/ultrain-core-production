@@ -262,7 +262,7 @@ namespace ultrainiosystem {
                 ConfirmPoint::isConfirmPoint(headers[idx])) {
                 char confirm_id[32];
                 if(!accept_block_header(chain_name, headers[idx], confirm_id, sizeof(confirm_id))) {
-                    print("error: light client check failed");
+                    print("error: light client check failed\n");
                     final_confirmed_id = ConfirmPoint::getConfirmedBlockId(headers[idx]);
                 } else {
                     memcpy(final_confirmed_id.hash, confirm_id, sizeof(confirm_id));
@@ -344,7 +344,7 @@ namespace ultrainiosystem {
     void system_contract::clearchain(name chain_name, bool users_only) {
         require_auth(N(ultrainio));
         auto ite_chain = _chains.find(chain_name);
-        ultrainio_assert(ite_chain != _chains.end(), "This subchian is not existed.");
+        ultrainio_assert(ite_chain != _chains.end(), "clearchain: this chian is not existed.");
         if(users_only) {
             _chains.modify(ite_chain, [&]( auto& _subchain ) {
                 _subchain.recent_users.clear();
@@ -352,21 +352,31 @@ namespace ultrainiosystem {
             });
             return;
         }
-        _chains.modify(ite_chain, [&]( auto& _subchain ) {
-            _subchain.recent_users.clear();
-            _subchain.recent_users.shrink_to_fit();
-            _subchain.is_synced         = false;
-            _subchain.is_schedulable    = false;
-            _subchain.total_user_num    = 0;
-            _subchain.chain_id          = checksum256();
-            _subchain.committee_mroot   = checksum256();
-            _subchain.confirmed_block_number = 0;
-            _subchain.confirmed_block_id = checksum256();
-            _subchain.unconfirmed_blocks.clear();
-            _subchain.unconfirmed_blocks.shrink_to_fit();
-            //_subchain.changing_info.clear();
-            _subchain.deprecated_committee.clear();
+
+        if(chain_name == N(master)) {
+            master_chain_infos masterinfos(_self, _self);
+            auto ite = masterinfos.begin();
+            while(ite != masterinfos.end()) {
+                ite = masterinfos.erase(ite);
+            }
+            _chains.erase(ite_chain);
+        } else {
+            _chains.modify(ite_chain, [&]( auto& _subchain ) {
+                _subchain.recent_users.clear();
+                _subchain.recent_users.shrink_to_fit();
+                _subchain.is_synced         = false;
+                _subchain.is_schedulable    = false;
+                _subchain.total_user_num    = 0;
+                _subchain.chain_id          = checksum256();
+                _subchain.committee_mroot   = checksum256();
+                _subchain.confirmed_block_number = 0;
+                _subchain.confirmed_block_id = checksum256();
+                _subchain.unconfirmed_blocks.clear();
+                _subchain.unconfirmed_blocks.shrink_to_fit();
+                //_subchain.changing_info.clear();
+                _subchain.deprecated_committee.clear();
         });
+        }
         print( "clearchain chain_name:", name{chain_name}, " users_only:", users_only, "\n" );
         producers_table _producers(_self, chain_name);
         auto ite = _producers.begin();
@@ -885,14 +895,15 @@ namespace ultrainiosystem {
             if(ite_block->committee_mroot != _chain.committee_mroot) {
                 auto new_committee_set = ite_block->get_committee_set();
                 if(new_committee_set.empty()) {
-                    print("error: committee mroot changed but new committee set is empty");
+                    print("error: committee mroot changed but new committee set is empty\n");
+                } else {
+                    //get committee delta
+                    CommitteeSet pre_committee_set(_chain.committee_set);
+                    auto cmt_delta = new_committee_set.diff(pre_committee_set);
+                    _chain.handle_committee_update(cmt_delta);
+                    new_committee_set.swap(_chain.committee_set);
                 }
                 _chain.committee_mroot = ite_block->committee_mroot;
-                //get committee delta
-                CommitteeSet pre_committee_set(_chain.committee_set);
-                auto cmt_delta = new_committee_set.diff(pre_committee_set);
-                _chain.handle_committee_update(cmt_delta);
-                new_committee_set.swap(_chain.committee_set);
             }
         } while(ite_block != ite_confirm_block);
         _chain.confirmed_block_number = ite_confirm_block->block_number;
