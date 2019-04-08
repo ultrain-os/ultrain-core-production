@@ -211,12 +211,8 @@ namespace ultrainio {
     }
 
     bool LightClient::isOutOfRange(const BlockHeader& blockHeader) const {
-        uint32_t blockNum = blockHeader.block_num();
-        if (m_unconfirmedList.size() > 0 && (blockNum > m_unconfirmedList.front().block_num() + 1)) {
-            return true;
-        }
         ULTRAIN_ASSERT(m_latestConfirmedBlockId != BlockIdType(), chain::chain_exception, "latest confirmed block id is ${id}", ("id", BlockIdType()));
-        if (blockNum <= BlockHeader::num_from_id(m_latestConfirmedBlockId)) {
+        if (blockHeader.block_num() <= BlockHeader::num_from_id(m_latestConfirmedBlockId)) {
             return true;
         }
         return false;

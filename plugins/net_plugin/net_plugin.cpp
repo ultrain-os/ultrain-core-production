@@ -2328,6 +2328,10 @@ connection::connection(string endpoint, msg_priority pri)
                 controller &cc = chain_plug->chain();
                 std::shared_ptr<StakeVoteBase> stake = MsgMgr::getInstance()->getVoterSys(cc.head_block_num() + 1);
                 StartPoint sp(stake->getCommitteeSet(), cc.head_block_id());
+                if (EpochEndPoint::isEpochEndPoint(cc.head_block_header())) {
+                    EpochEndPoint eep(cc.head_block_header());
+                    sp.nextCommitteeMroot = eep.nextCommitteeMroot();
+                }
                 light_client->setStartPoint(sp);
             }
             sync_block_master->block_msg_queue.emplace_back(msg);
