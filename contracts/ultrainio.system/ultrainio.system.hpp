@@ -483,7 +483,7 @@ namespace ultrainiosystem {
                             const std::vector<CommitteeInfo>& cmt_set);
          void schedule(const std::string& trigger);
          void setlwcparams(uint32_t keep_blocks_num);
-         void setchainparam(name chain_name, bool is_sched_on);
+         void setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on);
 
          // functions defined in ultrainio.system.cpp
          void setsysparams( const ultrainio_system_params& params );

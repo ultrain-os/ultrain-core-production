@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/470085",
+   "version": "ultrainio::abi/1.0/bc266a",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -715,6 +715,7 @@
       "base": "",
       "fields": [
         {"name": "chain_name",                 "type": "name"},
+        {"name": "chain_type",                 "type": "uint64"},
         {"name": "is_sched_on",               "type": "bool"}
        ]
    },{

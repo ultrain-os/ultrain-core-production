@@ -258,11 +258,13 @@ namespace ultrainiosystem {
                 ultrainio_assert(pre_block_index < ite_chain->unconfirmed_blocks.size(), "previous block is not found\n");
             }
 
+            bool need_report = chain_name == N(master) ? false : true;
             if((block_proposer == N(genesis) && block_number != initial_block_number) ||
                 ConfirmPoint::isConfirmPoint(headers[idx])) {
                 char confirm_id[32];
                 if(!accept_block_header(chain_name, headers[idx], confirm_id, sizeof(confirm_id))) {
                     print("error: light client check failed\n");
+                    need_report = false;
                     final_confirmed_id = ConfirmPoint::getConfirmedBlockId(headers[idx]);
                 } else {
                     memcpy(final_confirmed_id.hash, confirm_id, sizeof(confirm_id));
@@ -272,7 +274,9 @@ namespace ultrainiosystem {
                     new_confirm = true;
                 }
             }
-            bool need_report = chain_name == N(master) ? false : checkblockproposer(block_proposer, ite_chain);
+            if(need_report) {
+                need_report = checkblockproposer(block_proposer, ite_chain);
+            }
 
             _chains.modify(ite_chain, [&]( auto& _subchain ) {
                 unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, need_report, synced);
@@ -375,7 +379,7 @@ namespace ultrainiosystem {
                 _subchain.unconfirmed_blocks.shrink_to_fit();
                 //_subchain.changing_info.clear();
                 _subchain.deprecated_committee.clear();
-        });
+            });
         }
         print( "clearchain chain_name:", name{chain_name}, " users_only:", users_only, "\n" );
         producers_table _producers(_self, chain_name);
@@ -752,7 +756,9 @@ namespace ultrainiosystem {
             _chain.is_schedulable = true;
             _chain.changing_info.clear();
             _chain.committee_mroot = signed_header.committee_mroot;
-            _chain.committee_set = cmt_set;
+            if(cmt_set.size() >= 4 || signed_header.proposer == N(genesis)) {
+                _chain.committee_set = cmt_set;
+            }
 
             unconfirmed_block_header temp_header(signed_header, block_id, block_number, false, false);
             _chain.unconfirmed_blocks.push_back(temp_header);
@@ -802,13 +808,10 @@ namespace ultrainiosystem {
                 }
             }
         }
-        if(ite_min == _chains.end()) {
-            //there's no schedulable or addable sidechain existed currently
-            return master_chain_name;
-        }
-        else {
-            return ite_min->chain_name;
-        }
+
+        //there's no schedulable or addable sidechain existed currently
+        ultrainio_assert(ite_min != _chains.end(), "currently no available chain for new producer to join");
+        return ite_min->chain_name;
     }
 
     uint32_t system_contract::findpreviousblock(const std::vector<unconfirmed_block_header>& block_vct, uint32_t block_num,
@@ -920,13 +923,19 @@ namespace ultrainiosystem {
         _lwcsingleton.set(_lwc);
     }
 
-    void system_contract::setchainparam(name chain_name, bool is_sched_on) {
+    void system_contract::setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on) {
         require_auth(N(ultrainio));
         ultrainio_assert(_gstate.is_master_chain(), "only master chain can perform this action");
         auto ite_chain = _chains.find(chain_name);
         ultrainio_assert(ite_chain != _chains.end(), "chain is not found");
+        if(chain_type != ite_chain->chain_type) {
+            chaintypes_table type_tbl(_self, _self);
+            auto type_iter = type_tbl.find(chain_type);
+            ultrainio_assert(type_iter != type_tbl.end(), "this chain type is not existed");
+        }
         _chains.modify(ite_chain, [&]( auto& _subchain ) {
             _subchain.schedule_on = is_sched_on;
+            _subchain.chain_type = chain_type;
         });
     }
 } //namespace ultrainiosystem

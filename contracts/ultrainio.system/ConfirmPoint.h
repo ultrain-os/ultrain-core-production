@@ -5,7 +5,6 @@
 #include "ultrainiolib/block_header.hpp"
 #include "BlockHeaderExtKey.h"
 
-namespace {
     uint8_t from_hex( char c ) {
       if( c >= '0' && c <= '9' )
         return uint8_t(c - '0');
@@ -33,11 +32,12 @@ namespace {
         return size_t(out_pos - (uint8_t*)out_data);
     }
 
+namespace {
     block_id_type readBlockId(const std::string& s) {
         block_id_type blk_id;
         std::stringstream ss(s);
         std::string blockIdStr;
-        if (!(ss >> blockIdStr)) {
+        if ((ss >> blockIdStr)) {
             memcpy(blk_id.hash, blockIdStr.data(), blockIdStr.size());
             from_hex(blockIdStr, (char*)blk_id.hash, sizeof(blk_id));
         }
