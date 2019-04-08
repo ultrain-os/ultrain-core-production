@@ -739,7 +739,7 @@ namespace ultrainio {
                 if (con->block_num_range.firstNum == 0 || con->block_num_range.firstNum > sync_block_msg.startBlockNum) { // can't provide all the blocks
                     ilog("${p} can't provide all the blocks", ("p", con->peer_name()));
                     conns_without_block.insert(con);
-                    if (conns_without_block.size() == sync_src_count && seq_num >= 3) {
+                    if (conns_without_block.size() == sync_src_count && seq_num >= 15) {
                         ULTRAIN_ASSERT(false, chain::unlinkable_block_exception, "No block in neighbors. Help!!!");
                     }
                 } else if (con->block_num_range.lastNum > block_num) {
