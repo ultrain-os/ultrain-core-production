@@ -87,12 +87,12 @@ namespace ultrainiosystem {
                charge_ratio = 1;
             continue;
          }
-         if(extension.key == ultrainio_global_state::global_state_exten_type_key::is_claim_reward) {
-            if(extension.value == "false"){
-               print("\nclaimrewards no rewards are currently being sent \n");
-               return;
-            }
-         }
+         // if(extension.key == ultrainio_global_state::global_state_exten_type_key::is_claim_reward) {
+         //    if(extension.value == "false"){
+         //       print("\nclaimrewards no rewards are currently being sent \n");
+         //       return;
+         //    }
+         // }
       }
       uint64_t pay_account = N(utrio.resfee);
       asset resfee_tokens =
@@ -111,7 +111,7 @@ namespace ultrainiosystem {
          for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
             if( itr->unpaid_balance == 0 )
                continue;
-            auto producer_unpaid_balance = (int64_t)floor((double)itr->unpaid_balance * 99 /100);
+            auto producer_unpaid_balance = (int64_t)floor((double)itr->unpaid_balance * (100 - charge_ratio) /100);
             subchain_paid_balance += producer_unpaid_balance;
             print("\nclaimrewards subchainname:",name{chain_name}," producer:",name{itr->owner},
             " reward_account:",name{itr->claim_rewards_account}," unpaid_balance:",itr->unpaid_balance,
@@ -124,7 +124,7 @@ namespace ultrainiosystem {
          }
       }
 
-      int64_t master_pay_fee = (int64_t)floor((double)_gstate.total_unpaid_balance /100) ;
+      int64_t master_pay_fee = (int64_t)floor((double)_gstate.total_unpaid_balance * charge_ratio/100) ;
       asset fee_tokens =
           ultrainio::token(N(utrio.token)).get_balance( N(utrio.fee),symbol_type(CORE_SYMBOL).name());
 
