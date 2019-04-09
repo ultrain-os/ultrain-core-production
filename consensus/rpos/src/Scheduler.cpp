@@ -74,7 +74,7 @@ namespace ultrainio {
         m_fast_timestamp = 0;
         chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
         m_lightClientProducer = std::make_shared<LightClientProducer>(chain.get_bls_votes_manager());
-        //m_currentBlsVoterSet = m_lightClientProducer->getCurrentBlsVoterSet();
+        m_currentBlsVoterSet = m_lightClientProducer->getCurrentBlsVoterSet();
     }
 
     chain::checksum256_type Scheduler::getCommitteeMroot(uint32_t block_num) {
@@ -1540,7 +1540,7 @@ namespace ultrainio {
 
             if (isEmpty(echo_info->echoCommonPart.blockId)) {
                 dlog("produceBaxBlock.produce empty Block. save VoterSet in bax blockId = ${blockId}", ("blockId", voterSet.commonEchoMsg.blockId));
-                m_currentBlsVoterSet = voterSet.toBlsVoterSet();
+                m_currentBlsVoterSet = voterSet.toBlsVoterSet(stakeVotePtr->getNextRoundThreshold());
                 return emptyBlock();
             }
             auto propose_itor = m_proposerMsgMap.find(echo_info->echoCommonPart.blockId);
@@ -1552,7 +1552,7 @@ namespace ultrainio {
 #endif
                 dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase} save VoterSet in bax blockId = ${blockId}",
                      ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase)("blockId", voterSet.commonEchoMsg.blockId));
-                m_currentBlsVoterSet = voterSet.toBlsVoterSet();
+                m_currentBlsVoterSet = voterSet.toBlsVoterSet(stakeVotePtr->getNextRoundThreshold());
                 return propose_itor->second.block;
             }
             dlog("produceBaxBlock.> 2f + 1 echo. hash = ${hash} can not find it's propose.",("hash",echo_info->echoCommonPart.blockId));
@@ -1626,7 +1626,7 @@ namespace ultrainio {
                 voterSet.proofPool = itor->second.proofPool;
 #endif
                 // save VoterSet
-                m_currentBlsVoterSet = voterSet.toBlsVoterSet();
+                m_currentBlsVoterSet = voterSet.toBlsVoterSet(stakeVotePtr->getNextRoundThreshold());
                 break;
             }
         }
@@ -2003,7 +2003,7 @@ namespace ultrainio {
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
         m_lightClientProducer->acceptNewHeader(chain.head_block_header(), m_currentBlsVoterSet);
-        //m_lightClientProducer->saveCurrentBlsVoterSet(m_currentBlsVoterSet);
+        m_lightClientProducer->saveCurrentBlsVoterSet(m_currentBlsVoterSet);
         MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
     }
 

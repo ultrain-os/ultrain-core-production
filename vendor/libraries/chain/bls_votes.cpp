@@ -67,10 +67,9 @@ namespace ultrainio {
                 bls_index_set::walk_indices([this, &worldstate_db, &ws_helper_ptr](auto utils) {
                     using index_t = typename decltype(utils)::index_t;
                     using value_t = typename index_t::value_type;
-                    if (!std::is_same<value_t, bls_votes_object>::value) {
-                        return;
+                    if (std::is_same<value_t, bls_votes_object>::value) {
+                        ws_helper_ptr->add_table_to_worldstate<index_t>(worldstate_db);
                     }
-                    ws_helper_ptr->add_table_to_worldstate<index_t>(worldstate_db);
                 });
             }
 
@@ -83,10 +82,13 @@ namespace ultrainio {
                 bls_index_set::walk_indices([&](auto utils) {
                     using index_t = typename decltype(utils)::index_t;
                     using value_t = typename index_t::value_type;
-                    if (!std::is_same<value_t, bls_votes_object>::value) {
-                        return;
+                    if (std::is_same<value_t, bls_votes_object>::value) {
+                        ws_helper_ptr->read_table_from_worldstate<index_t>(worldstate_db);
+
+                        // create bls_votes_current_object
+                        _db.create<bls_votes_current_object>([&](bls_votes_current_object &obj) {
+                        });
                     }
-                    ws_helper_ptr->read_table_from_worldstate<index_t>(worldstate_db);
                 });
             }
 
