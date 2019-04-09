@@ -39,7 +39,7 @@ namespace ultrainio {
     void LightClientProducer::handleCheckPoint(chain::controller& chain, const CommitteeSet& committeeSet) {
         chain.add_header_extensions_entry(kCommitteeSet, committeeSet.toVectorChar());
         std::string s = std::string(m_BlsVotesMgr.get_latest_check_point_id());
-        std::vector<char> vc(s.begin(), s.begin());
+        std::vector<char> vc(s.begin(), s.end());
         chain.add_header_extensions_entry(kPreCheckPointId, vc);
         ilog("add kCommitteeSet in blockNum : ${blockNum} : ${committeeset}", ("blockNum", chain.head_block_num() + 1)("committeeset", committeeSet.toString()));
     }

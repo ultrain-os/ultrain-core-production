@@ -16,6 +16,8 @@ namespace ultrainio {
 #endif
         bool empty() const;
 
-        BlsVoterSet toBlsVoterSet() const;
+        BlsVoterSet toBlsVoterSet(int weight) const;
+
+        std::string generateSigX(const std::vector<std::string>& blsSignPool) const;
     };
 }

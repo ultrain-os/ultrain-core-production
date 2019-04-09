@@ -21,7 +21,7 @@ namespace ultrainio {
 
     const double Config::kEmptyBlockThresholdRatio = 0.80;
 
-    const double Config::kEmptyBlock2ThresholdRatio = 0.70;
+    const double Config::kEmptyBlock2ThresholdRatio = 0.67;
 
     int Config::s_maxRoundSeconds = 10;
 

@@ -19,7 +19,7 @@ namespace ultrainio {
         m_workingCommitteeSet = m_startPoint.committeeSet;
         m_latestConfirmedBlockId = m_startPoint.lastConfirmedBlockId;
         m_nextCommitteeMroot = m_startPoint.nextCommitteeMroot;
-        ilog("set start point confirmed num : ${num}, committeeSet : ${committeeSet}", ("num", BlockHeader::num_from_id(m_latestConfirmedBlockId))("committeeSet", m_workingCommitteeSet.toString()));
+        ilog("set start point confirmed num : ${num}", ("num", BlockHeader::num_from_id(m_latestConfirmedBlockId)));
     }
 
     // invoked by fetch block feature
@@ -31,8 +31,6 @@ namespace ultrainio {
     }
 
     void LightClient::accept(const BlockHeader& blockHeader, const std::string& signature) {
-        ilog("accept BlockHeader num : ${blockNum}, id : ${id} latest confirm : ${latest} signature : ${s}",
-             ("blockNum", blockHeader.block_num())("id", blockHeader.id())("latest", BlockHeader::num_from_id(m_latestConfirmedBlockId))("s", signature));
         if (Helper::isGenesis(blockHeader)) {
             handleGenesis(blockHeader, signature);
             return;
