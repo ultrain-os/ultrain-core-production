@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/bc266a",
+   "version": "ultrainio::abi/1.0/1504fc",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -519,7 +519,7 @@
      "name": "lwc_parameters",
      "base": "",
      "fields": [
-        {"name": "save_blocks_num",       "type": "uint32"},
+        {"name": "save_blocks_num",       "type": "uint32"}
        ]
     },{
      "name": "user_info",
