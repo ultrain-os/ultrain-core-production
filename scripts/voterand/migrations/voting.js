@@ -5,10 +5,17 @@ const process = require('child_process');
 
 var config = require("../config");
 
+const mngConfigPath = "/root/.local/share/ultrainio/ultrainmng/config/config.ini";
+function getRandToolsPath() {
+  var nodeConfig = ini.parse(fs.readFileSync(mngConfigPath, 'utf-8'));
+  return nodeConfig["randToolsPath"];
+}
+
 // global config
-var g_vrf_client_path = "/root/workspace/ultrain-core/scripts/rand/vrf_client";
+var toolsPath = getRandToolsPath();
+var g_vrf_client_path = `${toolsPath}/vrf_client`;
 var g_node_config_path = "/root/.local/share/ultrainio/nodultrain/config/config.ini";
-var g_perl_script_path = "/root/workspace/ultrain-core/scripts/rand/b58.pl";
+var g_perl_script_path = `${toolsPath}/b58.pl`;
 var g_seed_config_path = "/root/workspace/ultrain-core/scripts/ultrainmng/seedconfig.json";
 var g_chain_id = undefined;
 
@@ -36,10 +43,8 @@ function isDuplicate(key) {
 
 
 function generateVrfProof(sk, randNum) {
-  console.log(`generateVrfProof-skdd: ${sk}, randNum: ${randNum}`);
   var basedSk = base64Sk(sk);
   randNum = randNum.length % 2 == 0 ? randNum : randNum + "0";
-  console.log(`generateVrfProof-basedSk: ${basedSk}, randNum: ${randNum}`);
   var cmd = `${g_vrf_client_path} -p ${basedSk} ${randNum}`;
   var res = process.execSync(cmd).toString();
   return res.split(";")[1];
@@ -100,17 +105,16 @@ async function votingRandomNum() {
   var randNum = parameters[1];
   var code = parameters[2];
 
-  console.log(bckNum + "bcknum");
-  console.log(randNum + "randNum");
-  console.log(code + "code");
+  // console.log(bckNum + "bcknum");
+  // console.log(randNum + "randNum");
+  // console.log(code + "code");
 
   if (code != -1) {
     if (isDuplicate(bckNum)) {
       console.error(`The voting of ${bckNum} is duplicated`);
     } else {
       let proof = generateVrfProof(securityKey, randNum);
-      let tr = await contract.vote(proof, bckNum, authorize);
-      console.log(tr);
+      await contract.vote(proof, bckNum, authorize);
     }
   } else {
     console.warn(`Current user ${account} is not main voter.`);
@@ -120,5 +124,3 @@ async function votingRandomNum() {
 module.exports = {
   votingRandomNum
 }
-
-
