@@ -67,9 +67,11 @@ namespace ultrainiosystem {
       exten_types          table_extension;
 
       enum global_state_exten_type_key {
-          global_state_key_start = 0,
-          update_auth,
-          confirm_point_interval
+         global_state_key_start = 0,
+         update_auth = 1,
+         confirm_point_interval = 2,
+         sidechain_charge_ratio = 3,
+         is_claim_reward = 4,
       };
 
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,

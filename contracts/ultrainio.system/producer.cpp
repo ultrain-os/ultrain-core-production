@@ -142,6 +142,16 @@ namespace ultrainiosystem {
                               "The current action fee is 5 UGAS, please ensure that the account is fully funded" );
             INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {producer,N(active)},
                 { producer, N(utrio.fee), asset(50000), std::string("regproducer fee") } );
+            for(auto ite_chain = _chains.begin(); ite_chain != _chains.end(); ++ite_chain) {
+                if(ite_chain->chain_name == N(master))
+                    continue;
+                if(is_empowered(producer, ite_chain->chain_name))
+                    continue;
+                std::string errorlog = std::string("producer account must be synchronized to all the subchains, \
+                        so that we can schedule and secure the subchains. Please perform empoweruser action \
+                        producer:") + name{producer}.to_string() + std::string(" not synchronized to subchain:") + name{ite_chain->chain_name}.to_string();
+                ultrainio_assert( false, errorlog.c_str());
+            }
         }
     }
 

@@ -77,7 +77,23 @@ namespace ultrainiosystem {
       require_auth(_self);
       ultrainio_assert( _gstate.cur_committee_number >= _gstate.min_committee_member_number,
          "The current number of committees must be greater than the minimum to be eligible for new awards");
-
+      uint32_t charge_ratio = 1; //The default handling charge is 1%
+      for(auto extension : _gstate.table_extension){
+         if(extension.key == ultrainio_global_state::global_state_exten_type_key::sidechain_charge_ratio) {
+            if(extension.value.empty())
+               continue;
+            charge_ratio = (uint32_t)std::stoi(extension.value);
+            if(charge_ratio > 100)
+               charge_ratio = 1;
+            continue;
+         }
+         if(extension.key == ultrainio_global_state::global_state_exten_type_key::is_claim_reward) {
+            if(extension.value == "false"){
+               print("\nclaimrewards no rewards are currently being sent \n");
+               return;
+            }
+         }
+      }
       uint64_t pay_account = N(utrio.resfee);
       asset resfee_tokens =
           ultrainio::token(N(utrio.token)).get_balance( pay_account,symbol_type(CORE_SYMBOL).name());
@@ -132,7 +148,8 @@ namespace ultrainiosystem {
             INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {N(utrio.fee),N(active)},
                { N(utrio.fee), itr->claim_rewards_account, asset(producer_unpaid_balance), std::string("producer block pay") } );
       }
-      print("\nclaimrewards total subchain_paid_balance:",subchain_paid_balance," master_paid_balance:",master_paid_balance," fee_tokens:",fee_tokens.amount,"\n");
+      print("\nclaimrewards total subchain_paid_balance:",subchain_paid_balance," subchain_total_cur_chain_block:",_gstate.total_cur_chain_block,
+            " master_paid_balance:",master_paid_balance," fee_tokens:",fee_tokens.amount,"\n");
       _gstate.total_unpaid_balance = 0;
    }
 

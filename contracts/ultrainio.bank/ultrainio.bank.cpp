@@ -78,11 +78,14 @@ namespace ultrainiobank {
 
         print(name{from}," transfer to ", name{to}, "  ", quantity," to_chain:",memo);
         uint64_t block_height = (uint64_t)head_block_number() + 1;
-        if(block_height > 50000){
+        ultrainiosystem::lwc_singleton   _lwcsingleton(N(ultrainio),N(ultrainio));
+        ultrainio_assert( _lwcsingleton.exists(), "lwc_singleton lwc table not found");
+        ultrainiosystem::lwc_parameters _lwc = _lwcsingleton.get();
+        if(block_height > _lwc.save_blocks_num){
             uint32_t loopsize = 0;
             bulletinbank bullbank( _self, chain_name );
             for(auto bulliter = bullbank.begin(); bulliter != bullbank.end(); ){
-                if(bulliter->block_height < (block_height - 50000))
+                if(bulliter->block_height < (block_height - _lwc.save_blocks_num))
                     bulliter = bullbank.erase(bulliter);
                 else
                     break;

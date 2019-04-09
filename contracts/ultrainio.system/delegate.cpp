@@ -57,7 +57,7 @@ namespace ultrainiosystem {
                         name{from}.to_string().find( "utrio." ) == 0, // system account
                         "only master chain or privilaged account allow (un)delegate consensus" );
 
-       ultrainio_assert(stake_cons_delta.amount >= 1000000 ||
+       ultrainio_assert(stake_cons_delta.amount >= 10000000 ||
                         stake_cons_delta.amount < 0 , "should stake at least 100 amount" );
 
       // update consensus stake delegated from "from" to "receiver"
@@ -298,7 +298,7 @@ namespace ultrainiosystem {
       }
       print("resourcelease receiver:", name{receiver}, " combosize:",combosize," days:",days," location:",name{location});
       ultrainio_assert( days <= (365*30+7), "resource lease buy days must reserve a positive and less than 30 years" );
-
+      uint32_t  free_account_per_res = 500;
       // update totals of "receiver"
       {
          uint64_t cuttingfee = 0;
@@ -323,8 +323,8 @@ namespace ultrainiosystem {
                   tot.start_block_height = cur_block_height;
                   tot.end_block_height = tot.start_block_height + (uint32_t)days*seconds_per_day / block_interval_seconds();
                   tot.modify_block_height = cur_block_height;
-                  if(_gstate.is_master_chain() && days*seconds_per_day >= seconds_per_year/2)
-                     tot.free_account_number = (uint32_t)combosize* 1000;
+                  if(_gstate.is_master_chain() && days*seconds_per_day >= seconds_per_year)
+                     tot.free_account_number = (uint32_t)combosize* free_account_per_res;
                });
          } else {
             uint64_t free_account_number = 0;
@@ -345,15 +345,15 @@ namespace ultrainiosystem {
                    });
                }
                if(_gstate.is_master_chain() &&  (reslease_itr->end_block_height > cur_block_height) &&
-                 ((reslease_itr->end_block_height - cur_block_height)* block_interval_seconds() > seconds_per_year/2)){
-                  free_account_number = combosize* 1000;
+                 ((reslease_itr->end_block_height - cur_block_height)* block_interval_seconds() > seconds_per_year)){
+                  free_account_number = combosize* free_account_per_res;
                }
             } else if(days > 0)
             {
                ultrainio_assert(reslease_itr->lease_num > 0, "resource lease number is not normal" );
                cuttingfee = days*reslease_itr->lease_num;
-               if(_gstate.is_master_chain() && days > seconds_per_year/24/3600/2){
-                  free_account_number = reslease_itr->lease_num* 1000;
+               if(_gstate.is_master_chain() && days*seconds_per_day > seconds_per_year){
+                  free_account_number = reslease_itr->lease_num* free_account_per_res;
                }
             }
             _reslease_tbl.modify( reslease_itr, [&]( auto& tot ) {

@@ -36,21 +36,21 @@ def jsonArg(a):
     return " '" + json.dumps(a) + "' "
 
 def run(args):
-    print('bios-boot-tutorial.py:', args)
+    print('bios-test.py:', args)
     logFile.write(args + '\n')
     if subprocess.call(args, shell=True):
-        print('bios-boot-tutorial.py: exiting because of error')
+        print('bios-test.py: exiting because of error')
         sys.exit(1)
 
 def simple_run(args):
-    print('bios-boot-tutorial.py:', args)
+    print('bios-test.py:', args)
     logFile.write(args + '\n')
     if subprocess.call(args, shell=True):
-        print('bios-boot-tutorial.py: error')
+        print('bios-test.py: error')
 
 def retry(args):
     while True:
-        print('bios-boot-tutorial.py:', args)
+        print('bios-test.py:', args)
         logFile.write(args + '\n')
         if subprocess.call(args, shell=True):
             sleep(0.3)
@@ -59,7 +59,7 @@ def retry(args):
             break
 
 def background(args):
-    print('bios-boot-tutorial.py:', args)
+    print('bios-test.py:', args)
     logFile.write(args + '\n')
     return subprocess.Popen(args, shell=True)
 
@@ -170,11 +170,11 @@ def stepInitSimpleTest():
 
 def stepRegProducers():
     for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "ultrainio" -u' % (accounts[i], pk_list[i], bls_pk_list[i], "hello", accounts[i]))
+        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "ultrainio" -u' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
     #retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
     sleep(2)
     for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'system delegatecons utrio.stake %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
+        retry(args.clultrain + 'system delegatecons ultrainio %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
     #stepInitSimpleTest()
     #sleep(2)
     for i in range(len(rand_acc_lst)):
@@ -195,14 +195,16 @@ def stepRegProducers():
     sleep(15)
     #table_extension key, detail see ultrainio.system.hpp
     #enum global_state_exten_type_key {
-    #    global_state_key_start = 0,
-    #    update_auth,
-    #    confirm_point_interval
+         # global_state_key_start = 0,
+         # update_auth = 1,
+         # confirm_point_interval = 2,
+         # sidechain_charge_ratio = 3,
+         # is_claim_reward = 4,
     #};
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"], [2, "12"]]}}\' -p ultrainio ' % \
+        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"], [2, "12"], [3, "1"], [4, "true"]]}}\' -p ultrainio ' % \
         (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
         newaccount_fee, args.subchain, worldstate_interval, resourcelease_fee) )
     sleep(5)
@@ -217,12 +219,12 @@ def stepCreateinitAccounts():
     retry(args.clultrain + 'transfer ultrainio utrio.rand "10000 UGAS" ')
     retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
     for a in rand_acc_lst:
-        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"3.0000"))
+        retry(args.clultrain + 'transfer  utrio.rand  %s  "%s UGAS" '  % (a,"3.0000"))
     #retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % ("utrio.bank","10000.0000"))
 def stepResign():
     #resign('ultrainio', 'utrio.null')
     resign('utrio.stake', 'utrio.null')
-    resign('utrio.bank', 'utrio.null')
+    #resign('utrio.bank', 'utrio.null')
 
 def resourceTransaction(fromacc,recacc,value):
     retry(args.clultrain + 'system delegatebw  %s %s "%s UGAS"  "%s UGAS"'  % (fromacc,recacc,5000/value,5000/value))
@@ -347,7 +349,7 @@ commands = [
     ('I', 'initsimpletest', stepInitSimpleTest,         False,    "Simple transfer contract call test"),
     ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
-    ('q', 'resign',         stepResign,                False,    "Resign utrio"),
+    ('q', 'resign',         stepResign,                 True,    "Resign utrio"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
     ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction"),
     ('u', 'unregproducers',  stepunregproducersTest,    False,    "stepunregproducersTest"),
@@ -409,9 +411,7 @@ if local == True :
             adjustaccounts.append("user"+a)
     accounts = adjustaccounts
 
-
-#args.clultrain += '--url http://localhost:%d ' % args.http_port
-
+os.remove(args.log_path)
 logFile = open(args.log_path, 'a')
 
 logFile.write('\n\n' + '*' * 80 + '\n\n\n')
@@ -423,4 +423,4 @@ for (flag, command, function, inAll, help) in commands:
             haveCommand = True
             function()
 if not haveCommand:
-    print('bios-boot-tutorial.py: Tell me what to do. -a does almost everything. -h shows options.')
+    print('bios-test.py: Tell me what to do. -a does almost everything. -h shows options.')

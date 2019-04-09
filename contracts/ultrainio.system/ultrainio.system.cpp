@@ -560,11 +560,11 @@ void system_contract::voteresourcelease() {
             break;
          }
       }
-
-      if (!is_free_create && creator != _self && newaccount_fee > 0) {
-          INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {creator,N(active)},
-                                                                 { creator, N(utrio.fee), asset(newaccount_fee), std::string("create account") } );
-      }
+      ultrainio_assert( is_free_create || creator == _self, "The current free account is insufficient, please purchase resouce to get the free account" );
+      // if (!is_free_create && creator != _self && newaccount_fee > 0) {
+      //    INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {creator,N(active)},
+      //                         { creator, N(utrio.fee), asset(newaccount_fee), std::string("create account") } );
+      // }
 
       set_resource_limits( newact, 0, 0, 0 );
    }
@@ -588,7 +588,7 @@ void system_contract::voteresourcelease() {
          }
          int64_t authsize = data.keys.size() + data.accounts.size() + data.waits.size();
          ultrainio_assert(authsize > 0, "update authority amount has to be greater than zero");
-         if(updateauth_fee > 0){
+         if(updateauth_fee > 0 && (name{account}.to_string().find( "utrio." ) != 0 ) && (account != _self)){
             INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {account,N(active)},
                { account, N(utrio.fee), asset(updateauth_fee * authsize), std::string("update auth") } );
          }
