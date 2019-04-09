@@ -152,7 +152,7 @@ namespace ultrainio {
         uint32_t                         max_nodes_per_host = 4;
         uint32_t                         num_clients = 0;
         uint32_t                         max_retry_count = 3;
-        uint32_t                         max_grey_list_size = 40;
+        uint32_t                         max_grey_list_size = 5;
 
         vector<string>                   rpos_active_peers;
         vector<string>                   trx_active_peers;
