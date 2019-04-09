@@ -13,14 +13,14 @@ namespace ultrainiosystem {
     using ultrainio::asset;
     using ultrainio::bytes;
     using ultrainio::print;
-   //  struct chain_balance {
-   //          name     chain_name;
-   //          asset    balance;
-   //          uint64_t primary_key()const { return chain_name; }
+    struct chain_balance {
+            name     chain_name;
+            asset    balance;
+            uint64_t primary_key()const { return chain_name; }
 
-   //          ULTRAINLIB_SERIALIZE(chain_balance, (chain_name)(balance))
-   //  };
-   //  typedef ultrainio::multi_index<N(chainbalance), chain_balance> chainbalance;
+            ULTRAINLIB_SERIALIZE(chain_balance, (chain_name)(balance))
+    };
+    typedef ultrainio::multi_index<N(chainbalance), chain_balance> chainbalance;
     struct TransferActionParam {
         public:
             account_name from;
@@ -97,13 +97,13 @@ namespace ultrainiosystem {
             if( cur_tokens < tap.val && !_gstate.is_master_chain()){ //if master chain no issue tokens
                INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
                {N(utrio.bank),(tap.val - cur_tokens), std::string("issue tokens for subchain utrio.bank")} );
-            // } else if(_gstate.is_master_chain()){
-            //    chainbalance  chainbalan(N(utrio.bank), N(utrio.bank));
-            //    auto it_chain = chainbalan.find( chain_name );
-            //    if(cur_tokens < tap.val || it_chain == chainbalan.end() || it_chain->balance < tap.val){
-            //       print(" ERROR The utrio.bank of the masterchain should never be smaller than the amount of money to be transferred");
-            //       continue;
-            //    }
+            } else if(_gstate.is_master_chain()){
+               chainbalance  chainbalan(N(utrio.bank), N(utrio.bank));
+               auto it_chain = chainbalan.find( chain_name );
+               if(cur_tokens < tap.val || it_chain == chainbalan.end() || it_chain->balance < tap.val){
+                  print(" ERROR The utrio.bank of the masterchain should never be smaller than the amount of money to be transferred");
+                  continue;
+               }
             }
 
             exec_succ++;

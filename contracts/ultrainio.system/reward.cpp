@@ -86,12 +86,12 @@ namespace ultrainiosystem {
                charge_ratio = 1;
             continue;
          }
-         // if(extension.key == ultrainio_global_state::global_state_exten_type_key::is_claim_reward) {
-         //    if(extension.value == "false"){
-         //       print("\nclaimrewards no rewards are currently being sent \n");
-         //       return;
-         //    }
-         // }
+         if(extension.key == ultrainio_global_state::global_state_exten_type_key::is_claim_reward) {
+            if(extension.value == "false"){
+               print("\nclaimrewards no rewards are currently being sent \n");
+               return;
+            }
+         }
       }
       uint64_t pay_account = N(utrio.resfee);
       asset resfee_tokens =

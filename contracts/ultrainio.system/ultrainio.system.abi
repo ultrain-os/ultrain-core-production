@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/5318c5",
+   "version": "ultrainio::abi/1.0/19e448",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -358,6 +358,13 @@
          {"name":"owner", "type":"account_name"}
       ]
     },{
+      "name": "setfreeacc",
+      "base": "",
+      "fields": [
+         {"name":"account", "type":"account_name"},
+         {"name":"number", "type":"uint64"}
+      ]
+    },{
       "name": "delegated_consensus",
       "base": "",
       "fields": [
@@ -383,6 +390,14 @@
          {"name":"end_block_height",    "type":"uint32"},
          {"name":"modify_block_height", "type":"uint32"},
          {"name":"free_account_number", "type":"uint32"},
+         {"name": "table_extension", "type": "exten_type[]"}
+      ]
+    },{
+      "name": "free_account",
+      "base": "",
+      "fields": [
+         {"name":"owner",       "type":"account_name"},
+         {"name":"acc_num",   "type":"uint64"},
          {"name": "table_extension", "type": "exten_type[]"}
       ]
     },{
@@ -845,6 +860,10 @@
       "type": "recycleresource",
       "ricardian_contract": ""
    },{
+      "name": "setfreeacc",
+      "type": "setfreeacc",
+      "ricardian_contract": ""
+   },{
       "name": "regproducer",
       "type": "regproducer",
       "ricardian_contract": ""
@@ -994,6 +1013,12 @@
     },{
       "name": "reslease",
       "type": "resources_lease",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "freeacc",
+      "type": "free_account",
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]

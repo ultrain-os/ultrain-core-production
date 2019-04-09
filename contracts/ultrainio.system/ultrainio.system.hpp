@@ -393,6 +393,15 @@ namespace ultrainiosystem {
    };
    typedef ultrainio::multi_index< N(reslease), resources_lease>      resources_lease_table;
 
+   struct free_account {
+      account_name   owner;
+      uint64_t       acc_num = 0;
+      exten_types    table_extension;
+      uint64_t  primary_key()const { return owner; }
+      ULTRAINLIB_SERIALIZE( free_account, (owner)(acc_num)(table_extension) )
+   };
+   typedef ultrainio::multi_index< N(freeacc), free_account>      freeaccount;
+
    struct schedule_setting {
        bool          is_schedule_enabled;
        uint16_t      schedule_period;
@@ -442,7 +451,7 @@ namespace ultrainiosystem {
          void resourcelease( account_name from, account_name receiver,
                              uint64_t combosize, uint64_t days, name location = master_chain_name);
          void recycleresource(const account_name owner);
-
+         void setfreeacc( account_name account, uint64_t number);
 
          // functions defined in producer.cpp
          void regproducer( const account_name producer,

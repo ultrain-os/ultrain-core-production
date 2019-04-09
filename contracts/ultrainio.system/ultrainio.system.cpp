@@ -558,6 +558,16 @@ void system_contract::voteresourcelease() {
             break;
          }
       }
+      if(!is_free_create){
+         freeaccount free_acc(_self,_self);
+         auto itr_acc = free_acc.find(creator);
+         if (itr_acc != free_acc.end() && itr_acc->acc_num > 0){
+            free_acc.modify( itr_acc, [&]( auto& f  ) {
+               f.acc_num--;
+            });
+            is_free_create = true;
+         }
+      }
       ultrainio_assert( is_free_create || creator == _self, "The current free account is insufficient, please purchase resouce to get the free account" );
       // if (!is_free_create && creator != _self && newaccount_fee > 0) {
       //    INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {creator,N(active)},
@@ -606,7 +616,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // ultrainio.system.cpp
      (setsysparams)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate.cpp
-     (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)
+     (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)(setfreeacc)
      // producer.cpp
      (regproducer)(unregprod)
      // reward.cpp
