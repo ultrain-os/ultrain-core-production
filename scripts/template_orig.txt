@@ -7,7 +7,8 @@ udp-listen-port = 20124
 max-clients = 12
 min-connections = 8
 max-retry-count = 3
-max-grey-list-size = 40
+# Please modify the list size according to producer count 
+max-grey-list-size = 5
 
 #monitor_server
 
