@@ -2,7 +2,6 @@
 
 #include <ultrainio.token/ultrainio.token.hpp>
 #include <ultrainiolib/system.h>
-#include <ultrainiolib/transaction.h>
 #include <ultrainiolib/transaction.hpp>
 #include <cmath>
 namespace ultrainiosystem {

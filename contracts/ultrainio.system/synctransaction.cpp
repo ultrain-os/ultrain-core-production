@@ -5,13 +5,8 @@
 #include "ultrainio.system.hpp"
 
 #include <ultrainiolib/ultrainio.hpp>
-#include <ultrainiolib/print.hpp>
-#include <ultrainiolib/multi_index.hpp>
-#include <ultrainiolib/transaction.hpp>
 #include <ultrainio.token/ultrainio.token.hpp>
 #include <ultrainiolib/merkle_proof.hpp>
-#include <ultrainiolib/asset.hpp>
-#include <ultrainiolib/action.hpp>
 
 namespace ultrainiosystem {
     using namespace ultrainio;

@@ -271,7 +271,7 @@ namespace ultrainiosystem {
    void system_contract::resourcelease( account_name from, account_name receiver,
                           uint64_t combosize, uint64_t days, name location){
       require_auth( from );
-      ultrainio_assert( _gstate.is_master_chain() || from == _self, "only master chain allow sync resourcelease" );
+      ultrainio_assert( from == _self, "only allow ultrainio account resourcelease" );
       ultrainio_assert(location != default_chain_name && location != N(master) , "wrong location");
       auto chain_itr = _chains.end();
       if(location != master_chain_name) {
