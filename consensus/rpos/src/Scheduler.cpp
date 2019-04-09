@@ -74,7 +74,7 @@ namespace ultrainio {
         m_fast_timestamp = 0;
         chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
         m_lightClientProducer = std::make_shared<LightClientProducer>(chain.get_bls_votes_manager());
-        //m_currentBlsVoterSet = m_lightClientProducer->getCurrentBlsVoterSet();
+        m_currentBlsVoterSet = m_lightClientProducer->getCurrentBlsVoterSet();
     }
 
     chain::checksum256_type Scheduler::getCommitteeMroot(uint32_t block_num) {
@@ -2003,7 +2003,7 @@ namespace ultrainio {
              ("id", block->id())
              ("count", new_bs->block->transactions.size()));
         m_lightClientProducer->acceptNewHeader(chain.head_block_header(), m_currentBlsVoterSet);
-        //m_lightClientProducer->saveCurrentBlsVoterSet(m_currentBlsVoterSet);
+        m_lightClientProducer->saveCurrentBlsVoterSet(m_currentBlsVoterSet);
         MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
     }
 
