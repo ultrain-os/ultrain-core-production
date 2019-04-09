@@ -24,10 +24,6 @@ schduleaccounts=[]
 conf = ConfigParser()
 curindex = 0
 curblockheight = 0
-if os.path.isfile("/root/workspace/ultrain-core/scripts/mutichain.cfg") :
-    conf.read("/root/workspace/ultrain-core/scripts/mutichain.cfg")
-    curindex = conf.getint('config', 'index')
-    curblockheight = conf.getint('config', 'blockheight')
 basis_value = curindex*150
 maxnum=4
 prefixStr="token.a."
