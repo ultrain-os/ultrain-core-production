@@ -111,7 +111,7 @@ struct controller_impl {
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    std::shared_ptr<ws_file_manager>                       ws_manager_ptr;
 
-   map< account_name, std::list<std::string> > registered_event_map;
+   map< account_name, std::list<fc::url> > registered_event_map;
    struct contract_event_type {
       account_name name;
       transaction_id_type id;
@@ -1409,20 +1409,21 @@ struct controller_impl {
 
    void register_event(const std::string& account, const std::string& post_url) {
       ULTRAIN_ASSERT(can_accept_event_register, event_register_wrong_node, "Can't register event on producing node.");
+      fc::url fc_url(post_url);
 
       auto it = registered_event_map.find(account);
       if (it == registered_event_map.end())
       {
-        auto result = registered_event_map.insert(std::pair<account_name, std::list<std::string> >(account, std::list<std::string>()));
-        result.first->second.emplace_back(post_url);
+        auto result = registered_event_map.insert(std::pair<account_name, std::list<fc::url> >(account, std::list<fc::url>()));
+        result.first->second.emplace_back(fc_url);
       }
       else
       {
         for (auto list_it = it->second.begin(); list_it != it->second.end(); ++list_it)
         {
-           ULTRAIN_ASSERT(*list_it != post_url, event_register_duplicate, "Duplicate register.");
+           ULTRAIN_ASSERT(std::string(*list_it) != post_url, event_register_duplicate, "Duplicate register.");
         }
-        it->second.emplace_back(post_url);
+        it->second.emplace_back(fc_url);
       }
    }
 
@@ -1432,7 +1433,7 @@ struct controller_impl {
       {
          for (auto list_it = it->second.begin(); list_it != it->second.end(); ++list_it)
          {
-            if (*list_it == post_url)
+            if (std::string(*list_it) == post_url)
             {
                ilog("found url:", ("url", post_url));
                it->second.erase(list_it);
@@ -1498,12 +1499,11 @@ struct controller_impl {
 
          auto map_it = registered_event_map.find(it->name);
          if (map_it != registered_event_map.end()) {
-            for (auto post_url : map_it->second) {
+            for (auto& post_url : map_it->second) {
                fc::variant params;
                fc::to_variant(std::make_pair((*it).event_name, (*it).message), params);
-               auto event_url = fc::url(post_url);
                ilog("post event: ${e} to url: ${url}", ("e", (*it).event_name)("url", post_url));
-               if (!self.http_async_post(event_url, params, fc::time_point::now() + fc::microseconds(1000000))) {
+               if (!self.http_async_post(post_url, params, fc::time_point::now() + fc::microseconds(1000000))) {
                   elog("async post event failed.");
                }
             }

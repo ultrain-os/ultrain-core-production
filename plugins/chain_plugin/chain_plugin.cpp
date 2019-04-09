@@ -1652,6 +1652,8 @@ read_write::register_result read_write::register_event(const register_event_para
       db.register_event(params.account, params.post_url);
    } catch (chain_exception& e) {
       res.result = e.what();
+   } catch (fc::exception& e) {
+      res.result = e.what();
    } catch (...) {
       res.result = "Unknown error.";
    }
@@ -1667,6 +1669,8 @@ read_write::register_result read_write::unregister_event(const unregister_event_
    try {
       db.unregister_event(params.account, params.post_url);
    } catch (chain_exception& e) {
+      res.result = e.what();
+   } catch (fc::exception& e) {
       res.result = e.what();
    } catch (...) {
       res.result = "Unknown error.";
