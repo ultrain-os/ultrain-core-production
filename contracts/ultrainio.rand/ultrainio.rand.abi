@@ -68,6 +68,11 @@
     {
       "fields": [],
       "base": "",
+      "name": "getMainVoteInfo"
+    },
+    {
+      "fields": [],
+      "base": "",
       "name": "query"
     },
     {
@@ -109,6 +114,10 @@
         {
           "name": "role",
           "type": "i32"
+        },
+        {
+          "name": "bonus",
+          "type": "i32"
         }
       ],
       "base": "",
@@ -141,6 +150,20 @@
       ],
       "base": "",
       "name": "RandRecord"
+    },
+    {
+      "fields": [
+        {
+          "name": "bcknum",
+          "type": "u64"
+        },
+        {
+          "name": "votedUser",
+          "type": "account_name[]"
+        }
+      ],
+      "base": "",
+      "name": "VoteHistory"
     }
   ],
   "actions": [
@@ -167,6 +190,12 @@
       "name": "vote",
       "type": "vote",
       "ability": "normal"
+    },
+    {
+      "ricardian_contract": "",
+      "name": "getMainVoteInfo",
+      "type": "getMainVoteInfo",
+      "ability": "pureview"
     },
     {
       "ricardian_contract": "",
@@ -214,6 +243,17 @@
       ],
       "name": "rand",
       "type": "RandRecord"
+    },
+    {
+      "index_type": "i64",
+      "keys_names": [
+        "currency"
+      ],
+      "keys_types": [
+        "uint64"
+      ],
+      "name": "history",
+      "type": "VoteHistory"
     }
   ]
 }

@@ -1,20 +1,55 @@
-import { NAME } from "ultrain-ts-lib/src/account";
+import { NAME, RNAME } from "ultrain-ts-lib/src/account";
 import { intToString } from "ultrain-ts-lib/src/utils";
 import { SHA256 } from "ultrain-ts-lib/src/crypto";
 import { Block } from "ultrain-ts-lib/src/block";
+import { Asset } from "ultrain-ts-lib/src/asset";
+import { Action } from "ultrain-ts-lib/src/action";
+import { Log } from "ultrain-ts-lib/src/log";
+import { queryBalance } from "../../node_modules/ultrain-ts-lib/lib/balance";
 
 //table + scope for external query
 export const VOTER_TABLE = "voter";
 export const WAITER_TABLE = "waiter";
 export const RAND_TABLE = "rand";
+export const VOTE_HST_TABLE ="history";
+export const CONFIG_TABLE = "config";
+
 export const CONT_NAME = "utrio.rand";
+
 export const EPOCH: u64 = 3; // period for rand generation
 export let RAND_KEY = NAME("rand");
 export let MAIN_COUNT_KEY = NAME("mainnum");
 export let MAIN_VOTES_NUM_KEY = NAME("votesnum");
 
+// committee
+const ADMIN_NAME = "ultrainio";
+const COMMITTEE_TABLE = "producers";
 
 const CACHED_RAND_COUNT: u64 = 999;
+const CACHED_HST_COUNT: u64 = 10;
+const VOTING_PERIOD: u64 = 10;
+const WAITER_BONUS: u64 = 1; // bonus for waiter voters
+
+const DEPOSIT_KEY:u64 = 0;
+const MIN_RAND_NUM_KEY: u64 = 1;
+
+let sha256 = new SHA256();
+
+export class Config implements Serializable {
+  @primaryid
+  id: u64;
+  val: u64;
+}
+
+export class VoteHistory implements Serializable {
+  @primaryid
+  bcknum: u64;
+  votedUser: Array<account_name>;
+
+  constructor() {
+    this.votedUser = new Array<account_name>();
+  }
+}
 
 export class Voter implements Serializable {
   @primaryid
@@ -25,15 +60,15 @@ export class Voter implements Serializable {
   regisBckNum: u64; // The block number of the voter registered, used to freeze the deposit for some time.
   unregisBckNum: u64; // The block number of the voter unregistered, used to freeze the deposit for some time.
   role: i32 = 0; // The user role, 1 represent main voter, 2 represent waiter voter
+  bonus: i32 = 0; // 
 
   constructor() {
     this.belongBckNums = new Array<u64>(<i32>EPOCH);
     this.voteVals = new Array<u64>(<i32>EPOCH);
   }
 
-  /**
-   * In case of user calculated the random privately, so user can't vote immediately after registerd.
-   */
+  //In case of user calculated the random privately, 
+  //so user can't vote immediately after registerd.
   votable(): boolean {
     return (Block.number > this.regisBckNum + 3 && this.regisBckNum != 0);
   }
@@ -42,24 +77,14 @@ export class Voter implements Serializable {
     return this.unregisBckNum != 0;
   }
 
-  /**
-   * In case of user redeem the deposit money immediately,
-   * because of user making evil can't be found immediately.
-   */
+  //In case of user redeem the deposit money immediately,
+  //because of user making evil can't be found immediately.
   redeemable(): bool {
     return (Block.number > this.unregisBckNum + 10) && this.unregisBckNum != 0;
   }
 
-  setMainVoter(): void {
-    this.role = 1;
-  }
-
   setWaiterVoter(): void {
     this.role = 2;
-  }
-
-  isMainVoter(): bool {
-    return (this.role == 1);
   }
 
   isWaiterVoter(): bool {
@@ -71,6 +96,16 @@ export class Waiter implements Serializable {
   waiters: Array<account_name> = new Array<account_name>();
   primaryKey(): id_type {
     return 0;
+  }
+}
+
+/**
+ *  The producer class
+ */
+export class Producer implements Serializable {
+  owner: account_name;
+  primaryKey(): account_name {
+    return this.owner
   }
 }
 
@@ -95,7 +130,7 @@ export class RandRecord implements Serializable, Returnable {
    *  code 0: absolutely random that user voting the data
    *  code 1: the random number calculated by the previos data
    * 
-   * The code value fomart 0b111.
+   * The code value format 0b111.
    * @param preRandCode The previous rand code, 7 - the previous rand is absolutely calculated
    * @param mainVoteCode The main voter voting code, 0 - using the main voter voting
    * @param waiterVoteCode The waiter voter voting code, 0 - using the waiter voting value
@@ -110,7 +145,7 @@ export class RandRecord implements Serializable, Returnable {
 
   // TODO format this.val to be hex
   toString(): string {
-    return intToString(this.blockNum) + "," + intToString(this.val) + "," + intToString(this.code);
+    return intToString(this.blockNum) + "," + intToString(this.val) + "," + this.code.toString();
   }
 }
 
@@ -119,11 +154,18 @@ export class Random {
   voteDB: DBManager<Voter>;
   waiterDB: DBManager<Waiter>;
   randDB: DBManager<RandRecord>;
+  committeeDB: DBManager<Producer>;
+  configDB: DBManager<Config>;
+  voteHstDB: DBManager<VoteHistory>;
 
   constructor() {
     this.voteDB = DBManager.newInstance<Voter>(NAME(VOTER_TABLE), NAME(CONT_NAME), NAME(VOTER_TABLE));
     this.waiterDB = DBManager.newInstance<Waiter>(NAME(WAITER_TABLE), NAME(CONT_NAME), NAME(WAITER_TABLE));
     this.randDB = DBManager.newInstance<RandRecord>(NAME(RAND_TABLE), NAME(CONT_NAME), NAME(RAND_TABLE));
+    this.voteHstDB = DBManager.newInstance<VoteHistory>(NAME(VOTE_HST_TABLE), NAME(CONT_NAME), NAME(VOTE_HST_TABLE));
+    this.configDB = DBManager.newInstance<Config>(NAME(CONFIG_TABLE), NAME(CONT_NAME), NAME(CONFIG_TABLE));
+    
+    this.committeeDB = DBManager.newInstance<Producer>(NAME(COMMITTEE_TABLE), NAME(ADMIN_NAME), NAME(ADMIN_NAME));
   }
 
   public queryLatest(): RandRecord {
@@ -131,7 +173,7 @@ export class Random {
   }
 
   public query(bckNum: u64): RandRecord {
-    var minBckNum = this.getRandMinBckNum();
+    var minBckNum = this.getMinRandBckNum();
     var maxBckNum = Block.number;
     ultrain_assert(minBckNum <= bckNum && bckNum <= maxBckNum, "Currently the block number of the rand should be between " + intToString(minBckNum) + " and " + intToString(maxBckNum));
     return this.generateRand(bckNum, false);
@@ -142,8 +184,7 @@ export class Random {
     return <i32>(bckNum % EPOCH);
   }
 
-  private hash(seed: u64): u64 {
-    var sha256 = new SHA256();
+  public hash(seed: u64): u64 {
     var hash = sha256.hash(intToString(seed));
     return <u64>parseInt(hash.substring(0, 14), 16);
   }
@@ -158,11 +199,10 @@ export class Random {
     this.voteDB.get(RAND_KEY, randInfo);
     var index = this.indexOf(headBckNum);
     var rand = new RandRecord();
+    Log.s("randInfo.belongBckNums[index]").i(randInfo.belongBckNums[index]).flush();
     if (randInfo.belongBckNums[index] == headBckNum) {
       rand.val = randInfo.voteVals[index];
-      var mainVotes = this.countMainVoter();
-      var voteStatus = this.voteMainVoteNum();
-      rand.code = (mainVotes == voteStatus.voteVals[index]) ? 0 : 1;
+      rand.code = 0;
     } else {
       rand.val = this.hash(preRand);
       rand.code = 1;
@@ -171,48 +211,40 @@ export class Random {
     return rand;
   }
 
-  private voteMainVoteNum(): Voter {
-    var votesCount = new Voter();
-    if (this.voteDB.exists(MAIN_VOTES_NUM_KEY)) {
-      this.voteDB.get(MAIN_VOTES_NUM_KEY, votesCount);
-    } 
-    return votesCount
-  }
-
-  public countMainVoter(): u64 {
-    var voter = new Voter();
-    this.voteDB.get(MAIN_COUNT_KEY, voter);
-    return voter.voteVals[0];
-  }
-
-  public updateCountMainVoter(changeQty: u64): void {
-    var voter = new Voter();
-    this.voteDB.get(MAIN_COUNT_KEY, voter);
-    voter.voteVals[0] = voter.voteVals[0] + changeQty;
-    this.voteDB.modify(voter);
-  }
-
-  /** 
-   * Return the random number which the voting by the seed block number
-   *  @param seedBckNum The block number which the seed used.
-   */
-  private belongRandNum(seedBckNum: u64): u64 {
-    return seedBckNum + EPOCH;
-  }
-
-  public updateMainVoteCount(blockNum: u64): void {
-    var votesCount = new Voter();
-    this.voteDB.get(MAIN_VOTES_NUM_KEY, votesCount);
-    var index = this.indexOf(blockNum);
-    var oldBckNum = votesCount.belongBckNums[index];
-
-    if (this.belongRandNum(blockNum) != oldBckNum) {
-      votesCount.voteVals[index] = 1;
-    } else {
-      votesCount.voteVals[index] = votesCount.voteVals[index] + 1;
+  private getConfig(id: u64): u64 {
+    var config = new Config();
+    if (this.configDB.exists(id)) {
+      this.configDB.get(id, config);
+      return config.val;
     }
-    votesCount.belongBckNums[index] = this.belongRandNum(blockNum);
-    this.voteDB.modify(votesCount);
+    return 0;
+  }
+
+  private setConfigValue(id: u64, val: u64): void {
+    var config = new Config();
+    config.val = val;
+    config.id = id;
+    if (this.configDB.exists(id)) {
+      this.configDB.modify(config);
+    } else {
+      this.configDB.emplace(config);
+    }
+  }
+
+  public increaseDeposit(val: u64): void {
+    var original = this.getConfig(DEPOSIT_KEY);
+    this.setConfigValue(DEPOSIT_KEY, original + val);
+  }
+
+  public decreaseDeposit(val: u64): void {
+    var original = this.getConfig(DEPOSIT_KEY);
+    this.setConfigValue(DEPOSIT_KEY, original - val);
+  }
+
+  private canSendBonus(): bool {
+    var balance = queryBalance(NAME(CONT_NAME));
+    var deposit = this.getConfig(DEPOSIT_KEY);
+    return balance.getAmount() >= (deposit + WAITER_BONUS);
   }
 
   /**
@@ -220,7 +252,7 @@ export class Random {
    * If using the waiter vote, the vote value is waiter.voteval
    * if not using the waiter vote, the vote value is hash(randNum)
    */
-  private getWaiterVoteVal(headBckNum: u64, randNum: u64): RandRecord {
+  private getWaiterVoteVal(headBckNum: u64, randNum: u64, isUpt: boolean): RandRecord {
     
     var waiterseq = new Waiter();
     this.waiterDB.get(0, waiterseq);
@@ -252,6 +284,9 @@ export class Random {
         // TODO Using the last random period waiter vote value maybe better
         rand.val = waiterVote.voteVals[index];
         rand.code = 0;
+        if (isUpt && this.canSendBonus()){
+          Asset.transfer(NAME(CONT_NAME), Action.sender, new Asset(WAITER_BONUS), "bonus money"); //give bonus
+        }
         break;
       }
       recursive++;
@@ -259,6 +294,114 @@ export class Random {
     return rand;
   }
 
+  getWaiterVote(headBckNum: u64, randNum: u64): Voter {
+    var waiterseq = new Waiter();
+    this.waiterDB.get(0, waiterseq);
+    let waiters = waiterseq.waiters;
+    var waiterLen = waiters.length;
+
+    // Maybe a hidden problem, the recursive randTemp value.
+    var recursive: i32 = 0;
+    var recursiveDepth: i32 = 10; // *tips*: this recursive depth maybe not the best value
+
+    var tempWaiter = new Voter();
+    if (waiterLen == 0) return tempWaiter;
+
+    var waiterVote = new Voter();
+    var index = this.indexOf(headBckNum);
+    var oldRandNum = randNum;
+    do {
+      let slotIndex = <i32>(oldRandNum % waiterLen);
+      let user = waiterseq.waiters[slotIndex];
+      this.voteDB.get(user, tempWaiter);
+      let seedBckNum = tempWaiter.belongBckNums[index];
+      if (headBckNum != seedBckNum) { // This round, the user don't submit the vote.
+        oldRandNum = this.hash(oldRandNum);
+      } else {
+        // TODO Using the last random period waiter vote value maybe better 
+        waiterVote = tempWaiter;
+        break;
+      }
+      recursive++;
+    } while (recursive < recursiveDepth);
+    return waiterVote;
+  }
+
+
+  isMainVoter(sender: account_name, bckNum: u64): bool {
+    var isCommittee = this.committeeDB.exists(sender);
+    Log.s("isCommittee" + RNAME(sender)).s(isCommittee.toString()).flush();
+    if (!isCommittee) {
+      return false;
+    } 
+    return true;
+    // var u_sender = changetype<u64>(sender);
+    // var expectMod = (bckNum % VOTING_PERIOD);
+    // Log.s("expectMod: ").i(expectMod).flush();
+    // return (u_sender % VOTING_PERIOD == expectMod);
+  }
+
+  isMainVoted(sender: account_name, bckNum: u64): bool {
+    var voteHst = new VoteHistory();
+    voteHst.bcknum = bckNum;
+    if (!this.voteHstDB.exists(bckNum)) {
+      voteHst.votedUser.push(sender);
+      this.voteHstDB.emplace(voteHst);
+      return false;
+    } else {
+      this.voteHstDB.get(bckNum, voteHst);
+      let voteUsers = voteHst.votedUser;
+      for (let i = 0; i < voteUsers.length; i++) {
+        if (voteUsers[i] == sender) {
+          return true;
+        }
+      }
+      voteUsers.push(sender);
+      voteHst.votedUser = voteUsers;
+      this.voteHstDB.modify(voteHst);
+      return false;
+    }
+  }
+
+  initVoteHstMinBckNum(): void {
+    if (!this.voteHstDB.exists(0)) {
+      var voteHst = new VoteHistory();
+      voteHst.bcknum = 0;
+      voteHst.votedUser.push(Block.number);
+      this.voteHstDB.emplace(voteHst);
+    }
+  }
+
+  private getVoteHstMinBckNum() : u64 {
+    var voteHst = new VoteHistory();
+    this.voteHstDB.get(0, voteHst);
+    return changetype<u64>(voteHst.votedUser[0]);
+  }
+
+  clearMainVoteHst(blockNum: u64): void {
+    var oldMinNum = this.getVoteHstMinBckNum();
+    var voteHst = new VoteHistory();
+    // Here should use the expression, (blockNum >= CACHED_RAND_COUNT + minBckNum)
+    // cannot use (blockNum - minBckNum > CACHED_RAND_COUNT)
+    // because if (blockNum < minBckNum), the value of (blockNum - minBckNum) maybe overflow.
+    if (blockNum >= CACHED_HST_COUNT + oldMinNum) {
+      if (this.voteHstDB.exists(oldMinNum)) {
+        this.voteHstDB.erase(oldMinNum);
+      }
+      let newMinNum = oldMinNum + 1;
+      if (blockNum > CACHED_RAND_COUNT + oldMinNum) {
+        if (this.voteHstDB.exists(oldMinNum + 1)) {
+          this.voteHstDB.erase(oldMinNum + 1);
+        }
+        newMinNum = oldMinNum + 2;
+      }
+      voteHst.bcknum = 0;
+      voteHst.votedUser.push(newMinNum);
+      // Log.s("clearMainVoteHst: ").s("modify begin").flush();
+      this.voteHstDB.modify(voteHst);
+      // Log.s("clearMainVoteHst: ").s("modify begin").flush();
+    }
+  }
 
   /**
    * The algorithm of the random expression:
@@ -305,11 +448,10 @@ export class Random {
     var waiterVote = new RandRecord();
     for (let i = lastBckNum + 1; i <= headBckNum; i++) {
       let mainVote = this.getMainVoteVal(i, lastRand.val);
-      
       if ( i >= lastBckNum + EPOCH) { // In this case, there is no waiter voting
         waiterVote.setFields(i, this.hash(mainVote.val), 1); 
       } else {
-        waiterVote = this.getWaiterVoteVal(i, mainVote.val);
+        waiterVote = this.getWaiterVoteVal(i, mainVote.val, isUpt);
       }
       let code = RandRecord.calcCode(lastRand.code, mainVote.code, waiterVote.code); 
       let randVal = lastRand.val ^ mainVote.val ^ waiterVote.val;
@@ -340,7 +482,7 @@ export class Random {
     this.clearPartRands(bckNum);
   }
 
-  private getRandMinBckNum(): u64 {
+  private getMinRandBckNum(): u64 {
     var rand = new RandRecord();
     this.randDB.get(0, rand);
     return rand.val;
@@ -373,7 +515,7 @@ export class Random {
   }
 
   private clearPartRands(blockNum: u64): void {
-    var minBckNum  = this.getRandMinBckNum();
+    var minBckNum  = this.getMinRandBckNum();
     var rand = new RandRecord();
     // Here should use the expression, (blockNum >= CACHED_RAND_COUNT + minBckNum)
     // cannot use (blockNum - minBckNum > CACHED_RAND_COUNT)
