@@ -70,12 +70,14 @@ function getHttpServerAddress(){
   var chainName = readNodeConfig()["chain-name"];
   var seedConfig = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   for (let i = 0; i < seedConfig.length; i++) {
-    if (seedConfig[i].chainName == chainName && seedConfig[i].seedIp.length != 0) {
-      let seedIp =  seedConfig[i].seedIp;
-      return `http://${seedIp[0]}:8888`;
+    let len = seedConfig[i].seedIp.length;
+    if (seedConfig[i].chainName == chainName &&  len != 0) {
+      let seedIp = seedConfig[i].seedIp;
+      let index = Math.floor(Math.random() * len);
+      return `http://${seedIp[index]}:8888`;
     }
   }
-  return "http://172.17.0.15:8888";
+  return "http://127.0.0.1:8888";
 }
 
 async function votingRandomNum() {
