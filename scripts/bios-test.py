@@ -172,10 +172,8 @@ def stepRegProducers():
     #stepInitSimpleTest()
     #sleep(2)
     for i in range(len(rand_acc_lst)):
-        value = 0.2000
-        if i % 3 == 0:
-            value = 2.0000
-        retry(args.clultrain + 'transfer %s utrio.rand \'%.4f UGAS\' \'as candidate\' -p %s' % ( rand_acc_lst[i],value, rand_acc_lst[i]))
+        value = 1000
+        retry(args.clultrain + 'transfer %s utrio.rand \'%.4f UGAS\' \'in0x1WaiterRegister\' -p %s' % ( rand_acc_lst[i],value, rand_acc_lst[i]))
 
     if args.subchain and args.subchain != "ultrainio" :
         masterproducerinfo = ""
@@ -207,10 +205,10 @@ def stepCreateinitAccounts():
     # for a in initialAccounts:
     #     retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
     # retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100  "ultrainio"')
-    retry(args.clultrain + 'transfer ultrainio utrio.rand "10000 UGAS" ')
+    retry(args.clultrain + 'transfer ultrainio utrio.rand "30000 UGAS" ')
     retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
     for a in rand_acc_lst:
-        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"3.0000"))
+        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"3000.0000"))
 def stepResign():
     #resign('ultrainio', 'utrio.null')
     resign('utrio.stake', 'utrio.null')
