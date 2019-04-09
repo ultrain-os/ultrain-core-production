@@ -1339,6 +1339,13 @@ async function syncChainInfo() {
  */
 async function checkNodAlive() {
 
+    let rsdata = await NodUltrain.checkAlive(chainConfig.nodPort);
+    if (rsdata != null) {
+        logger.info("head_block_num:",rsdata.head_block_num);
+        monitor.setHeadBlockNum(rsdata.head_block_num);
+    } else {
+        logger.error("head_block_num is null");
+    }
     //配置文件和monitor配置同时关闭才生效
     if (chainConfig.configFileData.local.enableRestart == false && monitor.needCheckNod() == false) {
         logger.error("local config enable restart == false && monitor enable restart == false, need not check nod alive");
@@ -1350,8 +1357,6 @@ async function checkNodAlive() {
     //如果不在进行链切换且本地访问不到本地链信息，需要重启下
     if (syncChainChanging == false) {
         logger.info("checking nod is alive ....");
-        let rsdata = await NodUltrain.checkAlive(chainConfig.nodPort);
-
         logger.debug("check alive data:", rsdata);
 
         if (utils.isNull(rsdata)) {
@@ -1387,6 +1392,7 @@ function clearCacheData() {
     WorldState.status = null;
     nodFailedTimes = 0;
     trxCacheSet.clear()
+    monitor.setHeadBlockNum(0);
 }
 
 function clearCache() {

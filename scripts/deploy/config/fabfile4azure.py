@@ -35,6 +35,9 @@ def deployfile():
     run("tar xf ultrainmng.tar")
     run("chmod +x /root/ultrainmng/tool/_runultrain.sh")
     run("chmod +x /root/ultrainmng/tool/_runworldstate.sh")
+    run("tar xf voterand.tar")
+    run("chmod +x /root/voterand/scripts/rand/vrf_client")
+    run("chmod +x /root/voterand/scripts/rand/b58.pl")
     #put("ultrainmng","/root/")
     #put("/root/restartdockers.sh","/root/")
     #run('chmod +x /root/restartdockers.sh')
@@ -94,6 +97,18 @@ def deletemng():
     run("pm2 delete sideChainService")
 
 @parallel
+def startvoterand():
+    run("pm2 start /root/voterand/migrations/votingRandService.js -o /root/log/votingRandService.pm2.log -e root/log/votingRandService.pm2.error.log && sleep 1")
+
+@parallel
+def stopvoterand():
+    run("pm2 stop votingRandService")
+
+@parallel
+def deletevoterand():
+    run("pm2 delete votingRandService")
+
+@parallel
 def upgrademng():
     run("rm -rf /root/ultrainmng")
     put("ultrainmng.tar","/root/")
@@ -111,6 +126,8 @@ def stophosts():
     run("killall logrotate.sh")
     run("pm2 stop sideChainService")
     run("pm2 delete sideChainService")
+    run("pm2 stop votingRandService")
+    run("pm2 delete votingRandService")
 
 @parallel
 def getIPs():
@@ -162,6 +179,11 @@ def uploadconfig():
     run("mkdir -p /root/.local/share/ultrainio/wssultrain/config")
     put("wssconfig.ini", "/root/.local/share/ultrainio/wssultrain/config/config.ini")
     run("mkdir -p /root/.local/share/ultrainio/ultrainmng/config")
+    put("ultrainmng/config.ini", "/root/.local/share/ultrainio/ultrainmng/config/config.ini")
+    put("ultrainmng/seedconfig.json", "/root/.local/share/ultrainio/ultrainmng/config/seedconfig.json")
+
+@parallel
+def uploadmngconfig():
     put("ultrainmng/config.ini", "/root/.local/share/ultrainio/ultrainmng/config/config.ini")
     put("ultrainmng/seedconfig.json", "/root/.local/share/ultrainio/ultrainmng/config/seedconfig.json")
 
