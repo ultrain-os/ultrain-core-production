@@ -2,27 +2,48 @@
 
 namespace ultrainio {
 
+    const std::string CommitteeInfo::kDelimiters = std::string(" ");
+
     bool CommitteeInfo::isEmpty() {
         return accountName.empty() || pk.empty() || blsPk.empty();
     }
 
-    void CommitteeInfo::toStrStream(std::stringstream& ss) const {
-        ss << accountName << " ";
-        ss << pk << " ";
-        ss << blsPk;
+    void CommitteeInfo::toStrStream(std::string& s) const {
+        s.append(accountName).append(kDelimiters);
+        s.append(pk).append(kDelimiters);
+        s.append(blsPk);
     }
 
-    bool CommitteeInfo::fromStrStream(std::stringstream& ss) {
-        if(!(ss >> accountName)) {
+    bool CommitteeInfo::fromStrStream(const std::string& s, size_t start, size_t& next) {
+        std::size_t found = s.find(kDelimiters, start);
+
+        if (found == std::string::npos) {
             return false;
         }
-        if(!(ss >> pk)) {
+        accountName = s.substr(start, found - start);
+        start = found + kDelimiters.size();
+
+        found = s.find(kDelimiters, start);
+        if (found == std::string::npos) {
             return false;
         }
-        if(!(ss >> blsPk)) {
+        pk = s.substr(start, found - start);
+
+        start = found + kDelimiters.size();
+
+        if (start >= s.size()) {
             return false;
         }
 
+        found = s.find(kDelimiters, start);
+
+        if (found == std::string::npos) {
+            blsPk = s.substr(start);
+            next = std::string::npos;
+        } else {
+            blsPk = s.substr(start, found - start);
+            next = found + kDelimiters.size();
+        }
         return true;
     }
 

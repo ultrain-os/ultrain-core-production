@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <sstream>
 #include "ultrainiolib/block_header.hpp"
 #include "BlockHeaderExtKey.h"
 
@@ -35,12 +34,9 @@
 namespace {
     block_id_type readBlockId(const std::string& s) {
         block_id_type blk_id;
-        std::stringstream ss(s);
-        std::string blockIdStr;
-        if ((ss >> blockIdStr)) {
-            memcpy(blk_id.hash, blockIdStr.data(), blockIdStr.size());
-            from_hex(blockIdStr, (char*)blk_id.hash, sizeof(blk_id));
-        }
+        std::string blockIdStr = s.substr(0, 64);
+        memcpy(blk_id.hash, blockIdStr.data(), blockIdStr.size());
+        from_hex(blockIdStr, (char*)blk_id.hash, sizeof(blk_id));
         return blk_id;
     }
 }
