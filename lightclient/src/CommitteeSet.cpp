@@ -38,6 +38,10 @@ namespace ultrainio {
     }
 
     bool CommitteeSet::verify(const BlsVoterSet& blsVoterSet) const {
+        if (blsVoterSet.accountPool.size() < nextRoundThreshold()) {
+            ilog("bls account pool less next round thresh : ${thresh}", ("thresh", nextRoundThreshold()));
+            return false;
+        }
         std::vector<std::string> blsPkV = getBlsPk(blsVoterSet.accountPool);
         return blsVoterSet.verifyBls(blsPkV);
     }
@@ -51,7 +55,6 @@ namespace ultrainio {
                     break;
                 }
             }
-
         }
         return pkV;
     }
@@ -106,5 +109,11 @@ namespace ultrainio {
         }
 
         return CommitteeDelta(addCommitteeInfo, removedCommitteeInfo);
+    }
+
+    int CommitteeSet::nextRoundThreshold() const {
+        // detail see StakeVoteRandom.cpp realGetNextRoundThreshold
+        int voterSize = m_committeeInfoV.size() > 100 ? 100 : m_committeeInfoV.size();
+        return 0.67 * voterSize + 1;
     }
 }

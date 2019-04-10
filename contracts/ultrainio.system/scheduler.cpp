@@ -793,7 +793,7 @@ namespace ultrainiosystem {
         uint32_t max_gap = 0;
         chaintypes_table type_tbl(_self, _self);
         for(; ite_chain != _chains.end(); ++ite_chain) {
-            if(!ite_chain->is_schedulable) {
+            if(!ite_chain->is_schedulable || !ite_chain->schedule_on) {
                 continue;
             }
             if(ite_chain->chain_name == N(master))

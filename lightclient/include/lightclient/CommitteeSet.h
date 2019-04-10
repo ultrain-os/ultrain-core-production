@@ -29,5 +29,6 @@ namespace ultrainio {
         std::vector<CommitteeInfo> m_committeeInfoV;
         void init(const std::string& s);
         std::vector<std::string> getBlsPk(const std::vector<AccountName>& accountV) const;
+        int nextRoundThreshold() const;
     };
 }
