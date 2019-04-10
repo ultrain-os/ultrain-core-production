@@ -155,7 +155,9 @@ def getrewardaccount(producer):
     producer = producer + ".r"
     prodlen = len(producer)
     if prodlen > 12:
-        producer = producer[(prodlen-12):-1]
+        producer = producer[(prodlen-12):prodlen]
+    if producer[0] == '.':
+        producer = "a"+producer[1:]
     return producer
 def stepCreateStakedAccounts():
     retry(args.clultrain + ' create account ultrainio hello %s ' % args.initacc_pk)

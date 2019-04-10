@@ -134,7 +134,7 @@ async function buildParam() {
     }
 
     let enableRestartRes = 1;
-    if (enableRestart == 0 && chainConfig.configFileData.local["c"]==false) {
+    if (enableRestart == 0 && chainConfig.configFileData.local["enableRestart"]==false) {
             enableRestartRes = 0;
     }
 

@@ -31,6 +31,11 @@ peer-key = UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y
 plugin = ultrainio::chain_info_api_plugin
 plugin = ultrainio::monitor_plugin
 
+min-connections = 8
+max-retry-count = 3
+# Please modify the list size according to producer count
+max-grey-list-size = 5
+
 
 #max-clients
 

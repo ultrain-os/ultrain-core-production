@@ -98,15 +98,16 @@ def getrewardaccount(producer):
     producer = producer + ".r"
     prodlen = len(producer)
     if prodlen > 12:
-        producer = producer[(prodlen-12):-1]
+        producer = producer[(prodlen-12):prodlen]
+    if producer[0] == '.':
+        producer = "a"+producer[1:]
     return producer
-
-
 
 # addSubChainUse
 def addSubChainUser():
     print "addSubChainUser start..."
     endindex = endl;
+    rewardlist = []
     if args.producerNum :
         endindex = args.producerNum;
     for i in range(startl,endindex+1):
@@ -168,7 +169,7 @@ def delegateStark():
     for i in range(startl,endindex+1):
         userName = getUserName(i);
         print "delegatecons:" + userName + " 42000.0000 UGAS"
-        retry(args.clultrain + 'push action ultrainio delegatecons \'{"from":"ultrainio", "receiver":"'+userName+'", "stake_cons_quantity":"42000.0000 UGAS"}\' -p utrio.stake@active')
+        retry(args.clultrain + 'push action ultrainio delegatecons \'{"from":"ultrainio", "receiver":"'+userName+'", "stake_cons_quantity":"42000.0000 UGAS"}\' -p ultrainio@active')
         sleep(0.5)
     print "delegateStark end..."
     sleep(2)
