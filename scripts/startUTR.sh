@@ -26,5 +26,5 @@ docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} ba
 docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "cp $ULTRAIN_PATH/ultrain-core/scripts/ultrainmng/config.ini /root/.local/share/ultrainio/ultrainmng/config/config.ini"
 docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "cp $ULTRAIN_PATH/ultrain-core/scripts/ultrainmng/seedconfig.json /root/.local/share/ultrainio/ultrainmng/config/seedconfig.json"
 #docker ps |\ grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "/usr/local/bin/pm2 start $ULTRAIN_PATH/ultrain-core/scripts/ultrainmng/src/sideChainService.js"
-docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "/usr/local/bin/pm2 start $ULTRAIN_PATH/ultrain-core/scripts/voterand/migrations/votingRandService.js -o /root/log/votingRandService.pm2.log -e root/log/votingRandService.pm2.error.log"
+docker ps | grep $NAME-[1-7]$ | awk '{print $1}' | xargs -i docker exec -d {} bash -c "/usr/local/bin/pm2 start $ULTRAIN_PATH/ultrain-core/scripts/voterand/migrations/votingRandService.js -o /log/votingRandService.pm2.log -e /log/votingRandService.pm2.error.log"
 

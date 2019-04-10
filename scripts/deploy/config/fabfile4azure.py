@@ -64,7 +64,7 @@ def deployfile():
 
 @parallel
 def clearhostlog():
-    with cd('/root/log'):
+    with cd('/log'):
          run('rm -rf *')
 
 @parallel
@@ -86,7 +86,7 @@ def starthosts():
 
 @parallel
 def startmng():
-    run("pm2 start /root/ultrainmng/src/sideChainService.js -o /root/log/sideChainService.pm2.log -e /root/log/sideChainService.pm2.error.log && sleep 1")
+    run("pm2 start /root/ultrainmng/src/sideChainService.js -o /log/sideChainService.pm2.log -e /log/sideChainService.pm2.error.log && sleep 1")
 
 @parallel
 def stopmng():
@@ -98,7 +98,7 @@ def deletemng():
 
 @parallel
 def startvoterand():
-    run("pm2 start /root/voterand/migrations/votingRandService.js -o /root/log/votingRandService.pm2.log -e root/log/votingRandService.pm2.error.log && sleep 1")
+    run("pm2 start /root/voterand/migrations/votingRandService.js -o /log/votingRandService.pm2.log -e /log/votingRandService.pm2.error.log && sleep 1")
 
 @parallel
 def stopvoterand():

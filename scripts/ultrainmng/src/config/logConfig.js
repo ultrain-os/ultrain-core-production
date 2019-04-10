@@ -10,7 +10,7 @@ var constant = require("../common/constant/constants");
  * log文件mng（前缀+系统名+时间）
  * @type {string}
  */
-var dir = "/root/log/";
+var dir = "/log/";
 var filename = "mng-"+os.hostname()+"-";
 
 /**

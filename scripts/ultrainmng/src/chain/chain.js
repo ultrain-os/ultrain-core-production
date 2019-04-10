@@ -1368,7 +1368,7 @@ async function checkNodAlive() {
             } else {
                 nodFailedTimes ++;
                 logger.info("nod is not alive,count("+nodFailedTimes+")");
-                NodUltrain.getNewestLog(chainConfig.getLocalConfigInfo("nodLogPath","/root/log"),function (log) {
+                NodUltrain.getNewestLog(chainConfig.getLocalConfigInfo("nodLogPath","/log"),function (log) {
                     nodLogData = log;
                     if (utils.isNotNull(nodLogData)) {
                         let l = nodLogData.length;
