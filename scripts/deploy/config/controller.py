@@ -25,6 +25,10 @@ if __name__ == "__main__":
 		os.system("python toplogy-h.py")
 		os.system("fab -f fabfile4azure uploadconfig")
 		os.system("fab -f fabfile4azure starthosts")
+	elif args.action == "startvoterand":
+		os.system("fab -f fabfile4azure startvoterand")
+	elif args.action == "stopvoterand":
+		os.system("fab -f fabfile4azure stopvoterand")
 	elif args.action == "resume":
 		if args.cleardata:
 			os.system("fab -f fabfile4azure clearhostdata")

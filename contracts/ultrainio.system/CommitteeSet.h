@@ -31,14 +31,15 @@ namespace ultrainiosystem {
         }
 
         std::string toString() const {
-            std::stringstream ss;
+            std::string kDelimiters = std::string(" ");
+            std::string s;
             for (size_t i = 0; i < m_committeeInfoV.size(); i++) {
-                m_committeeInfoV[i].toStrStream(ss);
-                if (i != m_committeeInfoV.size() -1) {
-                    ss << " ";
+                m_committeeInfoV[i].toStrStream(s);
+                if (i != m_committeeInfoV.size() - 1) {
+                    s.append(kDelimiters);
                 }
             }
-            return ss.str();
+            return s;
         }
 
         bool operator == (const CommitteeSet& rhs) const {
@@ -72,10 +73,15 @@ namespace ultrainiosystem {
 
     private:
         void init(const std::string& s) {
-            std::stringstream ss(s);
             CommitteeInfo committeeInfo;
-            while(committeeInfo.fromStrStream(ss)) {
+            size_t start = 0;
+            size_t next = 0;
+            while(committeeInfo.fromStrStream(s, start, next)) {
                 m_committeeInfoV.push_back(committeeInfo);
+                if (next == std::string::npos) {
+                    return;
+                }
+                start = next;
             }
         }
         std::vector<CommitteeInfo> m_committeeInfoV;

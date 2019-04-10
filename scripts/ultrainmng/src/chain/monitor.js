@@ -43,6 +43,8 @@ var enableSyncUgas = 1;
 
 var syncBlockHeaderMaxTranNum = 20;
 
+var head_block_num = 0;
+
 /**
  *
  * @returns {string}
@@ -142,6 +144,7 @@ async function buildParam() {
         "enableSyncUgas" : enableSyncUgas,
         "enableSyncUserResByBlock":enableSyncUserResByBlock,
         "syncBlockHeaderMaxTranNum":syncBlockHeaderMaxTranNum,
+        "headBlockNum":head_block_num,
     }
     var param = {
         "chainId": chainConfig.localChainName,
@@ -807,6 +810,10 @@ function getSyncBlockHeaderMaxTranNum() {
     return syncBlockHeaderMaxTranNum;
 }
 
+function setHeadBlockNum(num) {
+    head_block_num = num;
+}
+
 module.exports = {
     checkIn,
     isDeploying,
@@ -822,4 +829,5 @@ module.exports = {
     needSyncUgas,
     needSyncUserResByBlock,
     getSyncBlockHeaderMaxTranNum,
+    setHeadBlockNum,
 }

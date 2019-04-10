@@ -72,6 +72,7 @@ def importKeys():
     run(args.clultrain + 'wallet import --private-key ' + args.private_key)
     run(args.clultrain + 'wallet import --private-key ' + args.initacc_sk)
     run(args.clultrain + 'wallet import --private-key  5KG6NiRGhsEP9vTf4WVe312iVQ3uemEXsstsqkT9Wj1MkdY5uJk')
+    run(args.clultrain + 'wallet import --private-key  5KBtaXHJPeq9n5SzuBoxZNZFUZvEvzrRa4HhwpTHDV9dBmDXks8')  #utrioaccount privkey
     for i in range(0, len(account_sk_list)):
        run(args.clultrain + 'wallet import --private-key ' + account_sk_list[i])
     for i in range(0, len(rand_sk_lst)):
@@ -156,6 +157,8 @@ def stepCreateStakedAccounts():
 
     for a in initialAccounts:
         retry(args.clultrain + ' create account ultrainio %s %s ' % (a, args.initacc_pk))
+    if args.masterchain:
+        retry(args.clultrain + ' create account ultrainio utrioaccount UTR5Fa66fjgrWaNbUUeK1ZMfSfSHjA4nofQkwbK6bf4v6DRfaNkk6')
     for i in range(0, len(rand_acc_lst)):
         retry(args.clultrain + ' create account ultrainio %s %s ' % ( rand_acc_lst[i], rand_pk_lst[i]))
 def stepInitSimpleTest():
@@ -180,7 +183,8 @@ def stepRegProducers():
     for i in range(len(rand_acc_lst)):
         value = 1000
         retry(args.clultrain + 'transfer %s utrio.rand \'%.4f UGAS\' \'in0x1WaiterRegister\' -p %s' % ( rand_acc_lst[i],value, rand_acc_lst[i]))
-
+    if args.masterchain:
+        retry(args.clultrain + ' push action ultrainio setfreeacc \'{"account":"utrioaccount", "number":10000}\' -p ultrainio')
     if local == True :
         if args.subchain and args.subchain != "ultrainio" :
             masterproducerinfo = ""
@@ -346,7 +350,7 @@ commands = [
     ('I', 'initsimpletest', stepInitSimpleTest,         False,    "Simple transfer contract call test"),
     ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
-    ('q', 'resign',         stepResign,                 True,    "Resign utrio"),
+    ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
     ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction"),
     ('u', 'unregproducers',  stepunregproducersTest,    False,    "stepunregproducersTest"),

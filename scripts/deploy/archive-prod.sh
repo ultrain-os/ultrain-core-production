@@ -31,6 +31,14 @@ mkdir $DEPLOY_PATH/deploy/ultrainmng -p
 cp $ULTRAIN_PATH/scripts/deploy/ultrainmng/config.ini $DEPLOY_PATH/deploy/ultrainmng/config.ini
 cp $ULTRAIN_PATH/scripts/deploy/ultrainmng/seedconfig.json $DEPLOY_PATH/deploy/ultrainmng/seedconfig.json
 
+#打包voterand
+cp $ULTRAIN_PATH/scripts/voterand $DEPLOY_PATH/deploy/voterand -r
+mkdir $DEPLOY_PATH/deploy/voterand/scripts/rand -p
+cp $ULTRAIN_PATH/scripts/rand/vrf_client $DEPLOY_PATH/deploy/voterand/scripts/rand/vrf_client
+cp $ULTRAIN_PATH/scripts/rand/b58.pl $DEPLOY_PATH/deploy/voterand/scripts/rand/b58.pl
+cd $DEPLOY_PATH/deploy && tar -czvf voterand.tar ./voterand/
+rm $DEPLOY_PATH/deploy/voterand -rf
+
 # 打包deploy.tar
 cd $DEPLOY_PATH && tar -czvf deploy.tar ./deploy
 

@@ -511,5 +511,20 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
       uint64_t endtime = current_time();
       print("checkresexpire expend time:",(endtime - starttime));
    }
+   void system_contract::setfreeacc( account_name account, uint64_t number){
+      require_auth( _self );
+      freeaccount free_acc(_self,_self);
+      auto itr = free_acc.find(account);
+      if (itr == free_acc.end()) {
+         itr = free_acc.emplace( [&]( auto& f ){
+            f.owner = account;
+            f.acc_num = number;
+         });
+      } else {
+         free_acc.modify( itr, [&]( auto& f  ) {
+            f.acc_num = number;
+         });
+      }
+   }
 
 } //namespace ultrainiosystem

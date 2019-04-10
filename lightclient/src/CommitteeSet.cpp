@@ -12,10 +12,15 @@ namespace ultrainio {
     }
 
     void CommitteeSet::init(const std::string& s) {
-        std::stringstream ss(s);
         CommitteeInfo committeeInfo;
-        while(committeeInfo.fromStrStream(ss)) {
+        size_t start = 0;
+        size_t next = 0;
+        while(committeeInfo.fromStrStream(s, start, next)) {
            m_committeeInfoV.push_back(committeeInfo);
+           if (next == std::string::npos) {
+               return;
+           }
+           start = next;
         }
     }
 
@@ -64,14 +69,14 @@ namespace ultrainio {
     }
 
     std::string CommitteeSet::toString() const {
-        std::stringstream ss;
+        std::string s;
         for (int i = 0; i < m_committeeInfoV.size(); i++) {
-            m_committeeInfoV[i].toStrStream(ss);
+            m_committeeInfoV[i].toStrStream(s);
             if (i != m_committeeInfoV.size() -1) {
-                ss << " ";
+                s.append(CommitteeInfo::kDelimiters);
             }
         }
-        return ss.str();
+        return s;
     }
 
     bool CommitteeSet::operator == (const CommitteeSet& rhs) const {

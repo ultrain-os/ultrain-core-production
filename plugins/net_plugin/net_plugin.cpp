@@ -244,7 +244,6 @@ namespace ultrainio {
         shared_ptr<tcp::resolver> get_resolver(msg_priority p) const;
         shared_ptr<tcp::acceptor> get_acceptor(msg_priority p) const;
         void handle_message( connection_ptr c, const handshake_message &msg);
-        void handle_message( connection_ptr c, const chain_size_message &msg);
         void handle_message( connection_ptr c, const go_away_message &msg);
 
         /** \brief Process time_message
@@ -1963,9 +1962,6 @@ connection::connection(string endpoint, msg_priority pri)
             return trx_listener.acceptor;
         }
     }
-    void net_plugin_impl::handle_message( connection_ptr c, const chain_size_message &msg) {
-        peer_ilog(c, "received chain_size_message");
-    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
       peer_ilog(c, "received handshake_message");
@@ -2154,6 +2150,7 @@ connection::connection(string endpoint, msg_priority pri)
       // peer tells us about one or more blocks or txns. When done syncing, forward on
       // notices of previously unknown blocks or txns,
       //
+      return;
       peer_ilog(c, "received notice_message");
       c->connecting = false;
       request_message req;
@@ -2217,6 +2214,7 @@ connection::connection(string endpoint, msg_priority pri)
    }
 
     void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
+        return;
         switch (msg.req_blocks.mode) {
         case catch_up :
             peer_elog(c,  "received request_message:catch_up");

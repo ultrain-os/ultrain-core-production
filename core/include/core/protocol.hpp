@@ -154,7 +154,6 @@ namespace ultrainio {
   };
 
    using net_message = static_variant<handshake_message,
-                                      chain_size_message,
                                       go_away_message,
                                       time_message,
                                       notice_message,
