@@ -377,7 +377,8 @@ namespace ultrainiosystem {
                 _subchain.confirmed_block_id = checksum256();
                 _subchain.unconfirmed_blocks.clear();
                 _subchain.unconfirmed_blocks.shrink_to_fit();
-                //_subchain.changing_info.clear();
+                _subchain.changing_info.clear();
+                _subchain.committee_set.clear();
                 _subchain.deprecated_committee.clear();
             });
         }

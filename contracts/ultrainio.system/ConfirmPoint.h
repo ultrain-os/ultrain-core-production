@@ -6,7 +6,7 @@
 
     uint8_t from_hex( char c ) {
       if( c >= '0' && c <= '9' )
-        return uint8_t(c - '0');
+          return uint8_t(c - '0');
       if( c >= 'a' && c <= 'f' )
           return uint8_t(c - 'a' + 10);
       if( c >= 'A' && c <= 'F' )
