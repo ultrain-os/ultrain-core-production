@@ -33,14 +33,12 @@ function isDuplicate(key) {
   if (found) {
     return found;
   }
-
   votingData.push(key);
   if (votingData.length > 10) {
     votingData.shift();
   }
   return false;
 }
-
 
 function generateVrfProof(sk, randNum) {
   var basedSk = base64Sk(sk);
@@ -66,18 +64,21 @@ async function getChainId(config){
 }
 
 function getHttpServerAddress(){
-  var filePath = g_seed_config_path;
-  var chainName = readNodeConfig()["chain-name"];
-  var seedConfig = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  for (let i = 0; i < seedConfig.length; i++) {
-    let len = seedConfig[i].seedIp.length;
-    if (seedConfig[i].chainName == chainName &&  len != 0) {
-      let seedIp = seedConfig[i].seedIp;
-      let index = Math.floor(Math.random() * len);
-      return `http://${seedIp[index]}:8888`;
+  try {
+    var filePath = g_seed_config_path;
+    var chainName = readNodeConfig()["chain-name"];
+    var seedConfig = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    for (let i = 0; i < seedConfig.length; i++) {
+      let len = seedConfig[i].seedIp.length;
+      if (seedConfig[i].chainName == chainName && len != 0) {
+        let seedIp = seedConfig[i].seedIp;
+        let index = Math.floor(Math.random() * len);
+        return `http://${seedIp[index]}:8888`;
+      }
     }
+  } catch (exception){
+    return "http://127.0.0.1:8888";
   }
-  return "http://127.0.0.1:8888";
 }
 
 async function votingRandomNum() {
@@ -85,10 +86,6 @@ async function votingRandomNum() {
   var account = nodeConfig["my-account-as-committee"];
   var securityKey = nodeConfig["my-sk-as-account"];
   var httpServerAddress = getHttpServerAddress();
-
-  console.log(`acount: ${account}`);
-  console.log(`securityKey: ${securityKey}`);
-  console.log(`httpServerAddress: ${httpServerAddress}`);
   
   config.httpEndpoint = httpServerAddress;
   config.keyProvider = [securityKey];
@@ -106,10 +103,6 @@ async function votingRandomNum() {
   var bckNum = parameters[0];
   var randNum = parameters[1];
   var code = parameters[2];
-
-  // console.log(bckNum + "bcknum");
-  // console.log(randNum + "randNum");
-  // console.log(code + "code");
 
   if (code != -1) {
     if (isDuplicate(bckNum)) {

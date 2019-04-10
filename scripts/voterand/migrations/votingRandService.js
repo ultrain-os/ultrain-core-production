@@ -9,8 +9,12 @@ var singleJobSchedule = "*/8 * * * * *";
  */
 async function startJob() {
 
-  schedule.scheduleJob(singleJobSchedule, function(){
-    voting.votingRandomNum();
+  schedule.scheduleJob(singleJobSchedule, function() {
+    try {
+      voting.votingRandomNum();
+    } catch (exception) {
+      console.error(`Execute voting.votingRandomNum failed. Exception details: ${exception}`);
+    }
   });
 }
 
