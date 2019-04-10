@@ -18,7 +18,7 @@ case "$1" in
 	j=1; 
 	VOTE_TIMES=200000;
 	CACHE_VOTE=80;
-	VOTER_NUM=4;
+	VOTER_NUM=2;
 	while [ true ];
 	do
 		printf "times : "$j"\n"

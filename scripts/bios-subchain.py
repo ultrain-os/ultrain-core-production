@@ -94,6 +94,12 @@ def getUserName(i):
     else:
         return accounts[i];
 
+def getrewardaccount(producer):
+    producer = producer + ".r"
+    prodlen = len(producer)
+    if prodlen > 12:
+        producer = producer[(prodlen-12):-1]
+    return producer
 
 
 
@@ -107,8 +113,13 @@ def addSubChainUser():
         userName = getUserName(i);
         pk = account_pk_list[i]
         print "add new user:" + userName + "(" + pk + ") belongs to chain(" + args.subchain + ")"
-        retry(args.clultrain + 'create account -u ultrainio ' + userName + ' ' + pk)
-        sleep(0.5)
+        retry(args.clultrain + 'create account ultrainio ' + userName + ' ' + pk)
+        rewardacc = getrewardaccount(userName)
+        rewardlist.append(rewardacc)
+        retry(args.clultrain + 'create account ultrainio %s %s ' % (rewardacc, pk))
+    print(" reward account list:")
+    for a in rewardlist:
+        print(a)
     print "addSubChainUser end..."
     sleep(2)
 
@@ -142,7 +153,7 @@ def regProducer():
         retry(args.clultrain+'system empoweruser '+userName+' '+args.subchain+' "'+userPK+'" "'+userPK+'" 1 -p '+userName+'@active');
         sleep(1)
         print "reg producer:" + userName + "(" + pk + " "+bls_key+ ") belongs to chain(" + args.subchain + ")"
-        retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key + ' ' + userName+' https://'+userName+'.com '+args.subchain +' -p ultrainio@active -u')
+        retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key + ' ' + getrewardaccount(userName)+' https://'+userName+'.com '+args.subchain +' -p ultrainio@active -u')
         sleep(0.5)
     print "regProducer end..."
     sleep(2)
@@ -157,7 +168,7 @@ def delegateStark():
     for i in range(startl,endindex+1):
         userName = getUserName(i);
         print "delegatecons:" + userName + " 42000.0000 UGAS"
-        retry(args.clultrain + 'push action ultrainio delegatecons \'{"from":"utrio.stake", "receiver":"'+userName+'", "stake_cons_quantity":"42000.0000 UGAS"}\' -p utrio.stake@active')
+        retry(args.clultrain + 'push action ultrainio delegatecons \'{"from":"ultrainio", "receiver":"'+userName+'", "stake_cons_quantity":"42000.0000 UGAS"}\' -p utrio.stake@active')
         sleep(0.5)
     print "delegateStark end..."
     sleep(2)

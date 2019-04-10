@@ -141,7 +141,8 @@ def stepInstallSystemContracts():
 
 def stepCreateTokens():
     retry(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 UGAS"]\' -p utrio.token')
-    retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "900000000.0000 UGAS", "memo"]\' -p ultrainio')
+    if not (args.subchain and args.subchain != 'ultrainio') :
+        retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "900000000.0000 UGAS", "memo"]\' -p ultrainio')
     retry(args.clultrain + 'push action utrio.token set_chargeparams \'{"symbol":"UGAS","precision":"4","operate_interval":"%s","operate_fee":"%s",,"is_forbid_trans":0}\'  -p  utrio.token'  % ( 60,100))
     sleep(2)
 
@@ -150,17 +151,31 @@ def stepSetSystemContract():
     retry(args.clultrain + 'push action ultrainio setpriv' + jsonArg(['utrio.msig', 1]) + '-p ultrainio@active')
     sleep(2)
 
+def getrewardaccount(producer):
+    producer = producer + ".r"
+    prodlen = len(producer)
+    if prodlen > 12:
+        producer = producer[(prodlen-12):-1]
+    return producer
 def stepCreateStakedAccounts():
     retry(args.clultrain + ' create account ultrainio hello %s ' % args.initacc_pk)
+    rewardlist = []
     for i in range(0, args.num_producers + 1 + args.non_producers):
         retry(args.clultrain + 'create account ultrainio %s %s ' % (accounts[i], account_pk_list[i]))
+        if accounts[i] == "genesis":
+            continue
+        rewardacc = getrewardaccount(accounts[i])
+        rewardlist.append(rewardacc)
+        retry(args.clultrain + 'create account ultrainio %s %s ' % (rewardacc, account_pk_list[i]))
+    print(" reward account list:")
+    for a in rewardlist:
+        print(a)
 
     for a in initialAccounts:
         retry(args.clultrain + ' create account ultrainio %s %s ' % (a, args.initacc_pk))
-    if args.masterchain:
+    if not (args.subchain and args.subchain != 'ultrainio') :
         retry(args.clultrain + ' create account ultrainio utrioaccount UTR5Fa66fjgrWaNbUUeK1ZMfSfSHjA4nofQkwbK6bf4v6DRfaNkk6')
-    for i in range(0, len(rand_acc_lst)):
-        retry(args.clultrain + ' create account ultrainio %s %s ' % ( rand_acc_lst[i], rand_pk_lst[i]))
+
 def stepInitSimpleTest():
     retry(args.clultrain + 'push action hello hi \'{"user":"%s"}\' -p %s' % (accounts[1],accounts[1]))
     for i in range(10):
@@ -173,18 +188,16 @@ def stepInitSimpleTest():
 
 def stepRegProducers():
     for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "ultrainio" -u' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
+        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "ultrainio" -u' % (accounts[i], pk_list[i], bls_pk_list[i], getrewardaccount(accounts[i]), accounts[i]))
     #retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
     sleep(2)
-    for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'system delegatecons ultrainio %s  "%.4f UGAS" ' % (accounts[i], min_committee_staked/10000))
-    #stepInitSimpleTest()
-    #sleep(2)
-    for i in range(len(rand_acc_lst)):
-        value = 1000
-        retry(args.clultrain + 'transfer %s utrio.rand \'%.4f UGAS\' \'in0x1WaiterRegister\' -p %s' % ( rand_acc_lst[i],value, rand_acc_lst[i]))
-    if args.masterchain:
+    delegateaccount = "utrio.stake"
+    if not (args.subchain and args.subchain != 'ultrainio') :
+        delegateaccount = "ultrainio"
         retry(args.clultrain + ' push action ultrainio setfreeacc \'{"account":"utrioaccount", "number":10000}\' -p ultrainio')
+    for i in range(1, args.num_producers+1):
+        retry(args.clultrain + 'system delegatecons %s %s  "%.4f UGAS" ' % (delegateaccount, accounts[i], min_committee_staked/10000))
+
     if local == True :
         if args.subchain and args.subchain != "ultrainio" :
             masterproducerinfo = ""
@@ -210,6 +223,7 @@ def stepRegProducers():
         (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
         newaccount_fee, args.subchain, worldstate_interval, resourcelease_fee) )
     sleep(5)
+    retry(args.clultrain + ' system listproducers')
 
 def stepCreateinitAccounts():
     # for i in range(1, args.num_producers+1):
@@ -218,10 +232,7 @@ def stepCreateinitAccounts():
     # for a in initialAccounts:
     #     retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
     # retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100  "ultrainio"')
-    retry(args.clultrain + 'transfer ultrainio utrio.rand "30000 UGAS" ')
-    retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
-    for a in rand_acc_lst:
-        retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"3000.0000"))
+    pass
 def stepResign():
     #resign('ultrainio', 'utrio.null')
     resign('utrio.stake', 'utrio.null')
@@ -327,6 +338,20 @@ def stepregproducersTest():
         retry(args.clultrain + 'system delegatecons utrio.stake %s  "1000000.0000 UGAS" ' % (cur_accounts[i]))
 
 def stepexecrand():
+    transrandaccount = "utrio.rand"
+    if not (args.subchain and args.subchain != 'ultrainio') :
+        transrandaccount = "ultrainio"
+    retry(args.clultrain + 'transfer %s utrio.rand "6000 UGAS" ' % transrandaccount)
+    retry(args.clultrain + 'set account permission utrio.rand active \'{"threshold":1,"keys": [{"key": "%s","weight": 1}],"accounts": [{"permission":{"actor":"utrio.rand","permission":"utrio.code"},"weight":1}]}\' owner -p utrio.rand' % (args.public_key))
+
+    for i in range(0, len(rand_acc_lst)):
+        retry(args.clultrain + ' create account ultrainio %s %s ' % ( rand_acc_lst[i], rand_pk_lst[i]))
+    for a in rand_acc_lst:
+        retry(args.clultrain + 'transfer  %s  %s  "%s UGAS" '  % (transrandaccount, a, "1000.0000"))
+    for i in range(len(rand_acc_lst)):
+        value = 1000
+        retry(args.clultrain + 'transfer %s utrio.rand \'%.4f UGAS\' \'in0x1WaiterRegister\' -p %s' % ( rand_acc_lst[i],value, rand_acc_lst[i]))
+
     randpath = "/root/workspace"
     if args.programpath:
         randpath = args.programpath
@@ -348,14 +373,14 @@ commands = [
     ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
     ('I', 'initsimpletest', stepInitSimpleTest,         False,    "Simple transfer contract call test"),
-    ('i', 'create-initacc', stepCreateinitAccounts,     True,    "create initial accounts"),
+    ('i', 'create-initacc', stepCreateinitAccounts,     False,    "create initial accounts"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
     ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
     ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction"),
     ('u', 'unregproducers',  stepunregproducersTest,    False,    "stepunregproducersTest"),
     ('r', 'regproducers',  stepregproducersTest,    False,    "stepregproducersTest"),
-    ('e', 'execrand',          stepexecrand,            True,    "stepexecrand"),
+    ('e', 'execrand',          stepexecrand,            False,    "stepexecrand"),
 ]
 
 parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")

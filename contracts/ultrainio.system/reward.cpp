@@ -61,7 +61,7 @@ namespace ultrainiosystem {
                 curblockreward = iter->reward;
             }
         }
-         _gstate.total_unpaid_balance += curblockreward;
+         _gstate.total_unpaid_balance += number * curblockreward;
          _producers.modify( prod, [&](auto& p ) {
                p.unpaid_balance += number * curblockreward;
                p.total_produce_block += number;

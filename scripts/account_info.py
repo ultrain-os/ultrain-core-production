@@ -768,8 +768,8 @@ account_sk_list = [
 rand_acc_lst = [ #Temporarily use 4 accounts to vote
     "jack",
     "tony",
-    "beckham",
-    "henry",
+    # "beckham",
+    # "henry",
    #  "messi",
    #  "guly",
    #  "eto",
