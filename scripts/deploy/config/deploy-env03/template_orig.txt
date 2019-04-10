@@ -37,4 +37,4 @@ plugin = ultrainio::monitor_plugin
 #mongo-config
 
 #chain_name
-chain-name=13
+chain-name=newretail

@@ -2,48 +2,73 @@
   {
     "chainName": "ultrainio",
     "seedIp": [
-      "172.17.0.26"
+      "172.17.0.26",
+      "172.17.0.25",
+      "172.17.0.133",
+      "172.17.0.134"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6fo28u5UbcrkbKG2FsgpRcHXvvcVXuvHbn8exZipPmqiWELi3k",
-      "UTR5WLdrgG23R1aAWz7ZRNdaVg9UwoAk2fP4varAu2SuTzRLAfVgu"
+      "UTR7bFaVVzupNEzyABXXpmJph8eQge6unjvUFPpZ8GnGB37Pgwsey",
+      "UTR8bhGUW3oDvFN1NSyRR7FCxxvNjxJk6Wxb852ZqaTYdyBCyirai",
+      "UTR5o6r3Ws8FAG3tRckNf33j8WthqoEXa5PJWBmfm1yD1P5JQhxpn",
+      "UTR7z9EpWXoP6sX838gRnAtmieX9Tm5xNKdKjgWhmYQFtKmVPHi85",
+      "UTR6DWKfZoRFLHZ54HtB9vxtjBhbXsEgWWt8QZiXyJrFWwsyrmeTu",
+      "UTR7xxbnDoPkCHvpdB3n6wARc8Ksi3rLLr56cBQWJraNhQaRRABZf"
     ]
   },
   {
-    "chainName": "11",
+    "chainName": "unitopia",
     "seedIp": [
       "172.17.0.91",
-      "172.17.0.60"
+      "172.17.0.135",
+      "172.17.0.136",
+      "172.17.0.137"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR8Sjo4jvNEsddeMpaEQbhd6L4AzmkqCNA2CqDQJPwTcJw2bW53U",
-      "UTR76GgQMyRiEAq8suPdtxoia9k1UrrRMPMydsWpxXB91o2f3Rggn"
+      "UTR8ceQzCFsMX5qwsoY5vdqyp85F59Thq5QzB9wc3p2mrBesrp5gw",
+      "UTR7nM9pSzkWx2P1MYeHJg75ApwEKKuGKvzhfkzPUPcnV1geS8tnQ",
+      "UTR6ytFNeYExQX9oaszoQGFZMRTW5ho792xNTW4mpYyk36uGKbHi5",
+      "UTR56sSe7PgvYZxXkF8awhRzxttd1m3TQ3HuPs3jnHLesabY7QHEx",
+      "UTR5nxzTuHyXDJz4YV6UimwM8g8sBv9uaddzpjkkJxsrrEXSBjdfm",
+      "UTR87RTNffMrZ1puCmgTGhQj2mYq6GcMHWdgnmZKezLpF8eTz1rod"
     ]
   },
   {
-    "chainName": "12",
+    "chainName": "pioneer",
     "seedIp": [
       "172.17.0.93",
-      "172.17.0.81"
+      "172.17.0.138",
+      "172.17.0.139",
+      "172.17.0.140"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6BCJTz6LmHNxCR8WPhQKcAzkHFjLDK9C9E8mxGxAQfkhmuKJ9X",
-      "UTR6Fs4VHM5kKE1NNRxT3Vmb6aqkjdXcTU5R6TB6LETF8HQcDpZBZ"
+      "UTR71HKR1X9ex149K715CJ3Qv2GcFZtAkaaQnw1toNE8RjAvgQrnx",
+      "UTR7B5H2mq1xdBx1LTicYTx5nkXypHcLwGCCoLCBnwkNSB1dfTbvj",
+      "UTR62cmZyLq4Gn3uWcKk9yqRp52Yo1M1XBZLUn5HTWUcy8uNykwVf",
+      "UTR6nUtnDxmAUwt188C5cdbW5LxS3NzZbChJhJmpznLka4wPkKazi",
+      "UTR8Fc2qRTHdsm4ctW64Hfs46WEzFxdwAvqiVj47cJCpAkyDiomCZ",
+      "UTR7Pmz6MkXLPfNXK4wFFCSQThecsVXpoggje27VTXgNFQy3eqNMr"
     ]
   },
   {
-    "chainName": "13",
+    "chainName": "newretail",
     "seedIp": [
-      "172.17.0.24",
-      "172.17.0.85"
+      "172.17.0.141",
+      "172.17.0.142",
+      "172.17.0.143",
+      "172.17.0.144"
     ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR7eaMTFhu7D8yNtFsQiNtSh5KfdktuATnwQYYQR8qjRNxRshqrW",
-      "UTR6oWv1CBPNCXMtxM7Ghw9K2hw2nhp5jX21wGxovkv7TUMJeYo8E"
+      "UTR8h1j5kb9M8RwrhJ5tQbN6K9mDbT2cgeGoZ1DxKUWnfognHog2n",
+      "UTR6oCwi5uTwccWyKBnSdzhGYP4qV32U2o17emSi3kinskmqXuXRy",
+      "UTR7KCiKvEDm3zzEFXzg12etLfEpJbmjzZ8kXyPnXcjj95XAM8GxU",
+      "UTR6TrFBncnFKmqaSXfkf7p8pxGBMX5h3jNFjFHs56kwZgwUZJo3j",
+      "UTR5wtp4HJBER9Bpi1YxkPrwJ3iNDHjmzTwp9qX986vPtjicz6i7G",
+      "UTR6DKcqWkb5h88cLH5tej9FM9FCnCNBG21iWztTBQPisXXdUPfyY"
     ]
   }
 ]
