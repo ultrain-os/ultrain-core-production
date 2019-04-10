@@ -6,7 +6,7 @@ const config = {
   sign: true,
   logger: {
     directory: "../../logs", // daily rotate file directory
-    level: "info", // error->warn->info->verbose->debug->silly
+    level: "error", // error->warn->info->verbose->debug->silly
     console: true, // print to console
     file: false // append to file
   },
