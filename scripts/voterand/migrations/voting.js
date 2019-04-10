@@ -16,7 +16,7 @@ var toolsPath = getRandToolsPath();
 var g_vrf_client_path = `${toolsPath}/vrf_client`;
 var g_node_config_path = "/root/.local/share/ultrainio/nodultrain/config/config.ini";
 var g_perl_script_path = `${toolsPath}/b58.pl`;
-var g_seed_config_path = "/root/workspace/ultrain-core/scripts/ultrainmng/seedconfig.json";
+var g_seed_config_path = "/root/.local/share/ultrainio/ultrainmng/config/seedconfig.json";
 var g_chain_id = undefined;
 
 function base64Sk(securityKey) {
@@ -86,7 +86,7 @@ async function votingRandomNum() {
   var account = nodeConfig["my-account-as-committee"];
   var securityKey = nodeConfig["my-sk-as-account"];
   var httpServerAddress = getHttpServerAddress();
-  
+
   config.httpEndpoint = httpServerAddress;
   config.keyProvider = [securityKey];
   config.chainId = await getChainId(config);
