@@ -35,6 +35,7 @@ def deployfile():
     run("tar xf ultrainmng.tar")
     run("chmod +x /root/ultrainmng/tool/_runultrain.sh")
     run("chmod +x /root/ultrainmng/tool/_runworldstate.sh")
+    put("voterand.tar","/root/")
     run("tar xf voterand.tar")
     run("chmod +x /root/voterand/scripts/rand/vrf_client")
     run("chmod +x /root/voterand/scripts/rand/b58.pl")
@@ -71,6 +72,7 @@ def clearhostlog():
 def clearhostdata():
     run('rm -rf /root/.local/share/ultrainio/nodultrain/data/')
     run('rm -rf /root/.local/share/ultrainio/wssultrain/data/worldstate')
+    run('rm -rf /mongodb/data && rm -rf /mongodb/log')
 
 @parallel
 def clearhostenv():
@@ -181,6 +183,7 @@ def uploadconfig():
     run("mkdir -p /root/.local/share/ultrainio/ultrainmng/config")
     put("ultrainmng/config.ini", "/root/.local/share/ultrainio/ultrainmng/config/config.ini")
     put("ultrainmng/seedconfig.json", "/root/.local/share/ultrainio/ultrainmng/config/seedconfig.json")
+    run("mkdir -p /mongodb/data && mkdir -p /mongodb/log")
 
 @parallel
 def uploadmngconfig():
