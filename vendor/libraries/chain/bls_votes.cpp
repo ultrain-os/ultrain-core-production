@@ -193,8 +193,15 @@ namespace ultrainio {
             }
 
             std::string bls_votes_manager::get_current_bls_votes() const {
-                const auto& o = _db.get<bls_votes_current_object>();
-                return std::string(o.current_bls_str.begin(), o.current_bls_str.end());
+                try {
+                    const auto& o = _db.get<bls_votes_current_object>();
+                    return std::string(o.current_bls_str.begin(), o.current_bls_str.end());
+                } catch (std::exception& e) {
+                    ilog("get_current_bls_votes exception ${e}", ("e", std::string(e.what())));
+                    _db.create<bls_votes_current_object>([&](bls_votes_current_object &obj) {
+                    });
+                }
+                return std::string();
             }
         }
     }
