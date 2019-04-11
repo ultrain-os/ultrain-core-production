@@ -23,6 +23,10 @@ def updatefile():
     run('chmod +x /root/ultrainmng/src/')
 
 #@parallel
+def updateVotingfile():
+    put("voting.js","/root/voterand/migrations/")
+
+#@parallel
 def deployfile():
     #run("mkdir -p /root/config")
     #put("/root/uploadconfig.sh","/root/config")
@@ -62,6 +66,16 @@ def deployfile():
     #run('rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6')
     #run('ln /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.25 /usr/lib/x86_64-linux-gnu/libstdc++.so.6')
     #run('cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime')
+
+@parallel
+def updatelogrotate():
+    put("/root/runlogr.sh","/root/")
+    run('chmod +x /root/runlogr.sh')
+    run("killall logrotate.sh")
+    put("/root/logrotate.sh","/root/")
+    run('chmod +x /root/logrotate.sh')
+    run("/root/runlogr.sh && sleep 1")
+
 
 @parallel
 def clearhostlog():
