@@ -64,7 +64,7 @@ namespace ultrainio {
         myEcho.blsSignature = Signer::sign<CommonEchoMsg>(myEcho, sk);
         myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
         myEcho.signature = std::string(Signer::sign<UnsignedEchoMsg>(myEcho, StakeVoteBase::getMyPrivateKey()));
-        ilog("timestamp : ${timestamp} proof : ${proof} account : ${account} sign block ${id} signature ${signature}",
+        ilog("timestamp : ${timestamp} account : ${account} sign block ${id} signature ${signature}",
              ("timestamp", myEcho.timestamp)("account", std::string(StakeVoteBase::getMyAccount()))
              ("id", short_hash(myEcho.blockId))("signature", short_sig(myEcho.signature)));
         return myEcho;

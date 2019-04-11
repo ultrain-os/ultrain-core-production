@@ -102,6 +102,7 @@ namespace ultrainio {
             return;
         }
         if (!verifyBlockHeaderList(m_confirmedList, blsVoterSet)) {
+            elog("verify bls error, num : ${num} set : ${set}", ("num", BlockHeader::num_from_id(blsVoterSet.commonEchoMsg.blockId))("set", blsVoterSet.toString()));
             m_status = false;
             return;
         }
@@ -128,7 +129,6 @@ namespace ultrainio {
     }
 
     bool LightClient::verifyBlockHeaderList(const std::list<BlockHeader>& blockHeaderList, const BlsVoterSet& blsVoterSet) {
-        ilog("blsVoterSet : ${set}", ("set", blsVoterSet.toString()));
         std::list<ConfirmPoint> confirmPointList;
         for (auto v : blockHeaderList) {
             if (ConfirmPoint::isConfirmPoint(v)) {
@@ -141,16 +141,14 @@ namespace ultrainio {
             for (auto v : confirmPointList) {
                 if (itor->id() == v.confirmedBlockId()) {
                     if (!m_workingCommitteeSet.verify(v.blsVoterSet())) {
-                        elog("verify bls error, id : ${id} num : ${num}", ("id", itor->id())("num", BlockHeader::num_from_id(itor->id())));
+                        elog("verify bls error, id : ${id} num : ${num} set : ${set}", ("id", itor->id())("num", BlockHeader::num_from_id(itor->id()))("set", blsVoterSet.toString()));
                         return false;
                     }
                     isConfirmed = true;
                 }
             }
             if (itor->id() == blsVoterSet.commonEchoMsg.blockId) {
-                bool res = m_workingCommitteeSet.verify(blsVoterSet);
-                ilog("verifyBlockHeaderList verify result : ${result}", ("result", res));
-                return res;
+                return m_workingCommitteeSet.verify(blsVoterSet);
             }
 
             // MUST before EpochEndPoint::isEpochEndPoint check
