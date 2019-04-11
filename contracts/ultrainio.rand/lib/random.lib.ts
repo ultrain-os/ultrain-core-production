@@ -1,10 +1,8 @@
-import { NAME, RNAME } from "ultrain-ts-lib/src/account";
+import { NAME } from "ultrain-ts-lib/src/account";
 import { intToString } from "ultrain-ts-lib/src/utils";
 import { SHA256 } from "ultrain-ts-lib/src/crypto";
 import { Block } from "ultrain-ts-lib/src/block";
 import { Asset } from "ultrain-ts-lib/src/asset";
-import { Action } from "ultrain-ts-lib/src/action";
-import { Log } from "ultrain-ts-lib/src/log";
 import { queryBalance } from "../../node_modules/ultrain-ts-lib/lib/balance";
 
 //table + scope for external query
@@ -27,11 +25,9 @@ const COMMITTEE_TABLE = "producers";
 
 const CACHED_RAND_COUNT: u64 = 999;
 const CACHED_HST_COUNT: u64 = 10;
-const VOTING_PERIOD: u64 = 10;
 const WAITER_BONUS: u64 = 1; // bonus for waiter voters
 
 const DEPOSIT_KEY:u64 = 0;
-const MIN_RAND_NUM_KEY: u64 = 1;
 
 let sha256 = new SHA256();
 
@@ -199,7 +195,6 @@ export class Random {
     this.voteDB.get(RAND_KEY, randInfo);
     var index = this.indexOf(headBckNum);
     var rand = new RandRecord();
-    Log.s("randInfo.belongBckNums[index]").i(randInfo.belongBckNums[index]).flush();
     if (randInfo.belongBckNums[index] == headBckNum) {
       rand.val = randInfo.voteVals[index];
       rand.code = 0;
@@ -285,7 +280,7 @@ export class Random {
         rand.val = waiterVote.voteVals[index];
         rand.code = 0;
         if (isUpt && this.canSendBonus()){
-          Asset.transfer(NAME(CONT_NAME), Action.sender, new Asset(WAITER_BONUS), "bonus money"); //give bonus
+          Asset.transfer(NAME(CONT_NAME), user, new Asset(WAITER_BONUS), "bonus money"); //give bonus
         }
         break;
       }
@@ -327,20 +322,6 @@ export class Random {
     return waiterVote;
   }
 
-
-  isMainVoter(sender: account_name, bckNum: u64): bool {
-    var isCommittee = this.committeeDB.exists(sender);
-    Log.s("isCommittee" + RNAME(sender)).s(isCommittee.toString()).flush();
-    if (!isCommittee) {
-      return false;
-    } 
-    return true;
-    // var u_sender = changetype<u64>(sender);
-    // var expectMod = (bckNum % VOTING_PERIOD);
-    // Log.s("expectMod: ").i(expectMod).flush();
-    // return (u_sender % VOTING_PERIOD == expectMod);
-  }
-
   isMainVoted(sender: account_name, bckNum: u64): bool {
     var voteHst = new VoteHistory();
     voteHst.bcknum = bckNum;
@@ -361,6 +342,18 @@ export class Random {
       this.voteHstDB.modify(voteHst);
       return false;
     }
+  }
+
+  isMainVoter(sender: account_name, bckNum: u64): bool {
+    var isCommittee = this.committeeDB.exists(sender);
+    if (!isCommittee) {
+      return false;
+    }
+    const votingNums: u64 = 4;
+    var count = this.committeeDB.cursor().count;
+    var hashSender = this.hash(changetype<u64>(sender));
+    var modVal = (hashSender + bckNum) % count;
+    return modVal < votingNums;
   }
 
   initVoteHstMinBckNum(): void {
@@ -397,9 +390,7 @@ export class Random {
       }
       voteHst.bcknum = 0;
       voteHst.votedUser.push(newMinNum);
-      // Log.s("clearMainVoteHst: ").s("modify begin").flush();
       this.voteHstDB.modify(voteHst);
-      // Log.s("clearMainVoteHst: ").s("modify begin").flush();
     }
   }
 

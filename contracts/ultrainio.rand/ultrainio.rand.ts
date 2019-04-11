@@ -18,7 +18,6 @@ import {
   Random,
   RAND_KEY
 } from "./lib/random.lib";
-import { Log } from "ultrain-ts-lib/src/log";
 
 // parameters
 let WAITER_DEPOSIT_AMOUNT: Asset = new Asset(10000000);
@@ -245,9 +244,9 @@ class RandContract extends Contract {
     var seedStr = intToString(seed);
     seedStr = seedStr.concat("0".repeat(64 - seedStr.length));
     var pkStr = Account.publicKeyOf(Action.sender, 'hex');
-    Log.s("seedStr : ").s(seedStr).flush();
-    Log.s("pkstr: ").s(pkStr).flush();
-    Log.s("blockNum: ").i(blockNum).flush();
+    // Log.s("seedStr : ").s(seedStr).flush();
+    // Log.s("pkstr: ").s(pkStr).flush();
+    // Log.s("blockNum: ").i(blockNum).flush();
 
     ultrain_assert(verify_with_pk(pkStr, pk_proof, seedStr), "please provide a valid VRF proof." + pkStr + " " + pk_proof + " " + seedStr);
     var sha256 = new SHA256();
@@ -261,7 +260,6 @@ class RandContract extends Contract {
   }
 
   private mainVoterVote(name: account_name, pk_proof: string, blockNum: u64): void {
-    Log.s("mainVoterVote begin").flush();
     if (this.random.isMainVoted(name, blockNum)){
       ultrain_assert(false, RNAME(name) + " had already submitted the vote, please wait for the next round.");
     }
@@ -270,18 +268,12 @@ class RandContract extends Contract {
     var randVoteInfo = new Voter();
     this.voteDB.get(RAND_KEY, randVoteInfo);
     var oldBckNum = randVoteInfo.belongBckNums[index];
-
-    Log.s("oldBckNum:").i(oldBckNum).flush();
-    Log.s("belongRandNum:").i(this.belongRandNum(blockNum)).flush();
-
-
     if (this.belongRandNum(blockNum) != oldBckNum) {
       // using the random number as default value
       randVoteInfo.voteVals[index] = this.getExistRand(blockNum);
       randVoteInfo.belongBckNums[index] = this.belongRandNum(blockNum);
     }
     randVoteInfo.voteVals[index] = randVoteInfo.voteVals[index] ^ vrf;
-    Log.s("mainVoterVote end").flush();
     this.voteDB.modify(randVoteInfo);
   }
 

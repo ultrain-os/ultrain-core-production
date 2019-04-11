@@ -37,6 +37,8 @@
  (type $FUNCSIG$vijji (func (param i32 i64 i64 i32)))
  (type $FUNCSIG$iijji (func (param i32 i64 i64 i32) (result i32)))
  (type $FUNCSIG$ij (func (param i64) (result i32)))
+ (type $FUNCSIG$iijjj (func (param i32 i64 i64 i64) (result i32)))
+ (type $FUNCSIG$jjjj (func (param i64 i64 i64) (result i64)))
  (type $FUNCSIG$vijij (func (param i32 i64 i32 i64)))
  (type $FUNCSIG$jiij (func (param i32 i32 i64) (result i64)))
  (type $FUNCSIG$ijiii (func (param i64 i32 i32 i32) (result i32)))
@@ -61,6 +63,7 @@
  (import "env" "current_sender" (func $~lib/ultrain-ts-lib/internal/action.d/env.current_sender (result i64)))
  (import "env" "send_inline" (func $~lib/ultrain-ts-lib/internal/action.d/env.send_inline (param i32 i32)))
  (import "env" "db_remove_i64" (func $~lib/env/db_remove_i64 (param i32)))
+ (import "env" "db_iterator_i64" (func $~lib/env/db_iterator_i64 (param i64 i64 i64) (result i64)))
  (import "env" "ts_public_key_of_account" (func $~lib/ultrain-ts-lib/internal/crypto.d/env.ts_public_key_of_account (param i64 i32 i32 i32) (result i32)))
  (import "env" "ts_verify_with_pk" (func $~lib/ultrain-ts-lib/internal/crypto.d/env.ts_verify_with_pk (param i32 i32 i32) (result i32)))
  (import "env" "set_result_str" (func $~lib/ultrain-ts-lib/src/return/env.set_result_str (param i32)))
@@ -275,7 +278,6 @@
  (global $contract/lib/random.lib/COMMITTEE_TABLE i32 (i32.const 2888))
  (global $contract/lib/random.lib/CACHED_RAND_COUNT i64 (i64.const 999))
  (global $contract/lib/random.lib/CACHED_HST_COUNT i64 (i64.const 10))
- (global $contract/lib/random.lib/VOTING_PERIOD i64 (i64.const 10))
  (global $contract/lib/random.lib/WAITER_BONUS i64 (i64.const 1))
  (global $contract/lib/random.lib/DEPOSIT_KEY i64 (i64.const 0))
  (global $contract/lib/random.lib/sha256 (mut i32) (i32.const 0))
@@ -289,7 +291,7 @@
  (export "table" (table $0))
  (export "apply" (func $contract/ultrainio.rand/apply))
  (start $start)
- (func $start:~lib/allocator/arena (; 23 ;) (type $FUNCSIG$v)
+ (func $start:~lib/allocator/arena (; 24 ;) (type $FUNCSIG$v)
   global.get $~lib/memory/HEAP_BASE
   i32.const 7
   i32.add
@@ -301,10 +303,10 @@
   global.get $~lib/allocator/arena/startOffset
   global.set $~lib/allocator/arena/offset
  )
- (func $start:~lib/ultrain-ts-lib/lib/name_ex (; 24 ;) (type $FUNCSIG$v)
+ (func $start:~lib/ultrain-ts-lib/lib/name_ex (; 25 ;) (type $FUNCSIG$v)
   call $start:~lib/allocator/arena
  )
- (func $~lib/allocator/arena/__memory_allocate (; 25 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/allocator/arena/__memory_allocate (; 26 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -383,12 +385,12 @@
   global.set $~lib/allocator/arena/offset
   local.get $1
  )
- (func $~lib/memory/memory.allocate (; 26 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/memory/memory.allocate (; 27 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   call $~lib/allocator/arena/__memory_allocate
   return
  )
- (func $~lib/ultrain-ts-lib/src/log/Logger#constructor (; 27 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/log/Logger#constructor (; 28 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.eqz
   if
@@ -398,12 +400,12 @@
   end
   local.get $0
  )
- (func $start:~lib/ultrain-ts-lib/src/log (; 28 ;) (type $FUNCSIG$v)
+ (func $start:~lib/ultrain-ts-lib/src/log (; 29 ;) (type $FUNCSIG$v)
   i32.const 0
   call $~lib/ultrain-ts-lib/src/log/Logger#constructor
   global.set $~lib/ultrain-ts-lib/src/log/Log
  )
- (func $~lib/internal/arraybuffer/computeSize (; 29 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/internal/arraybuffer/computeSize (; 30 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   i32.const 1
   i32.const 32
   local.get $0
@@ -415,7 +417,7 @@
   i32.sub
   i32.shl
  )
- (func $~lib/internal/arraybuffer/allocateUnsafe (; 30 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/internal/arraybuffer/allocateUnsafe (; 31 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   local.get $0
@@ -440,7 +442,7 @@
   i32.store
   local.get $1
  )
- (func $~lib/internal/memory/memset (; 31 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/internal/memory/memset (; 32 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i64)
@@ -694,7 +696,7 @@
    end
   end
  )
- (func $~lib/array/Array<u8>#constructor (; 32 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/array/Array<u8>#constructor (; 33 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -751,7 +753,7 @@
   end
   local.get $0
  )
- (func $~lib/string/String#charCodeAt (; 33 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/string/String#charCodeAt (; 34 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   local.get $0
   i32.const 0
   i32.ne
@@ -775,7 +777,7 @@
   i32.add
   i32.load16_u offset=4
  )
- (func $~lib/internal/memory/memcpy (; 34 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/internal/memory/memcpy (; 35 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -1976,7 +1978,7 @@
    i32.store8
   end
  )
- (func $~lib/internal/memory/memmove (; 35 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/internal/memory/memmove (; 36 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   local.get $0
   local.get $1
@@ -2203,10 +2205,10 @@
    end
   end
  )
- (func $~lib/allocator/arena/__memory_free (; 36 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $~lib/allocator/arena/__memory_free (; 37 ;) (type $FUNCSIG$vi) (param $0 i32)
   nop
  )
- (func $~lib/internal/arraybuffer/reallocateUnsafe (; 37 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/internal/arraybuffer/reallocateUnsafe (; 38 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -2305,7 +2307,7 @@
   end
   local.get $0
  )
- (func $~lib/array/Array<u8>#push (; 38 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/array/Array<u8>#push (; 39 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -2374,7 +2376,7 @@
   end
   local.get $5
  )
- (func $~lib/utf8util/toUTF8Array (; 39 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/utf8util/toUTF8Array (; 40 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -2540,7 +2542,7 @@
   drop
   local.get $1
  )
- (func $~lib/utf8util/string2cstr (; 40 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/utf8util/string2cstr (; 41 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   local.get $0
@@ -2553,7 +2555,7 @@
   i32.const 8
   i32.add
  )
- (func $~lib/env/ultrain_assert (; 41 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/env/ultrain_assert (; 42 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   i32.const 0
   i32.ne
@@ -2566,7 +2568,7 @@
    call $~lib/env/ultrainio_assert
   end
  )
- (func $~lib/ultrain-ts-lib/src/utils/toUTF8Array (; 42 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/utils/toUTF8Array (; 43 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -2732,7 +2734,7 @@
   drop
   local.get $1
  )
- (func $~lib/ultrain-ts-lib/src/utils/string2cstr (; 43 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/utils/string2cstr (; 44 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   local.get $0
@@ -2745,22 +2747,22 @@
   i32.const 8
   i32.add
  )
- (func $~lib/ultrain-ts-lib/src/log/Logger#s (; 44 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/log/Logger#s (; 45 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   local.get $1
   call $~lib/ultrain-ts-lib/src/utils/string2cstr
   call $~lib/ultrain-ts-lib/src/log/env.ts_log_print_s
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/src/log/Logger#i (; 45 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/log/Logger#i (; 46 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   local.get $1
   local.get $2
   call $~lib/ultrain-ts-lib/src/log/env.ts_log_print_i
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/src/log/Logger#flush (; 46 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/log/Logger#flush (; 47 ;) (type $FUNCSIG$vi) (param $0 i32)
   call $~lib/ultrain-ts-lib/src/log/env.ts_log_done
  )
- (func $~lib/ultrain-ts-lib/src/asset/StringToSymbol (; 47 ;) (type $FUNCSIG$jii) (param $0 i32) (param $1 i32) (result i64)
+ (func $~lib/ultrain-ts-lib/src/asset/StringToSymbol (; 48 ;) (type $FUNCSIG$jii) (param $0 i32) (param $1 i32) (result i64)
   (local $2 i32)
   (local $3 i64)
   (local $4 i32)
@@ -2853,7 +2855,7 @@
   local.set $3
   local.get $3
  )
- (func $start:~lib/ultrain-ts-lib/src/asset (; 48 ;) (type $FUNCSIG$v)
+ (func $start:~lib/ultrain-ts-lib/src/asset (; 49 ;) (type $FUNCSIG$v)
   call $start:~lib/ultrain-ts-lib/src/log
   i32.const 4
   i32.const 1280
@@ -2864,14 +2866,14 @@
   i64.shr_u
   global.set $~lib/ultrain-ts-lib/src/asset/SYS_NAME
  )
- (func $start:~lib/ultrain-ts-lib/src/account (; 49 ;) (type $FUNCSIG$v)
+ (func $start:~lib/ultrain-ts-lib/src/account (; 50 ;) (type $FUNCSIG$v)
   call $start:~lib/ultrain-ts-lib/src/asset
  )
- (func $start:~lib/ultrain-ts-lib/src/contract (; 50 ;) (type $FUNCSIG$v)
+ (func $start:~lib/ultrain-ts-lib/src/contract (; 51 ;) (type $FUNCSIG$v)
   call $start:~lib/ultrain-ts-lib/lib/name_ex
   call $start:~lib/ultrain-ts-lib/src/account
  )
- (func $node_modules/ultrain-ts-lib/src/log/Logger#constructor (; 51 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $node_modules/ultrain-ts-lib/src/log/Logger#constructor (; 52 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.eqz
   if
@@ -2881,12 +2883,12 @@
   end
   local.get $0
  )
- (func $start:node_modules/ultrain-ts-lib/src/log (; 52 ;) (type $FUNCSIG$v)
+ (func $start:node_modules/ultrain-ts-lib/src/log (; 53 ;) (type $FUNCSIG$v)
   i32.const 0
   call $node_modules/ultrain-ts-lib/src/log/Logger#constructor
   global.set $node_modules/ultrain-ts-lib/src/log/Log
  )
- (func $node_modules/ultrain-ts-lib/src/utils/toUTF8Array (; 53 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $node_modules/ultrain-ts-lib/src/utils/toUTF8Array (; 54 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -3052,7 +3054,7 @@
   drop
   local.get $1
  )
- (func $node_modules/ultrain-ts-lib/src/utils/string2cstr (; 54 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $node_modules/ultrain-ts-lib/src/utils/string2cstr (; 55 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   local.get $0
@@ -3065,22 +3067,22 @@
   i32.const 8
   i32.add
  )
- (func $node_modules/ultrain-ts-lib/src/log/Logger#s (; 55 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $node_modules/ultrain-ts-lib/src/log/Logger#s (; 56 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   local.get $1
   call $node_modules/ultrain-ts-lib/src/utils/string2cstr
   call $node_modules/ultrain-ts-lib/src/log/env.ts_log_print_s
   local.get $0
  )
- (func $node_modules/ultrain-ts-lib/src/log/Logger#i (; 56 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $node_modules/ultrain-ts-lib/src/log/Logger#i (; 57 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   local.get $1
   local.get $2
   call $node_modules/ultrain-ts-lib/src/log/env.ts_log_print_i
   local.get $0
  )
- (func $node_modules/ultrain-ts-lib/src/log/Logger#flush (; 57 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $node_modules/ultrain-ts-lib/src/log/Logger#flush (; 58 ;) (type $FUNCSIG$vi) (param $0 i32)
   call $node_modules/ultrain-ts-lib/src/log/env.ts_log_done
  )
- (func $node_modules/ultrain-ts-lib/src/asset/StringToSymbol (; 58 ;) (type $FUNCSIG$jii) (param $0 i32) (param $1 i32) (result i64)
+ (func $node_modules/ultrain-ts-lib/src/asset/StringToSymbol (; 59 ;) (type $FUNCSIG$jii) (param $0 i32) (param $1 i32) (result i64)
   (local $2 i32)
   (local $3 i64)
   (local $4 i32)
@@ -3173,7 +3175,7 @@
   local.set $3
   local.get $3
  )
- (func $start:node_modules/ultrain-ts-lib/src/asset (; 59 ;) (type $FUNCSIG$v)
+ (func $start:node_modules/ultrain-ts-lib/src/asset (; 60 ;) (type $FUNCSIG$v)
   call $start:node_modules/ultrain-ts-lib/src/log
   i32.const 4
   i32.const 1280
@@ -3184,10 +3186,10 @@
   i64.shr_u
   global.set $node_modules/ultrain-ts-lib/src/asset/SYS_NAME
  )
- (func $start:node_modules/ultrain-ts-lib/lib/balance (; 60 ;) (type $FUNCSIG$v)
+ (func $start:node_modules/ultrain-ts-lib/lib/balance (; 61 ;) (type $FUNCSIG$v)
   call $start:node_modules/ultrain-ts-lib/src/asset
  )
- (func $~lib/ultrain-ts-lib/lib/name/char_to_symbol (; 61 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $~lib/ultrain-ts-lib/lib/name/char_to_symbol (; 62 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   (local $1 i32)
   local.get $0
   i32.const 255
@@ -3243,7 +3245,7 @@
   end
   i64.const 0
  )
- (func $~lib/ultrain-ts-lib/lib/name/N (; 62 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $~lib/ultrain-ts-lib/lib/name/N (; 63 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   (local $1 i32)
   (local $2 i64)
   (local $3 i32)
@@ -3327,11 +3329,11 @@
   end
   local.get $2
  )
- (func $~lib/ultrain-ts-lib/src/account/NAME (; 63 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $~lib/ultrain-ts-lib/src/account/NAME (; 64 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   call $~lib/ultrain-ts-lib/lib/name/N
  )
- (func $~lib/internal/typedarray/TypedArray<u8>#constructor (; 64 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/internal/typedarray/TypedArray<u8>#constructor (; 65 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -3394,7 +3396,7 @@
   i32.store offset=8
   local.get $0
  )
- (func $~lib/typedarray/Uint8Array#constructor (; 65 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/typedarray/Uint8Array#constructor (; 66 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   local.get $0
   i32.eqz
   if
@@ -3408,7 +3410,7 @@
   local.set $0
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/src/crypto/Crypto#constructor (; 66 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/Crypto#constructor (; 67 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3428,7 +3430,7 @@
   i32.store
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/src/crypto/SHA256#constructor (; 67 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/SHA256#constructor (; 68 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   if (result i32)
    local.get $0
@@ -3441,7 +3443,7 @@
   local.set $0
   local.get $0
  )
- (func $start:contract/lib/random.lib (; 68 ;) (type $FUNCSIG$v)
+ (func $start:contract/lib/random.lib (; 69 ;) (type $FUNCSIG$v)
   call $start:node_modules/ultrain-ts-lib/lib/balance
   i32.const 2736
   call $~lib/ultrain-ts-lib/src/account/NAME
@@ -3456,7 +3458,7 @@
   call $~lib/ultrain-ts-lib/src/crypto/SHA256#constructor
   global.set $contract/lib/random.lib/sha256
  )
- (func $~lib/ultrain-ts-lib/src/asset/Asset#constructor (; 69 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/ultrain-ts-lib/src/asset/Asset#constructor (; 70 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3480,7 +3482,7 @@
   i64.store offset=8
   local.get $0
  )
- (func $start:contract/ultrainio.rand (; 70 ;) (type $FUNCSIG$v)
+ (func $start:contract/ultrainio.rand (; 71 ;) (type $FUNCSIG$v)
   call $start:~lib/ultrain-ts-lib/src/contract
   call $start:contract/lib/random.lib
   i32.const 0
@@ -3489,7 +3491,7 @@
   call $~lib/ultrain-ts-lib/src/asset/Asset#constructor
   global.set $contract/ultrainio.rand/WAITER_DEPOSIT_AMOUNT
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#constructor (; 71 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#constructor (; 72 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3510,7 +3512,7 @@
   i64.store
   local.get $0
  )
- (func $~lib/dbmanager/DBManager<Voter>#constructor (; 72 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Voter>#constructor (; 73 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3540,7 +3542,7 @@
   i64.store offset=16
   local.get $0
  )
- (func $~lib/dbmanager/DBManager.newInstance<Voter> (; 73 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager.newInstance<Voter> (; 74 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   i32.const 0
   local.get $0
@@ -3552,7 +3554,7 @@
   i64.store offset=8
   local.get $3
  )
- (func $~lib/dbmanager/DBManager<Waiter>#constructor (; 74 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Waiter>#constructor (; 75 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3582,7 +3584,7 @@
   i64.store offset=16
   local.get $0
  )
- (func $~lib/dbmanager/DBManager.newInstance<Waiter> (; 75 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager.newInstance<Waiter> (; 76 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   i32.const 0
   local.get $0
@@ -3594,7 +3596,7 @@
   i64.store offset=8
   local.get $3
  )
- (func $~lib/dbmanager/DBManager<RandRecord>#constructor (; 76 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<RandRecord>#constructor (; 77 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3624,7 +3626,7 @@
   i64.store offset=16
   local.get $0
  )
- (func $~lib/dbmanager/DBManager.newInstance<RandRecord> (; 77 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager.newInstance<RandRecord> (; 78 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   i32.const 0
   local.get $0
@@ -3636,7 +3638,7 @@
   i64.store offset=8
   local.get $3
  )
- (func $~lib/dbmanager/DBManager<VoteHistory>#constructor (; 78 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<VoteHistory>#constructor (; 79 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3666,7 +3668,7 @@
   i64.store offset=16
   local.get $0
  )
- (func $~lib/dbmanager/DBManager.newInstance<VoteHistory> (; 79 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager.newInstance<VoteHistory> (; 80 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   i32.const 0
   local.get $0
@@ -3678,7 +3680,7 @@
   i64.store offset=8
   local.get $3
  )
- (func $~lib/dbmanager/DBManager<Config>#constructor (; 80 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Config>#constructor (; 81 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3708,7 +3710,7 @@
   i64.store offset=16
   local.get $0
  )
- (func $~lib/dbmanager/DBManager.newInstance<Config> (; 81 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager.newInstance<Config> (; 82 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   i32.const 0
   local.get $0
@@ -3720,7 +3722,7 @@
   i64.store offset=8
   local.get $3
  )
- (func $~lib/dbmanager/DBManager<Producer>#constructor (; 82 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Producer>#constructor (; 83 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3750,7 +3752,7 @@
   i64.store offset=16
   local.get $0
  )
- (func $~lib/dbmanager/DBManager.newInstance<Producer> (; 83 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager.newInstance<Producer> (; 84 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   i32.const 0
   local.get $0
@@ -3762,7 +3764,7 @@
   i64.store offset=8
   local.get $3
  )
- (func $contract/lib/random.lib/Random#constructor (; 84 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Random#constructor (; 85 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3846,7 +3848,7 @@
   i32.store offset=12
   local.get $0
  )
- (func $~lib/dbmanager/DBManager<Voter>#find (; 85 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Voter>#find (; 86 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   i64.load offset=8
@@ -3859,7 +3861,7 @@
   local.set $2
   local.get $2
  )
- (func $~lib/dbmanager/DBManager<Voter>#exists (; 86 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Voter>#exists (; 87 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   local.get $1
@@ -3874,7 +3876,7 @@
    i32.const 1
   end
  )
- (func $~lib/array/Array<u64>#constructor (; 87 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/array/Array<u64>#constructor (; 88 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -3931,7 +3933,7 @@
   end
   local.get $0
  )
- (func $contract/lib/random.lib/Voter#constructor (; 88 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Voter#constructor (; 89 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -3979,7 +3981,7 @@
   i32.store offset=12
   local.get $0
  )
- (func $~lib/datastream/DataStream#constructor (; 89 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
+ (func $~lib/datastream/DataStream#constructor (; 90 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -4009,13 +4011,13 @@
   i32.store offset=8
   local.get $0
  )
- (func $~lib/datastream/DataStream#isMeasureMode (; 90 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream#isMeasureMode (; 91 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.load
   i32.const 0
   i32.eq
  )
- (func $~lib/datastream/DataStream#write<u64> (; 91 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
+ (func $~lib/datastream/DataStream#write<u64> (; 92 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
   local.get $0
   call $~lib/datastream/DataStream#isMeasureMode
   i32.eqz
@@ -4035,7 +4037,7 @@
   i32.add
   i32.store offset=8
  )
- (func $~lib/datastream/DataStream#write<u8> (; 92 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/datastream/DataStream#write<u8> (; 93 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   call $~lib/datastream/DataStream#isMeasureMode
   i32.eqz
@@ -4055,7 +4057,7 @@
   i32.add
   i32.store offset=8
  )
- (func $~lib/datastream/DataStream#writeVarint32 (; 93 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/datastream/DataStream#writeVarint32 (; 94 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   loop $continue|0
    block
@@ -4088,7 +4090,7 @@
    br_if $continue|0
   end
  )
- (func $~lib/array/Array<u64>#__get (; 94 ;) (type $FUNCSIG$jii) (param $0 i32) (param $1 i32) (result i64)
+ (func $~lib/array/Array<u64>#__get (; 95 ;) (type $FUNCSIG$jii) (param $0 i32) (param $1 i32) (result i64)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -4121,7 +4123,7 @@
    unreachable
   end
  )
- (func $~lib/datastream/DataStream#writeVector<u64> (; 95 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/datastream/DataStream#writeVector<u64> (; 96 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   block $~lib/array/Array<u64>#get:length|inlined.0 (result i32)
@@ -4158,7 +4160,7 @@
    unreachable
   end
  )
- (func $~lib/datastream/DataStream#write<i32> (; 96 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/datastream/DataStream#write<i32> (; 97 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   call $~lib/datastream/DataStream#isMeasureMode
   i32.eqz
@@ -4178,7 +4180,7 @@
   i32.add
   i32.store offset=8
  )
- (func $contract/lib/random.lib/Voter#serialize (; 97 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $contract/lib/random.lib/Voter#serialize (; 98 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   local.get $0
   i64.load
@@ -4212,7 +4214,7 @@
   i32.load offset=44
   call $~lib/datastream/DataStream#write<i32>
  )
- (func $~lib/datastream/DataStream.measure<Voter> (; 98 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream.measure<Voter> (; 99 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   i32.const 0
   i32.const 0
@@ -4225,11 +4227,11 @@
   local.get $1
   i32.load offset=8
  )
- (func $contract/lib/random.lib/Voter#primaryKey (; 99 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $contract/lib/random.lib/Voter#primaryKey (; 100 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   i64.load
  )
- (func $~lib/dbmanager/DBManager<Voter>#emplace (; 100 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/dbmanager/DBManager<Voter>#emplace (; 101 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -4267,7 +4269,7 @@
   call $~lib/env/db_store_i64
   drop
  )
- (func $~lib/dbmanager/DBManager<Waiter>#find (; 101 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Waiter>#find (; 102 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   i64.load offset=8
@@ -4280,7 +4282,7 @@
   local.set $2
   local.get $2
  )
- (func $~lib/dbmanager/DBManager<Waiter>#exists (; 102 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Waiter>#exists (; 103 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   local.get $1
@@ -4295,7 +4297,7 @@
    i32.const 1
   end
  )
- (func $contract/lib/random.lib/Waiter#constructor (; 103 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Waiter#constructor (; 104 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.eqz
   if
@@ -4310,13 +4312,13 @@
   i32.store
   local.get $0
  )
- (func $contract/lib/random.lib/Waiter#serialize (; 104 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $contract/lib/random.lib/Waiter#serialize (; 105 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   local.get $0
   i32.load
   call $~lib/datastream/DataStream#writeVector<u64>
  )
- (func $~lib/datastream/DataStream.measure<Waiter> (; 105 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream.measure<Waiter> (; 106 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   i32.const 0
   i32.const 0
@@ -4329,10 +4331,10 @@
   local.get $1
   i32.load offset=8
  )
- (func $contract/lib/random.lib/Waiter#primaryKey (; 106 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $contract/lib/random.lib/Waiter#primaryKey (; 107 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   i64.const 0
  )
- (func $~lib/dbmanager/DBManager<Waiter>#emplace (; 107 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/dbmanager/DBManager<Waiter>#emplace (; 108 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -4370,7 +4372,7 @@
   call $~lib/env/db_store_i64
   drop
  )
- (func $~lib/dbmanager/DBManager<VoteHistory>#find (; 108 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<VoteHistory>#find (; 109 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   i64.load offset=8
@@ -4383,7 +4385,7 @@
   local.set $2
   local.get $2
  )
- (func $~lib/dbmanager/DBManager<VoteHistory>#exists (; 109 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<VoteHistory>#exists (; 110 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   local.get $1
@@ -4398,7 +4400,7 @@
    i32.const 1
   end
  )
- (func $contract/lib/random.lib/VoteHistory#constructor (; 110 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/VoteHistory#constructor (; 111 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -4421,13 +4423,13 @@
   i32.store offset=8
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/lib/headblock/HeadBlock.number.get:number (; 111 ;) (type $FUNCSIG$i) (result i32)
+ (func $~lib/ultrain-ts-lib/lib/headblock/HeadBlock.number.get:number (; 112 ;) (type $FUNCSIG$i) (result i32)
   call $~lib/ultrain-ts-lib/lib/headblock/env.head_block_number
  )
- (func $~lib/ultrain-ts-lib/src/block/Block.number.get:number (; 112 ;) (type $FUNCSIG$i) (result i32)
+ (func $~lib/ultrain-ts-lib/src/block/Block.number.get:number (; 113 ;) (type $FUNCSIG$i) (result i32)
   call $~lib/ultrain-ts-lib/lib/headblock/HeadBlock.number.get:number
  )
- (func $~lib/array/Array<u64>#push (; 113 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/array/Array<u64>#push (; 114 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -4496,7 +4498,7 @@
   end
   local.get $5
  )
- (func $contract/lib/random.lib/VoteHistory#serialize (; 114 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $contract/lib/random.lib/VoteHistory#serialize (; 115 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   local.get $0
   i64.load
@@ -4506,7 +4508,7 @@
   i32.load offset=8
   call $~lib/datastream/DataStream#writeVector<u64>
  )
- (func $~lib/datastream/DataStream.measure<VoteHistory> (; 115 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream.measure<VoteHistory> (; 116 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   i32.const 0
   i32.const 0
@@ -4519,11 +4521,11 @@
   local.get $1
   i32.load offset=8
  )
- (func $contract/lib/random.lib/VoteHistory#primaryKey (; 116 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $contract/lib/random.lib/VoteHistory#primaryKey (; 117 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   i64.load
  )
- (func $~lib/dbmanager/DBManager<VoteHistory>#emplace (; 117 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/dbmanager/DBManager<VoteHistory>#emplace (; 118 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -4561,7 +4563,7 @@
   call $~lib/env/db_store_i64
   drop
  )
- (func $contract/lib/random.lib/Random#initVoteHstMinBckNum (; 118 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $contract/lib/random.lib/Random#initVoteHstMinBckNum (; 119 ;) (type $FUNCSIG$vi) (param $0 i32)
   (local $1 i32)
   local.get $0
   i32.load offset=20
@@ -4587,7 +4589,7 @@
    call $~lib/dbmanager/DBManager<VoteHistory>#emplace
   end
  )
- (func $~lib/dbmanager/DBManager<RandRecord>#find (; 119 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<RandRecord>#find (; 120 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   i64.load offset=8
@@ -4600,7 +4602,7 @@
   local.set $2
   local.get $2
  )
- (func $~lib/dbmanager/DBManager<RandRecord>#exists (; 120 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<RandRecord>#exists (; 121 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   local.get $1
@@ -4615,7 +4617,7 @@
    i32.const 1
   end
  )
- (func $contract/lib/random.lib/RandRecord#constructor (; 121 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/RandRecord#constructor (; 122 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.eqz
   if
@@ -4634,7 +4636,7 @@
   i32.store offset=16
   local.get $0
  )
- (func $contract/lib/random.lib/RandRecord#serialize (; 122 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $contract/lib/random.lib/RandRecord#serialize (; 123 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   local.get $0
   i64.load
@@ -4648,7 +4650,7 @@
   i32.load offset=16
   call $~lib/datastream/DataStream#write<i32>
  )
- (func $~lib/datastream/DataStream.measure<RandRecord> (; 123 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream.measure<RandRecord> (; 124 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   i32.const 0
   i32.const 0
@@ -4661,11 +4663,11 @@
   local.get $1
   i32.load offset=8
  )
- (func $contract/lib/random.lib/RandRecord#primaryKey (; 124 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $contract/lib/random.lib/RandRecord#primaryKey (; 125 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   i64.load
  )
- (func $~lib/dbmanager/DBManager<RandRecord>#emplace (; 125 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/dbmanager/DBManager<RandRecord>#emplace (; 126 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -4703,7 +4705,7 @@
   call $~lib/env/db_store_i64
   drop
  )
- (func $~lib/array/Array<String>#__get (; 126 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/array/Array<String>#__get (; 127 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -4736,7 +4738,7 @@
    unreachable
   end
  )
- (func $~lib/internal/string/allocateUnsafe (; 127 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/internal/string/allocateUnsafe (; 128 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   local.get $0
@@ -4772,7 +4774,7 @@
   i32.store
   local.get $2
  )
- (func $~lib/internal/string/copyUnsafe (; 128 ;) (type $FUNCSIG$viiiii) (param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32)
+ (func $~lib/internal/string/copyUnsafe (; 129 ;) (type $FUNCSIG$viiiii) (param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32)
   (local $5 i32)
   (local $6 i32)
   (local $7 i32)
@@ -4801,7 +4803,7 @@
   local.get $7
   call $~lib/internal/memory/memmove
  )
- (func $~lib/string/String#concat (; 129 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/string/String#concat (; 130 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -4855,7 +4857,7 @@
   call $~lib/internal/string/copyUnsafe
   local.get $5
  )
- (func $~lib/string/String.__concat (; 130 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/string/String.__concat (; 131 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   local.get $0
   i32.eqz
   if
@@ -4866,7 +4868,7 @@
   local.get $1
   call $~lib/string/String#concat
  )
- (func $~lib/internal/string/repeatUnsafe (; 131 ;) (type $FUNCSIG$viiii) (param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32)
+ (func $~lib/internal/string/repeatUnsafe (; 132 ;) (type $FUNCSIG$viiii) (param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32)
   (local $4 i32)
   (local $5 i32)
   (local $6 i32)
@@ -5146,7 +5148,7 @@
    unreachable
   end
  )
- (func $~lib/string/String#repeat (; 132 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/string/String#repeat (; 133 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -5213,7 +5215,7 @@
   call $~lib/internal/string/repeatUnsafe
   local.get $4
  )
- (func $~lib/ultrain-ts-lib/src/utils/intToString (; 133 ;) (type $FUNCSIG$iji) (param $0 i64) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/utils/intToString (; 134 ;) (type $FUNCSIG$iji) (param $0 i64) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i64)
   (local $4 i32)
@@ -5291,12 +5293,12 @@
   end
   local.get $4
  )
- (func $~lib/ultrain-ts-lib/src/crypto/Crypto#get:buffer (; 134 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/Crypto#get:buffer (; 135 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.load
   i32.load
  )
- (func $~lib/ultrain-ts-lib/src/crypto/Crypto#get:bufferSize (; 135 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/Crypto#get:bufferSize (; 136 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   local.get $0
   i32.load
@@ -5306,7 +5308,7 @@
   i32.const 0
   i32.shr_u
  )
- (func $~lib/string/String#charAt (; 136 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/string/String#charAt (; 137 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   local.get $0
   i32.const 0
@@ -5337,7 +5339,7 @@
   i32.store16 offset=4
   local.get $2
  )
- (func $~lib/ultrain-ts-lib/src/crypto/to_hex (; 137 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/to_hex (; 138 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -5389,14 +5391,14 @@
   end
   local.get $2
  )
- (func $~lib/ultrain-ts-lib/src/crypto/Crypto#toString (; 138 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/Crypto#toString (; 139 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   call $~lib/ultrain-ts-lib/src/crypto/Crypto#get:buffer
   local.get $0
   call $~lib/ultrain-ts-lib/src/crypto/Crypto#get:bufferSize
   call $~lib/ultrain-ts-lib/src/crypto/to_hex
  )
- (func $~lib/ultrain-ts-lib/src/crypto/SHA256#hash (; 139 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/SHA256#hash (; 140 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   local.get $1
   call $~lib/ultrain-ts-lib/src/utils/string2cstr
   local.get $1
@@ -5409,7 +5411,7 @@
   local.get $0
   call $~lib/ultrain-ts-lib/src/crypto/Crypto#toString
  )
- (func $~lib/string/String#substring (; 140 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
+ (func $~lib/string/String#substring (; 141 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -5515,7 +5517,7 @@
   call $~lib/internal/string/copyUnsafe
   local.get $10
  )
- (func $~lib/internal/string/parse<f64> (; 141 ;) (type $FUNCSIG$dii) (param $0 i32) (param $1 i32) (result f64)
+ (func $~lib/internal/string/parse<f64> (; 142 ;) (type $FUNCSIG$dii) (param $0 i32) (param $1 i32) (result f64)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -5816,12 +5818,12 @@
   local.get $7
   f64.mul
  )
- (func $~lib/string/parseInt (; 142 ;) (type $FUNCSIG$dii) (param $0 i32) (param $1 i32) (result f64)
+ (func $~lib/string/parseInt (; 143 ;) (type $FUNCSIG$dii) (param $0 i32) (param $1 i32) (result f64)
   local.get $0
   local.get $1
   call $~lib/internal/string/parse<f64>
  )
- (func $contract/lib/random.lib/Random#hash (; 143 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
+ (func $contract/lib/random.lib/Random#hash (; 144 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
   (local $2 i32)
   global.get $contract/lib/random.lib/sha256
   local.get $1
@@ -5837,7 +5839,7 @@
   call $~lib/string/parseInt
   i64.trunc_f64_u
  )
- (func $contract/ultrainio.rand/RandContract#constructor (; 144 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $contract/ultrainio.rand/RandContract#constructor (; 145 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   (local $3 i64)
   (local $4 i64)
@@ -5977,7 +5979,7 @@
   end
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/lib/name_ex/NameEx#constructor (; 145 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/ultrain-ts-lib/lib/name_ex/NameEx#constructor (; 146 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -6001,7 +6003,7 @@
   i64.store offset=8
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#setActionName (; 146 ;) (type $FUNCSIG$vijj) (param $0 i32) (param $1 i64) (param $2 i64)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#setActionName (; 147 ;) (type $FUNCSIG$vijj) (param $0 i32) (param $1 i64) (param $2 i64)
   local.get $0
   i32.const 0
   local.get $1
@@ -6009,15 +6011,15 @@
   call $~lib/ultrain-ts-lib/lib/name_ex/NameEx#constructor
   i32.store offset=8
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#get:receiver (; 147 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#get:receiver (; 148 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   i64.load
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#get:action (; 148 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#get:action (; 149 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.load offset=8
  )
- (func $~lib/ultrain-ts-lib/lib/name_ex/char_to_symbol_ex (; 149 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $~lib/ultrain-ts-lib/lib/name_ex/char_to_symbol_ex (; 150 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   (local $1 i32)
   local.get $0
   i32.const 255
@@ -6117,7 +6119,7 @@
   end
   i64.const 255
  )
- (func $~lib/ultrain-ts-lib/lib/name_ex/NEX (; 150 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/lib/name_ex/NEX (; 151 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i64)
   (local $3 i32)
@@ -6232,7 +6234,7 @@
   end
   local.get $1
  )
- (func $~lib/ultrain-ts-lib/lib/name_ex/NameEx._neq (; 151 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/lib/name_ex/NameEx._neq (; 152 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   local.get $0
   i64.load
@@ -6250,7 +6252,7 @@
    i64.ne
   end
  )
- (func $~lib/ultrain-ts-lib/lib/name_ex/NameEx._eq (; 152 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/lib/name_ex/NameEx._eq (; 153 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   local.get $0
   i64.load
@@ -6268,7 +6270,7 @@
    local.get $2
   end
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract.filterAcceptTransferTokenAction (; 153 ;) (type $FUNCSIG$ijji) (param $0 i64) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract.filterAcceptTransferTokenAction (; 154 ;) (type $FUNCSIG$ijji) (param $0 i64) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   local.get $1
   local.get $0
@@ -6301,7 +6303,7 @@
    end
   end
  )
- (func $contract/ultrainio.rand/RandContract#filterAction (; 154 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $contract/ultrainio.rand/RandContract#filterAction (; 155 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   local.get $0
   call $~lib/ultrain-ts-lib/src/contract/Contract#get:receiver
   local.get $1
@@ -6309,10 +6311,10 @@
   call $~lib/ultrain-ts-lib/src/contract/Contract#get:action
   call $~lib/ultrain-ts-lib/src/contract/Contract.filterAcceptTransferTokenAction
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#onInit (; 155 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#onInit (; 156 ;) (type $FUNCSIG$vi) (param $0 i32)
   nop
  )
- (func $~lib/ultrain-ts-lib/src/contract/DataStreamFromCurrentAction (; 156 ;) (type $FUNCSIG$i) (result i32)
+ (func $~lib/ultrain-ts-lib/src/contract/DataStreamFromCurrentAction (; 157 ;) (type $FUNCSIG$i) (result i32)
   (local $0 i32)
   (local $1 i32)
   (local $2 i32)
@@ -6335,17 +6337,17 @@
   local.set $2
   local.get $2
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#getDataStream (; 157 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#getDataStream (; 158 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   call $~lib/ultrain-ts-lib/src/contract/DataStreamFromCurrentAction
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#isAction (; 158 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#isAction (; 159 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   local.get $0
   i32.load offset=8
   local.get $1
   call $~lib/ultrain-ts-lib/lib/name_ex/NEX
   call $~lib/ultrain-ts-lib/lib/name_ex/NameEx._eq
  )
- (func $~lib/datastream/DataStream#read<u64> (; 159 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $~lib/datastream/DataStream#read<u64> (; 160 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   (local $1 i64)
   local.get $0
   i32.load
@@ -6362,7 +6364,7 @@
   i32.store offset=8
   local.get $1
  )
- (func $~lib/ultrain-ts-lib/src/asset/Asset#deserialize (; 160 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/asset/Asset#deserialize (; 161 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   local.get $1
   call $~lib/datastream/DataStream#read<u64>
@@ -6372,7 +6374,7 @@
   call $~lib/datastream/DataStream#read<u64>
   i64.store offset=8
  )
- (func $~lib/datastream/DataStream#read<u8> (; 161 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream#read<u8> (; 162 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   local.get $0
   i32.load
@@ -6389,7 +6391,7 @@
   i32.store offset=8
   local.get $1
  )
- (func $~lib/datastream/DataStream#readVarint32 (; 162 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream#readVarint32 (; 163 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -6430,7 +6432,7 @@
   end
   local.get $1
  )
- (func $~lib/string/String.fromUTF8 (; 163 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/string/String.fromUTF8 (; 164 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -6742,7 +6744,7 @@
   end
   local.get $7
  )
- (func $~lib/datastream/DataStream#readString (; 164 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream#readString (; 165 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -6790,7 +6792,7 @@
   local.get $1
   call $~lib/string/String.fromUTF8
  )
- (func $~lib/internal/string/compareUnsafe (; 165 ;) (type $FUNCSIG$iiiiii) (param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (result i32)
+ (func $~lib/internal/string/compareUnsafe (; 166 ;) (type $FUNCSIG$iiiiii) (param $0 i32) (param $1 i32) (param $2 i32) (param $3 i32) (param $4 i32) (result i32)
   (local $5 i32)
   (local $6 i32)
   (local $7 i32)
@@ -6843,7 +6845,7 @@
   end
   local.get $5
  )
- (func $~lib/string/String.__eq (; 166 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/string/String.__eq (; 167 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   local.get $0
@@ -6887,13 +6889,13 @@
   call $~lib/internal/string/compareUnsafe
   i32.eqz
  )
- (func $~lib/string/String.__ne (; 167 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/string/String.__ne (; 168 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   local.get $0
   local.get $1
   call $~lib/string/String.__eq
   i32.eqz
  )
- (func $~lib/ultrain-ts-lib/src/asset/Asset#eq (; 168 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/asset/Asset#eq (; 169 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   local.get $0
   i64.load offset=8
@@ -6911,12 +6913,12 @@
    local.get $2
   end
  )
- (func $contract/lib/random.lib/Voter#setWaiterVoter (; 169 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $contract/lib/random.lib/Voter#setWaiterVoter (; 170 ;) (type $FUNCSIG$vi) (param $0 i32)
   local.get $0
   i32.const 2
   i32.store offset=40
  )
- (func $~lib/array/Array<u64>#__set (; 170 ;) (type $FUNCSIG$viij) (param $0 i32) (param $1 i32) (param $2 i64)
+ (func $~lib/array/Array<u64>#__set (; 171 ;) (type $FUNCSIG$viij) (param $0 i32) (param $1 i32) (param $2 i64)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -6979,7 +6981,7 @@
    i64.store offset=8
   end
  )
- (func $~lib/datastream/DataStream#readVector<u64> (; 171 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream#readVector<u64> (; 172 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -7024,13 +7026,13 @@
   end
   local.get $2
  )
- (func $contract/lib/random.lib/Waiter#deserialize (; 172 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $contract/lib/random.lib/Waiter#deserialize (; 173 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   local.get $1
   call $~lib/datastream/DataStream#readVector<u64>
   i32.store
  )
- (func $~lib/dbmanager/DBManager<Waiter>#loadObjectByPrimaryIterator (; 173 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/dbmanager/DBManager<Waiter>#loadObjectByPrimaryIterator (; 174 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -7059,7 +7061,7 @@
   local.get $5
   call $contract/lib/random.lib/Waiter#deserialize
  )
- (func $~lib/dbmanager/DBManager<Waiter>#get (; 174 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/dbmanager/DBManager<Waiter>#get (; 175 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   local.get $0
   i64.load offset=8
@@ -7083,7 +7085,7 @@
   call $~lib/dbmanager/DBManager<Waiter>#loadObjectByPrimaryIterator
   i32.const 1
  )
- (func $~lib/dbmanager/DBManager<Waiter>#modify (; 175 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/dbmanager/DBManager<Waiter>#modify (; 176 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -7129,17 +7131,17 @@
   i32.load offset=8
   call $~lib/env/db_update_i64
  )
- (func $~lib/ultrain-ts-lib/src/asset/Asset#getAmount (; 176 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $~lib/ultrain-ts-lib/src/asset/Asset#getAmount (; 177 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   i64.load
  )
- (func $contract/ultrainio.rand/RandContract#curtBckNum (; 177 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $contract/ultrainio.rand/RandContract#curtBckNum (; 178 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   call $~lib/ultrain-ts-lib/src/block/Block.number.get:number
   i32.const 1
   i32.add
   i64.extend_i32_u
  )
- (func $contract/lib/random.lib/Config#constructor (; 178 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Config#constructor (; 179 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.eqz
   if
@@ -7155,7 +7157,7 @@
   i64.store offset=8
   local.get $0
  )
- (func $~lib/dbmanager/DBManager<Config>#find (; 179 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Config>#find (; 180 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   i64.load offset=8
@@ -7168,7 +7170,7 @@
   local.set $2
   local.get $2
  )
- (func $~lib/dbmanager/DBManager<Config>#exists (; 180 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Config>#exists (; 181 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   local.get $1
@@ -7183,7 +7185,7 @@
    i32.const 1
   end
  )
- (func $contract/lib/random.lib/Config#deserialize (; 181 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $contract/lib/random.lib/Config#deserialize (; 182 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   local.get $1
   call $~lib/datastream/DataStream#read<u64>
@@ -7193,7 +7195,7 @@
   call $~lib/datastream/DataStream#read<u64>
   i64.store offset=8
  )
- (func $~lib/dbmanager/DBManager<Config>#loadObjectByPrimaryIterator (; 182 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/dbmanager/DBManager<Config>#loadObjectByPrimaryIterator (; 183 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -7222,7 +7224,7 @@
   local.get $5
   call $contract/lib/random.lib/Config#deserialize
  )
- (func $~lib/dbmanager/DBManager<Config>#get (; 183 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/dbmanager/DBManager<Config>#get (; 184 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   local.get $0
   i64.load offset=8
@@ -7246,7 +7248,7 @@
   call $~lib/dbmanager/DBManager<Config>#loadObjectByPrimaryIterator
   i32.const 1
  )
- (func $contract/lib/random.lib/Random#getConfig (; 184 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
+ (func $contract/lib/random.lib/Random#getConfig (; 185 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
   (local $2 i32)
   i32.const 0
   call $contract/lib/random.lib/Config#constructor
@@ -7268,11 +7270,11 @@
   end
   i64.const 0
  )
- (func $contract/lib/random.lib/Config#primaryKey (; 185 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $contract/lib/random.lib/Config#primaryKey (; 186 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   i64.load
  )
- (func $contract/lib/random.lib/Config#serialize (; 186 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $contract/lib/random.lib/Config#serialize (; 187 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   local.get $0
   i64.load
@@ -7282,7 +7284,7 @@
   i64.load offset=8
   call $~lib/datastream/DataStream#write<u64>
  )
- (func $~lib/datastream/DataStream.measure<Config> (; 187 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream.measure<Config> (; 188 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   i32.const 0
   i32.const 0
@@ -7295,7 +7297,7 @@
   local.get $1
   i32.load offset=8
  )
- (func $~lib/dbmanager/DBManager<Config>#modify (; 188 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/dbmanager/DBManager<Config>#modify (; 189 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -7341,7 +7343,7 @@
   i32.load offset=8
   call $~lib/env/db_update_i64
  )
- (func $~lib/dbmanager/DBManager<Config>#emplace (; 189 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/dbmanager/DBManager<Config>#emplace (; 190 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -7379,7 +7381,7 @@
   call $~lib/env/db_store_i64
   drop
  )
- (func $contract/lib/random.lib/Random#setConfigValue (; 190 ;) (type $FUNCSIG$vijj) (param $0 i32) (param $1 i64) (param $2 i64)
+ (func $contract/lib/random.lib/Random#setConfigValue (; 191 ;) (type $FUNCSIG$vijj) (param $0 i32) (param $1 i64) (param $2 i64)
   (local $3 i32)
   i32.const 0
   call $contract/lib/random.lib/Config#constructor
@@ -7406,7 +7408,7 @@
    call $~lib/dbmanager/DBManager<Config>#emplace
   end
  )
- (func $contract/lib/random.lib/Random#increaseDeposit (; 191 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
+ (func $contract/lib/random.lib/Random#increaseDeposit (; 192 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
   (local $2 i64)
   local.get $0
   global.get $contract/lib/random.lib/DEPOSIT_KEY
@@ -7419,7 +7421,7 @@
   i64.add
   call $contract/lib/random.lib/Random#setConfigValue
  )
- (func $contract/ultrainio.rand/RandContract#register (; 192 ;) (type $FUNCSIG$vijii) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i32)
+ (func $contract/ultrainio.rand/RandContract#register (; 193 ;) (type $FUNCSIG$vijii) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i32)
   (local $4 i32)
   (local $5 i32)
   (local $6 i32)
@@ -7518,17 +7520,17 @@
   call $~lib/ultrain-ts-lib/src/asset/Asset#getAmount
   call $contract/lib/random.lib/Random#increaseDeposit
  )
- (func $contract/ultrainio.rand/RandContract#transfer (; 193 ;) (type $FUNCSIG$vijjii) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32) (param $4 i32)
+ (func $contract/ultrainio.rand/RandContract#transfer (; 194 ;) (type $FUNCSIG$vijjii) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32) (param $4 i32)
   local.get $0
   local.get $1
   local.get $3
   local.get $4
   call $contract/ultrainio.rand/RandContract#register
  )
- (func $~lib/ultrain-ts-lib/src/action/Action.sender.get:sender (; 194 ;) (type $FUNCSIG$j) (result i64)
+ (func $~lib/ultrain-ts-lib/src/action/Action.sender.get:sender (; 195 ;) (type $FUNCSIG$j) (result i64)
   call $~lib/ultrain-ts-lib/internal/action.d/env.current_sender
  )
- (func $~lib/datastream/DataStream#read<i32> (; 195 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream#read<i32> (; 196 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   local.get $0
   i32.load
@@ -7545,7 +7547,7 @@
   i32.store offset=8
   local.get $1
  )
- (func $contract/lib/random.lib/Voter#deserialize (; 196 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $contract/lib/random.lib/Voter#deserialize (; 197 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   local.get $1
   call $~lib/datastream/DataStream#read<u64>
@@ -7579,7 +7581,7 @@
   call $~lib/datastream/DataStream#read<i32>
   i32.store offset=44
  )
- (func $~lib/dbmanager/DBManager<Voter>#loadObjectByPrimaryIterator (; 197 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/dbmanager/DBManager<Voter>#loadObjectByPrimaryIterator (; 198 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -7608,7 +7610,7 @@
   local.get $5
   call $contract/lib/random.lib/Voter#deserialize
  )
- (func $~lib/dbmanager/DBManager<Voter>#get (; 198 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/dbmanager/DBManager<Voter>#get (; 199 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   local.get $0
   i64.load offset=8
@@ -7632,13 +7634,13 @@
   call $~lib/dbmanager/DBManager<Voter>#loadObjectByPrimaryIterator
   i32.const 1
  )
- (func $contract/lib/random.lib/Voter#isUnregister (; 199 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Voter#isUnregister (; 200 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i64.load offset=32
   i64.const 0
   i64.ne
  )
- (func $~lib/ultrain-ts-lib/src/permission-level/PermissionLevel#constructor (; 200 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/ultrain-ts-lib/src/permission-level/PermissionLevel#constructor (; 201 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -7662,7 +7664,7 @@
   i64.store offset=8
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/src/action/TransferParams#constructor (; 201 ;) (type $FUNCSIG$iijjii) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32) (param $4 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/action/TransferParams#constructor (; 202 ;) (type $FUNCSIG$iijjii) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32) (param $4 i32) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -7698,7 +7700,7 @@
   i32.store offset=20
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/src/action/Action#constructor (; 202 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/ultrain-ts-lib/src/action/Action#constructor (; 203 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -7719,7 +7721,7 @@
   i32.store
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/src/action/ACTION (; 203 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/action/ACTION (; 204 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   local.get $0
   call $~lib/ultrain-ts-lib/lib/name_ex/NEX
@@ -7731,11 +7733,11 @@
   i64.load offset=8
   call $~lib/ultrain-ts-lib/src/action/Action#constructor
  )
- (func $~lib/ultrain-ts-lib/src/action/Action#get:code (; 204 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/action/Action#get:code (; 205 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.load
  )
- (func $~lib/array/Array<PermissionLevel>#constructor (; 205 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/array/Array<PermissionLevel>#constructor (; 206 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -7792,7 +7794,7 @@
   end
   local.get $0
  )
- (func $~lib/array/Array<PermissionLevel>#__unchecked_set (; 206 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/array/Array<PermissionLevel>#__unchecked_set (; 207 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -7816,7 +7818,7 @@
   local.get $5
   i32.store offset=8
  )
- (func $~lib/ultrain-ts-lib/src/action/ActionImpl#constructor (; 207 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/action/ActionImpl#constructor (; 208 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -7855,7 +7857,7 @@
   i32.store offset=16
   local.get $0
  )
- (func $~lib/ultrain-ts-lib/src/asset/Asset#serialize (; 208 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/asset/Asset#serialize (; 209 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   local.get $0
   i64.load
@@ -7865,7 +7867,7 @@
   i64.load offset=8
   call $~lib/datastream/DataStream#write<u64>
  )
- (func $~lib/string/String#get:lengthUTF8 (; 209 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/string/String#get:lengthUTF8 (; 210 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -7978,7 +7980,7 @@
   end
   local.get $1
  )
- (func $~lib/string/String#toUTF8 (; 210 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/string/String#toUTF8 (; 211 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -8200,7 +8202,7 @@
   i32.store8
   local.get $2
  )
- (func $~lib/datastream/DataStream#writeString (; 211 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/datastream/DataStream#writeString (; 212 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -8251,7 +8253,7 @@
   i32.add
   i32.store offset=8
  )
- (func $~lib/ultrain-ts-lib/src/action/TransferParams#serialize (; 212 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/action/TransferParams#serialize (; 213 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   local.get $0
   i64.load
@@ -8269,7 +8271,7 @@
   i32.load offset=20
   call $~lib/datastream/DataStream#writeString
  )
- (func $~lib/datastream/DataStream.measure<TransferParams> (; 213 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream.measure<TransferParams> (; 214 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   i32.const 0
   i32.const 0
@@ -8282,7 +8284,7 @@
   local.get $1
   i32.load offset=8
  )
- (func $~lib/array/Array<u8>#__set (; 214 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/array/Array<u8>#__set (; 215 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -8345,7 +8347,7 @@
    i32.store8 offset=8
   end
  )
- (func $~lib/datastream/DataStream#toArray<u8> (; 215 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream#toArray<u8> (; 216 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -8408,7 +8410,7 @@
   end
   local.get $2
  )
- (func $~lib/ultrain-ts-lib/src/action/SerializableToArray<TransferParams> (; 216 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/action/SerializableToArray<TransferParams> (; 217 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -8431,7 +8433,7 @@
   local.get $3
   call $~lib/datastream/DataStream#toArray<u8>
  )
- (func $~lib/ultrain-ts-lib/lib/name_ex/NameEx#serialize (; 217 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/lib/name_ex/NameEx#serialize (; 218 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   local.get $0
   i64.load
@@ -8441,7 +8443,7 @@
   i64.load offset=8
   call $~lib/datastream/DataStream#write<u64>
  )
- (func $~lib/array/Array<PermissionLevel>#__get (; 218 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/array/Array<PermissionLevel>#__get (; 219 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -8474,7 +8476,7 @@
    unreachable
   end
  )
- (func $~lib/ultrain-ts-lib/src/permission-level/PermissionLevel#serialize (; 219 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/permission-level/PermissionLevel#serialize (; 220 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   local.get $0
   i64.load
@@ -8484,7 +8486,7 @@
   i64.load offset=8
   call $~lib/datastream/DataStream#write<u64>
  )
- (func $~lib/datastream/DataStream#writeComplexVector<PermissionLevel> (; 220 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/datastream/DataStream#writeComplexVector<PermissionLevel> (; 221 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   block $~lib/array/Array<PermissionLevel>#get:length|inlined.0 (result i32)
@@ -8521,7 +8523,7 @@
    unreachable
   end
  )
- (func $~lib/array/Array<u8>#__get (; 221 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/array/Array<u8>#__get (; 222 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -8554,7 +8556,7 @@
    unreachable
   end
  )
- (func $~lib/datastream/DataStream#writeVector<u8> (; 222 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/datastream/DataStream#writeVector<u8> (; 223 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   block $~lib/array/Array<u8>#get:length|inlined.0 (result i32)
@@ -8591,7 +8593,7 @@
    unreachable
   end
  )
- (func $~lib/ultrain-ts-lib/src/action/ActionImpl#serialize (; 223 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/action/ActionImpl#serialize (; 224 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   local.get $0
   i64.load
@@ -8609,7 +8611,7 @@
   i32.load offset=16
   call $~lib/datastream/DataStream#writeVector<u8>
  )
- (func $~lib/datastream/DataStream.measure<ActionImpl> (; 224 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/datastream/DataStream.measure<ActionImpl> (; 225 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   i32.const 0
   i32.const 0
@@ -8622,7 +8624,7 @@
   local.get $1
   i32.load offset=8
  )
- (func $~lib/ultrain-ts-lib/src/action/composeActionData<TransferParams> (; 225 ;) (type $FUNCSIG$iijii) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/action/composeActionData<TransferParams> (; 226 ;) (type $FUNCSIG$iijii) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i32) (result i32)
   (local $4 i32)
   (local $5 i32)
   (local $6 i32)
@@ -8661,7 +8663,7 @@
   call $~lib/ultrain-ts-lib/src/action/ActionImpl#serialize
   local.get $7
  )
- (func $~lib/ultrain-ts-lib/src/action/Action.sendInline<TransferParams> (; 226 ;) (type $FUNCSIG$vijii) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i32)
+ (func $~lib/ultrain-ts-lib/src/action/Action.sendInline<TransferParams> (; 227 ;) (type $FUNCSIG$vijii) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i32)
   (local $4 i32)
   local.get $0
   local.get $1
@@ -8675,7 +8677,7 @@
   i32.load offset=8
   call $~lib/ultrain-ts-lib/internal/action.d/env.send_inline
  )
- (func $~lib/ultrain-ts-lib/src/asset/Asset.transfer (; 227 ;) (type $FUNCSIG$vjjii) (param $0 i64) (param $1 i64) (param $2 i32) (param $3 i32)
+ (func $~lib/ultrain-ts-lib/src/asset/Asset.transfer (; 228 ;) (type $FUNCSIG$vjjii) (param $0 i64) (param $1 i64) (param $2 i32) (param $3 i32)
   (local $4 i32)
   (local $5 i32)
   (local $6 i32)
@@ -8720,7 +8722,7 @@
   local.get $5
   call $~lib/ultrain-ts-lib/src/action/Action.sendInline<TransferParams>
  )
- (func $contract/lib/random.lib/Random#decreaseDeposit (; 228 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
+ (func $contract/lib/random.lib/Random#decreaseDeposit (; 229 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
   (local $2 i64)
   local.get $0
   global.get $contract/lib/random.lib/DEPOSIT_KEY
@@ -8733,12 +8735,12 @@
   i64.sub
   call $contract/lib/random.lib/Random#setConfigValue
  )
- (func $contract/ultrainio.rand/RandContract#unregister~anonymous|0 (; 229 ;) (type $FUNCSIG$ijii) (param $0 i64) (param $1 i32) (param $2 i32) (result i32)
+ (func $contract/ultrainio.rand/RandContract#unregister~anonymous|0 (; 230 ;) (type $FUNCSIG$ijii) (param $0 i64) (param $1 i32) (param $2 i32) (result i32)
   local.get $0
   call $~lib/ultrain-ts-lib/src/action/Action.sender.get:sender
   i64.ne
  )
- (func $~lib/array/Array<u64>#filter (; 230 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $~lib/array/Array<u64>#filter (; 231 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -8820,7 +8822,7 @@
   end
   local.get $2
  )
- (func $~lib/dbmanager/DBManager<Voter>#modify (; 231 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/dbmanager/DBManager<Voter>#modify (; 232 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -8866,7 +8868,7 @@
   i32.load offset=8
   call $~lib/env/db_update_i64
  )
- (func $contract/ultrainio.rand/RandContract#unregister (; 232 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $contract/ultrainio.rand/RandContract#unregister (; 233 ;) (type $FUNCSIG$vi) (param $0 i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -8938,7 +8940,7 @@
   local.get $1
   call $~lib/dbmanager/DBManager<Voter>#modify
  )
- (func $contract/lib/random.lib/Voter#redeemable (; 233 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Voter#redeemable (; 234 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   call $~lib/ultrain-ts-lib/src/block/Block.number.get:number
   i64.extend_i32_u
@@ -8957,7 +8959,7 @@
    local.get $1
   end
  )
- (func $~lib/dbmanager/DBManager<Voter>#erase (; 234 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
+ (func $~lib/dbmanager/DBManager<Voter>#erase (; 235 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
   (local $2 i32)
   local.get $0
   i64.load offset=8
@@ -8979,7 +8981,7 @@
    nop
   end
  )
- (func $contract/ultrainio.rand/RandContract#redeem (; 235 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $contract/ultrainio.rand/RandContract#redeem (; 236 ;) (type $FUNCSIG$vi) (param $0 i32)
   (local $1 i32)
   local.get $0
   i32.load offset=12
@@ -9019,12 +9021,12 @@
    call $~lib/env/ultrain_assert
   end
  )
- (func $contract/ultrainio.rand/RandContract#belongRandNum (; 236 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
+ (func $contract/ultrainio.rand/RandContract#belongRandNum (; 237 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
   local.get $1
   global.get $contract/lib/random.lib/EPOCH
   i64.add
  )
- (func $contract/lib/random.lib/RandRecord#deserialize (; 237 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $contract/lib/random.lib/RandRecord#deserialize (; 238 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   local.get $1
   call $~lib/datastream/DataStream#read<u64>
@@ -9038,7 +9040,7 @@
   call $~lib/datastream/DataStream#read<i32>
   i32.store offset=16
  )
- (func $~lib/dbmanager/DBManager<RandRecord>#loadObjectByPrimaryIterator (; 238 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/dbmanager/DBManager<RandRecord>#loadObjectByPrimaryIterator (; 239 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -9067,7 +9069,7 @@
   local.get $5
   call $contract/lib/random.lib/RandRecord#deserialize
  )
- (func $~lib/dbmanager/DBManager<RandRecord>#get (; 239 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/dbmanager/DBManager<RandRecord>#get (; 240 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   local.get $0
   i64.load offset=8
@@ -9091,7 +9093,7 @@
   call $~lib/dbmanager/DBManager<RandRecord>#loadObjectByPrimaryIterator
   i32.const 1
  )
- (func $contract/lib/random.lib/Random#getLastRand (; 240 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Random#getLastRand (; 241 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   i32.const 0
@@ -9115,7 +9117,7 @@
   drop
   local.get $2
  )
- (func $contract/lib/random.lib/RandRecord#setFields (; 241 ;) (type $FUNCSIG$vijji) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32)
+ (func $contract/lib/random.lib/RandRecord#setFields (; 242 ;) (type $FUNCSIG$vijji) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32)
   local.get $0
   local.get $1
   i64.store
@@ -9126,7 +9128,7 @@
   local.get $3
   i32.store offset=16
  )
- (func $~lib/dbmanager/DBManager<RandRecord>#modify (; 242 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/dbmanager/DBManager<RandRecord>#modify (; 243 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -9172,7 +9174,7 @@
   i32.load offset=8
   call $~lib/env/db_update_i64
  )
- (func $contract/lib/random.lib/Random#saveRandMaxBckNum (; 243 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
+ (func $contract/lib/random.lib/Random#saveRandMaxBckNum (; 244 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
   (local $2 i32)
   i32.const 0
   call $contract/lib/random.lib/RandRecord#constructor
@@ -9199,7 +9201,7 @@
   local.get $2
   i64.load offset=8
  )
- (func $contract/lib/random.lib/Random#getMinRandBckNum (; 244 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $contract/lib/random.lib/Random#getMinRandBckNum (; 245 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   (local $1 i32)
   i32.const 0
   call $contract/lib/random.lib/RandRecord#constructor
@@ -9213,7 +9215,7 @@
   local.get $1
   i64.load offset=8
  )
- (func $~lib/dbmanager/DBManager<RandRecord>#erase (; 245 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
+ (func $~lib/dbmanager/DBManager<RandRecord>#erase (; 246 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
   (local $2 i32)
   local.get $0
   i64.load offset=8
@@ -9235,7 +9237,7 @@
    nop
   end
  )
- (func $contract/lib/random.lib/Random#clearPartRands (; 246 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
+ (func $contract/lib/random.lib/Random#clearPartRands (; 247 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
   (local $2 i64)
   (local $3 i32)
   local.get $0
@@ -9297,7 +9299,7 @@
    call $~lib/dbmanager/DBManager<RandRecord>#modify
   end
  )
- (func $contract/lib/random.lib/Random#saveAndClearPartRands (; 247 ;) (type $FUNCSIG$vijji) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32)
+ (func $contract/lib/random.lib/Random#saveAndClearPartRands (; 248 ;) (type $FUNCSIG$vijji) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32)
   (local $4 i32)
   i32.const 0
   call $contract/lib/random.lib/RandRecord#constructor
@@ -9326,7 +9328,7 @@
   local.get $1
   call $contract/lib/random.lib/Random#clearPartRands
  )
- (func $contract/lib/random.lib/Random#getMainVoteVal (; 248 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $contract/lib/random.lib/Random#getMainVoteVal (; 249 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i64)
@@ -9386,7 +9388,7 @@
   i64.store
   local.get $7
  )
- (func $node_modules/ultrain-ts-lib/lib/name/char_to_symbol (; 249 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $node_modules/ultrain-ts-lib/lib/name/char_to_symbol (; 250 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   (local $1 i32)
   local.get $0
   i32.const 255
@@ -9442,7 +9444,7 @@
   end
   i64.const 0
  )
- (func $node_modules/ultrain-ts-lib/lib/name/N (; 250 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $node_modules/ultrain-ts-lib/lib/name/N (; 251 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   (local $1 i32)
   (local $2 i64)
   (local $3 i32)
@@ -9526,11 +9528,11 @@
   end
   local.get $2
  )
- (func $node_modules/ultrain-ts-lib/src/account/NAME (; 251 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $node_modules/ultrain-ts-lib/src/account/NAME (; 252 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   call $node_modules/ultrain-ts-lib/lib/name/N
  )
- (func $~lib/dbmanager/DBManager<CurrencyAccount>#constructor (; 252 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<CurrencyAccount>#constructor (; 253 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -9560,7 +9562,7 @@
   i64.store offset=16
   local.get $0
  )
- (func $~lib/dbmanager/DBManager.newInstance<CurrencyAccount> (; 253 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager.newInstance<CurrencyAccount> (; 254 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   i32.const 0
   local.get $0
@@ -9572,7 +9574,7 @@
   i64.store offset=8
   local.get $3
  )
- (func $node_modules/ultrain-ts-lib/lib/balance/CurrencyAccount#constructor (; 254 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $node_modules/ultrain-ts-lib/lib/balance/CurrencyAccount#constructor (; 255 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -9590,7 +9592,7 @@
   i32.store
   local.get $0
  )
- (func $node_modules/ultrain-ts-lib/src/asset/Asset#constructor (; 255 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $node_modules/ultrain-ts-lib/src/asset/Asset#constructor (; 256 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -9614,7 +9616,7 @@
   i64.store offset=8
   local.get $0
  )
- (func $node_modules/ultrain-ts-lib/src/asset/Asset#deserialize (; 256 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $node_modules/ultrain-ts-lib/src/asset/Asset#deserialize (; 257 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   local.get $1
   call $~lib/datastream/DataStream#read<u64>
@@ -9624,13 +9626,13 @@
   call $~lib/datastream/DataStream#read<u64>
   i64.store offset=8
  )
- (func $node_modules/ultrain-ts-lib/lib/balance/CurrencyAccount#deserialize (; 257 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $node_modules/ultrain-ts-lib/lib/balance/CurrencyAccount#deserialize (; 258 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   i32.load
   local.get $1
   call $node_modules/ultrain-ts-lib/src/asset/Asset#deserialize
  )
- (func $~lib/dbmanager/DBManager<CurrencyAccount>#loadObjectByPrimaryIterator (; 258 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/dbmanager/DBManager<CurrencyAccount>#loadObjectByPrimaryIterator (; 259 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -9659,7 +9661,7 @@
   local.get $5
   call $node_modules/ultrain-ts-lib/lib/balance/CurrencyAccount#deserialize
  )
- (func $~lib/dbmanager/DBManager<CurrencyAccount>#get (; 259 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/dbmanager/DBManager<CurrencyAccount>#get (; 260 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   local.get $0
   i64.load offset=8
@@ -9683,7 +9685,7 @@
   call $~lib/dbmanager/DBManager<CurrencyAccount>#loadObjectByPrimaryIterator
   i32.const 1
  )
- (func $node_modules/ultrain-ts-lib/lib/balance/queryBalance (; 260 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
+ (func $node_modules/ultrain-ts-lib/lib/balance/queryBalance (; 261 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -9717,11 +9719,11 @@
    call $node_modules/ultrain-ts-lib/src/asset/Asset#constructor
   end
  )
- (func $node_modules/ultrain-ts-lib/src/asset/Asset#getAmount (; 261 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $node_modules/ultrain-ts-lib/src/asset/Asset#getAmount (; 262 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   i64.load
  )
- (func $contract/lib/random.lib/Random#canSendBonus (; 262 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Random#canSendBonus (; 263 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i64)
   global.get $contract/lib/random.lib/CONT_NAME
@@ -9739,7 +9741,7 @@
   i64.add
   i64.ge_u
  )
- (func $contract/lib/random.lib/Random#getWaiterVoteVal (; 263 ;) (type $FUNCSIG$iijji) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32) (result i32)
+ (func $contract/lib/random.lib/Random#getWaiterVoteVal (; 264 ;) (type $FUNCSIG$iijji) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32) (result i32)
   (local $4 i32)
   (local $5 i32)
   (local $6 i32)
@@ -9892,7 +9894,7 @@
   end
   local.get $10
  )
- (func $contract/lib/random.lib/RandRecord.calcCode (; 264 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
+ (func $contract/lib/random.lib/RandRecord.calcCode (; 265 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
   (local $3 i32)
   i32.const 0
   local.set $3
@@ -9925,7 +9927,7 @@
   end
   local.get $3
  )
- (func $contract/lib/random.lib/Random#generateRand (; 265 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $contract/lib/random.lib/Random#generateRand (; 266 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i64)
@@ -10090,7 +10092,7 @@
   end
   local.get $4
  )
- (func $contract/ultrainio.rand/RandContract#triggerRandGenerate (; 266 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $contract/ultrainio.rand/RandContract#triggerRandGenerate (; 267 ;) (type $FUNCSIG$vi) (param $0 i32)
   (local $1 i32)
   call $~lib/ultrain-ts-lib/src/block/Block.number.get:number
   local.set $1
@@ -10110,7 +10112,7 @@
    drop
   end
  )
- (func $~lib/dbmanager/DBManager<Producer>#find (; 267 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Producer>#find (; 268 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   i64.load offset=8
@@ -10123,7 +10125,7 @@
   local.set $2
   local.get $2
  )
- (func $~lib/dbmanager/DBManager<Producer>#exists (; 268 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Producer>#exists (; 269 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   local.get $1
@@ -10138,8 +10140,68 @@
    i32.const 1
   end
  )
- (func $contract/lib/random.lib/Random#isMainVoter (; 269 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/Cursor<Producer>#constructor (; 270 ;) (type $FUNCSIG$iijjj) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i64) (result i32)
+  (local $4 i64)
+  local.get $1
+  local.get $3
+  local.get $2
+  call $~lib/env/db_iterator_i64
+  local.set $4
+  block (result i32)
+   local.get $0
+   i32.eqz
+   if
+    i32.const 12
+    call $~lib/memory/memory.allocate
+    local.set $0
+   end
+   local.get $0
+   i32.const 0
+   i32.store
+   local.get $0
+   i32.const 0
+   i32.store offset=4
+   local.get $0
+   i32.const 0
+   i32.store offset=8
+   local.get $0
+  end
+  local.get $4
+  i64.const 4294967295
+  i64.and
+  i32.wrap_i64
+  i32.store
+  local.get $0
+  local.get $4
+  i64.const 32
+  i64.shr_u
+  i32.wrap_i64
+  i32.store offset=8
+  local.get $0
+  local.get $0
+  i32.load
+  i32.store offset=4
+  local.get $0
+ )
+ (func $~lib/dbmanager/DBManager<Producer>#cursor (; 271 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+  i32.const 0
+  local.get $0
+  i64.load offset=8
+  local.get $0
+  i64.load
+  local.get $0
+  i64.load offset=16
+  call $~lib/dbmanager/Cursor<Producer>#constructor
+ )
+ (func $~lib/dbmanager/Cursor<Producer>#get:count (; 272 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+  local.get $0
+  i32.load offset=8
+ )
+ (func $contract/lib/random.lib/Random#isMainVoter (; 273 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
+  (local $4 i32)
+  (local $5 i64)
+  (local $6 i64)
   local.get $0
   i32.load offset=12
   local.get $1
@@ -10151,10 +10213,27 @@
    i32.const 0
    return
   end
-  i32.const 1
-  return
+  local.get $0
+  i32.load offset=12
+  call $~lib/dbmanager/DBManager<Producer>#cursor
+  call $~lib/dbmanager/Cursor<Producer>#get:count
+  local.set $4
+  local.get $0
+  local.get $1
+  call $contract/lib/random.lib/Random#hash
+  local.set $5
+  local.get $5
+  local.get $2
+  i64.add
+  local.get $4
+  i64.extend_i32_u
+  i64.rem_u
+  local.set $6
+  local.get $6
+  i64.const 4
+  i64.lt_u
  )
- (func $contract/lib/random.lib/VoteHistory#deserialize (; 270 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $contract/lib/random.lib/VoteHistory#deserialize (; 274 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   local.get $1
   call $~lib/datastream/DataStream#read<u64>
@@ -10164,7 +10243,7 @@
   call $~lib/datastream/DataStream#readVector<u64>
   i32.store offset=8
  )
- (func $~lib/dbmanager/DBManager<VoteHistory>#loadObjectByPrimaryIterator (; 271 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/dbmanager/DBManager<VoteHistory>#loadObjectByPrimaryIterator (; 275 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -10193,7 +10272,7 @@
   local.get $5
   call $contract/lib/random.lib/VoteHistory#deserialize
  )
- (func $~lib/dbmanager/DBManager<VoteHistory>#get (; 272 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/dbmanager/DBManager<VoteHistory>#get (; 276 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   local.get $0
   i64.load offset=8
@@ -10217,7 +10296,7 @@
   call $~lib/dbmanager/DBManager<VoteHistory>#loadObjectByPrimaryIterator
   i32.const 1
  )
- (func $~lib/dbmanager/DBManager<VoteHistory>#modify (; 273 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/dbmanager/DBManager<VoteHistory>#modify (; 277 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   (local $2 i32)
   (local $3 i32)
   (local $4 i32)
@@ -10263,7 +10342,7 @@
   i32.load offset=8
   call $~lib/env/db_update_i64
  )
- (func $contract/lib/random.lib/Random#isMainVoted (; 274 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $contract/lib/random.lib/Random#isMainVoted (; 278 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -10350,7 +10429,7 @@
   unreachable
   unreachable
  )
- (func $~lib/ultrain-ts-lib/lib/name/RN (; 275 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
+ (func $~lib/ultrain-ts-lib/lib/name/RN (; 279 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
   (local $1 i32)
   (local $2 i64)
   (local $3 i32)
@@ -10480,11 +10559,11 @@
   end
   local.get $3
  )
- (func $~lib/ultrain-ts-lib/src/account/RNAME (; 276 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
+ (func $~lib/ultrain-ts-lib/src/account/RNAME (; 280 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
   local.get $0
   call $~lib/ultrain-ts-lib/lib/name/RN
  )
- (func $contract/ultrainio.rand/RandContract#getExistRand (; 277 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
+ (func $contract/ultrainio.rand/RandContract#getExistRand (; 281 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
   (local $2 i32)
   i32.const 0
   call $contract/lib/random.lib/RandRecord#constructor
@@ -10504,7 +10583,7 @@
   local.get $2
   i64.load offset=8
  )
- (func $~lib/ultrain-ts-lib/src/account/Account.publicKeyOf (; 278 ;) (type $FUNCSIG$iji) (param $0 i64) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/account/Account.publicKeyOf (; 282 ;) (type $FUNCSIG$iji) (param $0 i64) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   i32.const 0
@@ -10542,7 +10621,7 @@
   unreachable
   unreachable
  )
- (func $~lib/ultrain-ts-lib/src/crypto/verify_with_pk (; 279 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/verify_with_pk (; 283 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
   (local $3 i32)
   local.get $0
   call $~lib/ultrain-ts-lib/src/utils/string2cstr
@@ -10561,7 +10640,7 @@
    i32.const 0
   end
  )
- (func $contract/ultrainio.rand/RandContract#getVrfVal (; 280 ;) (type $FUNCSIG$jiij) (param $0 i32) (param $1 i32) (param $2 i64) (result i64)
+ (func $contract/ultrainio.rand/RandContract#getVrfVal (; 284 ;) (type $FUNCSIG$jiij) (param $0 i32) (param $1 i32) (param $2 i64) (result i64)
   (local $3 i64)
   (local $4 i32)
   (local $5 i32)
@@ -10625,13 +10704,13 @@
   local.set $8
   local.get $8
  )
- (func $contract/ultrainio.rand/RandContract#indexOf (; 281 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $contract/ultrainio.rand/RandContract#indexOf (; 285 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   local.get $1
   global.get $contract/lib/random.lib/EPOCH
   i64.rem_u
   i32.wrap_i64
  )
- (func $contract/ultrainio.rand/RandContract#mainVoterVote (; 282 ;) (type $FUNCSIG$vijij) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64)
+ (func $contract/ultrainio.rand/RandContract#mainVoterVote (; 286 ;) (type $FUNCSIG$vijij) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64)
   (local $4 i64)
   (local $5 i32)
   (local $6 i32)
@@ -10708,7 +10787,7 @@
   local.get $6
   call $~lib/dbmanager/DBManager<Voter>#modify
  )
- (func $contract/lib/random.lib/Voter#votable (; 283 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Voter#votable (; 287 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   call $~lib/ultrain-ts-lib/src/block/Block.number.get:number
   i64.extend_i32_u
@@ -10727,7 +10806,7 @@
    local.get $1
   end
  )
- (func $contract/ultrainio.rand/RandContract#saveVoterVoteStatus (; 284 ;) (type $FUNCSIG$vijjj) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i64)
+ (func $contract/ultrainio.rand/RandContract#saveVoterVoteStatus (; 288 ;) (type $FUNCSIG$vijjj) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i64)
   (local $4 i32)
   (local $5 i32)
   (local $6 i32)
@@ -10811,7 +10890,7 @@
    end
   end
  )
- (func $contract/ultrainio.rand/RandContract#waiterVoterVote (; 285 ;) (type $FUNCSIG$vijij) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64)
+ (func $contract/ultrainio.rand/RandContract#waiterVoterVote (; 289 ;) (type $FUNCSIG$vijij) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64)
   (local $4 i64)
   local.get $0
   call $contract/ultrainio.rand/RandContract#curtBckNum
@@ -10835,7 +10914,7 @@
   local.get $4
   call $contract/ultrainio.rand/RandContract#saveVoterVoteStatus
  )
- (func $contract/ultrainio.rand/RandContract#vote (; 286 ;) (type $FUNCSIG$viij) (param $0 i32) (param $1 i32) (param $2 i64)
+ (func $contract/ultrainio.rand/RandContract#vote (; 290 ;) (type $FUNCSIG$viij) (param $0 i32) (param $1 i32) (param $2 i64)
   (local $3 i64)
   (local $4 i32)
   (local $5 i32)
@@ -10916,7 +10995,7 @@
    call $contract/ultrainio.rand/RandContract#waiterVoterVote
   end
  )
- (func $contract/lib/random.lib/Random#query (; 287 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $contract/lib/random.lib/Random#query (; 291 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i64)
   (local $3 i32)
   (local $4 i32)
@@ -10955,7 +11034,7 @@
   i32.const 0
   call $contract/lib/random.lib/Random#generateRand
  )
- (func $contract/ultrainio.rand/RandContract#getMainVoteInfo (; 288 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/ultrainio.rand/RandContract#getMainVoteInfo (; 292 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   local.get $0
   i32.load offset=24
@@ -10979,7 +11058,7 @@
   i32.store offset=16
   local.get $1
  )
- (func $~lib/internal/number/decimalCount32 (; 289 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/internal/number/decimalCount32 (; 293 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   local.get $0
   i32.const 100000
@@ -11048,7 +11127,7 @@
   unreachable
   unreachable
  )
- (func $~lib/internal/number/utoa32_lut (; 290 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/internal/number/utoa32_lut (; 294 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -11234,7 +11313,7 @@
    i32.store16 offset=4
   end
  )
- (func $~lib/internal/number/itoa32 (; 291 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/internal/number/itoa32 (; 295 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -11286,16 +11365,16 @@
   end
   local.get $3
  )
- (func $~lib/internal/number/itoa<i32> (; 292 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/internal/number/itoa<i32> (; 296 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   call $~lib/internal/number/itoa32
   return
  )
- (func $~lib/number/I32#toString (; 293 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/number/I32#toString (; 297 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   call $~lib/internal/number/itoa<i32>
  )
- (func $contract/lib/random.lib/RandRecord#toString (; 294 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/RandRecord#toString (; 298 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i64.load
   i32.const 0
@@ -11314,45 +11393,45 @@
   call $~lib/number/I32#toString
   call $~lib/string/String.__concat
  )
- (func $~lib/ultrain-ts-lib/src/return/returnObj<RandRecord> (; 295 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/return/returnObj<RandRecord> (; 299 ;) (type $FUNCSIG$vi) (param $0 i32)
   local.get $0
   call $contract/lib/random.lib/RandRecord#toString
   call $~lib/ultrain-ts-lib/src/utils/string2cstr
   call $~lib/ultrain-ts-lib/src/return/env.set_result_str
  )
- (func $~lib/ultrain-ts-lib/src/return/Return<RandRecord> (; 296 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/return/Return<RandRecord> (; 300 ;) (type $FUNCSIG$vi) (param $0 i32)
   local.get $0
   call $~lib/ultrain-ts-lib/src/return/returnObj<RandRecord>
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#returnVal<RandRecord> (; 297 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#returnVal<RandRecord> (; 301 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   call $~lib/ultrain-ts-lib/src/return/Return<RandRecord>
  )
- (func $contract/lib/random.lib/Random#queryLatest (; 298 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Random#queryLatest (; 302 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   call $~lib/ultrain-ts-lib/src/block/Block.number.get:number
   i64.extend_i32_u
   i32.const 0
   call $contract/lib/random.lib/Random#generateRand
  )
- (func $contract/ultrainio.rand/RandContract#query (; 299 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/ultrainio.rand/RandContract#query (; 303 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.load offset=24
   call $contract/lib/random.lib/Random#queryLatest
  )
- (func $contract/ultrainio.rand/RandContract#queryBck (; 300 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $contract/ultrainio.rand/RandContract#queryBck (; 304 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   local.get $0
   i32.load offset=24
   local.get $1
   call $contract/lib/random.lib/Random#query
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#onError (; 301 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#onError (; 305 ;) (type $FUNCSIG$vi) (param $0 i32)
   nop
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#onStop (; 302 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#onStop (; 306 ;) (type $FUNCSIG$vi) (param $0 i32)
   nop
  )
- (func $contract/ultrainio.rand/apply (; 303 ;) (type $FUNCSIG$vjjjj) (param $0 i64) (param $1 i64) (param $2 i64) (param $3 i64)
+ (func $contract/ultrainio.rand/apply (; 307 ;) (type $FUNCSIG$vjjjj) (param $0 i64) (param $1 i64) (param $2 i64) (param $3 i64)
   (local $4 i32)
   (local $5 i32)
   (local $6 i64)
@@ -11481,9 +11560,9 @@
    call $~lib/ultrain-ts-lib/src/contract/Contract#onStop
   end
  )
- (func $start (; 304 ;) (type $FUNCSIG$v)
+ (func $start (; 308 ;) (type $FUNCSIG$v)
   call $start:contract/ultrainio.rand
  )
- (func $null (; 305 ;) (type $FUNCSIG$v)
+ (func $null (; 309 ;) (type $FUNCSIG$v)
  )
 )
