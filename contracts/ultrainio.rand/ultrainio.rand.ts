@@ -23,6 +23,8 @@ import {
 let WAITER_DEPOSIT_AMOUNT: Asset = new Asset(10000000);
 
 const WAITER_NUM: u64 = 100;
+// Version format, main.major.patch
+const VERSION: string = "0.0.1";
 
 @database(Voter, VOTER_TABLE)
 @database(Waiter, WAITER_TABLE)
@@ -314,5 +316,10 @@ class RandContract extends Contract {
   @action("pureview")
   queryBck(bckNum: u64): RandRecord {
     return this.random.query(bckNum);
+  }
+
+  @action("pureview")
+  version(): string {
+    return VERSION;
   }
 }
