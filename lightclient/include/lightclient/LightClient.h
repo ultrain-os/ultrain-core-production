@@ -63,7 +63,7 @@ namespace ultrainio {
         // sort by asc
         std::list<BlockHeader> m_confirmedList;
 
-        bool m_status;
+        bool m_status = true;
 
         StartPoint m_startPoint;
     };

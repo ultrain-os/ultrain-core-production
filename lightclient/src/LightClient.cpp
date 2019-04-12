@@ -41,7 +41,8 @@ namespace ultrainio {
             return;
         }
 
-        if (m_workingCommitteeSet == CommitteeSet()) {
+        if (m_workingCommitteeSet == CommitteeSet()) { // the first non genesis block
+            ULTRAIN_ASSERT(m_nextCommitteeMroot != std::string(), chain::chain_exception, "m_nextCommitteeMroot is empty");
             ULTRAIN_ASSERT(CheckPoint::isCheckPoint(blockHeader), chain::chain_exception, "DO NOT pass check point when working committee set is empty");
             m_workingCommitteeSet = CheckPoint(blockHeader).committeeSet();
             ULTRAIN_ASSERT(std::string(m_workingCommitteeSet.committeeMroot()) == m_nextCommitteeMroot, chain::chain_exception, "working committee set' MRoot not equal ${root}", ("root", m_nextCommitteeMroot));
