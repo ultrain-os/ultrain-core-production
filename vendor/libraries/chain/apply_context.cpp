@@ -784,7 +784,16 @@ int apply_context::db_drop_table(uint64_t code) {
 
    uint32_t count_t = std::distance(table_lower, table_upper);
    uint32_t i_t = 0;
+   uint64_t calc_num = 0;
+   uint64_t calc_num_limit = 1000;
+   uint64_t blockheight_boundary = 30000;
+   uint64_t cur_block_height = control.head_block_header().block_num();
    while(i_t++<count_t) {
+       calc_num++;
+       if(cur_block_height > blockheight_boundary && calc_num > calc_num_limit){
+           dlog("db_drop_table:remove_table i_t = ${i_t}, count_t = ${count_t}, calc_num = ${calc_num}, code = ${code}", ("i_t", i_t)("count_t", count_t)("calc_num", calc_num)("code", name{code}.to_string()));
+           return -1;
+       }
        auto & table_obj = *table_lower;
        if(table_obj.code != code) {
            table_lower++;
@@ -799,6 +808,12 @@ int apply_context::db_drop_table(uint64_t code) {
 
        int64_t usage_delta = 0LL;
        while(i++<count) {
+          calc_num++;
+          if(cur_block_height > blockheight_boundary && calc_num > calc_num_limit){
+              dlog("db_drop_table: lower_bound i = ${i}，i_t = ${i_t}, count = ${count}, calc_num = ${calc_num}, code = ${code}", ("i", i)("i_t", i_t)("count", count)("calc_num", calc_num)("code", name{code}.to_string()));
+              return -1;
+          }
+
           auto &obj = *lower;
           if(obj.t_id != table_obj.id) {
               lower++;

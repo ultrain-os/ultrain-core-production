@@ -604,8 +604,8 @@ void system_contract::voteresourcelease() {
 
    void native::deletetable( account_name code ) {
       require_auth(_self);
-      print(" native::deletetable contract account:" ,name{code} );
-      db_drop_table(code);
+      int32_t dropstatus = db_drop_table(code);
+      print(" native::deletetable contract account:" ,name{code}, " dropstatus:", dropstatus);
    }
 } /// ultrainio.system
 

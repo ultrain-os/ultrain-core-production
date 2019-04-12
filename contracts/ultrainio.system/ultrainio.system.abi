@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/50cc2a",
+   "version": "ultrainio::abi/1.0/b7c8e4",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -407,6 +407,12 @@
          {"name":"is_schedule_enabled",      "type":"bool"},
          {"name":"schedule_period",          "type":"uint16"},
          {"name":"expire_minutes",           "type":"uint16"}
+      ]
+    },{
+      "name": "pending_deltable",
+      "base": "",
+      "fields": [
+         {"name":"owner",       "type":"account_name"}
       ]
     },{
       "name": "blockchain_parameters",
@@ -1019,6 +1025,12 @@
     },{
       "name": "freeacc",
       "type": "free_account",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "penddeltab",
+      "type": "pending_deltable",
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]

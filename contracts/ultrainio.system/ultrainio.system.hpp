@@ -72,6 +72,7 @@ namespace ultrainiosystem {
          confirm_point_interval = 2,
          sidechain_charge_ratio = 3,
          is_claim_reward = 4,
+         free_account_per_res = 5,
       };
 
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,
@@ -408,6 +409,13 @@ namespace ultrainiosystem {
        uint16_t      expire_minutes;
    };
    typedef ultrainio::singleton<N(schedset), schedule_setting> sched_set_singleton;
+
+   struct pending_deltable {
+      account_name   owner;
+      uint64_t  primary_key()const { return owner; }
+      ULTRAINLIB_SERIALIZE( pending_deltable, (owner) )
+   };
+   typedef ultrainio::multi_index< N(penddeltab), pending_deltable>   penddeltable;
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
 
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
@@ -524,8 +532,8 @@ namespace ultrainiosystem {
          void change_cons( account_name from, account_name receiver, asset stake_cons_quantity);
          void process_undelegate_request(account_name from, asset unstake_quantity);
          void checkresexpire();
-
-
+         void delexpiretable();
+         void clearexpirecontract( account_name owner );
          //defined in reward.cpp
          void reportblocknumber( uint64_t chain_type,
                                  account_name producer,

@@ -298,7 +298,15 @@ namespace ultrainiosystem {
       }
       print("resourcelease receiver:", name{receiver}, " combosize:",combosize," days:",days," location:",name{location});
       ultrainio_assert( days <= (365*30+7), "resource lease buy days must reserve a positive and less than 30 years" );
-      uint32_t  free_account_per_res = 500;
+      uint32_t  free_account_per_res = 50; //The default free_account_per_res is 50
+      for(auto extension : _gstate.table_extension){
+         if(extension.key == ultrainio_global_state::global_state_exten_type_key::free_account_per_res) {
+            if(extension.value.empty())
+               continue;
+            free_account_per_res = (uint32_t)std::stoi(extension.value);
+            break;
+         }
+      }
       // update totals of "receiver"
       {
          uint64_t cuttingfee = 0;
@@ -329,6 +337,8 @@ namespace ultrainiosystem {
          } else {
             uint64_t free_account_number = 0;
             ultrainio_assert(((combosize > 0) && (days == 0))||((combosize == 0) && (days > 0)), "resource lease days and numbler can't increase them at the same time" );
+            uint32_t  blocknumberhour = seconds_per_day/24/block_interval_seconds();
+            ultrainio_assert( (reslease_itr->modify_block_height + blocknumberhour) <  cur_block_height, "Renewal resources cannot be operated within one hour" );
             if(combosize > 0)
             {
                ultrainio_assert(reslease_itr->end_block_height > cur_block_height, "resource lease endtime already expired" );
@@ -423,17 +433,21 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
 
    void system_contract::checkresexpire(){
       uint32_t block_height = (uint32_t)head_block_number() + 1;
-      uint32_t interval_num = seconds_per_day/block_interval_seconds()/3;
-      if(block_height < 120 || block_height%interval_num > 3) {
+      uint32_t interval_num = seconds_per_day/block_interval_seconds()/3; //check every eight hours
+      if(block_height < 120 || block_height%interval_num != 0) {
          return;
       }
       uint64_t starttime = current_time();
       int64_t ram_bytes = 0;
       int64_t net_bytes = 0;
       int64_t cpu_bytes = 0;
+      uint32_t  calc_num = 0;
       resources_lease_table _reslease_tbl( _self, master_chain_name);
       for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
          if(leaseiter->end_block_height <= block_height){
+            calc_num++;
+            if(calc_num > 100)
+               break;
             const auto& owner = leaseiter->owner;
             get_resource_limits( owner, &ram_bytes, &net_bytes, &cpu_bytes );
             if(ram_bytes == 0 && net_bytes == 0 && cpu_bytes == 0){
@@ -447,31 +461,13 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
                else
                   _gstate.total_ram_bytes_used = 0;
                leaseiter = _reslease_tbl.erase(leaseiter);
+               clearexpirecontract(owner);
             }else{
-               db_drop_table(owner);   //drop contract account table
-               vector<permission_level> pem = { { owner, N(active) },
-                                                { N(ultrainio),     N(active) } };
-               {
-                  // clear contract
-                  ultrainio::transaction trx;
-                  trx.actions.emplace_back(pem, _self, NEX(setcode), std::make_tuple(owner, 0, 0, bytes()) );   //clear contract account code
-                  trx.actions.emplace_back(pem, _self, NEX(setabi), std::make_tuple(owner, bytes()) );   //clear contract account abi
-                  trx.delay_sec = 0;
-                  uint128_t trxid = now() + owner + N(clrcontract);
-                  cancel_deferred(trxid);
-                  trx.send( trxid, _self, true );
-                  print("checkresexpire  clear contract account name: ",name{owner}, " trxid:",trxid);
-               }
-               {
-                  //recycle resource
-                  ultrainio::transaction recyclerestrans;
-                  recyclerestrans.actions.emplace_back( permission_level{ _self, N(active) }, _self,
-                                                         NEX(recycleresource), std::make_tuple(owner) );
-                  recyclerestrans.delay_sec = 10;
-                  uint128_t trxid = now() + owner + N(recycleres);
-                  cancel_deferred(trxid);
-                  recyclerestrans.send( trxid, _self, true );
-                  print("checkresexpire  recycle resource account name: ",name{owner}, " trxid:",trxid);
+               set_resource_limits( owner, ram_bytes, 0, 0 ); //Resource expired, no action allowed
+               penddeltable pendingdel(_self,_self);
+               auto deltab_itr = pendingdel.find(owner);
+               if (deltab_itr == pendingdel.end()) {
+                  pendingdel.emplace( [&]( auto& d ){ d.owner = owner; });
                }
                ++leaseiter;
             }
@@ -527,4 +523,45 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
       }
    }
 
+   void system_contract::delexpiretable(){
+      penddeltable pendingdeltab(_self,_self);
+      for(auto del_iter = pendingdeltab.begin(); del_iter != pendingdeltab.end(); ){
+         int dropstatus = db_drop_table(del_iter->owner);   //drop contract account table
+         if(dropstatus == 0){
+            del_iter = pendingdeltab.erase(del_iter);
+         }
+         break;  //Delete only once and wait for the next delete
+      }
+   }
+
+   void system_contract::clearexpirecontract( account_name owner ){
+      vector<permission_level> pem = { { owner, N(active) },
+                                       { N(ultrainio),     N(active) } };
+      {
+         // clear contract
+         ultrainio::transaction trx;
+         trx.actions.emplace_back(pem, _self, NEX(setcode), std::make_tuple(owner, 0, 0, bytes()) );   //clear contract account code
+         trx.actions.emplace_back(pem, _self, NEX(setabi), std::make_tuple(owner, bytes()) );   //clear contract account abi
+         trx.delay_sec = 0;
+         uint128_t trxid = now() + owner + N(clrcontract);
+         cancel_deferred(trxid);
+         trx.send( trxid, _self, true );
+         print("checkresexpire  clear contract account name: ",name{owner}, " trxid:",trxid);
+      }
+      {
+         //recycle resource
+         ultrainio::transaction recyclerestrans;
+         recyclerestrans.actions.emplace_back( permission_level{ _self, N(active) }, _self,
+                                                NEX(recycleresource), std::make_tuple(owner) );
+         recyclerestrans.delay_sec = 10;
+         uint128_t trxid = now() + owner + N(recycleres);
+         cancel_deferred(trxid);
+         recyclerestrans.send( trxid, _self, true );
+         print("checkresexpire  recycle resource account name: ",name{owner}, " trxid:",trxid);
+      }
+      penddeltable pendingdel(_self,_self);
+      auto deltab_itr = pendingdel.find(owner);
+      if (deltab_itr != pendingdel.end())
+         pendingdel.erase(deltab_itr);
+   }
 } //namespace ultrainiosystem

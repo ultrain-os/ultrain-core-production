@@ -38,7 +38,7 @@ namespace ultrainiosystem {
          });
          print( "onblock timestamp:", timestamp.abstime, " producer:", name{producer}," produce_block:", prod->total_produce_block, "\n" );
       }
-
+      delexpiretable(); //Delete the expired account table
       checkresexpire();
       cleanvotetable();
       checkbulletin();
