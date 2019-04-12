@@ -461,7 +461,6 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
                else
                   _gstate.total_ram_bytes_used = 0;
                leaseiter = _reslease_tbl.erase(leaseiter);
-               clearexpirecontract(owner);
             }else{
                set_resource_limits( owner, ram_bytes, 0, 0 ); //Resource expired, no action allowed
                penddeltable pendingdel(_self,_self);
@@ -526,9 +525,11 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
    void system_contract::delexpiretable(){
       penddeltable pendingdeltab(_self,_self);
       for(auto del_iter = pendingdeltab.begin(); del_iter != pendingdeltab.end(); ){
-         int dropstatus = db_drop_table(del_iter->owner);   //drop contract account table
+         auto const & owner = del_iter->owner;
+         int dropstatus = db_drop_table(owner);   //drop contract account table
          if(dropstatus == 0){
             del_iter = pendingdeltab.erase(del_iter);
+            clearexpirecontract( owner );
          }
          break;  //Delete only once and wait for the next delete
       }
@@ -559,9 +560,5 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
          recyclerestrans.send( trxid, _self, true );
          print("checkresexpire  recycle resource account name: ",name{owner}, " trxid:",trxid);
       }
-      penddeltable pendingdel(_self,_self);
-      auto deltab_itr = pendingdel.find(owner);
-      if (deltab_itr != pendingdel.end())
-         pendingdel.erase(deltab_itr);
    }
 } //namespace ultrainiosystem
