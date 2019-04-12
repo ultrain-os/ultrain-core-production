@@ -192,7 +192,7 @@ namespace ultrainiosystem {
         if(block_proposer != N(utrio.empty) && block_proposer != N(genesis)) {
             auto briefprod = _briefproducers.find(block_proposer);
             if(briefprod == _briefproducers.end()) {
-                print("block proposer is not a valid producer\n");
+                print("block proposer ", name{block_proposer}, " is not a valid producer\n");
                 return false;
             }
             //1. find proposer in current committee
@@ -206,7 +206,7 @@ namespace ultrainiosystem {
                 for(auto ite_prod = chain_iter->deprecated_committee.begin();
                     ite_prod != chain_iter->deprecated_committee.end(); ++ite_prod) {
                     if(ite_prod->owner == block_proposer) {
-                         return false; //TODO, unsynced state is always no reward, is it reasonable and acceptable?
+                         return true;
                     }
                 }
             }
@@ -215,7 +215,7 @@ namespace ultrainiosystem {
             ite_rm != chain_iter->changing_info.removed_members.end(); ++ite_rm) {
                 if(ite_rm->owner == block_proposer) {
                     uint32_t block_height = uint32_t(head_block_number() + 1);
-                    uint16_t expire_time = 5;
+                    uint16_t expire_time = 15;
                     if(_schedsetting.exists()) {
                         auto temp = _schedsetting.get();
                         expire_time = temp.expire_minutes;
@@ -223,10 +223,12 @@ namespace ultrainiosystem {
                     if(block_height > ite_rm->block_num && block_height - ite_rm->block_num <= 6 * expire_time) {
                         return true;
                     } else {
+                        print("producer ", name{block_proposer}, " moving out expired\n");
                         return false;
                     }
                 }
             }
+            print("error: block proposer ", name{block_proposer}, " is not found in the end\n");
         }
         return false;
     }
@@ -316,7 +318,7 @@ namespace ultrainiosystem {
                         }
                         else if(ite_uncfm_block->to_be_paid) {
                             //apply reward for its proposer
-                            reportblocknumber(chain_name, ite_chain->chain_type, ite_uncfm_block->proposer, 1);
+                            reportblocknumber(ite_chain->chain_type, ite_uncfm_block->proposer, 1);
                         }
                         subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
                             new_confirmed_header = block_header_digest(ite_uncfm_block->block_number,

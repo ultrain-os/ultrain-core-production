@@ -46,28 +46,35 @@ namespace ultrainiosystem {
       distributreward();  //automatically send rewards
    }
 
-   void system_contract::reportblocknumber( name chain_name, uint64_t chain_type, account_name producer, uint64_t number) {
-      producers_table _producers(_self, chain_name);
-      auto prod = _producers.find(producer);
-      if ( prod != _producers.end() ) {
-        uint64_t curblockreward = 0;
-        chaintypes_table type_tbl(_self, _self);
-        auto typeiter = type_tbl.find(chain_type);
-        if (typeiter != type_tbl.end()) {
-            auto const iter = std::find_if( _gstate.block_reward_vec.begin(), _gstate.block_reward_vec.end(), [&](ultrainio::block_reward const& obj){
-                                return obj.consensus_period == typeiter->consensus_period;
-                            } );
-            if(iter != _gstate.block_reward_vec.end()){
-                curblockreward = iter->reward;
-            }
-        }
-         _gstate.total_unpaid_balance += number * curblockreward;
-         _producers.modify( prod, [&](auto& p ) {
-               p.unpaid_balance += number * curblockreward;
-               p.total_produce_block += number;
-         });
-         print( "reportblocknumber number:", number, " producer:", name{producer}, " produce_block:", prod->total_produce_block,"\n" );
+   void system_contract::reportblocknumber(uint64_t chain_type, account_name producer, uint64_t number) {
+      auto briefprod = _briefproducers.find(producer);
+      if(briefprod == _briefproducers.end()) {
+          print("error: block proposer ", name{producer}, " is not a producer\n");
+          return;
       }
+      producers_table _producers(_self, briefprod->location);
+      auto prod = _producers.find(producer);
+      if ( prod == _producers.end() ) {
+         print("error: block proposer ", name{producer}, " is not found in its location\n");
+         return;
+      }
+      uint64_t curblockreward = 0;
+      chaintypes_table type_tbl(_self, _self);
+      auto typeiter = type_tbl.find(chain_type);
+      if (typeiter != type_tbl.end()) {
+         auto const iter = std::find_if( _gstate.block_reward_vec.begin(), _gstate.block_reward_vec.end(), [&](ultrainio::block_reward const& obj){
+                                             return obj.consensus_period == typeiter->consensus_period;
+                                         } );
+         if(iter != _gstate.block_reward_vec.end()) {
+             curblockreward = iter->reward;
+         }
+      }
+      _gstate.total_unpaid_balance += number * curblockreward;
+      _producers.modify( prod, [&](auto& p ) {
+          p.unpaid_balance += number * curblockreward;
+          p.total_produce_block += number;
+      });
+      print( "reportblocknumber number:", number, " producer:", name{producer}, " produce_block:", prod->total_produce_block,"\n" );
    }
 
    void system_contract::claimrewards() {

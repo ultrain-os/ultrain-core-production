@@ -527,8 +527,7 @@ namespace ultrainiosystem {
 
 
          //defined in reward.cpp
-         void reportblocknumber( name chain_name,
-                                 uint64_t chain_type,
+         void reportblocknumber( uint64_t chain_type,
                                  account_name producer,
                                  uint64_t number);
 
