@@ -45,6 +45,10 @@ var syncBlockHeaderMaxTranNum = 20;
 
 var head_block_num = 0;
 
+//ws hash相关信息
+var ws_block_height = 0;
+var ws_hash = 0;
+
 /**
  *
  * @returns {string}
@@ -145,6 +149,8 @@ async function buildParam() {
         "enableSyncUserResByBlock":enableSyncUserResByBlock,
         "syncBlockHeaderMaxTranNum":syncBlockHeaderMaxTranNum,
         "headBlockNum":head_block_num,
+        "wsBlockHeight":ws_block_height,
+        "wsHash":ws_hash,
     }
     var param = {
         "chainId": chainConfig.localChainName,
@@ -814,6 +820,11 @@ function setHeadBlockNum(num) {
     head_block_num = num;
 }
 
+function setHashInfo(block,hash) {
+    ws_block_height = block;
+    ws_hash = hash;
+}
+
 module.exports = {
     checkIn,
     isDeploying,
@@ -830,4 +841,5 @@ module.exports = {
     needSyncUserResByBlock,
     getSyncBlockHeaderMaxTranNum,
     setHeadBlockNum,
+    setHashInfo,
 }

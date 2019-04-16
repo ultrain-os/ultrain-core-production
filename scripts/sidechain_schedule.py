@@ -69,7 +69,7 @@ def transferReg():
     print "transfer producer("+user+" accountPK: "+userPK+") from chain("+source+") to chain("+dest+")"
     sleep(1)
     print "empoweruser(user:"+user+" to chain:"+dest+")"
-    retry(args.clultrain+'system empoweruser '+user+' '+dest+' '+userPK+' '+userPK+' 1  -p '+user+'@active');
+    #retry(args.clultrain+'system empoweruser '+user+' '+dest+' '+userPK+' '+userPK+' 1  -p '+user+'@active');
     sleep(5)
     bls_key = bls_pk_list[index];
     print "reg producer:" + user + "(" + userPK + " "+bls_key+ ") belongs to chain(" + dest + ")"

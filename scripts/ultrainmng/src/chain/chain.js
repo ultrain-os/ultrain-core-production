@@ -2209,77 +2209,85 @@ function isMainChain() {
  */
 async function syncWorldState() {
 
-    if (chainConfig.configFileData.local.worldstate == false) {
-        logger.info("syncWorldState is disabled");
-        return;
-    }
-    logger.info("syncWorldState start");
+    try {
 
-    if (syncChainData == true) {
-        let vaildMaxWSNum=0;
-        try {
-            //同步状态
-            await WorldState.syncStatus();
-            logger.info("WorldState.status:", WorldState.status);
-            logger.info("WorldState.status chain_id:", WorldState.status.chain_id);
-            if (utils.isNotNull(WorldState.status) && utils.isNotNull(WorldState.status.chain_id) && WorldState.status.chain_id != chainIdConstants.NONE_CHAIN) {
-                logger.info("WorldState.status not null");
-                //调用主链查询当前已同步的块高
-                //let mainChainData = await chainApi.getTableInfo(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.WORLDSTATE_HASH,1000,null,null,null);
-                let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.localChainName, tableConstants.WORLDSTATE_HASH, "block_num");
+        await WorldState.syncStatus();
+        monitor.setHashInfo(WorldState.status.block_height, WorldState.status.hash_string)
 
-                logger.error("mainChainData:", mainChainData);
-                let needUpload = true;
-                if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
-                    logger.debug("mainChainData:",mainChainData);
-                    let worldstatedata = voteUtil.getMaxValidWorldState(mainChainData.rows);
-                    if (worldstatedata != null) {
-                        vaildMaxWSNum = worldstatedata.block_num;
-                        logger.info("main chain's world state (main chain block num :" + worldstatedata.block_num + " subchain node block num :" + WorldState.status.block_height + ")");
-                        if (worldstatedata.block_num >= WorldState.status.block_height) {
-                            logger.info("main chain's world state is newest,need not upload:(main chain block num :" + worldstatedata.block_num + " subchain node block num :" + WorldState.status.block_height + ")");
-                            needUpload = false;
+        if (chainConfig.configFileData.local.worldstate == false) {
+            logger.info("syncWorldState is disabled");
+            return;
+        }
+        logger.info("syncWorldState start");
+
+        if (syncChainData == true) {
+            let vaildMaxWSNum = 0;
+            try {
+                //同步状态
+                logger.info("WorldState.status:", WorldState.status);
+                logger.info("WorldState.status chain_id:", WorldState.status.chain_id);
+                if (utils.isNotNull(WorldState.status) && utils.isNotNull(WorldState.status.chain_id) && WorldState.status.chain_id != chainIdConstants.NONE_CHAIN) {
+                    logger.info("WorldState.status not null");
+                    //调用主链查询当前已同步的块高
+                    //let mainChainData = await chainApi.getTableInfo(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.chainName, tableConstants.WORLDSTATE_HASH,1000,null,null,null);
+                    let mainChainData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.localChainName, tableConstants.WORLDSTATE_HASH, "block_num");
+
+                    logger.error("mainChainData:", mainChainData);
+                    let needUpload = true;
+                    if (utils.isNotNull(mainChainData) && mainChainData.rows.length > 0) {
+                        logger.debug("mainChainData:", mainChainData);
+                        let worldstatedata = voteUtil.getMaxValidWorldState(mainChainData.rows);
+                        if (worldstatedata != null) {
+                            vaildMaxWSNum = worldstatedata.block_num;
+                            logger.info("main chain's world state (main chain block num :" + worldstatedata.block_num + " subchain node block num :" + WorldState.status.block_height + ")");
+                            if (worldstatedata.block_num >= WorldState.status.block_height) {
+                                logger.info("main chain's world state is newest,need not upload:(main chain block num :" + worldstatedata.block_num + " subchain node block num :" + WorldState.status.block_height + ")");
+                                needUpload = false;
+                            }
                         }
+                    } else {
+                        logger.info("main chain's world state is null,need upload");
+                        needUpload = true;
+                    }
+                    //需要上传
+                    if (needUpload) {
+                        let params = {
+                            subchain: chainConfig.localChainName,
+                            blocknum: WorldState.status.block_height,
+                            hash: WorldState.status.hash_string,
+                            file_size: WorldState.status.file_size
+                        }
+
+                        logger.info("reportsubchainhash params:", params);
+                        let result = await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "reportsubchainhash", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+                        logger.info("upload ws hash to main chain:" + result);
                     }
                 } else {
-                    logger.info("main chain's world state is null,need upload");
-                    needUpload = true;
+                    logger.info("local world state is none ,need not upload");
                 }
-                //需要上传
-                if (needUpload) {
-                    let params = {
-                        subchain: chainConfig.localChainName,
-                        blocknum: WorldState.status.block_height,
-                        hash: WorldState.status.hash_string,
-                        file_size: WorldState.status.file_size
-                    }
 
-                    logger.info("reportsubchainhash params:", params);
-                    let result = await chainApi.contractInteract(chainConfig.config, contractConstants.ULTRAINIO, "reportsubchainhash", params, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
-                    logger.info("upload ws hash to main chain:" + result);
+                /**
+                 *
+                 */
+                if (vaildMaxWSNum > 0) {
+                    logger.info("vaildMaxWSNum is " + vaildMaxWSNum + ", need set wss..");
+                    await WorldState.setValidWs(vaildMaxWSNum);
+                } else {
+                    logger.info("vaildMaxWSNum is " + vaildMaxWSNum + ", need not set wss..");
                 }
-            } else {
-                logger.info("local world state is none ,need not upload");
-            }
 
-            /**
-             *
-             */
-            if (vaildMaxWSNum > 0) {
-                logger.info("vaildMaxWSNum is "+vaildMaxWSNum+", need set wss..");
-                await WorldState.setValidWs(vaildMaxWSNum);
-            } else {
-                logger.info("vaildMaxWSNum is "+vaildMaxWSNum+", need not set wss..");
+            } catch (e) {
+                logger.error("syncWorldState error:", e);
             }
-
-        } catch (e) {
-            logger.error("syncWorldState error:", e);
+        } else {
+            logger.info("syncWorldState not need:", syncChainData);
         }
-    } else {
-        logger.info("syncWorldState not need:",syncChainData);
-    }
 
-    logger.info("syncWorldState end");
+        logger.info("syncWorldState end");
+
+    } catch (e) {
+        logger.error("syncWorldState error:", e);
+    }
 }
 
 
