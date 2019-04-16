@@ -26,6 +26,7 @@
 
 #include <random>
 #include <fstream>
+#include <cstdint>
 
 namespace fc {
     extern std::unordered_map<std::string,logger>& get_logger_map();
@@ -86,18 +87,23 @@ namespace ultrainio {
         connection_ptr find_connection( string host )const;
         std::set< connection_ptr >       connections;
         bool                             done = false;
-        std::unique_ptr<boost::asio::steady_timer> connector_check;
+        std::unique_ptr<boost::asio::steady_timer> connect_check_timer;
         std::unique_ptr<boost::asio::steady_timer> keepalive_timer;
+        std::unique_ptr<boost::asio::steady_timer> disconnect_timer;
 
-        boost::asio::steady_timer::duration   connector_period;
+        // boost::asio::steady_timer::duration   connector_period;
         boost::asio::steady_timer::duration   resp_expected_period;
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
+        boost::asio::steady_timer::duration   disconnect_interval{std::chrono::seconds{10}};
         bool                          network_version_match = false;
         fc::sha256                    node_id;
         string                        user_agent_name;
         int                           started_sessions = 0;
         std::shared_ptr<tcp::resolver>     resolver;
         bool                          use_socket_read_watermark = false;
+        bool                            is_connecting = false;
+        int                            connected_try_count = 0;
+        std::list< std::function<void ()> >   connected_done_cb;
 
         std::ifstream src_file;
         std::ofstream dist_file;
@@ -154,11 +160,12 @@ namespace ultrainio {
         void handle_message(connection_ptr c, const RspTestTimeMsg &msg);
 
         void start_broadcast(const net_message& msg);
+        void start_connect(std::function<void ()> connected_end_cb);
+        void start_connect_check_timer();
+        void connect_done();
+        void connect_all();
 
-        void start_conn_timer( );
-        void start_monitors( );
-
-        void connection_monitor( );
+        void start_disconnect_timer();
 
         /** \brief Peer heartbeat ticker.
          */
@@ -216,13 +223,14 @@ namespace ultrainio {
      */
     constexpr auto     def_send_buffer_size_mb = 4;
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
-    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
+    constexpr auto     def_max_clients = 40; // 0 for unlimited clients
     constexpr auto     def_max_nodes_per_host = 1;
     constexpr auto     def_conn_retry_wait = 30;
 
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
     constexpr uint32_t  def_max_just_send = 1500; // roughly 1 "mtu"
 
+    constexpr auto     def_alive_time = 60; // 1 min
 
     constexpr auto     message_header_size = 4;
 
@@ -285,7 +293,7 @@ namespace ultrainio {
 
         uint32_t               fork_head_num = 0;
 
-
+        fc::time_point last_recv_time = fc::time_point::now();
         connection_status get_status()const {
             connection_status stat;
             stat.peer = peer_addr;
@@ -688,6 +696,7 @@ namespace ultrainio {
             }
             msgHandler m(impl, shared_from_this() );
             msg.visit(m);
+            last_recv_time = fc::time_point::now();
         } catch(  const fc::exception& e ) {
             edump((e.to_detail_string() ));
             impl.close( shared_from_this() );
@@ -713,6 +722,7 @@ namespace ultrainio {
             connection_ptr                                  ws_sync_conn;
             std::shared_ptr<chain::ws_file_writer>          ws_writer;
             uint32_t                                        slice_num;
+            uint32_t                                        selected_con_id;
             chain::ws_file_manager                          ws_file_manager;
             int	                                            num_of_hash_error;
             int                                             num_of_no_data;
@@ -725,7 +735,7 @@ namespace ultrainio {
             bool send_ws_sync_req(std::set< connection_ptr >& connections, const chain::ws_info& info);
             void receive_ws_sync_rsp(connection_ptr c, const RspLastWsInfoMsg &msg);
             void start_conn_check_timer();
-            int select_strong_sync_src();
+            int select_random_connect();
             void remove_current_connect();
             void send_file_sync_req(uint32_t slice_idx);
             void receive_file_sync_rsp(connection_ptr c, const FileTransferPacket &msg);
@@ -744,6 +754,7 @@ namespace ultrainio {
         ws_states = none;
         len_per_slice = 1024;
         ip_address = "";
+        selected_con_id = 0;
     }
 
     void sync_ws_manager::sync_reset(sync_code st){
@@ -755,6 +766,7 @@ namespace ultrainio {
         m_conns_ws_info.clear();
         num_of_no_data = 0;
         num_of_hash_error = 0;
+        selected_con_id = 0;
     }
 
     bool sync_ws_manager::send_ws_sync_req(std::set< connection_ptr >& connections, const chain::ws_info& info){
@@ -795,7 +807,7 @@ namespace ultrainio {
             ilog("get ws-sync rsp from peer ${p}, but not in rsp waiting states", ("p", c->peer_name()));
             return;
         }
-        idump((msg));
+
         const ultrainio::chain::ws_info& info = msg.info;
         if(info.block_height == 0){ // no data
             num_of_no_data++;
@@ -848,10 +860,12 @@ namespace ultrainio {
         });
     }
 
-    int sync_ws_manager::select_strong_sync_src() {
-        if (m_conns.size())
-            return 0;
-        return -1;
+    int sync_ws_manager::select_random_connect() {
+        if (m_conns.size() <= 0)
+            return -1;
+
+        std::srand(std::time(nullptr));
+        return std::rand() % m_conns.size();
     }
 
     void sync_ws_manager::remove_current_connect() {
@@ -871,30 +885,31 @@ namespace ultrainio {
     }
 
     void sync_ws_manager::send_file_sync_req(uint32_t slice_idx){
-        int index = select_strong_sync_src();
-        if (index < 0) {
-            elog("No any connection");
-            sync_reset(error);//error
-            return;
-        }
-
-        if (m_conns[index] != ws_sync_conn) {
+        if (!ws_sync_conn) {
+            int index = select_random_connect();
+            if (index < 0) {
+                elog("No any connection");
+                sync_reset(error);//error
+                return;
+            }
             ws_sync_conn = m_conns[index];
             ip_address = ws_sync_conn->peer_address();
+            selected_con_id = index;
+            ilog("ws select conect: ${p} ${t} ${ip}", ("p", index)("t", ws_sync_conn->peer_name())("ip", ip_address));
         }
 
         ReqWsFileMsg reqWsFileMsg;
         reqWsFileMsg.lenPerSlice = len_per_slice;
-        reqWsFileMsg.info = m_conns_ws_info[index];
+        reqWsFileMsg.info = m_conns_ws_info[selected_con_id];
         reqWsFileMsg.index = slice_idx;
         ws_sync_conn->enqueue(net_message(reqWsFileMsg));
 
         sync_check_timer->cancel();
         sync_check_timer->expires_from_now(sync_timeout);
-        sync_check_timer->async_wait([this, index, slice_idx](boost::system::error_code ec) {
+        sync_check_timer->async_wait([this, slice_idx](boost::system::error_code ec) {
             if(ec) return;
 
-            ilog("req slice ${slice_idx} timeout, peer ${p}", ("slice_idx", slice_idx)("p", m_conns[index]->peer_name()));
+            ilog("req slice ${slice_idx} timeout, peer ${p}", ("slice_idx", slice_idx)("p", ws_sync_conn->peer_name()));
             remove_current_connect();
 
             //request the slice again
@@ -963,11 +978,6 @@ namespace ultrainio {
             if(msg.chain_id != it.chain_id)
                 continue;
 
-            if (msg.block_height > 0 && msg.block_height == it.block_height){
-                rspLastWsInfoMsg.info = it;
-                break;
-            }
-
             if (msg.block_height == 0) { //request lastest ws file
                 if (rspLastWsInfoMsg.info.block_height < it.block_height){
                     rspLastWsInfoMsg.info = it;
@@ -979,7 +989,7 @@ namespace ultrainio {
                 }
             }
         }
-            
+
         c->enqueue(net_message(rspLastWsInfoMsg));
     }
 
@@ -987,24 +997,26 @@ namespace ultrainio {
         if (msg.index < 5 || msg.index % 1000 == 0)
             ilog("recieved ReqWsFileMsg, ${msg}", ("msg", msg));
 
+        FileTransferPacket file_tp_msg;
+        file_tp_msg.chunkLen = 0;
+        file_tp_msg.sliceId = msg.index;
+        if (msg.lenPerSlice > 1*1024*1024){//more than 1Mb
+            ilog("lenPerSlice(${p}) more than max(1M)", ("p", msg.lenPerSlice));
+            c->enqueue(net_message(file_tp_msg));
+            return;
+        }
+
         auto reader = ws_file_manager.get_reader(msg.info);
         if (!reader){
             ilog("reader error ");
-            FileTransferPacket file_tp_msg;
-            file_tp_msg.chunkLen = 0;
-            file_tp_msg.sliceId = msg.index;
             c->enqueue(net_message(file_tp_msg));
             return;
         }
 
         bool isEof = false;
-        FileTransferPacket file_tp_msg;
-        
         auto data = reader->get_data(msg.index, msg.lenPerSlice, isEof);
         if(data.size() <= 0){
             ilog("reader error, no data ");
-            file_tp_msg.chunkLen = 0;
-            file_tp_msg.sliceId = msg.index;
             c->enqueue(net_message(file_tp_msg));
             return;
         }
@@ -1085,7 +1097,7 @@ namespace ultrainio {
             void sync_blocks_reset(sync_blocks_code st);
             bool send_blocks_sync_req(std::set< connection_ptr >& connections, const fc::sha256& chain_id, const int block_height);
             void receive_blocks_sync_rsp(connection_ptr c, const RspBlocksInfoMsg &msg);
-            int select_strong_sync_src();
+            int select_random_connect();
             void remove_current_connect();
             void send_blocks_file_sync_req(uint32_t slice_idx);
             void receive_blocks_file_sync_rsp(connection_ptr c, const BlocksTransferPacket &msg);
@@ -1130,7 +1142,7 @@ namespace ultrainio {
         sync_blocks_reset(none);
 
         m_require_chain_id = chain_id;
-        m_require_block_height = block_height + 2; 
+        m_require_block_height = block_height + 1; 
        
         ReqBlocksInfoMsg reqBlocksMsg;
         reqBlocksMsg.chain_id = m_require_chain_id;
@@ -1191,6 +1203,13 @@ namespace ultrainio {
             return;
         }
 
+        if(msg.block_height < m_require_block_height){ //no enough data
+            num_of_no_data++;
+            ilog("receive block-sync rsp, but remote block_height(${t}) less than require(${s})! peer ${p}", 
+                ("t", msg.block_height)("s", m_require_block_height)("p", c->peer_name()));
+            return;
+        }
+
         ilog("receive block-sync rsp msg: ${msg}, peer:${p}", ("msg", msg)("p", c->peer_name()));
         auto it = find(m_conns.begin(), m_conns.end(), c);
         if (it != m_conns.end()){
@@ -1208,20 +1227,12 @@ namespace ultrainio {
         m_gs.emplace_back(msg.gs);
     }
 
-    int sync_blocks_manager::select_strong_sync_src() {
-        if (m_block_height.size() <= 0)
+    int sync_blocks_manager::select_random_connect() {
+        if (m_conns.size() <= 0)
             return -1;
 
-        int idx = 0, max = -1, ret = -1;
-        for (auto& it : m_block_height){
-            if (max < it){
-                max = it;
-                ret = idx;
-            }
-            idx++;
-        }
-
-        return ret;
+        std::srand(std::time(nullptr));
+        return std::rand() % m_conns.size();
     }
 
     void sync_blocks_manager::remove_current_connect() {
@@ -1244,7 +1255,7 @@ namespace ultrainio {
 
     void sync_blocks_manager::send_blocks_file_sync_req(uint32_t block_num){
         if(!sync_connect_ptr) {
-            int index = select_strong_sync_src();
+            int index = select_random_connect();
             if (index < 0) {
                 elog("No any connection");
                 sync_blocks_reset(error);//error
@@ -1252,6 +1263,7 @@ namespace ultrainio {
             }
             sync_connect_ptr = m_conns[index];
             ip_address = sync_connect_ptr->peer_address();
+            ilog("block select conect: ${p} ${t} ${ip}", ("p", index)("t", sync_connect_ptr->peer_name())("ip", ip_address));
         }
 
         ReqBlocksFileMsg reqMsg;
@@ -1349,7 +1361,16 @@ namespace ultrainio {
             return;
         }
 
-        open_read(true);
+        try {
+            open_read(true);
+        } catch (...) {
+            RspBlocksInfoMsg rspBlocksMsg;
+            rspBlocksMsg.block_height = 0;
+            c->enqueue(net_message(rspBlocksMsg));
+            ilog("block-sync open_read error, return!");
+            return;
+        }
+
         uint32_t blknum = m_block_log_ptr->head()->block_num();
         ilog("local block height ${blknum}", ("blknum", blknum));
         
@@ -1922,11 +1943,6 @@ namespace ultrainio {
         ilog("toTime: ${t}(s),backTime: ${b}(s),wholeTime: ${w}(s),", ("t", randToSecond)("b", randBackSecond)("w", randWholeSecond));
     }
 
-    void sync_net_plugin_impl::start_monitors() {
-        connector_check.reset(new boost::asio::steady_timer( app().get_io_service()));
-        start_conn_timer();
-    }
-
    void sync_net_plugin_impl::ticker() {
       keepalive_timer->expires_from_now (keepalive_interval);
       keepalive_timer->async_wait ([this](boost::system::error_code ec) {
@@ -1942,37 +1958,101 @@ namespace ultrainio {
          });
    }
 
-    void sync_net_plugin_impl::start_conn_timer( ) {
-        connector_check->expires_from_now( connector_period);
-        connector_check->async_wait( [this](boost::system::error_code ec) {
-            if( !ec) {
-                connection_monitor( );
+    void sync_net_plugin_impl::start_connect(std::function<void ()> connected_end_cb) {
+        connected_done_cb.push_back(connected_end_cb);
+        if (is_connecting)
+            return;
+
+        if (supplied_peers.size() == connections.size() && count_open_sockets() == connections.size() ){
+            connect_done();
+            return;
+        }
+
+        connected_try_count = 0;
+        is_connecting = true;
+        connect_all();
+        start_connect_check_timer();
+    }
+
+    void sync_net_plugin_impl::start_connect_check_timer() {
+        connect_check_timer->expires_from_now(std::chrono::milliseconds{500});
+        connect_check_timer->async_wait( [this](boost::system::error_code ec) {
+            if( ec) {
+                elog( "Timer error! ${m}",( "m", ec.message()));
+                connect_check_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
+                start_connect_check_timer();
+            } else {
+                if (count_open_sockets() == connections.size() || count_open_sockets() >= 2) {
+                    connect_done();
+                } else if(connected_try_count >= 60){// try 60 times
+                    connect_done();
+                } else {
+                    start_connect_check_timer();
+                }
             }
-            else {
-                elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
-                start_conn_timer( );
+            connected_try_count++;
+        });
+    } 
+
+    void sync_net_plugin_impl::connect_all( ) {
+        for( auto seed_node : supplied_peers ) {
+            auto con_ptr = find_connection( seed_node );
+            if( !con_ptr ){
+                connection_ptr c = std::make_shared<connection>(seed_node);
+                fc_dlog(logger,"adding new connection to the list");
+                connections.insert( c );
+                fc_dlog(logger,"calling active connector");
+                connect( c );
+            } else if(!con_ptr->socket->is_open() && !con_ptr->connecting){
+                if( con_ptr->peer_addr.length() > 0) {
+                    connect(con_ptr);
+                } else {
+                    connections.erase(con_ptr);
+                }
             }
+        }
+
+        for (auto it = connections.begin(); it != connections.end(); ){//erase all closed clients
+            if ((*it)->peer_addr.length() == 0 && !(*it)->socket->is_open() && !(*it)->connecting)
+                it = connections.erase(it);
+            else
+                it++;
+        }
+    }
+
+    void sync_net_plugin_impl::connect_done(){
+        ilog("Connect_done");
+        is_connecting = false;
+        for( auto& cb : connected_done_cb){
+            cb();
+        }
+
+        connected_done_cb.clear();
+    }
+
+    void sync_net_plugin_impl::start_disconnect_timer() {
+        disconnect_timer->expires_from_now(disconnect_interval);
+        disconnect_timer->async_wait ([this](boost::system::error_code ec) {
+            if (ec) {
+                elog ("Error, disconnect timer error: ${m}", ("m", ec.message()));
+            }
+            auto current_time = fc::time_point::now();
+
+            for (auto itr = connections.begin(); itr != connections.end(); ) {
+                auto& c = *itr;
+                if (current_time - c->last_recv_time > fc::seconds(def_alive_time)) { //more than 60 seconds
+                    ilog("disconnect timeout, close ${p}, last_recv_time ${t}", ("p", c->peer_name())("t", c->last_recv_time));
+                    close(c);
+                    itr = connections.erase(itr);
+                } else {
+                    itr++;
+                }
+            }
+            start_disconnect_timer();
         });
     }
 
-   void sync_net_plugin_impl::connection_monitor( ) {
-      start_conn_timer();
-      auto it = connections.begin();
-      while(it != connections.end()) {
-         if( !(*it)->socket->is_open() && !(*it)->connecting) {
-            if( (*it)->peer_addr.length() > 0) {
-               connect(*it);
-            }
-            else {
-               it = connections.erase(it);
-               continue;
-            }
-         }
-         ++it;
-      }
-   }
-
-   void sync_net_plugin_impl::close( connection_ptr c ) {
+    void sync_net_plugin_impl::close( connection_ptr c ) {
       if( c->peer_addr.empty( ) && c->socket->is_open() ) {
          if (num_clients == 0) {
             fc_wlog( logger, "num_clients already at 0");
@@ -2020,7 +2100,7 @@ namespace ultrainio {
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
-         ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
+        //  ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
          ( "max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "maximum sizes of transaction or block messages that are sent without first sending a notice")
@@ -2040,7 +2120,7 @@ namespace ultrainio {
 
          my->network_version_match = options.at( "network-version-match" ).as<bool>();
 
-         my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
+        //  my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
          my->resp_expected_period = def_resp_expected_wait;
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
@@ -2101,8 +2181,8 @@ namespace ultrainio {
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
          ilog( "my node_id is ${id}", ("id", my->node_id));
 
-         my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
-         my->ticker();
+        //  my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
+        //  my->ticker();
       } FC_LOG_AND_RETHROW()
    }
 
@@ -2116,14 +2196,13 @@ namespace ultrainio {
          my->start_listen_loop();
       }
 
-      my->start_monitors();
-      my->m_sync_ws_manager->ws_file_manager.set_local_max_count(5);
-      for( auto seed_node : my->supplied_peers ) {
-         connect( seed_node );
-      }
+        my->connect_check_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
+        my->disconnect_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
+        my->start_disconnect_timer();
+        my->m_sync_ws_manager->ws_file_manager.set_local_max_count(5);
 
-      if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
-         logger = fc::get_logger_map()[logger_name];
+        if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
+            logger = fc::get_logger_map()[logger_name];
       
    }
 
@@ -2196,24 +2275,29 @@ namespace ultrainio {
    }
 
     string sync_net_plugin::require_ws(const chain::ws_info& info) {
-        auto ret = my->m_sync_ws_manager->send_ws_sync_req(my->connections, info);
-        if (ret)
-            return "success";
-        else
-            return "fail";
+        my->start_connect([this, info](){
+            my->m_sync_ws_manager->send_ws_sync_req(my->connections, info);
+        });
+
+        return "success";
     }
 
     string sync_net_plugin::require_block(const std::string& chain_id_text, uint32_t end) {
-        fc::sha256 chain_id(chain_id_text);
-        auto ret = my->m_sync_blocks_manager->send_blocks_sync_req(my->connections, chain_id, end);
-        if (ret)
-            return "success";
-        else
-            return "fail";
+        my->start_connect([this, chain_id_text, end](){
+            fc::sha256 chain_id(chain_id_text);
+            my->m_sync_blocks_manager->send_blocks_sync_req(my->connections, chain_id, end);
+        });
+
+        return "success";
     }
 
     status_code sync_net_plugin::ws_status(string id){
         std::string ip = "";
+
+        if (my->is_connecting){
+            ilog("ws_status: connecting");
+            return {1, "ongoing", ""};
+        }
 
         if(id == "ws") {
             int code = my->m_sync_ws_manager->get_status(ip);
