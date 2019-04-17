@@ -45,6 +45,8 @@ namespace ultrainiosystem {
             ultrainio_assert( params.max_ram_size > _gstate.total_ram_bytes_used,
                               "attempt to set max below reserved" );
             _gstate.min_activated_stake = params.min_activated_stake;
+            ultrainio_assert( _gstate.cur_committee_number > params.min_committee_member_number,
+                              "the current number of committees is greater than the minimum number of committees set up" );
             _gstate.min_committee_member_number = params.min_committee_member_number;
             if(params.block_reward_vec.size() > 0){
                 _gstate.block_reward_vec.clear();
