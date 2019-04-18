@@ -1619,13 +1619,14 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(result)
                 << std::endl;
    });
-
+   bool scope_to_name = false;
    auto getScope = get->add_subcommand( "scope", localized("Retrieve a list of scopes and tables owned by a contract"), false);
    getScope->add_option( "contract", code, localized("The contract who owns the table") )->required();
    getScope->add_option( "-t,--table", table, localized("The name of the table as filter") );
    getScope->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
    getScope->add_option( "-L,--lower", lower, localized("lower bound of scope") );
    getScope->add_option( "-U,--upper", upper, localized("upper bound of scope") );
+   getScope->add_flag("-n,--name", scope_to_name, localized("scope to name string from uint64"));
    getScope->set_callback([&] {
       auto result = call(get_table_by_scope_func, fc::mutable_variant_object("code",code)
                          ("table",table)
@@ -1633,8 +1634,43 @@ int main( int argc, char** argv ) {
                          ("upper_bound",upper)
                          ("limit",limit)
                          );
-          std::cout << fc::json::to_pretty_string(result)
-                << std::endl;
+      if(scope_to_name){
+         fc::variants rows = result.get_object()["rows"].get_array();
+         if (rows.empty()) {
+            std::cerr << "table not data" << std::endl;
+            return;
+         }
+         auto const get_symbol_name = [](uint64_t value)-> string{
+            uint64_t v = value;
+            string result;
+            while (v > 0) {
+               char c = v & 0xFF;
+               result += c;
+               v >>= 8;
+            }
+            return result;
+         };
+         for(auto row : rows){
+            std::string scope;
+            if(std::string("stat") == row["table"].as_string()){
+               scope = get_symbol_name(row["scope"].as_uint64());
+            }else{
+               scope = name{row["scope"].as_uint64()}.to_string();
+            }
+            std::cout << "code: "<< row["code"].as_string() << std::endl
+                     << "scope: "<< scope << std::endl
+                     << "table: "<< row["table"].as_string() << std::endl
+                     << "payer: "<< row["payer"].as_string() << std::endl
+                     << "count: "<< row["count"].as_string() << std::endl
+                     << std::endl;
+         }
+         std::cout << "row size: "<< rows.size() << std::endl;
+         fc::variant morevalue = result.get_object()["more"];
+         std::cout << "more: " << morevalue.as_string()
+               << std::endl;
+      } else
+         std::cout << fc::json::to_pretty_string(result)
+               << std::endl;
    });
 
    // currency accessors
