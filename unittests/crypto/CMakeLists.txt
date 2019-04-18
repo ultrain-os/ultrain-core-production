@@ -32,3 +32,13 @@ include_directories ( ${Boost_INCLUDE_DIR} )
 target_link_libraries( signervalidator_test ultrainio_crypto ultrainio_core)
 
 add_test(NAME signervalidator_test COMMAND signervalidator_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+#Random
+add_executable( random_unittest
+        RandomTest.cpp)
+
+include_directories ( ${Boost_INCLUDE_DIR} )
+
+target_link_libraries( random_unittest ultrainio_crypto)
+
+add_test(NAME random_unittest COMMAND random_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
