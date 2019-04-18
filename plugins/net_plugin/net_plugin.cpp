@@ -1084,7 +1084,7 @@ connection::connection(string endpoint, msg_priority pri)
             return;
         connection_wptr c(shared_from_this());
         if(!socket->is_open()) {
-            fc_elog(logger,"socket not open to ${p}",("p",peer_name()));
+            elog("socket not open to ${p}",("p",peer_name()));
             my_impl->close(c.lock());
             return;
         }
@@ -1535,8 +1535,8 @@ connection::connection(string endpoint, msg_priority pri)
     }
 
     void net_plugin_impl::connect( connection_ptr c ) {
-        if( c->no_retry != go_away_reason::no_reason) {
-            fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
+        if (c->no_retry != go_away_reason::no_reason && c->no_retry != go_away_reason::authentication) {
+            ilog("Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
             return;
         }
 
@@ -1577,7 +1577,7 @@ connection::connection(string endpoint, msg_priority pri)
     }
 
     void net_plugin_impl::connect( connection_ptr c, tcp::resolver::iterator endpoint_itr ) {
-        if( c->no_retry != go_away_reason::no_reason) {
+        if (c->no_retry != go_away_reason::no_reason && c->no_retry != go_away_reason::authentication) {
             string rsn = reason_str(c->no_retry);
             return;
         }
@@ -1636,7 +1636,7 @@ connection::connection(string endpoint, msg_priority pri)
                uint32_t from_addr = 0;
                auto paddr = socket->remote_endpoint(ec).address();
                if (ec) {
-                  fc_elog(logger,"Error getting remote endpoint: ${m}",("m", ec.message()));
+                  elog("Error getting remote endpoint: ${m}",("m", ec.message()));
                }
                else {
                   for (auto &conn : connections) {
@@ -1664,11 +1664,11 @@ connection::connection(string endpoint, msg_priority pri)
                   }
                   else {
                      if (from_addr >= max_nodes_per_host) {
-                        fc_elog(logger, "Number of connections (${n}) from ${ra} exceeds limit",
+                        elog("Number of connections (${n}) from ${ra} exceeds limit",
                                 ("n", from_addr+1)("ra",paddr.to_string()));
                      }
                      else {
-                        fc_elog(logger, "Error max_client_count ${m} exceeded",
+                        elog("Error max_client_count ${m} exceeded",
                                 ( "m", max_client_count) );
                      }
                      socket->close( );
@@ -2431,9 +2431,10 @@ connection::connection(string endpoint, msg_priority pri)
         while(it != connections.end()) {
             if((*it)->socket->remote_endpoint(ec).address().to_string() == _n.m_address) {
                 close(*it);
-                connections.erase(it);
+                it = connections.erase(it);
+            } else {
+                ++it;
             }
-            ++it;
 	}
     }
 
@@ -3040,7 +3041,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
          ( "min-connections", bpo::value<int>()->default_value(8), "Minimum number of connections the programme need create, including active and subjective connections")
          ( "max-retry-count", bpo::value<uint32_t>()->default_value(3), "Maximum number of reconnecting to listen endpoint")
-         ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(40), "Maximum size of grey list")
+         ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(5), "Maximum size of grey list")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
