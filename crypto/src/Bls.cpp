@@ -80,7 +80,6 @@ namespace ultrainio {
         element_to_bytes(sk, skElement);
         // secret key -> public key
         element_pow_zn(pkElement, m_g, skElement);
-        ilog("pk compress length: ${compress_length}, normal length: ${length}", ("compress_length", element_length_in_bytes_compressed(pkElement))("length", element_length_in_bytes(pkElement)));
         element_to_bytes_compressed(pk, pkElement);
         element_clear(skElement);
         element_clear(pkElement);
@@ -179,6 +178,8 @@ namespace ultrainio {
         for (int i = 0; i < size; i++) {
             if (!sig[i]) {
                 elog("sig vector has nullptr");
+                element_clear(sigXElement);
+                element_clear(sigElement);
                 return false;
             }
             element_from_bytes_compressed(sigElement, sig[i]);
@@ -187,6 +188,7 @@ namespace ultrainio {
         element_to_bytes_compressed(sigX, sigXElement);
         //ilog("sigX compressed length : ${compressed_length}, normal length :${length}", ("compressed_length", element_length_in_bytes_compressed(sigXElement))("length", element_length_in_bytes(sigXElement)));
         element_clear(sigXElement);
+        element_clear(sigElement);
         return true;
     }
 
@@ -210,6 +212,12 @@ namespace ultrainio {
         for (int i = 0; i < size; i++) {
             if (!pk[i]) {
                 elog("pk vector has nullptr");
+                element_clear(pkXElement);
+                element_clear(hElement);
+                element_clear(temp1);
+                element_clear(temp2);
+                element_clear(sigXElement);
+                element_clear(pkElement);
                 return false;
             }
             element_from_bytes_compressed(pkElement, pk[i]);
@@ -223,6 +231,7 @@ namespace ultrainio {
         element_clear(hElement);
         element_clear(temp1);
         element_clear(temp2);
+        element_clear(sigXElement);
         element_clear(pkElement);
         return res;
     }
