@@ -719,6 +719,56 @@ uint64_t apply_context::db_iterator_i64(uint64_t code, uint64_t scope, uint64_t 
    }
    return result;
 }
+
+int apply_context::db_iterator_i64_v2(uint64_t code, uint64_t scope, uint64_t table, char* buffer, size_t buffer_size) {
+   const auto* tab = find_table( code, scope, table );
+   if( !tab ) return -1;
+
+   auto table_end_itr = keyval_cache.cache_table( *tab );
+
+   const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
+   if (t_id != nullptr) {
+       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+       decltype(t_id->id) next_tid(t_id->id._id + 1);
+       auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
+       auto upper = idx.lower_bound(boost::make_tuple(next_tid));
+
+       //  uint32_t count = std::distance(lower, upper);
+       std::vector<int> pos;
+       std::for_each(lower, upper, [&](auto& item) {
+         auto k = keyval_cache.add(item);
+         pos.push_back(k);
+       });
+
+       size_t capacity = fc::raw::pack_size(pos);
+       if (buffer_size < capacity) return capacity;
+
+       fc::datastream<char *> ds(buffer, buffer_size);
+       fc::raw::pack(ds, pos);
+       return 0;
+   }
+   return -1;
+}
+
+int apply_context::db_counts_i64(uint64_t code, uint64_t scope, uint64_t table) {
+   int count = 0;
+   const auto* tab = find_table( code, scope, table );
+   if( !tab ) return count;
+
+   auto table_end_itr = keyval_cache.cache_table( *tab );
+
+   const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
+   if (t_id != nullptr) {
+       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+       decltype(t_id->id) next_tid(t_id->id._id + 1);
+       auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
+       auto upper = idx.lower_bound(boost::make_tuple(next_tid));
+
+       count = std::distance(lower, upper);
+   }
+   return count;
+}
+
 template<typename IndexType, typename ObjectType>
 int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id) {
    if(!t_id) return -1;

@@ -562,6 +562,8 @@ class apply_context {
       int  db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
       int  db_end_i64( uint64_t code, uint64_t scope, uint64_t table );
       uint64_t  db_iterator_i64(uint64_t code, uint64_t scope, uint64_t table);
+      int  db_iterator_i64_v2(uint64_t code, uint64_t scope, uint64_t table, char* buffer, size_t buffer_size);
+      int  db_counts_i64(uint64_t code, uint64_t scope, uint64_t table);
       int  db_drop_i64(uint64_t code, uint64_t scope, uint64_t table);
       int  db_drop_table(uint64_t code);
 

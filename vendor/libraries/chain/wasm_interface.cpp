@@ -1754,6 +1754,14 @@ class database_api : public context_aware_api {
          return context.db_iterator_i64( code, scope, table);
       }
 
+      int db_iterator_i64_v2( uint64_t code, uint64_t scope, uint64_t table, array_ptr<char> buffer, size_t buffer_size ) {
+         return context.db_iterator_i64_v2( code, scope, table, buffer, buffer_size);
+      }
+
+      int db_counts_i64( uint64_t code, uint64_t scope, uint64_t table) {
+         return context.db_counts_i64( code, scope, table);
+      }
+
       int db_drop_i64( uint64_t code, uint64_t scope, uint64_t table ) {
          context.check_rw_db_ability();
          return context.db_drop_i64( code, scope, table);
@@ -2298,6 +2306,8 @@ REGISTER_INTRINSICS( database_api,
    (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
    (db_end_i64,          int(int64_t,int64_t,int64_t))
    (db_iterator_i64,     int64_t(int64_t,int64_t,int64_t))
+   (db_iterator_i64_v2,  int(int64_t,int64_t,int64_t, int, int))
+   (db_counts_i64,       int(int64_t,int64_t,int64_t))
    (db_drop_i64,         int(int64_t,int64_t,int64_t))
    (db_drop_table,       int(int64_t))
 
