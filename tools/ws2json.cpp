@@ -256,6 +256,11 @@ int main(int argc, const char **argv) {
                       index64_object row;
                       row.t_id = t_id;
                       more = section.read_row(row, db);
+                      out<< row.primary_key << ":";
+                      fc::variant v;
+                      fc::to_variant(row, v);
+                      fc::mutable_variant_object mvo(v);
+                      out << "index64 "<<fc::json::to_string(mvo)<<"\n";
                   }
 
                   more = section.read_row(size, db);
@@ -270,6 +275,10 @@ int main(int argc, const char **argv) {
                       index_double_object row;
                       row.t_id = t_id;
                       more = section.read_row(row, db);
+                      fc::variant v;
+                      fc::to_variant(row, v);
+                      fc::mutable_variant_object mvo(v);
+                      out << fc::json::to_string(mvo)<<"\n";
                   }
 
                   more = section.read_row(size, db);
@@ -284,6 +293,10 @@ int main(int argc, const char **argv) {
                       index256_object row;
                       row.t_id = t_id;
                       more = section.read_row(row, db);
+                      fc::variant v;
+                      fc::to_variant(row, v);
+                      fc::mutable_variant_object mvo(v);
+                      out << "index256 "<<fc::json::to_string(mvo)<<"\n";
                   }
                 }
         });

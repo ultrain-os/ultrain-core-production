@@ -36,6 +36,7 @@ class economic : public ultrainio::contract {
             offer.bet        = asset(1);
             offer.owner      = player;
             offer.gameid     = 0;
+            offer.commitment.hash[0]++;
          });
 
       }

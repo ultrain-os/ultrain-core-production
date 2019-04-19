@@ -13,6 +13,9 @@
 #include <boost/iterator/reverse_iterator.hpp>
 
 using boost::container::flat_set;
+static const uint64_t calc_num_limit = 1000;
+static const uint64_t blockheight_boundary = 30000;
+
 
 namespace ultrainio { namespace chain {
 
@@ -770,8 +773,11 @@ int apply_context::db_counts_i64(uint64_t code, uint64_t scope, uint64_t table) 
 }
 
 template<typename IndexType, typename ObjectType>
-int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id) {
-   if(!t_id) return -1;
+int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id, const uint64_t cur_block, uint64_t & calc) {
+   if(!t_id || (cur_block > blockheight_boundary && calc > calc_num_limit) ) {
+       dlog("calc ${calc} larger than limit ${calc_num_limit}",("calc", calc)("calc_num_limit", calc_num_limit));
+       return -1;
+   }
    account_name systemname(config::system_account_name);
    ULTRAIN_ASSERT( systemname == receiver, table_access_violation, "db access violation" );
    const auto& idx = db.template get_index<IndexType, by_primary>();
@@ -786,15 +792,18 @@ int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_obje
    int64_t usage_delta = 0LL;
    while(i++<count) {
       auto &obj = *lower;
+      lower++;
       if(obj.t_id != t_id->id) {
-          lower++;
-          continue;
-      }
-
+           dlog("tid error ${o_tid}, ${tid}", ("o_tid", obj.t_id)("tid", t_id->id));
+           continue;
+       }
       usage_delta = config::billable_size_v<ObjectType>;
-      update_db_usage( lower->payer, -( config::billable_size_v<ObjectType> ));
-      db.remove(*lower);
-      lower = idx.lower_bound(boost::make_tuple(t_id->id));
+      update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ));
+      db.remove(obj);
+      calc++;
+      if(cur_block > blockheight_boundary && calc > calc_num_limit){
+          return -1;
+      }
    }
    return 0;
 }
@@ -830,31 +839,25 @@ int apply_context::db_drop_table(uint64_t code) {
    auto table_lower = table_idx.lower_bound(boost::make_tuple(code, 0, 0));
    auto table_upper = table_idx.lower_bound(boost::make_tuple(code+1, 0, 0));
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-   std::vector<const table_id_object*> tv;
+   int res = -1;
 
    uint32_t count_t = std::distance(table_lower, table_upper);
    uint32_t i_t = 0;
    uint64_t calc_num = 0;
-   uint64_t calc_num_limit = 1000;
-   uint64_t blockheight_boundary = 30000;
    uint64_t cur_block_height = control.head_block_header().block_num();
    while(i_t++<count_t) {
-       calc_num++;
-       if(cur_block_height > blockheight_boundary && calc_num > calc_num_limit){
-           dlog("db_drop_table:remove_table i_t = ${i_t}, count_t = ${count_t}, calc_num = ${calc_num}, code = ${code}", ("i_t", i_t)("count_t", count_t)("calc_num", calc_num)("code", name{code}.to_string()));
-           return -1;
-       }
        auto & table_obj = *table_lower;
+       table_lower++;
        if(table_obj.code != code) {
-           table_lower++;
+           dlog("code error ${t_code}, ${code}", ("t_code", name{table_obj.code}.to_string())("code", name{code}.to_string()));
            continue;
        }
        decltype(table_obj.id) next_tid(table_obj.id._id + 1);
        auto lower = idx.lower_bound(boost::make_tuple(table_obj.id));
        auto upper = idx.lower_bound(boost::make_tuple(next_tid));
 
-        uint32_t count = std::distance(lower, upper);
-        uint32_t i = 0;
+       uint32_t count = std::distance(lower, upper);
+       uint32_t i = 0;
 
        int64_t usage_delta = 0LL;
        while(i++<count) {
@@ -865,22 +868,24 @@ int apply_context::db_drop_table(uint64_t code) {
           }
 
           auto &obj = *lower;
+          lower++;
           if(obj.t_id != table_obj.id) {
-              lower++;
+              dlog("tid error ${o_tid}, ${tid}", ("o_tid", obj.t_id)("tid", table_obj.id));
               continue;
           }
           usage_delta = (obj.value.size() + config::billable_size_v<key_value_object>);
           update_db_usage( code,  -(usage_delta) );
           db.remove(obj);
-          lower = idx.lower_bound(boost::make_tuple(table_obj.id));
        }
-       db_drop_secondary_index<index64_index,index64_object>(&table_obj);
-       db_drop_secondary_index<index128_index,index128_object>(&table_obj);
-       db_drop_secondary_index<index256_index,index256_object>(&table_obj);
-       db_drop_secondary_index<index_double_index,index_double_object>(&table_obj);
-       db_drop_secondary_index<index_long_double_index,index_long_double_object>(&table_obj);
+       res = db_drop_secondary_index<index64_index,index64_object>(&table_obj, cur_block_height, calc_num);
+       res = db_drop_secondary_index<index128_index,index128_object>(&table_obj, cur_block_height, calc_num);
+       res = db_drop_secondary_index<index256_index,index256_object>(&table_obj, cur_block_height, calc_num);
+       res = db_drop_secondary_index<index_double_index,index_double_object>(&table_obj, cur_block_height, calc_num);
+       res = db_drop_secondary_index<index_long_double_index,index_long_double_object>(&table_obj, cur_block_height, calc_num);
+       if(res == -1) {
+           return -1;
+       }
        remove_table(code, table_obj);
-       table_lower = table_idx.lower_bound(boost::make_tuple(code, 0, 0));
    }
    return 0;
 }
