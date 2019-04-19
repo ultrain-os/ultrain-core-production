@@ -75,17 +75,21 @@ namespace ultrainiosystem {
                     if((it->votes+1) >= vote_threshold) {
                         //now let's make sure accounts voted for this hash all are current committee members
                         uint32_t cnt = 0;
-                        for(auto itac : it->accounts) {
+                        std::set<account_name> del_accs;
+                        for(auto& itac : it->accounts) {
                             auto vacc = _producers.find(itac);
                             if( vacc == _producers.end()) {
-                                hashTable.modify(wshash, [&](auto &p) {
-                                    auto pos = static_cast<unsigned int>(it - hashv.begin());
-                                    p.hash_v[pos].votes--;
-                                    p.hash_v[pos].accounts.erase(itac);
-                                    p.accounts.erase(itac);
-                                });
+                                del_accs.emplace(itac);
                                 cnt++;
                             }
+                        }
+                        for(auto& itac : del_accs) {
+                            hashTable.modify(wshash, [&](auto &p) {
+                                auto pos = static_cast<unsigned int>(it - hashv.begin());
+                                p.hash_v[pos].votes--;
+                                p.hash_v[pos].accounts.erase(itac);
+                                p.accounts.erase(itac);
+                            });
                         }
                         if(cnt == 0) {
                             hashTable.modify(wshash, [&](auto &p) {
