@@ -965,8 +965,20 @@ async function syncBlock() {
         await syncMasterBlock();
 
         //上传同步块高的数据
-        await chainApi.confirmBlockCheckIn(monitor.getMonitorUrl(),{"baseChain":chainConfig.localChainName,"targetChain":constants.chainNameConstants.MAIN_CHAIN_NAME,"confirmBlock":monitor.getConfirmBlockLocal()});
-        await chainApi.confirmBlockCheckIn(monitor.getMonitorUrl(),{"baseChain":constants.chainNameConstants.MAIN_CHAIN_NAME,"targetChain":chainConfig.localChainName,"confirmBlock":monitor.getConfirmBlockMaster()});
+        if (monitor.checkNeedSync() ) {
+            await chainApi.confirmBlockCheckIn(monitor.getMonitorUrl(), {
+                "baseChain": chainConfig.localChainName,
+                "targetChain": constants.chainNameConstants.MAIN_CHAIN_NAME,
+                "confirmBlock": monitor.getConfirmBlockLocal()
+            });
+            await chainApi.confirmBlockCheckIn(monitor.getMonitorUrl(), {
+                "baseChain": constants.chainNameConstants.MAIN_CHAIN_NAME,
+                "targetChain": chainConfig.localChainName,
+                "confirmBlock": monitor.getConfirmBlockMaster()
+            });
+        } else {
+            logger.error("monitor is false,need not upload confirm block info");
+        }
         return;
 
 

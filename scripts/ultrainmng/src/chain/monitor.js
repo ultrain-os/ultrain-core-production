@@ -998,4 +998,5 @@ module.exports = {
     setConfirmBlockLocal,
     setConfirmBlockMaster,
     clearConfirmBlock,
+    checkNeedSync,
 }
