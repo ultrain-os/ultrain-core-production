@@ -338,6 +338,40 @@ WorldState.start = async function (chainId, seedIp, totalTime, wsspath,local) {
     return result;
 }
 
+
+/**
+ * 启动
+ * @type {WorldState}
+ */
+WorldState.startWithoutUpdate = async function (totalTime, wsspath,local) {
+
+    let result = false;
+    let args= [];
+
+    var shPath= path.join(__dirname, "../../tool/_runworldstate.sh");
+    if (local == false) {
+        shPath = Constants.cmdConstants.START_WORLDSTATE_FILE;
+    }
+    logger.info("start ws by shell file:",shPath);
+    logger.info("start ws by shell file:",wsspath);
+    args.push(wsspath)
+    await ShellCmd.execCmdFiles(shPath, args, null);
+    //await ShellCmd.execCmdFiles(Constants.cmdConstants.START_WORLDSTATE_FILE, Constants.cmdConstants.START_NODULTRAIN_ARG, null);
+
+    //utils.sleep(this.statusCheckTime);
+    let searchtime = this.statusCheckTime;
+    while (totalTime >= searchtime) {
+        if (utils.isNull(await this.checkAlive()) == false) {
+            result = true;
+            break;
+        }
+        sleep.msleep(this.statusCheckTime);
+        searchtime += this.statusCheckTime;
+    }
+    return result;
+}
+
+
 /**
  * 清除DB数据
  * @returns {Promise<void>}

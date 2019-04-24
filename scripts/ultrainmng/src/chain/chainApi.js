@@ -86,6 +86,36 @@ const getBlockHeaderInfo = async (config,scope,table_key) => {
 }
 
 /**
+ * 获取已同步最小块的信息
+ * @param config
+ * @param scope
+ * @param table_key
+ * @returns {Promise<*>}
+ */
+const getMinBlockHeaderInfo = async (config,scope) => {
+    let blockId = 0;
+    try {
+        const params = {
+            "code": constant.contractConstants.ULTRAINIO,
+            "scope": scope,
+            "table": constant.tableConstants.BLOCK_HEADER,
+            "json": true,
+            "table_key_type": "uint64",
+            "limit": 1,
+        };
+        let res = await axios.post(config.httpEndpoint + "/v1/chain/get_table_records", params);
+        logger.debug("getMinBlockHeaderInfo res:",res.data);
+        if (res.data.rows.length > 0) {
+            return res.data.rows[0].block_number;
+        }
+    } catch (e) {
+        logger.error("getBlockHeaderInfo error,",e);
+    }
+
+    return blockId;
+}
+
+/**
  * 根据user 获取chain name
  * @param user
  * @returns {Promise<*|number|Location|string|WorkerLocation>}
@@ -598,6 +628,23 @@ monitorCheckIn = async (url, param) => {
 }
 
 /**
+ * confirmBlockCheckIn
+ * @param url
+ * @param param
+ * @returns {Promise<*>}
+ */
+confirmBlockCheckIn = async (url,param) => {
+    try {
+        logger.info("confirmBlockCheckIn param:", qs.stringify(param));
+        const rs = await axios.post(url + "/alert/uploadConfirmBlock", qs.stringify(param));
+        logger.info("confirmBlockCheckIn result:", rs.data);
+        return rs.data;
+    } catch (e) {
+        logger.error("confirmBlockCheckIn error,", utils.logNetworkError(e));
+    }
+}
+
+/**
  *
  * @param url
  * @param param
@@ -972,4 +1019,6 @@ module.exports = {
     getMerkleProof,
     getHeadBlockProposer,
     getBlockHeaderInfo,
+    getMinBlockHeaderInfo,
+    confirmBlockCheckIn,
 }

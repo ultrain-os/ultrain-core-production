@@ -262,8 +262,11 @@ async function syncUser() {
                 blockNotReadyNum:0,
             }
 
-            let maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
-            logger.info("[sync user]maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
+            let maxConfirmBlockNum = monitor.getConfirmBlockMaster();
+            if (maxConfirmBlockNum <= 0) {
+                maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.configSub, chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
+            }
+            logger.error("[sync user]maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
 
             for (var i in userBulletinList) {
                 userCountRes.totalNum++;
@@ -502,8 +505,14 @@ async function syncMasterUgasToSubchain() {
         logger.error("[Sync Ugas-Master]bulletinBankData list is null");
     }
 
-    let maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
-    logger.info("[Sync Ugas-Master]maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
+    let maxConfirmBlockNum = monitor.getConfirmBlockMaster();
+    if (maxConfirmBlockNum <= 0) {
+        maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.configSub, chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
+    }
+    logger.error("[Sync Ugas-Master]maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
+
+    let minSavedSyncBlockNum = await chainApi.getMinBlockHeaderInfo(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
+    logger.info("[Sync Ugas-Master]minSavedSyncBlockNum is :",minSavedSyncBlockNum);
 
     let syncNumCount = 0;
 
@@ -527,7 +536,13 @@ async function syncMasterUgasToSubchain() {
                 let bulletinInfoLength = bankBlockData.bulletin_infos.length;
                 logger.debug("row " + i + ", blockHeight :" + bankBlockData + ",bulletinInfoLength:" + bulletinInfoLength);
 
-                //跨高不能小于已同步的块告
+                //块高不能小于保留最小的块高
+                if (blockHeight < minSavedSyncBlockNum) {
+                    logger.error("[Sync Ugas-Master](blockheight:" + blockHeight + "< minSavedSyncBlockNum : "+minSavedSyncBlockNum+" ,need not work");
+                    continue;
+                }
+
+                //跨高不能小于已同步的块高
                 if (blockHeight > maxConfirmBlockNum) {
                     logger.error("[Sync Ugas-Master](blockheight:" + blockHeight + "> maxConfirmBlockNum : "+maxConfirmBlockNum+" ,need not work");
                     syncUgas.blockNotReadyNum++;
@@ -629,8 +644,14 @@ async function syncSubchainUgasToMaster() {
         logger.error("[Sync Ugas-Subchain]bulletinBankData master list is null");
     }
 
-    let maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.config,chainConfig.localChainName);
+    let maxConfirmBlockNum = monitor.getConfirmBlockLocal();
+    if (maxConfirmBlockNum <= 0) {
+        maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.config, chainConfig.localChainName);
+    }
     logger.info("[Sync Ugas-Subchain]maxConfirmBlockNum subchain in master is :",maxConfirmBlockNum);
+
+    let minSavedSyncBlockNum = await chainApi.getMinBlockHeaderInfo(chainConfig.config,chainConfig.localChainName);
+    logger.info("[Sync Ugas-Subchain]minSavedSyncBlockNum is :",minSavedSyncBlockNum);
 
     logger.info("[Sync Ugas-Subchain]bulletinBankData master data rows length:",bulletinBankData.rows.length);
     let syncNumCount = 0;
@@ -651,6 +672,12 @@ async function syncSubchainUgasToMaster() {
                 let bulletinInfoLength = bankBlockData.bulletin_infos.length;
                 logger.info("[Sync Ugas-Subchain]master row " + i + ", blockHeight :" + bankBlockData + ",bulletinInfoLength:" + bulletinInfoLength);
 
+
+                //块高不能小于保留最小的块高
+                if (blockHeight < minSavedSyncBlockNum) {
+                    logger.error("[Sync Ugas-Master](blockheight:" + blockHeight + "< minSavedSyncBlockNum : "+minSavedSyncBlockNum+" ,need not work");
+                    continue;
+                }
 
                 //跨高不能小于已同步的块告
                 if (blockHeight > maxConfirmBlockNum) {
@@ -740,6 +767,48 @@ async function syncSubchainUgasToMaster() {
 }
 
 /**
+ * getBlockSubmitRatio
+ * @returns {*}
+ */
+function getBlockSubmitRatio() {
+
+    try {
+        var num = monitor.getMaxBlockSubmitorNum();
+        var committeeCount = localProducers.length;
+        if (num > 0 && committeeCount > 0) {
+            let ratio = num / committeeCount;
+            if (ratio < 1) {
+                return ratio;
+            }
+
+            return chainConfig.configFileData.local.syncBlockRatio;
+        }
+    } catch (e) {
+        logger.error("getBlockSubmitRatio error:",e)
+    }
+
+    return 0;
+}
+
+/**
+ *
+ * @param confirmed_block
+ * @returns {*}
+ */
+function getHasConfirmBlock(confirmed_block) {
+    try {
+         let number = confirmed_block.number;
+         if (utils.isNotNull(number)) {
+             return number;
+         }
+    } catch (e) {
+        logger.error("confirmed_block process error:",e)
+    }
+
+    return -1;
+}
+
+/**
  * 同步块头
  * @returns {Promise<void>}
  */
@@ -770,7 +839,7 @@ async function syncBlock() {
         let result = await chainConfig.u3Sub.getBlockInfo((subBlockNumMax).toString());
 
         //判断是否要上传块头
-        if (blockUtil.needPushBlock(result.proposer, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
+        if (blockUtil.needPushBlock(result.proposer, chainConfig.myAccountAsCommittee, getBlockSubmitRatio()) == false) {
             logger.info("finish sync block..");
             return;
         }
@@ -780,7 +849,11 @@ async function syncBlock() {
         let subchainBlockNumResult = await chainApi.getSubchainBlockNum(chainConfig.config, chainConfig.localChainName);
         logger.info("mainchain block num:", subchainBlockNumResult);
 
+        //设置本链已同步最高的块告
         let confirmed_block = subchainBlockNumResult.confirmed_block;
+        logger.error("[sync block]confirmed_block:",getHasConfirmBlock(confirmed_block));
+        monitor.setConfirmBlockLocal(getHasConfirmBlock(confirmed_block));
+
         let forks = subchainBlockNumResult.forks;
         let findFlag = false;
         if (utils.isNullList(forks) == false) {
@@ -890,6 +963,10 @@ async function syncBlock() {
 
         //同步主链块头
         await syncMasterBlock();
+
+        //上传同步块高的数据
+        await chainApi.confirmBlockCheckIn(monitor.getMonitorUrl(),{"baseChain":chainConfig.localChainName,"targetChain":constants.chainNameConstants.MAIN_CHAIN_NAME,"confirmBlock":monitor.getConfirmBlockLocal()});
+        await chainApi.confirmBlockCheckIn(monitor.getMonitorUrl(),{"baseChain":constants.chainNameConstants.MAIN_CHAIN_NAME,"targetChain":chainConfig.localChainName,"confirmBlock":monitor.getConfirmBlockMaster()});
         return;
 
 
@@ -940,7 +1017,12 @@ async function syncMasterBlock() {
         let subchainBlockNumResult = await chainApi.getMasterBlockNum(chainConfig.configSub);
         logger.info("subchain max block num:", subchainBlockNumResult);
 
+        //设置已同步主链的块高信息
         let confirmed_block = subchainBlockNumResult.confirmed_block;
+        logger.error("[sync master block]confirmed_block:",getHasConfirmBlock(confirmed_block));
+        monitor.setConfirmBlockMaster(getHasConfirmBlock(confirmed_block));
+
+
         let forks = subchainBlockNumResult.forks;
         let findFlag = false;
         if (utils.isNullList(forks) == false) {
@@ -1393,6 +1475,7 @@ function clearCacheData() {
     nodFailedTimes = 0;
     trxCacheSet.clear()
     monitor.setHeadBlockNum(0);
+    monitor.clearConfirmBlock();
 }
 
 function clearCache() {
@@ -2093,8 +2176,11 @@ async function syncResource(allFlag) {
                         blockNotReadyNum:0,
                     }
 
-                    let maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
-                    logger.info("[sync newest res]maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
+                    let maxConfirmBlockNum = monitor.getConfirmBlockMaster();
+                    if (maxConfirmBlockNum <= 0) {
+                        maxConfirmBlockNum = await getMaxConfirmBlock(chainConfig.configSub, chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
+                    }
+                    logger.error("[sync newest res]maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
                     for (var i = 0; i < changeList.length; i++) {
                         syncCountRes.totalNum++;
                         let resObj = changeList[i];

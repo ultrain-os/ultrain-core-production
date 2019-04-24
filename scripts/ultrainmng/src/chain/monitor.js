@@ -18,6 +18,7 @@ var ShellCmd = require("../common/util/shellCmd")
 var NodUltrain = require("../nodultrain/nodultrain")
 var sleep = require("sleep")
 var process = require('child_process');
+var WorldState = require("../worldstate/worldstate")
 
 
 var hashCache = new CacheObj(false, null);
@@ -48,6 +49,18 @@ var head_block_num = 0;
 //ws hash相关信息
 var ws_block_height = 0;
 var ws_hash = 0;
+
+//已同步主链的块高
+var confirmBlockMaster = 0;
+
+//已同步当前链的块高
+var confirmBlockLocal=0;
+
+/**
+ * 最大投票人数
+ * @type {number}
+ */
+var maxBlockSubmitorNum = 3;
 
 /**
  *
@@ -90,6 +103,25 @@ async function getMngVersion() {
 
 /**
  *
+ * @returns {string}
+ */
+async function getWsVersion() {
+    let hashFile = hashCache.get(cacheKeyConstants.WS_FILE_KEY);
+    if (utils.isNull(hashFile)) {
+        logger.debug("cache not hit :" + cacheKeyConstants.WS_FILE_KEY);
+        let wsFilePath = chainConfig.configFileData.local.wsspath + "/" + filenameConstants.WS_EXE_FILE;
+        hashFile = hashUtil.calcHash(wsFilePath, algorithmConstants.SHA1);
+        if (utils.isNotNull(wsFilePath)) {
+            hashCache.put(cacheKeyConstants.WS_FILE_KEY, hashFile, HASH_EXPIRE_TIME_MS);
+        }
+    } else {
+        logger.debug("cache hit :" + cacheKeyConstants.WS_FILE_KEY, hashFile);
+    }
+    return hashFile;
+}
+
+/**
+ *
  * @returns {*}
  */
 function getMonitorUrl() {
@@ -123,13 +155,19 @@ async function buildParam() {
     var nodFileHash = await getNodVersion();
     if (utils.isNull(nodFileHash)) {
         logger.error("nod file hash error");
-        return;
+        nodFileHash = "error";
     }
 
     var mngFileHash = await getMngVersion();
     if (utils.isNull(mngFileHash)) {
         logger.error("mng file hash error");
-        return;
+        mngFileHash = "error";
+    }
+
+    var wsFileHash = await getWsVersion();
+    if (utils.isNull(wsFileHash)) {
+        logger.error("ws file hash error");
+        wsFileHash = "error";
     }
 
     var isProducer = 1;
@@ -151,6 +189,7 @@ async function buildParam() {
         "headBlockNum":head_block_num,
         "wsBlockHeight":ws_block_height,
         "wsHash":ws_hash,
+        "wsFileHash" : wsFileHash,
     }
     var param = {
         "chainId": chainConfig.localChainName,
@@ -509,6 +548,10 @@ async function getLocalHash(filename) {
         return await getMngVersion();
     }
 
+    if (filenameConstants.WS_EXE_FILE == filename) {
+        return await getWsVersion();
+    }
+
     return "";
 }
 
@@ -522,6 +565,10 @@ function getTargetPath(filename) {
 
     if (filenameConstants.MNG_FILE == filename) {
         return chainConfig.configFileData.local.mngpath + "/" + filename;
+    }
+
+    if (filenameConstants.WS_EXE_FILE == filename) {
+        return chainConfig.configFileData.local.wsspath + "/" + filename;
     }
 
     return "";
@@ -563,6 +610,10 @@ async function fileDeploy(deployBatch) {
 
             if (filenameConstants.MNG_FILE == deployFile.filename) {
                 await fileProcessMng(deployFile, localpath);
+            }
+
+            if (filenameConstants.WS_EXE_FILE == deployFile.filename) {
+                await fileProcessWs(deployFile, localpath);
             }
 
         } else {
@@ -651,7 +702,9 @@ async function fileProcessNod(deployFile, localpath) {
                 let targetPath = getTargetPath(deployFile.filename);
                 logger.info("need to update target path :" + targetPath);
                 result = await NodUltrain.stop(1200000,chainConfig.nodPort);
-
+                logger.info("start to sleep 10s to confirm nod is stopped");
+                sleep.msleep(10000);
+                logger.info("finish sleep 10s to confirm nod is stopped");
                 if (result == true) {
                     let cmd = "cp " + localpath + " " + targetPath + " -f";
                     process.exec(cmd, async function (error, stdout, stderr, finish) {
@@ -699,6 +752,77 @@ async function fileProcessNod(deployFile, localpath) {
 
 
 }
+
+/**
+ * 更新世界状态问价
+ * @param deployFile
+ * @param localpath
+ * @returns {Promise<void>}
+ */
+async function fileProcessWs(deployFile, localpath) {
+    try {
+        let hash = hashUtil.calcHash(localpath, algorithmConstants.SHA1);
+        if (hash == deployFile.hash) {
+            logger.info("download file(" + hash + ") equals server info(" + deployFile.hash + ")");
+            logger.info("start to stop ws before update file");
+            sleep.msleep(1000);
+            result = await WorldState.stop(120000);
+            if (result == true) {
+                logger.info("ws stop successfully,start to update file");
+                let targetPath = getTargetPath(deployFile.filename);
+                logger.info("need to update target path :" + targetPath);
+                result = await WorldState.stop(120000);
+                logger.info("start to sleep 5s to confirm ws is stopped");
+                sleep.msleep(5000);
+                logger.info("finish sleep 5s to confirm ws is stopped");
+                if (result == true) {
+                    let cmd = "cp " + localpath + " " + targetPath + " -f";
+                    process.exec(cmd, async function (error, stdout, stderr, finish) {
+                        if (error !== null) {
+                            logger.error('exec error: ' + error);
+                            enableDeploy();
+                        } else {
+                            hashCache.clear();
+                            logger.info("exe success: " + cmd);
+                            cmd = "chmod a+x " + targetPath;
+                            process.exec(cmd, async function (error, stdout, stderr, finish) {
+                                if (error !== null) {
+                                    logger.error('exec error: ' + error);
+                                    enableDeploy();
+                                } else {
+                                    logger.info("exccmd success:" + cmd);
+                                    result = await WorldState.startWithoutUpdate(120000, chainConfig.configFileData.local.wsspath, chainConfig.localTest);
+                                    if (result == true) {
+                                        logger.info("ws start success")
+                                    } else {
+                                        logger.error("node start error");
+                                    }
+                                    enableDeploy();
+                                }
+                            });
+                        }
+                    });
+                }
+            } else {
+                logger.error("nod stop failed,can't update file");
+                enableDeploy()
+            }
+
+        } else {
+            logger.error("download file(" + hash + ") not equals server info(" + deployFile.hash + "),need remove download file");
+            await ShellCmd.execCmd("rm " + localpath);
+            sleep.msleep(3000);
+            enableDeploy()
+        }
+
+    } catch (e) {
+        logger.error("fileProcessNod error:", e);
+        enableDeploy()
+    }
+
+
+}
+
 
 /**
  *
@@ -825,6 +949,32 @@ function setHashInfo(block,hash) {
     ws_hash = hash;
 }
 
+function getMaxBlockSubmitorNum() {
+    return maxBlockSubmitorNum;
+}
+
+function getConfirmBlockMaster() {
+    return confirmBlockMaster;
+}
+
+function getConfirmBlockLocal() {
+    return confirmBlockLocal;
+}
+
+function clearConfirmBlock() {
+    confirmBlockMaster = -1;
+    confirmBlockLocal = -1;
+}
+
+function setConfirmBlockMaster(blockNum) {
+    confirmBlockMaster = blockNum;
+}
+
+function setConfirmBlockLocal(blockNum) {
+    confirmBlockLocal = blockNum;
+}
+
+
 module.exports = {
     checkIn,
     isDeploying,
@@ -842,4 +992,10 @@ module.exports = {
     getSyncBlockHeaderMaxTranNum,
     setHeadBlockNum,
     setHashInfo,
+    getMaxBlockSubmitorNum,
+    getConfirmBlockLocal,
+    getConfirmBlockMaster,
+    setConfirmBlockLocal,
+    setConfirmBlockMaster,
+    clearConfirmBlock,
 }

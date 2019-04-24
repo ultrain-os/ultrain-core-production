@@ -116,8 +116,10 @@ NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,moni
             for (var i=0;i<seedIp.length;i++) {
                 iniFile.addKeyValue(iniConstants.UDP_SEED, seedIp[i]);
             }
-        } else {
-            logger.info("nod has no udp config,set p2p-peer-address");
+        }
+
+        if (utils.isNotNull(iniFile.getValue(iniConstants.P2P_PEER_ADDRESS))) {
+            logger.info("nod has p2p-peer-address,set up tcp config");
             iniFile.removeKey(iniConstants.P2P_PEER_ADDRESS)
             iniFile.removeKey(iniConstants.RPOS_P2P_PEER_ADDRESS)
             for (var i=0;i<seedIp.length;i++) {
