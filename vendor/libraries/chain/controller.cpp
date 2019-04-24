@@ -321,6 +321,7 @@ struct controller_impl {
 
       std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
       auto start = fc::time_point::now();
+      emit_signal = true;
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
          self.push_block( next, controller::block_status::irreversible );
          if( next->block_num() % 100 == 0 ) {
@@ -328,6 +329,7 @@ struct controller_impl {
          }
          cb->on_replay_block(*(next.get()));
       }
+      emit_signal = false;
 
       auto end = fc::time_point::now();
       ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
