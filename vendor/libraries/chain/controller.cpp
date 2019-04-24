@@ -13,6 +13,8 @@
 #include <ultrainio/chain/contract_table_objects.hpp>
 #include <ultrainio/chain/generated_transaction_object.hpp>
 #include <ultrainio/chain/transaction_object.hpp>
+#include <ultrainio/chain/callback.hpp>
+#include <ultrainio/chain/callback_manager.hpp>
 
 #include <ultrainio/chain/authorization_manager.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
@@ -317,12 +319,14 @@ struct controller_impl {
       ilog( "existing block log, attempting to replay ${n} blocks: #${sn} - #${en}",
             ("n", blog_head->block_num()-head_num) ("sn", head_num+1)("en", blog_head->block_num()));
 
+      std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
       auto start = fc::time_point::now();
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
          self.push_block( next, controller::block_status::irreversible );
          if( next->block_num() % 100 == 0 ) {
             std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
          }
+         cb->on_replay_block(*(next.get()));
       }
 
       auto end = fc::time_point::now();
@@ -1398,7 +1402,7 @@ struct controller_impl {
          auto new_header_state = fork_db.add( b, trust );
          emit( self.accepted_block_header, new_header_state );
          // on replay irreversible is not emitted by fork database, so emit it explicitly here
-         if( s == controller::block_status::irreversible )
+         if( !replaying && s == controller::block_status::irreversible )
             emit( self.irreversible_block, new_header_state );
 
          if ( read_mode != db_read_mode::IRREVERSIBLE ) {

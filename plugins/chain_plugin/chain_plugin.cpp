@@ -40,6 +40,7 @@
 #include <lightclient/EpochEndPoint.h>
 #include <lightclient/LightClient.h>
 #include <lightclient/LightClientMgr.h>
+#include <lightclient/LightClientProducer.h>
 #include <lightclient/StartPoint.h>
 
 namespace ultrainio {
@@ -120,6 +121,9 @@ using ultrainio::LightClientMgr;
 
 class light_client_callback : public ultrainio::chain::callback {
 public:
+    light_client_callback() {
+    }
+
     bool on_accept_block_header(uint64_t chainName, const chain::signed_block_header &blockHeader, BlockIdType &id) {
         ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}",
              ("chainName", name(chainName))("blockNum", blockHeader.block_num()));
@@ -145,6 +149,18 @@ public:
         return lightClient->getStatus();
     }
 
+    bool on_replay_block(const chain::block_header& header) {
+        if (!m_lightClientProducer) {
+            chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
+            m_lightClientProducer = std::make_shared<LightClientProducer>(chain.get_bls_votes_manager());
+        }
+        m_lightClientProducer->acceptNewHeader(header);
+        const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+        chain_apis::read_only::get_confirm_point_interval_result result = ro_api.get_confirm_point_interval(chain_apis::read_only::get_confirm_point_interval_params());
+        LightClientProducer::setConfirmPointInterval(result.confirm_point_interval);
+        return true;
+    }
+
 private:
     bool getUnconfirmedHeaderFromDb(const chain::name &chainName, std::vector<signed_block_header> &unconfirmedBlockHeader, StartPoint& startPoint) {
         try {
@@ -163,6 +179,8 @@ private:
         }
         return false;
     };
+
+    std::shared_ptr<LightClientProducer> m_lightClientProducer;
 };
 
 class chain_plugin_impl {
