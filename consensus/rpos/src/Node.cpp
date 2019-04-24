@@ -311,6 +311,7 @@ namespace ultrainio {
                 sendMessage(propose);
                 if (MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
                     EchoMsg echo = MsgBuilder::constructMsg(propose);
+                    ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error");
                     m_schedulerPtr->insert(echo);
                     dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", short_hash(echo.blockId)));
                     sendMessage(echo);
@@ -326,6 +327,7 @@ namespace ultrainio {
                 sendEchoForEmptyBlock();
             } else if (m_schedulerPtr->verifyBa0Block()) { // not empty, verify
                 EchoMsg echo = MsgBuilder::constructMsg(*ba0Block);
+                ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error");
                 m_schedulerPtr->insert(echo);
                 //echo.timestamp = getRoundCount();
                 dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", short_hash(echo.blockId)));
@@ -932,6 +934,7 @@ namespace ultrainio {
         Block block = m_schedulerPtr->emptyBlock();
         dlog("vote empty block. blockNum = ${blockNum} hash = ${hash}", ("blockNum",getBlockNum())("hash", short_hash(block.id())));
         EchoMsg echoMsg = MsgBuilder::constructMsg(block);
+        ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echoMsg), chain::chain_exception, "bls signature error");
         m_schedulerPtr->insert(echoMsg);
         //echoMsg.timestamp = getRoundCount();
         sendMessage(echoMsg);

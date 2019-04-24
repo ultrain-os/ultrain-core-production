@@ -415,6 +415,7 @@ namespace ultrainio {
                     ilog("send echo when > f + 1");
                     info.hasSend = true;
                     EchoMsg myEcho = MsgBuilder::constructMsg(echo);
+                    ULTRAIN_ASSERT(verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error");
                     insert(myEcho);
                     //myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(myEcho);
@@ -766,6 +767,7 @@ namespace ultrainio {
             if (isMinPropose(propose)) {
                 if (MsgMgr::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
                     EchoMsg echo = MsgBuilder::constructMsg(propose);
+                    ULTRAIN_ASSERT(verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error");
                     //echo.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(echo);
                     insert(echo);
@@ -2267,6 +2269,18 @@ namespace ultrainio {
             elog("error block num in bls voter set: ${num}, but last num: ${last}", ("num", BlockHeader::num_from_id(b.commonEchoMsg.blockId))("last", last_num));
             return false;
         }
+    }
+
+    bool Scheduler::verifyMyBlsSignature(const EchoMsg& echo) const {
+        uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
+        std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getVoterSys(blockNum);
+        unsigned char blsPk[Bls::BLS_PUB_KEY_COMPRESSED_LENGTH];
+        bool res = voterSysPtr->getCommitteeBlsPublicKey(StakeVoteBase::getMyAccount(), blsPk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+        if (!res) {
+            elog("account ${account} is not in committee", ("account", std::string(StakeVoteBase::getMyAccount())));
+            return false;
+        }
+        return Validator::verify<CommonEchoMsg>(echo.blsSignature, echo, blsPk);
     }
 
     bool Scheduler::isDuplicate(const ProposeMsg& proposeMsg) {
