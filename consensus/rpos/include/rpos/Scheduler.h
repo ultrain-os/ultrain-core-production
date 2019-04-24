@@ -217,6 +217,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         bool setBlsVoterSet(const std::string& bls);
 
+        bool verifyMyBlsSignature(const EchoMsg& echo) const;
     private:
 
         // This function is time consuming, please cache the result empty block.
