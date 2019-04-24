@@ -9,13 +9,14 @@
 #include <ultrainio/chain/resource_limits.hpp>
 #include <ultrainio/chain/account_object.hpp>
 #include <ultrainio/chain/global_property_object.hpp>
+#include <appbase/application.hpp>
+#include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <boost/container/flat_set.hpp>
 #include <boost/iterator/reverse_iterator.hpp>
 
 using boost::container::flat_set;
-static const uint64_t calc_num_limit = 1000;
-static const uint64_t blockheight_boundary = 30000;
-
+static const uint64_t calc_num_limit = 5000;
+static const uint64_t calc_delram_bytes_limit = 10*1024*1024;  //Remove the ram maximum byte limit
 
 namespace ultrainio { namespace chain {
 
@@ -773,9 +774,9 @@ int apply_context::db_counts_i64(uint64_t code, uint64_t scope, uint64_t table) 
 }
 
 template<typename IndexType, typename ObjectType>
-int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id, const uint64_t cur_block, uint64_t & calc) {
-   if(!t_id || (cur_block > blockheight_boundary && calc > calc_num_limit) ) {
-       dlog("calc ${calc} larger than limit ${calc_num_limit}",("calc", calc)("calc_num_limit", calc_num_limit));
+int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id, bool is_exec_deltab_limit, uint64_t& calc_num, uint64_t& calc_delram_bytes) {
+   if(!t_id || (is_exec_deltab_limit && (calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit)) ) {
+       dlog("calc_num ${calc_num} or calc_delram_bytes ${calc_delram_bytes} beyond the limit",("calc_num", calc_num)("calc_delram_bytes", calc_delram_bytes));
        return -1;
    }
    account_name systemname(config::system_account_name);
@@ -798,10 +799,11 @@ int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_obje
            continue;
        }
       usage_delta = config::billable_size_v<ObjectType>;
+      calc_delram_bytes += usage_delta;
       update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ));
       db.remove(obj);
-      calc++;
-      if(cur_block > blockheight_boundary && calc > calc_num_limit){
+      calc_num++;
+      if(is_exec_deltab_limit && (calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit)){
           return -1;
       }
    }
@@ -833,6 +835,13 @@ int apply_context::db_drop_i64(uint64_t code, uint64_t scope, uint64_t table) {
    return 0;
 }
 int apply_context::db_drop_table(uint64_t code) {
+   const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+   int cur_version_number = ro_api.get_system_version_number();
+   const int patch_version_number = 2;
+   /*new patch is only executed if cur_version_number is greater than or equal to patch_version_number
+     The version number is added to prevent the delete table from timeout and is limited so that it can be deleted in batches
+   */
+   bool  is_exec_deltab_limit = cur_version_number >= patch_version_number  ? true : false;
    const auto&  table_idx = db.get_index<table_id_multi_index , by_code_scope_table>();
    account_name systemname(config::system_account_name);
    ULTRAIN_ASSERT( systemname == receiver, table_access_violation, "db access violation" );
@@ -844,8 +853,14 @@ int apply_context::db_drop_table(uint64_t code) {
    uint32_t count_t = std::distance(table_lower, table_upper);
    uint32_t i_t = 0;
    uint64_t calc_num = 0;
-   uint64_t cur_block_height = control.head_block_header().block_num();
+   uint64_t calc_delram_bytes = 0;
    while(i_t++<count_t) {
+       calc_num++;
+       if(is_exec_deltab_limit && (calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit)){
+          dlog("db_drop_table:scope i_t = ${i_t}, calc_num = ${calc_num}, calc_delram_bytes = ${calc_delram_bytes}, code = ${code}",
+              ("i_t", i_t)("calc_num", calc_num)("calc_delram_bytes", calc_delram_bytes)("code", name{code}.to_string()));
+          return -1;
+       }
        auto & table_obj = *table_lower;
        table_lower++;
        if(table_obj.code != code) {
@@ -862,8 +877,9 @@ int apply_context::db_drop_table(uint64_t code) {
        int64_t usage_delta = 0LL;
        while(i++<count) {
           calc_num++;
-          if(cur_block_height > blockheight_boundary && calc_num > calc_num_limit){
-              dlog("db_drop_table: lower_bound i = ${i}，i_t = ${i_t}, count = ${count}, calc_num = ${calc_num}, code = ${code}", ("i", i)("i_t", i_t)("count", count)("calc_num", calc_num)("code", name{code}.to_string()));
+          if(is_exec_deltab_limit && (calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit)){
+              dlog("db_drop_table: lower_bound i = ${i}，i_t = ${i_t}, count = ${count}, calc_num = ${calc_num}, calc_delram_bytes = ${calc_delram_bytes}, code = ${code}",
+                  ("i", i)("i_t", i_t)("count", count)("calc_num", calc_num)("calc_delram_bytes", calc_delram_bytes)("code", name{code}.to_string()));
               return -1;
           }
 
@@ -874,17 +890,19 @@ int apply_context::db_drop_table(uint64_t code) {
               continue;
           }
           usage_delta = (obj.value.size() + config::billable_size_v<key_value_object>);
+          calc_delram_bytes += usage_delta;
           update_db_usage( code,  -(usage_delta) );
           db.remove(obj);
        }
-       res = db_drop_secondary_index<index64_index,index64_object>(&table_obj, cur_block_height, calc_num);
-       res = db_drop_secondary_index<index128_index,index128_object>(&table_obj, cur_block_height, calc_num);
-       res = db_drop_secondary_index<index256_index,index256_object>(&table_obj, cur_block_height, calc_num);
-       res = db_drop_secondary_index<index_double_index,index_double_object>(&table_obj, cur_block_height, calc_num);
-       res = db_drop_secondary_index<index_long_double_index,index_long_double_object>(&table_obj, cur_block_height, calc_num);
+       res = db_drop_secondary_index<index64_index,index64_object>(&table_obj, is_exec_deltab_limit, calc_num, calc_delram_bytes);
+       res = db_drop_secondary_index<index128_index,index128_object>(&table_obj, is_exec_deltab_limit, calc_num, calc_delram_bytes);
+       res = db_drop_secondary_index<index256_index,index256_object>(&table_obj, is_exec_deltab_limit, calc_num, calc_delram_bytes);
+       res = db_drop_secondary_index<index_double_index,index_double_object>(&table_obj, is_exec_deltab_limit, calc_num, calc_delram_bytes);
+       res = db_drop_secondary_index<index_long_double_index,index_long_double_object>(&table_obj, is_exec_deltab_limit, calc_num, calc_delram_bytes);
        if(res == -1) {
            return -1;
        }
+       calc_delram_bytes += config::billable_size_v<table_id_object>;
        remove_table(code, table_obj);
    }
    return 0;

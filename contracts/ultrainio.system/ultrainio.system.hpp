@@ -73,6 +73,7 @@ namespace ultrainiosystem {
          sidechain_charge_ratio = 3,
          is_claim_reward = 4,
          free_account_per_res = 5,
+         version_number = 6,
       };
 
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,

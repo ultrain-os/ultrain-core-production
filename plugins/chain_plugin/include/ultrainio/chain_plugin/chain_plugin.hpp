@@ -415,9 +415,13 @@ public:
 
    // sync with ultrainio.system.hpp
    enum global_state_exten_type_key {
-       global_state_key_start = 0,
-       update_auth,
-       confirm_point_interval
+      global_state_key_start = 0,
+      update_auth = 1,
+      confirm_point_interval = 2,
+      sidechain_charge_ratio = 3,
+      is_claim_reward = 4,
+      free_account_per_res = 5,
+      version_number = 6,
    };
 
    struct get_confirm_point_interval_params {
@@ -430,6 +434,16 @@ public:
 
    get_confirm_point_interval_result get_confirm_point_interval(const get_confirm_point_interval_params& p) const;
 
+   struct get_global_exten_params {
+       int index = 0;
+   };
+
+   struct get_global_exten_result {
+       std::string global_exten_data = "";
+   };
+   get_global_exten_result get_global_exten_data(const get_global_exten_params& p) const;
+
+   int get_system_version_number() const;
    bool is_genesis_finished()const;
    uint64_t get_worldstate_interval()const;
 
@@ -780,6 +794,8 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(more)
 FC_REFLECT( ultrainio::chain_apis::read_only::exten_type, (key)(value) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_confirm_point_interval_params, (dummy) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_confirm_point_interval_result, (confirm_point_interval) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_global_exten_params, (index) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_global_exten_result, (global_exten_data) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
         (account_name)(head_block_num)(head_block_time)(privileged)(updateable)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(

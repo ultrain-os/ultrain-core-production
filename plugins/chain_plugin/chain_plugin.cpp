@@ -1332,6 +1332,41 @@ read_only::get_confirm_point_interval_result read_only::get_confirm_point_interv
     return result;
 }
 
+read_only::get_global_exten_result read_only::get_global_exten_data(const read_only::get_global_exten_params& p) const {
+    const abi_def abi = ultrainio::chain_apis::get_abi(db, N(ultrainio));
+    const auto& d = db.db();
+    read_only::get_global_exten_result result;
+    try {
+        auto gstate = get_global_row(d, abi, abi_serializer_max_time);
+        exten_types ext = gstate["table_extension"].as<exten_types>();
+        for ( auto v : ext ) {
+            if( v.key == p.index ) {
+                result.global_exten_data = v.value;
+                ilog("read get_global_exten_data from global state : ${value}", ("value", result.global_exten_data));
+                break;
+            }
+        }
+    } catch (fc::exception& e) {
+        elog("get_global_exten_data exception : ${e}", ("e", e.to_string()));
+    } catch (...) {
+        elog("get_global_exten_data error thrown from get_global_row ");
+    }
+    return result;
+}
+int read_only::get_system_version_number() const{
+   try {
+      read_only::get_global_exten_params p;
+      p.index = read_only::global_state_exten_type_key::version_number;
+      read_only::get_global_exten_result result = get_global_exten_data( p );
+      if( result.global_exten_data.empty() )
+         return 0;
+      else
+         return std::stoi(result.global_exten_data.c_str());
+   } catch (...) {
+      elog("get_system_version_number exception");
+      return 0;
+   }
+}
 static fc::variant get_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms, const name& key) {
     const auto table_type = get_table_type(abi, N(rand));
     ULTRAIN_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table rand", ("type",table_type));
