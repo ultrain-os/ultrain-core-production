@@ -320,18 +320,20 @@ namespace ultrainiosystem {
                             //pay for the first one, since it's hard to distigush which is right
                             print("error: a block number is confirmed twice\n");
                         }
-                        else if(ite_uncfm_block->to_be_paid) {
-                            //apply reward for its proposer
-                            reportblocknumber(ite_chain->chain_type, ite_uncfm_block->proposer, 1);
-                        }
-                        subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
-                            new_confirmed_header = block_header_digest(ite_uncfm_block->block_number,
-                                                              ite_uncfm_block->transaction_mroot);
-                        });
-                        if(1 == ite_uncfm_block->block_number) {
-                            _subchain.chain_id          = ite_uncfm_block->action_mroot; //save chain id
-                            _subchain.genesis_time      = ite_uncfm_block->timestamp;
-                            _subchain.is_schedulable    = true;
+                        else{
+                            if(ite_uncfm_block->to_be_paid) {
+                                //apply reward for its proposer
+                                reportblocknumber(ite_chain->chain_type, ite_uncfm_block->proposer, 1);
+                            }
+                            subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
+                                new_confirmed_header = block_header_digest(ite_uncfm_block->block_number,
+                                                                      ite_uncfm_block->transaction_mroot);
+                            });
+                            if(1 == ite_uncfm_block->block_number) {
+                                _subchain.chain_id          = ite_uncfm_block->action_mroot; //save chain id
+                                _subchain.genesis_time      = ite_uncfm_block->timestamp;
+                                _subchain.is_schedulable    = true;
+                            }
                         }
 
                         if(ite_uncfm_block->block_number == _subchain.confirmed_block_number) {
