@@ -248,8 +248,7 @@ async function syncUser() {
             //增加本轮是否是出块节点的判断
             var headBlockProposer = await chainApi.getHeadBlockProposer(chainConfig.configSub);
             //判断是否要上传块头
-            if (headBlockProposer != chainConfig.myAccountAsCommittee) {
-                // if (blockUtil.needPushBlock(headBlockProposer, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
+            if (blockUtil.needPushBlockByProducerList(headBlockProposer, chainConfig.myAccountAsCommittee, localProducers) == false)  {
                 logger.info("[Sync user]headBlockProposer("+headBlockProposer+") is not myself("+chainConfig.myAccountAsCommittee+"),do not sync user");
                 return;
             }
@@ -417,8 +416,7 @@ async function syncUgas() {
         var headBlockProposer = await chainApi.getHeadBlockProposer(chainConfig.configSub);
 
         //判断是否要上传块头
-        if (headBlockProposer != chainConfig.myAccountAsCommittee) {
-        // if (blockUtil.needPushBlock(headBlockProposer, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
+        if (blockUtil.needPushBlockByProducerList(headBlockProposer, chainConfig.myAccountAsCommittee, localProducers) == false)  {
             logger.info("[Sync Ugas]headBlockProposer("+headBlockProposer+") is not myself("+chainConfig.myAccountAsCommittee+"),do not sync ugas");
             return;
         }
@@ -839,7 +837,7 @@ async function syncBlock() {
         let result = await chainConfig.u3Sub.getBlockInfo((subBlockNumMax).toString());
 
         //判断是否要上传块头
-        if (blockUtil.needPushBlock(result.proposer, chainConfig.myAccountAsCommittee, getBlockSubmitRatio()) == false) {
+        if (blockUtil.needPushBlockByProducerList(result.proposer, chainConfig.myAccountAsCommittee, localProducers) == false) {
             logger.info("finish sync block..");
             return;
         }
@@ -2169,8 +2167,7 @@ async function syncResource(allFlag) {
                 //增加本轮是否是出块节点的判断
                 var headBlockProposer = await chainApi.getHeadBlockProposer(chainConfig.configSub);
                 //判断是否要上传块头
-                if (headBlockProposer != chainConfig.myAccountAsCommittee) {
-                    // if (blockUtil.needPushBlock(headBlockProposer, chainConfig.myAccountAsCommittee, chainConfig.configFileData.local.syncBlockRatio) == false) {
+                if (blockUtil.needPushBlockByProducerList(headBlockProposer, chainConfig.myAccountAsCommittee, localProducers) == false) {
                     logger.info("[sync newest res]headBlockProposer("+headBlockProposer+") is not myself("+chainConfig.myAccountAsCommittee+"),do not sync newest res");
                     return;
                 }

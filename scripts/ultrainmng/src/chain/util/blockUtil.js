@@ -66,6 +66,69 @@ function needPushBlock(proposer, user,setRatio) {
     return false;
 }
 
+
+/**
+ * 判断这个块是否需要上报
+ * @param block
+ * @param user
+ * @returns {boolean}
+ */
+function needPushBlockByProducerList(proposer, user, localProducers) {
+
+    try {
+        if (utils.isNull(proposer)) {
+            return false;
+        }
+
+
+        /**
+         * 创世块
+         */
+        if (utils.isNull(proposer) || proposer == "genesis") {
+            logger.info("block.proposer is genesis or null, need push");
+            return true;
+        }
+
+        /**
+         * 块的proposer是自己
+         */
+        if (proposer == user) {
+            logger.info("block.proposer is self(" + user + "), need push");
+            return true;
+        }
+
+        //local producers 长度为空
+        if (localProducers.length <= 0) {
+            return false
+        }
+
+        let l = localProducers.length;
+
+        //propsger 所在数组index
+        let propserIndex = 0;
+        for (let i = 0; i < localProducers.length; i++) {
+            if (localProducers[i].owner == proposer) {
+                propserIndex = i;
+                break;
+            }
+        }
+
+        let nonePropserIndex = (propserIndex +1 ) % l;
+        let nonePropserName = localProducers[nonePropserIndex].owner;
+        if (nonePropserName == user) {
+            logger.info("nonePropserName("+nonePropserName+") is self(" + user + "), need push");
+            return true;
+        }
+
+        logger.info("nonePropserName("+nonePropserName+") is not self(" + user + "), need not push");
+
+    } catch (e) {
+        logger.error("needPushBlockByCommitteeList error:",e);
+    }
+    return false;
+}
+
+
 // function unitTest() {
 //     /**
 //      * 随机概率
@@ -86,5 +149,6 @@ function needPushBlock(proposer, user,setRatio) {
 // unitTest()
 
 module.exports = {
-    needPushBlock
+    needPushBlock,
+    needPushBlockByProducerList,
 }
