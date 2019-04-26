@@ -19,6 +19,8 @@ namespace ultrainio {
 
         bool getMyBlsPrivateKey(unsigned char* sk, int skSize) const;
 
+        bool getMyBlsPublicKey(unsigned char* blsPk, int pkSize) const;
+
     private:
         PrivateKey m_privateKey;
 

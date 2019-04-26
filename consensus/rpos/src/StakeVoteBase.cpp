@@ -225,8 +225,11 @@ namespace ultrainio {
         }
     }
 
-    bool StakeVoteBase::getCommitteeBlsPublicKey(const AccountName& account, unsigned char* blsPublicKey, int pkSize) const {
-        if (account == AccountName(Genesis::kGenesisAccount)) {
+    bool StakeVoteBase::getBlsPublicKey(const AccountName& account, unsigned char* blsPublicKey, int pkSize) const {
+        std::string blsPk;
+        if (account == s_keyKeeper->getMyAccount()) {
+            return s_keyKeeper->getMyBlsPublicKey(blsPublicKey, pkSize);
+        } else if (account == AccountName(Genesis::kGenesisAccount)) {
             Hex::fromHex<unsigned char>(Genesis::s_genesisBlsPk, blsPublicKey, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
             return true;
         } else {
@@ -234,10 +237,9 @@ namespace ultrainio {
             if (c.isEmpty()) {
                 return false;
             }
-            Hex::fromHex<unsigned char>(c.blsPk, blsPublicKey, pkSize);
+            Hex::fromHex<unsigned char>(c.blsPk, blsPublicKey, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
             return true;
         }
-        return false;
     }
 
     bool StakeVoteBase::isGenesisLeader(const AccountName& account) const {

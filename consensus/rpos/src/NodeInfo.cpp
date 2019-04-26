@@ -60,4 +60,21 @@ namespace ultrainio {
         memcpy(sk, m_blsPrivateKey, Bls::BLS_PRI_KEY_LENGTH);
         return true;
     }
+
+    bool NodeInfo::getMyBlsPublicKey(unsigned char* blsPk, int pkSize) const {
+        if (!blsPk || pkSize < Bls::BLS_PUB_KEY_COMPRESSED_LENGTH) {
+            return false;
+        }
+        std::shared_ptr<Bls> blsPtr = Bls::getDefault();
+        static unsigned char* myBlsPk = nullptr;
+        // TODO
+        if (!myBlsPk) {
+            myBlsPk = (unsigned char*)malloc(Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+            if (!blsPtr->getPk(myBlsPk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH, m_blsPrivateKey, Bls::BLS_PRI_KEY_LENGTH)) {
+                return false;
+            }
+        }
+        memcpy(blsPk, myBlsPk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+        return true;
+    }
 }

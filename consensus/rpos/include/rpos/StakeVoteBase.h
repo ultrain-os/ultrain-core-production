@@ -68,7 +68,7 @@ namespace ultrainio {
 
         PublicKey getPublicKey(const AccountName& account) const;
 
-        bool getCommitteeBlsPublicKey(const AccountName& account, unsigned char* blsPublicKey, int pkSize) const;
+        bool getBlsPublicKey(const AccountName& account, unsigned char* blsPublicKey, int pkSize) const;
 
         SHA256 getCommitteeMroot() const;
 
