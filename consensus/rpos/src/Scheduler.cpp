@@ -415,7 +415,7 @@ namespace ultrainio {
                     ilog("send echo when > f + 1");
                     info.hasSend = true;
                     EchoMsg myEcho = MsgBuilder::constructMsg(echo);
-                    ULTRAIN_ASSERT(verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error");
+                    ULTRAIN_ASSERT(verifyMyBlsSignature(myEcho), chain::chain_exception, "bls signature error");
                     insert(myEcho);
                     //myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(myEcho);
