@@ -26,7 +26,7 @@
     "random-lib": "^3.0.0",
     "sleep": "^5.2.3",
     "u3-utils": "0.0.2",
-    "u3.js": "git://github.com/ultrain-os/u3.js.git#dev",
+    "u3.js": "git://github.com/ultrain-os/u3.js.git#415",
     "webpack": "^4.29.0"
   },
   "devDependencies": {
