@@ -477,6 +477,7 @@ namespace ultrainiosystem {
 
          // functions defined in reward.cpp
          void onblock( block_timestamp timestamp, account_name producer );
+         void onfinish();
          void claimrewards();
 
 

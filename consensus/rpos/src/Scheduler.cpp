@@ -415,7 +415,7 @@ namespace ultrainio {
                     ilog("send echo when > f + 1");
                     info.hasSend = true;
                     EchoMsg myEcho = MsgBuilder::constructMsg(echo);
-                    ULTRAIN_ASSERT(verifyMyBlsSignature(myEcho), chain::chain_exception, "bls signature error");
+                    ULTRAIN_ASSERT(verifyMyBlsSignature(myEcho), chain::chain_exception, "bls signature error, check bls private key pls");
                     insert(myEcho);
                     //myEcho.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(myEcho);
@@ -767,7 +767,7 @@ namespace ultrainio {
             if (isMinPropose(propose)) {
                 if (MsgMgr::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
                     EchoMsg echo = MsgBuilder::constructMsg(propose);
-                    ULTRAIN_ASSERT(verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error");
+                    ULTRAIN_ASSERT(verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error, check bls private key pls");
                     //echo.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(echo);
                     insert(echo);
@@ -1347,6 +1347,7 @@ namespace ultrainio {
                 count3 = runScheduledTrxs(scheduled_trxs, hard_cpu_deadline, block_time);
             }
 
+            chain.finish_block_hack();
             ilog("------- run ${count1} ${count2}  ScheduledTrxs:${count3} trxs, taking time ${time}, remaining pending trx ${count4}, remaining unapplied trx ${count5}",
                  ("count1", count1)
                  ("count2", count2)
@@ -1756,6 +1757,7 @@ namespace ultrainio {
                     return false;
                 }
             }
+            chain.finish_block_hack();
             chain.set_action_merkle_hack();
             chain.set_trx_merkle_hack();
             chain.set_header_extensions(m_ba0Block.header_extensions);
@@ -1955,6 +1957,7 @@ namespace ultrainio {
                             throw *trace->except;
                         }
                     }
+                    chain.finish_block_hack();
 
                     chain.finalize_block();
                     ULTRAIN_ASSERT(pbs->header.action_mroot == block->action_mroot,
@@ -2205,6 +2208,7 @@ namespace ultrainio {
             std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(chain.head_block_num() + 1);
             m_lightClientProducer->handleCheckPoint(chain, stakeVotePtr->getCommitteeSet());
         }
+        chain.finish_block_hack();
         chain.set_action_merkle_hack();
         // empty block does not have trx, so we don't need this?
         chain.set_trx_merkle_hack();

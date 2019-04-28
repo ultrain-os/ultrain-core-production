@@ -118,6 +118,7 @@ constexpr uint64_t billable_size_v = ((billable_size<T>::value + billable_alignm
 enum patch_update_version{
     delete_table_limit = 2,  //Prevent the delete table from timeout and is limited so that it can be deleted in batches
     not_add_unessential_table = 3,  //Do not create unnecessary tables when creating accounts
+    lifecycle_onfinish = 4,
 };
 
 } } } // namespace ultrainio::chain::config

@@ -113,7 +113,9 @@ namespace ultrainio {
 
     int CommitteeSet::nextRoundThreshold() const {
         // detail see StakeVoteRandom.cpp realGetNextRoundThreshold
-        int voterSize = m_committeeInfoV.size() > 100 ? 100 : m_committeeInfoV.size();
-        return 0.67 * voterSize + 1;
+        int kDesiredVoterNumber = 100; // sync with consensus config.h
+        double kNextRoundThresholdRatio = 0.67; // sync with consensus config.h
+        int voterSize = m_committeeInfoV.size() > kDesiredVoterNumber ? kDesiredVoterNumber : m_committeeInfoV.size();
+        return kNextRoundThresholdRatio * voterSize + 1;
     }
 }

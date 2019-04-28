@@ -99,6 +99,8 @@ namespace ultrainio { namespace chain {
           */
          void start_block( block_timestamp_type time, chain::checksum256_type, std::string sig);
 
+         void finish_block_hack();
+
          void abort_block(bool drop_trx = false);
          void set_emit_signal();
          void clear_emit_signal();
@@ -143,6 +145,8 @@ namespace ultrainio { namespace chain {
           *
           */
          transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+
+         signed_transaction get_on_finish_transaction();
 
          void finalize_block();
          void assign_header_to_block();

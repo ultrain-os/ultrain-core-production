@@ -1314,6 +1314,30 @@ struct controller_impl {
       guard_pending.cancel();
    } // start_block
 
+   void finish_block_hack() {
+      const auto& ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+      if (ro_api.is_exec_patch_code(config::patch_update_version::lifecycle_onfinish) && ro_api.is_genesis_finished()) {
+          if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
+              try {
+                  auto on_finish_trx = std::make_shared<transaction_metadata>( get_on_finish_transaction() );
+                  auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+                      in_trx_requiring_checks = old_value;
+                  });
+                  in_trx_requiring_checks = true;
+                  ilog("push onfinish transaction");
+                  push_transaction( on_finish_trx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+              } catch( const boost::interprocess::bad_alloc& e  ) {
+                  elog( "onfinish transaction failed due to a bad allocation" );
+                  throw;
+              } catch( const fc::exception& e ) {
+                  wlog( "onfinish transaction failed, but shouldn't impact block generation, system contract needs update" );
+                  edump((e.to_detail_string()));
+              } catch( ... ) {
+                  elog("onfinish transaction failed due to unknown reason");
+              }
+          }
+      }
+   }
 
    void assign_header_to_block() {
       auto p = pending->_pending_block_state;
@@ -1367,6 +1391,7 @@ struct controller_impl {
                         block_validate_exception, "receipt does not match",
                         ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
          }
+         finish_block_hack();
 
          finalize_block();
 
@@ -1774,6 +1799,24 @@ struct controller_impl {
       return trx;
    }
 
+   /**
+    *  At the end of each block
+    *
+    */
+   signed_transaction get_on_finish_transaction()
+   {
+      action on_finish_act;
+      on_finish_act.account = config::system_account_name;
+      on_finish_act.name = NEX(onfinish);
+      on_finish_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
+
+      signed_transaction trx;
+      trx.actions.emplace_back(std::move(on_finish_act));
+      trx.set_reference_block(self.head_block_id());
+      trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+      return trx;
+   }
+
 }; /// controller_impl
 
 void controller::set_emit_signal()
@@ -1862,6 +1905,11 @@ fork_database& controller::fork_db()const { return my->fork_db; }
 void controller::start_block( block_timestamp_type when, chain::checksum256_type committee_mroot, std::string sig) {
    validate_db_available_size();
    my->start_block(when, committee_mroot, sig, block_status::incomplete );
+}
+
+void controller::finish_block_hack() {
+   validate_db_available_size();
+   my->finish_block_hack();
 }
 
 void controller::finalize_block() {

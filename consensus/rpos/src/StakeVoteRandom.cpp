@@ -42,7 +42,7 @@ namespace ultrainio {
             ilog("read random m_blockNum = ${m_blockNum} rand = ${rand}", ("m_blockNum", m_blockNum)("rand", result.random));
             return result.random;
         } catch (fc::exception& e) {
-            ilog("There may be no rand : ${e}", ("e", e.to_string()));
+            ilog("There may be no rand : ${e}, do you have start random generator?", ("e", e.to_string()));
         }
         return std::string("ultrain");
     }

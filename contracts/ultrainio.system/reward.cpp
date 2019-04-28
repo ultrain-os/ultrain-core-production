@@ -46,6 +46,11 @@ namespace ultrainiosystem {
       distributreward();  //automatically send rewards
    }
 
+   void system_contract::onfinish() {
+      print("onfinish in ultrainio.system");
+      require_auth(N(ultrainio));
+   }
+
    void system_contract::reportblocknumber(uint64_t chain_type, account_name producer, uint64_t number) {
       auto briefprod = _briefproducers.find(producer);
       if(briefprod == _briefproducers.end()) {

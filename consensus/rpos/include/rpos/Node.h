@@ -62,7 +62,7 @@ namespace ultrainio {
 
         void readyLoop(uint32_t timeout);
 
-        void run(bool voteFlag = true);
+        void run();
 
         void join();
 
@@ -177,6 +177,8 @@ namespace ultrainio {
         void resetTimerCanceled(TimerHandlerNumber thn);
 
         bool isTimerCanceled(TimerHandlerNumber thn) const;
+
+        bool isListener(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount);
 
         static std::shared_ptr<UranusNode> s_self;
         bool m_ready;

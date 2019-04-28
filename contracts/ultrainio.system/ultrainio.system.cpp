@@ -638,7 +638,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // producer.cpp
      (regproducer)(unregprod)
      // reward.cpp
-     (onblock)(claimrewards)
+     (onblock)(onfinish)(claimrewards)
      // scheduler.cpp
      (regchaintype)(regsubchain)(acceptmaster)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)
      (setsched)(forcesetblock)(schedule)(setlwcparams)(setchainparam)

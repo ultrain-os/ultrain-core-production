@@ -287,7 +287,7 @@ namespace ultrainio {
         m_schedulerPtr->processCache(msg_key);
         // Only producing node will pre-run proposed block, non-producing node still
         // try to run trx asap.
-        if (!MsgMgr::getInstance()->isVoter(getBlockNum(), m_phase, m_baxCount) && !m_isNonProducingNode) {
+        if (isListener(getBlockNum(), m_phase, m_baxCount)) {
             bool ret = m_schedulerPtr->preRunBa0BlockStart();
             if (ret) {
                 preRunBa0BlockLoop(200 * Config::s_maxPhaseSeconds);
@@ -311,7 +311,7 @@ namespace ultrainio {
                 sendMessage(propose);
                 if (MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
                     EchoMsg echo = MsgBuilder::constructMsg(propose);
-                    ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error");
+                    ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error, check bls private key pls");
                     m_schedulerPtr->insert(echo);
                     dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", short_hash(echo.blockId)));
                     sendMessage(echo);
@@ -327,7 +327,7 @@ namespace ultrainio {
                 sendEchoForEmptyBlock();
             } else if (m_schedulerPtr->verifyBa0Block()) { // not empty, verify
                 EchoMsg echo = MsgBuilder::constructMsg(*ba0Block);
-                ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error");
+                ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error, check bls private key pls");
                 m_schedulerPtr->insert(echo);
                 //echo.timestamp = getRoundCount();
                 dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", short_hash(echo.blockId)));
@@ -681,7 +681,7 @@ namespace ultrainio {
         return false;
     }
 
-    void UranusNode::run(bool voteFlag) {
+    void UranusNode::run() {
         msgkey msg_key;
 
         reset();
@@ -711,9 +711,7 @@ namespace ultrainio {
         msg_key.phase = m_phase;
         m_schedulerPtr->processCache(msg_key);
 
-        if (voteFlag) {
-            vote(getBlockNum(), kPhaseBA0, 0);
-        }
+        vote(getBlockNum(), kPhaseBA0, 0);
 
         if ((getRoundInterval() > (Config::s_maxTrxMicroSeconds/1000 + 300)) && (!MsgMgr::getInstance()->isProposer(getBlockNum()))) {
             fastLoop(Config::s_maxTrxMicroSeconds/1000 + 300);
@@ -934,7 +932,7 @@ namespace ultrainio {
         Block block = m_schedulerPtr->emptyBlock();
         dlog("vote empty block. blockNum = ${blockNum} hash = ${hash}", ("blockNum",getBlockNum())("hash", short_hash(block.id())));
         EchoMsg echoMsg = MsgBuilder::constructMsg(block);
-        ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echoMsg), chain::chain_exception, "bls signature error");
+        ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echoMsg), chain::chain_exception, "bls signature error, check bls private key pls");
         m_schedulerPtr->insert(echoMsg);
         //echoMsg.timestamp = getRoundCount();
         sendMessage(echoMsg);
@@ -985,5 +983,9 @@ namespace ultrainio {
 
     bool UranusNode::isTimerCanceled(TimerHandlerNumber thn) const {
         return m_timerCanceledBits & (1 << thn);
+    }
+
+    bool UranusNode::isListener(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount) {
+        return !MsgMgr::getInstance()->isVoter(blockNum, phase, baxCount) && !m_isNonProducingNode;
     }
 }
