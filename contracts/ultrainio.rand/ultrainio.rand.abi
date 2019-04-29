@@ -86,6 +86,11 @@
       "name": "queryBck"
     },
     {
+      "fields": [],
+      "base": "",
+      "name": "version"
+    },
+    {
       "fields": [
         {
           "name": "name",
@@ -207,6 +212,12 @@
       "ricardian_contract": "",
       "name": "queryBck",
       "type": "queryBck",
+      "ability": "pureview"
+    },
+    {
+      "ricardian_contract": "",
+      "name": "version",
+      "type": "version",
       "ability": "pureview"
     }
   ],

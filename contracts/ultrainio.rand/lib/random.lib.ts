@@ -371,25 +371,23 @@ export class Random {
     return changetype<u64>(voteHst.votedUser[0]);
   }
 
-  clearMainVoteHst(blockNum: u64): void {
+  private clearMainVoteHst(blockNum: u64): void {
     var oldMinNum = this.getVoteHstMinBckNum();
     var voteHst = new VoteHistory();
     // Here should use the expression, (blockNum >= CACHED_RAND_COUNT + minBckNum)
     // cannot use (blockNum - minBckNum > CACHED_RAND_COUNT)
     // because if (blockNum < minBckNum), the value of (blockNum - minBckNum) maybe overflow.
-    if (blockNum >= CACHED_HST_COUNT + oldMinNum) {
-      if (this.voteHstDB.exists(oldMinNum)) {
-        this.voteHstDB.erase(oldMinNum);
-      }
-      let newMinNum = oldMinNum + 1;
-      if (blockNum > CACHED_RAND_COUNT + oldMinNum) {
-        if (this.voteHstDB.exists(oldMinNum + 1)) {
-          this.voteHstDB.erase(oldMinNum + 1);
+    if (blockNum > CACHED_HST_COUNT + oldMinNum) {
+      const DELETED_MOST: u64 = 1000;
+      let range = blockNum - CACHED_HST_COUNT - oldMinNum;
+      let delCount = range >= DELETED_MOST ? DELETED_MOST : range;
+      for (let i = 0; i <= <i32>delCount; i ++) {
+        if (this.voteHstDB.exists(oldMinNum + i)) {
+          this.voteHstDB.erase(oldMinNum + i);
         }
-        newMinNum = oldMinNum + 2;
       }
       voteHst.bcknum = 0;
-      voteHst.votedUser.push(newMinNum);
+      voteHst.votedUser.push(oldMinNum + delCount + 1);
       this.voteHstDB.modify(voteHst);
     }
   }
@@ -471,6 +469,7 @@ export class Random {
     // Saving the maxinum blocknum
     this.saveRandMaxBckNum(bckNum);
     this.clearPartRands(bckNum);
+    this.clearMainVoteHst(bckNum);
   }
 
   private getMinRandBckNum(): u64 {

@@ -1,18 +1,8 @@
 import { Contract } from "ultrain-ts-lib/src/contract";
-import {
-  // Voter,
-  // Waiter,
-  RandRecord,
-  // VOTER_TABLE,
-  // WAITER_TABLE,
-  // RAND_TABLE,
-  Random
-} from "./lib/random.lib";
-
+import { RandRecord, Random } from "./lib/random.lib";
 
 class RandApp extends Contract {
-
-  random: Random;
+  private random: Random;
   constructor(code: u64){
     super(code);
     this.random = new Random();

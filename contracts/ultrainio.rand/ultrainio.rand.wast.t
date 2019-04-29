@@ -186,58 +186,60 @@
  (data (i32.const 2864) "\t\00\00\00u\00l\00t\00r\00a\00i\00n\00i\00o\00")
  (data (i32.const 2888) "\t\00\00\00p\00r\00o\00d\00u\00c\00e\00r\00s\00")
  (data (i32.const 2912) "\1b\00\00\00~\00l\00i\00b\00/\00i\00n\00t\00e\00r\00n\00a\00l\00/\00t\00y\00p\00e\00d\00a\00r\00r\00a\00y\00.\00t\00s\00")
- (data (i32.const 2976) "\04\00\00\00n\00u\00l\00l\00")
- (data (i32.const 2992) "\00\00\00\00")
- (data (i32.const 3000) "\17\00\00\00~\00l\00i\00b\00/\00i\00n\00t\00e\00r\00n\00a\00l\00/\00s\00t\00r\00i\00n\00g\00.\00t\00s\00")
- (data (i32.const 3056) "\08\00\00\00t\00r\00a\00n\00s\00f\00e\00r\00")
- (data (i32.const 3080) "\0b\00\00\00u\00t\00r\00i\00o\00.\00t\00o\00k\00e\00n\00")
- (data (i32.const 3112) "\13\00\00\00i\00n\000\00x\001\00W\00a\00i\00t\00e\00r\00R\00e\00g\00i\00s\00t\00e\00r\00")
- (data (i32.const 3160) "\1e\00\00\00c\00a\00n\00n\00o\00t\00 \00a\00d\00d\00 \00e\00x\00i\00s\00t\00i\00n\00g\00 \00c\00a\00n\00d\00i\00d\00a\00t\00e\00.\00")
- (data (i32.const 3224) "8\00\00\00d\00e\00p\00o\00s\00i\00t\00 \00m\00o\00n\00e\00y\00 \00i\00s\00 \00n\00o\00t\00 \00a\00c\00c\00u\00r\00a\00t\00e\00,\00 \00r\00e\00q\00u\00i\00r\00e\00 \00d\00e\00p\00o\00s\00i\00t\00 \001\000\000\000\00 \00U\00G\00A\00S\00")
- (data (i32.const 3344) ")\00\00\00T\00h\00e\00 \00t\00o\00t\00a\00l\00 \00o\00f\00 \00w\00a\00i\00t\00e\00r\00s\00 \00s\00h\00o\00u\00l\00d\00 \00b\00e\00 \00l\00e\00s\00s\00 \00t\00h\00a\00n\00 \00")
- (data (i32.const 3432) "7\00\00\00o\00b\00j\00e\00c\00t\00 \00p\00a\00s\00s\00e\00d\00 \00t\00o\00 \00m\00o\00d\00i\00f\00y\00 \00i\00s\00 \00n\00o\00t\00 \00f\00o\00u\00n\00d\00 \00i\00n\00 \00t\00h\00i\00s\00 \00D\00B\00M\00a\00n\00a\00g\00e\00r\00.\00")
- (data (i32.const 3552) "4\00\00\00c\00a\00n\00 \00n\00o\00t\00 \00m\00o\00d\00i\00f\00y\00 \00o\00b\00j\00e\00c\00t\00s\00 \00i\00n\00 \00t\00a\00b\00l\00e\00 \00o\00f\00 \00a\00n\00o\00t\00h\00e\00r\00 \00c\00o\00n\00t\00r\00a\00c\00t\00.\00")
- (data (i32.const 3664) "\n\00\00\00u\00n\00r\00e\00g\00i\00s\00t\00e\00r\00")
- (data (i32.const 3688) "%\00\00\00c\00a\00n\00n\00o\00t\00 \00u\00n\00r\00e\00g\00i\00s\00t\00e\00r\00 \00n\00o\00n\00-\00e\00x\00i\00s\00t\00i\00n\00g\00 \00v\00o\00t\00e\00r\00.\00")
- (data (i32.const 3768) "!\00\00\00c\00a\00n\00n\00o\00t\00 \00r\00e\00p\00e\00a\00t\00 \00t\00o\00 \00u\00n\00r\00e\00g\00s\00i\00t\00e\00r\00 \00v\00o\00t\00e\00r\00")
- (data (i32.const 3840) "\16\00\00\00r\00e\00t\00u\00r\00n\00 \00d\00e\00p\00o\00s\00i\00t\00e\00d\00 \00m\00o\00n\00e\00y\00")
- (data (i32.const 3888) "\06\00\00\00a\00c\00t\00i\00v\00e\00")
- (data (i32.const 3904) "\00\00\00\00\00\00\00\00")
- (data (i32.const 3912) "@\0f\00\00\00\00\00\00")
+ (data (i32.const 2976) "\05\00\00\000\00.\000\00.\003\00")
+ (data (i32.const 2992) "\04\00\00\00n\00u\00l\00l\00")
+ (data (i32.const 3008) "\00\00\00\00")
+ (data (i32.const 3016) "\17\00\00\00~\00l\00i\00b\00/\00i\00n\00t\00e\00r\00n\00a\00l\00/\00s\00t\00r\00i\00n\00g\00.\00t\00s\00")
+ (data (i32.const 3072) "\08\00\00\00t\00r\00a\00n\00s\00f\00e\00r\00")
+ (data (i32.const 3096) "\0b\00\00\00u\00t\00r\00i\00o\00.\00t\00o\00k\00e\00n\00")
+ (data (i32.const 3128) "\13\00\00\00i\00n\000\00x\001\00W\00a\00i\00t\00e\00r\00R\00e\00g\00i\00s\00t\00e\00r\00")
+ (data (i32.const 3176) "\1e\00\00\00c\00a\00n\00n\00o\00t\00 \00a\00d\00d\00 \00e\00x\00i\00s\00t\00i\00n\00g\00 \00c\00a\00n\00d\00i\00d\00a\00t\00e\00.\00")
+ (data (i32.const 3240) "8\00\00\00d\00e\00p\00o\00s\00i\00t\00 \00m\00o\00n\00e\00y\00 \00i\00s\00 \00n\00o\00t\00 \00a\00c\00c\00u\00r\00a\00t\00e\00,\00 \00r\00e\00q\00u\00i\00r\00e\00 \00d\00e\00p\00o\00s\00i\00t\00 \001\000\000\000\00 \00U\00G\00A\00S\00")
+ (data (i32.const 3360) ")\00\00\00T\00h\00e\00 \00t\00o\00t\00a\00l\00 \00o\00f\00 \00w\00a\00i\00t\00e\00r\00s\00 \00s\00h\00o\00u\00l\00d\00 \00b\00e\00 \00l\00e\00s\00s\00 \00t\00h\00a\00n\00 \00")
+ (data (i32.const 3448) "7\00\00\00o\00b\00j\00e\00c\00t\00 \00p\00a\00s\00s\00e\00d\00 \00t\00o\00 \00m\00o\00d\00i\00f\00y\00 \00i\00s\00 \00n\00o\00t\00 \00f\00o\00u\00n\00d\00 \00i\00n\00 \00t\00h\00i\00s\00 \00D\00B\00M\00a\00n\00a\00g\00e\00r\00.\00")
+ (data (i32.const 3568) "4\00\00\00c\00a\00n\00 \00n\00o\00t\00 \00m\00o\00d\00i\00f\00y\00 \00o\00b\00j\00e\00c\00t\00s\00 \00i\00n\00 \00t\00a\00b\00l\00e\00 \00o\00f\00 \00a\00n\00o\00t\00h\00e\00r\00 \00c\00o\00n\00t\00r\00a\00c\00t\00.\00")
+ (data (i32.const 3680) "\n\00\00\00u\00n\00r\00e\00g\00i\00s\00t\00e\00r\00")
+ (data (i32.const 3704) "%\00\00\00c\00a\00n\00n\00o\00t\00 \00u\00n\00r\00e\00g\00i\00s\00t\00e\00r\00 \00n\00o\00n\00-\00e\00x\00i\00s\00t\00i\00n\00g\00 \00v\00o\00t\00e\00r\00.\00")
+ (data (i32.const 3784) "!\00\00\00c\00a\00n\00n\00o\00t\00 \00r\00e\00p\00e\00a\00t\00 \00t\00o\00 \00u\00n\00r\00e\00g\00s\00i\00t\00e\00r\00 \00v\00o\00t\00e\00r\00")
+ (data (i32.const 3856) "\16\00\00\00r\00e\00t\00u\00r\00n\00 \00d\00e\00p\00o\00s\00i\00t\00e\00d\00 \00m\00o\00n\00e\00y\00")
+ (data (i32.const 3904) "\06\00\00\00a\00c\00t\00i\00v\00e\00")
  (data (i32.const 3920) "\00\00\00\00\00\00\00\00")
  (data (i32.const 3928) "P\0f\00\00\00\00\00\00")
- (data (i32.const 3936) "\06\00\00\00r\00e\00d\00e\00e\00m\00")
- (data (i32.const 3952) "!\00\00\00c\00a\00n\00n\00o\00t\00 \00r\00e\00d\00e\00e\00m\00 \00n\00o\00n\00-\00e\00x\00i\00s\00t\00i\00n\00g\00 \00v\00o\00t\00e\00r\00.\00")
- (data (i32.const 4024) "3\00\00\00c\00a\00n\00 \00n\00o\00t\00 \00e\00r\00a\00s\00e\00 \00o\00b\00j\00e\00c\00t\00s\00 \00i\00n\00 \00t\00a\00b\00l\00e\00 \00o\00f\00 \00a\00n\00o\00t\00h\00e\00r\00 \00c\00o\00n\00t\00r\00a\00c\00t\00.\00")
- (data (i32.const 4136) "S\00\00\00c\00a\00n\00n\00o\00t\00 \00r\00e\00d\00e\00e\00m\00 \00d\00e\00p\00o\00s\00i\00t\00,\00 \00y\00o\00u\00 \00m\00u\00s\00t\00 \00w\00a\00i\00t\00 \00f\00o\00r\00 \00s\00o\00m\00e\00 \00b\00l\00o\00c\00k\00s\00 \00g\00e\00n\00e\00r\00a\00t\00e\00d\00 \00o\00r\00 \00u\00n\00r\00e\00g\00i\00s\00t\00e\00r\00 \00f\00i\00r\00s\00t\00.\00")
- (data (i32.const 4312) "\04\00\00\00v\00o\00t\00e\00")
- (data (i32.const 4328) "\1c\00\00\00T\00h\00e\00 \00c\00u\00r\00r\00e\00n\00t\00 \00b\00l\00o\00c\00k\00 \00n\00u\00m\00b\00e\00r\00 \00i\00s\00 \00")
- (data (i32.const 4392) "\1e\00\00\00.\00 \00T\00h\00e\00 \00v\00o\00t\00e\00 \00s\00e\00e\00d\00 \00b\00l\00o\00c\00k\00 \00n\00u\00m\00b\00e\00r\00:\00 \00")
- (data (i32.const 4456) "\0d\00\00\00 \00h\00a\00s\00 \00e\00x\00p\00i\00r\00e\00d\00.\00")
- (data (i32.const 4488) "\08\00\00\00a\00c\00c\00o\00u\00n\00t\00s\00")
- (data (i32.const 4512) "\0b\00\00\00b\00o\00n\00u\00s\00 \00m\00o\00n\00e\00y\00")
- (data (i32.const 4544) " \00\00\00.\001\002\003\004\005\00a\00b\00c\00d\00e\00f\00g\00h\00i\00j\00k\00l\00m\00n\00o\00p\00q\00r\00s\00t\00u\00v\00w\00x\00y\00z\00")
- (data (i32.const 4616) "\0d\00\00\00\00\00\00\00.............\00\00\00\00\00\00\00\00\00\00\00")
- (data (i32.const 4648) "\08\12\00\00\0d\00\00\00")
- (data (i32.const 4656) "@\00\00\00 \00h\00a\00d\00 \00a\00l\00r\00e\00a\00d\00y\00 \00s\00u\00b\00m\00i\00t\00t\00e\00d\00 \00t\00h\00e\00 \00v\00o\00t\00e\00,\00 \00p\00l\00e\00a\00s\00e\00 \00w\00a\00i\00t\00 \00f\00o\00r\00 \00t\00h\00e\00 \00n\00e\00x\00t\00 \00r\00o\00u\00n\00d\00.\00")
- (data (i32.const 4792) "-\00\00\00T\00h\00e\00 \00r\00a\00n\00d\00o\00m\00 \00o\00f\00 \00b\00l\00o\00c\00k\00 \00h\00e\00i\00g\00h\00t\00 \00h\00a\00s\00 \00n\00o\00t\00 \00g\00e\00n\00e\00r\00a\00t\00e\00d\00.\00")
- (data (i32.const 4888) "\03\00\00\00h\00e\00x\00")
- (data (i32.const 4904) "!\00\00\00p\00l\00e\00a\00s\00e\00 \00p\00r\00o\00v\00i\00d\00e\00 \00a\00 \00v\00a\00l\00i\00d\00 \00V\00R\00F\00 \00p\00r\00o\00o\00f\00.\00")
- (data (i32.const 4976) "\04\00\00\00Y\00o\00u\00 \00")
- (data (i32.const 4992) "\1d\00\00\00 \00s\00h\00o\00u\00l\00d\00 \00b\00e\00 \00a\00 \00c\00a\00n\00d\00i\00d\00a\00t\00e\00 \00f\00i\00r\00s\00t\00.\00")
- (data (i32.const 5056) "\n\00\00\00T\00h\00e\00 \00v\00o\00t\00e\00r\00 \00")
- (data (i32.const 5080) "\17\00\00\00 \00s\00t\00a\00t\00u\00s\00 \00i\00s\00 \00n\00o\00t\00 \00v\00o\00t\00a\00b\00l\00e\00.\00")
- (data (i32.const 5136) "C\00\00\00T\00h\00e\00 \00w\00a\00i\00t\00e\00r\00 \00s\00h\00o\00u\00l\00d\00 \00v\00o\00t\00e\00 \00t\00h\00e\00 \00n\00e\00x\00t\00 \00t\00w\00o\00 \00b\00l\00o\00c\00k\00 \00p\00e\00r\00i\00o\00d\00 \00a\00f\00t\00e\00r\00 \00t\00h\00e\00 \00b\00l\00o\00c\00k\00N\00u\00m\00")
- (data (i32.const 5280) "G\00\00\00Y\00o\00u\00 \00h\00a\00d\00 \00a\00l\00r\00e\00a\00d\00y\00 \00s\00u\00b\00m\00i\00t\00t\00e\00d\00 \00t\00h\00e\00 \00v\00o\00t\00e\00,\00 \00y\00o\00u\00 \00s\00h\00o\00u\00l\00d\00 \00w\00a\00i\00t\00 \00f\00o\00r\00 \00t\00h\00e\00 \00n\00e\00x\00t\00 \00r\00o\00u\00n\00d\00.\00")
- (data (i32.const 5432) "\16\00\00\00Y\00o\00u\00r\00 \00v\00o\00t\00e\00 \00w\00a\00s\00 \00e\00x\00p\00i\00r\00e\00d\00.\00")
- (data (i32.const 5480) "\0f\00\00\00g\00e\00t\00M\00a\00i\00n\00V\00o\00t\00e\00I\00n\00f\00o\00")
- (data (i32.const 5520) "9\00\00\00C\00u\00r\00r\00e\00n\00t\00l\00y\00 \00t\00h\00e\00 \00b\00l\00o\00c\00k\00 \00n\00u\00m\00b\00e\00r\00 \00o\00f\00 \00t\00h\00e\00 \00r\00a\00n\00d\00 \00s\00h\00o\00u\00l\00d\00 \00b\00e\00 \00b\00e\00t\00w\00e\00e\00n\00 \00")
- (data (i32.const 5640) "\05\00\00\00 \00a\00n\00d\00 \00")
- (data (i32.const 5656) "\90\01\00\00\00\00\00\000\000\000\001\000\002\000\003\000\004\000\005\000\006\000\007\000\008\000\009\001\000\001\001\001\002\001\003\001\004\001\005\001\006\001\007\001\008\001\009\002\000\002\001\002\002\002\003\002\004\002\005\002\006\002\007\002\008\002\009\003\000\003\001\003\002\003\003\003\004\003\005\003\006\003\007\003\008\003\009\004\000\004\001\004\002\004\003\004\004\004\005\004\006\004\007\004\008\004\009\005\000\005\001\005\002\005\003\005\004\005\005\005\006\005\007\005\008\005\009\006\000\006\001\006\002\006\003\006\004\006\005\006\006\006\007\006\008\006\009\007\000\007\001\007\002\007\003\007\004\007\005\007\006\007\007\007\008\007\009\008\000\008\001\008\002\008\003\008\004\008\005\008\006\008\007\008\008\008\009\009\000\009\001\009\002\009\003\009\004\009\005\009\006\009\007\009\008\009\009\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
- (data (i32.const 6168) "\18\16\00\00d\00\00\00")
- (data (i32.const 6176) "\05\00\00\00q\00u\00e\00r\00y\00")
- (data (i32.const 6192) "\08\00\00\00q\00u\00e\00r\00y\00B\00c\00k\00")
- (data (i32.const 6216) "\07\00\00\00o\00n\00e\00r\00r\00o\00r\00")
+ (data (i32.const 3936) "\00\00\00\00\00\00\00\00")
+ (data (i32.const 3944) "`\0f\00\00\00\00\00\00")
+ (data (i32.const 3952) "\06\00\00\00r\00e\00d\00e\00e\00m\00")
+ (data (i32.const 3968) "!\00\00\00c\00a\00n\00n\00o\00t\00 \00r\00e\00d\00e\00e\00m\00 \00n\00o\00n\00-\00e\00x\00i\00s\00t\00i\00n\00g\00 \00v\00o\00t\00e\00r\00.\00")
+ (data (i32.const 4040) "3\00\00\00c\00a\00n\00 \00n\00o\00t\00 \00e\00r\00a\00s\00e\00 \00o\00b\00j\00e\00c\00t\00s\00 \00i\00n\00 \00t\00a\00b\00l\00e\00 \00o\00f\00 \00a\00n\00o\00t\00h\00e\00r\00 \00c\00o\00n\00t\00r\00a\00c\00t\00.\00")
+ (data (i32.const 4152) "S\00\00\00c\00a\00n\00n\00o\00t\00 \00r\00e\00d\00e\00e\00m\00 \00d\00e\00p\00o\00s\00i\00t\00,\00 \00y\00o\00u\00 \00m\00u\00s\00t\00 \00w\00a\00i\00t\00 \00f\00o\00r\00 \00s\00o\00m\00e\00 \00b\00l\00o\00c\00k\00s\00 \00g\00e\00n\00e\00r\00a\00t\00e\00d\00 \00o\00r\00 \00u\00n\00r\00e\00g\00i\00s\00t\00e\00r\00 \00f\00i\00r\00s\00t\00.\00")
+ (data (i32.const 4328) "\04\00\00\00v\00o\00t\00e\00")
+ (data (i32.const 4344) "\1c\00\00\00T\00h\00e\00 \00c\00u\00r\00r\00e\00n\00t\00 \00b\00l\00o\00c\00k\00 \00n\00u\00m\00b\00e\00r\00 \00i\00s\00 \00")
+ (data (i32.const 4408) "\1e\00\00\00.\00 \00T\00h\00e\00 \00v\00o\00t\00e\00 \00s\00e\00e\00d\00 \00b\00l\00o\00c\00k\00 \00n\00u\00m\00b\00e\00r\00:\00 \00")
+ (data (i32.const 4472) "\0d\00\00\00 \00h\00a\00s\00 \00e\00x\00p\00i\00r\00e\00d\00.\00")
+ (data (i32.const 4504) "\08\00\00\00a\00c\00c\00o\00u\00n\00t\00s\00")
+ (data (i32.const 4528) "\0b\00\00\00b\00o\00n\00u\00s\00 \00m\00o\00n\00e\00y\00")
+ (data (i32.const 4560) " \00\00\00.\001\002\003\004\005\00a\00b\00c\00d\00e\00f\00g\00h\00i\00j\00k\00l\00m\00n\00o\00p\00q\00r\00s\00t\00u\00v\00w\00x\00y\00z\00")
+ (data (i32.const 4632) "\0d\00\00\00\00\00\00\00.............\00\00\00\00\00\00\00\00\00\00\00")
+ (data (i32.const 4664) "\18\12\00\00\0d\00\00\00")
+ (data (i32.const 4672) "@\00\00\00 \00h\00a\00d\00 \00a\00l\00r\00e\00a\00d\00y\00 \00s\00u\00b\00m\00i\00t\00t\00e\00d\00 \00t\00h\00e\00 \00v\00o\00t\00e\00,\00 \00p\00l\00e\00a\00s\00e\00 \00w\00a\00i\00t\00 \00f\00o\00r\00 \00t\00h\00e\00 \00n\00e\00x\00t\00 \00r\00o\00u\00n\00d\00.\00")
+ (data (i32.const 4808) "-\00\00\00T\00h\00e\00 \00r\00a\00n\00d\00o\00m\00 \00o\00f\00 \00b\00l\00o\00c\00k\00 \00h\00e\00i\00g\00h\00t\00 \00h\00a\00s\00 \00n\00o\00t\00 \00g\00e\00n\00e\00r\00a\00t\00e\00d\00.\00")
+ (data (i32.const 4904) "\03\00\00\00h\00e\00x\00")
+ (data (i32.const 4920) "!\00\00\00p\00l\00e\00a\00s\00e\00 \00p\00r\00o\00v\00i\00d\00e\00 \00a\00 \00v\00a\00l\00i\00d\00 \00V\00R\00F\00 \00p\00r\00o\00o\00f\00.\00")
+ (data (i32.const 4992) "\04\00\00\00Y\00o\00u\00 \00")
+ (data (i32.const 5008) "\1d\00\00\00 \00s\00h\00o\00u\00l\00d\00 \00b\00e\00 \00a\00 \00c\00a\00n\00d\00i\00d\00a\00t\00e\00 \00f\00i\00r\00s\00t\00.\00")
+ (data (i32.const 5072) "\n\00\00\00T\00h\00e\00 \00v\00o\00t\00e\00r\00 \00")
+ (data (i32.const 5096) "\17\00\00\00 \00s\00t\00a\00t\00u\00s\00 \00i\00s\00 \00n\00o\00t\00 \00v\00o\00t\00a\00b\00l\00e\00.\00")
+ (data (i32.const 5152) "C\00\00\00T\00h\00e\00 \00w\00a\00i\00t\00e\00r\00 \00s\00h\00o\00u\00l\00d\00 \00v\00o\00t\00e\00 \00t\00h\00e\00 \00n\00e\00x\00t\00 \00t\00w\00o\00 \00b\00l\00o\00c\00k\00 \00p\00e\00r\00i\00o\00d\00 \00a\00f\00t\00e\00r\00 \00t\00h\00e\00 \00b\00l\00o\00c\00k\00N\00u\00m\00")
+ (data (i32.const 5296) "G\00\00\00Y\00o\00u\00 \00h\00a\00d\00 \00a\00l\00r\00e\00a\00d\00y\00 \00s\00u\00b\00m\00i\00t\00t\00e\00d\00 \00t\00h\00e\00 \00v\00o\00t\00e\00,\00 \00y\00o\00u\00 \00s\00h\00o\00u\00l\00d\00 \00w\00a\00i\00t\00 \00f\00o\00r\00 \00t\00h\00e\00 \00n\00e\00x\00t\00 \00r\00o\00u\00n\00d\00.\00")
+ (data (i32.const 5448) "\16\00\00\00Y\00o\00u\00r\00 \00v\00o\00t\00e\00 \00w\00a\00s\00 \00e\00x\00p\00i\00r\00e\00d\00.\00")
+ (data (i32.const 5496) "\0f\00\00\00g\00e\00t\00M\00a\00i\00n\00V\00o\00t\00e\00I\00n\00f\00o\00")
+ (data (i32.const 5536) "9\00\00\00C\00u\00r\00r\00e\00n\00t\00l\00y\00 \00t\00h\00e\00 \00b\00l\00o\00c\00k\00 \00n\00u\00m\00b\00e\00r\00 \00o\00f\00 \00t\00h\00e\00 \00r\00a\00n\00d\00 \00s\00h\00o\00u\00l\00d\00 \00b\00e\00 \00b\00e\00t\00w\00e\00e\00n\00 \00")
+ (data (i32.const 5656) "\05\00\00\00 \00a\00n\00d\00 \00")
+ (data (i32.const 5672) "\90\01\00\00\00\00\00\000\000\000\001\000\002\000\003\000\004\000\005\000\006\000\007\000\008\000\009\001\000\001\001\001\002\001\003\001\004\001\005\001\006\001\007\001\008\001\009\002\000\002\001\002\002\002\003\002\004\002\005\002\006\002\007\002\008\002\009\003\000\003\001\003\002\003\003\003\004\003\005\003\006\003\007\003\008\003\009\004\000\004\001\004\002\004\003\004\004\004\005\004\006\004\007\004\008\004\009\005\000\005\001\005\002\005\003\005\004\005\005\005\006\005\007\005\008\005\009\006\000\006\001\006\002\006\003\006\004\006\005\006\006\006\007\006\008\006\009\007\000\007\001\007\002\007\003\007\004\007\005\007\006\007\007\007\008\007\009\008\000\008\001\008\002\008\003\008\004\008\005\008\006\008\007\008\008\008\009\009\000\009\001\009\002\009\003\009\004\009\005\009\006\009\007\009\008\009\009\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
+ (data (i32.const 6184) "(\16\00\00d\00\00\00")
+ (data (i32.const 6192) "\05\00\00\00q\00u\00e\00r\00y\00")
+ (data (i32.const 6208) "\08\00\00\00q\00u\00e\00r\00y\00B\00c\00k\00")
+ (data (i32.const 6232) "\07\00\00\00v\00e\00r\00s\00i\00o\00n\00")
+ (data (i32.const 6256) "\07\00\00\00o\00n\00e\00r\00r\00o\00r\00")
  (table $0 2 funcref)
  (elem (i32.const 0) $null $contract/ultrainio.rand/RandContract#unregister~anonymous|0)
  (global $~lib/allocator/arena/startOffset (mut i32) (i32.const 0))
@@ -283,10 +285,11 @@
  (global $contract/lib/random.lib/sha256 (mut i32) (i32.const 0))
  (global $contract/ultrainio.rand/WAITER_DEPOSIT_AMOUNT (mut i32) (i32.const 0))
  (global $contract/ultrainio.rand/WAITER_NUM i64 (i64.const 100))
+ (global $contract/ultrainio.rand/VERSION i32 (i32.const 2976))
  (global $~lib/datastream/HEADER_SIZE i32 (i32.const 4))
  (global $~lib/ASC_SHRINK_LEVEL i32 (i32.const 0))
  (global $~lib/argc (mut i32) (i32.const 0))
- (global $~lib/memory/HEAP_BASE i32 (i32.const 6236))
+ (global $~lib/memory/HEAP_BASE i32 (i32.const 6276))
  (export "memory" (memory $0))
  (export "table" (table $0))
  (export "apply" (func $contract/ultrainio.rand/apply))
@@ -4820,7 +4823,7 @@
   i32.const 0
   i32.eq
   if
-   i32.const 2976
+   i32.const 2992
    local.set $1
   end
   local.get $0
@@ -4837,7 +4840,7 @@
   i32.const 0
   i32.eq
   if
-   i32.const 2992
+   i32.const 3008
    return
   end
   local.get $4
@@ -4861,7 +4864,7 @@
   local.get $0
   i32.eqz
   if
-   i32.const 2976
+   i32.const 2992
    local.set $0
   end
   local.get $0
@@ -5193,7 +5196,7 @@
    i32.eqz
   end
   if
-   i32.const 2992
+   i32.const 3008
    return
   end
   local.get $1
@@ -5323,7 +5326,7 @@
   i32.load
   i32.ge_u
   if
-   i32.const 2992
+   i32.const 3008
    return
   end
   i32.const 1
@@ -5344,7 +5347,7 @@
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
-  i32.const 2992
+  i32.const 3008
   local.set $2
   block $break|0
    i32.const 0
@@ -5488,7 +5491,7 @@
   local.get $3
   i32.eqz
   if
-   i32.const 2992
+   i32.const 3008
    return
   end
   local.get $8
@@ -6278,7 +6281,7 @@
   local.tee $3
   if (result i32)
    local.get $2
-   i32.const 3056
+   i32.const 3072
    call $~lib/ultrain-ts-lib/lib/name_ex/NEX
    call $~lib/ultrain-ts-lib/lib/name_ex/NameEx._neq
   else   
@@ -6289,13 +6292,13 @@
    local.get $3
   else   
    local.get $1
-   i32.const 3080
+   i32.const 3096
    call $~lib/ultrain-ts-lib/src/account/NAME
    i64.eq
    local.tee $3
    if (result i32)
     local.get $2
-    i32.const 3056
+    i32.const 3072
     call $~lib/ultrain-ts-lib/lib/name_ex/NEX
     call $~lib/ultrain-ts-lib/lib/name_ex/NameEx._eq
    else    
@@ -6444,7 +6447,7 @@
   i32.const 1
   i32.lt_u
   if
-   i32.const 2992
+   i32.const 3008
    return
   end
   i32.const 0
@@ -6757,7 +6760,7 @@
   i32.const 0
   i32.eq
   if
-   i32.const 2992
+   i32.const 3008
    return
   end
   i32.const 0
@@ -7098,13 +7101,13 @@
   local.get $2
   i32.const 0
   i32.ge_s
-  i32.const 3432
+  i32.const 3448
   call $~lib/env/ultrain_assert
   local.get $0
   i64.load offset=8
   call $~lib/env/current_receiver
   i64.eq
-  i32.const 3552
+  i32.const 3568
   call $~lib/env/ultrain_assert
   local.get $1
   call $~lib/datastream/DataStream.measure<Waiter>
@@ -7310,13 +7313,13 @@
   local.get $2
   i32.const 0
   i32.ge_s
-  i32.const 3432
+  i32.const 3448
   call $~lib/env/ultrain_assert
   local.get $0
   i64.load offset=8
   call $~lib/env/current_receiver
   i64.eq
-  i32.const 3552
+  i32.const 3568
   call $~lib/env/ultrain_assert
   local.get $1
   call $~lib/datastream/DataStream.measure<Config>
@@ -7433,7 +7436,7 @@
   if
    return
   end
-  i32.const 3112
+  i32.const 3128
   local.set $4
   local.get $3
   local.get $4
@@ -7446,7 +7449,7 @@
   local.get $1
   call $~lib/dbmanager/DBManager<Voter>#exists
   i32.eqz
-  i32.const 3160
+  i32.const 3176
   call $~lib/env/ultrain_assert
   local.get $2
   global.get $contract/ultrainio.rand/WAITER_DEPOSIT_AMOUNT
@@ -7454,7 +7457,7 @@
   i32.eqz
   if
    i32.const 0
-   i32.const 3224
+   i32.const 3240
    call $~lib/env/ultrain_assert
   end
   i32.const 0
@@ -7484,7 +7487,7 @@
   global.get $contract/ultrainio.rand/WAITER_NUM
   i32.wrap_i64
   i32.le_s
-  i32.const 3344
+  i32.const 3360
   global.get $contract/ultrainio.rand/WAITER_NUM
   i32.const 0
   call $~lib/ultrain-ts-lib/src/utils/intToString
@@ -7850,10 +7853,10 @@
   call $~lib/ultrain-ts-lib/lib/name_ex/NameEx#constructor
   i32.store offset=8
   local.get $0
-  i32.const 3912
+  i32.const 3928
   i32.store offset=12
   local.get $0
-  i32.const 3928
+  i32.const 3944
   i32.store offset=16
   local.get $0
  )
@@ -8691,7 +8694,7 @@
   local.get $0
   i64.store
   local.get $4
-  i32.const 3888
+  i32.const 3904
   call $~lib/ultrain-ts-lib/src/account/NAME
   i64.store offset=8
   i32.const 0
@@ -8701,7 +8704,7 @@
   local.get $3
   call $~lib/ultrain-ts-lib/src/action/TransferParams#constructor
   local.set $5
-  i32.const 3056
+  i32.const 3072
   call $~lib/ultrain-ts-lib/src/action/ACTION
   call $~lib/ultrain-ts-lib/src/action/Action#get:code
   local.set $6
@@ -8716,7 +8719,7 @@
    call $~lib/array/Array<PermissionLevel>#__unchecked_set
    local.get $7
   end
-  i32.const 3080
+  i32.const 3096
   call $~lib/ultrain-ts-lib/src/account/NAME
   local.get $6
   local.get $5
@@ -8835,13 +8838,13 @@
   local.get $2
   i32.const 0
   i32.ge_s
-  i32.const 3432
+  i32.const 3448
   call $~lib/env/ultrain_assert
   local.get $0
   i64.load offset=8
   call $~lib/env/current_receiver
   i64.eq
-  i32.const 3552
+  i32.const 3568
   call $~lib/env/ultrain_assert
   local.get $1
   call $~lib/datastream/DataStream.measure<Voter>
@@ -8876,7 +8879,7 @@
   i32.load offset=12
   call $~lib/ultrain-ts-lib/src/action/Action.sender.get:sender
   call $~lib/dbmanager/DBManager<Voter>#exists
-  i32.const 3688
+  i32.const 3704
   call $~lib/env/ultrain_assert
   i32.const 0
   call $contract/lib/random.lib/Voter#constructor
@@ -8890,7 +8893,7 @@
   local.get $1
   call $contract/lib/random.lib/Voter#isUnregister
   i32.eqz
-  i32.const 3768
+  i32.const 3784
   call $~lib/env/ultrain_assert
   local.get $1
   call $contract/lib/random.lib/Voter#isUnregister
@@ -8899,7 +8902,7 @@
    call $~lib/ultrain-ts-lib/src/contract/Contract#get:receiver
    call $~lib/ultrain-ts-lib/src/action/Action.sender.get:sender
    global.get $contract/ultrainio.rand/WAITER_DEPOSIT_AMOUNT
-   i32.const 3840
+   i32.const 3856
    call $~lib/ultrain-ts-lib/src/asset/Asset.transfer
    local.get $0
    i32.load offset=24
@@ -8965,7 +8968,7 @@
   i64.load offset=8
   call $~lib/env/current_receiver
   i64.eq
-  i32.const 4024
+  i32.const 4040
   call $~lib/env/ultrain_assert
   local.get $0
   local.get $1
@@ -8987,7 +8990,7 @@
   i32.load offset=12
   call $~lib/ultrain-ts-lib/src/action/Action.sender.get:sender
   call $~lib/dbmanager/DBManager<Voter>#exists
-  i32.const 3952
+  i32.const 3968
   call $~lib/env/ultrain_assert
   i32.const 0
   call $contract/lib/random.lib/Voter#constructor
@@ -9009,7 +9012,7 @@
    i64.load offset=16
    i64.const 357577479428
    call $~lib/ultrain-ts-lib/src/asset/Asset#constructor
-   i32.const 3840
+   i32.const 3856
    call $~lib/ultrain-ts-lib/src/asset/Asset.transfer
    local.get $0
    i32.load offset=12
@@ -9017,7 +9020,7 @@
    call $~lib/dbmanager/DBManager<Voter>#erase
   else   
    i32.const 0
-   i32.const 4136
+   i32.const 4152
    call $~lib/env/ultrain_assert
   end
  )
@@ -9141,13 +9144,13 @@
   local.get $2
   i32.const 0
   i32.ge_s
-  i32.const 3432
+  i32.const 3448
   call $~lib/env/ultrain_assert
   local.get $0
   i64.load offset=8
   call $~lib/env/current_receiver
   i64.eq
-  i32.const 3552
+  i32.const 3568
   call $~lib/env/ultrain_assert
   local.get $1
   call $~lib/datastream/DataStream.measure<RandRecord>
@@ -9221,7 +9224,7 @@
   i64.load offset=8
   call $~lib/env/current_receiver
   i64.eq
-  i32.const 4024
+  i32.const 4040
   call $~lib/env/ultrain_assert
   local.get $0
   local.get $1
@@ -9299,7 +9302,240 @@
    call $~lib/dbmanager/DBManager<RandRecord>#modify
   end
  )
- (func $contract/lib/random.lib/Random#saveAndClearPartRands (; 248 ;) (type $FUNCSIG$vijji) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32)
+ (func $contract/lib/random.lib/VoteHistory#deserialize (; 248 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+  local.get $0
+  local.get $1
+  call $~lib/datastream/DataStream#read<u64>
+  i64.store
+  local.get $0
+  local.get $1
+  call $~lib/datastream/DataStream#readVector<u64>
+  i32.store offset=8
+ )
+ (func $~lib/dbmanager/DBManager<VoteHistory>#loadObjectByPrimaryIterator (; 249 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+  (local $3 i32)
+  (local $4 i32)
+  (local $5 i32)
+  local.get $1
+  i32.const 0
+  i32.const 0
+  call $~lib/env/db_get_i64
+  local.set $3
+  i32.const 0
+  local.get $3
+  call $~lib/typedarray/Uint8Array#constructor
+  local.set $4
+  i32.const 0
+  local.get $4
+  i32.load
+  local.get $3
+  call $~lib/datastream/DataStream#constructor
+  local.set $5
+  local.get $1
+  local.get $4
+  i32.load
+  local.get $3
+  call $~lib/env/db_get_i64
+  drop
+  local.get $2
+  local.get $5
+  call $contract/lib/random.lib/VoteHistory#deserialize
+ )
+ (func $~lib/dbmanager/DBManager<VoteHistory>#get (; 250 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+  (local $3 i32)
+  local.get $0
+  i64.load offset=8
+  local.get $0
+  i64.load offset=16
+  local.get $0
+  i64.load
+  local.get $1
+  call $~lib/env/db_find_i64
+  local.set $3
+  local.get $3
+  i32.const 0
+  i32.lt_s
+  if
+   i32.const 0
+   return
+  end
+  local.get $0
+  local.get $3
+  local.get $2
+  call $~lib/dbmanager/DBManager<VoteHistory>#loadObjectByPrimaryIterator
+  i32.const 1
+ )
+ (func $contract/lib/random.lib/Random#getVoteHstMinBckNum (; 251 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+  (local $1 i32)
+  i32.const 0
+  call $contract/lib/random.lib/VoteHistory#constructor
+  local.set $1
+  local.get $0
+  i32.load offset=20
+  i64.const 0
+  local.get $1
+  call $~lib/dbmanager/DBManager<VoteHistory>#get
+  drop
+  local.get $1
+  i32.load offset=8
+  i32.const 0
+  call $~lib/array/Array<u64>#__get
+ )
+ (func $~lib/dbmanager/DBManager<VoteHistory>#erase (; 252 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
+  (local $2 i32)
+  local.get $0
+  i64.load offset=8
+  call $~lib/env/current_receiver
+  i64.eq
+  i32.const 4040
+  call $~lib/env/ultrain_assert
+  local.get $0
+  local.get $1
+  call $~lib/dbmanager/DBManager<VoteHistory>#find
+  local.set $2
+  local.get $2
+  i32.const 0
+  i32.ge_s
+  if
+   local.get $2
+   call $~lib/env/db_remove_i64
+  else   
+   nop
+  end
+ )
+ (func $~lib/dbmanager/DBManager<VoteHistory>#modify (; 253 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+  (local $2 i32)
+  (local $3 i32)
+  (local $4 i32)
+  (local $5 i32)
+  local.get $0
+  local.get $1
+  call $contract/lib/random.lib/VoteHistory#primaryKey
+  call $~lib/dbmanager/DBManager<VoteHistory>#find
+  local.set $2
+  local.get $2
+  i32.const 0
+  i32.ge_s
+  i32.const 3448
+  call $~lib/env/ultrain_assert
+  local.get $0
+  i64.load offset=8
+  call $~lib/env/current_receiver
+  i64.eq
+  i32.const 3568
+  call $~lib/env/ultrain_assert
+  local.get $1
+  call $~lib/datastream/DataStream.measure<VoteHistory>
+  local.set $3
+  i32.const 0
+  local.get $3
+  call $~lib/typedarray/Uint8Array#constructor
+  local.set $4
+  i32.const 0
+  local.get $4
+  i32.load
+  local.get $3
+  call $~lib/datastream/DataStream#constructor
+  local.set $5
+  local.get $1
+  local.get $5
+  call $contract/lib/random.lib/VoteHistory#serialize
+  local.get $2
+  local.get $0
+  i64.load offset=8
+  local.get $5
+  i32.load
+  local.get $5
+  i32.load offset=8
+  call $~lib/env/db_update_i64
+ )
+ (func $contract/lib/random.lib/Random#clearMainVoteHst (; 254 ;) (type $FUNCSIG$vij) (param $0 i32) (param $1 i64)
+  (local $2 i64)
+  (local $3 i32)
+  (local $4 i64)
+  (local $5 i64)
+  (local $6 i32)
+  local.get $0
+  call $contract/lib/random.lib/Random#getVoteHstMinBckNum
+  local.set $2
+  i32.const 0
+  call $contract/lib/random.lib/VoteHistory#constructor
+  local.set $3
+  local.get $1
+  global.get $contract/lib/random.lib/CACHED_HST_COUNT
+  local.get $2
+  i64.add
+  i64.gt_u
+  if
+   local.get $1
+   global.get $contract/lib/random.lib/CACHED_HST_COUNT
+   i64.sub
+   local.get $2
+   i64.sub
+   local.set $4
+   local.get $4
+   i64.const 1000
+   i64.ge_u
+   if (result i64)
+    i64.const 1000
+   else    
+    local.get $4
+   end
+   local.set $5
+   block $break|0
+    i32.const 0
+    local.set $6
+    loop $repeat|0
+     local.get $6
+     local.get $5
+     i32.wrap_i64
+     i32.le_s
+     i32.eqz
+     br_if $break|0
+     local.get $0
+     i32.load offset=20
+     local.get $2
+     local.get $6
+     i64.extend_i32_s
+     i64.add
+     call $~lib/dbmanager/DBManager<VoteHistory>#exists
+     if
+      local.get $0
+      i32.load offset=20
+      local.get $2
+      local.get $6
+      i64.extend_i32_s
+      i64.add
+      call $~lib/dbmanager/DBManager<VoteHistory>#erase
+     end
+     local.get $6
+     i32.const 1
+     i32.add
+     local.set $6
+     br $repeat|0
+     unreachable
+    end
+    unreachable
+   end
+   local.get $3
+   i64.const 0
+   i64.store
+   local.get $3
+   i32.load offset=8
+   local.get $2
+   local.get $5
+   i64.add
+   i64.const 1
+   i64.add
+   call $~lib/array/Array<u64>#push
+   drop
+   local.get $0
+   i32.load offset=20
+   local.get $3
+   call $~lib/dbmanager/DBManager<VoteHistory>#modify
+  end
+ )
+ (func $contract/lib/random.lib/Random#saveAndClearPartRands (; 255 ;) (type $FUNCSIG$vijji) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32)
   (local $4 i32)
   i32.const 0
   call $contract/lib/random.lib/RandRecord#constructor
@@ -9327,8 +9563,11 @@
   local.get $0
   local.get $1
   call $contract/lib/random.lib/Random#clearPartRands
+  local.get $0
+  local.get $1
+  call $contract/lib/random.lib/Random#clearMainVoteHst
  )
- (func $contract/lib/random.lib/Random#getMainVoteVal (; 249 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $contract/lib/random.lib/Random#getMainVoteVal (; 256 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i64)
@@ -9388,7 +9627,7 @@
   i64.store
   local.get $7
  )
- (func $node_modules/ultrain-ts-lib/lib/name/char_to_symbol (; 250 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $node_modules/ultrain-ts-lib/lib/name/char_to_symbol (; 257 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   (local $1 i32)
   local.get $0
   i32.const 255
@@ -9444,7 +9683,7 @@
   end
   i64.const 0
  )
- (func $node_modules/ultrain-ts-lib/lib/name/N (; 251 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $node_modules/ultrain-ts-lib/lib/name/N (; 258 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   (local $1 i32)
   (local $2 i64)
   (local $3 i32)
@@ -9528,11 +9767,11 @@
   end
   local.get $2
  )
- (func $node_modules/ultrain-ts-lib/src/account/NAME (; 252 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $node_modules/ultrain-ts-lib/src/account/NAME (; 259 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   call $node_modules/ultrain-ts-lib/lib/name/N
  )
- (func $~lib/dbmanager/DBManager<CurrencyAccount>#constructor (; 253 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<CurrencyAccount>#constructor (; 260 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -9562,7 +9801,7 @@
   i64.store offset=16
   local.get $0
  )
- (func $~lib/dbmanager/DBManager.newInstance<CurrencyAccount> (; 254 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
+ (func $~lib/dbmanager/DBManager.newInstance<CurrencyAccount> (; 261 ;) (type $FUNCSIG$ijjj) (param $0 i64) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   i32.const 0
   local.get $0
@@ -9574,7 +9813,7 @@
   i64.store offset=8
   local.get $3
  )
- (func $node_modules/ultrain-ts-lib/lib/balance/CurrencyAccount#constructor (; 255 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
+ (func $node_modules/ultrain-ts-lib/lib/balance/CurrencyAccount#constructor (; 262 ;) (type $FUNCSIG$iii) (param $0 i32) (param $1 i32) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -9592,7 +9831,7 @@
   i32.store
   local.get $0
  )
- (func $node_modules/ultrain-ts-lib/src/asset/Asset#constructor (; 256 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $node_modules/ultrain-ts-lib/src/asset/Asset#constructor (; 263 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   block (result i32)
    local.get $0
    i32.eqz
@@ -9616,7 +9855,7 @@
   i64.store offset=8
   local.get $0
  )
- (func $node_modules/ultrain-ts-lib/src/asset/Asset#deserialize (; 257 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $node_modules/ultrain-ts-lib/src/asset/Asset#deserialize (; 264 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   local.get $1
   call $~lib/datastream/DataStream#read<u64>
@@ -9626,13 +9865,13 @@
   call $~lib/datastream/DataStream#read<u64>
   i64.store offset=8
  )
- (func $node_modules/ultrain-ts-lib/lib/balance/CurrencyAccount#deserialize (; 258 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $node_modules/ultrain-ts-lib/lib/balance/CurrencyAccount#deserialize (; 265 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $0
   i32.load
   local.get $1
   call $node_modules/ultrain-ts-lib/src/asset/Asset#deserialize
  )
- (func $~lib/dbmanager/DBManager<CurrencyAccount>#loadObjectByPrimaryIterator (; 259 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/dbmanager/DBManager<CurrencyAccount>#loadObjectByPrimaryIterator (; 266 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -9661,7 +9900,7 @@
   local.get $5
   call $node_modules/ultrain-ts-lib/lib/balance/CurrencyAccount#deserialize
  )
- (func $~lib/dbmanager/DBManager<CurrencyAccount>#get (; 260 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $~lib/dbmanager/DBManager<CurrencyAccount>#get (; 267 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   local.get $0
   i64.load offset=8
@@ -9685,13 +9924,13 @@
   call $~lib/dbmanager/DBManager<CurrencyAccount>#loadObjectByPrimaryIterator
   i32.const 1
  )
- (func $node_modules/ultrain-ts-lib/lib/balance/queryBalance (; 261 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
+ (func $node_modules/ultrain-ts-lib/lib/balance/queryBalance (; 268 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
-  i32.const 4488
+  i32.const 4504
   call $node_modules/ultrain-ts-lib/src/account/NAME
-  i32.const 3080
+  i32.const 3096
   call $node_modules/ultrain-ts-lib/src/account/NAME
   local.get $0
   call $~lib/dbmanager/DBManager.newInstance<CurrencyAccount>
@@ -9719,11 +9958,11 @@
    call $node_modules/ultrain-ts-lib/src/asset/Asset#constructor
   end
  )
- (func $node_modules/ultrain-ts-lib/src/asset/Asset#getAmount (; 262 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
+ (func $node_modules/ultrain-ts-lib/src/asset/Asset#getAmount (; 269 ;) (type $FUNCSIG$ji) (param $0 i32) (result i64)
   local.get $0
   i64.load
  )
- (func $contract/lib/random.lib/Random#canSendBonus (; 263 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Random#canSendBonus (; 270 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i64)
   global.get $contract/lib/random.lib/CONT_NAME
@@ -9741,7 +9980,7 @@
   i64.add
   i64.ge_u
  )
- (func $contract/lib/random.lib/Random#getWaiterVoteVal (; 264 ;) (type $FUNCSIG$iijji) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32) (result i32)
+ (func $contract/lib/random.lib/Random#getWaiterVoteVal (; 271 ;) (type $FUNCSIG$iijji) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i32) (result i32)
   (local $4 i32)
   (local $5 i32)
   (local $6 i32)
@@ -9876,7 +10115,7 @@
        global.get $contract/lib/random.lib/WAITER_BONUS
        i64.const 357577479428
        call $~lib/ultrain-ts-lib/src/asset/Asset#constructor
-       i32.const 4512
+       i32.const 4528
        call $~lib/ultrain-ts-lib/src/asset/Asset.transfer
       end
       br $break|0
@@ -9894,7 +10133,7 @@
   end
   local.get $10
  )
- (func $contract/lib/random.lib/RandRecord.calcCode (; 265 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
+ (func $contract/lib/random.lib/RandRecord.calcCode (; 272 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
   (local $3 i32)
   i32.const 0
   local.set $3
@@ -9927,7 +10166,7 @@
   end
   local.get $3
  )
- (func $contract/lib/random.lib/Random#generateRand (; 266 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
+ (func $contract/lib/random.lib/Random#generateRand (; 273 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i64)
@@ -10092,7 +10331,7 @@
   end
   local.get $4
  )
- (func $contract/ultrainio.rand/RandContract#triggerRandGenerate (; 267 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $contract/ultrainio.rand/RandContract#triggerRandGenerate (; 274 ;) (type $FUNCSIG$vi) (param $0 i32)
   (local $1 i32)
   call $~lib/ultrain-ts-lib/src/block/Block.number.get:number
   local.set $1
@@ -10112,7 +10351,7 @@
    drop
   end
  )
- (func $~lib/dbmanager/DBManager<Producer>#find (; 268 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Producer>#find (; 275 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   i64.load offset=8
@@ -10125,7 +10364,7 @@
   local.set $2
   local.get $2
  )
- (func $~lib/dbmanager/DBManager<Producer>#exists (; 269 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $~lib/dbmanager/DBManager<Producer>#exists (; 276 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i32)
   local.get $0
   local.get $1
@@ -10140,7 +10379,7 @@
    i32.const 1
   end
  )
- (func $~lib/dbmanager/Cursor<Producer>#constructor (; 270 ;) (type $FUNCSIG$iijjj) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i64) (result i32)
+ (func $~lib/dbmanager/Cursor<Producer>#constructor (; 277 ;) (type $FUNCSIG$iijjj) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i64) (result i32)
   (local $4 i64)
   local.get $1
   local.get $3
@@ -10183,7 +10422,7 @@
   i32.store offset=4
   local.get $0
  )
- (func $~lib/dbmanager/DBManager<Producer>#cursor (; 271 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/dbmanager/DBManager<Producer>#cursor (; 278 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   i32.const 0
   local.get $0
   i64.load offset=8
@@ -10193,11 +10432,11 @@
   i64.load offset=16
   call $~lib/dbmanager/Cursor<Producer>#constructor
  )
- (func $~lib/dbmanager/Cursor<Producer>#get:count (; 272 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/dbmanager/Cursor<Producer>#get:count (; 279 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.load offset=8
  )
- (func $contract/lib/random.lib/Random#isMainVoter (; 273 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $contract/lib/random.lib/Random#isMainVoter (; 280 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i64)
@@ -10233,116 +10472,7 @@
   i64.const 4
   i64.lt_u
  )
- (func $contract/lib/random.lib/VoteHistory#deserialize (; 274 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
-  local.get $0
-  local.get $1
-  call $~lib/datastream/DataStream#read<u64>
-  i64.store
-  local.get $0
-  local.get $1
-  call $~lib/datastream/DataStream#readVector<u64>
-  i32.store offset=8
- )
- (func $~lib/dbmanager/DBManager<VoteHistory>#loadObjectByPrimaryIterator (; 275 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
-  (local $3 i32)
-  (local $4 i32)
-  (local $5 i32)
-  local.get $1
-  i32.const 0
-  i32.const 0
-  call $~lib/env/db_get_i64
-  local.set $3
-  i32.const 0
-  local.get $3
-  call $~lib/typedarray/Uint8Array#constructor
-  local.set $4
-  i32.const 0
-  local.get $4
-  i32.load
-  local.get $3
-  call $~lib/datastream/DataStream#constructor
-  local.set $5
-  local.get $1
-  local.get $4
-  i32.load
-  local.get $3
-  call $~lib/env/db_get_i64
-  drop
-  local.get $2
-  local.get $5
-  call $contract/lib/random.lib/VoteHistory#deserialize
- )
- (func $~lib/dbmanager/DBManager<VoteHistory>#get (; 276 ;) (type $FUNCSIG$iiji) (param $0 i32) (param $1 i64) (param $2 i32) (result i32)
-  (local $3 i32)
-  local.get $0
-  i64.load offset=8
-  local.get $0
-  i64.load offset=16
-  local.get $0
-  i64.load
-  local.get $1
-  call $~lib/env/db_find_i64
-  local.set $3
-  local.get $3
-  i32.const 0
-  i32.lt_s
-  if
-   i32.const 0
-   return
-  end
-  local.get $0
-  local.get $3
-  local.get $2
-  call $~lib/dbmanager/DBManager<VoteHistory>#loadObjectByPrimaryIterator
-  i32.const 1
- )
- (func $~lib/dbmanager/DBManager<VoteHistory>#modify (; 277 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
-  (local $2 i32)
-  (local $3 i32)
-  (local $4 i32)
-  (local $5 i32)
-  local.get $0
-  local.get $1
-  call $contract/lib/random.lib/VoteHistory#primaryKey
-  call $~lib/dbmanager/DBManager<VoteHistory>#find
-  local.set $2
-  local.get $2
-  i32.const 0
-  i32.ge_s
-  i32.const 3432
-  call $~lib/env/ultrain_assert
-  local.get $0
-  i64.load offset=8
-  call $~lib/env/current_receiver
-  i64.eq
-  i32.const 3552
-  call $~lib/env/ultrain_assert
-  local.get $1
-  call $~lib/datastream/DataStream.measure<VoteHistory>
-  local.set $3
-  i32.const 0
-  local.get $3
-  call $~lib/typedarray/Uint8Array#constructor
-  local.set $4
-  i32.const 0
-  local.get $4
-  i32.load
-  local.get $3
-  call $~lib/datastream/DataStream#constructor
-  local.set $5
-  local.get $1
-  local.get $5
-  call $contract/lib/random.lib/VoteHistory#serialize
-  local.get $2
-  local.get $0
-  i64.load offset=8
-  local.get $5
-  i32.load
-  local.get $5
-  i32.load offset=8
-  call $~lib/env/db_update_i64
- )
- (func $contract/lib/random.lib/Random#isMainVoted (; 278 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
+ (func $contract/lib/random.lib/Random#isMainVoted (; 281 ;) (type $FUNCSIG$iijj) (param $0 i32) (param $1 i64) (param $2 i64) (result i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -10429,7 +10559,7 @@
   unreachable
   unreachable
  )
- (func $~lib/ultrain-ts-lib/lib/name/RN (; 279 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
+ (func $~lib/ultrain-ts-lib/lib/name/RN (; 282 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
   (local $1 i32)
   (local $2 i64)
   (local $3 i32)
@@ -10443,7 +10573,7 @@
    i32.const 136
    return
   end
-  i32.const 4648
+  i32.const 4664
   local.set $1
   local.get $0
   local.set $2
@@ -10469,7 +10599,7 @@
      i64.and
      i32.wrap_i64
      local.set $4
-     i32.const 4544
+     i32.const 4560
      local.get $4
      call $~lib/string/String#charCodeAt
      i32.const 255
@@ -10502,7 +10632,7 @@
    end
    unreachable
   end
-  i32.const 2992
+  i32.const 3008
   local.set $3
   i32.const 1
   local.set $5
@@ -10559,11 +10689,11 @@
   end
   local.get $3
  )
- (func $~lib/ultrain-ts-lib/src/account/RNAME (; 280 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
+ (func $~lib/ultrain-ts-lib/src/account/RNAME (; 283 ;) (type $FUNCSIG$ij) (param $0 i64) (result i32)
   local.get $0
   call $~lib/ultrain-ts-lib/lib/name/RN
  )
- (func $contract/ultrainio.rand/RandContract#getExistRand (; 281 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
+ (func $contract/ultrainio.rand/RandContract#getExistRand (; 284 ;) (type $FUNCSIG$jij) (param $0 i32) (param $1 i64) (result i64)
   (local $2 i32)
   i32.const 0
   call $contract/lib/random.lib/RandRecord#constructor
@@ -10572,7 +10702,7 @@
   i32.load offset=20
   local.get $1
   call $~lib/dbmanager/DBManager<RandRecord>#exists
-  i32.const 4792
+  i32.const 4808
   call $~lib/env/ultrain_assert
   local.get $0
   i32.load offset=20
@@ -10583,7 +10713,7 @@
   local.get $2
   i64.load offset=8
  )
- (func $~lib/ultrain-ts-lib/src/account/Account.publicKeyOf (; 282 ;) (type $FUNCSIG$iji) (param $0 i64) (param $1 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/account/Account.publicKeyOf (; 285 ;) (type $FUNCSIG$iji) (param $0 i64) (param $1 i32) (result i32)
   (local $2 i32)
   (local $3 i32)
   i32.const 0
@@ -10615,13 +10745,13 @@
    call $~lib/string/String.fromUTF8
    return
   else   
-   i32.const 2992
+   i32.const 3008
    return
   end
   unreachable
   unreachable
  )
- (func $~lib/ultrain-ts-lib/src/crypto/verify_with_pk (; 283 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
+ (func $~lib/ultrain-ts-lib/src/crypto/verify_with_pk (; 286 ;) (type $FUNCSIG$iiii) (param $0 i32) (param $1 i32) (param $2 i32) (result i32)
   (local $3 i32)
   local.get $0
   call $~lib/ultrain-ts-lib/src/utils/string2cstr
@@ -10640,7 +10770,7 @@
    i32.const 0
   end
  )
- (func $contract/ultrainio.rand/RandContract#getVrfVal (; 284 ;) (type $FUNCSIG$jiij) (param $0 i32) (param $1 i32) (param $2 i64) (result i64)
+ (func $contract/ultrainio.rand/RandContract#getVrfVal (; 287 ;) (type $FUNCSIG$jiij) (param $0 i32) (param $1 i32) (param $2 i64) (result i64)
   (local $3 i64)
   (local $4 i32)
   (local $5 i32)
@@ -10665,14 +10795,14 @@
   call $~lib/string/String#concat
   local.set $4
   call $~lib/ultrain-ts-lib/src/action/Action.sender.get:sender
-  i32.const 4888
+  i32.const 4904
   call $~lib/ultrain-ts-lib/src/account/Account.publicKeyOf
   local.set $5
   local.get $5
   local.get $1
   local.get $4
   call $~lib/ultrain-ts-lib/src/crypto/verify_with_pk
-  i32.const 4904
+  i32.const 4920
   local.get $5
   call $~lib/string/String.__concat
   i32.const 8
@@ -10704,13 +10834,13 @@
   local.set $8
   local.get $8
  )
- (func $contract/ultrainio.rand/RandContract#indexOf (; 285 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $contract/ultrainio.rand/RandContract#indexOf (; 288 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   local.get $1
   global.get $contract/lib/random.lib/EPOCH
   i64.rem_u
   i32.wrap_i64
  )
- (func $contract/ultrainio.rand/RandContract#mainVoterVote (; 286 ;) (type $FUNCSIG$vijij) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64)
+ (func $contract/ultrainio.rand/RandContract#mainVoterVote (; 289 ;) (type $FUNCSIG$vijij) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64)
   (local $4 i64)
   (local $5 i32)
   (local $6 i32)
@@ -10724,7 +10854,7 @@
    i32.const 0
    local.get $1
    call $~lib/ultrain-ts-lib/src/account/RNAME
-   i32.const 4656
+   i32.const 4672
    call $~lib/string/String.__concat
    call $~lib/env/ultrain_assert
   end
@@ -10787,7 +10917,7 @@
   local.get $6
   call $~lib/dbmanager/DBManager<Voter>#modify
  )
- (func $contract/lib/random.lib/Voter#votable (; 287 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Voter#votable (; 290 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   call $~lib/ultrain-ts-lib/src/block/Block.number.get:number
   i64.extend_i32_u
@@ -10806,7 +10936,7 @@
    local.get $1
   end
  )
- (func $contract/ultrainio.rand/RandContract#saveVoterVoteStatus (; 288 ;) (type $FUNCSIG$vijjj) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i64)
+ (func $contract/ultrainio.rand/RandContract#saveVoterVoteStatus (; 291 ;) (type $FUNCSIG$vijjj) (param $0 i32) (param $1 i64) (param $2 i64) (param $3 i64)
   (local $4 i32)
   (local $5 i32)
   (local $6 i32)
@@ -10846,7 +10976,7 @@
    i64.eq
    if
     i32.const 0
-    i32.const 5280
+    i32.const 5296
     call $~lib/env/ultrain_assert
    end
    local.get $0
@@ -10885,12 +11015,12 @@
     call $~lib/dbmanager/DBManager<Voter>#modify
    else    
     i32.const 0
-    i32.const 5432
+    i32.const 5448
     call $~lib/env/ultrain_assert
    end
   end
  )
- (func $contract/ultrainio.rand/RandContract#waiterVoterVote (; 289 ;) (type $FUNCSIG$vijij) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64)
+ (func $contract/ultrainio.rand/RandContract#waiterVoterVote (; 292 ;) (type $FUNCSIG$vijij) (param $0 i32) (param $1 i64) (param $2 i32) (param $3 i64)
   (local $4 i64)
   local.get $0
   call $contract/ultrainio.rand/RandContract#curtBckNum
@@ -10900,7 +11030,7 @@
   i64.gt_u
   if
    i32.const 0
-   i32.const 5136
+   i32.const 5152
    call $~lib/env/ultrain_assert
   end
   local.get $0
@@ -10914,7 +11044,7 @@
   local.get $4
   call $contract/ultrainio.rand/RandContract#saveVoterVoteStatus
  )
- (func $contract/ultrainio.rand/RandContract#vote (; 290 ;) (type $FUNCSIG$viij) (param $0 i32) (param $1 i32) (param $2 i64)
+ (func $contract/ultrainio.rand/RandContract#vote (; 293 ;) (type $FUNCSIG$viij) (param $0 i32) (param $1 i32) (param $2 i64)
   (local $3 i64)
   (local $4 i32)
   (local $5 i32)
@@ -10930,19 +11060,19 @@
   local.get $4
   i64.extend_i32_u
   i64.ge_u
-  i32.const 4328
+  i32.const 4344
   local.get $4
   i64.extend_i32_u
   i32.const 0
   call $~lib/ultrain-ts-lib/src/utils/intToString
   call $~lib/string/String.__concat
-  i32.const 4392
+  i32.const 4408
   call $~lib/string/String.__concat
   local.get $2
   i32.const 0
   call $~lib/ultrain-ts-lib/src/utils/intToString
   call $~lib/string/String.__concat
-  i32.const 4456
+  i32.const 4472
   call $~lib/string/String.__concat
   call $~lib/env/ultrain_assert
   local.get $0
@@ -10963,11 +11093,11 @@
    i32.load offset=12
    local.get $3
    call $~lib/dbmanager/DBManager<Voter>#exists
-   i32.const 4976
+   i32.const 4992
    local.get $3
    call $~lib/ultrain-ts-lib/src/account/RNAME
    call $~lib/string/String.__concat
-   i32.const 4992
+   i32.const 5008
    call $~lib/string/String.__concat
    call $~lib/env/ultrain_assert
    i32.const 0
@@ -10981,11 +11111,11 @@
    drop
    local.get $5
    call $contract/lib/random.lib/Voter#votable
-   i32.const 5056
+   i32.const 5072
    local.get $3
    call $~lib/ultrain-ts-lib/src/account/RNAME
    call $~lib/string/String.__concat
-   i32.const 5080
+   i32.const 5096
    call $~lib/string/String.__concat
    call $~lib/env/ultrain_assert
    local.get $0
@@ -10995,7 +11125,7 @@
    call $contract/ultrainio.rand/RandContract#waiterVoterVote
   end
  )
- (func $contract/lib/random.lib/Random#query (; 291 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $contract/lib/random.lib/Random#query (; 294 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   (local $2 i64)
   (local $3 i32)
   (local $4 i32)
@@ -11016,12 +11146,12 @@
   else   
    local.get $4
   end
-  i32.const 5520
+  i32.const 5536
   local.get $2
   i32.const 0
   call $~lib/ultrain-ts-lib/src/utils/intToString
   call $~lib/string/String.__concat
-  i32.const 5640
+  i32.const 5656
   call $~lib/string/String.__concat
   local.get $3
   i64.extend_i32_u
@@ -11034,7 +11164,7 @@
   i32.const 0
   call $contract/lib/random.lib/Random#generateRand
  )
- (func $contract/ultrainio.rand/RandContract#getMainVoteInfo (; 292 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/ultrainio.rand/RandContract#getMainVoteInfo (; 295 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   local.get $0
   i32.load offset=24
@@ -11058,7 +11188,7 @@
   i32.store offset=16
   local.get $1
  )
- (func $~lib/internal/number/decimalCount32 (; 293 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/internal/number/decimalCount32 (; 296 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   local.get $0
   i32.const 100000
@@ -11127,7 +11257,7 @@
   unreachable
   unreachable
  )
- (func $~lib/internal/number/utoa32_lut (; 294 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
+ (func $~lib/internal/number/utoa32_lut (; 297 ;) (type $FUNCSIG$viii) (param $0 i32) (param $1 i32) (param $2 i32)
   (local $3 i32)
   (local $4 i32)
   (local $5 i32)
@@ -11138,7 +11268,7 @@
   (local $10 i32)
   (local $11 i64)
   (local $12 i64)
-  i32.const 6168
+  i32.const 6184
   i32.load
   local.set $3
   block $break|0
@@ -11313,7 +11443,7 @@
    i32.store16 offset=4
   end
  )
- (func $~lib/internal/number/itoa32 (; 295 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/internal/number/itoa32 (; 298 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   (local $1 i32)
   (local $2 i32)
   (local $3 i32)
@@ -11365,16 +11495,16 @@
   end
   local.get $3
  )
- (func $~lib/internal/number/itoa<i32> (; 296 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/internal/number/itoa<i32> (; 299 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   call $~lib/internal/number/itoa32
   return
  )
- (func $~lib/number/I32#toString (; 297 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $~lib/number/I32#toString (; 300 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   call $~lib/internal/number/itoa<i32>
  )
- (func $contract/lib/random.lib/RandRecord#toString (; 298 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/RandRecord#toString (; 301 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i64.load
   i32.const 0
@@ -11393,45 +11523,57 @@
   call $~lib/number/I32#toString
   call $~lib/string/String.__concat
  )
- (func $~lib/ultrain-ts-lib/src/return/returnObj<RandRecord> (; 299 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/return/returnObj<RandRecord> (; 302 ;) (type $FUNCSIG$vi) (param $0 i32)
   local.get $0
   call $contract/lib/random.lib/RandRecord#toString
   call $~lib/ultrain-ts-lib/src/utils/string2cstr
   call $~lib/ultrain-ts-lib/src/return/env.set_result_str
  )
- (func $~lib/ultrain-ts-lib/src/return/Return<RandRecord> (; 300 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/return/Return<RandRecord> (; 303 ;) (type $FUNCSIG$vi) (param $0 i32)
   local.get $0
   call $~lib/ultrain-ts-lib/src/return/returnObj<RandRecord>
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#returnVal<RandRecord> (; 301 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#returnVal<RandRecord> (; 304 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
   local.get $1
   call $~lib/ultrain-ts-lib/src/return/Return<RandRecord>
  )
- (func $contract/lib/random.lib/Random#queryLatest (; 302 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/lib/random.lib/Random#queryLatest (; 305 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   call $~lib/ultrain-ts-lib/src/block/Block.number.get:number
   i64.extend_i32_u
   i32.const 0
   call $contract/lib/random.lib/Random#generateRand
  )
- (func $contract/ultrainio.rand/RandContract#query (; 303 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+ (func $contract/ultrainio.rand/RandContract#query (; 306 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
   local.get $0
   i32.load offset=24
   call $contract/lib/random.lib/Random#queryLatest
  )
- (func $contract/ultrainio.rand/RandContract#queryBck (; 304 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
+ (func $contract/ultrainio.rand/RandContract#queryBck (; 307 ;) (type $FUNCSIG$iij) (param $0 i32) (param $1 i64) (result i32)
   local.get $0
   i32.load offset=24
   local.get $1
   call $contract/lib/random.lib/Random#query
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#onError (; 305 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $contract/ultrainio.rand/RandContract#version (; 308 ;) (type $FUNCSIG$ii) (param $0 i32) (result i32)
+  global.get $contract/ultrainio.rand/VERSION
+ )
+ (func $~lib/ultrain-ts-lib/src/return/Return<String> (; 309 ;) (type $FUNCSIG$vi) (param $0 i32)
+  local.get $0
+  call $~lib/ultrain-ts-lib/src/utils/string2cstr
+  call $~lib/ultrain-ts-lib/src/return/env.set_result_str
+ )
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#returnVal<String> (; 310 ;) (type $FUNCSIG$vii) (param $0 i32) (param $1 i32)
+  local.get $1
+  call $~lib/ultrain-ts-lib/src/return/Return<String>
+ )
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#onError (; 311 ;) (type $FUNCSIG$vi) (param $0 i32)
   nop
  )
- (func $~lib/ultrain-ts-lib/src/contract/Contract#onStop (; 306 ;) (type $FUNCSIG$vi) (param $0 i32)
+ (func $~lib/ultrain-ts-lib/src/contract/Contract#onStop (; 312 ;) (type $FUNCSIG$vi) (param $0 i32)
   nop
  )
- (func $contract/ultrainio.rand/apply (; 307 ;) (type $FUNCSIG$vjjjj) (param $0 i64) (param $1 i64) (param $2 i64) (param $3 i64)
+ (func $contract/ultrainio.rand/apply (; 313 ;) (type $FUNCSIG$vjjjj) (param $0 i64) (param $1 i64) (param $2 i64) (param $3 i64)
   (local $4 i32)
   (local $5 i32)
   (local $6 i64)
@@ -11456,7 +11598,7 @@
    call $~lib/ultrain-ts-lib/src/contract/Contract#getDataStream
    local.set $5
    local.get $4
-   i32.const 3056
+   i32.const 3072
    call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
    if
     local.get $5
@@ -11484,21 +11626,21 @@
     call $contract/ultrainio.rand/RandContract#transfer
    end
    local.get $4
-   i32.const 3664
+   i32.const 3680
    call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
    if
     local.get $4
     call $contract/ultrainio.rand/RandContract#unregister
    end
    local.get $4
-   i32.const 3936
+   i32.const 3952
    call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
    if
     local.get $4
     call $contract/ultrainio.rand/RandContract#redeem
    end
    local.get $4
-   i32.const 4312
+   i32.const 4328
    call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
    if
     local.get $5
@@ -11513,7 +11655,7 @@
     call $contract/ultrainio.rand/RandContract#vote
    end
    local.get $4
-   i32.const 5480
+   i32.const 5496
    call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
    if
     local.get $4
@@ -11524,7 +11666,7 @@
     call $~lib/ultrain-ts-lib/src/contract/Contract#returnVal<RandRecord>
    end
    local.get $4
-   i32.const 6176
+   i32.const 6192
    call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
    if
     local.get $4
@@ -11535,7 +11677,7 @@
     call $~lib/ultrain-ts-lib/src/contract/Contract#returnVal<RandRecord>
    end
    local.get $4
-   i32.const 6192
+   i32.const 6208
    call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
    if
     local.get $5
@@ -11550,7 +11692,18 @@
     call $~lib/ultrain-ts-lib/src/contract/Contract#returnVal<RandRecord>
    end
    local.get $4
-   i32.const 6216
+   i32.const 6232
+   call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
+   if
+    local.get $4
+    call $contract/ultrainio.rand/RandContract#version
+    local.set $9
+    local.get $4
+    local.get $9
+    call $~lib/ultrain-ts-lib/src/contract/Contract#returnVal<String>
+   end
+   local.get $4
+   i32.const 6256
    call $~lib/ultrain-ts-lib/src/contract/Contract#isAction
    if
     local.get $4
@@ -11560,9 +11713,9 @@
    call $~lib/ultrain-ts-lib/src/contract/Contract#onStop
   end
  )
- (func $start (; 308 ;) (type $FUNCSIG$v)
+ (func $start (; 314 ;) (type $FUNCSIG$v)
   call $start:contract/ultrainio.rand
  )
- (func $null (; 309 ;) (type $FUNCSIG$v)
+ (func $null (; 315 ;) (type $FUNCSIG$v)
  )
 )

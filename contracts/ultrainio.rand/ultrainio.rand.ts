@@ -24,7 +24,8 @@ let WAITER_DEPOSIT_AMOUNT: Asset = new Asset(10000000);
 
 const WAITER_NUM: u64 = 100;
 // Version format, main.major.patch
-const VERSION: string = "0.0.1";
+const VERSION: string = "0.0.3";
+// Fix not clear voting history.
 
 @database(Voter, VOTER_TABLE)
 @database(Waiter, WAITER_TABLE)
