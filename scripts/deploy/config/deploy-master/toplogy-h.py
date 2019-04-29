@@ -88,7 +88,7 @@ def load_parameters():
 	print(allIDs)
 	print(allNames)
 	print(allIPs)
-	#print(allBsk)
+#print(allBsk)
 
 def get_offline_nodes():
 	offline_list = []
@@ -192,7 +192,8 @@ def write_config_file():
 
 		# add udp seed(except mongo)
 		if host.ip not in mongoHosts:
-			insert_udp_seed(fname,host.ip,seedHosts)
+			if productMode != True :
+				insert_udp_seed(fname,host.ip,seedHosts)
 			insert_world_state(fname)
 
 		# add mongo host info
@@ -201,10 +202,10 @@ def write_config_file():
 			insert_seed_peer_address(fname,host.ip,seedHosts);
 			insert_mongo_config(fname)
 
-	#print(host.ip,host.name,allAccounts[index_key-1][8:],allAsk[index_key-1][4:],allApk[index_key-1][4:])
-	#for peer in host.peers:
-	#	print(host.ip,peer)
-	#	insert_peer(fname,peer)
+#print(host.ip,host.name,allAccounts[index_key-1][8:],allAsk[index_key-1][4:],allApk[index_key-1][4:])
+#for peer in host.peers:
+#	print(host.ip,peer)
+#	insert_peer(fname,peer)
 
 def readfile(fname):
 	fileold = open(fname, "r")
@@ -222,12 +223,13 @@ def insert_genesis_time():
 	fname = "template.txt"
 	cmd = "cp %s %s" % (fname_orig, fname)
 	os.system(cmd)
-	content = readfile(fname)
-	after_time = (datetime.datetime.now()+datetime.timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M") + ":00"
-	newcontent = "genesis-time = %s\n" % after_time
-	index_line = content.index("#insert_genesis-time\n")
-	content.insert(index_line+1,newcontent)
-	writefile(fname,content)
+	if productMode != True :
+		content = readfile(fname)
+		after_time = (datetime.datetime.now()+datetime.timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M") + ":00"
+		newcontent = "genesis-time = %s\n" % after_time
+		index_line = content.index("#insert_genesis-time\n")
+		content.insert(index_line+1,newcontent)
+		writefile(fname,content)
 
 def insert_leader_sk(fname):
 	content = readfile(fname)

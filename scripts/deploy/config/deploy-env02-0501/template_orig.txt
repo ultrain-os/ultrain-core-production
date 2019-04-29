@@ -1,0 +1,59 @@
+http-server-address = 0.0.0.0:8888
+
+p2p-listen-endpoint = 0.0.0.0:20122
+rpos-p2p-listen-endpoint = 0.0.0.0:20123
+
+monitor-server-endpoint = http://172.17.0.209:8078
+
+allowed-connection = producers
+
+max-transaction-time = 1000
+contract-return-string-length = 512
+contract-emit-string-length = 512
+
+#insert_genesis-time
+genesis-time =2019-04-10T11:08:00.000
+
+#insert_peers
+
+#insert_udp_seeds
+
+
+# Optional public key of peer allowed to connect
+
+
+#insert_if_producing-node
+
+#insert_my_keys
+
+# print contract's output to console (ultrainio::chain_plugin)
+
+plugin = ultrainio::chain_info_api_plugin
+plugin = ultrainio::monitor_plugin
+
+min-connections = 8
+max-retry-count = 3
+# Please modify the list size according to producer count
+max-grey-list-size = 5
+
+
+#max-clients
+
+#mongo-config
+
+#world-state
+
+#chain_name
+chain-name=pioneer
+
+udp-seed=172.17.0.93
+udp-seed=172.17.0.138
+udp-seed=172.17.0.139
+udp-seed=172.17.0.140
+peer-key=UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y
+peer-key=UTR7Pmz6MkXLPfNXK4wFFCSQThecsVXpoggje27VTXgNFQy3eqNMr
+peer-key=UTR8Fc2qRTHdsm4ctW64Hfs46WEzFxdwAvqiVj47cJCpAkyDiomCZ
+peer-key=UTR6nUtnDxmAUwt188C5cdbW5LxS3NzZbChJhJmpznLka4wPkKazi
+peer-key=UTR62cmZyLq4Gn3uWcKk9yqRp52Yo1M1XBZLUn5HTWUcy8uNykwVf
+peer-key=UTR7B5H2mq1xdBx1LTicYTx5nkXypHcLwGCCoLCBnwkNSB1dfTbvj
+peer-key=UTR71HKR1X9ex149K715CJ3Qv2GcFZtAkaaQnw1toNE8RjAvgQrnx

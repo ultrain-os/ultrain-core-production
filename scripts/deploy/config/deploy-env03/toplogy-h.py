@@ -192,7 +192,8 @@ def write_config_file():
 
 		# add udp seed(except mongo)
 		if host.ip not in mongoHosts:
-			insert_udp_seed(fname,host.ip,seedHosts)
+			if productMode != True :
+				insert_udp_seed(fname,host.ip,seedHosts)
 			insert_world_state(fname)
 
 		# add mongo host info
@@ -222,12 +223,13 @@ def insert_genesis_time():
 	fname = "template.txt"
 	cmd = "cp %s %s" % (fname_orig, fname)
 	os.system(cmd)
-	content = readfile(fname)
-	after_time = (datetime.datetime.now()+datetime.timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M") + ":00"
-	newcontent = "genesis-time = %s\n" % after_time
-	index_line = content.index("#insert_genesis-time\n")
-	content.insert(index_line+1,newcontent)
-	writefile(fname,content)
+	if productMode != True :
+		content = readfile(fname)
+		after_time = (datetime.datetime.now()+datetime.timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M") + ":00"
+		newcontent = "genesis-time = %s\n" % after_time
+		index_line = content.index("#insert_genesis-time\n")
+		content.insert(index_line+1,newcontent)
+		writefile(fname,content)
 
 def insert_leader_sk(fname):
 	content = readfile(fname)
@@ -277,8 +279,6 @@ def insert_mongo_config(fname):
 	content.insert(index_line+2, "access-control-allow-origin = *\n");
 	content.insert(index_line+3, "mongodb-uri = mongodb://root:Uranus@127.0.0.1:27017/ultrain\n");
 	content.insert(index_line+4, "plugin = ultrainio::mongo_db_plugin\n");
-	content.insert(index_line+5, "plugin = ultrainio::history_api_plugin\n");
-
 	writefile(fname,content)
 
 def insert_udp_seed(fname,ip,seedHosts):
