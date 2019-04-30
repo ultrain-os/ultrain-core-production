@@ -25,7 +25,7 @@ maxBodySize = 2 * 1024 * 1024
 reward_tensecperiod = 10000
 reward_twosecperiod = 2000
 newaccount_fee = 2000
-max_ram_size = 12 * 1024 *1024 *1024
+max_ram_size = 30 * 1024 *1024 *1024  #The maximum ram is set to 30G
 worldstate_interval = 1000
 resourcelease_fee = 35068
 defaultclu = '%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
@@ -218,11 +218,12 @@ def stepRegProducers():
          # sidechain_charge_ratio = 3,
          # is_claim_reward = 4,
          #free_account_per_res = 5,
+         # version_number = 6,
     #};
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"], [2, "12"], [3, "1"], [4, "true"], [5, "50"]]}}\' -p ultrainio ' % \
+        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"], [2, "12"], [3, "1"], [4, "true"], [5, "50"], [6, "2"]]}}\' -p ultrainio ' % \
         (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
         newaccount_fee, args.subchain, worldstate_interval, resourcelease_fee) )
     sleep(5)
@@ -440,7 +441,6 @@ if local == True :
             adjustaccounts.append("user"+a)
     accounts = adjustaccounts
 
-os.remove(args.log_path)
 logFile = open(args.log_path, 'a')
 
 logFile.write('\n\n' + '*' * 80 + '\n\n\n')
