@@ -42,6 +42,9 @@
 #endif
 #include <p2p/NodeTable.h>
 #include <rpos/StakeVoteBase.h>
+#include <crypto/Bls.h>
+#include <crypto/Signer.h>
+#include <crypto/Validator.h>
 using namespace ultrainio::chain::plugin_interface::compat;
 
 namespace fc {
@@ -292,6 +295,8 @@ namespace ultrainio {
         bool is_pk_signature_match(chain::public_key_type const& pk,fc::sha256 const& hash,chain::signature_type const& sig);
         bool authen_whitelist_and_producer(const fc::sha256& hash,const chain::public_key_type& pk,const chain::signature_type& sig,chain::account_name const& account);
         bool is_account_pk_match(chain::public_key_type const& pk,chain::account_name const& account);
+        bool is_account_commitee_pk_match(fc::sha256 const& hash,chain::account_name const& account,std::string sig);
+        bool is_account_bls_pk_match(fc::sha256 const& hash,chain::account_name const& account,std::string sig);
         /** \brief Determine if a peer is allowed to connect.
          *
          * Checks current connection mode and key authentication.
@@ -2831,6 +2836,31 @@ bool net_plugin_impl::is_pk_signature_match(chain::public_key_type const& pk,fc:
     }
     return true;
 }
+bool net_plugin_impl::is_account_commitee_pk_match(fc::sha256 const& hash,chain::account_name const& account,std::string sig)
+{
+    controller& cc = chain_plug->chain();
+    uint32_t blockNum = cc.head_block_num()+1;
+    std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(blockNum);
+    PublicKey publicKey = stakeVotePtr->getPublicKey(account);
+    if (!Validator::verify<fc::sha256>(Signature(sig), hash, publicKey)) {
+        elog("validate error");
+        return false;
+    }
+    return true;
+}
+bool net_plugin_impl::is_account_bls_pk_match(fc::sha256 const& hash,chain::account_name const& account,std::string sig)
+{
+    controller& cc = chain_plug->chain();
+    uint32_t blockNum = cc.head_block_num()+1;
+    std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getVoterSys(blockNum);  
+    unsigned char blsPk[Bls::BLS_PUB_KEY_COMPRESSED_LENGTH];
+    bool res = voterSysPtr->getCommitteeBlsPublicKey(account, blsPk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+    if (!res) {
+        elog("account ${account} is not in committee", ("account", account));
+        return false;
+    }
+    return Validator::verify<fc::sha256>(sig, hash, blsPk);
+}
 bool net_plugin_impl::is_account_pk_match(chain::public_key_type const& pk,chain::account_name const& account)
 {
 /*pk match the account*/
@@ -2915,11 +2945,41 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
 	/*pk or username in whitelist or producers*/
         auto allowed_p2p_white = std::find(allowed_peers.begin(), allowed_peers.end(), msg.key);
+        if(allowed_p2p_white != allowed_peers.end())
+        {
+            return true;
+        }
         bool is_producer_pk = is_producer_account_pk(msg.account);
-        if( allowed_p2p_white == allowed_peers.end() && (!is_producer_pk))
+        if(!is_producer_pk)
         {
             elog("an unauthorized key");
             return false;
+        }
+        uint16_t ext_size = msg.ext.size();
+        if(ext_size > 0)
+        {
+            string sig_commitee = msg.ext[0].value; 
+            bool is_account_commitee_pk_matched = is_account_commitee_pk_match(hash,msg.account,sig_commitee);
+            if(!is_account_commitee_pk_matched)
+            {
+                elog("account_commitee_pk no match");
+                return false;
+            }
+           
+            if(ext_size > 1)
+            {
+                string sig_blk = msg.ext[1].value;
+                bool is_account_blk_pk_matched = is_account_bls_pk_match(hash,msg.account,sig_blk);
+                if(!is_account_blk_pk_matched)
+                {
+                    elog("account blk_pk no  match");
+                    return false;
+                } 
+            }
+        }
+        else if(ext_size == 0)
+        {
+            ilog("no ext");
         }
         return true;    
 	}
@@ -2968,7 +3028,14 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 // If we couldn't sign, don't send a token.
       if(hello.sig == chain::signature_type())
          hello.token = sha256();
-
+      //auto sk_commitee = app().get_plugin<producer_uranus_plugin>(). get_committee_sk();
+      //string sig_commitee = std::string(Signer::sign<fc::sha256>(hello.token, PrivateKey(sk_commitee)));
+      string sig_commitee = std::string(Signer::sign<fc::sha256>(hello.token, StakeVoteBase::getMyPrivateKey()));
+      hello.ext.push_back({1,sig_commitee}); 
+      unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
+      StakeVoteBase::getMyBlsPrivateKey(sk, Bls::BLS_PRI_KEY_LENGTH);
+      string sig_blk = std::string(Signer::sign<fc::sha256>(hello.token, sk));
+      hello.ext.push_back({2,sig_blk}); 
       if (p == msg_priority_rpos) {
          hello.p2p_address = my_impl->rpos_listener.p2p_address + " - " + hello.node_id.str().substr(0,7);
       }
