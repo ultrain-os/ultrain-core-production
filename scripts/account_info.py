@@ -9,6 +9,7 @@ systemAccounts = [
     'utrio.rand',
     'utrio.bank',
     'utrio.empty',
+    'utrio.reward',
 ]
 
 initialAccounts = [

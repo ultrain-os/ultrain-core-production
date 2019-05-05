@@ -100,6 +100,13 @@ namespace ultrainiosystem {
             }
          }
       }
+      uint64_t  reward_per_block = 0;
+      auto const reward_iter = std::find_if( _gstate.block_reward_vec.begin(), _gstate.block_reward_vec.end(), [&](ultrainio::block_reward const& obj){
+                                       return obj.consensus_period == block_interval_seconds();
+                                 } );
+      if(reward_iter != _gstate.block_reward_vec.end()) {
+         reward_per_block = reward_iter->reward;
+      }
       uint64_t pay_account = N(utrio.resfee);
       asset resfee_tokens =
           ultrainio::token(N(utrio.token)).get_balance( pay_account,symbol_type(CORE_SYMBOL).name());
@@ -115,18 +122,24 @@ namespace ultrainiosystem {
       for (auto chain_name : chain_name_vec) {
          producers_table _producers(_self, chain_name);
          for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
+            account_name reward_account = itr->claim_rewards_account;
+            std::string transmemo = "producer block reward pay";
             if( itr->unpaid_balance == 0 )
                continue;
+            else if( itr->unpaid_balance > seconds_per_day/block_interval_seconds()*2/3*reward_per_block){
+                reward_account = N(utrio.reward);
+                transmemo = name{itr->owner}.to_string() + std::string(" producer block abnormal, to be checked");
+            }
             auto producer_unpaid_balance = (int64_t)floor((double)itr->unpaid_balance * (100 - charge_ratio) /100);
             subchain_paid_balance += producer_unpaid_balance;
             print("\nclaimrewards subchainname:",name{chain_name}," producer:",name{itr->owner},
-            " reward_account:",name{itr->claim_rewards_account}," unpaid_balance:",itr->unpaid_balance,
+            " reward_account:",name{reward_account}," unpaid_balance:",producer_unpaid_balance,
             " producer_pay_balance:",producer_unpaid_balance,"\n");
             _producers.modify( itr, [&](auto& p) {
                p.unpaid_balance = 0;
             });
             INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
-               { pay_account, itr->claim_rewards_account, asset(producer_unpaid_balance), std::string("producer block pay") } );
+               { pay_account, reward_account, asset(producer_unpaid_balance), transmemo } );
          }
       }
 
@@ -163,7 +176,7 @@ namespace ultrainiosystem {
       if(!_gstate.is_master_chain())
          return;
       uint32_t block_height = (uint32_t)head_block_number() + 1;
-      uint32_t interval_num = seconds_per_day/block_interval_seconds()/24/2;   //TEST:Send rewards once half an hour
+      uint32_t interval_num = seconds_per_day/block_interval_seconds();   //TEST:Send rewards per day
       if(block_height < 20 || block_height%interval_num != 0) {
          return;
       }
