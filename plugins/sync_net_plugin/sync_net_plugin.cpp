@@ -90,8 +90,6 @@ namespace ultrainio {
         std::unique_ptr<boost::asio::steady_timer> connect_check_timer;
         std::unique_ptr<boost::asio::steady_timer> keepalive_timer;
         std::unique_ptr<boost::asio::steady_timer> disconnect_timer;
-
-        // boost::asio::steady_timer::duration   connector_period;
         boost::asio::steady_timer::duration   resp_expected_period;
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
         boost::asio::steady_timer::duration   disconnect_interval{std::chrono::seconds{10}};
@@ -104,6 +102,7 @@ namespace ultrainio {
         bool                            is_connecting = false;
         int                            connected_try_count = 0;
         std::list< std::function<void ()> >   connected_done_cb;
+        bool                            enable_listen;
 
         std::ifstream src_file;
         std::ofstream dist_file;
@@ -2100,11 +2099,8 @@ namespace ultrainio {
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
-        //  ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
-         ( "network-version-match", bpo::value<bool>()->default_value(false),
-           "True to require exact match of peer network version.")
-         ( "max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "maximum sizes of transaction or block messages that are sent without first sending a notice")
-         ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
+         ( "network-version-match", bpo::value<bool>()->default_value(false), "True to require exact match of peer network version.")
+         ( "enable-listen", bpo::value<bool>()->default_value(false), "True to enable p2p listen.")
         ;
    }
 
@@ -2119,11 +2115,10 @@ namespace ultrainio {
 //         peer_log_format = options.at( "peer-log-format" ).as<string>();
 
          my->network_version_match = options.at( "network-version-match" ).as<bool>();
-
-        //  my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
          my->resp_expected_period = def_resp_expected_wait;
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
+         my->enable_listen = options.at( "enable-listen" ).as<bool>();
          my->num_clients = 0;
          my->started_sessions = 0;
 
@@ -2133,28 +2128,22 @@ namespace ultrainio {
             auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
             auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
             idump((host)( port ));
-            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
-            // Note: need to add support for IPv6 too?
 
-            my->listen_endpoint = *my->resolver->resolve( query );
-
-            my->acceptor.reset( new tcp::acceptor( app().get_io_service()));
-         }
-         if( options.count( "p2p-server-address" )) {
-            my->p2p_address = options.at( "p2p-server-address" ).as<string>();
-         } else {
-            if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
-               boost::system::error_code ec;
-               auto host = host_name( ec );
-               if( ec.value() != boost::system::errc::success ) {
-
-                  FC_THROW_EXCEPTION( fc::invalid_arg_exception,
-                                      "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
-
-               }
-               auto port = my->p2p_address.substr( my->p2p_address.find( ':' ), my->p2p_address.size());
-               my->p2p_address = host + port;
+            if (my->enable_listen){
+                tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
+                my->listen_endpoint = *my->resolver->resolve( query );
+                my->acceptor.reset( new tcp::acceptor( app().get_io_service()));
+                ilog("Enable p2p listen, server mode");
             }
+
+            boost::system::error_code ec;
+            auto host_n = host_name( ec );
+            if( ec.value() != boost::system::errc::success ) {
+                FC_THROW_EXCEPTION( fc::invalid_arg_exception,
+                                    "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
+            }
+            my->p2p_address = host_n + ":" + port;
+            idump(("p2p_address: ")(host_n)( port ));
          }
 
          if( options.count( "p2p-peer-address" )) {
