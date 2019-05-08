@@ -1305,7 +1305,7 @@ namespace ultrainio {
                 auto block_timestamp = chain.get_proper_next_block_timestamp();
                 ilog("initProposeMsg: start block at ${time} and block_timestamp is ${timestamp}",
                      ("time", fc::time_point::now())("timestamp", block_timestamp));
-                chain.start_block(block_timestamp, committeeMroot);
+                chain.start_block(block_timestamp, committeeMroot, "");
             }
 
             // CheckPoint
@@ -1707,7 +1707,7 @@ namespace ultrainio {
         // Here is the hack, we are actually using the template of ba0_block, but we don't use
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
         // e.g. pk, proof, producer.
-        chain.start_block(block.timestamp, getCommitteeMroot(chain.head_block_num() + 1));
+        chain.start_block(block.timestamp, getCommitteeMroot(chain.head_block_num() + 1), block.signature);
         chain::block_state_ptr pbs = chain.pending_block_state_hack();
         chain::signed_block_ptr bp = pbs->block;
         chain::signed_block_header *hp = &(pbs->header);
@@ -1796,7 +1796,7 @@ namespace ultrainio {
         // chain's push_block, so we have to copy some members of ba0_block into the head state,
         // e.g. pk, proof, producer.
         try {
-            chain.start_block(block.timestamp, getCommitteeMroot(chain.head_block_num() + 1));
+            chain.start_block(block.timestamp, getCommitteeMroot(chain.head_block_num() + 1), block.signature);
             chain::block_state_ptr pbs = chain.pending_block_state_hack();
             chain::signed_block_ptr bp = pbs->block;
             chain::signed_block_header *hp = &(pbs->header);
@@ -2200,7 +2200,7 @@ namespace ultrainio {
         // get_proper_next_block_timestamp() probably can't be used here, we have to be
         // deterministic about the empty block's timestamp.
         auto block_timestamp = chain.head_block_time() + fc::milliseconds(chain::config::block_interval_ms);
-        chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1));
+        chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1), "");
         if (EpochEndPoint::isEpochEndPoint(chain.head_block_header())) {
             std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(chain.head_block_num() + 1);
             m_lightClientProducer->handleCheckPoint(chain, stakeVotePtr->getCommitteeSet());

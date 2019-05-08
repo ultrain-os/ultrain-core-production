@@ -97,7 +97,7 @@ namespace ultrainio { namespace chain {
           * Starts a new pending block session upon which new transactions can
           * be pushed.
           */
-         void start_block( block_timestamp_type time, chain::checksum256_type);
+         void start_block( block_timestamp_type time, chain::checksum256_type, std::string sig);
 
          void abort_block(bool drop_trx = false);
          void set_emit_signal();

@@ -1268,7 +1268,7 @@ struct controller_impl {
    } /// push_transaction
 
 
-    void start_block( block_timestamp_type when, chain::checksum256_type committee_mroot, controller::block_status s ) {
+    void start_block( block_timestamp_type when, chain::checksum256_type committee_mroot, std::string sig, controller::block_status s ) {
       ULTRAIN_ASSERT( !pending, block_validate_exception, "pending block is not available" );
 
       ULTRAIN_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
@@ -1286,6 +1286,7 @@ struct controller_impl {
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
       pending->_pending_block_state->header.committee_mroot = committee_mroot;
+      pending->_pending_block_state->header.signature = sig;
 
       //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
@@ -1321,12 +1322,13 @@ struct controller_impl {
     void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
          ULTRAIN_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
-         start_block( b->timestamp, b->committee_mroot, s );
+         start_block( b->timestamp, b->committee_mroot, b->signature, s );
 
          // We have to copy here.
          chain::signed_block_header* hp = &(pending->_pending_block_state->header);
          hp->proposer = b->proposer;
          hp->header_extensions = b->header_extensions;
+         hp->signature = b->signature;
 #ifdef CONSENSUS_VRF
          hp->proposerProof = b->proposerProof;
 #endif
@@ -1856,9 +1858,9 @@ chainbase::database& controller::db()const { return my->db; }
 fork_database& controller::fork_db()const { return my->fork_db; }
 
 
-void controller::start_block( block_timestamp_type when, chain::checksum256_type committee_mroot) {
+void controller::start_block( block_timestamp_type when, chain::checksum256_type committee_mroot, std::string sig) {
    validate_db_available_size();
-   my->start_block(when, committee_mroot, block_status::incomplete );
+   my->start_block(when, committee_mroot, sig, block_status::incomplete );
 }
 
 void controller::finalize_block() {

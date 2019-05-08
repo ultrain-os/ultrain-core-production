@@ -302,7 +302,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
                    ("time", fc::time_point::now())("timestamp", block_timestamp));
               // The committee_mroot here should not matter cause the pending block will
               // be aborted anyway.
-              chain.start_block(block_timestamp, chain::checksum256_type());
+              chain.start_block(block_timestamp, chain::checksum256_type(), "");
               // non-producing node does not seem to have a good way to clear dead unapplied trx queue.
               chain.clear_unapplied_transaction();
           }
