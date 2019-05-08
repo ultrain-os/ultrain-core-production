@@ -190,9 +190,7 @@ struct controller_impl {
                                  on_irreversible(b);
                                  });
 
-   if (conf.worldstate_control){
-      ws_manager_ptr = std::make_shared<ws_file_manager>();
-   }
+   ws_manager_ptr = std::make_shared<ws_file_manager>();
 
    if (db.get_data("worldstate_previous_block", worldstate_previous_block))
       ilog("Get worldstate_previous_block from  db: ${s}", ("s", worldstate_previous_block));
@@ -702,6 +700,9 @@ struct controller_impl {
    }
 
    void read_from_worldstate( const bfs::path& worldstate_path ) {
+      ilog("read_from_worldstate ${p}", ("p", worldstate_path.string()));
+      ULTRAIN_ASSERT(ws_manager_ptr, worldstate_exception, "ws_manager_ptr is null!");
+
       auto& worldstate_db = db;
       fc::sha256 tmp_chain_id = self.get_chain_id();
       std::string id_file = ws_manager_ptr->get_file_path_by_info(tmp_chain_id, 0) + ".id";
