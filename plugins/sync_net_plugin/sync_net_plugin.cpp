@@ -751,7 +751,7 @@ namespace ultrainio {
         sync_timeout = {std::chrono::seconds{5}};
         sync_check_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
         ws_states = none;
-        len_per_slice = 1024;
+        len_per_slice = 1024*50; //50K per slice
         ip_address = "";
         selected_con_id = 0;
     }
@@ -2264,6 +2264,7 @@ namespace ultrainio {
    }
 
     string sync_net_plugin::require_ws(const chain::ws_info& info) {
+        ilog("require ws");
         my->start_connect([this, info](){
             my->m_sync_ws_manager->send_ws_sync_req(my->connections, info);
         });
@@ -2272,6 +2273,7 @@ namespace ultrainio {
     }
 
     string sync_net_plugin::require_block(const std::string& chain_id_text, uint32_t end) {
+        ilog("require block");
         my->start_connect([this, chain_id_text, end](){
             fc::sha256 chain_id(chain_id_text);
             my->m_sync_blocks_manager->send_blocks_sync_req(my->connections, chain_id, end);

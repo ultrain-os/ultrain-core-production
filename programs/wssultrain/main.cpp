@@ -14,6 +14,8 @@
 
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
+#include <ultrainio/utilities/common.hpp>
+#include "config.hpp"
 
 namespace bpo = boost::program_options;
 
@@ -92,6 +94,7 @@ enum return_codes {
 
 int main( int argc, char** argv ) {
    try {
+      app().set_version(ultrainio::wss::config::version);
       appbase::app().register_plugin<sync_net_plugin>();
 
       auto root = fc::app_path();
@@ -101,6 +104,7 @@ int main( int argc, char** argv ) {
          return INITIALIZE_FAIL;
       initialize_logging();
       ilog("wssultrain root is ${root}", ("root", root.string()));
+      ilog("wssultrain version ${ver}", ("ver", ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
       appbase::app().startup();
       appbase::app().exec();
    } catch ( const boost::exception& e ) {
