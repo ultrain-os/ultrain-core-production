@@ -60,7 +60,7 @@ async function startEntry() {
     //链信息同步-委员会同步
     logger.info("start chain style sync :",chainSyncCycleSchedule)
     schedule.scheduleJob(chainSyncCycleSchedule, async function () {
-        //委员会同步
+        //链同步，本地维护员信息同步
          await chain.syncChainInfo();
     });
 
@@ -72,6 +72,11 @@ async function startEntry() {
         await chain.syncUser();
     });
 
+    //委员会同步
+    schedule.scheduleJob(syncBlockSchedule, async function () {
+        await chain.syncCommitee();
+    });
+
     //资源同步-近段时间
     schedule.scheduleJob(syncBlockSchedule, async function () {
         await chain.syncNewestResource();
@@ -80,10 +85,10 @@ async function startEntry() {
 
     //块同步
     schedule.scheduleJob(syncBlockSchedule, async function () {
-        await chain.syncBlock();
+       await chain.syncBlock();
     });
 
-    //ugar同步
+    //ugas同步
     schedule.scheduleJob(syncBlockSchedule, async function () {
         await chain.syncUgas();
     });

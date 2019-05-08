@@ -1155,119 +1155,153 @@ async function syncMasterBlock() {
 async function syncCommitee() {
 
     try {
-    logger.info("syncCommitee start");
-    //获取本地prodcuers信息
-    let producerList = await chainApi.getProducerLists(chainConfig.configSub.httpEndpoint);
-    logger.info("subchain producers: ", producerList);
-    if (utils.isNotNull(producerList) && producerList.length > 0) {
-        localProducers = producerList;
-    } else {
-        logger.error("get subchain producers is null,sync committee end",producerList);
-        return;
-    }
+        logger.info("syncCommitee start");
 
-    //主链只需要查委员会，不需要投票
-    if (isMainChain()) {
-        return;
-    }
+        if (syncChainData == true && isMainChain() == false) {
 
-    let remoteProducers = await chainApi.getSubchainCommittee(chainConfig.config,chainConfig.localChainName);
-    logger.info("subchain commitee from mainchain: ", remoteProducers);
+            var subBlockNumMax = await chainApi.getHeadBlockNum(chainConfig.configSub);
+            if (subBlockNumMax == null) {
+                logger.error("[committee trx] subBlockNumMax is null,abort sync block");
+                return;
+            }
+            logger.info("[committee trx] subBlockNumMax:" + subBlockNumMax);
+            //获取本地最新的块头，获取服务端最新的块头
+            let result = await chainConfig.u3Sub.getBlockInfo((subBlockNumMax).toString());
 
-    if (utils.isNullList(remoteProducers)) {
-        logger.error("get subchain commitee from mainchain is null,sync committee end",remoteProducers);
-        return;
-    }
-
-    //有变化的成员列表（包括删除/新增的）
-    var seed = committeeUtil.genSeedByChainId(chainConfig.configSub.chainId);
-    logger.info("commit seed :" +seed);
-    var changeMembers = committeeUtil.genChangeMembers(producerList, remoteProducers,seed);
-    logger.info("commite changeMembers:", changeMembers);
-
-    if (committeeUtil.isValidChangeMembers(changeMembers)) {
-
-        for (var i = 0; i < changeMembers.length; i++) {
-
-            //每轮只做第一个
-            if (i >=1) {
-                break;
+            //判断是否要上传块头
+            if (blockUtil.needPushBlockByProducerList(result.proposer, chainConfig.myAccountAsCommittee, localProducers) == false) {
+                logger.info("[committee trx] finish sync committee,is not me");
+                return;
             }
 
-            let committeeUser = changeMembers[i].account;
-            let params = [];
-            params.push(changeMembers[i]);
-            //判断需要投票的委员会的账号是否已在子链上
-            if (utils.isNull(await chainApi.getAccount(chainConfig.configSub.httpEndpoint, committeeUser))) {
-                if (monitor.needSyncUserRes() == true) {
-                    logger.info("account(" + committeeUser + ") is not exist in subchain,should add him first");
-                    let account = await chainApi.getAccount(chainConfig.config.httpEndpoint, committeeUser);
-                    logger.info("account info:", account);
-                    //查询是否已经投过票
-                    let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, committeeUser, null, null);
-                    logger.debug(tableData)
-                    if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, committeeUser) == true) {
-                        logger.info("account(" + committeeUser + ") is not exist in subchain,has voted him to user");
-                    } else {
-                        logger.info("account(" + committeeUser + ") is not exist in subchain,has not voted him to user,start to vote");
+            let bulletin = await chainApi.getCommitteeBulletin(chainConfig.config, chainConfig.localChainName);
 
-                        const params = {
-                            proposer: chainConfig.myAccountAsCommittee,
-                            proposeaccount: [{
-                                account: committeeUser,
-                                owner_key: chainUtil.getOwnerPkByAccount(account, "owner"),
-                                active_key: chainUtil.getOwnerPkByAccount(account, "active"),
-                                location: constants.chainNameConstants.MAIN_CHAIN_NAME,
-                                approve_num: 0,
-                                updateable: 1 //该账号后续部署合约能否被更新
-                            }]
-                        };
-
-                        logger.info("vote account param :", params);
-
-                        let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_ACCOUNT, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
-                    }
-                } else {
-                    logger.error("account(" + committeeUser + ") is not exist in subchain,but control flag is false,need not vote him");
-                }
+            if (bulletin.length == 0) {
+                logger.error("no data in committee bulletin,need not do anythin");
             } else {
-                logger.info("account(" + committeeUser + ") is ready in subchain,need vote him to committee");
-                //判断是否已给他投过票
-                let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_MINER, null, committeeUser, null, null);
-                if (voteUtil.findVoteCommitee(tableData, chainConfig.myAccountAsCommittee, committeeUser,changeMembers[i].adddel_miner) == false) {
-                    logger.info("account(" + chainConfig.myAccountAsCommittee + ") has not voted account(" + committeeUser + ")  to committee, start to vote..");
-                    try {
-                        logger.info("vote commitee params:", params);
-                        chainConfig.u3Sub.contract(contractConstants.ULTRAINIO).then(actions => {
-                            actions.votecommittee(chainConfig.myAccountAsCommittee, params).then((unsigned_transaction) => {
-                                chainConfig.u3Sub.sign(unsigned_transaction, /*mySkAsCommittee*/chainConfig.config.keyProvider[0], chainConfig.config.chainId).then((signature) => {
-                                    if (signature) {
-                                        let signedTransaction = Object.assign({}, unsigned_transaction.transaction, {signatures: [signature]});
-                                        logger.debug(signedTransaction);
-                                        chainConfig.u3Sub.pushTx(signedTransaction).then((processedTransaction) => {
-                                            logger.debug(processedTransaction);
-                                            // assert.equal(processedTransaction.transaction_id, unsigned_transaction.transaction_id);
-                                        });
-                                    }
-                                })
-                            })
-                        });
-                    } catch (e) {
-                        logger.error("u3 push tx error...", e)
-                        //logger.error("account(" + chainConfig.myAccountAsCommittee + ") has voted account(" + committeeUser + ")  to committee error",e);
-                    }
-                } else {
-                    //已投过票
-                    logger.info("account(" + chainConfig.myAccountAsCommittee + ") has voted account(" + committeeUser + ")  to committee, need not vote..");
+                logger.error("find data in committee bulletin,need to process:", bulletin);
+                let syncNumCount = 0;
+                //投票结果
+                var committeeCountRes = {
+                    totalNum: 0,
+                    successAccountNum: 0,
+                    syncNum: 0,
+                    blockNotReadyNum: 0,
                 }
+
+                let maxConfirmBlockNum = monitor.getConfirmBlockMaster();
+
+                committeeCountRes.totalNum = bulletin.length;
+
+                for (let i = 0; i < bulletin.length; i++) {
+                    let bulletinObj = bulletin[i];
+                    logger.info("[committee trx] check block(" + bulletinObj.block_num + ") confirmBlock(" + maxConfirmBlockNum + ")");
+
+                    /**
+                     * 判断confirm block是否已经同步了
+                     */
+                    if (bulletinObj.block_num > maxConfirmBlockNum) {
+                        committeeCountRes.blockNotReadyNum++;
+                        continue;
+                    }
+
+                    try {
+                        //获取块信息并找到交易id
+                        let blockInfo = await chainConfig.u3.getBlockInfo((bulletinObj.block_num).toString());
+                        let trans = chainUtil.getMoveProdRTransFromBlockHeader(blockInfo, chainConfig.localChainName);
+                        logger.error("[committee trx] trans(block:" + bulletinObj.block_num + "):", trans.length);
+                        if (trans.length > 0) {
+                            for (let t = 0; t < trans.length; t++) {
+                                let tranId = trans[t].trx.id;
+                                logger.info("[committee trx]block(" + bulletinObj.block_num + ") trxid(" + tranId + ")");
+
+                                if (trxCacheSet.has(tranId) == true) {
+                                    logger.info("[committee trx](blockheight:" + bulletinObj.block_num + ",trxid:" + tranId + " trx-m-root  is in cache,need not work");
+                                    committeeCountRes.successAccountNum++;
+                                    continue;
+                                }
+
+                                logger.info("[committee trx](blockheight:" + bulletinObj.block_num + ",trxid:" + tranId + " is not in cache,need query table check is ready");
+
+                                logger.info("[committee trx]getMerkleProof(blockheight:" + bulletinObj.block_num + ",trxid:" + tranId);
+                                let merkleProof = await chainApi.getMerkleProof(chainConfig.config, bulletinObj.block_num, tranId);
+                                logger.info("[committee trx]merkleProof:", merkleProof);
+                                if (utils.isNotNull(merkleProof)) {
+                                    logger.debug("[committee trx]merkleProof trx_receipt_bytes:", merkleProof.trx_receipt_bytes);
+                                    let tx_bytes_array = chainUtil.transferTrxReceiptBytesToArray(merkleProof.trx_receipt_bytes);
+
+                                    let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.configSub, chainNameConstants.MAIN_CHAIN_NAME_TRANSFER, bulletinObj.block_num);
+                                    logger.debug("[committee trx]master blockHeightInfo(" + bulletinObj.block_num + "):", blockHeightInfo);
+                                    let hashIsReady = checkHashIsready(blockHeightInfo, tranId);
+                                    if (hashIsReady == true) {
+                                        logger.info("[committee trx]master blockHeightInfo(" + bulletinObj.block_num + ") trx id : " + tranId + ", is ready, need not push");
+                                        trxCacheSet.add(tranId);
+                                        committeeCountRes.successAccountNum++;
+                                        continue;
+                                    }
+
+                                    /**
+                                     * 未在缓存中，重新投递消息
+                                     */
+                                    logger.info("[committee trx]master blockHeightInfo(" + bulletinObj.block_num + ") trx id : " + tranId + ", is not ready, need push");
+
+                                    //控制最大次数
+                                    if (syncNumCount >= 1) {
+                                        logger.error("[committee trx]sync Committee count (" + syncNumCount + ") >= maxnum(" + monitor.getSyncBlockHeaderMaxTranNum() + "),need break");
+                                        break;
+                                    }
+
+                                    let param = {
+                                        chain_name: chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,
+                                        block_number: bulletinObj.block_num,
+                                        merkle_proofs: merkleProof.merkle_proof,
+                                        tx_bytes: tx_bytes_array.toString()
+                                    }
+                                    logger.info("[Sync Ugas-Master]prepare to push sync  transfer trx:", param);
+
+                                    param = {
+                                        chain_name: chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,
+                                        block_number: bulletinObj.block_num,
+                                        merkle_proofs: merkleProof.merkle_proof,
+                                        tx_bytes: tx_bytes_array
+                                    }
+
+                                    syncNumCount++;
+                                    committeeCountRes.syncNum++;
+
+                                    let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, "synclwctx", param, chainConfig.myAccountAsCommittee, chainConfig.config.keyProvider[0]);
+                                    logger.info("[committee trx]synclwctx res:", res);
+                                }
+
+                                //控制最大次数
+                                if (syncNumCount >= 1) {
+                                    logger.error("[committee trx]sync Committee count (" + syncNumCount + ") >= maxnum(1),need break");
+                                    break;
+                                }
+                            }
+
+                        }
+
+                    } catch (e) {
+                        logger.error("[committee trx] sync committee tran error:", e);
+                    }
+
+                }
+
+
+                logger.error("[committee trx]sync committee res:", committeeCountRes);
+
             }
         }
-        //调用votecommittee来投票
-        logger.info("syncCommitee end");
-    } } catch (e) {
-        logger.error("sync committee error:",e);
     }
-}
+    catch
+        (e)
+        {
+            logger.error("[committee trx] error:", e);
+        }
+
+        logger.info("sync committee end");
+    }
 
 /**
  * 同步链信息
@@ -1370,8 +1404,16 @@ async function syncChainInfo() {
             return;
         }
 
-        //同步委员会
-        await syncCommitee();
+        //同步本地委员会
+        logger.info("sync local commitee");
+        //获取本地prodcuers信息
+        let producerList = await chainApi.getProducerLists(chainConfig.configSub.httpEndpoint);
+        logger.info("subchain producers: ", producerList);
+        if (utils.isNotNull(producerList) && producerList.length > 0) {
+            localProducers = producerList;
+        } else {
+            logger.error("get subchain producers is null,sync committee end",producerList);
+        }
 
         var isStrillInCommittee = committeeUtil.isStayInCommittee(localProducers, chainConfig.myAccountAsCommittee);
         //检查自己是否不在委员会里面
@@ -2404,4 +2446,5 @@ module.exports = {
     syncNewestResource,
     syncUgas,
     clearCache,
+    syncCommitee,
 }

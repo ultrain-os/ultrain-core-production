@@ -261,6 +261,48 @@ function getSyncResTransFromBlockHeader(blockInfo,chainName,user) {
     return trans;
 }
 
+/**
+ *
+ * @param blockInfo
+ * @param chainName
+ * @returns {Array}
+ */
+function getMoveProdRTransFromBlockHeader(blockInfo,chainName) {
+    let trans = [];
+    try {
+        let transList = blockInfo.transactions;
+        if (transList.length > 0) {
+            for (let i=0;i<transList.length;i++) {
+                try {
+                    let tranInfo = transList[i];
+                    if (tranInfo.status == "executed") {
+                        logger.debug("traninfo trx :", tranInfo.trx);
+                        logger.debug("traninfo trx actions :", tranInfo.trx.transaction.actions);
+                        let actions = tranInfo.trx.transaction.actions;
+                        for (let t = 0; t < actions.length; t++) {
+                            let action = actions[t];
+                            if (action.name == "moveprod" && (action.data.to_chain == chainName || action.data.from_chain == chainName)) {
+                                //logger.info("find useful action:", action);
+                                logger.info("find useful tran:", tranInfo);
+                                trans.push(tranInfo);
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    logger.error("getMoveProdRTransFromBlockHeader error",e);
+                }
+            }
+        }
+
+
+    } catch (e) {
+        logger.error("getMoveProdRTransFromBlockHeader error",e);
+    }
+
+    return trans;
+}
+
 
 function transferTrxReceiptBytesToArray(bytes) {
 
@@ -322,4 +364,5 @@ module.exports = {
     getSyncUserTransFromBlockHeader,
     getSyncResTransFromBlockHeader,
     transferFreeMemToArray,
+    getMoveProdRTransFromBlockHeader,
 }
