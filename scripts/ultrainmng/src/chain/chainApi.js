@@ -33,6 +33,31 @@ const getChainId = async (config) => {
 
 }
 
+const getChainIdByAllSeed = async (config,seedList) => {
+
+    try {
+        var u3 = createU3({...config, sign: true, broadcast: true});
+        var blockInfo = await u3.getBlockInfo("1");
+        return blockInfo.action_mroot;
+    } catch (e) {
+        logger.error("getChainId error:", utils.logNetworkError(e));
+
+        for (let i =0;i<seedList.length;i++) {
+            try {
+                config.httpEndpoint = seedList[i];
+                var u3 = createU3({...config, sign: true, broadcast: true});
+                var blockInfo = await u3.getBlockInfo("1");
+                return blockInfo.action_mroot;
+            } catch (e) {
+                logger.error("getChainId error:", utils.logNetworkError(e));
+            }
+        }
+    }
+
+    return null;
+
+}
+
 
 /**
  * 获取当前链的chainName
@@ -401,6 +426,27 @@ getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound,
     }
 
     return null;
+}
+
+/**
+ * getCommitteeBulletin
+ *
+ * @param config
+ * @param chain_name
+ * @returns {Promise<Array>}
+ */
+getCommitteeBulletin = async (config,chain_name) => {
+    let bulletinList = [];
+    try {
+        const params = {"chain_name": chain_name};
+        let res = await multiRequest(config.httpEndpoint, "/v1/chain/get_committee_bulletin", params, config.seedHttpList);
+        logger.debug("getCommitteeBulletin res:",res.data);
+        bulletinList = res.data;
+    } catch (e) {
+        logger.error("getCommitteeBulletin error:",e);
+    }
+
+    return bulletinList;
 }
 
 /**
@@ -1021,4 +1067,6 @@ module.exports = {
     getBlockHeaderInfo,
     getMinBlockHeaderInfo,
     confirmBlockCheckIn,
+    getCommitteeBulletin,
+    getChainIdByAllSeed,
 }

@@ -19,6 +19,7 @@ var NodUltrain = require("../nodultrain/nodultrain")
 var sleep = require("sleep")
 var process = require('child_process');
 var WorldState = require("../worldstate/worldstate")
+var os = require("os")
 
 
 var hashCache = new CacheObj(false, null);
@@ -31,6 +32,8 @@ var HASH_EXPIRE_TIME_MS = 1000 * 60;
 var deploySyncFlag = false;
 
 var seedCount = 10;
+
+var logCount = 1000;
 
 var enableRestart = 0;
 
@@ -61,6 +64,44 @@ var confirmBlockLocal=0;
  * @type {number}
  */
 var maxBlockSubmitorNum = 3;
+
+
+/**
+ * 获取os info
+ */
+function getOsInfo() {
+    let osInfo = {loadAvg :"",uptime : 0,totalmem:0,freemem:0,system:"",cpus:[]};
+    try {
+        osInfo.uptime = os.uptime();
+        osInfo.loadAvg = os.loadavg();
+        osInfo.totalmem = os.totalmem();
+        osInfo.freemem = os.freemem();
+        osInfo.system = os.type()+" "+os.release();
+        let cpus = [];
+        let cpuArray = os.cpus();
+        for (let i=0;i<cpuArray.length;i++) {
+            //logger.error("cpu info:",cpuArray[i]);
+            let cpuObj = {
+                num: i + 1,
+                speed: cpuArray[i].speed,
+                user: cpuArray[i].times.user,
+                nice:  cpuArray[i].times.nice,
+                sys:  cpuArray[i].times.sys,
+                idle:  cpuArray[i].times.idle,
+                irq:  cpuArray[i].times.irq
+            };
+            cpus.push(cpuObj);
+        }
+        osInfo.cpus = cpus;
+
+
+    } catch (e) {
+        logger.error("getOsInfo error")
+    }
+
+    return osInfo;
+
+}
 
 /**
  *
@@ -201,6 +242,7 @@ async function buildParam() {
         "isProducer": isProducer,
         "time": new Date().getTime(),
         "ext" : JSON.stringify(extMsg),
+        "os" :"{}"
     };
 
     return param;
@@ -213,9 +255,14 @@ async function buildParam() {
 async function checkIn() {
 
 
+    clearLogData();
+
     if (checkNeedSync() == false) {
         return
     }
+
+     let osInfo = getOsInfo();
+     //logger.error("osinfo:",osInfo);
 
     logger.info("monitor checkin start");
     logger.info("monitor check in(http:" + getMonitorUrl());
@@ -223,6 +270,8 @@ async function checkIn() {
     let param = await buildParam();
 
     param.sign = generateSign(param.time,generateSignParam(param));
+
+    param.os = JSON.stringify(osInfo);
 
     await chainApi.monitorCheckIn(getMonitorUrl(), param);
 
@@ -474,6 +523,47 @@ async function cmdDeploy(deployBatch) {
                 enableDeploy();
                 return;
             }
+
+            return;
+        }
+
+        //重启nod
+        if (deployCmd.content == constants.cmdConstants.RESTART_NOD) {
+
+            let param = await buildParam();
+            param.batchId = deployBatch.id;
+            let logMsg = "";
+            try {
+                let stopFlag = await NodUltrain.stop(600000, chainConfig.nodPort);
+                if (stopFlag == true) {
+                    logMsg = utils.addLogStr(logMsg, "stop nod success");
+                    let result = await NodUltrain.start(600000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest, chainConfig.nodPort);
+                    if (result == true) {
+                        logMsg = utils.addLogStr(logMsg, "start nod  success");
+                        //成功
+                        param.status = statusConstants.SUCCESS;
+                        param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+                        param.ext = logMsg;
+                        await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                        enableDeploy();
+                        return;
+                    } else {
+                        logMsg = utils.addLogStr(logMsg, "start nod error");
+                    }
+
+                } else {
+                    logMsg = utils.addLogStr(logMsg, "stop nod error");
+                }
+            } catch (e) {
+                logger.error("cmd restart nod error", e);
+            }
+
+            //失败
+            param.status = statusConstants.EXCEPTION;
+            param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+            param.ext = logMsg;
+            await chainApi.finsihDeployFile(getMonitorUrl(), param);
+            enableDeploy();
 
             return;
         }
@@ -974,6 +1064,40 @@ function setConfirmBlockLocal(blockNum) {
     confirmBlockLocal = blockNum;
 }
 
+/**
+ * 清除日志
+ */
+function clearLogData() {
+
+    if (logCount < 1000) {
+        logger.info("clearLogData(logCount:"+logCount+") is not ready");
+        logCount ++;
+        return;
+    }
+
+    logCount = 0;
+
+    try {
+        let cmd = "find "+chainConfig.configFileData.local.nodLogPath+" -mindepth 1 -mtime +5 -delete";
+
+        logger.info("clearLogData start:",cmd);
+        //其它命令
+        process.exec(cmd, async function (error, stdout, stderr, finish) {
+            if (error) {
+                logger.error("clearLogData error:",error);
+            } else {
+                logger.info("clearLogData success:");
+            }
+
+        });
+
+    } catch (e) {
+        logger.error("clearLogData error:",e);
+    }
+
+    logger.info("clearLogData end:");
+}
+
 
 module.exports = {
     checkIn,
@@ -999,4 +1123,5 @@ module.exports = {
     setConfirmBlockMaster,
     clearConfirmBlock,
     checkNeedSync,
+    clearLogData,
 }

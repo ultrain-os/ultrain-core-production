@@ -75,6 +75,7 @@ ChainConfig.config = {
     debug: false,
     verbose: false,
     logger: {
+        level: "error",
         log: logUtil.log,
         error: logUtil.error,
         debug: logUtil.debug
@@ -99,6 +100,7 @@ ChainConfig.configSub = {
     debug: false,
     verbose: false,
     logger: {
+        level: "error",
         log: logUtil.log,
         error: logUtil.error,
         debug: logUtil.debug
@@ -214,9 +216,9 @@ ChainConfig.syncConfig = async function () {
                 this.configSub.httpEndpoint = randomSeed;
             }
 
-            this.config.chainId = await chainApi.getChainId(this.config);
+            this.config.chainId = await chainApi.getChainIdByAllSeed(this.config,this.config.seedHttpList);
             logger.info("config.chainId=", this.config.chainId);
-            this.configSub.chainId = await chainApi.getChainId(this.configSub);
+            this.configSub.chainId = await chainApi.getChainIdByAllSeed(this.configSub,this.configSub.seedHttpList);
             logger.info("configSub.chainId=", this.configSub.chainId);
 
             mainChainBlockDuration = await chainApi.getChainBlockDuration(this.config);

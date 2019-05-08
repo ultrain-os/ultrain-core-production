@@ -26,6 +26,7 @@ var cmdConstants = {
     ENABLE_SYNC_USER_RES_BY_BLOCK: "enableUserResByBlock",
     DISABLE_SYNC_USER_RES_BY_BLOCK: "disableUserResByBlock",
     SET_SYNC_BLOCK_MAX_COUNT: "syncBlockMaxCount",
+    RESTART_NOD: "restartNod",
 }
 
 //编码常量
