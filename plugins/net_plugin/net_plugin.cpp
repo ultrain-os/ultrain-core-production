@@ -538,7 +538,6 @@ namespace ultrainio {
         uint32_t pack_count_rcv = 0;
         uint32_t pack_count_drop = 0;
         uint32_t retry_connect_count = 0;
-        uint32_t wait_handshake_count = 0;
         connection_status get_status()const {
             connection_status stat;
             stat.peer = peer_addr;
@@ -1978,114 +1977,118 @@ connection::connection(string endpoint, msg_priority pri)
       if( c->connecting ) {
          c->connecting = false;
       }
+      if (msg.generation == 1) {
+         if( msg.node_id == node_id) {
+            elog( "Self connection detected. Closing connection");
+            c->enqueue( go_away_message( self ) );
+            return;
+         }
 
-      if( msg.node_id == node_id) {
-         elog( "Self connection detected. Closing connection");
-         c->enqueue( go_away_message( self ) );
-         return;
-      }
-
-      if( c->peer_addr.empty() || c->last_handshake_recv.node_id == fc::sha256()) {
-         fc_dlog(logger, "checking for duplicate" );
-         for(const auto &check : connections) {
-            if(check == c)
-               continue;
-            if(check->connected() && check->peer_name() == msg.p2p_address) {
-               // It's possible that both peers could arrive here at relatively the same time, so
-               // we need to avoid the case where they would both tell a different connection to go away.
-               // Using the sum of the initial handshake times of the two connections, we will
-               // arbitrarily (but consistently between the two peers) keep one of them.
-               if (msg.time + c->last_handshake_sent.time <= check->last_handshake_sent.time + check->last_handshake_recv.time)
+         if( c->peer_addr.empty() || c->last_handshake_recv.node_id == fc::sha256()) {
+            fc_dlog(logger, "checking for duplicate" );
+            for(const auto &check : connections) {
+               if(check == c)
                   continue;
+               if(check->connected() && check->peer_name() == msg.p2p_address) {
+                  // It's possible that both peers could arrive here at relatively the same time, so
+                  // we need to avoid the case where they would both tell a different connection to go away.
+                  // Using the sum of the initial handshake times of the two connections, we will
+                  // arbitrarily (but consistently between the two peers) keep one of them.
+                  if (msg.time + c->last_handshake_sent.time <= check->last_handshake_sent.time + check->last_handshake_recv.time)
+                     continue;
 
-               fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
-               go_away_message gam(duplicate);
-               gam.node_id = node_id;
-               c->enqueue(gam);
-               c->no_retry = duplicate;
+                  fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
+                  go_away_message gam(duplicate);
+                  gam.node_id = node_id;
+                  c->enqueue(gam);
+                  c->no_retry = duplicate;
+                  return;
+               }
+            }
+         }
+         else {
+            fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake_recv.node_id));
+         }
+
+         if( msg.chain_id != chain_id) {
+            elog( "Peer on a different chain. Closing connection");
+            c->enqueue( go_away_message(go_away_reason::wrong_chain) );
+            return;
+         }
+         c->protocol_version = to_protocol_version(msg.network_version);
+         if(c->protocol_version != net_version) {
+            if (network_version_match) {
+               elog("Peer network version does not match expected ${nv} but got ${mnv}",
+                    ("nv", net_version)("mnv", c->protocol_version));
+               c->enqueue(go_away_message(wrong_version));
+               return;
+            } else {
+               ilog("Local network version: ${nv} Remote version: ${mnv}",
+                    ("nv", net_version)("mnv", c->protocol_version));
+            }
+         }
+
+         if(  c->node_id != msg.node_id) {
+            c->node_id = msg.node_id;
+         }
+
+         if(!authenticate_peer(msg)) {
+            elog("Peer not authenticated.  Closing connection.");
+            c->enqueue(go_away_message(authentication));
+            return;
+         }
+	 
+	 if((c->priority != msg_priority_rpos)&&(c->priority != msg_priority_trx))
+	 {
+		 elog("wrong priority  Closing connection.");
+		 c->enqueue(go_away_message(authentication));
+	 }
+         //check for duplicate key access
+         for(auto &it : connections) 
+	 {
+		 if(it->connected() && (it->peer_account == msg.account) && (it->priority == c->priority))
+		 {
+             ilog("account ${account} ${account1}",("account",it->peer_account)("account1",msg.account));
+             boost::system::error_code ec;
+             if(it->socket->remote_endpoint(ec).address() != c->socket->remote_endpoint(ec).address())
+             {
+             
+			      ilog("duplicate pk");
+			      go_away_message gam(no_reason);
+			      gam.node_id = node_id;
+			      c->enqueue(gam);
+			      return;
+             }
+         }
+
+	 }
+         bool on_fork = false;
+         fc_dlog(logger, "lib_num = ${ln} peer_lib = ${pl}",("ln",lib_num)("pl",peer_lib));
+         uint32_t first_in_local = cc.first_block_num();
+         if( peer_lib <= lib_num && peer_lib > 0 && peer_lib >= first_in_local) {
+            try {
+               block_id_type peer_lib_id =  cc.get_block_id_for_num( peer_lib);
+               on_fork =( msg.last_irreversible_block_id != peer_lib_id);
+            }
+            catch( const unknown_block_exception &ex) {
+               wlog( "peer last irreversible block ${pl} is unknown", ("pl", peer_lib));
+               on_fork = true;
+            }
+            catch( ...) {
+               wlog( "caught an exception getting block id for ${pl}",("pl",peer_lib));
+               on_fork = true;
+            }
+            if( on_fork) {
+               elog( "Peer chain is forked");
+               c->enqueue( go_away_message( forked ));
                return;
             }
          }
-      }
-      else {
-         fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake_recv.node_id));
-      }
 
-      if( msg.chain_id != chain_id) {
-         elog( "Peer on a different chain. Closing connection");
-         c->enqueue( go_away_message(go_away_reason::wrong_chain) );
-         return;
-      }
-      c->protocol_version = to_protocol_version(msg.network_version);
-      if(c->protocol_version != net_version) {
-         if (network_version_match) {
-            elog("Peer network version does not match expected ${nv} but got ${mnv}",
-                 ("nv", net_version)("mnv", c->protocol_version));
-            c->enqueue(go_away_message(wrong_version));
-            return;
-         } else {
-            ilog("Local network version: ${nv} Remote version: ${mnv}",
-                 ("nv", net_version)("mnv", c->protocol_version));
+         if (c->sent_handshake_count == 0) {
+            c->send_handshake();
          }
       }
-
-      if(  c->node_id != msg.node_id) {
-         c->node_id = msg.node_id;
-      }
-
-      if(!authenticate_peer(msg)) {
-         elog("Peer not authenticated.  Closing connection.");
-         c->enqueue(go_away_message(authentication));
-         return;
-      }
- 
-      if((c->priority != msg_priority_rpos)&&(c->priority != msg_priority_trx)) {
-         elog("wrong priority  Closing connection.");
-         c->enqueue(go_away_message(authentication));
-         return;
-      }
-      //check for duplicate key access
-      for(auto &it : connections) {
-         if(it->connected() && (it->peer_account == msg.account) && (it->priority == c->priority)) {
-            ilog("account ${account} ${account1}",("account",it->peer_account)("account1",msg.account));
-            boost::system::error_code ec;
-            if(it->socket->remote_endpoint(ec).address() != c->socket->remote_endpoint(ec).address()) {
-
-               ilog("duplicate pk");
-               go_away_message gam(no_reason);
-               gam.node_id = node_id;
-               c->enqueue(gam);
-               return;
-            }
-         }
-      }
-      bool on_fork = false;
-      fc_dlog(logger, "lib_num = ${ln} peer_lib = ${pl}",("ln",lib_num)("pl",peer_lib));
-      uint32_t first_in_local = cc.first_block_num();
-      if( peer_lib <= lib_num && peer_lib > 0 && peer_lib >= first_in_local) {
-         try {
-            block_id_type peer_lib_id =  cc.get_block_id_for_num( peer_lib);
-            on_fork =( msg.last_irreversible_block_id != peer_lib_id);
-         }
-         catch( const unknown_block_exception &ex) {
-            wlog( "peer last irreversible block ${pl} is unknown", ("pl", peer_lib));
-            on_fork = true;
-         }
-         catch( ...) {
-            wlog( "caught an exception getting block id for ${pl}",("pl",peer_lib));
-            on_fork = true;
-         }
-         if( on_fork) {
-            elog( "Peer chain is forked");
-            c->enqueue( go_away_message( forked ));
-            return;
-         }
-      }
-
-      if (c->sent_handshake_count == 0) {
-         c->send_handshake();
-      }
-
       c->peer_pk = msg.key;
       c->peer_account = msg.account;
       c->last_handshake_recv = msg;
@@ -2573,15 +2576,6 @@ connection::connection(string endpoint, msg_priority pri)
                }
                connect(*it);
             }
-         } else if ((*it)->last_handshake_recv.generation == 0) { // no handshake received
-            if ((*it)->wait_handshake_count > 0 && (*it)->socket->is_open()) {
-               boost::system::error_code ec;
-               elog("no handshake received from: ${addr}, so the connection will be erased", ("addr", (*it)->socket->remote_endpoint(ec).address().to_string()));
-               close(*it);
-               it = connections.erase(it);
-               continue;
-            }
-            (*it)->wait_handshake_count++;
          }
          ++it;
       }
