@@ -141,8 +141,14 @@ namespace ultrainio {
             bool isConfirmed = false;
             for (auto v : confirmPointList) {
                 if (itor->id() == v.confirmedBlockId()) {
+                    if (CheckPoint::isCheckPoint(*itor)) { // update Committee Set if CheckPoint is confirmed
+                        if (!checkAndUpdateCommitteeSet(*itor, m_nextCommitteeMroot, m_workingCommitteeSet)) {
+                            return false;
+                        }
+                    }
                     if (!m_workingCommitteeSet.verify(v.blsVoterSet())) {
-                        elog("verify bls error, id : ${id} num : ${num} set : ${set}", ("id", itor->id())("num", BlockHeader::num_from_id(itor->id()))("set", blsVoterSet.toString()));
+                        elog("verify bls error, id : ${id} num : ${num} set : ${set} committee : ${c}",
+                                ("id", itor->id())("num", BlockHeader::num_from_id(itor->id()))("set", v.blsVoterSet().toString())("c", m_workingCommitteeSet.toString()));
                         return false;
                     }
                     isConfirmed = true;
@@ -152,12 +158,9 @@ namespace ultrainio {
                 return m_workingCommitteeSet.verify(blsVoterSet);
             }
 
-            // MUST before EpochEndPoint::isEpochEndPoint check
+            // MUST before EpochEndPoint::isEpochEndPoint check, because a block header may be EpochEndPoint and CheckPoint at the same time
             if (CheckPoint::isCheckPoint(*itor)) {
-                CheckPoint cp(*itor);
-                m_workingCommitteeSet = cp.committeeSet();
-                if (m_nextCommitteeMroot != std::string(m_workingCommitteeSet.committeeMroot())) {
-                    elog("Check Point error. expect mroot ${expect}, actual : ${actual}", ("expect", m_nextCommitteeMroot)("actual", std::string(m_workingCommitteeSet.committeeMroot())));
+                if (!checkAndUpdateCommitteeSet(*itor, m_nextCommitteeMroot, m_workingCommitteeSet)) {
                     return false;
                 }
             }
@@ -181,6 +184,16 @@ namespace ultrainio {
         }
         elog("There are not any confirmed block");
         return false;
+    }
+
+    bool LightClient::checkAndUpdateCommitteeSet(const BlockHeader& blockHeader, const std::string& expectedMRoot, CommitteeSet& newCommitteeSet) {
+        CheckPoint cp(blockHeader);
+        newCommitteeSet = cp.committeeSet();
+        if (expectedMRoot != std::string(newCommitteeSet.committeeMroot())) {
+            elog("Check Point error. expect mroot ${expect}, actual : ${actual}", ("expect", expectedMRoot)("actual", std::string(newCommitteeSet.committeeMroot())));
+            return false;
+        }
+        return true;
     }
 
     void LightClient::addCallback(std::shared_ptr<LightClientCallback> cb) {

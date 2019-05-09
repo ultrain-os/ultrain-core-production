@@ -46,6 +46,8 @@ namespace ultrainio {
 
         bool verifyBlockHeaderList(const std::list<BlockHeader>& blockHeaderList, const BlsVoterSet& blsVoterSet);
 
+        bool checkAndUpdateCommitteeSet(const BlockHeader& blockHeader, const std::string& expectedMRoot, CommitteeSet& newCommitteeSet);
+
         // chain name
         uint64_t m_chainName;
 
