@@ -112,6 +112,13 @@ struct billable_size;
 template<typename T>
 constexpr uint64_t billable_size_v = ((billable_size<T>::value + billable_alignment - 1) / billable_alignment) * billable_alignment;
 
+/*
+    Patch version number is defined here, and the patch code is executed only when the version number is larger than the patch version number
+*/
+enum patch_update_version{
+    delete_table_limit = 2,  //Prevent the delete table from timeout and is limited so that it can be deleted in batches
+    not_add_unessential_table = 3,  //Do not create unnecessary tables when creating accounts
+};
 
 } } } // namespace ultrainio::chain::config
 

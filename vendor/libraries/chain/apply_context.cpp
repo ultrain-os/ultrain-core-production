@@ -836,12 +836,7 @@ int apply_context::db_drop_i64(uint64_t code, uint64_t scope, uint64_t table) {
 }
 int apply_context::db_drop_table(uint64_t code) {
    const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   int cur_version_number = ro_api.get_system_version_number();
-   const int patch_version_number = 2;
-   /*new patch is only executed if cur_version_number is greater than or equal to patch_version_number
-     The version number is added to prevent the delete table from timeout and is limited so that it can be deleted in batches
-   */
-   bool  is_exec_deltab_limit = cur_version_number >= patch_version_number  ? true : false;
+   bool  is_exec_deltab_limit = ro_api.is_exec_patch_code( config::patch_update_version::delete_table_limit );
    const auto&  table_idx = db.get_index<table_id_multi_index , by_code_scope_table>();
    account_name systemname(config::system_account_name);
    ULTRAIN_ASSERT( systemname == receiver, table_access_violation, "db access violation" );
