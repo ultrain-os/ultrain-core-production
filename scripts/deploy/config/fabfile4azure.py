@@ -125,6 +125,10 @@ def deletevoterand():
     run("pm2 delete votingRandService")
 
 @parallel
+def savepm2startup():
+    run("pm2 save && sleep 1 && pm2 startup && sleep 1 && pm2 save && sleep 1")
+
+@paralle
 def upgrademng():
     run("rm -rf /root/ultrainmng")
     put("ultrainmng.tar","/root/")
