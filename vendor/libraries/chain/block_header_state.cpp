@@ -52,6 +52,7 @@ namespace ultrainio { namespace chain {
     result.header.committee_mroot    = h.committee_mroot;
     result.header.proposer           = h.proposer;
     result.header.header_extensions  = h.header_extensions;
+    result.header.signature          = h.signature;
 #ifdef CONSENSUS_VRF
     result.header.proposerProof      = h.proposerProof;
 #endif
@@ -81,5 +82,3 @@ namespace ultrainio { namespace chain {
   }
 
 } } /// namespace ultrainio::chain
-
-
