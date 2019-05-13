@@ -52,7 +52,7 @@ namespace ultrainio {
     class connection;
     class sync_ws_manager;
     class sync_blocks_manager;
-    
+
     using connection_ptr = std::shared_ptr<connection>;
     using connection_wptr = std::weak_ptr<connection>;
 
@@ -154,7 +154,7 @@ namespace ultrainio {
         void handle_message(connection_ptr c, const BlocksTransferPacket &msg);
         void handle_message(connection_ptr c, const ReqBlocksInfoMsg &msg);
         void handle_message(connection_ptr c, const ReqBlocksFileMsg &msg);
-    
+
         void handle_message(connection_ptr c, const ReqTestTimeMsg &msg);
         void handle_message(connection_ptr c, const RspTestTimeMsg &msg);
 
@@ -776,7 +776,7 @@ namespace ultrainio {
         }
 
         m_require_ws_info = info;
-        
+
         ReqLastWsInfoMsg reqLastWsInfoMsg;
         reqLastWsInfoMsg.chain_id = info.chain_id;
         reqLastWsInfoMsg.block_height = info.block_height;
@@ -800,7 +800,7 @@ namespace ultrainio {
         ws_states = waiting_respones;
         return true;
     }
-        
+
     void sync_ws_manager::receive_ws_sync_rsp(connection_ptr c, const RspLastWsInfoMsg &msg){
         if( ws_states != waiting_respones){
             ilog("get ws-sync rsp from peer ${p}, but not in rsp waiting states", ("p", c->peer_name()));
@@ -829,7 +829,7 @@ namespace ultrainio {
         m_conns_ws_info.emplace_back(info);
         m_conns.emplace_back(c);
     }
-   
+
     void sync_ws_manager::start_conn_check_timer() {
         conn_check_timer->expires_from_now(conn_timeout);
         conn_check_timer->async_wait([this](boost::system::error_code ec) {
@@ -874,7 +874,7 @@ namespace ultrainio {
                 idx = i;
             }
         }
-        
+
         if (idx == -1) return;
 
         ilog("ws-sync remove current connect. peer name:  ${p}", ("p", ws_sync_conn->peer_name()));
@@ -928,7 +928,7 @@ namespace ultrainio {
             return;
         }
 
-        if(!open_write()){            
+        if(!open_write()){
             elog("ws_writer is nullptr");
             sync_reset(error);
             return;
@@ -936,10 +936,10 @@ namespace ultrainio {
 
         if (msg.sliceId % 1000 == 0)
             ilog("receive worldstate sync data, sliceId: ${id}", ("id", msg.sliceId));
-    
+
         ws_writer->write_data(msg.sliceId, msg.chunk, msg.chunkLen);
         if(msg.endOfFile || msg.sliceId == m_require_ws_info.file_size / len_per_slice){//receive end data
-            sync_ws_done();       
+            sync_ws_done();
         } else {
             slice_num++;
             send_file_sync_req(slice_num);
@@ -955,7 +955,7 @@ namespace ultrainio {
             remove_current_connect();
             ilog("restart ws-sync");
             slice_num = 0;
-            send_file_sync_req(slice_num);         
+            send_file_sync_req(slice_num);
         } else {
             sync_reset(success);
         }
@@ -964,15 +964,15 @@ namespace ultrainio {
     void sync_ws_manager::receive_ws_sync_req(connection_ptr c, const ReqLastWsInfoMsg &msg) {
         ilog("recieved ws-sync info request from  ${peer_address}, msg: ${msg}", ("peer_address", c->peer_name())("msg", msg));
         auto infoList = ws_file_manager.get_local_ws_info();
-       
+
         RspLastWsInfoMsg rspLastWsInfoMsg;
         rspLastWsInfoMsg.info.block_height = 0; //default, no ws file
 
         if(infoList.size() == 0) {
             c->enqueue(net_message(rspLastWsInfoMsg));
             return;
-        }     
-        
+        }
+
         for(auto& it : infoList){
             if(msg.chain_id != it.chain_id)
                 continue;
@@ -992,7 +992,7 @@ namespace ultrainio {
         c->enqueue(net_message(rspLastWsInfoMsg));
     }
 
-    void sync_ws_manager::receive_file_sync_req(connection_ptr c, const ReqWsFileMsg &msg) { 
+    void sync_ws_manager::receive_file_sync_req(connection_ptr c, const ReqWsFileMsg &msg) {
         if (msg.index < 5 || msg.index % 1000 == 0)
             ilog("recieved ReqWsFileMsg, ${msg}", ("msg", msg));
 
@@ -1030,7 +1030,7 @@ namespace ultrainio {
     bool sync_ws_manager::open_write(){
         if (ws_writer)
             return true;
-            
+
         int i = 0;
         for(; i < m_conns.size(); i++){
             if(m_conns[i] == ws_sync_conn){
@@ -1062,7 +1062,7 @@ namespace ultrainio {
             return 3;
         } else if ( ws_states == no_data){
             return 4;
-        } 
+        }
 
         return 5;
     }
@@ -1141,8 +1141,8 @@ namespace ultrainio {
         sync_blocks_reset(none);
 
         m_require_chain_id = chain_id;
-        m_require_block_height = block_height + 1; 
-       
+        m_require_block_height = block_height + 1;
+
         ReqBlocksInfoMsg reqBlocksMsg;
         reqBlocksMsg.chain_id = m_require_chain_id;
         reqBlocksMsg.block_height = m_require_block_height;
@@ -1189,7 +1189,7 @@ namespace ultrainio {
         blocks_sync_states = waiting_respones;
         return true;
     }
-        
+
     void sync_blocks_manager::receive_blocks_sync_rsp(connection_ptr c, const RspBlocksInfoMsg &msg){
         if( blocks_sync_states != waiting_respones){
             ilog("get block-sync rsp from peer ${p}, but not in rsp waiting states", ("p", c->peer_name()));
@@ -1204,7 +1204,7 @@ namespace ultrainio {
 
         if(msg.block_height < m_require_block_height){ //no enough data
             num_of_no_data++;
-            ilog("receive block-sync rsp, but remote block_height(${t}) less than require(${s})! peer ${p}", 
+            ilog("receive block-sync rsp, but remote block_height(${t}) less than require(${s})! peer ${p}",
                 ("t", msg.block_height)("s", m_require_block_height)("p", c->peer_name()));
             return;
         }
@@ -1241,7 +1241,7 @@ namespace ultrainio {
                 idx = i;
             }
         }
-        
+
         if (idx == -1)
             return;
 
@@ -1314,7 +1314,7 @@ namespace ultrainio {
 
         open_write();
         previous_block = msg.block;
-        
+
         if (msg.block_num == 2){//Init genesis block
             chain::genesis_state gs;
             for(int i = 0; i < m_conns.size(); i++){
@@ -1341,7 +1341,7 @@ namespace ultrainio {
             send_blocks_file_sync_req(sync_num);
         } else {
             sync_blocks_done();
-        } 
+        }
     }
 
     void sync_blocks_manager::sync_blocks_done(){
@@ -1372,7 +1372,7 @@ namespace ultrainio {
 
         uint32_t blknum = m_block_log_ptr->head()->block_num();
         ilog("local block height ${blknum}", ("blknum", blknum));
-        
+
         chain::genesis_state gs;
         gs = chain::block_log::extract_genesis_state(block_dir);
 
@@ -1413,8 +1413,8 @@ namespace ultrainio {
         } else {
             rspPck.block_num = 0;
             rspPck.chunkLen = 0;
-        }       
-        
+        }
+
         c->enqueue(net_message(rspPck));
     }
     void sync_blocks_manager::open_write() {
@@ -1426,7 +1426,7 @@ namespace ultrainio {
         m_block_log_ptr = std::make_shared<chain::block_log>(block_dir);
         m_is_read = false;
     }
-    
+
     void sync_blocks_manager::open_read(bool reload) {
         if (m_block_log_ptr && m_is_read) {
             if (reload)
@@ -1452,7 +1452,7 @@ namespace ultrainio {
         //     return 3;
         } else if ( blocks_sync_states == no_data){
             return 4;
-        } 
+        }
 
         return 5;
     }
@@ -1901,11 +1901,11 @@ namespace ultrainio {
          m_sync_ws_manager->receive_ws_sync_rsp(c, msg);
     }
 
-    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqWsFileMsg &msg) {   
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqWsFileMsg &msg) {
       m_sync_ws_manager->receive_file_sync_req(c, msg);
     }
 
-    void sync_net_plugin_impl::handle_message(connection_ptr c, const FileTransferPacket &msg) {         
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const FileTransferPacket &msg) {
          m_sync_ws_manager->receive_file_sync_rsp(c, msg);
     }
 
@@ -1917,11 +1917,11 @@ namespace ultrainio {
         m_sync_blocks_manager->receive_blocks_file_sync_rsp(c, msg);
     }
 
-    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqBlocksInfoMsg &msg) {   
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqBlocksInfoMsg &msg) {
         m_sync_blocks_manager->receive_blocks_sync_req(c, msg);
     }
 
-    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqBlocksFileMsg &msg) {         
+    void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqBlocksFileMsg &msg) {
         m_sync_blocks_manager->receive_blocks_file_sync_req(c, msg);
     }
 
@@ -1991,7 +1991,7 @@ namespace ultrainio {
             }
             connected_try_count++;
         });
-    } 
+    }
 
     void sync_net_plugin_impl::connect_all( ) {
         for( auto seed_node : supplied_peers ) {
@@ -2100,7 +2100,7 @@ namespace ultrainio {
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
          ( "network-version-match", bpo::value<bool>()->default_value(false), "True to require exact match of peer network version.")
-         ( "enable-listen", bpo::value<bool>()->default_value(false), "True to enable p2p listen.")
+         ( "enable-listen", bpo::value<bool>()->default_value(true), "True to enable p2p listen.")
         ;
    }
 
@@ -2192,7 +2192,7 @@ namespace ultrainio {
 
         if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
             logger = fc::get_logger_map()[logger_name];
-      
+
    }
 
    void sync_net_plugin::plugin_shutdown() {
@@ -2305,7 +2305,7 @@ namespace ultrainio {
                     return {4,"no data",ip};
                 default :
                     return {5,"error","unknow reason"};
-            } 
+            }
         } else if (id == "block"){
             int code = my->m_sync_blocks_manager->get_status(ip);
             switch (code) {
@@ -2321,12 +2321,12 @@ namespace ultrainio {
                     return {4,"no data",ip};
                 default :
                     return {5,"error","unknow reason"};
-            } 
+            }
         } else if(id == "connect") {
-            std::string ip_text = ""; 
-            std::string name_text = ""; 
-            for( const auto& c : my->connections ) {     
-                if(!c->connected())   
+            std::string ip_text = "";
+            std::string name_text = "";
+            for( const auto& c : my->connections ) {
+                if(!c->connected())
                     continue;
 
                 ip_text += ip_text.empty() ? "" : " , ";
