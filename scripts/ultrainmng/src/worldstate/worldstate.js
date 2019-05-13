@@ -120,7 +120,7 @@ WorldState.setValidWs = async function(vaildNum) {
  */
 WorldState.pollingkWSState = async function (timeInterval, totalTime) {
 
-    let result = false;
+    let resultFlag = false;
     if (totalTime <= 0 || timeInterval <= 0 || timeInterval > totalTime) {
         return result;
     }
@@ -129,18 +129,26 @@ WorldState.pollingkWSState = async function (timeInterval, totalTime) {
      * 检查状态
      */
     let searchTime = 0;
+    let errorTime = 0;
     while (searchTime <= totalTime) {
-        result = await WorldState.requestWSState();
+        logger.info("pollingkWSState status(searchTime: "+searchTime+",totalTime:"+totalTime+"),result:"+resultFlag);
+        let result = await WorldState.requestWSState();
         logger.info("pollingkWSState result:", result);
         if (wsResUtil.isSuccess(result)) {
             logger.info("sync worldstate success");
-            result = true;
+            resultFlag = true;
             break;
         } else {
             if (wsResUtil.isOngoing(result)) {
                 logger.info("sync worldstate is ongoing");
+                errorTime = 0;
             } else if (wsResUtil.isError(result)) {
-                logger.error("sync worldstate is error:")
+                logger.error("sync worldstate is error:");
+                errorTime++;
+                if (errorTime >= 5) {
+                    resultFlag = false;
+                    break;
+                }
             }
         }
         /**
@@ -149,7 +157,7 @@ WorldState.pollingkWSState = async function (timeInterval, totalTime) {
         sleep.msleep(timeInterval);
         searchTime += timeInterval;
     }
-    return result;
+    return resultFlag;
 }
 
 /**

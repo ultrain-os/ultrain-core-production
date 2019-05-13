@@ -1630,10 +1630,12 @@ async function switchChain() {
                 wssFilePath = pathConstants.WSS_DATA+ chainConfig.chainId + "-" + blockNum + ".ws";
                 wssinfo = "--worldstate " + pathConstants.WSS_DATA + chainConfig.chainId + "-" + blockNum + ".ws";
 
-                result = await WorldState.pollingkWSState(1000, 300000);
+                result = await WorldState.pollingkWSState(1000, 1200000);
                 if (result == false) {
                     logger.error("require ws error："+wssinfo);
                     logMsg = utils.addLogStr(logMsg,"require ws error");
+                    wssinfo = " ";
+                    wssFilePath = " ";
                 } else {
                     logMsg = utils.addLogStr(logMsg,"require ws success");
                     logger.info("require ws success");
@@ -1908,9 +1910,12 @@ async function restartNod() {
                     wssFilePath = pathConstants.WSS_DATA + chainConfig.configSub.chainId + "-" + blockNum + ".ws";
                     wssinfo = "--worldstate " + pathConstants.WSS_DATA + chainConfig.configSub.chainId + "-" + blockNum + ".ws";
 
-                    result = await WorldState.pollingkWSState(1000, 300000);
+                    result = await WorldState.pollingkWSState(1000, 1200000);
                     if (result == false) {
+                        logMsg = utils.addLogStr(logMsg,"require ws error");
                         logger.error("require ws error：" + wssinfo);
+                        wssinfo = " ";
+                        wssFilePath = " ";
                     } else {
                         logger.info("require ws success");
                         logger.info("wssinfo:" + wssinfo);
