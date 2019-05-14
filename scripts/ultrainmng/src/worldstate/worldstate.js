@@ -263,7 +263,7 @@ WorldState.getSubchainWsInfo = async function () {
  * @param seedIp
  * @returns {boolean}
  */
-WorldState.updateConfig = function (chainId, seedIp) {
+WorldState.updateConfig = function (chainId, seedIp,chainConfig) {
 
     try {
         if (utils.isNotNull(chainId, seedIp)) {
@@ -275,7 +275,10 @@ WorldState.updateConfig = function (chainId, seedIp) {
             for (var i = 0; i< seedIp.length;i++) {
                 iniFile.addKeyValue("p2p-peer-address", seedIp[i] + ":7272");
             }
-
+            //producer节点默认关闭监听
+            if (chainConfig.isNoneProducer() == false) {
+                iniFile.setValue("enable-listen", "false");
+            }
             iniFile.setValue("http-server-address", "127.0.0.1:" + this.port);
             iniFile.writefile(this.configFilePath + this.configFileName, Constants.encodingConstants.UTF8);
             return true;
@@ -312,14 +315,14 @@ WorldState.stop = async function (totalTime) {
  * 启动
  * @type {WorldState}
  */
-WorldState.start = async function (chainId, seedIp, totalTime, wsspath,local) {
+WorldState.start = async function (chainId, seedIp, totalTime, wsspath,local,chainConfig) {
 
     let result = false;
     let args= [];
     /**
      * 更新配置信息（端口号，链id，种子ip
      */
-    if (!this.updateConfig(chainId, seedIp)) {
+    if (!this.updateConfig(chainId, seedIp,chainConfig)) {
         //return result;
     }
 

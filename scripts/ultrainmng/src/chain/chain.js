@@ -1579,7 +1579,7 @@ async function switchChain() {
         if (chainConfig.configFileData.local.worldstate == true) {
             logger.info("start world state");
             logMsg = utils.addLogStr(logMsg,"start world state");
-            result = await WorldState.start(chainConfig.chainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath,chainConfig.localTest);
+            result = await WorldState.start(chainConfig.chainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath,chainConfig.localTest,chainConfig);
             if (result == true) {
                 logger.info("start ws success");
                 logMsg = utils.addLogStr(logMsg,"start ws success");
@@ -1824,7 +1824,7 @@ async function restartNod() {
                 logMsg = utils.addLogStr(logMsg,"seed ip info is null(chainName:"+chainConfig.localChainName+")");
             } else {
                 logger.info("start world state");
-                result = await WorldState.start(chainConfig.localChainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath, chainConfig.localTest);
+                result = await WorldState.start(chainConfig.localChainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath, chainConfig.localTest,chainConfig);
                 if (result == true) {
                     logger.info("start ws success");
                     logger.info("world state is on , use world state to revocer");
