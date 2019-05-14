@@ -799,9 +799,9 @@ struct register_producer_subcommand {
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's produce block public key"))->required();
       register_producer->add_option("bls_key", bls_key_str, localized("The producer's bls public key"))->required();
-      register_producer->add_option("rewards_account", rewards_account, localized("The producer's block reward refund account"));
-      register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
-      register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), true);
+      register_producer->add_option("rewards_account", rewards_account, localized("The producer's block reward refund account"))->required();
+      register_producer->add_option("url", url, localized("url where info about producer can be found"), true)->required();
+      register_producer->add_option("location", loc, localized("name of the side chain to be added"), true)->required();
       register_producer->add_flag("-u,--superpriv", superprivflg, localized("register_producer add privileged (rarely used)"));
       add_standard_transaction_options(register_producer);
 
@@ -1008,7 +1008,7 @@ struct buy_respackage_subcommand {
    string location;
    buy_respackage_subcommand(CLI::App* actionRoot) {
       auto delegate_bandwidth = actionRoot->add_subcommand("resourcelease", localized("buy resources packages"));
-      delegate_bandwidth->add_option("from", from_str, localized("The account to delegate bandwidth from"))->required();
+      delegate_bandwidth->add_option("from", from_str, localized("The account that pays for resources packages"))->required();
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the resources packages"))->required();
       delegate_bandwidth->add_option("combosize", combosize, localized("The amount of  buy for resources packages"))->required();
       delegate_bandwidth->add_option("days", days, localized("days of use resource lease"))->required();
@@ -1140,9 +1140,9 @@ struct empoweruser_subcommand {
       auto empower_user = actionRoot->add_subcommand("empoweruser", localized("Empower user's onwer&active permissions to a sidechain"));
       empower_user->add_option("user_account", user_account, localized("Account of the user to be empowered"))->required();
       empower_user->add_option("chain_name", chain_name, localized("The name of the sidechain which the user will be empowered to"))->required();
-      empower_user->add_option("owner_public_key", owner_public_key, localized("Public key of owner permission, the default is the same as master"));
-      empower_user->add_option("active_public_key", active_public_key, localized("Public key of active permission, the default is the same as master"));
-      empower_user->add_option("updateable", updateable, localized("Set whether the account is updatable"));
+      empower_user->add_option("owner_public_key", owner_public_key, localized("Public key of owner permission"))->required();
+      empower_user->add_option("active_public_key", active_public_key, localized("Public key of active permission"))->required();
+      empower_user->add_option("updateable", updateable, localized("Set whether the account is updatable"))->required();
       empower_user->add_flag("-u,--superpriv", superprivflg, localized("empoweruser add privileged (rarely used)"));
       add_standard_transaction_options(empower_user);
 
@@ -2035,13 +2035,13 @@ int main( int argc, char** argv ) {
    //set clear contract
     auto empty_contract = app.add_subcommand("clearcontract", localized("clear contract"), false);
     empty_contract->require_subcommand();
-    auto emptyContractSubcommand = empty_contract->add_subcommand("contract", localized("Remove the code on an account"));
+    auto emptyContractSubcommand = empty_contract->add_subcommand("contract", localized("clear contract code and abi on an account"));
     emptyContractSubcommand->add_option("account", account, localized("The account to remove contract for"))->required();
 
     auto emptyCodeSubcommand = empty_contract->add_subcommand("code", localized("Remove the code on an account"));
     emptyCodeSubcommand->add_option("account", account, localized("The account to remove code for"))->required();
 
-    auto emptyAbiSubcommand = empty_contract->add_subcommand("abi", localized("Remove the code on an account"));
+    auto emptyAbiSubcommand = empty_contract->add_subcommand("abi", localized("Remove the abi on an account"));
     emptyAbiSubcommand->add_option("account", account, localized("The account to remove abi for"))->required();
 
     bool shouldSendEmpty = true;
