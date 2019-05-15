@@ -158,6 +158,28 @@ namespace ultrainio { namespace chain {
 
    using packed_transaction_ptr = std::shared_ptr<packed_transaction>;
 
+     struct packed_generated_transaction {
+
+      packed_generated_transaction() = default;
+
+      explicit packed_generated_transaction(const transaction& t)
+      {
+         set_transaction(t);
+      }
+
+      bytes                                   packed_trx;
+
+      transaction_id_type id()const;
+      transaction        get_transaction()const;
+      void               set_transaction(const transaction& t);
+
+   private:
+      mutable optional<transaction>           unpacked_trx; // <-- intermediate buffer used to retrieve values
+      void local_unpack()const;
+   };
+
+   using packed_generated_transaction_ptr = std::shared_ptr<packed_generated_transaction>;
+
    /**
     *  When a transaction is generated it can be scheduled to occur
     *  in the future. It may also fail to execute for some reason in
@@ -205,5 +227,6 @@ FC_REFLECT_DERIVED( ultrainio::chain::transaction, (ultrainio::chain::transactio
 FC_REFLECT_DERIVED( ultrainio::chain::signed_transaction, (ultrainio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( ultrainio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( ultrainio::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx) )
+FC_REFLECT( ultrainio::chain::packed_generated_transaction, (packed_trx) )
 FC_REFLECT_DERIVED( ultrainio::chain::deferred_transaction, (ultrainio::chain::signed_transaction), (sender_id)(sender)(payer)(execute_after) )
 FC_REFLECT( ultrainio::chain::deferred_reference, (sender)(sender_id) )

@@ -331,6 +331,28 @@ namespace impl {
 
          out(name, std::move(mvo));
       }
+
+      /**
+       * overload of to_variant_object for packed_generated_transaction
+       * @tparam Resolver
+       * @param act
+       * @param resolver
+       * @return
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const packed_generated_transaction& pgtrx, Resolver resolver,
+                       size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      {
+         ULTRAIN_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+         ULTRAIN_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         mutable_variant_object mvo;
+         auto trx = pgtrx.get_transaction();
+         mvo("id", trx.id());
+         mvo("packed_trx", pgtrx.packed_trx);
+         add(mvo, "transaction", trx, resolver, recursion_depth, deadline, max_serialization_time);
+
+         out(name, std::move(mvo));
+      }
    };
 
    /**

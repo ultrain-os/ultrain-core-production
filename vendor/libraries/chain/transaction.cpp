@@ -374,5 +374,32 @@ void packed_transaction::set_transaction(const transaction& t, const vector<byte
    compression = _compression;
 }
 
+transaction_id_type packed_generated_transaction::id()const
+{
+   local_unpack();
+   return get_transaction().id();
+}
+
+void packed_generated_transaction::local_unpack()const
+{
+   if (!unpacked_trx) {
+      try {
+            unpacked_trx = unpack_transaction(packed_trx);
+      } FC_CAPTURE_AND_RETHROW((packed_trx))
+   }
+}
+
+transaction packed_generated_transaction::get_transaction()const
+{
+   local_unpack();
+   return transaction(*unpacked_trx);
+}
+
+void packed_generated_transaction::set_transaction(const transaction& t)
+{
+   try {
+            packed_trx = pack_transaction(t);
+   } FC_CAPTURE_AND_RETHROW((t))
+}
 
 } } // ultrainio::chain

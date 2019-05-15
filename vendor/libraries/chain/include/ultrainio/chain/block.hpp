@@ -35,8 +35,9 @@ namespace ultrainio { namespace chain {
       transaction_receipt():transaction_receipt_header(){}
       transaction_receipt( transaction_id_type tid ):transaction_receipt_header(executed),trx(tid){}
       transaction_receipt( packed_transaction ptrx ):transaction_receipt_header(executed),trx(ptrx){}
+      transaction_receipt( packed_generated_transaction pgtrx ):transaction_receipt_header(executed),trx(pgtrx){}
 
-      fc::static_variant<transaction_id_type, packed_transaction> trx;
+      fc::static_variant<transaction_id_type, packed_transaction, packed_generated_transaction> trx;
 
       digest_type digest()const {
          digest_type::encoder enc;
@@ -45,6 +46,10 @@ namespace ultrainio { namespace chain {
          fc::raw::pack( enc, net_usage_words );
          if( trx.contains<transaction_id_type>() )
             fc::raw::pack( enc, trx.get<transaction_id_type>() );
+         else if(trx.contains<packed_generated_transaction>()) {
+            packed_transaction temp_ptrx(trx.get<packed_generated_transaction>().get_transaction());
+            fc::raw::pack( enc, temp_ptrx.packed_digest() );
+         }
          else
             fc::raw::pack( enc, trx.get<packed_transaction>().packed_digest() );
          return enc.result();
@@ -72,6 +77,8 @@ namespace ultrainio { namespace chain {
          for (auto& t : block.transactions) {
             if (t.trx.contains<transaction_id_type>()) {
                trx_ids.emplace_back(t.trx.get<transaction_id_type>());
+            } else if(t.trx.contains<packed_generated_transaction>()) {
+               trx_ids.emplace_back(t.trx.get<packed_generated_transaction>().id());
             } else {
                trx_ids.emplace_back(t.trx.get<packed_transaction>().id());
             }
