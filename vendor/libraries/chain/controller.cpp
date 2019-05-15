@@ -2397,6 +2397,9 @@ vector<digest_type> controller::merkle_proof_of(const uint32_t& block_number, co
       if (trxs[i].trx.contains<packed_transaction>() && trxs[i].trx.get<packed_transaction>().id() == trx_id) {
          target_pos = i;
          break;
+      } else if (trxs[i].trx.contains<packed_generated_transaction>() && trxs[i].trx.get<packed_generated_transaction>().id() == trx_id) {
+         target_pos = i;
+         break;
       }
    }
 

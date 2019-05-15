@@ -387,11 +387,19 @@ class typescript_crypto_api : public context_aware_api {
          transaction_receipt trx_receipt;
          fc::raw::unpack(ds, trx_receipt);
 
-         if (trx_receipt.trx.contains<packed_transaction>()) {
-            auto& ptx = trx_receipt.trx.get<packed_transaction>();
-
-            bytes tx_raw_data = ptx.get_raw_transaction();
-            std::string tx_id = string(ptx.id());
+         if (trx_receipt.trx.contains<packed_transaction>() ||
+             trx_receipt.trx.contains<packed_generated_transaction>()) {
+            bytes tx_raw_data;
+            std::string tx_id;
+            if(trx_receipt.trx.contains<packed_transaction>()) {
+                auto& ptx = trx_receipt.trx.get<packed_transaction>();
+                tx_raw_data = ptx.get_raw_transaction();
+                tx_id = string(ptx.id());
+            } else if(trx_receipt.trx.contains<packed_generated_transaction>()) {
+                auto& pgtx = trx_receipt.trx.get<packed_generated_transaction>();
+                tx_raw_data = pgtx.packed_trx;
+                tx_id = string(pgtx.id());
+            }
             uint8_t status = uint8_t(trx_receipt.status);
 
             auto required_size = tx_raw_data.size() + fc::raw::pack_size(status) + fc::raw::pack_size(tx_id);
