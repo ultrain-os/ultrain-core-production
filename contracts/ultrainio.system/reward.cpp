@@ -18,7 +18,7 @@ namespace ultrainiosystem {
        * At startup the initial producer may not be one that is registered / elected
        * and therefore there may be no producer object for them.
        */
-      producers_table _producers(_self, master_chain_name);
+      producers_table _producers(_self, self_chain_name);
 
       if ( !_gstate.start_block){
          uint32_t i {};
@@ -161,7 +161,7 @@ namespace ultrainiosystem {
          return;
 
       int64_t master_paid_balance = 0;
-      producers_table _producers(_self, master_chain_name);
+      producers_table _producers(_self, self_chain_name);
       for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
          if(itr->total_produce_block == 0 || _gstate.total_cur_chain_block <= 0)
             continue;

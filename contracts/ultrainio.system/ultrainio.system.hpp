@@ -21,7 +21,7 @@
 #define UNUSED(a) (void*)(a);
 namespace ultrainiosystem {
    using namespace ultrainio;
-   const name master_chain_name{N(ultrainio)};
+   const name self_chain_name{N(ultrainio)};
    const name default_chain_name{N(default)};  //default chain, will be assigned by system.
 
    bool operator!=(const checksum256& sha256_1, const checksum256& sha256_2) {
@@ -111,9 +111,9 @@ namespace ultrainiosystem {
       bool                  in_disable = true;
       uint64_t primary_key()const { return owner; }
 
-      bool     is_on_master_chain() const  {return location == master_chain_name;}
+      bool     is_on_master_chain() const  {return location == self_chain_name;}
       bool     is_on_subchain() const      {
-          return (location != master_chain_name) && (location != default_chain_name);
+          return (location != self_chain_name) && (location != default_chain_name);
       }
 
       ULTRAINLIB_SERIALIZE(producer_brief, (owner)(location)(in_disable) )
@@ -493,7 +493,7 @@ namespace ultrainiosystem {
           *  unstaked tokens belonging to owner
           */
          void resourcelease( account_name from, account_name receiver,
-                             uint64_t combosize, uint64_t days, name location = master_chain_name);
+                             uint64_t combosize, uint64_t days, name location = self_chain_name);
          void recycleresource(const account_name owner);
          void setfreeacc( account_name account, uint64_t number);
 

@@ -233,7 +233,7 @@ namespace ultrainiosystem {
     }
 
   void system_contract::syncresource(account_name receiver, uint64_t combosize, uint32_t block_height) {
-       resources_lease_table _reslease_tbl( _self, master_chain_name );//In side chain, always treat itself as master
+       resources_lease_table _reslease_tbl( _self, self_chain_name );
        auto resiter = _reslease_tbl.find(receiver);
        if(resiter != _reslease_tbl.end()) {
            ultrainio_assert(combosize >= resiter->lease_num, "error combo size in sync resource");
@@ -242,18 +242,18 @@ namespace ultrainiosystem {
            if(remain_blockheight > seconds_per_day/2/block_interval_seconds()){
               auto deltadays = ceil(block_interval_seconds()*remain_blockheight/double(seconds_per_day));
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                                { N(ultrainio), receiver, 0, deltadays, master_chain_name} );
+                                { N(ultrainio), receiver, 0, deltadays, self_chain_name} );
            }
            int64_t deltasize = (int64_t)combosize - (int64_t)resiter->lease_num;
            if(deltasize > 0) {
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                                 { N(ultrainio), receiver, deltasize, 0, master_chain_name} );
+                                 { N(ultrainio), receiver, deltasize, 0, self_chain_name} );
            }
        } else {
            if(block_height > 0 && combosize > 0){
                auto days = ceil(block_interval_seconds()*block_height/(double)seconds_per_day);
                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                     { N(ultrainio), receiver, combosize, days, master_chain_name} );
+                     { N(ultrainio), receiver, combosize, days, self_chain_name} );
             }
        }
    }
@@ -273,7 +273,7 @@ namespace ultrainiosystem {
          ultrainio_assert( from == _self, "only allow ultrainio account resourcelease" );
       ultrainio_assert(location != default_chain_name && location != N(master) , "wrong location");
       auto chain_itr = _chains.end();
-      if(location != master_chain_name) {
+      if(location != self_chain_name) {
          chain_itr = _chains.find(location);
          ultrainio_assert(chain_itr != _chains.end(), "this subchian location is not existed");
          ultrainio_assert(is_empowered(receiver, location), "the receiver is not yet empowered to this chain before");
@@ -441,7 +441,7 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
       int64_t net_bytes = 0;
       int64_t cpu_bytes = 0;
       uint32_t  calc_num = 0;
-      resources_lease_table _reslease_tbl( _self, master_chain_name);
+      resources_lease_table _reslease_tbl( _self, self_chain_name);
       for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
          if(leaseiter->end_block_height <= block_height){
             calc_num++;

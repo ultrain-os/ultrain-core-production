@@ -5,7 +5,7 @@
 
 namespace ultrainio { namespace chain {
 
-    const name master_chain_name{N(ultrainio)};
+    const name self_chain_name{N(ultrainio)};
     struct exten_type {
         exten_type(){}
         uint16_t         key;

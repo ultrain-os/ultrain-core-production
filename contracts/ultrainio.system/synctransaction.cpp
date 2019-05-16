@@ -145,7 +145,7 @@ namespace ultrainiosystem {
                 continue;
             exec_succ++;
             INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                  { N(ultrainio), rap.receiver, rap.combosize, rap.days, master_chain_name} );
+                  { N(ultrainio), rap.receiver, rap.combosize, rap.days, self_chain_name} );
          } else if (act.account == N(ultrainio) && act.name == NEX(moveprod)) {
             CommitteeChangeParam ccp = unpack<CommitteeChangeParam>(act.data);
             if(ccp.from_chain == _gstate.chain_name) {
@@ -162,7 +162,7 @@ namespace ultrainiosystem {
                 authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
                 authorization.emplace_back(permission_level{ccp.producer, N(active)});
                 INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), authorization,
-                    { ccp.producer, ccp.producerkey, ccp.blskey, N(ultrainio), " ", master_chain_name } );
+                    { ccp.producer, ccp.producerkey, ccp.blskey, N(ultrainio), " ", self_chain_name } );
                 INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
                     { N(utrio.stake), ccp.producer, asset(_gstate.min_activated_stake)} );
             }

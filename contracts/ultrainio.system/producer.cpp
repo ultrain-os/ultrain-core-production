@@ -25,7 +25,7 @@ namespace ultrainiosystem {
         ultrainio_assert( url.size() < 512, "url too long" );
         // key is hex encoded
         ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
-        if(location != master_chain_name) {
+        if(location != self_chain_name) {
             ultrainio_assert(location != N(master) , "wrong location");
             if(location != default_chain_name) {
                 ultrainio_assert(_chains.find(location) != _chains.end(),
@@ -93,7 +93,7 @@ namespace ultrainiosystem {
                 }
             }
             else {
-                if(location != master_chain_name) {
+                if(location != self_chain_name) {
                     ultrainio_assert(_chains.find(location) != _chains.end(),
                                      "wrong location, subchain is not existed");
                 }
@@ -185,6 +185,7 @@ namespace ultrainiosystem {
     void system_contract::moveprod(account_name producer, std::string  producer_key, std::string blskey,
                                    bool from_disable, name from_chain, bool to_disable, name to_chain) {
         require_auth(_self);
+        ultrainio_assert(_gstate.is_master_chain(), "this action can only be performed on master chain");
         if(from_disable && to_disable) {
             ultrainio_assert(false, "error: cannot move a producer from disable to disable");
         } else if (!from_disable && !to_disable) {

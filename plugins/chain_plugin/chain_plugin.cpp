@@ -1018,7 +1018,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
 
 vector<read_only::get_subchain_committee_result> read_only::get_subchain_committee( const read_only::get_subchain_committee_params& p )const {
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
-   ULTRAIN_ASSERT(p.chain_name != master_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
+   ULTRAIN_ASSERT(p.chain_name != self_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
 
    name table = N(producers);
    auto index_type = get_table_type( abi, table );
@@ -1062,7 +1062,7 @@ vector<ultrainio::chain::resources_lease> results;
 
 read_only::get_subchain_block_num_result read_only::get_subchain_block_num(const read_only::get_subchain_block_num_params& p) const {
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
-   ULTRAIN_ASSERT(p.chain_name != master_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
+   ULTRAIN_ASSERT(p.chain_name != self_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
 
    name table = N(chains);
    auto index_type = get_table_type( abi, table );
@@ -1187,7 +1187,7 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
        }
     });
 
-    if(result.location == chain::master_chain_name) {
+    if(result.location == chain::self_chain_name) {
         result.chain_id = db.get_chain_id();
         result.genesis_time = block_timestamp(); //TODO, modify as master genesis time
     }
@@ -1303,7 +1303,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    static const uint8_t secondary_index_num = 0;
    std::vector<name> scopes;
    if(p.all_chain) {
-       scopes.emplace_back(master_chain_name); //add master
+       scopes.emplace_back(self_chain_name); //add master
        //add side chains
        walk_key_value_table(N(ultrainio), N(ultrainio), N(chains), [&](const key_value_object& obj){
            ultrainio::chain::chain_info subchain_data;
@@ -1323,7 +1323,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
        const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), scopes[i], N(producers)));
        const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(ultrainio), scopes[i], N(producers) | secondary_index_num));
        if(table_id == nullptr || secondary_table_id == nullptr) {
-           ULTRAIN_ASSERT(scopes[i] != master_chain_name, chain::contract_table_query_exception, "Missing master producers table");
+           ULTRAIN_ASSERT(scopes[i] != self_chain_name, chain::contract_table_query_exception, "Missing master producers table");
            continue;
        }
 

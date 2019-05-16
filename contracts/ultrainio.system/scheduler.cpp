@@ -42,7 +42,7 @@ namespace ultrainiosystem {
 
         uint32_t confirmed_blocknum = 0;
         uint32_t vote_threshold = 0;
-        if (subchain == master_chain_name) {
+        if (subchain == self_chain_name) {
             confirmed_blocknum = (uint32_t)head_block_number();
             vote_threshold = (uint32_t)ceil((double)_gstate.cur_committee_number * 2 / 3);
         } else {
@@ -163,7 +163,7 @@ namespace ultrainiosystem {
         require_auth(N(ultrainio));
         ultrainio_assert(_gstate.is_master_chain(), "only master chain can register new chain");
         ultrainio_assert(chain_name != default_chain_name, "subchian cannot named as default.");
-        ultrainio_assert(chain_name != master_chain_name, "subchian cannot named as 0");
+        ultrainio_assert(chain_name != self_chain_name, "subchian cannot named as 0");
         auto itor = _chains.find(chain_name);
         ultrainio_assert(itor == _chains.end(), "there has been a subchian with this name");
         chaintypes_table type_tbl(_self, _self);
@@ -438,7 +438,7 @@ namespace ultrainiosystem {
     }
 
     void system_contract::add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number) {
-        if (chain_name != master_chain_name) {
+        if (chain_name != self_chain_name) {
             auto ite_chain = _chains.find(chain_name);
             ultrainio_assert(ite_chain != _chains.end(), "destination chain is not existed" );
             chaintypes_table type_tbl(_self, _self);
@@ -475,7 +475,7 @@ namespace ultrainiosystem {
         auto prod = _producer_chain.find( producer_name );
         ultrainio_assert(prod != _producer_chain.end(), "producer is not existed in source chain");
 
-        if (chain_name != master_chain_name) {
+        if (chain_name != self_chain_name) {
             auto ite_chain = _chains.find(chain_name);
             ultrainio_assert(ite_chain != _chains.end(), "source sidechain is not existed");
             chaintypes_table type_tbl(_self, _self);

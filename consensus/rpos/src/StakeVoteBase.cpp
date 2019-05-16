@@ -39,7 +39,7 @@ namespace ultrainio {
     StakeVoteBase::StakeVoteBase(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr)
             : m_committeeStatePtr(committeeStatePtr), m_blockNum(blockNum) {
         if (!m_committeeStatePtr) {
-            m_committeeStatePtr = getCommitteeState(chain::master_chain_name);
+            m_committeeStatePtr = getCommitteeState(chain::self_chain_name);
         }
         ULTRAIN_ASSERT(getCommitteeMemberNumber() != 0, chain::chain_exception, "totalStake is 0");
         const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();

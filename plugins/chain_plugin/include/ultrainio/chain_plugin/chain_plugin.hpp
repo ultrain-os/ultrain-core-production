@@ -392,14 +392,14 @@ public:
       bool        json = false;
       string      lower_bound;
       bool        all_chain = false;
-      name        chain_name = chain::master_chain_name;
+      name        chain_name = chain::self_chain_name;
    };
 
    struct producer_with_location {
       name    chain_name;
       fc::variant prod_detail;
 
-      producer_with_location() {chain_name = chain::master_chain_name;}
+      producer_with_location() {chain_name = chain::self_chain_name;}
       producer_with_location(uint64_t location, fc::variant vt): chain_name(location), prod_detail(vt) {}
    };
 

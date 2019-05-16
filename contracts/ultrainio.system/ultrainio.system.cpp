@@ -156,7 +156,7 @@ namespace ultrainiosystem {
    }
    void system_contract::updateactiveminers(const ultrainio::proposeminer_info&  miner ) {
       if(miner.adddel_miner){
-         producers_table _producers(_self, master_chain_name);
+         producers_table _producers(_self, self_chain_name);
          auto prod = _producers.find( miner.account );
          if(prod != _producers.end()){
             print("\nupdateactiveminers curproducer existed  proposerminer:",name{(*prod).owner});
@@ -171,7 +171,7 @@ namespace ultrainiosystem {
          INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
             { N(utrio.stake),miner.account,asset(_gstate.min_activated_stake)} );
       }else{
-         producers_table _producers(_self, master_chain_name);
+         producers_table _producers(_self, self_chain_name);
          auto prod = _producers.find( miner.account );
          if( prod == _producers.end() ) {
             print("updateactiveminers curproducer not found  proposerminer:",ultrainio::name{(*prod).owner}," total_cons_staked:",(*prod).total_cons_staked);
@@ -198,7 +198,7 @@ namespace ultrainiosystem {
       ultrainio_assert( proposeminer.size() == 1, "The number of proposeminer changes cannot exceed one" );
       ultrainio_assert( proposeminer[0].url.size() < 512, "url too long" );
       require_auth( proposer );
-      producers_table _producers(_self, master_chain_name);
+      producers_table _producers(_self, self_chain_name);
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
@@ -322,7 +322,7 @@ void system_contract::voteaccount() {
       ds >> proposer >> proposeaccount;
       ultrainio_assert( proposeaccount.size() > 0 && proposeaccount.size() <= 10, "The number of proposeaccount changes changes not correct" );
       require_auth( proposer );
-      producers_table _producers(_self, master_chain_name);
+      producers_table _producers(_self, self_chain_name);
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
@@ -405,7 +405,7 @@ void system_contract::voteresourcelease() {
       ds >> proposer >> proposeresource;
       ultrainio_assert( proposeresource.size() > 0 && proposeresource.size() <= 10, "The number of proposeresource changes not correct" );
       require_auth( proposer );
-      producers_table _producers(_self, master_chain_name);
+      producers_table _producers(_self, self_chain_name);
       auto propos = _producers.find( proposer );
       ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
       checkvotefrequency(_producers, propos );
