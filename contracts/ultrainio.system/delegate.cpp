@@ -271,7 +271,16 @@ namespace ultrainiosystem {
    void system_contract::resourcelease( account_name from, account_name receiver,
                           uint64_t combosize, uint64_t days, name location){
       require_auth( from );
-      ultrainio_assert( from == _self, "only allow ultrainio account resourcelease" );
+      bool is_allow_buy_res = false;
+      for(auto extension : _gstate.table_extension){
+         if(extension.key == ultrainio_global_state::global_state_exten_type_key::is_allow_buy_res
+            && extension.value == "1"){
+               is_allow_buy_res = true;
+               break;
+            }
+      }
+      if( !is_allow_buy_res )
+         ultrainio_assert( from == _self, "only allow ultrainio account resourcelease" );
       ultrainio_assert(location != default_chain_name && location != N(master) , "wrong location");
       auto chain_itr = _chains.end();
       if(location != master_chain_name) {

@@ -679,6 +679,13 @@
         {"name":"params",     "type":"ultrainio_system_params"}
       ]
     },{
+      "name": "setglobalextendata",
+      "base": "",
+      "fields": [
+        {"name":"key",     "type":"uint16"},
+        {"name":"value",     "type":"string"}
+      ]
+    },{
       "name": "setmasterchaininfo",
       "base": "",
       "fields": [
@@ -877,6 +884,10 @@
    },{
       "name": "setsysparams",
       "type": "setsysparams",
+      "ricardian_contract": ""
+   },{
+      "name": "setglobalextendata",
+      "type": "setglobalextendata",
       "ricardian_contract": ""
    },{
       "name": "setmasterchaininfo",

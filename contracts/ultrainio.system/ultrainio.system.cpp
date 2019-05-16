@@ -67,6 +67,21 @@ namespace ultrainiosystem {
             } );
         }
    }
+   void system_contract::setglobalextendata( uint16_t key, std::string value ) {
+      require_auth( _self );
+      ultrainio_assert( !value.empty(), " global value is empty" );
+      bool is_exist_key = false;
+      for( auto& exten : _gstate.table_extension ){
+         if(exten.key == key){
+            exten.value = value;
+            is_exist_key = true;
+            break;
+         }
+      }
+      if( !is_exist_key ){
+         _gstate.table_extension.push_back( exten_type( key, value) );
+      }
+   }
 
    void system_contract::setmasterchaininfo( const master_chain_info& chaininfo ){
       require_auth( _self );
@@ -616,7 +631,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
      // ultrainio.system.cpp
-     (setsysparams)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(votecommittee)(voteaccount)(voteresourcelease)
+     (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)(setfreeacc)
      // producer.cpp

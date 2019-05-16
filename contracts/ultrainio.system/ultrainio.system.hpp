@@ -35,6 +35,7 @@ namespace ultrainiosystem {
 
    struct exten_type {
        exten_type(){}
+       exten_type( uint16_t k, const std::string& v ) : key(k), value(v){}
        uint16_t         key;
        std::string      value;
        ULTRAINLIB_SERIALIZE(exten_type , (key)(value) )
@@ -74,6 +75,7 @@ namespace ultrainiosystem {
          is_claim_reward = 4,
          free_account_per_res = 5,
          version_number = 6,
+         is_allow_buy_res = 7, //Allows a general account to buy resources
       };
 
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,
@@ -507,6 +509,7 @@ namespace ultrainiosystem {
 
          // functions defined in ultrainio.system.cpp
          void setsysparams( const ultrainio_system_params& params );
+         void setglobalextendata( uint16_t key, std::string value );
          void setmasterchaininfo( const master_chain_info& chaininfo );
          void setparams( const ultrainio::blockchain_parameters& params );
          void setpriv( account_name account, uint8_t is_priv );
