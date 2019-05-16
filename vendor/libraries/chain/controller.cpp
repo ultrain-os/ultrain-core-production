@@ -929,11 +929,13 @@ struct controller_impl {
    }
 
    transaction_trace_ptr apply_onerror( const generated_transaction& gtrx,
+                                        const packed_generated_transaction& pgtrx,
                                         fc::time_point deadline,
                                         fc::time_point start,
                                         uint32_t& cpu_time_to_bill_us, // only set on failure
                                         uint32_t billed_cpu_time_us,
-                                        bool explicit_billed_cpu_time = false ) {
+                                        bool explicit_billed_cpu_time = false,
+                                        bool packed_generated_trx_receipt = true ) {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
       etrx.actions.emplace_back( vector<permission_level>{{gtrx.sender, config::active_name}},
@@ -954,8 +956,8 @@ struct controller_impl {
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
-         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
-                                        trx_context.billed_cpu_time_us, trace->net_usage );
+         trace->receipt = push_receipt_for_generated_trx(pgtrx, gtrx.trx_id, packed_generated_trx_receipt,
+                                        transaction_receipt::soft_fail, trx_context.billed_cpu_time_us, trace->net_usage );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
          emit( self.applied_transaction, trace );
@@ -1010,6 +1012,13 @@ struct controller_impl {
       return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
    }
 
+   transaction_trace_ptr push_generated_transaction( const packed_generated_transaction& pgtrx, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false ) {
+      const auto& idx = db.get_index<generated_transaction_multi_index,by_trx_id>();
+      auto itr = idx.find( pgtrx.id());
+      ULTRAIN_ASSERT( itr != idx.end(), unknown_transaction_exception, "unknown transaction" );
+      return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
+   }
+
    transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false )
    { try {
       auto undo_session = db.start_undo_session(true);
@@ -1029,17 +1038,21 @@ struct controller_impl {
                  ("gtrx.delay_until",gtrx.delay_until)("pbt",self.pending_block_time())          );
 
 
+      signed_transaction dtrx;
+      fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+      packed_generated_transaction pgt(static_cast<transaction&>(dtrx));
+      const int patch_version_number = 3;
+      const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+      bool new_receipt = ro_api.is_exec_patch_code(patch_version_number);
+
       if( gtrx.expiration < self.pending_block_time() ) {
          auto trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
          trace->scheduled = false;
-         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
+         trace->receipt = push_receipt_for_generated_trx( pgt, gtrx.trx_id, new_receipt, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          undo_session.squash();
          return trace;
       }
-
-      signed_transaction dtrx;
-      fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
 
       auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
          in_trx_requiring_checks = old_value;
@@ -1063,7 +1076,7 @@ struct controller_impl {
 
          auto restore = make_block_restore_point();
 
-         trace->receipt = push_receipt( gtrx.trx_id,
+         trace->receipt = push_receipt_for_generated_trx( pgt, gtrx.trx_id, new_receipt,
                                         transaction_receipt::executed,
                                         trx_context.billed_cpu_time_us,
                                         trace->net_usage );
@@ -1089,7 +1102,8 @@ struct controller_impl {
       if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
          dlog("${detail}", ("detail", trace->except->to_detail_string()));
-         auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start, cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time );
+         auto error_trace = apply_onerror( gtrx, pgt, deadline, trx_context.pseudo_start, cpu_time_to_bill_us,
+                                      billed_cpu_time_us, explicit_billed_cpu_time, new_receipt );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
@@ -1126,7 +1140,7 @@ struct controller_impl {
          resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
                                                 block_timestamp_type(self.pending_block_time()).abstime ); // Should never fail
 
-         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
+         trace->receipt = push_receipt_for_generated_trx(pgt, gtrx.trx_id, new_receipt, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
          emit( self.applied_transaction, trace );
          undo_session.squash();
       }
@@ -1134,6 +1148,16 @@ struct controller_impl {
       return trace;
    } FC_CAPTURE_AND_RETHROW() } /// push_scheduled_transaction
 
+
+   const transaction_receipt& push_receipt_for_generated_trx(const packed_generated_transaction& trx, const transaction_id_type& trx_id,
+                                            bool new_receipt, transaction_receipt_header::status_enum status,
+                                            uint64_t cpu_usage_us, uint64_t net_usage) {
+       if(new_receipt) {
+           return push_receipt(trx, status, cpu_usage_us, net_usage);
+       } else {
+           return push_receipt(trx_id, status, cpu_usage_us, net_usage);
+       }
+   }
 
    /**
     *  Adds the transaction receipt to the pending block and returns it.
@@ -1367,7 +1391,9 @@ struct controller_impl {
                trace = push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us, true );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
-            } else {
+            } else if( receipt.trx.contains<packed_generated_transaction>() ) {
+               trace = push_generated_transaction( receipt.trx.get<packed_generated_transaction>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+            }  else {
                ULTRAIN_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
 
@@ -1974,6 +2000,11 @@ transaction_trace_ptr controller::push_scheduled_transaction( const transaction_
 {
    validate_db_available_size();
    return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
+}
+
+transaction_trace_ptr controller::push_generated_transaction( const packed_generated_transaction& pgtrx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+   validate_db_available_size();
+   return my->push_generated_transaction( pgtrx, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
 }
 
 block_timestamp_type controller::get_proper_next_block_timestamp() const {

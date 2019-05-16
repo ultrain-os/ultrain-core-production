@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/d9fabc",
+   "version": "ultrainio::abi/1.0/c0ecee",
 
    "types": [{
       "new_type_name": "account_name",

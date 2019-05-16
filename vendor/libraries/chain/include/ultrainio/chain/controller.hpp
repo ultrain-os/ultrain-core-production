@@ -145,6 +145,7 @@ namespace ultrainio { namespace chain {
           *
           */
          transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+         transaction_trace_ptr push_generated_transaction( const packed_generated_transaction& pgtrx, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
 
          signed_transaction get_on_finish_transaction();
 

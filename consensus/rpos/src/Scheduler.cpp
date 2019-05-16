@@ -1741,6 +1741,9 @@ namespace ultrainio {
                 } else if (receipt.trx.contains<chain::transaction_id_type>()) {
                     trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
                                                              max_deadline, receipt.cpu_usage_us);
+                } else if(receipt.trx.contains<chain::packed_generated_transaction>()) {
+                    trace = chain.push_generated_transaction(receipt.trx.get<chain::packed_generated_transaction>(),
+                                                             max_deadline, receipt.cpu_usage_us);
                 }
 
                 bool transaction_failed =  trace && trace->except;
@@ -1856,6 +1859,9 @@ namespace ultrainio {
                 } else if (receipt.trx.contains<chain::transaction_id_type>()) {
                     trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
                                                      max_deadline, receipt.cpu_usage_us);
+                } else if(receipt.trx.contains<chain::packed_generated_transaction>()) {
+                    trace = chain.push_generated_transaction(receipt.trx.get<chain::packed_generated_transaction>(),
+                                                     max_deadline, receipt.cpu_usage_us);
                 }
 
                 bool transaction_failed =  trace && trace->except;
@@ -1947,6 +1953,9 @@ namespace ultrainio {
                         } else if (receipt.trx.contains<chain::transaction_id_type>()) {
                             trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
                                                              fc::time_point::maximum(), receipt.cpu_usage_us);
+                        } else if(receipt.trx.contains<chain::packed_generated_transaction>()) {
+                            trace = chain.push_generated_transaction(receipt.trx.get<chain::packed_generated_transaction>(),
+                                                              fc::time_point::maximum(), receipt.cpu_usage_us);
                         }
 
                         bool transaction_failed =  trace && trace->except;
