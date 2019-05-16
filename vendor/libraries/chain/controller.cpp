@@ -33,7 +33,8 @@
 #include <chrono>
 
 #include <ultrainio/chain/worldstate_file_manager.hpp>
-
+#include <appbase/application.hpp>
+#include <ultrainio/chain_plugin/chain_plugin.hpp>
 namespace ultrainio { namespace chain {
 
 using namespace appbase;
@@ -48,7 +49,8 @@ using controller_index_set = index_set<
    block_summary_multi_index,
    transaction_multi_index,
    generated_transaction_multi_index,
-   table_id_multi_index
+   table_id_multi_index,
+   auth_sequence_index
 >;
 
 using contract_database_index_set = index_set<
@@ -809,9 +811,13 @@ struct controller_impl {
             a.set_abi(ultrainio_contract_abi(abi_def()));
          }
       });
-      db.create<account_sequence_object>([&](auto & a) {
-        a.name = name;
-      });
+      const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+      bool  is_exec_noadd_unessential_table = ro_api.is_exec_patch_code( config::patch_update_version::not_add_unessential_table );
+      if( !is_exec_noadd_unessential_table ){
+         db.create<account_sequence_object>([&](auto & a) {
+            a.name = name;
+         });
+      }
 
       const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
                                                                       owner, conf.genesis.initial_timestamp );

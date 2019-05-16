@@ -77,11 +77,30 @@ namespace ultrainio { namespace chain {
       >
    >;
 
+   class auth_sequence_object : public chainbase::object<auth_sequence_object_type, auth_sequence_object>
+   {
+      OBJECT_CTOR(auth_sequence_object);
+
+      id_type      id;
+      account_name name;
+      uint8_t      auth_sequence = 0;
+   };
+
+   struct by_name;
+   using auth_sequence_index = chainbase::shared_multi_index_container<
+      auth_sequence_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<auth_sequence_object, auth_sequence_object::id_type, &auth_sequence_object::id>>,
+         ordered_unique<tag<by_name>, member<auth_sequence_object, account_name, &auth_sequence_object::name>>
+      >
+   >;
+
 } } // ultrainio::chain
 
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::account_object, ultrainio::chain::account_index)
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::account_sequence_object, ultrainio::chain::account_sequence_index)
-
+CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::auth_sequence_object, ultrainio::chain::auth_sequence_index)
 
 FC_REFLECT(ultrainio::chain::account_object,(name)(vm_type)(vm_version)(privileged)(updateable)(last_code_update)(code_version)(creation_date)(chain_names)(code)(abi))
 FC_REFLECT(ultrainio::chain::account_sequence_object, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence))
+FC_REFLECT(ultrainio::chain::auth_sequence_object, (name)(auth_sequence))

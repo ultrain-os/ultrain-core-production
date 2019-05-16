@@ -917,18 +917,57 @@ uint64_t apply_context::next_global_sequence() {
 }
 
 uint64_t apply_context::next_recv_sequence( account_name receiver ) {
-   const auto& rs = db.get<account_sequence_object,by_name>( receiver );
-   db.modify( rs, [&]( auto& mrs ) {
-      ++mrs.recv_sequence;
-   });
-   return rs.recv_sequence;
+   const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+   bool  is_exec_noadd_unessential_table = ro_api.is_exec_patch_code( config::patch_update_version::not_add_unessential_table );
+   if( is_exec_noadd_unessential_table ){
+      auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>(receiver);
+      if( !sequence_obj_itr ){
+         db.create<account_sequence_object>([&](auto & a) {
+            a.name = receiver;
+            a.recv_sequence++;
+         });
+         return 1;
+      } else {
+         db.modify( *sequence_obj_itr, [&]( auto& mrs ) {
+            ++mrs.recv_sequence;
+         });
+         return sequence_obj_itr->recv_sequence;
+      }
+   } else {
+      const auto& rs = db.get<account_sequence_object,by_name>( receiver );
+      db.modify( rs, [&]( auto& mrs ) {
+         ++mrs.recv_sequence;
+      });
+      return rs.recv_sequence;
+   }
 }
 uint64_t apply_context::next_auth_sequence( account_name actor ) {
-   const auto& rs = db.get<account_sequence_object,by_name>( actor );
-   db.modify( rs, [&](auto& mrs ){
-      ++mrs.auth_sequence;
-   });
-   return rs.auth_sequence;
+   const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+   bool  is_exec_noadd_unessential_table = ro_api.is_exec_patch_code( config::patch_update_version::not_add_unessential_table );
+   if( is_exec_noadd_unessential_table ){
+      auto const* auth_sequence_obj_itr = db.find<auth_sequence_object, by_name>(actor);
+      if( !auth_sequence_obj_itr ){
+         db.create<auth_sequence_object>([&](auto & a) {
+            a.name = actor;
+            ++a.auth_sequence;
+         });
+         return 1;
+      } else {
+         db.modify( *auth_sequence_obj_itr, [&](auto& a ){
+            if( a.auth_sequence >= std::numeric_limits<uint8_t>::max() )
+               a.auth_sequence = 0;
+            else
+               ++a.auth_sequence;
+         });
+         return auth_sequence_obj_itr->auth_sequence;
+      }
+   } else {
+      const auto& rs = db.get<account_sequence_object,by_name>( actor );
+      db.modify( rs, [&](auto& mrs ){
+         ++mrs.auth_sequence;
+      });
+      return rs.auth_sequence;
+   }
 }
 
 
