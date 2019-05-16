@@ -70,6 +70,7 @@ namespace ultrainiosystem {
    void system_contract::setglobalextendata( uint16_t key, std::string value ) {
       require_auth( _self );
       ultrainio_assert( !value.empty(), " global value is empty" );
+      ultrainio_assert( key < ultrainio_global_state::global_state_exten_type_key::global_state_key_end, " key should not exist" );
       bool is_exist_key = false;
       for( auto& exten : _gstate.table_extension ){
          if(exten.key == key){

@@ -76,6 +76,7 @@ namespace ultrainiosystem {
          free_account_per_res = 5,
          version_number = 6,
          is_allow_buy_res = 7, //Allows a general account to buy resources
+         global_state_key_end
       };
 
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,
