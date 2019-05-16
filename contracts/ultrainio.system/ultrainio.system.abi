@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/c0ecee",
+   "version": "ultrainio::abi/1.0/6efe08",
 
    "types": [{
       "new_type_name": "account_name",
@@ -543,6 +543,13 @@
      "fields": [
         {"name": "save_blocks_num",       "type": "uint32"}
        ]
+   },{
+     "name": "committee_bulletin",
+     "base": "",
+     "fields": [
+        {"name": "block_num",            "type": "uint64"},
+        {"name": "change_type",          "type": "uint8"}
+       ]
     },{
      "name": "user_info",
       "base": "",
@@ -748,10 +755,16 @@
         {"name": "is_sched_on",               "type": "bool"}
        ]
    },{
-      "name": "schedule",
+      "name": "moveprod",
       "base": "",
       "fields": [
-        {"name": "trigger",              "type": "string"}
+        {"name": "producer",              "type": "account_name"},
+        {"name": "producerkey",           "type": "string"},
+        {"name": "blskey",                "type": "string"},
+        {"name": "from_disable",          "type": "bool"},
+        {"name": "from_chain",            "type": "name"},
+        {"name": "to_disable",            "type": "bool"},
+        {"name": "to_chain",              "type": "name"}
        ]
     },{
       "name": "producer_key",
@@ -986,8 +999,8 @@
       "type": "setchainparam",
       "ricardian_contract": ""
     },{
-      "name": "schedule",
-      "type": "schedule",
+      "name": "moveprod",
+      "type": "moveprod",
       "ricardian_contract": ""
     },{
       "name": "setparams",
@@ -1130,6 +1143,12 @@
       "index_type": "i64",
       "key_names" : [],
       "key_types" : []
+    },{
+      "name": "cmtbltn",
+      "type": "committee_bulletin",
+      "index_type": "i64",
+      "key_names" : ["block_num"],
+      "key_types" : ["uint64"]
     }
    ],
    "ricardian_clauses": [],

@@ -75,35 +75,21 @@ namespace ultrainiosystem {
                 disabled_producers_table dp_tbl(_self, _self);
                 auto it_disable = dp_tbl.find(producer);
                 ultrainio_assert(it_disable != dp_tbl.end(), "error: producer is not in disabled table");
+                ultrainio_assert(it_disable->last_operate_blocknum < curblocknum, "only one action can be performed in a block");
+                dp_tbl.modify(it_disable, [&]( disabled_producer& dis_prod ) {
+                    dis_prod.producer_key            = producer_key;
+                    dis_prod.bls_key                 = bls_key;
+                    dis_prod.url                     = url;
+                    dis_prod.last_operate_blocknum   = curblocknum;
+                });
                 if(it_disable->total_cons_staked >= _gstate.min_activated_stake) {
-                    producer_info new_en_prod;
-                    new_en_prod.owner                   = producer;
-                    new_en_prod.producer_key            = producer_key;
-                    new_en_prod.bls_key                 = bls_key;
-                    new_en_prod.total_cons_staked       = it_disable->total_cons_staked;
-                    new_en_prod.url                     = url;
-                    new_en_prod.total_produce_block     = it_disable->total_produce_block;
-                    new_en_prod.last_operate_blocknum   = curblocknum;
-                    new_en_prod.delegated_cons_blocknum = it_disable->delegated_cons_blocknum;
-                    new_en_prod.claim_rewards_account   = it_disable->claim_rewards_account;
-                    new_en_prod.unpaid_balance          = 0;
-                    new_en_prod.vote_number             = 0;
-                    new_en_prod.last_vote_blocknum      = 0;
-                    add_to_chain(location, new_en_prod, curblocknum);
-                    dp_tbl.erase(it_disable);
-                    _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
-                        producer_brf.in_disable = false;
-                        producer_brf.location = location;
-                    });
-                }
-                else {
-                    //still disable
-                    dp_tbl.modify(it_disable, [&]( disabled_producer& dis_prod ) {
-                        dis_prod.producer_key            = producer_key;
-                        dis_prod.bls_key                 = bls_key;
-                        dis_prod.url                     = url;
-                        dis_prod.last_operate_blocknum   = curblocknum;
-                    });
+                    moveprod_param mv_prod(producer, producer_key, bls_key, true, name{N(disable)}, false, location);
+                    uint128_t sendid = N(moveprod) + producer;
+                    cancel_deferred(sendid);
+                    ultrainio::transaction out;
+                    out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
+                    out.delay_sec = 0;
+                    out.send( sendid, _self, true );
                 }
             }
             else {
@@ -117,11 +103,13 @@ namespace ultrainiosystem {
                 ultrainio_assert(prod != _producers.end(), "producer not found");
                 if(briefprod->location != location) {
                     ultrainio_assert(!briefprod->is_on_master_chain(), "cannot move producers from master chain");
-                    add_to_chain(location, *prod, curblocknum);
-                    remove_from_chain(briefprod->location, producer, curblocknum);
-                    _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
-                        producer_brf.location = location;
-                    });
+                    moveprod_param mv_prod(producer, producer_key, bls_key, false, briefprod->location, false, location);
+                    uint128_t sendid = N(moveprod) + producer;
+                    cancel_deferred(sendid);
+                    ultrainio::transaction out;
+                    out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
+                    out.delay_sec = 0;
+                    out.send( sendid, _self, true );
                 } else {
                     _producers.modify( prod, [&]( producer_info& info ) {
                         info.producer_key = producer_key;
@@ -175,15 +163,13 @@ namespace ultrainiosystem {
       ultrainio_assert( (curblocknum - prod->last_operate_blocknum) > 2 ,
                         "wait at least 2 blocks before this unregprod operation" );
 
-      disabled_producers_table dp_tbl(_self, _self);
-      dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
-          dis_prod = *prod;
-          dis_prod.last_operate_blocknum = curblocknum;
-      });
-      _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
-          producer_brf.in_disable = true;
-      });
-      remove_from_chain(briefprod->location, producer, curblocknum);
+      moveprod_param mv_prod(producer, prod->producer_key, prod->bls_key, false, briefprod->location, true, name{N(disable)});
+      uint128_t sendid = N(moveprod) + producer;
+      cancel_deferred(sendid);
+      ultrainio::transaction out;
+      out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
+      out.delay_sec = 0;
+      out.send( sendid, _self, true );
    }
 
     std::vector<name> system_contract::get_all_chainname() {
@@ -195,4 +181,80 @@ namespace ultrainiosystem {
         }
         return scopes;
     }
+
+    void system_contract::moveprod(account_name producer, std::string  producer_key, std::string blskey,
+                                   bool from_disable, name from_chain, bool to_disable, name to_chain) {
+        require_auth(_self);
+        if(from_disable && to_disable) {
+            ultrainio_assert(false, "error: cannot move a producer from disable to disable");
+        } else if (!from_disable && !to_disable) {
+            ultrainio_assert(_gstate.is_master_chain(), "move producer between chains can only be performed on master chain");
+        }
+
+        auto briefprod = _briefproducers.find(producer);
+        ultrainio_assert(briefprod != _briefproducers.end(), "not a producer");
+
+        auto current_block_number = uint64_t(head_block_number() + 1);
+        producer_info prod_info;
+        if(from_disable) {
+            disabled_producers_table dp_tbl(_self, _self);
+            auto it_disable = dp_tbl.find(producer);
+            ultrainio_assert(it_disable != dp_tbl.end(), "error: producer is not in disabled table");
+            prod_info = producer_info(*it_disable, 0, 0, 0);
+            dp_tbl.erase(it_disable);
+
+            print("move producer ", name{producer}, " from disable");
+        } else {
+            producers_table _producers(_self, from_chain);
+            auto producer_iter = _producers.find(producer);
+            ultrainio_assert(producer_iter != _producers.end(), "error: producer to move out is not found in its location");
+            prod_info = *producer_iter;
+            remove_from_chain(from_chain, producer, current_block_number);
+            print("move producer ", name{producer}, " from ", from_chain);
+            cmtbulletin  cb_tbl(_self, from_chain);
+            auto record = cb_tbl.find(current_block_number);
+            if(record == cb_tbl.end()) {
+                cb_tbl.emplace([&](auto& new_change) {
+                    new_change.block_num = current_block_number;
+                    new_change.change_type = remove_producer;
+                });
+            } else if ((record->change_type & remove_producer) == 0) {
+                cb_tbl.modify(record, [&](auto& _change) {
+                    _change.change_type |= remove_producer;
+                });
+            }
+        }
+
+        if(to_disable) {
+            disabled_producers_table dp_tbl(_self, _self);
+            dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
+                dis_prod = prod_info;
+                dis_prod.delegated_cons_blocknum = current_block_number;
+            });
+            _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
+                producer_brf.in_disable = true;
+            });
+            print(" to disable");
+        } else {
+            add_to_chain(to_chain, prod_info, current_block_number);
+            _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
+                producer_brf.in_disable = false;
+                producer_brf.location = to_chain;
+            });
+            print(" to ", to_chain, "\n");
+            cmtbulletin  cb_tbl(_self, to_chain);
+            auto record = cb_tbl.find(current_block_number);
+            if(record == cb_tbl.end()) {
+                cb_tbl.emplace([&](auto& new_change) {
+                    new_change.block_num = current_block_number;
+                    new_change.change_type = add_producer;
+                });
+            } else if ((record->change_type & add_producer) == 0) {
+                cb_tbl.modify(record, [&](auto& _change) {
+                    _change.change_type |= add_producer;
+                });
+            }
+        }
+    }
+
 } /// namespace ultrainiosystem

@@ -49,6 +49,20 @@ namespace ultrainiosystem {
             name location;
             ULTRAINLIB_SERIALIZE(ResleaseActionParam, (from)(receiver)(combosize)(days)(location))
     };
+
+    struct CommitteeChangeParam {
+        account_name   producer;
+        std::string    producerkey;
+        std::string    blskey;
+        bool           from_disable;
+        name           from_chain;
+        bool           to_disable;
+        name           to_chain;
+
+        ULTRAINLIB_SERIALIZE(CommitteeChangeParam, (producer)(producerkey)(blskey)(from_disable)
+                             (from_chain)(to_disable)(to_chain))
+    };
+
    static std::string checksum256_to_string( const uint8_t* d, uint32_t s )
    {
       std::string r;
@@ -132,6 +146,26 @@ namespace ultrainiosystem {
             exec_succ++;
             INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
                   { N(ultrainio), rap.receiver, rap.combosize, rap.days, master_chain_name} );
+         } else if (act.account == N(ultrainio) && act.name == NEX(moveprod)) {
+            CommitteeChangeParam ccp = unpack<CommitteeChangeParam>(act.data);
+            if(ccp.from_chain == _gstate.chain_name) {
+                //move producer out
+                print("synclwctx, disable producer:",name{ccp.producer}, "\n");
+                exec_succ++;
+                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, undelegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
+                      { N(utrio.stake), ccp.producer} );
+            } else if(ccp.to_chain == _gstate.chain_name) {
+                //add new producer
+                print("synclwctx, add new producer:",name{ccp.producer}, "\n");
+                exec_succ++;
+                vector<permission_level>   authorization;
+                authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
+                authorization.emplace_back(permission_level{ccp.producer, N(active)});
+                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), authorization,
+                    { ccp.producer, ccp.producerkey, ccp.blskey, N(ultrainio), " ", master_chain_name } );
+                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
+                    { N(utrio.stake), ccp.producer, asset(_gstate.min_activated_stake)} );
+            }
          }
       }
       ultrainio_assert(exec_succ > 0, "The current transaction has no execution");

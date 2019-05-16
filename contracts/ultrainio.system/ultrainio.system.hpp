@@ -76,6 +76,7 @@ namespace ultrainiosystem {
          free_account_per_res = 5,
          version_number = 6,
          is_allow_buy_res = 7, //Allows a general account to buy resources
+         check_user_bulletin = 8,
          global_state_key_end
       };
 
@@ -142,6 +143,9 @@ namespace ultrainiosystem {
       exten_types           table_extension;
 
       uint64_t primary_key()const { return owner; }
+      producer_info() {}
+      producer_info(const disabled_producer& dp, uint64_t unpay, uint64_t votes, uint64_t last_vote_block)
+          :disabled_producer(dp), unpaid_balance(unpay), vote_number(votes), last_vote_blocknum(last_vote_block) {}
 
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, disabled_producer,
                                     (unpaid_balance)(vote_number)(last_vote_blocknum)(table_extension) )
@@ -422,6 +426,17 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index< N(penddeltab), pending_deltable>   penddeltable;
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
 
+   const uint8_t  add_producer = 0x01;
+   const uint8_t  remove_producer = 0x02;
+   const uint8_t  add_and_remove = 0x03;
+
+   struct committee_bulletin {
+       uint64_t          block_num;
+       uint8_t           change_type;
+       uint64_t  primary_key()const { return block_num; }
+   };
+   typedef ultrainio::multi_index< N(cmtbltn), committee_bulletin>    cmtbulletin;
+
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
    static constexpr uint32_t seconds_per_year      = 52*7*24*3600;
    static constexpr uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
@@ -429,6 +444,23 @@ namespace ultrainiosystem {
    static constexpr uint64_t useconds_per_year     = seconds_per_year*1000000ll;
 
    static constexpr uint64_t     system_token_symbol = CORE_SYMBOL;
+
+   struct moveprod_param {
+       account_name   producer;
+       std::string    producerkey;
+       std::string    blskey;
+       bool           from_disable;
+       name           from_chain;
+       bool           to_disable;
+       name           to_chain;
+
+       moveprod_param() {}
+       moveprod_param(account_name prod, const std::string& prod_key, const std::string& bls_key,
+                      bool from_dis, name from, bool to_dis, name to) : producer(prod), producerkey(prod_key),
+                      blskey(bls_key), from_disable(from_dis), from_chain(from), to_disable(to_dis), to_chain(to) {}
+
+       ULTRAINLIB_SERIALIZE(moveprod_param, (producer)(producerkey)(blskey)(from_disable)(from_chain)(to_disable)(to_chain) )
+   };
 
    class system_contract : public native {
       private:
@@ -474,7 +506,13 @@ namespace ultrainiosystem {
                            name location );
          void unregprod( const account_name producer );
 
-
+         void moveprod(account_name producer,
+                       std::string  producerkey,
+                       std::string  blskey,
+                       bool from_disable,
+                       name from_chain,
+                       bool to_disable,
+                       name to_chain);
          // functions defined in reward.cpp
          void onblock( block_timestamp timestamp, account_name producer );
          void onfinish();
@@ -505,7 +543,6 @@ namespace ultrainiosystem {
          void forcesetblock(name chain_name,
                             const signed_block_header& signed_header,
                             const std::vector<CommitteeInfo>& cmt_set);
-         void schedule(const std::string& trigger);
          void setlwcparams(uint32_t keep_blocks_num);
          void setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on);
 
@@ -564,6 +601,7 @@ namespace ultrainiosystem {
          void rmoverdueblocks(name chain_name, uint32_t last_confirm_num, uint32_t confirm_num);
          uint64_t getinitialblocknum(name chain_name);
          void handlenewconfirmblock(chain_info& _chain, const block_id_type& confirm_block_id);
+         void clearcommitteebulletin(name chain_name);
 
          //defined in ultrainio.system.cpp
          void getKeydata(const std::string& pubkey,std::array<char,33> & data);

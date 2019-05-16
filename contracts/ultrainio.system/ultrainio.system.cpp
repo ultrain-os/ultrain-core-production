@@ -636,12 +636,12 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)(setfreeacc)
      // producer.cpp
-     (regproducer)(unregprod)
+     (regproducer)(unregprod)(moveprod)
      // reward.cpp
      (onblock)(onfinish)(claimrewards)
      // scheduler.cpp
      (regchaintype)(regsubchain)(acceptmaster)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)
-     (setsched)(forcesetblock)(schedule)(setlwcparams)(setchainparam)
+     (setsched)(forcesetblock)(setlwcparams)(setchainparam)
      // synctransaction.cpp
      (synclwctx)
 )

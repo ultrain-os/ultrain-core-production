@@ -127,25 +127,19 @@ namespace ultrainiosystem {
                 if(assigned_location == default_chain_name) {
                     assigned_location = getdefaultchain();
                 }
-                producer_info new_en_prod;
-                new_en_prod.owner                   = dis_prod->owner;
-                new_en_prod.producer_key            = dis_prod->producer_key;
-                new_en_prod.bls_key                 = dis_prod->bls_key;
-                new_en_prod.total_cons_staked       = dis_prod->total_cons_staked + total_update.amount;
-                new_en_prod.url                     = dis_prod->url;
-                new_en_prod.total_produce_block     = dis_prod->total_produce_block;
-                new_en_prod.last_operate_blocknum   = dis_prod->last_operate_blocknum;
-                new_en_prod.delegated_cons_blocknum = curblocknum;
-                new_en_prod.claim_rewards_account   = dis_prod->claim_rewards_account;
-                new_en_prod.unpaid_balance          = 0;
-                new_en_prod.vote_number             = 0;
-                new_en_prod.last_vote_blocknum      = 0;
-                add_to_chain(assigned_location, new_en_prod, curblocknum);
-                dp_tbl.erase(dis_prod);
-                _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
-                    producer_brf.in_disable = false;
-                    producer_brf.location = assigned_location;
+
+                dp_tbl.modify(dis_prod, [&]( disabled_producer& _dis ) {
+                    _dis.total_cons_staked       += total_update.amount;
+                    _dis.delegated_cons_blocknum = curblocknum;
                 });
+
+                moveprod_param mv_prod(dis_prod->owner, dis_prod->producer_key, dis_prod->bls_key, true, name{N(disable)}, false, assigned_location);
+                uint128_t sendid = N(moveprod) + dis_prod->owner;
+                cancel_deferred(sendid);
+                ultrainio::transaction out;
+                out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
+                out.delay_sec = 0;
+                out.send( sendid, _self, true );
              }
              else {
                 dp_tbl.modify(dis_prod, [&]( disabled_producer& disproducer ) {
@@ -179,22 +173,18 @@ namespace ultrainiosystem {
                  });
              }
              else {
-                 disabled_producers_table dp_tbl(_self, _self);
-                 dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
-                     dis_prod.owner                   = it->owner;
-                     dis_prod.producer_key            = it->producer_key;
-                     dis_prod.bls_key                 = it->bls_key;
-                     dis_prod.total_cons_staked       = it->total_cons_staked + total_update.amount;
-                     dis_prod.url                     = it->url;
-                     dis_prod.total_produce_block     = it->total_produce_block;
-                     dis_prod.last_operate_blocknum   = it->last_operate_blocknum;
-                     dis_prod.delegated_cons_blocknum = curblocknum;
-                     dis_prod.claim_rewards_account   = it->claim_rewards_account;
+                 _producers.modify(it, [&]( producer_info& info ) {
+                    info.total_cons_staked       += total_update.amount;
+                    info.delegated_cons_blocknum = curblocknum;
                  });
-                 remove_from_chain(briefprod->location, receiver, curblocknum);
-                 _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
-                     producer_brf.in_disable = true;
-                 });
+
+                 moveprod_param mv_prod(it->owner, it->producer_key, it->bls_key, false, briefprod->location, true, name{N(disable)});
+                 uint128_t sendid = N(moveprod) + it->owner;
+                 cancel_deferred(sendid);
+                 ultrainio::transaction out;
+                 out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
+                 out.delay_sec = 0;
+                 out.send( sendid, _self, true );
              }
          }
       }

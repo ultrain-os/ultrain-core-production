@@ -283,7 +283,6 @@ namespace ultrainiosystem {
             if(need_report) {
                 need_report = checkblockproposer(block_proposer, ite_chain);
             }
-
             _chains.modify(ite_chain, [&]( auto& _subchain ) {
                 unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, need_report, synced);
                 if(block_number > initial_block_number) {
@@ -295,6 +294,7 @@ namespace ultrainiosystem {
                     return;
                 }
                 handlenewconfirmblock(_subchain, final_confirmed_id);
+
             });
         }
         if (new_confirm && confirmed_number_before < ite_chain->confirmed_block_number ) {
@@ -538,19 +538,7 @@ namespace ultrainiosystem {
             return;
         }
 
-        uint128_t trxid = _self + N(schedule);
-        cancel_deferred(trxid);
-        ultrainio::transaction out;
-        out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(schedule), "on time" );
-        out.delay_sec = 20;
-        out.send( trxid, _self, true );
-    }
-
-    void system_contract::schedule(const std::string& trigger) {
-        require_auth( _self );
-
-        auto block_num = int32_t(head_block_number() + 1);
-        print( "[schedule] start, trigger: ", trigger.c_str(), "; master block num: ", block_num, "\n");
+        print( "[schedule] start, master block num: ", block_height, "\n");
 
         //get current head block hash
         char blockid[32];
@@ -599,6 +587,7 @@ namespace ultrainiosystem {
         auto min_sched_chain  = out_list.end();
         --min_sched_chain;
 
+        uint32_t  sched_counter = 0;
         print("[schedule] step 1:\n");
         auto out_iter = out_list.begin();
         for(; out_iter != min_sched_chain && out_iter != out_list.end() && compare_gt(*out_iter, *min_sched_chain); ++out_iter) {
@@ -606,7 +595,7 @@ namespace ultrainiosystem {
             print(" can move out at most: ", uint32_t(out_iter->sched_out_num), " producers\n");
             bool quit_loop = false;
             for(uint16_t out_idx = 0; out_idx < out_iter->sched_out_num; ++out_idx ) {
-                if(!move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, uint64_t(block_num), out_idx) ) {
+                if(!move_producer(head_block_hash, out_iter->chain_ite, min_sched_chain->chain_ite, uint64_t(block_height), sched_counter++) ) {
                     continue;
                 }
                 ++out_iter->gap_to_next_level;
@@ -647,11 +636,10 @@ namespace ultrainiosystem {
         auto chain_to = out_list.begin();
         ++chain_to;
         print("[schedule] step 2:\n");
-        uint32_t chain_num = 0;
-        for(; chain_to != out_list.end(); ++chain_from, ++chain_to, ++chain_num) {
+        for(; chain_to != out_list.end(); ++chain_from, ++chain_to) {
             print("[schedule] from_chain: ", name{chain_from->chain_ite->chain_name});
             print(", to_chain: ", name{chain_to->chain_ite->chain_name}, "\n");
-            if(!move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_num), chain_num) ) {
+            if(!move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_height), sched_counter++) ) {
                 continue;
             }
         }
@@ -660,7 +648,7 @@ namespace ultrainiosystem {
         chain_to = out_list.begin();
         print("[schedule] from chain: ", name{chain_from->chain_ite->chain_name});
         print(", to chain: ", name{chain_to->chain_ite->chain_name}, "\n");
-        move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_num), chain_num);
+        move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_height), sched_counter);
     }
 
     bool system_contract::move_producer(checksum256 head_id, chains_table::const_iterator from_iter,
@@ -687,21 +675,20 @@ namespace ultrainiosystem {
             print("[schedule] error: ", name{producer}, " is not empowered to chain ", name{to_iter->chain_name}, "\n");
             return false;
         }
-        auto producer_iter = _producers.find(producer);
-        if(producer_iter == _producers.end()) {
-            print("[schedule] error: producer to move out is not found in _producers\n");
+
+        print("[schedule] ", num, " move ", name{producer}, " from ", name{from_iter->chain_name}, " to ", name{to_iter->chain_name}, "\n");
+        prod = _producers.find(producer);
+        if(prod == _producers.end()) {
             return false;
         }
-        print("[schedule] move ", name{producer}, " to ", name{to_iter->chain_name}, "\n");
-        //move producer
-        auto briefprod = _briefproducers.find(producer);
-        if(briefprod != _briefproducers.end()) {
-            add_to_chain(to_iter->chain_name, *producer_iter, current_block_number);
-            remove_from_chain(from_iter->chain_name, producer, current_block_number);
-            _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
-                producer_brf.location = to_iter->chain_name;
-            });
-        }
+        moveprod_param mv_prod(producer, prod->producer_key, prod->bls_key, false, from_iter->chain_name, false, to_iter->chain_name);
+        uint128_t sendid = _self + N(moveprod);
+        sendid += num;
+        cancel_deferred(sendid);
+        ultrainio::transaction out;
+        out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
+        out.delay_sec = 0;
+        out.send( sendid, _self, true );
 
         return true;
     }
@@ -722,6 +709,14 @@ namespace ultrainiosystem {
 
     void system_contract::checkbulletin() {
         auto ct = now();
+        uint64_t check_period = 30; //unit is minutes
+        for(auto extension : _gstate.table_extension){
+           if(extension.key == ultrainio_global_state::global_state_exten_type_key::check_user_bulletin) {
+               std::string str = extension.value;
+               check_period = uint64_t(std::stoi(str));
+               break;
+           }
+        }
         auto chain_it = _chains.begin();
         for(; chain_it != _chains.end(); ++chain_it) {
             if(chain_it->chain_name == N(master))
@@ -729,7 +724,7 @@ namespace ultrainiosystem {
             if(chain_it->recent_users.empty()) {
                 continue;
             }
-            if( (ct > chain_it->recent_users[0].emp_time) && (ct - chain_it->recent_users[0].emp_time >= 30*60 ) ) {
+            if( (ct > chain_it->recent_users[0].emp_time) && (ct - chain_it->recent_users[0].emp_time >= check_period*60 ) ) {
                 _chains.modify(chain_it, [&](auto& _subchain) {
                     auto user_it = _subchain.recent_users.begin();
                     for(; user_it != _subchain.recent_users.end(); ) {
@@ -760,13 +755,13 @@ namespace ultrainiosystem {
             _chain.confirmed_block_number = block_number;
             _chain.confirmed_block_id = block_id;
             _chain.unconfirmed_blocks.clear();
-            _chain.committee_num = uint16_t(cmt_set.size());
             _chain.is_synced = false;
             _chain.is_schedulable = true;
             _chain.changing_info.clear();
             _chain.committee_mroot = signed_header.committee_mroot;
             if(cmt_set.size() >= 4 || signed_header.proposer == N(genesis)) {
                 _chain.committee_set = cmt_set;
+                _chain.committee_num = uint16_t(cmt_set.size());
             }
 
             unconfirmed_block_header temp_header(signed_header, block_id, block_number, false, false);
@@ -914,6 +909,9 @@ namespace ultrainiosystem {
                     auto cmt_delta = new_committee_set.diff(pre_committee_set);
                     _chain.handle_committee_update(cmt_delta);
                     new_committee_set.swap(_chain.committee_set);
+                    if(_chain.is_schedulable) {
+                        clearcommitteebulletin(_chain.chain_name);
+                    }
                 }
                 _chain.committee_mroot = ite_block->committee_mroot;
             }
@@ -946,5 +944,13 @@ namespace ultrainiosystem {
             _subchain.schedule_on = is_sched_on;
             _subchain.chain_type = chain_type;
         });
+    }
+
+    void system_contract::clearcommitteebulletin(name chain_name) {
+        cmtbulletin  cb_tbl(_self, chain_name);
+        auto record = cb_tbl.begin();
+        while(record != cb_tbl.end()) {
+            record = cb_tbl.erase(record);
+        }
     }
 } //namespace ultrainiosystem
