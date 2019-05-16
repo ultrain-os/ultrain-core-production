@@ -385,6 +385,9 @@ public:
 
    std::vector<get_user_bulletin_result> get_user_bulletin(const get_user_bulletin_params& p) const;
 
+   using get_committee_bulletin_params = get_subchain_committee_params;
+   std::vector<chain::committee_bulletin> get_committee_bulletin(const get_committee_bulletin_params& p) const;
+
    struct get_producers_params {
       bool        json = false;
       string      lower_bound;

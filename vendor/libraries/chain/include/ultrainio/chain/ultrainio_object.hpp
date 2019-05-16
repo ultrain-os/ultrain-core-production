@@ -125,6 +125,11 @@ namespace ultrainio { namespace chain {
         extension_types         master_chain_ext;
     };
 
+    struct committee_bulletin {
+        uint64_t          block_num;
+        uint8_t           change_type;
+    };
+
 }} // namespace ultrainio::chain
 FC_REFLECT(ultrainio::chain::exten_type, (key)(value) )
 FC_REFLECT(ultrainio::chain::producer_brief, (owner)(location)(in_disable) )
@@ -145,3 +150,4 @@ FC_REFLECT(ultrainio::chain::chain_info, (chain_name)(chain_type)(genesis_time)(
                     (committee_mroot)(confirmed_block_number)(confirmed_block_id)(committee_set)(unconfirmed_blocks)(table_extension) )
 FC_REFLECT(ultrainio::chain::resources_lease, (owner)(lease_num)(start_block_height)(end_block_height)(modify_block_height)(free_account_number)(table_extension) )
 FC_REFLECT(ultrainio::chain::master_chain_info, (owner)(master_prods)(block_height)(block_id)(committee_mroot)(master_chain_ext) )
+FC_REFLECT(ultrainio::chain::committee_bulletin, (block_num)(change_type) )

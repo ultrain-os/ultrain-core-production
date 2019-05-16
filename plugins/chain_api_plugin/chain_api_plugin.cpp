@@ -102,6 +102,7 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_random, 200),
       CHAIN_RO_CALL(get_producers, 200),
       CHAIN_RO_CALL(get_user_bulletin, 200),
+      CHAIN_RO_CALL(get_committee_bulletin, 200),
       CHAIN_RO_CALL(get_scheduled_transactions, 200),
       CHAIN_RO_CALL(abi_json2bin, 200),
       CHAIN_RO_CALL(abi_bin2json, 200),

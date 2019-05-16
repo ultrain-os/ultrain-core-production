@@ -1257,6 +1257,23 @@ std::vector<read_only::get_user_bulletin_result> read_only::get_user_bulletin(co
     return result;
 }
 
+std::vector<chain::committee_bulletin> read_only::get_committee_bulletin(const read_only::get_committee_bulletin_params& p) const {
+    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
+
+    name table = N(cmtbltn);
+    auto index_type = get_table_type( abi, table );
+    const auto& d = db.db();
+    std::vector<chain::committee_bulletin> results;
+    walk_key_value_table(N(ultrainio), p.chain_name, table, [&](const key_value_object& obj){
+       chain::committee_bulletin change_record;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, change_record);
+       results.push_back(change_record);
+       return true;
+    });
+    return results;
+}
+
 static fc::variant get_global_row( const database& db, const abi_def& abi, const fc::microseconds& abi_serializer_max_time_ms ) {
    const auto table_type = get_table_type(abi, N(global));
    const abi_serializer abis{ abi, abi_serializer_max_time_ms };
