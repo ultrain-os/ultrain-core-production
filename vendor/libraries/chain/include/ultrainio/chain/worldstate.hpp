@@ -270,10 +270,16 @@ namespace ultrainio { namespace chain {
 
       template<typename F>
       void read_section(const std::string& section_name, F f) {
-         set_section(section_name);
-         auto section = section_reader(*this);
-         f(section);
-         clear_section();
+         try{
+            set_section(section_name);
+         }catch(chain::worldstate_exception){
+             clear_section();
+             elog("table ${tb} does not exist",("tb",section_name));
+             return;
+         }
+            auto section = section_reader(*this);
+            f(section);
+            clear_section();
       }
 
       template<typename T, typename F>

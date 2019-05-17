@@ -349,6 +349,7 @@ void decode_ws(std::ostream& out){
     READ_SECTION(block_summary_object)
     READ_SECTION(transaction_object)
     READ_SECTION(generated_transaction_object)
+    READ_SECTION(auth_sequence_object)
     READ_SECTION(permission_object)
     READ_SECTION(permission_link_object)
     READ_SECTION_LAMBDA(resource_limits_object, [&]LAMBDA_PARAME{
