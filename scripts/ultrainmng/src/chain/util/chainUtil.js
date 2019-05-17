@@ -285,6 +285,31 @@ function transferTrxReceiptBytesToArray(bytes) {
 
 }
 
+function transferFreeMemToArray(memStr) {
+
+    let array = [];
+    var ValidChars = "0123456789";
+    try {
+        let number = "";
+        for (let i=0;i<memStr.length;i++) {
+            let n = memStr[i].trim();
+            if (ValidChars.indexOf(n) == -1 || n.length <=0) {
+                if (number.length > 0) {
+                    array.push(number);
+                }
+                number = "";
+            } else {
+                number = number +n;
+            }
+        }
+
+    } catch (e) {
+        logger.error("transferFreeMemToArray error:",e);
+    }
+
+    return array;
+}
+
 module.exports = {
     formatGensisTime,
     getOwnerPkByAccount,
@@ -296,4 +321,5 @@ module.exports = {
     transferTrxReceiptBytesToArray,
     getSyncUserTransFromBlockHeader,
     getSyncResTransFromBlockHeader,
+    transferFreeMemToArray,
 }

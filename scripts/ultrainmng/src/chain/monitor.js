@@ -20,6 +20,7 @@ var sleep = require("sleep")
 var process = require('child_process');
 var WorldState = require("../worldstate/worldstate")
 var os = require("os")
+var chainUtil = require("./util/chainUtil")
 
 
 var hashCache = new CacheObj(false, null);
@@ -65,6 +66,38 @@ var confirmBlockLocal=0;
  */
 var maxBlockSubmitorNum = 3;
 
+var totalmem = 0;
+var freemem = 0;
+
+
+/**
+ * 通过命令行获取内存用量
+ */
+function getMemFromCmd() {
+    try {
+        let cmd = "free -m  |grep Mem";
+        //其它命令
+        process.exec(cmd, async function (error, stdout, stderr, finish) {
+            if (error) {
+                logger.error("clearLogData error:",error);
+            } else {
+                logger.info("getMemFromCmd success:",stdout);
+                let array = chainUtil.transferFreeMemToArray(stdout);
+                if (array.length > 2) {
+                    logger.debug("totalmem:",array[0]);
+                    logger.debug("usedmem:",array[1]);
+                    logger.debug("freemem:",array[0]-array[1]);
+                    totalmem = array[0];
+                    freemem = array[0]-array[1];
+                }
+
+            }
+        });
+
+    } catch (e) {
+        logger.error("getMemFromCmd error:",e);
+    }
+}
 
 /**
  * 获取os info
@@ -72,10 +105,16 @@ var maxBlockSubmitorNum = 3;
 function getOsInfo() {
     let osInfo = {loadAvg :"",uptime : 0,totalmem:0,freemem:0,system:"",cpus:[]};
     try {
+        getMemFromCmd();
         osInfo.uptime = os.uptime();
         osInfo.loadAvg = os.loadavg();
-        osInfo.totalmem = os.totalmem();
-        osInfo.freemem = os.freemem();
+        if (totalmem > 0 && freemem > 0) {
+            osInfo.totalmem = totalmem;
+            osInfo.freemem = freemem;
+        } else {
+            osInfo.totalmem = os.totalmem();
+            osInfo.freemem = os.freemem();
+        }
         osInfo.system = os.type()+" "+os.release();
         let cpus = [];
         let cpuArray = os.cpus();
