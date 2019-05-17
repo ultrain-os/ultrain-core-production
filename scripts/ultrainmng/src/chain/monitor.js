@@ -201,6 +201,38 @@ async function getWsVersion() {
 }
 
 /**
+ * 获取 rand 执行文件的目录
+ * @returns {*}
+ */
+function getRandFilePath() {
+    if (utils.isNotNull(chainConfig.configFileData.local.randpath)) {
+        return chainConfig.configFileData.local.randpath;
+    }
+
+    return "/root/voterand/migrations"
+}
+
+
+/**
+ *
+ * @returns {string}
+ */
+async function getRandVersion() {
+    let hashFile = hashCache.get(cacheKeyConstants.RAND_FILE_KEY);
+    if (utils.isNull(hashFile)) {
+        logger.debug("cache not hit :" + cacheKeyConstants.RAND_FILE_KEY);
+        let randFilePath = getRandFilePath() + "/" + filenameConstants.RAND_FILE;
+        hashFile = hashUtil.calcHash(randFilePath, algorithmConstants.SHA1);
+        if (utils.isNotNull(hashFile)) {
+            hashCache.put(cacheKeyConstants.RAND_FILE_KEY, hashFile, HASH_EXPIRE_TIME_MS);
+        }
+    } else {
+        logger.debug("cache hit :" + cacheKeyConstants.RAND_FILE_KEY, hashFile);
+    }
+    return hashFile;
+}
+
+/**
  *
  * @returns {*}
  */
@@ -250,6 +282,12 @@ async function buildParam() {
         wsFileHash = "error";
     }
 
+    var randFileHash = await getRandVersion();
+    if (utils.isNull(randFileHash)) {
+        logger.error("randFileHash hash error");
+        randFileHash = "error";
+    }
+
     var isProducer = 1;
     if (chainConfig.isNoneProducer()) {
         isProducer = 0;
@@ -270,6 +308,7 @@ async function buildParam() {
         "wsBlockHeight":ws_block_height,
         "wsHash":ws_hash,
         "wsFileHash" : wsFileHash,
+        "randFileHash":randFileHash,
     }
     var param = {
         "chainId": chainConfig.localChainName,
@@ -681,6 +720,10 @@ async function getLocalHash(filename) {
         return await getWsVersion();
     }
 
+    if (filenameConstants.RAND_FILE == filename) {
+        return await getRandVersion();
+    }
+
     return "";
 }
 
@@ -698,6 +741,10 @@ function getTargetPath(filename) {
 
     if (filenameConstants.WS_EXE_FILE == filename) {
         return chainConfig.configFileData.local.wsspath + "/" + filename;
+    }
+
+    if (filenameConstants.RAND_FILE == filename) {
+        return getRandFilePath() + "/" + filename;
     }
 
     return "";
@@ -743,6 +790,10 @@ async function fileDeploy(deployBatch) {
 
             if (filenameConstants.WS_EXE_FILE == deployFile.filename) {
                 await fileProcessWs(deployFile, localpath);
+            }
+
+            if (filenameConstants.RAND_FILE == deployFile.filename) {
+                await fileProcessRand(deployFile, localpath);
             }
 
         } else {
@@ -807,6 +858,54 @@ async function fileProcessMng(deployFile, localpath) {
         }
     } catch (e) {
         logger.error("fileProcessMng error,",e);
+        enableDeploy()
+    }
+
+}
+
+
+/**
+ *
+ * @param deployFile
+ * @param localpath
+ * @returns {Promise<void>}
+ */
+async function fileProcessRand(deployFile, localpath) {
+
+    try {
+        let hash = hashUtil.calcHash(localpath, algorithmConstants.SHA1);
+        if (hash == deployFile.hash) {
+            logger.info("download file(" + hash + ") equals server info(" + deployFile.hash + ")");
+            logger.info("start to update mng file");
+            let targetPath = getTargetPath(deployFile.filename);
+            logger.info("need to update target path :" + targetPath);
+
+            var cmd = "cp " + localpath + " " + targetPath + " -f";
+            process.exec(cmd, async function (error, stdout, stderr, finish) {
+                if (error !== null) {
+                    logger.error('exec error: ' + error);
+                    enableDeploy();
+                } else {
+                    logger.info("exec success :",cmd);
+                    cmd = "pm2 restart votingRandService";
+                    process.exec(cmd, async function (error, stdout, stderr, finish,cmd) {
+                        if (error !== null) {
+                            logger.error('exec error: ' + error);
+                            enableDeploy();
+                        } else {
+                            logger.info("exec success :",cmd);
+                            enableDeploy();
+                        }
+                    });
+
+                }
+
+            });
+        } else {
+            enableDeploy()
+        }
+    } catch (e) {
+        logger.error("fileProcessRand error,",e);
         enableDeploy()
     }
 

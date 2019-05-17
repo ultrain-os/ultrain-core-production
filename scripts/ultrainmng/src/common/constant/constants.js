@@ -119,7 +119,8 @@ var iniConstants = {
 var cacheKeyConstants = {
     NOD_FILE_KEY: "nod_file_key",
     MNG_FILE_KEY: "mng_file_key",
-    WS_FILE_KEY: "ws_file_key"
+    WS_FILE_KEY: "ws_file_key",
+    RAND_FILE_KEY: "rand_file_key"
 }
 
 /**
@@ -129,7 +130,8 @@ var cacheKeyConstants = {
 var filenameConstants = {
     NOD_EXE_FILE: "nodultrain",
     MNG_FILE: "sideChainService.js",
-    WS_EXE_FILE:"wssultrain"
+    WS_EXE_FILE:"wssultrain",
+    RAND_FILE:"votingRandService.js"
 }
 
 /**
