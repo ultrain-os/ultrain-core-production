@@ -367,7 +367,12 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       // TODO: The logic of the next line needs to be incorporated into the next hard fork.
       // trx_context.add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
 
-      d.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
+      transaction_id_type trx_id_for_new_obj;
+      trx_id_for_new_obj = ptr->trx_id;
+
+      d.remove( *ptr );
+      d.create<generated_transaction_object>([&]( auto& gtx ) {
+            gtx.trx_id      = trx_id_for_new_obj;
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
             gtx.payer       = payer;

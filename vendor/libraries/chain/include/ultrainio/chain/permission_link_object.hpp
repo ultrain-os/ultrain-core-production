@@ -61,8 +61,7 @@ namespace ultrainio { namespace chain {
             composite_key<permission_link_object,
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, account),
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, permission_name, required_permission),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, code),
-               BOOST_MULTI_INDEX_MEMBER(permission_link_object, action_name, message_type)
+               BOOST_MULTI_INDEX_MEMBER(permission_link_object, permission_link_object::id_type, id)
             >
          >
       >
