@@ -42,6 +42,7 @@ using namespace std;
 using namespace ultrainio::chain;
 using namespace chainbase;
 using namespace ultrainio::chain::resource_limits;
+
 // If using custom worldstate object, need re-define the template here
 namespace ultrainio { namespace chain {
     namespace detail {
@@ -99,6 +100,7 @@ FC_REFLECT(account_info, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi
 FC_REFLECT(table_info, (table_name_text)(size_of_ws_file)(cnt_of_record))
 
 std::map<account_name, account_info> account_info_map;
+std::vector<table_info> table_info_vector;
 bool is_enable_json = false;
 
 //process section with lambda , contract table etc.
@@ -132,15 +134,7 @@ void read_section(std::ostream& out,ProcessTable&& pt) {
             t_info.size_of_ws_file = worldstate->current_pos() - start_pos;
             t_info.cnt_of_record = total_record;
             if (table_info_out.is_open() && !std::is_same<ObjectType, block_state>::value && !std::is_same<ObjectType, chain_worldstate_header>::value) {
-                if (!is_enable_json) {
-                    table_info_out << std::left << std::setw(50) << t_info.table_name_text << " ";
-                    table_info_out <<std::setw(10)<< t_info.size_of_ws_file << std::setw(10) << t_info.cnt_of_record << "\n";
-                } else {
-                    fc::variant v;
-                    fc::to_variant(t_info, v);
-                    fc::mutable_variant_object mvo(v);
-                    table_info_out << fc::json::to_string(mvo)<<"\n";
-                }
+                table_info_vector.push_back(t_info);
             }
         };
         if (std::is_same<ObjectType, table_id_object>::value)
@@ -151,10 +145,13 @@ void read_section(std::ostream& out,ProcessTable&& pt) {
             worldstate->read_section<ObjectType>(it);
 }
 
-void decode_ws(std::ostream& out){
+void output_info()
+{
+    if (!table_info_out.is_open())
+        return;
 
+    //print account info
     if (!is_enable_json){
-        table_info_out <<std::setw(10)<< "size_of_ws_file" << " " << std::setw(10) << "cnt_of_record" << "\n";
         account_info_out << std::left << std::setw(13) << "name";
         account_info_out << std::setw(15) << "ram_usage"<< " ";
         account_info_out << std::setw(15) << "ram_limit"<< " ";
@@ -168,6 +165,60 @@ void decode_ws(std::ostream& out){
         account_info_out << "\n";
     }
 
+    std::vector<account_info> acc_v(account_info_map.size());
+    for(auto& it : account_info_map){
+        int len = 0;
+        int cnt = 0;
+        for (auto& t : it.second.contract_info_map){
+            len += t.second.len;
+            cnt += t.second.cnt;
+        }
+        it.second.cnt_of_contact_table = it.second.contract_info_map.size();
+        it.second.cnt_of_contact_record = cnt;
+        it.second.len_of_contact_in_ws = len;
+
+        if (!is_enable_json) {
+            account_info_out << std::left << std::setw(13) << it.second.name << " ";
+            account_info_out << std::setw(15) << it.second.ram_usage << " ";
+            if(it.second.ram_quota == -1)
+                account_info_out << std::setw(15) << "unlimited" << " ";
+            else
+                account_info_out << std::setw(15) << it.second.ram_quota << " ";
+            account_info_out << std::setw(15) << it.second.recv_sequence << " ";
+            account_info_out << std::setw(15) << it.second.abi_sequence << " ";
+            account_info_out << std::setw(15) << it.second.auth_sequence << " ";
+            account_info_out << std::setw(15) << it.second.code_sequence << " ";
+            account_info_out << std::setw(15) << it.second.cnt_of_contact_table << " ";
+            account_info_out << std::setw(15) << it.second.cnt_of_contact_record << " ";
+            account_info_out << std::setw(15) << it.second.len_of_contact_in_ws << " ";
+            account_info_out << "\n";
+        } else {
+            acc_v.push_back(it.second);
+        }
+    }
+
+    if (is_enable_json) {
+        fc::variant v;
+        fc::to_variant(table_info_vector, v);
+        account_info_out << fc::json::to_string(acc_v);
+    }
+
+    //print  table_info
+    if (!is_enable_json) {
+        table_info_out << std::left << std::setw(50) << "Native_table_name ";
+        table_info_out <<std::setw(20)<< "size_of_ws_file" << " " << std::setw(20) << "cnt_of_record" << "\n";
+        for(auto& it : table_info_vector) {
+            table_info_out << std::left << std::setw(50) << it.table_name_text << " ";
+            table_info_out <<std::setw(20)<< it.size_of_ws_file << std::setw(20) << it.cnt_of_record << "\n";
+        }
+    } else {
+        fc::variant v;
+        fc::to_variant(table_info_vector, v);
+        table_info_out << fc::json::to_string(v);
+    }
+}
+
+void decode_ws(std::ostream& out){
     READ_SECTION(chain_worldstate_header)
 
     READ_SECTION(block_header_state)
@@ -314,45 +365,8 @@ void decode_ws(std::ostream& out){
     READ_SECTION(resource_limits_state_object)
     READ_SECTION(resource_limits_config_object)
 
-
-    if (!table_info_out.is_open())
-        return;
-
-    for(auto& it : account_info_map){
-        int len = 0;
-        int cnt = 0;
-        for (auto& t : it.second.contract_info_map){
-            len += t.second.len;
-            cnt += t.second.cnt;
-        }
-        it.second.cnt_of_contact_table = it.second.contract_info_map.size();
-        it.second.cnt_of_contact_record = cnt;
-        it.second.len_of_contact_in_ws = len;
-
-        if (!is_enable_json) {
-            account_info_out << std::left << std::setw(13) << it.second.name << " ";
-            account_info_out << std::setw(15) << it.second.ram_usage << " ";
-            if(it.second.ram_quota == -1)
-                account_info_out << std::setw(15) << "unlimited" << " ";
-            else
-                account_info_out << std::setw(15) << it.second.ram_quota << " ";
-            account_info_out << std::setw(15) << it.second.recv_sequence << " ";
-            account_info_out << std::setw(15) << it.second.abi_sequence << " ";
-            account_info_out << std::setw(15) << it.second.auth_sequence << " ";
-            account_info_out << std::setw(15) << it.second.code_sequence << " ";
-            account_info_out << std::setw(15) << it.second.cnt_of_contact_table << " ";
-            account_info_out << std::setw(15) << it.second.cnt_of_contact_record << " ";
-            account_info_out << std::setw(15) << it.second.len_of_contact_in_ws << " ";
-            account_info_out << "\n";
-        } else {
-            fc::variant v;
-            fc::to_variant(it.second, v);
-            fc::mutable_variant_object mvo(v);
-            account_info_out << fc::json::to_string(mvo)<<"\n";
-        }
-    }
+    output_info();
 }
-
 
 int main(int argc, const char **argv) {
     try {
