@@ -21,6 +21,9 @@ var g_chain_id = undefined;
 
 function base64Sk(securityKey) {
   var script = g_perl_script_path;
+  if (!fs.existsSync(script)) {
+    throw new Error(`File b58.pl is not existed. Check the file path: ${script}`);
+  }
   var cmd = `perl ${script} ${securityKey}`;
   return process.execSync(cmd).toString();
 }
@@ -43,6 +46,9 @@ function isDuplicate(key) {
 function generateVrfProof(sk, randNum) {
   var basedSk = base64Sk(sk);
   randNum = randNum.length % 2 == 0 ? randNum : randNum + "0";
+  if (!fs.existsSync(g_vrf_client_path)) {
+    throw new Error(`File VRF client is not existed. Check the file path: ${g_vrf_client_path}`);
+  }
   var cmd = `${g_vrf_client_path} -p ${basedSk} ${randNum}`;
   var res = process.execSync(cmd).toString();
   return res.split(";")[1];
@@ -77,6 +83,7 @@ function getHttpServerAddress(){
       }
     }
   } catch (exception){
+    console.error("getHttpServerAddress failed. Return the default http server address.");
     return "http://127.0.0.1:8888";
   }
 }

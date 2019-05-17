@@ -13,7 +13,7 @@ async function startJob() {
     try {
       voting.votingRandomNum();
     } catch (exception) {
-      console.error(`Execute voting.votingRandomNum failed. Exception details: ${exception}`);
+      console.error(`Execute 'voting.votingRandomNum' failed. Exception details: ${exception}`);
     }
   });
 }
