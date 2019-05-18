@@ -102,6 +102,7 @@ FC_REFLECT(table_info, (table_name_text)(size_of_ws_file)(cnt_of_record))
 std::map<account_name, account_info> account_info_map;
 std::vector<table_info> table_info_vector;
 bool is_enable_json = false;
+bool is_detail = false;
 
 //process section with lambda , contract table etc.
 template<typename ObjectType,typename ProcessTable>
@@ -165,8 +166,11 @@ void output_info()
         account_info_out << "\n";
     }
 
-    std::vector<account_info> acc_v(account_info_map.size());
+    std::vector<account_info> acc_v;
     for(auto& it : account_info_map){
+        if (!is_detail && it.second.ram_quota == 0)//ram is 0 and simple mode
+            continue;
+
         int len = 0;
         int cnt = 0;
         for (auto& t : it.second.contract_info_map){
@@ -198,8 +202,6 @@ void output_info()
     }
 
     if (is_enable_json) {
-        fc::variant v;
-        fc::to_variant(table_info_vector, v);
         account_info_out << fc::json::to_string(acc_v);
     }
 
@@ -212,9 +214,7 @@ void output_info()
             table_info_out <<std::setw(20)<< it.size_of_ws_file << std::setw(20) << it.cnt_of_record << "\n";
         }
     } else {
-        fc::variant v;
-        fc::to_variant(table_info_vector, v);
-        table_info_out << fc::json::to_string(v);
+        table_info_out << fc::json::to_string(table_info_vector);
     }
 }
 
@@ -375,8 +375,9 @@ int main(int argc, const char **argv) {
             ("help,h", "Print this help message and exit")
             ("in,i", po::value<string>(), "Pathname of the input binary snapshot")
             ("out,o", po::value<string>(), "Pathname of the output JSON file")
-            ("table,t","out put contact table and account info")
-            ("json,j","out put contact table and account info as json format")
+            ("table,t","output contact table and account info")
+            ("json,j","output contact table and account info as json format")
+            ("detail,d","output all account info,include acount which ram is 0")
             ;
         po::variables_map vm;
         po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -385,6 +386,10 @@ int main(int argc, const char **argv) {
         string in_file;
         if(vm.count("in")) {
             in_file = vm.at("in").as<string>();
+        }
+
+        if( vm.count("detail") ) {
+            is_detail = true;
         }
 
         if( vm.count("help") || !in_file.size() ) {
