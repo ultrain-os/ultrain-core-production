@@ -353,6 +353,7 @@ void packed_transaction::set_transaction(const transaction& t, packed_transactio
    } FC_CAPTURE_AND_RETHROW((_compression)(t))
    packed_context_free_data.clear();
    compression = _compression;
+   unpacked_trx.reset();
 }
 
 void packed_transaction::set_transaction(const transaction& t, const vector<bytes>& cfd, packed_transaction::compression_type _compression)
@@ -372,6 +373,7 @@ void packed_transaction::set_transaction(const transaction& t, const vector<byte
       }
    } FC_CAPTURE_AND_RETHROW((_compression)(t))
    compression = _compression;
+   unpacked_trx.reset();
 }
 
 transaction_id_type packed_generated_transaction::id()const
@@ -400,6 +402,7 @@ void packed_generated_transaction::set_transaction(const transaction& t)
    try {
             packed_trx = pack_transaction(t);
    } FC_CAPTURE_AND_RETHROW((t))
+   unpacked_trx.reset();
 }
 
 } } // ultrainio::chain
