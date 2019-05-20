@@ -364,6 +364,41 @@ def stepexecrand():
     #   nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
     os.system("cd %s/ultrain-core/scripts/rand; \
       nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
+
+def addSubChainUser():
+    print "addSubChainUser start..."
+    rewardlist = []
+    for i in range(0,len(accounts)):
+        userName = accounts[i]
+        pk = account_pk_list[i]
+        retry(args.clultrain + 'create account ultrainio ' + userName + ' ' + pk)
+        rewardacc = getrewardaccount(userName)
+        rewardlist.append(rewardacc)
+        retry(args.clultrain + 'create account ultrainio %s %s ' % (rewardacc, pk))
+        sleep(1)
+    print(" reward account list:")
+    for a in rewardlist:
+        print(a)
+    print "addSubChainUser end..."
+    sleep(15)
+    for i in range(0,len(accounts)):
+        userName = accounts[i]
+        pk = account_pk_list[i]
+        retry(args.clultrain+' system empoweruser '+userName+' unitopia "'+pk+'" "'+pk+'" 1 -u ');
+        retry(args.clultrain+' system empoweruser '+userName+' pioneer "'+pk+'" "'+pk+'" 1 -u ');
+        retry(args.clultrain+' system empoweruser '+userName+' newretail "'+pk+'" "'+pk+'" 1 -u ');
+        sleep(1)
+
+def testcreateisexist():
+    noexistaccount = []
+    for i in range(0,len(accounts)):
+        j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_exist",data = json.dumps({"account_name":accounts[i]})).text)
+        if j["is_exist"] == False :
+            noexistaccount.append(accounts[i]);
+    print ("no exist account size: %d" % (len(noexistaccount)) )
+    for a in noexistaccount:
+        print(a)
+
 # Command Line Arguments
 
 parser = argparse.ArgumentParser()
@@ -385,6 +420,8 @@ commands = [
     ('u', 'unregproducers',  stepunregproducersTest,    False,    "stepunregproducersTest"),
     ('r', 'regproducers',  stepregproducersTest,    False,    "stepregproducersTest"),
     ('e', 'execrand',          stepexecrand,            False,    "stepexecrand"),
+    ('A', 'addSubChainUser', addSubChainUser,         False,    "addSubChainUser"),
+    ('E', 'testcreateisexist', testcreateisexist,         False,    "testcreateisexist"),
 ]
 
 parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")
