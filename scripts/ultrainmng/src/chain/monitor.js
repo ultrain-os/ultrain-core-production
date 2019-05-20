@@ -1236,6 +1236,86 @@ function clearLogData() {
     logger.info("clearLogData end:");
 }
 
+/**
+ * 上传ram 信息
+ * @returns {Promise<void>}
+ */
+async function uploadRamUsage() {
+
+    if (chainConfig.configFileData.local.uploadRam != true) {
+        logger.error("uploadRamUsage is not enabled");
+        return;
+    }
+
+    logger.info("uploadRamUsage is enabled");
+
+    try {
+        let cmd = "ls -ltrt /root/.local/share/ultrainio/wssultrain/data/worldstate/ | grep .ws | tail -n 1 | awk '{print $NF}'";
+        process.exec(cmd, async function (error, stdout, stderr, finish) {
+            if (error) {
+                logger.error("uploadRamUsage error:",error);
+            } else {
+                logger.info("uploadRamUsage success:",stdout);
+                let wsFile = stdout;
+                logger.info("uploadRamUsage ws file is:",wsFile);
+                let calcCmd = "/root/workspace/ultrain-core/build/tools/ws2json -o /tmp/ -t -j --in /root/.local/share/ultrainio/wssultrain/data/worldstate/"+wsFile;
+                logger.info("calcCmd:",calcCmd);
+                let targetFile = "/tmp/account_info.txt"
+                let rmTargetFileCmd = "rm /tmp/account_info.txt";
+                process.exec(rmTargetFileCmd, async function (error, stdout, stderr, finish) {
+                    process.exec(calcCmd, async function (error, stdout, stderr, finish) {
+                        if (error) {
+                            logger.error(calcCmd+" error:",error);
+                        } else {
+                            try {
+                                logger.info(calcCmd + " success:");
+                                logger.info("start to load account_info.txt:", targetFile);
+                                if (fs.existsSync(targetFile)) {
+                                    logger.info("account_info.txt is found in dir:", targetFile);
+                                    let accountInfoJson = JSON.parse(fs.readFileSync(targetFile, "UTF-8"));
+                                    //logger.info("accountInfoJson:",accountInfoJson);
+                                    let sum = accountInfoJson.length;
+                                    logger.info("accountInfoJson sum:", sum);
+                                    let maxSum = 10;
+                                    let array = [];
+                                    for (let i=0;i<accountInfoJson.length;i++) {
+                                       let obj = accountInfoJson[i];
+                                       array.push(obj);
+                                       if ((i % maxSum == 0 && i > 0) || i >= accountInfoJson.length-1) {
+                                           logger.info("array("+i+"):",array);
+                                           let rs = await chainApi.ramUsageCheckIn(getMonitorUrl(),{
+                                               chainName : chainConfig.localChainName,
+                                               chainId: chainConfig.chainId,
+                                               dataJson : JSON.stringify(array)
+                                           });
+                                           logger.info("ramUsageCheckIn rs:",rs);
+                                           array = [];
+                                       }
+                                    }
+                                } else {
+                                    logger.error("account_info.txt is not found in dir:", targetFile);
+                                }
+
+                            } catch (e) {
+                                logger.error("uploadRamUsage error,",e);
+                            }
+
+                        }
+                    });
+                });
+            }
+
+        });
+
+
+
+    } catch (e) {
+        logger.error("uploadRamUsage error,",e);
+    }
+
+
+}
+
 
 module.exports = {
     checkIn,
@@ -1262,4 +1342,5 @@ module.exports = {
     clearConfirmBlock,
     checkNeedSync,
     clearLogData,
+    uploadRamUsage,
 }

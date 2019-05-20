@@ -691,6 +691,23 @@ confirmBlockCheckIn = async (url,param) => {
 }
 
 /**
+ * confirmBlockCheckIn
+ * @param url
+ * @param param
+ * @returns {Promise<*>}
+ */
+ramUsageCheckIn = async (url,param) => {
+    try {
+        logger.info("ramUsageCheckIn param:", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/addRamUsage", qs.stringify(param));
+        logger.info("ramUsageCheckIn result:", rs.data);
+        return rs.data;
+    } catch (e) {
+        logger.error("addRamUsage error,", utils.logNetworkError(e));
+    }
+}
+
+/**
  *
  * @param url
  * @param param
@@ -1069,4 +1086,5 @@ module.exports = {
     confirmBlockCheckIn,
     getCommitteeBulletin,
     getChainIdByAllSeed,
+    ramUsageCheckIn,
 }

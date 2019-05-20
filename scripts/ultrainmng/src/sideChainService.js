@@ -16,6 +16,9 @@ var logJobSchedule = "0 0 */2 * * *";
 //清除pm2 日志(每1小时）
 var clearCacheSchedule = "0 */2 * * * *";
 
+//上传ram信息
+var ramJobSchedule = "0 0 3 * * *";
+
 /**
  * 管家程序入口
  * @returns {Promise<void>}
@@ -114,9 +117,10 @@ async function startEntry() {
         await chain.clearCache();
     });
 
-
-
-
+    logger.info("upload ram info:",ramJobSchedule);
+    schedule.scheduleJob(ramJobSchedule,async function () {
+        await monitor.uploadRamUsage();
+    })
 
 }
 
