@@ -486,7 +486,7 @@
          {"name":"start_blcok",                   "type":"uint64"},
          {"name":"block_reward_vec",              "type":"block_reward[]"},
          {"name":"total_cur_chain_block",         "type":"int64"},
-         {"name":"perblock_bucket",               "type":"int64"},
+         {"name":"master_chain_pay_fee",          "type":"int64"},
          {"name":"total_unpaid_balance",          "type":"uint64"},
          {"name":"total_activated_stake",         "type":"int64"},
          {"name":"last_name_close",               "type":"block_timestamp_type"},
@@ -517,6 +517,15 @@
          {"name":"last_operate_blocknum", "type":"uint64"},
          {"name":"delegated_cons_blocknum", "type":"uint64"},
          {"name":"claim_rewards_account", "type":"account_name"}
+      ]
+    },{
+      "name": "unpaid_disproducer",
+      "base": "",
+      "fields": [
+         {"name":"owner",       "type":"account_name"},
+         {"name":"unpaid_balance",   "type":"uint64"},
+         {"name":"reward_account",  "type":"account_name"},
+         {"name": "table_extension", "type": "exten_type[]"}
       ]
     },{
       "name": "producer_info",
@@ -700,9 +709,15 @@
         {"name":"chaininfo",     "type":"master_chain_info"}
       ]
     },{
+      "name": "calcmasterrewards",
+      "base": "",
+      "fields": [
+      ]
+    },{
       "name": "claimrewards",
       "base": "",
       "fields": [
+        {"name":"producer",  "type":"account_name"}
       ]
     },{
       "name": "setpriv",
@@ -956,6 +971,10 @@
       "type": "unregprod",
       "ricardian_contract": ""
    },{
+      "name": "calcmasterrewards",
+      "type": "calcmasterrewards",
+      "ricardian_contract": ""
+   },{
       "name": "claimrewards",
       "type": "claimrewards",
       "ricardian_contract": ""
@@ -1132,6 +1151,12 @@
       "index_type": "i64",
       "key_names": ["owner"],
       "key_types": ["uint64"]
+    },{
+      "name": "upaiddisprod",
+      "type": "unpaid_disproducer",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
     },{
       "name": "masterinfos",
       "type": "master_chain_info",

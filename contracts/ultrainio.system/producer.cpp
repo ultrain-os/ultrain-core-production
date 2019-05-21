@@ -25,6 +25,7 @@ namespace ultrainiosystem {
         ultrainio_assert( url.size() < 512, "url too long" );
         // key is hex encoded
         ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
+        ultrainio_assert( bls_key.size() == 130, "public bls key should be of size 130" );
         if(location != self_chain_name) {
             ultrainio_assert(location != N(master) , "wrong location");
             if(location != default_chain_name) {
@@ -231,11 +232,13 @@ namespace ultrainiosystem {
                 dis_prod = prod_info;
                 dis_prod.delegated_cons_blocknum = current_block_number;
             });
+            record_rewards_for_disproducer( prod_info.owner, prod_info.claim_rewards_account, prod_info.unpaid_balance );
             _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                 producer_brf.in_disable = true;
             });
             print(" to disable");
         } else {
+           prod_info.unpaid_balance = remove_rewards_for_enableproducer( prod_info.owner );
             add_to_chain(to_chain, prod_info, current_block_number);
             _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                 producer_brf.in_disable = false;

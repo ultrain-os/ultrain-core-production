@@ -54,7 +54,7 @@ namespace ultrainiosystem {
       uint64_t             start_block =0;
       std::vector<ultrainio::block_reward> block_reward_vec;
       int64_t              total_cur_chain_block = 0;
-      int64_t              perblock_bucket = 0;
+      int64_t              master_chain_pay_fee = 0;
       uint64_t             total_unpaid_balance = 0;
       int64_t              total_activated_stake = 0;
       block_timestamp      last_name_close;
@@ -85,7 +85,7 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE_DERIVED(ultrainio_global_state, ultrainio::blockchain_parameters,
                                    (max_ram_size)(min_activated_stake)(min_committee_member_number)
                                    (total_ram_bytes_used)(start_block)(block_reward_vec)
-                                   (total_cur_chain_block)(perblock_bucket)(total_unpaid_balance)
+                                   (total_cur_chain_block)(master_chain_pay_fee)(total_unpaid_balance)
                                    (total_activated_stake)(last_name_close)(max_resources_number)
                                    (total_resources_used_number)(newaccount_fee)(chain_name)
                                    (cur_committee_number)(worldstate_interval)(resource_fee)(table_extension) )
@@ -143,7 +143,11 @@ namespace ultrainiosystem {
       uint64_t              vote_number = 0;
       uint64_t              last_vote_blocknum = 0;
       exten_types           table_extension;
-
+      enum producers_state_exten_type_key {
+         producers_state_key_start = 0,
+         claim_rewards_block_height = 1,
+         producers_state_key_end,
+      };
       uint64_t primary_key()const { return owner; }
       producer_info() {}
       producer_info(const disabled_producer& dp, uint64_t unpay, uint64_t votes, uint64_t last_vote_block)
@@ -152,6 +156,16 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, disabled_producer,
                                     (unpaid_balance)(vote_number)(last_vote_blocknum)(table_extension) )
    };
+
+   struct unpaid_disproducer {
+      account_name   owner;
+      uint64_t       unpaid_balance = 0;
+      account_name   reward_account;
+      exten_types    table_extension;
+      uint64_t  primary_key()const { return owner; }
+      ULTRAINLIB_SERIALIZE( unpaid_disproducer, (owner)(unpaid_balance)(reward_account)(table_extension) )
+   };
+   typedef ultrainio::multi_index< N(upaiddisprod), unpaid_disproducer>      unpaid_disprod;
 
    struct pending_miner {
             account_name                               owner;
@@ -447,6 +461,7 @@ namespace ultrainiosystem {
    static constexpr uint32_t seconds_per_year      = 52*7*24*3600;
    static constexpr uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
    static constexpr uint64_t seconds_per_halfhour  = 30 * 60;
+   static constexpr uint64_t seconds_per_hour      = 60 * 60;
    static constexpr uint64_t useconds_per_year     = seconds_per_year*1000000ll;
 
    static constexpr uint64_t     system_token_symbol = CORE_SYMBOL;
@@ -522,7 +537,8 @@ namespace ultrainiosystem {
          // functions defined in reward.cpp
          void onblock( block_timestamp timestamp, account_name producer );
          void onfinish();
-         void claimrewards();
+         void calcmasterrewards();
+         void claimrewards( account_name producer );
 
 
          // functions defined in scheduler.cpp
@@ -585,12 +601,15 @@ namespace ultrainiosystem {
          void delexpiretable();
          void clearexpirecontract( account_name owner );
          //defined in reward.cpp
-         void reportblocknumber( uint64_t chain_type,
-                                 account_name producer,
-                                 uint64_t number);
+         void reportsubchainblock( account_name producer );
 
          void distributreward();
-
+         inline float get_reward_fee_ratio() const;
+         inline uint64_t get_reward_per_block() const;
+         inline uint32_t check_previous_claimed_reward( const ultrainiosystem::producer_info& prod,uint32_t block_height ) const;
+         inline void send_rewards_for_producer( account_name producer, account_name reward_account, const name& chain_name, uint64_t unpaid_balance );
+         inline void record_rewards_for_disproducer( account_name producer, account_name reward_account, uint64_t unpaid_balance );
+         inline uint64_t remove_rewards_for_enableproducer( account_name producer );
 
          //defined in scheduler.cpp
          void add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number);
