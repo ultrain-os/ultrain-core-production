@@ -25,6 +25,7 @@
 #include <ultrainio/chain/worldstate.hpp>
 #include <ultrainio/chain/callback.hpp>
 #include <ultrainio/chain/callback_manager.hpp>
+#include <ultrainio/chain/version.hpp>
 
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>
@@ -760,7 +761,7 @@ const string read_only::KEYi64 = "i64";
 read_only::get_info_results read_only::get_chain_info(const read_only::get_chain_info_params&) const {
     const auto& rm = db.get_resource_limits_manager();
    return {
-      ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
+      ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version())) + "+" + ultrainio::chain::get_version_str(),
       db.get_chain_id(),
       db.fork_db_head_block_num(),
       db.last_irreversible_block_num(),
