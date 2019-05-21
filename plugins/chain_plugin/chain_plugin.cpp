@@ -154,10 +154,10 @@ public:
             chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
             m_lightClientProducer = std::make_shared<LightClientProducer>(chain.get_bls_votes_manager());
         }
-        m_lightClientProducer->acceptNewHeader(header);
         const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         chain_apis::read_only::get_confirm_point_interval_result result = ro_api.get_confirm_point_interval(chain_apis::read_only::get_confirm_point_interval_params());
         LightClientProducer::setConfirmPointInterval(result.confirm_point_interval);
+        m_lightClientProducer->acceptNewHeader(header);
         return true;
     }
 
