@@ -185,7 +185,6 @@ namespace ultrainiosystem {
     void system_contract::moveprod(account_name producer, std::string  producer_key, std::string blskey,
                                    bool from_disable, name from_chain, bool to_disable, name to_chain) {
         require_auth(_self);
-        ultrainio_assert(_gstate.is_master_chain(), "this action can only be performed on master chain");
         if(from_disable && to_disable) {
             ultrainio_assert(false, "error: cannot move a producer from disable to disable");
         } else if (!from_disable && !to_disable) {
