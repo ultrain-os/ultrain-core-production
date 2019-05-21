@@ -9,10 +9,9 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <ultrainio/chain/version.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
+#include <ultrainio/utilities/common.hpp>
 
 namespace ultrainio {
-
-    extern char version[];
 
     struct UranusNodeInfo {
         bool     ready;
@@ -174,7 +173,8 @@ namespace ultrainio {
             periodic_report_static_data staticConfig;
             std::shared_ptr<UranusNode> pNode = m_pNode.lock();
             if (pNode) {
-                staticConfig.version           = std::string(version) + "+" + chain::get_version_str();
+                staticConfig.version           = ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version()));
+                staticConfig.version           += "+" + chain::get_version_str();
                 staticConfig.nonProducingNode  = pNode->getNonProducingNode();
                 staticConfig.genesisLeaderPk   = Genesis::s_genesisPk;
                 staticConfig.publicKey         = std::string(StakeVoteBase::getMyPrivateKey().getPublicKey());

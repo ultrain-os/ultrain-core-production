@@ -133,7 +133,6 @@
     # Replace the version in Node.h with the head hash
     b=`git log "$BUILD_DIR/../"| head -1`
     echo ${b:7:6}
-    sed -i -e "s/char version\[\]=.*/char version\[\]=\"${b:7:6}\";/g" $BUILD_DIR/../consensus/rpos/src/Node.cpp
     sed -i -e "s/ultrainio::abi.*/ultrainio::abi\/1.0\/${b:7:6}\",/g" $BUILD_DIR/../contracts/ultrainio.system/ultrainio.system.abi
 
 	printf "\\n\\tChecking boost library installation.\\n"

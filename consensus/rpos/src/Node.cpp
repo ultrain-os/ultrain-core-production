@@ -18,17 +18,14 @@
 #include <rpos/StakeVoteBase.h>
 #include <rpos/Utils.h>
 
-// eos net
 #include <appbase/application.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
-
+#include <ultrainio/utilities/common.hpp>
 
 using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
-
-    char version[]="938861";
 
     std::shared_ptr<UranusNode> UranusNode::s_self(nullptr);
 
@@ -48,7 +45,9 @@ namespace ultrainio {
                                                                  m_phase(kPhaseInit), m_baxCount(0), m_timer(ioservice),
                                                                  m_preRunTimer(ioservice),
                                                                  m_schedulerPtr(std::make_shared<Scheduler>()) {
-        std::string ver = std::string(version) + "+" + chain::get_version_str();
+
+        std::string ver =
+            ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version())) + "+" + chain::get_version_str();
         ilog("Code version is ${s}", ("s", ver));
     };
 
