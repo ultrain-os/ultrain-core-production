@@ -164,6 +164,22 @@ async function getNodVersion() {
 
 /**
  *
+ * @returns {Promise<*>}
+ */
+async function getServerVersion() {
+    let version = hashCache.get(cacheKeyConstants.SERVER_VERSOIN_KEY);
+    if (utils.isNull(version)) {
+        version = await chainApi.getServerVersion(chainConfig.nodPort);
+        if (utils.isNotNull(version)) {
+            hashCache.put(cacheKeyConstants.SERVER_VERSOIN_KEY, version, HASH_EXPIRE_TIME_MS);
+        }
+    }
+
+    return version;
+}
+
+/**
+ *
  * @returns {string}
  */
 async function getMngVersion() {
@@ -298,6 +314,9 @@ async function buildParam() {
             enableRestartRes = 0;
     }
 
+    let serverVersion = await getServerVersion();
+    logger.debug("serverVersion:",serverVersion);
+
     var extMsg = {
         "enableRestart": enableRestartRes,
         "enableSyncUserRes": enableSyncUserRes,
@@ -309,6 +328,7 @@ async function buildParam() {
         "wsHash":ws_hash,
         "wsFileHash" : wsFileHash,
         "randFileHash":randFileHash,
+        "serverVersion":serverVersion,
     }
     var param = {
         "chainId": chainConfig.localChainName,

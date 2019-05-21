@@ -645,16 +645,28 @@ const getHeadBlockProposer = async (config) => {
 
 }
 
-const getConfirmedBlockNumber = async (chainName) => {
+/**
+ *
+ * @param config
+ * @returns {Promise<*>}
+ */
+const getServerVersion = async (port) => {
+    let path = "http://127.0.0.1:"+port+"/v1/chain_info/get_chain_info"
     try {
-         getTable
-
+        const rs = await axios.post(path);
+        logger.debug("get get_chain_info  ",rs.data);
+        if (rs.status == 200) {
+            return rs.data.server_version;
+        } else {
+            logger.error("request node serverVersion error code (" + path + ")");
+        }
     } catch (e) {
-        logger.error("getConfirmedBlockNumber error:",e)
+        logger.error("getServerVersion error,", utils.logNetworkError(e));
     }
 
     return null;
 }
+
 
 /**
  * monitor check in
@@ -691,7 +703,7 @@ confirmBlockCheckIn = async (url,param) => {
 }
 
 /**
- * confirmBlockCheckIn
+ * ramUsageCheckIn
  * @param url
  * @param param
  * @returns {Promise<*>}
@@ -1087,4 +1099,5 @@ module.exports = {
     getCommitteeBulletin,
     getChainIdByAllSeed,
     ramUsageCheckIn,
+    getServerVersion,
 }

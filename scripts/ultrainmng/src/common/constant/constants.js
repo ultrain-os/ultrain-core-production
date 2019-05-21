@@ -120,7 +120,8 @@ var cacheKeyConstants = {
     NOD_FILE_KEY: "nod_file_key",
     MNG_FILE_KEY: "mng_file_key",
     WS_FILE_KEY: "ws_file_key",
-    RAND_FILE_KEY: "rand_file_key"
+    RAND_FILE_KEY: "rand_file_key",
+    SERVER_VERSOIN_KEY: "server_version_key"
 }
 
 /**

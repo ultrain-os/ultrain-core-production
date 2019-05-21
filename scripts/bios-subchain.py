@@ -148,14 +148,18 @@ def regProducer():
     for i in range(startl,endindex+1):
         userName = getUserName(i);
         userPK = account_pk_list[i]
-        pk = pk_list[i]
-        bls_key = bls_pk_list[i];
         print "empoweruser(user:"+userName+" to chain:"+args.subchain+")"
         retry(args.clultrain+'system empoweruser '+userName+' '+args.subchain+' "'+userPK+'" "'+userPK+'" 1 -p '+userName+'@active');
         sleep(1)
+    sleep(5)
+    for i in range(startl,endindex+1):
+        userName = getUserName(i);
+        pk = pk_list[i]
+        bls_key = bls_pk_list[i];
         print "reg producer:" + userName + "(" + pk + " "+bls_key+ ") belongs to chain(" + args.subchain + ")"
         retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key + ' ' + getrewardaccount(userName)+' https://'+userName+'.com '+args.subchain +' -p ultrainio@active -u')
         sleep(0.5)
+
     print "regProducer end..."
     sleep(2)
 
