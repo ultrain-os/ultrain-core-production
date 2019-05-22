@@ -20,3 +20,25 @@
 * Monitor
     * 增加机器信息等数据接收和存储 （左非）
     * 增加机器负载等异常情况报警
+
+
+## 2019-05-22 Release(Commit: 439d1fe4806c91e0fe0eab05b7615e68de46ed73)
+
+* Nodultrain
+    * 在chain info 中增加软件版本信息，统一代码版本提取方式（首架，晓分）
+    * 修复, 世界状态后replay crash 的bug（晓分）
+    * 在transaction receipt 中增加类型packed_generated_trx(zhong wei, 首架，yus)
+        * 增加variant，merkle proof等对packed_generated_trx的支持
+    * 在区块中增加on finished 交易的支持(晓分，首架）
+    * chainbase 增删改操作顺序的优化（Raymond）
+* Contract
+    * 委员会调度从基于共识的模式改为基于轻客户端的模式（zhong wei， yus）
+    * 在系统合约中，增加on finish的支持（晓分，yus，非凡）
+    * 新增设置系统参数的方法，增加普通用户购买套餐的开关,  增加系统参数越界的检查（非凡，yus）
+* Wssultrain & WS tool
+    * ws tool 的优化 （志平,刘伟）
+* Ultrainmng
+    * 解析世界状态，获取内存使用情况，并上传monitor （左非）
+    * 管家基于轻客户端模式去同步委员会变化（左非）
+    * 优化voterand 脚本，增加voterand 热更新的支持（左非, 廖鹏）
+    * 上传node 版本号到monitor （左非）
