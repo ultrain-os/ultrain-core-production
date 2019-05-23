@@ -2,6 +2,7 @@ var logger = require("../../config/logConfig").getLogger("ChainUtil")
 var utils = require('../../common/util/utils')
 const fs = require('fs');
 var constants = require('../../common/constant/constants')
+var rand = require('random-lib')
 
 /**
  * 创世时间格式化
@@ -352,6 +353,23 @@ function transferFreeMemToArray(memStr) {
     return array;
 }
 
+/**
+ * 随机概率
+ * @param setRatio
+ * @returns {boolean}
+ */
+function randomRato(setRatio) {
+    if (setRatio >= 1) {
+        return true
+    }
+    let result = rand.intsSync({min: 1, max: 100, num: 1});
+    if (result <= setRatio * 100) {
+        return true;
+    }
+
+    return false;
+}
+
 module.exports = {
     formatGensisTime,
     getOwnerPkByAccount,
@@ -365,4 +383,5 @@ module.exports = {
     getSyncResTransFromBlockHeader,
     transferFreeMemToArray,
     getMoveProdRTransFromBlockHeader,
+    randomRato,
 }

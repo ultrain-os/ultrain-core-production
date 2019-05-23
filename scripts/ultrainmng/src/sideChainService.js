@@ -10,14 +10,17 @@ var utils = require('./common/util/utils')
 //定时配置
 var singleJobSchedule = "*/10 * * * * *";
 
-//清除pm2 日志(每1分钟）
+//清除pm2 日志(每2小时）
 var logJobSchedule = "0 0 */2 * * *";
 
-//清除pm2 日志(每1小时）
-var clearCacheSchedule = "0 */2 * * * *";
+//清除链信息缓存(每2小时）
+var clearCacheSchedule = "0 30 */2 * * *";
 
 //上传ram信息
 var ramJobSchedule = "0 0 3 * * *";
+
+//logrotate调度（每1小时）
+var logrotateSchedule = "0 24 */1 * * *";
 
 /**
  * 管家程序入口
@@ -125,6 +128,11 @@ async function startEntry() {
     logger.info("upload ram info:",ramJobSchedule);
     schedule.scheduleJob(ramJobSchedule,async function () {
         await monitor.uploadRamUsage();
+    })
+
+    logger.info("logrotate info:",logrotateSchedule);
+    schedule.scheduleJob(logrotateSchedule,async function () {
+        await monitor.logrotate();
     })
 
 }

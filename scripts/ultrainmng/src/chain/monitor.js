@@ -1177,6 +1177,7 @@ function needSyncUgas() {
 }
 
 async function pm2LogFlush() {
+    logger.info("pm2LogFlush");
     await ShellCmd.execCmd("pm2 flush");
 }
 
@@ -1337,6 +1338,57 @@ async function uploadRamUsage() {
 }
 
 
+/**
+ *
+ * @returns {Promise<void>}s
+ */
+async function logrotate() {
+    logger.info("logrotate start");
+    try {
+
+        if (chainUtil.randomRato(0.2) == false) {
+            logger.info("logrotate random failed");
+            return;
+        } else {
+            logger.info("logrotate random success");
+        }
+
+        let conf = "/etc/logrotate.d/ultrain-logrotate.conf";
+
+        if (fs.existsSync(conf)) {
+            fs.unlinkSync(conf);
+        }
+
+        let echoCmd = "echo \"/log/*.log\\n { size 500M\\n copytruncate\\n rotate 10\\n  maxage 100\\n }\\n\" >> " + conf;
+        let logrotate = "logrotate " + conf;
+
+        process.exec(echoCmd, async function (error, stdout, stderr, finish) {
+            if (error) {
+                logger.error("echoCmd(" + echoCmd + ") error:", error);
+            } else {
+                logger.info("echoCmd(" + echoCmd + ") success:");
+            }
+
+            process.exec(logrotate, async function (error, stdout, stderr, finish) {
+
+                if (error) {
+                    logger.error("logrotateCmd(" + logrotate + ") error:", error);
+                } else {
+                    logger.info("logrotateCmd(" + logrotate + ") success:");
+                }
+
+            });
+
+        });
+
+    } catch (e) {
+        logger.error("logrotate error:", e);
+    }
+
+    logger.info("logrotate end");
+}
+
+
 module.exports = {
     checkIn,
     isDeploying,
@@ -1363,4 +1415,5 @@ module.exports = {
     checkNeedSync,
     clearLogData,
     uploadRamUsage,
+    logrotate,
 }
