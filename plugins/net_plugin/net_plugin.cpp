@@ -2927,67 +2927,74 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 					("peer", msg.p2p_address));
 			return false;
 		}
-        bool is_genesis_fin = is_genesis_finish();
-        if(!is_genesis_fin)
-        {
-            return true;
-        }
-         /*pk match the signature*/
-        bool is_pk_signature_matched = is_pk_signature_match(msg.key,hash,msg.sig);
-        if(!is_pk_signature_matched)
-        {
-            return false;
-        }
-         /*pk match the account*/
-        bool is_account_pk_matched = is_account_pk_match(msg.key,msg.account);
-        if(!is_account_pk_matched)
-        {
-            return false;
-        }
-        auto allowed_tcp_white = std::find(allowed_tcp_peers.begin(), allowed_tcp_peers.end(),msg.key);
-        if(allowed_tcp_white != allowed_tcp_peers.end())
-        {
-            return true;
-        }
-	/*pk or username in whitelist or producers*/
-        auto allowed_p2p_white = std::find(allowed_peers.begin(), allowed_peers.end(), msg.key);
-        if(allowed_p2p_white != allowed_peers.end())
-        {
-            return true;
-        }
-        bool is_producer_pk = is_producer_account_pk(msg.account);
-        if(!is_producer_pk)
-        {
-            elog("an unauthorized key");
-            return false;
-        }
-        uint16_t ext_size = msg.ext.size();
-        if(ext_size > 0)
-        {
-            string sig_commitee = msg.ext[0].value; 
-            bool is_account_commitee_pk_matched = is_account_commitee_pk_match(hash,msg.account,sig_commitee);
-            if(!is_account_commitee_pk_matched)
-            {
-                elog("account_commitee_pk no match");
-                return false;
-            }
-           
-            if(ext_size > 1)
-            {
-                string sig_blk = msg.ext[1].value;
-                bool is_account_blk_pk_matched = is_account_bls_pk_match(hash,msg.account,sig_blk);
-                if(!is_account_blk_pk_matched)
-                {
-                    elog("account blk_pk no  match");
-                    return false;
-                } 
-            }
-        }
-        else if(ext_size == 0)
-        {
-            ilog("no ext");
-        }
-        return true;    
+		bool is_genesis_fin = is_genesis_finish();
+		if(!is_genesis_fin)
+		{
+			return true;
+		}
+		/*pk match the signature*/
+		bool is_pk_signature_matched = is_pk_signature_match(msg.key,hash,msg.sig);
+		if(!is_pk_signature_matched)
+		{
+			return false;
+		}
+		/*pk match the account*/
+		bool is_account_pk_matched = is_account_pk_match(msg.key,msg.account);
+		if(!is_account_pk_matched)
+		{
+			return false;
+		}
+		auto allowed_tcp_white = std::find(allowed_tcp_peers.begin(), allowed_tcp_peers.end(),msg.key);
+		if(allowed_tcp_white != allowed_tcp_peers.end())
+		{
+			return true;
+		}
+		/*pk or username in whitelist or producers*/
+		auto allowed_p2p_white = std::find(allowed_peers.begin(), allowed_peers.end(), msg.key);
+		if(allowed_p2p_white != allowed_peers.end())
+		{
+			return true;
+		}
+		bool is_producer_pk = is_producer_account_pk(msg.account);
+		if(!is_producer_pk)
+		{
+			elog("an unauthorized key");
+			return false;
+		}
+		bool commiteekey_nochecked = true;
+		bool blskey_nochecked = true;
+		for (auto& ext : msg.ext)
+		{
+			if(ext.key == handshake_ext::sig_commiteekey)
+			{
+				string sig_commitee = ext.value;
+				bool is_account_commitee_pk_matched = is_account_commitee_pk_match(hash,msg.account,sig_commitee);
+				if(!is_account_commitee_pk_matched)
+				{
+					elog("account_commitee_pk no match");
+					return false;
+				}
+
+				commiteekey_nochecked = false;
+			}
+			else if(ext.key == handshake_ext::sig_blskey)
+			{
+				string sig_blk = ext.value;
+				bool is_account_blk_pk_matched = is_account_bls_pk_match(hash,msg.account,sig_blk);
+				if(!is_account_blk_pk_matched)
+				{
+					elog("account blk_pk no  match");
+					return false;
+				}
+				blskey_nochecked = false;
+			}
+		}
+		if(blskey_nochecked || commiteekey_nochecked )
+		{
+			elog("leak blskey check or commitee check");
+			return false;
+		}
+		return true;
 	}
 	else
 	{
@@ -3024,24 +3031,22 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       hello.node_id = my_impl->node_id;
       //hello.key = my_impl->get_authentication_key();
       auto sk_account = private_key_type(app().get_plugin<producer_uranus_plugin>().get_account_sk());
-      hello.key = sk_account.get_public_key();      
+      hello.key = sk_account.get_public_key();
       auto name_account = app().get_plugin<producer_uranus_plugin>().get_account_name();
       hello.account = name_account;
       hello.time = std::chrono::system_clock::now().time_since_epoch().count();
       hello.token = fc::sha256::hash(hello.time);
       //hello.sig = my_impl->sign_compact(hello.key, hello.token);
-      hello.sig = sk_account.sign(hello.token);      
+      hello.sig = sk_account.sign(hello.token);
 // If we couldn't sign, don't send a token.
       if(hello.sig == chain::signature_type())
          hello.token = sha256();
-      //auto sk_commitee = app().get_plugin<producer_uranus_plugin>(). get_committee_sk();
-      //string sig_commitee = std::string(Signer::sign<fc::sha256>(hello.token, PrivateKey(sk_commitee)));
       string sig_commitee = std::string(Signer::sign<fc::sha256>(hello.token, StakeVoteBase::getMyPrivateKey()));
-      hello.ext.push_back({1,sig_commitee}); 
+      hello.ext.push_back({handshake_ext::sig_commiteekey,sig_commitee});
       unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
       StakeVoteBase::getMyBlsPrivateKey(sk, Bls::BLS_PRI_KEY_LENGTH);
       string sig_blk = std::string(Signer::sign<fc::sha256>(hello.token, sk));
-      hello.ext.push_back({2,sig_blk}); 
+      hello.ext.push_back({handshake_ext::sig_blskey,sig_blk});
       if (p == msg_priority_rpos) {
          hello.p2p_address = my_impl->rpos_listener.p2p_address + " - " + hello.node_id.str().substr(0,7);
       }

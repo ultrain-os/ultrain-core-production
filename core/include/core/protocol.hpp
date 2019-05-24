@@ -22,7 +22,11 @@ namespace ultrainio {
       uint32_t                   head_num = 0;
       block_id_type              head_id;
    };
-
+   enum handshake_ext
+   {
+      sig_commiteekey = 1,//signature use commitee key
+      sig_blskey = 2//signature user bls key
+   };
    struct handshake_message {
       uint16_t                   network_version = 0; ///< incremental value above a computed base
       chain_id_type              chain_id; ///< used to identify chain
