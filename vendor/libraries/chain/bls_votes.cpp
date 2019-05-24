@@ -133,8 +133,8 @@ namespace ultrainio {
 
             void bls_votes_manager::add_confirmed_bls_votes(uint32_t block_num, bool end_epoch, bool valid_bls,
                                                             const std::string &bls_str) {
-                ilog("add_confirmed_bls_votes block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
-                     ("num", block_num)("end_epoch", end_epoch)("bls_valid", valid_bls)("bls", bls_str));
+//                ilog("add_confirmed_bls_votes block num : ${num}, end_epoch : ${end_epoch}, bls_valid : ${bls_valid}, bls : ${bls}",
+//                     ("num", block_num)("end_epoch", end_epoch)("bls_valid", valid_bls)("bls", bls_str));
                 const auto &o = _db.get<bls_votes_object>();
                 _db.modify(o, [&](bls_votes_object &obj) {
                     shared_bls_votes_info info(block_num, end_epoch, valid_bls, bls_str, obj.should_be_confirmed.get_allocator());

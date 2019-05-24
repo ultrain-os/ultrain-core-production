@@ -950,7 +950,7 @@ namespace ultrainio {
                     produceBlock(std::make_shared<chain::signed_block>(block), true);
                 }
                 dlog("sync block finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
-                     ("block_num", getLastBlocknum())("hash", block.id())("head_hash", block.previous));
+                     ("block_num", getLastBlocknum())("hash", short_hash(block.id()))("head_hash", short_hash(block.previous)));
                 return true;
             } else {
                 elog("block error. block in local chain: blockNum = ${n} hash = ${hash}", ("n", last_num)("hash", b->id()));
@@ -1619,7 +1619,7 @@ namespace ultrainio {
             uint32_t priority = stakeVotePtr->proposerPriority(itor->second.echoCommonPart.proposer, kPhaseBA0, 0);
 #endif
             if (minPriority == priority && phase >= kPhaseBA1) { // check priority only
-                ilog("save VoterSet blockId = ${blockId}", ("blockId", itor->second.echoCommonPart.blockId));
+                ilog("save VoterSet blockId = ${blockId}", ("blockId", short_hash(itor->second.echoCommonPart.blockId)));
                 voterSet.commonEchoMsg = itor->second.echoCommonPart;
                 voterSet.accountPool = itor->second.accountPool;
                 voterSet.timePool = itor->second.timePool;
@@ -2014,7 +2014,7 @@ namespace ultrainio {
         ilog("-----------produceBlock timestamp ${timestamp} block num ${num} id ${id} trx count ${count}",
              ("timestamp", block->timestamp)
              ("num", block->block_num())
-             ("id", block->id())
+             ("id", short_hash(block->id()))
              ("count", new_bs->block->transactions.size()));
         m_lightClientProducer->acceptNewHeader(chain.head_block_header(), m_currentBlsVoterSet);
         m_lightClientProducer->saveCurrentBlsVoterSet(m_currentBlsVoterSet);

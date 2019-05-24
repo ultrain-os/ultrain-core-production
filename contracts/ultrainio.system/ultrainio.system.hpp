@@ -334,7 +334,11 @@ namespace ultrainiosystem {
        std::vector<role_base>    committee_set;//current committee set reported by chain
        std::vector<unconfirmed_block_header>  unconfirmed_blocks;
        exten_types               table_extension;
-
+       enum chains_state_exten_type_key {
+         chains_state_key_start = 0,
+         genesis_producer_public_key = 1,
+         chains_state_key_end,
+       };
        auto primary_key()const { return chain_name; }
 
        ULTRAINLIB_SERIALIZE(chain_info, (chain_name)(chain_type)(genesis_time)(global_resource)(is_synced)
@@ -525,7 +529,7 @@ namespace ultrainiosystem {
                            uint16_t max_producer_num,
                            uint16_t sched_step,
                            uint16_t consensus_period);
-         void regsubchain(name chain_name, uint64_t chain_type);
+         void regsubchain(name chain_name, uint64_t chain_type, const std::string& genesis_producer_pubkey);
          void acceptmaster(const std::vector<ultrainio::signed_block_header>& headers);
          void acceptheader(name chain_name,
                            const std::vector<ultrainio::signed_block_header>& headers);

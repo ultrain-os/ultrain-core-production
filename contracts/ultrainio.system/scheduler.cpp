@@ -159,7 +159,7 @@ namespace ultrainiosystem {
         }
     }
     /// @abi action
-    void system_contract::regsubchain(name chain_name, uint64_t chain_type) {
+    void system_contract::regsubchain(name chain_name, uint64_t chain_type, const std::string& genesis_producer_pubkey) {
         require_auth(N(ultrainio));
         ultrainio_assert(_gstate.is_master_chain(), "only master chain can register new chain");
         ultrainio_assert(chain_name != default_chain_name, "subchian cannot named as default.");
@@ -169,7 +169,7 @@ namespace ultrainiosystem {
         chaintypes_table type_tbl(_self, _self);
         auto type_iter = type_tbl.find(chain_type);
         ultrainio_assert(type_iter != type_tbl.end(), "this chain type is not existed");
-
+        ultrainio_assert(genesis_producer_pubkey.size() == 64, "subchain genesis producer public key should be of size 64");
         _chains.emplace( [&]( auto& new_subchain ) {
             new_subchain.chain_name         = chain_name;
             new_subchain.chain_type         = chain_type;
@@ -182,6 +182,7 @@ namespace ultrainiosystem {
             new_subchain.committee_mroot    = checksum256();
             new_subchain.confirmed_block_number = 0;
             new_subchain.confirmed_block_id = checksum256();
+            new_subchain.table_extension.push_back( exten_type( chain_info::chains_state_exten_type_key::genesis_producer_public_key, genesis_producer_pubkey) );
         });
     }
 

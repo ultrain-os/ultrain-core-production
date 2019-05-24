@@ -29,6 +29,7 @@
 #include <boost/intrusive/set.hpp>
 
 #include <random>
+#include <rpos/Genesis.h>
 #include <rpos/MsgMgr.h>
 #include <rpos/Utils.h>
 
@@ -2332,6 +2333,7 @@ connection::connection(string endpoint, msg_priority pri)
                     EpochEndPoint eep(cc.head_block_header());
                     sp.nextCommitteeMroot = eep.nextCommitteeMroot();
                 }
+                sp.genesisPk = Genesis::s_genesisPk;
                 light_client->setStartPoint(sp);
             }
             sync_block_master->block_msg_queue.emplace_back(msg);

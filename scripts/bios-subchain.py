@@ -191,7 +191,7 @@ def addSubchain():
     if args.chainType :
         array=args.chainType.split(',')
         typeId=array[0]
-    retry(args.clultrain + ' push action ultrainio regsubchain \'{"chain_name": "'+args.subchain+'", "chain_type": "'+typeId+'","genesis_time":"2019-01-01 21:00:00"}\' -p ultrainio@active');
+    retry(args.clultrain + ' push action ultrainio regsubchain \'{"chain_name": "'+args.subchain+'", "chain_type": "'+typeId+'","genesis_producer_pubkey":"'+ pk_list[0] +'"}\' -p ultrainio@active');
     sleep(1)
     print "addSubchain end..."
 

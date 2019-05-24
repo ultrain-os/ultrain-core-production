@@ -173,6 +173,10 @@ private:
             startPoint.lastConfirmedBlockId = result.confirmed_block_id;
             startPoint.committeeSet = CommitteeSet(result.committee_set);
             startPoint.nextCommitteeMroot = result.next_committee_mroot;
+            if (result.genesisPk.empty()) {
+                result.genesisPk = std::string("369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"); // default
+            }
+            startPoint.genesisPk = result.genesisPk;
             //ilog("chainName name = ${name} committee : ${committee} size : ${size}", ("name", chainName.to_string())("committee", committeeSet.toString())("size", result.committee_set.size()));
             return true;
         } catch (fc::exception &e) {
@@ -1110,6 +1114,12 @@ read_only::get_subchain_unconfirmed_header_result read_only::get_subchain_unconf
         if(p.chain_name == chain_data.chain_name) {
             result.committee_set = chain_data.committee_set;
             result.confirmed_block_id = chain_data.confirmed_block_id;
+            for (auto v : chain_data.table_extension) {
+                if( v.key == chain::chains_state_exten_type_key::genesis_producer_public_key ) {
+                    result.genesisPk = v.value;
+                    break;
+                }
+            }
             uint32_t confirmBlockNum = chain_data.confirmed_block_number;
             for (auto e : chain_data.unconfirmed_blocks) {
                 if (chain_data.confirmed_block_id == e.block_id) {

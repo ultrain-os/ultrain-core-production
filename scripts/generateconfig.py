@@ -263,8 +263,8 @@ def insertPeerKey(fname):
 
 def insert_keys(fname, index_key):
     content = readfile(fname)
-    newcontent = "my-account-as-committee = %s\nmy-sk-as-committee = %s\nmy-sk-as-account = %s\nmy-bls-sk = %s\n" % \
-                 (allAccounts[index_key], allPriKeys[index_key], account_sk_list[index_key], bls_sk_list[index_key])
+    newcontent = "my-account-as-committee = %s\nmy-sk-as-committee = %s\nmy-sk-as-account = %s\nmy-bls-sk = %s\ngenesis-pk = %s\n" % \
+                 (allAccounts[index_key], allPriKeys[index_key], account_sk_list[index_key], bls_sk_list[index_key], allPubKeys[0])
     index_line = content.index("#insert_my_keys\n")
     content.insert(index_line + 1, newcontent)
     writefile(fname, content)

@@ -84,6 +84,12 @@ namespace ultrainio { namespace chain {
        extensions_type            table_extension;
    };
 
+   enum chains_state_exten_type_key {
+       chains_state_key_start = 0,
+       genesis_producer_public_key = 1,
+       chains_state_key_end,
+   };
+
     struct chain_info {
        name                      chain_name;
        uint64_t                  chain_type;

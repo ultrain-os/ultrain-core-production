@@ -119,6 +119,7 @@ enum patch_update_version{
     delete_table_limit = 2,  //Prevent the delete table from timeout and is limited so that it can be deleted in batches
     not_add_unessential_table = 3,  //Do not create unnecessary tables when creating accounts
     lifecycle_onfinish = 4,
+    verify_genesis_signature_in_lightclient = 5,
 };
 
 } } } // namespace ultrainio::chain::config

@@ -2,6 +2,10 @@
 
 #include <iostream>
 
+#include <appbase/application.hpp>
+#include <ultrainio/chain/config.hpp>
+#include <ultrainio/chain_plugin/chain_plugin.hpp>
+
 #include <crypto/Validator.h>
 #include <lightclient/LightClientCallback.h>
 #include <lightclient/Helper.h>
@@ -205,11 +209,14 @@ namespace ultrainio {
     }
 
     void LightClient::handleGenesis(const BlockHeader& blockHeader, const std::string& signature) {
-//        if (!Validator::verify<BlockHeader>(Signature(signature), blockHeader, PublicKey(m_startPoint.genesisPk))) {
-//            elog("signature : ${s} for blockNum : ${num}", ("s", signature)("num", blockHeader.block_num()));
-//            onError(LightClientError::kSignatureError ,blockHeader);
-//            m_status = false;
-//        } else {
+        const auto& ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+        if (blockHeader.block_num() != 1 && ro_api.is_exec_patch_code(chain::config::patch_update_version::verify_genesis_signature_in_lightclient)
+                && !Validator::verify<BlockHeader>(Signature(signature), blockHeader, PublicKey(m_startPoint.genesisPk))) {
+            elog("genesis signature error : ${s} for blockNum : ${num}, blockId : ${id}, genesisPk : ${pk}",
+                    ("s", signature)("num", blockHeader.block_num())("id", blockHeader.id())("pk", m_startPoint.genesisPk));
+            onError(LightClientError::kSignatureError ,blockHeader);
+            m_status = false;
+        } else {
             m_latestConfirmedBlockId = blockHeader.id();
             std::list<BlockHeader> genesisBlockHeader;
             genesisBlockHeader.push_back(blockHeader);
@@ -217,7 +224,7 @@ namespace ultrainio {
                 m_nextCommitteeMroot = EpochEndPoint(blockHeader).nextCommitteeMroot();
             }
             onConfirmed(genesisBlockHeader);
-        //}
+        }
     }
 
     bool LightClient::isOutOfRange(const BlockHeader& blockHeader) const {

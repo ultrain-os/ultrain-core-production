@@ -152,8 +152,9 @@
       "name": "regsubchain",
       "base": "",
       "fields": [
-        {"name": "chain_name",                 "type": "name"},
-        {"name": "chain_type",                 "type": "uint64"}
+        {"name": "chain_name",               "type": "name"},
+        {"name": "chain_type",               "type": "uint64"},
+        {"name": "genesis_producer_pubkey",  "type": "string"}
        ]
     },{
       "name": "setsched",

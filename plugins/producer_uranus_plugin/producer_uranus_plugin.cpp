@@ -653,6 +653,9 @@ void producer_uranus_plugin::plugin_startup()
    std::shared_ptr<UranusNode> nodePtr = UranusNode::initAndGetInstance(app().get_io_service());
    // set before committee key
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
+   if (!my->_genesis_pk.empty()) {
+       nodePtr->setGenesisPk(my->_genesis_pk);
+   }
    nodePtr->setMyInfoAsCommitteeKey(my->_my_sk_as_committee, my->_my_bls_sk, my->_my_account_as_committee);
    ULTRAIN_ASSERT( !my->_genesis_time.empty(),
            plugin_config_exception,
@@ -667,9 +670,6 @@ void producer_uranus_plugin::plugin_startup()
        nodePtr->setGenesisTime(boost::chrono::system_clock::now() + boost::chrono::milliseconds(my->_genesis_delay * 1000 + patch));
    }*/
    nodePtr->setGenesisStartupTime(my->_genesis_startup_time);
-   if (!my->_genesis_pk.empty()) {
-       nodePtr->setGenesisPk(my->_genesis_pk);
-   }
    nodePtr->setRoundAndPhaseSecond(my->_max_round_seconds, my->_max_phase_seconds);
    nodePtr->setTrxsSecond(my->_max_trxs_seconds);
    nodePtr->init();

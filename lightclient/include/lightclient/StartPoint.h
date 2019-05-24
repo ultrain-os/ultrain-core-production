@@ -16,6 +16,6 @@ namespace ultrainio {
         CommitteeSet committeeSet;
         BlockIdType lastConfirmedBlockId;
         std::string nextCommitteeMroot = std::string();
-        std::string genesisPk = std::string("369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35");
+        std::string genesisPk;
     };
 }
