@@ -1,35 +1,74 @@
 [
   {
     "chainName": "ultrainio",
-    "seedIp": [
-      "172.17.0.16"
-    ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
       "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU",
       "UTR6k8qHBrc1CYxNUdbHSThtWid5E4xwNLF9kxk8bXuHV1q3BaQ39"
-    ]
-  },
-  {
-    "chainName": "11",
-    "seedIp": [
-      "172.17.0.19"
     ],
-    "peerKeys": [
-      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
-      "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU",
-      "UTR6k8qHBrc1CYxNUdbHSThtWid5E4xwNLF9kxk8bXuHV1q3BaQ39"
+    "seedIp": [
+      "172.17.0.16",
+      "172.17.0.17"
+    ],
+    "seedList": [
+      {
+        "account": "master.121",
+        "privateIp": "172.17.0.16",
+        "publicIp": "0"
+      },
+      {
+        "account": "master.122",
+        "privateIp": "172.17.0.17",
+        "publicIp": "0"
+      }
     ]
   },
   {
     "chainName": "12",
-    "seedIp": [
-      "172.17.0.27"
-    ],
     "peerKeys": [
       "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
       "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU",
       "UTR6k8qHBrc1CYxNUdbHSThtWid5E4xwNLF9kxk8bXuHV1q3BaQ39"
+    ],
+    "seedIp": [
+      "172.17.0.27",
+      "172.17.0.26"
+    ],
+    "seedList": [
+      {
+        "account": "12.121",
+        "privateIp": "172.17.0.27",
+        "publicIp": "0"
+      },
+      {
+        "account": "12.122",
+        "privateIp": "172.17.0.26",
+        "publicIp": "0"
+      }
+    ]
+  },
+  {
+    "chainName": "11",
+    "peerKeys": [
+      "UTR7Z3j9M7dcXfrBGcBbENQphuG8hAEYyPueT7cc8XzKgzymppJ9Y",
+      "UTR6DQVtj2frjePAFBiLnT288KfG3HAiMHCmbK9YzcHEaJQEmvyeU",
+      "UTR6k8qHBrc1CYxNUdbHSThtWid5E4xwNLF9kxk8bXuHV1q3BaQ39"
+    ],
+    "seedIp": [
+      "172.17.0.19",
+      "172.17.0.18"
+    ],
+    "seedList": [
+      {
+        "account": "11.121",
+        "privateIp": "172.17.0.19",
+        "publicIp": "0"
+      },
+      {
+        "account": "11.122",
+        "privateIp": "172.17.0.18",
+        "publicIp": "0"
+      }
     ]
   }
 ]

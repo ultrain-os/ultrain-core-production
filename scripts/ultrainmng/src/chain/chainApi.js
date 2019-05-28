@@ -288,13 +288,60 @@ getChainSeedIP = async (chainName, chainConfig) => {
     // logger.debug(chainConfig.seedIpConfig);
     // logger.debug(chainName);
     try {
-        if (utils.isNotNull(chainConfig.seedIpConfig)) {
-            for (let i = 0; i < chainConfig.seedIpConfig.length; i++) {
-                //logger.debug(chainConfig.seedIpConfig[i])
-                if (chainConfig.seedIpConfig[i].chainName == chainName) {
-                    return chainConfig.seedIpConfig[i].seedIp;
+        if (utils.isNotNull(chainConfig.seedIpConfig) && chainConfig.seedIpConfig.length > 0) {
+
+            //简单模式（不分内外网ip）
+            let simpleModeFlag = true;
+
+            if (chainConfig.seedIpConfig.length > 0) {
+                let config = chainConfig.seedIpConfig[0];
+                if (utils.isNotNull(config.seedList) && config.seedList.length > 0) {
+                    simpleModeFlag = false;
                 }
             }
+
+            logger.error("ChainSeedIP simple mode:",simpleModeFlag);
+            if (simpleModeFlag == true) {
+                for (let i = 0; i < chainConfig.seedIpConfig.length; i++) {
+                    //logger.debug(chainConfig.seedIpConfig[i])
+                    if (chainConfig.seedIpConfig[i].chainName == chainName) {
+                        return chainConfig.seedIpConfig[i].seedIp;
+                    }
+                }
+            } else {
+                //复杂模式，需要检查内外网ip的信息
+                let privateIPList = [];
+                let publicIPList = [];
+
+                for (let i = 0; i < chainConfig.seedIpConfig.length; i++) {
+                    //logger.debug(chainConfig.seedIpConfig[i])
+                    if (chainConfig.seedIpConfig[i].chainName == chainName) {
+                        for (let j =0;j<chainConfig.seedIpConfig[i].seedList.length;j++) {
+                            privateIPList.push(chainConfig.seedIpConfig[i].seedList[j].privateIp);
+                            if (chainConfig.seedIpConfig[i].seedList[j].publicIp.length > 10) {
+                                publicIPList.push(chainConfig.seedIpConfig[i].seedList[j].publicIp);
+                            }
+                        }
+                    }
+                }
+
+                /**
+                 * 检查内网节点是否连通
+                 */
+                logger.info("chain（"+chainName+"）private ip list：",privateIPList);
+                logger.info("chain（"+chainName+"）public ip list：",publicIPList);
+
+                let privateFlag = await checkSeedReady(privateIPList,chainConfig.nodPort);
+                if (privateFlag == true) {
+                    logger.info("I am in LAN("+chainName+") , use private ip list");
+                    return privateIPList;
+                } else {
+                    logger.info("I am not in LAN("+chainName+") , use public ip list");
+                    return publicIPList;
+                }
+
+            }
+
         }
 
     } catch (e) {
@@ -303,6 +350,32 @@ getChainSeedIP = async (chainName, chainConfig) => {
     return null;
 }
 
+checkSeedReady = async (ipList,nodPort) => {
+
+    logger.info("check seed ready start....");
+    try {
+        if (ipList.length > 0) {
+            for (let i=0;i<ipList.length;i++) {
+                try {
+                    let url = "http://"+ipList[i]+":"+nodPort+"/v1/chain_info/get_chain_info";
+                    let res = await axios.post(url);
+                    logger.error("check seed ready url（"+ipList[i]+"） chain id:",res.data.chain_id);
+                    if (utils.isNotNull(res.data.chain_id)) {
+                        return true;
+                    }
+                } catch (e) {
+                    logger.error("check seed ready url（"+ipList[i]+"） error",utils.logNetworkError(e));
+                }
+            }
+        }
+
+    } catch (e) {
+        logger.error("checkSeedReady eroor;",e);
+    }
+
+
+    return false;
+}
 /**
  * 获取链httplist
  * @param chainName
@@ -1100,4 +1173,5 @@ module.exports = {
     getChainIdByAllSeed,
     ramUsageCheckIn,
     getServerVersion,
+    checkSeedReady,
 }

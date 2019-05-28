@@ -57,6 +57,8 @@ var maxVoteCountOneRound = 5;
 //交易缓存
 var trxCacheSet = new Set();
 
+var seedCheckCount = 0;
+
 
 /**
  *
@@ -1319,22 +1321,29 @@ async function syncChainInfo() {
         }
 
         logger.info("[seed check] start to check seed is alive");
-        //检查主链seed是否有变化
-        let mainSeedList = await chainApi.getChainHttpList(chainNameConstants.MAIN_CHAIN_NAME,chainConfig);
-        if (mainSeedList.length > 0 && mainSeedList.length != chainConfig.config.seedHttpList.length) {
-            logger.error("mainSeedList.length("+mainSeedList.length+") != config.seedHttpList("+chainConfig.config.seedHttpList.length+"),need update main seedList:",mainSeedList);
-            chainConfig.config.seedHttpList = mainSeedList;
-        } else {
-            logger.info("mainSeedList.length("+mainSeedList.length+") == config.seedHttpList("+chainConfig.config.seedHttpList.length+"),need not update main seedList:",chainConfig.config.seedHttpList);
-        }
 
-        //检查子链seed是否有变化
-        let subSeedList = await chainApi.getChainHttpList(chainConfig.localChainName,chainConfig);
-        if (subSeedList.length > 0 && subSeedList.length != chainConfig.configSub.seedHttpList.length) {
-            logger.error("subSeedList.length("+subSeedList.length+") != configSub.seedHttpList("+chainConfig.configSub.seedHttpList.length+"),need update subchain seedList:",subSeedList);
-            chainConfig.configSub.seedHttpList = subSeedList;
-        } else {
-            logger.info("subSeedList.length("+subSeedList.length+") == configSub.seedHttpList("+chainConfig.configSub.seedHttpList.length+"),need not update sub seedList:",chainConfig.configSub.seedHttpList);
+        //同步seed的信息
+        seedCheckCount++;
+        logger.info("sync chain seed count :",seedCheckCount);
+        if (seedCheckCount >= 120) {
+            //检查主链seed是否有变化
+            let mainSeedList = await chainApi.getChainHttpList(chainNameConstants.MAIN_CHAIN_NAME, chainConfig);
+            if (mainSeedList.length > 0 && mainSeedList.length != chainConfig.config.seedHttpList.length) {
+                logger.error("mainSeedList.length(" + mainSeedList.length + ") != config.seedHttpList(" + chainConfig.config.seedHttpList.length + "),need update main seedList:", mainSeedList);
+                chainConfig.config.seedHttpList = mainSeedList;
+            } else {
+                logger.info("mainSeedList.length(" + mainSeedList.length + ") == config.seedHttpList(" + chainConfig.config.seedHttpList.length + "),need not update main seedList:", chainConfig.config.seedHttpList);
+            }
+
+            //检查子链seed是否有变化
+            let subSeedList = await chainApi.getChainHttpList(chainConfig.localChainName, chainConfig);
+            if (subSeedList.length > 0 && subSeedList.length != chainConfig.configSub.seedHttpList.length) {
+                logger.error("subSeedList.length(" + subSeedList.length + ") != configSub.seedHttpList(" + chainConfig.configSub.seedHttpList.length + "),need update subchain seedList:", subSeedList);
+                chainConfig.configSub.seedHttpList = subSeedList;
+            } else {
+                logger.info("subSeedList.length(" + subSeedList.length + ") == configSub.seedHttpList(" + chainConfig.configSub.seedHttpList.length + "),need not update sub seedList:", chainConfig.configSub.seedHttpList);
+            }
+            seedCheckCount = 0;
         }
 
         //定期更新configsub

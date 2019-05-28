@@ -228,6 +228,14 @@ function getRandFilePath() {
     return "/root/voterand/migrations"
 }
 
+/**
+ *
+ * @returns {string}
+ */
+function getSeedFilePath() {
+    return pathConstants.MNG_CONFIG+"seedconfig.json";
+}
+
 
 /**
  *
@@ -244,6 +252,24 @@ async function getRandVersion() {
         }
     } else {
         logger.debug("cache hit :" + cacheKeyConstants.RAND_FILE_KEY, hashFile);
+    }
+    return hashFile;
+}
+
+/**
+ *
+ * @returns {string}
+ */
+async function getSeedConfigVersion() {
+    let hashFile = hashCache.get(cacheKeyConstants.SEED_CONFIG_KEY);
+    if (utils.isNull(hashFile)) {
+        logger.debug("cache not hit :" + cacheKeyConstants.SEED_CONFIG_KEY);
+        hashFile = hashUtil.calcHash(getSeedFilePath(), algorithmConstants.SHA1);
+        if (utils.isNotNull(hashFile)) {
+            hashCache.put(cacheKeyConstants.SEED_CONFIG_KEY, hashFile, HASH_EXPIRE_TIME_MS);
+        }
+    } else {
+        logger.debug("cache hit :" + cacheKeyConstants.SEED_CONFIG_KEY, hashFile);
     }
     return hashFile;
 }
@@ -304,6 +330,12 @@ async function buildParam() {
         randFileHash = "error";
     }
 
+    var seedFileHash = await getSeedConfigVersion();
+    if (utils.isNull(seedFileHash)) {
+        logger.error("seedFileHash hash error");
+        seedFileHash = "error";
+    }
+
     var isProducer = 1;
     if (chainConfig.isNoneProducer()) {
         isProducer = 0;
@@ -329,6 +361,7 @@ async function buildParam() {
         "wsFileHash" : wsFileHash,
         "randFileHash":randFileHash,
         "serverVersion":serverVersion,
+        "seedFileHash":seedFileHash,
     }
     var param = {
         "chainId": chainConfig.localChainName,

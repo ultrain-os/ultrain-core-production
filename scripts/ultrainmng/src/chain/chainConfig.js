@@ -28,7 +28,7 @@ class ChainConfig {
 }
 
 //seep节点配置
-ChainConfig.seedIpConfig = {};
+ChainConfig.seedIpConfig = [];
 
 //配置文件信息
 ChainConfig.configPath = pathConstants.MNG_CONFIG+"config.ini"
@@ -152,6 +152,18 @@ ChainConfig.syncConfig = async function () {
         logger.info("start sync config info");
 
         /**
+         * check seed config is not null
+         */
+        if (this.seedIpConfig.length == 0) {
+            logger.error("seed info is null,reload again");
+            await this.syncSeedIpConfig();
+            if (this.seedIpConfig.length ==0) {
+                logger.error("seed info is still null");
+                return;
+            }
+        }
+
+        /**
          * 读取管家程序自己的config文件来读取
          */
         chainUtil.checkFileExist(this.configPath);
@@ -186,15 +198,6 @@ ChainConfig.syncConfig = async function () {
         this.configTemp.keyProvider = [configIniTarget["my-sk-as-account"]];
 
         logger.error("this.myAccountAsCommittee ", this.myAccountAsCommittee);
-
-        /**
-         * 如果localtest为true，表明当前是本地测试状态，更新主链url等信息
-         */
-        if (this.localTest) {
-        }
-
-        logger.info("mainchain httpEndpoint:", this.config.httpEndpoint)
-        logger.info("user info : " + this.myAccountAsCommittee + "");
 
         try {
 
@@ -308,6 +311,14 @@ ChainConfig.isReady = function () {
     //链信息查询
     if (this.localChainName == null) {
         logger.error("chainName can't be null:"+this.configSub.localChainName);
+        return false;
+    }
+
+    // logger.error("seed info length can't be null:",this.seedIpConfig.length);
+
+    //seed为空
+    if (utils.isNull(this.seedIpConfig) || this.seedIpConfig.length <= 0 || this.seedIpConfig.toString().length <= 20) {
+        logger.error("seed info can't be null:",this.seedIpConfig);
         return false;
     }
 

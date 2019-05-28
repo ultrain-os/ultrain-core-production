@@ -121,7 +121,8 @@ var cacheKeyConstants = {
     MNG_FILE_KEY: "mng_file_key",
     WS_FILE_KEY: "ws_file_key",
     RAND_FILE_KEY: "rand_file_key",
-    SERVER_VERSOIN_KEY: "server_version_key"
+    SERVER_VERSOIN_KEY: "server_version_key",
+    SEED_CONFIG_KEY: "seed_config_key"
 }
 
 /**
