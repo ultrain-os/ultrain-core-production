@@ -84,6 +84,15 @@ namespace ultrainiosystem {
       }
    }
 
+   uint64_t system_contract::getglobalextenuintdata( uint16_t key, uint64_t default_value ) const {
+      for( auto& exten : _gstate.table_extension ){
+         if( exten.key == key && !exten.value.empty() ){
+            return std::stoull( exten.value );
+         }
+      }
+      return default_value;
+   }
+
    void system_contract::setmasterchaininfo( const master_chain_info& chaininfo ){
       require_auth( _self );
       master_chain_infos masterinfos(_self, _self);

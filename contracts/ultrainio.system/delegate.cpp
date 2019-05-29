@@ -102,6 +102,17 @@ namespace ultrainiosystem {
 
       // if on master chain, update voting power; else add to subchain.
       {
+         uint64_t curblocknum = (uint64_t)head_block_number() + 1;
+         auto const check_isallow_undelegate_func = [=]( uint64_t delegated_cons_blocknum ){
+            if(stake_cons_delta.amount >= 0) return;
+            print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," delegated_cons_blocknum:", delegated_cons_blocknum);//
+            if((name{from}.to_string().find( "utrio." ) == 0 ) || (from == _self))
+               return;
+            uint64_t undelegate_blocks_interval  = getglobalextenuintdata( ultrainio_global_state::global_state_exten_type_key::allow_undelegate_block_interval,
+                                                                        seconds_per_year / block_interval_seconds() / 12 );
+            std::string assert_msg = std::string("should stake at least more than block interval:") + std::to_string( undelegate_blocks_interval );
+            ultrainio_assert( (curblocknum - delegated_cons_blocknum) > undelegate_blocks_interval , assert_msg.c_str() );
+         };
          asset total_update = stake_cons_delta;
          auto briefprod = _briefproducers.find(receiver);
          ultrainio_assert(briefprod != _briefproducers.end(), "this account is not a producer, please regproducer first");
@@ -109,15 +120,7 @@ namespace ultrainiosystem {
             disabled_producers_table dp_tbl(_self, _self);
             auto dis_prod = dp_tbl.find(receiver);
             ultrainio_assert(dis_prod != dp_tbl.end(), "receiver is not found in its location");
-            uint64_t curblocknum = (uint64_t)head_block_number() + 1;
-             if(stake_cons_delta.amount < 0){
-                 print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," delegated_cons_blocknum:",dis_prod->delegated_cons_blocknum);//
-                 if((name{from}.to_string().find( "utrio." ) != 0 ) && (from != _self)){
-                     const uint32_t seconds_per_block     = block_interval_seconds();
-                     uint32_t blocks_per_month            = seconds_per_year / seconds_per_block / 12;
-                     ultrainio_assert( (curblocknum - dis_prod->delegated_cons_blocknum) > blocks_per_month , "should stake at least more than one month" );
-                 }
-             }
+            check_isallow_undelegate_func( dis_prod->delegated_cons_blocknum );
              if(briefprod->is_on_master_chain()) {
                  _gstate.total_activated_stake += total_update.amount;
              }
@@ -152,16 +155,7 @@ namespace ultrainiosystem {
              producers_table _producers(_self, briefprod->location);
              const auto& it = _producers.find( receiver );
              ultrainio_assert(it != _producers.end(), "receiver is not found in its location");
-
-             uint64_t curblocknum = (uint64_t)head_block_number() + 1;
-             if(stake_cons_delta.amount < 0){
-                 print("undelegatecons from:",name{from}," receiver:",name{receiver}," curblocknum:",curblocknum," delegated_cons_blocknum:",it->delegated_cons_blocknum);//
-                 if((name{from}.to_string().find( "utrio." ) != 0 ) && (from != _self)){
-                     const uint32_t seconds_per_block     = block_interval_seconds();
-                     uint32_t blocks_per_month            = seconds_per_year / seconds_per_block / 12;
-                     ultrainio_assert( (curblocknum - it->delegated_cons_blocknum) > blocks_per_month , "should stake at least more than one month" );
-                 }
-             }
+             check_isallow_undelegate_func( it->delegated_cons_blocknum );
              if(briefprod->is_on_master_chain()) {
                  _gstate.total_activated_stake += total_update.amount;
              }
@@ -227,7 +221,8 @@ namespace ultrainiosystem {
             vector<permission_level> pem = { { from, N(active) },
                                             { N(ultrainio),     N(active) } };
             out.actions.emplace_back( pem, _self, NEX(refundcons), from );
-            out.delay_sec = refund_delay;
+            out.delay_sec = (uint32_t)getglobalextenuintdata( ultrainio_global_state::global_state_exten_type_key::refund_delegate_consensus_seconds,
+                                                   refund_delay );
             out.send( trxid, _self, true );
         }
     }
@@ -411,7 +406,9 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
       refunds_cons_table refunds_tbl( _self, owner );
       auto req = refunds_tbl.find( owner );
       ultrainio_assert( req != refunds_tbl.end(), "refunds_cons_table request not found" );
-      ultrainio_assert( req->request_time + refund_delay <= now(), "refund is not available yet" );
+      auto refund_delay_sec = (uint32_t)getglobalextenuintdata( ultrainio_global_state::global_state_exten_type_key::refund_delegate_consensus_seconds,
+                                             refund_delay );
+      ultrainio_assert( req->request_time + refund_delay_sec <= now(), "refund is not available yet" );
       // Until now() becomes NOW, the fact that now() is the timestamp of the previous block could in theory
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.

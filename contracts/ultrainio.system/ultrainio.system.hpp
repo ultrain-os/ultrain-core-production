@@ -77,6 +77,8 @@ namespace ultrainiosystem {
          version_number = 6,
          is_allow_buy_res = 7, //Allows a general account to buy resources
          check_user_bulletin = 8,
+         allow_undelegate_block_interval = 9,
+         refund_delegate_consensus_seconds = 10,
          global_state_key_end
       };
 
@@ -553,6 +555,7 @@ namespace ultrainiosystem {
          // functions defined in ultrainio.system.cpp
          void setsysparams( const ultrainio_system_params& params );
          void setglobalextendata( uint16_t key, std::string value );
+         inline uint64_t getglobalextenuintdata( uint16_t key, uint64_t default_value ) const;
          void setmasterchaininfo( const master_chain_info& chaininfo );
          void setparams( const ultrainio::blockchain_parameters& params );
          void setpriv( account_name account, uint8_t is_priv );
