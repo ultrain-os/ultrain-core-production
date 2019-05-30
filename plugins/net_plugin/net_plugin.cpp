@@ -181,6 +181,12 @@ namespace ultrainio {
 
         std::set< connection_ptr >       connections;
         std::list< string >              peer_addr_grey_list;
+        struct need_connect_feature
+        {
+            p2p::NodeIPEndpoint ep;
+            uint16_t send_times;
+        };
+        std::map<p2p::NodeID,need_connect_feature> need_connect_list;
         bool                             done = false;
         unique_ptr< dispatch_manager >   dispatcher;
         unique_ptr< sync_block_manager > sync_block_master;
@@ -193,6 +199,7 @@ namespace ultrainio {
         unique_ptr<boost::asio::steady_timer> keepalive_timer;
         unique_ptr<boost::asio::steady_timer> sizeprint_timer;
         unique_ptr<boost::asio::steady_timer> speedmonitor_timer;
+        unique_ptr<boost::asio::steady_timer> requestcon_timer;
         unique_ptr<boost::asio::steady_timer> block_handler_check;
 
         boost::asio::steady_timer::duration   connector_period;
@@ -200,6 +207,7 @@ namespace ultrainio {
         boost::asio::steady_timer::duration   resp_expected_period;
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
         boost::asio::steady_timer::duration   speedmonitor_period;
+        boost::asio::steady_timer::duration   requestcon_interval{std::chrono::seconds{80}};
         boost::asio::steady_timer::duration   block_handler_period{std::chrono::seconds{1}};
         const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
         boost::asio::steady_timer::duration   producerslist_update_interval{std::chrono::seconds{32}};
@@ -228,6 +236,8 @@ namespace ultrainio {
         void start_read_message( connection_ptr c);
         void reset_speedlimit_monitor( );
         void start_speedlimit_monitor_timer();
+        void start_requestconnect_timer();
+        void reset_requestconnect_monitor();
         void close( connection_ptr c );
         size_t count_open_sockets() const;
 
@@ -235,8 +245,9 @@ namespace ultrainio {
 
         std::shared_ptr<p2p::NodeTable> get_node_table() { return node_table; }
         void onNodeTableDropEvent(const p2p::NodeIPEndpoint& _n);
-        template<typename VerifierFunc> void send_all( const net_message &msg, VerifierFunc verify );
-
+        void onNodeTableTcpConnectEvent(const p2p::NodeIPEndpoint& _n);
+	template<typename VerifierFunc>
+        void send_all( const net_message &msg, VerifierFunc verify );
         void accepted_block_header(const block_state_ptr&);
         void accepted_block(const block_state_ptr&);
         void irreversible_block(const block_state_ptr&);
@@ -2387,6 +2398,34 @@ connection::connection(string endpoint, msg_priority pri)
           dispatcher->rejected_transaction(tid);
       });
    }
+   void net_plugin_impl::reset_requestconnect_monitor( )
+   {
+       auto iter = need_connect_list.begin();
+       while(iter != need_connect_list.end())
+       {
+           if(iter->second.send_times >= 6)
+           {
+		   ilog("address ${addr} erase",("addr",iter->second.ep.address()));
+               iter = need_connect_list.erase(iter);
+           }
+           else
+           {
+		   ilog("address ${addr} ++",("addr",iter->second.ep.address()));
+               node_table -> send_request_connect(iter->first,iter->second.ep);
+               iter->second.send_times ++;
+               ++iter;
+           }
+       }
+
+   }
+   void net_plugin_impl::start_requestconnect_timer( )
+   {
+       requestcon_timer->expires_from_now( requestcon_interval);
+       requestcon_timer->async_wait( [this](boost::system::error_code ec) {
+               reset_requestconnect_monitor();
+               start_requestconnect_timer();
+               });
+   }
     void net_plugin_impl::reset_speedlimit_monitor( )
     {
         for(auto &c : connections) {
@@ -2421,7 +2460,7 @@ connection::connection(string endpoint, msg_priority pri)
         connector_check->expires_from_now( connector_period);
         connector_check->async_wait( [this](boost::system::error_code ec) {
             if( !ec) {
-                connection_monitor( );
+               connection_monitor( );
             }
             else {
                 elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
@@ -2444,7 +2483,40 @@ connection::connection(string endpoint, msg_priority pri)
             }
 	}
     }
-
+    void net_plugin_impl::onNodeTableTcpConnectEvent(p2p::NodeIPEndpoint const& _n)
+    {
+        if(connections.size() < max_client_count)
+        {
+            string host =  _n.address() + ":" + std::to_string( _n.listenPort(msg_priority_trx));
+            if(is_grey_connection(host))
+            {
+                peer_addr_grey_list.remove(host);
+            }
+            auto con = find_connection(host);
+            if(!con)
+            {
+                connect(host, msg_priority_trx);
+            }
+            else if(!con->socket->is_open() && !con->connecting)
+            {
+                connect(con);
+            }
+            host =  _n.address() + ":" + std::to_string( _n.listenPort(msg_priority_rpos));
+            if(is_grey_connection(host))
+            {
+                peer_addr_grey_list.remove(host);
+            }
+            con = find_connection(host);
+            if(!con)
+            {
+                connect(host, msg_priority_rpos);
+            }
+            else if(!con->socket->is_open() && !con->connecting)
+            {
+                connect(con);
+            }
+        }
+    }
     void net_plugin_impl::start_block_handler_timer( ) {
         block_handler_check->expires_from_now(block_handler_period);
         block_handler_check->async_wait( [this](boost::system::error_code ec) {
@@ -2510,15 +2582,16 @@ connection::connection(string endpoint, msg_priority pri)
       transaction_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       sizeprint_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       speedmonitor_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
+      requestcon_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       block_handler_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       producerslist_update_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
       start_txn_timer();
       int round_interval = app().get_plugin<producer_uranus_plugin>().get_round_interval();
       speedmonitor_period = {std::chrono::seconds{round_interval}};
-
       start_speedlimit_monitor_timer();
       start_block_handler_timer();
+      start_requestconnect_timer();
    }
 
    void net_plugin_impl::expire_txns() {
@@ -2601,25 +2674,34 @@ connection::connection(string endpoint, msg_priority pri)
       ilog("connections size: ${s} min_connections: ${mc} num_clients: ${nc} grey list size: ${gls}", ("s", connections.size())("mc", min_connections)("nc", num_clients)("gls", peer_addr_grey_list.size()));
       if (use_node_table && connections.size() < min_connections) { // if use_node_table == false, we can't get any valid node ip from node table
          uint32_t count = min_connections - connections.size();
-         std::list<p2p::NodeIPEndpoint> nodes = node_table->getNodes();
+         std::list<p2p::NodeEntry> nodes = node_table->getNodes();
          uint32_t i = 0;
-         for (std::list<p2p::NodeIPEndpoint>::iterator it = nodes.begin(); it != nodes.end() && i < count; ++it) {
+         bool  need_rpos_notice = false;
+         bool need_trx_notice = false;
+         for (std::list<p2p::NodeEntry>::iterator it = nodes.begin(); it != nodes.end() && i < count; ++it) {
             if (rg() % 2 == 0) {
                continue;
             }
 
-            string host = it->address() + ":" + std::to_string(it->listenPort(msg_priority_trx));
+            string host = it->endPoint().address() + ":" + std::to_string(it->endPoint().listenPort(msg_priority_trx));
             if (!find_connection(host) && !is_grey_connection(host)) {
                ilog("connect to node: ${a}", ("a", host));
                connect(host, msg_priority_trx);
+               need_trx_notice = true;
                i++;
             }
 
-            host = it->address() + ":" + std::to_string(it->listenPort(msg_priority_rpos));
+            host = it->endPoint().address() + ":" + std::to_string(it->endPoint().listenPort(msg_priority_rpos));
             if (!find_connection(host) && !is_grey_connection(host)) {
                ilog("connect to node: ${a}", ("a", host));
+               need_rpos_notice = true;
                connect(host, msg_priority_rpos);
                i++;
+            }
+            if(need_rpos_notice || need_trx_notice)
+            {
+                node_table -> send_request_connect(it->id(),it->endPoint());
+                need_connect_list[it->id()] = {it->endPoint(),1};
             }
          }
       }
@@ -3359,6 +3441,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          cc.irreversible_block.connect( boost::bind(&net_plugin_impl::irreversible_block, my.get(), _1));
          cc.accepted_transaction.connect( boost::bind(&net_plugin_impl::accepted_transaction, my.get(), _1));
          cc.applied_transaction.connect( boost::bind(&net_plugin_impl::applied_transaction, my.get(), _1));
+         my->node_table->needtcpevent.connect( boost::bind(&net_plugin_impl::onNodeTableTcpConnectEvent, my.get(), _1));
          my->node_table->nodedropevent.connect( boost::bind(&net_plugin_impl::onNodeTableDropEvent, my.get(), _1));
          my->node_table->pktcheckevent.connect(boost::bind(&net_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3,_4));
       }

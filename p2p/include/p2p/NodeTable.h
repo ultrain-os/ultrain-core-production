@@ -83,10 +83,11 @@ public:
     /// Returns list of node ids active in node table.
     std::list<NodeID> nodes() const;
 
-    std::list<NodeIPEndpoint> getNodes();
+    std::list<NodeEntry> getNodes();
 /// Returns the Node to the corresponding node id or the empty Node if that id is not found.
     Node node(NodeID const& _id);
     signal<void(const NodeIPEndpoint&)> nodeaddevent;
+    signal<void(const NodeIPEndpoint&)> needtcpevent;
     signal<void(const NodeIPEndpoint&)> nodedropevent;
     signal<bool(const fc::sha256&,const chain::public_key_type&,const chain::signature_type&,chain::account_name const& _account)> pktcheckevent;
     chain::public_key_type m_pk;
@@ -95,6 +96,7 @@ public:
     void set_nodetable_sk(chain::private_key_type sk){m_sk = sk;}
     chain::account_name m_account;
     void set_nodetable_account(chain::account_name _account){m_account = _account ;}
+    void send_request_connect(NodeID nodeID,NodeIPEndpoint _to);
 #if defined(BOOST_AUTO_TEST_SUITE) || defined(_MSC_VER) // MSVC includes access specifier in symbol name
 protected:
 #else
@@ -120,7 +122,7 @@ private:
     };
 
     /// Used to ping endpoint.
-    void ping(NodeIPEndpoint _to,NodeID id);
+    void ping(NodeIPEndpoint _to,NodeID id,bool need_tcp_connect);
 
     /// Used ping known node. Used by node table when refreshing buckets and as part of eviction process (see evict).
     void ping(NodeEntry const&  _nodeEntry,boost::optional<NodeID> const& _replacementNodeID = {});

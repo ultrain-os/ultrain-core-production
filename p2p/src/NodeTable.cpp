@@ -69,7 +69,7 @@ void NodeTable::requireSeeds(const std::vector <std::string> &seeds)
         p2p::NodeID id = fc::sha256();
         p2p::Node node(id, peer);
         m_pubkDiscoverPings[boost::asio::ip::address::from_string(node.m_endpoint.address())] = fc::time_point::now();
-        ping(node.m_endpoint,id);
+        ping(node.m_endpoint,id,false);
     }
     ilog("seeds size ${size} disping size ${pingsize}",("size",seeds.size())("pingsize",m_pubkDiscoverPings.size()));
 }
@@ -87,7 +87,7 @@ void NodeTable::doIDRequestCheck()
             NodeIPEndpoint ep;
             ep.setAddress(i.first.to_string());
             ep.setUdpPort(20124);
-            ping(ep,fc::sha256());
+            ping(ep,fc::sha256(),false);
         }
         doIDRequest();
     }
@@ -162,15 +162,15 @@ list<NodeID> NodeTable::nodes() const
         nodes.push_back(i.second->m_id);
     return nodes;
 }
-list<NodeIPEndpoint> NodeTable::getNodes()
+list<NodeEntry> NodeTable::getNodes()
 {
-	list<NodeIPEndpoint> nodes;
+	list<NodeEntry> nodes;
 	NodeID randNodeId = fc::sha256();
 	fc::rand_pseudo_bytes( randNodeId.data(), randNodeId.data_size());
 	auto const nearestNodes = nearestNodeEntries(randNodeId);
 	for (auto const& node : nearestNodes)
 	{
-		nodes.push_back(node->m_endpoint);
+		nodes.push_back(*node);
 	}
 	return nodes;
 }
@@ -304,7 +304,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeID _target)
                 return ret;
 }
 
-void NodeTable::ping(NodeIPEndpoint _to,NodeID _toID)
+void NodeTable::ping(NodeIPEndpoint _to,NodeID _toID,bool  need_tcp_connect)
 {
     PingNode p;
     p.type = 1;
@@ -315,6 +315,10 @@ void NodeTable::ping(NodeIPEndpoint _to,NodeID _toID)
     p.chain_id = m_chainid;
     p.pk = m_pk; 
     p.account = m_account;
+    if(need_tcp_connect)
+    {
+        p.to_save.push_back({ext_udp_msg_type::need_tcp_connect,"filled"});
+    }
     fc::sha256 digest = fc::sha256::hash<UnsignedPingNode>(p); 
     p.signature = std::string(m_sk.sign(digest));
     m_socket->send_msg(p,(bi::udp::endpoint)_to);
@@ -333,7 +337,7 @@ void NodeTable::ping(NodeEntry const& _nodeEntry, boost::optional<NodeID> const&
         m_sentPings[_nodeEntry.m_id] = {fc::time_point::now(),sendtimes+1, _replacementNodeID};
         ilog("ping times ${time}",("time",sendtimes));
     }
-    ping(_nodeEntry.m_endpoint,_nodeEntry.m_id);
+    ping(_nodeEntry.m_endpoint,_nodeEntry.m_id,false);
 
 }
 void NodeTable::evict(NodeEntry const& _leastSeen, NodeEntry const& _new)
@@ -715,6 +719,17 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingm
     from.m_address = _from.address().to_string();
     from.m_udpPort = _from.port();
     from.m_listenPorts = pingmsg.source.m_listenPorts;
+    if (m_hostNodeID == pingmsg.sourceid)
+    {
+        return;
+    }
+    for(auto& ext : pingmsg.to_save)
+    {
+	    if(ext.key == ext_udp_msg_type::need_tcp_connect)
+	    {
+            needtcpevent(from);
+        }
+    }
     addNodePkList(pingmsg.sourceid,pingmsg.pk,pingmsg.account);
     addNode(Node(pingmsg.sourceid, from));
 
@@ -909,6 +924,9 @@ bool NodeTable::isLocalHostAddress(bi::address const& _addressToCheck)
     };
 
     return c_rejectAddresses.find(_addressToCheck) != c_rejectAddresses.end();
+void NodeTable::send_request_connect(NodeID nodeID,NodeIPEndpoint _to)
+{
+    ping(_to,nodeID,true);
 }
 }  // namespace p2p
 }  // namespace ultrainio

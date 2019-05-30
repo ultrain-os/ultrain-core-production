@@ -13,6 +13,10 @@ namespace ultrainio
 {
 namespace p2p
 {
+    enum ext_udp_msg_type
+    {
+       need_tcp_connect = 1
+    };
     struct Reserved
     {
         uint32_t key;/*reserve_1:1,reserver_2:2 ...*/
