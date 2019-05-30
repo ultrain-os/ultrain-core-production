@@ -246,8 +246,7 @@ namespace ultrainio {
         std::shared_ptr<p2p::NodeTable> get_node_table() { return node_table; }
         void onNodeTableDropEvent(const p2p::NodeIPEndpoint& _n);
         void onNodeTableTcpConnectEvent(const p2p::NodeIPEndpoint& _n);
-	template<typename VerifierFunc>
-        void send_all( const net_message &msg, VerifierFunc verify );
+        template<typename VerifierFunc> void send_all( const net_message &msg, VerifierFunc verify );
         void accepted_block_header(const block_state_ptr&);
         void accepted_block(const block_state_ptr&);
         void irreversible_block(const block_state_ptr&);
@@ -3376,7 +3375,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
                my->allowed_tcp_peers.push_back( chain::public_key_type( tcp_key_string ));
             }
          }
-         for(auto peer: my->allowed_peers) {
+         for(auto peer: my->allowed_peers)
+         {
             ilog("peer key ${key}",("key",peer));
          }
 

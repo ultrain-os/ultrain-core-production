@@ -58,7 +58,6 @@ class NodeTable: UDPSocketEvents
     };
 public:
     static constexpr uint32_t c_bondingTimeMSeconds{3000000};
- 
     /// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
     NodeTable(ba::io_service& _io, NodeIPEndpoint const& _endpoint, NodeID const& nodeID, string const& chainid, bool _enabled = true);
     ~NodeTable();

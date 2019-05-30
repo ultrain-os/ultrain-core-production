@@ -714,15 +714,10 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingm
     }
 
     m_pubkDiscoverPings.erase(_from.address());
- 
     NodeIPEndpoint from;
     from.m_address = _from.address().to_string();
     from.m_udpPort = _from.port();
     from.m_listenPorts = pingmsg.source.m_listenPorts;
-    if (m_hostNodeID == pingmsg.sourceid)
-    {
-        return;
-    }
     for(auto& ext : pingmsg.to_save)
     {
 	    if(ext.key == ext_udp_msg_type::need_tcp_connect)
@@ -927,6 +922,49 @@ bool NodeTable::isLocalHostAddress(bi::address const& _addressToCheck)
 void NodeTable::send_request_connect(NodeID nodeID,NodeIPEndpoint _to)
 {
     ping(_to,nodeID,true);
+}
+
+bool NodeTable::isPrivateAddress(bi::address const& _addressToCheck)
+{
+    if (_addressToCheck.is_v4())
+    {
+        bi::address_v4 v4Address = _addressToCheck.to_v4();
+        bi::address_v4::bytes_type bytesToCheck = v4Address.to_bytes();
+        if (bytesToCheck[0] == 10 || bytesToCheck[0] == 127)
+            return true;
+        if (bytesToCheck[0] == 169 && bytesToCheck[1] == 254)
+            return true;
+        if (bytesToCheck[0] == 172 && (bytesToCheck[1] >= 16 && bytesToCheck[1] <= 31))
+            return true;
+        if (bytesToCheck[0] == 192 && bytesToCheck[1] == 168)
+            return true;
+    }
+    else if (_addressToCheck.is_v6())
+    {
+        bi::address_v6 v6Address = _addressToCheck.to_v6();
+        bi::address_v6::bytes_type bytesToCheck = v6Address.to_bytes();
+        if (bytesToCheck[0] == 0xfd && bytesToCheck[1] == 0)
+            return true;
+        if (!bytesToCheck[0] && !bytesToCheck[1] && !bytesToCheck[2] && !bytesToCheck[3] &&
+                !bytesToCheck[4] && !bytesToCheck[5] && !bytesToCheck[6] && !bytesToCheck[7] &&
+                !bytesToCheck[8] && !bytesToCheck[9] && !bytesToCheck[10] && !bytesToCheck[11] &&
+                !bytesToCheck[12] && !bytesToCheck[13] && !bytesToCheck[14] &&
+                (bytesToCheck[15] == 0 || bytesToCheck[15] == 1))
+            return true;
+    }
+    return false;
+}
+
+bool NodeTable::isLocalHostAddress(bi::address const& _addressToCheck)
+{
+    static const set<bi::address> c_rejectAddresses = {
+        {bi::address_v4::from_string("127.0.0.1")},
+        {bi::address_v4::from_string("0.0.0.0")},
+        {bi::address_v6::from_string("::1")},
+        {bi::address_v6::from_string("::")},
+    };
+
+    return c_rejectAddresses.find(_addressToCheck) != c_rejectAddresses.end();
 }
 }  // namespace p2p
 }  // namespace ultrainio
