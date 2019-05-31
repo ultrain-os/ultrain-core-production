@@ -353,6 +353,10 @@ void NodeTable::noteActiveNode(NodeID const& _pubk, NodeIPEndpoint const& _endpo
     }
 
     shared_ptr<NodeEntry> newNode = nodeEntry(_pubk); //TODO:JWN time check
+    if (!newNode)
+    {
+        return;
+    }
     shared_ptr<NodeEntry> nodeToEvict;
 
     NodeBucket& s = bucket_UNSAFE(newNode.get());
