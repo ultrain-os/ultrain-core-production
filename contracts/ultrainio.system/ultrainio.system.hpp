@@ -18,7 +18,7 @@
 #include "BlockHeaderExtKey.h"
 #include "CommitteeSet.h"
 //#include "EpochEndPoint.h"
-#define UNUSED(a) (void*)(a);
+#define UNUSED(a) (void)(a);
 namespace ultrainiosystem {
    using namespace ultrainio;
    const name self_chain_name{N(ultrainio)};
@@ -528,8 +528,8 @@ namespace ultrainiosystem {
          void unregprod( const account_name producer );
 
          void moveprod(account_name producer,
-                       std::string  producerkey,
-                       std::string  blskey,
+                       const std::string&  producerkey,
+                       const std::string&  blskey,
                        bool from_disable,
                        name from_chain,
                        bool to_disable,

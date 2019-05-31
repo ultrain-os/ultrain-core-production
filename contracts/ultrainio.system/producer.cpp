@@ -183,8 +183,10 @@ namespace ultrainiosystem {
         return scopes;
     }
 
-    void system_contract::moveprod(account_name producer, std::string  producer_key, std::string blskey,
+    void system_contract::moveprod(account_name producer, const std::string&  producerkey, const std::string& blskey,
                                    bool from_disable, name from_chain, bool to_disable, name to_chain) {
+        UNUSED(producerkey);
+        UNUSED(blskey);
         require_auth(_self);
         if(from_disable && to_disable) {
             ultrainio_assert(false, "error: cannot move a producer from disable to disable");

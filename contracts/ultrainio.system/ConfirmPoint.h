@@ -12,6 +12,7 @@
       if( c >= 'A' && c <= 'F' )
           return uint8_t(c - 'A' + 10);
       //print("from_hex: invalid hex character ", c, "\n");
+      ultrainio_assert(false, "wrong character in hex string");
       return 0;
     }
 
