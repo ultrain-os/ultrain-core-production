@@ -159,6 +159,12 @@ namespace ultrainio {
                 }
             }
             if (itor->id() == blsVoterSet.commonEchoMsg.blockId) {
+                // update Committee Set if CheckPoint is confirmed
+                if (CheckPoint::isCheckPoint(*itor)) {
+                    if (!checkAndUpdateCommitteeSet(*itor, m_nextCommitteeMroot, m_workingCommitteeSet)) {
+                        return false;
+                    }
+                }
                 return m_workingCommitteeSet.verify(blsVoterSet);
             }
 
