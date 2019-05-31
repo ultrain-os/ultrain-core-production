@@ -553,9 +553,8 @@ void system_contract::voteresourcelease() {
     *  Called after a new account is created. This code enforces resource-limits rules
     *  for new accounts as well as new account naming conventions.
     *
-    *  Account names containing '.' symbols must have a suffix equal to the name of the creator.
-    *  This allows users who buy a premium name (shorter than 12 characters with no dots) to be the only ones
-    *  who can create accounts with the creator's name as a suffix.
+    *  More restriction on account creating rule can be found in
+    *  apply_ultrainio_newaccount() in ultrainio_contract.cpp.
     *
     */
    void native::newaccount( account_name     creator,
