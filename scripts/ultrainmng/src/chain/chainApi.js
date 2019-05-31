@@ -358,10 +358,13 @@ checkSeedReady = async (ipList,nodPort) => {
             for (let i=0;i<ipList.length;i++) {
                 try {
                     let url = "http://"+ipList[i]+":"+nodPort+"/v1/chain_info/get_chain_info";
-                    let res = await axios.post(url);
-                    logger.error("check seed ready url（"+ipList[i]+"） chain id:",res.data.chain_id);
+                    let res = await axios.post(url, {},{timeout: 1000*10});
+                    logger.info("check seed ready url（"+ipList[i]+"） chain id:",res.data.chain_id);
                     if (utils.isNotNull(res.data.chain_id)) {
+                        logger.info("check seed("+ipList[i]+") success,chainid is ",res.data.chain_id);
                         return true;
+                    } else {
+                        logger.error("check seed("+ipList[i]+") error,chainid is null");
                     }
                 } catch (e) {
                     logger.error("check seed ready url（"+ipList[i]+"） error",utils.logNetworkError(e));
