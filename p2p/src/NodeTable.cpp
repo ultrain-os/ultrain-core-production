@@ -41,8 +41,6 @@ namespace p2p {
     {
         for (unsigned i = 0; i < s_bins; i++)
             m_state[i].distance = i;
-        if (!_enabled)
-            return;
 	ilog("chain_id ${id}",("id",m_chainid));
     }
 
@@ -127,20 +125,8 @@ void NodeTable::addNodePkList(NodeID const& _id,chain::public_key_type const& _p
     ilog("addNodePkList");
     m_pknodes[_id] = {_pk,account};
 }
-void NodeTable::addNode(Node const& _node, NodeRelation _relation)
+void NodeTable::addNode(Node const& _node)
 {
-    //TODO:JWN:can restore somehow,then the relation is Known
-    if (_relation == Known)
-    {
-        ilog(" addNode Known");
-        auto ret = make_shared<NodeEntry>(m_hostNodeID, _node.m_id, _node.m_endpoint);
-        ret->pending = false;
-      //  DEV_GUARDED(x_nodes)
-        m_nodes[_node.m_id] = ret;
-	noteActiveNode(_node.m_id, _node.m_endpoint);
-        return ;
-    }
-
     if (!_node.m_endpoint)
     {
 	elog("do not add node without ep info");
@@ -196,12 +182,10 @@ Node NodeTable::node(NodeID const& _id)
         auto entry = m_nodes[_id];
         return Node(_id, entry->m_endpoint);
     }
-    Node UnspecifiedNode;
     NodeIPEndpoint UnspecifiedNodeIPEndpoint;
     UnspecifiedNodeIPEndpoint.m_address = bi::address().to_string();
     UnspecifiedNodeIPEndpoint.m_udpPort = 0;
-    UnspecifiedNode = Node(NodeID(), UnspecifiedNodeIPEndpoint);
-    return UnspecifiedNode;
+    return Node(NodeID(), UnspecifiedNodeIPEndpoint);
 }
 shared_ptr<NodeEntry> NodeTable::nodeEntry(NodeID _id)
 {
@@ -322,11 +306,9 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeID _target)
 
 void NodeTable::ping(NodeIPEndpoint _to,NodeID _toID)
 {
-    NodeIPEndpoint src;
-    src = m_hostNodeEndpoint;
     PingNode p;
     p.type = 1;
-    p.source = src;
+    p.source = m_hostNodeEndpoint;
     p.dest = _to;
     p.sourceid = m_hostNodeID;
     p.destid = _toID;
@@ -370,54 +352,64 @@ void NodeTable::noteActiveNode(NodeID const& _pubk, NodeIPEndpoint const& _endpo
         return ;//TODO:JWN ip check
     }
 
-    shared_ptr<NodeEntry> newNode = nodeEntry(_pubk);
-    if (newNode)//TODO:JWN time check
+    shared_ptr<NodeEntry> newNode = nodeEntry(_pubk); //TODO:JWN time check
+    shared_ptr<NodeEntry> nodeToEvict;
+
+    NodeBucket& s = bucket_UNSAFE(newNode.get());
+    auto& nodes = s.nodes;
+    auto it = std::find(nodes.begin(), nodes.end(), newNode);
+    if (it != nodes.end())
     {
-      //  newNode->m_endpoint.setAddress(_endpoint.address().to_string());
-      //  newNode->m_endpoint.setUdpPort(_endpoint.port());
-        newNode->m_endpoint = _endpoint;
-
-        shared_ptr<NodeEntry> nodeToEvict;
+        auto nd = it->lock();
+        if (!nd)
         {
-            NodeBucket& s = bucket_UNSAFE(newNode.get());
-            auto& nodes = s.nodes;
-            auto it = std::find(nodes.begin(), nodes.end(), newNode);
-            if (it != nodes.end())
-            {
-                nodes.splice(nodes.end(), nodes, it);
-            }
-            else
-            {
-		        buket_chg_flag = true;
-                if (nodes.size() < s_bucketSize)
-                {
-                   nodes.push_back(newNode);
-                   nodeaddevent(newNode->m_endpoint); 
-                }
-                else
-                {
-                    nodeToEvict = nodes.front().lock();
-
-                    if (!nodeToEvict)
-                    {
-                        ilog("noteActive change node");
-                        nodes.pop_front();
-                        nodes.push_back(newNode);
-                        nodeaddevent(newNode->m_endpoint); 
-
-                    }
-                }
-
-            }
+            elog("invalid weak ptr of node");
+            return;
+        }
+        auto old_addr = bi::address::from_string(nd->m_endpoint.m_address);
+        auto new_addr = bi::address::from_string(_endpoint.m_address);
+        if (isPrivateAddress(old_addr) && !isPrivateAddress(new_addr))
+        {
+            return;
+        }
+        else if (!isPrivateAddress(old_addr) && isPrivateAddress(new_addr))
+        {
+            ilog("old addr is public and new one is private, close old");
+            nodedropevent(nd->m_endpoint);
+            nd->m_endpoint = _endpoint;
+            buket_chg_flag = true;
         }
 
-        if (nodeToEvict)
-        {
-            evict(*nodeToEvict, *newNode);
-            
-        }
-
+        nodes.splice(nodes.end(), nodes, it);
     }
+    else
+    {
+        newNode->m_endpoint = _endpoint;
+        buket_chg_flag = true;
+        if (nodes.size() < s_bucketSize)
+        {
+           nodes.push_back(newNode);
+           nodeaddevent(newNode->m_endpoint); 
+        }
+        else
+        {
+            nodeToEvict = nodes.front().lock();
+
+            if (!nodeToEvict)
+            {
+                ilog("noteActive change node");
+                nodes.pop_front();
+                nodes.push_back(newNode);
+                nodeaddevent(newNode->m_endpoint); 
+            }
+        }
+    }
+
+    if (nodeToEvict)
+    {
+        evict(*nodeToEvict, *newNode);
+    }
+
     if(buket_chg_flag)
     {
        printallbucket();
@@ -448,19 +440,19 @@ NodeTable::NodeBucket& NodeTable::bucket_UNSAFE(NodeEntry const* _n)
 }
 void NodeTable::printallbucket()
 {
-	for (auto const& s : m_state)
-		for (auto const& np : s.nodes)
-		{
-			if (auto n = np.lock())
-			{
-				ilog("bucket node ${ip} ${udp} ${trx} ${rpos}",("ip",(*n).m_endpoint.address())("udp",(*n).m_endpoint.udpPort())("trx",(*n).m_endpoint.listenPort(msg_priority_trx))("rpos",(*n).m_endpoint.listenPort(msg_priority_rpos)));
-			}
-		}
+    for (auto const& s : m_state)
+        for (auto const& np : s.nodes)
+        {
+            if (auto n = np.lock())
+            {
+                ilog("bucket node ${ip} ${udp} ${trx} ${rpos}",("ip",(*n).m_endpoint.address())("udp",(*n).m_endpoint.udpPort())("trx",(*n).m_endpoint.listenPort(msg_priority_trx))("rpos",(*n).m_endpoint.listenPort(msg_priority_rpos)));
+            }
+        }
 }
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
-    if(pong.sourceid == fc::sha256())
+    if(pong.sourceid == fc::sha256() || pong.sourceid == m_hostNodeID)
     {
-        elog("pong msg has no id");
+        elog("pong msg has no id or sent by myself");
         return ;
     }
     if(pong.destid != m_hostNodeID)
@@ -471,15 +463,15 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
     if(pong.chain_id != m_chainid)
     {
         elog("wrong chain");
-	return ;
+        return ;
     }
     for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
     {
-	    if((it->second.account == pong.account) && (it->first != pong.sourceid))
-	    {
-		    elog("duplicate pong p2p pk");
-		    return ;
-	    }
+        if((it->second.account == pong.account) && (it->first != pong.sourceid))
+        {
+            elog("duplicate pong p2p pk");
+            return ;
+        }
     } 
     fc::sha256 digest_pong = fc::sha256::hash<p2p::UnsignedPong>(pong);
     bool isvalid = *pktcheckevent(digest_pong,pong.pk,chain::signature_type(pong.signature),pong.account);
@@ -515,10 +507,10 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
     
     if (!m_hostNodeEndpoint)
      {
-	    ilog("local m_hostNodeEndpoint before ${host}",("host",m_hostNodeEndpoint.address()));
+        ilog("local m_hostNodeEndpoint before ${host}",("host",m_hostNodeEndpoint.address()));
         m_hostNodeEndpoint.setAddress(pong.destep.address());
         m_hostNodeEndpoint.setUdpPort(pong.destep.udpPort());
-	    ilog("local m_hostNodeEndpoint after ${host}",("host",m_hostNodeEndpoint.address()));
+        ilog("local m_hostNodeEndpoint after ${host}",("host",m_hostNodeEndpoint.address()));
      }
     NodeIPEndpoint from;
     from.m_address = _from.address().to_string();
@@ -528,9 +520,9 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
 }
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) {
    // ilog("handle Find srcnodeid ${nodeid} tarID ${tarID} from ${src} dest ${des}",("nodeid",in.fromID)("tarID",in.targetID)("src",in.fromep)("des",in.tartgetep));
-    if(in.fromID == fc::sha256())
+    if(in.fromID == fc::sha256() || in.fromID == m_hostNodeID)
     {
-        ilog("Find msg has no id");
+        ilog("Find msg has no id or sent by myself");
         return ;
     }
     if(in.destid != m_hostNodeID)
@@ -612,9 +604,9 @@ bool  NodeTable::isnodevalid(Node const& _node)
 }
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in ) {
     //ilog("handle nei size ${size} srcnodeid ${nodeid} from ${src} dest ${des} ",("size",in.neighbours.size())("nodeid",in.fromID)("src",in.fromep)("des",in.tartgetep));
-    if(in.fromID == fc::sha256())
+    if(in.fromID == fc::sha256() || in.fromID == m_hostNodeID)
     {
-        ilog("nei msg has no id");
+        ilog("nei msg has no id or sent by myself");
         return ;
     }
     if(in.destid != m_hostNodeID)
@@ -624,8 +616,8 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     }
     if(in.chain_id != m_chainid)
     {
-	    elog("wrong chain");
-	    return ;
+        elog("wrong chain");
+        return ;
     }
     for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
     {
@@ -653,13 +645,13 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     {
 	if(sentFind->second + fc::microseconds(c_findTimeoutMicroSec) >  fc::time_point::now())
 	{
-		expected = true;
+            expected = true;
 	}
     }
     if (!expected)
     {
         ilog("Dropping unsolicited neighbours packet from ${add}",("add",_from.address().to_string()));
-                return ;
+        return ;
     }
     for (auto const& n : in.neighbours)
     {
@@ -674,59 +666,51 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     }    
     noteActiveNode(in.fromID, from);
 }
+
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingmsg ) {
-ilog("handle ping nodeid ${nodeid} from ${ep} srcep ${src} desep ${des}",("nodeid",pingmsg.sourceid)("ep",_from.address().to_string())("src",pingmsg.source.address())("des",pingmsg.dest.address())); 
-if(pingmsg.sourceid == fc::sha256())
+    ilog("handle ping nodeid ${nodeid} from ${ep} srcep ${src} desep ${des}",("nodeid",pingmsg.sourceid)("ep",_from.address().to_string())("src",pingmsg.source.address())("des",pingmsg.dest.address())); 
+
+    if(pingmsg.sourceid == fc::sha256() || pingmsg.sourceid == m_hostNodeID)
     {
-        ilog("ping msg has no id");
+        ilog("ping msg has no id or sent by myself");
         return ;
     }
+
+    if(pingmsg.destid != fc::sha256() && pingmsg.destid != m_hostNodeID)
+    {
+        elog("ping msg not for me. dest: ${dest} host: ${host}", ("dest", pingmsg.destid)("host", m_hostNodeID));
+        return ;
+    }
+
     if(pingmsg.chain_id != m_chainid)
     {
-	    elog("wrong chain");
-	    return;
+        elog("wrong chain");
+        return;
     }
+
     for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
     {
-	    if((it->second.account == pingmsg.account) && (it->first != pingmsg.sourceid))
-	    {
-		    elog("duplicate p2p pk");
-		    return ;
-	    }
+        if((it->second.account == pingmsg.account) && (it->first != pingmsg.sourceid))
+        {
+            elog("duplicate p2p pk");
+            return ;
+        }
     }
     fc::sha256 digest = fc::sha256::hash<p2p::UnsignedPingNode>(pingmsg);
     bool isvalid = *pktcheckevent(digest,pingmsg.pk,chain::signature_type(pingmsg.signature),pingmsg.account);
     if(!isvalid)
     {
-	    elog("ping msg check fail:may not in whitelist or not a producer");
+        elog("ping msg check fail:may not in whitelist or not a producer");
         recordBadNode(pingmsg.sourceid); 
         return ;
     }
-    if(pingmsg.sourceid != fc::sha256())
-    {
-        auto const sentdiscoverping = m_pubkDiscoverPings.find(_from.address());
-        if (sentdiscoverping != m_pubkDiscoverPings.end())
-        {
-            m_pubkDiscoverPings.erase(sentdiscoverping);
-        }
-    }
-    if(pingmsg.destid != fc::sha256())
-    {
-        if(pingmsg.destid != m_hostNodeID)
-        {
-            elog("ping msg not for me");
-            return ;
-        }
-    }
-        
+
+    m_pubkDiscoverPings.erase(_from.address());
+ 
     NodeIPEndpoint from;
     from.m_address = _from.address().to_string();
     from.m_udpPort = _from.port();
     from.m_listenPorts = pingmsg.source.m_listenPorts;
-    if (m_hostNodeID == pingmsg.sourceid)
-    {
-        return;
-    }
     addNodePkList(pingmsg.sourceid,pingmsg.pk,pingmsg.account);
     addNode(Node(pingmsg.sourceid, from));
 
@@ -780,11 +764,11 @@ void NodeTable::doPingTimeoutCheck()
     vector<shared_ptr<NodeEntry>> nodesToActivate;
     for (auto it = m_sentPings.begin(); it != m_sentPings.end();)
     {
-        if(it->second.sendtimes > 4)
+        if(it->second.sendtimes > 4 || it->second.pingSendTime + fc::microseconds(120000000) < fc::time_point::now())
         {
             if (auto node = nodeEntry(it->first))
             {
-		ilog("ping timeout handle ${time} times${times}",("time",it->second.pingSendTime)("times",it->second.sendtimes));
+                ilog("ping timeout handle ${time} times${times}",("time",it->second.pingSendTime)("times",it->second.sendtimes));
                 dropNode(move(node));
 
                 if (it->second.replacementNodeID)
@@ -878,6 +862,49 @@ void NodeTable::start_p2p_monitor(ba::io_service& _io)
     doNodeReFindTimeouts();
     packlimitchecktimer.reset(new boost::asio::steady_timer(_io));
     doPackLimitTimeouts();
+}
+
+bool NodeTable::isPrivateAddress(bi::address const& _addressToCheck)
+{
+    if (_addressToCheck.is_v4())
+    {
+        bi::address_v4 v4Address = _addressToCheck.to_v4();
+        bi::address_v4::bytes_type bytesToCheck = v4Address.to_bytes();
+        if (bytesToCheck[0] == 10 || bytesToCheck[0] == 127)
+            return true;
+        if (bytesToCheck[0] == 169 && bytesToCheck[1] == 254)
+            return true;
+        if (bytesToCheck[0] == 172 && (bytesToCheck[1] >= 16 && bytesToCheck[1] <= 31))
+            return true;
+        if (bytesToCheck[0] == 192 && bytesToCheck[1] == 168)
+            return true;
+    }
+    else if (_addressToCheck.is_v6())
+    {
+        bi::address_v6 v6Address = _addressToCheck.to_v6();
+        bi::address_v6::bytes_type bytesToCheck = v6Address.to_bytes();
+        if (bytesToCheck[0] == 0xfd && bytesToCheck[1] == 0)
+            return true;
+        if (!bytesToCheck[0] && !bytesToCheck[1] && !bytesToCheck[2] && !bytesToCheck[3] &&
+                !bytesToCheck[4] && !bytesToCheck[5] && !bytesToCheck[6] && !bytesToCheck[7] &&
+                !bytesToCheck[8] && !bytesToCheck[9] && !bytesToCheck[10] && !bytesToCheck[11] &&
+                !bytesToCheck[12] && !bytesToCheck[13] && !bytesToCheck[14] &&
+                (bytesToCheck[15] == 0 || bytesToCheck[15] == 1))
+            return true;
+    }
+    return false;
+}
+
+bool NodeTable::isLocalHostAddress(bi::address const& _addressToCheck)
+{
+    static const set<bi::address> c_rejectAddresses = {
+        {bi::address_v4::from_string("127.0.0.1")},
+        {bi::address_v4::from_string("0.0.0.0")},
+        {bi::address_v6::from_string("::1")},
+        {bi::address_v6::from_string("::")},
+    };
+
+    return c_rejectAddresses.find(_addressToCheck) != c_rejectAddresses.end();
 }
 }  // namespace p2p
 }  // namespace ultrainio

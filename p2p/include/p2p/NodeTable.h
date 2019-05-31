@@ -58,8 +58,7 @@ class NodeTable: UDPSocketEvents
     };
 public:
     static constexpr uint32_t c_bondingTimeMSeconds{3000000};
-    enum NodeRelation { Unknown = 0, Known };
-    
+ 
     /// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
     NodeTable(ba::io_service& _io, NodeIPEndpoint const& _endpoint, NodeID const& nodeID, string const& chainid, bool _enabled = true);
     ~NodeTable();
@@ -77,7 +76,7 @@ public:
     void init( const std::vector <std::string> &seeds,ba::io_service &_io);
 
     /// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeID is empty.
-    void addNode(Node const& _node, NodeRelation _relation = NodeRelation::Unknown);
+    void addNode(Node const& _node);
     void printallbucket();
     void addNodePkList(NodeID const& _id,chain::public_key_type const& _pk,chain::account_name const& _account);
 
@@ -213,6 +212,8 @@ private:
     void requireSeeds(const std::vector <std::string> &seeds);
     bool isnodevalid(Node const& _node);
     void recordBadNode(NodeID const& _id);
+    bool isPrivateAddress(bi::address const& _addressToCheck);
+    bool isLocalHostAddress(bi::address const& _addressToCheck);
 }; // end of class NodeTable
 
 } // end of namespace p2p

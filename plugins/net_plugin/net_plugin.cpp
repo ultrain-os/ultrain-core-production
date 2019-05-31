@@ -233,8 +233,7 @@ namespace ultrainio {
 
         std::shared_ptr<p2p::NodeTable> get_node_table() { return node_table; }
         void onNodeTableDropEvent(const p2p::NodeIPEndpoint& _n);
-	template<typename VerifierFunc>
-        void send_all( const net_message &msg, VerifierFunc verify );
+        template<typename VerifierFunc> void send_all( const net_message &msg, VerifierFunc verify );
 
         void accepted_block_header(const block_state_ptr&);
         void accepted_block(const block_state_ptr&);
@@ -323,6 +322,8 @@ namespace ultrainio {
         chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
 
         uint16_t to_protocol_version(uint16_t v);
+
+        void promote_private_address(vector<string>& peers);
     };
 
     const fc::string logger_name("net_plugin_impl");
@@ -2583,7 +2584,9 @@ connection::connection(string endpoint, msg_priority pri)
          } else if ((*it)->last_handshake_recv.generation == 0) { // no handshake received
             if ((*it)->wait_handshake_count > 0 && (*it)->socket->is_open()) {
                boost::system::error_code ec;
-               elog("no handshake received from: ${addr}, so the connection will be erased", ("addr", (*it)->socket->remote_endpoint(ec).address().to_string()));
+               elog("no handshake received from: peer: ${peer} ${addr}, so the connection will be erased",
+                    ("peer", (*it)->peer_name())
+                    ("addr", (*it)->socket->remote_endpoint(ec).address().to_string()));
                close(*it);
                it = connections.erase(it);
                continue;
@@ -3247,9 +3250,11 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 
          if( options.count( "p2p-peer-address" )) {
             my->trx_active_peers = options.at( "p2p-peer-address" ).as<vector<string> >();
+            my->promote_private_address(my->trx_active_peers);
          }
          if( options.count( "rpos-p2p-peer-address" )) {
             my->rpos_active_peers = options.at( "rpos-p2p-peer-address" ).as<vector<string> >();
+            my->promote_private_address(my->rpos_active_peers);
          }
 
          if( options.count( "agent-name" )) {
@@ -3287,10 +3292,9 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
                my->allowed_tcp_peers.push_back( chain::public_key_type( tcp_key_string ));
             }
          }
-	 for(auto peer: my->allowed_peers)
-	 {
-		 ilog("peer key ${key}",("key",peer));
-	 }
+         for(auto peer: my->allowed_peers) {
+            ilog("peer key ${key}",("key",peer));
+         }
 
          if( options.count( "peer-private-key" )) {
             ilog("has peer-private-key");            
@@ -3516,5 +3520,22 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
             return (v > net_version_range) ? 0 : v;
         }
         return 0;
+    }
+
+    void net_plugin_impl::promote_private_address(vector<string>& peers) {
+        fc::ip::endpoint ep;
+        vector<string> private_peers;
+        vector<string> public_peers;
+
+        for (auto& p : peers) {
+            ep = fc::ip::endpoint::from_string(p);
+            if (ep.get_address().is_private_address()) {
+                private_peers.push_back(p);
+            } else {
+                public_peers.push_back(p);
+            }
+        }
+        private_peers.insert(private_peers.end(), public_peers.begin(), public_peers.end());
+        peers.swap(private_peers);
     }
 }
