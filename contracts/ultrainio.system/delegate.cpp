@@ -410,7 +410,7 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
                                              refund_delay );
       ultrainio_assert( req->request_time + refund_delay_sec <= now(), "refund is not available yet" );
       // Until now() becomes NOW, the fact that now() is the timestamp of the previous block could in theory
-      // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
+      // allow people to get their tokens earlier than the refund_delay_sec delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
       INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {N(utrio.stake),N(active)},

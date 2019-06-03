@@ -316,30 +316,16 @@ def stepunregproducersTest():
     for a in cur_accounts:
         retry(args.clultrain + 'system unregprod %s  ' % a)
 def stepregproducersTest():
-    cur_accounts= [
-
-    ]
-    miner_pk_list = [
-
-    ]
-    acc_pk_list = [
-
-    ]
-    pklen = len(miner_pk_list)
-    for i in range(0, pklen):
-        j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":cur_accounts[i]})).text)
-        if ("account_name" in j):
-            continue
-        retry(args.clultrain + 'create account ultrainio %s %s ' % (cur_accounts[i], acc_pk_list[i]))
-    sleep(10)
-    for a in cur_accounts:
-        retry(args.clultrain + 'transfer ultrainio %s  "100.0000 UGAS"' % a)
-    sleep(10)
-    for i in range(0, pklen):
-        retry(args.clultrain + 'system regproducer %s %s https://%s.com  "ultrainio"' % (cur_accounts[i], miner_pk_list[i], cur_accounts[i]))
-    sleep(10)
-    for i in range(0, pklen):
-        retry(args.clultrain + 'system delegatecons utrio.stake %s  "1000000.0000 UGAS" ' % (cur_accounts[i]))
+    regindexstart = 0
+    regindexend = 5
+    chain_name = "newretail"
+    for i in range(regindexstart, regindexend):
+        run(args.clultrain + 'wallet import --private-key ' + account_sk_list[i])
+        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "%s" -u' % (accounts[i], pk_list[i], bls_pk_list[i], getrewardaccount(accounts[i]), accounts[i],chain_name))
+    sleep(2)
+    delegateaccount = "ultrainio"
+    for i in range(regindexstart, regindexend):
+        retry(args.clultrain + 'system delegatecons %s %s  "%.4f UGAS" ' % (delegateaccount, accounts[i], min_committee_staked/10000))
 
 def stepexecrand():
     transrandaccount = "utrio.rand"
