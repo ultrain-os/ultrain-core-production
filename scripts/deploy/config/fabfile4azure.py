@@ -7,6 +7,9 @@ env.user = 'root'
 env.password = 'Uranus12#$'
 env.warn_only = True
 
+def clearLog():
+    run('find /log -mindepth 1 -mtime +1 -delete')
+
 def deployall():
 #    run('mkdir log')
 #    put("/root/logrotate.sh","/root/")
@@ -128,7 +131,7 @@ def deletevoterand():
 def savepm2startup():
     run("pm2 save && sleep 1 && pm2 startup && sleep 1 && pm2 save && sleep 1")
 
-@paralle
+@parallel
 def upgrademng():
     run("rm -rf /root/ultrainmng")
     put("ultrainmng.tar","/root/")
@@ -183,6 +186,19 @@ def stopnods():
 @parallel
 def clearnodsdata():
     run("/root/cleardata.sh")
+
+@parallel
+def deploynewproducer():
+    put("/root/miner_setup.tar","/root/")
+    put("/root/install.sh","/root/")
+    run('chmod +x /root/install.sh')
+    run('/root/install.sh')
+    put("config/%s/config.ini" % env.host, "/root/.local/share/ultrainio/nodultrain/config")
+
+@parallel
+def updatenod():
+    run('cp /root/miner_setup/files/program/nodultrain /root/')
+    run('chmod +x /root/nodultrain')
 
 @parallel
 def impconfig():
