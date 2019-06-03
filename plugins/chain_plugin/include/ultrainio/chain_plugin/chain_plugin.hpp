@@ -70,6 +70,7 @@ Type convert_to_type(const string& str, const string& desc) {
 template<>
 uint64_t convert_to_type(const string& str, const string& desc);
 
+uint64_t convert_to_scope( const string& str );
 
 class read_only {
    const controller& db;
@@ -237,7 +238,7 @@ public:
    struct get_table_records_params {
       bool        json = false;
       name        code;
-      name        scope;
+      string      scope;
       name        table;
       string      table_key_type;
       string      table_key;
@@ -519,7 +520,7 @@ public:
       read_only::get_table_records_result result;
       const auto& d = db.db();
 
-      uint64_t scope = p.scope;
+      uint64_t scope = convert_to_scope( p.scope );
 
       abi_serializer abis;
       abis.set_abi(abi, abi_serializer_max_time);
@@ -589,7 +590,7 @@ public:
       read_only::get_table_records_result result;
       const auto& d = db.db();
 
-      uint64_t scope = p.scope;
+      uint64_t scope = convert_to_scope( p.scope );
 
       abi_serializer abis;
       abis.set_abi(abi, abi_serializer_max_time);

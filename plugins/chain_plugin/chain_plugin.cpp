@@ -857,6 +857,33 @@ uint64_t convert_to_type(const string& str, const string& desc) {
    return value;
 }
 
+uint64_t convert_to_scope( const string& str ) {
+   uint64_t value = 0;
+   try {
+      auto trimmed_str = str;
+      boost::trim(trimmed_str);
+      name s(trimmed_str);
+      value = s.value;
+   } catch( ... ) {
+      try {
+         auto symb = ultrainio::chain::symbol::from_string(str);
+         value = symb.value();
+      } catch( ... ) {
+         try {
+            value = ( ultrainio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
+         } catch( ... ) {
+            try {
+               value = boost::lexical_cast<uint64_t>(str.c_str(), str.size());
+            } catch( ... ) {
+               ULTRAIN_ASSERT( false, chain_type_exception, "convert_to_scope could not convert scope string '${str}' to any of the following: "
+                                 "uint64_t, valid name, or valid symbol (with or without the precision)", ("str", str));
+            }
+         }
+      }
+   }
+   return value;
+}
+
 abi_def get_abi( const controller& db, const name& account ) {
    const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
