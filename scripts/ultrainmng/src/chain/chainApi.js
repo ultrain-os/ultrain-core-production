@@ -318,7 +318,7 @@ getChainSeedIP = async (chainName, chainConfig) => {
                     if (chainConfig.seedIpConfig[i].chainName == chainName) {
                         for (let j =0;j<chainConfig.seedIpConfig[i].seedList.length;j++) {
                             privateIPList.push(chainConfig.seedIpConfig[i].seedList[j].privateIp);
-                            if (chainConfig.seedIpConfig[i].seedList[j].publicIp.length > 10) {
+                            if (utils.isNotNull(chainConfig.seedIpConfig[i].seedList[j].publicIp) && chainConfig.seedIpConfig[i].seedList[j].publicIp.length > 10) {
                                 publicIPList.push(chainConfig.seedIpConfig[i].seedList[j].publicIp);
                             }
                         }
