@@ -165,9 +165,18 @@ class IniFile {
     writefile(filepath, encoding) {
         try {
             let output = "";
+            let empty = false;
             for (var i=0;i<this.lines.length;i++) {
                 if (this.lines[i] != undefined) {
-                    output = output + this.lines[i] + "\n";
+                    if (this.lines[i].length >0) {
+                        output = output + this.lines[i] + "\n";
+                        empty = false;
+                    } else {
+                        if (empty == false) {
+                            output = output + this.lines[i] + "\n";
+                        }
+                        empty = true;
+                    }
                 }
             }
 
