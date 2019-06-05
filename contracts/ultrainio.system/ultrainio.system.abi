@@ -309,6 +309,12 @@
         {"name":"type",        "type":"action_name"}
       ]
     },{
+      "name": "delaccount",
+      "base": "",
+      "fields": [
+        {"name":"account",     "type":"account_name"}
+      ]
+    },{
       "name": "canceldelay",
       "base": "",
       "fields": [
@@ -873,6 +879,10 @@
    },{
      "name": "unlinkauth",
      "type": "unlinkauth",
+     "ricardian_contract": ""
+   },{
+     "name": "delaccount",
+     "type": "delaccount",
      "ricardian_contract": ""
    },{
      "name": "canceldelay",

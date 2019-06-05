@@ -20,6 +20,7 @@ namespace ultrainio { namespace chain {
    void apply_ultrainio_deleteauth(apply_context&);
    void apply_ultrainio_linkauth(apply_context&);
    void apply_ultrainio_unlinkauth(apply_context&);
+   void apply_ultrainio_delaccount(apply_context&);
 
    /*
    void apply_ultrainio_postrecovery(apply_context&);

@@ -438,4 +438,47 @@ void apply_ultrainio_canceldelay(apply_context& context) {
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
 }
 
+/**
+ *  This method is called when delaccount action is called
+ */
+void apply_ultrainio_delaccount(apply_context& context) {
+   auto delacc = context.act.data_as<delaccount>();
+   ilog("apply_ultrainio_delaccount : account = ${account}", ("account", delacc.account));
+   try {
+      context.require_authorization( config::system_account_name );
+      auto& authorization = context.control.get_mutable_authorization_manager();
+      auto& db = context.db;
+
+      auto const* del_account_itr = db.find<account_object, by_name>( delacc.account );
+      ULTRAIN_ASSERT(del_account_itr != nullptr, action_validate_exception, " The deleted account does not exist");
+      db.remove( *del_account_itr );
+      auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>( delacc.account );
+      if( sequence_obj_itr ){
+         db.remove( *sequence_obj_itr );
+      }
+      context.control.get_mutable_resource_limits_manager().delete_resource_table( delacc.account );
+
+      auto const check_remove_permission_func = [&]( const permission_name& perm_name )-> int64_t {
+         { // Check for links to this permission
+            const auto& index = db.get_index<permission_link_index, by_permission_name>();
+            auto range = index.equal_range(boost::make_tuple(delacc.account, perm_name));
+            ULTRAIN_ASSERT(range.first == range.second, action_validate_exception,
+                     "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.",
+                     ("code", string(range.first->code))("type", string(range.first->message_type)));
+         }
+         const auto& permission = authorization.get_permission({delacc.account, perm_name});
+         int64_t old_size = config::billable_size_v<permission_object> + permission.auth.get_billable_size();
+         authorization.remove_permission( permission );
+         return old_size;
+      };
+      int64_t total_old_size = 0;
+      const vector<permission_name> perm_name_list = authorization.get_all_permission_name( delacc.account );
+      ULTRAIN_ASSERT( perm_name_list.size() != 0, action_validate_exception, " permission name list is empty");
+      for( auto const perm_name : perm_name_list ) {
+         total_old_size += check_remove_permission_func( perm_name );
+      }
+      context.trx_context.add_ram_usage( config::system_account_name, -total_old_size );
+   } FC_CAPTURE_AND_RETHROW( (delacc) )
+}
+
 } } // namespace ultrainio::chain

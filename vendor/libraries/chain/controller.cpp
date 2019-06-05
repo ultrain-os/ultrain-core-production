@@ -180,6 +180,7 @@ struct controller_impl {
    SET_APP_HANDLER( ultrainio, ultrainio, deleteauth );
    SET_APP_HANDLER( ultrainio, ultrainio, linkauth );
    SET_APP_HANDLER( ultrainio, ultrainio, unlinkauth );
+   SET_APP_HANDLER( ultrainio, ultrainio, delaccount );
 /*
    SET_APP_HANDLER( ultrainio, ultrainio, postrecovery );
    SET_APP_HANDLER( ultrainio, ultrainio, passrecovery );

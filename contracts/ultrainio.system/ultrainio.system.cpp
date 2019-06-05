@@ -633,12 +633,30 @@ void system_contract::voteresourcelease() {
       int32_t dropstatus = db_drop_table(code);
       print(" native::deletetable contract account:" ,name{code}, " dropstatus:", dropstatus);
    }
+
+   void native::delaccount( account_name account ) {
+      require_auth( _self );
+      asset account_tokens = ultrainio::token(N(utrio.token)).get_balance( account ,symbol_type(CORE_SYMBOL).name());
+      ultrainio_assert( account_tokens.amount == 0, " The account still has a balance and cannot be deleted" );
+      producer_brief_table   _briefproducers( _self, _self );
+      auto const briefprod = _briefproducers.find( account );
+      ultrainio_assert(briefprod == _briefproducers.end(), "this account is a producer and cannot be deleted");
+      chains_table _chains(_self,_self);
+      for(auto ite_chain = _chains.begin(); ite_chain != _chains.end(); ++ite_chain) {
+         if( ite_chain->chain_name == N(master) )
+            continue;
+         resources_lease_table _reslease_tbl( _self, ite_chain->chain_name );
+         auto reslease_itr = _reslease_tbl.find( account );
+         ultrainio_assert( reslease_itr ==  _reslease_tbl.end(), "this account has purchased resource and cannot be deleted");
+      }
+      print(" native::delaccount contract account:" ,name{account} );
+   }
 } /// ultrainio.system
 
 
 ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
-     (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)
+     (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)(delaccount)
      // ultrainio.system.cpp
      (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(votecommittee)(voteaccount)(voteresourcelease)
      // delegate.cpp

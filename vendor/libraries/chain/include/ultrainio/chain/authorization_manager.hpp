@@ -58,6 +58,7 @@ namespace ultrainio { namespace chain {
 
          const permission_object*  find_permission( const permission_level& level )const;
          const permission_object&  get_permission( const permission_level& level )const;
+         const vector<permission_name>  get_all_permission_name( const account_name& account )const;
 
          /**
           * @brief Find the lowest authority level required for @ref authorizer_account to authorize a message of the

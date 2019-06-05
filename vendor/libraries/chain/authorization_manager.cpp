@@ -283,6 +283,27 @@ namespace ultrainio { namespace chain {
       return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
    } ULTRAIN_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
 
+   const vector<permission_name>  authorization_manager::get_all_permission_name( const account_name& account )const
+   { try {
+      vector<permission_name> permission_list;
+      const auto& permissions = _db.get_index<permission_index,by_owner>();
+      auto perm = permissions.lower_bound( boost::make_tuple( account ) );
+      while( perm != permissions.end() && perm->owner == account ) {
+         name parent;
+         if( perm->parent._id ) {
+            const auto* p = _db.find<permission_object,by_id>( perm->parent );
+            if( p ) {
+               ULTRAIN_ASSERT(perm->owner == p->owner, invalid_parent_permission, "Invalid parent permission");
+               parent = p->name;
+            }
+         }
+
+         permission_list.push_back( perm->name );
+         ++perm;
+      }
+      return permission_list;
+   } ULTRAIN_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission account: ${account}", ("account", account) ) }
+
    optional<permission_name> authorization_manager::lookup_linked_permission( account_name authorizer_account,
                                                                               account_name scope,
                                                                               action_name act_name

@@ -89,6 +89,23 @@ void resource_limits_manager::initialize_account(const account_name& account) {
    });
 }
 
+void resource_limits_manager::delete_resource_table( const account_name& account ){
+   const auto* usage_itr = _db.find<resource_usage_object,by_owner>( account );
+   if( usage_itr ){
+      ULTRAIN_ASSERT(usage_itr->net_usage.value_ex == 0 && usage_itr->cpu_usage.value_ex == 0 && usage_itr->ram_usage == 0, action_validate_exception, " account resource_usage_object is not zero");
+      _db.remove( *usage_itr );
+   }
+   const auto del_res_object_func = [&](bool pending_state){
+      const auto* res_object_itr = _db.find<resource_limits_object, by_owner>( boost::make_tuple( pending_state, account ) );
+      if ( res_object_itr ) {
+         ULTRAIN_ASSERT(res_object_itr->net_weight == 0 && res_object_itr->cpu_weight == 0 && res_object_itr->ram_bytes == 0, action_validate_exception, " account resource_limits_object is not zero");
+         _db.remove( *res_object_itr );
+      }
+   };
+   del_res_object_func( true );  //delete pending resource object
+   del_res_object_func( false );
+}
+
 void resource_limits_manager::set_block_parameters(const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters ) {
    cpu_limit_parameters.validate();
    net_limit_parameters.validate();

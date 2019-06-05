@@ -74,5 +74,7 @@ namespace ultrainiosystem {
          void onerror( /*const bytes&*/ ) {}
 
          void deletetable( account_name code );
+
+         void delaccount( account_name account );
    };
 }
