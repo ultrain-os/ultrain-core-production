@@ -227,32 +227,6 @@ namespace ultrainiosystem {
         }
     }
 
-  void system_contract::syncresource(account_name receiver, uint64_t combosize, uint32_t block_height) {
-       resources_lease_table _reslease_tbl( _self, self_chain_name );
-       auto resiter = _reslease_tbl.find(receiver);
-       if(resiter != _reslease_tbl.end()) {
-           ultrainio_assert(combosize >= resiter->lease_num, "error combo size in sync resource");
-           int64_t remain_blockheight = (int64_t)block_height - ((int64_t)resiter->end_block_height - (int64_t)resiter->start_block_height);
-           ultrainio_assert(remain_blockheight + 30 > 0, "error end time in sync resource");
-           if(remain_blockheight > seconds_per_day/2/block_interval_seconds()){
-              auto deltadays = ceil(block_interval_seconds()*remain_blockheight/double(seconds_per_day));
-               INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                                { N(ultrainio), receiver, 0, deltadays, self_chain_name} );
-           }
-           int64_t deltasize = (int64_t)combosize - (int64_t)resiter->lease_num;
-           if(deltasize > 0) {
-               INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                                 { N(ultrainio), receiver, deltasize, 0, self_chain_name} );
-           }
-       } else {
-           if(block_height > 0 && combosize > 0){
-               auto days = ceil(block_interval_seconds()*block_height/(double)seconds_per_day);
-               INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                     { N(ultrainio), receiver, combosize, days, self_chain_name} );
-            }
-       }
-   }
-
    void system_contract::resourcelease( account_name from, account_name receiver,
                           uint64_t combosize, uint64_t days, name location){
       require_auth( from );

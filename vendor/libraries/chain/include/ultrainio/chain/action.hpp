@@ -14,34 +14,6 @@ namespace ultrainio { namespace chain {
       permission_name permission;
    };
 
-   struct proposeminer_info {
-      account_name    account;
-      std::string     public_key;
-      std::string     bls_key;
-      std::string     url;
-      uint64_t        location;
-      bool            adddel_miner;
-      int64_t         approve_num;
-   };
-
-
-   struct proposeaccount_info {
-      account_name    account;
-      std::string     owner_key;
-      std::string     active_key;
-      bool            updateable;
-      uint64_t        location;
-      int64_t         approve_num;
-   };
-
-   struct proposeresource_info {
-      account_name      account;
-      uint64_t          lease_num;
-      uint64_t          days;
-      uint64_t          location;
-      int64_t           approve_num;
-   };
-
    struct block_reward {
        uint16_t         consensus_period;
        uint64_t         reward;
@@ -138,9 +110,6 @@ namespace ultrainio { namespace chain {
 
 FC_REFLECT_ENUM( ultrainio::chain::action::AbilityType, (Normal)(PureView) )
 FC_REFLECT( ultrainio::chain::permission_level, (actor)(permission) )
-FC_REFLECT( ultrainio::chain::proposeminer_info, (account)(public_key)(bls_key)(url)(location)(adddel_miner)(approve_num) )
-FC_REFLECT( ultrainio::chain::proposeaccount_info, (account)(owner_key)(active_key)(updateable)(location)(approve_num) )
-FC_REFLECT( ultrainio::chain::proposeresource_info, (account)(lease_num)(days)(location)(approve_num) )
 FC_REFLECT( ultrainio::chain::block_reward , (consensus_period)(reward) )
 FC_REFLECT( ultrainio::chain::action, (account)(name)(authorization)(data) )
 

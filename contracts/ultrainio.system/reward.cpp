@@ -40,7 +40,6 @@ namespace ultrainiosystem {
       }
       delexpiretable(); //Delete the expired account table
       checkresexpire();
-      cleanvotetable();
       checkbulletin();
       pre_schedule();
       distributreward();  //automatically send rewards

@@ -134,64 +134,6 @@ namespace ultrainio {
    };
 
    /**
-    * proposeminer_info  vote
-    *
-    * @brief Packed representation of proposeminer_info  vote
-    */
-   struct proposeminer_info {
-      /**
-       * Construct a new proposeminer info object
-       *
-       * @brief Construct a new proposeminer info object
-       * @param a - Name of the account who proposal pending miner
-       * @param p - Name of the public keys
-       * @param u - Name of the url
-       */
-      proposeminer_info( account_name a, std::string p, std::string u, name l,bool adddel ):account(a),public_key(p),url(u),location(l),adddel_miner(adddel){}
-
-      /**
-       * Default Constructor
-       *
-       * @brief Construct a new proposeminer info object
-       */
-      proposeminer_info(){}
-
-      account_name      account;
-      std::string       public_key;
-      std::string       bls_key;
-      std::string       url;
-      name              location;
-      bool              adddel_miner;
-      int64_t           approve_num;
-      ULTRAINLIB_SERIALIZE( proposeminer_info, (account)(public_key)(bls_key)(url)(location)(adddel_miner)(approve_num) )
-   };
-   /**
-    * provided_proposer  info
-    *
-    * @brief Packed representation of provided_proposer
-    */
-   struct provided_proposer {
-
-      provided_proposer( account_name a, uint32_t l, uint64_t r):account(a),last_vote_blockheight(l),resource_index(r){}
-
-      /**
-       * Default Constructor
-       *
-       * @brief Construct a new provided_proposer info object
-       */
-      provided_proposer(){}
-
-      account_name      account;
-      time              last_vote_blockheight = 0;
-      uint64_t          resource_index = 0;
-      bool operator==(const provided_proposer& c) const
-      {
-         return c.account == account;
-      }
-      ULTRAINLIB_SERIALIZE( provided_proposer, (account)(last_vote_blockheight)(resource_index) )
-   };
-
-   /**
     * proposeaccount_info  vote
     *
     * @brief Packed representation of proposeaccount_info  vote
@@ -221,39 +163,6 @@ namespace ultrainio {
       name              location;
       int64_t           approve_num;
       ULTRAINLIB_SERIALIZE( proposeaccount_info, (account)(owner_key)(active_key)(updateable)(location)(approve_num) )
-   };
-
-   /**
-    * proposeresource_info  vote
-    *
-    * @brief Packed representation of proposeresource_info  vote
-    */
-   struct proposeresource_info {
-      /**
-       * Construct a new proposeresource_info object
-       *
-       * @brief Construct a proposeresource_info object
-       * @param a - Name of the account who proposal resourcelease account
-       * @param lease - Number of lease
-       * @param e - block_height_interval
-       * @param l - location
-       * @param num - approve_num
-       */
-      proposeresource_info( account_name a, uint64_t lease, uint32_t e, name l, int64_t num ):account(a),lease_num(lease),block_height_interval(e),location(l),approve_num(num){}
-
-      /**
-       * Default Constructor
-       *
-       * @brief Construct a new proposeresource_info object
-       */
-      proposeresource_info(){}
-
-      account_name      account;
-      uint64_t          lease_num;
-      uint32_t          block_height_interval;
-      name              location;
-      int64_t           approve_num;
-      ULTRAINLIB_SERIALIZE( proposeresource_info, (account)(lease_num)(block_height_interval)(location)(approve_num) )
    };
 
    struct block_reward {

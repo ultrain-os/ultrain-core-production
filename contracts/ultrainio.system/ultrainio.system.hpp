@@ -167,27 +167,6 @@ namespace ultrainiosystem {
    };
    typedef ultrainio::multi_index< N(upaiddisprod), unpaid_disproducer>      unpaid_disprod;
 
-   struct pending_miner {
-            account_name                               owner;
-            std::vector<ultrainio::proposeminer_info>  proposal_miner;
-            std::vector<ultrainio::provided_proposer>  provided_approvals;
-            auto primary_key()const { return owner; }
-            ULTRAINLIB_SERIALIZE(pending_miner, (owner)(proposal_miner)(provided_approvals) )
-         };
-   struct pending_acc {
-         account_name                               owner;
-         std::vector<ultrainio::proposeaccount_info>  proposal_account;
-         std::vector<ultrainio::provided_proposer>  provided_approvals;
-         auto primary_key()const { return owner; }
-         ULTRAINLIB_SERIALIZE(pending_acc, (owner)(proposal_account)(provided_approvals) )
-      };
-   struct pending_res {
-         account_name                               owner;
-         std::vector<ultrainio::proposeresource_info>  proposal_resource;
-         std::vector<ultrainio::provided_proposer>  provided_approvals;
-         auto primary_key()const { return owner; }
-         ULTRAINLIB_SERIALIZE(pending_res, (owner)(proposal_resource)(provided_approvals) )
-      };
    struct hash_vote {
        hash_vote(checksum256 hash_p, uint64_t size, uint64_t vote, bool val, account_name acc)
            :hash(hash_p),file_size(size),votes(vote),valid(val){accounts.emplace(acc);}
@@ -223,9 +202,6 @@ namespace ultrainiosystem {
    };
 
    typedef ultrainio::multi_index<N(briefprod),producer_brief> producer_brief_table;
-   typedef ultrainio::multi_index<N(pendingminer),pending_miner> pendingminers;
-   typedef ultrainio::multi_index<N(pendingacc),pending_acc> pendingaccounts;
-   typedef ultrainio::multi_index<N(pendingres),pending_res> pendingresource;
    typedef ultrainio::multi_index<N(disableprods), disabled_producer> disabled_producers_table;
    typedef ultrainio::multi_index<N(producers), producer_info> producers_table;
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
@@ -492,9 +468,6 @@ namespace ultrainiosystem {
          lwc_parameters           _lwc;
 
          chains_table             _chains;
-         pendingminers            _pendingminer;
-         pendingaccounts          _pendingaccount;
-         pendingresource          _pendingres;
          producer_brief_table     _briefproducers;
          sched_set_singleton      _schedsetting;
 
@@ -577,10 +550,6 @@ namespace ultrainiosystem {
          void setpriv( account_name account, uint8_t is_priv );
          void setupdateabled( account_name account, uint8_t is_update );
          void rmvproducer( account_name producer );
-         void votecommittee();
-         void voteaccount();
-         void voteresourcelease();
-
 
          // functions defined in synctransaction.cpp
          void synclwctx( name chain_name,
@@ -590,7 +559,6 @@ namespace ultrainiosystem {
 
       private:
          // functions defined in ultrainio.system.cpp
-         void updateactiveminers(const ultrainio::proposeminer_info& miners );
          void add_subchain_account(const ultrainio::proposeaccount_info& newacc );
          static ultrainio_global_state get_default_parameters();
 
@@ -631,11 +599,6 @@ namespace ultrainiosystem {
 
          //defined in ultrainio.system.cpp
          void getKeydata(const std::string& pubkey,std::array<char,33> & data);
-         void cleanvotetable();
-         void syncresource(account_name receiver, uint64_t combosize, uint32_t block_height);
-         void checkvotefrequency(ultrainiosystem::producers_table& prod_tbl,
-                                 ultrainiosystem::producers_table::const_iterator propos);
-
 
          //defined in producer.cpp
          std::vector<name> get_all_chainname();
