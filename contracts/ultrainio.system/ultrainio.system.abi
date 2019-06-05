@@ -20,7 +20,7 @@
       "new_type_name": "block_id_type",
       "type": "checksum256"
    }],
-   "____comment": "ultrainio.bios structs: set_account_limits, setpriv, set_global_limits, producer_key, set_producers, require_auth are provided so abi available for deserialization in future.",
+   "____comment": "",
    "structs": [{
       "name": "exten_type",
       "base": "",
@@ -99,14 +99,6 @@
       "fields": [
         {"name":"key",    "type":"public_key"},
         {"name":"weight", "type":"weight_type"}
-      ]
-    },{
-      "name": "bidname",
-      "base": "",
-      "fields": [
-        {"name":"bidder",  "type":"account_name"},
-        {"name":"newname", "type":"account_name"},
-        {"name":"bid", "type":"asset"}
       ]
     },{
       "name": "votecommittee",
@@ -740,21 +732,6 @@
         {"name":"is_update",    "type":"int8"}
       ]
     },{
-      "name": "set_account_limits",
-      "base": "",
-      "fields": [
-        {"name":"account",    "type":"account_name"},
-        {"name":"ram_bytes",  "type":"int64"},
-        {"name":"net_weight", "type":"int64"},
-        {"name":"cpu_weight", "type":"int64"}
-      ]
-    },{
-      "name": "set_global_limits",
-      "base": "",
-      "fields": [
-        {"name":"cpu_usec_per_period",    "type":"int64"}
-      ]
-    },{
       "name": "forcesetblock",
       "base": "",
       "fields": [
@@ -794,18 +771,6 @@
       "fields": [
         {"name":"producer_name",      "type":"account_name"},
         {"name":"block_signing_key",  "type":"string"}
-      ]
-    },{
-      "name": "set_producers",
-      "base": "",
-      "fields": [
-        {"name":"schedule",   "type":"producer_key[]"}
-      ]
-    },{
-      "name": "require_auth",
-      "base": "",
-      "fields": [
-        {"name":"from", "type":"account_name"}
       ]
     },{
       "name": "setparams",
@@ -933,10 +898,6 @@
       "type": "setmasterchaininfo",
       "ricardian_contract": ""
    },{
-      "name": "bidname",
-      "type": "bidname",
-      "ricardian_contract": ""
-   },{
       "name": "votecommittee",
       "type": "votecommittee",
       "ricardian_contract": ""
@@ -997,22 +958,6 @@
       "type": "setupdateabled",
       "ricardian_contract": ""
    },{
-      "name": "setalimits",
-      "type": "set_account_limits",
-      "ricardian_contract": ""
-    },{
-      "name": "setglimits",
-      "type": "set_global_limits",
-      "ricardian_contract": ""
-    },{
-      "name": "setprods",
-      "type": "set_producers",
-      "ricardian_contract": ""
-    },{
-      "name": "reqauth",
-      "type": "require_auth",
-      "ricardian_contract": ""
-    },{
       "name": "setsched",
       "type": "setsched",
       "ricardian_contract": ""

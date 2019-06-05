@@ -71,7 +71,7 @@ namespace ultrainiosystem {
 
          void canceldelay( /*permission_level canceling_auth, transaction_id_type trx_id*/ ) {}
 
-         void onerror( /*const bytes&*/ ) {}
+         void onerror( /*const bytes&*/ ) { require_auth( N(ultrainio) );}
 
          void deletetable( account_name code );
 
