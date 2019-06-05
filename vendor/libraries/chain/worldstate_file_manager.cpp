@@ -30,7 +30,7 @@ std::string to_file_name(fc::sha256 chain_id, uint32_t block_height)
     fc::to_variant(block_height, height_var);
 
     std::string name =  chain_var.as_string() + "-" + height_var.as_string();
-    return name;   
+    return name;
 }
 
 bool from_file_name(fc::path name, fc::sha256& chain_id, uint32_t& block_height)
@@ -61,7 +61,7 @@ bool from_file_name(fc::path name, fc::sha256& chain_id, uint32_t& block_height)
 
     fc::variant height_var(text.substr(pos+1, end));
     fc::from_variant(height_var, block_height);
-    return true;   
+    return true;
 }
 
 
@@ -97,7 +97,7 @@ std::vector<char> ws_file_reader::get_data(uint32_t slice_id, uint32_t len_per_s
         std::vector<char>  ret_data;
         int readCnt = 0;
         m_fd.seekg(slice_id*len_per_slice, std::ios::beg);
-        
+
         ret_data.resize(len_per_slice);
         m_fd.read(ret_data.data(), len_per_slice);
         readCnt = m_fd.gcount();
@@ -108,7 +108,7 @@ std::vector<char> ws_file_reader::get_data(uint32_t slice_id, uint32_t len_per_s
         return ret_data;
     } catch (...){
         elog("Error, ws_file_reader error");
-        return std::vector<char>(); 
+        return std::vector<char>();
     }
 }
 
@@ -118,7 +118,6 @@ ws_file_writer::ws_file_writer(ws_info node, uint32_t len_per_slice, std::string
 ,m_file_name()
 ,m_manager(m),
 m_is_write(false)
-,m_write_size(0)
 ,m_len_per_slice(len_per_slice)
 {
     std::string download_dir = dir + "/" + WS_DOWNLOAD_RELATIVE_DIR + "/";
@@ -127,7 +126,7 @@ m_is_write(false)
     }
 
     m_file_name = download_dir + to_file_name(m_info.chain_id, m_info.block_height) + ".ws";
-    m_fd.open(m_file_name.c_str(), std::ios::out | std::ios::binary);    
+    m_fd.open(m_file_name.c_str(), std::ios::out | std::ios::binary);
     m_is_write = true;
 }
 
@@ -170,16 +169,16 @@ void ws_file_writer::write_data(uint32_t slice_id, const std::vector<char>& data
 
     m_fd.seekp(slice_id*m_len_per_slice, std::ios::beg);
     m_fd.write(data.data(), data_len);
-    m_write_size += data_len;
     return;
 }
 
 bool ws_file_writer::is_valid()
 {
-    if(m_write_size != m_info.file_size)
+    open_read();
+
+    if(bfs::file_size(m_file_name) != m_info.file_size)
         return false;
 
-    open_read();
     auto result = m_manager.calculate_file_hash(m_file_name);
 
     // ilog("isValid ${result} ==? ${hash_string}",  ("result", result.str())("hash_string", m_info.hash_string));
@@ -187,7 +186,7 @@ bool ws_file_writer::is_valid()
         m_valid = 1;
         return true;
     }
-    
+
     m_valid = 0;
     return false;
 }
@@ -205,10 +204,10 @@ void ws_file_writer::open_write()
     if(m_fd.is_open())
         m_fd.close();
 
-    m_fd.open(m_file_name.c_str(), std::ios::out | std::ios::binary);    
+    m_fd.open(m_file_name.c_str(), std::ios::out | std::ios::binary);
     m_is_write = true;
 }
-    
+
 void ws_file_writer::open_read()
 {
     if(!m_is_write)
@@ -219,7 +218,7 @@ void ws_file_writer::open_read()
         m_fd.close();
     }
 
-    m_fd.open(m_file_name.c_str(), std::ios::in | std::ios::binary);    
+    m_fd.open(m_file_name.c_str(), std::ios::in | std::ios::binary);
     m_is_write = false;
 }
 
@@ -230,7 +229,7 @@ ws_file_manager::ws_file_manager(std::string dir)
     if(m_dir_path.empty()){
         m_dir_path = (fc::app_path() / WS_DATA_DIR).string();
     }
-    
+
     if (!bfs::is_directory(m_dir_path)){
         bfs::create_directories(m_dir_path);
     }
@@ -274,11 +273,11 @@ std::list<ws_info> ws_file_manager::get_local_ws_info()
         std::string file_format = ".info";
         for (bfs::directory_iterator iter(m_dir_path); iter != bfs::directory_iterator(); ++iter){
             if (!bfs::is_regular_file(iter->status()) || bfs::extension(iter->path().string()) != file_format)
-                continue;            
+                continue;
 
             ws_info node;
             if(!load_local_info_file(iter->path().string(), node))
-                continue;      
+                continue;
 
             fc::sha256 chain_id;
             uint32_t block_height;
@@ -295,12 +294,12 @@ std::list<ws_info> ws_file_manager::get_local_ws_info()
                 continue;
 
             fc::variant var;
-            fc::to_variant(node, var); 
+            fc::to_variant(node, var);
             // ilog("getLocalInfo: ${var}", ("var", var));
-            retList.push_back(node); 
+            retList.push_back(node);
         }
         return retList;
-    } catch( ... ) {  
+    } catch( ... ) {
       elog("ERROR: get ws info fail");
       return std::list<ws_info>();
    }
@@ -332,7 +331,7 @@ std::shared_ptr<ws_file_reader> ws_file_manager::get_reader(ws_info node)
         if(it == node){
             m_reader_map[node] = std::make_shared<ws_file_reader>(node, m_dir_path);
             m_is_reader_activate_map[node] = true;
-            return m_reader_map[node];       
+            return m_reader_map[node];
         }
     }
 
@@ -346,7 +345,7 @@ std::shared_ptr<ws_file_writer>  ws_file_manager::get_writer(ws_info node, uint3
 
 fc::sha256 ws_file_manager::calculate_file_hash(std::string file_name)
 {
-    std::ifstream fd(file_name.c_str(), std::ios::in | std::ios::binary);    
+    std::ifstream fd(file_name.c_str(), std::ios::in | std::ios::binary);
     fc::sha256::encoder enc;
     char buffer[1024];
     fd.seekg(0, std::ios::beg);
@@ -375,38 +374,38 @@ void ws_file_manager::set_latest_vaild_ws(uint32_t vaild_block_height)
 }
 
 void ws_file_manager::start_delete_timer()
-{    
+{
     m_ws_delete_check->expires_from_now(m_ws_delete_period);
     m_ws_delete_check->async_wait([this](boost::system::error_code ec) {
         if (ec.value() == boost::asio::error::operation_aborted) { //cancelled
             ilog("delete timer cancelled");
             return;
-        } 
+        }
 
         auto start_again = fc::make_scoped_exit([this](){
             start_delete_timer();
          });
 
-        auto node_list = get_local_ws_info();        
+        auto node_list = get_local_ws_info();
 
         if (node_list.size() < m_max_ws_count)
             return;
 
         node_list.sort([](const ws_info &a, const ws_info &b){
             return a.block_height > b.block_height;
-        });        
-        
+        });
+
         auto count = m_max_ws_count;
         for(auto &node : node_list){
             if (m_reader_map.count(node) == 0 || m_is_reader_activate_map.count(node) == 0)//File was not open
                 continue;
-            
+
             if ( m_is_reader_activate_map[node] == true) { //file was used, set to false, erase from map in next timeout
                 m_is_reader_activate_map[node] = false;
             } else {
                 m_is_reader_activate_map.erase(node);
                 m_reader_map.erase(node);
-            }            
+            }
         }
 
         if(m_max_ws_count == -1) return;
@@ -429,7 +428,7 @@ void ws_file_manager::start_delete_timer()
             fc::remove(path(info_file_name));
             fc::remove(path(ws_file_name));
             ilog("Remove file: ${s}", ("s", ws_file_name));
-        } 
+        }
     });
 }
 
@@ -477,14 +476,14 @@ ws_helper::~ws_helper()
     if (m_reader)   m_reader.reset();
 
     if (m_id_writer)    m_id_writer->finalize();
-    
+
     if (m_writer)   m_writer->finalize();
 
     if (m_reader_fd.is_open())  m_reader_fd.close();
-        
+
     if (m_id_reader_fd.is_open())   m_id_reader_fd.close();
 
-    if (m_writer_fd.is_open()) { 
+    if (m_writer_fd.is_open()) {
         m_writer_fd.flush();
         m_writer_fd.close();
     }

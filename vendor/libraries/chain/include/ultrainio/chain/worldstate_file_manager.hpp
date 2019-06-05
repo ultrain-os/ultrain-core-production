@@ -20,7 +20,7 @@
 namespace ultrainio { namespace chain {
     struct ws_info{
         fc::sha256 chain_id;
-        uint32_t block_height; 
+        uint32_t block_height;
         std::string  hash_string;//hash of worldstate file
         uint32_t  file_size;
         friend bool operator == ( const ws_info& a, const ws_info& b ) {
@@ -46,7 +46,7 @@ namespace ultrainio { namespace chain {
             std::vector<char> get_data(uint32_t slice_id, uint32_t len_per_slice, bool& isEof);
             ws_file_reader(ws_info node, std::string dir);
             ~ws_file_reader();
-            
+
         private:
             void destory();
         private:
@@ -61,14 +61,14 @@ namespace ultrainio { namespace chain {
         public:
             void write_data(uint32_t slice_id, const std::vector<char>& data, uint32_t data_len);
             void write_finished();
-            bool is_valid();                  
+            bool is_valid();
             ws_file_writer(ws_info node, uint32_t len_per_slice, std::string dir, ws_file_manager& m);
             ~ws_file_writer();
 
         private:
             void open_write();
             void open_read();
-            void destory();  
+            void destory();
         private:
             ws_info m_info;
             std::fstream m_fd;
@@ -76,7 +76,6 @@ namespace ultrainio { namespace chain {
             std::string m_file_name;
             ws_file_manager& m_manager;
             bool m_is_write;
-            uint32_t m_write_size;
             uint32_t m_len_per_slice;
             friend class ws_file_manager;
     };
@@ -85,8 +84,8 @@ namespace ultrainio { namespace chain {
     {
         public:
             ws_file_manager(std::string dir = std::string());
-            ~ws_file_manager();        
-        public:   
+            ~ws_file_manager();
+        public:
             std::list<ws_info> get_local_ws_info();
             std::shared_ptr<ws_file_reader> get_reader(ws_info node);
             std::shared_ptr<ws_file_writer> get_writer(ws_info node, uint32_t len_per_slice);
@@ -114,7 +113,7 @@ namespace ultrainio { namespace chain {
        public:
             ws_helper(std::string old_ws, std::string new_ws);
             ws_helper(std::string ws_file, std::string id_file, bool isReload);
-            ~ws_helper();        
+            ~ws_helper();
         public:
             std::shared_ptr<istream_worldstate_reader> get_reader();
             std::shared_ptr<istream_worldstate_id_reader> get_id_reader();
@@ -123,26 +122,26 @@ namespace ultrainio { namespace chain {
 
             template<typename index_t> void restore_backup_indices(chainbase::database& worldstate_db, bool backup = true, void* data = nullptr){
                 using value_t = typename index_t::value_type;
-                
-                if(!get_id_reader() || !get_reader()) { 
-                    ilog("Don't exist old ws file, return"); 
+
+                if(!get_id_reader() || !get_reader()) {
+                    ilog("Don't exist old ws file, return");
                     return;
                 }
 
                 get_reader()->read_section<value_t>([&]( auto& reader_section ) {
                     get_id_reader()->read_start_id_section(boost::core::demangle(typeid(value_t).name()));
-                
+
                     bool more = !reader_section.empty();
                     bool id_more = !get_id_reader()->empty();
                     ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
-                    
+
                     while(more) {// insert the record to backup
                         uint64_t old_id = 0, size = 0;
                         get_id_reader()->read_id_row(old_id, size);
 
                         index_utils<index_t>::create(worldstate_db, [&]( auto &row ) {
                             row.id._id = old_id;
-                            more = reader_section.read_row(row, worldstate_db, backup, data);                           
+                            more = reader_section.read_row(row, worldstate_db, backup, data);
                         }, true);
                         id_more = get_id_reader()->is_more();
                         ULTRAIN_ASSERT(more == id_more, worldstate_exception, "Restore to backup indices error: the ws data conflict ");
@@ -179,7 +178,7 @@ namespace ultrainio { namespace chain {
                 ilog("remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
                 ilog("Cache count: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().cache().size()));
                 ilog("Backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
-                
+
                 //1:  add to backup if exit old ws file
                 restore_backup_indices<index_t>(worldstate_db);
 
@@ -196,10 +195,10 @@ namespace ultrainio { namespace chain {
 
             template<typename index_t> void read_table_from_worldstate(chainbase::database& worldstate_db, void* data = nullptr){
                 ULTRAIN_ASSERT(get_reader(), worldstate_exception, "Reader is nullptr, maybe ws file don't exist");
-                    
+
                 using value_t = typename index_t::value_type;
                 ilog("read_table_from_worldstate: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
-                
+
                 //Id file don't sync, so when restore, id file need to rebuild.
                 get_id_writer()->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
                 get_reader()->read_section<value_t>([&]( auto& section ) {

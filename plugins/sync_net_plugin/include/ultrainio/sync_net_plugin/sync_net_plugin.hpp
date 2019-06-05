@@ -27,6 +27,7 @@ namespace ultrainio {
         int32_t             code;
         string              des;
         string              host;
+        string              msg;
     };
 
     class sync_net_plugin : public appbase::plugin<sync_net_plugin>
@@ -58,6 +59,7 @@ namespace ultrainio {
         void                         set_vaild_ws(uint32_t vaild_block_height);
 
         size_t num_peers() const;
+        void sync_ws(const chain::ws_info& info, int try_cnt, int waiting_time = 0);
     private:
         std::unique_ptr<class sync_net_plugin_impl> my;
     };
@@ -66,4 +68,4 @@ namespace ultrainio {
 
 FC_REFLECT( ultrainio::connection_status, (peer)(connecting)(last_handshake) )
 FC_REFLECT( ultrainio::sync_wss_params, (chainId)(hosts) )
-FC_REFLECT( ultrainio::status_code,(code)(des)(host))
+FC_REFLECT( ultrainio::status_code,(code)(des)(host)(msg))

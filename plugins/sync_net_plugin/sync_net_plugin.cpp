@@ -103,6 +103,7 @@ namespace ultrainio {
         int                            connected_try_count = 0;
         std::list< std::function<void ()> >   connected_done_cb;
         bool                            enable_listen;
+        int                             max_requst_cnt;
 
         std::ifstream src_file;
         std::ofstream dist_file;
@@ -125,6 +126,7 @@ namespace ultrainio {
 
         void close( connection_ptr c );
         size_t count_open_sockets() const;
+        size_t count_connected_sockets();
 
         template<typename VerifierFunc>
         void send_all( const net_message &msg, VerifierFunc verify );
@@ -159,7 +161,7 @@ namespace ultrainio {
         void handle_message(connection_ptr c, const RspTestTimeMsg &msg);
 
         void start_broadcast(const net_message& msg);
-        void start_connect(std::function<void ()> connected_end_cb);
+        void start_connect(std::function<void ()> connected_end_cb, int waiting_time = 0);
         void start_connect_check_timer();
         void connect_done();
         void connect_all();
@@ -225,11 +227,12 @@ namespace ultrainio {
     constexpr auto     def_max_clients = 40; // 0 for unlimited clients
     constexpr auto     def_max_nodes_per_host = 1;
     constexpr auto     def_conn_retry_wait = 30;
+    constexpr auto     def_max_requst_cnt = 10;
 
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
     constexpr uint32_t  def_max_just_send = 1500; // roughly 1 "mtu"
 
-    constexpr auto     def_alive_time = 60; // 1 min
+    constexpr auto     def_alive_time = 120; // 2 min
 
     constexpr auto     message_header_size = 4;
 
@@ -711,92 +714,106 @@ namespace ultrainio {
 
         public:
             std::vector<connection_ptr>                     m_conns;
-            std::vector<chain::ws_info>                     m_conns_ws_info;
             sync_code                                       ws_states;
-            boost::asio::steady_timer::duration             conn_timeout;
-            std::unique_ptr<boost::asio::steady_timer>      conn_check_timer;
-            boost::asio::steady_timer::duration             sync_timeout;
-            std::unique_ptr<boost::asio::steady_timer>      sync_check_timer;
+            boost::asio::steady_timer::duration             timeout_num;
+            std::unique_ptr<boost::asio::steady_timer>      check_timer;
             chain::ws_info                                  m_require_ws_info;
-            connection_ptr                                  ws_sync_conn;
             std::shared_ptr<chain::ws_file_writer>          ws_writer;
-            uint32_t                                        slice_num;
-            uint32_t                                        selected_con_id;
             chain::ws_file_manager                          ws_file_manager;
             int	                                            num_of_hash_error;
             int                                             num_of_no_data;
             int	                                            len_per_slice;
             std::string	                                    ip_address;
+            std::vector<bool>                               request_vec;
+            int                                             last_slice_request;
+            int                                             loop_cnt;
+            boost::asio::steady_timer::duration             max_timeout_num;
+            int                                             cnt_connecting;
+            std::function<void (bool is_success)>           end_cb;
 
         public:
             sync_ws_manager();
             void sync_reset(sync_code st);
-            bool send_ws_sync_req(std::set< connection_ptr >& connections, const chain::ws_info& info);
+            bool send_ws_sync_req(std::set< connection_ptr >& connections, const chain::ws_info& info, std::function<void (bool is_success)> cb);
             void receive_ws_sync_rsp(connection_ptr c, const RspLastWsInfoMsg &msg);
-            void start_conn_check_timer();
-            int select_random_connect();
-            void remove_current_connect();
-            void send_file_sync_req(uint32_t slice_idx);
+            void start_timer(std::function<void ()> timer_out_cb, std::string text = "", bool is_first = true);
+            void send_file_sync_req(uint32_t slice_idx, connection_ptr con);
             void receive_file_sync_rsp(connection_ptr c, const FileTransferPacket &msg);
             void sync_ws_done();
             void receive_ws_sync_req(connection_ptr c, const ReqLastWsInfoMsg &msg);
             void receive_file_sync_req(connection_ptr c, const ReqWsFileMsg &msg);
             bool open_write();
-            int  get_status(std::string& ip);
+            int  get_status(std::string& ip, string& comment);
+            int find_next_sync_id(bool is_loop = true);
+            void start_sync();
+            std::string get_progress_str(bool is_format);
     };
 
     sync_ws_manager::sync_ws_manager(){
-        conn_timeout = {std::chrono::seconds{3}};
-        conn_check_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
-        sync_timeout = {std::chrono::seconds{5}};
-        sync_check_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
+        timeout_num = {std::chrono::seconds{1}};
+        check_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
         ws_states = none;
         len_per_slice = 1024*50; //50K per slice
         ip_address = "";
-        selected_con_id = 0;
+        max_timeout_num = {std::chrono::seconds{32}};
+        cnt_connecting = 0;
     }
 
     void sync_ws_manager::sync_reset(sync_code st){
+        ilog("sync_reset, state: ${st}", ("st", (int)st));
         ws_states = st;
-        ws_sync_conn.reset();
-        slice_num = 0;
         ws_writer.reset();
         m_conns.clear();
-        m_conns_ws_info.clear();
         num_of_no_data = 0;
         num_of_hash_error = 0;
-        selected_con_id = 0;
+        check_timer->cancel();
+        if (end_cb)
+            end_cb(ws_states == success);
     }
 
-    bool sync_ws_manager::send_ws_sync_req(std::set< connection_ptr >& connections, const chain::ws_info& info){
+    bool sync_ws_manager::send_ws_sync_req(std::set< connection_ptr >& connections, const chain::ws_info& info, std::function<void (bool is_success)> cb){
         ilog("start ws sync, info: ${info}", ("info", info));
         if (ws_states == waiting_respones || ws_states == syncing) {
             ilog("ws sync already start, return!!");
             return false;
         }
 
+        end_cb = cb;
         m_require_ws_info = info;
 
         ReqLastWsInfoMsg reqLastWsInfoMsg;
         reqLastWsInfoMsg.chain_id = info.chain_id;
         reqLastWsInfoMsg.block_height = info.block_height;
 
-        bool is_connection = false;
+        last_slice_request = -1;
+        int cnt_all = (info.file_size % len_per_slice  == 0 ? info.file_size / len_per_slice : info.file_size / len_per_slice + 1);
+        request_vec = std::vector<bool>(cnt_all, false);
+        loop_cnt = 2;
+
+        idump((cnt_all)(len_per_slice));
+        cnt_connecting = 0;
+        ip_address = "";
         for (const auto& c : connections) {
             if(c->current()) {
                 ilog ("send ws-sync request to peer: ${peer_address}", ("peer_address", c->peer_name()));
                 c->enqueue(net_message(reqLastWsInfoMsg));
-                ip_address = c->peer_address();
-                is_connection = true;
+
+                if(!ip_address.empty()) ip_address += ", ";
+                ip_address += c->peer_address();
+
+                cnt_connecting++;
             }
         }
 
-        if (!is_connection){
+        if (cnt_connecting == 0){
             sync_reset(no_connection);
             return false;
         }
 
-        start_conn_check_timer();
+        start_timer([this](){
+            ilog("waiting info timeout, don't receive enought rsps from all seed server");
+            start_sync();
+        }, "waiting sync rsp");
         ws_states = waiting_respones;
         return true;
     }
@@ -807,124 +824,153 @@ namespace ultrainio {
             return;
         }
 
-        const ultrainio::chain::ws_info& info = msg.info;
-        if(info.block_height == 0){ // no data
-            num_of_no_data++;
-            ilog("ws-sync info rsp: remote no ws! peer ${p}", ("p", c->peer_name()));
-            return;
-        }
+        do {
+            const ultrainio::chain::ws_info& info = msg.info;
+            if(info.block_height == 0){ // no data
+                num_of_no_data++;
+                ilog("ws-sync info rsp: remote no ws! peer ${p}", ("p", c->peer_name()));
+                break;
+            }
 
-        ilog("Receive ws-sync info rsp: ${msg}, peer:${p}", ("msg", info)("p", c->peer_name()));
-        auto it = find (m_conns.begin(), m_conns.end(), c);
-        if (it != m_conns.end()){
-            ilog("duplicate ws-sync info rsp from peer ${p}", ("p", c->peer_name()));
-            return;
-        }
+            ilog("Receive ws-sync info rsp: ${msg}, peer:${p}", ("msg", info)("p", c->peer_name()));
+            auto it = find (m_conns.begin(), m_conns.end(), c);
+            if (it != m_conns.end()){
+                ilog("duplicate ws-sync info rsp from peer ${p}", ("p", c->peer_name()));
+                break;
+            }
 
-        if(info != m_require_ws_info){
-           ilog("error ws-sync info from peer ${p}", ("p", c->peer_name()));
-           num_of_hash_error++;
-           return;
+            if(info != m_require_ws_info){
+                ilog("error ws-sync info from peer ${p}", ("p", c->peer_name()));
+                num_of_hash_error++;
+                break;
+            }
+
+            if(m_conns.empty())
+                ip_address = "";
+            else
+                ip_address += ", ";
+
+            ip_address += c->peer_address();
+
+            m_conns.emplace_back(c);
+            break;
+        } while(1);
+
+        cnt_connecting--;
+        if (cnt_connecting == 0){
+            check_timer->cancel();
+            start_sync();
         }
-        m_conns_ws_info.emplace_back(info);
-        m_conns.emplace_back(c);
     }
 
-    void sync_ws_manager::start_conn_check_timer() {
-        conn_check_timer->expires_from_now(conn_timeout);
-        conn_check_timer->async_wait([this](boost::system::error_code ec) {
-            if (ec.value() == boost::asio::error::operation_aborted) {
-                ilog("ws-sync connect checking timer canceled, ws-sync failed!!");
-                sync_reset(error);
+    void sync_ws_manager::start_sync() {
+        ws_states = syncing;
+        if (m_conns.size() == 0){
+            ilog("No valid connect!");
+            sync_code code;
+            if (num_of_hash_error > 0){
+                code = hash_error;
+            } else if (num_of_no_data > 0){
+                code = no_data;
             } else {
-                ilog("ws-sync connect timer out, start ws file sync");
-                if (m_conns.size() == 0){
-                    ilog("No valid connect!");
-                    sync_code code;
-                    if (num_of_hash_error > 0){
-                        code = hash_error;
-                    } else if (num_of_no_data > 0){
-                        code = no_data;
-                    } else {
-                        code = error;
-                    }
+                code = error;
+            }
 
-                    sync_reset(code);
-                } else {
-                    ws_states = syncing;
-                    slice_num = 0;
-                    send_file_sync_req(slice_num);
+            sync_reset(code);
+        } else {
+            ilog("start file sync");
+            bool is_send = false;
+            for (auto& con : m_conns){
+                for (int i = 0; i < 10; i++){
+                    auto idx = find_next_sync_id();
+                    if (idx >= 0 && idx < (int)request_vec.size())
+                        send_file_sync_req(idx, con);
+                        is_send = true;
                 }
+            }
+            if (!is_send){
+                ilog("Error, not send request");
+                sync_reset(error);
+            }
+        }
+    }
+
+    void sync_ws_manager::start_timer(std::function<void ()> timer_out_cb, std::string text, bool is_first) {
+        if (is_first)
+            timeout_num = {std::chrono::seconds{2}};
+
+        check_timer->expires_from_now(timeout_num);
+        check_timer->async_wait([this, timer_out_cb, text](boost::system::error_code ec) {
+            if (ec) return;
+
+            if (timeout_num < max_timeout_num){
+                ilog("start_timer run again, msg: ${text}", ("text", text));
+                timeout_num *= 2;
+                start_timer(timer_out_cb, text, false);
+            } else {
+                ilog("start_timer timeout, run cb: ${text}", ("text", text));
+                if (timer_out_cb)
+                    timer_out_cb();
             }
         });
     }
 
-    int sync_ws_manager::select_random_connect() {
-        if (m_conns.size() <= 0)
-            return -1;
-
-        std::srand(std::time(nullptr));
-        return std::rand() % m_conns.size();
-    }
-
-    void sync_ws_manager::remove_current_connect() {
-        int idx = -1;
-        for(int i = 0; i < m_conns.size(); i++){
-            if(m_conns[i] == ws_sync_conn){
-                idx = i;
+    int sync_ws_manager::find_next_sync_id(bool is_loop){
+        for (int i = last_slice_request + 1; i < request_vec.size(); i++){
+            if (request_vec[i] == false){
+                return i;
             }
         }
 
-        if (idx == -1) return;
+        if (!is_loop)
+            return request_vec.size();
 
-        ilog("ws-sync remove current connect. peer name:  ${p}", ("p", ws_sync_conn->peer_name()));
-        m_conns_ws_info.erase(m_conns_ws_info.begin() + idx);
-        m_conns.erase(m_conns.begin() + idx);
-        ws_sync_conn.reset();
+        loop_cnt--;
+        bool is_all_done = true;
+        int ret = 0;
+        for (int i = 0; i < request_vec.size(); i++){
+            if (request_vec[i] == false){
+                is_all_done = false;
+                ret = i;
+                break;
+            }
+        }
+
+        if (is_all_done) {
+            return request_vec.size();
+        } else {
+            if (loop_cnt <= 0)
+                return -1;
+            else
+                return ret;
+        }
     }
 
-    void sync_ws_manager::send_file_sync_req(uint32_t slice_idx){
-        if (!ws_sync_conn) {
-            int index = select_random_connect();
-            if (index < 0) {
-                elog("No any connection");
-                sync_reset(error);//error
-                return;
-            }
-            ws_sync_conn = m_conns[index];
-            ip_address = ws_sync_conn->peer_address();
-            selected_con_id = index;
-            ilog("ws select conect: ${p} ${t} ${ip}", ("p", index)("t", ws_sync_conn->peer_name())("ip", ip_address));
-        }
+    void sync_ws_manager::send_file_sync_req(uint32_t slice_idx, connection_ptr con){
+        last_slice_request = slice_idx;
+        if (slice_idx % 10 == 0)
+            ilog("send_file_sync_req ${t}  by ${x}", ("t", slice_idx)("x", con->peer_name()));
 
         ReqWsFileMsg reqWsFileMsg;
         reqWsFileMsg.lenPerSlice = len_per_slice;
-        reqWsFileMsg.info = m_conns_ws_info[selected_con_id];
+        reqWsFileMsg.info = m_require_ws_info;
         reqWsFileMsg.index = slice_idx;
-        ws_sync_conn->enqueue(net_message(reqWsFileMsg));
+        con->enqueue(net_message(reqWsFileMsg));
 
-        sync_check_timer->cancel();
-        sync_check_timer->expires_from_now(sync_timeout);
-        sync_check_timer->async_wait([this, slice_idx](boost::system::error_code ec) {
-            if(ec) return;
-
-            ilog("req slice ${slice_idx} timeout, peer ${p}", ("slice_idx", slice_idx)("p", ws_sync_conn->peer_name()));
-            remove_current_connect();
-
-            //request the slice again
-            send_file_sync_req(slice_idx);
-        });
+        start_timer([this](){
+            ilog("waiting file_sync_rsp timeout, don't receive all data");
+            sync_reset(error);
+        }, "waiting slice");
     }
 
     void sync_ws_manager::receive_file_sync_rsp(connection_ptr c, const FileTransferPacket &msg){
-        if (c != ws_sync_conn)
+        if (ws_states != syncing) {
+            elog("Receive not need data: ${p}, slice id: ${id}", ("p", c->peer_name())("id", msg.sliceId));
             return;
+        }
 
-        sync_check_timer->cancel();
-        if (msg.sliceId > m_require_ws_info.file_size / len_per_slice || msg.chunkLen <= 0){
+        if (msg.sliceId >= request_vec.size()|| msg.chunkLen <= 0){
             elog("Receive error/no data from ${p}, slice id: ${id}", ("p", c->peer_name())("id", msg.sliceId));
-            remove_current_connect();
-            send_file_sync_req(slice_num);
             return;
         }
 
@@ -934,15 +980,22 @@ namespace ultrainio {
             return;
         }
 
-        if (msg.sliceId % 1000 == 0)
-            ilog("receive worldstate sync data, sliceId: ${id}", ("id", msg.sliceId));
+        if (msg.sliceId % 10 == 0) {
+            ilog("Receive data: ${p}, slice id: ${id}   size ${s}", ("p", c->peer_name())("id", msg.sliceId)("s", msg.chunkLen));
+            ilog("Progress: ${ct}", ("ct", get_progress_str(false)));
+        }
 
         ws_writer->write_data(msg.sliceId, msg.chunk, msg.chunkLen);
-        if(msg.endOfFile || msg.sliceId == m_require_ws_info.file_size / len_per_slice){//receive end data
+        request_vec[msg.sliceId] = true;
+
+        auto next_id = find_next_sync_id();
+        ilog("receive ${r}, next is: ${n}", ( "r", msg.sliceId)("n", next_id));
+
+        if (next_id >= (int)request_vec.size()){ //sync done
+            ilog("Progress: ${ct}", ("ct", get_progress_str(false)));
             sync_ws_done();
-        } else {
-            slice_num++;
-            send_file_sync_req(slice_num);
+        } else if (next_id >= 0) {
+            send_file_sync_req(next_id, c);
         }
     }
 
@@ -951,11 +1004,8 @@ namespace ultrainio {
         ilog("ws-sync done, ws file is_valid: ${ret}", ("ret", ret));
         ws_writer.reset();
 
-        if(!ret){//require ws from other connection
-            remove_current_connect();
-            ilog("restart ws-sync");
-            slice_num = 0;
-            send_file_sync_req(slice_num);
+        if(!ret){
+            sync_reset(hash_error);
         } else {
             sync_reset(success);
         }
@@ -974,6 +1024,7 @@ namespace ultrainio {
         }
 
         for(auto& it : infoList){
+            ilog("infoList ${t}", ("t", it));
             if(msg.chain_id != it.chain_id)
                 continue;
 
@@ -993,7 +1044,7 @@ namespace ultrainio {
     }
 
     void sync_ws_manager::receive_file_sync_req(connection_ptr c, const ReqWsFileMsg &msg) {
-        if (msg.index < 5 || msg.index % 1000 == 0)
+        if (msg.index < 5 || msg.index % 10 == 0)
             ilog("recieved ReqWsFileMsg, ${msg}", ("msg", msg));
 
         FileTransferPacket file_tp_msg;
@@ -1031,27 +1082,16 @@ namespace ultrainio {
         if (ws_writer)
             return true;
 
-        int i = 0;
-        for(; i < m_conns.size(); i++){
-            if(m_conns[i] == ws_sync_conn){
-                break;
-            }
-        }
-
-        if (i ==  m_conns.size()){
-            elog("Not find right connect");
-            return false;
-        }
-
-        ws_writer = ws_file_manager.get_writer(m_conns_ws_info[i], len_per_slice);
+        ws_writer = ws_file_manager.get_writer(m_require_ws_info, len_per_slice);
         if (!ws_writer){
             return false;
         }
         return true;
     }
 
-    int  sync_ws_manager::get_status(std::string& ip) {
-        ip = ws_sync_conn ? ws_sync_conn->peer_address() : ip_address;
+    int  sync_ws_manager::get_status(std::string& ip, string& comment) {
+        ip = ip_address;
+        comment = get_progress_str(true);
         if (ws_states == success)
             return 0;
         else if (ws_states == waiting_respones || ws_states == syncing){
@@ -1066,6 +1106,21 @@ namespace ultrainio {
 
         return 5;
     }
+
+    std::string sync_ws_manager::get_progress_str(bool is_format){
+        if (request_vec.size() <= 0)
+            return "0%";
+
+        int cnt = 0;
+        for(auto node : request_vec)
+            if(node) cnt += 1;
+
+        if (is_format)
+            return std::to_string(cnt*100/request_vec.size()) + "%";
+        else
+            return std::to_string(cnt) + "/" + std::to_string(request_vec.size());
+    }
+
     //------------------------------------------------------------------------
     class sync_blocks_manager {
         public:
@@ -1105,7 +1160,7 @@ namespace ultrainio {
             void receive_blocks_file_sync_req(connection_ptr c, const ReqBlocksFileMsg &msg);
             void open_write();
             void open_read(bool reload = false);
-            int  get_status(std::string& ip);
+            int  get_status(std::string& ip, string& comment);
     };
 
     sync_blocks_manager::sync_blocks_manager(){
@@ -1440,7 +1495,7 @@ namespace ultrainio {
         m_is_read = true;
     }
 
-    int  sync_blocks_manager::get_status(std::string& ip) {
+    int  sync_blocks_manager::get_status(std::string& ip, string& comment) {
         ip = sync_connect_ptr ? sync_connect_ptr->peer_address() : ip_address;
         if (blocks_sync_states == success)
             return 0;
@@ -1748,6 +1803,15 @@ namespace ultrainio {
       return count;
    }
 
+    size_t sync_net_plugin_impl::count_connected_sockets()
+    {
+        size_t count = 0;
+        for( auto &c : connections) {
+            if(c->connected())
+                ++count;
+        }
+        return count;
+    }
 
    template<typename VerifierFunc>
    void sync_net_plugin_impl::send_all( const net_message &msg, VerifierFunc verify) {
@@ -1957,20 +2021,31 @@ namespace ultrainio {
          });
    }
 
-    void sync_net_plugin_impl::start_connect(std::function<void ()> connected_end_cb) {
+    void sync_net_plugin_impl::start_connect(std::function<void ()> connected_end_cb, int waiting_time) {
         connected_done_cb.push_back(connected_end_cb);
         if (is_connecting)
             return;
 
-        if (supplied_peers.size() == connections.size() && count_open_sockets() == connections.size() ){
+        if (supplied_peers.size() == connections.size() && count_connected_sockets() == connections.size() ){
             connect_done();
             return;
         }
 
         connected_try_count = 0;
         is_connecting = true;
-        connect_all();
-        start_connect_check_timer();
+
+        if (waiting_time > 0){
+            connect_check_timer->expires_from_now(std::chrono::seconds{waiting_time});
+            connect_check_timer->async_wait([this](boost::system::error_code ec) {
+                if (ec) { return;}
+
+                connect_all();
+                start_connect_check_timer();
+            });
+        } else {
+            connect_all();
+            start_connect_check_timer();
+        }
     }
 
     void sync_net_plugin_impl::start_connect_check_timer() {
@@ -1981,9 +2056,9 @@ namespace ultrainio {
                 connect_check_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
                 start_connect_check_timer();
             } else {
-                if (count_open_sockets() == connections.size() || count_open_sockets() >= 2) {
+                if (count_connected_sockets() == connections.size() || count_connected_sockets() >= 3) {
                     connect_done();
-                } else if(connected_try_count >= 60){// try 60 times
+                } else if(connected_try_count >= 160){// try 80 times, 160*500ms = 80s
                     connect_done();
                 } else {
                     start_connect_check_timer();
@@ -2039,7 +2114,7 @@ namespace ultrainio {
 
             for (auto itr = connections.begin(); itr != connections.end(); ) {
                 auto& c = *itr;
-                if (current_time - c->last_recv_time > fc::seconds(def_alive_time)) { //more than 60 seconds
+                if (current_time - c->last_recv_time > fc::seconds(def_alive_time)) { //more than 120 seconds
                     ilog("disconnect timeout, close ${p}, last_recv_time ${t}", ("p", c->peer_name())("t", c->last_recv_time));
                     close(c);
                     itr = connections.erase(itr);
@@ -2101,6 +2176,7 @@ namespace ultrainio {
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
          ( "network-version-match", bpo::value<bool>()->default_value(false), "True to require exact match of peer network version.")
          ( "enable-listen", bpo::value<bool>()->default_value(true), "True to enable p2p listen.")
+         ( "max-requst-cnt", bpo::value<int>()->default_value(def_max_requst_cnt), "Max number of times to sync ws.")
         ;
    }
 
@@ -2119,6 +2195,7 @@ namespace ultrainio {
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
          my->enable_listen = options.at( "enable-listen" ).as<bool>();
+         my->max_requst_cnt = options.at( "max-requst-cnt" ).as<int>();
          my->num_clients = 0;
          my->started_sessions = 0;
 
@@ -2263,12 +2340,38 @@ namespace ultrainio {
       return result;
    }
 
+    void sync_net_plugin::sync_ws(const chain::ws_info& info, int try_cnt, int waiting_time){
+        ilog("request sync_ws, try cnt: ${try_cnt}, wainit time: ${waiting_time}", ("try_cnt", try_cnt)("waiting_time", waiting_time));
+
+        my->start_connect([this, info, try_cnt](){
+            my->m_sync_ws_manager->send_ws_sync_req(my->connections, info, [this, info, try_cnt](bool is_success){
+                if(is_success)
+                    return;
+
+                int cnt = try_cnt;
+                cnt--;
+
+                if (cnt <= 0){
+                    elog("Sync ws failed, try cnt is: ${cnt}", ("cnt", cnt));
+                    return;
+                }
+
+                // close all connects
+                for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
+                    (*itr)->reset();
+                    my->close(*itr);
+                    my->connections.erase(itr);
+                }
+
+                //set waiting some seconds, then try again
+                sync_ws(info, cnt, 5 + 2*(my->max_requst_cnt - try_cnt));
+            });
+        }, waiting_time);
+    }
+
     string sync_net_plugin::require_ws(const chain::ws_info& info) {
         ilog("require ws");
-        my->start_connect([this, info](){
-            my->m_sync_ws_manager->send_ws_sync_req(my->connections, info);
-        });
-
+        sync_ws(info, my->max_requst_cnt);
         return "success";
     }
 
@@ -2284,43 +2387,44 @@ namespace ultrainio {
 
     status_code sync_net_plugin::ws_status(string id){
         std::string ip = "";
+        std::string comment;
 
-        if (my->is_connecting){
+        if (my->is_connecting) {
             ilog("ws_status: connecting");
-            return {1, "ongoing", ""};
+            return {1, "ongoing", ip, comment};
         }
 
         if(id == "ws") {
-            int code = my->m_sync_ws_manager->get_status(ip);
+            int code = my->m_sync_ws_manager->get_status(ip, comment);
             switch (code) {
                 case 0:
-                    return {0,"success", ip};
+                    return {0,"success", ip, comment};
                 case 1:
-                    return {1,"ongoing",ip};
+                    return {1,"ongoing",ip, comment};
                 case 2:
-                    return {2,"endpoint unreachable",ip};
+                    return {2,"endpoint unreachable",ip, comment};
                 case 3:
-                    return {3,"hash not match",ip};
+                    return {3,"hash not match",ip, comment};
                 case 4:
-                    return {4,"no data",ip};
+                    return {4,"no data",ip, comment};
                 default :
-                    return {5,"error","unknow reason"};
+                    return {5, "error", "unknow reason", comment};
             }
         } else if (id == "block"){
-            int code = my->m_sync_blocks_manager->get_status(ip);
+            int code = my->m_sync_blocks_manager->get_status(ip, comment);
             switch (code) {
                 case 0:
-                    return {0,"success", ip};
+                    return {0,"success", ip, comment};
                 case 1:
-                    return {1,"ongoing",ip};
+                    return {1,"ongoing",ip, comment};
                 case 2:
-                    return {2,"endpoint unreachable",ip};
+                    return {2,"endpoint unreachable",ip, comment};
                 case 3:
-                    return {3,"header not match",ip};
+                    return {3,"header not match",ip, comment};
                 case 4:
-                    return {4,"no data",ip};
+                    return {4,"no data",ip, comment};
                 default :
-                    return {5,"error","unknow reason"};
+                    return {5,"error","unknow reason", comment};
             }
         } else if(id == "connect") {
             std::string ip_text = "";
@@ -2335,10 +2439,10 @@ namespace ultrainio {
                 name_text += c->peer_name();
             }
 
-            return {0, "peerName_list: "+name_text, "ip_list: "+ip_text};
+            return {0, "peerName_list: "+name_text, "ip_list: "+ip_text, comment};
         }
 
-        return {-1,"error input", ""};
+        return {-1,"error input", "", comment};
     }
 
     string sync_net_plugin::repair_blog(string path,int32_t height){
