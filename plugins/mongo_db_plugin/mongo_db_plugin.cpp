@@ -46,6 +46,7 @@ using chain::signed_transaction;
 using chain::signed_block;
 using chain::transaction_id_type;
 using chain::packed_transaction;
+using chain::packed_generated_transaction;
 
 static appbase::abstract_plugin& _mongo_db_plugin = app().register_plugin<mongo_db_plugin>();
 
@@ -1342,6 +1343,12 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
             const auto& raw = pt.get_raw_transaction();
             const auto& trx = fc::raw::unpack<transaction>( raw );
             if( !filter_include( trx ) ) continue;
+            const auto& id = trx.id();
+            trx_id_str = id.str();
+         } else if(receipt.trx.contains<packed_generated_transaction>()) {
+            const auto& pgt = receipt.trx.get<packed_generated_transaction>();
+            const auto& trx = pgt.get_transaction();
+            if(!filter_include(trx)) continue;
             const auto& id = trx.id();
             trx_id_str = id.str();
          } else {

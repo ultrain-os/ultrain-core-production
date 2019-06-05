@@ -435,6 +435,14 @@ namespace ultrainio {
                             result.trx = move(r);
                             break;
                         }
+                    } else if(receipt.trx.contains<packed_generated_transaction>()) {
+                        auto &pgt = receipt.trx.get<packed_generated_transaction>();
+                        if(result.id == pgt.id()) {
+                            fc::mutable_variant_object r("receipt", receipt);
+                            r("trx", chain.to_variant_with_abi(pgt, abi_serializer_max_time));
+                            result.trx = move(r);
+                            break;
+                        }
                     } else {
                         auto &id = receipt.trx.get<transaction_id_type>();
                         if (id == result.id) {
@@ -460,6 +468,20 @@ namespace ultrainio {
                         result.block_time = blk->timestamp;
                         fc::mutable_variant_object r("receipt", receipt);
                         r("trx", chain.to_variant_with_abi(mtrx.trx, abi_serializer_max_time));
+                        result.trx = move(r);
+                        found = true;
+                        break;
+                     }
+                  } else if(receipt.trx.contains<packed_generated_transaction>()) {
+                     auto& pgt = receipt.trx.get<packed_generated_transaction>();
+                     auto trx_id = pgt.id();
+                     if (fc::variant(trx_id).as_string().substr(0, 8) == short_id) {
+                        result.id = trx_id;
+                        result.last_irreversible_block = chain.last_irreversible_block_num();
+                        result.block_num = *p.block_num_hint;
+                        result.block_time = blk->timestamp;
+                        fc::mutable_variant_object r("receipt", receipt);
+                        r("trx", chain.to_variant_with_abi(pgt, abi_serializer_max_time));
                         result.trx = move(r);
                         found = true;
                         break;
