@@ -116,8 +116,8 @@ void apply_ultrainio_newaccount(apply_context& context) {
       a.creation_date = context.control.pending_block_time();
    });
    const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_noadd_unessential_table = ro_api.is_exec_patch_code( config::patch_update_version::not_add_unessential_table );
-   if(!is_exec_noadd_unessential_table){
+   bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
+   if(!is_exec_add_account_sequence_object){
       db.create<account_sequence_object>([&](auto& a) {
          a.name = create.name;
       });
@@ -188,8 +188,8 @@ void apply_ultrainio_setcode(apply_context& context) {
 
    });
    const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_noadd_unessential_table = ro_api.is_exec_patch_code( config::patch_update_version::not_add_unessential_table );
-   if( is_exec_noadd_unessential_table ){
+   bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
+   if( is_exec_add_account_sequence_object ){
       auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>(act.account);
       if( !sequence_obj_itr ){
          db.create<account_sequence_object>([&](auto & a) {
@@ -241,8 +241,8 @@ void apply_ultrainio_setabi(apply_context& context) {
          memcpy( a.abi.data(), act.abi.data(), abi_size );
    });
    const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_noadd_unessential_table = ro_api.is_exec_patch_code( config::patch_update_version::not_add_unessential_table );
-   if( is_exec_noadd_unessential_table ){
+   bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
+   if( is_exec_add_account_sequence_object ){
       auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>(act.account);
       if( !sequence_obj_itr ){
          db.create<account_sequence_object>([&](auto & a) {

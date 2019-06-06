@@ -120,6 +120,7 @@ enum patch_update_version{
     not_add_unessential_table = 3,  //Do not create unnecessary tables when creating accounts
     lifecycle_onfinish = 4,
     verify_genesis_signature_in_lightclient = 5,
+    add_account_sequence_object = 6, //Add account_sequence_object to reduce memory usage
 };
 
 } } } // namespace ultrainio::chain::config

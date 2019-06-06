@@ -918,8 +918,8 @@ uint64_t apply_context::next_global_sequence() {
 
 uint64_t apply_context::next_recv_sequence( account_name receiver ) {
    const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_noadd_unessential_table = ro_api.is_exec_patch_code( config::patch_update_version::not_add_unessential_table );
-   if( is_exec_noadd_unessential_table ){
+   bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
+   if( is_exec_add_account_sequence_object ){
       auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>(receiver);
       if( !sequence_obj_itr ){
          db.create<account_sequence_object>([&](auto & a) {
@@ -943,8 +943,8 @@ uint64_t apply_context::next_recv_sequence( account_name receiver ) {
 }
 uint64_t apply_context::next_auth_sequence( account_name actor ) {
    const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_noadd_unessential_table = ro_api.is_exec_patch_code( config::patch_update_version::not_add_unessential_table );
-   if( is_exec_noadd_unessential_table ){
+   bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
+   if( is_exec_add_account_sequence_object ){
       auto const* auth_sequence_obj_itr = db.find<auth_sequence_object, by_name>(actor);
       if( !auth_sequence_obj_itr ){
          db.create<auth_sequence_object>([&](auto & a) {

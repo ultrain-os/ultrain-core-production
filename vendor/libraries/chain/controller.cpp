@@ -812,8 +812,8 @@ struct controller_impl {
          }
       });
       const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-      bool  is_exec_noadd_unessential_table = ro_api.is_exec_patch_code( config::patch_update_version::not_add_unessential_table );
-      if( !is_exec_noadd_unessential_table ){
+      bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
+      if( !is_exec_add_account_sequence_object ){
          db.create<account_sequence_object>([&](auto & a) {
             a.name = name;
          });
