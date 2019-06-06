@@ -33,7 +33,25 @@ async function startEntry() {
 
     logger.info("waiting sync config data....");
     //等待配置信息同步完成
-    await chainConfig.waitSyncConfig()
+    await chainConfig.syncConfig();
+    let count = 0;
+    let res = chainConfig.isReady();
+    while (res.result == false) {
+        logger.error("chainConfig.isReady error:",res.msg);
+        count++;
+        sleep.msleep(1000 * 1);
+        await chainConfig.syncConfig();
+        logger.info("config is not ready ,wait to next check...("+count+")");
+        monitor.setErrorStartup(res.msg);
+        if (count >= 10) {
+            count =0;
+            logger.info("config is not ready,do monitor check");
+            await monitor.checkIn();
+            sleep.msleep(1000 * 1);
+            await chainConfig.syncConfig();
+        }
+        res = chainConfig.isReady();
+    }
     logger.info("sync config success");
 
     //定时同步时间

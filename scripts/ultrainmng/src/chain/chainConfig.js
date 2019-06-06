@@ -151,29 +151,58 @@ ChainConfig.syncConfig = async function () {
     try {
         logger.info("start sync config info");
 
-        /**
-         * check seed config is not null
-         */
-        if (this.seedIpConfig.length == 0) {
-            logger.error("seed info is null,reload again");
-            await this.syncSeedIpConfig();
-            if (this.seedIpConfig.length ==0) {
-                logger.error("seed info is still null");
-                return;
-            }
-        }
+
 
         /**
          * 读取管家程序自己的config文件来读取
          */
         chainUtil.checkFileExist(this.configPath);
 
-        var configIniLocal = ini.parse(fs.readFileSync(this.configPath, constant.encodingConstants.UTF8));
-        logger.info('configIniLocal=', configIniLocal);
+        var configIniLocal;
+        try {
+            configIniLocal = ini.parse(fs.readFileSync(this.configPath, constant.encodingConstants.UTF8));
+        } catch (e) {
+            logger.error("read ultrainmng config error",e);
+            logger.info("start ultrainmng use default config ");
+            configIniLocal = { prefix: 'http://',
+                path: '/root/.local/share/ultrainio/nodultrain/config/config.ini',
+                nodpath: '/root',
+                wsspath: '/root',
+                mngpath: '/root/ultrainmng/src',
+                randToolsPath: '/root/voterand/scripts/rand',
+                localtest: false,
+                worldstate: true,
+                wsSyncBlock: false,
+                monitor: true,
+                enableRestart: true,
+                seedFileUpdate: true,
+                nodLogPath: '/log',
+                blockSyncCycle: '*/10 * * * * *',
+                chainSyncCycle: '*/60 * * * * *',
+                worldstateSyncCycle: '*/60 * * * * *',
+                resourceSyncCycle: '0 0 * * * *',
+                monitorSyncCycle: '*/60 * * * * *' };
+        }
         this.configFileData.local = configIniLocal;
+        logger.info('configIniLocal=', configIniLocal);
+
 
         //读取nodultrain程序中的config.ini
-        var configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path, constant.encodingConstants.UTF8));
+        var configIniTarget
+        try {
+            configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path, constant.encodingConstants.UTF8));
+        } catch (e) {
+            logger.error("read nod config eroor:",e);
+            configIniTarget = {
+                'monitor-server-endpoint': 'http://23.96.116.160:8078',
+                'my-account-as-committee': constant.UNKNOWN_USER,
+                'my-sk-as-committee': '111',
+                'my-sk-as-account': '111',
+                'my-bls-sk': '111',
+                'chain-name': 'unknow'
+            }
+        }
+
         logger.info('configIniTarget(nodultrain)=', configIniTarget);
         this.configFileData.target = configIniTarget;
 
@@ -204,6 +233,18 @@ ChainConfig.syncConfig = async function () {
             this.localChainName = this.configFileData.target["chain-name"];
             logger.info("get chainName form config : ",this.localChainName);
             logger.info("chain name :"+this.localChainName);
+
+            /**
+             * check seed config is not null
+             */
+            if (this.seedIpConfig.length == 0) {
+                logger.error("seed info is null,reload again");
+                await this.syncSeedIpConfig();
+                if (this.seedIpConfig.length ==0) {
+                    logger.error("seed info is still null");
+                    return;
+                }
+            }
 
             this.config.seedHttpList = await  chainApi.getChainHttpList(constant.chainNameConstants.MAIN_CHAIN_NAME,this);
             let randomSeed = this.randomSeed("0",this.myAccountAsCommittee,this.config.seedHttpList);
@@ -287,6 +328,11 @@ ChainConfig.randomSeed = function(chainName,user,seedList) {
  */
 ChainConfig.isReady = function () {
 
+    let res = {
+        result : false,
+        msg : ""
+    }
+
 
     //校验主链的id
     // if (!utils.isAllNotNull(this.config.chainId)) {
@@ -295,23 +341,26 @@ ChainConfig.isReady = function () {
     // }
 
     //用户信息为空
-    // if (!utils.isAllNotNull(this.myAccountAsCommittee, this.mySkAsCommittee)) {
-    //     logger.error("chainconfig user account is null");
-    //     return false;
-    // }
+    if (!utils.isAllNotNull(this.myAccountAsCommittee, this.mySkAsCommittee) || this.myAccountAsCommittee == constant.UNKNOWN_USER) {
+        logger.error("chainconfig user account is null,please check config.ini file is ready.....");
+        res.msg = "chainconfig user account is null,please check config.ini file is ready.....";
+        return res;
+    }
 
     /**
      * u3 object
      */
     if (!utils.isAllNotNull(this.u3, this.u3Sub)) {
         logger.error("chainconfig u3 && u3Sub is not ready");
-        return false;
+        res.msg = "chainconfig u3 && u3Sub is not ready";
+        return res;
     }
 
     //链信息查询
     if (this.localChainName == null) {
         logger.error("chainName can't be null:"+this.configSub.localChainName);
-        return false;
+        res.msg = "chainName can't be null:"+this.configSub.localChainName;
+        return res;
     }
 
     // logger.error("seed info length can't be null:",this.seedIpConfig.length);
@@ -319,7 +368,8 @@ ChainConfig.isReady = function () {
     //seed为空
     if (utils.isNull(this.seedIpConfig) || this.seedIpConfig.length <= 0 || this.seedIpConfig.toString().length <= 20) {
         logger.error("seed info can't be null:",this.seedIpConfig);
-        return false;
+        res.msg = "seed info can't be null:";
+        return res;
     }
 
     // if (this.configSub.chainId == null) {
@@ -327,9 +377,8 @@ ChainConfig.isReady = function () {
     //     return false;
     // }
 
-
-
-    return true;
+    res.result = true;
+    return res;
 }
 
 /**
@@ -339,7 +388,7 @@ ChainConfig.isReady = function () {
 ChainConfig.waitSyncConfig = async function () {
     await this.syncConfig();
     while (!this.isReady()) {
-        sleep.msleep(1000 * 5);
+        sleep.msleep(1000 * 10);
         await this.syncConfig();
         logger.info("config is not ready ,wait to next check...")
     }

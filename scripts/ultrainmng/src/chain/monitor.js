@@ -69,6 +69,8 @@ var maxBlockSubmitorNum = 3;
 var totalmem = 0;
 var freemem = 0;
 
+var errorStartUpMsg = ""
+
 
 /**
  * 通过命令行获取内存用量
@@ -103,7 +105,7 @@ function getMemFromCmd() {
  * 获取os info
  */
 function getOsInfo() {
-    let osInfo = {loadAvg :"",uptime : 0,totalmem:0,freemem:0,system:"",cpus:[]};
+    let osInfo = {loadAvg :"",uptime : 0,totalmem:0,freemem:0,system:"",cpus:[],errorStartUpMsg:{}};
     try {
         getMemFromCmd();
         osInfo.uptime = os.uptime();
@@ -133,7 +135,7 @@ function getOsInfo() {
         }
         osInfo.cpus = cpus;
 
-
+        osInfo.errorStartUpMsg = errorStartUpMsg;
     } catch (e) {
         logger.error("getOsInfo error")
     }
@@ -279,6 +281,7 @@ async function getSeedConfigVersion() {
  * @returns {*}
  */
 function getMonitorUrl() {
+    logger.error("monitor url:",chainConfig.configFileData.target[iniConstants.MONITOR_SERVER_ENDPOINT]);
     return chainConfig.configFileData.target[iniConstants.MONITOR_SERVER_ENDPOINT];
 }
 
@@ -396,7 +399,6 @@ async function checkIn() {
      //logger.error("osinfo:",osInfo);
 
     logger.info("monitor checkin start");
-    logger.info("monitor check in(http:" + getMonitorUrl());
 
     let param = await buildParam();
 
@@ -1421,6 +1423,14 @@ async function logrotate() {
     logger.info("logrotate end");
 }
 
+/**
+ * 设置启动错误信息
+ * @param msg
+ */
+function setErrorStartup(msg) {
+    errorStartUpMsg = msg;
+}
+
 
 module.exports = {
     checkIn,
@@ -1449,4 +1459,5 @@ module.exports = {
     clearLogData,
     uploadRamUsage,
     logrotate,
+    setErrorStartup,
 }

@@ -162,6 +162,9 @@ var PRIVATE_KEY = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC6TQALgms1BnT02fowOtSGG
 //API验证时间前后不超过1小时（单位ms）
 var API_MAX_INTEVAL_TIME = 1000 * 60 * 60;
 
+//未知用户
+var UNKNOWN_USER = "unknown001";
+
 module.exports = {
     cmdConstants,
     encodingConstants,
@@ -180,4 +183,5 @@ module.exports = {
     statusConstants,
     PRIVATE_KEY,
     API_MAX_INTEVAL_TIME,
+    UNKNOWN_USER,
 }
