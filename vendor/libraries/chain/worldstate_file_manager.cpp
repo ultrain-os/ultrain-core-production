@@ -225,6 +225,7 @@ void ws_file_writer::open_read()
 ws_file_manager::ws_file_manager(std::string dir)
 :m_dir_path(dir)
 ,m_max_ws_count(-1)
+,long_term_interval(0)
 {
     if(m_dir_path.empty()){
         m_dir_path = (fc::app_path() / WS_DATA_DIR).string();
@@ -236,7 +237,7 @@ ws_file_manager::ws_file_manager(std::string dir)
 
     latest_vaild_node = 0;
 
-    m_ws_delete_period = {std::chrono::seconds{30}};
+    m_ws_delete_period = {std::chrono::seconds{10*60}};
     m_ws_delete_check.reset(new boost::asio::steady_timer(appbase::app().get_io_service()));
     start_delete_timer();
 }
@@ -284,18 +285,15 @@ std::list<ws_info> ws_file_manager::get_local_ws_info()
             if(!from_file_name(iter->path().string(), chain_id, block_height))
                 continue;
 
-            // ilog("getLocalInfo: ${chain_id} ${block_height}", ("chain_id",chain_id)("block_height",block_height));
             if(chain_id != node.chain_id || block_height != node.block_height)
                 continue;
 
             std::string ws_file_name  = m_dir_path + "/" +  to_file_name(node.chain_id, node.block_height) + ".ws";
-            // ilog("ws_file_name: ${ws_file_name}", ("ws_file_name", ws_file_name));
             if(!bfs::exists(ws_file_name) || !bfs::is_regular_file(ws_file_name) || bfs::file_size(ws_file_name) != node.file_size)
                 continue;
 
             fc::variant var;
             fc::to_variant(node, var);
-            // ilog("getLocalInfo: ${var}", ("var", var));
             retList.push_back(node);
         }
         return retList;
@@ -395,7 +393,6 @@ void ws_file_manager::start_delete_timer()
             return a.block_height > b.block_height;
         });
 
-        auto count = m_max_ws_count;
         for(auto &node : node_list){
             if (m_reader_map.count(node) == 0 || m_is_reader_activate_map.count(node) == 0)//File was not open
                 continue;
@@ -410,15 +407,20 @@ void ws_file_manager::start_delete_timer()
 
         if(m_max_ws_count == -1) return;
 
+        auto cnt = m_max_ws_count;
+        int cnt_long_term = MAX_WS_COUNT_LONG_TERM;
+        set_long_term_interval(node_list);
         for(auto &node : node_list){
-            if (m_reader_map.count(node) != 0)//File was open
+            if (m_reader_map.count(node) != 0)//File was open, don't remove it
                 continue;
 
-            --count;
-            if(count >= 0) continue;
-
-            if (latest_vaild_node > 0 && latest_vaild_node <= node.block_height)
+            if (cnt > 0 || (latest_vaild_node > 0 && latest_vaild_node == node.block_height)){
+                cnt--;
                 continue;
+            } else if (cnt_long_term > 0 && long_term_interval > 0 && node.block_height % long_term_interval == 0){
+                cnt_long_term--;
+                continue;
+            }
 
             std::string name = to_file_name(node.chain_id, node.block_height);
             std::string ws_file_name  = m_dir_path + "/" +  name + ".ws";
@@ -430,6 +432,23 @@ void ws_file_manager::start_delete_timer()
             ilog("Remove file: ${s}", ("s", ws_file_name));
         }
     });
+}
+
+void ws_file_manager::set_long_term_interval(std::list<ws_info>& ws_list)
+{
+    if (ws_list.size() <= 1)
+        return;
+
+    uint32_t interval = 0;
+    auto first = ws_list.begin();
+    auto second = first;
+    second++;
+
+    interval = (first->block_height - second->block_height) * 10;
+    if (interval > 0 && interval != long_term_interval){
+        ilog("long term interval modify from ${s} to ${t}", ("s", long_term_interval)("t", interval));
+        long_term_interval = interval;
+    }
 }
 
 ws_helper::ws_helper(std::string old_ws, std::string new_ws)

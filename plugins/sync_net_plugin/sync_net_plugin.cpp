@@ -1166,6 +1166,7 @@ namespace ultrainio {
             void open_write();
             void open_read(bool reload = false);
             int  get_status(std::string& ip, string& comment);
+            block_info get_block_info();
     };
 
     sync_blocks_manager::sync_blocks_manager(){
@@ -1498,6 +1499,14 @@ namespace ultrainio {
         m_block_log_ptr = std::make_shared<chain::block_log>();
         m_block_log_ptr->load_data(block_dir);
         m_is_read = true;
+    }
+
+    block_info sync_blocks_manager::get_block_info() {
+        open_read(true);
+        uint32_t blknum = m_block_log_ptr->head()->block_num();
+        uint32_t blknum_first = m_block_log_ptr->first_block_num();
+
+        return {blknum, blknum_first, ""};
     }
 
     int  sync_blocks_manager::get_status(std::string& ip, string& comment) {
@@ -1998,6 +2007,7 @@ namespace ultrainio {
         RspTestTimeMsg rspTestTimeMsg;
         rspTestTimeMsg.timeInfo.reqTime = msg.timeInfo.reqTime;
         rspTestTimeMsg.timeInfo.rspTime = c->get_time();
+        rspTestTimeMsg.chunk.resize(msg.size > 5*1024*1024 ? 0 : msg.size);
         c->enqueue(net_message(rspTestTimeMsg));
         ilog("rcved ReqTestTimeMsg and send rspTestTimeMsg");
     }
@@ -2008,7 +2018,7 @@ namespace ultrainio {
         auto randToSecond = (double(msg.timeInfo.rspTime - msg.timeInfo.reqTime))/NsecPerSec;
         auto randBackSecond = (double(rcvTime - msg.timeInfo.rspTime))/NsecPerSec;
         auto randWholeSecond = double(rcvTime - msg.timeInfo.reqTime)/NsecPerSec;
-        ilog("toTime: ${t}(s),backTime: ${b}(s),wholeTime: ${w}(s),", ("t", randToSecond)("b", randBackSecond)("w", randWholeSecond));
+        ilog("From ${c}, toTime: ${t}(s),backTime: ${b}(s),wholeTime: ${w}(s),", ("c", c->peer_name())("t", randToSecond)("b", randBackSecond)("w", randWholeSecond));
     }
 
    void sync_net_plugin_impl::ticker() {
@@ -2270,7 +2280,7 @@ namespace ultrainio {
         my->connect_check_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
         my->disconnect_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
         my->start_disconnect_timer();
-        my->m_sync_ws_manager->ws_file_manager.set_local_max_count(5);
+        my->m_sync_ws_manager->ws_file_manager.set_local_max_count(MAX_WS_COUNT_LASTEST);
 
         if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
             logger = fc::get_logger_map()[logger_name];
@@ -2455,16 +2465,30 @@ namespace ultrainio {
        return backup_path.generic_string().c_str();
     }
 
-    string sync_net_plugin::test_latancy() {
-        ReqTestTimeMsg reqTestTimeMsg;
-        for (const auto& c : my->connections) {
-            if(c->current()) {
-                reqTestTimeMsg.timeInfo.reqTime = c->get_time();
-                ilog ("send reqTestTimeMsg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
-                c->enqueue(net_message(reqTestTimeMsg));
+    string sync_net_plugin::test_latancy(uint32_t send_size, uint32_t requst_size) {
+        my->start_connect([this, send_size, requst_size]{
+            ReqTestTimeMsg reqTestTimeMsg;
+            reqTestTimeMsg.size = requst_size > 5*1024*1024 ? 0 : requst_size;
+            reqTestTimeMsg.chunk.resize(send_size > 5*1024*1024 ? 0 : send_size);
+            ilog("test_latancy: send data size ${s}, recive size ${t}", ("s", send_size)("t", requst_size));
+            for (const auto& c : my->connections) {
+                if(c->current()) {
+                    reqTestTimeMsg.timeInfo.reqTime = c->get_time();
+                    ilog ("send reqTestTimeMsg to peer : ${peer_address}, enqueue", ("peer_address", c->peer_name()));
+                    c->enqueue(net_message(reqTestTimeMsg));
+                }
             }
-        }
+        });
         return "start test latancy";
+    }
+
+    block_info sync_net_plugin::get_local_block_info() {
+        try {
+            block_info result = my->m_sync_blocks_manager->get_block_info();
+            return result;
+        } catch (...){
+            return {0, 0, "Error, dont't get block info"};
+        }
     }
 
    chain::ws_info sync_net_plugin::latest_wsinfo(){

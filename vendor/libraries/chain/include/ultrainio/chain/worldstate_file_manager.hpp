@@ -15,7 +15,8 @@
 #include <ultrainio/chain/types.hpp>
 #include <ultrainio/chain/worldstate.hpp>
 
-#define MAX_WS_COUNT 5
+#define MAX_WS_COUNT_LASTEST 3
+#define MAX_WS_COUNT_LONG_TERM 5
 
 namespace ultrainio { namespace chain {
     struct ws_info{
@@ -97,6 +98,7 @@ namespace ultrainio { namespace chain {
         private:
             bool load_local_info_file(const std::string file_name, ws_info& node);
             void start_delete_timer();
+            void set_long_term_interval(std::list<ws_info>& ws_list);
         private:
             std::string m_dir_path;
             int m_max_ws_count;
@@ -105,6 +107,7 @@ namespace ultrainio { namespace chain {
             std::map<ws_info, std::shared_ptr<ws_file_reader>> m_reader_map;
             std::map<ws_info, bool> m_is_reader_activate_map;
             uint32_t latest_vaild_node;
+            uint32_t  long_term_interval;
     };
 
 

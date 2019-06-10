@@ -30,6 +30,12 @@ namespace ultrainio {
         string              msg;
     };
 
+    struct block_info {
+        uint32_t             block_height;
+        uint32_t             first_block_height;
+        string              msg;
+    };
+
     class sync_net_plugin : public appbase::plugin<sync_net_plugin>
     {
     public:
@@ -52,7 +58,7 @@ namespace ultrainio {
         string                       require_ws(const chain::ws_info& info);
         string                       require_block(const std::string& chain_id_text,uint32_t end);
         status_code                  ws_status(string id);
-        string                       test_latancy();
+        string                       test_latancy(uint32_t send_size, uint32_t requst_size);
         string                       repair_blog(string path,int32_t height);
 
         chain::ws_info               latest_wsinfo();
@@ -60,6 +66,7 @@ namespace ultrainio {
 
         size_t num_peers() const;
         void sync_ws(const chain::ws_info& info, int try_cnt, int waiting_time = 0);
+        block_info get_local_block_info();
     private:
         std::unique_ptr<class sync_net_plugin_impl> my;
     };
@@ -69,3 +76,4 @@ namespace ultrainio {
 FC_REFLECT( ultrainio::connection_status, (peer)(connecting)(last_handshake) )
 FC_REFLECT( ultrainio::sync_wss_params, (chainId)(hosts) )
 FC_REFLECT( ultrainio::status_code,(code)(des)(host)(msg))
+FC_REFLECT( ultrainio::block_info,(block_height)(first_block_height)(msg))

@@ -140,7 +140,7 @@ namespace ultrainio {
 
        struct ReqLastWsInfoMsg {
             fc::sha256 chain_id;
-            uint32_t block_height; 
+            uint32_t block_height;
        };
 
        struct RspLastWsInfoMsg
@@ -169,7 +169,7 @@ namespace ultrainio {
 
         struct ReqBlocksInfoMsg {
             fc::sha256 chain_id;
-            uint32_t block_height; 
+            uint32_t block_height;
         };
 
         struct RspBlocksInfoMsg
@@ -198,12 +198,13 @@ namespace ultrainio {
 
        struct ReqTestTimeMsg {
            TimeInfo timeInfo;
-           std::array<char, MAX_PACKET_DATA_LENGTH>    chunk;
+           uint32_t size;
+           std::vector<char>    chunk;
        };
 
        struct RspTestTimeMsg {
            TimeInfo timeInfo;
-           std::array<char, MAX_PACKET_DATA_LENGTH>    chunk;
+           std::vector<char>    chunk;
        };
 
        using net_message = static_variant<handshake_message,
@@ -233,7 +234,7 @@ FC_REFLECT( ultrainio::wss::RspLastWsInfoMsg, (info) )
 FC_REFLECT( ultrainio::wss::ReqWsFileMsg, (lenPerSlice)(index)(info) )
 FC_REFLECT( ultrainio::wss::FileTransferPacket, (chunkLen)(chunkHashString)(sliceId)(endOfFile)(chunk) )
 FC_REFLECT( ultrainio::wss::TimeInfo, (reqTime)(rspTime) )
-FC_REFLECT( ultrainio::wss::ReqTestTimeMsg, (timeInfo)(chunk) )
+FC_REFLECT( ultrainio::wss::ReqTestTimeMsg, (timeInfo)(size)(chunk) )
 FC_REFLECT( ultrainio::wss::RspTestTimeMsg, (timeInfo)(chunk) )
 FC_REFLECT( ultrainio::wss::ReqBlocksInfoMsg, (chain_id)(block_height) )
 FC_REFLECT( ultrainio::wss::RspBlocksInfoMsg, (chain_id)(block_height)(gs) )
