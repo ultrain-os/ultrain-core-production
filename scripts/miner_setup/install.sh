@@ -5,6 +5,7 @@ echo "deploy all files"
 # program
 # nodultrain
 echo "cp /root/miner_setup/files/program/nodultrain /root/"
+cp /root/miner_setup/files/program/nodultrain /root/
 chmod +x /root/nodultrain
 # wss
 echo "cp /root/miner_setup/files/program/wssultrain /root/"
@@ -55,8 +56,3 @@ echo "cp /root/miner_setup/files/config/ultrainmng/seedconfig.json /root/.local/
 cp /root/miner_setup/files/config/ultrainmng/seedconfig.json /root/.local/share/ultrainio/ultrainmng/config/
 
 echo "deploy all files done."
-
-
-
-
-

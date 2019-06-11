@@ -52,8 +52,8 @@ echo "cp /root/.local/share/ultrainio/wssultrain/config/config.ini /root/miner_s
 cp /root/.local/share/ultrainio/wssultrain/config/config.ini /root/miner_setup/files/config/wssultrain/
 echo "mkdir /root/miner_setup/files/config/nodultrain -p"
 mkdir /root/miner_setup/files/config/nodultrain -p
-#echo "cp /root/.local/share/ultrainio/nodultrain/config/config.ini /root/miner_setup/files/config/nodultrain/"
-#cp /root/.local/share/ultrainio/nodultrain/config/config.ini /root/miner_setup/files/config/nodultrain/
+echo "cp /root/.local/share/ultrainio/nodultrain/config/config.ini /root/miner_setup/files/config/nodultrain/"
+cp /root/.local/share/ultrainio/nodultrain/config/config.ini /root/miner_setup/files/config/nodultrain/
 sleep 1
 
 #scripts
