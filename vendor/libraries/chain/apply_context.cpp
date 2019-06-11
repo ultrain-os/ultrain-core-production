@@ -52,7 +52,7 @@ action_trace apply_context::exec_one()
       }
 
       if( a.code.size() > 0
-          && !(act.account == config::system_account_name && act.name == NEX( setcode ) &&
+          && !(act.account == config::system_account_name && (act.name == NEX( setcode ) || act.name == NEX( setabi )) &&
                receiver == config::system_account_name)) {
          if( trx_context.can_subjectively_fail && control.is_producing_block()) {
             control.check_contract_list( receiver );

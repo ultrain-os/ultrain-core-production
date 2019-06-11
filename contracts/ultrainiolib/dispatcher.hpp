@@ -98,7 +98,7 @@ namespace ultrainio {
 #define ULTRAINIO_API( TYPE,  MEMBERS ) \
    if (false) {} \
    BOOST_PP_SEQ_FOR_EACH( ULTRAINIO_API_CALL, TYPE, MEMBERS ) \
-   else {}
+   else { ultrainio_assert( false, " currently executed action not found"); }
 
 /** 
  * Convenient macro to create contract apply handler
