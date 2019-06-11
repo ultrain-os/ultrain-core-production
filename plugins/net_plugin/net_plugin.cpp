@@ -3002,7 +3002,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 		return true;
 	namespace sc = std::chrono;
 	sc::system_clock::duration msg_time(msg.time);
-	auto time = sc::system_clock::now().time_since_epoch();
+	auto time = sc::system_clock::now().time_since_epoch();	
 	if(time - msg_time > peer_authentication_interval) {
 		elog( "Peer ${peer} sent a handshake with a timestamp skewed by more than ${time}.",
 				("peer", msg.p2p_address)("time", "1 second")); // TODO Add to_variant for std::chrono::system_clock::duration
@@ -3122,7 +3122,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       hello.key = sk_account.get_public_key();
       auto name_account = app().get_plugin<producer_uranus_plugin>().get_account_name();
       hello.account = name_account;
-      hello.time = std::chrono::system_clock::now().time_since_epoch().count();
+      std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> tp = std::chrono::time_point_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now());
+      hello.time = tp.time_since_epoch().count();
       hello.token = fc::sha256::hash(hello.time);
       //hello.sig = my_impl->sign_compact(hello.key, hello.token);
       hello.sig = sk_account.sign(hello.token);
