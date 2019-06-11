@@ -1392,20 +1392,23 @@ struct controller_impl {
 
          for( const auto& receipt : b->transactions ) {
             auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
+            bool scheduled = false;
             if( receipt.trx.contains<packed_transaction>() ) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
                trace = push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us, true );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               scheduled = true;
             } else if( receipt.trx.contains<packed_generated_transaction>() ) {
                trace = push_generated_transaction( receipt.trx.get<packed_generated_transaction>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               scheduled = true;
             }  else {
                ULTRAIN_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
 
             bool transaction_failed =  trace && trace->except;
-            bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && receipt.trx.contains<transaction_id_type>();
+            bool transaction_can_fail = (receipt.status == transaction_receipt_header::hard_fail && scheduled);
             if( transaction_failed && !transaction_can_fail) {
                edump((*trace));
                throw *trace->except;

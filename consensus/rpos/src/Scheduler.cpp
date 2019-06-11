@@ -1729,6 +1729,7 @@ namespace ultrainio {
                 // This passed in deadline is used to guard for non-stopping while loop.
                 auto max_cpu_usage = fc::microseconds(cfg.max_transaction_cpu_usage);
                 auto max_deadline = fc::time_point::now() + max_cpu_usage;
+                bool scheduled = false;
                 if (receipt.trx.contains<chain::packed_transaction>()) {
                     // Malicious producer setting wrong cpu_usage_us.
                     ULTRAIN_ASSERT(receipt.cpu_usage_us >= cfg.min_transaction_cpu_usage,
@@ -1741,14 +1742,15 @@ namespace ultrainio {
                 } else if (receipt.trx.contains<chain::transaction_id_type>()) {
                     trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
                                                              max_deadline, receipt.cpu_usage_us);
+                    scheduled = true;
                 } else if(receipt.trx.contains<chain::packed_generated_transaction>()) {
                     trace = chain.push_generated_transaction(receipt.trx.get<chain::packed_generated_transaction>(),
                                                              max_deadline, receipt.cpu_usage_us);
+                    scheduled = true;
                 }
 
                 bool transaction_failed =  trace && trace->except;
-                bool transaction_can_fail = (receipt.status == chain::transaction_receipt_header::hard_fail &&
-                                             receipt.trx.contains<chain::transaction_id_type>());
+                bool transaction_can_fail = (receipt.status == chain::transaction_receipt_header::hard_fail && scheduled);
                 if (transaction_failed && !transaction_can_fail) {
                     // So we can terminate early
                     throw *trace->except;
@@ -1845,6 +1847,7 @@ namespace ultrainio {
                    trx_count <= (200 * Config::s_maxPhaseSeconds); m_currentPreRunBa0TrxIndex++, trx_count++) {
                 const auto &receipt = b.transactions[m_currentPreRunBa0TrxIndex];
                 chain::transaction_trace_ptr trace;
+                bool scheduled = false;
                 // Malicious producer setting wrong cpu_usage_us.
                 ULTRAIN_ASSERT(receipt.cpu_usage_us >= cfg.min_transaction_cpu_usage,
                                chain::block_trx_min_cpu_usage_exception,
@@ -1859,15 +1862,15 @@ namespace ultrainio {
                 } else if (receipt.trx.contains<chain::transaction_id_type>()) {
                     trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
                                                      max_deadline, receipt.cpu_usage_us);
+                    scheduled = true;
                 } else if(receipt.trx.contains<chain::packed_generated_transaction>()) {
                     trace = chain.push_generated_transaction(receipt.trx.get<chain::packed_generated_transaction>(),
                                                      max_deadline, receipt.cpu_usage_us);
+                    scheduled = true;
                 }
 
                 bool transaction_failed =  trace && trace->except;
-                bool transaction_can_fail = (receipt.status == chain::transaction_receipt_header::hard_fail &&
-                                             receipt.trx.contains<chain::transaction_id_type>());
-
+                bool transaction_can_fail = (receipt.status == chain::transaction_receipt_header::hard_fail && scheduled);
                 if (transaction_failed && !transaction_can_fail) {
                     // So we can terminate early
                     throw *trace->except;
@@ -1945,6 +1948,7 @@ namespace ultrainio {
                     for (; m_currentPreRunBa0TrxIndex < m_ba0Block.transactions.size(); m_currentPreRunBa0TrxIndex++) {
                         const auto &receipt = m_ba0Block.transactions[m_currentPreRunBa0TrxIndex];
                         chain::transaction_trace_ptr trace;
+                        bool scheduled = false;
                         if (receipt.trx.contains<chain::packed_transaction>()) {
                             auto &pt = receipt.trx.get<chain::packed_transaction>();
                             auto mtrx = std::make_shared<chain::transaction_metadata>(pt);
@@ -1953,14 +1957,15 @@ namespace ultrainio {
                         } else if (receipt.trx.contains<chain::transaction_id_type>()) {
                             trace = chain.push_scheduled_transaction(receipt.trx.get<chain::transaction_id_type>(),
                                                              fc::time_point::maximum(), receipt.cpu_usage_us);
+                            scheduled = true;
                         } else if(receipt.trx.contains<chain::packed_generated_transaction>()) {
                             trace = chain.push_generated_transaction(receipt.trx.get<chain::packed_generated_transaction>(),
                                                               fc::time_point::maximum(), receipt.cpu_usage_us);
+                            scheduled = true;
                         }
 
                         bool transaction_failed =  trace && trace->except;
-                        bool transaction_can_fail = (receipt.status == chain::transaction_receipt_header::hard_fail &&
-                                                     receipt.trx.contains<chain::transaction_id_type>());
+                        bool transaction_can_fail = (receipt.status == chain::transaction_receipt_header::hard_fail && scheduled);
                         if (transaction_failed && !transaction_can_fail) {
                             // So we can terminate early
                             throw *trace->except;
