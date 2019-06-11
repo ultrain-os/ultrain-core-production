@@ -35,6 +35,7 @@ void multisig::propose() {
    ds >> trx_header;
 
    require_auth( proposer );
+   ultrainio_assert( proposer == N(utriomsig), " only allow utriomsig propose" );
    ultrainio_assert( trx_header.expiration >= ultrainio::time_point_sec(now()), "transaction expired" );
    //ultrainio_assert( trx_header.actions.size() > 0, "transaction must have at least one action" );
 
