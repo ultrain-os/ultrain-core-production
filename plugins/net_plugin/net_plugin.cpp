@@ -176,6 +176,8 @@ namespace ultrainio {
 
         connection_ptr find_connection(const string& host) const;
         bool is_grey_connection(const string& host) const;
+        bool is_connection_to_seed(connection_ptr con) const;
+        bool is_static_connection(connection_ptr con) const;
 
         std::set< connection_ptr >       connections;
         std::list< string >              peer_addr_grey_list;
@@ -2574,9 +2576,7 @@ connection::connection(string endpoint, msg_priority pri)
                it = connections.erase(it);
                continue;
             } else {
-               boost::system::error_code ec;
-               std::string addr{(*it)->socket->remote_endpoint(ec).address().to_string()};
-               if (std::find(udp_seed_ip.begin(), udp_seed_ip.end(), addr) == udp_seed_ip.end()) { // skip the addr of seeds, so always reconnect seeds
+               if (!is_connection_to_seed(*it)) { // skip the addr of seeds, so always reconnect seeds
                   (*it)->retry_connect_count++;
                }
                connect(*it);
@@ -2588,7 +2588,9 @@ connection::connection(string endpoint, msg_priority pri)
                     ("peer", (*it)->peer_name())
                     ("addr", (*it)->socket->remote_endpoint(ec).address().to_string()));
                close(*it);
-               it = connections.erase(it);
+               if (!is_static_connection(*it)) {
+                  it = connections.erase(it);
+               }
                continue;
             }
             (*it)->wait_handshake_count++;
@@ -3512,6 +3514,26 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
 
         return false;
+    }
+
+    bool net_plugin_impl::is_connection_to_seed(connection_ptr con) const {
+        auto colon = con->peer_addr.find(':');
+        if (colon != std::string::npos) {
+            auto host = con->peer_addr.substr(0, colon);
+            return std::find(udp_seed_ip.begin(), udp_seed_ip.end(), host) != udp_seed_ip.end();
+        }
+
+        boost::system::error_code ec;
+        std::string addr{con->socket->remote_endpoint(ec).address().to_string()};
+        return std::find(udp_seed_ip.begin(), udp_seed_ip.end(), addr) != udp_seed_ip.end();
+    }
+
+    bool net_plugin_impl::is_static_connection(connection_ptr con) const {
+        if (con->priority == msg_priority_trx) {
+            return std::find(trx_active_peers.begin(), trx_active_peers.end(), con->peer_addr) != trx_active_peers.end();
+        } else {
+            return std::find(rpos_active_peers.begin(), rpos_active_peers.end(), con->peer_addr) != rpos_active_peers.end();
+        }
     }
 
     uint16_t net_plugin_impl::to_protocol_version (uint16_t v) {
