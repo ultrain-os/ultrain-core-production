@@ -139,107 +139,6 @@ async function syncUser() {
 
 
         /**
-         * 使用投票进行同步
-         */
-        if (monitor.needSyncUserRes() == true) {
-            logger.info("sync user by vote is enabled by flag control");
-            if (utils.isNullList(userBulletinList)) {
-                logger.info("userBulletinList is null ,check failed list count :", failedAccountPramList.length);
-                if (failedAccountPramList.length > 0) {
-                    failedAccountPramList.forEach(function (item, index) {
-                        userBulletinList.push(item);
-                    })
-
-                    logger.info("retry user userBulletinList:", userBulletinList);
-                }
-            }
-
-            //投票结果
-            var userCountRes = {
-                totalNum: 0,
-                successAccountNum: 0,
-                hasVotedNum: 0,
-                votingNum: 0
-            }
-
-            for (var i in userBulletinList) {
-
-                if (voteCount > getMaxVoteCountOneRound()) {
-                    logger.error("vote count >=(" + getMaxVoteCountOneRound() + "),stop sync user.");
-                    break;
-                }
-
-                userCountRes.totalNum++;
-                var newUser = userBulletinList[i];
-                const params = {
-                    proposer: chainConfig.myAccountAsCommittee,
-                    proposeaccount: [{
-                        account: newUser.owner,
-                        owner_key: newUser.owner_pk,
-                        active_key: newUser.active_pk,
-                        location: constants.chainNameConstants.MAIN_CHAIN_NAME,
-                        approve_num: 0,
-                        updateable: utils.isNotNull(newUser.updateable) ? (newUser.updateable == true ? 1 :0) : 1 //该账号后续部署合约能否被更新
-                    }]
-                };
-
-                logger.info("vote user params:",params);
-
-                logger.info("=======voteAccount to subchain:", newUser.owner);
-
-                //检查缓存中是否有
-                var hitFlag = successAccountCacheList.has(newUser.owner);
-
-                //检查子链是否已经有改账户
-                if (hitFlag == false && utils.isNull(await chainApi.getAccount(chainConfig.configSub.httpEndpoint, newUser.owner))) {
-                    logger.info("account(" + newUser.owner + ") is not ready,need vote..");
-
-                    //查询是否已经投过票
-                    let tableData = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_ACCOUNT, null, newUser.owner, null, null);
-                    logger.debug(tableData)
-                    if (voteUtil.findVoteRecord(tableData, chainConfig.myAccountAsCommittee, newUser.owner,) == false) {
-
-                        //未找到投过票的记录，需要投票
-                        logger.info("account(" + newUser.owner + ") has not been voted by " + chainConfig.myAccountAsCommittee + ", start voting....");
-
-                        //发起投票合约action
-                        //logger.debug("vote params ",params);
-                        let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_ACCOUNT, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
-                        logger.debug("account(" + newUser.owner + ") proposer(" + chainConfig.myAccountAsCommittee + "):", res);
-                        userCountRes.votingNum++;
-                        //投票失败，加入到失败的队列中
-                        if (res == null) {
-                            failedAccountPramList.push(newUser);
-                        }
-
-                        //投票次数
-                        voteCount++;
-                    } else {
-                        //已投票不处理
-                        logger.info("account(" + newUser.owner + ") has been voted by " + chainConfig.myAccountAsCommittee + "");
-                        userCountRes.hasVotedNum++;
-                    }
-
-
-                } else {
-                    //账号已存在不处理
-                    logger.info("account(" + newUser.owner + ") is ready,need not vote..");
-                    clearFailedUser(newUser.owner);
-                    userCountRes.successAccountNum++;
-                    successAccountCacheList.add(newUser.owner);
-                }
-
-                //chainApi.contractInteract(chainConfig.u3, 'ultrainio', "voteaccount", params, myAccountAsCommittee);
-                logger.info("=======voteAccount to subchain end", newUser.owner);
-            }
-
-            logger.info("voting user result", userCountRes);
-
-        } else {
-            logger.error("sync user by vote is disabled by flag control");
-        }
-
-        /**
          * 使用块头进行同步用户
          */
         if (monitor.needSyncUserResByBlock() == true) {
@@ -281,7 +180,7 @@ async function syncUser() {
                 //检查缓存中是否有
                 var hitFlag = successAccountCacheList.has(newUser.owner);
                 //检查子链是否已经有改账户
-                if (hitFlag == false && utils.isNull(await chainApi.getAccount(chainConfig.configSub.httpEndpoint, newUser.owner))) {
+                if (hitFlag == false && utils.isNull(await chainApi.getAccount(chainConfig.nodPort, newUser.owner))) {
                     logger.info("[sync user]account(" + newUser.owner + ") is not ready,need sync block..");
                     let blockHeight = newUser.block_height;
                     logger.info("[sync user]check account("+newUser.owner+") is in block("+blockHeight+"),check it is ready...");
@@ -295,7 +194,7 @@ async function syncUser() {
                     }
 
                     //获取主链的块信息
-                    let blockInfo = await chainConfig.u3.getBlockInfo((blockHeight).toString());
+                    let blockInfo = await chainApi.getBlockInfoData(chainConfig.config.httpEndpoint,(blockHeight).toString());
                     logger.info("[sync user] block info:", blockInfo);
                     let trans = chainUtil.getSyncUserTransFromBlockHeader(blockInfo, chainConfig.localChainName,newUser.owner);
                     logger.info("[sync user]find trans length:", trans.length);
@@ -325,7 +224,7 @@ async function syncUser() {
                             logger.info("[sync user]merkleProof trx_receipt_bytes convert to array length:", tx_bytes_array.length)
                             logger.debug("[sync user]merkleProof trx_receipt_bytes convert to array:", tx_bytes_array.toString());
 
-                            let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,blockHeight);
+                            let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.getLocalHttpEndpoint(),chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,blockHeight);
                             logger.info("[sync user]master blockHeightInfo("+blockHeight+"):",blockHeightInfo);
                             let hashIsReady = checkHashIsready(blockHeightInfo,tranId);
                             if (hashIsReady == true) {
@@ -511,7 +410,7 @@ async function syncMasterUgasToSubchain() {
     }
     logger.error("[Sync Ugas-Master]maxConfirmBlockNum master in subchain is :",maxConfirmBlockNum);
 
-    let minSavedSyncBlockNum = await chainApi.getMinBlockHeaderInfo(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
+    let minSavedSyncBlockNum = await chainApi.getMinBlockHeaderInfo(chainConfig.getLocalHttpEndpoint(),chainNameConstants.MAIN_CHAIN_NAME_TRANSFER);
     logger.info("[Sync Ugas-Master]minSavedSyncBlockNum is :",minSavedSyncBlockNum);
 
     let syncNumCount = 0;
@@ -552,7 +451,7 @@ async function syncMasterUgasToSubchain() {
                 }
 
                 //获取主链的块信息
-                let blockInfo = await chainConfig.u3.getBlockInfo((blockHeight).toString());
+                let blockInfo = await chainApi.getBlockInfoData(chainConfig.config.httpEndpoint,(blockHeight).toString());
                 logger.debug("[Sync Ugas-Master]sync ugas info:", blockInfo);
                 let trans = chainUtil.getTransFromBlockHeader(blockInfo, chainConfig.localChainName);
                 logger.info("[Sync Ugas-Master]find trans length:", trans.length);
@@ -578,7 +477,7 @@ async function syncMasterUgasToSubchain() {
 
                         logger.debug("[Sync Ugas-Master]merkleProof trx_receipt_bytes convert to array:", tx_bytes_array.toString());
 
-                        let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,blockHeight);
+                        let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.getLocalHttpEndpoint(),chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,blockHeight);
                         logger.debug("[Sync Ugas-Master]master blockHeightInfo("+blockHeight+"):",blockHeightInfo);
                         let hashIsReady = checkHashIsready(blockHeightInfo,tranId);
                         if (hashIsReady == true) {
@@ -650,7 +549,7 @@ async function syncSubchainUgasToMaster() {
     }
     logger.info("[Sync Ugas-Subchain]maxConfirmBlockNum subchain in master is :",maxConfirmBlockNum);
 
-    let minSavedSyncBlockNum = await chainApi.getMinBlockHeaderInfo(chainConfig.config,chainConfig.localChainName);
+    let minSavedSyncBlockNum = await chainApi.getMinBlockHeaderInfo(chainConfig.config.httpEndpoint,chainConfig.localChainName);
     logger.info("[Sync Ugas-Subchain]minSavedSyncBlockNum is :",minSavedSyncBlockNum);
 
     logger.info("[Sync Ugas-Subchain]bulletinBankData master data rows length:",bulletinBankData.rows.length);
@@ -689,7 +588,7 @@ async function syncSubchainUgasToMaster() {
                 }
 
                 //获取子链的块信息
-                let blockInfo = await chainConfig.u3Sub.getBlockInfo((blockHeight).toString());
+                let blockInfo = await chainApi.getBlockInfoData(chainConfig.getLocalHttpEndpoint(),(blockHeight).toString());
                 logger.debug("[Sync Ugas-Subchain]sync ugas master info:", blockInfo);
                 let trans = chainUtil.getTransFromBlockHeader(blockInfo, chainNameConstants.MAIN_CHAIN_NAME);
                 logger.info("[Sync Ugas-Subchain]find trans length:", trans.length);
@@ -712,7 +611,7 @@ async function syncSubchainUgasToMaster() {
                         logger.debug("[Sync Ugas-Subchain]merkleProof mastertrx_receipt_bytes convert to array length:", tx_bytes_array.length)
                         logger.debug("[Sync Ugas-Subchain]merkleProof master trx_receipt_bytes convert to array:", tx_bytes_array.toString());
 
-                        let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.config,chainConfig.localChainName,blockHeight);
+                        let blockHeightInfo = await chainApi.getBlockInfoData(chainConfig.config.httpEndpoint,chainConfig.localChainName,blockHeight);
                         logger.debug("[Sync Ugas-Subchain]subchain blockHeightInfo("+blockHeight+"):",blockHeightInfo);
                         let hashIsReady = checkHashIsready(blockHeightInfo,tranId);
                         if (hashIsReady == true) {
@@ -828,7 +727,7 @@ async function syncBlock() {
 
     if (syncChainData == true && isMainChain() == false) {
 
-        var subBlockNumMax = await chainApi.getHeadBlockNum(chainConfig.configSub);
+        var subBlockNumMax = await chainApi.getHeadBlockNum(chainConfig.nodPort);
         if (subBlockNumMax == null) {
             logger.error("subBlockNumMax is null,abort sync block");
             return;
@@ -836,7 +735,8 @@ async function syncBlock() {
         logger.info("subBlockNumMax:"+subBlockNumMax);
         var traceMode = true;
         //获取本地最新的块头，获取服务端最新的块头
-        let result = await chainConfig.u3Sub.getBlockInfo((subBlockNumMax).toString());
+        let result = await await chainApi.getBlockInfoData(chainConfig.getLocalHttpEndpoint(),(subBlockNumMax).toString());
+        logger.info("result.proposer,",result.proposer);
 
         //判断是否要上传块头
         if (blockUtil.needPushBlockByProducerList(result.proposer, chainConfig.myAccountAsCommittee, localProducers) == false) {
@@ -863,7 +763,7 @@ async function syncBlock() {
                 logger.info("fork:", fork);
                 let localBlockId = 0;
                 try {
-                    let result = await chainConfig.u3Sub.getBlockInfo(fork.number.toString());
+                    let result = await chainApi.getBlockInfoData(chainConfig.getLocalHttpEndpoint(),(fork.number).toString());
                     logger.debug("block info", result);
                     localBlockId = result.id;
                 } catch (e) {
@@ -907,7 +807,7 @@ async function syncBlock() {
         let results = [];
         let blockListStr = "(";
         for (var i = blockNumInt; i < subBlockNumMax; i++) {
-            let result = await chainConfig.u3Sub.getBlockInfo((i).toString());
+            let result = await chainApi.getBlockInfoData(chainConfig.getLocalHttpEndpoint(),(i).toString());
             logger.info("block " + i + ": (proposer:", result.proposer + ")");
             logger.debug("block:",result);
             logger.debug("header_extensions:", result.header_extensions);
@@ -1016,7 +916,7 @@ async function syncMasterBlock() {
 
     if (syncChainData == true) {
 
-        var masterBlockNumMax = await chainApi.getHeadBlockNum(chainConfig.config);
+        var masterBlockNumMax = await chainApi.getMasterHeadBlockNum(chainConfig.config.httpEndpoint);
         if (masterBlockNumMax == null) {
             logger.error("masterBlockNumMax is null,abort sync block");
             return;
@@ -1026,7 +926,7 @@ async function syncMasterBlock() {
         logger.info("masterBlockNumMax:",masterBlockNumMax);
         logger.info("start to push master block..");
         let blockNum = 0;
-        let subchainBlockNumResult = await chainApi.getMasterBlockNum(chainConfig.configSub);
+        let subchainBlockNumResult = await chainApi.getMasterBlockNum(chainConfig.nodPort);
         logger.info("subchain max block num:", subchainBlockNumResult);
 
         //设置已同步主链的块高信息
@@ -1044,7 +944,7 @@ async function syncMasterBlock() {
                 logger.info("master fork:", fork);
                 let localBlockId = 0;
                 try {
-                    let result = await chainConfig.u3.getBlockInfo(fork.number.toString());
+                    let result = await chainApi.getBlockInfoData(chainConfig.config.httpEndpoint,fork.number.toString());
                     logger.debug("block info", result);
                     localBlockId = result.id;
                 } catch (e) {
@@ -1087,7 +987,7 @@ async function syncMasterBlock() {
         let results = [];
         let blockListStr = "(";
         for (var i = blockNumInt; i < masterBlockNumMax; i++) {
-            let result = await chainConfig.u3.getBlockInfo((i).toString());
+            let result = await chainApi.getBlockInfoData(chainConfig.config.httpEndpoint,(i).toString());
             logger.debug("master block " + i + ": (proposer:", result.proposer + ")");
             logger.debug("master block header_extensions:", result.header_extensions);
             var extensions = [];
@@ -1161,14 +1061,14 @@ async function syncCommitee() {
 
         if (syncChainData == true && isMainChain() == false) {
 
-            var subBlockNumMax = await chainApi.getHeadBlockNum(chainConfig.configSub);
+            var subBlockNumMax = await chainApi.getHeadBlockNum(chainConfig.nodPort);
             if (subBlockNumMax == null) {
                 logger.error("[committee trx] subBlockNumMax is null,abort sync block");
                 return;
             }
             logger.info("[committee trx] subBlockNumMax:" + subBlockNumMax);
             //获取本地最新的块头，获取服务端最新的块头
-            let result = await chainConfig.u3Sub.getBlockInfo((subBlockNumMax).toString());
+            let result = await chainApi.getBlockInfoData(chainConfig.getLocalHttpEndpoint(),(subBlockNumMax).toString());
 
             //判断是否要上传块头
             if (blockUtil.needPushBlockByProducerList(result.proposer, chainConfig.myAccountAsCommittee, localProducers) == false) {
@@ -1209,7 +1109,7 @@ async function syncCommitee() {
 
                     try {
                         //获取块信息并找到交易id
-                        let blockInfo = await chainConfig.u3.getBlockInfo((bulletinObj.block_num).toString());
+                        let blockInfo = await chainApi.getBlockInfoData(chainConfig.config.httpEndpoint,(bulletinObj.block_num).toString());
                         let trans = chainUtil.getMoveProdRTransFromBlockHeader(blockInfo, chainConfig.localChainName);
                         logger.error("[committee trx] trans(block:" + bulletinObj.block_num + "):", trans.length);
                         if (trans.length > 0) {
@@ -1232,7 +1132,7 @@ async function syncCommitee() {
                                     logger.debug("[committee trx]merkleProof trx_receipt_bytes:", merkleProof.trx_receipt_bytes);
                                     let tx_bytes_array = chainUtil.transferTrxReceiptBytesToArray(merkleProof.trx_receipt_bytes);
 
-                                    let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.configSub, chainNameConstants.MAIN_CHAIN_NAME_TRANSFER, bulletinObj.block_num);
+                                    let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.getLocalHttpEndpoint(), chainNameConstants.MAIN_CHAIN_NAME_TRANSFER, bulletinObj.block_num);
                                     logger.debug("[committee trx]master blockHeightInfo(" + bulletinObj.block_num + "):", blockHeightInfo);
                                     let hashIsReady = checkHashIsready(blockHeightInfo, tranId);
                                     if (hashIsReady == true) {
@@ -1416,7 +1316,7 @@ async function syncChainInfo() {
         //同步本地委员会
         logger.info("sync local commitee");
         //获取本地prodcuers信息
-        let producerList = await chainApi.getProducerLists(chainConfig.configSub.httpEndpoint);
+        let producerList = await chainApi.getProducerLists(chainConfig.getLocalHttpEndpoint());
         logger.info("subchain producers: ", producerList);
         if (utils.isNotNull(producerList) && producerList.length > 0) {
             localProducers = producerList;
@@ -2140,7 +2040,7 @@ async function syncResource(allFlag) {
                 for (var i = 0; i < newestChangeList.length; i++) {
                     let resObj = newestChangeList[i];
                     logger.debug("resobj:",resObj);
-                    let localtableObj = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, chainNameConstants.MAIN_CHAIN_NAME, tableConstants.RESOURCE_LEASE, null, resObj.owner, null, null);
+                    let localtableObj = await chainApi.getTableInfo(chainConfig.getLocalHttpEndpoint(), contractConstants.ULTRAINIO, chainNameConstants.MAIN_CHAIN_NAME, tableConstants.RESOURCE_LEASE, null, resObj.owner, null, null);
                     let localresObj = null;
                     if (localtableObj != null && localtableObj.rows != null && localtableObj.rows.length > 0) {
                         localresObj = localtableObj.rows[0];
@@ -2166,54 +2066,6 @@ async function syncResource(allFlag) {
 
         //获取主链上所有资源的信息
         if (changeList.length > 0) {
-
-            /**
-             * 手动开关不同步
-             */
-            if (monitor.needSyncUserRes() == false) {
-                logger.error("sync newest resource is disabled by flag control");
-            } else {
-                //获取已透过的所有结果
-                for (var i = 0; i < changeList.length; i++) {
-
-                    if (voteCount > getMaxVoteCountOneRound()) {
-                        logger.error("vote count >=(" + getMaxVoteCountOneRound() + "),stop res sync.");
-                        break;
-                    }
-
-                    var changeResObj = changeList[i];
-                    logger.debug("change res:", changeResObj);
-
-                    let voteResList = await chainApi.getTableInfo(chainConfig.configSub, contractConstants.ULTRAINIO, contractConstants.ULTRAINIO, tableConstants.PENDING_RES, null, changeResObj.owner, null, null);
-                    logger.debug("voteResList:", voteResList);
-
-                    if (voteUtil.findVoteRes(voteResList, chainConfig.myAccountAsCommittee, changeResObj, chainConfig)) {
-                        logger.info(chainConfig.myAccountAsCommittee + " has voted " + changeResObj.owner + "(resource:" + changeResObj.lease_num + ")");
-                    } else {
-                        logger.info(chainConfig.myAccountAsCommittee + " has not voted " + changeResObj.owner + "(resource:" + changeResObj.lease_num + "), start vote...");
-
-                        const params = {
-                            proposer: chainConfig.myAccountAsCommittee,
-                            proposeresource: [{
-                                account: changeResObj.owner,
-                                lease_num: changeResObj.lease_num,
-                                block_height_interval: chainUtil.calcSubchainIntevalBlockHeight(changeResObj.start_block_height, changeResObj.end_block_height, chainConfig.mainChainBlockDuration, chainConfig.subChainBlockDuration),
-                                location: constants.chainNameConstants.MAIN_CHAIN_NAME,
-                                approve_num: 0
-                            }]
-                        };
-
-                        console.info("vote resource params:", params);
-                        let res = await chainApi.contractInteract(chainConfig.configSub, contractConstants.ULTRAINIO, actionConstants.VOTE_RESOURCE_LEASE, params, chainConfig.myAccountAsCommittee, chainConfig.configSub.keyProvider[0]);
-                        logger.debug(chainConfig.myAccountAsCommittee + "  vote " + changeResObj.owner + "(resource:" + changeResObj.lease_num + ") result:", res);
-
-                        voteCount++;
-
-                    }
-
-
-                }
-            }
 
             //使用块头同步来控制资源同步
             if (monitor.needSyncUserResByBlock() == true) {
@@ -2266,7 +2118,7 @@ async function syncResource(allFlag) {
                         }
 
                         //获取主链的块信息
-                        let blockInfo = await chainConfig.u3.getBlockInfo((blockHeight).toString());
+                        let blockInfo = await chainApi.getBlockInfoData(chainConfig.config.httpEndpoint,(blockHeight).toString());
                         logger.debug("[sync newest res]block info:", blockInfo);
                         let trans = chainUtil.getSyncResTransFromBlockHeader(blockInfo, chainConfig.localChainName,resObj.owner);
                         logger.info("[sync newest res]find trans length:", trans.length);
@@ -2290,7 +2142,7 @@ async function syncResource(allFlag) {
                                 logger.debug("[sync newest res]merkleProof trx_receipt_bytes convert to array length:", tx_bytes_array.length)
                                 logger.debug("merkleProof trx_receipt_bytes convert to array:", tx_bytes_array.toString());
 
-                                let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.configSub,chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,blockHeight);
+                                let blockHeightInfo = await chainApi.getBlockHeaderInfo(chainConfig.getLocalHttpEndpoint(),chainNameConstants.MAIN_CHAIN_NAME_TRANSFER,blockHeight);
                                 logger.debug("[sync newest res]master blockHeightInfo("+blockHeight+"):",blockHeightInfo);
                                 let hashIsReady = checkHashIsready(blockHeightInfo,tranId);
                                 if (hashIsReady == true) {

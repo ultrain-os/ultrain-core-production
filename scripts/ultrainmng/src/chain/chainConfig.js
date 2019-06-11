@@ -471,6 +471,10 @@ ChainConfig.clearChainInfo = function() {
     this.localChainName = null;
 }
 
+ChainConfig.getLocalHttpEndpoint = function() {
+    return "http://127.0.0.1:"+this.nodPort;
+}
+
 /**
  *
  * @param key

@@ -90,7 +90,7 @@ const getChainName = async (url) => {
     return chainName;
 }
 
-const getBlockHeaderInfo = async (config,scope,table_key) => {
+const getBlockHeaderInfo = async (httpEndpoint,scope,table_key) => {
     let rows = [];
     try {
         const params = {
@@ -101,7 +101,7 @@ const getBlockHeaderInfo = async (config,scope,table_key) => {
             "table_key_type": "uint64",
             "table_key": table_key,
         };
-        let res = await axios.post(config.httpEndpoint + "/v1/chain/get_table_records", params);
+        let res = await axios.post(httpEndpoint + "/v1/chain_info/get_table_records", params);
         return res.data.rows;
     } catch (e) {
         logger.error("getBlockHeaderInfo error,",e);
@@ -111,13 +111,34 @@ const getBlockHeaderInfo = async (config,scope,table_key) => {
 }
 
 /**
+ *
+ * @param httpEndpoint
+ * @param blockId
+ * @returns {Promise<*>}
+ */
+const getBlockInfoData = async (httpEndpoint,blockId) => {
+    let blockObj = null;
+    try {
+        const params = {
+            "block_num_or_id" : blockId
+        }
+        let res = await axios.post(httpEndpoint + "/v1/chain_info/get_block_info", params);
+        blockObj = res.data;
+    } catch (e) {
+        logger.error("get block info data error:",e);
+    }
+
+    return blockObj;
+}
+
+/**
  * 获取已同步最小块的信息
  * @param config
  * @param scope
  * @param table_key
  * @returns {Promise<*>}
  */
-const getMinBlockHeaderInfo = async (config,scope) => {
+const getMinBlockHeaderInfo = async (httpEndpoint,scope) => {
     let blockId = 0;
     try {
         const params = {
@@ -128,7 +149,7 @@ const getMinBlockHeaderInfo = async (config,scope) => {
             "table_key_type": "uint64",
             "limit": 1,
         };
-        let res = await axios.post(config.httpEndpoint + "/v1/chain/get_table_records", params);
+        let res = await axios.post(httpEndpoint + "/v1/chain_info/get_table_records", params);
         logger.debug("getMinBlockHeaderInfo res:",res.data);
         if (res.data.rows.length > 0) {
             return res.data.rows[0].block_number;
@@ -168,9 +189,9 @@ const getChainInfo = async function initChainName(config, user) {
  * @param accountName
  * @returns {Promise<null>}
  */
-async function getAccount(prefix, accountName) {
+async function getAccount(port, accountName) {
     try {
-        const rs = await axios.post(prefix + "/v1/chain/get_account_exist ", {"account_name": accountName});
+        const rs = await axios.post("http://127.0.0.1:"+port + "/v1/chain_info/get_account_exist", {"account_name": accountName});
         let res =  rs.data;
         if (res.is_exist == true) {
             return true;
@@ -196,8 +217,8 @@ async function getProducerLists(prefix) {
             "limit": 10000,
             "chain_name": constant.chainNameConstants.MAIN_CHAIN_NAME
         };
-        logger.debug("getProducerLists," + prefix);
-        const rs = await axios.post(prefix + "/v1/chain/get_producers", params);
+        logger.info("getProducerLists",prefix + "/v1/chain_info/get_producers");
+        const rs = await axios.post(prefix + "/v1/chain_info/get_producers", params);
 
         logger.debug("getProducerLists:", rs.data.rows);
         var rows = rs.data.rows;
@@ -478,7 +499,7 @@ multiRequest = async function (prefix, path, params, prefixlist) {
  * @param upper_bound
  * @returns {Promise<*>}
  */
-getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound, upper_bound) => {
+getTableInfo = async (httpEndpoint, code, scope, table, limit, table_key, lower_bound, upper_bound) => {
     try {
         const params = {"code": code, "scope": scope, "table": table, "json": true, "key_type": "name"};
         logger.debug(params);
@@ -494,7 +515,7 @@ getTableInfo = async (config, code, scope, table, limit, table_key, lower_bound,
         if (utils.isNotNull(upper_bound)) {
             params.upper_bound = upper_bound;
         }
-        let res = await multiRequest(config.httpEndpoint, "/v1/chain/get_table_records", params, config.seedHttpList);
+        let res = await multiRequest(httpEndpoint, "/v1/chain_info/get_table_records", params, []);
         // logger.debug(res);
         return res.data;
     } catch (e) {
@@ -544,7 +565,7 @@ getTableAllData = async (config, code, scope, table, pk) => {
         while (finish == false) {
             logger.info("table: " + table + " scope:" + scope + " lower_bound(request)：" + lower_bound);
             index++;
-            let tableinfo = await getTableInfo(config, code, scope, table, limit, null, lower_bound, null);
+            let tableinfo = await getTableInfo(config.httpEndpoint, code, scope, table, limit, null, lower_bound, null);
             logger.debug("tableinfo:" + table + "):", tableinfo);
             if (utils.isNullList(tableinfo.rows) == false) {
                 for (let i = 0; i < tableinfo.rows.length; i++) {
@@ -692,12 +713,29 @@ const getChainBlockDuration = async (config) => {
  * @param config
  * @returns {Promise<*>}
  */
-const getHeadBlockNum = async (config) => {
+const getHeadBlockNum = async (port) => {
     try {
-        const rs = await multiRequest(config.httpEndpoint, "/v1/chain_info/get_chain_info", {}, config.seedHttpList);
+        const rs = await multiRequest("http://127.0.0.1:"+port, "/v1/chain_info/get_chain_info", {}, []);
         return rs.data.head_block_num;
     } catch (e) {
         logger.error("getHeadBlockNum error,", utils.logNetworkError(e));
+    }
+
+    return null;
+
+}
+
+/**
+ *
+ * @param config
+ * @returns {Promise<*>}
+ */
+const getMasterHeadBlockNum = async (httpendpoint) => {
+    try {
+        const rs = await multiRequest(httpendpoint, "/v1/chain_info/get_chain_info", {}, []);
+        return rs.data.head_block_num;
+    } catch (e) {
+        logger.error("getMasterHeadBlockNum error,", utils.logNetworkError(e));
     }
 
     return null;
@@ -938,10 +976,11 @@ getSubchainBlockNum = async (config, chain_name) => {
  * 获取子链中主链的块高
  * @returns {Promise<*>}
  */
-getMasterBlockNum = async (config) => {
+getMasterBlockNum = async (port) => {
 
     try {
-        const rs = await multiRequest(config.httpEndpoint, "/v1/chain/get_master_block_num", {}, config.seedHttpList);
+        const rs = await multiRequest("http://127.0.0.1:"+port, "/v1/chain_info/get_master_block_num", {}, []);
+        logger.info("getMasterBlockNum data:",rs.data);
         return rs.data;
     } catch (e) {
         logger.error("getMasterBlockNum error,", utils.logNetworkError(e));
@@ -1177,4 +1216,6 @@ module.exports = {
     ramUsageCheckIn,
     getServerVersion,
     checkSeedReady,
+    getBlockInfoData,
+    getMasterHeadBlockNum,
 }
