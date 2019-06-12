@@ -55,7 +55,8 @@ void chain_info_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_producers, 200),
       CHAIN_RO_CALL(get_master_block_num, 200),
       CHAIN_RO_CALL(get_merkle_proof, 200),
-      CHAIN_RO_CALL(verify_merkle_proof, 200)
+      CHAIN_RO_CALL(verify_merkle_proof, 200),
+      CHAIN_RO_CALL(get_account_info, 200)
    });
 }
 
