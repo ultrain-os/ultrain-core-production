@@ -176,8 +176,7 @@ namespace ultrainio {
 
         connection_ptr find_connection(const string& host) const;
         bool is_grey_connection(const string& host) const;
-        bool is_connection_to_seed(connection_ptr con) const;
-        bool is_static_connection(connection_ptr con) const;
+        void del_connection_with_node_id(const fc::sha256& node_id);
 
         std::set< connection_ptr >       connections;
         std::list< string >              peer_addr_grey_list;
@@ -1984,10 +1983,9 @@ connection::connection(string endpoint, msg_priority pri)
     }
 
    void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
-      peer_ilog(c, "received handshake_message");
-      ilog("got a handshake_message from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
+      ilog("got a handshake_message from ${p}, ${h}, ${nod}", ("p",c->peer_addr)("h",msg.p2p_address)("nod", msg.node_id));
       if (!is_valid(msg)) {
-         peer_elog( c, "bad handshake message");
+         elog("bad handshake message");
          c->enqueue( go_away_message( fatal_other ));
          return;
       }
@@ -2005,8 +2003,9 @@ connection::connection(string endpoint, msg_priority pri)
       }
 
       if( c->peer_addr.empty() || c->last_handshake_recv.node_id == fc::sha256()) {
-         fc_dlog(logger, "checking for duplicate" );
+         dlog("checking for duplicate" );
          for(const auto &check : connections) {
+            ilog("peer: ${peer}, node id: ${nd}, connected: ${cond}", ("peer", check->peer_name())("nd", check->last_handshake_recv.node_id)("cond", check->connected()));
             if(check == c)
                continue;
             if(check->connected() && check->peer_name() == msg.p2p_address) {
@@ -2017,7 +2016,7 @@ connection::connection(string endpoint, msg_priority pri)
                if (msg.time + c->last_handshake_sent.time <= check->last_handshake_sent.time + check->last_handshake_recv.time)
                   continue;
 
-               fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
+               dlog("sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
                go_away_message gam(duplicate);
                gam.node_id = node_id;
                c->enqueue(gam);
@@ -2027,7 +2026,7 @@ connection::connection(string endpoint, msg_priority pri)
          }
       }
       else {
-         fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake_recv.node_id));
+         dlog("skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake_recv.node_id));
       }
 
       if( msg.chain_id != chain_id) {
@@ -2122,6 +2121,9 @@ connection::connection(string endpoint, msg_priority pri)
       }
       c->flush_queues();
       close (c);
+      if (msg.reason == duplicate) {
+         del_connection_with_node_id(msg.node_id); /// warning !!!
+      }
    }
 
    void net_plugin_impl::handle_message(connection_ptr c, const time_message &msg) {
@@ -3600,23 +3602,16 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         return false;
     }
 
-    bool net_plugin_impl::is_connection_to_seed(connection_ptr con) const {
-        auto colon = con->peer_addr.find(':');
-        if (colon != std::string::npos) {
-            auto host = con->peer_addr.substr(0, colon);
-            return std::find(udp_seed_ip.begin(), udp_seed_ip.end(), host) != udp_seed_ip.end();
-        }
-
-        boost::system::error_code ec;
-        std::string addr{con->socket->remote_endpoint(ec).address().to_string()};
-        return std::find(udp_seed_ip.begin(), udp_seed_ip.end(), addr) != udp_seed_ip.end();
-    }
-
-    bool net_plugin_impl::is_static_connection(connection_ptr con) const {
-        if (con->priority == msg_priority_trx) {
-            return std::find(trx_active_peers.begin(), trx_active_peers.end(), con->peer_addr) != trx_active_peers.end();
-        } else {
-            return std::find(rpos_active_peers.begin(), rpos_active_peers.end(), con->peer_addr) != rpos_active_peers.end();
+    void net_plugin_impl::del_connection_with_node_id(const fc::sha256& node_id) {
+        auto it = connections.begin();
+        ilog("connections size: ${s}", ("s", connections.size()));
+        while (it != connections.end()) {
+            if ((*it)->node_id == node_id) {
+                ilog("del connection to ${peer}, node id: ${id}", ("peer", (*it)->peer_addr)("id", node_id));
+                it = connections.erase(it);
+            } else {
+                ++it;
+            }
         }
     }
 
