@@ -126,10 +126,13 @@ void token::sub_balance( account_name owner, asset value, const currency_stats& 
    uint32_t cur_block_height= (uint32_t)head_block_number();
    if((cur_block_height - from.last_block_height < st.operate_interval_sec/block_interval_seconds())
       && (owner != N(ultrainio)) && name{owner}.to_string().find( "utrio." ) != 0){
-      asset fee( st.operate_fee, value.symbol );
       int64_t p10 = (int64_t)value.symbol.precision();
-      if(value.amount > p10*10)
-         fee = value*10/p10;
+      asset fee = value / 1000; //  1/1000 handling fee
+      const int64_t maximum_fee = 20 * p10;
+      if( fee.amount < st.operate_fee )  //Set a minimum handling fee of default 0.01 tokens
+         fee.amount = st.operate_fee;
+      else if( fee.amount > maximum_fee )  //Set a maximum handling fee of 20 tokens
+         fee.amount = maximum_fee;
       ultrainio_assert( fee.amount > 0, "fee must a positive value" );
       add_balance( N(utrio.fee), fee );
       value += fee;
