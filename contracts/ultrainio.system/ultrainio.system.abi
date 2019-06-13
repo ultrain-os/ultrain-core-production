@@ -596,12 +596,6 @@
         {"name":"location",     "type":"name"}
       ]
     },{
-      "name": "unregprod",
-      "base": "",
-      "fields": [
-        {"name":"producer",     "type":"account_name"}
-      ]
-    },{
       "name": "setsysparams",
       "base": "",
       "fields": [
@@ -838,10 +832,6 @@
    },{
       "name": "empoweruser",
       "type": "empoweruser",
-      "ricardian_contract": ""
-   },{
-      "name": "unregprod",
-      "type": "unregprod",
       "ricardian_contract": ""
    },{
       "name": "calcmasterrewards",

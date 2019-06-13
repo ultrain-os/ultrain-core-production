@@ -849,27 +849,6 @@ struct create_account_subcommand {
    }
 };
 
-struct unregister_producer_subcommand {
-   string producer_str;
-   bool superprivflg = false;
-
-   unregister_producer_subcommand(CLI::App* actionRoot) {
-      auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
-      unregister_producer->add_option("account", producer_str, localized("The account to unregister as a producer"))->required();
-      unregister_producer->add_flag("-u,--superpriv", superprivflg, localized("unregister_producer add privileged (rarely used)"));
-      add_standard_transaction_options(unregister_producer);
-
-      unregister_producer->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("producer", producer_str);
-         vector<permission_level> permiss_info{permission_level{producer_str,config::active_name}};
-         if(superprivflg)
-            permiss_info.push_back(permission_level{N(ultrainio),config::active_name});
-         send_actions({create_action( permiss_info, config::system_account_name, NEX(unregprod), act_payload)});
-      });
-   }
-};
-
 struct list_producers_subcommand {
    bool print_json = false;
    std::string lower;
@@ -2609,7 +2588,6 @@ int main( int argc, char** argv ) {
    system->require_subcommand();
 
    auto registerProducer = register_producer_subcommand(system);
-   auto unregisterProducer = unregister_producer_subcommand(system);
 
    auto listProducers = list_producers_subcommand(system);
    auto buyresourcespackage = buy_respackage_subcommand(system);

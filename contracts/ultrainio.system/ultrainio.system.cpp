@@ -308,7 +308,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)(setfreeacc)
      // producer.cpp
-     (regproducer)(unregprod)(moveprod)
+     (regproducer)(moveprod)
      // reward.cpp
      (onblock)(onfinish)(calcmasterrewards)(claimrewards)
      // scheduler.cpp

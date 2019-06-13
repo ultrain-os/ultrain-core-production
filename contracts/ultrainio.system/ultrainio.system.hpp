@@ -500,7 +500,6 @@ namespace ultrainiosystem {
                            account_name rewards_account,
                            const std::string& url,
                            name location );
-         void unregprod( const account_name producer );
 
          void moveprod(account_name producer,
                        const std::string&  producerkey,

@@ -26,6 +26,8 @@ namespace ultrainiosystem {
         // key is hex encoded
         ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
         ultrainio_assert( bls_key.size() == 130, "public bls key should be of size 130" );
+        ultrainio_assert( is_account( producer ), "producer account not exists" );
+        ultrainio_assert( is_account( rewards_account ), "rewards account not exists" );
         if(location != self_chain_name) {
             ultrainio_assert(location != N(master) , "wrong location");
             if(location != default_chain_name) {
@@ -51,7 +53,6 @@ namespace ultrainiosystem {
         auto briefprod = _briefproducers.find(producer);
         if(briefprod == _briefproducers.end()) {
             //new producer, add to disabled table for now
-            ultrainio_assert( is_account( rewards_account ), "rewards account not exists" );
             disabled_producers_table dp_tbl(_self, _self);
             dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
                 dis_prod.owner                   = producer;
@@ -68,57 +69,21 @@ namespace ultrainiosystem {
                 brief_prod.in_disable   = true;
             });
         } else {
+            ultrainio_assert( briefprod->in_disable, "producer already exist" );
             if(location == default_chain_name) {
                 location = briefprod->location;
             }
-
-            if (briefprod->in_disable) {
-                disabled_producers_table dp_tbl(_self, _self);
-                auto it_disable = dp_tbl.find(producer);
-                ultrainio_assert(it_disable != dp_tbl.end(), "error: producer is not in disabled table");
-                ultrainio_assert(it_disable->last_operate_blocknum < curblocknum, "only one action can be performed in a block");
-                dp_tbl.modify(it_disable, [&]( disabled_producer& dis_prod ) {
-                    dis_prod.producer_key            = producer_key;
-                    dis_prod.bls_key                 = bls_key;
-                    dis_prod.url                     = url;
-                    dis_prod.last_operate_blocknum   = curblocknum;
-                });
-                if(it_disable->total_cons_staked >= _gstate.min_activated_stake) {
-                    moveprod_param mv_prod(producer, producer_key, bls_key, true, name{N(disable)}, false, location);
-                    uint128_t sendid = N(moveprod) + producer;
-                    cancel_deferred(sendid);
-                    ultrainio::transaction out;
-                    out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
-                    out.delay_sec = 0;
-                    out.send( sendid, _self, true );
-                }
-            }
-            else {
-                if(location != self_chain_name) {
-                    ultrainio_assert(_chains.find(location) != _chains.end(),
-                                     "wrong location, subchain is not existed");
-                }
-                //if location changes
-                producers_table _producers(_self, briefprod->location);
-                auto prod = _producers.find(producer);
-                ultrainio_assert(prod != _producers.end(), "producer not found");
-                if(briefprod->location != location) {
-                    ultrainio_assert(!briefprod->is_on_master_chain(), "cannot move producers from master chain");
-                    moveprod_param mv_prod(producer, producer_key, bls_key, false, briefprod->location, false, location);
-                    uint128_t sendid = N(moveprod) + producer;
-                    cancel_deferred(sendid);
-                    ultrainio::transaction out;
-                    out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
-                    out.delay_sec = 0;
-                    out.send( sendid, _self, true );
-                } else {
-                    _producers.modify( prod, [&]( producer_info& info ) {
-                        info.producer_key = producer_key;
-                        info.bls_key      = bls_key;
-                        info.url          = url;
-                    });
-                }
-            }
+            disabled_producers_table dp_tbl(_self, _self);
+            auto it_disable = dp_tbl.find(producer);
+            ultrainio_assert(it_disable != dp_tbl.end(), "error: producer is not in disabled table");
+            ultrainio_assert(it_disable->last_operate_blocknum < curblocknum, "only one action can be performed in a block");
+            dp_tbl.modify(it_disable, [&]( disabled_producer& dis_prod ) {
+               dis_prod.producer_key            = producer_key;
+               dis_prod.bls_key                 = bls_key;
+               dis_prod.url                     = url;
+               dis_prod.last_operate_blocknum   = curblocknum;
+               dis_prod.claim_rewards_account   = rewards_account;
+            });
         }
 
         if (has_auth(_self)) {
@@ -143,35 +108,6 @@ namespace ultrainiosystem {
             }
         }
     }
-
-   void system_contract::unregprod( const account_name producer ) {
-      ultrainio_assert( _gstate.cur_committee_number > _gstate.min_committee_member_number,
-                        "The number of committee member is too small, unregprod suspended for now");
-      if (has_auth(_self)) {
-         require_auth(_self);
-      } else{
-         require_auth( producer );
-         ultrainio_assert( _gstate.is_master_chain(), "only master chain allow unregprod" );
-      }
-      auto briefprod = _briefproducers.find(producer);
-      ultrainio_assert(briefprod != _briefproducers.end(), "this account is not a producer");
-      ultrainio_assert(!briefprod->in_disable, "this producer is not enabled");
-
-      producers_table _producers(_self, briefprod->location);
-      const auto& prod = _producers.find( producer );
-      ultrainio_assert(prod != _producers.end(), "producer is not found in its location");
-      uint64_t curblocknum = (uint64_t)head_block_number() + 1;
-      ultrainio_assert( (curblocknum - prod->last_operate_blocknum) > 2 ,
-                        "wait at least 2 blocks before this unregprod operation" );
-
-      moveprod_param mv_prod(producer, prod->producer_key, prod->bls_key, false, briefprod->location, true, name{N(disable)});
-      uint128_t sendid = N(moveprod) + producer;
-      cancel_deferred(sendid);
-      ultrainio::transaction out;
-      out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
-      out.delay_sec = 0;
-      out.send( sendid, _self, true );
-   }
 
     std::vector<name> system_contract::get_all_chainname() {
         std::vector<name> scopes;
