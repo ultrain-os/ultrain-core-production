@@ -59,7 +59,7 @@ class NodeTable: UDPSocketEvents
 public:
     static constexpr uint32_t c_bondingTimeMSeconds{3000000};
     /// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
-    NodeTable(ba::io_service& _io, NodeIPEndpoint const& _endpoint, NodeID const& nodeID, string const& chainid, bool _enabled = true);
+    NodeTable(ba::io_service& _io, NodeIPEndpoint const& _endpoint, NodeID const& nodeID, string const& chainid, string& listenIP, bool traverseNat);
     ~NodeTable();
     NodeID const m_hostNodeID;
     string const m_chainid;
@@ -96,6 +96,12 @@ public:
     chain::account_name m_account;
     void set_nodetable_account(chain::account_name _account){m_account = _account ;}
     void send_request_connect(NodeID nodeID,NodeIPEndpoint _to);
+    bi::tcp::endpoint traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpInterfaceAddr);
+    void determinePublic();
+    std::set<bi::address> getInterfaceAddresses();
+    bool m_traverseNat = false;
+    string m_listenIP;
+    void set_nodetable_listenIP(string ip){m_listenIP = ip;}
 #if defined(BOOST_AUTO_TEST_SUITE) || defined(_MSC_VER) // MSVC includes access specifier in symbol name
 protected:
 #else
@@ -215,6 +221,7 @@ private:
     void recordBadNode(NodeID const& _id);
     bool isPrivateAddress(bi::address const& _addressToCheck);
     bool isLocalHostAddress(bi::address const& _addressToCheck);
+    bool isPublicAddress(bi::address const& _addressToCheck);
 }; // end of class NodeTable
 
 } // end of namespace p2p

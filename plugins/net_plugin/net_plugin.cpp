@@ -2065,7 +2065,6 @@ connection::connection(string endpoint, msg_priority pri)
       //check for duplicate key access
       for(auto &it : connections) {
          if(it->connected() && (it->peer_account == msg.account) && (it->priority == c->priority)) {
-            ilog("account ${account} ${account1}",("account",it->peer_account)("account1",msg.account));
             boost::system::error_code ec;
             if(it->socket->remote_endpoint(ec).address() != c->socket->remote_endpoint(ec).address()) {
 
@@ -3200,6 +3199,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          ( "rpos-p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple rpos-p2p-peer-address options as needed to compose a network.")
          ( "udp-listen-port", bpo::value<uint16_t>()->default_value(20124), "The udp port used by p2p search.")
          ( "udp-seed", bpo::value< vector<string> >()->composing(), "The udp seed ip to build p2p nodes table. If this option was not set, we would get nothing from p2p nodes table.")
+         ( "listenIP", bpo::value<string>()->default_value( "0.0.0.0" ), "IP that really works,public address first if the node has one.")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
@@ -3229,6 +3229,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
            "   _lport \tlocal port number connected to peer\n\n")
         ("max-waitblocknum-seconds", bpo::value<int>()->default_value(3), "Time duration for selecting sync block source.")
         ("max-waitblock-seconds",bpo::value<int>()->default_value(12), "Check period for connecting during syncing block.")
+        ("nat-mapping", bpo::value<bool>()->default_value(false),"True to enable traverse Nat using upnp.")
 
         ;
    }
@@ -3401,12 +3402,22 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          if (options.count("udp-listen-port")) {
             udp_port = options.at( "udp-listen-port" ).as<uint16_t>();
          }
+         string listenIP;
+         if(options.count("listenIP"))
+         {
+             listenIP =  options.at( "listenIP" ).as<string>();
+         }
+         bool traverseNat = false;
+        if(options.count("nat-mapping")) {
+            traverseNat = options.at( "nat-mapping" ).as<bool>();
+        }
+
          p2p::NodeIPEndpoint local;
          local.setAddress("0.0.0.0");
          local.setUdpPort(udp_port);
          local.setListenPort(msg_priority_trx, my->trx_listener.listen_endpoint.port());
          local.setListenPort(msg_priority_rpos, my->rpos_listener.listen_endpoint.port());
-         my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str());
+         my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str(),listenIP,traverseNat);
          if (options.count("udp-seed")) {
             my->udp_seed_ip = options.at( "udp-seed" ).as<vector<string> >();
          }

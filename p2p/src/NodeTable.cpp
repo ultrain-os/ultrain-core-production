@@ -1,8 +1,11 @@
 #include "p2p/NodeTable.h"
 #include "p2p/Common.h"
+#include "p2p/UPnP.h"
 #include <fc/crypto/rand.hpp>
 #include <memory>
-
+#ifndef _WIN32
+#include <ifaddrs.h>
+#endif
 using namespace std;
 
 namespace ultrainio
@@ -32,13 +35,16 @@ namespace p2p {
                                                                                                                   _pubk)) {}
 
 
-    NodeTable::NodeTable(ba::io_service &_io, NodeIPEndpoint const &_endpoint, NodeID const &nodeID, string const& chainid, bool _enabled) :
+    NodeTable::NodeTable(ba::io_service &_io, NodeIPEndpoint const &_endpoint, NodeID const &nodeID, string const& chainid,string& listenIP,bool traverseNat) :
             m_hostNodeID(nodeID),
             m_chainid(chainid),
             m_hostNodeEndpoint(_endpoint),
             m_socket(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents *>(this),
-                                             (bi::udp::endpoint) _endpoint))
+                                             (bi::udp::endpoint) _endpoint)
+           )
     {
+        m_listenIP = listenIP;
+        m_traverseNat = traverseNat;
         for (unsigned i = 0; i < s_bins; i++)
             m_state[i].distance = i;
 	ilog("chain_id ${id}",("id",m_chainid));
@@ -56,6 +62,10 @@ void NodeTable::init( const std::vector <std::string> &seeds,ba::io_service &_io
 	catch (std::exception const &_e) {
 		elog("Exception connecting NodeTable socket:");
 	}
+   if(m_traverseNat)
+   {
+       determinePublic();
+   }
 	m_seeds = seeds;
 	requireSeeds(m_seeds);
 	doIDRequest();
@@ -966,5 +976,168 @@ bool NodeTable::isLocalHostAddress(bi::address const& _addressToCheck)
 
     return c_rejectAddresses.find(_addressToCheck) != c_rejectAddresses.end();
 }
+bool NodeTable::isPublicAddress(bi::address const& _addressToCheck)
+{
+    return !(isPrivateAddress(_addressToCheck) || isLocalHostAddress(_addressToCheck));
+}
+//#if(MINIUPNPC)
+bi::tcp::endpoint NodeTable::traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpInterfaceAddr)
+{
+    unique_ptr<UPnP> upnp;
+    try
+    {
+        upnp.reset(new UPnP);
+    }
+
+    catch (...) {
+        elog("upnp init error");
+    }
+
+    bi::tcp::endpoint upnpEP;
+    if (upnp && upnp->isValid())
+    {
+        bi::address pAddr;
+        int extPort = 0;
+        for (auto const& addr: _ifAddresses)
+            if (addr.is_v4() && isPrivateAddress(addr) && (extPort = upnp->addRedirect(addr.to_string().c_str(), _listenPort)))
+            {
+                pAddr = addr;
+                break;
+            }
+
+        auto eIP = upnp->externalIP();
+        bi::address eIPAddr(bi::address::from_string(eIP));
+        if (extPort && eIP != string("0.0.0.0") && !isPrivateAddress(eIPAddr))
+        {
+            ilog("Punched through NAT and mapped local port ${local} ex ${extPort}",("local",_listenPort)("extPort",extPort));
+            ilog("External addr: ${ip}",("ip",eIP));
+            o_upnpInterfaceAddr = pAddr;
+            upnpEP = bi::tcp::endpoint(eIPAddr, (unsigned short)extPort);
+        }
+        else
+            ilog("Couldn't punch through NAT (or no NAT in place).");
+    }
+
+    return upnpEP;
+}
+
+//#endif
+std::set<bi::address> NodeTable::getInterfaceAddresses()
+{
+    std::set<bi::address> addresses;
+
+#if defined(_WIN32)
+    WSAData wsaData;
+    if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0)
+    {
+        elog("no network");
+        return addresses;
+    }
+
+
+    char ac[80] = {0};
+    if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR)
+    {
+        cnetlog << "Error " << WSAGetLastError() << " when getting local host name.";
+        WSACleanup();
+        elog("no network");
+    }
+
+    struct hostent* phe = gethostbyname(ac);
+    if (phe == 0)
+    {
+        cnetlog << "Bad host lookup.";
+        WSACleanup();
+        elog("no network");
+        return addresses;
+    }
+
+    for (int i = 0; phe->h_addr_list[i] != 0; ++i)
+    {
+        struct in_addr addr;
+        memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
+        char *addrStr = inet_ntoa(addr);
+        bi::address address(bi::address::from_string(addrStr));
+        if (!isLocalHostAddress(address))
+            addresses.insert(address.to_v4());
+    }
+
+    WSACleanup();
+#else
+    ifaddrs* ifaddr;
+    if (getifaddrs(&ifaddr) == -1)
+    {
+        elog("no network");
+        return addresses;
+    }
+
+    for (auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
+    {
+        if (!ifa->ifa_addr || string(ifa->ifa_name) == "lo0" || !(ifa->ifa_flags & IFF_UP))
+            continue;
+
+        if (ifa->ifa_addr->sa_family == AF_INET)
+        {
+            in_addr addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+            boost::asio::ip::address_v4 address(boost::asio::detail::socket_ops::network_to_host_long(addr.s_addr));
+            if (!isLocalHostAddress(address))
+                addresses.insert(address);
+        }
+        else if (ifa->ifa_addr->sa_family == AF_INET6)
+        {
+            sockaddr_in6* sockaddr = ((struct sockaddr_in6 *)ifa->ifa_addr);
+            in6_addr addr = sockaddr->sin6_addr;
+            boost::asio::ip::address_v6::bytes_type bytes;
+            memcpy(&bytes[0], addr.s6_addr, 16);
+            boost::asio::ip::address_v6 address(bytes, sockaddr->sin6_scope_id);
+            if (!isLocalHostAddress(address))
+                addresses.insert(address);
+        }
+    }
+
+    if (ifaddr!=NULL)
+        freeifaddrs(ifaddr);
+
+#endif
+
+    return addresses;
+}
+//#if(MINIUPNPC)
+void NodeTable::determinePublic()
+{
+    auto ifAddresses = getInterfaceAddresses();
+    auto laddr = m_listenIP.empty()?
+                     bi::address() :
+                     bi::make_address(m_listenIP);
+    auto lset = !laddr.is_unspecified();
+    bool listenIsPublic = lset && isPublicAddress(laddr);
+    bool listenIsPrivate = lset && (!listenIsPublic);
+    if(m_traverseNat)
+    {
+        if(listenIsPublic)
+        {
+            m_hostNodeEndpoint.setAddress(m_listenIP);
+        }
+        else
+        {
+            for (auto& p : m_hostNodeEndpoint.m_listenPorts)
+            {
+                uint16_t curr_port = p.port;
+                bi::tcp::endpoint ep(bi::address(), curr_port);
+                bi::address natIFAddr;
+                ep = traverseNAT(listenIsPrivate ? set<bi::address>({laddr}) : ifAddresses, curr_port, natIFAddr);
+                if(0 != ep.port())
+                {
+                    p.port = ep.port();
+                    m_hostNodeEndpoint.setAddress(natIFAddr.to_string());
+                }
+             //   ilog( "local address by upnp ${addr}",("addr",natIFAddr.to_string()));
+            }
+            ilog("m_hostep is ${addr} rpos_port ${rpos_port} trx_port ${trx_port}",("addr",m_hostNodeEndpoint.address())("rpos_port",m_hostNodeEndpoint.listenPort(msg_priority_rpos))("trx_port",m_hostNodeEndpoint.listenPort(msg_priority_trx)));
+        }
+    }
+}
+//
+// #endif
 }  // namespace p2p
 }  // namespace ultrainio
