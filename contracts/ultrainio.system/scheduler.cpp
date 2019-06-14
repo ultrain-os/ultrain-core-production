@@ -133,9 +133,12 @@ namespace ultrainiosystem {
             });
 
             // delete item which is old enough but need to keep it if it is the only one with valid flag
-            if (blocknum > uint64_t(MAX_WS_COUNT * _gstate.worldstate_interval)){
+            if (blocknum > uint64_t(NEAR_WS_CNT * _gstate.worldstate_interval)){
                 uint64_t latest_valid = 0;
-                uint64_t expired = blocknum - uint64_t(MAX_WS_COUNT * _gstate.worldstate_interval);
+                uint64_t expired = blocknum - uint64_t(NEAR_WS_CNT * _gstate.worldstate_interval);
+                uint64_t far_int = uint64_t(FAR_WS_MUL * _gstate.worldstate_interval);
+                uint64_t far_exp = blocknum - uint64_t(FAR_WS_CNT  * far_int);
+
                 std::vector<uint64_t> expired_nums;
 
                 for(auto itr = hashTable.begin(); itr != hashTable.end(); itr++) {
@@ -143,10 +146,13 @@ namespace ultrainiosystem {
                     for(auto it = hashv.begin(); it != hashv.end(); it++) {
                         if(it->valid == true && itr->block_num > latest_valid) {
                             latest_valid = itr->block_num;
+                            break;
                         }
                     }
                     if(itr->block_num <= expired) {
-                        expired_nums.push_back(itr->block_num);
+                        if( itr->block_num % far_int != 0 || itr->block_num <= far_exp ) {
+                            expired_nums.push_back(itr->block_num);
+                        }
                     }
                 }
                 for(auto exp : expired_nums) {

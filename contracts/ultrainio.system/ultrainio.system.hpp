@@ -179,7 +179,9 @@ namespace ultrainiosystem {
        ULTRAINLIB_SERIALIZE(hash_vote , (hash)(file_size)(votes)(valid)(accounts) )
    };
 
-   static constexpr uint32_t MAX_WS_COUNT                = 5;
+   static constexpr uint32_t NEAR_WS_CNT  = 3;
+   static constexpr uint32_t FAR_WS_CNT   = 5;
+   static constexpr uint32_t FAR_WS_MUL   = 10;
 
    struct subchain_ws_hash {
        uint64_t             block_num;
