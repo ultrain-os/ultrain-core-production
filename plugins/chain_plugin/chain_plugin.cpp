@@ -1239,6 +1239,12 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
             if(result.location == subchain_data.chain_name) {
                 result.chain_id = string(subchain_data.chain_id);
                 result.genesis_time = subchain_data.genesis_time;
+                for (auto v : subchain_data.table_extension) {
+                    if( v.key == chain::chains_state_exten_type_key::genesis_producer_public_key ) {
+                        result.genesis_pk = v.value;
+                        break;
+                    }
+                }
                 return false;
             }
             else {

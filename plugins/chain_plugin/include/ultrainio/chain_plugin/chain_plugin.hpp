@@ -361,6 +361,7 @@ public:
        std::string   chain_id;
        chain::block_timestamp genesis_time;
        uint32_t      quit_before_num;
+       std::string   genesis_pk;
    };
 
    get_producer_info_result get_producer_info(const get_producer_info_params& p) const;
@@ -789,7 +790,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_block_num_result, (co
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_unconfirmed_header_params, (chain_name));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_unconfirmed_header_result, (confirmed_block_id)(next_committee_mroot)(committee_set)(unconfirmed_headers)(genesisPk));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
-FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(genesis_time)(quit_before_num) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(genesis_time)(quit_before_num)(genesis_pk) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date)(block_height)(updateable) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );

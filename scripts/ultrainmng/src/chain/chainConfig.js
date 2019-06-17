@@ -46,6 +46,8 @@ ChainConfig.localChainName = "";
 ChainConfig.chainId = "";
 //genesisTime
 ChainConfig.genesisTime = "";
+//genesisPK
+ChainConfig.genesisPK = "";
 //节点登录的委员会用户信息
 ChainConfig.myAccountAsCommittee = "";
 //委员会私钥
@@ -58,6 +60,8 @@ ChainConfig.mainChainBlockDuration = 10000;
 ChainConfig.subChainBlockDuration = 10000;
 
 ChainConfig.nodPort = "8888";
+
+
 
 
 //主链配置

@@ -102,7 +102,7 @@ NodUltrain.addConfigInfo = function(updateArr) {
  * @param monitorServer
  * @returns {boolean}
  */
-NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,monitorServcer,chainPeerInfo,chainName) {
+NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,genesisPK,monitorServcer,chainPeerInfo,chainName) {
     try {
         var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
 
@@ -136,6 +136,13 @@ NodUltrain.updateConfig = function (seedIp,subchainHttpEndpoint,genesisTime,moni
 
         //更新chainname
         iniFile.setValue(iniConstants.CHAIN_NAME,chainName);
+
+        //更新genesis——pk
+        iniFile.removeKey(iniConstants.GENESIS_PK);
+        logger.error("genesis-pk is:",genesisPK);
+        if (utils.isNotNull(genesisPK)) {
+            iniFile.addKeyValue(iniConstants.GENESIS_PK,genesisPK);
+        }
 
         //iniFile.setValue(iniConstants.SUBCHAIN_HTTP_ENDPOINT, subchainHttpEndpoint);
         iniFile.setValue(iniConstants.GENESIS_TIME, genesisTime);

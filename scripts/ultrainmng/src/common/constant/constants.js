@@ -104,6 +104,7 @@ var iniConstants = {
     RPOS_P2P_PEER_ADDRESS: "rpos-p2p-peer-address",
     SUBCHAIN_HTTP_ENDPOINT: "subchainHttpEndpoint",
     GENESIS_TIME: "genesis-time",
+    GENESIS_PK: "genesis-pk",
     MNG_PATH: "mngpath",
     NOD_PATH: "nodpath",
     WSS_PATH: "wsspath",

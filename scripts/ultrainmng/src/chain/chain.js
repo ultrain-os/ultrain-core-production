@@ -1256,6 +1256,7 @@ async function syncChainInfo() {
         let chainName = null;
         let chainId = null;
         let genesisTime = null;
+        let genesisPk = null;
         if (utils.isNull(chainConfig.configSub.chainId)) {
             chainConfig.configSub.chainId = await chainApi.getChainId(chainConfig.configSub);
         }
@@ -1273,6 +1274,7 @@ async function syncChainInfo() {
             chainName = chainInfo.location;
             chainId = chainInfo.chain_id;
             genesisTime = chainUtil.formatGensisTime(chainInfo.genesis_time);
+            genesisPk = chainInfo.genesis_pk;
         }
 
         //设置用户属于的chainid和chainname信息
@@ -1284,7 +1286,10 @@ async function syncChainInfo() {
         }
         if (utils.isNotNull(genesisTime)) {
             chainConfig.genesisTime = genesisTime;
+            chainConfig.genesisPK = genesisPk;
         }
+
+        logger.error("genesis-pk is ",chainConfig.genesisPK);
 
         //如果是主链，啥都不操作
         if (isMainChain()) {
@@ -1648,8 +1653,9 @@ async function switchChain() {
         logger.info("get chainid(" + chainConfig.chainName + ")'s seed ip info:", seedIpInfo);
         logger.info("subchainEndPoint:", subchainEndPoint);
         logger.info("genesisTime:", chainConfig.genesisTime);
+        logger.info("genesisPK:", chainConfig.genesisPK);
         logger.info("get chainid(" + chainConfig.chainName + ")'s", subchainMonitorService);
-        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint, chainConfig.genesisTime, subchainMonitorService,chainPeerInfo,chainConfig.chainName);
+        result = await NodUltrain.updateConfig(seedIpInfo, subchainEndPoint, chainConfig.genesisTime, chainConfig.genesisPK, subchainMonitorService,chainPeerInfo,chainConfig.chainName);
         if (result == true) {
             logMsg = utils.addLogStr(logMsg,"update nod config success");
             loggerChainChanging.info("update nod config file success")
