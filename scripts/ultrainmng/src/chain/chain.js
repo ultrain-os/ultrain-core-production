@@ -1321,7 +1321,7 @@ async function syncChainInfo() {
         //同步本地委员会
         logger.info("sync local commitee");
         //获取本地prodcuers信息
-        let producerList = await chainApi.getProducerLists(chainConfig.getLocalHttpEndpoint());
+        let producerList = await chainApi.getProducerLists(chainConfig.configSub.httpEndpoint);
         logger.info("subchain producers: ", producerList);
         if (utils.isNotNull(producerList) && producerList.length > 0) {
             localProducers = producerList;
