@@ -805,14 +805,19 @@ namespace ultrainio {
             }
         }
 
+        max_timeout_num = {std::chrono::seconds{32}};
         if (cnt_connecting == 0){
-            sync_reset(no_connection);
-            return false;
+            max_timeout_num = {std::chrono::seconds{1}};
         }
 
         start_timer([this](){
-            ilog("waiting info timeout, don't receive enought rsps from all seed server");
-            start_sync();
+            if(no_connection == 0){
+                ilog("waiting info timeout, no connection,error");
+                sync_reset(no_connection);
+            } else {
+                ilog("waiting info timeout, don't receive enought rsps from all seed server");
+                start_sync();
+            }
         }, "waiting sync rsp");
         ws_states = waiting_respones;
         return true;
@@ -2341,7 +2346,7 @@ namespace ultrainio {
    }
 
     void sync_net_plugin::sync_ws(const chain::ws_info& info, int try_cnt, int waiting_time){
-        ilog("request sync_ws, try cnt: ${try_cnt}, wainit time: ${waiting_time}", ("try_cnt", try_cnt)("waiting_time", waiting_time));
+        ilog("request sync_ws, try cnt: ${try_cnt}, waiting time: ${waiting_time}", ("try_cnt", try_cnt)("waiting_time", waiting_time));
 
         my->start_connect([this, info, try_cnt](){
             my->m_sync_ws_manager->send_ws_sync_req(my->connections, info, [this, info, try_cnt](bool is_success){
