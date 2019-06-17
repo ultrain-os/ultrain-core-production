@@ -128,6 +128,32 @@ namespace ultrainiosystem {
       return unpaid_balance;
    }
 
+   void system_contract::record_rewards_for_maintainer( account_name maintainer, uint64_t unpaid_balance ) {
+      unpaid_disprod _unpaid_maintainer( _self, N(maintainer) );
+      auto unmaint_itr = _unpaid_maintainer.find( maintainer );
+      if( unmaint_itr == _unpaid_maintainer.end() ){
+         _unpaid_maintainer.emplace( [&]( auto& u ) {
+            u.owner = maintainer;
+            u.unpaid_balance = unpaid_balance;
+         });
+      } else {
+         _unpaid_maintainer.modify( unmaint_itr, [&](auto& u ) {
+            u.unpaid_balance += unpaid_balance;
+         });
+      }
+   }
+
+   void system_contract::send_rewards_for_maintainer( account_name maintainer ) {
+      unpaid_disprod _unpaid_maintainer( _self, N(maintainer) );
+      auto unmaint_itr = _unpaid_maintainer.find( maintainer );
+      ultrainio_assert( unmaint_itr != _unpaid_maintainer.end(), " _unpaid_maintainer not exist " );
+      ultrainio_assert( unmaint_itr->unpaid_balance > 0, " _unpaid_maintainer balance is zero " );
+      send_rewards_for_producer( maintainer, maintainer, default_chain_name, unmaint_itr->unpaid_balance );
+      _unpaid_maintainer.modify( unmaint_itr, [&](auto& u ) {
+         u.unpaid_balance = 0;
+      });
+   }
+
    void system_contract::reportsubchainblock( account_name producer ) {
       auto briefprod = _briefproducers.find(producer);
       if(briefprod == _briefproducers.end()) {
@@ -140,11 +166,15 @@ namespace ultrainiosystem {
          print("error: block proposer ", name{producer}, " is not found in its location\n");
          return;
       }
-      uint64_t rewardvalue = get_reward_per_block();
-      uint64_t realreward = (uint64_t)( rewardvalue * get_reward_fee_ratio() );
-      _gstate.total_unpaid_balance += realreward;
-      if(rewardvalue > realreward )
-         _gstate.master_chain_pay_fee += rewardvalue - realreward;
+      const uint64_t rewardvalue = get_reward_per_block();
+      const uint64_t reward_percentage = rewardvalue / 100;
+      record_rewards_for_maintainer( ultrainio_community_name, reward_percentage * 5 );
+      record_rewards_for_maintainer( ultrainio_technical_team_name, reward_percentage * 5 );
+      record_rewards_for_maintainer( ultrainio_dapp_name, reward_percentage * 10 );
+      uint64_t realreward = (uint64_t)( reward_percentage * 80 * get_reward_fee_ratio() );
+      _gstate.total_unpaid_balance += realreward + reward_percentage * 20;
+      if( rewardvalue > (realreward + reward_percentage * 20) )
+         _gstate.master_chain_pay_fee += rewardvalue - realreward - reward_percentage * 20;
       _producers.modify( prod, [&](auto& p ) {
           p.unpaid_balance += realreward;
           p.total_produce_block++;
@@ -156,6 +186,12 @@ namespace ultrainiosystem {
       ultrainio_assert( _gstate.is_master_chain(), "It's not that the master chain can't get rewards" );
       ultrainio_assert( _gstate.cur_committee_number >= _gstate.min_committee_member_number,
          "The current number of committees must be greater than the minimum to be eligible for new awards");
+      if( producer == ultrainio_community_name
+         || producer == ultrainio_technical_team_name
+         || producer == ultrainio_dapp_name ){
+         send_rewards_for_maintainer( producer );
+         return;
+      }
       const auto& briefprod = _briefproducers.get( producer, "producer not found" );
       if( briefprod.in_disable ) {  //disabled producer claimrewards
          unpaid_disprod _unpaid_disproducer( _self, _self );

@@ -23,7 +23,9 @@ namespace ultrainiosystem {
    using namespace ultrainio;
    const name self_chain_name{N(ultrainio)};
    const name default_chain_name{N(default)};  //default chain, will be assigned by system.
-
+   const account_name ultrainio_community_name{N(utrio.cmnity)};
+   const account_name ultrainio_technical_team_name{N(utrio.thteam)};
+   const account_name ultrainio_dapp_name{N(utrio.dapp)};
    bool operator!=(const checksum256& sha256_1, const checksum256& sha256_2) {
       for(auto i = 0; i < 32; ++i) {
          if(sha256_1.hash[i] != sha256_2.hash[i]) {
@@ -579,6 +581,8 @@ namespace ultrainiosystem {
          inline void send_rewards_for_producer( account_name producer, account_name reward_account, const name& chain_name, uint64_t unpaid_balance );
          inline void record_rewards_for_disproducer( account_name producer, account_name reward_account, uint64_t unpaid_balance );
          inline uint64_t remove_rewards_for_enableproducer( account_name producer );
+         inline void record_rewards_for_maintainer( account_name maintainer, uint64_t unpaid_balance );
+         inline void send_rewards_for_maintainer( account_name maintainer );
 
          //defined in scheduler.cpp
          void add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number);

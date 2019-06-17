@@ -10,7 +10,10 @@ systemAccounts = [
     'utrio.bank',
     'utrio.empty',
     'utrio.reward',
-    'utrio.mfee'
+    'utrio.mfee',
+    'utrio.cmnity',
+    'utrio.thteam',
+    'utrio.dapp'
 ]
 
 initialAccounts = [
