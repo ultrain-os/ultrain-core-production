@@ -110,7 +110,7 @@ namespace ultrainiosystem {
 
             if( cur_tokens < tap.val && !_gstate.is_master_chain()){ //if master chain no issue tokens
                INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
-               {N(utrio.bank),(tap.val - cur_tokens), std::string("issue tokens for subchain utrio.bank")} );
+               {N(utrio.bank),(tap.val - cur_tokens), std::string( bank_issue_memo )} );
             } else if(_gstate.is_master_chain()){
                chainbalance  chainbalan(N(utrio.bank), N(utrio.bank));
                auto it_chain = chainbalan.find( chain_name );

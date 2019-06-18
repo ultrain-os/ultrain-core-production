@@ -16,7 +16,6 @@ namespace ultrainiobank {
 
         public:
             using contract::contract;
-            std::string str1;
 
             void transfer( account_name from,
                         account_name to,
@@ -51,10 +50,13 @@ namespace ultrainiobank {
             typedef ultrainio::multi_index<N(chainbalance), chain_balance> chainbalance;
 
             void checktranstobank( account_name from,
-                              asset        quantity,
-                              name chain_name );
+                              const asset&  quantity,
+                              const name&  chain_name,
+                              const name& cur_chain_name );
             void checktransfrombank( asset quantity, name chain_name );
 
+            void recordchainbalance( const name& chain_name, const asset& quantity );
+            void checkchainbalance( const name& chain_name, const asset& quantity );
     };
     extern "C" 
     void apply( uint64_t receiver, uint64_t code, uint64_t actH, uint64_t actL ) {
