@@ -1031,6 +1031,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const transaction_meta
       elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
    }
 
+   trans_doc.append( kvp( "block_num", b_int32{static_cast<int32_t>(tb.block_num )}));
    trans_doc.append( kvp( "createdAt", b_date{now} ));
 
    try {
@@ -1366,7 +1367,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
          if (ir_trans) {
             auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
                                                                          kvp( "block_id", block_id_str),
-                                                                         kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
                                                                          kvp( "updatedAt", b_date{now}))));
 
             mongocxx::model::update_one update_op{ make_document(kvp("_id", ir_trans->view()["_id"].get_oid())), update_doc.view()};
@@ -1922,6 +1922,7 @@ void mongo_db_plugin::plugin_startup()
 
 void mongo_db_plugin::plugin_shutdown()
 {
+   my->accepted_block_header_connection.reset();
    my->accepted_block_connection.reset();
    my->irreversible_block_connection.reset();
    my->accepted_transaction_connection.reset();
