@@ -237,8 +237,6 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         size_t runUnappliedTrxs(std::vector<chain::transaction_metadata_ptr> &trxs,
                                 fc::time_point hard_cpu_deadline, fc::time_point block_time);
 
-        echo_message_info findEchoMsg(BlockIdType blockId);
-
         void start_memleak_check();
 
         chain::checksum256_type getCommitteeMroot(uint32_t block_num);
@@ -246,6 +244,9 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         bool hasMultiSignPropose(const ProposeMsg& propose);
 
         bool hasMultiVotePropose(const EchoMsg& echo);
+
+        BlsVoterSet toBlsVoterSetAndFindEvil(const VoterSet& voterSet, const CommitteeSet& committeeSet,
+                int weight) const;
 
         // data member
         Block m_ba0Block;

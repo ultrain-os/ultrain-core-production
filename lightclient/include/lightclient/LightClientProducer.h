@@ -40,6 +40,8 @@ namespace ultrainio {
 
         BlsVoterSet getCurrentBlsVoterSet() const;
 
+        BlockIdType getLatestCheckPointId() const;
+
     private:
         bool shouldBeConfirmed(const BlockHeader& blockHeader) const;
 

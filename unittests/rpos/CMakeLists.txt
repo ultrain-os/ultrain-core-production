@@ -37,3 +37,21 @@ add_executable( punishmgr_unittest
 target_link_libraries( punishmgr_unittest ultrainio_rpos )
 
 add_test(NAME punishmgr_unittest COMMAND punishmgr_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+### VoterSet
+
+add_executable( voterset_unittest
+        VoterSetTest.cpp)
+
+target_link_libraries( voterset_unittest ultrainio_rpos )
+
+add_test(NAME voterset_unittest COMMAND voterset_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+### EvilBlsDetector
+
+add_executable( evilblsdetector_unittest
+        EvilBlsDetectorTest.cpp)
+
+target_link_libraries( evilblsdetector_unittest ultrainio_rpos )
+
+add_test(NAME evilblsdetector_unittest COMMAND evilblsdetector_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

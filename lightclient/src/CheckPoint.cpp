@@ -39,4 +39,8 @@ namespace ultrainio {
     const BlockHeader& CheckPoint::blockHeader() const {
         return m_blockHeader;
     }
+
+    BlockIdType CheckPoint::getPreCheckPointBlockId() const {
+        return m_preCheckPointBlockId;
+    }
 }

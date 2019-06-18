@@ -17,6 +17,8 @@ namespace ultrainio {
         CommitteeSet committeeSet() const;
 
         const BlockHeader& blockHeader() const;
+
+        BlockIdType getPreCheckPointBlockId() const;
     private:
         BlockHeader m_blockHeader;
 

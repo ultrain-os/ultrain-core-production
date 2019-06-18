@@ -32,6 +32,7 @@
 #include <lightclient/LightClientProducer.h>
 #include <lightclient/LightClientMgr.h>
 #include <rpos/Config.h>
+#include <rpos/EvilBlsDetector.h>
 #include <rpos/Genesis.h>
 #include <rpos/MsgBuilder.h>
 #include <rpos/MsgMgr.h>
@@ -625,10 +626,35 @@ namespace ultrainio {
         }
 
         if (ConfirmPoint::isConfirmPoint(propose.block)) {
-            BlockIdType blockId = ConfirmPoint(propose.block).confirmedBlockId();
-            if (!m_lightClientProducer->checkCanConfirm(BlockHeader::num_from_id(blockId))) {
-                elog("try to confirm wrong block num : ${num}", ("num", BlockHeader::num_from_id(blockId)));
+            ConfirmPoint confirmPoint(propose.block);
+            BlockIdType blockId = confirmPoint.confirmedBlockId();
+            uint32_t confirmedBlockNum = BlockHeader::num_from_id(blockId);
+            if (!m_lightClientProducer->checkCanConfirm(confirmedBlockNum)) {
+                elog("try to confirm wrong block num : ${num}", ("num", confirmedBlockNum));
                 return false;
+            }
+            chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
+            BlockIdType latestCheckPointId = m_lightClientProducer->getLatestCheckPointId();
+            int count = 5;
+            while (--count > 0 && latestCheckPointId != BlockIdType()) {
+                chain::signed_block_ptr blockPtr = chain.fetch_block_by_id(latestCheckPointId);
+                uint32_t checkPointBlockNum = BlockHeader::num_from_id(latestCheckPointId);
+                if (!blockPtr) {
+                    elog("can not found CheckPoint for block : ${num}", ("num", checkPointBlockNum));
+                    break;
+                }
+                CheckPoint checkPoint(*blockPtr);
+                if (checkPointBlockNum <= confirmedBlockNum) {
+                    CommitteeSet committeeSet = checkPoint.committeeSet();
+                    BlsVoterSet blsVoterSet = confirmPoint.blsVoterSet();
+                    if (!committeeSet.verify(blsVoterSet)) {
+                        // TODO(xiaofen) punish
+                        elog("BlsVoterSet error for : ${num} from ${who}", ("num", propose.block.block_num())("who", std::string(propose.block.proposer)));
+                        return false;
+                    }
+                    break;
+                }
+                latestCheckPointId = checkPoint.getPreCheckPointBlockId();
             }
         }
 
@@ -1543,7 +1569,7 @@ namespace ultrainio {
 
             if (isEmpty(echo_info->echoCommonPart.blockId)) {
                 dlog("produceBaxBlock.produce empty Block. save VoterSet in bax blockId = ${blockId}", ("blockId", voterSet.commonEchoMsg.blockId));
-                m_currentBlsVoterSet = voterSet.toBlsVoterSet(stakeVotePtr->getNextRoundThreshold() + 1);
+                m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(), stakeVotePtr->getNextRoundThreshold() + 1);
                 return emptyBlock();
             }
             auto propose_itor = m_proposerMsgMap.find(echo_info->echoCommonPart.blockId);
@@ -1555,7 +1581,7 @@ namespace ultrainio {
 #endif
                 dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase} save VoterSet in bax blockId = ${blockId}",
                      ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase)("blockId", voterSet.commonEchoMsg.blockId));
-                m_currentBlsVoterSet = voterSet.toBlsVoterSet(stakeVotePtr->getNextRoundThreshold() + 1);
+                m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(), stakeVotePtr->getNextRoundThreshold() + 1);
                 return propose_itor->second.block;
             }
             dlog("produceBaxBlock.> 2f + 1 echo. hash = ${hash} can not find it's propose.",("hash",echo_info->echoCommonPart.blockId));
@@ -1629,7 +1655,7 @@ namespace ultrainio {
                 voterSet.proofPool = itor->second.proofPool;
 #endif
                 // save VoterSet
-                m_currentBlsVoterSet = voterSet.toBlsVoterSet(stakeVotePtr->getNextRoundThreshold() + 1);
+                m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(), stakeVotePtr->getNextRoundThreshold() + 1);
                 break;
             }
         }
@@ -1648,22 +1674,6 @@ namespace ultrainio {
             return emptyBlock();
         }
         return blankBlock();
-    }
-
-    echo_message_info Scheduler::findEchoMsg(BlockIdType blockId) {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(blockId));
-        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        auto itor = m_echoMsgMap.find(blockId);
-        if (itor != m_echoMsgMap.end() && itor->second.getTotalVoterWeight() >= stakeVotePtr->getNextRoundThreshold()) {
-            return itor->second;
-        }
-        for (auto allPhaseItor = m_echoMsgAllPhase.begin(); allPhaseItor != m_echoMsgAllPhase.end(); ++allPhaseItor) {
-            auto itor = allPhaseItor->second.find(blockId);
-            if (itor != allPhaseItor->second.end() && itor->second.getTotalVoterWeight() >= stakeVotePtr->getNextRoundThreshold()) {
-                return itor->second;
-            }
-        }
-        return echo_message_info();
     }
 
     void Scheduler::clearPreRunStatus() {
@@ -2330,5 +2340,23 @@ namespace ultrainio {
             m_committeeVoteBlock.insert(make_pair(echo.account, echo.blockId));
         }
         return false;
+    }
+
+    BlsVoterSet Scheduler::toBlsVoterSetAndFindEvil(const VoterSet& voterSet, const CommitteeSet& committeeSet,
+            int weight) const {
+        BlsVoterSet blsVoterSet = voterSet.toBlsVoterSet(weight);
+        if (!committeeSet.verify(blsVoterSet)) {
+            // there are evil node
+            VoterSet newVoterSet;
+            std::vector<AccountName> evilAccounts;
+            EvilBlsDetector detector;
+            detector.detect(voterSet, committeeSet, newVoterSet, evilAccounts);
+            // TODO(xiaofen) punish
+            for (auto evil : evilAccounts) {
+                elog("evil account : ${evil}", ("evil", std::string(evil)));
+            }
+            blsVoterSet = newVoterSet.toBlsVoterSet(weight);
+        }
+        return blsVoterSet;
     }
 }  // namespace ultrainio

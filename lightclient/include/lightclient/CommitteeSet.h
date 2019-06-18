@@ -24,11 +24,11 @@ namespace ultrainio {
         bool operator == (const CommitteeSet& rhs) const;
         bool operator != (const CommitteeSet& rhs) const;
         CommitteeDelta diff(const CommitteeSet& pre) const;
+        std::vector<std::string> getBlsPk(const std::vector<AccountName>& accountV) const;
 
     private:
         std::vector<CommitteeInfo> m_committeeInfoV;
         void init(const std::string& s);
-        std::vector<std::string> getBlsPk(const std::vector<AccountName>& accountV) const;
         int nextRoundThreshold() const;
     };
 }

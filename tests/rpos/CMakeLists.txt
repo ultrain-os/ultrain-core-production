@@ -1,9 +1,3 @@
-#votersystem
-#add_executable( votersystem_test
-#        VoterSystemTest.cpp)
-
-#target_link_libraries( votersystem_test ultrainio_rpos )
-
 #FisherYates performance test
 add_executable( fisheryates_performance_test
         FisherYatesPerformanceTest.cpp )

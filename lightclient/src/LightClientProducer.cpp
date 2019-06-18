@@ -88,4 +88,8 @@ namespace ultrainio {
     BlsVoterSet LightClientProducer::getCurrentBlsVoterSet() const {
         return BlsVoterSet(m_BlsVotesMgr.get_current_bls_votes());
     }
+
+    BlockIdType LightClientProducer::getLatestCheckPointId() const {
+        return m_BlsVotesMgr.get_latest_check_point_id();
+    }
 }
