@@ -28,7 +28,7 @@
     * 在chain info 中增加软件版本信息，统一代码版本提取方式（首架，晓分）
     * 修复, 世界状态后replay crash 的bug（晓分）
     * 在transaction receipt 中增加类型packed_generated_trx(zhong wei, 首架，yus)
-        * 增加variant，merkle proof等对packed_generated_trx的支持
+    * 增加variant，merkle proof等对packed_generated_trx的支持
     * 在区块中增加on finished 交易的支持(晓分，首架）
     * chainbase 增删改操作顺序的优化（Raymond）
 * Contract
@@ -42,3 +42,25 @@
     * 管家基于轻客户端模式去同步委员会变化（左非）
     * 优化voterand 脚本，增加voterand 热更新的支持（左非, 廖鹏）
     * 上传node 版本号到monitor （左非）
+
+## 2019-06-19 Release(Commit: 1e24b13e2dd79032693ae26dc381e0dfda55ce1e)
+
+* Nodultrain
+    * 为了加快速度，从不同seed节点获取数据 (志平，刘伟)
+    * 节点连接进共识网络，对共识私钥，bls私钥进行验证 (江文娜，叶茂)
+    * 创建新侧链时，带上新侧链genesis节点公钥 (秦晓分，闫会超)
+    * 删除p2p bucket中重复的公共地址 (叶茂，江文娜)
+    * 修复调度后，现有节点bax，其他节点拉块报错，导致网络停止问题 (秦晓分)
+    * 移除没有收到对方握手的静态连接 (叶茂，江文娜)
+    * 验证块时，允许packed_generated_transaction hard_fail (沈宇峰)
+    * 增加get_block_info，get_table_records到chain_info_api (张忠伟)
+* Contract
+    * 增加isexistaccount和syncaccount接口 (闫会超，苏羽)
+    * 创建account和auth_sequence_object时，不创建account_sequence_object对象 (闫会超，苏羽)
+    * 调整claimrewards (闫会超，苏羽)
+* Wssultrain & WS tool
+    * read_section增加try/catch保护 (刘伟)
+* Ultrainmng
+    * 修改nod api接口，调度时支持genesis-pk配置的迁移
+    * 修改不需要从seed请求的RPC到本地
+    * 管家启动时支持配置文件不存在或异常的情况
