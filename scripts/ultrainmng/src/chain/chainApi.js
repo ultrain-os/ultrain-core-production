@@ -515,8 +515,11 @@ getTableInfo = async (httpEndpoint, code, scope, table, limit, table_key, lower_
         if (utils.isNotNull(upper_bound)) {
             params.upper_bound = upper_bound;
         }
+        logger.debug("url:",httpEndpoint+"/v1/chain_info/get_table_records");
+        logger.debug("params:",params);
+
         let res = await multiRequest(httpEndpoint, "/v1/chain_info/get_table_records", params, []);
-        // logger.debug(res);
+        //logger.info(res);
         return res.data;
     } catch (e) {
         logger.error("get_table_records error:", utils.logNetworkError(e));
@@ -524,6 +527,37 @@ getTableInfo = async (httpEndpoint, code, scope, table, limit, table_key, lower_
 
     return null;
 }
+
+
+getTableScopeInfo = async (httpEndpoint, code, scope, table, limit, table_key, lower_bound, upper_bound) => {
+    try {
+        const params = {"code": code, "scope": sjkuhjhkbjbkhncope, "table": table, "json": true, "key_type": "name"};
+        logger.debug(params);
+        if (utils.isNotNull(limit)) {
+            params.limit = limit;
+        }
+        if (utils.isNotNull(table_key)) {
+            params.table_key = table_key;
+        }
+        if (utils.isNotNull(lower_bound)) {
+            params.lower_bound = lower_bound;
+        }
+        if (utils.isNotNull(upper_bound)) {
+            params.upper_bound = upper_bound;
+        }
+        //logger.info("url:",httpEndpoint+"/v1/chain/get_table_by_scope");
+        //logger.info("params:",params);
+
+        let res = await multiRequest(httpEndpoint, "/v1/chain/get_table_by_scope", params, []);
+        //logger.info(res.data);
+        return res.data;
+    } catch (e) {
+        logger.error("get_table_by_scope error:", utils.logNetworkError(e));
+    }
+
+    return null;
+}
+
 
 /**
  * getCommitteeBulletin
@@ -587,6 +621,55 @@ getTableAllData = async (config, code, scope, table, pk) => {
                 finish = false;
             }
             logger.debug("tableinfo more：" + tableinfo.more);
+            if (index * limit >= count) {
+                logger.info("table: " + table + " count > " + count + " break now!");
+                break;
+            }
+
+        }
+    } catch (e) {
+        logger.error("getTableAllData error:", utils.logNetworkError(e));
+    }
+
+    logger.debug("getTableAllData(" + table + "):", tableObj);
+    return tableObj;
+
+}
+
+
+getTableAllScopeData = async (config, code, scope, table, pk) => {
+    let tableObj = {rows: [], more: false};
+    let count = 1000000; //MAX NUM
+    let limit = 100; //limit
+    let finish = false;
+    let lower_bound = null;
+    var index = 0;
+    try {
+        while (finish == false) {
+            logger.info("table: " + table + " scope:" + scope + " lower_bound(request)：" + lower_bound);
+            index++;
+            let tableinfo = await getTableScopeInfo(config.httpEndpoint, code, scope, table, limit, null, lower_bound, null);
+            logger.debug("tableinfo:" + table + "):", tableinfo);
+            if (utils.isNullList(tableinfo.rows) == false) {
+                for (let i = 0; i < tableinfo.rows.length; i++) {
+                    if (tableinfo.rows[i][pk] != lower_bound || lower_bound == null) {
+                        tableObj.rows.push(tableinfo.rows[i]);
+                    }
+                }
+
+                if (utils.isNotNull(pk)) {
+                    lower_bound = tableinfo.rows[tableinfo.rows.length - 1][pk];
+                }
+
+                logger.info("table: " + table + " scope:" + scope + " lower_bound(change)：" + lower_bound);
+            }
+
+            //查看是否还有
+            finish = true;
+            if (utils.isNotNull(tableinfo.more) && tableinfo.more != '0' && tableinfo.more != 0) {
+                finish = false;
+            }
+            logger.info("tableinfo more：" + tableinfo.more);
             if (index * limit >= count) {
                 logger.info("table: " + table + " count > " + count + " break now!");
                 break;
@@ -832,6 +915,26 @@ ramUsageCheckIn = async (url,param) => {
         logger.error("addRamUsage error,", utils.logNetworkError(e));
     }
 }
+
+
+
+/**
+ * uploadugas
+ * @param url
+ * @param param
+ * @returns {Promise<*>}
+ */
+uploadugas = async (url,param) => {
+    try {
+        logger.info("uploadugas param:", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/addUgasInfo", qs.stringify(param));
+        logger.info("uploadugas result:", rs.data);
+        return rs.data;
+    } catch (e) {
+        logger.error("uploadugas error,", utils.logNetworkError(e));
+    }
+}
+
 
 /**
  *
@@ -1218,4 +1321,6 @@ module.exports = {
     checkSeedReady,
     getBlockInfoData,
     getMasterHeadBlockNum,
+    getTableAllScopeData,
+    uploadugas,
 }

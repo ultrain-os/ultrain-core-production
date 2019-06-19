@@ -73,6 +73,9 @@ async function startEntry() {
     var clearCacheSyncCycle = utils.isNotNull(chainConfig.configFileData.local.clearCacheSchedule) ?  chainConfig.configFileData.local.clearCacheSchedule : clearCacheSchedule;
     logger.info("clearCacheSchedule ",clearCacheSchedule);
 
+    var uploadUgasSyncCycle = utils.isNotNull(chainConfig.configFileData.local.uploadUgasSyncCycle) ?  chainConfig.configFileData.local.uploadUgasSyncCycle : "0 0/15 * * * *";
+    logger.info("uploadUgasSyncCycle ",uploadUgasSyncCycle);
+
     //先做一次链信息同步
     logger.info("do sync chain info :")
     await chain.syncChainInfo();
@@ -147,6 +150,12 @@ async function startEntry() {
     schedule.scheduleJob(ramJobSchedule,async function () {
         await monitor.uploadRamUsage();
     })
+
+    logger.info("upload ugas info:",uploadUgasSyncCycle);
+    schedule.scheduleJob(uploadUgasSyncCycle,async function () {
+        await monitor.uploadUgasToMonitor();
+    })
+
 
     logger.info("logrotate info:",logrotateSchedule);
     schedule.scheduleJob(logrotateSchedule,async function () {

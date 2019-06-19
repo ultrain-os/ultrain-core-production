@@ -863,6 +863,8 @@ async function fileDeploy(deployBatch) {
                     deploySyncFlag = false;
                 }
             })
+
+
         }
 
     } catch (e) {
@@ -1432,6 +1434,64 @@ function setErrorStartup(msg) {
 }
 
 
+/**
+ * 上传ugas
+ * @returns {Promise<void>}
+ */
+async function uploadUgasToMonitor() {
+    logger.info("uploadUgasToMonitor start");
+    try {
+
+        let res = await  chainApi.getTableAllScopeData(chainConfig.configSub,"utrio.token",null,"accounts","scope");
+        //logger.info("ugas account:",res.rows);
+        logger.info(res.rows.length);
+        let list = [];
+        let count =50;
+        for (let i=0;i<res.rows.length;i++) {
+            try {
+                //logger.info("i("+i+") :",res.rows[i].scope);
+                let table = await chainApi.getTableInfo(chainConfig.configSub.httpEndpoint, "utrio.token", res.rows[i].scope, "accounts", 10);
+                //logger.info("res table",table);
+                list.push({a: res.rows[i].scope, m: table.rows[0].balance.replace(" UGAS", "")});
+
+                if (list.length >0 && list.length % count == 0) {
+                    let param = {
+                        chainName : chainConfig.localChainName,
+                        list: JSON.stringify(list)
+                    }
+
+                    logger.info("param:",param);
+
+                    let rs = await chainApi.uploadugas(getMonitorUrl(),param);
+                    logger.info("uploadugas rs:",rs);
+                    list = [];
+                }
+            } catch (e) {
+                logger.error("uploadUgasToMonitor single error:",e)
+            }
+        }
+
+        if (list.length >0) {
+            let param = {
+                chainName : chainConfig.localChainName,
+                list: JSON.stringify(list)
+            }
+
+            logger.info("param:",param);
+
+            let rs = await chainApi.uploadugas(getMonitorUrl(),param);
+            logger.info("uploadugas rs:",rs);
+        }
+
+    } catch (e) {
+       logger.error("uploadUgasToMonitor error:",e);
+    }
+
+
+    logger.info("uploadUgasToMonitor end");
+}
+
+
 module.exports = {
     checkIn,
     isDeploying,
@@ -1460,4 +1520,5 @@ module.exports = {
     uploadRamUsage,
     logrotate,
     setErrorStartup,
+    uploadUgasToMonitor,
 }
