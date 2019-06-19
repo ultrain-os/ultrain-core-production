@@ -16,6 +16,18 @@ systemAccounts = [
     'utrio.dapp'
 ]
 
+resignAccounts = [
+    'utrio.stake',
+    'utrio.resfee',
+    'utrio.fee',
+    'utrio.empty',
+    'utrio.reward',
+    'utrio.mfee',
+    'utrio.cmnity',
+    'utrio.thteam',
+    'utrio.dapp'
+]
+
 initialAccounts = [
     'root',
     'root1',

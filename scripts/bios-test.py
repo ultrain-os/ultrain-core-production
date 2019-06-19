@@ -79,7 +79,7 @@ def importKeys():
        run(args.clultrain + 'wallet import --private-key ' + rand_sk_lst[i])
 
 def updateAuth(account, permission, parent, controller):
-    run(args.clultrain + 'push action ultrainio updateauth' + jsonArg({
+    retry(args.clultrain + 'push action ultrainio updateauth' + jsonArg({
         'account': account,
         'permission': permission,
         'parent': parent,
@@ -96,7 +96,7 @@ def resign(account, controller):
     updateAuth(account, 'owner', '', controller)
     updateAuth(account, 'active', 'owner', controller)
     sleep(1)
-    run(args.clultrain + 'get account ' + account)
+    simple_run(args.clultrain + 'get account ' + account)
 
 def randomTransfer():
     subaccounts = accounts[1:3] #args.num_producers
@@ -142,7 +142,7 @@ def stepInstallSystemContracts():
 def stepCreateTokens():
     retry(args.clultrain + 'push action utrio.token create \'["ultrainio", "1000000000.0000 UGAS"]\' -p utrio.token')
     if not (args.subchain and args.subchain != 'ultrainio') :
-        retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "900000000.0000 UGAS", "memo"]\' -p ultrainio')
+        retry(args.clultrain + 'push action utrio.token issue \'["ultrainio", "100000000.0000 UGAS", "memo"]\' -p ultrainio')
     retry(args.clultrain + 'push action utrio.token set_chargeparams \'{"symbol":"UGAS","precision":"4","operate_interval":"%s","operate_fee":"%s",,"is_forbid_trans":0}\'  -p  utrio.token'  % ( 60,100))
     sleep(2)
 
@@ -219,11 +219,15 @@ def stepRegProducers():
          # is_claim_reward = 4,
          #free_account_per_res = 5,
          # version_number = 6,
+        #  is_allow_buy_res = 7, //Allows a general account to buy resources
+        #  check_user_bulletin = 8,
+        #  allow_undelegate_block_interval = 9,  #T+1day 24*360
+        #  refund_delegate_consensus_seconds = 10, #30days 30*24*3600
     #};
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
         "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"], [2, "12"], [3, "1"], [4, "true"], [5, "50"], [6, "6"]]}}\' -p ultrainio ' % \
+        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"], [2, "12"], [3, "1"], [4, "true"], [5, "50"], [6, "6"], [9, "8640"], [10, "2592000"]]}}\' -p ultrainio ' % \
         (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
         newaccount_fee, args.subchain, worldstate_interval, resourcelease_fee) )
     sleep(5)
@@ -238,9 +242,8 @@ def stepCreateinitAccounts():
     # retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100  "ultrainio"')
     pass
 def stepResign():
-    #resign('ultrainio', 'utrio.null')
-    resign('utrio.stake', 'utrio.null')
-    #resign('utrio.bank', 'utrio.null')
+    for a in resignAccounts:
+        resign( a, 'utrio.null')
 
 def resourceTransaction(fromacc,recacc,value):
     retry(args.clultrain + 'system delegatebw  %s %s "%s UGAS"  "%s UGAS"'  % (fromacc,recacc,5000/value,5000/value))
@@ -399,8 +402,8 @@ commands = [
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
     ('I', 'initsimpletest', stepInitSimpleTest,         False,    "Simple transfer contract call test"),
     ('i', 'create-initacc', stepCreateinitAccounts,     False,    "create initial accounts"),
+    ('q', 'resign',         stepResign,                 True,    "Resign utrio"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
-    ('q', 'resign',         stepResign,                 False,    "Resign utrio"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
     ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction"),
     ('u', 'unregproducers',  stepunregproducersTest,    False,    "stepunregproducersTest"),
