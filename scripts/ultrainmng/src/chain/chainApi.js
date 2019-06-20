@@ -531,7 +531,7 @@ getTableInfo = async (httpEndpoint, code, scope, table, limit, table_key, lower_
 
 getTableScopeInfo = async (httpEndpoint, code, scope, table, limit, table_key, lower_bound, upper_bound) => {
     try {
-        const params = {"code": code, "scope": sjkuhjhkbjbkhncope, "table": table, "json": true, "key_type": "name"};
+        const params = {"code": code, "scope": scope, "table": table, "json": true, "key_type": "name"};
         logger.debug(params);
         if (utils.isNotNull(limit)) {
             params.limit = limit;
@@ -935,6 +935,40 @@ uploadugas = async (url,param) => {
     }
 }
 
+/**
+ *
+ * @param url
+ * @param param
+ * @returns {Promise<*>}
+ */
+uploadCurrency = async (url,param) => {
+    try {
+        logger.info("uploadCurrency param:", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/addCurrencyInfo", qs.stringify(param));
+        logger.info("uploadCurrency result:", rs.data);
+        return rs.data;
+    } catch (e) {
+        logger.error("uploadCurrency error,", utils.logNetworkError(e));
+    }
+}
+
+/**
+ *
+ * @param httpEndPoint
+ * @returns {Promise<*>}
+ */
+getCurrencyStats = async (httpEndPoint) => {
+    try {
+
+        const rs = await axios.post(httpEndPoint+ "/v1/chain/get_currency_stats",{"code":"utrio.token", "symbol":"UGAS"});
+        return rs.data;
+    } catch (e) {
+        logger.error("getCurrencyStats error:",e);
+    }
+
+    return null;
+}
+
 
 /**
  *
@@ -1323,4 +1357,6 @@ module.exports = {
     getMasterHeadBlockNum,
     getTableAllScopeData,
     uploadugas,
+    getCurrencyStats,
+    uploadCurrency,
 }

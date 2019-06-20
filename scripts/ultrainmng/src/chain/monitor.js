@@ -873,6 +873,7 @@ async function fileDeploy(deployBatch) {
     }
 }
 
+
 /**
  *
  * @param deployFile
@@ -1442,11 +1443,31 @@ async function uploadUgasToMonitor() {
     logger.info("uploadUgasToMonitor start");
     try {
 
+        if (chainConfig.configFileData.local.uploadUgas != true) {
+            logger.error("uploadUgasToMonitor is not enabled");
+            return;
+        }
+
+        //获取发行信息
+        try {
+            let resIssue = await chainApi.getCurrencyStats(chainConfig.getLocalHttpEndpoint());
+            logger.info("res Issue res:", resIssue.UGAS);
+            let param = {
+                chainName : chainConfig.localChainName,
+                maxSupply :resIssue.UGAS.max_supply.replace(" UGAS", ""),
+                supply :resIssue.UGAS.supply.replace(" UGAS", ""),
+                issuer :resIssue.UGAS.issuer,
+            }
+            let resUpload = await chainApi.uploadCurrency(getMonitorUrl(),param)
+        } catch (e) {
+            logger.error("getCurrencyStats error:",e);
+        }
+
         let res = await  chainApi.getTableAllScopeData(chainConfig.configSub,"utrio.token",null,"accounts","scope");
         //logger.info("ugas account:",res.rows);
         logger.info(res.rows.length);
         let list = [];
-        let count =50;
+        let count =200;
         for (let i=0;i<res.rows.length;i++) {
             try {
                 //logger.info("i("+i+") :",res.rows[i].scope);

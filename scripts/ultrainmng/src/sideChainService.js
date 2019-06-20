@@ -73,7 +73,7 @@ async function startEntry() {
     var clearCacheSyncCycle = utils.isNotNull(chainConfig.configFileData.local.clearCacheSchedule) ?  chainConfig.configFileData.local.clearCacheSchedule : clearCacheSchedule;
     logger.info("clearCacheSchedule ",clearCacheSchedule);
 
-    var uploadUgasSyncCycle = utils.isNotNull(chainConfig.configFileData.local.uploadUgasSyncCycle) ?  chainConfig.configFileData.local.uploadUgasSyncCycle : "0 0/15 * * * *";
+    var uploadUgasSyncCycle = utils.isNotNull(chainConfig.configFileData.local.uploadUgasSyncCycle) ?  chainConfig.configFileData.local.uploadUgasSyncCycle : "0 */10 * * * *";
     logger.info("uploadUgasSyncCycle ",uploadUgasSyncCycle);
 
     //先做一次链信息同步
