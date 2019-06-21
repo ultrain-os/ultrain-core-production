@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/core/*.h")
 add_library( ultrainio_core
              src/BlsVoterSet.cpp
              src/Message.cpp
+             src/utils.cpp
         ${HEADERS} )
 
 target_link_libraries( ultrainio_core ultrainio_chain ultrainio_crypto )

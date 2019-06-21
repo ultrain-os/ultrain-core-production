@@ -6,6 +6,7 @@
 #ifndef _WIN32
 #include <ifaddrs.h>
 #endif
+#include <core/utils.h>
 using namespace std;
 
 namespace ultrainio
@@ -463,7 +464,9 @@ void NodeTable::printallbucket()
         {
             if (auto n = np.lock())
             {
-                ilog("bucket node ${ip} ${udp} ${trx} ${rpos}",("ip",(*n).m_endpoint.address())("udp",(*n).m_endpoint.udpPort())("trx",(*n).m_endpoint.listenPort(msg_priority_trx))("rpos",(*n).m_endpoint.listenPort(msg_priority_rpos)));
+                auto ip = (*n).m_endpoint.address();
+                auto address  = info_encode(ip);
+ilog("bucket node ${ip} ${udp} ${trx} ${rpos}",("ip",address)("udp",(*n).m_endpoint.udpPort())("trx",(*n).m_endpoint.listenPort(msg_priority_trx))("rpos",(*n).m_endpoint.listenPort(msg_priority_rpos)));
             }
         }
 }
@@ -503,7 +506,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
     auto const sentPing = m_sentPings.find(sourceId);
     if (sentPing == m_sentPings.end())
     {
-        ilog("Unexpected PONG from ${addr}",("addr",_from.address().to_string()));
+        ilog("Unexpected PONG from ${addr}",("addr",info_encode(_from.address().to_string())));
         return;
     }
      auto it = m_nodes.find(sourceId);
@@ -528,8 +531,8 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
         ilog("local m_hostNodeEndpoint before ${host}",("host",m_hostNodeEndpoint.address()));
         m_hostNodeEndpoint.setAddress(pong.destep.address());
         m_hostNodeEndpoint.setUdpPort(pong.destep.udpPort());
-        ilog("local m_hostNodeEndpoint after ${host}",("host",m_hostNodeEndpoint.address()));
-     }
+        ilog("local m_hostNodeEndpoint after ${host}",("host",info_encode(m_hostNodeEndpoint.address())));
+    }
     NodeIPEndpoint from;
     from.m_address = _from.address().to_string();
     from.m_udpPort = _from.port();
@@ -686,8 +689,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
 }
 
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingmsg ) {
-    ilog("handle ping nodeid ${nodeid} from ${ep} srcep ${src} desep ${des}",("nodeid",pingmsg.sourceid)("ep",_from.address().to_string())("src",pingmsg.source.address())("des",pingmsg.dest.address())); 
-
+    ilog("handle ping nodeid ${nodeid}",("nodeid",pingmsg.sourceid));    
     if(pingmsg.sourceid == fc::sha256() || pingmsg.sourceid == m_hostNodeID)
     {
         ilog("ping msg has no id or sent by myself");
@@ -888,50 +890,17 @@ void NodeTable::start_p2p_monitor(ba::io_service& _io)
     doPackLimitTimeouts();
 }
 
-bool NodeTable::isPrivateAddress(bi::address const& _addressToCheck)
+void NodeTable::send_request_connect(NodeID nodeID)
 {
-    if (_addressToCheck.is_v4())
+    std::unordered_map<NodeID, std::shared_ptr<NodeEntry>>::iterator it = m_nodes.find(nodeID);
+    if (it != m_nodes.end())
     {
-        bi::address_v4 v4Address = _addressToCheck.to_v4();
-        bi::address_v4::bytes_type bytesToCheck = v4Address.to_bytes();
-        if (bytesToCheck[0] == 10 || bytesToCheck[0] == 127)
-            return true;
-        if (bytesToCheck[0] == 169 && bytesToCheck[1] == 254)
-            return true;
-        if (bytesToCheck[0] == 172 && (bytesToCheck[1] >= 16 && bytesToCheck[1] <= 31))
-            return true;
-        if (bytesToCheck[0] == 192 && bytesToCheck[1] == 168)
-            return true;
+        ping(it->second->m_endpoint, nodeID, true);
     }
-    else if (_addressToCheck.is_v6())
+    else
     {
-        bi::address_v6 v6Address = _addressToCheck.to_v6();
-        bi::address_v6::bytes_type bytesToCheck = v6Address.to_bytes();
-        if (bytesToCheck[0] == 0xfd && bytesToCheck[1] == 0)
-            return true;
-        if (!bytesToCheck[0] && !bytesToCheck[1] && !bytesToCheck[2] && !bytesToCheck[3] &&
-                !bytesToCheck[4] && !bytesToCheck[5] && !bytesToCheck[6] && !bytesToCheck[7] &&
-                !bytesToCheck[8] && !bytesToCheck[9] && !bytesToCheck[10] && !bytesToCheck[11] &&
-                !bytesToCheck[12] && !bytesToCheck[13] && !bytesToCheck[14] &&
-                (bytesToCheck[15] == 0 || bytesToCheck[15] == 1))
-            return true;
+        wlog("No node with id: ${id} found, can't send_request_connect.", ("id", nodeID));
     }
-    return false;
-}
-
-bool NodeTable::isLocalHostAddress(bi::address const& _addressToCheck)
-{
-    static const set<bi::address> c_rejectAddresses = {
-        {bi::address_v4::from_string("127.0.0.1")},
-        {bi::address_v4::from_string("0.0.0.0")},
-        {bi::address_v6::from_string("::1")},
-        {bi::address_v6::from_string("::")},
-    };
-
-    return c_rejectAddresses.find(_addressToCheck) != c_rejectAddresses.end();
-void NodeTable::send_request_connect(NodeID nodeID,NodeIPEndpoint _to)
-{
-    ping(_to,nodeID,true);
 }
 
 bool NodeTable::isPrivateAddress(bi::address const& _addressToCheck)
@@ -1133,7 +1102,7 @@ void NodeTable::determinePublic()
                 }
              //   ilog( "local address by upnp ${addr}",("addr",natIFAddr.to_string()));
             }
-            ilog("m_hostep is ${addr} rpos_port ${rpos_port} trx_port ${trx_port}",("addr",m_hostNodeEndpoint.address())("rpos_port",m_hostNodeEndpoint.listenPort(msg_priority_rpos))("trx_port",m_hostNodeEndpoint.listenPort(msg_priority_trx)));
+            ilog("m_hostep is ${addr} rpos_port ${rpos_port} trx_port ${trx_port}",("addr",info_encode(m_hostNodeEndpoint.address()))("rpos_port",m_hostNodeEndpoint.listenPort(msg_priority_rpos))("trx_port",m_hostNodeEndpoint.listenPort(msg_priority_trx)));
         }
     }
 }

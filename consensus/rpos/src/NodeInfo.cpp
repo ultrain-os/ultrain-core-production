@@ -27,7 +27,6 @@ namespace ultrainio {
     void NodeInfo::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& blsSk, const std::string& account) {
         m_privateKey = PrivateKey(sk);
         m_account = account;
-        dlog("My committee key pair. sk : ${sk} account : ${account}", ("sk", sk)("account", account));
         if (Genesis::kGenesisAccount == m_account) {
             ULTRAIN_ASSERT(m_privateKey.getPublicKey() == PublicKey(Genesis::s_genesisPk),
                     chain::chain_exception,

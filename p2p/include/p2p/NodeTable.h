@@ -95,7 +95,7 @@ public:
     void set_nodetable_sk(chain::private_key_type sk){m_sk = sk;}
     chain::account_name m_account;
     void set_nodetable_account(chain::account_name _account){m_account = _account ;}
-    void send_request_connect(NodeID nodeID,NodeIPEndpoint _to);
+    void send_request_connect(NodeID nodeID);
     bi::tcp::endpoint traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpInterfaceAddr);
     void determinePublic();
     std::set<bi::address> getInterfaceAddresses();

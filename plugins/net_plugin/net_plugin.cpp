@@ -46,6 +46,7 @@
 #include <crypto/Bls.h>
 #include <crypto/Signer.h>
 #include <crypto/Validator.h>
+#include <core/utils.h>
 using namespace ultrainio::chain::plugin_interface::compat;
 
 namespace fc {
@@ -147,16 +148,25 @@ namespace ultrainio {
         string                     p2p_address;
     };
 
+    enum connection_direction{
+        direction_in,
+        direction_out,
+        direction_passive_out,
+    };
+
     class net_plugin_impl {
     public:
         passive_peer                     rpos_listener;
         passive_peer                     trx_listener;
         uint32_t                         max_client_count = 0;
+        uint32_t                         max_passive_out_count = 4;
         uint32_t                         min_connections = 0;
         uint32_t                         max_nodes_per_host = 4;
-        uint32_t                         num_clients = 0;
         uint32_t                         max_retry_count = 3;
         uint32_t                         max_grey_list_size = 5;
+        uint32_t                         num_clients = 0;
+        uint32_t                         num_passive_out = 0;
+
 
         vector<string>                   rpos_active_peers;
         vector<string>                   trx_active_peers;
@@ -176,16 +186,12 @@ namespace ultrainio {
 
         connection_ptr find_connection(const string& host) const;
         bool is_grey_connection(const string& host) const;
+        bool is_connection_to_seed(connection_ptr con) const;
+        bool is_static_connection(connection_ptr con) const;
         void del_connection_with_node_id(const fc::sha256& node_id);
 
         std::set< connection_ptr >       connections;
         std::list< string >              peer_addr_grey_list;
-        struct need_connect_feature
-        {
-            p2p::NodeIPEndpoint ep;
-            uint16_t send_times;
-        };
-        std::map<p2p::NodeID,need_connect_feature> need_connect_list;
         bool                             done = false;
         unique_ptr< dispatch_manager >   dispatcher;
         unique_ptr< sync_block_manager > sync_block_master;
@@ -198,7 +204,6 @@ namespace ultrainio {
         unique_ptr<boost::asio::steady_timer> keepalive_timer;
         unique_ptr<boost::asio::steady_timer> sizeprint_timer;
         unique_ptr<boost::asio::steady_timer> speedmonitor_timer;
-        unique_ptr<boost::asio::steady_timer> requestcon_timer;
         unique_ptr<boost::asio::steady_timer> block_handler_check;
 
         boost::asio::steady_timer::duration   connector_period;
@@ -206,7 +211,6 @@ namespace ultrainio {
         boost::asio::steady_timer::duration   resp_expected_period;
         boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
         boost::asio::steady_timer::duration   speedmonitor_period;
-        boost::asio::steady_timer::duration   requestcon_interval{std::chrono::seconds{80}};
         boost::asio::steady_timer::duration   block_handler_period{std::chrono::seconds{1}};
         const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
         boost::asio::steady_timer::duration   producerslist_update_interval{std::chrono::seconds{32}};
@@ -227,16 +231,16 @@ namespace ultrainio {
 
         channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
-        string connect( const string& endpoint, msg_priority p = msg_priority_trx);
+        string connect( const string& endpoint, msg_priority p = msg_priority_trx,
+                        connection_direction dir = direction_out, const fc::sha256& node_id = fc::sha256() );
         void connect( connection_ptr c );
         void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
+        uint32_t connect_to_endpoint( const p2p::NodeIPEndpoint& ep, connection_direction dir, const fc::sha256& node_id = fc::sha256() );
         bool start_session( connection_ptr c );
         void start_listen_loop(shared_ptr<tcp::acceptor> acceptor, msg_priority p);
         void start_read_message( connection_ptr c);
         void reset_speedlimit_monitor( );
         void start_speedlimit_monitor_timer();
-        void start_requestconnect_timer();
-        void reset_requestconnect_monitor();
         void close( connection_ptr c );
         size_t count_open_sockets() const;
 
@@ -380,7 +384,7 @@ namespace ultrainio {
      */
     constexpr auto     def_send_buffer_size_mb = 4;
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
-    constexpr auto     def_max_clients = 12; // 0 for unlimited clients
+    constexpr auto     def_max_clients = 12;
     constexpr auto     def_max_nodes_per_host = 4;
     constexpr auto     def_conn_retry_wait = 15;
     constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
@@ -511,9 +515,9 @@ namespace ultrainio {
 
     class connection : public std::enable_shared_from_this<connection> {
     public:
-        explicit connection(string endpoint, msg_priority pri);
+        explicit connection(string endpoint, msg_priority pri, connection_direction dir);
 
-        explicit connection(socket_ptr s, msg_priority pri);
+        explicit connection(socket_ptr s, msg_priority pri, connection_direction dir);
         ~connection();
         void initialize();
 
@@ -533,6 +537,7 @@ namespace ultrainio {
             std::function<void(boost::system::error_code, std::size_t)> callback;
         };
         msg_priority            priority;
+        connection_direction    direct = direction_in;
         deque<queued_write>     write_queue;
         deque<queued_write>     out_queue;
         fc::sha256              node_id;
@@ -905,11 +910,12 @@ namespace ultrainio {
     };
 
     //---------------------------------------------------------------------------
-connection::connection(string endpoint, msg_priority pri)
+connection::connection(string endpoint, msg_priority pri, connection_direction dir)
         : blk_state(),
         trx_state(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
         priority(pri),
+        direct(dir),
         node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
@@ -925,15 +931,16 @@ connection::connection(string endpoint, msg_priority pri)
         last_req(),
         block_num_range()
     {
-        wlog( "created connection to ${n}", ("n", endpoint) );
+        wlog( "created connection to ${n}", ("n", info_encode(endpoint)) );
         initialize();
     }
 
-    connection::connection(socket_ptr s, msg_priority pri)
+    connection::connection(socket_ptr s, msg_priority pri, connection_direction dir)
         : blk_state(),
         trx_state(),
         socket(s),
         priority(pri),
+        direct(dir),
         node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
@@ -1051,7 +1058,7 @@ connection::connection(string endpoint, msg_priority pri)
     }
 
     void connection::send_handshake( ) {
-        ilog("send_handshake to peer : ${peer}", ("peer", this->peer_name()));
+        ilog("send_handshake to peer : ${peer}", ("peer", info_encode(this->peer_name())));
         handshake_initializer::populate(last_handshake_sent, this->priority);
         last_handshake_sent.generation = ++sent_handshake_count;
         fc_dlog(logger, "Sending handshake generation ${g} to ${ep}",
@@ -1103,7 +1110,7 @@ connection::connection(string endpoint, msg_priority pri)
             return;
         connection_wptr c(shared_from_this());
         if(!socket->is_open()) {
-            elog("socket not open to ${p}",("p",peer_name()));
+            elog("socket not open to ${p}",("p",info_encode(peer_name())));
             my_impl->close(c.lock());
             return;
         }
@@ -1181,7 +1188,7 @@ connection::connection(string endpoint, msg_priority pri)
                         connection_ptr conn = weak_this.lock();
                         if (conn) {
                             if (close_after_send != no_reason) {
-                                elog ("sent a go away message: ${r}, closing connection to ${p}",("r", reason_str(close_after_send))("p", conn->peer_name()));
+                                elog ("sent a go away message: ${r}, closing connection to ${p}",("r", reason_str(close_after_send))("p", info_encode(conn->peer_name())));
                                 my_impl->close(conn);
                                 return;
                             }
@@ -1541,14 +1548,15 @@ connection::connection(string endpoint, msg_priority pri)
 
     //------------------------------------------------------------------------
 
-    string net_plugin_impl::connect(const string& host, msg_priority p) {
+    string net_plugin_impl::connect(const string& host, msg_priority p, connection_direction dir, const fc::sha256& node_id) {
         if (find_connection(host))
             return "already connected";
 
-        connection_ptr c = std::make_shared<connection>(host, p);
-        fc_dlog(logger,"adding new connection to the list");
+        connection_ptr c = std::make_shared<connection>(host, p, dir);
+        if (node_id != fc::sha256()) {
+            c->node_id = node_id;
+        }
         connections.insert( c );
-        fc_dlog(logger,"calling active connector");
         connect( c );
         return "added connection";
     }
@@ -1576,7 +1584,6 @@ connection::connection(string endpoint, msg_priority pri)
 
         auto host = c->peer_addr.substr( 0, colon );
         auto port = c->peer_addr.substr( colon + 1);
-        idump((host)(port));
         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
         connection_wptr weak_conn = c;
         // Note: need to add support for IPv6 too
@@ -1618,12 +1625,31 @@ connection::connection(string endpoint, msg_priority pri)
                }
                else {
                   elog( "connection failed to ${peer}: ${error}",
-                        ( "peer", c->peer_name())("error",err.message()));
+                        ( "peer", info_encode(c->peer_name()))("error",err.message()));
                   c->connecting = false;
                   my_impl->close(c);
                }
             }
         } );
+    }
+
+    uint32_t net_plugin_impl::connect_to_endpoint( const p2p::NodeIPEndpoint& ep, connection_direction dir, const fc::sha256& node_id ) {
+        uint32_t i = 0;
+        string host = ep.address() + ":" + std::to_string(ep.listenPort(msg_priority_trx));
+        if (!find_connection(host) && !is_grey_connection(host)) {
+            ilog("connect to node: ${a}", ("a", host));
+            connect(host, msg_priority_trx, dir, node_id);
+            i++;
+        }
+
+        host = ep.address() + ":" + std::to_string(ep.listenPort(msg_priority_rpos));
+        if (!find_connection(host) && !is_grey_connection(host)) {
+            ilog("connect to node: ${a}", ("a", host));
+            connect(host, msg_priority_rpos, dir, node_id);
+            i++;
+        }
+
+        return i;
     }
 
     bool net_plugin_impl::start_session( connection_ptr con ) {
@@ -1632,7 +1658,7 @@ connection::connection(string endpoint, msg_priority pri)
         con->socket->set_option( nodelay, ec );
         if (ec) {
             elog( "connection failed to ${peer}: ${error}",
-                 ( "peer", con->peer_name())("error",ec.message()));
+                 ( "peer", info_encode(con->peer_name()))("error",ec.message()));
             con->connecting = false;
             close(con);
             return false;
@@ -1673,10 +1699,10 @@ connection::connection(string endpoint, msg_priority pri)
                      ilog ("checking max client, visitors = ${v} num clients ${n}",("v",visitors)("n",num_clients));
                      num_clients = visitors;
                   }
-                  if( (from_addr < max_nodes_per_host && (max_client_count == 0 || num_clients < max_client_count ))
+                  if( (from_addr < max_nodes_per_host && num_clients < max_client_count)
                       || std::find(udp_seed_ip.begin(), udp_seed_ip.end(), paddr.to_string()) != udp_seed_ip.end() ) { // always accept seed connection
                      ++num_clients;
-                     connection_ptr c = std::make_shared<connection>(socket, p);
+                     connection_ptr c = std::make_shared<connection>(socket, p, direction_in);
                      connections.insert( c );
                      start_session( c );
 
@@ -1892,9 +1918,9 @@ connection::connection(string endpoint, msg_priority pri)
                   } else {
                      auto pname = conn->peer_name();
                      if (ec.value() != boost::asio::error::eof) {
-                        elog( "Error reading message from ${p}: ${m}",("p",pname)( "m", ec.message() ) );
+                        elog( "Error reading message from ${p}: ${m}",("p",info_encode(pname))( "m", ec.message() ) );
                      } else {
-                        ilog( "Peer ${p} closed connection",("p",pname) );
+                        ilog( "Peer ${p} closed connection",("p",info_encode(pname)) );
                      }
                      close( conn );
                   }
@@ -1983,7 +2009,7 @@ connection::connection(string endpoint, msg_priority pri)
     }
 
    void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
-      ilog("got a handshake_message from ${p}, ${h}, ${nod}", ("p",c->peer_addr)("h",msg.p2p_address)("nod", msg.node_id));
+      ilog("got a handshake_message from ${p}, ${h}, ${nod}", ("p",info_encode(c->peer_addr))("h",msg.p2p_address)("nod", msg.node_id));
       if (!is_valid(msg)) {
          elog("bad handshake message");
          c->enqueue( go_away_message( fatal_other ));
@@ -2005,7 +2031,7 @@ connection::connection(string endpoint, msg_priority pri)
       if( c->peer_addr.empty() || c->last_handshake_recv.node_id == fc::sha256()) {
          dlog("checking for duplicate" );
          for(const auto &check : connections) {
-            ilog("peer: ${peer}, node id: ${nd}, connected: ${cond}", ("peer", check->peer_name())("nd", check->last_handshake_recv.node_id)("cond", check->connected()));
+            ilog("peer: ${peer}, node id: ${nd}, connected: ${cond}", ("peer", info_encode(check->peer_name()))("nd", check->last_handshake_recv.node_id)("cond", check->connected()));
             if(check == c)
                continue;
             if(check->connected() && check->peer_name() == msg.p2p_address) {
@@ -2315,7 +2341,7 @@ connection::connection(string endpoint, msg_priority pri)
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg) {
         ilog("receive req sync msg!!! message from ${p} addr:${addr} blockNum = ${blockNum}",
-             ("p", c->peer_name())("addr", c->peer_addr)("blockNum", msg.endBlockNum));
+             ("p", c->peer_name())("addr",info_encode( c->peer_addr))("blockNum", msg.endBlockNum));
         app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
     }
 
@@ -2398,34 +2424,7 @@ connection::connection(string endpoint, msg_priority pri)
           dispatcher->rejected_transaction(tid);
       });
    }
-   void net_plugin_impl::reset_requestconnect_monitor( )
-   {
-       auto iter = need_connect_list.begin();
-       while(iter != need_connect_list.end())
-       {
-           if(iter->second.send_times >= 6)
-           {
-		   ilog("address ${addr} erase",("addr",iter->second.ep.address()));
-               iter = need_connect_list.erase(iter);
-           }
-           else
-           {
-		   ilog("address ${addr} ++",("addr",iter->second.ep.address()));
-               node_table -> send_request_connect(iter->first,iter->second.ep);
-               iter->second.send_times ++;
-               ++iter;
-           }
-       }
 
-   }
-   void net_plugin_impl::start_requestconnect_timer( )
-   {
-       requestcon_timer->expires_from_now( requestcon_interval);
-       requestcon_timer->async_wait( [this](boost::system::error_code ec) {
-               reset_requestconnect_monitor();
-               start_requestconnect_timer();
-               });
-   }
     void net_plugin_impl::reset_speedlimit_monitor( )
     {
         for(auto &c : connections) {
@@ -2483,38 +2482,14 @@ connection::connection(string endpoint, msg_priority pri)
             }
 	}
     }
-    void net_plugin_impl::onNodeTableTcpConnectEvent(p2p::NodeIPEndpoint const& _n)
-    {
-        if(connections.size() < max_client_count)
-        {
-            string host =  _n.address() + ":" + std::to_string( _n.listenPort(msg_priority_trx));
-            if(is_grey_connection(host))
-            {
-                peer_addr_grey_list.remove(host);
-            }
-            auto con = find_connection(host);
-            if(!con)
-            {
-                connect(host, msg_priority_trx);
-            }
-            else if(!con->socket->is_open() && !con->connecting)
-            {
-                connect(con);
-            }
-            host =  _n.address() + ":" + std::to_string( _n.listenPort(msg_priority_rpos));
-            if(is_grey_connection(host))
-            {
-                peer_addr_grey_list.remove(host);
-            }
-            con = find_connection(host);
-            if(!con)
-            {
-                connect(host, msg_priority_rpos);
-            }
-            else if(!con->socket->is_open() && !con->connecting)
-            {
-                connect(con);
-            }
+
+    void net_plugin_impl::onNodeTableTcpConnectEvent(p2p::NodeIPEndpoint const& _n) {
+        ilog("TcpConnectEvent from: ${addr}", ("addr", _n.address()));
+        if (num_passive_out < max_passive_out_count) {
+            num_passive_out += connect_to_endpoint(_n, direction_passive_out);
+        } else {
+            wlog("num_passive_out: ${num} exceeds limit: ${max}, discard to connect to ${addr}",
+                 ("num", num_passive_out)("max", max_passive_out_count)("addr", _n.address()));
         }
     }
     void net_plugin_impl::start_block_handler_timer( ) {
@@ -2582,7 +2557,6 @@ connection::connection(string endpoint, msg_priority pri)
       transaction_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       sizeprint_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       speedmonitor_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
-      requestcon_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       block_handler_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       producerslist_update_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
@@ -2591,7 +2565,6 @@ connection::connection(string endpoint, msg_priority pri)
       speedmonitor_period = {std::chrono::seconds{round_interval}};
       start_speedlimit_monitor_timer();
       start_block_handler_timer();
-      start_requestconnect_timer();
    }
 
    void net_plugin_impl::expire_txns() {
@@ -2641,8 +2614,12 @@ connection::connection(string endpoint, msg_priority pri)
 
                if (!is_grey_connection((*it)->peer_addr)) {
                   peer_addr_grey_list.emplace_back((*it)->peer_addr);
+                  if ((*it)->node_id != fc::sha256()) {
+                     node_table->send_request_connect((*it)->node_id);
+                     ilog("send_request_connect to ${p}.", ("p", (*it)->peer_addr));
+                  }
                }
-               ilog("put ${a} to grey list, and erase it from connections.", ("a", (*it)->peer_addr));
+               ilog("put ${a} to grey list, and erase it from connections.", ("a", info_encode((*it)->peer_addr)));
                it = connections.erase(it);
                continue;
             } else if ((*it)->peer_addr.length() <= 0 || is_grey_connection((*it)->peer_addr)) {
@@ -2657,11 +2634,16 @@ connection::connection(string endpoint, msg_priority pri)
          } else if ((*it)->last_handshake_recv.generation == 0) { // no handshake received
             if ((*it)->wait_handshake_count > 0 && (*it)->socket->is_open()) {
                boost::system::error_code ec;
-               elog("no handshake received from: peer: ${peer} ${addr}, so the connection will be erased",
-                    ("peer", (*it)->peer_name())
-                    ("addr", (*it)->socket->remote_endpoint(ec).address().to_string()));
+               ilog("no handshake received from: peer: ${peer} ${addr}",
+                    ("peer", info_encode((*it)->peer_name()))
+                    ("addr", info_encode((*it)->socket->remote_endpoint(ec).address().to_string())));
+               if ((*it)->node_id != fc::sha256()) {
+                  node_table->send_request_connect((*it)->node_id);
+                  ilog("send_request_connect to ${p}.", ("p", (*it)->peer_addr));
+               }
                close(*it);
                if (!is_static_connection(*it)) {
+                  elog("the non static connection will be erased");
                   it = connections.erase(it);
                }
                continue;
@@ -2671,51 +2653,40 @@ connection::connection(string endpoint, msg_priority pri)
          ++it;
       }
 
-      ilog("connections size: ${s} min_connections: ${mc} num_clients: ${nc} grey list size: ${gls}", ("s", connections.size())("mc", min_connections)("nc", num_clients)("gls", peer_addr_grey_list.size()));
-      if (use_node_table && connections.size() < min_connections) { // if use_node_table == false, we can't get any valid node ip from node table
-         uint32_t count = min_connections - connections.size();
+      ilog("connections size: ${s} min_connections: ${mc} num_clients: ${nc} grey list: ${gls} num_passive_out: ${npo}",
+           ("s", connections.size())("mc", min_connections)("nc", num_clients)("gls", peer_addr_grey_list.size())("npo", num_passive_out));
+      if (use_node_table && connections.size() < min_connections + num_passive_out) { // if use_node_table == false, we can't get any valid node ip from node table
+         uint32_t count = min_connections - (connections.size() - num_passive_out);
          std::list<p2p::NodeEntry> nodes = node_table->getNodes();
          uint32_t i = 0;
-         bool  need_rpos_notice = false;
-         bool need_trx_notice = false;
          for (std::list<p2p::NodeEntry>::iterator it = nodes.begin(); it != nodes.end() && i < count; ++it) {
             if (rg() % 2 == 0) {
                continue;
             }
 
-            string host = it->endPoint().address() + ":" + std::to_string(it->endPoint().listenPort(msg_priority_trx));
-            if (!find_connection(host) && !is_grey_connection(host)) {
-               ilog("connect to node: ${a}", ("a", host));
-               connect(host, msg_priority_trx);
-               need_trx_notice = true;
-               i++;
-            }
-
-            host = it->endPoint().address() + ":" + std::to_string(it->endPoint().listenPort(msg_priority_rpos));
-            if (!find_connection(host) && !is_grey_connection(host)) {
-               ilog("connect to node: ${a}", ("a", host));
-               need_rpos_notice = true;
-               connect(host, msg_priority_rpos);
-               i++;
-            }
-            if(need_rpos_notice || need_trx_notice)
-            {
-                node_table -> send_request_connect(it->id(),it->endPoint());
-                need_connect_list[it->id()] = {it->endPoint(),1};
-            }
+            i += connect_to_endpoint(it->endPoint(), direction_out, it->id());
          }
       }
    }
 
    void net_plugin_impl::close( connection_ptr c ) {
-      if( c->peer_addr.empty( ) && c->socket->is_open() ) {
-         if (num_clients == 0) {
-            fc_wlog( logger, "num_clients already at 0");
-         }
-         else {
-            --num_clients;
+      if (c->socket->is_open()) {
+         if (c->direct == direction_passive_out) {
+            if (num_passive_out == 0) {
+               wlog("num_passive_out already at 0");
+            } else {
+               --num_passive_out;
+            }
+         } else if ( c->peer_addr.empty() ) {
+            if (num_clients == 0) {
+               wlog("num_clients already at 0");
+            }
+            else {
+               --num_clients;
+            }
          }
       }
+
       c->close();
    }
 
@@ -3199,7 +3170,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          ( "rpos-p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple rpos-p2p-peer-address options as needed to compose a network.")
          ( "udp-listen-port", bpo::value<uint16_t>()->default_value(20124), "The udp port used by p2p search.")
          ( "udp-seed", bpo::value< vector<string> >()->composing(), "The udp seed ip to build p2p nodes table. If this option was not set, we would get nothing from p2p nodes table.")
-         ( "listenIP", bpo::value<string>()->default_value( "0.0.0.0" ), "IP that really works,public address first if the node has one.")
+         ( "listen-ip", bpo::value<string>()->default_value( "0.0.0.0" ), "IP that really works,public address first if the node has one.")
          ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
@@ -3207,7 +3178,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          ( "tcp-peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer only tcp allowed to connect.  May be used multiple times.")
          ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
-         ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
+         ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted.")
+         ( "max-passive-out-count", bpo::value<uint32_t>()->default_value(4), "Maximum number of passive out connections are accepted.")
          ( "min-connections", bpo::value<int>()->default_value(8), "Minimum number of connections the programme need create, including active and subjective connections")
          ( "max-retry-count", bpo::value<uint32_t>()->default_value(3), "Maximum number of reconnecting to listen endpoint")
          ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(5), "Maximum size of grey list")
@@ -3262,6 +3234,10 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
 
+         if (options.count( "max-passive-out-count" )) {
+            my->max_passive_out_count = options.at( "max-passive-out-count" ).as<uint32_t>();
+         }
+
          if (options.count( "max-retry-count" )) {
             my->max_retry_count = options.at( "max-retry-count" ).as<uint32_t>();
          }
@@ -3271,7 +3247,11 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          }
 
          my->num_clients = 0;
+         my->num_passive_out = 0;
          my->started_sessions = 0;
+
+         ilog("max_passive_out_count: ${mpoc} max_retry_count: ${mrc} max_grey_list_size: ${mgls}",
+              ("mpoc", my->max_passive_out_count)("mrc", my->max_retry_count)("mgls", my->max_grey_list_size));
 
          my->trx_listener.resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
          string& trx_p2p_address = my->trx_listener.p2p_address;
@@ -3402,10 +3382,9 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          if (options.count("udp-listen-port")) {
             udp_port = options.at( "udp-listen-port" ).as<uint16_t>();
          }
-         string listenIP;
-         if(options.count("listenIP"))
-         {
-             listenIP =  options.at( "listenIP" ).as<string>();
+         string listen_ip;
+         if(options.count("listen-ip")) {
+            listen_ip = options.at( "listen-ip" ).as<string>();
          }
          bool traverseNat = false;
         if(options.count("nat-mapping")) {
@@ -3417,7 +3396,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          local.setUdpPort(udp_port);
          local.setListenPort(msg_priority_trx, my->trx_listener.listen_endpoint.port());
          local.setListenPort(msg_priority_rpos, my->rpos_listener.listen_endpoint.port());
-         my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str(),listenIP,traverseNat);
+         my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str(), listen_ip, traverseNat);
          if (options.count("udp-seed")) {
             my->udp_seed_ip = options.at( "udp-seed" ).as<vector<string> >();
          }
@@ -3476,8 +3455,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       auto name_account = app().get_plugin<producer_uranus_plugin>().get_account_name();
       my->node_table->set_nodetable_account(chain::account_name(name_account));
       if (!my->udp_seed_ip.empty())
-      {      
-	      my->node_table->init(my->udp_seed_ip,std::ref(app().get_io_service()));
+      {
+         my->node_table->init(my->udp_seed_ip,std::ref(app().get_io_service()));
       }
       if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
          logger = fc::get_logger_map()[logger_name];
@@ -3613,12 +3592,32 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         return false;
     }
 
+    bool net_plugin_impl::is_connection_to_seed(connection_ptr con) const {
+        auto colon = con->peer_addr.find(':');
+        if (colon != std::string::npos) {
+            auto host = con->peer_addr.substr(0, colon);
+            return std::find(udp_seed_ip.begin(), udp_seed_ip.end(), host) != udp_seed_ip.end();
+        }
+
+        boost::system::error_code ec;
+        std::string addr{con->socket->remote_endpoint(ec).address().to_string()};
+        return std::find(udp_seed_ip.begin(), udp_seed_ip.end(), addr) != udp_seed_ip.end();
+    }
+
+    bool net_plugin_impl::is_static_connection(connection_ptr con) const {
+        if (con->priority == msg_priority_trx) {
+            return std::find(trx_active_peers.begin(), trx_active_peers.end(), con->peer_addr) != trx_active_peers.end();
+        } else {
+            return std::find(rpos_active_peers.begin(), rpos_active_peers.end(), con->peer_addr) != rpos_active_peers.end();
+        }
+    }
+
     void net_plugin_impl::del_connection_with_node_id(const fc::sha256& node_id) {
         auto it = connections.begin();
         ilog("connections size: ${s}", ("s", connections.size()));
         while (it != connections.end()) {
             if ((*it)->node_id == node_id) {
-                ilog("del connection to ${peer}, node id: ${id}", ("peer", (*it)->peer_addr)("id", node_id));
+                ilog("del connection to ${peer}, node id: ${id}", ("peer", info_encode((*it)->peer_addr))("id", node_id));
                 it = connections.erase(it);
             } else {
                 ++it;
