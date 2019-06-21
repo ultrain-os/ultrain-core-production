@@ -1078,8 +1078,8 @@ connection::connection(string endpoint, msg_priority pri)
     void connection::queue_write(std::shared_ptr<vector<char>> buff,
                                  bool trigger_send,
                                  std::function<void(boost::system::error_code, std::size_t)> callback) {
-        if (this->priority != msg_priority_rpos && write_queue.size() >= MAX_WRITE_QUEUE) {
-            elog("non-rpos write queue is full");
+        if (write_queue.size() >= MAX_WRITE_QUEUE) {
+            elog("write queue is full. peer: ${p}", ("p", peer_name()));
             return;
         } else {
             write_queue.push_back({buff, callback});
