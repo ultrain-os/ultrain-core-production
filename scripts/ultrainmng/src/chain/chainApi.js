@@ -333,10 +333,12 @@ getChainSeedIP = async (chainName, chainConfig) => {
                 //复杂模式，需要检查内外网ip的信息
                 let privateIPList = [];
                 let publicIPList = [];
+                let chainId = "";
 
                 for (let i = 0; i < chainConfig.seedIpConfig.length; i++) {
                     //logger.debug(chainConfig.seedIpConfig[i])
                     if (chainConfig.seedIpConfig[i].chainName == chainName) {
+                        chainId = chainConfig.seedIpConfig[i].chainId;
                         for (let j =0;j<chainConfig.seedIpConfig[i].seedList.length;j++) {
                             privateIPList.push(chainConfig.seedIpConfig[i].seedList[j].privateIp);
                             if (utils.isNotNull(chainConfig.seedIpConfig[i].seedList[j].publicIp) && chainConfig.seedIpConfig[i].seedList[j].publicIp.length > 10) {
@@ -351,8 +353,9 @@ getChainSeedIP = async (chainName, chainConfig) => {
                  */
                 logger.info("chain（"+chainName+"）private ip list：",privateIPList);
                 logger.info("chain（"+chainName+"）public ip list：",publicIPList);
+                logger.info("chain（"+chainName+"）chainId：",chainId);
 
-                let privateFlag = await checkSeedReady(privateIPList,chainConfig.nodPort);
+                let privateFlag = await checkSeedReady(privateIPList,chainConfig.nodPort,chainId);
                 if (privateFlag == true) {
                     logger.info("I am in LAN("+chainName+") , use private ip list");
                     return privateIPList;
@@ -371,7 +374,7 @@ getChainSeedIP = async (chainName, chainConfig) => {
     return null;
 }
 
-checkSeedReady = async (ipList,nodPort) => {
+checkSeedReady = async (ipList,nodPort,chainId) => {
 
     logger.info("check seed ready start....");
     try {
@@ -382,8 +385,20 @@ checkSeedReady = async (ipList,nodPort) => {
                     let res = await axios.post(url, {},{timeout: 1000*10});
                     logger.info("check seed ready url（"+ipList[i]+"） chain id:",res.data.chain_id);
                     if (utils.isNotNull(res.data.chain_id)) {
-                        logger.info("check seed("+ipList[i]+") success,chainid is ",res.data.chain_id);
-                        return true;
+                        logger.info("seed("+ipList[i]+") get chainID("+res.data.chain_id+") ,need to compare chainid("+chainId+")")
+                        if (utils.isNull(chainId)) {
+                            logger.info("compare chainid("+chainId+") is null, success");
+                            logger.info("check seed("+ipList[i]+") success,chainid is ",res.data.chain_id);
+                            return true;
+                        } else {
+                            if (res.data.chain_id == chainId) {
+                                logger.info("compare chainid("+chainId+") equal config chainid("+res.data.chain_id+"), success");
+                                return true;
+                            } else {
+                                logger.error("compare chainid("+chainId+") not equal config chainid("+res.data.chain_id+"), fail");
+                                return false;
+                            }
+                        }
                     } else {
                         logger.error("check seed("+ipList[i]+") error,chainid is null");
                     }
