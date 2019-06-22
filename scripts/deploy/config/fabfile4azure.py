@@ -7,8 +7,34 @@ env.user = 'root'
 env.password = 'Uranus12#$'
 env.warn_only = True
 
+def updateVoteFile():
+    put("voting.js","/root/voterand/migrations/voting.js");
+
+def catHostIinfo():
+    run("cat /proc/sys/kernel/hostname");
+
+def stopNodAndMng():
+    run("pm2 stop all && killall nodultrain");
+
+def uploadNodConfig():
+    put("config/%s/*" % env.host,"/root/config/");
+
+def updateMngIni():
+    put("seedconfig.json","/root/.local/share/ultrainio/ultrainmng/config/seedconfig.json")
+
 def clearLog():
     run('find /log -mindepth 1 -mtime +1 -delete')
+
+def installMinerFile():
+    run('sh /root/install.sh')
+
+def deployMinerFile():
+    put("install.sh","/root/")
+    run('chmod +x /root/install.sh')
+    put("miner_setup.tar","/root/")
+    run("tar xf miner_setup.tar")
+
+
 
 def deployall():
 #    run('mkdir log')

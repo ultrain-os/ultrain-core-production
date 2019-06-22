@@ -1448,64 +1448,65 @@ async function uploadUgasToMonitor() {
             return;
         }
 
+        var timestamp = new Date().getTime();
+        logger.info("uploadUgasToMonitor timestamp:", timestamp);
+
         //获取发行信息
         try {
             let resIssue = await chainApi.getCurrencyStats(chainConfig.getLocalHttpEndpoint());
             logger.info("res Issue res:", resIssue.UGAS);
             let param = {
-                chainName : chainConfig.localChainName,
-                maxSupply :resIssue.UGAS.max_supply.replace(" UGAS", ""),
-                supply :resIssue.UGAS.supply.replace(" UGAS", ""),
-                issuer :resIssue.UGAS.issuer,
+                chainName: chainConfig.localChainName,
+                maxSupply: resIssue.UGAS.max_supply.replace(" UGAS", ""),
+                supply: resIssue.UGAS.supply.replace(" UGAS", ""),
+                issuer: resIssue.UGAS.issuer,
             }
-            let resUpload = await chainApi.uploadCurrency(getMonitorUrl(),param)
+            let resUpload = await chainApi.uploadCurrency(getMonitorUrl(), param)
         } catch (e) {
-            logger.error("getCurrencyStats error:",e);
+            logger.error("getCurrencyStats error:", e);
         }
 
-        let res = await  chainApi.getTableAllScopeData(chainConfig.configSub,"utrio.token",null,"accounts","scope");
+        let res = await chainApi.getTableAllScopeData(chainConfig.configSub, "utrio.token", null, "accounts", "scope");
         //logger.info("ugas account:",res.rows);
         logger.info(res.rows.length);
         let list = [];
-        let count =200;
-        for (let i=0;i<res.rows.length;i++) {
+        //单次上传用户信息数
+        let count = 200;
+        for (let i = 0; i < res.rows.length; i++) {
             try {
                 //logger.info("i("+i+") :",res.rows[i].scope);
                 let table = await chainApi.getTableInfo(chainConfig.configSub.httpEndpoint, "utrio.token", res.rows[i].scope, "accounts", 10);
                 //logger.info("res table",table);
                 list.push({a: res.rows[i].scope, m: table.rows[0].balance.replace(" UGAS", "")});
 
-                if (list.length >0 && list.length % count == 0) {
+                if (list.length > 0 && list.length % count == 0) {
                     let param = {
-                        chainName : chainConfig.localChainName,
-                        list: JSON.stringify(list)
+                        chainName: chainConfig.localChainName,
+                        list: JSON.stringify(list),
+                        tag: timestamp
                     }
 
-                    logger.info("param:",param);
-
-                    let rs = await chainApi.uploadugas(getMonitorUrl(),param);
-                    logger.info("uploadugas rs:",rs);
+                    let rs = await chainApi.uploadugas(getMonitorUrl(), param);
+                    logger.info("uploadugas rs:", rs);
                     list = [];
                 }
             } catch (e) {
-                logger.error("uploadUgasToMonitor single error:",e)
+                logger.error("uploadUgasToMonitor single error:", e)
             }
         }
 
-        if (list.length >0) {
-            let param = {
-                chainName : chainConfig.localChainName,
-                list: JSON.stringify(list)
-            }
-
-            logger.info("param:",param);
-
-            let rs = await chainApi.uploadugas(getMonitorUrl(),param);
-            logger.info("uploadugas rs:",rs);
+        let param = {
+            chainName: chainConfig.localChainName,
+            list: JSON.stringify(list),
+            tag: timestamp,
+            end: 1
         }
+
+        let rs = await chainApi.uploadugas(getMonitorUrl(), param);
+        logger.info("uploadugas rs:", rs);
 
     } catch (e) {
-       logger.error("uploadUgasToMonitor error:",e);
+        logger.error("uploadUgasToMonitor error:", e);
     }
 
 
