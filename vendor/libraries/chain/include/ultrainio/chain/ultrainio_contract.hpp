@@ -32,6 +32,8 @@ namespace ultrainio { namespace chain {
    void apply_ultrainio_setabi(apply_context&);
 
    void apply_ultrainio_canceldelay(apply_context&);
+   void apply_ultrainio_addblacklist(apply_context&);
+   void apply_ultrainio_rmblacklist(apply_context&);
    ///@}  end action handlers
 
 } } /// namespace ultrainio::chain

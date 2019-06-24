@@ -156,6 +156,43 @@ namespace fc {
       from_variant(v, _v);
       sv = ultrainio::chain::shared_vector<T>(_v.begin(), _v.end(), sv.get_allocator());
    }
+
+   template<typename T>
+   void to_variant( const ultrainio::chain::shared_set<T>& s, variant& v ) {
+      to_variant(std::vector<T>(s.begin(), s.end()), v);
+   }
+
+   template<typename T>
+   void from_variant( const variant& v, ultrainio::chain::shared_set<T>& s ) {
+      std::vector<T> _v;
+      from_variant(v, _v);
+      s = ultrainio::chain::shared_set<T>(_v.begin(), _v.end(), s.get_allocator());
+   }
+
+     //shared_set
+   template<typename Stream, typename T>
+   inline void pack( Stream& s, const ultrainio::chain::shared_set<T>& value ) {
+      FC_ASSERT( value.size() <= MAX_NUM_ARRAY_ELEMENTS );
+      fc::raw::pack( s, unsigned_int((uint32_t)value.size()) );
+      auto itr = value.begin();
+      auto end = value.end();
+      while( itr != end ) {
+        fc::raw::pack( s, *itr );
+        ++itr;
+      }
+    }
+
+   template<typename Stream, typename T>
+   inline void unpack( Stream& s, ultrainio::chain::shared_set<T>& value ) {
+      unsigned_int size; fc::raw::unpack( s, size );
+      FC_ASSERT( size.value <= MAX_NUM_ARRAY_ELEMENTS );
+      for( uint64_t i = 0; i < size.value; ++i )
+      {
+        T tmp(value.get_allocator());
+        fc::raw::unpack( s, tmp );
+        value.insert( std::move(tmp) );
+      }
+    }
 }
 
 namespace chainbase {

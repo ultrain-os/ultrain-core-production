@@ -3,7 +3,9 @@
  *  @copyright defined in ultrain/LICENSE.txt
  */
 #pragma once
+#include <fc/reflect/reflect.hpp>
 #include <ultrainio/chain/types.hpp>
+#include <ultrainio/chain/database_utils.hpp>
 
 namespace ultrainio { namespace chain {
     class whiteblacklist_object : public chainbase::object<whiteblacklist_object_type, whiteblacklist_object> {
@@ -17,7 +19,7 @@ namespace ultrainio { namespace chain {
         shared_set<pair<account_name, action_name>>  action_blacklist;
         shared_set<public_key_type>            key_blacklist;
     };
-    
+
     using whiteblacklist_index = chainbase::shared_multi_index_container<
         whiteblacklist_object,
         indexed_by<

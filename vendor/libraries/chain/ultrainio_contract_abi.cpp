@@ -193,6 +193,16 @@ abi_def ultrainio_contract_abi(const abi_def& ultrainio_system_abi)
          {"type", "action_name"},
       }
    });
+   ultrain_abi.structs.emplace_back( struct_def {
+      "addblacklist", "", {
+         {"account", "account_name"}
+      }
+   });
+   ultrain_abi.structs.emplace_back( struct_def {
+      "rmblacklist", "", {
+         {"account", "account_name"}
+      }
+   });
 
    ultrain_abi.structs.emplace_back( struct_def {
       "canceldelay", "", {
@@ -222,6 +232,8 @@ abi_def ultrainio_contract_abi(const abi_def& ultrainio_system_abi)
    ultrain_abi.actions.push_back( action_def{action_name("deleteauth"), "deleteauth",""} );
    ultrain_abi.actions.push_back( action_def{action_name("linkauth"), "linkauth",""} );
    ultrain_abi.actions.push_back( action_def{action_name("unlinkauth"), "unlinkauth",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("addblacklist"), "addblacklist",""} );
+   ultrain_abi.actions.push_back( action_def{action_name("rmblacklist"), "rmblacklist",""} );
    ultrain_abi.actions.push_back( action_def{action_name("canceldelay"), "canceldelay",""} );
    ultrain_abi.actions.push_back( action_def{action_name("onerror"), "onerror",""} );
    ultrain_abi.actions.push_back( action_def{action_name("onblock"), "onblock",""} );

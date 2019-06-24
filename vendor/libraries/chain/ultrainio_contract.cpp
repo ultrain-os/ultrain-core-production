@@ -481,4 +481,20 @@ void apply_ultrainio_delaccount(apply_context& context) {
    } FC_CAPTURE_AND_RETHROW( (delacc) )
 }
 
+void apply_ultrainio_addblacklist(apply_context& context) {
+   auto addBList = context.act.data_as<addblacklist>();
+   ilog("apply_ultrainio_addblacklist : account = ${account}", ("account", addBList.account));
+   try {
+
+   } FC_CAPTURE_AND_RETHROW( (addBList.account) )
+}
+
+void apply_ultrainio_rmblacklist(apply_context& context) {
+   auto rmBlist = context.act.data_as<rmblacklist>();
+   ilog("apply_ultrainio_rmblacklist : account = ${account}", ("account", rmBlist.account));
+   try {
+
+   } FC_CAPTURE_AND_RETHROW( (rmBlist.account) )
+}
+
 } } // namespace ultrainio::chain

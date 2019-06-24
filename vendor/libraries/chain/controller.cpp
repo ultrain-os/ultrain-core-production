@@ -52,7 +52,7 @@ using controller_index_set = index_set<
    generated_transaction_multi_index,
    table_id_multi_index,
    auth_sequence_index
-//   whiteblacklist_index
+   ,whiteblacklist_index
 >;
 
 using contract_database_index_set = index_set<
@@ -204,6 +204,7 @@ struct controller_impl {
    SET_APP_HANDLER( ultrainio, ultrainio, linkauth );
    SET_APP_HANDLER( ultrainio, ultrainio, unlinkauth );
    SET_APP_HANDLER( ultrainio, ultrainio, delaccount );
+
 /*
    SET_APP_HANDLER( ultrainio, ultrainio, postrecovery );
    SET_APP_HANDLER( ultrainio, ultrainio, passrecovery );
@@ -211,6 +212,8 @@ struct controller_impl {
 */
 
    SET_APP_HANDLER( ultrainio, ultrainio, canceldelay );
+   SET_APP_HANDLER( ultrainio, ultrainio, addblacklist );
+   SET_APP_HANDLER( ultrainio, ultrainio, rmblacklist );
 
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
@@ -432,7 +435,7 @@ struct controller_impl {
       authorization.add_indices(db);
       resource_limits.add_indices(db);
       bls_votes.add_indices(db);
-      db.add_index<whiteblacklist_index>();
+      // db.add_index<whiteblacklist_index>();
    }
 
    bool restore_contract_database_index(chainbase::database& worldstate_db, worldstate_reader::section_reader& section_reader,

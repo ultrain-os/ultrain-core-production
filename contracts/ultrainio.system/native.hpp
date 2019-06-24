@@ -76,5 +76,9 @@ namespace ultrainiosystem {
          void deletetable( account_name code );
 
          void delaccount( account_name account );
+
+         void addblacklist( account_name account );
+
+         void rmblacklist( account_name account );
    };
 }

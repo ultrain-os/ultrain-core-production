@@ -56,6 +56,9 @@ namespace chainbase {
    template<typename T>
    using shared_vector = std::vector<T, allocator<T> >;
 
+   template<typename T>
+   using shared_set = std::set<T, std::less<T>, allocator<T>>;
+
    constexpr char _db_dirty_flag_string[] = "db_dirty_flag";
 
    struct strcmp_less

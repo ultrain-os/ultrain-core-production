@@ -167,6 +167,31 @@ struct delaccount {
    }
 };
 
+struct addblacklist {
+   account_name    account;
+
+   static account_name get_account() {
+      return account_name(config::system_account_name);
+   }
+
+   static action_name get_name() {
+      return NEX(addblacklist);
+   }
+};
+
+struct rmblacklist {
+   account_name    account;
+
+   static account_name get_account() {
+      return account_name(config::system_account_name);
+   }
+
+   static action_name get_name() {
+      return NEX(rmblacklist);
+   }
+};
+
+
 } } /// namespace ultrainio::chain
 
 FC_REFLECT( ultrainio::chain::newaccount                       , (creator)(name)(owner)(active)(updateable) )
@@ -179,3 +204,5 @@ FC_REFLECT( ultrainio::chain::unlinkauth                       , (account)(code)
 FC_REFLECT( ultrainio::chain::canceldelay                      , (canceling_auth)(trx_id) )
 FC_REFLECT( ultrainio::chain::onerror                          , (sender_id)(sent_trx) )
 FC_REFLECT( ultrainio::chain::delaccount                       , (account) )
+FC_REFLECT( ultrainio::chain::addblacklist                       , (account) )
+FC_REFLECT( ultrainio::chain::rmblacklist                       , (account) )

@@ -245,6 +245,18 @@
         {"name":"account",     "type":"account_name"}
       ]
     },{
+      "name": "addblacklist",
+      "base": "",
+      "fields": [
+        {"name":"account",     "type":"account_name"}
+      ]
+    },{
+      "name": "rmblacklist",
+      "base": "",
+      "fields": [
+        {"name":"account",     "type":"account_name"}
+      ]
+    },{
       "name": "canceldelay",
       "base": "",
       "fields": [
@@ -756,6 +768,14 @@
    },{
      "name": "delaccount",
      "type": "delaccount",
+     "ricardian_contract": ""
+   },{
+     "name": "addblacklist",
+     "type": "addblacklist",
+     "ricardian_contract": ""
+   },{
+     "name": "rmblacklist",
+     "type": "rmblacklist",
      "ricardian_contract": ""
    },{
      "name": "canceldelay",
