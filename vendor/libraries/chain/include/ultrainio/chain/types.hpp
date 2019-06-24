@@ -154,6 +154,7 @@ namespace ultrainio { namespace chain {
       bls_votes_object_type,
       bls_votes_current_object_type,
       auth_sequence_object_type,
+      whiteblacklist_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -226,6 +227,7 @@ FC_REFLECT_ENUM(ultrainio::chain::object_type,
                 (bls_votes_object_type)
                 (bls_votes_current_object_type)
                 (auth_sequence_object_type)
+                (whiteblacklist_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( ultrainio::chain::void_t, )

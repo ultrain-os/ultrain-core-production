@@ -13,6 +13,7 @@
 #include <ultrainio/chain/contract_table_objects.hpp>
 #include <ultrainio/chain/generated_transaction_object.hpp>
 #include <ultrainio/chain/transaction_object.hpp>
+#include <ultrainio/chain/whiteblacklist_object.hpp>
 #include <ultrainio/chain/callback.hpp>
 #include <ultrainio/chain/callback_manager.hpp>
 
@@ -51,6 +52,7 @@ using controller_index_set = index_set<
    generated_transaction_multi_index,
    table_id_multi_index,
    auth_sequence_index
+//   whiteblacklist_index
 >;
 
 using contract_database_index_set = index_set<
@@ -405,6 +407,7 @@ struct controller_impl {
       authorization.add_indices(db);
       resource_limits.add_indices(db);
       bls_votes.add_indices(db);
+      db.add_index<whiteblacklist_index>();
    }
 
    bool restore_contract_database_index(chainbase::database& worldstate_db, worldstate_reader::section_reader& section_reader,
