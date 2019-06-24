@@ -1421,7 +1421,6 @@ read_only::get_global_exten_result read_only::get_global_exten_data(const read_o
         for ( auto v : ext ) {
             if( v.key == p.index ) {
                 result.global_exten_data = v.value;
-                ilog("read get_global_exten_data from global state : ${value}", ("value", result.global_exten_data));
                 break;
             }
         }

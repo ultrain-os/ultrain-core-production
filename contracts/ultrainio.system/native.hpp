@@ -60,10 +60,10 @@ namespace ultrainiosystem {
 
          void deleteauth( /*account_name account, permission_name permission*/ ) {}
 
-         void linkauth( /*account_name    account,
-                               account_name    code,
-                               action_name     type,
-                               permission_name requirement*/ ) {}
+         void linkauth( account_name    account,
+                        account_name    code,
+                        action_name     type,
+                        permission_name requirement );
 
          void unlinkauth( /*account_name account,
                                  account_name code,

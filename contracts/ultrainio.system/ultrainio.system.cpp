@@ -274,6 +274,29 @@ namespace ultrainiosystem {
          }
       }
 
+   void native::linkauth( account_name    account,
+                          account_name    code,
+                          action_name     type,
+                          permission_name requirement ) {
+      UNUSED( code );
+      UNUSED( type );
+      UNUSED( requirement );
+      global_state_singleton globalparams( _self,_self);
+      int32_t linkauth_fee = 10000;
+      if(globalparams.exists()){
+         ultrainio_global_state  _gstate = globalparams.get();
+         for(auto extension : _gstate.table_extension){
+            if(extension.key == ultrainio_global_state::global_state_exten_type_key::link_auth_fee
+               && !extension.value.empty()) {
+               linkauth_fee = std::stol( extension.value );
+               break;
+            }
+         }
+      }
+      INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), { account,N(active) },
+         { account, N(utrio.fee), asset( linkauth_fee ), name{account}.to_string() + std::string(" linkauth fee") } );
+   }
+
    void native::deletetable( account_name code ) {
       require_auth(_self);
       int32_t dropstatus = db_drop_table(code);

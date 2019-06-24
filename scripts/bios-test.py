@@ -355,7 +355,6 @@ def stepexecrand():
       nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
 
 def addSubChainUser():
-    print "addSubChainUser start..."
     rewardlist = []
     for i in range(0,len(accounts)):
         userName = accounts[i]
@@ -368,7 +367,6 @@ def addSubChainUser():
     print(" reward account list:")
     for a in rewardlist:
         print(a)
-    print "addSubChainUser end..."
     sleep(15)
     for i in range(0,len(accounts)):
         userName = accounts[i]

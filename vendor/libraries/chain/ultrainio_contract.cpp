@@ -402,7 +402,7 @@ void apply_ultrainio_linkauth(apply_context& context) {
          });
 
          context.trx_context.add_ram_usage(
-            l.account,
+            config::system_account_name,
             (int64_t)(config::billable_size_v<permission_link_object>)
          );
       }
@@ -422,7 +422,7 @@ void apply_ultrainio_unlinkauth(apply_context& context) {
    auto link = db.find<permission_link_object, by_action_name>(link_key);
    ULTRAIN_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
    context.trx_context.add_ram_usage(
-      link->account,
+      config::system_account_name,
       -(int64_t)(config::billable_size_v<permission_link_object>)
    );
 

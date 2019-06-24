@@ -82,6 +82,7 @@ namespace ultrainiosystem {
          check_user_bulletin = 8,
          allow_undelegate_block_interval = 9,
          refund_delegate_consensus_seconds = 10,
+         link_auth_fee = 11,
          global_state_key_end
       };
 
