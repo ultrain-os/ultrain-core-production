@@ -271,18 +271,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "print contract's output to console")
          ("masterchain", bpo::bool_switch()->default_value(false),
           "if the chain is running as main chain")
-         ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Account added to actor whitelist (may specify multiple times)")
-         ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Account added to actor blacklist (may specify multiple times)")
-         ("contract-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Contract account added to contract whitelist (may specify multiple times)")
-         ("contract-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Contract account added to contract blacklist (may specify multiple times)")
-         ("action-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Action (in the form code::action) added to action blacklist (may specify multiple times)")
-         ("key-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Public key added to blacklist of keys that should not be included in authorities (may specify multiple times)")
          ("read-mode", boost::program_options::value<ultrainio::chain::db_read_mode>()->default_value(ultrainio::chain::db_read_mode::SPECULATIVE),
           "Database read mode (\"speculative\" or \"head\").\n"// or \"irreversible\").\n"
           "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
@@ -384,10 +372,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
               plugin_config_exception,
               "Genesis-time can not be empty,should be set in config.ini.");
       fc::time_point genesis_timestamp =  calculate_genesis_timestamp(my->_genesis_time);
-      LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );
-      LOAD_VALUE_SET( options, "actor-blacklist", my->chain_config->actor_blacklist );
-      LOAD_VALUE_SET( options, "contract-whitelist", my->chain_config->contract_whitelist );
-      LOAD_VALUE_SET( options, "contract-blacklist", my->chain_config->contract_blacklist );
 
       #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
       if( options.count( "contract-return-string-length" ))
@@ -396,26 +380,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if( options.count( "contract-emit-string-length" ))
          my->chain_config->contract_emit_length = options.at( "contract-emit-string-length" ).as<uint64_t>();
       #endif
-
-      if( options.count( "action-blacklist" )) {
-         const std::vector<std::string>& acts = options["action-blacklist"].as<std::vector<std::string>>();
-         auto& list = my->chain_config->action_blacklist;
-         for( const auto& a : acts ) {
-            auto pos = a.find( "::" );
-            ULTRAIN_ASSERT( pos != std::string::npos, plugin_config_exception, "Invalid entry in action-blacklist: '${a}'", ("a", a));
-            account_name code( a.substr( 0, pos ));
-            action_name act( a.substr( pos + 2 ));
-            list.emplace( code.value, act );
-         }
-      }
-
-      if( options.count( "key-blacklist" )) {
-         const std::vector<std::string>& keys = options["key-blacklist"].as<std::vector<std::string>>();
-         auto& list = my->chain_config->key_blacklist;
-         for( const auto& key_str : keys ) {
-            list.emplace( key_str );
-         }
-      }
 
       if( options.count( "blocks-dir" )) {
          auto bld = options.at( "blocks-dir" ).as<bfs::path>();

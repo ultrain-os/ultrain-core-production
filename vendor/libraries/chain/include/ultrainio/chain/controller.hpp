@@ -51,12 +51,6 @@ namespace ultrainio { namespace chain {
       public:
 
          struct config {
-            flat_set<account_name>   actor_whitelist;
-            flat_set<account_name>   actor_blacklist;
-            flat_set<account_name>   contract_whitelist;
-            flat_set<account_name>   contract_blacklist;
-            flat_set< pair<account_name, action_name> > action_blacklist;
-            flat_set<public_key_type> key_blacklist;
             path                     blocks_dir             =  chain::config::default_blocks_dir_name;
             path                     state_dir              =  chain::config::default_state_dir_name;
             uint64_t                 state_size             =  chain::config::default_state_size;
@@ -311,10 +305,6 @@ namespace ultrainio { namespace chain {
 } }  /// ultrainio::chain
 
 FC_REFLECT( ultrainio::chain::controller::config,
-            (actor_whitelist)
-            (actor_blacklist)
-            (contract_whitelist)
-            (contract_blacklist)
             (blocks_dir)
             (state_dir)
             (state_size)

@@ -141,6 +141,27 @@ struct controller_impl {
    // BUG!!! TODO: We need save event list to database to avoid duplicate when restarts system
    std::list<contract_event_type> event_list;
 
+   struct whiteblack_type {
+       shared_set<account_name>&   actor_whitelist;
+       shared_set<account_name>&   actor_blacklist;
+       shared_set<account_name>&   contract_whitelist;
+       shared_set<account_name>&   contract_blacklist;
+       shared_set< pair<account_name, action_name> >& action_blacklist;
+       shared_set<public_key_type>& key_blacklist;
+       whiteblack_type(shared_set<account_name>& actor_w, shared_set<account_name>& actor_b,
+               shared_set<account_name>& contract_w, shared_set<account_name>& contract_b,
+               shared_set< pair<account_name, action_name> >& action_b, shared_set<public_key_type>& key_b):
+           actor_whitelist(actor_w),
+           actor_blacklist(actor_b),
+           contract_whitelist(contract_w),
+           contract_blacklist(contract_b),
+           action_blacklist(action_b),
+           key_blacklist(key_b)
+       {}
+   };
+
+   whiteblack_type* whiteblack_list;
+
    /**
     *  Transactions that were undone by pop_block or abort_block, transactions
     *  are removed from this list if they are re-applied in other blocks. Producers
@@ -385,6 +406,10 @@ struct controller_impl {
       while( db.revision() > head->block_num ) {
          db.undo();
       }
+
+      auto wb_object = db.get<whiteblacklist_object>();
+
+      whiteblack_list= new whiteblack_type(wb_object.actor_whitelist,wb_object.actor_blacklist,wb_object.contract_whitelist,wb_object.contract_blacklist,wb_object.action_blacklist,wb_object.key_blacklist);
    }
 
    ~controller_impl() {
@@ -854,6 +879,8 @@ struct controller_impl {
         gpo.configuration = conf.genesis.initial_configuration;
       });
       db.create<dynamic_global_property_object>([](auto&){});
+
+      db.create<whiteblacklist_object>([](auto&){});
 
       authorization.initialize_database();
       resource_limits.initialize_database();
@@ -1739,21 +1766,21 @@ struct controller_impl {
 
 
    void check_actor_list( const flat_set<account_name>& actors )const {
-      if( conf.actor_whitelist.size() > 0 ) {
+      if( whiteblack_list->actor_whitelist.size() > 0 ) {
          vector<account_name> excluded;
          excluded.reserve( actors.size() );
          set_difference( actors.begin(), actors.end(),
-                         conf.actor_whitelist.begin(), conf.actor_whitelist.end(),
+                         whiteblack_list->actor_whitelist.begin(), whiteblack_list->actor_whitelist.end(),
                          std::back_inserter(excluded) );
          ULTRAIN_ASSERT( excluded.size() == 0, actor_whitelist_exception,
                      "authorizing actor(s) in transaction are not on the actor whitelist: ${actors}",
                      ("actors", excluded)
                    );
-      } else if( conf.actor_blacklist.size() > 0 ) {
+      } else if( whiteblack_list->actor_blacklist.size() > 0 ) {
          vector<account_name> blacklisted;
          blacklisted.reserve( actors.size() );
          set_intersection( actors.begin(), actors.end(),
-                           conf.actor_blacklist.begin(), conf.actor_blacklist.end(),
+                           whiteblack_list->actor_blacklist.begin(), whiteblack_list->actor_blacklist.end(),
                            std::back_inserter(blacklisted)
                          );
          ULTRAIN_ASSERT( blacklisted.size() == 0, actor_blacklist_exception,
@@ -1764,13 +1791,13 @@ struct controller_impl {
    }
 
    void check_contract_list( account_name code )const {
-      if( conf.contract_whitelist.size() > 0 ) {
-         ULTRAIN_ASSERT( conf.contract_whitelist.find( code ) != conf.contract_whitelist.end(),
+      if( whiteblack_list->contract_whitelist.size() > 0 ) {
+         ULTRAIN_ASSERT( whiteblack_list->contract_whitelist.find( code ) != whiteblack_list->contract_whitelist.end(),
                      contract_whitelist_exception,
                      "account '${code}' is not on the contract whitelist", ("code", code)
                    );
-      } else if( conf.contract_blacklist.size() > 0 ) {
-         ULTRAIN_ASSERT( conf.contract_blacklist.find( code ) == conf.contract_blacklist.end(),
+      } else if( whiteblack_list->contract_blacklist.size() > 0 ) {
+         ULTRAIN_ASSERT( whiteblack_list->contract_blacklist.find( code ) == whiteblack_list->contract_blacklist.end(),
                      contract_blacklist_exception,
                      "account '${code}' is on the contract blacklist", ("code", code)
                    );
@@ -1778,8 +1805,8 @@ struct controller_impl {
    }
 
    void check_action_list( account_name code, action_name action )const {
-      if( conf.action_blacklist.size() > 0 ) {
-         ULTRAIN_ASSERT( conf.action_blacklist.find( std::make_pair(code, action) ) == conf.action_blacklist.end(),
+      if( whiteblack_list->action_blacklist.size() > 0 ) {
+         ULTRAIN_ASSERT( whiteblack_list->action_blacklist.find( std::make_pair(code, action) ) == whiteblack_list->action_blacklist.end(),
                      action_blacklist_exception,
                      "action '${code}::${action}' is on the action blacklist",
                      ("code", code)("action", action)
@@ -1788,8 +1815,8 @@ struct controller_impl {
    }
 
    void check_key_list( const public_key_type& key )const {
-      if( conf.key_blacklist.size() > 0 ) {
-         ULTRAIN_ASSERT( conf.key_blacklist.find( key ) == conf.key_blacklist.end(),
+      if( whiteblack_list->key_blacklist.size() > 0 ) {
+         ULTRAIN_ASSERT( whiteblack_list->key_blacklist.find( key ) == whiteblack_list->key_blacklist.end(),
                      key_blacklist_exception,
                      "public key '${key}' is on the key blacklist",
                      ("key", key)
