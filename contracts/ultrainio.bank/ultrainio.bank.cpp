@@ -94,7 +94,7 @@ namespace ultrainiobank {
         if(it_chain == chainbalan.end()){
             chainbalan.emplace( [&]( auto& b ){
                 b.chain_name = chain_name;
-                b.balance += quantity;
+                b.balance = quantity;
             });
         }else{
             chainbalan.modify(it_chain, [&]( auto& b ) {
