@@ -811,11 +811,11 @@ namespace ultrainio {
         }
 
         start_timer([this](){
-            if(no_connection == 0){
-                ilog("waiting info timeout, no connection,error");
+            if(cnt_connecting == 0){
+                ilog("waiting info timeout,no connection,error");
                 sync_reset(no_connection);
             } else {
-                ilog("waiting info timeout, don't receive enought rsps from all seed server");
+                ilog("waiting info timeout, don't receive enought rsp from all seed server");
                 start_sync();
             }
         }, "waiting sync rsp");
