@@ -888,7 +888,7 @@ const getServerVersion = async (port) => {
  */
 monitorCheckIn = async (url, param) => {
     try {
-        logger.info("monitorCheckIn param:", qs.stringify(param));
+        logger.debug("monitorCheckIn param:", qs.stringify(param));
         const rs = await axios.post(url + "/filedist/checkIn", qs.stringify(param));
         logger.info("monitorCheckIn result:", rs.data);
         return rs.data;

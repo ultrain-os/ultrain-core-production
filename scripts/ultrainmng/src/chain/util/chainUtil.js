@@ -3,6 +3,7 @@ var utils = require('../../common/util/utils')
 const fs = require('fs');
 var constants = require('../../common/constant/constants')
 var rand = require('random-lib')
+var url = require('url');
 
 /**
  * 创世时间格式化
@@ -370,6 +371,41 @@ function randomRato(setRatio) {
     return false;
 }
 
+/**
+ *
+ * @param url
+ * @returns {{proxy: string, path: string, port: number, host: string}}
+ */
+function parseUrlInfo(downloadurl) {
+    let parseInfo = {
+        proxy : "http",
+        host :"",
+        port:80,
+        path:""
+    }
+
+    try {
+        parseInfo.path = url.parse(downloadurl).pathname;
+        let host = url.parse(downloadurl).host;
+        if (host.indexOf(":") != -1) {
+            var array=host.split(":");
+            parseInfo.host=array[0];
+            parseInfo.port = array[1];
+        } else {
+            parseInfo.host = host;
+        }
+
+        if (downloadurl.indexOf("https") != -1) {
+            parseInfo.proxy = "https";
+        }
+    } catch (e) {
+        logger.error("parseUrlInfo error:",e);
+    }
+
+    return parseInfo;
+}
+
+
 module.exports = {
     formatGensisTime,
     getOwnerPkByAccount,
@@ -384,4 +420,5 @@ module.exports = {
     transferFreeMemToArray,
     getMoveProdRTransFromBlockHeader,
     randomRato,
+    parseUrlInfo,
 }

@@ -21,6 +21,10 @@ var process = require('child_process');
 var WorldState = require("../worldstate/worldstate")
 var os = require("os")
 var chainUtil = require("./util/chainUtil")
+var url = require('url');
+const http = require('http');
+var mkdirp = require('mkdirp')
+var path = require('path')
 
 
 var hashCache = new CacheObj(false, null);
@@ -70,6 +74,9 @@ var totalmem = 0;
 var freemem = 0;
 
 var errorStartUpMsg = ""
+
+//文件下载顺序
+var downloadUrlIndex = 0;
 
 
 /**
@@ -281,7 +288,7 @@ async function getSeedConfigVersion() {
  * @returns {*}
  */
 function getMonitorUrl() {
-    logger.error("monitor url:",chainConfig.configFileData.target[iniConstants.MONITOR_SERVER_ENDPOINT]);
+    logger.debug("monitor url:",chainConfig.configFileData.target[iniConstants.MONITOR_SERVER_ENDPOINT]);
     return chainConfig.configFileData.target[iniConstants.MONITOR_SERVER_ENDPOINT];
 }
 
@@ -805,6 +812,32 @@ function getTargetPath(filename) {
     return "";
 }
 
+/**
+ *
+ * @param deployInfo
+ * @returns {*}
+ */
+function getDownloadUrlList(deployInfo) {
+    let list = [];
+    list.push(deployInfo.url);
+    try {
+
+        if (utils.isNull(deployInfo.urlList)) {
+            return list;
+        }
+
+        let urlList = JSON.parse(deployInfo.urlList);
+        if (utils.isNotNull(urlList) && urlList.length > 0) {
+            return urlList;
+        }
+
+    } catch (e) {
+        logger.error("getUrlList error:",e);
+    }
+
+    return list;
+}
+
 async function fileDeploy(deployBatch) {
     deploySyncFlag = true;
 
@@ -815,7 +848,10 @@ async function fileDeploy(deployBatch) {
         logger.info("start to deploy file (" + deployFile.filename + ")");
 
         let localHash = await getLocalHash(deployFile.filename);
+        let urlList = getDownloadUrlList(deployFile);
+        logger.info("find download list:",urlList);
         if (localHash == deployFile.hash) {
+            downloadUrlIndex = 0;
             logger.info("localfile hash(" + localHash + ") is equal deploy hash(" + deployFile.hash + ") ,need not download");
             deploySyncFlag = false;
 
@@ -831,6 +867,8 @@ async function fileDeploy(deployBatch) {
         }
 
         let localpath = getDownloadFilePath(deployFile.filename, deployFile.hash);
+
+
 
         if (fs.existsSync(localpath)) {
             logger.info("file has already downloaded:" + localpath);
@@ -853,17 +891,139 @@ async function fileDeploy(deployBatch) {
 
         } else {
             logger.info("file is not ready, need to downloaded:" + localpath);
-            download(deployFile.url, localpath, function (err, filepath) {
+
+
+            if (downloadUrlIndex >= urlList.length) {
+                deploySyncFlag = false;
+                downloadUrlIndex=0;
+                let param = await buildParam();
+                param.status = statusConstants.EXCEPTION;
+                param.batchId = deployBatch.id;
+                logger.info("finsih deploy param:", param);
+                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+                param.ext = "timeout";
+                await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                return;
+            }
+            let downloadUrl = urlList[downloadUrlIndex];
+
+            let parseInfo = chainUtil.parseUrlInfo(downloadUrl);
+            var options = {
+                host: parseInfo.host,
+                port: parseInfo.port,
+                path: parseInfo.path,
+                method: 'GET',
+            };
+
+            logger.info("start to download url(" + downloadUrl + "),count:" + downloadUrlIndex + " options:", options);
+
+
+            logger.info("download path:",path.dirname(localpath));
+
+            mkdirp(path.dirname(localpath), function (err) {
                 if (err) {
-                    logger.error("download file error:" + deployFile.url, err);
-                    deploySyncFlag = false;
+                    logger.error(("create path error:",path.dirname(localpath)));
                 } else {
-                    logger.info("download successfully:" + deployFile.url);
-                    console.log('Download finished:', filepath);
-                    deploySyncFlag = false;
+                    logger.info(("create path success:",path.dirname(localpath)));
                 }
             })
 
+            sleep.msleep(2000);
+
+            //文件下载
+            var file = fs.createWriteStream(localpath);
+
+            //下载超时时间
+            var timeoutDownload = 300000;
+
+            //超时abort请求
+            var timeout_wrapper = function (req) {
+                return async function () {
+                    try {
+                        // do some logging, cleaning, etc. depending on req
+                        logger.error("timeout to abort:", downloadUrl);
+                        req.abort();
+                    } catch (e) {
+                        logger.error("abort error:", e);
+                    }
+
+                    if (downloadUrlIndex == urlList.length -1) {
+                        logger.error("index("+downloadUrlIndex+") is to end("+(urlList.length-1)+"),need upload");
+                        downloadUrlIndex=0;
+                        let param = await buildParam();
+                        param.status = statusConstants.EXCEPTION;
+                        param.batchId = deployBatch.id;
+                        logger.info("finsih deploy param:", param);
+                        param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+                        param.ext = "timeout";
+                        await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                    } else {
+                        logger.error("index("+downloadUrlIndex+") is not to end("+(urlList.length-1)+"),wait to next");
+                    }
+                };
+            };
+
+            //发起请求
+            var request = http.get(options, function (res) {
+                res.on('data', function (data) {
+                    try {
+                        //logger.info("download data");
+                        file.write(data);
+                        // reset timeout
+                        // clearTimeout(timeout);
+                        // timeout = setTimeout(fn, timeoutDownload);
+                    } catch (e) {
+                        logger.error("abort error:", e);
+                    }
+                }).on('end', function () {
+                    try {
+                        downloadUrlIndex++;
+                        logger.info("download end");
+                        deploySyncFlag = false;
+                        // clear timeout
+                        clearTimeout(timeout);
+                        file.end();
+                        console.log(localpath + ' downloaded ');
+                        //cb(null, file.path);
+                    } catch (e) {
+                        logger.error("abort error:", e);
+                        deploySyncFlag = false;
+                    }
+                }).on('error', async function (err) {
+                    try {
+                        logger.info("download error");
+                        downloadUrlIndex++;
+                        deploySyncFlag = false;
+                        // clear timeout
+                        clearTimeout(timeout);
+                        console.log("Got error: " + err.message);
+                        //cb(err, null);
+                    } catch (e) {
+                        logger.error("abort error:", e);
+                        deploySyncFlag = false;
+                    }
+
+                    if (downloadUrlIndex == urlList.length -1) {
+                        logger.error("index("+downloadUrlIndex+") is to end("+(urlList.length-1)+"),need upload");
+                        downloadUrlIndex=0;
+                        let param = await buildParam();
+                        param.status = statusConstants.EXCEPTION;
+                        param.batchId = deployBatch.id;
+                        logger.info("finsih deploy param:", param);
+                        param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+                        param.ext = "error";
+                        await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                    } else {
+                        logger.error("index("+downloadUrlIndex+") is not to end("+(urlList.length-1)+"),wait to next");
+                    }
+                });
+            });
+
+            // generate timeout handler
+            var fn = timeout_wrapper(request);
+
+            // set initial timeout
+            var timeout = setTimeout(fn, timeoutDownload);
 
         }
 
@@ -872,7 +1032,6 @@ async function fileDeploy(deployBatch) {
         deploySyncFlag = false;
     }
 }
-
 
 /**
  *

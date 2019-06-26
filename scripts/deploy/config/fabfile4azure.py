@@ -7,6 +7,21 @@ env.user = 'root'
 env.password = 'Uranus12#$'
 env.warn_only = True
 
+def restartmng():
+    run("pm2 restart /root/ultrainmng/src/sideChainService.js && sleep 1");
+
+def startnod():
+    run("/root/runultrain-h.sh && sleep 1");
+
+def killnod():
+    run("killall nodultrain");
+
+def echoSeed():
+    run("cat /root/.local/share/ultrainio/nodultrain/config/config.ini  | grep udp-seed");
+
+def echoAccountInfo():
+    run("cat /root/.local/share/ultrainio/nodultrain/config/config.ini  | grep my-account-as-committee -A 5");
+
 def updateVoteFile():
     put("voting.js","/root/voterand/migrations/voting.js");
 
