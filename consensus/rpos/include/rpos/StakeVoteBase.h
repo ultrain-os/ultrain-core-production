@@ -74,6 +74,8 @@ namespace ultrainio {
 
         CommitteeSet getCommitteeSet() const;
 
+        bool isGenesisPeriod() const;
+
         virtual Proof getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount);
 
         virtual Proof getProposerProof(uint32_t blockNum);
@@ -111,8 +113,6 @@ namespace ultrainio {
         virtual uint32_t realGetProposerNumber() const;
 
         std::shared_ptr<CommitteeState> m_committeeStatePtr = nullptr;
-
-        bool isGenesisPeriod() const;
 
         bool isGenesisLeader(const AccountName& account) const;
 

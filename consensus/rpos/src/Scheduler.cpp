@@ -1569,7 +1569,8 @@ namespace ultrainio {
 
             if (isEmpty(echo_info->echoCommonPart.blockId)) {
                 dlog("produceBaxBlock.produce empty Block. save VoterSet in bax blockId = ${blockId}", ("blockId", voterSet.commonEchoMsg.blockId));
-                m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(), stakeVotePtr->getNextRoundThreshold() + 1);
+                m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
+                        stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
                 return emptyBlock();
             }
             auto propose_itor = m_proposerMsgMap.find(echo_info->echoCommonPart.blockId);
@@ -1581,7 +1582,8 @@ namespace ultrainio {
 #endif
                 dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase} save VoterSet in bax blockId = ${blockId}",
                      ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase)("blockId", voterSet.commonEchoMsg.blockId));
-                m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(), stakeVotePtr->getNextRoundThreshold() + 1);
+                m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
+                        stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
                 return propose_itor->second.block;
             }
             dlog("produceBaxBlock.> 2f + 1 echo. hash = ${hash} can not find it's propose.",("hash",echo_info->echoCommonPart.blockId));
@@ -1655,7 +1657,8 @@ namespace ultrainio {
                 voterSet.proofPool = itor->second.proofPool;
 #endif
                 // save VoterSet
-                m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(), stakeVotePtr->getNextRoundThreshold() + 1);
+                m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
+                        stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
                 break;
             }
         }
@@ -2343,9 +2346,9 @@ namespace ultrainio {
     }
 
     BlsVoterSet Scheduler::toBlsVoterSetAndFindEvil(const VoterSet& voterSet, const CommitteeSet& committeeSet,
-            int weight) const {
+            bool genesisPeriod, int weight) const {
         BlsVoterSet blsVoterSet = voterSet.toBlsVoterSet(weight);
-        if (!committeeSet.verify(blsVoterSet)) {
+        if (!genesisPeriod && !committeeSet.verify(blsVoterSet)) {
             // there are evil node
             VoterSet newVoterSet;
             std::vector<AccountName> evilAccounts;

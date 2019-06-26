@@ -245,8 +245,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         bool hasMultiVotePropose(const EchoMsg& echo);
 
-        BlsVoterSet toBlsVoterSetAndFindEvil(const VoterSet& voterSet, const CommitteeSet& committeeSet,
-                int weight) const;
+        BlsVoterSet toBlsVoterSetAndFindEvil(const VoterSet& voterSet, const CommitteeSet& committeeSet, bool genesisPeriod, int weight) const;
 
         // data member
         Block m_ba0Block;
