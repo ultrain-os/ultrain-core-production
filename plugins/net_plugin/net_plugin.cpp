@@ -2576,7 +2576,7 @@ connection::connection(string endpoint, msg_priority pri)
                it = connections.erase(it);
                continue;
             } else {
-               if (!is_connection_to_seed(*it)) { // skip the addr of seeds, so always reconnect seeds
+               if (!(is_connection_to_seed(*it) || is_static_connection(*it))) { // skip the addr of seeds and static connections, so always reconnect
                   (*it)->retry_connect_count++;
                }
                connect(*it);
