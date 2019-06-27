@@ -27,6 +27,7 @@ var cmdConstants = {
     DISABLE_SYNC_USER_RES_BY_BLOCK: "disableUserResByBlock",
     SET_SYNC_BLOCK_MAX_COUNT: "syncBlockMaxCount",
     RESTART_NOD: "restartNod",
+    UPDATE_MONITOR: "updateMonitor",
 }
 
 //编码常量

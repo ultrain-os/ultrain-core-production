@@ -56,6 +56,46 @@ NodUltrain.checkConfigInfo = function(updateArr) {
 
 /**
  *
+ * @param updateArr
+ */
+NodUltrain.updateConfigInfo = function(updateArr) {
+    try {
+        let updateFlag = false;
+        var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
+        if (updateArr.length > 0) {
+            for (let t = 0;t<updateArr.length;t++) {
+                let kv = updateArr[t];
+                logger.info("check add nod confg info:",kv);
+                let kvArray = kv.split("=");
+                if (kvArray.length == 2) {
+                    let key = kvArray[0].trim();
+                    let value = kvArray[1].trim();
+                    if (iniFile.checkKVExist(key,value) == false) {
+                        logger.info("kv("+key+":"+value+") is not exist,need add");
+                        iniFile.setValue(key,value);
+                        updateFlag = true;
+                    } else {
+                        logger.info("kv("+key+":"+value+") is exist,need not add");
+                    }
+                }
+            }
+
+            if (updateFlag == true) {
+                iniFile.writefile(this.configFilePath, Constants.encodingConstants.UTF8);
+                return true;
+            }
+        }
+
+
+    } catch (e) {
+        logger.error("addConfigInfo error,",e);
+
+    }
+
+    return false;
+}
+/**
+ *
  * @param data
  * @returns {boolean}
  */
@@ -295,16 +335,16 @@ NodUltrain.getNewestLog = function(logDir,callback) {
                 let fileName = stdout;
                 let filePath = logDir+"/"+fileName;
                 logger.info("get nod filenpath:",filePath);
-                    let cmd = "tail -n 30 "+filePath;
+                let cmd = "tail -n 30 "+filePath;
 
-                    process.exec(cmd, function (error, stdout, stderr, finish) {
-                        if (error) {
-                            logger.error("getNewestLog error:",error);
-                        } else {
-                            logger.debug("nod log :",stdout);
-                            callback(stdout);
-                        }
-                    });
+                process.exec(cmd, function (error, stdout, stderr, finish) {
+                    if (error) {
+                        logger.error("getNewestLog error:",error);
+                    } else {
+                        logger.debug("nod log :",stdout);
+                        callback(stdout);
+                    }
+                });
 
             }
         });

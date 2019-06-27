@@ -353,7 +353,7 @@ async function buildParam() {
 
     let enableRestartRes = 1;
     if (enableRestart == 0 && chainConfig.configFileData.local["enableRestart"]==false) {
-            enableRestartRes = 0;
+        enableRestartRes = 0;
     }
 
     let serverVersion = await getServerVersion();
@@ -402,8 +402,8 @@ async function checkIn() {
         return
     }
 
-     let osInfo = getOsInfo();
-     //logger.error("osinfo:",osInfo);
+    let osInfo = getOsInfo();
+    //logger.error("osinfo:",osInfo);
 
     logger.info("monitor checkin start");
 
@@ -708,6 +708,83 @@ async function cmdDeploy(deployBatch) {
             return;
         }
 
+
+        //修改monitor信息
+        if (deployCmd.content == constants.cmdConstants.UPDATE_MONITOR) {
+
+            let param = await buildParam();
+            param.batchId = deployBatch.id;
+
+            let logMsg = "";
+
+            let monitorUrl = deployCmd.arg;
+            logger.info("need to update monitor url :",monitorUrl)
+
+            let configList = [];
+            configList.push("monitor-server-endpoint = "+monitorUrl)
+
+            logger.info("ADD_NOD_CONFIG log,data:", configList);
+
+
+            let hasReady = NodUltrain.checkConfigInfo(configList);
+            if (hasReady) {
+                logger.info("monitor url has already existed");
+                param.status = statusConstants.EXCEPTION;
+                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+                param.ext = "monitor url has already existed";
+                await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                enableDeploy();
+                return;
+            } else {
+                logger.info("monitor url has not already existed,need update info");
+                logMsg = utils.addLogStr(logMsg, "monitor url has not already existed,need update info");
+
+                try {
+                    let stopFlag = await NodUltrain.stop(60000,chainConfig.nodPort);
+                    if (stopFlag == true) {
+                        logMsg = utils.addLogStr(logMsg, "stop nod success");
+                        let updateConfigFlag = NodUltrain.updateConfigInfo(configList);
+                        if (updateConfigFlag == true) {
+                            logMsg = utils.addLogStr(logMsg, "update nod config success");
+                            let result = await NodUltrain.start(1200000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest,chainConfig.nodPort);
+                            if (result == true) {
+                                logMsg = utils.addLogStr(logMsg, "start nod  success");
+                                //成功
+                                param.status = statusConstants.SUCCESS;
+                                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+                                param.ext = logMsg;
+                                await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                                enableDeploy();
+                                await restartMng();
+                                return;
+                            } else {
+                                logMsg = utils.addLogStr(logMsg, "start nod error");
+                            }
+
+                        } else {
+                            logMsg = utils.addLogStr(logMsg, "update config error");
+                        }
+
+                    } else {
+                        logMsg = utils.addLogStr(logMsg, "stop nod error");
+                    }
+
+                } catch (e) {
+                    logger.error("add nod config error,", e);
+                }
+
+                //失败
+                param.status = statusConstants.EXCEPTION;
+                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
+                param.ext = logMsg;
+                await chainApi.finsihDeployFile(getMonitorUrl(), param);
+                enableDeploy();
+                await restartMng();
+                return;
+            }
+
+            return;
+        }
 
         if (systemCmd == true) {
             let param = await buildParam();
@@ -1031,6 +1108,24 @@ async function fileDeploy(deployBatch) {
         logger.error("fileDeploy error", e);
         deploySyncFlag = false;
     }
+}
+
+/**
+ *
+ * @returns {Promise<void>}
+ */
+async function restartMng() {
+    let cmd = "pm2 restart sideChainService";
+    logger.info("need to restart ultrainmng..");
+    process.exec(cmd, async function (error, stdout, stderr, finish,cmd) {
+        if (error !== null) {
+            logger.error('exec error: ' + error);
+            enableDeploy();
+        } else {
+            logger.info("exec success :",cmd);
+            enableDeploy();
+        }
+    });
 }
 
 /**
@@ -1497,18 +1592,18 @@ async function uploadRamUsage() {
                                     let maxSum = 10;
                                     let array = [];
                                     for (let i=0;i<accountInfoJson.length;i++) {
-                                       let obj = accountInfoJson[i];
-                                       array.push(obj);
-                                       if ((i % maxSum == 0 && i > 0) || i >= accountInfoJson.length-1) {
-                                           logger.info("array("+i+"):",array);
-                                           let rs = await chainApi.ramUsageCheckIn(getMonitorUrl(),{
-                                               chainName : chainConfig.localChainName,
-                                               chainId: chainConfig.chainId,
-                                               dataJson : JSON.stringify(array)
-                                           });
-                                           logger.info("ramUsageCheckIn rs:",rs);
-                                           array = [];
-                                       }
+                                        let obj = accountInfoJson[i];
+                                        array.push(obj);
+                                        if ((i % maxSum == 0 && i > 0) || i >= accountInfoJson.length-1) {
+                                            logger.info("array("+i+"):",array);
+                                            let rs = await chainApi.ramUsageCheckIn(getMonitorUrl(),{
+                                                chainName : chainConfig.localChainName,
+                                                chainId: chainConfig.chainId,
+                                                dataJson : JSON.stringify(array)
+                                            });
+                                            logger.info("ramUsageCheckIn rs:",rs);
+                                            array = [];
+                                        }
                                     }
                                 } else {
                                     logger.error("account_info.txt is not found in dir:", targetFile);
