@@ -3,6 +3,7 @@
 #include <fc/container/flat_fwd.hpp>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
+#include <boost/interprocess/containers/set.hpp>
 #include <fc/io/raw_fwd.hpp>
 
 namespace fc {
@@ -87,6 +88,31 @@ namespace fc {
           }
        }
 
+      //shared set
+      template<typename Stream, typename T, typename X, typename A>
+      inline void pack( Stream& s, const bip::set<T,X,A>& value ) {
+         FC_ASSERT( value.size() <= MAX_NUM_ARRAY_ELEMENTS );
+         fc::raw::pack( s, unsigned_int((uint32_t)value.size()) );
+         auto itr = value.begin();
+         auto end = value.end();
+         while( itr != end ) {
+            fc::raw::pack( s, *itr );
+            ++itr;
+         }
+      }
+
+      template<typename Stream, typename T, typename X, typename A>
+      inline void unpack( Stream& s, bip::set<T,X,A>& value ) {
+         unsigned_int size;
+         fc::raw::unpack( s, size );
+         FC_ASSERT( size.value <= MAX_NUM_ARRAY_ELEMENTS );
+         for( uint64_t i = 0; i < size.value; ++i )
+         {
+            T tmp;
+            fc::raw::unpack( s, tmp );
+            value.insert( std::move(tmp) );
+         }
+      }
    } // namespace raw
 
 
