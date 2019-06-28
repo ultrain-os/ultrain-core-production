@@ -521,7 +521,6 @@ chain::action create_setabi(const name& account, const abi_def& abi) {
 }
 
 chain::action create_setcode(const name& account, const bytes& code) {
-   std::cout << "code size:"<< code.size() << endl;
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
       setcode{
