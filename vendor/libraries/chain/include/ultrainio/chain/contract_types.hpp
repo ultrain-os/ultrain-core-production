@@ -167,27 +167,42 @@ struct delaccount {
    }
 };
 
-struct addblacklist {
-   account_name    account;
+struct action_actor_type {
+   account_name   actor;
+   action_name    action;
+};
+
+struct addwhiteblack {
+   std::vector<account_name>           actor_black;
+   std::vector<account_name>           actor_white;
+   std::vector<account_name>           contract_black;
+   std::vector<account_name>           contract_white;
+   std::vector<action_actor_type>      action_black;
+   std::vector<public_key_type>        key_black;
 
    static account_name get_account() {
       return account_name(config::system_account_name);
    }
 
    static action_name get_name() {
-      return NEX(addblacklist);
+      return NEX(addwhiteblack);
    }
 };
 
-struct rmblacklist {
-   account_name    account;
+struct rmwhiteblack {
+   std::vector<account_name>           actor_black;
+   std::vector<account_name>           actor_white;
+   std::vector<account_name>           contract_black;
+   std::vector<account_name>           contract_white;
+   std::vector<action_actor_type>      action_black;
+   std::vector<public_key_type>        key_black;
 
    static account_name get_account() {
       return account_name(config::system_account_name);
    }
 
    static action_name get_name() {
-      return NEX(rmblacklist);
+      return NEX(rmwhiteblack);
    }
 };
 
@@ -204,5 +219,6 @@ FC_REFLECT( ultrainio::chain::unlinkauth                       , (account)(code)
 FC_REFLECT( ultrainio::chain::canceldelay                      , (canceling_auth)(trx_id) )
 FC_REFLECT( ultrainio::chain::onerror                          , (sender_id)(sent_trx) )
 FC_REFLECT( ultrainio::chain::delaccount                       , (account) )
-FC_REFLECT( ultrainio::chain::addblacklist                       , (account) )
-FC_REFLECT( ultrainio::chain::rmblacklist                       , (account) )
+FC_REFLECT( ultrainio::chain::action_actor_type                , (actor)(action) )
+FC_REFLECT( ultrainio::chain::addwhiteblack                    , (actor_black)(actor_white)(contract_black)(contract_white)(action_black)(key_black) )
+FC_REFLECT( ultrainio::chain::rmwhiteblack                     , (actor_black)(actor_white)(contract_black)(contract_white)(action_black)(key_black) )

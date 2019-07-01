@@ -321,14 +321,14 @@ namespace ultrainiosystem {
       print(" native::delaccount contract account:" ,name{account} );
    }
 
-   void native::addblacklist( account_name account ) {
+   void native::addwhiteblack( white_black_type white_black ) {
       require_auth( _self );
-      print(" native::addblacklist contract account:" ,name{account} );
+      // print(" native::addwhiteblack contract account: " , name{white_black.actor_white} );
    }
 
-   void native::rmblacklist( account_name account ) {
+   void native::rmwhiteblack( white_black_type white_black ) {
       require_auth( _self );
-      print("11 native::rmblacklist contract account:" ,name{account} );
+      // print("11 native::rmwhiteblack contract account:" ,name{white_black.actor_white} );
    }
 
 } /// ultrainio.system
@@ -336,7 +336,7 @@ namespace ultrainiosystem {
 
 ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
-     (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)(delaccount)(addblacklist)(rmblacklist)
+     (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)(delaccount)(addwhiteblack)(rmwhiteblack)
      // ultrainio.system.cpp
      (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)
      // delegate.cpp

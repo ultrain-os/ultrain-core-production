@@ -17,6 +17,7 @@
 #include <ultrainio/chain/callback.hpp>
 #include <ultrainio/chain/callback_manager.hpp>
 
+#include <ultrainio/chain/database_utils.hpp>
 #include <ultrainio/chain/authorization_manager.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
 #include <ultrainio/chain/bls_votes.hpp>
@@ -51,8 +52,8 @@ using controller_index_set = index_set<
    transaction_multi_index,
    generated_transaction_multi_index,
    table_id_multi_index,
-   auth_sequence_index
-   ,whiteblacklist_index
+   auth_sequence_index,
+   whiteblacklist_index
 >;
 
 using contract_database_index_set = index_set<
@@ -142,15 +143,15 @@ struct controller_impl {
    std::list<contract_event_type> event_list;
 
    struct whiteblack_type {
-       shared_set<account_name>&   actor_whitelist;
-       shared_set<account_name>&   actor_blacklist;
-       shared_set<account_name>&   contract_whitelist;
-       shared_set<account_name>&   contract_blacklist;
-       shared_set< pair<account_name, action_name> >& action_blacklist;
-       shared_set<public_key_type>& key_blacklist;
-       whiteblack_type(shared_set<account_name>& actor_w, shared_set<account_name>& actor_b,
-               shared_set<account_name>& contract_w, shared_set<account_name>& contract_b,
-               shared_set< pair<account_name, action_name> >& action_b, shared_set<public_key_type>& key_b):
+       const shared_set<account_name>&   actor_whitelist;
+       const shared_set<account_name>&   actor_blacklist;
+       const shared_set<account_name>&   contract_whitelist;
+       const shared_set<account_name>&   contract_blacklist;
+       const shared_set< pair<account_name, action_name> >& action_blacklist;
+       const shared_set<public_key_type>& key_blacklist;
+       whiteblack_type(const shared_set<account_name>& actor_w, const shared_set<account_name>& actor_b,
+               const shared_set<account_name>& contract_w, const shared_set<account_name>& contract_b,
+               const shared_set< pair<account_name, action_name> >& action_b, const shared_set<public_key_type>& key_b):
            actor_whitelist(actor_w),
            actor_blacklist(actor_b),
            contract_whitelist(contract_w),
@@ -212,8 +213,8 @@ struct controller_impl {
 */
 
    SET_APP_HANDLER( ultrainio, ultrainio, canceldelay );
-   SET_APP_HANDLER( ultrainio, ultrainio, addblacklist );
-   SET_APP_HANDLER( ultrainio, ultrainio, rmblacklist );
+   SET_APP_HANDLER( ultrainio, ultrainio, addwhiteblack );
+   SET_APP_HANDLER( ultrainio, ultrainio, rmwhiteblack );
 
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
@@ -410,9 +411,8 @@ struct controller_impl {
          db.undo();
       }
 
-      auto wb_object = db.get<whiteblacklist_object>();
-
-      whiteblack_list= new whiteblack_type(wb_object.actor_whitelist,wb_object.actor_blacklist,wb_object.contract_whitelist,wb_object.contract_blacklist,wb_object.action_blacklist,wb_object.key_blacklist);
+      const auto& wb_object = db.get<whiteblacklist_object>();
+      whiteblack_list = new whiteblack_type(wb_object.actor_whitelist,wb_object.actor_blacklist,wb_object.contract_whitelist,wb_object.contract_blacklist,wb_object.action_blacklist,wb_object.key_blacklist);
    }
 
    ~controller_impl() {
@@ -1769,6 +1769,8 @@ struct controller_impl {
 
 
    void check_actor_list( const flat_set<account_name>& actors )const {
+      const auto& wb_object = db.get<whiteblacklist_object>();
+      idump((wb_object));
       if( whiteblack_list->actor_whitelist.size() > 0 ) {
          vector<account_name> excluded;
          excluded.reserve( actors.size() );
@@ -1794,6 +1796,8 @@ struct controller_impl {
    }
 
    void check_contract_list( account_name code )const {
+      const auto& wb_object = db.get<whiteblacklist_object>();
+      idump((wb_object));
       if( whiteblack_list->contract_whitelist.size() > 0 ) {
          ULTRAIN_ASSERT( whiteblack_list->contract_whitelist.find( code ) != whiteblack_list->contract_whitelist.end(),
                      contract_whitelist_exception,
@@ -1808,6 +1812,9 @@ struct controller_impl {
    }
 
    void check_action_list( account_name code, action_name action )const {
+      const auto& wb_object = db.get<whiteblacklist_object>();
+      idump((wb_object));
+      idump((code)(action));
       if( whiteblack_list->action_blacklist.size() > 0 ) {
          ULTRAIN_ASSERT( whiteblack_list->action_blacklist.find( std::make_pair(code, action) ) == whiteblack_list->action_blacklist.end(),
                      action_blacklist_exception,
@@ -1818,6 +1825,8 @@ struct controller_impl {
    }
 
    void check_key_list( const public_key_type& key )const {
+      const auto& wb_object = db.get<whiteblacklist_object>();
+      idump((wb_object));
       if( whiteblack_list->key_blacklist.size() > 0 ) {
          ULTRAIN_ASSERT( whiteblack_list->key_blacklist.find( key ) == whiteblack_list->key_blacklist.end(),
                      key_blacklist_exception,

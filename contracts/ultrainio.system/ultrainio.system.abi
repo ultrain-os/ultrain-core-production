@@ -245,16 +245,34 @@
         {"name":"account",     "type":"account_name"}
       ]
     },{
-      "name": "addblacklist",
+      "name": "action_actor_type",
       "base": "",
       "fields": [
-        {"name":"account",     "type":"account_name"}
+        {"name":"actor",     "type":"account_name"},
+        {"name":"action",     "type":"action_name"}
       ]
     },{
-      "name": "rmblacklist",
+      "name": "white_black_type",
       "base": "",
       "fields": [
-        {"name":"account",     "type":"account_name"}
+        {"name":"actor_black",     "type":"account_name[]"},
+        {"name":"actor_white",     "type":"account_name[]"},
+        {"name":"contract_black",     "type":"account_name[]"},
+        {"name":"contract_white",     "type":"account_name[]"},
+        {"name":"action_black",     "type":"action_actor_type[]"},
+        {"name":"key_black",     "type":"public_key[]"}
+      ]
+    },{
+      "name": "addwhiteblack",
+      "base": "",
+      "fields": [
+        {"name":"white_black",   "type":"white_black_type"}
+      ]
+    },{
+      "name": "rmwhiteblack",
+      "base": "",
+      "fields": [
+        {"name":"white_black",   "type":"white_black_type"}
       ]
     },{
       "name": "canceldelay",
@@ -770,12 +788,12 @@
      "type": "delaccount",
      "ricardian_contract": ""
    },{
-     "name": "addblacklist",
-     "type": "addblacklist",
+     "name": "addwhiteblack",
+     "type": "addwhiteblack",
      "ricardian_contract": ""
    },{
-     "name": "rmblacklist",
-     "type": "rmblacklist",
+     "name": "rmwhiteblack",
+     "type": "rmwhiteblack",
      "ricardian_contract": ""
    },{
      "name": "canceldelay",
