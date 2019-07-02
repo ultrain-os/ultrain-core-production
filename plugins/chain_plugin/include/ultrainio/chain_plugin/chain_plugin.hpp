@@ -15,6 +15,7 @@
 #include <ultrainio/chain/abi_serializer.hpp>
 #include <ultrainio/chain/plugin_interface.hpp>
 #include <ultrainio/chain/ultrainio_object.hpp>
+#include <ultrainio/chain/whiteblacklist_object.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/algorithm/string.hpp>
@@ -223,6 +224,18 @@ public:
 
    get_required_keys_result get_required_keys( const get_required_keys_params& params)const;
 
+   using get_whiteblacklist_params = empty;
+
+   struct get_whiteblacklist_result {
+       flat_set<account_name>         actor_whitelist;
+       flat_set<account_name>         actor_blacklist;
+       flat_set<account_name>         contract_whitelist;
+       flat_set<account_name>         contract_blacklist;
+       flat_set<std::pair<account_name, action_name>> action_blacklist;
+       flat_set<public_key_type>      key_blacklist;
+   };
+
+   get_whiteblacklist_result get_whiteblacklist( const get_whiteblacklist_params& )const;
 
    struct get_block_info_params {
       string block_num_or_id;
@@ -825,6 +838,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::abi_bin2json_params, (code)(action
 FC_REFLECT( ultrainio::chain_apis::read_only::abi_bin2json_result, (args) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_required_keys_result, (required_keys) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_whiteblacklist_result, (actor_whitelist)(actor_blacklist)(contract_whitelist)(contract_blacklist)(action_blacklist)(key_blacklist) )
 
 FC_REFLECT( ultrainio::chain_apis::read_write::register_event_params, (account)(post_url));
 FC_REFLECT( ultrainio::chain_apis::read_write::unregister_event_params, (account)(post_url));

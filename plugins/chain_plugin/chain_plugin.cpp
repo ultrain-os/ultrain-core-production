@@ -2035,6 +2035,18 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
    return result;
 }
 
+read_only::get_whiteblacklist_result read_only::get_whiteblacklist( const get_whiteblacklist_params& )const {
+    get_whiteblacklist_result result;
+    const auto& d = db.db();
+    const auto& wb_object = d.get<whiteblacklist_object>();
+    for( const auto& v: wb_object.actor_whitelist ){ result.actor_whitelist.emplace(v); }
+    for( const auto& v: wb_object.actor_blacklist ){ result.actor_blacklist.emplace(v); }
+    for( const auto& v: wb_object.contract_whitelist ){ result.contract_whitelist.emplace(v); }
+    for( const auto& v: wb_object.contract_blacklist ){ result.contract_blacklist.emplace(v); }
+    for( const auto& v: wb_object.action_blacklist ){ result.action_blacklist.emplace(v); }
+    for( const auto& v: wb_object.key_blacklist ){ result.key_blacklist.emplace(v); }
+    return result;
+}
 
 } // namespace chain_apis
 } // namespace ultrainio
