@@ -382,7 +382,7 @@ checkSeedReady = async (ipList,nodPort,chainId) => {
             for (let i=0;i<ipList.length;i++) {
                 try {
                     let url = "http://"+ipList[i]+":"+nodPort+"/v1/chain_info/get_chain_info";
-                    let res = await axios.post(url, {},{timeout: 1000*10});
+                    let res = await axios.post(url, {},{timeout: 1000*5});
                     logger.info("check seed ready url（"+ipList[i]+"） chain id:",res.data.chain_id);
                     if (utils.isNotNull(res.data.chain_id)) {
                         logger.info("seed("+ipList[i]+") get chainID("+res.data.chain_id+") ,need to compare chainid("+chainId+")")

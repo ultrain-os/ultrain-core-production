@@ -468,6 +468,8 @@ async function syncSeedInfo() {
                 logger.error("write seed config file error:");
             } else {
                 logger.info("write seed config file success:");
+                logger.info("start to restart mng:");
+                restartMng();
             }
         });
     }  else {
