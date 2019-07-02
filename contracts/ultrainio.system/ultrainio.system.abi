@@ -252,7 +252,7 @@
         {"name":"action",     "type":"action_name"}
       ]
     },{
-      "name": "white_black_type",
+      "name": "addwhiteblack",
       "base": "",
       "fields": [
         {"name":"actor_black",     "type":"account_name[]"},
@@ -263,16 +263,15 @@
         {"name":"key_black",     "type":"public_key[]"}
       ]
     },{
-      "name": "addwhiteblack",
-      "base": "",
-      "fields": [
-        {"name":"white_black",   "type":"white_black_type"}
-      ]
-    },{
       "name": "rmwhiteblack",
       "base": "",
       "fields": [
-        {"name":"white_black",   "type":"white_black_type"}
+        {"name":"actor_black",     "type":"account_name[]"},
+        {"name":"actor_white",     "type":"account_name[]"},
+        {"name":"contract_black",     "type":"account_name[]"},
+        {"name":"contract_white",     "type":"account_name[]"},
+        {"name":"action_black",     "type":"action_actor_type[]"},
+        {"name":"key_black",     "type":"public_key[]"}
       ]
     },{
       "name": "canceldelay",

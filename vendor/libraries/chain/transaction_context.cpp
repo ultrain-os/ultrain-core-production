@@ -47,11 +47,9 @@ namespace ultrainio { namespace chain {
       // Record accounts to be billed for network and CPU usage
       for( const auto& act : trx.actions ) {
          bill_to_accounts.insert( act.account );
-         // we bill to account, not actor;
-//          for( const auto& auth : act.authorization ) {
-//             //bill_to_accounts.insert( auth.actor );
-//             ilog("transaction_context:: insert auth.actor${auth.actor}", ("auth.actor", auth.actor));
-//          }
+         for( const auto& auth : act.authorization ) {
+            auth_actors.insert( auth.actor );
+         }
       }
 
       net_limit = rl.get_block_net_limit();

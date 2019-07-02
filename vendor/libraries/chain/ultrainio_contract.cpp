@@ -484,7 +484,6 @@ void apply_ultrainio_delaccount(apply_context& context) {
 
 void apply_ultrainio_addwhiteblack(apply_context& context) {
    auto white_black = context.act.data_as<addwhiteblack>();
-   ilog("apply_ultrainio_addwhiteblack : addBList = ${account}", ("account", white_black));
 
    bool is_valid = false;
    addwhiteblack white_black_tmp;
@@ -492,7 +491,7 @@ void apply_ultrainio_addwhiteblack(apply_context& context) {
       if (!it.good()) continue;
       is_valid = true;
       white_black_tmp.actor_black.push_back(it);
-      ULTRAIN_ASSERT( it != config::system_account_name, action_validate_exception, "${s} can't add to actor black", ("s", config::system_account_name));
+      ULTRAIN_ASSERT( it != config::system_account_name, action_validate_exception, "ultrainio can't add to actor black");
    }
 
    for ( auto& it : white_black.actor_white){//TODO  add ultrainio firstly.
@@ -505,7 +504,7 @@ void apply_ultrainio_addwhiteblack(apply_context& context) {
       if (!it.good()) continue;
       is_valid = true;
       white_black_tmp.contract_black.push_back(it);
-      ULTRAIN_ASSERT( it != config::system_account_name, action_validate_exception, "${s} can't add to contract black", ("s", config::system_account_name));
+      ULTRAIN_ASSERT( it != config::system_account_name, action_validate_exception, "ultrainio can't add to contract black");
    }
 
    for ( auto& it : white_black.contract_white){ //TODO  add ultrainio firstly.
@@ -518,8 +517,8 @@ void apply_ultrainio_addwhiteblack(apply_context& context) {
       if (!it.actor.good() || !it.action.good())   continue;
       is_valid = true;
       white_black_tmp.action_black.push_back(it);
-      ULTRAIN_ASSERT( !(it.actor == config::system_account_name && it.action == rmwhiteblack::get_name()),action_validate_exception,
-         "(${s}) can't add to action black", ("s", it));
+      ULTRAIN_ASSERT( !(it.actor == config::system_account_name && (it.action == rmwhiteblack::get_name() || it.action == addwhiteblack::get_name())),
+         action_validate_exception, "${s} can't add to action black", ("s", it));
    }
 
    for ( auto& it : white_black.key_black){
@@ -527,7 +526,6 @@ void apply_ultrainio_addwhiteblack(apply_context& context) {
       is_valid = true;
       white_black_tmp.key_black.push_back(it);
    }
-
    ULTRAIN_ASSERT( is_valid, action_validate_exception, "addwhiteblack parameters not vaild, ${s}.", ("s", white_black));
 
    try {
@@ -577,7 +575,6 @@ void apply_ultrainio_addwhiteblack(apply_context& context) {
 
 void apply_ultrainio_rmwhiteblack(apply_context& context) {
    auto white_black = context.act.data_as<rmwhiteblack>();
-   ilog("apply_ultrainio_rmwhiteblack : rmwhiteblack = ${account}", ("account", white_black));
 
    bool is_valid = false;
    rmwhiteblack white_black_tmp;

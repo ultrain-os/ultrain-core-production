@@ -1248,7 +1248,7 @@ struct controller_impl {
             }
 
             if( trx_context.can_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
-               check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
+               check_actor_list( trx_context.auth_actors ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
             }
 
 
@@ -1769,16 +1769,13 @@ struct controller_impl {
 
 
    void check_actor_list( const flat_set<account_name>& actors )const {
-      const auto& wb_object = db.get<whiteblacklist_object>();
-      idump((wb_object));
-
       if( whiteblack_list->actor_whitelist.size() > 0 ) {
          vector<account_name> excluded;
          excluded.reserve( actors.size() );
          set_difference( actors.begin(), actors.end(),
                          whiteblack_list->actor_whitelist.begin(), whiteblack_list->actor_whitelist.end(),
                          std::back_inserter(excluded) );
-         if( excluded.size() == 1 && excluded[0] == N(ultrainio) )
+         if( excluded.size() == 1 && excluded[0] == config::system_account_name )
              return ;
          ULTRAIN_ASSERT( excluded.size() == 0, actor_whitelist_exception,
                      "authorizing actor(s) in transaction are not on the actor whitelist: ${actors}",
@@ -1799,9 +1796,7 @@ struct controller_impl {
    }
 
    void check_contract_list( account_name code )const {
-      const auto& wb_object = db.get<whiteblacklist_object>();
-      idump((wb_object));
-      if ( code == N(ultrainio) )
+      if ( code == config::system_account_name )
           return ;
       if( whiteblack_list->contract_whitelist.size() > 0 ) {
          ULTRAIN_ASSERT( whiteblack_list->contract_whitelist.find( code ) != whiteblack_list->contract_whitelist.end(),
@@ -1817,9 +1812,6 @@ struct controller_impl {
    }
 
    void check_action_list( account_name code, action_name action )const {
-      const auto& wb_object = db.get<whiteblacklist_object>();
-      idump((wb_object));
-      idump((code)(action));
       if( whiteblack_list->action_blacklist.size() > 0 ) {
          ULTRAIN_ASSERT( whiteblack_list->action_blacklist.find( std::make_pair(code, action) ) == whiteblack_list->action_blacklist.end(),
                      action_blacklist_exception,
@@ -1830,8 +1822,6 @@ struct controller_impl {
    }
 
    void check_key_list( const public_key_type& key )const {
-      const auto& wb_object = db.get<whiteblacklist_object>();
-      idump((wb_object));
       if( whiteblack_list->key_blacklist.size() > 0 ) {
          ULTRAIN_ASSERT( whiteblack_list->key_blacklist.find( key ) == whiteblack_list->key_blacklist.end(),
                      key_blacklist_exception,

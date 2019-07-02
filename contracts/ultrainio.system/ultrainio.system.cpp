@@ -321,14 +321,12 @@ namespace ultrainiosystem {
       print(" native::delaccount contract account:" ,name{account} );
    }
 
-   void native::addwhiteblack( white_black_type white_black ) {
+   void native::addwhiteblack(  ) {
       require_auth( _self );
-      // print(" native::addwhiteblack contract account: " , name{white_black.actor_white} );
    }
 
-   void native::rmwhiteblack( white_black_type white_black ) {
+   void native::rmwhiteblack( ) {
       require_auth( _self );
-      // print("11 native::rmwhiteblack contract account:" ,name{white_black.actor_white} );
    }
 
 } /// ultrainio.system

@@ -202,7 +202,7 @@ abi_def ultrainio_contract_abi(const abi_def& ultrainio_system_abi)
    });
 
    ultrain_abi.structs.emplace_back( struct_def {
-      "white_black_type", "", {
+      "addwhiteblack", "", {
          {"actor_black", "account_name[]"},
          {"actor_white", "account_name[]"},
          {"contract_black", "account_name[]"},
@@ -213,13 +213,13 @@ abi_def ultrainio_contract_abi(const abi_def& ultrainio_system_abi)
    });
 
    ultrain_abi.structs.emplace_back( struct_def {
-      "addwhiteblack", "", {
-         {"white_black", "white_black_type"},
-      }
-   });
-   ultrain_abi.structs.emplace_back( struct_def {
       "rmwhiteblack", "", {
-         {"white_black", "white_black_type"},
+         {"actor_black", "account_name[]"},
+         {"actor_white", "account_name[]"},
+         {"contract_black", "account_name[]"},
+         {"contract_white", "account_name[]"},
+         {"action_black", "action_actor_type[]"},
+         {"key_black", "public_key[]"},
       }
    });
 
