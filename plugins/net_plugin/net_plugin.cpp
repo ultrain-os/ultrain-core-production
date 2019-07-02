@@ -158,7 +158,8 @@ namespace ultrainio {
     public:
         passive_peer                     rpos_listener;
         passive_peer                     trx_listener;
-        uint32_t                         max_client_count = 0;
+        uint32_t                         max_static_clients = 0;
+        uint32_t                         max_dynamic_clients = 0;
         uint32_t                         max_passive_out_count = 4;
         uint32_t                         min_connections = 0;
         uint32_t                         max_nodes_per_host = 4;
@@ -384,9 +385,6 @@ namespace ultrainio {
      */
     constexpr auto     def_send_buffer_size_mb = 4;
     constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
-    constexpr auto     def_max_clients = 12;
-    constexpr auto     def_max_nodes_per_host = 4;
-    constexpr auto     def_conn_retry_wait = 15;
     constexpr auto     def_txn_expire_wait = std::chrono::seconds(12);
     constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
     constexpr auto     def_sync_fetch_span = 100;
@@ -510,7 +508,7 @@ namespace ultrainio {
     };
 
     struct handshake_initializer {
-        static void populate(handshake_message &hello, msg_priority p);
+        static void populate(handshake_message &hello, msg_priority p, char style);
     };
 
     class connection : public std::enable_shared_from_this<connection> {
@@ -1059,7 +1057,20 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 
     void connection::send_handshake( ) {
         ilog("send_handshake to peer : ${peer}", ("peer", info_encode(this->peer_name())));
-        handshake_initializer::populate(last_handshake_sent, this->priority);
+        char style = 'n';
+        if (peer_addr.length() > 0) {
+            style = 'd';
+            if (priority == msg_priority_trx) {
+                if (std::find(my_impl->trx_active_peers.begin(), my_impl->trx_active_peers.end(), peer_addr) != my_impl->trx_active_peers.end()) {
+                    style = 's';
+                }
+            } else {
+                if (std::find(my_impl->rpos_active_peers.begin(), my_impl->rpos_active_peers.end(), peer_addr) != my_impl->rpos_active_peers.end()) {
+                    style = 's';
+                }
+            }
+        }
+        handshake_initializer::populate(last_handshake_sent, this->priority, style);
         last_handshake_sent.generation = ++sent_handshake_count;
         fc_dlog(logger, "Sending handshake generation ${g} to ${ep}",
                 ("g",last_handshake_sent.generation)("ep", peer_name()));
@@ -1699,7 +1710,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                      ilog ("checking max client, visitors = ${v} num clients ${n}",("v",visitors)("n",num_clients));
                      num_clients = visitors;
                   }
-                  if( (from_addr < max_nodes_per_host && num_clients < max_client_count)
+                  if( (from_addr < max_nodes_per_host && num_clients < (max_static_clients +  max_dynamic_clients))
                       || std::find(udp_seed_ip.begin(), udp_seed_ip.end(), paddr.to_string()) != udp_seed_ip.end() ) { // always accept seed connection
                      ++num_clients;
                      connection_ptr c = std::make_shared<connection>(socket, p, direction_in);
@@ -1714,7 +1725,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                      }
                      else {
                         elog("Error max_client_count ${m} exceeded",
-                                ( "m", max_client_count) );
+                                ( "m", max_static_clients +  max_dynamic_clients) );
                      }
                      socket->close( );
                   }
@@ -2026,6 +2037,42 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
          elog( "Self connection detected. Closing connection");
          c->enqueue( go_away_message( self ) );
          return;
+      }
+
+      if (c->direct == direction_in) {
+         string style;
+         for (auto& ext : msg.ext) {
+            if (ext.key == handshake_ext::connect_style) {
+               style = ext.value;
+            }
+         }
+
+         if (!style.empty()) {
+            if (style[0] != 's' && style[0] != 'd') {
+               elog("bad handshake message");
+               c->enqueue( go_away_message( fatal_other ));
+               return;
+            }
+
+            uint32_t client_count = 0;
+            for (auto& check : connections) {
+               if (check == c) {
+                  continue;
+               }
+               for (auto& ext : check->last_handshake_recv.ext) {
+                  if (ext.key == handshake_ext::connect_style && ext.value.length() > 0 && ext.value[0] == style[0]) {
+                     client_count++;
+	             break;
+                  }
+               }
+            }
+
+            if ((style[0] == 's' && client_count >= max_static_clients) || (style[0] == 'd' && client_count >= max_dynamic_clients)) {
+               elog("${style} clients = ${cc}, exceeds limit.", ("style", style)("cc", client_count));
+               c->enqueue(go_away_message(too_many_connections));
+               return;
+            }
+         }
       }
 
       if( c->peer_addr.empty() || c->last_handshake_recv.node_id == fc::sha256()) {
@@ -3085,7 +3132,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
    }
 
    void
-   handshake_initializer::populate( handshake_message &hello, msg_priority p) {
+   handshake_initializer::populate( handshake_message &hello, msg_priority p, char style) {
       hello.network_version = net_version_base + net_version;
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
@@ -3099,7 +3146,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       hello.token = fc::sha256::hash(hello.time);
       //hello.sig = my_impl->sign_compact(hello.key, hello.token);
       hello.sig = sk_account.sign(hello.token);
-// If we couldn't sign, don't send a token.
+      // If we couldn't sign, don't send a token.
       if(hello.sig == chain::signature_type())
          hello.token = sha256();
       string sig_commitee = std::string(Signer::sign<fc::sha256>(hello.token, StakeVoteBase::getMyPrivateKey()));
@@ -3108,6 +3155,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       StakeVoteBase::getMyBlsPrivateKey(sk, Bls::BLS_PRI_KEY_LENGTH);
       string sig_blk = std::string(Signer::sign<fc::sha256>(hello.token, sk));
       hello.ext.push_back({handshake_ext::sig_blskey,sig_blk});
+      hello.ext.push_back({handshake_ext::connect_style, std::string(1, style)});
       if (p == msg_priority_rpos) {
          hello.p2p_address = my_impl->rpos_listener.p2p_address + " - " + hello.node_id.str().substr(0,7);
       }
@@ -3171,19 +3219,20 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          ( "udp-listen-port", bpo::value<uint16_t>()->default_value(20124), "The udp port used by p2p search.")
          ( "udp-seed", bpo::value< vector<string> >()->composing(), "The udp seed ip to build p2p nodes table. If this option was not set, we would get nothing from p2p nodes table.")
          ( "listen-ip", bpo::value<string>()->default_value( "0.0.0.0" ), "IP that really works,public address first if the node has one.")
-         ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
+         ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(4), "Maximum number of client nodes from any single IP address")
          ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
          ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
          ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
          ( "tcp-peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer only tcp allowed to connect.  May be used multiple times.")
          ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
-         ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted.")
+         ( "max-static-clients", bpo::value<int>()->default_value(4), "Maximum number of static clients from which connections are accepted.")
+         ( "max-dynamic-clients", bpo::value<int>()->default_value(12), "Maximum number of dynamic(address from p2p table) clients from which connections are accepted.")
          ( "max-passive-out-count", bpo::value<uint32_t>()->default_value(4), "Maximum number of passive out connections are accepted.")
          ( "min-connections", bpo::value<int>()->default_value(8), "Minimum number of connections the programme need create, including active and subjective connections")
          ( "max-retry-count", bpo::value<uint32_t>()->default_value(3), "Maximum number of reconnecting to listen endpoint")
          ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(5), "Maximum size of grey list")
-         ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
+         ( "connection-cleanup-period", bpo::value<int>()->default_value(15), "number of seconds to wait before cleaning up dead connections")
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
@@ -3228,9 +3277,10 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          my->txn_exp_period = def_txn_expire_wait;
          my->resp_expected_period = def_resp_expected_wait;
          my->dispatcher->just_send_it_max = options.at( "max-implicit-request" ).as<uint32_t>();
-         my->max_client_count = options.at( "max-clients" ).as<int>();
+         my->max_static_clients = options.at( "max-static-clients" ).as<int>();
+         my->max_dynamic_clients = options.at( "max-dynamic-clients" ).as<int>();
          my->min_connections = options.at( "min-connections" ).as<int>();
-         ULTRAIN_ASSERT( my->max_client_count > my->min_connections, plugin_config_exception, "max_client_count must be > min_connections");
+         ULTRAIN_ASSERT( my->max_static_clients + my->max_dynamic_clients > my->min_connections, plugin_config_exception, "max_client_count must be > min_connections");
 
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
 
@@ -3250,7 +3300,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          my->num_passive_out = 0;
          my->started_sessions = 0;
 
-         ilog("max_passive_out_count: ${mpoc} max_retry_count: ${mrc} max_grey_list_size: ${mgls}",
+         ilog(" max_static_clients: ${msc} max_dynamic_clients: ${mdc} \nmax_passive_out_count: ${mpoc} max_retry_count: ${mrc} max_grey_list_size: ${mgls}",
+              ("msc", my->max_static_clients)("mdc", my->max_dynamic_clients)
               ("mpoc", my->max_passive_out_count)("mrc", my->max_retry_count)("mgls", my->max_grey_list_size));
 
          my->trx_listener.resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
@@ -3414,7 +3465,6 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          my->trx_listener.acceptor->set_option(tcp::acceptor::reuse_address(true));
          my->trx_listener.acceptor->bind(my->trx_listener.listen_endpoint);
          my->trx_listener.acceptor->listen();
-         ilog("starting trx listener, max clients is ${mc}",("mc",my->max_client_count));
          my->start_listen_loop(my->trx_listener.acceptor, msg_priority_trx);
       }
 
@@ -3423,7 +3473,6 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          my->rpos_listener.acceptor->set_option(tcp::acceptor::reuse_address(true));
          my->rpos_listener.acceptor->bind(my->rpos_listener.listen_endpoint);
          my->rpos_listener.acceptor->listen();
-         ilog("starting rpos listener, max clients is ${mc}",("mc",my->max_client_count));
          my->start_listen_loop(my->rpos_listener.acceptor, msg_priority_rpos);
       }
 
@@ -3618,6 +3667,9 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         while (it != connections.end()) {
             if ((*it)->node_id == node_id) {
                 ilog("del connection to ${peer}, node id: ${id}", ("peer", info_encode((*it)->peer_addr))("id", node_id));
+                if ((*it)->socket && (*it)->socket->is_open()) {
+                    close(*it);
+                }
                 it = connections.erase(it);
             } else {
                 ++it;

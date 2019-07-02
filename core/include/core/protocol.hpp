@@ -24,8 +24,9 @@ namespace ultrainio {
    };
    enum handshake_ext
    {
-      sig_commiteekey = 1,//signature use commitee key
-      sig_blskey = 2//signature user bls key
+      sig_commiteekey = 1, //signature use commitee key
+      sig_blskey = 2, //signature user bls key
+      connect_style = 3, //'s' for static connection, 'd' for dynamic connection, 'n' for N/A
    };
    struct handshake_message {
       uint16_t                   network_version = 0; ///< incremental value above a computed base
@@ -60,7 +61,8 @@ namespace ultrainio {
     validation, ///< the peer sent a block that failed validation
     benign_other, ///< reasons such as a timeout. not fatal but warrant resetting
     fatal_other, ///< a catch-all for errors we don't have discriminated
-    authentication ///< peer failed authenicatio
+    authentication, ///< peer failed authenicatio
+    too_many_connections, ///< too many connections
   };
 
   constexpr auto reason_str( go_away_reason rsn ) {
@@ -77,6 +79,7 @@ namespace ultrainio {
     case authentication : return "authentication failure";
     case fatal_other : return "some other failure";
     case benign_other : return "some other non-fatal condition";
+    case too_many_connections : return "too many connections";
     default : return "some crazy reason";
     }
   }
