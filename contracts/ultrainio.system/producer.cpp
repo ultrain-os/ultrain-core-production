@@ -121,8 +121,6 @@ namespace ultrainiosystem {
 
     void system_contract::moveprod(account_name producer, const std::string&  producerkey, const std::string& blskey,
                                    bool from_disable, name from_chain, bool to_disable, name to_chain) {
-        UNUSED(producerkey);
-        UNUSED(blskey);
         require_auth(_self);
         if(from_disable && to_disable) {
             ultrainio_assert(false, "error: cannot move a producer from disable to disable");
@@ -176,7 +174,9 @@ namespace ultrainiosystem {
             });
             print(" to disable");
         } else {
-           prod_info.unpaid_balance = remove_rewards_for_enableproducer( prod_info.owner );
+            ultrainio_assert( producerkey == prod_info.producer_key, "error: public producer key not consistent with the original chain" );
+            ultrainio_assert( blskey == prod_info.bls_key, "error: public bls key not consistent with the original chain" );
+            prod_info.unpaid_balance = remove_rewards_for_enableproducer( prod_info.owner );
             add_to_chain(to_chain, prod_info, current_block_number);
             _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                 producer_brf.in_disable = false;
