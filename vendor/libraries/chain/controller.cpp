@@ -1771,12 +1771,15 @@ struct controller_impl {
    void check_actor_list( const flat_set<account_name>& actors )const {
       const auto& wb_object = db.get<whiteblacklist_object>();
       idump((wb_object));
+
       if( whiteblack_list->actor_whitelist.size() > 0 ) {
          vector<account_name> excluded;
          excluded.reserve( actors.size() );
          set_difference( actors.begin(), actors.end(),
                          whiteblack_list->actor_whitelist.begin(), whiteblack_list->actor_whitelist.end(),
                          std::back_inserter(excluded) );
+         if( excluded.size() == 1 && excluded[0] == N(ultrainio) )
+             return ;
          ULTRAIN_ASSERT( excluded.size() == 0, actor_whitelist_exception,
                      "authorizing actor(s) in transaction are not on the actor whitelist: ${actors}",
                      ("actors", excluded)
@@ -1798,6 +1801,8 @@ struct controller_impl {
    void check_contract_list( account_name code )const {
       const auto& wb_object = db.get<whiteblacklist_object>();
       idump((wb_object));
+      if ( code == N(ultrainio) )
+          return ;
       if( whiteblack_list->contract_whitelist.size() > 0 ) {
          ULTRAIN_ASSERT( whiteblack_list->contract_whitelist.find( code ) != whiteblack_list->contract_whitelist.end(),
                      contract_whitelist_exception,
