@@ -40,7 +40,7 @@ var seedCount = 10;
 
 var logCount = 1000;
 
-var enableRestart = 0;
+var enableRestart = 1;
 
 //使用投票同步用户和资源
 var enableSyncUserRes = 0;
@@ -409,9 +409,9 @@ async function checkIn() {
 
     let param = await buildParam();
 
-    param.sign = generateSign(param.time,generateSignParam(param));
-
     param.os = JSON.stringify(osInfo);
+
+    param = generateSign(param);
 
     await chainApi.monitorCheckIn(getMonitorUrl(), param);
 
@@ -500,7 +500,7 @@ async function getDeployFile() {
 
     logger.info("getDeployFile start");
     let param = await buildParam();
-    param.sign = generateSign(param.time,generateSignParam(param));
+    param = generateSign(param);
     let deployInfo = await chainApi.checkDeployFile(getMonitorUrl(), param);
 
     logger.info("get deploy info:", deployInfo);
@@ -610,13 +610,12 @@ async function cmdDeploy(deployBatch) {
 
             logger.info("ADD_NOD_CONFIG log,data:", configList);
 
-
             let hasReady = NodUltrain.checkConfigInfo(configList);
             if (hasReady) {
                 logger.info("add config has already existed");
                 param.status = statusConstants.EXCEPTION;
-                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
                 param.ext = "add config has already existed";
+                param = generateSign(param);
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 enableDeploy();
                 return;
@@ -636,8 +635,8 @@ async function cmdDeploy(deployBatch) {
                                 logMsg = utils.addLogStr(logMsg, "start nod  success");
                                 //成功
                                 param.status = statusConstants.SUCCESS;
-                                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
                                 param.ext = logMsg;
+                                param = generateSign(param);
                                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                                 enableDeploy();
                                 return;
@@ -659,8 +658,8 @@ async function cmdDeploy(deployBatch) {
 
                 //失败
                 param.status = statusConstants.EXCEPTION;
-                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
                 param.ext = logMsg;
+                param = generateSign(param);
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 enableDeploy();
                 return;
@@ -684,8 +683,8 @@ async function cmdDeploy(deployBatch) {
                         logMsg = utils.addLogStr(logMsg, "start nod  success");
                         //成功
                         param.status = statusConstants.SUCCESS;
-                        param.sign = generateSign(param.time, generateSignParamWithStatus(param));
                         param.ext = logMsg;
+                        param = generateSign(param);
                         await chainApi.finsihDeployFile(getMonitorUrl(), param);
                         enableDeploy();
                         return;
@@ -702,8 +701,8 @@ async function cmdDeploy(deployBatch) {
 
             //失败
             param.status = statusConstants.EXCEPTION;
-            param.sign = generateSign(param.time, generateSignParamWithStatus(param));
             param.ext = logMsg;
+            param = generateSign(param);
             await chainApi.finsihDeployFile(getMonitorUrl(), param);
             enableDeploy();
 
@@ -732,8 +731,8 @@ async function cmdDeploy(deployBatch) {
             if (hasReady) {
                 logger.info("monitor url has already existed");
                 param.status = statusConstants.EXCEPTION;
-                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
                 param.ext = "monitor url has already existed";
+                param = generateSign(param);
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 enableDeploy();
                 return;
@@ -753,8 +752,8 @@ async function cmdDeploy(deployBatch) {
                                 logMsg = utils.addLogStr(logMsg, "start nod  success");
                                 //成功
                                 param.status = statusConstants.SUCCESS;
-                                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
                                 param.ext = logMsg;
+                                param = generateSign(param);
                                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                                 enableDeploy();
                                 await restartMng();
@@ -777,8 +776,8 @@ async function cmdDeploy(deployBatch) {
 
                 //失败
                 param.status = statusConstants.EXCEPTION;
-                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
                 param.ext = logMsg;
+                param = generateSign(param);
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 enableDeploy();
                 await restartMng();
@@ -792,8 +791,8 @@ async function cmdDeploy(deployBatch) {
             let param = await buildParam();
             param.batchId = deployBatch.id;
             param.status = statusConstants.SUCCESS;
-            param.sign = generateSign(param.time,generateSignParamWithStatus(param));
             param.ext = "success";
+            param = generateSign(param);
             await chainApi.finsihDeployFile(getMonitorUrl(), param);
             enableDeploy();
             return;
@@ -809,7 +808,7 @@ async function cmdDeploy(deployBatch) {
                 logger.error('exec error: ' + error);
                 param.status = statusConstants.EXCEPTION;
                 param.ext = error.toString();
-                param.sign = generateSign(param.time,generateSignParamWithStatus(param));
+                param = generateSign(param);
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 enableDeploy();
             } else {
@@ -818,7 +817,7 @@ async function cmdDeploy(deployBatch) {
                 if (utils.isNotNull(stdout) && stdout != undefined) {
                     param.ext = stdout.toString();
                 }
-                param.sign = generateSign(param.time,generateSignParamWithStatus(param));
+                param = generateSign(param);
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 enableDeploy();
             }
@@ -937,8 +936,8 @@ async function fileDeploy(deployBatch) {
             let param = await buildParam();
             param.status = statusConstants.SUCCESS;
             param.batchId = deployBatch.id;
+            param = generateSign(param);
             logger.info("finsih deploy param:",param);
-            param.sign = generateSign(param.time,generateSignParamWithStatus(param));
             await chainApi.finsihDeployFile(getMonitorUrl(), param);
             return;
         } else {
@@ -979,8 +978,8 @@ async function fileDeploy(deployBatch) {
                 param.status = statusConstants.EXCEPTION;
                 param.batchId = deployBatch.id;
                 logger.info("finsih deploy param:", param);
-                param.sign = generateSign(param.time, generateSignParamWithStatus(param));
                 param.ext = "timeout";
+                param = generateSign(param);
                 await chainApi.finsihDeployFile(getMonitorUrl(), param);
                 return;
             }
@@ -1033,8 +1032,8 @@ async function fileDeploy(deployBatch) {
                         param.status = statusConstants.EXCEPTION;
                         param.batchId = deployBatch.id;
                         logger.info("finsih deploy param:", param);
-                        param.sign = generateSign(param.time, generateSignParamWithStatus(param));
                         param.ext = "timeout";
+                        param = generateSign(param);
                         await chainApi.finsihDeployFile(getMonitorUrl(), param);
                     } else {
                         logger.error("index("+downloadUrlIndex+") is not to end("+(urlList.length-1)+"),wait to next");
@@ -1089,8 +1088,8 @@ async function fileDeploy(deployBatch) {
                         param.status = statusConstants.EXCEPTION;
                         param.batchId = deployBatch.id;
                         logger.info("finsih deploy param:", param);
-                        param.sign = generateSign(param.time, generateSignParamWithStatus(param));
                         param.ext = "error";
+                        param = generateSign(param);
                         await chainApi.finsihDeployFile(getMonitorUrl(), param);
                     } else {
                         logger.error("index("+downloadUrlIndex+") is not to end("+(urlList.length-1)+"),wait to next");
@@ -1390,35 +1389,21 @@ function enableDeploy() {
     deploySyncFlag = false;
 }
 
-function generateSignParam(param) {
-    let data = "";
-    try {
-        data = "chainId="+param.chainId+"&user="+param.user+"&nodVersion="+param.nodVersion+"&mngVersion="+param.mngVersion+"&isProducer="+param.isProducer;
-    } catch (e) {
-        logger.error("generate sign error,",e);
+function generateSign(param) {
+
+    if (utils.isNull(param)) {
+        param = {};
     }
-
-    return data;
-}
-
-
-function generateSignParamWithStatus(param) {
-    let data = "";
-    try {
-        data = generateSignParam(param);
-        data = data+"&status="+param.status;
-    } catch (e) {
-        logger.error("generate sign error,",e);
-    }
-
-    return data;
-}
-
-function generateSign(time,data) {
-    let result = data+"&time="+time+"&key="+constants.PRIVATE_KEY;
-    logger.debug("result:"+result);
-    let sign = hashUtil.calcMd5(result);
-    return sign;
+    param.sign = "sign";
+    param.key = constants.PRIVATE_KEY;
+    let data = JSON.stringify(param);
+    //logger.error("generateSign data：",data);
+    let sign = hashUtil.calcMd5(data);
+    param.sign = sign;
+    //logger.error("generateSign data sign：",sign);
+    delete param["key"];
+    //logger.error("generateSign finsih");
+    return param;
 }
 
 /**
@@ -1777,7 +1762,6 @@ module.exports = {
     enableDeploy,
     buildParam,
     getMonitorUrl,
-    generateSignParamWithStatus,
     generateSign,
     needCheckNod,
     needSyncUserRes,

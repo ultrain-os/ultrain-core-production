@@ -395,5 +395,29 @@ WorldState.clearDB = async function () {
     }
 }
 
+/**
+ * 清除state文件夹
+ * @returns {Promise<void>}
+ */
+WorldState.clearStateDir = async function () {
+    try {
+        await ShellCmd.execCmd(Constants.cmdConstants.CLEAR_STATE_FILE);
+        sleep.msleep(1000);
+    } catch (e) {
+        logger.error("worldstate clearStateDir error:", e);
+    }
+}
+
+/**
+ * 获取本地
+ * @returns {Promise<*>}
+ */
+WorldState.getLocalBlockInfo = async function() {
+    let data = await this.requestData("/wss/get_local_block_info",{});
+    logger.info("getLocalBlockInfo data:",data);
+    if (utils.isNotNull(data)) {
+        return data.block_height;
+    }
+}
 
 module.exports = WorldState;

@@ -11,6 +11,7 @@ var cmdConstants = {
     CLEAR_BLOCK_DATA: "rm -rf /root/.local/share/ultrainio/nodultrain/data/blocks/",//清空本地块数据
     CLEAR_SHARED_MEMORY_DATA: "rm -rf /root/.local/share/ultrainio/nodultrain/data/state/",//清空memory.bin数据
     CLEAR_WORLD_STATE_FILE: "rm -rf /root/.local/share/ultrainio/wssultrain/data/worldstate/", //清空ws下文件
+    CLEAR_STATE_FILE: "rm /root/.local/share/ultrainio/nodultrain/data/state/* -rf", //清空state目录文件
     START_WORLDSTATE: "/root/workspace/ultrain-core/build/programs/wssultrain/wssultrain > /log/ws.log 2>&1 &",//启动世界状态程序
     START_NODULTRAIN: "sh /root/workspace/ultrain-core/scripts/_runultrain.sh /root/workspace",//启动nod程序
     START_NODULTRAIN_FILE: "/root/ultrainmng/tool/_runultrain.sh",

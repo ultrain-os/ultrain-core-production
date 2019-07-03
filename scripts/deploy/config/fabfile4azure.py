@@ -7,6 +7,14 @@ env.user = 'root'
 env.password = 'Uranus12#$'
 env.warn_only = True
 
+
+def updateetchost():
+    put("hosts","/etc/hosts");
+
+def echochainname():
+    run("cat /root/.local/share/ultrainio/nodultrain/config/config.ini  | grep chain-name");
+
+
 def restartmng():
     run("pm2 restart /root/ultrainmng/src/sideChainService.js && sleep 1");
 
@@ -139,6 +147,7 @@ def clearhostenv():
 
 @parallel
 def starthosts():
+    run("mkdir /log && sleep 1")
     run("/root/runultrain-h.sh && sleep 1")
     run("/root/runlogr.sh && sleep 1")
 

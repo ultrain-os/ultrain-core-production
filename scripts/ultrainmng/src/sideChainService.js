@@ -162,6 +162,12 @@ async function startEntry() {
         await monitor.logrotate();
     })
 
+    let clearRestartSchedule = "18 */30 * * * *"
+    logger.info("clear restart count:",clearRestartSchedule);
+    schedule.scheduleJob(clearRestartSchedule,async function () {
+        await chain.clearRestartCount();
+    })
+
 }
 
 

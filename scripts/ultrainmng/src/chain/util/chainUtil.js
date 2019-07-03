@@ -405,6 +405,49 @@ function parseUrlInfo(downloadurl) {
     return parseInfo;
 }
 
+/**
+ * 从ws表里获取一个与块高最接近的世界状态文件信息
+ */
+function getNearestWsInfoByBlockHeight(data, blockHeight) {
+
+    let result = {};
+    try {
+
+        if (utils.isNull(data)) {
+            return null;
+        }
+
+        let rows = data.rows;
+
+        if (utils.isNull(rows) || utils.isNullList(rows)) {
+            return null;
+        }
+
+        logger.info("getNearestWsInfoByBlockHeight rows:",data.rows);
+
+        for (var i = rows.length - 1; i >= 0; i--) {
+            let obj = rows[i];
+            if (utils.isNullList(obj.hash_v) == false) {
+                logger.debug("getNearestWsInfoByBlockHeight obj:",obj);
+                for (var t = 0; t < obj.hash_v.length; t++) {
+                    if (obj.hash_v[t].valid == 1 && obj.block_num <= blockHeight) {
+                        result.block_num = obj.block_num;
+                        result.hash = obj.hash_v[t].hash;
+                        result.file_size = obj.hash_v[t].file_size;
+                        return result;
+                    }
+                }
+            }
+
+        }
+
+    } catch (e) {
+        logger.error("getNearestWsInfoByBlockHeight error:", e);
+    }
+
+    return null;
+}
+
 
 module.exports = {
     formatGensisTime,
@@ -421,4 +464,5 @@ module.exports = {
     getMoveProdRTransFromBlockHeader,
     randomRato,
     parseUrlInfo,
+    getNearestWsInfoByBlockHeight,
 }

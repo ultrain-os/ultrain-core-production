@@ -165,7 +165,7 @@ function ipListToStr(iplist,port,splitChar) {
  */
 function addLogStr(str,logstr) {
     let time  = getLocalTime();
-    return str + time+":"+logstr +"\n";
+    return str + time+":"+logstr +"\r\n    ";
 }
 
 function getLocalTime() {

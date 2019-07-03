@@ -238,6 +238,8 @@ ChainConfig.syncConfig = async function () {
             logger.info("get chainName form config : ",this.localChainName);
             logger.info("chain name :"+this.localChainName);
 
+            this.printNodInfo();
+
             /**
              * check seed config is not null
              */
@@ -398,16 +400,6 @@ ChainConfig.waitSyncConfig = async function () {
     }
 }
 
-//打出信息
-ChainConfig.printInfo = function () {
-    logger.info("====chain config====");
-    logger.info("localtest:" + this.localTest)
-    logger.info("myAccountAsCommittee:" + this.myAccountAsCommittee)
-    logger.info("mySkAsCommittee:" + this.mySkAsCommittee)
-
-    logger.info("====chain config====");
-}
-
 //同步seedip config
 ChainConfig.syncSeedIpConfig = function () {
     try {
@@ -456,6 +448,11 @@ ChainConfig.isInRightChain = function () {
 
 }
 
+//判断是出块节点
+ChainConfig.isProducer = function () {
+    return !this.isNoneProducer();
+}
+
 //判断是非出块节点
 ChainConfig.isNoneProducer = function () {
     //logger.error(this.configFileData.target);
@@ -467,6 +464,29 @@ ChainConfig.isNoneProducer = function () {
 
     return false;
 }
+
+//判断是mongo节点
+ChainConfig.isMongo = function () {
+    //logger.error(this.configFileData.target);
+    logger.info("mongodb-uri:", this.configFileData.target["mongodb-uri"]);
+
+    if (utils.isNotNull(this.configFileData.target["mongodb-uri"])) {
+        return true;
+    }
+
+    return false;
+}
+
+//判断是seed节点
+ChainConfig.isSeed = function () {
+    //logger.error(this.configFileData.target);
+    if (this.isNoneProducer() && !this.isMongo()) {
+        return true;
+    }
+
+    return false;
+}
+
 
 
 ChainConfig.syncSeedIpConfig();
@@ -491,6 +511,23 @@ ChainConfig.getLocalConfigInfo = function(key,defaultValue) {
     }
 
     return defaultValue;
+}
+
+/**
+ * 打印节点信息
+ */
+ChainConfig.printNodInfo = function() {
+    if (this.isProducer()) {
+        logger.info(this.myAccountAsCommittee+" is a producer");
+    }
+
+    if (this.isSeed()) {
+        logger.info(this.myAccountAsCommittee+" is a seed");
+    }
+
+    if (this.isMongo()) {
+        logger.info(this.myAccountAsCommittee+" is a mongo");
+    }
 }
 
 
