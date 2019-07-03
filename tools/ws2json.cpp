@@ -10,7 +10,6 @@
 #include <ultrainio/chain/block_header_state.hpp>
 #include <ultrainio/chain/block_state.hpp>
 #include <ultrainio/chain/authority.hpp>
-
 #include <chainbase/chainbase.hpp>
 
 #include <boost/program_options.hpp>
@@ -22,6 +21,7 @@
 #define shared_string vector<char>
 #define shared_authority authority
 #define shared_vector vector
+#define shared_set  set
 namespace ultrainio { namespace chain { namespace config {
            template<>
                              constexpr uint64_t billable_size_v<authority> = 1;
@@ -37,6 +37,7 @@ namespace ultrainio { namespace chain { namespace config {
 #include <ultrainio/chain/permission_link_object.hpp>
 #include <ultrainio/chain/resource_limits.hpp>
 #include <ultrainio/chain/resource_limits_private.hpp>
+#include <ultrainio/chain/whiteblacklist_object.hpp>
 using namespace fc;
 using namespace std;
 using namespace ultrainio::chain;
@@ -365,6 +366,7 @@ void decode_ws(std::ostream& out){
     });
     READ_SECTION(resource_limits_state_object)
     READ_SECTION(resource_limits_config_object)
+    READ_SECTION(whiteblacklist_object)
 
     output_info();
 }

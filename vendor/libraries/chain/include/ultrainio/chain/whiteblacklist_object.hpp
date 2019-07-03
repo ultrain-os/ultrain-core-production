@@ -6,6 +6,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <ultrainio/chain/types.hpp>
 #include <ultrainio/chain/database_utils.hpp>
+#include <chainbase/chainbase.hpp>
 
 namespace ultrainio { namespace chain {
     class whiteblacklist_object : public chainbase::object<whiteblacklist_object_type, whiteblacklist_object> {
@@ -26,7 +27,6 @@ namespace ultrainio { namespace chain {
             ordered_unique<tag<by_id>,member<whiteblacklist_object,whiteblacklist_object::id_type,&whiteblacklist_object::id>>
             >
         >;
-
 }}
 
 CHAINBASE_SET_INDEX_TYPE(ultrainio::chain::whiteblacklist_object, ultrainio::chain::whiteblacklist_index)
