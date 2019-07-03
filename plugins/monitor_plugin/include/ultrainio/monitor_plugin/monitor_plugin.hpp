@@ -44,21 +44,21 @@ class monitor_only {
 
       monitor_echo_msg_result monitor_echo_msg( const monitor_echo_msg_params& params) const;
 
-      typedef msgkey monitor_propose_cache_params;
+      typedef RoundInfo monitor_propose_cache_params;
       struct monitor_propose_cache_result{
             std::vector<BlockHeaderDigest>  proposeCache;
       };
 
       monitor_propose_cache_result monitor_propose_cache(const monitor_propose_cache_params& params) const;
 
-      typedef msgkey monitor_echo_cache_params;
+      typedef RoundInfo monitor_echo_cache_params;
       struct monitor_echo_cache_result{
             std::vector<EchoMsgDigest>   echoCache;
       };
 
       monitor_echo_cache_result monitor_echo_cache(const monitor_echo_cache_params& params) const;
 
-      typedef msgkey monitor_echo_ap_cache_params;
+      typedef RoundInfo monitor_echo_ap_cache_params;
       struct monitor_echo_ap_cache_result{
             std::vector<std::pair<chain::block_id_type, EchoMsgInfoDigest>>   echoApCache;
       };

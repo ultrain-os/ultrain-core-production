@@ -19,9 +19,6 @@ namespace ultrainio {
         std::shared_ptr<StakeVoteBase> m_stakeVote = nullptr;
 
         friend class MsgMgr;
-
-        // Only for debug purpose.
-        friend class Scheduler;
     };
 
     typedef std::shared_ptr<BlockMsgPool> BlockMsgPoolPtr;

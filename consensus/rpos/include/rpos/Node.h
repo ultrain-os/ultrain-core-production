@@ -158,7 +158,7 @@ namespace ultrainio {
 
         void syncBlock(bool once = false);
 
-        void fastBlock(uint32_t blockNum);
+        void fastBlock();
 
         void fastBa0();
 

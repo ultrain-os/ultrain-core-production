@@ -14,6 +14,9 @@ namespace ultrainio {
 #ifdef CONSENSUS_VRF
         std::vector<std::string> proofPool;
 #endif
+
+        bool hasSend = false;
+
         VoterSet();
 
         VoterSet(const std::string& str);
@@ -29,6 +32,8 @@ namespace ultrainio {
         VoterSet exclude(const std::vector<AccountName>& accounts) const;
 
         std::string toString() const;
+
+        int getTotalVoterWeight() const;
 
     private:
         bool fromStringStream(std::stringstream& ss);

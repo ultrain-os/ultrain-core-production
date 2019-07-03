@@ -18,6 +18,8 @@ namespace ultrainio {
     struct ExtType {
         uint32_t key;
         std::string value;
+        bool operator == (const ExtType& rhs) const;
+        bool operator != (const ExtType& rhs) const;
     };
 
     typedef std::vector<ExtType> MsgExtension;
@@ -88,10 +90,12 @@ namespace ultrainio {
         std::string proof;
 #endif
         MsgExtension ext;
+        bool operator == (const UnsignedEchoMsg&) const;
     };
 
     struct EchoMsg : public UnsignedEchoMsg {
         std::string signature; // hex string
+        bool operator == (const EchoMsg&) const;
     };
 }
 

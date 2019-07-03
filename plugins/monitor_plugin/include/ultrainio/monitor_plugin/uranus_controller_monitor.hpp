@@ -31,8 +31,8 @@ namespace ultrainio {
         uint32_t                  accountPoolSize;
         std::vector<AccountName>  account_pool; //public key pool
 
-        void digestFromeEchoMsgInfo(const echo_message_info& echo_msg_info) {
-            echoMsg.digestFromeEchoMsg(echo_msg_info.echoCommonPart);
+        void digestFromeEchoMsgInfo(const VoterSet& echo_msg_info) {
+            echoMsg.digestFromeEchoMsg(echo_msg_info.commonEchoMsg);
             hasSend = echo_msg_info.hasSend;
             accountPoolSize = echo_msg_info.accountPool.size();
             account_pool.assign(echo_msg_info.accountPool.begin(), echo_msg_info.accountPool.end());
@@ -77,11 +77,11 @@ namespace ultrainio {
             return tempEchoDigest;
         }
 
-        std::vector<BlockHeaderDigest> findProposeCacheByKey(const msgkey& msg_key) const {
+        std::vector<BlockHeaderDigest> findProposeCacheByKey(const RoundInfo& info) const {
             std::vector<BlockHeaderDigest> tempDigestVect;
             std::shared_ptr<Scheduler> pController = m_pController.lock();
             if (pController) {
-                auto ite = pController->m_cacheProposeMsgMap.find(msg_key);
+                auto ite = pController->m_cacheProposeMsgMap.find(info);
                 if(ite != pController->m_cacheProposeMsgMap.end()) {
                     for(const auto& proposeMsg : ite->second){
                         BlockHeaderDigest tempHeader;
@@ -95,11 +95,11 @@ namespace ultrainio {
             return tempDigestVect;
         }
 
-        std::vector<EchoMsgDigest> findEchoCacheByKey(const msgkey& msg_key) const {
+        std::vector<EchoMsgDigest> findEchoCacheByKey(const RoundInfo& info) const {
             std::vector<EchoMsgDigest> tempEchoDigestVect;
             std::shared_ptr<Scheduler> pController = m_pController.lock();
             if (pController) {
-                auto ite = pController->m_cacheEchoMsgMap.find(msg_key);
+                auto ite = pController->m_cacheEchoMsgMap.find(info);
                 if(ite != pController->m_cacheEchoMsgMap.end()) {
                     for(const auto& echoMsg : ite->second) {
                         EchoMsgDigest tempEchoMsg;
@@ -113,11 +113,11 @@ namespace ultrainio {
             return tempEchoDigestVect;
         }
 
-        echo_msg_digest_vect findEchoApMsgByKey(const msgkey& msg_key) const {
+        echo_msg_digest_vect findEchoApMsgByKey(const RoundInfo& info) const {
             echo_msg_digest_vect tempEchoMsgInfoDigestVect;
             std::shared_ptr<Scheduler> pController = m_pController.lock();
             if (pController) {
-                auto ite = pController->m_echoMsgAllPhase.find(msg_key);
+                auto ite = pController->m_echoMsgAllPhase.find(info);
                 if(ite != pController->m_echoMsgAllPhase.end()) {
                     for(const auto& echoMsgInfoPair : ite->second) {
                         EchoMsgInfoDigest tempEchoMsgInfo;

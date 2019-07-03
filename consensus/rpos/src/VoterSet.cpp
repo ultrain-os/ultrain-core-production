@@ -88,6 +88,10 @@ namespace ultrainio {
         return voterSet;
     }
 
+    int VoterSet::getTotalVoterWeight() const {
+        return accountPool.size();
+    }
+
     void VoterSet::toStringStream(std::stringstream& ss) const {
         if (empty()) {
             return;
