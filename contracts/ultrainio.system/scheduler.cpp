@@ -137,7 +137,8 @@ namespace ultrainiosystem {
                 uint64_t latest_valid = 0;
                 uint64_t expired = blocknum - uint64_t(NEAR_WS_CNT * _gstate.worldstate_interval);
                 uint64_t far_int = uint64_t(FAR_WS_MUL * _gstate.worldstate_interval);
-                uint64_t far_exp = blocknum - uint64_t(FAR_WS_CNT  * far_int);
+                uint64_t far_val = uint64_t(FAR_WS_CNT * far_int);
+                uint64_t far_exp = blocknum > far_val ? blocknum - far_val : 0;
 
                 std::vector<uint64_t> expired_nums;
 
