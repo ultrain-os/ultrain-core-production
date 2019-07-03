@@ -95,8 +95,6 @@ def updateAuth(account, permission, parent, controller):
 def resign(account, controller):
     updateAuth(account, 'owner', '', controller)
     updateAuth(account, 'active', 'owner', controller)
-    sleep(1)
-    simple_run(args.clultrain + 'get account ' + account)
 
 def randomTransfer():
     subaccounts = accounts[1:3] #args.num_producers
@@ -230,8 +228,6 @@ def stepRegProducers():
         "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"], [2, "12"], [3, "1"], [4, "true"], [5, "50"], [6, "6"], [9, "8640"], [10, "2592000"]]}}\' -p ultrainio ' % \
         (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
         newaccount_fee, args.subchain, worldstate_interval, resourcelease_fee) )
-    sleep(5)
-    retry(args.clultrain + ' system listproducers')
 
 def stepCreateinitAccounts():
     # for i in range(1, args.num_producers+1):
@@ -242,8 +238,13 @@ def stepCreateinitAccounts():
     # retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100  "ultrainio"')
     pass
 def stepResign():
+    if args.subchain and args.subchain != 'ultrainio' :
+        resignAccounts.append('utrio.cmnity')
+        resignAccounts.append('utrio.thteam')
+        resignAccounts.append('utrio.dapp')
     for a in resignAccounts:
         resign( a, 'utrio.null')
+    retry(args.clultrain + ' system listproducers')
 
 def resourceTransaction(fromacc,recacc,value):
     retry(args.clultrain + 'system delegatebw  %s %s "%s UGAS"  "%s UGAS"'  % (fromacc,recacc,5000/value,5000/value))
@@ -400,7 +401,6 @@ commands = [
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
     ('I', 'initsimpletest', stepInitSimpleTest,         False,    "Simple transfer contract call test"),
     ('i', 'create-initacc', stepCreateinitAccounts,     False,    "create initial accounts"),
-    ('q', 'resign',         stepResign,                 True,    "Resign utrio"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
     ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction"),
@@ -409,6 +409,7 @@ commands = [
     ('e', 'execrand',          stepexecrand,            False,    "stepexecrand"),
     ('A', 'addSubChainUser', addSubChainUser,         False,    "addSubChainUser"),
     ('E', 'testcreateisexist', testcreateisexist,         False,    "testcreateisexist"),
+    ('q', 'resign',         stepResign,                 True,    "Resign utrio"),
 ]
 
 parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")
