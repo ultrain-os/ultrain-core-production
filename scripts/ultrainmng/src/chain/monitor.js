@@ -159,7 +159,7 @@ async function getNodVersion() {
     let hashFile = hashCache.get(cacheKeyConstants.NOD_FILE_KEY);
     if (utils.isNull(hashFile)) {
         logger.debug("cache not hit :" + cacheKeyConstants.NOD_FILE_KEY);
-        let nodFilePath = chainConfig.configFileData.local.nodpath + "/" + filenameConstants.NOD_EXE_FILE;
+        let nodFilePath = utils.formatHomePath(chainConfig.configFileData.local.nodpath) + "/" + filenameConstants.NOD_EXE_FILE;
         hashFile = hashUtil.calcHash(nodFilePath, algorithmConstants.SHA1);
         if (utils.isNotNull(hashFile)) {
             hashCache.put(cacheKeyConstants.NOD_FILE_KEY, hashFile, HASH_EXPIRE_TIME_MS);
@@ -195,7 +195,7 @@ async function getMngVersion() {
     let hashFile = hashCache.get(cacheKeyConstants.MNG_FILE_KEY);
     if (utils.isNull(hashFile)) {
         logger.debug("cache not hit :" + cacheKeyConstants.MNG_FILE_KEY);
-        let nodFilePath = chainConfig.configFileData.local.mngpath + "/" + filenameConstants.MNG_FILE;
+        let nodFilePath = utils.formatHomePath(chainConfig.configFileData.local.mngpath) + "/" + filenameConstants.MNG_FILE;
         hashFile = hashUtil.calcHash(nodFilePath, algorithmConstants.SHA1);
         if (utils.isNotNull(hashFile)) {
             hashCache.put(cacheKeyConstants.MNG_FILE_KEY, hashFile, HASH_EXPIRE_TIME_MS);
@@ -214,7 +214,7 @@ async function getWsVersion() {
     let hashFile = hashCache.get(cacheKeyConstants.WS_FILE_KEY);
     if (utils.isNull(hashFile)) {
         logger.debug("cache not hit :" + cacheKeyConstants.WS_FILE_KEY);
-        let wsFilePath = chainConfig.configFileData.local.wsspath + "/" + filenameConstants.WS_EXE_FILE;
+        let wsFilePath = utils.formatHomePath(chainConfig.configFileData.local.wsspath) + "/" + filenameConstants.WS_EXE_FILE;
         hashFile = hashUtil.calcHash(wsFilePath, algorithmConstants.SHA1);
         if (utils.isNotNull(wsFilePath)) {
             hashCache.put(cacheKeyConstants.WS_FILE_KEY, hashFile, HASH_EXPIRE_TIME_MS);
@@ -231,10 +231,10 @@ async function getWsVersion() {
  */
 function getRandFilePath() {
     if (utils.isNotNull(chainConfig.configFileData.local.randpath)) {
-        return chainConfig.configFileData.local.randpath;
+        return utils.formatHomePath(chainConfig.configFileData.local.randpath);
     }
 
-    return "/root/voterand/migrations"
+    return utils.formatHomePath("~/voterand/migrations");
 }
 
 /**
@@ -630,7 +630,7 @@ async function cmdDeploy(deployBatch) {
                         let updateConfigFlag = NodUltrain.addConfigInfo(configList);
                         if (updateConfigFlag == true) {
                             logMsg = utils.addLogStr(logMsg, "update nod config success");
-                            let result = await NodUltrain.start(600000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest,chainConfig.nodPort);
+                            let result = await NodUltrain.start(600000, utils.formatHomePath(chainConfig.configFileData.local.nodpath), " ", chainConfig.localTest,chainConfig.nodPort);
                             if (result == true) {
                                 logMsg = utils.addLogStr(logMsg, "start nod  success");
                                 //成功
@@ -678,7 +678,7 @@ async function cmdDeploy(deployBatch) {
                 let stopFlag = await NodUltrain.stop(600000, chainConfig.nodPort);
                 if (stopFlag == true) {
                     logMsg = utils.addLogStr(logMsg, "stop nod success");
-                    let result = await NodUltrain.start(600000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest, chainConfig.nodPort);
+                    let result = await NodUltrain.start(600000, utils.formatHomePath(chainConfig.configFileData.local.nodpath), " ", chainConfig.localTest, chainConfig.nodPort);
                     if (result == true) {
                         logMsg = utils.addLogStr(logMsg, "start nod  success");
                         //成功
@@ -747,7 +747,7 @@ async function cmdDeploy(deployBatch) {
                         let updateConfigFlag = NodUltrain.updateConfigInfo(configList);
                         if (updateConfigFlag == true) {
                             logMsg = utils.addLogStr(logMsg, "update nod config success");
-                            let result = await NodUltrain.start(1200000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest,chainConfig.nodPort);
+                            let result = await NodUltrain.start(1200000, utils.formatHomePath(chainConfig.configFileData.local.nodpath), " ", chainConfig.localTest,chainConfig.nodPort);
                             if (result == true) {
                                 logMsg = utils.addLogStr(logMsg, "start nod  success");
                                 //成功
@@ -872,15 +872,15 @@ async function getLocalHash(filename) {
 function getTargetPath(filename) {
     //nod 本地 hash
     if (filenameConstants.NOD_EXE_FILE == filename) {
-        return chainConfig.configFileData.local.nodpath + "/" + filename;
+        return utils.formatHomePath(chainConfig.configFileData.local.nodpath) + "/" + filename;
     }
 
     if (filenameConstants.MNG_FILE == filename) {
-        return chainConfig.configFileData.local.mngpath + "/" + filename;
+        return utils.formatHomePath(chainConfig.configFileData.local.mngpath) + "/" + filename;
     }
 
     if (filenameConstants.WS_EXE_FILE == filename) {
-        return chainConfig.configFileData.local.wsspath + "/" + filename;
+        return utils.formatHomePath(chainConfig.configFileData.local.wsspath) + "/" + filename;
     }
 
     if (filenameConstants.RAND_FILE == filename) {
@@ -1262,7 +1262,7 @@ async function fileProcessNod(deployFile, localpath) {
                                     enableDeploy();
                                 } else {
                                     logger.info("exccmd success:" + cmd);
-                                    result = await NodUltrain.start(600000, chainConfig.configFileData.local.nodpath, " ", chainConfig.localTest,chainConfig.nodPort);
+                                    result = await NodUltrain.start(600000, utils.formatHomePath(chainConfig.configFileData.local.nodpath), " ", chainConfig.localTest,chainConfig.nodPort);
                                     if (result == true) {
                                         logger.info("nod start success")
                                     } else {
@@ -1332,7 +1332,7 @@ async function fileProcessWs(deployFile, localpath) {
                                     enableDeploy();
                                 } else {
                                     logger.info("exccmd success:" + cmd);
-                                    result = await WorldState.startWithoutUpdate(120000, chainConfig.configFileData.local.wsspath, chainConfig.localTest);
+                                    result = await WorldState.startWithoutUpdate(120000, utils.formatHomePath(chainConfig.configFileData.local.wsspath), chainConfig.localTest);
                                     if (result == true) {
                                         logger.info("ws start success")
                                     } else {
@@ -1516,7 +1516,7 @@ function clearLogData() {
     logCount = 0;
 
     try {
-        let cmd = "find "+chainConfig.configFileData.local.nodLogPath+" -mindepth 1 -mtime +5 -delete";
+        let cmd = "find "+utils.formatHomePath(chainConfig.configFileData.local.nodLogPath)+" -mindepth 1 -mtime +5 -delete";
 
         logger.info("clearLogData start:",cmd);
         //其它命令
@@ -1550,7 +1550,7 @@ async function uploadRamUsage() {
     logger.info("uploadRamUsage is enabled");
 
     try {
-        let cmd = "ls -ltrt /root/.local/share/ultrainio/wssultrain/data/worldstate/ | grep .ws | tail -n 1 | awk '{print $NF}'";
+        let cmd = "ls -ltrt "+utils.formatHomePath("~/.local/share/ultrainio/wssultrain/data/worldstate/")+" | grep .ws | tail -n 1 | awk '{print $NF}'";
         process.exec(cmd, async function (error, stdout, stderr, finish) {
             if (error) {
                 logger.error("uploadRamUsage error:",error);
@@ -1558,7 +1558,7 @@ async function uploadRamUsage() {
                 logger.info("uploadRamUsage success:",stdout);
                 let wsFile = stdout;
                 logger.info("uploadRamUsage ws file is:",wsFile);
-                let calcCmd = "/root/workspace/ultrain-core/build/tools/ws2json -o /tmp/ -t -j --in /root/.local/share/ultrainio/wssultrain/data/worldstate/"+wsFile;
+                let calcCmd = utils.formatHomePath("~/workspace/ultrain-core/build/tools/ws2json")+" -o /tmp/ -t -j --in "+utils.formatHomePath("~/.local/share/ultrainio/wssultrain/data/worldstate/")+wsFile;
                 logger.info("calcCmd:",calcCmd);
                 let targetFile = "/tmp/account_info.txt"
                 let rmTargetFileCmd = "rm /tmp/account_info.txt";

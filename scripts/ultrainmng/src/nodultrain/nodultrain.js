@@ -23,7 +23,7 @@ class NodUltrain {
 
 NodUltrain.statusCheckTime = 500;
 
-NodUltrain.configFilePath = "/root/.local/share/ultrainio/nodultrain/config/config.ini";
+NodUltrain.configFilePath = utils.formatHomePath("~/.local/share/ultrainio/nodultrain/config/config.ini");
 
 NodUltrain.checkConfigInfo = function(updateArr) {
     try {

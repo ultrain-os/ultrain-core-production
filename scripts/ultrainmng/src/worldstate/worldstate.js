@@ -28,7 +28,7 @@ WorldState.version = "v1"
 WorldState.statusCheckTime = 500;
 
 //配置文件目录与文件名
-WorldState.configFilePath = "/root/.local/share/ultrainio/wssultrain/config/"
+WorldState.configFilePath = utils.formatHomePath("~/.local/share/ultrainio/wssultrain/config/")
 WorldState.configFileName = "config.ini"
 
 /**

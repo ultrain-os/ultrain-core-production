@@ -1,5 +1,8 @@
-var logger = require("../../config/logConfig").getLogger("Utils");
+//var logger = require("../../config/logConfig").getLogger("Utils");
 const publicIp = require('public-ip');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 /**
  * 判断是否为空
@@ -135,14 +138,14 @@ getPublicIp = async () => {
                 cachePublicIp = res;
             }
         } catch (e) {
-            logger.error("getPublicIp error:", e);
+            console.error("getPublicIp error:", e);
         }
     }
 
     if (ptime >= 10) {
         ptime = 0;
     }
-    logger.info("PublicIp:",ip);
+    console.error("PublicIp:",ip);
     return ip;
 }
 
@@ -172,6 +175,19 @@ function getLocalTime() {
     return new Date(parseInt(new Date().getTime()) * 1).toLocaleString().replace(/:\d{1,2}$/,' ');
 }
 
+/**
+ *
+ * @param filepath
+ * @returns {*}
+ */
+function formatHomePath(filepath) {
+    if (filepath.indexOf("~") == 0) {
+        return path.join(os.homedir(),filepath.substr(1));
+    }
+
+    return filepath;
+}
+
 
 module.exports = {
     isNull,
@@ -184,4 +200,5 @@ module.exports = {
     ipListToStr,
     getPublicIp,
     addLogStr,
+    formatHomePath,
 }

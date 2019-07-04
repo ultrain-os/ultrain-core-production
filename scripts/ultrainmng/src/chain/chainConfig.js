@@ -169,11 +169,11 @@ ChainConfig.syncConfig = async function () {
             logger.error("read ultrainmng config error",e);
             logger.info("start ultrainmng use default config ");
             configIniLocal = { prefix: 'http://',
-                path: '/root/.local/share/ultrainio/nodultrain/config/config.ini',
-                nodpath: '/root',
-                wsspath: '/root',
-                mngpath: '/root/ultrainmng/src',
-                randToolsPath: '/root/voterand/scripts/rand',
+                path: utils.formatHomePath('~/.local/share/ultrainio/nodultrain/config/config.ini'),
+                nodpath: utils.formatHomePath('~'),
+                wsspath: utils.formatHomePath('~'),
+                mngpath: utils.formatHomePath('~/ultrainmng/src'),
+                randToolsPath: utils.formatHomePath('~/voterand/scripts/rand'),
                 localtest: false,
                 worldstate: true,
                 wsSyncBlock: false,
@@ -194,7 +194,7 @@ ChainConfig.syncConfig = async function () {
         //读取nodultrain程序中的config.ini
         var configIniTarget
         try {
-            configIniTarget = ini.parse(fs.readFileSync(configIniLocal.path, constant.encodingConstants.UTF8));
+            configIniTarget = ini.parse(fs.readFileSync(utils.formatHomePath(configIniLocal.path), constant.encodingConstants.UTF8));
         } catch (e) {
             logger.error("read nod config eroor:",e);
             configIniTarget = {

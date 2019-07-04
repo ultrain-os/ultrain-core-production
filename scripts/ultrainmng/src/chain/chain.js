@@ -1523,7 +1523,7 @@ async function switchChain() {
         if (chainConfig.configFileData.local.worldstate == true) {
             logger.info("start world state");
             logMsg = utils.addLogStr(logMsg,"start world state");
-            result = await WorldState.start(chainConfig.chainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath,chainConfig.localTest,chainConfig);
+            result = await WorldState.start(chainConfig.chainName, seedIpInfo, 120000, utils.formatHomePath(chainConfig.configFileData.local.wsspath),chainConfig.localTest,chainConfig);
             if (result == true) {
                 logger.info("start ws success");
                 logMsg = utils.addLogStr(logMsg,"start ws success");
@@ -1675,7 +1675,7 @@ async function switchChain() {
         }
 
         //启动nod
-        result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath,wssinfo,chainConfig.localTest,chainConfig.nodPort);
+        result = await NodUltrain.start(120000, utils.formatHomePath(chainConfig.configFileData.local.nodpath),wssinfo,chainConfig.localTest,chainConfig.nodPort);
         if (result == true) {
             loggerChainChanging.info("nod start success");
             logMsg = utils.addLogStr(logMsg,"nod start success");
@@ -1790,7 +1790,7 @@ async function restartSeed() {
         logMsg = utils.addLogStr(logMsg, "[seed restart]stop nod finish");
 
         //启动nod
-        //let result = await NodUltrain.start(10000, chainConfig.configFileData.local.nodpath, "", chainConfig.localTest,chainConfig.nodPort);
+        //let result = await NodUltrain.start(10000, utils.formatHomePath(chainConfig.configFileData.local.nodpath), "", chainConfig.localTest,chainConfig.nodPort);
         let result = false;
         if (result == false) {
             //logger.error("[seed restart]node start error");
@@ -1815,7 +1815,7 @@ async function restartSeed() {
                 logMsg = utils.addLogStr(logMsg, "seed ip info is null(chainName:" + chainConfig.localChainName + ")");
             } else {
                 logger.info("[seed restart]start world state");
-                result = await WorldState.start(chainConfig.localChainName, seedIpInfo, 60000, chainConfig.configFileData.local.wsspath, chainConfig.localTest, chainConfig);
+                result = await WorldState.start(chainConfig.localChainName, seedIpInfo, 60000, utils.formatHomePath(chainConfig.configFileData.local.wsspath), chainConfig.localTest, chainConfig);
                 if (result == false) {
                     logger.info("[seed restart]start ws error");
                     logMsg = utils.addLogStr(logMsg, "start ws error");
@@ -1917,7 +1917,7 @@ async function restartSeed() {
 
                                 logMsg = utils.addLogStr(logMsg, "start nod :"+wssinfo);
                                 //启动nod
-                                result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath, wssinfo, chainConfig.localTest, chainConfig.nodPort);
+                                result = await NodUltrain.start(120000, utils.formatHomePath(chainConfig.configFileData.local.nodpath), wssinfo, chainConfig.localTest, chainConfig.nodPort);
                                 if (result == true) {
                                     logger.info("[seed restart]nod start success");
                                     logMsg = utils.addLogStr(logMsg, "nod start success");
@@ -1937,7 +1937,7 @@ async function restartSeed() {
                             logMsg = utils.addLogStr(logMsg, "[seed restart] localMaxBlockHeight("+localMaxBlockHeight+") is not null,use hard-replay to start nod:"+startinfo);
 
                             //启动nod
-                            result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath, startinfo, chainConfig.localTest, chainConfig.nodPort);
+                            result = await NodUltrain.start(120000, utils.formatHomePath(chainConfig.configFileData.local.nodpath), startinfo, chainConfig.localTest, chainConfig.nodPort);
                             if (result == true) {
                                 logger.info("[seed restart]nod start success");
                                 logMsg = utils.addLogStr(logMsg, "nod start success");
@@ -2041,7 +2041,7 @@ async function restartNodProducer() {
                 logMsg = utils.addLogStr(logMsg,"seed ip info is null(chainName:"+chainConfig.localChainName+")");
             } else {
                 logger.info("start world state");
-                result = await WorldState.start(chainConfig.localChainName, seedIpInfo, 120000, chainConfig.configFileData.local.wsspath, chainConfig.localTest,chainConfig);
+                result = await WorldState.start(chainConfig.localChainName, seedIpInfo, 120000, utils.formatHomePath(chainConfig.configFileData.local.wsspath), chainConfig.localTest,chainConfig);
                 if (result == true) {
                     logger.info("start ws success");
                     logger.info("world state is on , use world state to revocer");
@@ -2213,7 +2213,7 @@ async function restartNodProducer() {
         }
 
         //启动nod
-        result = await NodUltrain.start(120000, chainConfig.configFileData.local.nodpath, wssinfo, chainConfig.localTest,chainConfig.nodPort);
+        result = await NodUltrain.start(120000, utils.formatHomePath(chainConfig.configFileData.local.nodpath), wssinfo, chainConfig.localTest,chainConfig.nodPort);
         if (result == true) {
             logger.info("nod start success");
             logMsg = utils.addLogStr(logMsg,"nod start success");

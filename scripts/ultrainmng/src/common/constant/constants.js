@@ -1,3 +1,4 @@
+var utils = require("../../common/util/utils")
 /**
  * 命令相关常量
  *
@@ -8,15 +9,15 @@ var cmdConstants = {
     KILL_WORLDSTATE: "killall 'wssultrain'", //关闭世界状态进程
     KILL_PM2: "killall 'pm2'",//关闭pm2
     PM2_LIST: "/usr/local/bin/pm2 list",//pm2 list
-    CLEAR_BLOCK_DATA: "rm -rf /root/.local/share/ultrainio/nodultrain/data/blocks/",//清空本地块数据
-    CLEAR_SHARED_MEMORY_DATA: "rm -rf /root/.local/share/ultrainio/nodultrain/data/state/",//清空memory.bin数据
-    CLEAR_WORLD_STATE_FILE: "rm -rf /root/.local/share/ultrainio/wssultrain/data/worldstate/", //清空ws下文件
-    CLEAR_STATE_FILE: "rm /root/.local/share/ultrainio/nodultrain/data/state/* -rf", //清空state目录文件
-    START_WORLDSTATE: "/root/workspace/ultrain-core/build/programs/wssultrain/wssultrain > /log/ws.log 2>&1 &",//启动世界状态程序
-    START_NODULTRAIN: "sh /root/workspace/ultrain-core/scripts/_runultrain.sh /root/workspace",//启动nod程序
-    START_NODULTRAIN_FILE: "/root/ultrainmng/tool/_runultrain.sh",
-    START_WORLDSTATE_FILE: "/root/ultrainmng/tool/_runworldstate.sh",
-    START_NODULTRAIN_ARG: ["/root/workspace"],
+    CLEAR_BLOCK_DATA: "rm -rf ~/.local/share/ultrainio/nodultrain/data/blocks/",//清空本地块数据
+    CLEAR_SHARED_MEMORY_DATA: "rm -rf ~/.local/share/ultrainio/nodultrain/data/state/",//清空memory.bin数据
+    CLEAR_WORLD_STATE_FILE: "rm -rf ~/.local/share/ultrainio/wssultrain/data/worldstate/", //清空ws下文件
+    CLEAR_STATE_FILE: "rm ~/.local/share/ultrainio/nodultrain/data/state/* -rf", //清空state目录文件
+    START_WORLDSTATE: "~/workspace/ultrain-core/build/programs/wssultrain/wssultrain > /log/ws.log 2>&1 &",//启动世界状态程序
+    START_NODULTRAIN: "sh ~/workspace/ultrain-core/scripts/_runultrain.sh ~/workspace",//启动nod程序
+    START_NODULTRAIN_FILE: utils.formatHomePath("~/ultrainmng/tool/_runultrain.sh"),
+    START_WORLDSTATE_FILE: utils.formatHomePath("~/ultrainmng/tool/_runworldstate.sh"),
+    START_NODULTRAIN_ARG: [utils.formatHomePath("~/workspace")],
     ENABLE_RESTART: "enableRestart",
     DISABLE_RESTART: "disableRestart",
     ENABLE_SYNC_USER_RES: "enableUserRes",
@@ -92,10 +93,10 @@ var chainIdConstants = {
 
 //路径常量
 var pathConstants = {
-    WSS_DATA: "/root/.local/share/ultrainio/wssultrain/data/worldstate/download/",
-    WSS_LOCAL_DATA: "/root/.local/share/ultrainio/wssultrain/data/worldstate/",
-    MNG_CONFIG: "/root/.local/share/ultrainio/ultrainmng/config/",
-    FILE_DOWNLOAD_PATH:"/root/.local/share/ultrainio/ultrainmng/download/",
+    WSS_DATA: utils.formatHomePath("~/.local/share/ultrainio/wssultrain/data/worldstate/download/"),
+    WSS_LOCAL_DATA: utils.formatHomePath("~/.local/share/ultrainio/wssultrain/data/worldstate/"),
+    MNG_CONFIG: utils.formatHomePath("~/.local/share/ultrainio/ultrainmng/config/"),
+    FILE_DOWNLOAD_PATH:utils.formatHomePath("~/.local/share/ultrainio/ultrainmng/download/"),
 }
 
 //ini配置常量

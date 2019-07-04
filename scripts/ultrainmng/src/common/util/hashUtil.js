@@ -65,18 +65,6 @@ function calcSha256(data) {
     return null;
 }
 
-// async  function test() {
-//     let hash = await calcHash("/root/workspace/ultrain-core/scripts/ultrainmng/deploy/sideChainService.js");
-//     console.log("hash:"+hash);
-//     hash = await calcHash("/root/workspace/ultrain-core/build/programs/nodultrain/nodultrain");
-//     console.log("hash:"+hash);
-//
-//     hash = await calcHash("/root/workspace/ultrain-core/scripts/ultrainmng/src/sideChainService.js");
-//     console.log("hash:"+hash);
-//
-// }
-//
-// test();
 
 module.exports = {
     calcHash,
