@@ -177,7 +177,7 @@ namespace ultrainio { namespace chain {
       is_input = true;
       control.validate_expiration( trx );
       control.validate_tapos( trx );
-      control.validate_referenced_accounts( trx );
+      validate_referenced_accounts( trx, enforce_whiteblacklist && control.is_producing_block() );
       init( initial_net_usage);
       record_transaction( id, trx.expiration ); /// checks for dupes
    }
@@ -511,5 +511,41 @@ namespace ultrainio { namespace chain {
       }
    } /// record_transaction
 
+   void transaction_context::validate_referenced_accounts( const transaction& trx, bool enforce_actor_whitelist_blacklist )const {
+      const auto& db = control.db();
+      const auto& auth_manager = control.get_authorization_manager();
+
+      for( const auto& a : trx.context_free_actions ) {
+         auto* code = db.find<account_object, by_name>(a.account);
+         ULTRAIN_ASSERT( code != nullptr, transaction_exception,
+                     "action's code account '${account}' does not exist", ("account", a.account) );
+         ULTRAIN_ASSERT( a.authorization.size() == 0, transaction_exception,
+                     "context-free actions cannot have authorizations" );
+      }
+
+      flat_set<account_name> actors;
+      bool one_auth = false;
+      for( const auto& a : trx.actions ) {
+         auto* code = db.find<account_object, by_name>(a.account);
+         ULTRAIN_ASSERT( code != nullptr, transaction_exception,
+                     "action's code account '${account}' does not exist", ("account", a.account) );
+         for( const auto& auth : a.authorization ) {
+            one_auth = true;
+            auto* actor = db.find<account_object, by_name>(auth.actor);
+            ULTRAIN_ASSERT( actor  != nullptr, transaction_exception,
+                        "action's authorizing actor '${account}' does not exist", ("account", auth.actor) );
+            ULTRAIN_ASSERT( auth_manager.find_permission(auth) != nullptr, transaction_exception,
+                        "action's authorizations include a non-existent permission: {permission}",
+                        ("permission", auth) );
+            if( enforce_actor_whitelist_blacklist )
+               actors.insert( auth.actor );
+         }
+      }
+      ULTRAIN_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
+
+      if( enforce_actor_whitelist_blacklist ) {
+         control.check_actor_list( actors );
+      }
+   }
 
 } } /// ultrainio::chain

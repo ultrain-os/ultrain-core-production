@@ -975,7 +975,8 @@ struct controller_impl {
                                         uint32_t& cpu_time_to_bill_us, // only set on failure
                                         uint32_t billed_cpu_time_us,
                                         bool explicit_billed_cpu_time = false,
-                                        bool packed_generated_trx_receipt = true ) {
+                                        bool packed_generated_trx_receipt = true,
+                                        bool enforce_whiteblacklist = true ) {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
       etrx.actions.emplace_back( vector<permission_level>{{gtrx.sender, config::active_name}},
@@ -987,6 +988,7 @@ struct controller_impl {
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
+      trx_context.enforce_whiteblacklist = enforce_whiteblacklist;
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_implicit_trx();
@@ -1106,9 +1108,15 @@ struct controller_impl {
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
+      trx_context.enforce_whiteblacklist = gtrx.sender.empty() ? true : false;
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_deferred_trx( gtrx.published );
+
+         if( trx_context.enforce_whiteblacklist && pending->_block_status == controller::block_status::incomplete ) {
+            check_actor_list( trx_context.auth_actors );
+         }
+
          trx_context.preset_action_ability();
          trace->ability = trx_context.trx.actions_are_pureview() ? action::PureView : action::Normal;
          trx_context.exec();
@@ -1143,7 +1151,8 @@ struct controller_impl {
          // Attempt error handling for the generated transaction.
          dlog("${detail}", ("detail", trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gtrx, pgt, deadline, trx_context.pseudo_start, cpu_time_to_bill_us,
-                                      billed_cpu_time_us, explicit_billed_cpu_time, new_receipt );
+                                      billed_cpu_time_us, explicit_billed_cpu_time, new_receipt,
+                                      trx_context.enforce_whiteblacklist);
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
@@ -1240,17 +1249,12 @@ struct controller_impl {
          try {
             if( implicit ) {
                trx_context.init_for_implicit_trx();
-               trx_context.can_subjectively_fail = false;
+               trx_context.enforce_whiteblacklist = false;
             } else {
                trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
                                                trx->packed_trx.get_prunable_size(),
                                                trx->trx.signatures.size());
             }
-
-            if( trx_context.can_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
-               check_actor_list( trx_context.auth_actors ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
-            }
-
 
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
 
@@ -2325,33 +2329,6 @@ bool controller::is_producing_block()const {
    if( !my->pending ) return false;
 
    return (my->pending->_block_status == block_status::incomplete);
-}
-
-
-void controller::validate_referenced_accounts( const transaction& trx )const {
-   for( const auto& a : trx.context_free_actions ) {
-      auto* code = my->db.find<account_object, by_name>(a.account);
-      ULTRAIN_ASSERT( code != nullptr, transaction_exception,
-                  "action's code account '${account}' does not exist", ("account", a.account) );
-      ULTRAIN_ASSERT( a.authorization.size() == 0, transaction_exception,
-                  "context-free actions cannot have authorizations" );
-   }
-   bool one_auth = false;
-   for( const auto& a : trx.actions ) {
-      auto* code = my->db.find<account_object, by_name>(a.account);
-      ULTRAIN_ASSERT( code != nullptr, transaction_exception,
-                  "action's code account '${account}' does not exist", ("account", a.account) );
-      for( const auto& auth : a.authorization ) {
-         one_auth = true;
-         auto* actor = my->db.find<account_object, by_name>(auth.actor);
-         ULTRAIN_ASSERT( actor  != nullptr, transaction_exception,
-                     "action's authorizing actor '${account}' does not exist", ("account", auth.actor) );
-         ULTRAIN_ASSERT( my->authorization.find_permission(auth) != nullptr, transaction_exception,
-                     "action's authorizations include a non-existent permission: {permission}",
-                     ("permission", auth) );
-      }
-   }
-   ULTRAIN_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
 }
 
 void controller::validate_expiration( const transaction& trx )const { try {

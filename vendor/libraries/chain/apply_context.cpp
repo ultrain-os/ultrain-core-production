@@ -44,7 +44,7 @@ action_trace apply_context::exec_one()
       privileged = a.privileged;
       auto native = control.find_apply_handler( receiver, act.account, act.name );
       if( native ) {
-         if( trx_context.can_subjectively_fail && control.is_producing_block()) {
+         if( trx_context.enforce_whiteblacklist && control.is_producing_block()) {
             control.check_contract_list( receiver );
             control.check_action_list( act.account, act.name );
          }
@@ -54,7 +54,7 @@ action_trace apply_context::exec_one()
       if( a.code.size() > 0
           && !(act.account == config::system_account_name && (act.name == NEX( setcode ) || act.name == NEX( setabi )) &&
                receiver == config::system_account_name)) {
-         if( trx_context.can_subjectively_fail && control.is_producing_block()) {
+         if( trx_context.enforce_whiteblacklist && control.is_producing_block()) {
             control.check_contract_list( receiver );
             control.check_action_list( act.account, act.name );
          }
@@ -205,8 +205,7 @@ void apply_context::update_action_ability(action& a) {
  */
 void apply_context::execute_inline( action&& a ) {
    update_action_ability(a);
-   // NOTE(liangqin.fan): trx_context.enforce_whiteblacklist is always true in current implementation.
-   bool enforce_actor_whitelist_blacklist = /*trx_context.enforce_whiteblacklist &&*/ control.is_producing_block();
+   bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block();
    flat_set<account_name> actors;
 
    bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
@@ -289,7 +288,9 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    ULTRAIN_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
    trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
-   control.validate_referenced_accounts( trx );
+
+   bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block();
+   trx_context.validate_referenced_accounts( trx, enforce_actor_whitelist_blacklist );
 
    // Charge ahead of time for the additional net usage needed to retire the deferred transaction
    // whether that be by successfully executing, soft failure, hard failure, or expiration.
