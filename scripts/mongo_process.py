@@ -24,17 +24,27 @@ def start_num(blk_num):
 
 #parse parameters
 n=len(sys.argv)
-if not n == 3 :
-   print "please provide mongod dir and mongo data dir"
+if not n == 4 :
+   print "please provide:\n  1.mongod dir\n  2.mongo data dir\n  3.file for mongodb-block-start"
    os._exit(0)
 
-
-#start mongod
 bin_dir = sys.argv[1]
 data_dir= sys.argv[2]
+result= sys.argv[3]
+
+f=open(result,'w')
+
+#start mongod
 mongd_cmd="%s/mongod --auth --dbpath %s/data --logpath %s/log/mongodb.log --fork --bind_ip 0.0.0.0"%(bin_dir,data_dir,data_dir)
 if os.system('pidof mongod'):
-    os.system(mongd_cmd)
+    r=os.system(mongd_cmd)
+    if r:
+        print "mongod start failure"
+        f.write( "{ \"code\": 2, \"mongod start failure\" }" )
+        f.close()
+        os._exit(2)
+
+
 while os.system('pidof mongod'):
     time.sleep( 2 )
 
@@ -68,6 +78,8 @@ else :
     blk_num=block_states.find({'irreversible':{'$exists': True}}).sort('block_num',-1).limit(1)[0]['block_num']
 if not blk_num :
     print "cannot get block num"
+    f.write( "{ \"code\": 1, \"cannot get block num\" }" )
+    f.close()
     os._exit(1)
 #rm all collections record later than the last block_num
 dl_act_t  = actions_traces.delete_many({'block_num':{'$gt':blk_num}})
@@ -82,6 +94,8 @@ print ("actions:       %d" % dl_act.deleted_count)
 print ("trans_traces:  %d" % dl_trx_tr.deleted_count)
 print ("trans:         %d" % dl_trx.deleted_count)
 
+f.write( "{ \"code\": 0, \"block_num\":%s }"%(blk_num+1) )
+f.close()
 print "block_num:%s"%(blk_num+1)
 #not need, ultrmng will do it
 #start_num(blk_num+1)
