@@ -43,38 +43,16 @@ namespace ultrainio {
         return itor->second;
     }
 
-#ifdef CONSENSUS_VRF
-    Proof MsgMgr::getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
-        ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
-        return stakeVotePtr->getVoterProof(blockNum, phase, baxCount);
-    }
-
-    Proof MsgMgr::getProposerProof(uint32_t blockNum) {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
-        ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
-        return stakeVotePtr->getProposerProof(blockNum);
-    }
-#endif
-
     bool MsgMgr::isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
         ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
-#ifdef CONSENSUS_VRF
-        return stakeVotePtr->isVoter(StakeVoteBase::getMyAccount(), stakeVotePtr->getVoterProof(blockNum, phase, baxCount), UranusNode::getInstance()->getNonProducingNode());
-#else
         return stakeVotePtr->isVoter(StakeVoteBase::getMyAccount(), phase, baxCount, UranusNode::getInstance()->getNonProducingNode());
-#endif
     }
 
     bool MsgMgr::isProposer(uint32_t blockNum) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
         ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
-#ifdef CONSENSUS_VRF
-        return stakeVotePtr->isProposer(StakeVoteBase::getMyAccount(), stakeVotePtr->getProposerProof(blockNum), UranusNode::getInstance()->getNonProducingNode());
-#else
         return stakeVotePtr->isProposer(StakeVoteBase::getMyAccount(), UranusNode::getInstance()->getNonProducingNode());
-#endif
     }
 
     void MsgMgr::clearSomeBlockMessage(uint32_t blockNum) {

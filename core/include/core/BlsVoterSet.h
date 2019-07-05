@@ -7,9 +7,6 @@ namespace ultrainio {
     struct BlsVoterSet {
         CommonEchoMsg commonEchoMsg;
         std::vector<AccountName> accountPool;
-#ifdef CONSENSUS_VRF
-        std::vector<std::string> proofPool;
-#endif
         std::string sigX;
 
         bool valid() const;

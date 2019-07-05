@@ -6,11 +6,7 @@ namespace ultrainio {
         ss << std::string(blockId) << " ";
         ss << static_cast<int>(phase) << " ";
         ss << baxCount << " ";
-#ifdef CONSENSUS_VRF
-        ss << proposerPriority << " ";
-#else
         ss << std::string(proposer) << " ";
-#endif
     }
 
     bool CommonEchoMsg::fromStringStream(std::stringstream& ss) {
@@ -27,17 +23,11 @@ namespace ultrainio {
         if (!(ss >> baxCount)) {
             return false;
         }
-#ifdef CONSENSUS_VRF
-        if (!(ss >> proposerPriority)) {
-            return false;
-        }
-#else
         std::string proposerStr;
         if (!(ss >> proposerStr)) {
             return false;
         }
         proposer = proposerStr;
-#endif
         return true;
     }
 
@@ -48,11 +38,7 @@ namespace ultrainio {
         if (blockId == rhs.blockId
                 && phase == rhs.phase
                 && baxCount == rhs.baxCount
-#ifdef CONSENSUS_VRF
-                && proposerPriority == rhs.proposerPriority) {
-#else
                 && proposer == rhs.proposer ) {
-#endif
             return true;
         }
         return false;

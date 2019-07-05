@@ -70,11 +70,7 @@ namespace ultrainio {
         BlockIdType blockId;
         ConsensusPhase phase;
         uint32_t    baxCount;
-#ifdef CONSENSUS_VRF
-        uint32_t    proposerPriority;
-#else
         AccountName proposer;
-#endif
         void toStringStream(std::stringstream& ss) const;
 
         bool fromStringStream(std::stringstream& ss);
@@ -86,9 +82,6 @@ namespace ultrainio {
         std::string blsSignature;
         AccountName account;
         uint32_t    timestamp;
-#ifdef CONSENSUS_VRF
-        std::string proof;
-#endif
         MsgExtension ext;
         bool operator == (const UnsignedEchoMsg&) const;
     };
@@ -103,13 +96,8 @@ FC_REFLECT( ultrainio::ExtType, (key)(value))
 FC_REFLECT( ultrainio::UnsignedProposeMsg, (block)(ext))
 FC_REFLECT_DERIVED( ultrainio::ProposeMsg, (ultrainio::UnsignedProposeMsg), (signature))
 
-#ifdef CONSENSUS_VRF
-FC_REFLECT( ultrainio::CommonEchoMsg, (blockId)(phase)(baxCount)(proposerPriority))
-FC_REFLECT_DERIVED( ultrainio::UnsignedEchoMsg, (ultrainio::CommonEchoMsg), (blsSignature)(account)(timestamp)(proof)(ext))
-#else
 FC_REFLECT( ultrainio::CommonEchoMsg, (blockId)(phase)(baxCount)(proposer))
 FC_REFLECT_DERIVED( ultrainio::UnsignedEchoMsg, (ultrainio::CommonEchoMsg), (blsSignature)(account)(timestamp)(ext))
-#endif
 
 FC_REFLECT_DERIVED( ultrainio::EchoMsg, (ultrainio::UnsignedEchoMsg), (signature))
 FC_REFLECT( ultrainio::ReqSyncMsg, (seqNum)(startBlockNum)(endBlockNum)(ext))

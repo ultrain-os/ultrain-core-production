@@ -14,12 +14,7 @@ namespace ultrainio {
         echo.phase = UranusNode::getInstance()->getPhase();
         echo.baxCount = UranusNode::getInstance()->getBaxCount();
         echo.account = StakeVoteBase::getMyAccount();
-#ifdef CONSENSUS_VRF
-        echo.proposerPriority = Proof(block.proposerProof).getPriority();
-        echo.proof = std::string(MsgMgr::getInstance()->getVoterProof(block.block_num(), echo.phase, echo.baxCount));
-#else
         echo.proposer = block.proposer;
-#endif
         unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
         StakeVoteBase::getMyBlsPrivateKey(sk, Bls::BLS_PRI_KEY_LENGTH);
         echo.blsSignature = Signer::sign<CommonEchoMsg>(echo, sk);
@@ -37,12 +32,7 @@ namespace ultrainio {
         echo.phase = UranusNode::getInstance()->getPhase();
         echo.baxCount = UranusNode::getInstance()->getBaxCount();
         echo.account = StakeVoteBase::getMyAccount();
-#ifdef CONSENSUS_VRF
-        echo.proposerPriority = Proof(propose.block.proposerProof).getPriority();
-        echo.proof = std::string(MsgMgr::getInstance()->getVoterProof(propose.block.block_num(), echo.phase, echo.baxCount));
-#else
         echo.proposer = propose.block.proposer;
-#endif
         unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
         StakeVoteBase::getMyBlsPrivateKey(sk, Bls::BLS_PRI_KEY_LENGTH);
         echo.blsSignature = Signer::sign<CommonEchoMsg>(echo, sk);
@@ -56,9 +46,6 @@ namespace ultrainio {
     EchoMsg MsgBuilder::constructMsg(const EchoMsg &echo) {
         EchoMsg myEcho = echo;
         myEcho.account = StakeVoteBase::getMyAccount();
-#ifdef CONSENSUS_VRF
-        myEcho.proof = std::string(MsgMgr::getInstance()->getVoterProof(BlockHeader::num_from_id(echo.blockId), myEcho.phase, myEcho.baxCount));
-#endif
         unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
         StakeVoteBase::getMyBlsPrivateKey(sk, Bls::BLS_PRI_KEY_LENGTH);
         myEcho.blsSignature = Signer::sign<CommonEchoMsg>(myEcho, sk);

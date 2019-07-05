@@ -11,10 +11,6 @@ namespace ultrainio {
         std::vector<std::string> sigPool;
         std::vector<std::string> blsSignPool;
         std::vector<uint32_t>    timePool;
-#ifdef CONSENSUS_VRF
-        std::vector<std::string> proofPool;
-#endif
-
         bool hasSend = false;
 
         VoterSet();

@@ -26,11 +26,6 @@ namespace ultrainio {
         for (int i = 0; i < N; i++) {
             blsVoterSet.accountPool.push_back(this->accountPool[i]);
         }
-#ifdef CONSENSUS_VRF
-        for (int i = 0; i < N; i++) {
-            blsVoterSet.proofPool.push_back(this->proofPool[i]);
-        }
-#endif
         std::vector<std::string> tmpBlsSignPool;
         for (int i = 0; i < N; i++) {
             tmpBlsSignPool.push_back(this->blsSignPool[i]);

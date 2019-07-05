@@ -77,11 +77,6 @@ namespace ultrainio {
         for (int i = 0; i < n; i++) {
             ss << std::string(accountPool[i]) << " ";
         }
-#ifdef CONSENSUS_VRF
-        for (int i = 0; i < n; i++) {
-            ss << proofPool[i] << " ";
-        }
-#endif
         ss << sigX << " ";
     }
 
@@ -100,14 +95,6 @@ namespace ultrainio {
             }
             accountPool.push_back(item);
         }
-#ifdef CONSENSUS_VRF
-        for (int i = 0; i < n; i++) {
-            if (!(ss >> item)) {
-                return false;
-            }
-            proofPool.push_back(item)
-        }
-#endif
         if (!(ss >> sigX)) {
             return false;
         }
@@ -120,9 +107,6 @@ namespace ultrainio {
         }
         if (commonEchoMsg == rhs.commonEchoMsg
             && accountPool == rhs.accountPool
-            #ifdef CONSENSUS_VRF
-            && proofPool == rhs.proofPool
-            #endif
             && sigX == rhs.sigX) {
             return true;
         }

@@ -7,9 +7,6 @@ namespace ultrainio { namespace chain {
    {
       block_timestamp_type             timestamp;
       account_name                     proposer;
-#ifdef CONSENSUS_VRF
-      std::string                      proposerProof;
-#endif
       uint32_t                         version = 0;
       block_id_type                    previous;
       checksum256_type                 transaction_mroot; /// mroot of cycles_summary
@@ -32,11 +29,7 @@ namespace ultrainio { namespace chain {
 } } /// namespace ultrainio::chain
 
 FC_REFLECT(ultrainio::chain::block_header,
-#ifdef CONSENSUS_VRF
-           (timestamp)(proposer)(proposerProof)(version)
-#else
            (timestamp)(proposer)(version)
-#endif
            (previous)(transaction_mroot)(action_mroot)(committee_mroot)
            (header_extensions))
 

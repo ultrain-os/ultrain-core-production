@@ -9,11 +9,7 @@
 
 namespace ultrainio {
     BlockMsgPool::BlockMsgPool(uint32_t blockNum) : m_blockNum(blockNum) {
-#ifdef CONSENSUS_VRF
-        m_stakeVote = StakeVoteFactory::createVrf(m_blockNum, nullptr);
-#else
         m_stakeVote = StakeVoteFactory::createRandom(m_blockNum, nullptr);
-#endif
     }
 
     std::shared_ptr<StakeVoteBase> BlockMsgPool::getVoterSys() {

@@ -37,11 +37,6 @@ namespace ultrainio {
 
         bool isProposer(uint32_t blockNum);
 
-#ifdef CONSENSUS_VRF
-        Proof getVoterProof(uint32_t blockNum, ConsensusPhase phase, int baxCount);
-
-        Proof getProposerProof(uint32_t blockNum);
-#endif
         std::shared_ptr<StakeVoteBase> getVoterSys(uint32_t blockNum);
 
     private:
