@@ -188,6 +188,20 @@ function formatHomePath(filepath) {
     return filepath;
 }
 
+/**
+ *
+ * @param num1
+ * @param num2
+ * @returns {*}
+ */
+function calcMin(num1,num2) {
+    if (num1 < num2) {
+        return num1;
+    }
+
+    return num2;
+}
+
 
 module.exports = {
     isNull,
@@ -201,4 +215,5 @@ module.exports = {
     getPublicIp,
     addLogStr,
     formatHomePath,
+    calcMin,
 }

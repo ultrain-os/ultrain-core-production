@@ -76,7 +76,7 @@ const getChainName = async (url) => {
             "key_type": "name"
         };
         logger.info(params);
-        let res = await axios.post(url + "/v1/chain/get_table_records", params);
+        let res = await axios.post(url + "/v1/chain/get_table_records", params,{timeout: 1000*2});
         logger.info("global table :", res.data);
         if (utils.isNotNull(res) && res.data.rows.length > 0) {
             chainName = res.data.rows[0].chain_name;
@@ -101,7 +101,7 @@ const getBlockHeaderInfo = async (httpEndpoint,scope,table_key) => {
             "table_key_type": "uint64",
             "table_key": table_key,
         };
-        let res = await axios.post(httpEndpoint + "/v1/chain_info/get_table_records", params);
+        let res = await axios.post(httpEndpoint + "/v1/chain_info/get_table_records", params,{timeout: 1000*2});
         return res.data.rows;
     } catch (e) {
         logger.error("getBlockHeaderInfo error,",e);
@@ -122,7 +122,7 @@ const getBlockInfoData = async (httpEndpoint,blockId) => {
         const params = {
             "block_num_or_id" : blockId
         }
-        let res = await axios.post(httpEndpoint + "/v1/chain_info/get_block_info", params);
+        let res = await axios.post(httpEndpoint + "/v1/chain_info/get_block_info", params,{timeout: 1000*2});
         blockObj = res.data;
     } catch (e) {
         logger.error("get block info data error:",e);
@@ -149,7 +149,7 @@ const getMinBlockHeaderInfo = async (httpEndpoint,scope) => {
             "table_key_type": "uint64",
             "limit": 1,
         };
-        let res = await axios.post(httpEndpoint + "/v1/chain_info/get_table_records", params);
+        let res = await axios.post(httpEndpoint + "/v1/chain_info/get_table_records", params,{timeout: 1000*2});
         logger.debug("getMinBlockHeaderInfo res:",res.data);
         if (res.data.rows.length > 0) {
             return res.data.rows[0].block_number;
@@ -191,7 +191,7 @@ const getChainInfo = async function initChainName(config, user) {
  */
 async function getAccount(port, accountName) {
     try {
-        const rs = await axios.post("http://127.0.0.1:"+port + "/v1/chain_info/get_account_exist", {"account_name": accountName});
+        const rs = await axios.post("http://127.0.0.1:"+port + "/v1/chain_info/get_account_exist", {"account_name": accountName},{timeout: 1000*2});
         let res =  rs.data;
         if (res.is_exist == true) {
             return true;
@@ -218,7 +218,7 @@ async function getProducerLists(prefix) {
             "chain_name": constant.chainNameConstants.MAIN_CHAIN_NAME
         };
         logger.info("getProducerLists",prefix + "/v1/chain_info/get_producers");
-        const rs = await axios.post(prefix + "/v1/chain_info/get_producers", params);
+        const rs = await axios.post(prefix + "/v1/chain_info/get_producers", params,{timeout: 1000*2});
 
         logger.debug("getProducerLists:", rs.data.rows);
         var rows = rs.data.rows;
@@ -473,7 +473,7 @@ multiRequest = async function (prefix, path, params, prefixlist) {
     logger.debug("multiRequest:", prefixlist);
     let res = null;
     try {
-        res = await axios.post(prefix + path, params);
+        res = await axios.post(prefix + path, params,{timeout: 1000*2});
         if (res.status == 200) {
             logger.debug("multiRequest(" + path + ") success:", res);
             return res;
@@ -865,7 +865,7 @@ const getHeadBlockProposer = async (config) => {
 const getServerVersion = async (port) => {
     let path = "http://127.0.0.1:"+port+"/v1/chain_info/get_chain_info"
     try {
-        const rs = await axios.post(path);
+        const rs = await axios.post(path,{},{timeout: 1000*2});
         logger.debug("get get_chain_info  ",rs.data);
         if (rs.status == 200) {
             return rs.data.server_version;
@@ -889,7 +889,7 @@ const getServerVersion = async (port) => {
 monitorCheckIn = async (url, param) => {
     try {
         logger.debug("monitorCheckIn param:", qs.stringify(param));
-        const rs = await axios.post(url + "/filedist/checkIn", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/checkIn", qs.stringify(param),{timeout: 1000*2});
         logger.info("monitorCheckIn result:", rs.data);
         return rs.data;
     } catch (e) {
@@ -906,7 +906,7 @@ monitorCheckIn = async (url, param) => {
 confirmBlockCheckIn = async (url,param) => {
     try {
         logger.info("confirmBlockCheckIn param:", qs.stringify(param));
-        const rs = await axios.post(url + "/alert/uploadConfirmBlock", qs.stringify(param));
+        const rs = await axios.post(url + "/alert/uploadConfirmBlock", qs.stringify(param),{timeout: 1000*2});
         logger.info("confirmBlockCheckIn result:", rs.data);
         return rs.data;
     } catch (e) {
@@ -923,7 +923,7 @@ confirmBlockCheckIn = async (url,param) => {
 ramUsageCheckIn = async (url,param) => {
     try {
         logger.info("ramUsageCheckIn param:", qs.stringify(param));
-        const rs = await axios.post(url + "/filedist/addRamUsage", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/addRamUsage", qs.stringify(param),{timeout: 1000*2});
         logger.info("ramUsageCheckIn result:", rs.data);
         return rs.data;
     } catch (e) {
@@ -942,7 +942,7 @@ ramUsageCheckIn = async (url,param) => {
 uploadugas = async (url,param) => {
     try {
         logger.info("uploadugas param:", qs.stringify(param));
-        const rs = await axios.post(url + "/filedist/addUgasInfo", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/addUgasInfo", qs.stringify(param),{timeout: 1000*2});
         logger.info("uploadugas result:", rs.data);
         return rs.data;
     } catch (e) {
@@ -959,7 +959,7 @@ uploadugas = async (url,param) => {
 uploadCurrency = async (url,param) => {
     try {
         logger.info("uploadCurrency param:", qs.stringify(param));
-        const rs = await axios.post(url + "/filedist/addCurrencyInfo", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/addCurrencyInfo", qs.stringify(param),{timeout: 1000*2});
         logger.info("uploadCurrency result:", rs.data);
         return rs.data;
     } catch (e) {
@@ -975,7 +975,7 @@ uploadCurrency = async (url,param) => {
 getCurrencyStats = async (httpEndPoint) => {
     try {
 
-        const rs = await axios.post(httpEndPoint+ "/v1/chain/get_currency_stats",{"code":"utrio.token", "symbol":"UGAS"});
+        const rs = await axios.post(httpEndPoint+ "/v1/chain/get_currency_stats",{"code":"utrio.token", "symbol":"UGAS"},{timeout: 1000*2});
         return rs.data;
     } catch (e) {
         logger.error("getCurrencyStats error:",e);
@@ -994,7 +994,7 @@ getCurrencyStats = async (httpEndPoint) => {
 checkDeployFile = async (url, param) => {
     try {
         logger.info("checkDeployFile param:", qs.stringify(param));
-        const rs = await axios.post(url + "/filedist/checkDeployInfo", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/checkDeployInfo", qs.stringify(param),{timeout: 1000*2});
         logger.info("checkDeployFile result:", rs.data);
         return rs.data;
     } catch (e) {
@@ -1011,7 +1011,7 @@ checkDeployFile = async (url, param) => {
 finsihDeployFile = async (url, param) => {
     try {
         logger.debug("finishDeployInfo param:", qs.stringify(param));
-        const rs = await axios.post(url + "/filedist/finishDeployInfo", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/finishDeployInfo", qs.stringify(param),{timeout: 1000*2});
         logger.info("finishDeployInfo result:", rs.data);
         return rs.data;
     } catch (e) {
@@ -1083,7 +1083,7 @@ const getTargetChainBlockNum = async (configTemp, targetChainHttp, targetChainNa
 addSwitchLog = async (url, param) => {
     try {
         logger.debug("addSwitchLog param:", qs.stringify(param));
-        const rs = await axios.post(url + "/filedist/addSwitchLog", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/addSwitchLog", qs.stringify(param),{timeout: 1000*2});
         logger.info("addSwitchLog result:", rs.data);
         return rs.data;
     } catch (e) {
@@ -1100,7 +1100,7 @@ addSwitchLog = async (url, param) => {
 addRestartLog = async (url, param) => {
     try {
         logger.debug("addRestartLog param:", qs.stringify(param));
-        const rs = await axios.post(url + "/filedist/addRestartLog", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/addRestartLog", qs.stringify(param),{timeout: 1000*2});
         logger.info("addRestartLog result:", rs.data);
         return rs.data;
     } catch (e) {
@@ -1167,7 +1167,7 @@ checkSubchainSeed = async (chainConfig) => {
 
     let path = chainConfig.configSub.httpEndpoint + "/v1/chain_info/get_chain_info"
     try {
-        let res = await axios.post(path);
+        let res = await axios.post(path,{},{timeout: 1000*2});
         logger.info("[seed check] checkSubchainSeed success,use seed:"+chainConfig.configSub.httpEndpoint);
         checkSubSeedTime = 0;
         return;
@@ -1188,7 +1188,7 @@ checkSubchainSeed = async (chainConfig) => {
                 chainConfig.configSub.httpEndpoint = seedHttpList[i];
                 path = chainConfig.configSub.httpEndpoint + "/v1/chain_info/get_chain_info"
                 try {
-                    let res = await axios.post(path);
+                    let res = await axios.post(path,{},{timeout: 1000*2});
                     chainConfig.u3Sub = createU3({...chainConfig.configSub, sign: true, broadcast: true});
                     logger.info("[seed check] checkSubchainSeed("+path+") success,use new seed:"+chainConfig.configSub.httpEndpoint);
                     return null;
@@ -1207,7 +1207,7 @@ checkMainchainSeed = async (chainConfig) => {
 
     let path = chainConfig.config.httpEndpoint + "/v1/chain_info/get_chain_info"
     try {
-        let res = await axios.post(path);
+        let res = await axios.post(path,{},{timeout: 1000*2});
         logger.info("[seed check] checkMainchainSeed success,use seed:"+chainConfig.config.httpEndpoint);
         checkMainSeedTime = 0;
         return;
@@ -1228,7 +1228,7 @@ checkMainchainSeed = async (chainConfig) => {
                 chainConfig.config.httpEndpoint = seedHttpList[i];
                 path = chainConfig.config.httpEndpoint + "/v1/chain_info/get_chain_info"
                 try {
-                    let res = await axios.post(path);
+                    let res = await axios.post(path,{},{timeout: 1000*2});
                     chainConfig.u3Sub = createU3({...chainConfig.config, sign: true, broadcast: true});
                     logger.info("[seed check] checkMainchainSeed("+path+") success,use new seed:"+chainConfig.config.httpEndpoint);
                     return null;
@@ -1291,7 +1291,7 @@ verifySign = (data,sign) => {
 getSeedInfo = async (url, param) => {
     try {
         logger.info("getSeedInfo param:", qs.stringify(param));
-        const rs = await axios.post(url + "/filedist/getSeedInfo", qs.stringify(param));
+        const rs = await axios.post(url + "/filedist/getSeedInfo", qs.stringify(param),{timeout: 1000*2});
         logger.info("monitor getSeedInfo result:", rs.data);
         let data =  rs.data;
         if (data.code ==0) {

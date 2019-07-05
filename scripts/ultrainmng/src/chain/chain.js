@@ -22,6 +22,7 @@ var NodUltrain = require("../nodultrain/nodultrain")
 var WorldState = require("../worldstate/worldstate")
 var chainUtil = require("./util/chainUtil");
 var monitor = require("./monitor")
+var mongoUtil = require("./util/mongoUtil");
 
 
 
@@ -1375,6 +1376,8 @@ async function syncChainInfo() {
  */
 async function checkNodAlive() {
 
+    logger.info("start to checkNodAlive....");
+
     let rsdata = await NodUltrain.checkAlive(chainConfig.nodPort);
     if (rsdata != null) {
         logger.info("head_block_num:",rsdata.head_block_num);
@@ -1982,13 +1985,239 @@ async function restartSeed() {
 async function restartMongo() {
     logger.info("start to restart nod(mongo)");
 
+    //标志位设置
+    syncChainChanging = true;
+    monitor.disableDeploy();
+
+
+    let param = [];
+    let logMsg = "";
 
     try {
 
+        param = await monitor.buildParam();
+        param.chainName = chainConfig.localChainName;
+        param.startTime = new Date().getTime();
+        param.status = 0;
+
+        logger.info("[mongo restart]stop nod start");
+        logMsg = utils.addLogStr(logMsg, "[mongo restart]stop nod start");
+        //停止nod
+        await NodUltrain.stop(120000, chainConfig.nodPort);
+        sleep.msleep(1000);
+        logger.info("[mongo restart]stop nod finish");
+        logMsg = utils.addLogStr(logMsg, "[mongo restart]stop nod finish");
+
+        //执行脚本获取mongo中最大的块高
+        let mongoMaxBlock = null;
+        let mongoMaxBlockObj = await mongoUtil.getLocalMongoMaxBlock(300000);
+        if (mongoMaxBlockObj.code != 0 ) {
+            logger.error("[mongo restart]mongoMaxBlock error:",mongoMaxBlockObj);
+            logMsg = utils.addLogStr(logMsg, "mongoMaxBlock error:",JSON.stringify(mongoMaxBlockObj));
+        } else {
+            logger.info("[mongo restart]mongoMaxBlock correct:",mongoMaxBlockObj);
+            logMsg = utils.addLogStr(logMsg, "mongoMaxBlock correct:",JSON.stringify(mongoMaxBlockObj));
+
+            mongoMaxBlock = mongoMaxBlockObj.block_num;
+
+            logger.info("[mongo restart]mongo mongoMaxBlock :",mongoMaxBlock);
+            logMsg = utils.addLogStr(logMsg, "mongo mongoMaxBlock :"+mongoMaxBlock);
+
+            //停止worldstate的程序
+            result = await WorldState.stop(120000);
+            if (result) {
+                logger.info("[mongo restart]worldstate is stopped");
+                logMsg = utils.addLogStr(logMsg, "[mongo restart]worldstate is stopped");
+            } else {
+                logger.info("[mongo restart]worldstate is not stopped");
+                logMsg = utils.addLogStr(logMsg, "[mongo restart]worldstate is not stopped");
+            }
+
+            //通过chainid拿到seedList
+            var seedIpInfo = await chainApi.getChainSeedIP(chainConfig.localChainName, chainConfig);
+            logger.info("[mongo restart]get chainid(" + chainConfig.localChainName + ")'s seed ip info:", seedIpInfo);
+            if (utils.isNull(seedIpInfo)) {
+                loggerChainChanging.error("[mongo restart]seed ip info is null");
+                logMsg = utils.addLogStr(logMsg, "seed ip info is null(chainName:" + chainConfig.localChainName + ")");
+            } else {
+                logger.info("[mongo restart]start world state");
+                result = await WorldState.start(chainConfig.localChainName, seedIpInfo, 60000, utils.formatHomePath(chainConfig.configFileData.local.wsspath), chainConfig.localTest, chainConfig);
+                if (result == false) {
+                    logger.info("[mongo restart]start ws error");
+                    logMsg = utils.addLogStr(logMsg, "start ws error");
+                } else {
+                    logger.info("[mongo restart]start ws success");
+                    logMsg = utils.addLogStr(logMsg, "start ws success");
+
+                    //通过ws获取本地最大块信息
+                    let localMaxBlockHeight = await WorldState.getLocalBlockInfo();
+                    logger.info("[mongo restart]localMaxBlockHeight is:", localMaxBlockHeight);
+                    if (utils.isNull(localMaxBlockHeight)) {
+                        logMsg = utils.addLogStr(logMsg, "localMaxBlockHeight is null");
+                    } else {
+                        logMsg = utils.addLogStr(logMsg, "localMaxBlockHeight is " + localMaxBlockHeight);
+
+                        //ws文件ready
+                        let wsFileReady = false;
+
+                        //世界状态文件
+                        let wssFilePath = "";
+                        let wssinfo = "";
+
+                        let minNum = utils.calcMin(localMaxBlockHeight,mongoMaxBlock);
+                        logger.info("[mongo restart]minNum is ",minNum);
+                        logMsg = utils.addLogStr(logMsg, "minNum is "+minNum);
+
+                        //调用表数据找到需要下载的世界状态文件信息
+                        let wsTableData = await chainApi.getTableAllData(chainConfig.config, contractConstants.ULTRAINIO, chainConfig.localChainName, tableConstants.WORLDSTATE_HASH, "block_num");
+                        let wsRes = chainUtil.getNearestWsInfoByBlockHeight(wsTableData, minNum);
+                        if (utils.isNull(wsRes)) {
+                            logger.error("[mongo restart]get ws info by block height is null");
+                            logMsg = utils.addLogStr(logMsg, "get ws info by block height is null");
+                        } else {
+                            logger.info("[mongo restart]get ws info by block height is ", wsRes);
+                            logMsg = utils.addLogStr(logMsg, "[mongo restart]get ws info by block height is "+wsRes);
+
+                            //世界状态文件
+                            wssFilePath = pathConstants.WSS_LOCAL_DATA + chainConfig.configSub.chainId + "-" + wsRes.block_num + ".ws";
+                            wssinfo = "--worldstate " + wssFilePath + " --truncate-at-block " + localMaxBlockHeight;
+
+                            //从本地查找ws文件
+                            if (fs.existsSync(wssFilePath) == true) {
+                                logger.info("[seed restart]ws file exists in local:" + wssFilePath);
+                                logMsg = utils.addLogStr(logMsg, "[seed restart]ws file exists in local:"+wssFilePath+")");
+                                wsFileReady = true;
+                            } else {
+                                //本地不存在世界状态文件，需要通过ws拉取
+                                logger.error("[seed restart]ws file not exists in local:" + wssFilePath);
+                                logMsg = utils.addLogStr(logMsg, "[seed restart]ws file not exists in local:\"+wssFilePath)");
+
+                                wssFilePath = pathConstants.WSS_DATA + chainConfig.configSub.chainId + "-" + wsRes.block_num + ".ws";
+                                wssinfo = "--worldstate " + wssFilePath + " --truncate-at-block " + localMaxBlockHeight;
+
+                                //通过seed拉取世界状态
+                                result = await WorldState.syncWorldState(wsRes.hash, wsRes.block_num, wsRes.file_size, chainConfig.configSub.chainId);
+                                if (result == false) {
+                                    logger.error("sync worldstate request failed");
+                                    logMsg = utils.addLogStr(logMsg, "[seed restart]sync worldstate request failed");
+                                } else {
+                                    logger.info("sync worldstate request success");
+                                    logMsg = utils.addLogStr(logMsg, "[seed restart]sync worldstate request success");
+
+                                    loggerChainChanging.info("polling worldstate sync status ..")
+                                    sleep.msleep(1000);
+
+                                    /**
+                                     * 轮询检查同步世界状态情况
+                                     */
+                                    result = await WorldState.pollingkWSState(1000, 1200000);
+                                    if (result == false) {
+                                        logMsg = utils.addLogStr(logMsg, "require ws error");
+                                        logger.error("require ws error：" + wssinfo);
+                                    } else {
+                                        logger.info("require ws success");
+                                        logMsg = utils.addLogStr(logMsg, "require ws success");
+                                        logger.info("wssinfo:" + wssinfo);
+
+                                        //检查文件是否下载成功
+                                        if (fs.existsSync(wssFilePath) == false) {
+                                            //下载失败
+                                            logger.error("[mongo restart]file not exists :", wssFilePath);
+                                            logger.info("[mongo restart]start nod not use wss:", wssinfo);
+                                            logMsg = utils.addLogStr(logMsg, "file not exists :" + wssFilePath);
+                                        } else {
+                                            //下载成功
+                                            logger.info("[mongo restart]file exists :", wssFilePath);
+                                            logger.info("[mongo restart]start nod use wss:", wssinfo);
+                                            logMsg = utils.addLogStr(logMsg, "file exists :" + wssFilePath + ", start nod use wss:" + wssinfo);
+                                            wsFileReady = true;
+
+                                        }
+                                    }
+                                }
+                            }
+
+                            //世界状态文件确认存在
+                            if (wsFileReady == true) {
+
+                                //清除state目录
+                                WorldState.clearStateDir();
+                                logger.info("[seed restart]clear state dir");
+                                logMsg = utils.addLogStr(logMsg, "clear state dir");
+
+                                logMsg = utils.addLogStr(logMsg, "start nod :"+wssinfo);
+
+                                //更新nod配置，增加
+                                let resUpdateConfig = NodUltrain.updateMongoStartNum(mongoMaxBlock);
+                                if (resUpdateConfig == false) {
+                                    logger.error("updateMongoStartNum error");
+                                    utils.addLogStr(logMsg, "updateMongoStartNum error");
+                                } else {
+                                    logger.info("updateMongoStartNum ",mongoMaxBlock);
+                                    utils.addLogStr(logMsg, "updateMongoStartNum "+mongoMaxBlock);
+                                    //启动nod
+                                    result = await NodUltrain.start(120000, utils.formatHomePath(chainConfig.configFileData.local.nodpath), wssinfo, chainConfig.localTest, chainConfig.nodPort);
+                                    if (result == true) {
+                                        logger.info("[mongo restart]nod start success");
+                                        logMsg = utils.addLogStr(logMsg, "nod start success");
+                                        param.status = 1;
+                                    } else {
+                                        logger.error("[mongo restart]node start error");
+                                        logMsg = utils.addLogStr(logMsg, "nod start error");
+                                    }
+                                }
+                            }
+
+                        }
+
+                        //使用hard-replay方式启动
+                        if (utils.isNotNull(localMaxBlockHeight) && wsFileReady == false) {
+                            let startinfo = "--hard-replay-blockchain --truncate-at-block "+localMaxBlockHeight;
+                            logger.info("[mongo restart] localMaxBlockHeight("+localMaxBlockHeight+") is not null,use hard-replay to start nod: "+startinfo);
+                            logMsg = utils.addLogStr(logMsg, "[mongo restart] localMaxBlockHeight("+localMaxBlockHeight+") is not null,use hard-replay to start nod:"+startinfo);
+
+                            //更新nod配置，增加
+                            let resUpdateConfig = NodUltrain.updateMongoStartNum(mongoMaxBlock);
+                            if (resUpdateConfig == false) {
+                                logger.error("updateMongoStartNum error");
+                                utils.addLogStr(logMsg, "updateMongoStartNum error");
+                            } else {
+
+                                logger.info("updateMongoStartNum ",mongoMaxBlock);
+                                utils.addLogStr(logMsg, "updateMongoStartNum "+mongoMaxBlock);
+
+                                //启动nod
+                                result = await NodUltrain.start(120000, utils.formatHomePath(chainConfig.configFileData.local.nodpath), startinfo, chainConfig.localTest, chainConfig.nodPort);
+                                if (result == true) {
+                                    logger.info("[mongo restart]nod start success");
+                                    logMsg = utils.addLogStr(logMsg, "nod start success");
+                                    param.status = 1;
+                                } else {
+                                    logger.error("[mongo restart]node start error");
+                                    logMsg = utils.addLogStr(logMsg, "nod start error");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+
+        }
 
     } catch (e) {
-        logger.error("restartSeed error");
+        logger.error("restartMongo error");
     }
+
+    //调用接口完成重启
+    param.endTime = new Date().getTime();
+    param.result = logMsg;
+    param.log = nodLogData;
+    await chainApi.addRestartLog(monitor.getMonitorUrl(), param);
+
+    //标志位恢复
+    syncChainChanging = false;
+    monitor.enableDeploy();
 
     logger.info("finish restart nod(mongo)");
 }

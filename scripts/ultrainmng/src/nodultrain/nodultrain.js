@@ -137,6 +137,25 @@ NodUltrain.addConfigInfo = function(updateArr) {
 }
 
 /**
+ * 更新mongo的初始块高
+ * @param num
+ * @returns {boolean}
+ */
+NodUltrain.updateMongoStartNum = function(num) {
+    try {
+        var iniFile = new IniFile(this.configFilePath, Constants.encodingConstants.UTF8);
+        iniFile.removeKey(iniConstants.MONGODB_BLOCK_START);
+        iniFile.setValue(iniConstants.MONGODB_BLOCK_START,num);
+        iniFile.writefile(this.configFilePath, Constants.encodingConstants.UTF8);
+        return true;
+    } catch (e) {
+        logger.error("updateMongoStartNum error:",e);
+    }
+
+    return false;
+}
+
+/**
  * 更新nod配置文件
  * @param filepath
  * @param monitorServer
@@ -258,7 +277,7 @@ NodUltrain.checkAlive = async function (port) {
     let path = "http://127.0.0.1:"+port+"/v1/chain_info/get_chain_info"
     try {
         logger.debug("send http request :"+path);
-        const rs = await axios.post(path);
+        const rs = await axios.post(path,{},{timeout: 1000*2});
         logger.debug("get get_chain_info  ",rs.data);
         if (rs.status == 200) {
             return rs.data;

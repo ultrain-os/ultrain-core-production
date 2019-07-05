@@ -114,6 +114,7 @@ var iniConstants = {
     MONITOR: "monitor",
     PEER_KEY: "peer-key",
     CHAIN_NAME: "chain-name",
+    MONGODB_BLOCK_START: "mongodb-block-start",
 }
 
 /**
