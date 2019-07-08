@@ -34,6 +34,7 @@
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/Node.h>
+#include <core/utils.h>
 
 namespace bmi = boost::multi_index;
 using bmi::indexed_by;
@@ -122,6 +123,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       std::string _genesis_pk                      = Genesis::s_genesisPk;
       bool     _pause_production                   = false;
       bool     _is_non_producing_node              = false;
+      bool     _is_config_encrypt              = true;
       //int32_t  _genesis_delay;
       int32_t  _genesis_startup_time               = Genesis::s_genesisStartupTime;
       int32_t  _max_round_seconds                  = Config::s_maxRoundSeconds;
@@ -406,6 +408,7 @@ void producer_uranus_plugin::set_program_options(
 
    producer_options.add_options()
          ("is-non-producing-node", boost::program_options::bool_switch()->notifier([this](bool e){my->_is_non_producing_node = e;}), "If this is a non-producing node (listener).")
+         ("encrypt-config", bpo::value<bool>()->default_value(false), "If the config file is encrpt,default true")
          ("pause-on-startup,x", boost::program_options::bool_switch()->notifier([this](bool p){my->_pause_production = p;}), "Start this node in a state where production is paused")
          ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
@@ -557,6 +560,7 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    my->_max_round_seconds = options.at("max-round-seconds").as<int32_t>();
    my->_max_phase_seconds = options.at("max-phase-seconds").as<int32_t>();
    my->_max_trxs_seconds = options.at("max-trxs-microseconds").as<int32_t>();
+   my->_is_config_encrypt = options.at("encrypt-config").as<bool>();
    ultrainio::chain::config::block_interval_ms = my->_max_round_seconds * 1000;
    ultrainio::chain::config::block_interval_us =  my->_max_round_seconds * 1000000;
    if(options.count("genesis-time"))
@@ -655,6 +659,17 @@ void producer_uranus_plugin::plugin_startup()
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
    if (!my->_genesis_pk.empty()) {
        nodePtr->setGenesisPk(my->_genesis_pk);
+   }
+   if(my->_is_config_encrypt){
+       std::string key("ultrain@#9Df2Y*c");
+       std::string result = aes_decode(key, my->_my_sk_as_committee);
+       my->_my_sk_as_committee = std::move(result);
+
+       result = aes_decode(key, my->_my_sk_as_account);
+       my->_my_sk_as_account = std::move(result);
+
+       result = aes_decode(key, my->_my_bls_sk);
+       my->_my_bls_sk = std::move(result);
    }
    nodePtr->setMyInfoAsCommitteeKey(my->_my_sk_as_committee, my->_my_bls_sk, my->_my_account_as_committee);
    ULTRAIN_ASSERT( !my->_genesis_time.empty(),
