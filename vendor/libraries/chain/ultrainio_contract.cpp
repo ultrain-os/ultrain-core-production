@@ -486,89 +486,44 @@ void apply_ultrainio_addwhiteblack(apply_context& context) {
    auto white_black = context.act.data_as<addwhiteblack>();
 
    bool is_valid = false;
-   addwhiteblack white_black_tmp;
-   for ( auto& it : white_black.actor_black){
-      if (!it.good()) continue;
+   auto check_func = [&](const account_name& name){
+      ULTRAIN_ASSERT( name.good(), action_validate_exception, "In addwhiteblack, ${name} not vaild.", ("name", name));
       is_valid = true;
-      white_black_tmp.actor_black.push_back(it);
-      ULTRAIN_ASSERT( it != config::system_account_name, action_validate_exception, "ultrainio can't add to actor black");
-   }
+   };
 
-   for ( auto& it : white_black.actor_white){//TODO  add ultrainio firstly.
-      if (!it.good()) continue;
+   for_each(white_black.actor_black.begin(), white_black.actor_black.end(), check_func);
+   for_each(white_black.actor_white.begin(), white_black.actor_white.end(), check_func);
+   for_each(white_black.contract_black.begin(), white_black.contract_black.end(), check_func);
+   for_each(white_black.contract_white.begin(), white_black.contract_white.end(), check_func);
+   for_each(white_black.action_black.begin(), white_black.action_black.end(), [&](const action_actor_type& act_actor){
+      ULTRAIN_ASSERT( act_actor.actor.good() && act_actor.action.good(), action_validate_exception, "In addwhiteblack, action_black ${a} not vaild", ("a", act_actor));
+      ULTRAIN_ASSERT( !(act_actor.actor == config::system_account_name && (act_actor.action == rmwhiteblack::get_name() || act_actor.action == addwhiteblack::get_name())),
+         action_validate_exception, "${s} can't add to action black", ("s", act_actor));
       is_valid = true;
-      white_black_tmp.actor_white.push_back(it);
-   }
+   });
+   for_each(white_black.key_black.begin(), white_black.key_black.end(), [&](const public_key_type& pk){
+      ULTRAIN_ASSERT( pk.valid(), action_validate_exception, "In addwhiteblack, pk ${a} not vaild", ("a", pk));
+      is_valid = true;
+   });
 
-   for ( auto& it : white_black.contract_black){
-      if (!it.good()) continue;
-      is_valid = true;
-      white_black_tmp.contract_black.push_back(it);
-      ULTRAIN_ASSERT( it != config::system_account_name, action_validate_exception, "ultrainio can't add to contract black");
-   }
-
-   for ( auto& it : white_black.contract_white){ //TODO  add ultrainio firstly.
-      if (!it.good()) continue;
-      is_valid = true;
-      white_black_tmp.contract_white.push_back(it);
-   }
-
-   for ( auto& it : white_black.action_black){
-      if (!it.actor.good() || !it.action.good())   continue;
-      is_valid = true;
-      white_black_tmp.action_black.push_back(it);
-      ULTRAIN_ASSERT( !(it.actor == config::system_account_name && (it.action == rmwhiteblack::get_name() || it.action == addwhiteblack::get_name())),
-         action_validate_exception, "${s} can't add to action black", ("s", it));
-   }
-
-   for ( auto& it : white_black.key_black){
-      if (!it.valid()) continue;
-      is_valid = true;
-      white_black_tmp.key_black.push_back(it);
-   }
+   ULTRAIN_ASSERT(std::find(white_black.actor_black.begin(), white_black.actor_black.end(), config::system_account_name) == white_black.actor_black.end(), action_validate_exception,
+      "ultrainio can't add to actor black");
+   ULTRAIN_ASSERT( std::find(white_black.contract_black.begin(), white_black.contract_black.end(), config::system_account_name) == white_black.contract_black.end(), action_validate_exception,
+      "ultrainio can't add to contract black");
    ULTRAIN_ASSERT( is_valid, action_validate_exception, "addwhiteblack parameters not vaild, ${s}.", ("s", white_black));
 
    try {
       auto& db = context.db;
       auto& wb_object = db.get<whiteblacklist_object>();
-
       db.modify(wb_object, [&](whiteblacklist_object& node) {
-         for ( auto& it : white_black_tmp.actor_black){
-            if (node.actor_blacklist.find(it) == node.actor_blacklist.end()){
-               node.actor_blacklist.insert(it);
-            }
-         }
-
-         for ( auto& it : white_black_tmp.actor_white){
-            if (node.actor_whitelist.find(it) == node.actor_whitelist.end()){
-               node.actor_whitelist.insert(it);
-            }
-         }
-
-         for ( auto& it : white_black_tmp.contract_black){
-            if (node.contract_blacklist.find(it) == node.contract_blacklist.end()){
-               node.contract_blacklist.insert(it);
-            }
-         }
-
-         for ( auto& it : white_black_tmp.contract_white){
-            if (node.contract_whitelist.find(it) == node.contract_whitelist.end()){
-               node.contract_whitelist.insert(it);
-            }
-         }
-
-         for ( auto& it : white_black_tmp.action_black){
-            auto black = std::make_pair(it.actor, it.action);
-            if (node.action_blacklist.find(black) == node.action_blacklist.end()){
-               node.action_blacklist.insert(black);
-            }
-         }
-
-         for ( auto& it : white_black_tmp.key_black){
-            if (node.key_blacklist.find(it) == node.key_blacklist.end()){
-               node.key_blacklist.insert(it);
-            }
-         }
+         node.actor_blacklist.insert(white_black.actor_black.begin(), white_black.actor_black.end());
+         node.actor_whitelist.insert(white_black.actor_white.begin(), white_black.actor_white.end());
+         node.contract_blacklist.insert(white_black.contract_black.begin(), white_black.contract_black.end());
+         node.contract_whitelist.insert(white_black.contract_white.begin(), white_black.contract_white.end());
+         node.key_blacklist.insert(white_black.key_black.begin(), white_black.key_black.end());
+         for_each(white_black.action_black.begin(), white_black.action_black.end(), [&](const action_actor_type& act_actor){
+            node.action_blacklist.insert(std::make_pair(act_actor.actor, act_actor.action));
+         });
       } );
    } FC_CAPTURE_AND_RETHROW( (white_black) )
 }
@@ -577,43 +532,23 @@ void apply_ultrainio_rmwhiteblack(apply_context& context) {
    auto white_black = context.act.data_as<rmwhiteblack>();
 
    bool is_valid = false;
-   rmwhiteblack white_black_tmp;
-   for ( auto& it : white_black.actor_black){
-      if (!it.good()) continue;
+   auto check_func = [&](const account_name& name){
+      ULTRAIN_ASSERT( name.good(), action_validate_exception, "In rmwhiteblack, ${name} not vaild.", ("name", name));
       is_valid = true;
-      white_black_tmp.actor_black.push_back(it);
-   }
+   };
 
-   for ( auto& it : white_black.actor_white){
-      if (!it.good()) continue;
+   for_each(white_black.actor_black.begin(), white_black.actor_black.end(), check_func);
+   for_each(white_black.actor_white.begin(), white_black.actor_white.end(), check_func);
+   for_each(white_black.contract_black.begin(), white_black.contract_black.end(), check_func);
+   for_each(white_black.contract_white.begin(), white_black.contract_white.end(), check_func);
+   for_each(white_black.action_black.begin(), white_black.action_black.end(), [&](const action_actor_type& act_actor){
+      ULTRAIN_ASSERT( act_actor.actor.good() && act_actor.action.good(), action_validate_exception, "In rmwhiteblack, action_black ${a} not vaild", ("a", act_actor));
       is_valid = true;
-      white_black_tmp.actor_white.push_back(it);
-   }
-
-   for ( auto& it : white_black.contract_black){
-      if (!it.good()) continue;
+   });
+   for_each(white_black.key_black.begin(), white_black.key_black.end(), [&](const public_key_type& pk){
+      ULTRAIN_ASSERT( pk.valid(), action_validate_exception, "In rmwhiteblack, pk ${a} not vaild", ("a", pk));
       is_valid = true;
-      white_black_tmp.contract_black.push_back(it);
-   }
-
-   for ( auto& it : white_black.contract_white){
-      if (!it.good()) continue;
-      is_valid = true;
-      white_black_tmp.contract_white.push_back(it);
-   }
-
-   for ( auto& it : white_black.action_black){
-      if (!it.actor.good() || !it.action.good())   continue;
-      is_valid = true;
-      white_black_tmp.action_black.push_back(it);
-   }
-
-   for ( auto& it : white_black.key_black){
-      if (!it.valid()) continue;
-      is_valid = true;
-      white_black_tmp.key_black.push_back(it);
-   }
-
+   });
    ULTRAIN_ASSERT( is_valid, action_validate_exception, "rmwhiteblack parameters not vaild, ${s}.", ("s", white_black));
 
    try {
@@ -621,44 +556,26 @@ void apply_ultrainio_rmwhiteblack(apply_context& context) {
       auto& wb_object = db.get<whiteblacklist_object>();
 
       db.modify(wb_object, [&](whiteblacklist_object& node) {
-         for ( auto& it : white_black_tmp.actor_black){
-            if (node.actor_blacklist.find(it) != node.actor_blacklist.end()){
-               node.actor_blacklist.erase(it);
-            }
-         }
+         for_each(white_black.actor_black.begin(), white_black.actor_black.end(), [&](const name& name){
+            node.actor_blacklist.erase(name);
+         });
+         for_each(white_black.actor_white.begin(), white_black.actor_white.end(), [&](const name& name){
+            node.actor_whitelist.erase(name);
+         });
+         for_each(white_black.contract_black.begin(), white_black.contract_black.end(), [&](const name& name){
+            node.contract_blacklist.erase(name);
+         });
+         for_each(white_black.contract_white.begin(), white_black.contract_white.end(), [&](const name& name){
+            node.contract_whitelist.erase(name);
+         });
+         for_each(white_black.key_black.begin(), white_black.key_black.end(), [&](const public_key_type& pk){
+            node.key_blacklist.erase(pk);
+         });
 
-         for ( auto& it : white_black_tmp.actor_white){
-            if (node.actor_whitelist.find(it) != node.actor_whitelist.end()){
-               node.actor_whitelist.erase(it);
-            }
-         }
-
-         for ( auto& it : white_black_tmp.contract_black){
-            if (node.contract_blacklist.find(it) != node.contract_blacklist.end()){
-               node.contract_blacklist.erase(it);
-            }
-         }
-
-         for ( auto& it : white_black_tmp.contract_white){
-            if (node.contract_whitelist.find(it) != node.contract_whitelist.end()){
-               node.contract_whitelist.erase(it);
-            }
-         }
-
-         for ( auto& it : white_black_tmp.action_black){
-            auto black = std::make_pair(it.actor, it.action);
-            if (node.action_blacklist.find(black) != node.action_blacklist.end()){
-               node.action_blacklist.erase(black);
-            }
-         }
-
-         for ( auto& it : white_black_tmp.key_black){
-            if (node.key_blacklist.find(it) != node.key_blacklist.end()){
-               node.key_blacklist.erase(it);
-            }
-         }
+         for_each(white_black.action_black.begin(), white_black.action_black.end(), [&](const action_actor_type& act_actor){
+            node.action_blacklist.erase(std::make_pair(act_actor.actor, act_actor.action));
+         });
       } );
-      idump((db.get<whiteblacklist_object>()));
    } FC_CAPTURE_AND_RETHROW( (white_black) )
 }
 
