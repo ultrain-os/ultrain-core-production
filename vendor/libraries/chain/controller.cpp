@@ -143,25 +143,26 @@ struct controller_impl {
    std::list<contract_event_type> event_list;
 
    struct whiteblack_type {
-       const shared_set<account_name>&   actor_whitelist;
-       const shared_set<account_name>&   actor_blacklist;
-       const shared_set<account_name>&   contract_whitelist;
-       const shared_set<account_name>&   contract_blacklist;
-       const shared_set< pair<account_name, action_name> >& action_blacklist;
-       const shared_set<public_key_type>& key_blacklist;
+       bip::set<account_name>   actor_whitelist;
+       bip::set<account_name>   actor_blacklist;
+       bip::set<account_name>   contract_whitelist;
+       bip::set<account_name>   contract_blacklist;
+       bip::set< pair<account_name, action_name> > action_blacklist;
+       bip::set<public_key_type> key_blacklist;
+       whiteblack_type()=default;
        whiteblack_type(const shared_set<account_name>& actor_w, const shared_set<account_name>& actor_b,
                const shared_set<account_name>& contract_w, const shared_set<account_name>& contract_b,
                const shared_set< pair<account_name, action_name> >& action_b, const shared_set<public_key_type>& key_b):
-           actor_whitelist(actor_w),
-           actor_blacklist(actor_b),
-           contract_whitelist(contract_w),
-           contract_blacklist(contract_b),
-           action_blacklist(action_b),
-           key_blacklist(key_b)
+           actor_whitelist(actor_w.begin(),actor_w.end()),
+           actor_blacklist(actor_b.begin(),actor_b.end()),
+           contract_whitelist(contract_w.begin(),contract_w.end()),
+           contract_blacklist(contract_b.begin(),contract_b.end()),
+           action_blacklist(action_b.begin(),action_b.end()),
+           key_blacklist(key_b.begin(),key_b.end())
        {}
    };
 
-   whiteblack_type* whiteblack_list;
+   whiteblack_type whiteblack_list;
 
    /**
     *  Transactions that were undone by pop_block or abort_block, transactions
@@ -411,8 +412,6 @@ struct controller_impl {
          db.undo();
       }
 
-      const auto& wb_object = db.get<whiteblacklist_object>();
-      whiteblack_list = new whiteblack_type(wb_object.actor_whitelist,wb_object.actor_blacklist,wb_object.contract_whitelist,wb_object.contract_blacklist,wb_object.action_blacklist,wb_object.key_blacklist);
    }
 
    ~controller_impl() {
@@ -1378,6 +1377,8 @@ struct controller_impl {
 
          clear_expired_input_transactions();
       }
+      const auto& wb_object = db.get<whiteblacklist_object>();
+      whiteblack_list = whiteblack_type(wb_object.actor_whitelist,wb_object.actor_blacklist,wb_object.contract_whitelist,wb_object.contract_blacklist,wb_object.action_blacklist,wb_object.key_blacklist);
 
       guard_pending.cancel();
    } // start_block
@@ -1773,11 +1774,11 @@ struct controller_impl {
 
 
    void check_actor_list( const flat_set<account_name>& actors )const {
-      if( whiteblack_list->actor_whitelist.size() > 0 ) {
+      if( whiteblack_list.actor_whitelist.size() > 0 ) {
          vector<account_name> excluded;
          excluded.reserve( actors.size() );
          set_difference( actors.begin(), actors.end(),
-                         whiteblack_list->actor_whitelist.begin(), whiteblack_list->actor_whitelist.end(),
+                         whiteblack_list.actor_whitelist.begin(), whiteblack_list.actor_whitelist.end(),
                          std::back_inserter(excluded) );
          if( excluded.size() == 1 && excluded[0] == config::system_account_name )
              return ;
@@ -1785,11 +1786,11 @@ struct controller_impl {
                      "authorizing actor(s) in transaction are not on the actor whitelist: ${actors}",
                      ("actors", excluded)
                    );
-      } else if( whiteblack_list->actor_blacklist.size() > 0 ) {
+      } else if( whiteblack_list.actor_blacklist.size() > 0 ) {
          vector<account_name> blacklisted;
          blacklisted.reserve( actors.size() );
          set_intersection( actors.begin(), actors.end(),
-                           whiteblack_list->actor_blacklist.begin(), whiteblack_list->actor_blacklist.end(),
+                           whiteblack_list.actor_blacklist.begin(), whiteblack_list.actor_blacklist.end(),
                            std::back_inserter(blacklisted)
                          );
          ULTRAIN_ASSERT( blacklisted.size() == 0, actor_blacklist_exception,
@@ -1802,13 +1803,13 @@ struct controller_impl {
    void check_contract_list( account_name code )const {
       if ( code == config::system_account_name )
           return ;
-      if( whiteblack_list->contract_whitelist.size() > 0 ) {
-         ULTRAIN_ASSERT( whiteblack_list->contract_whitelist.find( code ) != whiteblack_list->contract_whitelist.end(),
+      if( whiteblack_list.contract_whitelist.size() > 0 ) {
+         ULTRAIN_ASSERT( whiteblack_list.contract_whitelist.find( code ) != whiteblack_list.contract_whitelist.end(),
                      contract_whitelist_exception,
                      "account '${code}' is not on the contract whitelist", ("code", code)
                    );
-      } else if( whiteblack_list->contract_blacklist.size() > 0 ) {
-         ULTRAIN_ASSERT( whiteblack_list->contract_blacklist.find( code ) == whiteblack_list->contract_blacklist.end(),
+      } else if( whiteblack_list.contract_blacklist.size() > 0 ) {
+         ULTRAIN_ASSERT( whiteblack_list.contract_blacklist.find( code ) == whiteblack_list.contract_blacklist.end(),
                      contract_blacklist_exception,
                      "account '${code}' is on the contract blacklist", ("code", code)
                    );
@@ -1816,8 +1817,8 @@ struct controller_impl {
    }
 
    void check_action_list( account_name code, action_name action )const {
-      if( whiteblack_list->action_blacklist.size() > 0 ) {
-         ULTRAIN_ASSERT( whiteblack_list->action_blacklist.find( std::make_pair(code, action) ) == whiteblack_list->action_blacklist.end(),
+      if( whiteblack_list.action_blacklist.size() > 0 ) {
+         ULTRAIN_ASSERT( whiteblack_list.action_blacklist.find( std::make_pair(code, action) ) == whiteblack_list.action_blacklist.end(),
                      action_blacklist_exception,
                      "action '${code}::${action}' is on the action blacklist",
                      ("code", code)("action", action)
@@ -1826,8 +1827,8 @@ struct controller_impl {
    }
 
    void check_key_list( const public_key_type& key )const {
-      if( whiteblack_list->key_blacklist.size() > 0 ) {
-         ULTRAIN_ASSERT( whiteblack_list->key_blacklist.find( key ) == whiteblack_list->key_blacklist.end(),
+      if( whiteblack_list.key_blacklist.size() > 0 ) {
+         ULTRAIN_ASSERT( whiteblack_list.key_blacklist.find( key ) == whiteblack_list.key_blacklist.end(),
                      key_blacklist_exception,
                      "public key '${key}' is on the key blacklist",
                      ("key", key)
