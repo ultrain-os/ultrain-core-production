@@ -205,26 +205,17 @@ namespace ultrainio {
         return false;
     }
 
-    bool Scheduler::isLaterMsg(const ProposeMsg &propose) {
+    bool Scheduler::isLaterMsg(const ProposeMsg& propose) const {
         uint32_t currentBlockNum = UranusNode::getInstance()->getBlockNum();
-        ConsensusPhase current_phase = UranusNode::getInstance()->getPhase();
-
-        if (propose.block.block_num() > currentBlockNum) {
+        ConsensusPhase currentPhase = UranusNode::getInstance()->getPhase();
+        if (propose.block.block_num() > currentBlockNum
+                || (propose.block.block_num() == currentBlockNum && currentPhase == kPhaseInit)) {
             return true;
         }
-
-        if ((propose.block.block_num() == currentBlockNum)
-            // Default genesis block is #1, so the first block
-            // nodes are working on is #2.
-            // && (currentBlockNum == 2)
-            && (current_phase == kPhaseInit)) {
-            return true;
-        }
-
         return false;
     }
 
-    bool Scheduler::processLaterMsg(const EchoMsg &echo) {
+    bool Scheduler::processLaterMsg(const EchoMsg& echo) {
         RoundInfo info(BlockHeader::num_from_id(echo.blockId), echo.phase + echo.baxCount);
         auto itor = m_cacheEchoMsgMap.find(info);
         if (itor == m_cacheEchoMsgMap.end()) {
@@ -258,43 +249,43 @@ namespace ultrainio {
         return false;
     }
 
-    bool Scheduler::isLaterMsgAndCache(const ProposeMsg &propose, bool &duplicate) {
-        duplicate = false;
-        if (isLaterMsg(propose)) {
-            RoundInfo info(propose.block.block_num(), kPhaseBA0);
-
-            auto itor = m_cacheProposeMsgMap.find(info);
-            if (itor == m_cacheProposeMsgMap.end()) {
-                if (m_cacheProposeMsgMap.size() >= m_maxCachePropose) {
-                    //NOTE: itor will be invalid after the operation below.
-                    clearOldCachedProposeMsg();
-                }
-                std::vector<ProposeMsg> propose_vector;
-                propose_vector.push_back(propose);
-                m_cacheProposeMsgMap.insert(make_pair(info, propose_vector));
-            } else {
-                auto id = propose.block.id();
-                std::vector<ProposeMsg> &pv = itor->second;
-                for (size_t i = 0; i < pv.size(); i++) {
-                    if (pv[i].block.proposer == propose.block.proposer && pv[i].block.id() == id) {
-                        ilog("duplicate propose msg!!! id:${id} pk:${pk} blockNum:${b} phase:${p}",
-                             ("id", short_hash(propose.block.id()))("pk", propose.block.proposer)("b", info.blockNum)("p",
-                                                                                                           info.phase));
-                        duplicate = true;
-                        return true;
-                    }
-                }
-
-                if (pv.size() < m_maxCommitteeSize) {
-                    pv.emplace_back(propose);
-                }
-                else {
-                    wlog("Size of vector in cacheProposeMsgMap exceeds ${mcs}", ("mcs", m_maxCommitteeSize));
+    bool Scheduler::duplicated(const ProposeMsg& propose) const {
+        RoundInfo info(propose.block.block_num(), kPhaseBA0);
+        auto itor = m_cacheProposeMsgMap.find(info);
+        if (itor != m_cacheProposeMsgMap.end()) {
+            for (auto e : itor->second) {
+                if (e.block.id() == propose.block.id()) {
+                    return true;
                 }
             }
-            return true;
         }
         return false;
+    }
+
+    bool Scheduler::processLaterMsg(const ProposeMsg& propose) {
+        RoundInfo info(propose.block.block_num(), kPhaseBA0);
+        auto itor = m_cacheProposeMsgMap.find(info);
+        if (itor == m_cacheProposeMsgMap.end()) {
+            if (m_cacheProposeMsgMap.size() >= m_maxCachePropose) {
+                //NOTE: itor will be invalid after the operation below.
+                clearOldCachedProposeMsg();
+            }
+            std::vector<ProposeMsg> proposeV;
+            proposeV.push_back(propose);
+            m_cacheProposeMsgMap.insert(make_pair(info, proposeV));
+        } else {
+            if (itor->second.size() < m_maxCommitteeSize) {
+                itor->second.emplace_back(propose);
+            }
+            else {
+                wlog("Size of vector in cacheProposeMsgMap exceeds ${mcs}", ("mcs", m_maxCommitteeSize));
+            }
+        }
+        return true;
+    }
+
+    bool Scheduler::sameBlockNumAndPhase(const ProposeMsg& propose) const {
+        return propose.block.block_num() == UranusNode::getInstance()->getBlockNum() && kPhaseBA0 == UranusNode::getInstance()->getPhase();
     }
 
     bool Scheduler::loopback(const EchoMsg& echo) const {
@@ -320,7 +311,7 @@ namespace ultrainio {
 
     bool Scheduler::processBeforeMsg(const EchoMsg &echo) {
         RoundInfo info(BlockHeader::num_from_id(echo.blockId), echo.phase + echo.baxCount);
-        echo_msg_buff echo_msg_map;
+        BlockIdVoterSetMap echo_msg_map;
 
         if (echo.phase == kPhaseBA0) {
             return false;
@@ -344,7 +335,7 @@ namespace ultrainio {
         if (itor != map_it->second.end()) {
             //dlog("processBeforeMsg.blockhash is already exist.");
             if (updateAndMayResponse(itor->second, echo, false)) {
-                if (isMinEcho(itor->second,map_it->second) || isMinFEcho(itor->second,map_it->second)) {
+                if (isMinEcho(itor->second, map_it->second) || isMinFEcho(itor->second, map_it->second)) {
                     return true;
                 }
             }
@@ -403,7 +394,7 @@ namespace ultrainio {
 
         for (auto vector_itor = m_cacheEchoMsgMap.begin(); vector_itor != m_cacheEchoMsgMap.end(); ++vector_itor) {
             if (vector_itor->first.blockNum > maxBlockNum) {
-                echo_msg_buff echo_msg_map;
+                BlockIdVoterSetMap echo_msg_map;
 
                 for (auto &echo : vector_itor->second) {
                     auto itor = echo_msg_map.find(echo.blockId);
@@ -438,7 +429,7 @@ namespace ultrainio {
         for (auto vector_itor = m_cacheEchoMsgMap.begin(); vector_itor != m_cacheEchoMsgMap.end(); ++vector_itor) {
             if ((vector_itor->first.blockNum == UranusNode::getInstance()->getBlockNum())
                 && (vector_itor->first.phase >= Config::kMaxBaxCount)) {
-                echo_msg_buff echo_msg_map;
+                BlockIdVoterSetMap echo_msg_map;
 
                 for (auto &echo : vector_itor->second) {
                     auto itor = echo_msg_map.find(echo.blockId);
@@ -463,7 +454,7 @@ namespace ultrainio {
         return false;
     }
 
-    bool Scheduler::isValid(const EchoMsg &echo) {
+    bool Scheduler::isValid(const EchoMsg &echo) const {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(blockNum);
         PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
@@ -483,31 +474,17 @@ namespace ultrainio {
         return true;
     }
 
-    bool Scheduler::isBroadcast(const ProposeMsg &propose) {
-        uint32_t blockNum = propose.block.block_num();
-        uint32_t myBlockNum = UranusNode::getInstance()->getBlockNum();
-
-        if (blockNum != myBlockNum) {
-            dlog("invalid propose msg, only broadcast. blockNum = ${id1}. local blockNum = ${id2}",
-                 ("id1", blockNum)("id2", myBlockNum));
-            return true;
-        }
-
-        if (kPhaseBA0 != UranusNode::getInstance()->getPhase()) {
-            dlog("invalid propose msg, only broadcast. phase = ${phase}", ("phase", uint32_t(UranusNode::getInstance()->getPhase())));
-            return true;
-        }
-
-        return false;
+    bool Scheduler::loopback(const ProposeMsg& propose) const {
+        return StakeVoteBase::getMyAccount() == propose.block.proposer;
     }
 
-    bool Scheduler::isValid(const ProposeMsg &propose) {
-        AccountName myAccount = StakeVoteBase::getMyAccount();
-        if (myAccount == propose.block.proposer) {
-            elog("invalid propose. msg loopback. account : ${account}", ("account", std::string(myAccount)));
-            return false;
-        }
+    bool Scheduler::obsolete(const ProposeMsg& propose) const {
+        uint32_t blockNum = propose.block.block_num();
+        uint32_t myBlockNum = UranusNode::getInstance()->getBlockNum();
+        return blockNum < myBlockNum || (blockNum == myBlockNum && UranusNode::getInstance()->getPhase() > kPhaseBA0);
+    }
 
+    bool Scheduler::isValid(const ProposeMsg& propose) const {
         if (propose.block.previous != getPreviousBlockhash()) {
             elog("block ${blockId} 's previous hash ${previous} not equal current head : ${head}",
                     ("blockId", propose.block.id())("previous", propose.block.previous)("head", getPreviousBlockhash()));
@@ -521,10 +498,15 @@ namespace ultrainio {
             return false;
         }
 
-        const auto c_mroot = stakeVotePtr->getCommitteeMroot();
-        if (c_mroot != propose.block.committee_mroot) {
+        if (!stakeVotePtr->isProposer(propose.block.proposer, UranusNode::getInstance()->getNonProducingNode())) {
+            elog("send propose by non proposer. account : ${account}", ("account", std::string(propose.block.proposer)));
+            return false;
+        }
+
+        const auto mroot = stakeVotePtr->getCommitteeMroot();
+        if (mroot != propose.block.committee_mroot) {
             elog("verify committee mroot error. own c_mroot : ${m1}, block mroot ${m2}",
-                 ("m1", c_mroot) ("m2", propose.block.committee_mroot));
+                 ("m1", mroot) ("m2", propose.block.committee_mroot));
             return false;
         }
 
@@ -560,17 +542,11 @@ namespace ultrainio {
                 latestCheckPointId = checkPoint.getPreCheckPointBlockId();
             }
         }
-        if (!stakeVotePtr->isProposer(propose.block.proposer, UranusNode::getInstance()->getNonProducingNode())) {
-            elog("send propose by non proposer. account : ${account}", ("account", std::string(propose.block.proposer)));
-            return false;
-        }
         return true;
     }
 
     bool Scheduler::fastHandleMessage(const ProposeMsg &propose) {
-        if (isBroadcast(propose)) {
-            return false;
-        }
+        ULTRAIN_ASSERT(sameBlockNumAndPhase(propose), chain::chain_exception, "unexpected result");
 
         if (!isValid(propose)) {
             return false;
@@ -635,25 +611,29 @@ namespace ultrainio {
         return true;
     }
 
-    bool Scheduler::handleMessage(const ProposeMsg &propose) {
-        bool duplicate = false;
-        if (isLaterMsgAndCache(propose, duplicate)) {
-            return (!duplicate);
-        }
-
-        if (isBroadcast(propose)) {
+    bool Scheduler::handleMessage(const ProposeMsg& propose) {
+        if (loopback(propose)) {
             return false;
         }
 
-        if (isDuplicate(propose)) {
+        if (obsolete(propose)) {
             return false;
         }
+
+        if (isLaterMsg(propose)) {
+            if (duplicated(propose)) {
+                return false;
+            }
+            return processLaterMsg(propose);
+        }
+
+        ULTRAIN_ASSERT(sameBlockNumAndPhase(propose), chain::chain_exception, "unexpected result");
 
         if (!isValid(propose)) {
             return false;
         }
 
-        if ((UranusNode::getInstance()->isSyncing()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
+        if (UranusNode::getInstance()->isSyncing()) {
             dlog("receive propose msg. node is syncing. blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
             return true;
         }
@@ -678,7 +658,6 @@ namespace ultrainio {
                 if (MsgMgr::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
                     EchoMsg echo = MsgBuilder::constructMsg(propose);
                     ULTRAIN_ASSERT(verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error, check bls private key pls");
-                    //echo.timestamp = UranusNode::getInstance()->getRoundCount();
                     UranusNode::getInstance()->sendMessage(echo);
                     insert(echo);
                 }
@@ -902,22 +881,18 @@ namespace ultrainio {
         return true;
     }
 
-    bool Scheduler::isMin2FEcho(int totalVoterWeight, uint32_t phasecnt) {
+    bool Scheduler::is2fEcho(const VoterSet& voterSet, uint32_t phaseCount) const {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        if ((totalVoterWeight >= stakeVotePtr->getEmptyBlockThreshold()) && (phasecnt >= Config::kMaxBaxCount)) {
-            return true;
-        }
+        int totalVoterWeight = voterSet.getTotalVoterWeight();
 
-        if ((totalVoterWeight >= stakeVotePtr->getNextRoundThreshold()) && (phasecnt < Config::kMaxBaxCount)) {
-            return true;
+        if (phaseCount < Config::kMaxBaxCount) {
+            return totalVoterWeight >= stakeVotePtr->getNextRoundThreshold();
+        } else if (phaseCount >= Config::kMaxBaxCount && phaseCount < Config::kDeadlineCnt) {
+            return totalVoterWeight >= stakeVotePtr->getEmptyBlockThreshold();
+        } else {
+            return totalVoterWeight >= stakeVotePtr->getEmptyBlock2Threshold();
         }
-
-        if ((totalVoterWeight >= stakeVotePtr->getEmptyBlock2Threshold()) && (phasecnt >= Config::kDeadlineCnt)) {
-            return true;
-        }
-
-        return false;
     }
 
     bool Scheduler::isMinPropose(const ProposeMsg &proposeMsg) {
@@ -932,12 +907,12 @@ namespace ultrainio {
         return true;
     }
 
-    bool Scheduler::isMinFEcho(const VoterSet& voterSet, const echo_msg_buff& msgbuff) const {
+    bool Scheduler::isMinFEcho(const VoterSet& voterSet, const BlockIdVoterSetMap& blockIdVoterSetMap) const {
         std::shared_ptr<StakeVoteBase> stakeVotePtr
                 = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(voterSet.commonEchoMsg.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         uint32_t priority = stakeVotePtr->proposerPriority(voterSet.commonEchoMsg.proposer, kPhaseBA0, 0);
-        for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
+        for (auto itor = blockIdVoterSetMap.begin(); itor != blockIdVoterSetMap.end(); ++itor) {
             if (itor->second.getTotalVoterWeight() >= stakeVotePtr->getSendEchoThreshold()) {
                 if (stakeVotePtr->proposerPriority(itor->second.commonEchoMsg.proposer, kPhaseBA0, 0) < priority) {
                     return false;
@@ -948,25 +923,14 @@ namespace ultrainio {
     }
 
     bool Scheduler::isMinFEcho(const VoterSet& voterSet) const {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr
-                = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(voterSet.commonEchoMsg.blockId));
-        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        uint32_t priority = stakeVotePtr->proposerPriority(voterSet.commonEchoMsg.proposer, kPhaseBA0, 0);
-        for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
-            if (itor->second.getTotalVoterWeight() >= stakeVotePtr->getSendEchoThreshold()) {
-                if (stakeVotePtr->proposerPriority(itor->second.commonEchoMsg.proposer, kPhaseBA0, 0) < priority) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return isMinFEcho(voterSet, m_echoMsgMap);
     }
 
-    bool Scheduler::isMinEcho(const VoterSet& voterSet, const echo_msg_buff &msgbuff) const {
+    bool Scheduler::isMinEcho(const VoterSet& voterSet, const BlockIdVoterSetMap& blockIdVoterSetMap) const {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(voterSet.commonEchoMsg.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         uint32_t priority = stakeVotePtr->proposerPriority(voterSet.commonEchoMsg.proposer, kPhaseBA0, 0);
-        for (auto itor = msgbuff.begin(); itor != msgbuff.end(); ++itor) {
+        for (auto itor = blockIdVoterSetMap.begin(); itor != blockIdVoterSetMap.end(); ++itor) {
             if (stakeVotePtr->proposerPriority(itor->second.commonEchoMsg.proposer, kPhaseBA0, 0) < priority) {
                 return false;
             }
@@ -975,15 +939,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::isMinEcho(const VoterSet& voterSet) const {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(voterSet.commonEchoMsg.blockId));
-        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        uint32_t priority = stakeVotePtr->proposerPriority(voterSet.commonEchoMsg.proposer, kPhaseBA0, 0);
-        for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); ++itor) {
-            if (stakeVotePtr->proposerPriority(itor->second.commonEchoMsg.proposer, kPhaseBA0, 0) < priority) {
-                return false;
-            }
-        }
-        return true;
+        return isMinEcho(voterSet, m_echoMsgMap);
     }
 
     size_t Scheduler::runScheduledTrxs(std::vector<chain::transaction_id_type> &trxs,
@@ -1161,8 +1117,8 @@ namespace ultrainio {
         return count;
     }
 
-    bool Scheduler::initProposeMsg(ProposeMsg *propose_msg) {
-        auto &block = propose_msg->block;
+    bool Scheduler::initProposeMsg(ProposeMsg& proposeMsg) {
+        auto& block = proposeMsg.block;
         auto start_timestamp = fc::time_point::now();
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
         size_t count2 = 0, count3 = 0;
@@ -1258,7 +1214,7 @@ namespace ultrainio {
                  ("num", block.transactions.size())
                  ("proposer", std::string(block.proposer))
                  ("signature", short_sig(block.signature))
-                 ("mroot", block.committee_mroot)
+                 ("mroot", short_hash(block.committee_mroot))
                  );
         } catch (const chain::guard_exception& e ) {
             edump((e.to_detail_string()));
@@ -1352,27 +1308,24 @@ namespace ultrainio {
         std::shared_ptr<StakeVoteBase> stakeVotePtr
                 = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
-        uint32_t min_priority = stakeVotePtr->getProposerNumber();
+        uint32_t minPriority = stakeVotePtr->getProposerNumber();
         dlog("produceBaxBlock begin.");
-        for (auto map_itor = m_echoMsgAllPhase.begin(); map_itor != m_echoMsgAllPhase.end(); ++map_itor) {
+        for (auto mapItor = m_echoMsgAllPhase.begin(); mapItor != m_echoMsgAllPhase.end(); ++mapItor) {
             if ((UranusNode::getInstance()->getPhase() + UranusNode::getInstance()->getBaxCount()) >= Config::kMaxBaxCount) {
-                if (map_itor->first.phase < Config::kMaxBaxCount) {
+                if (mapItor->first.phase < Config::kMaxBaxCount) {
                     continue;
                 }
             }
 
-            echo_msg_buff &echo_msg_map = map_itor->second;
-            for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
-//                if (((echo_itor->second.totalVoter >= THRESHOLD_NEXT_ROUND) && (map_itor->first.phase < Config::kMaxBaxCount))
-//                    || ((echo_itor->second.totalVoter >= THRESHOLD_EMPTY_BLOCK) && (map_itor->first.phase >= Config::kMaxBaxCount))) {
-                if (isMin2FEcho(echo_itor->second.getTotalVoterWeight(), map_itor->first.phase)) {
+            for (auto itor : mapItor->second) {
+                if (is2fEcho(itor.second, mapItor->first.phase)) {
                     dlog("found >= 2f + 1 echo. blocknum = ${blocknum} phase = ${phase}",
-                         ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase));
-                    uint32_t priority = stakeVotePtr->proposerPriority(echo_itor->second.commonEchoMsg.proposer, kPhaseBA0, 0);
-                    if (min_priority >= priority) {
+                         ("blocknum",mapItor->first.blockNum)("phase",mapItor->first.phase));
+                    uint32_t priority = stakeVotePtr->proposerPriority(itor.second.commonEchoMsg.proposer, kPhaseBA0, 0);
+                    if (minPriority >= priority) {
                         dlog("min proof change.");
-                        voterSet = echo_itor->second;
-                        min_priority = priority;
+                        voterSet = itor.second;
+                        minPriority = priority;
                     }
                 }
             }
@@ -1381,22 +1334,20 @@ namespace ultrainio {
                 continue;
             }
 
-            dlog("produceBaxBlock.min_hash = ${hash}",("hash", voterSet.commonEchoMsg.blockId));
-
             if (isEmpty(voterSet.commonEchoMsg.blockId)) {
                 dlog("produceBaxBlock.produce empty Block. save VoterSet in bax blockId = ${blockId}", ("blockId", voterSet.commonEchoMsg.blockId));
                 m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
                         stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
                 return emptyBlock();
             }
-            auto propose_itor = m_proposerMsgMap.find(voterSet.commonEchoMsg.blockId);
-            if (propose_itor != m_proposerMsgMap.end()
-                    && stakeVotePtr->proposerPriority(propose_itor->second.block.proposer, kPhaseBA0, 0) == min_priority) {
+            auto proposeItor = m_proposerMsgMap.find(voterSet.commonEchoMsg.blockId);
+            if (proposeItor != m_proposerMsgMap.end()
+                    && stakeVotePtr->proposerPriority(proposeItor->second.block.proposer, kPhaseBA0, 0) == minPriority) {
                 dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase} save VoterSet in bax blockId = ${blockId}",
-                     ("blocknum",map_itor->first.blockNum)("phase",map_itor->first.phase)("blockId", voterSet.commonEchoMsg.blockId));
+                     ("blocknum", mapItor->first.blockNum)("phase", mapItor->first.phase)("blockId", voterSet.commonEchoMsg.blockId));
                 m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
                         stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
-                return propose_itor->second.block;
+                return proposeItor->second.block;
             }
             dlog("produceBaxBlock.> 2f + 1 echo. hash = ${hash} can not find it's propose.",("hash", voterSet.commonEchoMsg.blockId));
         }
@@ -1421,8 +1372,7 @@ namespace ultrainio {
             dlog("finish display_echo. phase = ${phase} size = ${size} totalVoter = ${totalVoter} block_hash : ${block_hash}",
                  ("phase", (uint32_t) itor->second.commonEchoMsg.phase)("size", itor->second.accountPool.size())(
                      "totalVoter", itor->second.getTotalVoterWeight())("block_hash", short_hash(itor->second.commonEchoMsg.blockId)));
-            if (isMin2FEcho(itor->second.getTotalVoterWeight(), phase)) {
-                //dlog("found >= 2f + 1 echo, phase+cnt = ${phase}",("phase",phase));
+            if (is2fEcho(itor->second, phase)) {
                 uint32_t priority = stakeVotePtr->proposerPriority(itor->second.commonEchoMsg.proposer, kPhaseBA0, 0);
                 if (minPriority >= priority) {
                     minBlockId = itor->second.commonEchoMsg.blockId;
@@ -1456,10 +1406,9 @@ namespace ultrainio {
             dlog("produce empty Block");
             return emptyBlock();
         }
-        auto propose_itor = m_proposerMsgMap.find(minBlockId);
-        if (propose_itor != m_proposerMsgMap.end()) {
-            //dlog("find propose msg ok.");
-            return propose_itor->second.block;
+        auto proposeItor = m_proposerMsgMap.find(minBlockId);
+        if (proposeItor != m_proposerMsgMap.end()) {
+            return proposeItor->second.block;
         }
         dlog("> 2f + 1 echo ${hash} can not find it's propose.", ("hash", minBlockId));
         if (kPhaseBA0 == UranusNode::getInstance()->getPhase()) {
@@ -1727,16 +1676,6 @@ namespace ultrainio {
 
         // We are already pre-running ba0_block
         if (pbs && m_currentPreRunBa0TrxIndex >= 0 && !force_push_whole_block) {
-            // first check if ba1 block is indeed ba0 block.
-            //const chain::signed_block &b = m_ba0Block;
-            /*
-            ilog("------ compare ${pk1} ${pk2}, ${pf1} ${pf2}, ${num1} ${num2}, ${t1} ${t2}, ${s1} ${s2}",
-                 ("pk1", b.proposerPk)("pk2", block->proposerPk)
-                 ("pf1", b.proposerProof)("pf2", block->proposerProof)
-                 ("num1", b.block_num())("num2", block->block_num())
-                 ("t1", b.timestamp)("t2", block->timestamp)
-                 ("s2", block->producer));
-            */
             if (theSameOne(m_ba0Block, block)) {
                 ilog("------ Finish pre-running ba0 block from ${count}", ("count", m_currentPreRunBa0TrxIndex));
                 try {
@@ -1862,7 +1801,7 @@ namespace ultrainio {
         return &m_ba0Block;
     }
 
-    ultrainio::chain::block_id_type Scheduler::getPreviousBlockhash() {
+    BlockIdType Scheduler::getPreviousBlockhash() const {
         const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
         return chain.head_block_id();
     }
@@ -2027,7 +1966,6 @@ namespace ultrainio {
         blockPtr->committee_mroot = bh.committee_mroot;
         blockPtr->header_extensions = bh.header_extensions;
         blockPtr->proposer = name("utrio.empty");
-        // Discard the temp block.
         chain.abort_block();
         return blockPtr;
     }
@@ -2089,11 +2027,6 @@ namespace ultrainio {
             return false;
         }
         return Validator::verify<CommonEchoMsg>(echo.blsSignature, echo, blsPk);
-    }
-
-    bool Scheduler::isDuplicate(const ProposeMsg& proposeMsg) {
-        auto itor = m_proposerMsgMap.find(proposeMsg.block.id());
-        return itor != m_proposerMsgMap.end();
     }
 
     bool Scheduler::hasMultiSignPropose(const ProposeMsg& propose) {

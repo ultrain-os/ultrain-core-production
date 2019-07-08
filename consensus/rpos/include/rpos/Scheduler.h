@@ -38,39 +38,27 @@ namespace ultrainio {
         }
     };
 
-    typedef std::map<chain::block_id_type, VoterSet> echo_msg_buff;
-
     class LightClientProducer;
     class CommitteeSet;
     class UranusNode;
 
 class Scheduler : public std::enable_shared_from_this<Scheduler> {
     public:
+        typedef std::map<BlockIdType, VoterSet> BlockIdVoterSetMap;
+
         ~Scheduler();
+
         Scheduler();
 
         void reset();
 
-        bool isMinPropose(const ProposeMsg &propose_msg);
-        bool isMin2FEcho(int totalVoterWeight, uint32_t phasecnt);
-        bool isMinFEcho(const VoterSet& voterSet) const;
-        bool isMinFEcho(const VoterSet& voterSet, const echo_msg_buff& msgbuff) const;
-        bool isMinEcho(const VoterSet& voterSet) const;
-        bool isMinEcho(const VoterSet& voterSet, const echo_msg_buff& msgbuff) const;
         Block produceTentativeBlock();
-        bool initProposeMsg(ProposeMsg *propose_msg);
 
-        bool isLaterMsg(const ProposeMsg &propose);
+        bool initProposeMsg(ProposeMsg& proposeMsg);
 
-        bool isLaterMsgAndCache(const ProposeMsg &propose, bool &duplicate);
+        bool insert(const ProposeMsg& propose);
 
-        bool isValid(const ProposeMsg &propose);
-
-        bool isBroadcast(const ProposeMsg &propose);
-
-        bool insert(const EchoMsg &echo);
-
-        bool insert(const ProposeMsg &propose);
+        bool insert(const EchoMsg& echo);
 
         bool handleMessage(const EchoMsg &echo);
 
@@ -93,7 +81,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         void init();
 
-        ultrainio::chain::block_id_type getPreviousBlockhash();
+        BlockIdType getPreviousBlockhash() const;
 
         void moveEchoMsg2AllPhaseMap();
 
@@ -163,11 +151,8 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         bool verifyMyBlsSignature(const EchoMsg& echo) const;
 
     private:
-
         // This function is time consuming, please cache the result empty block.
         std::shared_ptr<Block> generateEmptyBlock();
-
-        bool isDuplicate(const ProposeMsg& proposeMsg);
 
         bool updateAndMayResponse(VoterSet &info, const EchoMsg &echo, bool response);
 
@@ -208,7 +193,34 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         bool duplicated(const EchoMsg& echo) const;
 
-        bool isValid(const EchoMsg &echo);
+        bool isValid(const EchoMsg &echo) const;
+
+        // propose relative
+        bool loopback(const ProposeMsg& propose) const;
+
+        bool obsolete(const ProposeMsg& propose) const;
+
+        bool duplicated(const ProposeMsg& propose) const;
+
+        bool isLaterMsg(const ProposeMsg& propose) const;
+
+        bool processLaterMsg(const ProposeMsg& propose);
+
+        bool sameBlockNumAndPhase(const ProposeMsg& propose) const;
+
+        bool isValid(const ProposeMsg& propose) const;
+
+        bool is2fEcho(const VoterSet& voterSet, uint32_t phaseCount) const;
+
+        bool isMinFEcho(const VoterSet& voterSet, const BlockIdVoterSetMap& blockIdVoterSetMap) const;
+
+        bool isMinFEcho(const VoterSet& voterSet) const;
+
+        bool isMinEcho(const VoterSet& voterSet, const BlockIdVoterSetMap& blockIdVoterSetMap) const;
+
+        bool isMinEcho(const VoterSet& voterSet) const;
+
+        bool isMinPropose(const ProposeMsg& proposeMsg);
 
         // data member
         Block m_ba0Block;
@@ -217,12 +229,12 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         bool m_voterPreRunBa0InProgress = false;
         int m_currentPreRunBa0TrxIndex = -1;
         int m_initTrxCount = 0;
-        std::map<chain::block_id_type, ProposeMsg> m_proposerMsgMap;
-        std::map<chain::block_id_type, VoterSet> m_echoMsgMap;
+        std::map<BlockIdType, ProposeMsg> m_proposerMsgMap;
+        BlockIdVoterSetMap m_echoMsgMap;
         std::map<AccountName, chain::block_id_type> m_committeeVoteBlock;
         std::map<RoundInfo, std::vector<ProposeMsg>> m_cacheProposeMsgMap;
         std::map<RoundInfo, std::vector<EchoMsg>> m_cacheEchoMsgMap;
-        std::map<RoundInfo, echo_msg_buff> m_echoMsgAllPhase;
+        std::map<RoundInfo, BlockIdVoterSetMap> m_echoMsgAllPhase;
         const uint32_t m_maxCacheEcho = 200;
         const uint32_t m_maxCachePropose = 100;
         const uint32_t m_maxCommitteeSize = 1000; //This is not strict, just to limit cache size.

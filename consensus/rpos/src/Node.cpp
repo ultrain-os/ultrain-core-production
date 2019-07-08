@@ -299,9 +299,8 @@ namespace ultrainio {
         if (kPhaseBA0 == phase) {
             if (MsgMgr::getInstance()->isProposer(blockNum)) {
                 ProposeMsg propose;
-                bool ret = m_schedulerPtr->initProposeMsg(&propose);
+                bool ret = m_schedulerPtr->initProposeMsg(propose);
                 ULTRAIN_ASSERT(ret, chain::chain_exception, "Init propose msg failed");
-                dlog("vote.propose.block_hash : ${block_hash}", ("block_hash", short_hash(propose.block.id())));
                 m_schedulerPtr->insert(propose);
                 sendMessage(propose);
                 if (MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
