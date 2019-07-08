@@ -5,7 +5,7 @@ import os
 import time
 import sys
 #global var
-nodconfig="/root/.local/share/ultrainio/nodultrain/config/config.ini"
+nodconfig=os.environ['HOME']+"/.local/share/ultrainio/nodultrain/config/config.ini"
 
 #write mongo start num
 def start_num(blk_num):
