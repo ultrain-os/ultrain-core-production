@@ -26,7 +26,7 @@ class CreateAccount(unittest.TestCase):
 
     # 测试账号是否正确
     def test_create_account( self ):
-        #time.sleep( 20 )
+        time.sleep( 20 )
         j = json.loads(requests.get(Config.get_account_info_url,data = json.dumps({"account_name":self.name})).text)
         self.assertEqual( j["account_name"] , self.name )
         self.assertEqual( j["ram_quota"], 0 )

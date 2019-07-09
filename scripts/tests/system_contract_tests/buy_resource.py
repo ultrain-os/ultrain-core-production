@@ -6,48 +6,49 @@ import json
 import sys
 sys.path.append("..")
 from config import *
+from general_func import *
 class BuyResourceLease(unittest.TestCase):
+    _name = "root3"
+    _is_bought = False
+    _res_num = 0
+    _res_day = 0
+    _modify_blockheight = 0
+    _is_found = False
 
-    name = name
-    #购买资源套餐
-    def buy_resource_lease( self ):
-        clultrain = '/root/workspace/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
-        return subprocess.call(clultrain + 'system resourcelease ultrainio  root  1 1  "ultrainio"', shell=True)
     # 测试购买资源
     def test_buy_resource_lease( self ):
-        self.assertEqual( buy_resource_lease(), 0 )
+        j = json.loads(requests.get(Config.get_info_url).text)
+        if (int(j["head_block_num"]) - self._modify_blockheight) < 360 :
+            return
+        if self._is_bought:
+            cmd_exec(Config.clultrain_path + ''' system resourcelease ultrainio  %s  1 0  "ultrainio" ''' % ( self._name))
+            self._res_num += 1
+        else:
+            cmd_exec(Config.clultrain_path + ''' system resourcelease ultrainio  %s  1 1  "ultrainio" ''' % ( self._name))
+            self._res_day = 1
+            self._res_num = 1
         time.sleep( 20 )
-        j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
-        assert (sellram_before-j["ram_quota"]) == 1024,'sellram account:'+recacc+' sell_ram:'+str(sellram_before-j["ram_quota"])+'!='+str(1024)
+        j = json.loads(requests.get(Config.get_table_url,data = json.dumps({"code":"ultrainio","scope":"ultrainio","table":"reslease","json":"true"})).text)
+        for i in range(0,len(j["rows"])):
+            if self._name == j["rows"][i]["owner"]:
+                self.assertEqual(self._res_num, int(j["rows"][i]["lease_num"]))
+                self.assertEqual(self._res_day, int(j["rows"][i]["end_block_height"] - j["rows"][i]["start_block_height"])/8640)
+                self._is_found = True
+        self.assertTrue(self._is_found)
 
-    def getaccresinfo( self, ip,acclist,nofindacc,leasenum,days,reslist):
-        for a in acclist:
-            j = json.loads(requests.get("http://"+ip+"/v1/chain/get_account_info",data = json.dumps({"account_name":a})).text)
-            if ("account_name" in j):
-                continue
-            nofindacc.append(a)
-        num = 1;
-        for a in acclist:
-            j = json.loads(requests.get("http://"+ip+"/v1/chain/get_table_records",data = json.dumps({"code":"ultrainio","scope":"ultrainio","table":"reslease","json":"true","limit":1000,"table_key":a})).text)
-            if len(j["rows"])== 0 :
-                reslist.append(a)
-                continue
-            if (a == j["rows"][0]["owner"]) and (leasenum == j["rows"][0]["lease_num"]):
-                print "-----"+str(num);
-                print "expect days:"+str(days);
-                startBlockNum = j["rows"][0]["start_block_height"]
-                endBlockNum = j["rows"][0]["end_block_height"]
-                lease_days = (endBlockNum - startBlockNum)/(6*60*24)
-                print "actual days:"+str(lease_days);
-                print "-----"+str(num);
-                num = num +1;
-                if lease_days == days :
-                    continue
-            reslist.append(a)
+    def getInitResInfo( self ):
+        j = json.loads(requests.get(Config.get_table_url,data = json.dumps({"code":"ultrainio","scope":"ultrainio","table":"reslease","json":"true"})).text)
+        for i in range(0,len(j["rows"])):
+            if self._name == j["rows"][i]["owner"]:
+                self._res_num = int(j["rows"][i]["lease_num"])
+                self._is_bought = True
+                self._res_day = (int(j["rows"][i]["end_block_height"]) - int(j["rows"][i]["start_block_height"]))/8640
+                self._modify_blockheight = int(j["rows"][i]["modify_block_height"])
+                break
+
     def setUp( self ):
         print('\n====BuyResourceLease init====')
-        self.create_account()
+        self.getInitResInfo()
 
     def tearDown( self ):
         print('\n====BuyResourceLease destroy====')
-        self.destroy_account()

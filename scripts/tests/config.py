@@ -5,3 +5,4 @@ class Config():
     base_url = 'http://127.0.0.1:8888/v1/chain'
     get_account_info_url = base_url + '/get_account_info'
     get_table_url = base_url + '/get_table_records'
+    get_info_url = base_url + '/get_chain_info'
