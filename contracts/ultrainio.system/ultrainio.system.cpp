@@ -320,15 +320,6 @@ namespace ultrainiosystem {
       }
       print(" native::delaccount contract account:" ,name{account} );
    }
-
-   void native::addwhiteblack(  ) {
-      require_auth( _self );
-   }
-
-   void native::rmwhiteblack( ) {
-      require_auth( _self );
-   }
-
 } /// ultrainio.system
 
 

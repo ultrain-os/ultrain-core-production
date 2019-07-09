@@ -484,6 +484,7 @@ void apply_ultrainio_delaccount(apply_context& context) {
 
 void apply_ultrainio_addwhiteblack(apply_context& context) {
    auto white_black = context.act.data_as<addwhiteblack>();
+   context.require_authorization( config::system_account_name );
 
    bool is_valid = false;
    auto check_func = [&](const account_name& name){
@@ -510,6 +511,8 @@ void apply_ultrainio_addwhiteblack(apply_context& context) {
       "ultrainio can't add to actor black");
    ULTRAIN_ASSERT( std::find(white_black.contract_black.begin(), white_black.contract_black.end(), config::system_account_name) == white_black.contract_black.end(), action_validate_exception,
       "ultrainio can't add to contract black");
+
+   //If parameters is empty
    ULTRAIN_ASSERT( is_valid, action_validate_exception, "addwhiteblack parameters not vaild, ${s}.", ("s", white_black));
 
    try {
@@ -530,6 +533,7 @@ void apply_ultrainio_addwhiteblack(apply_context& context) {
 
 void apply_ultrainio_rmwhiteblack(apply_context& context) {
    auto white_black = context.act.data_as<rmwhiteblack>();
+   context.require_authorization( config::system_account_name );
 
    bool is_valid = false;
    auto check_func = [&](const account_name& name){
@@ -549,6 +553,8 @@ void apply_ultrainio_rmwhiteblack(apply_context& context) {
       ULTRAIN_ASSERT( pk.valid(), action_validate_exception, "In rmwhiteblack, pk ${a} not vaild", ("a", pk));
       is_valid = true;
    });
+
+   //If parameters is empty
    ULTRAIN_ASSERT( is_valid, action_validate_exception, "rmwhiteblack parameters not vaild, ${s}.", ("s", white_black));
 
    try {

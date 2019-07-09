@@ -89,13 +89,13 @@ namespace ultrainiosystem {
                            std::vector<account_name>           contract_black;
                            std::vector<account_name>           contract_white;
                            std::vector<action_actor_type>      action_black;
-                           std::vector<ultrainio::public_key>  key_black; */);
+                           std::vector<ultrainio::public_key>  key_black; */) { };
 
          void rmwhiteblack( /*std::vector<account_name>           actor_black;
                            std::vector<account_name>           actor_white;
                            std::vector<account_name>           contract_black;
                            std::vector<account_name>           contract_white;
                            std::vector<action_actor_type>      action_black;
-                           std::vector<ultrainio::public_key>  key_black; */);
+                           std::vector<ultrainio::public_key>  key_black; */){ };
    };
 }

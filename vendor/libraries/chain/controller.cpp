@@ -434,7 +434,6 @@ struct controller_impl {
       authorization.add_indices(db);
       resource_limits.add_indices(db);
       bls_votes.add_indices(db);
-      // db.add_index<whiteblacklist_index>();
    }
 
    bool restore_contract_database_index(chainbase::database& worldstate_db, worldstate_reader::section_reader& section_reader,
@@ -1107,7 +1106,7 @@ struct controller_impl {
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
-      trx_context.enforce_whiteblacklist = gtrx.sender.empty() ? true : false;
+      trx_context.enforce_whiteblacklist = true;
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_deferred_trx( gtrx.published );
@@ -1356,6 +1355,9 @@ struct controller_impl {
       pending->_pending_block_state->header.committee_mroot = committee_mroot;
       pending->_pending_block_state->header.signature = sig;
 
+      const auto& wb_object = db.get<whiteblacklist_object>();
+      whiteblack_list = whiteblack_type(wb_object.actor_whitelist,wb_object.actor_blacklist,wb_object.contract_whitelist,wb_object.contract_blacklist,wb_object.action_blacklist,wb_object.key_blacklist);
+
       //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
          try {
@@ -1377,8 +1379,6 @@ struct controller_impl {
 
          clear_expired_input_transactions();
       }
-      const auto& wb_object = db.get<whiteblacklist_object>();
-      whiteblack_list = whiteblack_type(wb_object.actor_whitelist,wb_object.actor_blacklist,wb_object.contract_whitelist,wb_object.contract_blacklist,wb_object.action_blacklist,wb_object.key_blacklist);
 
       guard_pending.cancel();
    } // start_block

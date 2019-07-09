@@ -2039,12 +2039,12 @@ read_only::get_whiteblacklist_result read_only::get_whiteblacklist( const get_wh
     get_whiteblacklist_result result;
     const auto& d = db.db();
     const auto& wb_object = d.get<whiteblacklist_object>();
-    for( const auto& v: wb_object.actor_whitelist ){ result.actor_whitelist.emplace(v); }
-    for( const auto& v: wb_object.actor_blacklist ){ result.actor_blacklist.emplace(v); }
-    for( const auto& v: wb_object.contract_whitelist ){ result.contract_whitelist.emplace(v); }
-    for( const auto& v: wb_object.contract_blacklist ){ result.contract_blacklist.emplace(v); }
-    for( const auto& v: wb_object.action_blacklist ){ result.action_blacklist.emplace(v); }
-    for( const auto& v: wb_object.key_blacklist ){ result.key_blacklist.emplace(v); }
+    result.actor_whitelist.insert(wb_object.actor_whitelist.begin(), wb_object.actor_whitelist.end());
+    result.actor_blacklist.insert(wb_object.actor_blacklist.begin(), wb_object.actor_blacklist.end());
+    result.contract_whitelist.insert(wb_object.contract_whitelist.begin(), wb_object.contract_whitelist.end());
+    result.contract_blacklist.insert(wb_object.contract_blacklist.begin(), wb_object.contract_blacklist.end());
+    result.action_blacklist.insert(wb_object.action_blacklist.begin(), wb_object.action_blacklist.end());
+    result.key_blacklist.insert(wb_object.key_blacklist.begin(), wb_object.key_blacklist.end());
     return result;
 }
 
