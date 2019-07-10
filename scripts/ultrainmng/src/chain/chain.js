@@ -23,6 +23,8 @@ var WorldState = require("../worldstate/worldstate")
 var chainUtil = require("./util/chainUtil");
 var monitor = require("./monitor")
 var mongoUtil = require("./util/mongoUtil");
+var process = require('child_process');
+var filenameConstants = require("../common/constant/constants").filenameConstants;
 
 
 
@@ -59,6 +61,12 @@ var seedCheckCount = 0;
 
 //重启次数
 var restartCount = 0;
+
+/**
+ * 进程正在跑
+ * @type {boolean}
+ */
+var processRuning = false;
 
 
 /**
@@ -1371,12 +1379,52 @@ async function syncChainInfo() {
 }
 
 /**
+ *
+ * @returns {Promise<void>}
+ */
+async function checkNodProcess() {
+
+    let command = "ps axu | grep nodultrain";
+    process.exec(command, function (error, stdout, stderr, finish) {
+        try {
+            let runingFlag = false;
+            let nodFilePath = utils.formatHomePath(chainConfig.configFileData.local.nodpath) + "/" + filenameConstants.NOD_EXE_FILE;
+            logger.info("nod path:", nodFilePath);
+            if (error !== null) {
+                logger.error("exec ps nod error: " + error);
+            } else {
+                logger.info("exccmd success:" + command);
+                logger.info("command res :", stdout);
+                let resData = stdout.split("\n");
+                //logger.info("command resData :",resData.length);
+                for (let i = 0; i < resData.length; i++) {
+                    //logger.info("command line :",resData[i]);
+                    if (resData[i].indexOf(nodFilePath) != -1) {
+                        logger.info("nodultrain process is :", resData[i]);
+                        runingFlag = true;
+                        break;
+                    }
+                }
+
+                processRuning = runingFlag;
+            }
+        } catch (e) {
+            logger.error("checkNodProcess error:",e);
+        }
+
+    });
+}
+
+/**
  * 检查nod是否还存活
  * @returns {Promise<void>}
  */
 async function checkNodAlive() {
 
     logger.info("start to checkNodAlive....");
+
+    //检查程序进程
+    await checkNodProcess();
 
     let rsdata = await NodUltrain.checkAlive(chainConfig.nodPort);
     if (rsdata != null) {
@@ -1405,13 +1453,30 @@ async function checkNodAlive() {
                 await restartNod();
                 logger.info("nod restart end..");
             } else {
-                nodFailedTimes ++;
-                logger.info("nod is not alive,count("+nodFailedTimes+")");
-                NodUltrain.getNewestLog(chainConfig.getLocalConfigInfo("nodLogPath","/log"),function (log) {
+
+                if (chainConfig.isProducer() == false) {
+                    logger.info("I am a none-producer,need to check process");
+                    if (processRuning == true) {
+                        logger.info("I am a none-producer,and processRuning is running,need not check restart");
+                    } else {
+                        logger.error("I am a none-producer,and processRuning is not running,need check restart");
+                        nodFailedTimes++;
+                        logger.info("nod is not alive,count(" + nodFailedTimes + ")");
+                    }
+
+                } else {
+
+                    logger.info("I am a producer,and processRuning is "+processRuning);
+
+                    nodFailedTimes++;
+                    logger.info("nod is not alive,count(" + nodFailedTimes + ")");
+                }
+
+                NodUltrain.getNewestLog(chainConfig.getLocalConfigInfo("nodLogPath", "/log"), function (log) {
                     nodLogData = log;
                     if (utils.isNotNull(nodLogData)) {
                         let l = nodLogData.length;
-                        logger.info("get nod log data:",nodLogData.substring(l-100));
+                        logger.info("get nod log data:", nodLogData.substring(l - 100));
                     }
 
                 });

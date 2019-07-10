@@ -4,55 +4,54 @@ echo "deploy all files"
 
 # program
 # nodultrain
-echo "cp /root/miner_setup/files/program/nodultrain /root/"
-cp /root/miner_setup/files/program/nodultrain /root/
-chmod +x /root/nodultrain
+echo "cp ~/miner_setup/files/program/nodultrain ~/"
+cp ~/miner_setup/files/program/nodultrain ~/
+chmod +x ~/nodultrain
 # wss
-echo "cp /root/miner_setup/files/program/wssultrain /root/"
-cp /root/miner_setup/files/program/wssultrain /root/
-chmod +x /root/wssultrain
+echo "cp ~/miner_setup/files/program/wssultrain ~/"
+cp ~/miner_setup/files/program/wssultrain ~/
+chmod +x ~/wssultrain
 # ultrainmng
-echo "cp /root/miner_setup/files/ultrainmng/ /root/ -rf"
-cp /root/miner_setup/files/ultrainmng/ /root/ -rf
-chmod +x /root/ultrainmng/tool/
-chmod +x /root/ultrainmng/src/sideChainService.js
+echo "cp ~/miner_setup/files/ultrainmng/ ~/ -rf"
+cp ~/miner_setup/files/ultrainmng/ ~/ -rf
+chmod +x ~/ultrainmng/tool/
+chmod +x ~/ultrainmng/src/sideChainService.js
 # votingrand
-echo "cp /root/miner_setup/files/voterand/ /root/ -rf"
-cp /root/miner_setup/files/voterand/ /root/ -rf
-chmod +x /root/voterand/migrations/votingRandService.js
+echo "cp ~/miner_setup/files/voterand/ ~/ -rf"
+cp ~/miner_setup/files/voterand/ ~/ -rf
+chmod +x ~/voterand/migrations/votingRandService.js
 sleep 1
 
 #scripts
-echo "cp /root/miner_setup/files/scripts/runultrain-h.sh /root/"
-cp /root/miner_setup/files/scripts/runultrain-h.sh /root/
-chmod +x /root/runultrain-h.sh
-echo "cp /root/miner_setup/files/scripts/logrotate.sh /root/"
-cp /root/miner_setup/files/scripts/logrotate.sh /root/
-chmod +x /root/logrotate.sh
-echo "cp /root/miner_setup/files/scripts/runlogr.sh /root/"
-cp /root/miner_setup/files/scripts/runlogr.sh /root/
-chmod +x /root/runlogr.sh
-
+echo "cp ~/miner_setup/files/scripts/runultrain-h.sh ~/"
+cp ~/miner_setup/files/scripts/runultrain-h.sh ~/
+chmod +x ~/runultrain-h.sh
 
 # config
 # nodultrain
-echo "mkdir /root/.local/share/ultrainio/nodultrain/config/ -p"
-mkdir /root/.local/share/ultrainio/nodultrain/config/ -p
-echo "cp /root/miner_setup/files/config/nodultrain/config.ini /root/.local/share/ultrainio/nodultrain/config/"
-cp /root/miner_setup/files/config/nodultrain/config.ini /root/.local/share/ultrainio/nodultrain/config/
+echo "mkdir ~/.local/share/ultrainio/nodultrain/config/ -p"
+mkdir ~/.local/share/ultrainio/nodultrain/config/ -p
+echo "cp ~/miner_setup/files/config/nodultrain/config.ini ~/.local/share/ultrainio/nodultrain/config/"
+cp ~/miner_setup/files/config/nodultrain/config.ini ~/.local/share/ultrainio/nodultrain/config/
 sleep 1
 # wss
-echo "mkdir /root/.local/share/ultrainio/wssultrain/config/ -p"
-mkdir /root/.local/share/ultrainio/wssultrain/config/ -p
-echo "cp /root/miner_setup/files/config/wssultrain/config.ini /root/.local/share/ultrainio/wssultrain/config/"
-cp /root/miner_setup/files/config/wssultrain/config.ini /root/.local/share/ultrainio/wssultrain/config/
+echo "mkdir ~/.local/share/ultrainio/wssultrain/config/ -p"
+mkdir ~/.local/share/ultrainio/wssultrain/config/ -p
+echo "cp ~/miner_setup/files/config/wssultrain/config.ini ~/.local/share/ultrainio/wssultrain/config/"
+cp ~/miner_setup/files/config/wssultrain/config.ini ~/.local/share/ultrainio/wssultrain/config/
 sleep 1
 #ultrainmng
-echo "mkdir /root/.local/share/ultrainio/ultrainmng/config/ -p"
-mkdir /root/.local/share/ultrainio/ultrainmng/config/ -p
-echo "cp /root/miner_setup/files/config/ultrainmng/config.ini /root/.local/share/ultrainio/ultrainmng/config/"
-cp /root/miner_setup/files/config/ultrainmng/config.ini /root/.local/share/ultrainio/ultrainmng/config/
-echo "cp /root/miner_setup/files/config/ultrainmng/seedconfig.json /root/.local/share/ultrainio/ultrainmng/config/"
-cp /root/miner_setup/files/config/ultrainmng/seedconfig.json /root/.local/share/ultrainio/ultrainmng/config/
+echo "mkdir ~/.local/share/ultrainio/ultrainmng/config/ -p"
+mkdir ~/.local/share/ultrainio/ultrainmng/config/ -p
+echo "cp ~/miner_setup/files/config/ultrainmng/config.ini ~/.local/share/ultrainio/ultrainmng/config/"
+cp ~/miner_setup/files/config/ultrainmng/config.ini ~/.local/share/ultrainio/ultrainmng/config/
+echo "cp ~/miner_setup/files/config/ultrainmng/seedconfig.json ~/.local/share/ultrainio/ultrainmng/config/"
+cp ~/miner_setup/files/config/ultrainmng/seedconfig.json ~/.local/share/ultrainio/ultrainmng/config/
+
+#mongo-process
+echo "cp ~/miner_setup/files/mongo/mongo_process.py ~/"
+cp ~/miner_setup/files/mongo/mongo_process.py ~/
+echo "chmod +x ~/mongo_process.py"
+chmod +x ~/mongo_process.py
 
 echo "deploy all files done."
