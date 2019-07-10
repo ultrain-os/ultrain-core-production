@@ -9,7 +9,7 @@ var constant = require("../../common/constant/constants")
  *
  * @returns {Promise<void>}
  */
-async function getLocalMongoMaxBlock(maxTime,callback) {
+async function getLocalMongoMaxBlock(maxTime,mongoPath,mongoDBPath) {
 
     let blockInfo = {
         code: -1,
@@ -22,8 +22,11 @@ async function getLocalMongoMaxBlock(maxTime,callback) {
 
     try {
 
+        logger.info("mongoPath :",mongoPath);
+        logger.info("mongoDBPath :",mongoDBPath);
+
         let logfilePath = "/tmp/mongo-repair-"+new Date().getTime()+".log";
-        let cmd = "python ~/mongo_process.py ~/mongodb/bin ~/mongodb "+logfilePath;
+        let cmd = "python ~/mongo_process.py "+mongoPath+"/bin "+mongoDBPath+" "+logfilePath;
         logger.info("mongo getLocalMongoMaxBlock cmd:",cmd);
 
         /**

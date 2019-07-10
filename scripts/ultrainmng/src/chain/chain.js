@@ -2075,7 +2075,18 @@ async function restartMongo() {
 
         //执行脚本获取mongo中最大的块高
         let mongoMaxBlock = null;
-        let mongoMaxBlockObj = await mongoUtil.getLocalMongoMaxBlock(300000);
+        let mongoPath = "~/mongodb";
+        let mongoDBPath = "~/mongodb";
+
+        if (utils.isNotNull(chainConfig.configFileData.local.mongoPath)) {
+            mongoPath = chainConfig.configFileData.local.mongoPath;
+        }
+
+        if (utils.isNotNull(chainConfig.configFileData.local.mongoDBPath)) {
+            mongoDBPath = chainConfig.configFileData.local.mongoDBPath;
+        }
+
+        let mongoMaxBlockObj = await mongoUtil.getLocalMongoMaxBlock(300000,mongoPath,mongoDBPath);
         if (mongoMaxBlockObj.code != 0 ) {
             logger.error("[mongo restart]mongoMaxBlock error:",mongoMaxBlockObj);
             logMsg = utils.addLogStr(logMsg, "mongoMaxBlock error:",JSON.stringify(mongoMaxBlockObj));
