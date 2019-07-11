@@ -10,7 +10,7 @@ max-passive-out-count = 4
 min-connections = 8
 max-retry-count = 3
 # Please modify the list size according to producer count 
-max-grey-list-size = 5
+max-grey-list-size = 10
 
 #monitor_server
 

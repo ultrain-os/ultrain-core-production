@@ -164,7 +164,7 @@ namespace ultrainio {
         uint32_t                         min_connections = 0;
         uint32_t                         max_nodes_per_host = 4;
         uint32_t                         max_retry_count = 3;
-        uint32_t                         max_grey_list_size = 5;
+        uint32_t                         max_grey_list_size = 10;
         uint32_t                         num_clients = 0;
         uint32_t                         num_passive_out = 0;
 
@@ -3231,7 +3231,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          ( "max-passive-out-count", bpo::value<uint32_t>()->default_value(4), "Maximum number of passive out connections are accepted.")
          ( "min-connections", bpo::value<int>()->default_value(8), "Minimum number of connections the programme need create, including active and subjective connections")
          ( "max-retry-count", bpo::value<uint32_t>()->default_value(3), "Maximum number of reconnecting to listen endpoint")
-         ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(5), "Maximum size of grey list")
+         ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(10), "Maximum size of grey list")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(15), "number of seconds to wait before cleaning up dead connections")
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
