@@ -74,9 +74,6 @@ async function getLocalMongoMaxBlock(maxTime,mongoPath,mongoDBPath) {
                 } else {
                     blockInfo.msg = "log data is null:"+logfilePath;
                     nullCount++;
-                    if (nullCount >= 10) {
-                        finishFlag = true;
-                    }
                 }
 
 

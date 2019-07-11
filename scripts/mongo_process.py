@@ -69,6 +69,7 @@ pub_keys        = uldb['pub_keys']
 trans_traces    = uldb['transaction_traces']
 trans           = uldb['transactions']
 
+print("db connect successfully")
 #get latest block_num
 curs = block_states.find({'irreversible':{'$exists': False}}).sort('block_num',1).limit(1)
 if curs.count() :
@@ -81,6 +82,7 @@ if not blk_num :
     f.write( "{ \"code\": 1, \"cannot get block num\" }" )
     f.close()
     os._exit(1)
+print("start to delete block num :"+str(blk_num));
 #rm all collections record later than the last block_num
 dl_act_t  = actions_traces.delete_many({'block_num':{'$gt':blk_num}})
 dl_act    = actions.delete_many({'block_num':{'$gt':blk_num}})

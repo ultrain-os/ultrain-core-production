@@ -2086,7 +2086,7 @@ async function restartMongo() {
             mongoDBPath = chainConfig.configFileData.local.mongoDBPath;
         }
 
-        let mongoMaxBlockObj = await mongoUtil.getLocalMongoMaxBlock(300000,mongoPath,mongoDBPath);
+        let mongoMaxBlockObj = await mongoUtil.getLocalMongoMaxBlock(600000,mongoPath,mongoDBPath);
         if (mongoMaxBlockObj.code != 0 ) {
             logger.error("[mongo restart]mongoMaxBlock error:",mongoMaxBlockObj);
             logMsg = utils.addLogStr(logMsg, "mongoMaxBlock error:",JSON.stringify(mongoMaxBlockObj));
