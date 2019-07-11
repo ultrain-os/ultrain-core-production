@@ -621,7 +621,24 @@ namespace ultrainio {
         }
 
         if (isLaterMsg(propose)) {
+            if (m_evilDDosDetector.evil(propose, UranusNode::getInstance()->getRoundCount())) {
+                elog("evil echo : blockNum : ${blockNum} local : ${local}",
+                        ("blockNum", propose.block.block_num())("local", UranusNode::getInstance()->getBlockNum()));
+                return false;
+            }
             if (duplicated(propose)) {
+                return false;
+            }
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+            PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
+            if (!publicKey.isValid()) {
+                elog("can not find pk of proposer : ${p} at block ${num}",
+                        ("p", std::string(propose.block.proposer))("num", UranusNode::getInstance()->getBlockNum()));
+                return false;
+            }
+            if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
+                elog("validator proposer error. proposer : ${p} at block ${num} sig : ${sig}",
+                        ("p", std::string(propose.block.proposer))("num", UranusNode::getInstance()->getBlockNum())("sig", short_sig(propose.block.signature)));
                 return false;
             }
             return processLaterMsg(propose);
@@ -680,11 +697,29 @@ namespace ultrainio {
         }
 
         if (isLaterMsg(echo)) {
+            if (m_evilDDosDetector.evil(echo, UranusNode::getInstance()->getRoundCount())) {
+                elog("evil echo : blockNum : ${blockNum} local : ${local}",
+                        ("blockNum", BlockHeader::num_from_id(echo.blockId))("local", UranusNode::getInstance()->getBlockNum()));
+                return false;
+            }
             if (duplicated(echo)) {
                 elog("duplicate echo message from account : ${account}, blockNum : ${n}, phase : ${p}",
                      ("account", std::string(echo.account))("n", BlockHeader::num_from_id(echo.blockId))("p", static_cast<int>(echo.phase)));
                 return false;
             }
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+            PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
+            if (!publicKey.isValid()) {
+                elog("can not find ok of account : ${account} at block ${num}",
+                     ("account", std::string(echo.account))("num", UranusNode::getInstance()->getBlockNum()));
+                return false;
+            }
+            if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
+                elog("validator echo error. account : ${account} at block : ${num} sig : ${sig}",
+                     ("account", std::string(echo.account))("num", UranusNode::getInstance()->getBlockNum())("sig", short_sig(echo.signature)));
+                return false;
+            }
+            m_evilDDosDetector.gatherWhenBax(echo, UranusNode::getInstance()->getBlockNum(), UranusNode::getInstance()->getPhase());
             return processLaterMsg(echo);
         }
 
@@ -692,6 +727,7 @@ namespace ultrainio {
             if (!isValid(echo)) {
                 return false;
             }
+            m_evilDDosDetector.gatherWhenBax(echo, UranusNode::getInstance()->getBlockNum(), UranusNode::getInstance()->getPhase());
             return processBeforeMsg(echo);
         }
 
@@ -719,6 +755,7 @@ namespace ultrainio {
             // TODO broadcast it now
             return true;
         }
+        m_evilDDosDetector.gatherWhenBax(echo, UranusNode::getInstance()->getBlockNum(), UranusNode::getInstance()->getPhase());
 
         auto itor = m_echoMsgMap.find(echo.blockId);
         bool bret;
@@ -1361,21 +1398,25 @@ namespace ultrainio {
             }
 
             if (isEmpty(voterSet.commonEchoMsg.blockId)) {
-                dlog("produceBaxBlock.produce empty Block. save VoterSet in bax blockId = ${blockId}", ("blockId", voterSet.commonEchoMsg.blockId));
+                dlog("produceBaxBlock.produce empty Block. save VoterSet in bax blockId = ${blockId}", ("blockId", short_hash(voterSet.commonEchoMsg.blockId)));
                 m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
                         stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
+                m_evilDDosDetector.deduceBlockNum(voterSet, stakeVotePtr->getSendEchoThreshold() + 1,
+                        UranusNode::getInstance()->getRoundCount(), UranusNode::getInstance()->getPhase());
                 return emptyBlock();
             }
             auto proposeItor = m_proposerMsgMap.find(voterSet.commonEchoMsg.blockId);
             if (proposeItor != m_proposerMsgMap.end()
                     && stakeVotePtr->proposerPriority(proposeItor->second.block.proposer, kPhaseBA0, 0) == minPriority) {
                 dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase} save VoterSet in bax blockId = ${blockId}",
-                     ("blocknum", mapItor->first.blockNum)("phase", mapItor->first.phase)("blockId", voterSet.commonEchoMsg.blockId));
+                     ("blocknum", mapItor->first.blockNum)("phase", mapItor->first.phase)("blockId", short_hash(voterSet.commonEchoMsg.blockId)));
                 m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
                         stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
+                m_evilDDosDetector.deduceBlockNum(voterSet, stakeVotePtr->getSendEchoThreshold() + 1,
+                        UranusNode::getInstance()->getRoundCount(), UranusNode::getInstance()->getPhase());
                 return proposeItor->second.block;
             }
-            dlog("produceBaxBlock.> 2f + 1 echo. hash = ${hash} can not find it's propose.",("hash", voterSet.commonEchoMsg.blockId));
+            dlog("can not find 2f + 1 echo's propose. hash = ${hash}",("hash", short_hash(voterSet.commonEchoMsg.blockId)));
         }
 
         return Block();
@@ -1425,6 +1466,8 @@ namespace ultrainio {
                 // save VoterSet
                 m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(itor->second, stakeVotePtr->getCommitteeSet(),
                         stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
+                m_evilDDosDetector.deduceBlockNum(itor->second, stakeVotePtr->getSendEchoThreshold() + 1,
+                        UranusNode::getInstance()->getRoundCount(), UranusNode::getInstance()->getPhase());
                 break;
             }
         }
@@ -1436,7 +1479,7 @@ namespace ultrainio {
         if (proposeItor != m_proposerMsgMap.end()) {
             return proposeItor->second.block;
         }
-        dlog("> 2f + 1 echo ${hash} can not find it's propose.", ("hash", minBlockId));
+        dlog("> 2f + 1 echo ${hash} can not find it's propose.", ("hash", short_hash(minBlockId)));
         if (kPhaseBA0 == UranusNode::getInstance()->getPhase()) {
             dlog("produce empty Block");
             return emptyBlock();
@@ -2112,5 +2155,12 @@ namespace ultrainio {
             blsVoterSet = newVoterSet.toBlsVoterSet(weight);
         }
         return blsVoterSet;
+    }
+
+    void Scheduler::invokeDeduceWhenBax() {
+        uint32_t blockNum = UranusNode::getInstance()->getBlockNum();
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(blockNum);
+        m_evilDDosDetector.deduceWhenBax(stakeVotePtr->getSendEchoThreshold(),
+                UranusNode::getInstance()->getRoundCount(), blockNum, UranusNode::getInstance()->getPhase());
     }
 }  // namespace ultrainio

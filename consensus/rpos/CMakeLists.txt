@@ -4,6 +4,7 @@ add_library( ultrainio_rpos
         src/BlockMsgPool.cpp
         src/Config.cpp
         src/EvilBlsDetector.cpp
+        src/EvilDDosDetector.cpp
         src/EvilType.cpp
         src/FisherYates.cpp
         src/Genesis.cpp

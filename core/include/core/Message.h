@@ -57,6 +57,7 @@ namespace ultrainio {
         MsgExtension ext;
     };
 
+    // propose message
     struct UnsignedProposeMsg {
         Block block;
         MsgExtension ext;
@@ -66,6 +67,7 @@ namespace ultrainio {
         std::string signature;
     };
 
+    // echo message
     struct CommonEchoMsg {
         BlockIdType blockId;
         ConsensusPhase phase;

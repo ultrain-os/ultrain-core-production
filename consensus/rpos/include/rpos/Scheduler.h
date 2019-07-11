@@ -16,6 +16,7 @@
 #include <core/BlsVoterSet.h>
 #include <boost/asio/steady_timer.hpp>
 
+#include <rpos/EvilDDosDetector.h>
 #include <rpos/RoundInfo.h>
 #include <rpos/VoterSet.h>
 
@@ -150,6 +151,8 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         bool verifyMyBlsSignature(const EchoMsg& echo) const;
 
+        void invokeDeduceWhenBax();
+
     private:
         // This function is time consuming, please cache the result empty block.
         std::shared_ptr<Block> generateEmptyBlock();
@@ -251,6 +254,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         uint32_t m_fast_timestamp;
         BlsVoterSet m_currentBlsVoterSet;
         std::shared_ptr<LightClientProducer> m_lightClientProducer;
+        EvilDDosDetector m_evilDDosDetector;
         friend class UranusControllerMonitor;
     };
 }

@@ -291,8 +291,6 @@ namespace ultrainio {
     }
 
     void UranusNode::vote(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount) {
-        const Block* ba0Block = nullptr;
-
         dlog("vote. blockNum = ${blockNum} phase = ${phase} baxCount = ${cnt}", ("blockNum", blockNum)
                 ("phase",uint32_t(phase))("cnt",baxCount));
 
@@ -315,7 +313,7 @@ namespace ultrainio {
         }
 
         if (MsgMgr::getInstance()->isVoter(blockNum, phase, baxCount)) {
-            ba0Block = m_schedulerPtr->getBa0Block();
+            const Block* ba0Block = m_schedulerPtr->getBa0Block();
             if (isEmpty(ba0Block->id())) {
                 elog("vote ba0Block is empty, and send echo for empty block");
                 sendEchoForEmptyBlock();
@@ -323,7 +321,6 @@ namespace ultrainio {
                 EchoMsg echo = MsgBuilder::constructMsg(*ba0Block);
                 ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error, check bls private key pls");
                 m_schedulerPtr->insert(echo);
-                //echo.timestamp = getRoundCount();
                 dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", short_hash(echo.blockId)));
                 sendMessage(echo);
             } else {
@@ -383,6 +380,7 @@ namespace ultrainio {
 
     void UranusNode::baxProcess() {
         ilog("In baxProcess");
+        m_schedulerPtr->invokeDeduceWhenBax();
         Block baxBlock = m_schedulerPtr->produceTentativeBlock();
         signed_block_ptr uranus_block = std::make_shared<chain::signed_block>();
 
@@ -887,7 +885,6 @@ namespace ultrainio {
         EchoMsg echoMsg = MsgBuilder::constructMsg(block);
         ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echoMsg), chain::chain_exception, "bls signature error, check bls private key pls");
         m_schedulerPtr->insert(echoMsg);
-        //echoMsg.timestamp = getRoundCount();
         sendMessage(echoMsg);
     }
 
