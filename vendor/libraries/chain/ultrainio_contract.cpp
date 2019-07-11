@@ -482,38 +482,50 @@ void apply_ultrainio_delaccount(apply_context& context) {
    } FC_CAPTURE_AND_RETHROW( (delacc) )
 }
 
-void apply_ultrainio_addwhiteblack(apply_context& context) {
-   auto white_black = context.act.data_as<addwhiteblack>();
-   context.require_authorization( config::system_account_name );
-
+bool validate_white_black(white_black_type& w_b){
    bool is_valid = false;
    auto check_func = [&](const account_name& name){
-      ULTRAIN_ASSERT( name.good(), action_validate_exception, "In addwhiteblack, ${name} not vaild.", ("name", name));
+      ULTRAIN_ASSERT( name.good(), action_validate_exception, "validate_white_black, ${name} not vaild.", ("name", name));
       is_valid = true;
    };
 
-   for_each(white_black.actor_black.begin(), white_black.actor_black.end(), check_func);
-   for_each(white_black.actor_white.begin(), white_black.actor_white.end(), check_func);
-   for_each(white_black.contract_black.begin(), white_black.contract_black.end(), check_func);
-   for_each(white_black.contract_white.begin(), white_black.contract_white.end(), check_func);
-   for_each(white_black.action_black.begin(), white_black.action_black.end(), [&](const action_actor_type& act_actor){
-      ULTRAIN_ASSERT( act_actor.actor.good() && act_actor.action.good(), action_validate_exception, "In addwhiteblack, action_black ${a} not vaild", ("a", act_actor));
-      ULTRAIN_ASSERT( !(act_actor.actor == config::system_account_name && (act_actor.action == rmwhiteblack::get_name() || act_actor.action == addwhiteblack::get_name())),
-         action_validate_exception, "${s} can't add to action black", ("s", act_actor));
+   for_each(w_b.actor_black.begin(), w_b.actor_black.end(), check_func);
+   for_each(w_b.actor_white.begin(), w_b.actor_white.end(), check_func);
+   for_each(w_b.contract_black.begin(), w_b.contract_black.end(), check_func);
+   for_each(w_b.contract_white.begin(), w_b.contract_white.end(), check_func);
+   for_each(w_b.action_black.begin(), w_b.action_black.end(), [&](const action_actor_type& act_actor){
+      ULTRAIN_ASSERT( act_actor.actor.good() && act_actor.action.good(), action_validate_exception, "validate_white_black, action_black ${a} not vaild", ("a", act_actor));
       is_valid = true;
    });
-   for_each(white_black.key_black.begin(), white_black.key_black.end(), [&](const public_key_type& pk){
-      ULTRAIN_ASSERT( pk.valid(), action_validate_exception, "In addwhiteblack, pk ${a} not vaild", ("a", pk));
+   for_each(w_b.key_black.begin(), w_b.key_black.end(), [&](const public_key_type& pk){
+      ULTRAIN_ASSERT( pk.valid(), action_validate_exception, "validate_white_black, pk ${a} not vaild", ("a", pk));
       is_valid = true;
    });
 
+   return is_valid;
+}
+
+void apply_ultrainio_addwhiteblack(apply_context& context) {
+   auto data = context.act.data_as<addwhiteblack>();
+   auto& white_black = data.add_white_black;
+   context.require_authorization( config::system_account_name );
+
+   //If parameters is empty
+   ULTRAIN_ASSERT( validate_white_black(white_black), action_validate_exception, "addwhiteblack parameters not vaild, ${s}.", ("s", white_black));
+
+   //Ultrainio can't add to actor black list
    ULTRAIN_ASSERT(std::find(white_black.actor_black.begin(), white_black.actor_black.end(), config::system_account_name) == white_black.actor_black.end(), action_validate_exception,
       "ultrainio can't add to actor black");
+
+   //Ultrainio can't add to contract black list
    ULTRAIN_ASSERT( std::find(white_black.contract_black.begin(), white_black.contract_black.end(), config::system_account_name) == white_black.contract_black.end(), action_validate_exception,
       "ultrainio can't add to contract black");
 
-   //If parameters is empty
-   ULTRAIN_ASSERT( is_valid, action_validate_exception, "addwhiteblack parameters not vaild, ${s}.", ("s", white_black));
+   //addwhiteblack and rmwhiteblack can't add to action black list
+   for_each(white_black.action_black.begin(), white_black.action_black.end(), [&](const action_actor_type& act_actor){
+      ULTRAIN_ASSERT( !(act_actor.actor == config::system_account_name && (act_actor.action == rmwhiteblack::get_name() || act_actor.action == addwhiteblack::get_name())),
+         action_validate_exception, "${s} can't add to action black", ("s", act_actor));
+   });
 
    try {
       auto& db = context.db;
@@ -532,30 +544,12 @@ void apply_ultrainio_addwhiteblack(apply_context& context) {
 }
 
 void apply_ultrainio_rmwhiteblack(apply_context& context) {
-   auto white_black = context.act.data_as<rmwhiteblack>();
+   auto data = context.act.data_as<rmwhiteblack>();
+   auto& white_black = data.rm_white_black;
    context.require_authorization( config::system_account_name );
 
-   bool is_valid = false;
-   auto check_func = [&](const account_name& name){
-      ULTRAIN_ASSERT( name.good(), action_validate_exception, "In rmwhiteblack, ${name} not vaild.", ("name", name));
-      is_valid = true;
-   };
-
-   for_each(white_black.actor_black.begin(), white_black.actor_black.end(), check_func);
-   for_each(white_black.actor_white.begin(), white_black.actor_white.end(), check_func);
-   for_each(white_black.contract_black.begin(), white_black.contract_black.end(), check_func);
-   for_each(white_black.contract_white.begin(), white_black.contract_white.end(), check_func);
-   for_each(white_black.action_black.begin(), white_black.action_black.end(), [&](const action_actor_type& act_actor){
-      ULTRAIN_ASSERT( act_actor.actor.good() && act_actor.action.good(), action_validate_exception, "In rmwhiteblack, action_black ${a} not vaild", ("a", act_actor));
-      is_valid = true;
-   });
-   for_each(white_black.key_black.begin(), white_black.key_black.end(), [&](const public_key_type& pk){
-      ULTRAIN_ASSERT( pk.valid(), action_validate_exception, "In rmwhiteblack, pk ${a} not vaild", ("a", pk));
-      is_valid = true;
-   });
-
    //If parameters is empty
-   ULTRAIN_ASSERT( is_valid, action_validate_exception, "rmwhiteblack parameters not vaild, ${s}.", ("s", white_black));
+   ULTRAIN_ASSERT( validate_white_black(white_black), action_validate_exception, "rmwhiteblack parameters not vaild, ${s}.", ("s", white_black));
 
    try {
       auto& db = context.db;

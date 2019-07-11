@@ -172,14 +172,17 @@ struct action_actor_type {
    action_name    action;
 };
 
-struct addwhiteblack {
+struct white_black_type {
    std::vector<account_name>           actor_black;
    std::vector<account_name>           actor_white;
    std::vector<account_name>           contract_black;
    std::vector<account_name>           contract_white;
    std::vector<action_actor_type>      action_black;
    std::vector<public_key_type>        key_black;
+};
 
+struct addwhiteblack {
+   white_black_type  add_white_black;
    static account_name get_account() {
       return account_name(config::system_account_name);
    }
@@ -190,13 +193,7 @@ struct addwhiteblack {
 };
 
 struct rmwhiteblack {
-   std::vector<account_name>           actor_black;
-   std::vector<account_name>           actor_white;
-   std::vector<account_name>           contract_black;
-   std::vector<account_name>           contract_white;
-   std::vector<action_actor_type>      action_black;
-   std::vector<public_key_type>        key_black;
-
+   white_black_type  rm_white_black;
    static account_name get_account() {
       return account_name(config::system_account_name);
    }
@@ -220,5 +217,6 @@ FC_REFLECT( ultrainio::chain::canceldelay                      , (canceling_auth
 FC_REFLECT( ultrainio::chain::onerror                          , (sender_id)(sent_trx) )
 FC_REFLECT( ultrainio::chain::delaccount                       , (account) )
 FC_REFLECT( ultrainio::chain::action_actor_type                , (actor)(action) )
-FC_REFLECT( ultrainio::chain::addwhiteblack                    , (actor_black)(actor_white)(contract_black)(contract_white)(action_black)(key_black) )
-FC_REFLECT( ultrainio::chain::rmwhiteblack                     , (actor_black)(actor_white)(contract_black)(contract_white)(action_black)(key_black) )
+FC_REFLECT( ultrainio::chain::white_black_type                 , (actor_black)(actor_white)(contract_black)(contract_white)(action_black)(key_black) )
+FC_REFLECT( ultrainio::chain::addwhiteblack                    , (add_white_black) )
+FC_REFLECT( ultrainio::chain::rmwhiteblack                     , (rm_white_black) )
