@@ -1,20 +1,37 @@
 #!/bin/bash
-BIN_DIR=/usr/bin
+
+## para arguments
+if [ $# -ne 3 ];then
+    echo -e "need 3 arguments.\n1.bin dir.\n2.mongodb dir\n3.backup dir"
+    exit
+fi
+
+## global para
+BIN_DIR=$1
 MONGD=$BIN_DIR/mongod
 MONGO=$BIN_DIR/mongo
 MONGORESTORE=$BIN_DIR/mongorestore
 
-LOG_DIR=/mongodb/log
+DATA=$2
+LOG_DIR=$DATA/log
 LOG=mongodb.log
-DATA_DIR=/mongodb/data
-OUT_DIR=/mongobackup
+DATA_DIR=$DATA/data
+OUT_DIR=$3
 
-RESTORE_FILE=`ls -t $OUT_DIR|head -n 1`
+## prepare mongo info
+nodconfig=~/.local/share/ultrainio/nodultrain/config/config.ini
+info=`grep "mongodb-uri" $nodconfig |cut -d '/' -f 3`
+account=`echo $info | cut -d '@' -f 1`
+socket=`echo $info | cut -d '@' -f 2`
+USER=`echo $account | cut -d ':' -f 1`
+PASS=`echo $account | cut -d ':' -f 2`
+IP=`echo $socket | cut -d ':' -f 1`
+PORT=`echo $socket|cut -d ':' -f 2`
 
 BASE_PARA="--dbpath $DATA_DIR --logpath $LOG_DIR/$LOG --fork --bind_ip 0.0.0.0"
-AUTH_PARA="--username root --password Uranus --gzip --authenticationDatabase ultrain"
-DB="127.0.0.1/ultrain"
-ACCOUNT='db.createUser( {user: "root", pwd: "Uranus",roles: [ { role: "readWriteAnyDatabase", db: "admin" }]})'
+AUTH_PARA="-u $USER -p $PASS --gzip --authenticationDatabase ultrain"
+DB="$IP/ultrain"
+ACCOUNT='db.createUser( {user: "'$USER'", pwd: "'$PASS'",roles: [ { role: "readWriteAnyDatabase", db: "admin" }]})'
 
 ##### remove all the old date
 pid=`pidof mongod`
@@ -58,5 +75,21 @@ sleep 5
 
 ##### resotre mongo
 echo "restore"
-$MONGORESTORE $AUTH_PARA -d ultrain  $OUT_DIR/$RESTORE_FILE
+end_blknum=1
+for i in `ls -v $OUT_DIR`;
+do
+   start_blknum=`echo $i|cut -d '-' -f 1`
+   if [ $start_blknum -eq $end_blknum ] ; then
+       $MONGORESTORE $AUTH_PARA -d ultrain --excludeCollection account_controls --excludeCollection accounts --excludeCollection pub_keys $OUT_DIR/$i/ultrain
+       let end_blknum=`echo $i|cut -d '-' -f 2`+1
+	else
+	    echo "stopped at $[end_blknum-1]"
+		exit
+   fi
+done
+echo "extra table: $i"
+$MONGORESTORE $AUTH_PARA -d ultrain -c account_controls $OUT_DIR/$i/ultrain/account_controls.bson.gz 
+$MONGORESTORE $AUTH_PARA -d ultrain -c accounts $OUT_DIR/$i/ultrain/accounts.bson.gz 
+$MONGORESTORE $AUTH_PARA -d ultrain -c pub_keys $OUT_DIR/$i/ultrain/pub_keys.bson.gz 
+echo $[end_blknum-1]
 echo "done"
