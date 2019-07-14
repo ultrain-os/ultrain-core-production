@@ -1482,6 +1482,7 @@ async function checkNodAlive() {
                 });
             }
         } else {
+            nodFailedTimes = 0;
             nodLogData = "";
         }
     }
