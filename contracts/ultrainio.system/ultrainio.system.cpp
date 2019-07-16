@@ -135,9 +135,7 @@ namespace ultrainiosystem {
    }
 
    void system_contract::setupdateabled( account_name account, uint8_t is_update ) {
-      if(has_auth(_self)){
-         require_auth( _self );
-      }else{
+      if( !has_auth(_self) ){
          require_auth( account );
          ultrainio_assert( !is_update, "the contract account can only be set to unupdatable" );
          INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {account,N(active)},

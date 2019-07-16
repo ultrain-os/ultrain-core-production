@@ -23,6 +23,10 @@ namespace ultrainiosystem {
                                       const std::string& url,
                                       name location ) {
         ultrainio_assert( url.size() < 512, "url too long" );
+        bool is_has_ultrainio_auth = false;
+        if ( has_auth(_self) ) {
+            is_has_ultrainio_auth = true;
+        }
         // key is hex encoded
         ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
         ultrainio_assert( bls_key.size() == 130, "public bls key should be of size 130" );
@@ -33,21 +37,18 @@ namespace ultrainiosystem {
             if(location != default_chain_name) {
                 ultrainio_assert(_chains.find(location) != _chains.end(),
                                  "wrong location, subchain is not existed");
-                require_auth(_self);
+                ultrainio_assert( is_has_ultrainio_auth, " register to the specified sidechain must have ultrainio permissions" );
             }
             else{
                 ultrainio_assert(_chains.begin() != _chains.end(),
                                  "no side chain is existed currently, registering to side chain is not accepted");
-                if (has_auth(_self)) {
-                    require_auth(_self);
-                }
-                else {
+                if ( !is_has_ultrainio_auth ){
                     require_auth(producer);
                 }
             }
         }
         else {
-            require_auth(_self);
+            ultrainio_assert( is_has_ultrainio_auth, " register to the master chain must have ultrainio permissions" );
         }
         uint64_t curblocknum = (uint64_t)head_block_number() + 1;
         auto briefprod = _briefproducers.find(producer);
@@ -86,9 +87,7 @@ namespace ultrainiosystem {
             });
         }
 
-        if (has_auth(_self)) {
-            require_auth(_self);
-        } else {
+        if ( !is_has_ultrainio_auth ) {
             ultrainio_assert( _gstate.is_master_chain(), "only master chain allow regproducer" );
             asset cur_tokens =
                 ultrainio::token(N(utrio.token)).get_balance( producer,symbol_type(CORE_SYMBOL).name());
@@ -198,4 +197,12 @@ namespace ultrainiosystem {
         }
     }
 
+   void system_contract::send_defer_moveprod_action( const moveprod_param& prodparam ) const {
+      uint128_t sendid = N(moveprod) + prodparam.producer;
+      cancel_deferred(sendid);
+      ultrainio::transaction out;
+      out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), prodparam );
+      out.delay_sec = 0;
+      out.send( sendid, _self, true );
+   }
 } /// namespace ultrainiosystem

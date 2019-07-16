@@ -415,10 +415,9 @@ namespace ultrainiosystem {
     }
 
     void system_contract::empoweruser(account_name user, name chain_name, const std::string& owner_pk, const std::string& active_pk, bool updateable) {
-        if (has_auth(_self))
-            require_auth(_self);
-        else
-            require_auth(user);
+        if ( !has_auth(_self) ) {
+           require_auth( user );
+        }
         auto ite_chain = _chains.find(chain_name);
         ultrainio_assert(ite_chain != _chains.end(), "this subchian is not existed");
         ultrainio_assert(!is_empowered(user, chain_name), "user has been empowered to this chain before");

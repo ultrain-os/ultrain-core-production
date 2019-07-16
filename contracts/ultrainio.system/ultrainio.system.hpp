@@ -609,6 +609,7 @@ namespace ultrainiosystem {
 
          //defined in producer.cpp
          std::vector<name> get_all_chainname();
+         inline void send_defer_moveprod_action( const moveprod_param& prodparam ) const;
 
          // functions defined in synctransaction.cpp
          void execactions( const vector<action> & actios, name chain_name);

@@ -56,9 +56,9 @@ namespace ultrainiosystem {
                         from == _self || // ultrainio account
                         name{from}.to_string().find( "utrio." ) == 0, // system account
                         "only master chain or privilaged account allow (un)delegate consensus" );
-
-       ultrainio_assert(stake_cons_delta.amount >= 10000000 ||
-                        stake_cons_delta.amount < 0 , "should stake at least 100 amount" );
+       int64_t precision = (int64_t)stake_cons_delta.symbol.precision();
+       ultrainio_assert(stake_cons_delta.amount >= 100 * precision ||
+                        stake_cons_delta.amount < 0 , "should stake at least 100 UGAS" );
 
       // update consensus stake delegated from "from" to "receiver"
       del_consensus_table     del_tbl(_self, from);
@@ -137,12 +137,7 @@ namespace ultrainiosystem {
                 });
 
                 moveprod_param mv_prod(dis_prod->owner, dis_prod->producer_key, dis_prod->bls_key, true, name{N(disable)}, false, assigned_location);
-                uint128_t sendid = N(moveprod) + dis_prod->owner;
-                cancel_deferred(sendid);
-                ultrainio::transaction out;
-                out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
-                out.delay_sec = 0;
-                out.send( sendid, _self, true );
+                send_defer_moveprod_action( mv_prod );
              }
              else {
                 dp_tbl.modify(dis_prod, [&]( disabled_producer& disproducer ) {
@@ -173,12 +168,7 @@ namespace ultrainiosystem {
                  });
 
                  moveprod_param mv_prod(it->owner, it->producer_key, it->bls_key, false, briefprod->location, true, name{N(disable)});
-                 uint128_t sendid = N(moveprod) + it->owner;
-                 cancel_deferred(sendid);
-                 ultrainio::transaction out;
-                 out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
-                 out.delay_sec = 0;
-                 out.send( sendid, _self, true );
+                 send_defer_moveprod_action( mv_prod );
              }
          }
       }
