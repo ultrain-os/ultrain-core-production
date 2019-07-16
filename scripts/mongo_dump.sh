@@ -74,11 +74,12 @@ block_end=`mongo $MONGO_EVAL "db.block_states.find({'irreversible':{ \\$exists:f
 if [ -z $block_end ] ; then
     block_end=`mongo $MONGO_EVAL "db.block_states.find({'irreversible':{ \\$exists:true}},{block_num:1,_id:0}).sort({block_num:-1}).limit(1)"| grep block_num|sed s/[[:space:]]//g  | awk -F'[:} ]' '{print $2;}'`
 fi
-echo "end $block_end"
 if [ -z $block_end ] ; then
     echo "cannot get the current block."
 	exit
 fi
+((block_end=block_end-2))
+echo "end $block_end"
 
 if [ $INTERVAL -gt $((block_end-block_begin)) ] ; then
     echo "block range is 0"
@@ -86,6 +87,11 @@ if [ $INTERVAL -gt $((block_end-block_begin)) ] ; then
 fi
 
 ## dump
+if [ $block_begin -eq 1 ] ; then
+    tmp=$((block_end/INTERVAL*INTERVAL))
+    dump $block_begin $tmp
+    exit
+fi
 while (true)
 do
    tmp=$(((block_begin-1+INTERVAL)/INTERVAL*INTERVAL))

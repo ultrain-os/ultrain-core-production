@@ -79,17 +79,26 @@ end_blknum=1
 for i in `ls -v $OUT_DIR`;
 do
    start_blknum=`echo $i|cut -d '-' -f 1`
+   expr $start_blknum "+" 1 &>/dev/null
+   if [ $? -ne 0 ] ; then
+       continue
+   fi
    if [ $start_blknum -eq $end_blknum ] ; then
+       echo "re $i"
        $MONGORESTORE $AUTH_PARA -d ultrain --excludeCollection account_controls --excludeCollection accounts --excludeCollection pub_keys $OUT_DIR/$i/ultrain
        let end_blknum=`echo $i|cut -d '-' -f 2`+1
+       extra_dir=$i
 	else
-	    echo "stopped at $[end_blknum-1]"
-		exit
+		continue
    fi
 done
-echo "extra table: $i"
-$MONGORESTORE $AUTH_PARA -d ultrain -c account_controls $OUT_DIR/$i/ultrain/account_controls.bson.gz 
-$MONGORESTORE $AUTH_PARA -d ultrain -c accounts $OUT_DIR/$i/ultrain/accounts.bson.gz 
-$MONGORESTORE $AUTH_PARA -d ultrain -c pub_keys $OUT_DIR/$i/ultrain/pub_keys.bson.gz 
+if [ $end_blknum -eq 1 ] ; then
+   echo "backupfiles was invalid"
+   exit
+fi
+echo "extra table: $extra_dir"
+$MONGORESTORE $AUTH_PARA -d ultrain -c account_controls $OUT_DIR/$extra_dir/ultrain/account_controls.bson.gz 
+$MONGORESTORE $AUTH_PARA -d ultrain -c accounts $OUT_DIR/$extra_dir/ultrain/accounts.bson.gz 
+$MONGORESTORE $AUTH_PARA -d ultrain -c pub_keys $OUT_DIR/$extra_dir/ultrain/pub_keys.bson.gz 
 echo $[end_blknum-1]
 echo "done"
