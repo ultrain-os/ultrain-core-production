@@ -382,6 +382,23 @@
          {"name":"owner",       "type":"account_name"}
       ]
     },{
+      "name": "bulletin",
+      "base": "",
+      "fields": [
+         {"name":"block_num",         "type":"uint64"},
+         {"name":"action_name",       "type":"string[]"},
+         {"name":"table_extension",   "type": "exten_type[]"}
+      ]
+    },{
+      "name": "evilprod",
+      "base": "",
+      "fields": [
+         {"name":"owner",              "type":"account_name"},
+         {"name":"evil_type",          "type":"uint16"},
+         {"name":"is_freeze",          "type":"bool"},
+         {"name":"table_extension",    "type": "exten_type[]"}
+      ]
+    },{
       "name": "blockchain_parameters",
       "base": "",
       "fields": [
@@ -498,7 +515,7 @@
       "fields": [
          {"name":"unpaid_balance",   "type":"uint64"},
          {"name":"vote_number",     "type":"uint64"},
-         {"name":"last_vote_blocenum", "type":"uint64"},
+         {"name":"last_record_blockheight", "type":"uint64"},
          {"name": "table_extension", "type": "exten_type[]"}
       ]
     },{
@@ -623,6 +640,20 @@
         {"name":"rewards_account", "type":"account_name"},
         {"name":"url",          "type":"string"},
         {"name":"location",     "type":"name"}
+      ]
+    },{
+      "name": "verifyprodevil",
+      "base": "",
+      "fields": [
+        {"name":"producer",     "type":"account_name"},
+        {"name":"evil_info", "type":"string"}
+      ]
+    },{
+      "name": "procevilprod",
+      "base": "",
+      "fields": [
+        {"name":"producer",     "type":"account_name"},
+        {"name":"evil_type", "type":"uint16"}
       ]
     },{
       "name": "setsysparams",
@@ -831,6 +862,14 @@
       "type": "regproducer",
       "ricardian_contract": ""
    },{
+      "name": "verifyprodevil",
+      "type": "verifyprodevil",
+      "ricardian_contract": ""
+   },{
+      "name": "procevilprod",
+      "type": "procevilprod",
+      "ricardian_contract": ""
+   },{
       "name": "setsysparams",
       "type": "setsysparams",
       "ricardian_contract": ""
@@ -960,6 +999,18 @@
     },{
       "name": "penddeltab",
       "type": "pending_deltable",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "bltn",
+      "type": "bulletin",
+      "index_type": "i64",
+      "key_names" : ["block_num"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "evilprod",
+      "type": "evilprod",
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]

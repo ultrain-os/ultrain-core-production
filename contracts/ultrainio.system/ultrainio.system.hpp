@@ -145,7 +145,8 @@ namespace ultrainiosystem {
    struct producer_info : public disabled_producer {
       uint64_t              unpaid_balance = 0;
       uint64_t              vote_number = 0;
-      uint64_t              last_vote_blocknum = 0;
+      //记录producer最近出块的块高或者是成为producer时所在链的块高，以判断producer是否出块而移除委员会
+      uint64_t              last_record_blockheight = 0;
       exten_types           table_extension;
       enum producers_state_exten_type_key {
          producers_state_key_start = 0,
@@ -154,11 +155,11 @@ namespace ultrainiosystem {
       };
       uint64_t primary_key()const { return owner; }
       producer_info() {}
-      producer_info(const disabled_producer& dp, uint64_t unpay, uint64_t votes, uint64_t last_vote_block)
-          :disabled_producer(dp), unpaid_balance(unpay), vote_number(votes), last_vote_blocknum(last_vote_block) {}
+      producer_info(const disabled_producer& dp, uint64_t unpay, uint64_t votes, uint64_t last_record_block)
+          :disabled_producer(dp), unpaid_balance(unpay), vote_number(votes), last_record_blockheight(last_record_block) {}
 
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, disabled_producer,
-                                    (unpaid_balance)(vote_number)(last_vote_blocknum)(table_extension) )
+                                    (unpaid_balance)(vote_number)(last_record_blockheight)(table_extension) )
    };
 
    struct unpaid_disproducer {
@@ -439,6 +440,30 @@ namespace ultrainiosystem {
    };
    typedef ultrainio::multi_index< N(cmtbltn), committee_bulletin>    cmtbulletin;
 
+   enum producer_evil_type {
+      not_evil_action = 0,
+      limit_time_not_produce = 1, //在规定时间内(默认三天)没有出块，抵押的tokens不会被冻结
+      radio_error_echo_msg = 2, //广播错误的echo消息
+   };
+   struct bulletin {
+       uint64_t              block_num;
+       std::set<string>      action_name;
+       exten_types           table_extension;
+       uint64_t  primary_key()const { return block_num; }
+       ULTRAINLIB_SERIALIZE( bulletin , (block_num)(action_name)(table_extension) )
+   };
+   typedef ultrainio::multi_index< N(bltn), bulletin>    bulletintab;
+
+   struct evilprod {
+       account_name          owner;
+       uint16_t              evil_type;
+       bool                  is_freeze = false;
+       exten_types           table_extension;
+       uint64_t  primary_key()const { return owner; }
+       ULTRAINLIB_SERIALIZE( evilprod , (owner)(evil_type)(is_freeze)(table_extension) )
+   };
+   typedef ultrainio::multi_index< N(evilprod), evilprod>    evilprodtab;
+
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
    static constexpr uint32_t seconds_per_year      = 52*7*24*3600;
    static constexpr uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
@@ -512,6 +537,11 @@ namespace ultrainiosystem {
                        name from_chain,
                        bool to_disable,
                        name to_chain);
+
+         void verifyprodevil();
+
+         void procevilprod( account_name producer, uint16_t evil_type );
+
          // functions defined in reward.cpp
          void onblock( block_timestamp timestamp, account_name producer );
          void onfinish();
@@ -574,7 +604,7 @@ namespace ultrainiosystem {
          void delexpiretable();
          void clearexpirecontract( account_name owner );
          //defined in reward.cpp
-         void reportsubchainblock( account_name producer );
+         void reportsubchainblock( account_name producer, uint64_t block_height );
 
          void distributreward();
          inline float get_reward_fee_ratio() const;
@@ -610,6 +640,9 @@ namespace ultrainiosystem {
          //defined in producer.cpp
          std::vector<name> get_all_chainname();
          inline void send_defer_moveprod_action( const moveprod_param& prodparam ) const;
+         inline void check_producer_evillist( const account_name& producer ) const;
+         inline void remove_producer_from_evillist( const account_name& producer ) const;
+         inline void check_producer_lastblock( const name& chain_name, uint64_t block_height ) const;
 
          // functions defined in synctransaction.cpp
          void execactions( const vector<action> & actios, name chain_name);

@@ -19,12 +19,12 @@ namespace ultrainiosystem {
        * and therefore there may be no producer object for them.
        */
       producers_table _producers(_self, self_chain_name);
-
+      auto head_block_height = (uint64_t)head_block_number() + 1;
       if ( !_gstate.start_block){
          uint32_t i {};
          for(auto itr = _producers.begin(); i <= _gstate.min_committee_member_number && itr != _producers.end(); ++itr, ++i){}
 		 if( i > _gstate.min_committee_member_number){
-			_gstate.start_block=(uint64_t)head_block_number() + 1;
+			_gstate.start_block = head_block_height;
          }else{
             return;
          }
@@ -35,6 +35,7 @@ namespace ultrainiosystem {
          _gstate.total_cur_chain_block++;
          _producers.modify( prod, [&](auto& p ) {
                p.total_produce_block++;
+               p.last_record_blockheight = head_block_height;
          });
          print( "onblock timestamp:", timestamp.abstime, " producer:", name{producer}," produce_block:", prod->total_produce_block, "\n" );
       }
@@ -43,6 +44,7 @@ namespace ultrainiosystem {
       checkbulletin();
       pre_schedule();
       distributreward();  //automatically send rewards
+      check_producer_lastblock( self_chain_name, head_block_height );
    }
    float system_contract::get_reward_fee_ratio() const {
       uint32_t charge_ratio = 1; //The default handling charge is 1%
@@ -154,7 +156,7 @@ namespace ultrainiosystem {
       });
    }
 
-   void system_contract::reportsubchainblock( account_name producer ) {
+   void system_contract::reportsubchainblock( account_name producer, uint64_t block_height ) {
       auto briefprod = _briefproducers.find(producer);
       if(briefprod == _briefproducers.end()) {
           print("error: block proposer ", name{producer}, " is not a producer\n");
@@ -178,7 +180,9 @@ namespace ultrainiosystem {
       _producers.modify( prod, [&](auto& p ) {
           p.unpaid_balance += realreward;
           p.total_produce_block++;
+          p.last_record_blockheight = block_height;
       });
+      check_producer_lastblock( briefprod->location, block_height );
       print( "reportsubchainblock chain_name:", name{briefprod->location}, " producer:", name{producer}, " produce_block:", prod->total_produce_block,"\n" );
    }
 

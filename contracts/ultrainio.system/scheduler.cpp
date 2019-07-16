@@ -331,7 +331,7 @@ namespace ultrainiosystem {
                         else{
                             if(ite_uncfm_block->to_be_paid) {
                                 //apply reward for its proposer
-                                reportsubchainblock( ite_uncfm_block->proposer );
+                                reportsubchainblock( ite_uncfm_block->proposer, ite_uncfm_block->block_number );
                             }
                             subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
                                 new_confirmed_header = block_header_digest(ite_uncfm_block->block_number,
@@ -445,6 +445,7 @@ namespace ultrainiosystem {
     }
 
     void system_contract::add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number) {
+        uint64_t chain_block_height = current_block_number;
         if (chain_name != self_chain_name) {
             auto ite_chain = _chains.find(chain_name);
             ultrainio_assert(ite_chain != _chains.end(), "destination chain is not existed" );
@@ -464,6 +465,7 @@ namespace ultrainiosystem {
                 info.is_schedulable = false;
                 info.committee_num += 1;
             });
+            chain_block_height = ite_chain->confirmed_block_number;
         }else{
            _gstate.cur_committee_number++;
         }
@@ -473,6 +475,7 @@ namespace ultrainiosystem {
         ultrainio_assert(prod == _producer_chain.end(), "producer has existed in destination chain");
         _producer_chain.emplace([&]( producer_info& _prod ) {
             _prod = producer;
+            _prod.last_record_blockheight = chain_block_height;
             _prod.last_operate_blocknum = current_block_number;
         });
     }

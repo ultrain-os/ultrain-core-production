@@ -51,7 +51,7 @@ namespace ultrainiosystem {
 
    void system_contract::change_cons(account_name from, account_name receiver, asset stake_cons_delta) {
        require_auth(from);
-
+       check_producer_evillist( receiver );
        ultrainio_assert(_gstate.is_master_chain() ||  // on master chain
                         from == _self || // ultrainio account
                         name{from}.to_string().find( "utrio." ) == 0, // system account

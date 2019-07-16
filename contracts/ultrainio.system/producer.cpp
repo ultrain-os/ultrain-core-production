@@ -32,6 +32,7 @@ namespace ultrainiosystem {
         ultrainio_assert( bls_key.size() == 130, "public bls key should be of size 130" );
         ultrainio_assert( is_account( producer ), "producer account not exists" );
         ultrainio_assert( is_account( rewards_account ), "rewards account not exists" );
+        check_producer_evillist( producer );
         if(location != self_chain_name) {
             ultrainio_assert(location != N(master) , "wrong location");
             if(location != default_chain_name) {
@@ -176,6 +177,7 @@ namespace ultrainiosystem {
             ultrainio_assert( producerkey == prod_info.producer_key, "error: public producer key not consistent with the original chain" );
             ultrainio_assert( blskey == prod_info.bls_key, "error: public bls key not consistent with the original chain" );
             prod_info.unpaid_balance = remove_rewards_for_enableproducer( prod_info.owner );
+            remove_producer_from_evillist( producer );  //Will be moved to enabled producer, should be removed from the evil list
             add_to_chain(to_chain, prod_info, current_block_number);
             _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                 producer_brf.in_disable = false;
@@ -197,6 +199,85 @@ namespace ultrainiosystem {
         }
     }
 
+   /*
+   verifyprodevil function manually parses input data (instead of taking parsed arguments from dispatcher)
+   because parsing data in the dispatcher uses too much CPU in case if evil_info is big
+
+   If we use dispatcher the function signature should be:
+
+   void system_contract::verifyprodevil( account_name producer, const std::string& evil_info )
+   */
+   void system_contract::verifyprodevil() {
+      require_auth( _self );
+      constexpr size_t max_stack_buffer_size = 512;
+      size_t size = action_data_size();
+      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      read_action_data( buffer, size );
+      account_name producer;
+      std::string evil_info;
+
+      datastream<const char*> ds( buffer, size );
+      ds >> producer >> evil_info;
+
+      //TODO  verify producer evil
+
+      uint128_t sendid = N(evilprod) + producer;
+      cancel_deferred(sendid);
+      ultrainio::transaction out;
+      out.actions.emplace_back( permission_level{ _self, N(active) }
+                              , _self
+                              , NEX(procevilprod)
+                              , std::make_tuple(producer, producer_evil_type::radio_error_echo_msg)
+                              );
+      out.delay_sec = 0;
+      out.send( sendid, _self, true );
+   }
+
+   void system_contract::procevilprod( account_name producer, uint16_t evil_type ) {
+      require_auth( _self );
+      auto briefprod = _briefproducers.find( producer );
+      ultrainio_assert( briefprod != _briefproducers.end(), "not a producer" );
+      ultrainio_assert( !briefprod->in_disable, "producer in disabled" );
+      producers_table _producers(_self, briefprod->location);
+      const auto& it = _producers.find( producer );
+      ultrainio_assert(it != _producers.end(), "producer is not found in its location");
+      if( _gstate.is_master_chain() ) {
+         evilprodtab evilprod( _self, _self );
+         auto evilprod_itr = evilprod.find( producer );
+         if( evilprod_itr == evilprod.end() ) {
+            evilprod.emplace([&](auto& e) {
+               e.owner = producer;
+               e.evil_type = evil_type;
+               if( producer_evil_type::radio_error_echo_msg == evil_type ){  //Freeze delegate tokens
+                  e.is_freeze = true;
+               }
+            });
+         } else {
+            evilprod.modify(evilprod_itr, [&]( auto& e ) {
+               e.evil_type = evil_type;
+               if( producer_evil_type::radio_error_echo_msg == evil_type ){  //Freeze delegate tokens
+                  e.is_freeze = true;
+               }
+            });
+         }
+
+         //remove committee
+         moveprod_param mv_prod(it->owner, it->producer_key, it->bls_key, false, briefprod->location, true, name{N(disable)});
+         send_defer_moveprod_action( mv_prod );
+      } else {  //sidechain record bulletin
+         ultrainio_assert( producer_evil_type::radio_error_echo_msg == evil_type
+                           , " Non specified evil msg cannot emplace sidechain bulletin board" );
+         bulletintab  bltn( _self, N(master) );
+         auto current_block_number = uint64_t(head_block_number() + 1);
+         auto bltn_itr = bltn.find(current_block_number);
+         ultrainio_assert( bltn_itr == bltn.end(), " evil bulletin current blockheight already exist" );
+         bltn.emplace([&](auto& b) {
+            b.block_num = current_block_number;
+            b.action_name.insert("procevilprod");
+         });
+      }
+   }
+
    void system_contract::send_defer_moveprod_action( const moveprod_param& prodparam ) const {
       uint128_t sendid = N(moveprod) + prodparam.producer;
       cancel_deferred(sendid);
@@ -205,4 +286,51 @@ namespace ultrainiosystem {
       out.delay_sec = 0;
       out.send( sendid, _self, true );
    }
+
+   void system_contract::check_producer_evillist( const account_name& producer ) const {
+      evilprodtab evilprod( _self, _self );
+      auto evilprod_itr = evilprod.find( producer );
+      if( evilprod_itr == evilprod.end() ) {
+         return;
+      }
+      //freeze not allowed to be producer again
+      ultrainio_assert( !evilprod_itr->is_freeze, " evil producer not allowed to be producer again" );
+   }
+
+   void system_contract::remove_producer_from_evillist( const account_name& producer ) const {
+      evilprodtab evilprod( _self, _self );
+      auto evilprod_itr = evilprod.find( producer );
+      if( evilprod_itr != evilprod.end() ) {
+         evilprod.erase( evilprod_itr );
+      }
+   }
+
+   void system_contract::check_producer_lastblock( const name& chain_name, uint64_t block_height ) const {
+      if( !_gstate.is_master_chain() ) {
+         return;
+      }
+      uint64_t produce_critical_number = 3 * seconds_per_day / block_interval_seconds();
+      uint32_t interval_num = seconds_per_day/block_interval_seconds() + 3;   // check_producer_lastblock once about an day
+      if(block_height < produce_critical_number || block_height%interval_num != 0) {
+         return;
+      }
+      auto last_allow_produce_block = block_height - produce_critical_number;
+      producers_table _producers(_self, chain_name);
+      for(auto itr = _producers.begin(); itr != _producers.end(); ++itr){
+         if( itr->last_record_blockheight > last_allow_produce_block ){
+            continue;
+         }
+         uint128_t sendid = N(procevilprod) + itr->owner;
+         cancel_deferred(sendid);
+         ultrainio::transaction out;
+         out.actions.emplace_back( permission_level{ _self, N(active) }
+                                 , _self
+                                 , NEX(procevilprod)
+                                 , std::make_tuple(itr->owner, producer_evil_type::limit_time_not_produce)
+                                 );
+         out.delay_sec = 1;
+         out.send( sendid, _self, true );
+      }
+   }
+
 } /// namespace ultrainiosystem
