@@ -368,6 +368,11 @@ struct controller_impl {
       replaying = false;
    }
 
+   template<typename MultiIndexType>
+   void standalone_object(){
+       if(0 == db.get_index<MultiIndexType>().indices().size() )
+           db.create<typename MultiIndexType::value_type>([](auto&){});
+   }
    void init(const bfs::path& worldstate_path) {
 
       /**
@@ -412,6 +417,7 @@ struct controller_impl {
          db.undo();
       }
 
+      standalone_object<whiteblacklist_index>();
    }
 
    ~controller_impl() {
