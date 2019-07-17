@@ -256,6 +256,7 @@ namespace ultrainio {
                ws.clear_access_channels(websocketpp::log::alevel::all);
                ws.init_asio(&app().get_io_service());
                ws.set_reuse_addr(true);
+               ws.set_keep_alive(true);
                ws.set_max_http_body_size(max_body_size);
                ws.set_http_handler([&](connection_hdl hdl) {
                   handle_http_request<T>(ws.get_con_from_hdl(hdl));
