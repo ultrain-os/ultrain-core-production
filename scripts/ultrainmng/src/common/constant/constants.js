@@ -170,6 +170,16 @@ var API_MAX_INTEVAL_TIME = 1000 * 60 * 60;
 //未知用户
 var UNKNOWN_USER = "unknown001";
 
+/**
+ * apiTimeConstants
+ * @type {{SEED_CHECK_API_TIME: number, DEFAULT_API_TIME: number}}
+ */
+var apiTimeConstants = {
+    DEFAULT_SEED_API_TIME : 6000,
+    LOCAL_API_TIME : 3000,
+}
+
+
 module.exports = {
     cmdConstants,
     encodingConstants,
@@ -189,4 +199,5 @@ module.exports = {
     PRIVATE_KEY,
     API_MAX_INTEVAL_TIME,
     UNKNOWN_USER,
+    apiTimeConstants,
 }

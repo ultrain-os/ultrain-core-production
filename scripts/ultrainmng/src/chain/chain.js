@@ -1223,6 +1223,7 @@ async function syncChainInfo() {
         seedCheckCount++;
         logger.info("sync chain seed count :",seedCheckCount);
         if (seedCheckCount >= 120) {
+            seedCheckCount = 0;
             //检查主链seed是否有变化
             let mainSeedList = await chainApi.getChainHttpList(chainNameConstants.MAIN_CHAIN_NAME, chainConfig);
             if (mainSeedList.length > 0 && mainSeedList.length != chainConfig.config.seedHttpList.length) {
@@ -1240,130 +1241,133 @@ async function syncChainInfo() {
             } else {
                 logger.info("subSeedList.length(" + subSeedList.length + ") == configSub.seedHttpList(" + chainConfig.configSub.seedHttpList.length + "),need not update sub seedList:", chainConfig.configSub.seedHttpList);
             }
-            seedCheckCount = 0;
         }
 
-        //定期更新configsub
-        await chainApi.checkSubchainSeed(chainConfig);
+        //5个周期做一次seed check，减少seed 检查的频率
+        if (seedCheckCount % 5  == 0) {
+            //定期更新configsub
+            await chainApi.checkSubchainSeed(chainConfig);
 
-        //定期更新config
-        await chainApi.checkMainchainSeed(chainConfig);
-
-        //同步链名称（子链id,链名称等）
-        let chainName = null;
-        let chainId = null;
-        let genesisTime = null;
-        let genesisPk = null;
-        if (utils.isNull(chainConfig.configSub.chainId)) {
-            chainConfig.configSub.chainId = await chainApi.getChainId(chainConfig.configSub);
-        }
-        logger.debug("configSub.chainId=", chainConfig.configSub.chainId);
-
-        if (utils.isNull(chainConfig.config.chainId)) {
-            chainConfig.config.chainId = await chainApi.getChainId(chainConfig.config);
-        }
-        logger.debug("config.chainId=", chainConfig.config.chainId);
+            //定期更新config
+            await chainApi.checkMainchainSeed(chainConfig);
 
 
-        let chainInfo = await chainApi.getChainInfo(chainConfig.config, chainConfig.myAccountAsCommittee);
-        logger.info("chain info from mainchain:", chainInfo);
-        if (utils.isNotNull(chainInfo)) {
-            chainName = chainInfo.location;
-            chainId = chainInfo.chain_id;
-            genesisTime = chainUtil.formatGensisTime(chainInfo.genesis_time);
-            genesisPk = chainInfo.genesis_pk;
-        }
+            //同步链名称（子链id,链名称等）
+            let chainName = null;
+            let chainId = null;
+            let genesisTime = null;
+            let genesisPk = null;
+            if (utils.isNull(chainConfig.configSub.chainId)) {
+                chainConfig.configSub.chainId = await chainApi.getChainId(chainConfig.configSub);
+            }
+            logger.debug("configSub.chainId=", chainConfig.configSub.chainId);
 
-        //设置用户属于的chainid和chainname信息
-        if (utils.isNotNull(chainName)) {
-            chainConfig.chainName = chainName;
-        }
-        if (utils.isNotNull(chainId) && chainIdConstants.NONE_CHAIN != chainId) {
-            chainConfig.chainId = chainId;
-        }
-        if (utils.isNotNull(genesisTime)) {
-            chainConfig.genesisTime = genesisTime;
-            chainConfig.genesisPK = genesisPk;
-        }
+            if (utils.isNull(chainConfig.config.chainId)) {
+                chainConfig.config.chainId = await chainApi.getChainId(chainConfig.config);
+            }
+            logger.debug("config.chainId=", chainConfig.config.chainId);
 
-        logger.error("genesis-pk is ",chainConfig.genesisPK);
 
-        //如果是主链，啥都不操作
-        if (isMainChain()) {
-            logger.error(chainConfig.myAccountAsCommittee + " runing in main chain, need not work");
-            //check alive
-            await checkNodAlive();
-        }
+            let chainInfo = await chainApi.getChainInfo(chainConfig.config, chainConfig.myAccountAsCommittee);
+            logger.info("chain info from mainchain:", chainInfo);
+            if (utils.isNotNull(chainInfo)) {
+                chainName = chainInfo.location;
+                chainId = chainInfo.chain_id;
+                genesisTime = chainUtil.formatGensisTime(chainInfo.genesis_time);
+                genesisPk = chainInfo.genesis_pk;
+            }
 
-        //如果是非出块节点，啥都不操作
-        if (chainConfig.isNoneProducer()) {
-            syncChainData = false;
-            logger.error(chainConfig.myAccountAsCommittee + " runing is none-producer, need not work");
-            //check alive
-            await checkNodAlive();
-            return;
-        }
+            //设置用户属于的chainid和chainname信息
+            if (utils.isNotNull(chainName)) {
+                chainConfig.chainName = chainName;
+            }
+            if (utils.isNotNull(chainId) && chainIdConstants.NONE_CHAIN != chainId) {
+                chainConfig.chainId = chainId;
+            }
+            if (utils.isNotNull(genesisTime)) {
+                chainConfig.genesisTime = genesisTime;
+                chainConfig.genesisPK = genesisPk;
+            }
 
-        logger.info(chainConfig.myAccountAsCommittee + " belongs to chaininfo (name:" + chainConfig.chainName + ",chain_id:" + chainConfig.chainId + " ,genesisTime:" + chainConfig.genesisTime + ") from mainchain");
-        logger.info("now subchain's chainid :" + chainConfig.configSub.chainId);
+            logger.error("genesis-pk is ", chainConfig.genesisPK);
 
-        //主链返回的chainname非法，说明主链返回的有问题，或者是该用户在主链不存在,不工作
-        if (chainConfig.chainName == chainNameConstants.INVAILD_CHAIN_NAME) {
-            syncChainData = false;
-            logger.error(chainConfig.myAccountAsCommittee + " is a invalid name in main chain,need not work");
-            await checkNodAlive();
-            return;
-        }
+            //如果是主链，啥都不操作
+            if (isMainChain()) {
+                logger.error(chainConfig.myAccountAsCommittee + " runing in main chain, need not work");
+                //check alive
+                await checkNodAlive();
+            }
 
-        //同步本地委员会
-        logger.info("sync local commitee");
-        //获取本地prodcuers信息
-        let producerList = await chainApi.getProducerLists(chainConfig.configSub.httpEndpoint);
-        logger.info("subchain producers: ", producerList);
-        if (utils.isNotNull(producerList) && producerList.length > 0) {
-            localProducers = producerList;
-        } else {
-            logger.error("get subchain producers is null,sync committee end",producerList);
-        }
+            //如果是非出块节点，啥都不操作
+            if (chainConfig.isNoneProducer()) {
+                syncChainData = false;
+                logger.error(chainConfig.myAccountAsCommittee + " runing is none-producer, need not work");
+                //check alive
+                await checkNodAlive();
+                return;
+            }
 
-        var isStrillInCommittee = committeeUtil.isStayInCommittee(localProducers, chainConfig.myAccountAsCommittee);
-        //检查自己是否不在委员会里面
-        if (!isStrillInCommittee) {
-            syncChainData = false;
-            logger.info("I(" + chainConfig.myAccountAsCommittee + ") am not in subchain committee")
-        } else {
-            syncChainData = true;
-            logger.info("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee")
-        }
+            logger.info(chainConfig.myAccountAsCommittee + " belongs to chaininfo (name:" + chainConfig.chainName + ",chain_id:" + chainConfig.chainId + " ,genesisTime:" + chainConfig.genesisTime + ") from mainchain");
+            logger.info("now subchain's chainid :" + chainConfig.configSub.chainId);
 
-        //非主链需要检查是否要调度
-        if (isMainChain() == false) {
-            var rightChain = chainConfig.isInRightChain()
-            if (!rightChain) {
-                //我已不属于这条链，准备迁走
-                if (isStrillInCommittee) {
-                    logger.error("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee,can't be transfer,wait...")
-                } else {
-                    syncChainData = false;
-                    logger.info(chainConfig.myAccountAsCommittee + " are not in subchain committee , need trandfer to chain(" + chainName + "）, start transfer...");
-                    if (monitor.isDeploying() == true) {
-                        logger.error("monitor isDeploying, wait to switchChain");
-                        sleep.msleep(1000);
-                    } else {
-                        sleep.msleep(1000);
-                        syncChainChanging = true;
-                        monitor.disableDeploy();
+            //主链返回的chainname非法，说明主链返回的有问题，或者是该用户在主链不存在,不工作
+            if (chainConfig.chainName == chainNameConstants.INVAILD_CHAIN_NAME) {
+                syncChainData = false;
+                logger.error(chainConfig.myAccountAsCommittee + " is a invalid name in main chain,need not work");
+                await checkNodAlive();
+                return;
+            }
 
-                        //清除数据
-                        clearCacheData()
-                        //开始迁移
-                        await switchChain();
-                        return;
-                    }
-                }
+            //同步本地委员会
+            logger.info("sync local commitee");
+            //获取本地prodcuers信息
+            let producerList = await chainApi.getProducerLists(chainConfig.getLocalHttpEndpoint());
+            logger.info("subchain producers: ", producerList);
+            if (utils.isNotNull(producerList) && producerList.length > 0) {
+                localProducers = producerList;
             } else {
-                syncChainChanging = false;
-                logger.info("i am in right chain");
+                logger.error("get subchain producers is null,sync committee end", producerList);
+            }
+
+            var isStrillInCommittee = committeeUtil.isStayInCommittee(localProducers, chainConfig.myAccountAsCommittee);
+            //检查自己是否不在委员会里面
+            if (!isStrillInCommittee) {
+                syncChainData = false;
+                logger.info("I(" + chainConfig.myAccountAsCommittee + ") am not in subchain committee")
+            } else {
+                syncChainData = true;
+                logger.info("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee")
+            }
+
+            //非主链需要检查是否要调度
+            if (isMainChain() == false) {
+                var rightChain = chainConfig.isInRightChain()
+                if (!rightChain) {
+                    //我已不属于这条链，准备迁走
+                    if (isStrillInCommittee) {
+                        logger.error("I(" + chainConfig.myAccountAsCommittee + ") am still in subchain committee,can't be transfer,wait...")
+                    } else {
+                        syncChainData = false;
+                        logger.info(chainConfig.myAccountAsCommittee + " are not in subchain committee , need trandfer to chain(" + chainName + "）, start transfer...");
+                        if (monitor.isDeploying() == true) {
+                            logger.error("monitor isDeploying, wait to switchChain");
+                            sleep.msleep(1000);
+                        } else {
+                            sleep.msleep(1000);
+                            syncChainChanging = true;
+                            monitor.disableDeploy();
+
+                            //清除数据
+                            clearCacheData()
+                            //开始迁移
+                            await switchChain();
+                            return;
+                        }
+                    }
+                } else {
+                    syncChainChanging = false;
+                    logger.info("i am in right chain");
+                }
             }
         }
 

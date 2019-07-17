@@ -66,7 +66,7 @@ WorldState.syncStatus = async function () {
 WorldState.requestData = async function (path, params) {
     try {
         logger.debug("send http request :" + this.getHttpRequestPath(path) + " params:" + params);
-        const rs = await axios.post(this.getHttpRequestPath(path), params,{timeout: 1000*2});
+        const rs = await axios.post(this.getHttpRequestPath(path), params,{timeout: Constants.apiTimeConstants.LOCAL_API_TIME});
         logger.debug("get http request :" + this.getHttpRequestPath(path) + " params:" + params + " result :", rs.data);
         if (rs.status == 200 || rs.status == 201) {
             return rs.data;

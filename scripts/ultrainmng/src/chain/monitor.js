@@ -1394,15 +1394,28 @@ function generateSign(param) {
     if (utils.isNull(param)) {
         param = {};
     }
-    param.sign = "sign";
-    param.key = constants.PRIVATE_KEY;
-    let data = JSON.stringify(param);
-    //logger.error("generateSign data：",data);
-    let sign = hashUtil.calcMd5(data);
+
+    var keys = Object.keys(param).sort();
+    logger.debug("param keys sort",keys);
+    let res = "";
+    for (let t=0;t<keys.length;t++) {
+        if (t ==0) {
+            res = keys[t]+"="+param[keys[t]];
+        } else {
+            res = res+"&"+keys[t]+"="+param[keys[t]];
+        }
+    }
+
+    //add sk
+    res = res+"&key="+ constants.PRIVATE_KEY;;
+
+    logger.debug("param res:",res);
+
+    let sign = hashUtil.calcMd5(res);
+    logger.debug("param sign:",sign);
     param.sign = sign;
-    //logger.error("generateSign data sign：",sign);
     delete param["key"];
-    //logger.error("generateSign finsih");
+    logger.debug("param:",param);
     return param;
 }
 

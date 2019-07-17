@@ -277,7 +277,7 @@ NodUltrain.checkAlive = async function (port) {
     let path = "http://127.0.0.1:"+port+"/v1/chain_info/get_chain_info"
     try {
         logger.debug("send http request :"+path);
-        const rs = await axios.post(path,{},{timeout: 1000*2});
+        const rs = await axios.post(path,{},{timeout: Constants.apiTimeConstants.LOCAL_API_TIME});
         logger.debug("get get_chain_info  ",rs.data);
         if (rs.status == 200) {
             return rs.data;
