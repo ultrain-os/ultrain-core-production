@@ -953,7 +953,13 @@ namespace ultrainio {
         for (const auto &trx : trxs) {
             try {
                 auto deadline = fc::time_point::now() + fc::milliseconds(max_trx_cpu);
-                auto trace = chain.push_scheduled_transaction(trx, deadline);
+                chain::transaction_trace_ptr trace;
+                try {
+                    trace = chain.push_scheduled_transaction(trx, deadline);
+                } catch (const chain::unknown_transaction_exception& e) {
+                    ilog("-----------runScheduledTrxs unknown trx ${e}; skip");
+                    continue;
+                }
                 if (trace->except) {
                     ilog("-----------runScheduledTrxs scheduled push trx failed ${e}", ("e", (trace->except)->what()));
                     auto code = trace->except->code();
@@ -1150,7 +1156,6 @@ namespace ultrainio {
             // Refer to the subjective and exhausted design.
             std::list<chain::transaction_metadata_ptr> *pending_trxs = chain.get_pending_transactions();
             auto unapplied_trxs = chain.get_unapplied_transactions();
-            auto scheduled_trxs = chain.get_scheduled_transactions();
 
             m_initTrxCount = 0;
             auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
@@ -1168,6 +1173,7 @@ namespace ultrainio {
 
             if (fc::time_point::now() < hard_cpu_deadline &&
                 m_initTrxCount < chain::config::default_max_propose_trx_count) {
+                auto scheduled_trxs = chain.get_scheduled_transactions();
                 count3 = runScheduledTrxs(scheduled_trxs, hard_cpu_deadline, block_time);
             }
 
