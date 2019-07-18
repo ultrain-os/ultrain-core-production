@@ -5,8 +5,8 @@ rpos-p2p-listen-endpoint = 0.0.0.0:20123
 udp-listen-port = 20124
 
 max-static-clients = 10
-max-dynamic-clients = 40
-max-passive-out-count = 20
+max-dynamic-clients = 20
+max-passive-out-count = 10
 min-connections = 8
 max-retry-count = 3
 # Please modify the list size according to producer count 

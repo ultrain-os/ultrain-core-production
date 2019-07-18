@@ -3227,8 +3227,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ( "max-static-clients", bpo::value<int>()->default_value(10), "Maximum number of static clients from which connections are accepted.")
-         ( "max-dynamic-clients", bpo::value<int>()->default_value(40), "Maximum number of dynamic(address from p2p table) clients from which connections are accepted.")
-         ( "max-passive-out-count", bpo::value<uint32_t>()->default_value(20), "Maximum number of passive out connections are accepted.")
+         ( "max-dynamic-clients", bpo::value<int>()->default_value(20), "Maximum number of dynamic(address from p2p table) clients from which connections are accepted.")
+         ( "max-passive-out-count", bpo::value<uint32_t>()->default_value(10), "Maximum number of passive out connections are accepted.")
          ( "min-connections", bpo::value<int>()->default_value(8), "Minimum number of connections the programme need create, including active and subjective connections")
          ( "max-retry-count", bpo::value<uint32_t>()->default_value(3), "Maximum number of reconnecting to listen endpoint")
          ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(10), "Maximum size of grey list")
