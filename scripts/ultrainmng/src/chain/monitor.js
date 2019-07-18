@@ -445,8 +445,9 @@ async function syncSeedInfo() {
     //reset
     seedCount = 1;
 
-
-    let deployInfo = await chainApi.getSeedInfo(getMonitorUrl(), {});
+    let param = await buildParam();
+    param = generateSign(param);
+    let deployInfo = await chainApi.getSeedInfo(getMonitorUrl(), param);
     if (utils.isNotNull(deployInfo) && chainApi.verifySign(deployInfo) == true) {
         let data = deployInfo.data;
         logger.info("seed data list:",data);

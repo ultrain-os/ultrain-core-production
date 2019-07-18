@@ -254,10 +254,13 @@ def insert_non_producing(fname):
 
 def insert_max_clients(fname):
 	content = readfile(fname)
-	newcontent = "max-clients = 32\n"
+	newcontent = "max-static-clients = 60\n"
 	print(newcontent)
 	index_line = content.index("#max-clients\n")
 	content.insert(index_line+1, newcontent)
+	content.insert(index_line+2, "max-dynamic-clients = 60\n")
+	content.insert(index_line+2, "max-passive-out-count = 20\n")
+
 	writefile(fname,content)
 
 def insert_seed_peer_address(fname,ip,seedHosts):
