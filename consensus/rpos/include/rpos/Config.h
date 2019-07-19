@@ -40,5 +40,4 @@ namespace ultrainio {
     // TODO(qinxiaofen) should add into Config class
 #define INVALID_BLOCK_NUM          0xFFFFFFFF
 #define THRESHOLD_SYNCING          1
-#define THRESHOLD_FASTBA0          3
 }

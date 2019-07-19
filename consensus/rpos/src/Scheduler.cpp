@@ -1291,9 +1291,12 @@ namespace ultrainio {
     }
 
     bool Scheduler::isFastba0(const RoundInfo& info) {
+        std::shared_ptr<StakeVoteBase> stakeVotePtr
+                = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+        ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         auto echoItor = m_cacheEchoMsgMap.find(info);
         if (echoItor != m_cacheEchoMsgMap.end()) {
-            if (echoItor->second.size() > THRESHOLD_FASTBA0) {
+            if (echoItor->second.size() > stakeVotePtr->getSendEchoThreshold()) {
                 return true;
             }
         }
