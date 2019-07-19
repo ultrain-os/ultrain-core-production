@@ -28,6 +28,7 @@ class CreateAccount(unittest.TestCase):
     def test_create_account( self ):
         time.sleep( 20 )
         j = json.loads(requests.get(Config.get_account_info_url,data = json.dumps({"account_name":self.name})).text)
+        self.assertIn( "account_name" , j )
         self.assertEqual( j["account_name"] , self.name )
         self.assertEqual( j["ram_quota"], 0 )
         self.assertEqual( j["updateable"], True )

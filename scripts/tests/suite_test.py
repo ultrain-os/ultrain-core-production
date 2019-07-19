@@ -8,6 +8,7 @@ from system_contract_tests.setprivupdatedparams import SetPrivUpdatedPrams
 from system_contract_tests.setfreeaccount import SetFreeAccount
 from system_contract_tests.buy_resource import BuyResourceLease
 from system_contract_tests.regdelprod import RegDelProd
+from system_contract_tests.multisig import MultiSig
 # 从类中加载测试用例
 TestHelloSuite = unittest.TestLoader().loadTestsFromTestCase( TestHello )
 CreateAccountSuite = unittest.TestLoader().loadTestsFromTestCase( CreateAccount )
@@ -16,6 +17,7 @@ SetPrivUpdatedPramsSuite = unittest.TestLoader().loadTestsFromTestCase( SetPrivU
 SetFreeAccountSuite = unittest.TestLoader().loadTestsFromTestCase( SetFreeAccount )
 BuyResourceSuite = unittest.TestLoader().loadTestsFromTestCase( BuyResourceLease )
 RegDelProdSuite = unittest.TestLoader().loadTestsFromTestCase( RegDelProd )
+MsigSuite = unittest.TestLoader().loadTestsFromTestCase(MultiSig)
 s = [
 TestHelloSuite,
 CreateAccountSuite,
@@ -24,6 +26,7 @@ SetPrivUpdatedPramsSuite,
 SetFreeAccountSuite,
 BuyResourceSuite,
 RegDelProdSuite,
+MsigSuite,
 ]
 # 创建测试包
 suite = unittest.TestSuite(s)

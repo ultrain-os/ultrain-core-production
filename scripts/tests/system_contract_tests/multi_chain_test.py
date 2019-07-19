@@ -6,6 +6,7 @@ import requests
 import json
 import sys
 import datetime
+import string
 sys.path.append("..")
 from config import *
 from general_func import *
@@ -228,19 +229,22 @@ class Multichain(unittest.TestCase):
 
         # test token sync from master to sidechain
         print('\n====Token sync from master to sidechain====')
-        amount = '0.0000 UGAS'
+        amount = 0
         get_sidechain_account_url = Config.node_url[0] + 'v1/chain/get_account_info'
         j = json.loads(requests.get(get_sidechain_account_url, data = json.dumps({"account_name":(Config.chain_name[0]+'.111')})).text)
         self.assertIn("account_name", j)
         self.assertEqual( j["account_name"] , self.name )
         if "core_liquid_balance" in j:
-            amount = j["core_liquid_balance"]
+            point_index = j["core_liquid_balance"].find('.')
+            amount = int(j["core_liquid_balance"][:point_index])
 
         self.transfer_to_bank("master", 0)
         get_sidechain_account_url = Config.node_url[0] + 'v1/chain/get_account_info'
         j = json.loads(requests.get(get_sidechain_account_url, data = json.dumps({"account_name":(Config.chain_name[0]+'.111')})).text)
         self.assertIn("core_liquid_balance", j)
-        self.assertGreater(j["core_liquid_balance"], amount)
+        point_index = j["core_liquid_balance"].find('.')
+        new_amount = int(j["core_liquid_balance"][:point_index])
+        self.assertGreater(new_amount, amount)
 
         # test token sync from sidechain to master
         print('\n====Token sync from sidechain to master====')
@@ -249,9 +253,11 @@ class Multichain(unittest.TestCase):
         j = json.loads(requests.get(get_sidechain_account_url, data = json.dumps({"account_name":(Config.chain_name[0]+'.111')})).text)
         self.assertIn("account_name", j)
         if "core_liquid_balance" in j:
-            self.assertEqual(j["core_liquid_balance"], amount)
+            point_index = j["core_liquid_balance"].find('.')
+            new_amount = int(j["core_liquid_balance"][:point_index])
+            self.assertEqual(new_amount, amount)
         else:
-            self.assertEqual(amount, '0.0000 UGAS')
+            self.assertEqual(amount, 0)
 
         #test committee sync
         print('\n====Committee sync====')
