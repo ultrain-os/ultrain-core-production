@@ -312,12 +312,18 @@ namespace chainbase {
 
                /** leaves the UNDO state on the stack when session goes out of scope */
                void push( bool ws = false )   {
-                   _apply = false;
-                   if (_index._flag)
-                   {_index._flag = false;return;}
-                   _index.squash_cache();
-                   if ( ws )
-                       _index._flag = true;
+                  _apply = false;
+                  if ( _index._flag )
+                  { _index._flag = false; return; }
+
+                  _index.squash_cache();
+
+                  /*ws == True, we must make sure that _cache size is 1, _cache will be used to create latest ws file*/
+                  while( ws && _index._cache.size() >= 2 )
+                     _index.squash_cache();
+
+                  if ( ws )
+                     _index._flag = true;
                }
                /** combines this session with the prior session */
                void squash() { if( _apply ) _index.squash(); _apply = false; }

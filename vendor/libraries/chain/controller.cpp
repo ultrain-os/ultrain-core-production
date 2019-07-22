@@ -27,6 +27,7 @@
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
+#include <fc/crypto/rand.hpp>
 
 #include <ultrainio/chain/ultrainio_contract.hpp>
 #include <appbase/application.hpp>
@@ -113,6 +114,7 @@ struct controller_impl {
    uint32_t                       worldstate_head_block = 0;
    uint32_t                       worldstate_previous_block = 0;
    bool                           worldstate_thread_running = false;
+   bool                           worldstate_data_processing = false;
    boost::thread                  worldstate_thread;
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -252,17 +254,53 @@ struct controller_impl {
          wlog( "signal handler threw exception" );
       }
    }
+   void create_fake_ws(uint32_t block_height){
+      try {
+         ws_info info;
+         info.chain_id = self.get_chain_id();
+         info.block_height = block_height;
+
+         std::string new_ws_file = ws_manager_ptr->get_file_path_by_info(info.chain_id, info.block_height);
+         std::string new_ws_file_name = new_ws_file + ".ws";
+         auto fd = std::ofstream(new_ws_file_name, (std::ios::out | std::ios::binary));
+
+         std::string msg = "Fake ws, blk_height:" + std::to_string(block_height) + "\n";
+
+         //Add random number, so that diff node could create diff hash value of fake ws.
+         fc::sha256  random_id;
+         fc::rand_pseudo_bytes( random_id.data(), random_id.data_size());
+         msg += "Random(for different hash): " + fc::json::to_string(random_id);
+
+         fd.write(msg.c_str(), msg.size());
+         fd.close();
+
+         info.file_size = fc::file_size(new_ws_file_name);
+         info.hash_string = ws_manager_ptr->calculate_file_hash(new_ws_file_name).str();
+         ws_manager_ptr->save_info(info);
+         elog("create a fake ws, blk_height: ${b}", ("b", block_height));
+      } catch( ... ) {
+         elog("create_fake_ws error: unknown exception");
+      }
+   }
 
    void create_worldstate(){
       auto begin = fc::time_point::now();
       block_state fork_head = *fork_db.head();
       uint32_t block_height = fork_head.block_num;
+      if ( worldstate_data_processing ){
+         /*In this case, error happend in previous ws thread, and the cache data have been modify, data was incomplete.
+         We can't handle this error now, return*/
+         elog("ws error, cache data was incomplete!");
+         return;
+      }
 
       //thread to generate worldstate file
       worldstate_thread = boost::thread([this,fork_head,block_height](){
          auto begin = fc::time_point::now();
+         bool is_error = true;
          try {
             add_to_worldstate(db, block_height, fork_head);
+            is_error = false;
          } catch( const boost::interprocess::bad_alloc& e ) {
             elog("worldstate thread error: bad alloc");
          } catch( const boost::exception& e ) {
@@ -276,6 +314,15 @@ struct controller_impl {
             edump((e.to_detail_string()));
          } catch( ... ) {
             elog("worldstate thread error: unknown exception");
+         }
+
+         if (is_error && worldstate_data_processing){
+            /*In this case, error happen, and the cache data have been modify, data was incomplete. We can't handle this error now,
+            so we make some log, and create a fake ws file, so it will report to monitor, we could noticed the error earlier*/
+            create_fake_ws(block_height);
+            elog("add_to_worldstate error, cache data was incomplete, blk_heigh: ${b}", ("b", block_height));
+         } else {
+            worldstate_data_processing = false;
          }
 
          worldstate_thread_running = false;
@@ -702,6 +749,8 @@ struct controller_impl {
       ws_helper_ptr->get_writer()->write_section<block_state>([this,&worldstate_db, fork_head]( auto &section ){
          section.template add_row<block_header_state>(fork_head, worldstate_db);
       });
+
+      worldstate_data_processing = true;
 
       //How to create new ws file by old ws file and operation cache:
       //1.Read all old rows from old ws file, and then restore to backup indices;

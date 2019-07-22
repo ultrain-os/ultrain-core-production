@@ -455,7 +455,7 @@ ws_helper::ws_helper(std::string old_ws, std::string new_ws)
 :m_old_ws_path(old_ws)
 ,m_new_ws_path(new_ws)
 {
-    //output stream
+    //input stream
     if(!old_ws.empty() && bfs::exists(m_old_ws_path + ".ws") && bfs::exists(m_old_ws_path + ".id")){
         m_reader_fd = std::ifstream(m_old_ws_path + ".ws", (std::ios::in | std::ios::binary));
         m_reader = std::make_shared<istream_worldstate_reader>(m_reader_fd);
@@ -466,7 +466,7 @@ ws_helper::ws_helper(std::string old_ws, std::string new_ws)
         m_id_reader->validate();
     }
 
-    //input stream
+    //output stream
     m_writer_fd = std::ofstream(m_new_ws_path + ".ws", (std::ios::out | std::ios::binary));
     m_writer = std::make_shared<ostream_worldstate_writer>(m_writer_fd);
 
@@ -479,12 +479,12 @@ ws_helper::ws_helper(std::string ws_file, std::string id_file, bool isReload)
     ULTRAIN_ASSERT(isReload == true, worldstate_exception, "reload mode, [isReload] must be true!");
     ULTRAIN_ASSERT(!ws_file.empty() &&  bfs::exists(ws_file), worldstate_exception, "reload mode, ws have to exist!");
 
-    //output stream
+    //input stream
     m_reader_fd = std::ifstream(ws_file, (std::ios::in | std::ios::binary));
     m_reader = std::make_shared<istream_worldstate_reader>(m_reader_fd);
     m_reader->validate();
 
-    //input stream
+    //output stream
     m_id_writer_fd = std::ofstream(id_file, (std::ios::out | std::ios::binary));
     m_id_writer = std::make_shared<ostream_worldstate_id_writer>(m_id_writer_fd);
 }
