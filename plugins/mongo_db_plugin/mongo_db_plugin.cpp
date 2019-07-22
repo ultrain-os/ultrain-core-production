@@ -1081,7 +1081,6 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
       try {
          const auto& value = bsoncxx::from_json( json );
          action_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
-         action_traces_doc.append( kvp( "block_num", b_int32{static_cast<int32_t>(tb.block_num)} ) );
       } catch( bsoncxx::exception& ) {
          try {
             json = fc::prune_invalid_utf8( json );
@@ -1096,6 +1095,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
       if( t->receipt.valid() ) {
          action_traces_doc.append( kvp( "trx_status", std::string( t->receipt->status ) ) );
       }
+      action_traces_doc.append( kvp( "block_num", b_int32{static_cast<int32_t>(tb.block_num)} ) );
       action_traces_doc.append( kvp( "createdAt", b_date{now} ) );
 
       mongocxx::model::insert_one insert_op{action_traces_doc.view()};
@@ -1145,7 +1145,6 @@ void mongo_db_plugin_impl::_process_applied_transaction( const transaction_trace
          try {
             const auto& value = bsoncxx::from_json( json );
             trans_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
-            trans_traces_doc.append( kvp( "block_num", b_int32{static_cast<int32_t>(tb.block_num)} ) );
          } catch( bsoncxx::exception& ) {
             try {
                json = fc::prune_invalid_utf8( json );
@@ -1157,6 +1156,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const transaction_trace
                elog( "  JSON: ${j}", ("j", json) );
             }
          }
+         trans_traces_doc.append( kvp( "block_num", b_int32{static_cast<int32_t>(tb.block_num)} ) );
          trans_traces_doc.append( kvp( "createdAt", b_date{now} ) );
 
          try {
