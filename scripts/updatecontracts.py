@@ -67,8 +67,8 @@ def updateAuth(account, permission, parent, controller):
         }
     }) + '-p ' + account + '@' + permission)
 
-def updateAuthkey(url, account, permission, parent, key):
-    retry(args.clultrain + ' -u ' + url + 'push action ultrainio updateauth' + jsonArg({
+def updateAuthkey(clu, account, permission, parent, key):
+    retry(clu + ' push action ultrainio updateauth ' + jsonArg({
         'account': account,
         'permission': permission,
         'parent': parent,
@@ -81,8 +81,8 @@ def updateAuthkey(url, account, permission, parent, key):
         }
     }) + '-p ' + account + '@' + permission)
 
-def updateMultiAuthActor(url,account, permission, parent, controller1, controller2, controller3):
-    retry(args.clultrain + ' -u ' + url + 'push action ultrainio updateauth' + jsonArg({
+def updateMultiAuthActor(clu,account, permission, parent, controller1, controller2, controller3):
+    retry(clu + ' push action ultrainio updateauth ' + jsonArg({
         'account': account,
         'permission': permission,
         'parent': parent,
@@ -90,59 +90,64 @@ def updateMultiAuthActor(url,account, permission, parent, controller1, controlle
             'threshold': 2, 'keys': [], 'waits': [],
             'accounts': [{
                 'weight': 1,
-                'permission': {'actor': controller1, 'permission': 'active'}
+                'permission': {'actor': controller1, 'permission': permission}
             },{
                 'weight': 1,
-                'permission': {'actor': controller2, 'permission': 'active'}
+                'permission': {'actor': controller2, 'permission': permission}
             },{
                 'weight': 1,
-                'permission': {'actor': controller3, 'permission': 'active'}
+                'permission': {'actor': controller3, 'permission': permission}
             }]
         }
     }) + '-p ' + account + '@' + permission)
 
 destChaininfo = {
-        "ultrainio":" http://127.0.0.1:8888 ",
+        "ultrainio":"http://127.0.0.1:8888",
         #"11":" http://172.16.10.5:8899 ",
 }
 
 testNetHttp = {
-    "ultrainio":" http://ultrain.natapp1.cc",
-    "11":"http://pioneer.natapp1.cc",
-    "12":"http://power.natapp1.cc",
+    "ultrainio":"http://172.16.10.6:8888",
+    # "11":"http://172.16.10.6:8889",
+    # "12":"http://172.16.10.6:8890",
+    #"13":"http://172.16.10.6:9911",
 }
 masterNetHttp = {
-    "ultrainio":" https://ultrain.services -n ",
-    "pioneer":" https://pioneer.ultrain.services -n ",
-    "unitopia":" https://unitopia.ultrain.services -n ",
-    "newretail":" https://new-retail.ultrain.services -n ",
-    "australia":" https://australia.ultrain.services -n "
+    "ultrainio":"http://40.121.11.165:8888",#  "ultrainio":"https://ultrain.services",
+    "pioneer":"http://139.217.87.141:8888",#  "pioneer":"https://pioneer.ultrain.services",
+    "unitopia":"http://40.121.21.140:8888",#  "unitopia":"https://unitopia.ultrain.services",
+    "newretail":"http://139.217.96.141:8888",#  "newretail":"https://new-retail.ultrain.services",
+    "australia":"http://120.92.210.60:8888",#"australia":"https://australia.ultrain.services"
 }
-signAccount = [
-    "master.111",
-    "master.112",
-    "master.113",
-]
+signAccount = ["u.mgr.feifan","u.mgr.suyu","u.mgr.zuofei"]
 def ModifyAccountKey():
     accountlist = [
-        "root1",
+        "u.mgr.feifan",
     ]
     for i in range(0, len(accountlist)):
-        for url in destChaininfo.values():
-            updateAuthkey(url,accountlist[i], 'owner', '', "UTR7ASYVwTkGPMzfc9X7QAFFrTHjSeVkQSFTiTNabyAqDQ5vK3cjf")
-            updateAuthkey(url,accountlist[i], 'active', 'owner', "UTR7ASYVwTkGPMzfc9X7QAFFrTHjSeVkQSFTiTNabyAqDQ5vK3cjf")
+        for url in testNetHttp.values():
+            clu = args.clultrain + ' -u ' + url + ' -n '
+            retry(clu + ' transfer ultrainio u.mgr.feifan  "2.02 UGAS" ')
+            updateAuthkey(clu,accountlist[i], 'owner', '', "UTR6n76ZjUdGwTDzfRVAu3ojaaL72oLhyr8tNrBDiLFzfqxfAbmFf")
+            updateAuthkey(clu,accountlist[i], 'active', 'owner', "UTR6n76ZjUdGwTDzfRVAu3ojaaL72oLhyr8tNrBDiLFzfqxfAbmFf")
 
 def updateAccountAuth():
     accountlist = [
         'ultrainio',
         'utrio.token',
         'utrio.bank',
-        'utrio.msig'
+        'utrio.msig',
+        'utrio.fee',
+        'utrio.reward',
+        'utrio.cmnity',
+        'utrio.thteam',
+        'utrio.dapp'
     ]
     for i in range(0, len(accountlist)):
-        for url in destChaininfo.values():
-            updateMultiAuthActor(url,accountlist[i], 'owner', '', signAccount[0], signAccount[1], signAccount[2])
-            updateMultiAuthActor(url,accountlist[i], 'active', 'owner', signAccount[0], signAccount[1], signAccount[2])
+        for url in masterNetHttp.values():
+            clu = args.clultrain + ' -u ' + url + ' '
+            updateMultiAuthActor(clu,accountlist[i], 'owner', '', signAccount[0], signAccount[1], signAccount[2])
+            updateMultiAuthActor(clu,accountlist[i], 'active', 'owner', signAccount[0], signAccount[1], signAccount[2])
 
 def generateContractTrx():
     os.system("rm -rf contracttrx/")
@@ -178,26 +183,51 @@ def execPropose():
         retry(cluexec + chain_name+"sys " + '''  -p  %s@active''' % ("utrio.mfee")) 
 
 def updateContractTrx():
-    for url in destChaininfo.values():
-        retry(args.clultrain + ' -u ' + url + 'set contract utrio.token ' + args.contracts_dir + 'ultrainio.token/  -p utrio.token@active')
-        retry(args.clultrain + ' -u ' + url + 'set contract utrio.bank ' + args.contracts_dir + 'ultrainio.bank/  -p utrio.bank@active')
-        retry(args.clultrain + ' -u ' + url + 'set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/  -p ultrainio@active')
+    for url in masterNetHttp.values():
+        clu = args.clultrain + ' -u ' + url
+        retry(clu + ' set contract utrio.token ' + args.contracts_dir + 'ultrainio.token/  -p utrio.token@active')
+      #   retry(clu + ' set contract utrio.bank ' + args.contracts_dir + 'ultrainio.bank/  -p utrio.bank@active')
+      #   retry(clu + ' set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/  -p ultrainio@active')
 
 def createAccount():
-    accountList = ["u.mgr.zuofei","u.mgr.feifan","u.mgr.suyu"]
+    accountList = [
+        'utrio.mfee',
+        'utrio.reward',
+      #   'utrio.cmnity',
+      #   'utrio.thteam',
+      #   'utrio.dapp'
+        ]
     pkList = [
     "UTR6r3BNrssrD9F5jJo17aszYN3S7mrYcCYqXGDgaEB1WPgF9LVfe",
     "UTR6r3BNrssrD9F5jJo17aszYN3S7mrYcCYqXGDgaEB1WPgF9LVfe",
-    "UTR6r3BNrssrD9F5jJo17aszYN3S7mrYcCYqXGDgaEB1WPgF9LVfe",
+    #"UTR6r3BNrssrD9F5jJo17aszYN3S7mrYcCYqXGDgaEB1WPgF9LVfe",
     ]
+    clu = args.clultrain + " -u  https://ultrain.services -n "
     for i in range(0,len(accountList)):
         userName = accountList[i]
         pk = pkList[i]
-        retry(args.clultrain+' create account ultrainio '+userName+' "'+pk+'" ')
-        retry(args.clultrain+' system empoweruser '+userName+' 11 "'+pk+'" "'+pk+'" 1 -u ');
-        # retry(args.clultrain+' system empoweruser '+userName+' pioneer "'+pk+'" "'+pk+'" 1 -u ');
-        # retry(args.clultrain+' system empoweruser '+userName+' newretail "'+pk+'" "'+pk+'" 1 -u ');
-        sleep(1)
+        simple_run(clu +' create account ultrainio '+userName+' "'+pk+'" ')
+        sleep(20)
+        simple_run(clu +' system empoweruser '+userName+' pioneer "'+pk+'" "'+pk+'" 1 -u ');
+        simple_run(clu +' system empoweruser '+userName+' unitopia "'+pk+'" "'+pk+'" 1 -u ');
+        simple_run(clu +' system empoweruser '+userName+' newretail "'+pk+'" "'+pk+'" 1 -u ');
+        simple_run(clu +' system empoweruser '+userName+' australia "'+pk+'" "'+pk+'" 1 -u ');
+        
+
+def verifycreateisexist():
+    accountList = [        'utrio.cmnity',
+        'utrio.thteam',
+        #'utrio.dapp'
+        ]
+    noexistaccount = []
+    for i in range(0,len(accountList)):
+        for url in masterNetHttp.values():
+            j = json.loads(requests.get(url+"/v1/chain/get_account_exist",data = json.dumps({"account_name":accountList[i]})).text)
+            if j["is_exist"] == False :
+                noexistaccount.append(accountList[i]);
+    print ("no exist account size: %d" % (len(noexistaccount)) )
+    for a in noexistaccount:
+        print(a)
 # Command Line Arguments
 
 parser = argparse.ArgumentParser()
@@ -211,6 +241,7 @@ commands = [
     ('e', 'execpropose',     execPropose,        True,    "execpropose"),
     ('u', 'updateContractTrx', updateContractTrx,        True,    "updateContractTrx"),
     ('c', 'createAccount', createAccount,        True,    "createAccount"),
+    ('v', 'verifycreateisexist', verifycreateisexist,        True,    "verifycreateisexist"),
 ]
 
 parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '/root/workspace')
