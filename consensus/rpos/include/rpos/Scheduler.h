@@ -229,6 +229,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         bool m_voterPreRunBa0InProgress = false;
         int m_currentPreRunBa0TrxIndex = -1;
         int m_initTrxCount = 0;
+        std::map<chain::transaction_id_type, uint32_t>  blacklist_trx;
         std::map<BlockIdType, ProposeMsg> m_proposerMsgMap;
         BlockIdVoterSetMap m_echoMsgMap;
         std::map<AccountName, chain::block_id_type> m_committeeVoteBlock;

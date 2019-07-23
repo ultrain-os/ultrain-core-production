@@ -1010,6 +1010,12 @@ namespace ultrainio {
                 continue;
             }
 
+            if (blacklist_trx.find(trx->signed_id) != blacklist_trx.end()) {
+                chain.drop_unapplied_transaction(trx);
+                ilog("-----------blacklisted unapplied trx");
+                continue;
+            }
+
             if (fc::time_point(trx->packed_trx.expiration()) < block_time) {
                 //                ilog("-----------initProposeMsg expired trx exp ${exp}, blocktime ${bt}",
                 //                     ("exp",trx->packed_trx.expiration())("bt",block_time));
@@ -1075,6 +1081,14 @@ namespace ultrainio {
                 chain.drop_unapplied_transaction(trx);
                 chain.drop_pending_transaction_from_set(trx);
                 trxs->pop_front();
+                continue;
+            }
+
+            if (blacklist_trx.find(trx->signed_id) != blacklist_trx.end()) {
+                chain.drop_unapplied_transaction(trx);
+                chain.drop_pending_transaction_from_set(trx);
+                trxs->pop_front();
+                ilog("-----------blacklisted pending trx");
                 continue;
             }
 
@@ -1509,15 +1523,19 @@ namespace ultrainio {
                 bool transaction_failed =  trace && trace->except;
                 bool transaction_can_fail = (receipt.status == chain::transaction_receipt_header::hard_fail && scheduled);
                 if (transaction_failed && !transaction_can_fail) {
+                    // If failing a trx in a proposed block, this trx is very suspicious;
+                    // Put this trx into a blacklist map, and discard it when proposing block.
+                    if (receipt.trx.contains<chain::packed_transaction>()) {
+                        auto &pt = receipt.trx.get<chain::packed_transaction>();
+                        auto mtrx = std::make_shared<chain::transaction_metadata>(pt);
+                        blacklist_trx[mtrx->signed_id] = chain.head_block_num();
+                    }
                     // So we can terminate early
                     throw *trace->except;
                 }
-                if ((fc::time_point::now() - start_timestamp) > fc::seconds(5)) {
-                    ilog("----- voter code exec exceeds the max allowed time, break");
-                    m_ba0FailedBlkId = id;
-                    chain.abort_block(true);
-                    return false;
-                }
+                ULTRAIN_ASSERT((fc::time_point::now() - start_timestamp) < fc::seconds(5),
+                               chain::transaction_exception,
+                               "voter code exec exceeds the max allowed time");
             }
             chain.finish_block_hack();
             chain.set_action_merkle_hack();
@@ -1787,12 +1805,23 @@ namespace ultrainio {
         auto it = pending_trxs->begin();
         while (it != pending_trxs->end()) {
             if (chain.is_known_unexpired_transaction((*it)->id) ||
-                fc::time_point((*it)->trx.expiration) < block_time) {
+                fc::time_point((*it)->trx.expiration) < block_time ||
+                blacklist_trx.find((*it)->signed_id) != blacklist_trx.end()) {
                 chain.drop_unapplied_transaction(*it);
                 chain.drop_pending_transaction_from_set(*it);
                 it = pending_trxs->erase(it);
             } else {
                 it++;
+            }
+        }
+        // Clean up old malicious trx in blacklist_trx;
+        auto it2 = blacklist_trx.begin();
+        uint32_t head_num = chain.head_block_num();
+        while (it2 != blacklist_trx.end()) {
+            if (head_num - it2->second > 1024) {
+                it2 = blacklist_trx.erase(it2);
+            } else {
+                it2++;
             }
         }
     }
