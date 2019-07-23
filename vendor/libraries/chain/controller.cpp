@@ -373,6 +373,10 @@ struct controller_impl {
        if(0 == db.get_index<MultiIndexType>().indices().size() )
            db.create<typename MultiIndexType::value_type>([](auto&){});
    }
+
+   void standalone_object(){
+       standalone_object<whiteblacklist_index>();
+   }
    void init(const bfs::path& worldstate_path) {
 
       /**
@@ -384,6 +388,7 @@ struct controller_impl {
       if (bfs::exists(worldstate_path)) {
          ULTRAIN_ASSERT(!head, fork_database_exception, "");
          read_from_worldstate(worldstate_path);
+         standalone_object();
 
          auto end = blog.read_head();
          if( !end ) {
@@ -417,7 +422,7 @@ struct controller_impl {
          db.undo();
       }
 
-      standalone_object<whiteblacklist_index>();
+      standalone_object();
    }
 
    ~controller_impl() {
@@ -887,7 +892,7 @@ struct controller_impl {
       });
       db.create<dynamic_global_property_object>([](auto&){});
 
-      db.create<whiteblacklist_object>([](auto&){});
+      standalone_object();
 
       authorization.initialize_database();
       resource_limits.initialize_database();
