@@ -1188,6 +1188,9 @@ namespace ultrainio {
             if (fc::time_point::now() < hard_cpu_deadline &&
                 m_initTrxCount < chain::config::default_max_propose_trx_count) {
                 auto scheduled_trxs = chain.get_scheduled_transactions();
+                unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+                std::default_random_engine e(seed);
+                std::shuffle(scheduled_trxs.begin(), scheduled_trxs.end(), e);
                 count3 = runScheduledTrxs(scheduled_trxs, hard_cpu_deadline, block_time);
             }
 
