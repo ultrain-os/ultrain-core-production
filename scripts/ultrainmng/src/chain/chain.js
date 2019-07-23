@@ -863,16 +863,16 @@ async function syncBlock() {
 
         //上传同步块高的数据
         if (monitor.checkNeedSync() ) {
-            await chainApi.confirmBlockCheckIn(monitor.getMonitorUrl(), {
+            await chainApi.confirmBlockCheckIn(monitor.getMonitorUrl(), monitor.generateSign({
                 "baseChain": chainConfig.localChainName,
                 "targetChain": constants.chainNameConstants.MAIN_CHAIN_NAME,
                 "confirmBlock": monitor.getConfirmBlockLocal()
-            });
-            await chainApi.confirmBlockCheckIn(monitor.getMonitorUrl(), {
+            }));
+            await chainApi.confirmBlockCheckIn(monitor.getMonitorUrl(), monitor.generateSign({
                 "baseChain": constants.chainNameConstants.MAIN_CHAIN_NAME,
                 "targetChain": chainConfig.localChainName,
                 "confirmBlock": monitor.getConfirmBlockMaster()
-            });
+            }));
         } else {
             logger.error("monitor is false,need not upload confirm block info");
         }
@@ -1244,7 +1244,7 @@ async function syncChainInfo() {
         }
 
         //5个周期做一次seed check，减少seed 检查的频率
-        if (seedCheckCount % 5  == 0) {
+        if (seedCheckCount % 5  == 1) {
             //定期更新configsub
             await chainApi.checkSubchainSeed(chainConfig);
 
