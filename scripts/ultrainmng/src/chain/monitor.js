@@ -1597,11 +1597,11 @@ async function uploadRamUsage() {
                                         array.push(obj);
                                         if ((i % maxSum == 0 && i > 0) || i >= accountInfoJson.length-1) {
                                             logger.info("array("+i+"):",array);
-                                            let rs = await chainApi.ramUsageCheckIn(getMonitorUrl(),{
+                                            let rs = await chainApi.ramUsageCheckIn(getMonitorUrl(),generateSign({
                                                 chainName : chainConfig.localChainName,
                                                 chainId: chainConfig.chainId,
                                                 dataJson : JSON.stringify(array)
-                                            });
+                                            }));
                                             logger.info("ramUsageCheckIn rs:",rs);
                                             array = [];
                                         }
@@ -1716,7 +1716,7 @@ async function uploadUgasToMonitor() {
                 supply: resIssue.UGAS.supply.replace(" UGAS", ""),
                 issuer: resIssue.UGAS.issuer,
             }
-            let resUpload = await chainApi.uploadCurrency(getMonitorUrl(), param)
+            let resUpload = await chainApi.uploadCurrency(getMonitorUrl(), generateSign(param))
         } catch (e) {
             logger.error("getCurrencyStats error:", e);
         }
@@ -1741,7 +1741,7 @@ async function uploadUgasToMonitor() {
                         tag: timestamp
                     }
 
-                    let rs = await chainApi.uploadugas(getMonitorUrl(), param);
+                    let rs = await chainApi.uploadugas(getMonitorUrl(), generateSign(param));
                     logger.info("uploadugas rs:", rs);
                     list = [];
                 }
@@ -1757,7 +1757,7 @@ async function uploadUgasToMonitor() {
             end: 1
         }
 
-        let rs = await chainApi.uploadugas(getMonitorUrl(), param);
+        let rs = await chainApi.uploadugas(getMonitorUrl(), generateSign(param));
         logger.info("uploadugas rs:", rs);
 
     } catch (e) {
