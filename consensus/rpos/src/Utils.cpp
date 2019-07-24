@@ -2,6 +2,8 @@
 
 #include <ultrainio/chain/exceptions.hpp>
 
+#include <base/StringUtils.h>
+
 namespace ultrainio {
     uint32_t Utils::toInt(uint8_t* str, size_t len, int from) {
         uint32_t rand = 0;
@@ -20,15 +22,10 @@ namespace ultrainio {
     }
 
     std::string short_sig(const std::string& s) {
-        if (s.length() < 32) return s;
-        std::string ret = s.substr(0, 8) + "..." + s.substr(s.length() - 8, 8);
-        return ret;
+        return StringUtils::shorten(s);
     }
 
     std::string short_hash(const fc::sha256& id) {
-        std::string s = id.str();
-        if (s.length() < 16) return s;
-        std::string ret = s.substr(0, 8) + "..." + s.substr(s.length() - 8, 8);
-        return ret;
+        return StringUtils::shorten(id.str());
     }
 }

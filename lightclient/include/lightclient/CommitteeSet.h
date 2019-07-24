@@ -25,6 +25,7 @@ namespace ultrainio {
         bool operator != (const CommitteeSet& rhs) const;
         CommitteeDelta diff(const CommitteeSet& pre) const;
         std::vector<std::string> getBlsPk(const std::vector<AccountName>& accountV) const;
+        bool empty() const;
 
     private:
         std::vector<CommitteeInfo> m_committeeInfoV;

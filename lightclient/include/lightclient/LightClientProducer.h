@@ -42,6 +42,8 @@ namespace ultrainio {
 
         BlockIdType getLatestCheckPointId() const;
 
+        CommitteeSet findCommitteeSet(const BlockIdType& blockId) const;
+
     private:
         bool shouldBeConfirmed(const BlockHeader& blockHeader) const;
 

@@ -47,21 +47,6 @@ using namespace boost::asio;
 using namespace std;
 using namespace appbase;
 
-namespace fc {
-    extern std::unordered_map<std::string, logger> &get_logger_map();
-}
-
-namespace {
-    const fc::string logger_name("Scheduler");
-    fc::logger _log;
-    bool theSameOne(const ultrainio::chain::signed_block& lhs, const ultrainio::chain::signed_block_ptr& rhs) {
-        if (&lhs == rhs.get()) {
-            return true;
-        }
-        return lhs.id() == rhs->id();
-    }
-}
-
 namespace ultrainio {
 
     Scheduler::~Scheduler() {}
@@ -148,7 +133,7 @@ namespace ultrainio {
         clearPreRunStatus();
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
-        m_committeeVoteBlock.clear();
+        m_evilMultiSignDetector.reset();
         clearMsgCache(m_cacheProposeMsgMap, blockNum);
         clearMsgCache(m_cacheEchoMsgMap, blockNum);
         clearMsgCache(m_echoMsgAllPhase, blockNum);
@@ -156,7 +141,7 @@ namespace ultrainio {
 
     void Scheduler::resetEcho() {
         m_echoMsgMap.clear();
-        m_committeeVoteBlock.clear();
+        m_evilMultiSignDetector.reset();
     }
 
     bool Scheduler::insert(const EchoMsg &echo) {
@@ -518,28 +503,14 @@ namespace ultrainio {
                 elog("try to confirm wrong block num : ${num}", ("num", confirmedBlockNum));
                 return false;
             }
-            chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
-            BlockIdType latestCheckPointId = m_lightClientProducer->getLatestCheckPointId();
-            int count = 5;
-            while (--count > 0 && latestCheckPointId != BlockIdType()) {
-                chain::signed_block_ptr blockPtr = chain.fetch_block_by_id(latestCheckPointId);
-                uint32_t checkPointBlockNum = BlockHeader::num_from_id(latestCheckPointId);
-                if (!blockPtr) {
-                    elog("can not found CheckPoint for block : ${num}", ("num", checkPointBlockNum));
-                    break;
+            CommitteeSet c = m_lightClientProducer->findCommitteeSet(blockId);
+            if (!c.empty()) {
+                BlsVoterSet blsVoterSet = confirmPoint.blsVoterSet();
+                if (!c.verify(blsVoterSet)) {
+                    // TODO(xiaofen) punish
+                    elog("BlsVoterSet error for : ${num} from ${who}", ("num", propose.block.block_num())("who", std::string(propose.block.proposer)));
+                    return false;
                 }
-                CheckPoint checkPoint(*blockPtr);
-                if (checkPointBlockNum <= confirmedBlockNum) {
-                    CommitteeSet committeeSet = checkPoint.committeeSet();
-                    BlsVoterSet blsVoterSet = confirmPoint.blsVoterSet();
-                    if (!committeeSet.verify(blsVoterSet)) {
-                        // TODO(xiaofen) punish
-                        elog("BlsVoterSet error for : ${num} from ${who}", ("num", propose.block.block_num())("who", std::string(propose.block.proposer)));
-                        return false;
-                    }
-                    break;
-                }
-                latestCheckPointId = checkPoint.getPreCheckPointBlockId();
             }
         }
         return true;
@@ -558,7 +529,7 @@ namespace ultrainio {
             return false;
         }
 
-        if (hasMultiSignPropose(propose)) {
+        if (m_evilMultiSignDetector.hasMultiPropose(m_proposerMsgMap, propose)) {
             ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
             punishMgrPtr->punish(propose.block.proposer, EvilType::kSignMultiPropose);
             // return false in fastHandleMessage
@@ -592,7 +563,7 @@ namespace ultrainio {
             return false;
         }
 
-        if (hasMultiVotePropose(echo)) {
+        if (m_evilMultiSignDetector.hasMultiVote(echo)) {
             ilog("${account} vote multiple propose", ("account", std::string(echo.account)));
             punishMgrPtr->punish(echo.account, EvilType::kVoteMultiPropose);
             // return false in fastHandleMessage
@@ -661,7 +632,7 @@ namespace ultrainio {
             return false;
         }
 
-        if (hasMultiSignPropose(propose)) {
+        if (m_evilMultiSignDetector.hasMultiPropose(m_proposerMsgMap, propose)) {
             ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
             punishMgrPtr->punish(propose.block.proposer, EvilType::kSignMultiPropose);
             //TODO should broadcast the propose message when the punish info not in world state, so return true
@@ -749,7 +720,7 @@ namespace ultrainio {
             return false;
         }
 
-        if (hasMultiVotePropose(echo)) {
+        if (m_evilMultiSignDetector.hasMultiVote(echo)) {
             ilog("${account} vote multiple propose", ("account", std::string(echo.account)));
             punishMgrPtr->punish(echo.account, EvilType::kVoteMultiPropose);
             // TODO broadcast it now
@@ -2113,32 +2084,6 @@ namespace ultrainio {
         return Validator::verify<CommonEchoMsg>(echo.blsSignature, echo, blsPk);
     }
 
-    bool Scheduler::hasMultiSignPropose(const ProposeMsg& propose) {
-        auto itor = m_proposerMsgMap.begin();
-        for (auto itor = m_proposerMsgMap.begin(); itor != m_proposerMsgMap.end(); itor++) {
-            if (itor->second.block.proposer == propose.block.proposer && itor->second.block.id() != propose.block.id()) {
-                m_proposerMsgMap.erase(itor);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool Scheduler::hasMultiVotePropose(const EchoMsg& echo) {
-        if (emptyBlock().id() == echo.blockId || echo.phase < kPhaseBA1) {
-            return false;
-        }
-        auto itor = m_committeeVoteBlock.find(echo.account);
-        if (itor != m_committeeVoteBlock.end()) {
-            if (itor->second != echo.blockId) {
-                return true;
-            }
-        } else {
-            m_committeeVoteBlock.insert(make_pair(echo.account, echo.blockId));
-        }
-        return false;
-    }
-
     BlsVoterSet Scheduler::toBlsVoterSetAndFindEvil(const VoterSet& voterSet, const CommitteeSet& committeeSet,
             bool genesisPeriod, int weight) const {
         BlsVoterSet blsVoterSet = voterSet.toBlsVoterSet(weight);
@@ -2163,4 +2108,12 @@ namespace ultrainio {
         m_evilDDosDetector.deduceWhenBax(stakeVotePtr->getSendEchoThreshold(),
                 UranusNode::getInstance()->getRoundCount(), blockNum, UranusNode::getInstance()->getPhase());
     }
+
+    bool Scheduler::theSameOne(const ultrainio::chain::signed_block& lhs, const ultrainio::chain::signed_block_ptr& rhs) {
+        if (&lhs == rhs.get()) {
+            return true;
+        }
+        return lhs.id() == rhs->id();
+    }
+
 }  // namespace ultrainio

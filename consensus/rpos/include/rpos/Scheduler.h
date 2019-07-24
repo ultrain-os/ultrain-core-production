@@ -17,6 +17,7 @@
 #include <boost/asio/steady_timer.hpp>
 
 #include <rpos/EvilDDosDetector.h>
+#include <rpos/EvilMultiSignDetector.h>
 #include <rpos/RoundInfo.h>
 #include <rpos/VoterSet.h>
 
@@ -173,10 +174,6 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         chain::checksum256_type getCommitteeMroot(uint32_t block_num);
 
-        bool hasMultiSignPropose(const ProposeMsg& propose);
-
-        bool hasMultiVotePropose(const EchoMsg& echo);
-
         BlsVoterSet toBlsVoterSetAndFindEvil(const VoterSet& voterSet, const CommitteeSet& committeeSet, bool genesisPeriod, int weight) const;
 
         // echo relative
@@ -225,6 +222,8 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         bool isMinPropose(const ProposeMsg& proposeMsg);
 
+        bool theSameOne(const ultrainio::chain::signed_block& lhs, const ultrainio::chain::signed_block_ptr& rhs);
+
         // data member
         Block m_ba0Block;
         BlockIdType m_ba0VerifiedBlkId = BlockIdType();
@@ -235,7 +234,6 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         std::map<chain::transaction_id_type, uint32_t>  blacklist_trx;
         std::map<BlockIdType, ProposeMsg> m_proposerMsgMap;
         BlockIdVoterSetMap m_echoMsgMap;
-        std::map<AccountName, chain::block_id_type> m_committeeVoteBlock;
         std::map<RoundInfo, std::vector<ProposeMsg>> m_cacheProposeMsgMap;
         std::map<RoundInfo, std::vector<EchoMsg>> m_cacheEchoMsgMap;
         std::map<RoundInfo, BlockIdVoterSetMap> m_echoMsgAllPhase;
@@ -255,6 +253,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         BlsVoterSet m_currentBlsVoterSet;
         std::shared_ptr<LightClientProducer> m_lightClientProducer;
         EvilDDosDetector m_evilDDosDetector;
+        EvilMultiSignDetector m_evilMultiSignDetector;
         friend class UranusControllerMonitor;
     };
 }

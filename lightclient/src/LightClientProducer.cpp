@@ -2,6 +2,7 @@
 
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/bls_votes.hpp>
+#include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <lightclient/BlockHeaderExtKey.h>
 #include <lightclient/Helper.h>
 
@@ -91,5 +92,26 @@ namespace ultrainio {
 
     BlockIdType LightClientProducer::getLatestCheckPointId() const {
         return m_BlsVotesMgr.get_latest_check_point_id();
+    }
+
+    CommitteeSet LightClientProducer::findCommitteeSet(const BlockIdType& blockId) const {
+        chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
+        uint32_t confirmedBlockNum = BlockHeader::num_from_id(blockId);
+        BlockIdType latestCheckPointId = getLatestCheckPointId();
+        int count = 5;
+        while (--count > 0 && latestCheckPointId != BlockIdType()) {
+            chain::signed_block_ptr blockPtr = chain.fetch_block_by_id(latestCheckPointId);
+            uint32_t checkPointBlockNum = BlockHeader::num_from_id(latestCheckPointId);
+            if (!blockPtr) {
+                elog("can not found CheckPoint for block : ${num}, check we have the full block?", ("num", checkPointBlockNum));
+                return CommitteeSet();
+            }
+            CheckPoint checkPoint(*blockPtr);
+            if (checkPointBlockNum <= confirmedBlockNum) {
+                return checkPoint.committeeSet();
+            }
+            latestCheckPointId = checkPoint.getPreCheckPointBlockId();
+        }
+        return CommitteeSet();
     }
 }

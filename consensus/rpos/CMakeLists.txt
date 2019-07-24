@@ -5,6 +5,7 @@ add_library( ultrainio_rpos
         src/Config.cpp
         src/EvilBlsDetector.cpp
         src/EvilDDosDetector.cpp
+        src/EvilMultiSignDetector.cpp
         src/EvilType.cpp
         src/FisherYates.cpp
         src/Genesis.cpp

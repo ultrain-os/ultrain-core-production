@@ -118,4 +118,8 @@ namespace ultrainio {
         int voterSize = m_committeeInfoV.size() > kDesiredVoterNumber ? kDesiredVoterNumber : m_committeeInfoV.size();
         return kNextRoundThresholdRatio * voterSize + 1;
     }
+
+    bool CommitteeSet::empty() const {
+        return m_committeeInfoV.empty();
+    }
 }

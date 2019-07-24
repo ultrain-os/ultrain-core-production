@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/base/*.h")
 add_library( ultrainio_base
         src/Hex.cpp
+        src/StringUtils.cpp
         ${HEADERS} )
 
 target_link_libraries( ultrainio_base )
