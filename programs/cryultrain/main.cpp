@@ -1,6 +1,7 @@
 #include <fc/crypto/aes.hpp>
 #include <fc/crypto/hex.hpp>
-
+#include <string.h>
+#include <openssl/md5.h>
 int main(int argc, char** argv)
 {
     /* usage: ./cryultrain [-ed] key [plain | cipher] */
@@ -20,6 +21,7 @@ int main(int argc, char** argv)
     std::vector<char> plain;
     std::vector<char> cipher;
     std::string content(argv[3]);
+    std::string key_share("ultrain@#9Df2Y*c");
 
     if (key == "dlog") {
         std::vector<char> dest;
@@ -36,8 +38,19 @@ int main(int argc, char** argv)
         std::cout << std::string(dest.data(), dest.size()) << std::endl;
         return 0;
     }
-
-    fc::sha512 key512 = fc::sha512::hash(key.data(), key.length());
+   unsigned char outmd[16];
+   MD5_CTX ctx;
+   MD5_Init(&ctx);
+   MD5_Update(&ctx,(void *)key_share.c_str(),key_share.length());
+   MD5_Update(&ctx,(void *)content.c_str(),content.length());
+   MD5_Final(outmd,&ctx);
+   std::string md5_r = fc::to_hex((char *)outmd,16);
+   if(strcmp(md5_r.data(),key.data()))
+   {
+      std::cerr<< "Permission denied for this tool" <<std::endl;
+      return -1;
+   }
+   fc::sha512 key512 = fc::sha512::hash(key_share.data(), key_share.length());
     if (opt == "-e") {
         plain.resize(content.length());
         std::copy(content.begin(), content.end(), plain.begin());
@@ -50,7 +63,7 @@ int main(int argc, char** argv)
             std::cerr << e.what();
             return -1;
         } catch (...) {
-            std::cerr << "Unknown exception during encrypt.";
+            std::cerr << "Unknown exception during encrypt." << std::endl;
             return -1;
         }
 
@@ -80,7 +93,7 @@ int main(int argc, char** argv)
             return -1;
         }
 
-        std::cout << std::string(plain.data(), plain.size());
+        std::cout << std::string(plain.data(), plain.size()) << std::endl;
     }
 
     return 0;
