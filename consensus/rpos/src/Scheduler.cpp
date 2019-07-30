@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <random>
 
 #include <boost/asio.hpp>
 #include <fc/log/logger.hpp>
