@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ## para arguments
-if [ $# -ne 3 ];then
-    echo -e "need 3 arguments.\n1.bin dir.\n2.mongodb dir\n3.backup dir"
+if [ $# -ne 4 ];then
+    echo -e "need 4 arguments.\n1.bin dir.\n2.mongodb dir\n3.backup dir\n4.result file"
     exit
 fi
 
@@ -17,6 +17,7 @@ LOG_DIR=$DATA/log
 LOG=mongodb.log
 DATA_DIR=$DATA/data
 OUT_DIR=$3
+RESULT=$4
 
 ## prepare mongo info
 nodconfig=~/.local/share/ultrainio/nodultrain/config/config.ini
@@ -84,8 +85,12 @@ do
        continue
    fi
    if [ $start_blknum -eq $end_blknum ] ; then
-       echo "re $i"
+       echo "restore $i"
        $MONGORESTORE $AUTH_PARA -d ultrain --excludeCollection account_controls --excludeCollection accounts --excludeCollection pub_keys $OUT_DIR/$i/ultrain
+       if [ "$?" -ne 0 ] ; then
+           echo "{ \"code\": 2, \"restore $i failed\" }" > $RESULT
+           exit
+       fi
        let end_blknum=`echo $i|cut -d '-' -f 2`+1
        extra_dir=$i
 	else
@@ -94,6 +99,7 @@ do
 done
 if [ $end_blknum -eq 1 ] ; then
    echo "backupfiles was invalid"
+   echo "{ \"code\": 1, \"backupfiles was invalid\" }" > $RESULT
    exit
 fi
 echo "extra table: $extra_dir"
@@ -101,4 +107,5 @@ $MONGORESTORE $AUTH_PARA -d ultrain -c account_controls $OUT_DIR/$extra_dir/ultr
 $MONGORESTORE $AUTH_PARA -d ultrain -c accounts $OUT_DIR/$extra_dir/ultrain/accounts.bson.gz 
 $MONGORESTORE $AUTH_PARA -d ultrain -c pub_keys $OUT_DIR/$extra_dir/ultrain/pub_keys.bson.gz 
 echo $[end_blknum-1]
+echo "{ \"code\": 0, \"block_num:$end_blknum\" }" > $RESULT
 echo "done"

@@ -1,14 +1,16 @@
 #!/bin/bash
 
 ## para arguments
-if [ $# -ne 2 ];then
-   echo -e "need 2 arguments.\n1.bin dir.\n2.backup dir"
+if [ $# -ne 3 ];then
+   echo -e "need 3 arguments.\n1.bin dir.\n2.backup dir\n3.result"
    exit
 fi
 
 ## global para
 BIN_DIR=$1
 OUT_DIR=$2
+RESULT=$3
+cat /dev/null > $RESULT
 
 DUMP=$BIN_DIR/mongodump
 MONGO=$BIN_DIR/mongo
@@ -41,12 +43,20 @@ dump(){
    for db in $DBs;
    do
       $DUMP $BASE_PARAM -c $db -q '{block_num:{$gte:'$s',$lte:'$e'}}' -o $OUT_DIR/$blk_range
+      if [ "$?" -ne 0 ] ; then
+          echo "{ \"code\": 1, \"backup failed $blk_range\" }" > $RESULT
+          exit
+      fi
    done
 
    ##account_controls ,pub_keys ,accounts tables are fullly dumped
    for db in $DB_FULL;
    do
       $DUMP $BASE_PARAM -c $db -o $OUT_DIR/$blk_range
+      if [ "$?" -ne 0 ] ; then
+          echo "{ \"code\": 1, \"backup failed $blk_range\" }" > $RESULT
+          exit
+      fi
    done
 }
 
@@ -90,6 +100,7 @@ fi
 if [ $block_begin -eq 1 ] ; then
     tmp=$((block_end/INTERVAL*INTERVAL))
     dump $block_begin $tmp
+    echo "{ \"code\": 0, \"block_num:$block_begin-$tmp\" }" > $RESULT
     exit
 fi
 while (true)
@@ -102,3 +113,4 @@ do
       break
    fi
 done
+echo "{ \"code\": 0, \"block_num:$block_begin-$tmp\" }" > $RESULT
