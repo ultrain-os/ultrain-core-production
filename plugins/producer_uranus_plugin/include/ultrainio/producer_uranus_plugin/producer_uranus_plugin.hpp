@@ -56,8 +56,6 @@ public:
    void update_runtime_options(const runtime_options& options);
    runtime_options get_runtime_options() const;
 
-   fc::microseconds generate_worldstate() const;
-
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
    std::shared_ptr<class producer_uranus_plugin_impl> my;

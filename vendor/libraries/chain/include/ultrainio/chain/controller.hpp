@@ -209,7 +209,6 @@ namespace ultrainio { namespace chain {
          block_state_ptr fetch_block_state_by_id( block_id_type id )const;
 
          block_id_type get_block_id_for_num( uint32_t block_num )const;
-         void write_worldstate()const;
          void read_worldstate( const bfs::path& worldstate_path );
          sha256 calculate_integrity_hash()const;
 

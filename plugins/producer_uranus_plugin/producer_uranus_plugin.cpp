@@ -729,21 +729,4 @@ producer_uranus_plugin::runtime_options producer_uranus_plugin::get_runtime_opti
    };
 }
 
-//TODO:just for test, will remove after code testing
-fc::microseconds producer_uranus_plugin::generate_worldstate() const {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
-
-   //TODO:for testing
-   auto begin=fc::time_point::now();
-   chain.write_worldstate();
-   //TODO:for testing
-   auto end=fc::time_point::now();
-   auto time_delta=end-begin;
-
-   ilog("*****************************************");
-   ilog("generate_worldstate test time: ${time_delta}", ("time_delta", time_delta));
-   ilog("*****************************************");
-   return {time_delta};
-}
-
 } // namespace ultrainio

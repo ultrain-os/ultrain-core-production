@@ -1166,9 +1166,6 @@ read_only::get_master_block_num_result read_only::get_master_block_num(const rea
    return result;
 }
 
-std::string read_only::get_subchain_ws_hash(const read_only::get_subchain_ws_hash_params& p) const {
-        return "hash";
-}
 read_only::get_producer_info_result read_only::get_producer_info(const read_only::get_producer_info_params& p) const {
     const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
 

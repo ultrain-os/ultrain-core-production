@@ -2212,11 +2212,6 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
    return signed_blk->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
-void controller::write_worldstate() const {
-//ULTRAIN_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent worldstate with a pending block" );
-   return my->create_worldstate();
-}
-
 void controller::read_worldstate( const bfs::path& worldstate_path ) {
     return my->read_from_worldstate(worldstate_path);
 }
