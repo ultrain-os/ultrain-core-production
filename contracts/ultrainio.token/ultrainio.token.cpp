@@ -79,7 +79,7 @@ void token::transfer( account_name from,
     ultrainio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
 
 
-    sub_balance( from, quantity, st );
+    sub_balance( from, quantity );
     add_balance( to, quantity );
 }
 
@@ -101,7 +101,7 @@ void token::safe_transfer( account_name from,
     ultrainio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
 
 
-    sub_balance( from, quantity, st );
+    sub_balance( from, quantity );
     add_balance( to, quantity );
 }
 
@@ -119,20 +119,14 @@ void token::set_chargeparams( std::string symbol, uint8_t precision, uint32_t op
     });
 }
 
-void token::sub_balance( account_name owner, asset value, const currency_stats& st ) {
+void token::sub_balance( account_name owner, asset value ) {
+
    accounts from_acnts( _self, owner );
 
    const auto& from = from_acnts.get( value.symbol.name(), "there may be a charge for this account, but the balance is 0" );
    uint32_t cur_block_height= (uint32_t)head_block_number();
-   if((cur_block_height - from.last_block_height < st.operate_interval_sec/block_interval_seconds())
-      && (owner != N(ultrainio)) && name{owner}.to_string().find( "utrio." ) != 0){
-      int64_t p10 = (int64_t)value.symbol.precision();
-      asset fee = value / 1000; //  1/1000 handling fee
-      const int64_t maximum_fee = 20 * p10;
-      if( fee.amount < st.operate_fee )  //Set a minimum handling fee of default 0.01 tokens
-         fee.amount = st.operate_fee;
-      else if( fee.amount > maximum_fee )  //Set a maximum handling fee of 20 tokens
-         fee.amount = maximum_fee;
+   if( owner != N(ultrainio) && name{owner}.to_string().find( "utrio." ) != 0 ){
+      asset fee( get_transfer_fee() );
       ultrainio_assert( fee.amount > 0, "fee must a positive value" );
       add_balance( N(utrio.fee), fee );
       value += fee;
@@ -166,6 +160,24 @@ void token::add_balance( account_name owner, asset value )
    }
 }
 
+void token::set_trans_fee( int64_t fee ) {
+   require_auth( _self );
+   transfee _fee( _self, _self );
+   uint64_t cur_block_height= (uint64_t)head_block_number() + 1;
+   auto itr_fee = _fee.find( cur_block_height );
+   ultrainio_assert( itr_fee == _fee.end(), " set fee block height already exist ");
+   _fee.emplace( [&]( auto& f ) {
+      f.block_height = cur_block_height;
+      f.fee = fee;
+   });
+}
+
+int64_t token::get_transfer_fee() const {
+   transfee _fee( _self, _self );
+   auto itr_fee = _fee.rbegin();
+   return itr_fee != _fee.rend() ? itr_fee->fee : default_transfer_fee;
+}
+
 } /// namespace ultrainio
 
-ULTRAINIO_ABI( ultrainio::token, (create)(issue)(transfer)(safe_transfer)(set_chargeparams) )
+ULTRAINIO_ABI( ultrainio::token, (create)(issue)(transfer)(safe_transfer)(set_chargeparams)(set_trans_fee) )

@@ -153,6 +153,14 @@ public:
    };
    account_exist_result get_account_exist( const get_account_exist_params& params )const;
 
+   struct trans_fee_result {
+      asset fee;
+   };
+   struct get_trans_fee_params {
+      uint64_t block_height;
+   };
+   trans_fee_result get_trans_fee( const get_trans_fee_params& params )const;
+
    struct get_contract_results {
       name                   account_name;
       string                 wast;
@@ -827,6 +835,8 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_contract_results, (account_nam
 FC_REFLECT( ultrainio::chain_apis::read_only::get_abi_results, (account_name)(abi) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_account_info_params, (account_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_account_exist_params, (account_name) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_trans_fee_params, (block_height) )
+FC_REFLECT(ultrainio::chain_apis::read_only::trans_fee_result,(fee))
 FC_REFLECT( ultrainio::chain_apis::read_only::get_contract_params, (account_name)(code_as_wasm) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_abi_params, (account_name) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_raw_code_and_abi_params, (account_name) )

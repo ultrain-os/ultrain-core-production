@@ -33,6 +33,12 @@
         {"name":"is_forbid_trans", "type":"bool"}
       ]
     },{
+      "name": "set_trans_fee",
+      "base": "",
+      "fields": [
+        {"name":"fee", "type":"int64"}
+      ]
+    },{
      "name": "create",
      "base": "",
      "fields": [
@@ -65,6 +71,13 @@
         {"name":"operate_fee", "type":"uint32"},
         {"name":"is_forbid_transfer", "type":"bool"}
       ]
+    },{
+      "name": "trans_fee",
+      "base": "",
+      "fields": [
+        {"name":"block_height", "type":"uint64"},
+        {"name":"fee", "type":"int64"}
+      ]
     }
   ],
   "actions": [{
@@ -78,6 +91,10 @@
     }, {
       "name": "set_chargeparams",
       "type": "set_chargeparams",
+      "ricardian_contract": ""
+    }, {
+      "name": "set_trans_fee",
+      "type": "set_trans_fee",
       "ricardian_contract": ""
     }, {
       "name": "issue",
@@ -101,6 +118,12 @@
       "type": "currency_stats",
       "index_type": "i64",
       "key_names" : ["currency"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "transfee",
+      "type": "trans_fee",
+      "index_type": "i64",
+      "key_names" : ["block_height"],
       "key_types" : ["uint64"]
     }
   ],

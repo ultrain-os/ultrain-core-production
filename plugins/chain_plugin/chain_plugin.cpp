@@ -1979,6 +1979,40 @@ read_only::account_exist_result read_only::get_account_exist( const get_account_
     return result;
 }
 
+read_only::trans_fee_result read_only::get_trans_fee( const get_trans_fee_params& params ) const {
+    ULTRAIN_ASSERT( params.block_height != 0, transaction_exception, "get_trans_fee block_height must be greater than 0" );
+    trans_fee_result result;
+    const auto token_code = N(utrio.token);
+    const auto& code_account = db.db().get<account_object,by_name>( token_code );
+    const auto& d = db.db();
+    abi_def abi;
+    if( abi_serializer::to_abi(code_account.abi, abi) ) {
+        abi_serializer abis( abi, abi_serializer_max_time );
+        auto table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, token_code, N(transfee) ));
+        if (table_id != nullptr) {
+            const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
+            decltype(table_id->id) next_tid(table_id->id._id + 1);
+            auto lower = kv_index.lower_bound(boost::make_tuple(table_id->id));
+            auto upper = kv_index.lower_bound(boost::make_tuple(next_tid));
+            std::for_each(lower,upper, [&](const key_value_object& obj) {
+            vector<char> data;
+            copy_inline_row(obj, data);
+            auto trans_fee = abis.binary_to_variant(abis.get_table_type(N(transfee)), data, abi_serializer_max_time);
+            uint64_t block_height = trans_fee["block_height"].as_uint64();
+            int64_t fee = trans_fee["fee"].as_int64();
+            if( params.block_height > block_height ) {
+                result.fee = asset( fee );
+            }
+            });
+        }
+   }
+   if( result.fee == asset(0) ) {
+      const int64_t default_trans_fee = 2000;
+      result.fee = asset( default_trans_fee );
+   }
+   return result;
+}
+
 static variant action_abi_to_variant( const abi_def& abi, type_name action_type ) {
    variant v;
    auto it = std::find_if(abi.structs.begin(), abi.structs.end(), [&](auto& x){return x.name == action_type;});

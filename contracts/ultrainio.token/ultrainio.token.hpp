@@ -14,7 +14,7 @@ namespace ultrainiosystem {
 }
 
 namespace ultrainio {
-
+   static constexpr int64_t default_transfer_fee = 2000; //默认转账手续费0.2UGAS
    using std::string;
 
    class token : public contract {
@@ -39,9 +39,13 @@ namespace ultrainio {
 
          void set_chargeparams( std::string symbol, uint8_t precision, uint32_t operate_interval, uint32_t operate_fee, bool is_forbid_trans);
 
+         void set_trans_fee( int64_t fee );
+
          inline asset get_supply( symbol_name sym )const;
 
          inline asset get_balance( account_name owner, symbol_name sym )const;
+
+         inline int64_t get_transfer_fee() const;
 
       private:
          struct account {
@@ -61,10 +65,18 @@ namespace ultrainio {
             uint64_t primary_key()const { return supply.symbol.name(); }
          };
 
+         struct trans_fee {
+            uint64_t       block_height = 0;  //从该块高(不包含)到下一个大于它的块高中间的费用是fee  前开后闭
+            int64_t        fee = 2000;
+            uint64_t  primary_key()const { return block_height; }
+            ULTRAINLIB_SERIALIZE( trans_fee, (block_height)(fee) )
+         };
+
          typedef ultrainio::multi_index<N(accounts), account> accounts;
          typedef ultrainio::multi_index<N(stat), currency_stats> stats;
+         typedef ultrainio::multi_index< N(transfee), trans_fee>  transfee;
 
-         void sub_balance( account_name owner, asset value, const currency_stats& st );
+         void sub_balance( account_name owner, asset value );
          void add_balance( account_name owner, asset value );
 
       public:
