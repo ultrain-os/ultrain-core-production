@@ -212,7 +212,6 @@ public:
    fc::optional<controller>         chain;
    fc::optional<chain_id_type>      chain_id;
    //txn_msg_rate_limits              rate_limits;
-   fc::optional<vm_type>            wasm_runtime;
    fc::microseconds                 abi_serializer_max_time_ms;
    fc::optional<bfs::path>          worldstate_path;
    std::string _genesis_time = std::string();
@@ -262,7 +261,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("worldstate", bpo::value<bfs::path>(), "File to read Worldstate State from")
          ("worldstate-control", bpo::bool_switch()->default_value(false), "Enable worldstate generation")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("wasm-runtime", bpo::value<ultrainio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
@@ -407,9 +405,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          }
       }
 
-      if( options.count( "wasm-runtime" ))
-         my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
-
       if(options.count("abi-serializer-max-time-ms"))
          my->abi_serializer_max_time_ms = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
 
@@ -422,9 +417,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if( options.count( "chain-state-db-guard-size-mb" ))
          my->chain_config->state_guard_size = options.at( "chain-state-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
-
-      if( my->wasm_runtime )
-         my->chain_config->wasm_runtime = *my->wasm_runtime;
 
       my->chain_config->worldstate_control = options.at( "worldstate-control" ).as<bool>();
       my->chain_config->force_all_checks = options.at( "force-all-checks" ).as<bool>();
