@@ -3,6 +3,7 @@ file(GLOB HEADERS "include/rpos/*.h")
 add_library( ultrainio_rpos
         src/BlockMsgPool.cpp
         src/Config.cpp
+        src/EvidenceMultiSign.cpp
         src/EvilBlsDetector.cpp
         src/EvilDDosDetector.cpp
         src/EvilMultiSignDetector.cpp

@@ -23,8 +23,6 @@ namespace ultrainio {
 
         bool isPunished(const AccountName& accountName);
 
-        //bool relievePunish(Evil evil);
-
     private:
         static std::shared_ptr<PunishMgr> s_self;
 

@@ -18,5 +18,5 @@ namespace ultrainio {
     using Checksum256Type = chain::checksum256_type;
     using Block = chain::signed_block;
     using BlockHeader = chain::block_header;
-    using SignBlockHeader = chain::signed_block_header;
+    using SignedBlockHeader = chain::signed_block_header;
 }
