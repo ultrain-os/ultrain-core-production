@@ -153,37 +153,12 @@
       OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
 
       case "$OS_NAME" in
-         "Amazon Linux AMI")
-            FILE="${SOURCE_DIR}/scripts/ultrainio_build_amazon.sh"
-            CXX_COMPILER=g++
-            C_COMPILER=gcc
-            MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
-            export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-            export CMAKE=${HOME}/opt/cmake/bin/cmake
-            export PATH=${HOME}/opt/mongodb/bin:$PATH
-         ;;
-         "CentOS Linux")
-            FILE="${SOURCE_DIR}/scripts/ultrainio_build_centos.sh"
-            CXX_COMPILER=g++
-            C_COMPILER=gcc
-            MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
-            export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-            export CMAKE=${HOME}/opt/cmake/bin/cmake
-            export PATH=${HOME}/opt/mongodb/bin:$PATH
-         ;;
          "elementary OS")
             FILE="${SOURCE_DIR}/scripts/ultrainio_build_ubuntu.sh"
             CXX_COMPILER=clang++-4.0
             C_COMPILER=clang-4.0
             MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
             export PATH=${HOME}/opt/mongodb/bin:$PATH
-         ;;
-         "Fedora")
-            FILE="${SOURCE_DIR}/scripts/ultrainio_build_fedora.sh"
-            CXX_COMPILER=g++
-            C_COMPILER=gcc
-            MONGOD_CONF=/etc/mongod.conf
-            export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
          ;;
          "Linux Mint")
             FILE="${SOURCE_DIR}/scripts/ultrainio_build_ubuntu.sh"
