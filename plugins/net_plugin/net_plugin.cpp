@@ -2414,7 +2414,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
             sync_block_master->last_received_block = msg.block.block_num();
             if (sync_block_master->last_received_block == sync_block_master->sync_block_msg.startBlockNum) {
                 controller &cc = chain_plug->chain();
-                std::shared_ptr<StakeVoteBase> stake = MsgMgr::getInstance()->getVoterSys(cc.head_block_num() + 1);
+                std::shared_ptr<StakeVoteBase> stake = MsgMgr::getInstance()->getStakeVote(cc.head_block_num() + 1);
                 StartPoint sp(stake->getCommitteeSet(), cc.head_block_id());
                 if (EpochEndPoint::isEpochEndPoint(cc.head_block_header())) {
                     EpochEndPoint eep(cc.head_block_header());
@@ -2953,7 +2953,7 @@ bool net_plugin_impl::is_account_commitee_pk_match(fc::sha256 const& hash,chain:
 {
     controller& cc = chain_plug->chain();
     uint32_t blockNum = cc.head_block_num()+1;
-    std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(blockNum);
+    std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(blockNum);
     PublicKey publicKey = stakeVotePtr->getPublicKey(account);
     if (!Validator::verify<fc::sha256>(Signature(sig), hash, publicKey)) {
         elog("validate error");
@@ -2965,7 +2965,7 @@ bool net_plugin_impl::is_account_bls_pk_match(fc::sha256 const& hash,chain::acco
 {
     controller& cc = chain_plug->chain();
     uint32_t blockNum = cc.head_block_num()+1;
-    std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getVoterSys(blockNum);  
+    std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getStakeVote(blockNum);
     unsigned char blsPk[Bls::BLS_PUB_KEY_COMPRESSED_LENGTH];
     bool res = voterSysPtr->getCommitteeBlsPublicKey(account, blsPk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
     if (!res) {

@@ -13,7 +13,7 @@ namespace ultrainio {
     class BlockMsgPool {
     public:
         BlockMsgPool(uint32_t blockNum);
-        std::shared_ptr<StakeVoteBase> getVoterSys();
+        std::shared_ptr<StakeVoteBase> getStakeVote();
     private:
         uint32_t m_blockNum = 0;
         std::shared_ptr<StakeVoteBase> m_stakeVote = nullptr;

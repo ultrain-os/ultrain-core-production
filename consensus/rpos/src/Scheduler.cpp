@@ -57,15 +57,14 @@ namespace ultrainio {
                                            m_echoMsgAllPhase() {
         m_syncTaskTimer.reset(new boost::asio::steady_timer(app().get_io_service()));
         m_memleakCheck.reset(new boost::asio::steady_timer(app().get_io_service()));
-        start_memleak_check();
-        m_fast_timestamp = 0;
+        startMemleakCheck();
         chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
         m_lightClientProducer = std::make_shared<LightClientProducer>(chain.get_bls_votes_manager());
         m_currentBlsVoterSet = m_lightClientProducer->getCurrentBlsVoterSet();
     }
 
     chain::checksum256_type Scheduler::getCommitteeMroot(uint32_t block_num) {
-        std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getVoterSys(block_num);
+        std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getStakeVote(block_num);
         if (voterSysPtr) {
             return voterSysPtr->getCommitteeMroot();
         } else {
@@ -73,11 +72,11 @@ namespace ultrainio {
         }
     }
 
-    void Scheduler::start_memleak_check() {
+    void Scheduler::startMemleakCheck() {
       m_memleakCheck->expires_from_now(m_memleakCheckPeriod);
       m_memleakCheck->async_wait( [this](boost::system::error_code ec) {
             if( !ec) {
-                start_memleak_check();
+                startMemleakCheck();
                 int s1 = m_proposerMsgMap.size();
 
                 int s2 = m_echoMsgMap.size();
@@ -121,7 +120,7 @@ namespace ultrainio {
             }
             else {
                elog( "Error from memleak check monitor: ${m}",( "m", ec.message()));
-               start_memleak_check( );
+               startMemleakCheck( );
             }
          });
     }
@@ -348,7 +347,7 @@ namespace ultrainio {
             voterSet.blsSignPool.push_back(echo.blsSignature);
             voterSet.sigPool.push_back(echo.signature);
             voterSet.timePool.push_back(echo.timestamp);
-            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(blockNum);
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(blockNum);
             if (response && voterSet.getTotalVoterWeight() >= stakeVotePtr->getSendEchoThreshold() && !voterSet.hasSend
                 && UranusNode::getInstance()->getPhase() == kPhaseBA0 && isMinFEcho(voterSet)) {
                 if (MsgMgr::getInstance()->isVoter(UranusNode::getInstance()->getBlockNum(), echo.phase,
@@ -411,7 +410,7 @@ namespace ultrainio {
             return false;
         }
 
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
         for (auto vector_itor = m_cacheEchoMsgMap.begin(); vector_itor != m_cacheEchoMsgMap.end(); ++vector_itor) {
             if ((vector_itor->first.blockNum == UranusNode::getInstance()->getBlockNum())
                 && (vector_itor->first.phase >= Config::kMaxBaxCount)) {
@@ -442,7 +441,7 @@ namespace ultrainio {
 
     bool Scheduler::isValid(const EchoMsg &echo) const {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(blockNum);
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(blockNum);
         PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
         if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
             elog("validator echo error. account : ${account} pk : ${pk} signature : ${signature}",
@@ -477,7 +476,7 @@ namespace ultrainio {
             return false;
         }
 
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(propose.block.block_num());
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(propose.block.block_num());
         PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
         if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
             elog("validator proposer error. proposer : ${proposer}", ("proposer", std::string(propose.block.proposer)));
@@ -554,8 +553,8 @@ namespace ultrainio {
             return false;
         }
 
-        if (m_fast_timestamp < echo.timestamp) {
-            m_fast_timestamp = echo.timestamp;
+        if (m_fastTimestamp < echo.timestamp) {
+            m_fastTimestamp = echo.timestamp;
         }
 
         std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
@@ -601,7 +600,7 @@ namespace ultrainio {
             if (duplicated(propose)) {
                 return false;
             }
-            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
             PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
             if (!publicKey.isValid()) {
                 elog("can not find pk of proposer : ${p} at block ${num}",
@@ -679,7 +678,7 @@ namespace ultrainio {
                      ("account", std::string(echo.account))("n", BlockHeader::num_from_id(echo.blockId))("p", static_cast<int>(echo.phase)));
                 return false;
             }
-            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
             PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
             if (!publicKey.isValid()) {
                 elog("can not find ok of account : ${account} at block ${num}",
@@ -891,7 +890,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::is2fEcho(const VoterSet& voterSet, uint32_t phaseCount) const {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         int totalVoterWeight = voterSet.getTotalVoterWeight();
 
@@ -905,7 +904,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::isMinPropose(const ProposeMsg &proposeMsg) {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(proposeMsg.block.block_num());
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(proposeMsg.block.block_num());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         uint32_t priority = stakeVotePtr->proposerPriority(proposeMsg.block.proposer, kPhaseBA0, 0);
         for (auto itor = m_proposerMsgMap.begin(); itor != m_proposerMsgMap.end(); ++itor) {
@@ -918,7 +917,7 @@ namespace ultrainio {
 
     bool Scheduler::isMinFEcho(const VoterSet& voterSet, const BlockIdVoterSetMap& blockIdVoterSetMap) const {
         std::shared_ptr<StakeVoteBase> stakeVotePtr
-                = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(voterSet.commonEchoMsg.blockId));
+                = MsgMgr::getInstance()->getStakeVote(BlockHeader::num_from_id(voterSet.commonEchoMsg.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         uint32_t priority = stakeVotePtr->proposerPriority(voterSet.commonEchoMsg.proposer, kPhaseBA0, 0);
         for (auto itor = blockIdVoterSetMap.begin(); itor != blockIdVoterSetMap.end(); ++itor) {
@@ -936,7 +935,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::isMinEcho(const VoterSet& voterSet, const BlockIdVoterSetMap& blockIdVoterSetMap) const {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(BlockHeader::num_from_id(voterSet.commonEchoMsg.blockId));
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(BlockHeader::num_from_id(voterSet.commonEchoMsg.blockId));
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         uint32_t priority = stakeVotePtr->proposerPriority(voterSet.commonEchoMsg.proposer, kPhaseBA0, 0);
         for (auto itor = blockIdVoterSetMap.begin(); itor != blockIdVoterSetMap.end(); ++itor) {
@@ -1019,7 +1018,7 @@ namespace ultrainio {
                 continue;
             }
 
-            if (blacklist_trx.find(trx->signed_id) != blacklist_trx.end()) {
+            if (m_blacklistTrx.find(trx->signed_id) != m_blacklistTrx.end()) {
                 chain.drop_unapplied_transaction(trx);
                 ilog("-----------blacklisted unapplied trx");
                 continue;
@@ -1093,7 +1092,7 @@ namespace ultrainio {
                 continue;
             }
 
-            if (blacklist_trx.find(trx->signed_id) != blacklist_trx.end()) {
+            if (m_blacklistTrx.find(trx->signed_id) != m_blacklistTrx.end()) {
                 chain.drop_unapplied_transaction(trx);
                 chain.drop_pending_transaction_from_set(trx);
                 trxs->pop_front();
@@ -1163,7 +1162,7 @@ namespace ultrainio {
 
             // CheckPoint
             if (EpochEndPoint::isEpochEndPoint(chain.head_block_header())) { // CheckPoint iff the before one is EpochEndHeader
-                std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(chain.head_block_num() + 1);
+                std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(chain.head_block_num() + 1);
                 ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
                 CommitteeSet committeeSet = stakeVotePtr->getCommitteeSet();
                 m_lightClientProducer->handleCheckPoint(chain, committeeSet);
@@ -1318,7 +1317,7 @@ namespace ultrainio {
 
     bool Scheduler::isFastba0(const RoundInfo& info) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr
-                = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+                = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         auto echoItor = m_cacheEchoMsgMap.find(info);
         if (echoItor != m_cacheEchoMsgMap.end()) {
@@ -1341,7 +1340,7 @@ namespace ultrainio {
     Block Scheduler::produceBaxBlock() {
         VoterSet voterSet;
         std::shared_ptr<StakeVoteBase> stakeVotePtr
-                = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+                = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         uint32_t minPriority = stakeVotePtr->getProposerNumber();
         dlog("produceBaxBlock begin.");
@@ -1404,7 +1403,7 @@ namespace ultrainio {
         uint32_t phase = UranusNode::getInstance()->getPhase();
         phase += UranusNode::getInstance()->getBaxCount();
 
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(UranusNode::getInstance()->getBlockNum());
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         uint32_t minPriority = stakeVotePtr->getProposerNumber();
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); itor++) {
@@ -1546,7 +1545,7 @@ namespace ultrainio {
                     if (receipt.trx.contains<chain::packed_transaction>()) {
                         auto &pt = receipt.trx.get<chain::packed_transaction>();
                         auto mtrx = std::make_shared<chain::transaction_metadata>(pt);
-                        blacklist_trx[mtrx->signed_id] = chain.head_block_num();
+                        m_blacklistTrx[mtrx->signed_id] = chain.head_block_num();
                     }
                     // So we can terminate early
                     throw *trace->except;
@@ -1824,7 +1823,7 @@ namespace ultrainio {
         while (it != pending_trxs->end()) {
             if (chain.is_known_unexpired_transaction((*it)->id) ||
                 fc::time_point((*it)->trx.expiration) < block_time ||
-                blacklist_trx.find((*it)->signed_id) != blacklist_trx.end()) {
+                m_blacklistTrx.find((*it)->signed_id) != m_blacklistTrx.end()) {
                 chain.drop_unapplied_transaction(*it);
                 chain.drop_pending_transaction_from_set(*it);
                 it = pending_trxs->erase(it);
@@ -1832,12 +1831,12 @@ namespace ultrainio {
                 it++;
             }
         }
-        // Clean up old malicious trx in blacklist_trx;
-        auto it2 = blacklist_trx.begin();
+        // Clean up old malicious trx in m_blacklistTrx;
+        auto it2 = m_blacklistTrx.begin();
         uint32_t head_num = chain.head_block_num();
-        while (it2 != blacklist_trx.end()) {
+        while (it2 != m_blacklistTrx.end()) {
             if (head_num - it2->second > 1024) {
-                it2 = blacklist_trx.erase(it2);
+                it2 = m_blacklistTrx.erase(it2);
             } else {
                 it2++;
             }
@@ -1943,11 +1942,11 @@ namespace ultrainio {
     }
 
     uint32_t Scheduler::getFastTimestamp() {
-        return m_fast_timestamp;
+        return m_fastTimestamp;
     }
 
     void Scheduler::resetTimestamp() {
-        m_fast_timestamp = 0;
+        m_fastTimestamp = 0;
     }
 
     void Scheduler::clearOldCachedProposeMsg() {
@@ -2005,7 +2004,7 @@ namespace ultrainio {
         auto block_timestamp = chain.head_block_time() + fc::milliseconds(chain::config::block_interval_ms);
         chain.start_block(block_timestamp, getCommitteeMroot(chain.head_block_num() + 1), "");
         if (EpochEndPoint::isEpochEndPoint(chain.head_block_header())) {
-            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(chain.head_block_num() + 1);
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(chain.head_block_num() + 1);
             m_lightClientProducer->handleCheckPoint(chain, stakeVotePtr->getCommitteeSet());
         }
         chain.finish_block_hack();
@@ -2075,7 +2074,7 @@ namespace ultrainio {
 
     bool Scheduler::verifyMyBlsSignature(const EchoMsg& echo) const {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
-        std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getVoterSys(blockNum);
+        std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getStakeVote(blockNum);
         unsigned char blsPk[Bls::BLS_PUB_KEY_COMPRESSED_LENGTH];
         bool res = voterSysPtr->getCommitteeBlsPublicKey(StakeVoteBase::getMyAccount(), blsPk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
         if (!res) {
@@ -2105,7 +2104,7 @@ namespace ultrainio {
 
     void Scheduler::invokeDeduceWhenBax() {
         uint32_t blockNum = UranusNode::getInstance()->getBlockNum();
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getVoterSys(blockNum);
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(blockNum);
         m_evilDDosDetector.deduceWhenBax(stakeVotePtr->getSendEchoThreshold(),
                 UranusNode::getInstance()->getRoundCount(), blockNum, UranusNode::getInstance()->getPhase());
     }

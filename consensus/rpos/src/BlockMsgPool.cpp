@@ -12,7 +12,7 @@ namespace ultrainio {
         m_stakeVote = StakeVoteFactory::createRandom(m_blockNum, nullptr);
     }
 
-    std::shared_ptr<StakeVoteBase> BlockMsgPool::getVoterSys() {
+    std::shared_ptr<StakeVoteBase> BlockMsgPool::getStakeVote() {
         ULTRAIN_ASSERT(m_stakeVote, chain::chain_exception, "m_stakeVote is nullptr");
         return m_stakeVote;
     }

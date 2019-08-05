@@ -889,7 +889,7 @@ namespace ultrainio {
     }
 
     int UranusNode::getCommitteeMemberNumber() {
-        std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getVoterSys(this->getBlockNum());
+        std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getStakeVote(this->getBlockNum());
         return voterSysPtr->getCommitteeMemberNumber();
     }
 

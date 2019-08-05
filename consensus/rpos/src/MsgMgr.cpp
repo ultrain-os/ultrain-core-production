@@ -28,7 +28,7 @@ namespace ultrainio {
         if (StakeVoteBase::newRound(phase, baxCount)) {
             clearSomeBlockMessage(blockNum);
         }
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = getStakeVote(blockNum);
         stakeVotePtr->moveToNewStep(blockNum, phase, baxCount);
     }
 
@@ -44,13 +44,13 @@ namespace ultrainio {
     }
 
     bool MsgMgr::isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = getStakeVote(blockNum);
         ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
         return stakeVotePtr->isVoter(StakeVoteBase::getMyAccount(), phase, baxCount, UranusNode::getInstance()->getNonProducingNode());
     }
 
     bool MsgMgr::isProposer(uint32_t blockNum) {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = getVoterSys(blockNum);
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = getStakeVote(blockNum);
         ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
         return stakeVotePtr->isProposer(StakeVoteBase::getMyAccount(), UranusNode::getInstance()->getNonProducingNode());
     }
@@ -66,8 +66,8 @@ namespace ultrainio {
         }
     }
 
-    std::shared_ptr<StakeVoteBase> MsgMgr::getVoterSys(uint32_t blockNum) {
+    std::shared_ptr<StakeVoteBase> MsgMgr::getStakeVote(uint32_t blockNum) {
         BlockMsgPoolPtr blockMsgPoolPtr = getBlockMsgPool(blockNum);
-        return blockMsgPoolPtr->getVoterSys();
+        return blockMsgPoolPtr->getStakeVote();
     }
 }

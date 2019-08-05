@@ -170,7 +170,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         size_t runUnappliedTrxs(std::vector<chain::transaction_metadata_ptr> &trxs,
                                 fc::time_point hard_cpu_deadline, fc::time_point block_time);
 
-        void start_memleak_check();
+        void startMemleakCheck();
 
         chain::checksum256_type getCommitteeMroot(uint32_t block_num);
 
@@ -231,7 +231,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         bool m_voterPreRunBa0InProgress = false;
         int m_currentPreRunBa0TrxIndex = -1;
         int m_initTrxCount = 0;
-        std::map<chain::transaction_id_type, uint32_t>  blacklist_trx;
+        std::map<chain::transaction_id_type, uint32_t>  m_blacklistTrx;
         std::map<BlockIdType, ProposeMsg> m_proposerMsgMap;
         BlockIdVoterSetMap m_echoMsgMap;
         std::map<RoundInfo, std::vector<ProposeMsg>> m_cacheProposeMsgMap;
@@ -244,12 +244,12 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         const uint32_t m_maxSyncClients = 10;
         const uint32_t m_maxPacketsOnce = 80;
         const uint32_t m_maxSyncBlocks = 1000;
+        uint32_t m_fastTimestamp = 0;
         boost::asio::steady_timer::duration m_syncTaskPeriod{std::chrono::seconds{2}};
         std::unique_ptr<boost::asio::steady_timer> m_syncTaskTimer;
         boost::asio::steady_timer::duration m_memleakCheckPeriod{std::chrono::seconds{10}};
         std::unique_ptr<boost::asio::steady_timer> m_memleakCheck;
         std::list<SyncTask> m_syncTaskQueue;
-        uint32_t m_fast_timestamp;
         BlsVoterSet m_currentBlsVoterSet;
         std::shared_ptr<LightClientProducer> m_lightClientProducer;
         EvilDDosDetector m_evilDDosDetector;

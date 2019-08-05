@@ -37,7 +37,7 @@ namespace ultrainio {
 
         bool isProposer(uint32_t blockNum);
 
-        std::shared_ptr<StakeVoteBase> getVoterSys(uint32_t blockNum);
+        std::shared_ptr<StakeVoteBase> getStakeVote(uint32_t blockNum);
 
     private:
         MsgMgr() = default;
