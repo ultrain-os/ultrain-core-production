@@ -46,13 +46,13 @@ namespace ultrainio {
     bool MsgMgr::isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = getStakeVote(blockNum);
         ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
-        return stakeVotePtr->isVoter(StakeVoteBase::getMyAccount(), phase, baxCount, UranusNode::getInstance()->getNonProducingNode());
+        return stakeVotePtr->isVoter(StakeVoteBase::getMyAccount(), phase, baxCount, Node::getInstance()->getNonProducingNode());
     }
 
     bool MsgMgr::isProposer(uint32_t blockNum) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = getStakeVote(blockNum);
         ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
-        return stakeVotePtr->isProposer(StakeVoteBase::getMyAccount(), UranusNode::getInstance()->getNonProducingNode());
+        return stakeVotePtr->isProposer(StakeVoteBase::getMyAccount(), Node::getInstance()->getNonProducingNode());
     }
 
     void MsgMgr::clearSomeBlockMessage(uint32_t blockNum) {

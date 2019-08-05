@@ -199,9 +199,9 @@ monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const {
 
    namespace monitor_apis {
 
-     const std::shared_ptr<UranusNode>  monitor_only::getNodePtr() const {
-       auto nodePtr = UranusNode::getInstance();
-       ULTRAIN_ASSERT( nodePtr != nullptr, chain::node_not_found_exception, "Failed to get UranusNode. Most possible reason: This Node is not a producer." );
+     const std::shared_ptr<Node>  monitor_only::getNodePtr() const {
+       auto nodePtr = Node::getInstance();
+       ULTRAIN_ASSERT( nodePtr != nullptr, chain::node_not_found_exception, "Failed to get Node. Most possible reason: This Node is not a producer." );
        return nodePtr;
      }
 

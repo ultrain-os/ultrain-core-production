@@ -32,7 +32,7 @@ namespace ultrainio {
                     chain::chain_exception,
                     "genesis key pair invalid");
         }
-        if (UranusNode::getInstance()->getNonProducingNode()) {
+        if (Node::getInstance()->getNonProducingNode()) {
             ilog("Non Producer Node");
             return;
         }

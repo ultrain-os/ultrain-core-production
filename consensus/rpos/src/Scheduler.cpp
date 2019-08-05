@@ -174,9 +174,9 @@ namespace ultrainio {
     }
 
     bool Scheduler::isLaterMsg(const EchoMsg &echo) const {
-        uint32_t currentBlockNum = UranusNode::getInstance()->getBlockNum();
-        ConsensusPhase currentPhase = UranusNode::getInstance()->getPhase();
-        uint32_t currentBaxCount = UranusNode::getInstance()->getBaxCount();
+        uint32_t currentBlockNum = Node::getInstance()->getBlockNum();
+        ConsensusPhase currentPhase = Node::getInstance()->getPhase();
+        uint32_t currentBaxCount = Node::getInstance()->getBaxCount();
 
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
         if (blockNum > currentBlockNum) {
@@ -191,8 +191,8 @@ namespace ultrainio {
     }
 
     bool Scheduler::isLaterMsg(const ProposeMsg& propose) const {
-        uint32_t currentBlockNum = UranusNode::getInstance()->getBlockNum();
-        ConsensusPhase currentPhase = UranusNode::getInstance()->getPhase();
+        uint32_t currentBlockNum = Node::getInstance()->getBlockNum();
+        ConsensusPhase currentPhase = Node::getInstance()->getPhase();
         if (propose.block.block_num() > currentBlockNum
                 || (propose.block.block_num() == currentBlockNum && currentPhase == kPhaseInit)) {
             return true;
@@ -270,7 +270,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::sameBlockNumAndPhase(const ProposeMsg& propose) const {
-        return propose.block.block_num() == UranusNode::getInstance()->getBlockNum() && kPhaseBA0 == UranusNode::getInstance()->getPhase();
+        return propose.block.block_num() == Node::getInstance()->getBlockNum() && kPhaseBA0 == Node::getInstance()->getPhase();
     }
 
     bool Scheduler::loopback(const EchoMsg& echo) const {
@@ -278,20 +278,20 @@ namespace ultrainio {
     }
 
     bool Scheduler::sameBlockNumButBeforePhase(const EchoMsg &echo) const {
-        if (BlockHeader::num_from_id(echo.blockId) == UranusNode::getInstance()->getBlockNum()
-                && (echo.phase + echo.baxCount < UranusNode::getInstance()->getPhase() + UranusNode::getInstance()->getBaxCount())) {
+        if (BlockHeader::num_from_id(echo.blockId) == Node::getInstance()->getBlockNum()
+                && (echo.phase + echo.baxCount < Node::getInstance()->getPhase() + Node::getInstance()->getBaxCount())) {
             return true;
         }
         return false;
     }
 
     bool Scheduler::sameBlockNumAndPhase(const EchoMsg& echo) const {
-        return BlockHeader::num_from_id(echo.blockId) == UranusNode::getInstance()->getBlockNum()
-                && echo.phase == UranusNode::getInstance()->getPhase() && echo.baxCount == UranusNode::getInstance()->getBaxCount();
+        return BlockHeader::num_from_id(echo.blockId) == Node::getInstance()->getBlockNum()
+                && echo.phase == Node::getInstance()->getPhase() && echo.baxCount == Node::getInstance()->getBaxCount();
     }
 
     bool Scheduler::obsolete(const EchoMsg& echo) const {
-        return BlockHeader::num_from_id(echo.blockId) < UranusNode::getInstance()->getBlockNum();
+        return BlockHeader::num_from_id(echo.blockId) < Node::getInstance()->getBlockNum();
     }
 
     bool Scheduler::processBeforeMsg(const EchoMsg &echo) {
@@ -349,15 +349,15 @@ namespace ultrainio {
             voterSet.timePool.push_back(echo.timestamp);
             std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(blockNum);
             if (response && voterSet.getTotalVoterWeight() >= stakeVotePtr->getSendEchoThreshold() && !voterSet.hasSend
-                && UranusNode::getInstance()->getPhase() == kPhaseBA0 && isMinFEcho(voterSet)) {
-                if (MsgMgr::getInstance()->isVoter(UranusNode::getInstance()->getBlockNum(), echo.phase,
+                && Node::getInstance()->getPhase() == kPhaseBA0 && isMinFEcho(voterSet)) {
+                if (MsgMgr::getInstance()->isVoter(Node::getInstance()->getBlockNum(), echo.phase,
                                                            echo.baxCount)) {
                     ilog("send echo when > f + 1");
                     voterSet.hasSend = true;
                     EchoMsg myEcho = MsgBuilder::constructMsg(echo);
                     ULTRAIN_ASSERT(verifyMyBlsSignature(myEcho), chain::chain_exception, "bls signature error, check bls private key pls");
                     insert(myEcho);
-                    UranusNode::getInstance()->sendMessage(myEcho);
+                    Node::getInstance()->sendMessage(myEcho);
                 }
             }
             return true;
@@ -370,12 +370,12 @@ namespace ultrainio {
             return false;
         }
 
-        if (UranusNode::getInstance()->isSyncing()) {
+        if (Node::getInstance()->isSyncing()) {
             elog("node is syncing.");
             return false;
         }
 
-        uint32_t maxBlockNum = UranusNode::getInstance()->getBlockNum();
+        uint32_t maxBlockNum = Node::getInstance()->getBlockNum();
 
         for (auto vector_itor = m_cacheEchoMsgMap.begin(); vector_itor != m_cacheEchoMsgMap.end(); ++vector_itor) {
             if (vector_itor->first.blockNum > maxBlockNum) {
@@ -410,9 +410,9 @@ namespace ultrainio {
             return false;
         }
 
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
         for (auto vector_itor = m_cacheEchoMsgMap.begin(); vector_itor != m_cacheEchoMsgMap.end(); ++vector_itor) {
-            if ((vector_itor->first.blockNum == UranusNode::getInstance()->getBlockNum())
+            if ((vector_itor->first.blockNum == Node::getInstance()->getBlockNum())
                 && (vector_itor->first.phase >= Config::kMaxBaxCount)) {
                 BlockIdVoterSetMap echo_msg_map;
 
@@ -448,11 +448,11 @@ namespace ultrainio {
                     ("account", std::string(echo.account))("pk", std::string(publicKey))("signature", echo.signature));
             return false;
         }
-        if (!stakeVotePtr->isVoter(echo.account, echo.phase, echo.baxCount, UranusNode::getInstance()->getNonProducingNode())) {
+        if (!stakeVotePtr->isVoter(echo.account, echo.phase, echo.baxCount, Node::getInstance()->getNonProducingNode())) {
             elog("send echo by no voter. account : ${account}", ("account", std::string(echo.account)));
             return false;
         }
-//        if (!stakeVotePtr->isProposer(echo.proposer, UranusNode::getInstance()->getNonProducingNode())) {
+//        if (!stakeVotePtr->isProposer(echo.proposer, Node::getInstance()->getNonProducingNode())) {
 //            elog("echo an propose message, proposed by no proposer. account : ${account}", ("account", std::string(echo.proposer)));
 //            return false;
 //        }
@@ -465,8 +465,8 @@ namespace ultrainio {
 
     bool Scheduler::obsolete(const ProposeMsg& propose) const {
         uint32_t blockNum = propose.block.block_num();
-        uint32_t myBlockNum = UranusNode::getInstance()->getBlockNum();
-        return blockNum < myBlockNum || (blockNum == myBlockNum && UranusNode::getInstance()->getPhase() > kPhaseBA0);
+        uint32_t myBlockNum = Node::getInstance()->getBlockNum();
+        return blockNum < myBlockNum || (blockNum == myBlockNum && Node::getInstance()->getPhase() > kPhaseBA0);
     }
 
     bool Scheduler::isValid(const ProposeMsg& propose) const {
@@ -483,7 +483,7 @@ namespace ultrainio {
             return false;
         }
 
-        if (!stakeVotePtr->isProposer(propose.block.proposer, UranusNode::getInstance()->getNonProducingNode())) {
+        if (!stakeVotePtr->isProposer(propose.block.proposer, Node::getInstance()->getNonProducingNode())) {
             elog("send propose by non proposer. account : ${account}", ("account", std::string(propose.block.proposer)));
             return false;
         }
@@ -592,24 +592,24 @@ namespace ultrainio {
         }
 
         if (isLaterMsg(propose)) {
-            if (m_evilDDosDetector.evil(propose, UranusNode::getInstance()->getRoundCount())) {
+            if (m_evilDDosDetector.evil(propose, Node::getInstance()->getRoundCount())) {
                 elog("evil echo : blockNum : ${blockNum} local : ${local}",
-                        ("blockNum", propose.block.block_num())("local", UranusNode::getInstance()->getBlockNum()));
+                        ("blockNum", propose.block.block_num())("local", Node::getInstance()->getBlockNum()));
                 return false;
             }
             if (duplicated(propose)) {
                 return false;
             }
-            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
             PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
             if (!publicKey.isValid()) {
                 elog("can not find pk of proposer : ${p} at block ${num}",
-                        ("p", std::string(propose.block.proposer))("num", UranusNode::getInstance()->getBlockNum()));
+                        ("p", std::string(propose.block.proposer))("num", Node::getInstance()->getBlockNum()));
                 return false;
             }
             if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
                 elog("validator proposer error. proposer : ${p} at block ${num} sig : ${sig}",
-                        ("p", std::string(propose.block.proposer))("num", UranusNode::getInstance()->getBlockNum())("sig", short_sig(propose.block.signature)));
+                        ("p", std::string(propose.block.proposer))("num", Node::getInstance()->getBlockNum())("sig", short_sig(propose.block.signature)));
                 return false;
             }
             return processLaterMsg(propose);
@@ -621,7 +621,7 @@ namespace ultrainio {
             return false;
         }
 
-        if (UranusNode::getInstance()->isSyncing()) {
+        if (Node::getInstance()->isSyncing()) {
             dlog("receive propose msg. node is syncing. blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
             return true;
         }
@@ -646,7 +646,7 @@ namespace ultrainio {
                 if (MsgMgr::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
                     EchoMsg echo = MsgBuilder::constructMsg(propose);
                     ULTRAIN_ASSERT(verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error, check bls private key pls");
-                    UranusNode::getInstance()->sendMessage(echo);
+                    Node::getInstance()->sendMessage(echo);
                     insert(echo);
                 }
                 dlog("save propose msg.blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
@@ -668,9 +668,9 @@ namespace ultrainio {
         }
 
         if (isLaterMsg(echo)) {
-            if (m_evilDDosDetector.evil(echo, UranusNode::getInstance()->getRoundCount())) {
+            if (m_evilDDosDetector.evil(echo, Node::getInstance()->getRoundCount())) {
                 elog("evil echo : blockNum : ${blockNum} local : ${local}",
-                        ("blockNum", BlockHeader::num_from_id(echo.blockId))("local", UranusNode::getInstance()->getBlockNum()));
+                        ("blockNum", BlockHeader::num_from_id(echo.blockId))("local", Node::getInstance()->getBlockNum()));
                 return false;
             }
             if (duplicated(echo)) {
@@ -678,19 +678,19 @@ namespace ultrainio {
                      ("account", std::string(echo.account))("n", BlockHeader::num_from_id(echo.blockId))("p", static_cast<int>(echo.phase)));
                 return false;
             }
-            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
+            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
             PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
             if (!publicKey.isValid()) {
                 elog("can not find ok of account : ${account} at block ${num}",
-                     ("account", std::string(echo.account))("num", UranusNode::getInstance()->getBlockNum()));
+                     ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum()));
                 return false;
             }
             if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
                 elog("validator echo error. account : ${account} at block : ${num} sig : ${sig}",
-                     ("account", std::string(echo.account))("num", UranusNode::getInstance()->getBlockNum())("sig", short_sig(echo.signature)));
+                     ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum())("sig", short_sig(echo.signature)));
                 return false;
             }
-            m_evilDDosDetector.gatherWhenBax(echo, UranusNode::getInstance()->getBlockNum(), UranusNode::getInstance()->getPhase());
+            m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(), Node::getInstance()->getPhase());
             return processLaterMsg(echo);
         }
 
@@ -698,7 +698,7 @@ namespace ultrainio {
             if (!isValid(echo)) {
                 return false;
             }
-            m_evilDDosDetector.gatherWhenBax(echo, UranusNode::getInstance()->getBlockNum(), UranusNode::getInstance()->getPhase());
+            m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(), Node::getInstance()->getPhase());
             return processBeforeMsg(echo);
         }
 
@@ -708,7 +708,7 @@ namespace ultrainio {
             return false;
         }
 
-        if ((UranusNode::getInstance()->isSyncing()) && (UranusNode::getInstance()->getPhase() != kPhaseBAX)) {
+        if ((Node::getInstance()->isSyncing()) && (Node::getInstance()->getPhase() != kPhaseBAX)) {
             dlog("receive echo msg. node is syncing. blockhash = ${blockhash} echo'account = ${account}",
                  ("blockhash", short_hash(echo.blockId))("account", std::string(echo.account)));
             return true;
@@ -726,7 +726,7 @@ namespace ultrainio {
             // TODO broadcast it now
             return true;
         }
-        m_evilDDosDetector.gatherWhenBax(echo, UranusNode::getInstance()->getBlockNum(), UranusNode::getInstance()->getPhase());
+        m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(), Node::getInstance()->getPhase());
 
         auto itor = m_echoMsgMap.find(echo.blockId);
         bool bret;
@@ -748,7 +748,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::handleMessage(const fc::sha256 &nodeId, const ReqSyncMsg &msg) {
-        if (UranusNode::getInstance()->isSyncing()) {
+        if (Node::getInstance()->isSyncing()) {
             return true;
         }
 
@@ -761,7 +761,7 @@ namespace ultrainio {
         uint32_t last_block_num = getLastBlocknum();
         for (std::list<SyncTask>::iterator l_it = m_syncTaskQueue.begin(); l_it != m_syncTaskQueue.end(); ++l_it) {
             if (l_it->nodeId == nodeId) {
-                if (l_it->startBlock == last_block_num + 1 && UranusNode::getInstance()->getBaxCount() > 0) { // When the whole chain blocks at bax, we erase the old task and will add new one.
+                if (l_it->startBlock == last_block_num + 1 && Node::getInstance()->getBaxCount() > 0) { // When the whole chain blocks at bax, we erase the old task and will add new one.
                     m_syncTaskQueue.erase(l_it);
                     break;
                 } else {
@@ -787,7 +787,7 @@ namespace ultrainio {
                     sync_block.proof = m_currentBlsVoterSet.toString();
                     ilog("send last block, voter set: ${s}", ("s", m_currentBlsVoterSet.toString()));
                 }
-                UranusNode::getInstance()->sendMessage(nodeId, sync_block);
+                Node::getInstance()->sendMessage(nodeId, sync_block);
             } else if (num == end_block_num) { // try to send last block next time
                 break;
             } else {// else: skip the block if not exist
@@ -828,7 +828,7 @@ namespace ultrainio {
             rsp_msg.lastNum = INVALID_BLOCK_NUM;
         }
 
-        UranusNode::getInstance()->sendMessage(nodeId, rsp_msg);
+        Node::getInstance()->sendMessage(nodeId, rsp_msg);
         return true;
     }
 
@@ -890,7 +890,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::is2fEcho(const VoterSet& voterSet, uint32_t phaseCount) const {
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         int totalVoterWeight = voterSet.getTotalVoterWeight();
 
@@ -1317,7 +1317,7 @@ namespace ultrainio {
 
     bool Scheduler::isFastba0(const RoundInfo& info) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr
-                = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
+                = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         auto echoItor = m_cacheEchoMsgMap.find(info);
         if (echoItor != m_cacheEchoMsgMap.end()) {
@@ -1340,12 +1340,12 @@ namespace ultrainio {
     Block Scheduler::produceBaxBlock() {
         VoterSet voterSet;
         std::shared_ptr<StakeVoteBase> stakeVotePtr
-                = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
+                = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         uint32_t minPriority = stakeVotePtr->getProposerNumber();
         dlog("produceBaxBlock begin.");
         for (auto mapItor = m_echoMsgAllPhase.begin(); mapItor != m_echoMsgAllPhase.end(); ++mapItor) {
-            if ((UranusNode::getInstance()->getPhase() + UranusNode::getInstance()->getBaxCount()) >= Config::kMaxBaxCount) {
+            if ((Node::getInstance()->getPhase() + Node::getInstance()->getBaxCount()) >= Config::kMaxBaxCount) {
                 if (mapItor->first.phase < Config::kMaxBaxCount) {
                     continue;
                 }
@@ -1373,7 +1373,7 @@ namespace ultrainio {
                 m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
                         stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
                 m_evilDDosDetector.deduceBlockNum(voterSet, stakeVotePtr->getSendEchoThreshold() + 1,
-                        UranusNode::getInstance()->getRoundCount(), UranusNode::getInstance()->getPhase());
+                        Node::getInstance()->getRoundCount(), Node::getInstance()->getPhase());
                 return emptyBlock();
             }
             auto proposeItor = m_proposerMsgMap.find(voterSet.commonEchoMsg.blockId);
@@ -1384,7 +1384,7 @@ namespace ultrainio {
                 m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
                         stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
                 m_evilDDosDetector.deduceBlockNum(voterSet, stakeVotePtr->getSendEchoThreshold() + 1,
-                        UranusNode::getInstance()->getRoundCount(), UranusNode::getInstance()->getPhase());
+                        Node::getInstance()->getRoundCount(), Node::getInstance()->getPhase());
                 return proposeItor->second.block;
             }
             dlog("can not find 2f + 1 echo's propose. hash = ${hash}",("hash", short_hash(voterSet.commonEchoMsg.blockId)));
@@ -1400,10 +1400,10 @@ namespace ultrainio {
      */
     Block Scheduler::produceTentativeBlock() {
         BlockIdType minBlockId = BlockIdType();
-        uint32_t phase = UranusNode::getInstance()->getPhase();
-        phase += UranusNode::getInstance()->getBaxCount();
+        uint32_t phase = Node::getInstance()->getPhase();
+        phase += Node::getInstance()->getBaxCount();
 
-        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(UranusNode::getInstance()->getBlockNum());
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         uint32_t minPriority = stakeVotePtr->getProposerNumber();
         for (auto itor = m_echoMsgMap.begin(); itor != m_echoMsgMap.end(); itor++) {
@@ -1421,10 +1421,10 @@ namespace ultrainio {
 
         if (minBlockId == BlockIdType()) { // not found > 2f + 1 echo
             dlog("can not find >= 2f + 1 = ${num}", ("num", stakeVotePtr->getNextRoundThreshold()));
-            if (UranusNode::getInstance()->getPhase() == kPhaseBA0) {
+            if (Node::getInstance()->getPhase() == kPhaseBA0) {
                 return emptyBlock();
             }
-            if ((!m_echoMsgAllPhase.empty()) && (UranusNode::getInstance()->getPhase() == kPhaseBAX)) {
+            if ((!m_echoMsgAllPhase.empty()) && (Node::getInstance()->getPhase() == kPhaseBAX)) {
                 dlog("current blockhash is empty. into produceBaxBlock.");
                 return produceBaxBlock();
             }
@@ -1438,7 +1438,7 @@ namespace ultrainio {
                 m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(itor->second, stakeVotePtr->getCommitteeSet(),
                         stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
                 m_evilDDosDetector.deduceBlockNum(itor->second, stakeVotePtr->getSendEchoThreshold() + 1,
-                        UranusNode::getInstance()->getRoundCount(), UranusNode::getInstance()->getPhase());
+                        Node::getInstance()->getRoundCount(), Node::getInstance()->getPhase());
                 break;
             }
         }
@@ -1451,7 +1451,7 @@ namespace ultrainio {
             return proposeItor->second.block;
         }
         dlog("> 2f + 1 echo ${hash} can not find it's propose.", ("hash", short_hash(minBlockId)));
-        if (kPhaseBA0 == UranusNode::getInstance()->getPhase()) {
+        if (kPhaseBA0 == Node::getInstance()->getPhase()) {
             dlog("produce empty Block");
             return emptyBlock();
         }
@@ -1697,7 +1697,7 @@ namespace ultrainio {
         const auto &pbs = chain.pending_block_state();
         bool needs_push_whole_block = true;
 
-        if (UranusNode::getInstance()->isSyncing()) {
+        if (Node::getInstance()->isSyncing()) {
             chain.disable_worldstate_creation();
         } else {
             chain.enable_worldstate_creation();
@@ -1774,14 +1774,14 @@ namespace ultrainio {
         if (needs_push_whole_block) {
             ilog("-------- Actually needs to push_whole_block");
             chain.abort_block();
-            if (UranusNode::getInstance()->getNonProducingNode()) {
+            if (Node::getInstance()->getNonProducingNode()) {
                 chain.set_emit_signal();
                 chain.start_receive_event();
             }
 
             chain.push_block(block);
 
-            if (UranusNode::getInstance()->getNonProducingNode()) {
+            if (Node::getInstance()->getNonProducingNode()) {
                 chain.clear_emit_signal();
                 chain.notify_event();
                 chain.stop_receive_event();
@@ -1801,7 +1801,7 @@ namespace ultrainio {
              ("count", new_bs->block->transactions.size()));
         m_lightClientProducer->acceptNewHeader(chain.head_block_header(), m_currentBlsVoterSet);
         m_lightClientProducer->saveCurrentBlsVoterSet(m_currentBlsVoterSet);
-        MsgMgr::getInstance()->moveToNewStep(UranusNode::getInstance()->getBlockNum(), kPhaseBA0, 0);
+        MsgMgr::getInstance()->moveToNewStep(Node::getInstance()->getBlockNum(), kPhaseBA0, 0);
     }
 
     void Scheduler::clearTrxQueue() {
@@ -1813,7 +1813,7 @@ namespace ultrainio {
         // memleak, so lets just clear them here. This might drop some trxs.
         // So maybe better to find a timing to re-run these trx and send
         // valid and unexpired trx to other nodes.
-        if (UranusNode::getInstance()->getNonProducingNode()) {
+        if (Node::getInstance()->getNonProducingNode()) {
             chain.clear_unapplied_transaction();
         }
 
@@ -1865,13 +1865,13 @@ namespace ultrainio {
         if (m_echoMsgAllPhase.size() >= m_maxCachedAllPhaseKeys) {
             wlog("echo all phase msgs exceeds ${max} blockNum: ${b} phase: ${p} baxcount: ${bx}",
                  ("max", m_maxCachedAllPhaseKeys)
-                 ("b", UranusNode::getInstance()->getBlockNum())
-                 ("p", (int)UranusNode::getInstance()->getPhase())
-                 ("bx", UranusNode::getInstance()->getBaxCount()));
+                 ("b", Node::getInstance()->getBlockNum())
+                 ("p", (int)Node::getInstance()->getPhase())
+                 ("bx", Node::getInstance()->getBaxCount()));
             return;
         }
 
-        RoundInfo info(UranusNode::getInstance()->getBlockNum(), UranusNode::getInstance()->getPhase() + UranusNode::getInstance()->getBaxCount());
+        RoundInfo info(Node::getInstance()->getBlockNum(), Node::getInstance()->getPhase() + Node::getInstance()->getBaxCount());
         m_echoMsgAllPhase.insert(make_pair(info, std::move(m_echoMsgMap)));
     }
 
@@ -1911,7 +1911,7 @@ namespace ultrainio {
                         sync_block.proof = m_currentBlsVoterSet.toString();
                         ilog("send last block in task: ${s}", ("s", sync_block.proof));
                     }
-                    UranusNode::getInstance()->sendMessage(it->nodeId, sync_block);
+                    Node::getInstance()->sendMessage(it->nodeId, sync_block);
                 } else if (it->startBlock == last_num) { // try to send last block next time
                     break;
                 } // else: skip the block if not exist
@@ -2035,7 +2035,7 @@ namespace ultrainio {
 
     Block Scheduler::emptyBlock() {
         static std::shared_ptr<Block> emptyBlock = nullptr; // static variant for cache
-        if (!emptyBlock || emptyBlock->block_num() != UranusNode::getInstance()->getBlockNum()) {
+        if (!emptyBlock || emptyBlock->block_num() != Node::getInstance()->getBlockNum()) {
             emptyBlock = generateEmptyBlock();
         }
         return *emptyBlock;
@@ -2103,10 +2103,10 @@ namespace ultrainio {
     }
 
     void Scheduler::invokeDeduceWhenBax() {
-        uint32_t blockNum = UranusNode::getInstance()->getBlockNum();
+        uint32_t blockNum = Node::getInstance()->getBlockNum();
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(blockNum);
         m_evilDDosDetector.deduceWhenBax(stakeVotePtr->getSendEchoThreshold(),
-                UranusNode::getInstance()->getRoundCount(), blockNum, UranusNode::getInstance()->getPhase());
+                Node::getInstance()->getRoundCount(), blockNum, Node::getInstance()->getPhase());
     }
 
     bool Scheduler::theSameOne(const ultrainio::chain::signed_block& lhs, const ultrainio::chain::signed_block_ptr& rhs) {

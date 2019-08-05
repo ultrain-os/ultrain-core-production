@@ -77,7 +77,7 @@ namespace ultrainio {
     class UranusNodeMonitor
     {
     public:
-        UranusNodeMonitor(std::weak_ptr<UranusNode> pNode):m_pNode(pNode),m_lastTotalCpu(0),m_lastMyCpu(0) {
+        UranusNodeMonitor(std::weak_ptr<Node> pNode):m_pNode(pNode),m_lastTotalCpu(0),m_lastMyCpu(0) {
             phaseStr[0] = "Init";
             phaseStr[1] = "BA0";
             phaseStr[2] = "BA1";
@@ -91,7 +91,7 @@ namespace ultrainio {
 
         UranusNodeInfo getNodeInfo() const {
             UranusNodeInfo tempNodeInfo;
-            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            std::shared_ptr<Node> pNode = m_pNode.lock();
             if (pNode) {
                 tempNodeInfo.ready = pNode->m_ready;
                 tempNodeInfo.connected = pNode->m_connected;
@@ -109,7 +109,7 @@ namespace ultrainio {
         }
 
         void getNodeData(periodic_report_dynamic_data& reportData) {
-            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            std::shared_ptr<Node> pNode = m_pNode.lock();
             if (pNode) {
                 reportData.minerName         = std::string(StakeVoteBase::getMyAccount());
                 reportData.phase             = phaseStr[static_cast<int32_t>(pNode->m_phase)];
@@ -171,7 +171,7 @@ namespace ultrainio {
 
         periodic_report_static_data getStaticConfigInfo() const {
             periodic_report_static_data staticConfig;
-            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            std::shared_ptr<Node> pNode = m_pNode.lock();
             if (pNode) {
                 staticConfig.version           = ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version()));
                 staticConfig.version           += "+" + chain::get_version_str();
@@ -200,7 +200,7 @@ namespace ultrainio {
         }
 
         void setCallbackInNode() {
-            std::shared_ptr<UranusNode> pNode = m_pNode.lock();
+            std::shared_ptr<Node> pNode = m_pNode.lock();
             if (pNode) {
                 pNode->ba0Callback = std::bind(&UranusNodeMonitor::ba0BlockProducingTime, this);
                 pNode->ba1Callback = std::bind(&UranusNodeMonitor::ba1BlockProducingTime, this);
@@ -245,7 +245,7 @@ namespace ultrainio {
         }
 
     private:
-        std::weak_ptr<UranusNode> m_pNode;
+        std::weak_ptr<Node> m_pNode;
         std::string phaseStr[4];
         role_in_block m_isProposer[2];//last block(head block) and current block(in consensus)
         std::string m_ba0BlockTime;

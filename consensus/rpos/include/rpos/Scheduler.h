@@ -42,7 +42,7 @@ namespace ultrainio {
 
     class LightClientProducer;
     class CommitteeSet;
-    class UranusNode;
+    class Node;
 
 class Scheduler : public std::enable_shared_from_this<Scheduler> {
     public:

@@ -36,11 +36,11 @@ namespace ultrainio {
     typedef std::function<void ()> monitorCallback;
     typedef std::function<void (bool)> monitorSetCallback;
 
-    class UranusNode : public std::enable_shared_from_this<UranusNode> {
+    class Node : public std::enable_shared_from_this<Node> {
     public:
-        static std::shared_ptr<UranusNode> initAndGetInstance(boost::asio::io_service &ioservice);
+        static std::shared_ptr<Node> initAndGetInstance(boost::asio::io_service& ioservice);
 
-        static std::shared_ptr<UranusNode> getInstance();
+        static std::shared_ptr<Node> getInstance();
 
         void setMyInfoAsCommitteeKey(const std::string& sk, const std::string& blsKey, const std::string& account);
 
@@ -148,7 +148,7 @@ namespace ultrainio {
         void setTrxsSecond(int32_t trxssecond);
 
     private:
-        explicit UranusNode(boost::asio::io_service &ioservice);
+        explicit Node(boost::asio::io_service& ioservice);
 
         bool isBlank(const BlockIdType& blockId);
 
@@ -180,7 +180,7 @@ namespace ultrainio {
 
         bool isListener(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount);
 
-        static std::shared_ptr<UranusNode> s_self;
+        static std::shared_ptr<Node> s_self;
         bool m_ready;
         bool m_connected;
         bool m_syncing;

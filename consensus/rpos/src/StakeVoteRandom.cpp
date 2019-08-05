@@ -26,7 +26,7 @@ namespace ultrainio {
         for (auto committeeInfo : committeeStatePtr->cinfo) {
             m_committeeV.push_back(committeeInfo.accountName);
             if (committeeInfo.accountName == StakeVoteBase::getMyAccount()) {
-                ULTRAIN_ASSERT(!UranusNode::getInstance()->getNonProducingNode(), chain::chain_exception, "Committee Member is set as non-producer");
+                ULTRAIN_ASSERT(!Node::getInstance()->getNonProducingNode(), chain::chain_exception, "Committee Member is set as non-producer");
             }
         }
         std::shared_ptr<RoleSelection> roleSelectionPtr = std::make_shared<RoleSelection>(m_committeeV, rand);

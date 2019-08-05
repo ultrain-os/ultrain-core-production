@@ -72,7 +72,7 @@ class monitor_only {
 
    private:
 
-      const std::shared_ptr<UranusNode>  getNodePtr() const;
+      const std::shared_ptr<Node>  getNodePtr() const;
 
       std::shared_ptr<UranusNodeMonitor> m_nodeMonitor;
 };

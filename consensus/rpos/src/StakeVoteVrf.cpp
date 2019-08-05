@@ -89,7 +89,7 @@ namespace ultrainio {
 
     void StakeVoteVrf::moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
         ULTRAIN_ASSERT(blockNum == m_blockNum, chain::chain_exception, "blockNum is not equal");
-        BlockIdType blockId = UranusNode::getInstance()->getPreviousHash();
+        BlockIdType blockId = Node::getInstance()->getPreviousHash();
         std::string previousHash(blockId.data());
         if (!m_proposerProof.isValid()) {
             Seed seed(previousHash, blockNum, kPhaseBA0, 0);

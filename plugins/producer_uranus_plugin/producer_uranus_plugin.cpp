@@ -328,7 +328,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
           //              return;
           //          }
 
-          if (UranusNode::getInstance() && UranusNode::getInstance()->isSyncing()) {
+          if (Node::getInstance() && Node::getInstance()->isSyncing()) {
               send_response(std::static_pointer_cast<fc::exception>(std::make_shared<node_is_syncing>(FC_LOG_MESSAGE(error, "trx discarded, node is in block syncing status") )));
               return;
           }
@@ -615,35 +615,35 @@ string producer_uranus_plugin::get_account_name()
         return my->_my_account_as_committee;
 }
 bool producer_uranus_plugin::handle_message(const EchoMsg& echo) {
-   return UranusNode::getInstance()->handleMessage(echo);
+   return Node::getInstance()->handleMessage(echo);
 }
 
 bool producer_uranus_plugin::handle_message(const ProposeMsg& propose) {
-   return UranusNode::getInstance()->handleMessage(propose);
+   return Node::getInstance()->handleMessage(propose);
 }
 
 bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const ReqSyncMsg& msg) {
-   return UranusNode::getInstance()->handleMessage(node_id, msg);
+   return Node::getInstance()->handleMessage(node_id, msg);
 }
 
 bool producer_uranus_plugin::handle_message(const SyncBlockMsg& msg, bool last_block, bool safe) {
-   return UranusNode::getInstance()->handleMessage(msg, last_block, safe);
+   return Node::getInstance()->handleMessage(msg, last_block, safe);
 }
 
 bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const ReqBlockNumRangeMsg& msg) {
-  return UranusNode::getInstance()->handleMessage(node_id, msg);
+  return Node::getInstance()->handleMessage(node_id, msg);
 }
 
 bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const SyncStopMsg& msg) {
-  return UranusNode::getInstance()->handleMessage(node_id, msg);
+  return Node::getInstance()->handleMessage(node_id, msg);
 }
 
 bool producer_uranus_plugin::sync_fail(const ultrainio::ReqSyncMsg& sync_msg) {
-  return UranusNode::getInstance()->syncFail(sync_msg);
+  return Node::getInstance()->syncFail(sync_msg);
 }
 
 bool producer_uranus_plugin::sync_cancel() {
-  return UranusNode::getInstance()->syncCancel();
+  return Node::getInstance()->syncCancel();
 }
 
 void producer_uranus_plugin::plugin_startup()
@@ -654,7 +654,7 @@ void producer_uranus_plugin::plugin_startup()
 
    ilog("producer plugin:  plugin_startup() begin");
 
-   std::shared_ptr<UranusNode> nodePtr = UranusNode::initAndGetInstance(app().get_io_service());
+   std::shared_ptr<Node> nodePtr = Node::initAndGetInstance(app().get_io_service());
    // set before committee key
    nodePtr->setNonProducingNode(my->_is_non_producing_node);
    if (!my->_genesis_pk.empty()) {
