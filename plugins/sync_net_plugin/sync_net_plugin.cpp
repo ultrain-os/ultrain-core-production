@@ -2003,23 +2003,29 @@ namespace ultrainio {
         m_sync_blocks_manager->receive_blocks_file_sync_req(c, msg);
     }
 
+
     void sync_net_plugin_impl::handle_message(connection_ptr c, const ReqTestTimeMsg &msg) {
+#if 0
         RspTestTimeMsg rspTestTimeMsg;
         rspTestTimeMsg.timeInfo.reqTime = msg.timeInfo.reqTime;
         rspTestTimeMsg.timeInfo.rspTime = c->get_time();
         rspTestTimeMsg.chunk.resize(msg.size > 5*1024*1024 ? 0 : msg.size);
         c->enqueue(net_message(rspTestTimeMsg));
         ilog("rcved ReqTestTimeMsg and send rspTestTimeMsg");
+#endif
     }
 
     void sync_net_plugin_impl::handle_message(connection_ptr c, const RspTestTimeMsg &msg) {
+#if 0
         tstamp rcvTime = c->get_time();
         double NsecPerSec{1000000000};
         auto randToSecond = (double(msg.timeInfo.rspTime - msg.timeInfo.reqTime))/NsecPerSec;
         auto randBackSecond = (double(rcvTime - msg.timeInfo.rspTime))/NsecPerSec;
         auto randWholeSecond = double(rcvTime - msg.timeInfo.reqTime)/NsecPerSec;
         ilog("From ${c}, toTime: ${t}(s),backTime: ${b}(s),wholeTime: ${w}(s),", ("c", c->peer_name())("t", randToSecond)("b", randBackSecond)("w", randWholeSecond));
+ #endif
     }
+
 
    void sync_net_plugin_impl::ticker() {
       keepalive_timer->expires_from_now (keepalive_interval);
