@@ -84,7 +84,6 @@ ws_file_reader::~ws_file_reader()
 void ws_file_reader::destory()
 {
     ilog("ws_file_reader destory ${info}", ("info", m_info));
-    // delete this;
 }
 
 std::vector<char> ws_file_reader::get_data(uint32_t slice_id, uint32_t len_per_slice, bool& isEof)
@@ -181,7 +180,6 @@ bool ws_file_writer::is_valid()
 
     auto result = m_manager.calculate_file_hash(m_file_name);
 
-    // ilog("isValid ${result} ==? ${hash_string}",  ("result", result.str())("hash_string", m_info.hash_string));
     if (result.str() == m_info.hash_string ) {
         m_valid = 1;
         return true;

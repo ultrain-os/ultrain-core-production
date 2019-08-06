@@ -503,17 +503,16 @@ struct controller_impl {
          using utils_t = decltype(utils);
 
          unsigned_int size;
+         /*Read the data size of contract table from ws file*/
          more = section_reader.read_row(size, db);
-         // ilog("contract table size: ${t}", ("t", size ));
 
-         /*Import, read a ignore value*/
+         /*Read an invalid value from id file, it is for keeping a same relative position with ws file*/
          uint64_t ignore1 = 0, ignore2 = 0;
          ws_helper_ptr->get_id_reader()->read_id_row(ignore1, ignore2);
 
          for (size_t idx = 0; idx < size.value; idx++) {
             uint64_t old_id = 0, size = 0;
             id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
-            // ilog("contract table old_id ${t}", ("t", old_id ));
             utils_t::create(db, [&](auto& row) {
                row.t_id = t_id;
                row.id._id = old_id;
@@ -545,10 +544,12 @@ struct controller_impl {
             auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
 
             unsigned_int size = utils_t::template size_range<by_table_id>(worldstate_db, tid_key, next_tid_key);
+            //Insert the data size of table into ws file
             writer_section.add_row(size, worldstate_db);
 
-            /*Import, insert a ignore value,keep same relative pos with ws file*/
-            ws_helper_ptr->get_id_writer()->write_row_id(0, 0);
+            /*Insert an invalid value into id file for keeping a same relative position with ws file*/
+            uint64_t ignore1 = 0, ignore2 = 0;
+            ws_helper_ptr->get_id_writer()->write_row_id(ignore1, ignore2);
 
             utils_t::template walk_range<by_table_id>(worldstate_db, tid_key, next_tid_key, [&]( const auto &row ) {
                ws_helper_ptr->get_id_writer()->write_row_id(row.id._id, 0);
@@ -754,7 +755,7 @@ struct controller_impl {
 
       //How to create new ws file by old ws file and operation cache:
       //1.Read all old rows from old ws file, and then restore to backup indices;
-      //2.Squach backup indices and cache,
+      //2.Squach backup indices and cache;
       //3.store the backup indices records to new ws file
       controller_index_set::walk_indices([this,&worldstate_db, &ws_helper_ptr]( auto utils ){
          using index_t = typename decltype(utils)::index_t;
@@ -862,7 +863,6 @@ struct controller_impl {
     sha256 calculate_integrity_hash() const {
       sha256::encoder enc;
       auto hash_writer = std::make_shared<integrity_hash_worldstate_writer>(enc);
-      //add_to_worldstate(hash_writer);
       hash_writer->finalize();
 
       return enc.result();

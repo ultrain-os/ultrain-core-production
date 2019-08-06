@@ -165,7 +165,6 @@ namespace ultrainio { namespace chain {
                     index_utils<index_t>::walk(worldstate_db, [&]( const auto &row ) {
                         get_id_writer()->write_row_id(row.id._id, 0);
                         section.add_row(row, worldstate_db, data);
-                        // auto length = get_writer()->write_length();
                     });
                 });
 
@@ -202,7 +201,7 @@ namespace ultrainio { namespace chain {
                 using value_t = typename index_t::value_type;
                 ilog("read_table_from_worldstate: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
 
-                //Id file don't sync, so when restore, id file need to rebuild.
+                //Id file don't exist, so when restore, id file need to rebuild.
                 get_id_writer()->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
                 get_reader()->read_section<value_t>([&]( auto& section ) {
                     bool more = !section.empty();

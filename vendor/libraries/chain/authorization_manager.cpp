@@ -39,8 +39,6 @@ namespace ultrainio { namespace chain {
          using worldstate_type = worldstate_permission_object;
 
          static worldstate_permission_object to_worldstate_row(const permission_object& value, const chainbase::database& db, void* data) {
-            // ilog("to_worldstate_row, id: ${t}", ("t", value.id._id));
-
             worldstate_permission_object res;
             res.name = value.name;
             res.owner = value.owner;
@@ -51,7 +49,7 @@ namespace ultrainio { namespace chain {
             const auto& idx = db.get_index<permission_index>().backup_indices();
             auto itr = idx.find( value.parent );
             ULTRAIN_ASSERT( itr != idx.end(), worldstate_exception, "Not find the expected parent: ${s}", ("s", value.parent._id));
-      
+
             const auto& parent = *itr;
             res.parent = parent.name;
 
@@ -60,13 +58,12 @@ namespace ultrainio { namespace chain {
                const auto& idx_usage = db.get_index<permission_usage_index>().backup_indices();
                auto itr_usage = idx_usage.find( value.usage_id );
                ULTRAIN_ASSERT( itr_usage != idx_usage.end(), worldstate_exception, "Not find the expected idx_usage: ${s}", ("s", value.usage_id._id));
-    
+
                const auto& usage = *itr_usage;
                res.last_used = usage.last_used;
 
                ULTRAIN_ASSERT( data != nullptr, worldstate_exception, "Data is nullptr, request data!");
                ws_helper* ptr = (ws_helper*)data;
-               // ilog("usage.id:  ${t}", ("t", usage.id._id));
                ptr->get_id_writer()->write_row_id(usage.id._id, 0);
             } else {
                res.last_used = time_point();
@@ -79,9 +76,8 @@ namespace ultrainio { namespace chain {
             value.owner = row.owner;
             value.last_updated = row.last_updated;
             value.auth = row.auth;
-            
-            // ilog("from_worldstate_row, id: ${t}", ("t", value.id._id));
             value.parent = 0;
+
             if (value.id == 0) {
                ULTRAIN_ASSERT(row.parent == permission_name(), worldstate_exception, "Unexpected parent name on reserved permission 0");
                ULTRAIN_ASSERT(row.name == permission_name(), worldstate_exception, "Unexpected permission name on reserved permission 0");
@@ -107,7 +103,6 @@ namespace ultrainio { namespace chain {
                   ULTRAIN_ASSERT(parent.id != 0, worldstate_exception, "Unexpected mapping to reserved permission 0");
                   value.parent = parent.id;
                }
-               
             }
 
             if (value.id != 0) {
@@ -115,7 +110,7 @@ namespace ultrainio { namespace chain {
                ws_helper* ptr = (ws_helper*)data;
 
                if(!backup) {// create the usage object
-                  const auto& usage = db.create<permission_usage_object>([&](auto& p) { 
+                  const auto& usage = db.create<permission_usage_object>([&](auto& p) {
                      p.last_used = row.last_used;
                   });
                   ptr->get_id_writer()->write_row_id(usage.id._id, 0);
@@ -123,7 +118,6 @@ namespace ultrainio { namespace chain {
                } else {
                   uint64_t old_id = 0, size = 0;
                   ptr->get_id_reader()->read_id_row(old_id, size);
-                  // ilog("read_id usage.id:  ${t}  ${s}", ("t", old_id)("s", size));
                   const auto& usage = db.backup_create<permission_usage_object>([&](auto& p) {
                      p.last_used = row.last_used;
                      p.id._id = old_id;
@@ -145,17 +139,17 @@ namespace ultrainio { namespace chain {
          // skip the permission_usage_index as its inlined with permission_index
          if (std::is_same<value_t, permission_usage_object>::value) {
             return;
-         }         
+         }
 
          auto& cache_node = worldstate_db.get_mutable_index<index_t>().cache().front();
          ilog("index: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
          ilog("remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
          ilog("Cache count: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().cache().size()));
          ilog("Backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
-         
+
          //1:  add to backup if exit old ws file
          ws_helper_ptr->restore_backup_indices<index_t>(worldstate_db, true, (void*)ws_helper_ptr.get());
-    
+
          //2:  squach backup and cache
          worldstate_db.get_mutable_index<index_t>().process_cache();
          if (std::is_same<value_t, permission_object>::value) {
