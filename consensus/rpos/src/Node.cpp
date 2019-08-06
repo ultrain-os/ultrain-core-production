@@ -40,7 +40,7 @@ namespace ultrainio {
         return s_self;
     }
 
-    Node::Node(boost::asio::io_service &ioservice) : m_ready(false), m_connected(false), m_syncing(false),
+    Node::Node(boost::asio::io_service& ioservice) : m_ready(false), m_connected(false), m_syncing(false),
                                                                  m_syncFailed(false),
                                                                  m_phase(kPhaseInit), m_baxCount(0), m_timer(ioservice),
                                                                  m_preRunTimer(ioservice),
@@ -105,34 +105,31 @@ namespace ultrainio {
     }
 
     void Node::readyToJoin() {
-        auto current_time = fc::time_point::now();
-        int64_t pass_time_to_genesis;
-
         if (!m_connected) {
             readyToConnect();
             return;
-            //m_connected = true;
         }
 
-        ilog("readyToJoin current_time ${t} genesis time ${s}", ("t",current_time)("s",Genesis::s_time));
-
-        if (current_time < Genesis::s_time) {
-            pass_time_to_genesis = (Genesis::s_time - current_time).to_seconds();
-            if (pass_time_to_genesis > Config::s_maxRoundSeconds) {
+        auto currentTime = fc::time_point::now();
+        int64_t passTimeFromGenesis;
+        ilog("readyToJoin currentTime ${t} genesis time ${s}", ("t", currentTime)("s", Genesis::s_time));
+        if (currentTime < Genesis::s_time) {
+            passTimeFromGenesis = (Genesis::s_time - currentTime).to_seconds();
+            if (passTimeFromGenesis > Config::s_maxRoundSeconds) {
                 readyLoop(Config::s_maxRoundSeconds);
-            } else if (pass_time_to_genesis == 0) {
+            } else if (passTimeFromGenesis == 0) {
                 m_ready = true;
                 run();
             } else {
-                readyLoop(pass_time_to_genesis);
+                readyLoop(passTimeFromGenesis);
             }
-        } else if (Genesis::s_time == current_time) {
+        } else if (currentTime == Genesis::s_time) {
             m_ready = true;
             run();
         } else {
-            pass_time_to_genesis = (current_time - Genesis::s_time).to_seconds();
+            passTimeFromGenesis = (currentTime - Genesis::s_time).to_seconds();
             // run when genesis in startup period
-            if (pass_time_to_genesis == 0 || StakeVoteBase::isGenesisLeaderAndInGenesisPeriod()) {
+            if (passTimeFromGenesis == 0 || StakeVoteBase::isGenesisLeaderAndInGenesisPeriod()) {
                 m_ready = true;
                 run();
             } else {
@@ -201,7 +198,7 @@ namespace ultrainio {
         ReqSyncMsg msg;
         dlog("@@@@@@@@@@@ syncBlock syncing:${s}", ("s", m_syncing));
         if (m_syncing) {
-            syncBlockLoop(getRoundInterval());
+            syncBlockLoop(getLeftTime());
             return;
         }
 
@@ -225,7 +222,7 @@ namespace ultrainio {
         }
 
         if (!once) {
-            syncBlockLoop(getRoundInterval());
+            syncBlockLoop(getLeftTime());
         }
     }
 
@@ -238,7 +235,7 @@ namespace ultrainio {
             return;
         }
 
-        ba0Loop(getRoundInterval());
+        ba0Loop(getLeftTime());
     }
 
     void Node::ba0Process() {
@@ -265,7 +262,7 @@ namespace ultrainio {
             ULTRAIN_ASSERT(false, chain::chain_exception, "DB error. please reset with cmd --delete-all-blocks.");
         }
 
-        ba1Loop(getRoundInterval());
+        ba1Loop(getLeftTime());
 
         m_schedulerPtr->resetEcho();
         m_phase = kPhaseBA1;
@@ -276,7 +273,7 @@ namespace ultrainio {
         dlog("############## ba0 finish blockNum = ${id}, voter.hash = ${hash1}, prepare ba1. isVoter = ${isVoter}",
              ("id", getBlockNum())("hash1", short_hash(ba0Block.id()))("isVoter",MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
 
-        vote(getBlockNum(),kPhaseBA1,0);
+        vote(getBlockNum(), kPhaseBA1, 0);
 
         RoundInfo info(getBlockNum(), m_phase);
         m_schedulerPtr->processCache(info);
@@ -328,7 +325,6 @@ namespace ultrainio {
                 sendEchoForEmptyBlock();
             }
         }
-        return;
     }
 
     void Node::ba1Process() {
@@ -358,7 +354,7 @@ namespace ultrainio {
         } else {
             elog("ba1Process ba1 finish. block is blank. phase ba2 begin.");
             m_phase = kPhaseBA1;
-            baxLoop(getRoundInterval());
+            baxLoop(getLeftTime());
             return;
         }
 
@@ -382,12 +378,10 @@ namespace ultrainio {
         ilog("In baxProcess");
         m_schedulerPtr->invokeDeduceWhenBax();
         Block baxBlock = m_schedulerPtr->produceTentativeBlock();
-        signed_block_ptr uranus_block = std::make_shared<chain::signed_block>();
 
         if (m_phase == kPhaseInit) {
             dlog("baxProcess finish. Sync block ok. blockNum = ${id}, m_syncing = ${m_syncing}.",
                  ("id", getBlockNum() - 1)("m_syncing", (uint32_t) m_syncing));
-
             syncBlock();
             return;
         }
@@ -397,7 +391,7 @@ namespace ultrainio {
             && (m_schedulerPtr->isChangePhase())) {
             m_baxCount = Config::kMaxBaxCount - m_phase - 1;
             dlog("baxProcess.ChangePhase to baxcount[20]. blockNum = ${id}, m_baxCount = ${phase}", ("id", getBlockNum())("phase", m_baxCount));
-            baxLoop(getRoundInterval());
+            baxLoop(getLeftTime());
             return;
         }
 
@@ -406,19 +400,19 @@ namespace ultrainio {
             m_syncing = false;
             m_syncFailed = false;
             app().get_plugin<net_plugin>().stop_sync_block();
-            *uranus_block = baxBlock;
+            signed_block_ptr blockPtr = std::make_shared<chain::signed_block>();
+            *blockPtr = baxBlock;
             dlog("##############baxProcess. finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
                  ("block_num", getBlockNum())
-                 ("hash", short_hash(uranus_block->id()))
+                 ("hash", short_hash(blockPtr->id()))
                  ("head_hash", short_hash(m_schedulerPtr->getPreviousBlockhash())));
 
-            m_schedulerPtr->produceBlock(uranus_block);
+            m_schedulerPtr->produceBlock(blockPtr);
 
-            ULTRAIN_ASSERT(uranus_block->id() == m_schedulerPtr->getPreviousBlockhash(),
+            ULTRAIN_ASSERT(blockPtr->id() == m_schedulerPtr->getPreviousBlockhash(),
                            chain::chain_exception, "Produced block hash is not expected");
 
-            fastBlock();
-            //join();
+            doFastBlock();
         } else {
             elog("baxProcess.phase bax finish. block is blank.");
 
@@ -426,8 +420,7 @@ namespace ultrainio {
                 dlog("baxProcess. syncing begin. m_baxCount = ${count}.", ("count", m_baxCount));
                 syncBlock(true);
             }
-
-            baxLoop(getRoundInterval());
+            baxLoop(getLeftTime());
         }
     }
 
@@ -535,7 +528,7 @@ namespace ultrainio {
                 sendEchoForEmptyBlock();
             }
         } else {
-            vote(getBlockNum(),kPhaseBAX,m_baxCount);
+            vote(getBlockNum(), kPhaseBAX, m_baxCount);
         }
 
         RoundInfo info(getBlockNum(), m_phase + m_baxCount);
@@ -580,7 +573,7 @@ namespace ultrainio {
             m_syncFailed = false;
 
             cancelTimer();
-            fastBlock();
+            doFastBlock();
             return true;
         } else {
             if ((m_phase == kPhaseBAX) && (msg.block.block_num() == getLastBlocknum())) {
@@ -607,7 +600,7 @@ namespace ultrainio {
             ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local, let me try to produce them.",
                  ("s", sync_msg.startBlockNum)("e", sync_msg.endBlockNum)("last", getLastBlocknum()));
             if (StakeVoteBase::committeeHasWorked()) {
-                runLoop(getRoundInterval());
+                runLoop(getLeftTime());
             } else {
                 ilog("Committee has not worked.");
             }
@@ -646,7 +639,7 @@ namespace ultrainio {
         app().get_plugin<net_plugin>().send_block_num_range(nodeId, msg);
     }
 
-    bool Node::isFastBlock() {
+    bool Node::canEnterFastBlockMode() {
         RoundInfo info(getBlockNum(), kPhaseBA0);
 
         if ((m_schedulerPtr->findProposeCache(info))
@@ -665,15 +658,13 @@ namespace ultrainio {
 
         m_phase = kPhaseBA0;
         m_baxCount = 0;
-
-        if (isFastBlock()) {
-            dlog("start BA0. fastblock begin. blockNum = ${blockNum}.",("blockNum", getBlockNum()));
-            fastBlock();
+        if (canEnterFastBlockMode()) {
+            dlog("start BA0. fastblock begin. blockNum = ${blockNum}", ("blockNum", getBlockNum()));
+            doFastBlock();
             return;
         }
 
         // BA0=======
-        //ba0Loop(getRoundInterval());
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
 
         bool isProposer = MsgMgr::getInstance()->isProposer(getBlockNum());
@@ -689,10 +680,10 @@ namespace ultrainio {
 
         vote(getBlockNum(), kPhaseBA0, 0);
 
-        if ((getRoundInterval() > (Config::s_maxTrxMicroSeconds/1000 + 300)) && (!MsgMgr::getInstance()->isProposer(getBlockNum()))) {
+        if ((getLeftTime() > (Config::s_maxTrxMicroSeconds/1000 + 300)) && (!MsgMgr::getInstance()->isProposer(getBlockNum()))) {
             fastLoop(Config::s_maxTrxMicroSeconds/1000 + 300);
         } else {
-            ba0Loop(getRoundInterval());
+            ba0Loop(getLeftTime());
         }
 
         return;
@@ -735,14 +726,14 @@ namespace ultrainio {
                      ("id", getBlockNum())("hash", short_hash(finalBlock.id())));
                 m_schedulerPtr->produceBlock(std::make_shared<chain::signed_block>(finalBlock));
 
-                fastBlock();
+                doFastBlock();
             } else {
-                if ((getRoundInterval() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
+                if ((getLeftTime() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
                     //todo process two phase
                     ba1Process();
                 } else {
                     vote(getBlockNum(),kPhaseBA1,0);
-                    ba1Loop(getRoundInterval());
+                    ba1Loop(getLeftTime());
                 }
             }
         } else {
@@ -751,12 +742,12 @@ namespace ultrainio {
             if (m_schedulerPtr->findEchoCache(info)) {
                 fastBax();
             } else {
-                if ((getRoundInterval() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
+                if ((getLeftTime() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
                     //todo process two phase
                     ba1Process();
                 } else {
                     vote(getBlockNum(),kPhaseBA1,0);
-                    ba1Loop(getRoundInterval());
+                    ba1Loop(getLeftTime());
                 }
             }
         }
@@ -789,10 +780,10 @@ namespace ultrainio {
                 dlog("##############finish blockNum = ${id}, hash = ${hash}",
                      ("id", getBlockNum())("hash", short_hash(finalBlock.id())));
 
-                fastBlock();
+                doFastBlock();
             } else {
                 //todo addjust
-                baxLoop(getRoundInterval());
+                baxLoop(getLeftTime());
             }
         } else {
             info.blockNum = getBlockNum();
@@ -801,13 +792,13 @@ namespace ultrainio {
                 fastBax();
             } else {
                 //todo addjust
-                baxLoop(getRoundInterval());
+                baxLoop(getLeftTime());
             }
         }
     }
 
-    void Node::fastBlock() {
-        dlog("fastBlock begin. blockNum = ${id}", ("id", getBlockNum()));
+    void Node::doFastBlock() {
+        dlog("begin. blockNum = ${id}", ("id", getBlockNum()));
 
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
         reset();
@@ -826,12 +817,12 @@ namespace ultrainio {
         if (m_schedulerPtr->findEchoCache(info)) {
             fastBa1();
         } else {
-            if ((getRoundInterval() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
+            if ((getLeftTime() == (1000 * Config::s_maxPhaseSeconds)) && (isProcessNow())) {
                 //todo process two phase
                 ba0Process();
             } else {
                 //vote(getBlockNum(),kPhaseBA0,0);
-                ba0Loop(getRoundInterval());
+                ba0Loop(getLeftTime());
             }
         }
     }
@@ -848,19 +839,18 @@ namespace ultrainio {
     }
 
     uint32_t Node::getRoundCount() {
-        fc::time_point current_time = fc::time_point::now();
-        int64_t pass_time_to_genesis = (current_time - Genesis::s_time).to_seconds();
-        return pass_time_to_genesis / Config::s_maxPhaseSeconds;
+        fc::time_point currentTime = fc::time_point::now();
+        int64_t passTimeFromGenesis = (currentTime - Genesis::s_time).to_seconds();
+        return passTimeFromGenesis / Config::s_maxPhaseSeconds;
     }
 
-    uint32_t Node::getRoundInterval() {
-        fc::time_point current_time = fc::time_point::now();
-        int64_t pass_time_to_genesis_m = (current_time - Genesis::s_time).to_seconds() * 1000;
+    uint32_t Node::getLeftTime() {
+        fc::time_point currentTime = fc::time_point::now();
+        int64_t passTimeFromGenesis = (currentTime - Genesis::s_time).to_seconds() * 1000;
 
-        dlog("getRoundInterval. interval = ${id}.",
-             ("id", 1000 * Config::s_maxPhaseSeconds - (pass_time_to_genesis_m % (1000 * Config::s_maxPhaseSeconds))));
-
-        return 1000 * Config::s_maxPhaseSeconds - (pass_time_to_genesis_m % (1000 * Config::s_maxPhaseSeconds));
+        uint32_t round = 1000 * Config::s_maxPhaseSeconds - (passTimeFromGenesis % (1000 * Config::s_maxPhaseSeconds));
+        dlog("interval = ${id}", ("id", round));
+        return round;
     }
 
     BlockIdType Node::getPreviousHash() {

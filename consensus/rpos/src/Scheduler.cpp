@@ -314,8 +314,6 @@ namespace ultrainio {
             map_it = result.first;
         }
 
-        //dlog("processBeforeMsg.insert ok,cal voters begin.");
-
         auto itor = map_it->second.find(echo.blockId);
         if (itor != map_it->second.end()) {
             //dlog("processBeforeMsg.blockhash is already exist.");
@@ -415,7 +413,6 @@ namespace ultrainio {
             if ((vector_itor->first.blockNum == Node::getInstance()->getBlockNum())
                 && (vector_itor->first.phase >= Config::kMaxBaxCount)) {
                 BlockIdVoterSetMap echo_msg_map;
-
                 for (auto &echo : vector_itor->second) {
                     auto itor = echo_msg_map.find(echo.blockId);
                     if (itor != echo_msg_map.end()) {

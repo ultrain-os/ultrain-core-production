@@ -64,21 +64,17 @@ namespace ultrainio {
 
         void run();
 
-        void join();
-
         void reset();
 
-        void sendMessage(const EchoMsg &echo);
+        void sendMessage(const EchoMsg& echo);
 
-        void sendMessage(const ProposeMsg &propose);
+        void sendMessage(const ProposeMsg& propose);
 
-        void sendMessage(const fc::sha256 &nodeId, const SyncBlockMsg &msg);
+        void sendMessage(const fc::sha256& nodeId, const SyncBlockMsg& msg);
 
-        bool sendMessage(const ReqSyncMsg &msg);
+        bool sendMessage(const ReqSyncMsg& msg);
 
-        void sendMessage(const fc::sha256 &nodeId, const RspBlockNumRangeMsg &msg);
-
-        bool isFastBlock();
+        void sendMessage(const fc::sha256& nodeId, const RspBlockNumRangeMsg& msg);
 
         ConsensusPhase getPhase() const;
 
@@ -87,8 +83,6 @@ namespace ultrainio {
         void fastProcess();
 
         bool isNeedSync();
-
-        bool isReady() {return m_ready;}
 
         void ba1Process();
 
@@ -104,17 +98,17 @@ namespace ultrainio {
 
         void baxLoop(uint32_t timeout);
 
-        bool handleMessage(const EchoMsg &echo);
+        bool handleMessage(const EchoMsg& echo);
 
-        bool handleMessage(const ProposeMsg &propose);
+        bool handleMessage(const ProposeMsg& propose);
 
-        bool handleMessage(const fc::sha256 &nodeId, const ReqSyncMsg &msg);
+        bool handleMessage(const fc::sha256& nodeId, const ReqSyncMsg& msg);
 
-        bool handleMessage(const fc::sha256 &nodeId, const ReqBlockNumRangeMsg &msg);
+        bool handleMessage(const fc::sha256& nodeId, const ReqBlockNumRangeMsg& msg);
 
-        bool handleMessage(const SyncBlockMsg &msg, bool last_block, bool safe);
+        bool handleMessage(const SyncBlockMsg& msg, bool last_block, bool safe);
 
-        bool handleMessage(const fc::sha256 &nodeId, const SyncStopMsg &msg);
+        bool handleMessage(const fc::sha256& nodeId, const SyncStopMsg& msg);
 
         uint32_t getLastBlocknum();
 
@@ -126,7 +120,7 @@ namespace ultrainio {
 
         void syncBlockLoop(uint32_t timeout);
 
-        ultrainio::chain::block_id_type getPreviousHash();
+        BlockIdType getPreviousHash();
 
         bool isProcessNow();
 
@@ -145,10 +139,17 @@ namespace ultrainio {
         void setGenesisPk(const std::string& pk);
 
         void setRoundAndPhaseSecond(int32_t roundSecond, int32_t phaseSecond);
+
         void setTrxsSecond(int32_t trxssecond);
 
     private:
         explicit Node(boost::asio::io_service& ioservice);
+
+        bool canEnterFastBlockMode();
+
+        void doFastBlock();
+
+        void join();
 
         bool isBlank(const BlockIdType& blockId);
 
@@ -157,8 +158,6 @@ namespace ultrainio {
         void sendEchoForEmptyBlock();
 
         void syncBlock(bool once = false);
-
-        void fastBlock();
 
         void fastBa0();
 
@@ -170,7 +169,7 @@ namespace ultrainio {
 
         void preRunBa0BlockStep();
 
-        uint32_t getRoundInterval();
+        uint32_t getLeftTime();
 
         void setTimerCanceled(TimerHandlerNumber thn);
 
@@ -181,6 +180,7 @@ namespace ultrainio {
         bool isListener(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount);
 
         static std::shared_ptr<Node> s_self;
+
         bool m_ready;
         bool m_connected;
         bool m_syncing;
