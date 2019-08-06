@@ -25,6 +25,7 @@ var url = require('url');
 const http = require('http');
 var mkdirp = require('mkdirp')
 var path = require('path')
+var ultrainEncryptUtil = require("../common/util/ultrainEncryptUtil")
 
 
 var hashCache = new CacheObj(false, null);
@@ -464,7 +465,7 @@ async function syncSeedInfo() {
         var filepath = pathConstants.MNG_CONFIG+"seedconfig.json";
         chainConfig.seedIpConfig = data;
 
-        fs.writeFile(filepath, JSON.stringify(data), {flag: 'w'}, function (err) {
+        fs.writeFile(filepath, ultrainEncryptUtil.encodeUltrain(JSON.stringify(data)), {flag: 'w'}, function (err) {
             if(err) {
                 logger.error("write seed config file error:");
             } else {
@@ -1389,6 +1390,7 @@ function disableDeploy() {
 function enableDeploy() {
     deploySyncFlag = false;
 }
+
 
 function generateSign(param) {
 

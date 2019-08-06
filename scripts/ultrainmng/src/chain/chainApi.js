@@ -2,6 +2,7 @@ const {U3} = require('u3.js');
 const {createU3, format} = U3;
 const axios = require('axios')
 var qs = require('qs');
+var ultrainEncryptUtil = require("../common/util/ultrainEncryptUtil")
 
 
 /**
@@ -890,8 +891,8 @@ monitorCheckIn = async (url, param) => {
     try {
         logger.debug("monitorCheckIn param:", qs.stringify(param));
         const rs = await axios.post(url + "/filedist/checkIn", qs.stringify(param),{timeout: constant.apiTimeConstants.DEFAULT_SEED_API_TIME});
-        logger.info("monitorCheckIn result:", rs.data);
-        return rs.data;
+        logger.info("monitorCheckIn result:", formartDataFromMonitor(rs.data));
+        return formartDataFromMonitor(rs.data);
     } catch (e) {
         logger.error("monitorCheckIn error,", utils.logNetworkError(e));
     }
@@ -907,8 +908,8 @@ confirmBlockCheckIn = async (url,param) => {
     try {
         logger.info("confirmBlockCheckIn param:", qs.stringify(param));
         const rs = await axios.post(url + "/alert/uploadConfirmBlock", qs.stringify(param),{timeout: constant.apiTimeConstants.DEFAULT_SEED_API_TIME});
-        logger.info("confirmBlockCheckIn result:", rs.data);
-        return rs.data;
+        logger.info("confirmBlockCheckIn result:", formartDataFromMonitor(rs.data));
+        return formartDataFromMonitor(rs.data);
     } catch (e) {
         logger.error("confirmBlockCheckIn error,", utils.logNetworkError(e));
     }
@@ -924,8 +925,8 @@ ramUsageCheckIn = async (url,param) => {
     try {
         logger.info("ramUsageCheckIn param:", qs.stringify(param));
         const rs = await axios.post(url + "/filedist/addRamUsage", qs.stringify(param),{timeout: constant.apiTimeConstants.DEFAULT_SEED_API_TIME});
-        logger.info("ramUsageCheckIn result:", rs.data);
-        return rs.data;
+        logger.info("ramUsageCheckIn result:", formartDataFromMonitor(rs.data));
+        return formartDataFromMonitor(rs.data);
     } catch (e) {
         logger.error("addRamUsage error,", utils.logNetworkError(e));
     }
@@ -943,8 +944,8 @@ uploadugas = async (url,param) => {
     try {
         logger.info("uploadugas param:", qs.stringify(param));
         const rs = await axios.post(url + "/filedist/addUgasInfo", qs.stringify(param),{timeout: constant.apiTimeConstants.DEFAULT_SEED_API_TIME});
-        logger.info("uploadugas result:", rs.data);
-        return rs.data;
+        logger.info("uploadugas result:", formartDataFromMonitor(rs.data));
+        return formartDataFromMonitor(rs.data);
     } catch (e) {
         logger.error("uploadugas error,", utils.logNetworkError(e));
     }
@@ -960,8 +961,8 @@ uploadCurrency = async (url,param) => {
     try {
         logger.info("uploadCurrency param:", qs.stringify(param));
         const rs = await axios.post(url + "/filedist/addCurrencyInfo", qs.stringify(param),{timeout: constant.apiTimeConstants.DEFAULT_SEED_API_TIME});
-        logger.info("uploadCurrency result:", rs.data);
-        return rs.data;
+        logger.info("uploadCurrency result:", formartDataFromMonitor(rs.data));
+        return formartDataFromMonitor(rs.data);
     } catch (e) {
         logger.error("uploadCurrency error,", utils.logNetworkError(e));
     }
@@ -995,8 +996,8 @@ checkDeployFile = async (url, param) => {
     try {
         logger.info("checkDeployFile param:", qs.stringify(param));
         const rs = await axios.post(url + "/filedist/checkDeployInfo", qs.stringify(param),{timeout: constant.apiTimeConstants.DEFAULT_SEED_API_TIME});
-        logger.info("checkDeployFile result:", rs.data);
-        return rs.data;
+        logger.info("checkDeployFile result:", formartDataFromMonitor(rs.data));
+        return formartDataFromMonitor(rs.data);
     } catch (e) {
         logger.error("checkDeployFile error,", utils.logNetworkError(e));
     }
@@ -1012,8 +1013,8 @@ finsihDeployFile = async (url, param) => {
     try {
         logger.debug("finishDeployInfo param:", qs.stringify(param));
         const rs = await axios.post(url + "/filedist/finishDeployInfo", qs.stringify(param),{timeout: constant.apiTimeConstants.DEFAULT_SEED_API_TIME});
-        logger.info("finishDeployInfo result:", rs.data);
-        return rs.data;
+        logger.info("finishDeployInfo result:", formartDataFromMonitor(rs.data));
+        return formartDataFromMonitor(rs.data);
     } catch (e) {
         logger.error("finishDeployInfo error,", utils.logNetworkError(e));
     }
@@ -1283,6 +1284,27 @@ verifySign = (data,sign) => {
 }
 
 /**
+ *
+ * @param data
+ * @returns {*}
+ */
+formartDataFromMonitor =  (data) => {
+    try {
+
+        logger.info("formartDataFromMonitor data:",data);
+        if (typeof(data)=='string') {
+            let str =  ultrainEncryptUtil.decodeUltrain(data);
+            let jsonObj = JSON.parse(str);
+            return jsonObj;
+        }
+    } catch (e) {
+        logger.error("formartDataFromMonitor error:",e);
+    }
+
+    return data;
+}
+
+/**
  * get seed info
  * @param url
  * @param param
@@ -1292,12 +1314,12 @@ getSeedInfo = async (url, param) => {
     try {
         logger.info("getSeedInfo param:", qs.stringify(param));
         const rs = await axios.post(url + "/filedist/getSeedInfo", qs.stringify(param),{timeout: constant.apiTimeConstants.DEFAULT_SEED_API_TIME});
-        logger.info("monitor getSeedInfo result:", rs.data);
-        let data =  rs.data;
+        logger.info("monitor getSeedInfo result:", formartDataFromMonitor(rs.data));
+        let data =  formartDataFromMonitor(rs.data);
         if (data.code ==0) {
-            return rs.data;
+            return formartDataFromMonitor(rs.data);
         } else {
-            logger.error("getSeedInfo error:",rs.data);
+            logger.error("getSeedInfo error:",formartDataFromMonitor(rs.data));
         }
     } catch (e) {
         logger.error("getSeedInfo error,", utils.logNetworkError(e));
@@ -1374,4 +1396,5 @@ module.exports = {
     uploadugas,
     getCurrencyStats,
     uploadCurrency,
+    formartDataFromMonitor,
 }

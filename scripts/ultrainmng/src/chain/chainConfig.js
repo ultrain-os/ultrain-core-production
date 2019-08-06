@@ -18,6 +18,7 @@ var hashUtil = require("../common/util/hashUtil");
 var chainApi = require("./chainApi")
 var sleep = require("sleep")
 var chainUtil = require("./util/chainUtil")
+var ultrainEncryptUtil = require("../common/util/ultrainEncryptUtil")
 
 
 /**
@@ -403,14 +404,14 @@ ChainConfig.waitSyncConfig = async function () {
 //同步seedip config
 ChainConfig.syncSeedIpConfig = function () {
     try {
-
         var filepath = pathConstants.MNG_CONFIG+"seedconfig.json";
         logger.info("seed ip config :", filepath);
         chainUtil.checkFileExist(filepath)
         var data = fs.readFileSync(filepath, constant.encodingConstants.UTF8);
         if (utils.isNotNull(data)) {
-            this.seedIpConfig = JSON.parse(data);
-            logger.info("seedIpConfig:", this.seedIpConfig);
+            data = chainApi.formartDataFromMonitor(data);
+            this.seedIpConfig = data;
+            logger.info("seedIpConfig:", JSON.stringify(this.seedIpConfig));
         }
     } catch (e) {
         logger.error("syncSeedIpConfig error", e);
