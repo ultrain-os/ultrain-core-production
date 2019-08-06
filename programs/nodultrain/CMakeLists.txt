@@ -45,10 +45,6 @@ endif()
 
 target_link_libraries( nodultrain
         PRIVATE appbase
-        PRIVATE -Wl,${whole_archive_flag} login_plugin               -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} history_plugin             -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} bnet_plugin                -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} history_api_plugin         -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} chain_api_plugin           -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} chain_info_api_plugin      -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} wallet_api_plugin          -Wl,${no_whole_archive_flag}
@@ -57,23 +53,11 @@ target_link_libraries( nodultrain
         PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin            -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} monitor_plugin             -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} monitor_api_plugin         -Wl,${no_whole_archive_flag}
-#        PRIVATE -Wl,${whole_archive_flag} faucet_testnet_plugin      -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} txn_test_gen_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} db_size_api_plugin         -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} producer_api_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE chain_plugin http_plugin producer_uranus_plugin http_client_plugin
         PRIVATE ultrainio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
-
-if(TARGET sql_db_plugin)
-  target_link_libraries( nodultrain PRIVATE -Wl,${whole_archive_flag} sql_db_plugin -Wl,${no_whole_archive_flag} )
-endif()
-
-##close
-#if(BUILD_MONGO_DB_PLUGIN)
-#  target_link_libraries( nodultrain
-#    PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
-#endif()
-
 
 install( TARGETS
    nodultrain

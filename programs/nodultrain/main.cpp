@@ -6,7 +6,6 @@
 
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <ultrainio/http_plugin/http_plugin.hpp>
-#include <ultrainio/history_plugin/history_plugin.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
 #include <ultrainio/producer_uranus_plugin/producer_uranus_plugin.hpp>
 #include <ultrainio/utilities/common.hpp>
