@@ -17,7 +17,7 @@
 #include <set>
 #include "BlockHeaderExtKey.h"
 #include "CommitteeSet.h"
-//#include "EpochEndPoint.h"
+
 #define UNUSED(a) (void)(a);
 namespace ultrainiosystem {
    using namespace ultrainio;
@@ -104,7 +104,7 @@ namespace ultrainiosystem {
    struct chain_resource {
        uint64_t             max_resources_number = 10000;
        uint64_t             total_resources_used_number = 0;
-       uint64_t             max_ram_size = 12ll*1024 * 1024 * 1024;
+       uint64_t             max_ram_size = 32ll*1024 * 1024 * 1024;
        uint64_t             total_ram_bytes_used = 0;
 
        ULTRAINLIB_SERIALIZE(chain_resource, (max_resources_number)(total_resources_used_number)
@@ -145,7 +145,8 @@ namespace ultrainiosystem {
    struct producer_info : public disabled_producer {
       uint64_t              unpaid_balance = 0;
       uint64_t              vote_number = 0;
-      //记录producer最近出块的块高或者是成为producer时所在链的块高，以判断producer是否出块而移除委员会
+      //Record the latest block height of a producer or the block height of the chain when a producer became a producer,
+      // so as to judge whether a producer has made blocks and remove the committee
       uint64_t              last_record_blockheight = 0;
       exten_types           table_extension;
       enum producers_state_exten_type_key {
@@ -442,8 +443,8 @@ namespace ultrainiosystem {
 
    enum producer_evil_type {
       not_evil_action = 0,
-      limit_time_not_produce = 1, //在规定时间内(默认三天)没有出块，抵押的tokens不会被冻结
-      radio_error_echo_msg = 2, //广播错误的echo消息
+      limit_time_not_produce = 1, //If there are no blocks issued during a specified period (default three days), tokens are not frozen
+      radio_error_echo_msg = 2, //Broadcast an error echo message
    };
    struct bulletin {
        uint64_t              block_num;

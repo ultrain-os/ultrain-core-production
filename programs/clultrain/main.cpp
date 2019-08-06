@@ -1239,7 +1239,7 @@ void get_account( const string& accountName, bool json_format ) {
       if ( res.refund_cons.is_object() ) {
          auto& obj = res.refund_cons.get_object();
          auto request_time = fc::time_point_sec::from_iso_string( obj["request_time"].as_string() );
-         fc::time_point refund_time = request_time + fc::minutes(3);
+         fc::time_point refund_time = request_time + fc::days(30);
          auto now = res.head_block_time;
          asset cons = asset::from_string( obj["cons_amount"].as_string() );
          unstaking += cons;

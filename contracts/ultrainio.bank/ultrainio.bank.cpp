@@ -39,9 +39,11 @@ namespace ultrainiobank {
     }
 
     void bank::checktransfrombank( asset quantity, name chain_name ){
-        if( chain_name == N(master) || chain_name == N(ultrainio) ) { //如果从主链同步到侧链，在侧链记录下utrio.bank将要发行转出去的金额
+        if( chain_name == N(master) || chain_name == N(ultrainio) ) {
+            //If synchronize from the master chain to the side chain, record the amount of transfer that utrio.bank will issue in the side chain
             recordchainbalance( name{N(ultrainio)}, quantity );
-        } else {  //如果从侧链同步到主链，在主链上检查下先前转入该侧链的金额必须足够本次在主链转出的金额
+        } else {
+            //If the side chain is synchronized to the master chain, check the amount previously transferred to the side chain on the master chain must be enough to transfer the amount in the master chain
             checkchainbalance( chain_name, quantity );
         }
     }

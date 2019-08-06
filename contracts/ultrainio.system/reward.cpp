@@ -89,10 +89,7 @@ namespace ultrainiosystem {
       require_auth( reward_account );
       account_name pay_account = ( chain_name == self_chain_name ) ? N(utrio.mfee) : N(utrio.resfee) ;
       asset pay_tokens = ultrainio::token(N(utrio.token)).get_balance( pay_account,symbol_type(CORE_SYMBOL).name());
-      if( pay_tokens.amount < (int64_t)unpaid_balance ){
-         INLINE_ACTION_SENDER(ultrainio::token, issue)( N(utrio.token), {{N(ultrainio),N(active)}},
-            {pay_account, asset((int64_t)unpaid_balance - pay_tokens.amount), std::string("issue tokens for claimrewards")} );
-      }
+      ultrainio_assert( pay_tokens.amount >= (int64_t)unpaid_balance, " Insufficient funds to claim rewards" );
 
       INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
          { pay_account, reward_account, asset((int64_t)unpaid_balance), name{producer}.to_string() + std::string(" produce block pay") } );

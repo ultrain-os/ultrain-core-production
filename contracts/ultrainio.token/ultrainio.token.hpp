@@ -14,7 +14,7 @@ namespace ultrainiosystem {
 }
 
 namespace ultrainio {
-   static constexpr int64_t default_transfer_fee = 2000; //默认转账手续费0.2UGAS
+   static constexpr int64_t default_transfer_fee = 2000; //The default transfer fee is 0.2UGAS
    using std::string;
 
    class token : public contract {
@@ -66,7 +66,7 @@ namespace ultrainio {
          };
 
          struct trans_fee {
-            uint64_t       block_height = 0;  //从该块高(不包含)到下一个大于它的块高中间的费用是fee  前开后闭
+            uint64_t       block_height = 0;  //The middle fee from the block height (not included) to the next block height greater than it is fee
             int64_t        fee = 2000;
             uint64_t  primary_key()const { return block_height; }
             ULTRAINLIB_SERIALIZE( trans_fee, (block_height)(fee) )
