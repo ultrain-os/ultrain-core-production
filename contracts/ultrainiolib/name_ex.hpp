@@ -84,11 +84,15 @@ namespace ultrainio {
     static constexpr name_ex string_to_name_ex( const char* str ) {
 
         name_ex result;
+        if (str == 0)
+            return result;
 
         uint64_t name = 0;
 //        size_t len = strlen(str);
         size_t i = 0;
         while(str[i] != '\0') {
+            if (i > 20)
+                break;
             uint64_t sym = (char_to_symbol_ex(str[i]) & 0x3F);
             if (i <= 9) {
                 name |= (sym << (6 * i));
@@ -120,4 +124,3 @@ namespace ultrainio {
 } // namespace ultrainio
 
 using action_name = ::ultrainio::name_ex;
-
