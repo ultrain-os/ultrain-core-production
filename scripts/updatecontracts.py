@@ -108,9 +108,9 @@ destChaininfo = {
 
 testNetHttp = {
     "ultrainio":"http://172.16.10.6:8888",
-    # "11":"http://172.16.10.6:8889",
-    # "12":"http://172.16.10.6:8890",
-    #"13":"http://172.16.10.6:9911",
+    "11":"http://172.16.10.6:8889",
+    "12":"http://172.16.10.6:8890",
+    # "13":"http://172.16.10.6:9911",
 }
 masterNetHttp = {
     "ultrainio":"http://40.121.11.165:8888",#  "ultrainio":"https://ultrain.services",
@@ -122,14 +122,22 @@ masterNetHttp = {
 signAccount = ["u.mgr.feifan","u.mgr.suyu","u.mgr.zuofei"]
 def ModifyAccountKey():
     accountlist = [
-        "u.mgr.feifan",
+        # "u.mgr.feifan",
+        'hello',
+        'root',
+        'root1',
+        'root2',
+        'root3',
+        'root4',
+        'root5',
     ]
     for i in range(0, len(accountlist)):
         for url in testNetHttp.values():
             clu = args.clultrain + ' -u ' + url + ' -n '
-            retry(clu + ' transfer ultrainio u.mgr.feifan  "2.02 UGAS" ')
-            updateAuthkey(clu,accountlist[i], 'owner', '', "UTR6n76ZjUdGwTDzfRVAu3ojaaL72oLhyr8tNrBDiLFzfqxfAbmFf")
-            updateAuthkey(clu,accountlist[i], 'active', 'owner', "UTR6n76ZjUdGwTDzfRVAu3ojaaL72oLhyr8tNrBDiLFzfqxfAbmFf")
+            retry(clu + ' transfer utrio.rand %s  "2.4 UGAS" ' % accountlist[i] )
+            updateAuthkey(clu,accountlist[i], 'owner', '', "UTR5x7SYcRsvhh6B5yYQDNtbaDMoXuLM9wA5gMAky4fQ1EMLCeRyL")
+            updateAuthkey(clu,accountlist[i], 'active', 'owner', "UTR5x7SYcRsvhh6B5yYQDNtbaDMoXuLM9wA5gMAky4fQ1EMLCeRyL")
+            # retry(clu + ' transfer utrio.fee  ultrainio  "2.4 UGAS" ' )
 
 def updateAccountAuth():
     accountlist = [
@@ -187,7 +195,18 @@ def updateContractTrx():
         clu = args.clultrain + ' -u ' + url
         retry(clu + ' set contract utrio.token ' + args.contracts_dir + 'ultrainio.token/  -p utrio.token@active')
       #   retry(clu + ' set contract utrio.bank ' + args.contracts_dir + 'ultrainio.bank/  -p utrio.bank@active')
-      #   retry(clu + ' set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/  -p ultrainio@active')
+        retry(clu + ' set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/  -p ultrainio@active')
+
+def verifyContractCode():
+    print("utrio.token code:")
+    for url in masterNetHttp.values():
+        clu = args.clultrain + ' -u ' + url
+        retry(clu + ' get code  utrio.token ')
+    print("ultrainio code:")
+    for url in masterNetHttp.values():
+        clu = args.clultrain + ' -u ' + url
+        retry(clu + ' get code ultrainio ' )
+
 
 def createAccount():
     accountList = [
@@ -240,6 +259,7 @@ commands = [
     ('a', 'appro',           approve,        True,    "approve"),
     ('e', 'execpropose',     execPropose,        True,    "execpropose"),
     ('u', 'updateContractTrx', updateContractTrx,        True,    "updateContractTrx"),
+    ('V', 'verifyContractCode', verifyContractCode,        True,    "verifyContractCode"),
     ('c', 'createAccount', createAccount,        True,    "createAccount"),
     ('v', 'verifycreateisexist', verifycreateisexist,        True,    "verifycreateisexist"),
 ]
