@@ -195,32 +195,28 @@ namespace ultrainio {
     }
 
     void Node::syncBlock(bool once) {
-        ReqSyncMsg msg;
-        dlog("@@@@@@@@@@@ syncBlock syncing:${s}", ("s", m_syncing));
+        dlog("@@@@@@@@@@@syncing : ${s}", ("s", m_syncing));
         if (m_syncing) {
             syncBlockLoop(getLeftTime());
             return;
         }
-
         m_syncing = true;
         m_syncFailed = false;
 
+        ReqSyncMsg msg;
         msg.startBlockNum = getLastBlocknum();
         if (msg.startBlockNum == INVALID_BLOCK_NUM) {
             msg.startBlockNum = 1;
         } else {
             msg.startBlockNum++;
         }
-
         msg.endBlockNum = INVALID_BLOCK_NUM;
-
         dlog("sync block. start id = ${sid}  end id = ${eid}", ("sid", msg.startBlockNum)("eid", msg.endBlockNum));
         if (!sendMessage(msg)) {
-            elog("@syncBlock send sync request msg failed!!!");
+            elog("send sync request msg failed!!!");
             m_syncing = false;
             m_syncFailed = true;
         }
-
         if (!once) {
             syncBlockLoop(getLeftTime());
         }
@@ -415,7 +411,6 @@ namespace ultrainio {
             doFastBlock();
         } else {
             elog("baxProcess.phase bax finish. block is blank.");
-
             if (isNeedSync()) {
                 dlog("baxProcess. syncing begin. m_baxCount = ${count}.", ("count", m_baxCount));
                 syncBlock(true);
@@ -555,7 +550,7 @@ namespace ultrainio {
         return m_schedulerPtr->getLastBlocknum();
     }
 
-    bool Node::handleMessage(const SyncBlockMsg &msg, bool last_block, bool safe) {
+    bool Node::handleMessage(const SyncBlockMsg& msg, bool last_block, bool safe) {
         if (!m_syncing) {
             return true;
         }
@@ -581,7 +576,6 @@ namespace ultrainio {
                 reset();
             }
         }
-
         return true;
     }
 
@@ -605,7 +599,6 @@ namespace ultrainio {
                 ilog("Committee has not worked.");
             }
         }
-
         return true;
     }
 
@@ -649,7 +642,6 @@ namespace ultrainio {
                 return true;
             }
         }
-
         return false;
     }
 
@@ -685,8 +677,6 @@ namespace ultrainio {
         } else {
             ba0Loop(getLeftTime());
         }
-
-        return;
     }
 
     void Node::join() {
@@ -696,9 +686,7 @@ namespace ultrainio {
     void Node::fastBa0() {
         m_phase = kPhaseBA0;
         m_baxCount = 0;
-
         dlog("fastBa0 begin. blockNum = ${id}", ("id", getBlockNum()));
-
         RoundInfo info(getBlockNum(), m_phase + m_baxCount);
         m_schedulerPtr->fastProcessCache(info);
     }
@@ -799,7 +787,6 @@ namespace ultrainio {
 
     void Node::doFastBlock() {
         dlog("begin. blockNum = ${id}", ("id", getBlockNum()));
-
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
         reset();
         m_schedulerPtr->resetTimestamp();
@@ -821,7 +808,6 @@ namespace ultrainio {
                 //todo process two phase
                 ba0Process();
             } else {
-                //vote(getBlockNum(),kPhaseBA0,0);
                 ba0Loop(getLeftTime());
             }
         }
@@ -830,7 +816,6 @@ namespace ultrainio {
     bool Node::isProcessNow() {
         dlog("isProcessNow. current timestamp = ${id1}, fast timestamp = ${id2}",
              ("id1", getRoundCount())("id2",m_schedulerPtr->getFastTimestamp()));
-
         if ((m_schedulerPtr->getFastTimestamp() < getRoundCount()) && (m_schedulerPtr->getFastTimestamp() != 0)) {
             return true;
         }
@@ -908,7 +893,6 @@ namespace ultrainio {
     }
     void Node::setTrxsSecond(int32_t trxssecond) {
         Config::s_maxTrxMicroSeconds = trxssecond;
-
         ilog("s_maxTrxMicroSeconds : ${s_maxTrxMicroSeconds}",
              ("s_maxTrxMicroSeconds", Config::s_maxTrxMicroSeconds));
     }

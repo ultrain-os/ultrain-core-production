@@ -30,16 +30,6 @@ namespace ultrainio {
         pairing_clear(m_pairing);
     }
 
-    bool Bls::getSk(const std::string& boringsslSk, unsigned char* sk, int skSize) {
-        if (skSize < Bls::BLS_PRI_KEY_LENGTH) {
-            elog("sk size less Bls::BLS_PRI_KEY_LENGTH");
-            return false;
-        }
-        std::string hash = fc::sha256::hash(boringsslSk).str();
-        std::string skHex = hash.substr(0, Bls::BLS_PRI_KEY_LENGTH * 2);
-        return Hex::fromHex<unsigned char>(skHex, sk, skSize) == Bls::BLS_PRI_KEY_LENGTH;
-    }
-
     std::shared_ptr<Bls> Bls::getDefault() {
         if (!s_blsPtr) {
             s_blsPtr = std::make_shared<Bls>(Bls::ULTRAINIO_BLS_DEFAULT_PARAM.c_str(), strlen(Bls::ULTRAINIO_BLS_DEFAULT_PARAM.c_str()));

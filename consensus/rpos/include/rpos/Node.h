@@ -58,9 +58,9 @@ namespace ultrainio {
 
         void readyToJoin();
 
-        void readyToConnect();
+        bool syncFail(const ultrainio::ReqSyncMsg& sync_msg);
 
-        void readyLoop(uint32_t timeout);
+        bool syncCancel();
 
         void run();
 
@@ -78,26 +78,6 @@ namespace ultrainio {
 
         ConsensusPhase getPhase() const;
 
-        void ba0Process();
-
-        void fastProcess();
-
-        bool isNeedSync();
-
-        void ba1Process();
-
-        void baxProcess();
-
-        void runLoop(uint32_t timeout);
-
-        void ba0Loop(uint32_t timeout);
-
-        void ba1Loop(uint32_t timeout);
-
-        void fastLoop(uint32_t timeout);
-
-        void baxLoop(uint32_t timeout);
-
         bool handleMessage(const EchoMsg& echo);
 
         bool handleMessage(const ProposeMsg& propose);
@@ -110,27 +90,13 @@ namespace ultrainio {
 
         bool handleMessage(const fc::sha256& nodeId, const SyncStopMsg& msg);
 
-        uint32_t getLastBlocknum();
-
-        bool syncFail(const ultrainio::ReqSyncMsg& sync_msg);
-
-        bool syncCancel();
-
-        void cancelTimer();
-
-        void syncBlockLoop(uint32_t timeout);
-
         BlockIdType getPreviousHash();
-
-        bool isProcessNow();
 
         const std::shared_ptr<Scheduler> getScheduler() const;
 
         uint32_t getRoundCount();
 
         int getCommitteeMemberNumber();
-
-        void vote(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount);
 
         void setGenesisTime(const fc::time_point& tp);
 
@@ -145,9 +111,37 @@ namespace ultrainio {
     private:
         explicit Node(boost::asio::io_service& ioservice);
 
+        void runLoop(uint32_t timeout);
+
+        void ba0Loop(uint32_t timeout);
+
+        void ba1Loop(uint32_t timeout);
+
+        void fastLoop(uint32_t timeout);
+
+        void baxLoop(uint32_t timeout);
+
+        void fastProcess();
+
+        bool isNeedSync();
+
+        void ba0Process();
+
+        void ba1Process();
+
+        void baxProcess();
+
+        bool isProcessNow();
+
         bool canEnterFastBlockMode();
 
         void doFastBlock();
+
+        void syncBlockLoop(uint32_t timeout);
+
+        uint32_t getLastBlocknum();
+
+        void vote(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount);
 
         void join();
 
@@ -164,6 +158,12 @@ namespace ultrainio {
         void fastBa1();
 
         void fastBax();
+
+        void cancelTimer();
+
+        void readyToConnect();
+
+        void readyLoop(uint32_t timeout);
 
         void preRunBa0BlockLoop(uint32_t timeout);
 
@@ -184,6 +184,7 @@ namespace ultrainio {
         bool m_ready;
         bool m_connected;
         bool m_syncing;
+        // used by monitor
         bool m_syncFailed;
         bool m_isNonProducingNode = false;
         TimerHandlerNumber m_currentTimerHandlerNo = THN_MAX;

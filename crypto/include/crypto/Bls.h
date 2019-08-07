@@ -17,7 +17,6 @@ namespace ultrainio {
 
         Bls(const char* s, size_t count);
         ~Bls();
-        static bool getSk(const std::string& boringsslSk, unsigned char* sk, int skSize);
         static std::shared_ptr<Bls> getDefault();
         bool initG(unsigned char* g);
         bool getG(unsigned char* g, int gSize);

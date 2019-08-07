@@ -102,17 +102,4 @@ BOOST_AUTO_TEST_SUITE(bls_test_suite)
         BOOST_CHECK(blsPtr->verifyKeyPair(fakeSkChar, Bls::BLS_PRI_KEY_LENGTH, pkChar, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH) == false);
         BOOST_CHECK(blsPtr->verifyKeyPair(skChar, Bls::BLS_PRI_KEY_LENGTH, fakePkChar, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH) == false);
     }
-
-    BOOST_AUTO_TEST_CASE(boringsslSK_2_blsSK) {
-        PrivateKey boringSslSk;
-        PublicKey boringSslPk;
-        PrivateKey::generate(boringSslPk, boringSslSk);
-        std::shared_ptr<Bls> blsPtr = Bls::getDefault();
-        unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
-        unsigned char pk[Bls::BLS_PUB_KEY_COMPRESSED_LENGTH];
-        BOOST_CHECK(Bls::getSk(std::string(boringSslSk), sk, Bls::BLS_PRI_KEY_LENGTH) == true);
-        BOOST_CHECK(blsPtr->getPk(pk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH, sk, Bls::BLS_PRI_KEY_LENGTH));
-        BOOST_CHECK(blsPtr->verifyKeyPair(sk, Bls::BLS_PRI_KEY_LENGTH, pk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH) == true);
-        //std::cout << "sk : " << Hex::toHex<unsigned char>(sk, Bls::BLS_PRI_KEY_LENGTH) << " pk : " << Hex::toHex<unsigned char>(pk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH) << std::endl;
-    }
 BOOST_AUTO_TEST_SUITE_END()
