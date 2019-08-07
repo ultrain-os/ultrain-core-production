@@ -16,15 +16,15 @@ features:
 ##  Open system for permissionless network
 
 Open means not only the relevant code is open sourced, but also the decision making about the project/network development
-is also openly discussed and guided. At different phase of the project developemnt, both on-chain and off-chain goverance,
-and both committee-led and community-led decision makeing are used.
+is also openly discussed and guided. At different phase of the project development, both on-chain and off-chain governance,
+and both committee-led and community-led decision making are used.
 
 Permissionless network is the fundamental vision of the whole project: any one can freely stake to become a staker/"miner";
 then with a home PC of average hardware spec, one can download the source code, compile a node binary and join the Ultrain network
 to provide computation service for enterprise users, in exchange one can get reasonable economical rewards.
 
 One has to admit that to achieve the true "permissionless-ness", certain degree of performance & security inevitably has to
-be sacrifised (compared with permissioned network like consortium blockchain network). And a lot of our design & engineering effort
+be sacrificed (compared with permissioned network like consortium blockchain network). And a lot of our design & engineering effort
 are put into balancing the tradeoff between permissionless-ness and performance & security.
 
 
@@ -32,9 +32,9 @@ are put into balancing the tradeoff between permissionless-ness and performance 
 
 Our consensus is called Random Proof-of-Stake (R-POS). First of all it is a Proof-of-Stake based consensus, meaning anyone can
 obtain the right of block production through staking into the system. Technically, once properly staked, one enters the consensus
-committee. Each block production phase is divided into different rounds. First a few randomly chosen committee memebers, called
+committee. Each block production phase is divided into different rounds. First a few randomly chosen committee members, called
 "proposers", will propose their block candidate to the whole network, and the propose message is encoded with Verifiable Random Function (VRF)
-so the other committe memebers can verify the vadility of the propose messages. Also another subset of the committee members are
+so the other committee members can verify the validity of the propose messages. Also another subset of the committee members are
 chosen (also with VRF) as "voters", and these voters will vote on the proposed blocks and also broadcast their votes to the whole
 network. The voting process carries out in 2 rounds and eventually every one in the network agree on one proposed block, and the
 block finality is deterministic at the end of the 2 rounds of voting. The process is illustrated in the following diagram:
@@ -42,7 +42,7 @@ block finality is deterministic at the end of the 2 rounds of voting. The proces
 ![alt text](../tools/pics/consensus.png "Consensus Process")
 
 
-With the assumption of semi-synchronous network condition, the consensus can work against up to 1/3 of the commitee members offline
+With the assumption of semi-synchronous network condition, the consensus can work against up to 1/3 of the committee members offline
 or being malicious. More details can be found in our [consensus yellow paper](https://ultrain.io/downloads/consensus.pdf).
 
 By narrowing down the number of proposers in each round of the block production, the network communication overhead is dramatically
@@ -59,7 +59,7 @@ The fundamental of the solution is to run all the Dapps on shard-chains, while t
 the shard-chains. Each shard-chain has a maximum capacity on the hardware resources – when Dapps on the shard-chain reaches
 the maximum capacity, a new shard-chain will be created to accommodate the new demands, this is also known as horizontal scaling.
 Each shard-chain comprises a group of Dapps, which is segregated from other shard-chains, as a result of such design,
-we naturally segregated the computation and storag resources between shard-chains. There will be no user level Dapps running
+we naturally segregated the computation and storage resources between shard-chains. There will be no user level Dapps running
 on the main-chain, which its tasks involve users’ accounts creation/maintenance, miners’ registration/token staking
 and scheduling of mining nodes among different shard-chains.
 
@@ -75,14 +75,14 @@ the user is required to stake native token of Ultrain (UGAS); once registration 
 miner will be queued for dispatch, the system smart contract on main-chain will randomly assign the miner to a shard-chain.
 
 2.The miner will perform block proposition and validation (mining) and the results are reported to the system smart contract
-on main-chain, and once the main-chain verifies the validility of the reported block, the block reward will be distributed to the miner.
+on main-chain, and once the main-chain verifies the validity of the reported block, the block reward will be distributed to the miner.
 
 3.To enhance the network safety, the system smart contract on the main-chain will reshuffle miners to different shard-chains,
 therefore there will be no miner stay permanently on a particular shard-chain. The random reshuffling of miners is executed by
 the smart contract, the randomness is verifiable and transparent on the blockchain, the long-term economic return of the miner will not be affected by this.
 
 4.For Dapp users, the registration of account must be performed on the main-chain; the main-chain has the snapshot of all the accounts
-of the network; when user needs to interact with a Dapp on a particular shard-chain, the user needs to apply for authorisation to access
+of the network; when user needs to interact with a Dapp on a particular shard-chain, the user needs to apply for authorization to access
 (empower to) the shard-chain, the IBC mechanism between the main/shard-chain will clone the user’s account to the designated shard-chain.
 
 5.For Dapp developers, when they want to deploy a Dapp on a particular shard-chain, they need to purchase appropriate resource packages
@@ -100,7 +100,7 @@ it can take days for the data sync to complete, this is unfriendly to miner node
 1.For a fixed period of time, a world state snapshot is taken and stored locally from all mining nodes on a shard-chain,
 the hash value of this world sate snapshot is recorded on the main-chain.
 
-2.Main-chain’s smart contact is responsible to record the shard-chains’ hash value of the world state snapsho
+2.Main-chain’s smart contact is responsible to record the shard-chains’ hash value of the world state snapshot.
 Only when the world state is validated by miner nodes no less than 2/3 of the committee members on the shard-chain,
 the main-chain deems the hash value of the world state snapshot valid.
 
@@ -146,11 +146,11 @@ TODO
 ## Token Economy and Resource Package Model
 
 First we believe many permissionless blockchain projects failed to design a healthy and developer friendly resource pricing model,
-for example, ETH and EOS are both adapting the “overselling model” – with more developers purchase their resource while the overa
+for example, ETH and EOS are both adapting the “overselling model” – with more developers purchase their resource while the overall
 resource available remains unchanged, each developer/user will have fewer resources for the money they paid.
 We use “preselling model” – we divide the resource of a shard-chain to a fixed number of equivalent portion the developer can
 forecast how much CPU/storage/network power its Dapp needed and purchase accordingly. We would like to use the train ticket analogy
-to distinguish the “overselling” and “preselling” models, in an “overselling” scenario, when more tickets are sold thanumber
+to distinguish the “overselling” and “preselling” models, in an “overselling” scenario, when more tickets are sold than the number
 of seats a train has, all passengers’ seat space is reduced. In a “preselling” model, we only sell tickets no more than the to
 seats available, this ensures everyone’s seat space remains unchanged. In essence, the “overselling” model disregards the outcome of inflation while reaping the full benefit from selling the resource packages, the “preselling” model, on the other hand, balances our package purchasers’ cost and user experience.
 
@@ -172,7 +172,7 @@ for any damages whatsoever, even if it had been advised of the possibility of da
 ULTRAINIO currently supports the following operating systems:
 1. Ubuntu 18.04 LTS
 
-Docker image with pre-compiled Ultrain software can be requsted for.
+Docker image with pre-compiled Ultrain software can be requested for.
 
 ## Code Structure
 
