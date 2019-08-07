@@ -22,11 +22,8 @@ namespace ultrainiosystem {
                                       account_name rewards_account,
                                       const std::string& url,
                                       name location ) {
+        require_auth(_self);
         ultrainio_assert( url.size() < 512, "url too long" );
-        bool is_has_ultrainio_auth = false;
-        if ( has_auth(_self) ) {
-            is_has_ultrainio_auth = true;
-        }
         // key is hex encoded
         ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
         ultrainio_assert( bls_key.size() == 130, "public bls key should be of size 130" );
@@ -34,22 +31,9 @@ namespace ultrainiosystem {
         ultrainio_assert( is_account( rewards_account ), "rewards account not exists" );
         check_producer_evillist( producer );
         if(location != self_chain_name) {
-            ultrainio_assert(location != N(master) , "wrong location");
-            if(location != default_chain_name) {
-                ultrainio_assert(_chains.find(location) != _chains.end(),
-                                 "wrong location, subchain is not existed");
-                ultrainio_assert( is_has_ultrainio_auth, " register to the specified sidechain must have ultrainio permissions" );
-            }
-            else{
-                ultrainio_assert(_chains.begin() != _chains.end(),
-                                 "no side chain is existed currently, registering to side chain is not accepted");
-                if ( !is_has_ultrainio_auth ){
-                    require_auth(producer);
-                }
-            }
-        }
-        else {
-            ultrainio_assert( is_has_ultrainio_auth, " register to the master chain must have ultrainio permissions" );
+            ultrainio_assert(location != N(master) && location != default_chain_name, "wrong location name");
+            ultrainio_assert(_chains.find(location) != _chains.end(),
+                                 "wrong location, chain is not existed");
         }
         uint64_t curblocknum = (uint64_t)head_block_number() + 1;
         auto briefprod = _briefproducers.find(producer);
@@ -88,6 +72,7 @@ namespace ultrainiosystem {
             });
         }
 
+        /*
         if ( !is_has_ultrainio_auth ) {
             ultrainio_assert( _gstate.is_master_chain(), "only master chain allow regproducer" );
             asset cur_tokens =
@@ -106,7 +91,7 @@ namespace ultrainiosystem {
                         producer:") + name{producer}.to_string() + std::string(" not synchronized to subchain:") + name{ite_chain->chain_name}.to_string();
                 ultrainio_assert( false, errorlog.c_str());
             }
-        }
+        }*/
     }
 
     std::vector<name> system_contract::get_all_chainname() {
