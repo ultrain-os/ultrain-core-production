@@ -189,7 +189,7 @@ namespace ultrainio {
         bool is_grey_connection(const string& host) const;
         bool is_connection_to_seed(connection_ptr con) const;
         bool is_static_connection(connection_ptr con) const;
-        void del_connection_with_node_id(const fc::sha256& node_id);
+        void del_connection_with_node_id(const fc::sha256& node_id,connection_direction dir);
 
         std::set< connection_ptr >       connections;
         std::list< string >              peer_addr_grey_list;
@@ -1575,6 +1575,10 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
     void net_plugin_impl::connect( connection_ptr c ) {
         if (c->no_retry != go_away_reason::no_reason && c->no_retry != go_away_reason::authentication) {
             ilog("Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
+            if(c->no_retry == go_away_reason::duplicate)
+            {
+                connections.erase(c);
+            }
             return;
         }
 
@@ -2194,7 +2198,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       c->flush_queues();
       close (c);
       if (msg.reason == duplicate) {
-         del_connection_with_node_id(msg.node_id); /// warning !!!
+         del_connection_with_node_id(msg.node_id,c->direct); /// warning !!!
       }
    }
 
@@ -2673,7 +2677,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                it = connections.erase(it);
                continue;
             } else {
-               if (!(is_connection_to_seed(*it) || is_static_connection(*it))) { // skip the addr of seeds and static connections, so always reconnect
+               if (!is_static_connection(*it)) { // skip the addr of seeds and static connections, so always reconnect
                   (*it)->retry_connect_count++;
                }
                connect(*it);
@@ -3661,11 +3665,11 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
     }
 
-    void net_plugin_impl::del_connection_with_node_id(const fc::sha256& node_id) {
+    void net_plugin_impl::del_connection_with_node_id(const fc::sha256& node_id, connection_direction dir) {
         auto it = connections.begin();
         ilog("connections size: ${s}", ("s", connections.size()));
         while (it != connections.end()) {
-            if ((*it)->node_id == node_id) {
+            if ((*it)->node_id == node_id && (*it)->direct == dir) {
                 ilog("del connection to ${peer}, node id: ${id}", ("peer", info_encode((*it)->peer_addr))("id", node_id));
                 if ((*it)->socket && (*it)->socket->is_open()) {
                     close(*it);
