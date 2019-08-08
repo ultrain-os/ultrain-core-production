@@ -139,7 +139,7 @@ on a wide range of platforms. WebAssembly is currently being designed as an open
 WABT as the VM implementation base to take advantage of WASM's high-performance (close to native hardware execution speed) and high-security (highly sandboxed runtime environment).
 
 The toolchain has already supported C++ as the frontend smart contract developing language if the developers want the maximal control of the runtime performance. But for developer
-who wants better developing productivity, we also support TypeScript as another (recommended) option for developing smart contract and provide the full [compiler toolchian] (https://github.com/ultrain-os/ultrascript) support, a richful set of [TS library](https://github.com/ultrain-os/ultrain-ts-lib), and some widely adopted [UIPs](https://github.com/ultrain-os/UIPs) (Ultrain Improvement Proposals) spec and ref implementations.
+who wants better developing productivity, we also support TypeScript as another (recommended) option for developing smart contract and provide the full [compiler toolchian](https://github.com/ultrain-os/ultrascript) support, a richful set of [TS library](https://github.com/ultrain-os/ultrain-ts-lib), and some widely adopted [UIPs](https://github.com/ultrain-os/UIPs) (Ultrain Improvement Proposals) spec and ref implementations.
 
 More develop resource can be found at our [developer portal](https://developer.ultrain.io/).
 
