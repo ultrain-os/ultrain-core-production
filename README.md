@@ -10,8 +10,7 @@ features:
 1. Random-POS based consensus with high-performance, deterministic finality and quick block confirmation (~10s).
 1. Multi-chain design with smart scheduling for best balance between performance & security.
 1. Well designed token economy for predictable DAPPs cost & lucrative mining reward.
-1. Smart contract platform powered by Web Assembly
-1. Widely adopted developing language TypeScript.
+1. Smart contract platform powered by Web Assembly & TypeScript
 
 ##  Open system for permissionless network
 
@@ -133,14 +132,17 @@ synced from main-chain to shard-chains; 4) account information on main-chain is 
 More details of the multi-chain design can be found [here](https://ultrain.io/downloads/Ultrain%E2%80%99s%20Multi-chain%20architecture%20-%20revised.pdf)
 
 
-## Smart contract platform powered by Web Assembly
+## Smart contract platform powered by WebAssembly & TypeScript
 
-TODO
+WebAssembly(Wasm) is a new, portable, size-/load-time-efficient format. WebAssembly aims to execute at native speed by taking advantage of common hardware capabilities available
+on a wide range of platforms. WebAssembly is currently being designed as an open standard by a W3C Community Group. We choose WebAssembly as the smart contract runtime format and
+WABT as the VM implementation base to take advantage of WASM's high-performance (close to native hardware execution speed) and high-security (highly sandboxed runtime environment).
 
+The toolchain has already supported C++ as the frontend smart contract developing language if the developers want the maximal control of the runtime performance. But for developer
+who wants better developing productivity, we also support TypeScript as another (recommended) option for developing smart contract and provide the full [compiler toolchian] (https://github.com/ultrain-os/ultrascript) support, a richful set of [TS library](https://github.com/ultrain-os/ultrain-ts-lib), and some widely adopted [UIPs](https://github.com/ultrain-os/UIPs) (Ultrain Improvement Proposals) spec and ref implementations.
 
-## Widely adopted developing language TypeScript.
+More develop resource can be found at our [developer portal](https://developer.ultrain.io/).
 
-TODO
 
 ## Token Economy and Resource Package Model
 
