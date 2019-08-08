@@ -176,36 +176,29 @@ ULTRAINIO currently supports the following operating systems:
 Docker image with pre-compiled Ultrain software can be requested for.
 
 ## Code Structure
-Following are the code structure of ULTRAINIO.
+Following are the code structure of some of the core components:
 ```
-.
-├── CMakeLists.txt
-├── CMakeModules
-├── HEADER
+├── ...
 ├── LICENSE
 ├── README.md
-├── base // base Library of ULTRAINIO
-├── build
-├── consensus // RPoS consensus
-├── contracts
-├── core // core struct
-├── crypto
+├── base                      // useful base lib
+├── consensus                 // RPoS consensus implementation
+├── contracts                 // system & test smart contracts
+├── core                      // core data structure for consensus
+├── crypto                    // various crypto (e.g. ED25519, BLS) related components
 ├── docs
-├── lightclient // light weight client
-├── p2p
-├── plugins
-├── programs
-├── scripts
-├── tests
-├── tools
-├── ultrain.doxygen.in
-├── ultrainio.version.in
-├── ultrainio_build.sh
+├── lightclient               // light client for cross chain communication
+├── p2p                       // p2p communication impl
+├── plugins                   // feature components as plugins
+├── programs                  // node, cli and wallet binary
+├── scripts                   // deployment related tools
+├── tests                     // mostly performance related tests
+├── tools                     // various tools, e.g. key generator
+├── ultrainio_build.sh        // main build script
 ├── unittests
-└── vendor // Third-Party library
+└── vendor                    // Third-Party library, like chainbase, wabt
 
 ```
-TODO
 
 ## BUILD
 
