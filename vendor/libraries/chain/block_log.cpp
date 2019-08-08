@@ -159,7 +159,11 @@ namespace ultrainio { namespace chain {
          }
 
          my->head = read_head();
-         my->head_id = my->head->id();
+         if (my->head) {
+            my->head_id = my->head->id();
+         } else {
+            my->head_id = {};
+         }
 
          if (index_size) {
             my->check_block_read();
@@ -349,6 +353,11 @@ namespace ultrainio { namespace chain {
 
       my->block_stream.seekg(-sizeof( uint64_t), std::ios::end);
       my->block_stream.read((char*)&end_pos, sizeof(end_pos));
+      if (end_pos == npos) {
+         ilog( "Block log contains no blocks. No need to construct index." );
+         return;
+      }
+
       signed_block tmp;
 
       uint64_t pos = 0;
@@ -578,7 +587,7 @@ namespace ultrainio { namespace chain {
             "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir) );
       ULTRAIN_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(my->index_file), block_log_not_found,
             "Block index not found in '${blocks_dir}'", ("blocks_dir", data_dir) );
-      
+
       auto log_size = fc::file_size(my->block_file);
       auto index_size = fc::file_size(my->index_file);
 
@@ -601,7 +610,7 @@ namespace ultrainio { namespace chain {
 
       my->head = read_block(block_pos).first;
       my->head_id = my->head->id();
-      
+
       my->block_stream.seekg( 0 );
       my->version = 0;
       my->block_stream.read( (char*)&my->version, sizeof(my->version) );
