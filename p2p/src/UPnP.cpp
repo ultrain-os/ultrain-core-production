@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in ultrain/LICENSE.txt
+ */
 #include "p2p/UPnP.h"
 #include "p2p/NodeTable.h"
 #include <string.h>

@@ -3,8 +3,6 @@
 #include <string>
 #include <vector>
 namespace ultrainio {
-    // Simple encode method, only to make info unreadable
-    std::vector<char> info_encode(std::string const& s);
 
     std::string bin2hex(const std::string& data);
 

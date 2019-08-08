@@ -1,4 +1,7 @@
-
+/**
+ *  @file
+ *  @copyright defined in ultrain/LICENSE.txt
+ */
 #pragma once
 
 #include <atomic>
@@ -84,7 +87,6 @@ namespace ultrainio
         public:
             Node() = default;
             virtual ~Node() = default;
-     //       Node(Node const&);
             Node(NodeID _id, NodeIPEndpoint const& _ip): m_id(_id), m_endpoint(_ip) {}
 
             bool valid() const { return m_id != fc::sha256(); }
@@ -104,7 +106,6 @@ namespace ultrainio
 
 }
 FC_REFLECT( ultrainio::p2p::NodeIPEndpoint, (m_address)(m_udpPort)(m_listenPorts)(ext))
-/// std::hash for asio::adress
 #if 1
 namespace std
 {

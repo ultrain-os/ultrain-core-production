@@ -251,11 +251,6 @@ namespace ultrainio {
         void onNodeTableDropEvent(const p2p::NodeIPEndpoint& _n);
         void onNodeTableTcpConnectEvent(const p2p::NodeIPEndpoint& _n);
         template<typename VerifierFunc> void send_all( const net_message &msg, VerifierFunc verify );
-        void accepted_block_header(const block_state_ptr&);
-        void accepted_block(const block_state_ptr&);
-        void irreversible_block(const block_state_ptr&);
-        void accepted_transaction(const transaction_metadata_ptr&);
-        void applied_transaction(const transaction_trace_ptr&);
 
         void transaction_ack(const std::tuple<const fc::exception_ptr, const transaction_trace_ptr, const packed_transaction_ptr>&);
         bool is_valid( const handshake_message &msg);
@@ -331,11 +326,6 @@ namespace ultrainio {
          *       numerically smaller byte will always be used.
          */
         chain::public_key_type get_authentication_key() const;
-        /** \brief Returns a signature of the digest using the corresponding private key of the signer.
-         *
-         * If there are no configured private keys, returns an empty signature.
-         */
-        chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
 
         uint16_t to_protocol_version(uint16_t v);
 
@@ -586,9 +576,6 @@ namespace ultrainio {
         void close();
         void send_handshake();
 
-        /** \brief Convert an std::chrono nanosecond rep to a human readable string
-         */
-        char* convert_tstamp(const tstamp& t);
         /**  \brief Populate and queue time_message
          */
         void send_time();
@@ -634,7 +621,7 @@ namespace ultrainio {
          * encountered unpacking or processing the message.
          */
         bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
-        bool check_pack_speed_exceed();
+        bool check_pkt_limit_exceed();
         bool add_peer_block(const peer_block_state &pbs);
 
         fc::optional<fc::variant_object> _logger_variant;
@@ -929,7 +916,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         last_req(),
         block_num_range()
     {
-        wlog( "created connection to ${n}", ("n", info_encode(endpoint)) );
+        wlog( "created connection to ${n}", ("n", endpoint) );
         initialize();
     }
 
@@ -1056,7 +1043,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
     }
 
     void connection::send_handshake( ) {
-        ilog("send_handshake to peer : ${peer}", ("peer", info_encode(this->peer_name())));
+        ilog("send_handshake to peer : ${peer}", ("peer", this->peer_name()));
         char style = 'n';
         if (peer_addr.length() > 0) {
             style = 'd';
@@ -1075,14 +1062,6 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         fc_dlog(logger, "Sending handshake generation ${g} to ${ep}",
                 ("g",last_handshake_sent.generation)("ep", peer_name()));
         enqueue(last_handshake_sent);
-    }
-
-    char* connection::convert_tstamp(const tstamp& t) {
-        const long long NsecPerSec{1000000000};
-        time_t seconds = t / NsecPerSec;
-        strftime(ts, ts_buffer_size, "%F %T", localtime(&seconds));
-        snprintf(ts+19, ts_buffer_size-19, ".%lld", t % NsecPerSec);
-        return ts;
     }
 
     void connection::send_time() {
@@ -1121,7 +1100,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
             return;
         connection_wptr c(shared_from_this());
         if(!socket->is_open()) {
-            elog("socket not open to ${p}",("p",info_encode(peer_name())));
+            elog("socket not open to ${p}",("p",peer_name()));
             my_impl->close(c.lock());
             return;
         }
@@ -1199,7 +1178,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                         connection_ptr conn = weak_this.lock();
                         if (conn) {
                             if (close_after_send != no_reason) {
-                                elog ("sent a go away message: ${r}, closing connection to ${p}",("r", reason_str(close_after_send))("p", info_encode(conn->peer_name())));
+                                elog ("sent a go away message: ${r}, closing connection to ${p}",("r", reason_str(close_after_send))("p", conn->peer_name()));
                                 my_impl->close(conn);
                                 return;
                             }
@@ -1254,7 +1233,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
     }
 
-    bool connection::check_pack_speed_exceed() {
+    bool connection::check_pkt_limit_exceed() {
         static int count_rpos_threhold =  2000;
         static int count_trx_threhold =  5000;
        
@@ -1289,7 +1268,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
             net_message msg;
             fc::raw::unpack(ds, msg);
             ticker_rcv = true;
-            bool isexceed = check_pack_speed_exceed();
+            bool isexceed = check_pkt_limit_exceed();
             if(isexceed)
             {
                 return true;
@@ -1640,7 +1619,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                }
                else {
                   elog( "connection failed to ${peer}: ${error}",
-                        ( "peer", info_encode(c->peer_name()))("error",err.message()));
+                        ( "peer", c->peer_name())("error",err.message()));
                   c->connecting = false;
                   my_impl->close(c);
                }
@@ -1673,7 +1652,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         con->socket->set_option( nodelay, ec );
         if (ec) {
             elog( "connection failed to ${peer}: ${error}",
-                 ( "peer", info_encode(con->peer_name()))("error",ec.message()));
+                 ( "peer", con->peer_name())("error",ec.message()));
             con->connecting = false;
             close(con);
             return false;
@@ -1933,9 +1912,9 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                   } else {
                      auto pname = conn->peer_name();
                      if (ec.value() != boost::asio::error::eof) {
-                        elog( "Error reading message from ${p}: ${m}",("p",info_encode(pname))( "m", ec.message() ) );
+                        elog( "Error reading message from ${p}: ${m}",("p",pname)( "m", ec.message() ) );
                      } else {
-                        ilog( "Peer ${p} closed connection",("p",info_encode(pname)) );
+                        ilog( "Peer ${p} closed connection",("p",pname) );
                      }
                      close( conn );
                   }
@@ -2024,7 +2003,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
     }
 
    void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
-      ilog("got a handshake_message from ${p}, ${h}, ${nod}", ("p",info_encode(c->peer_addr))("h",msg.p2p_address)("nod", msg.node_id));
+      ilog("got a handshake_message from ${p}, ${h}, ${nod}", ("p",c->peer_addr)("h",msg.p2p_address)("nod", msg.node_id));
       if (!is_valid(msg)) {
          elog("bad handshake message");
          c->enqueue( go_away_message( fatal_other ));
@@ -2082,7 +2061,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       if( c->peer_addr.empty() || c->last_handshake_recv.node_id == fc::sha256()) {
          dlog("checking for duplicate" );
          for(const auto &check : connections) {
-            ilog("peer: ${peer}, node id: ${nd}, connected: ${cond}", ("peer", info_encode(check->peer_name()))("nd", check->last_handshake_recv.node_id)("cond", check->connected()));
+            ilog("peer: ${peer}, node id: ${nd}, connected: ${cond}", ("peer", check->peer_name())("nd", check->last_handshake_recv.node_id)("cond", check->connected()));
             if(check == c)
                continue;
             if(check->connected() && check->peer_name() == msg.p2p_address) {
@@ -2392,7 +2371,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg) {
         ilog("receive req sync msg!!! message from ${p} addr:${addr} blockNum = ${blockNum}",
-             ("p", c->peer_name())("addr",info_encode( c->peer_addr))("blockNum", msg.endBlockNum));
+             ("p", c->peer_name())("addr",c->peer_addr)("blockNum", msg.endBlockNum));
         app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
     }
 
@@ -2670,7 +2649,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                      ilog("send_request_connect to ${p}.", ("p", (*it)->peer_addr));
                   }
                }
-               ilog("put ${a} to grey list, and erase it from connections.", ("a", info_encode((*it)->peer_addr)));
+               ilog("put ${a} to grey list, and erase it from connections.", ("a", (*it)->peer_addr));
                it = connections.erase(it);
                continue;
             } else if ((*it)->peer_addr.length() <= 0 || is_grey_connection((*it)->peer_addr)) {
@@ -2686,8 +2665,8 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
             if ((*it)->wait_handshake_count > 0 && (*it)->socket->is_open()) {
                boost::system::error_code ec;
                ilog("no handshake received from: peer: ${peer} ${addr}",
-                    ("peer", info_encode((*it)->peer_name()))
-                    ("addr", info_encode((*it)->socket->remote_endpoint(ec).address().to_string())));
+                    ("peer", (*it)->peer_name())
+                    ("addr", (*it)->socket->remote_endpoint(ec).address().to_string()));
                if ((*it)->node_id != fc::sha256()) {
                   node_table->send_request_connect((*it)->node_id);
                   ilog("send_request_connect to ${p}.", ("p", (*it)->peer_addr));
@@ -2741,29 +2720,6 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       c->close();
    }
 
-   void net_plugin_impl::accepted_block_header(const block_state_ptr& block) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
-      ilog("accepted_block_header ${id}", ("id", short_hash(block->id)));
-   }
-
-   void net_plugin_impl::accepted_block(const block_state_ptr& block) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
-      ilog("signaled, id = ${id}",("id", short_hash(block->id)));
-   }
-
-   void net_plugin_impl::irreversible_block(const block_state_ptr&block) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
-   }
-
-   void net_plugin_impl::accepted_transaction(const transaction_metadata_ptr& md) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", md->id));
-//      dispatcher->bcast_transaction(md->packed_trx);
-   }
-
-   void net_plugin_impl::applied_transaction(const transaction_trace_ptr& txn) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", txn->id));
-   }
-
    void net_plugin_impl::transaction_ack(const std::tuple<const fc::exception_ptr, const transaction_trace_ptr, const packed_transaction_ptr>& results) {
       transaction_id_type id = std::get<2>(results)->id();
       if (std::get<0>(results)) {
@@ -2807,21 +2763,6 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                 }
 
             }
-#if 0
-            for(auto account:producers_account)
-            {
-                struct chain_apis::read_only::get_account_info_params get_account_para;
-                get_account_para.account_name =account;
-                auto result = ro_api.get_account_info(get_account_para);
-                for ( auto& perm : result.permissions )
-                {
-                    for(auto& key_wei: perm.required_auth.keys)
-                    {
-                        producers_pk.push_back(key_wei.key);
-                    }
-                }
-            }
-#endif
         }
        catch (fc::exception& e) {
             ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
@@ -2875,66 +2816,6 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
        }
        return true;
    }
-#if 0
-   bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
-      if(allowed_connections == None)
-         return false;
-
-      if(allowed_connections == Any)
-         return true;
-
-      if(allowed_connections & (Producers | Specified)) {
-         auto allowed_it = std::find(allowed_peers.begin(), allowed_peers.end(), msg.key);
-         auto private_it = private_keys.find(msg.key);
-         bool found_producer_key = false;
-         producer_uranus_plugin* pp = app().find_plugin<producer_uranus_plugin>();
-         if(pp != nullptr)
-            found_producer_key = pp->is_producer_key(msg.key);
-         if( allowed_it == allowed_peers.end() && private_it == private_keys.end() && !found_producer_key) {
-            elog( "Peer ${peer} sent a handshake with an unauthorized key: ${key}.",
-                  ("peer", msg.p2p_address)("key", msg.key));
-            return false;
-         }
-      }
-
-      namespace sc = std::chrono;
-      sc::system_clock::duration msg_time(msg.time);
-      auto time = sc::system_clock::now().time_since_epoch();
-      if(time - msg_time > peer_authentication_interval) {
-         elog( "Peer ${peer} sent a handshake with a timestamp skewed by more than ${time}.",
-               ("peer", msg.p2p_address)("time", "1 second")); // TODO Add to_variant for std::chrono::system_clock::duration
-         return false;
-      }
-
-      if(msg.sig != chain::signature_type() && msg.token != sha256()) {
-         sha256 hash = fc::sha256::hash(msg.time);
-         if(hash != msg.token) {
-            elog( "Peer ${peer} sent a handshake with an invalid token.",
-                  ("peer", msg.p2p_address));
-            return false;
-         }
-         chain::public_key_type peer_key;
-         try {
-            peer_key = crypto::public_key(msg.sig, msg.token, true);
-         }
-         catch (fc::exception& /*e*/) {
-            elog( "Peer ${peer} sent a handshake with an unrecoverable key.",
-                  ("peer", msg.p2p_address));
-            return false;
-         }
-         if((allowed_connections & (Producers | Specified)) && peer_key != msg.key) {
-            elog( "Peer ${peer} sent a handshake with an unauthenticated key.",
-                  ("peer", msg.p2p_address));
-            return false;
-         }
-      }
-      else if(allowed_connections & (Producers | Specified)) {
-         dlog( "Peer sent a handshake with blank signature and token, but this node accepts only authenticated connections.");
-         return false;
-      }
-      return true;
-   }
-#endif
 bool net_plugin_impl::is_pk_signature_match(chain::public_key_type const& pk,fc::sha256 const& hash,chain::signature_type const& sig)
 {
     /*pk match the signature*/
@@ -3124,23 +3005,11 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
        return chain::public_key_type();
    }
 
-   chain::signature_type net_plugin_impl::sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const
-   {
-      auto private_key_itr = private_keys.find(signer);
-      if(private_key_itr != private_keys.end())
-         return private_key_itr->second.sign(digest);
-      producer_uranus_plugin* pp = app().find_plugin<producer_uranus_plugin>();
-      if(pp != nullptr && pp->get_state() == abstract_plugin::started)
-         return pp->sign_compact(signer, digest);
-      return chain::signature_type();
-   }
-
    void
    handshake_initializer::populate( handshake_message &hello, msg_priority p, char style) {
       hello.network_version = net_version_base + net_version;
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
-      //hello.key = my_impl->get_authentication_key();
       auto sk_account = private_key_type(app().get_plugin<producer_uranus_plugin>().get_account_sk());
       hello.key = sk_account.get_public_key();
       auto name_account = app().get_plugin<producer_uranus_plugin>().get_account_name();
@@ -3148,7 +3017,6 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> tp = std::chrono::time_point_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now());
       hello.time = tp.time_since_epoch().count();
       hello.token = fc::sha256::hash(hello.time);
-      //hello.sig = my_impl->sign_compact(hello.key, hello.token);
       hello.sig = sk_account.sign(hello.token);
       // If we couldn't sign, don't send a token.
       if(hello.sig == chain::signature_type())
@@ -3481,12 +3349,6 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       }
 
       {
-         chain::controller&cc = my->chain_plug->chain();
-         cc.accepted_block_header.connect( boost::bind(&net_plugin_impl::accepted_block_header, my.get(), _1));
-         cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
-         cc.irreversible_block.connect( boost::bind(&net_plugin_impl::irreversible_block, my.get(), _1));
-         cc.accepted_transaction.connect( boost::bind(&net_plugin_impl::accepted_transaction, my.get(), _1));
-         cc.applied_transaction.connect( boost::bind(&net_plugin_impl::applied_transaction, my.get(), _1));
          my->node_table->needtcpevent.connect( boost::bind(&net_plugin_impl::onNodeTableTcpConnectEvent, my.get(), _1));
          my->node_table->nodedropevent.connect( boost::bind(&net_plugin_impl::onNodeTableDropEvent, my.get(), _1));
          my->node_table->pktcheckevent.connect(boost::bind(&net_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3,_4));
@@ -3670,7 +3532,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         ilog("connections size: ${s}", ("s", connections.size()));
         while (it != connections.end()) {
             if ((*it)->node_id == node_id && (*it)->direct == dir) {
-                ilog("del connection to ${peer}, node id: ${id}", ("peer", info_encode((*it)->peer_addr))("id", node_id));
+                ilog("del connection to ${peer}, node id: ${id}", ("peer", (*it)->peer_addr)("id", node_id));
                 if ((*it)->socket && (*it)->socket->is_open()) {
                     close(*it);
                 }

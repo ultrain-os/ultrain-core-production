@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in ultrain/LICENSE.txt
+ */
 #include "p2p/NodeTable.h"
 #include "p2p/Common.h"
 #include "p2p/UPnP.h"
@@ -54,24 +58,23 @@ namespace p2p {
     NodeTable::~NodeTable() {
         m_socket->disconnect();
     }
-//TODO::rpos seed& trx seed to one seed and must be same
 void NodeTable::init( const std::vector <std::string> &seeds,ba::io_service &_io) {
-	try {
-		m_socket->connect();
-		start_p2p_monitor(_io);
-	}
-	catch (std::exception const &_e) {
-		elog("Exception connecting NodeTable socket:");
-	}
-   if(m_traverseNat)
-   {
-       determinePublic();
-   }
-	m_seeds = seeds;
-	requireSeeds(m_seeds);
-	doIDRequest();
+    try {
+	m_socket->connect();
+	start_p2p_monitor(_io);
+    }
+    catch (std::exception const &_e) {
+	elog("Exception connecting NodeTable socket:");
+    }
+    if(m_traverseNat)
+    {
+        determinePublic();
+    }
+    m_seeds = seeds;
+    doSeedRequest(m_seeds);
+    doIDRequestLoop();
 }
-void NodeTable::requireSeeds(const std::vector <std::string> &seeds)
+void NodeTable::doSeedRequest(const std::vector <std::string> &seeds)
 {
     for (auto seed : seeds) {
         p2p::NodeIPEndpoint peer;
@@ -100,10 +103,10 @@ void NodeTable::doIDRequestCheck()
             ep.setUdpPort(20124);
             ping(ep,fc::sha256(),false);
         }
-        doIDRequest();
+        doIDRequestLoop();
     }
 }
-void NodeTable::doIDRequest()
+void NodeTable::doIDRequestLoop()
 {
     idrequest_timer->expires_from_now( idrequestinterval);
     idrequest_timer->async_wait( [this](boost::system::error_code ec) {
@@ -187,7 +190,6 @@ list<NodeEntry> NodeTable::getNodes()
 }
 Node NodeTable::node(NodeID const& _id)
 {
- //   Guard l(x_nodes);
     if (m_nodes.find(_id) != m_nodes.end())
     {
         auto entry = m_nodes[_id];
@@ -206,8 +208,6 @@ shared_ptr<NodeEntry> NodeTable::nodeEntry(NodeID _id)
 
 void NodeTable::doDiscover(NodeID _node, unsigned _round, shared_ptr<set<shared_ptr<NodeEntry>>> _tried)
 {
-    // NOTE: ONLY called by doDiscovery!
-    
     if (!m_socket->isOpen())
         return;
     
@@ -240,11 +240,11 @@ void NodeTable::doDiscover(NodeID _node, unsigned _round, shared_ptr<set<shared_
     if (_round == s_maxSteps || newTriedCount == 0)
     {
         ilog("Terminating discover after round ${round}",("round",_round));
-        doDiscovery();
+        doDiscoveryLoop();
         return;
     }
-    discover_splittimer->expires_from_now(discoversplitinterval);
-    discover_splittimer->async_wait( [this, _node, _round, _tried](boost::system::error_code _ec) {
+    discover_roundtimer->expires_from_now(discoverroundinterval);
+    discover_roundtimer->async_wait( [this, _node, _round, _tried](boost::system::error_code _ec) {
         if (_ec.value() == boost::asio::error::operation_aborted ) {
             elog("discover_splittimer  was probably cancelled:");
         }
@@ -261,18 +261,15 @@ void NodeTable::doDiscover(NodeID _node, unsigned _round, shared_ptr<set<shared_
 
 vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeID _target)
 {
-    // send s_alpha FindNode packets to nodes we know, closest to target
     static unsigned lastBin = s_bins - 1;
     unsigned head = distance(m_hostNodeID, _target);
     unsigned tail = head == 0 ? lastBin : (head - 1) % s_bins;
     
     map<unsigned, list<shared_ptr<NodeEntry>>> found;
     
-    // if d is 0, then we roll look forward, if last, we reverse, else, spread from d
     if (head > 1 && tail != lastBin)
         while (head != tail && head < s_bins)
         {
-       //     Guard l(x_state);
             for (auto const& n: m_state[head].nodes)
                 if (auto p = n.lock())
                     found[distance(_target, p->m_id)].push_back(p);
@@ -289,7 +286,6 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeID _target)
     else if (head < 2)
         while (head < s_bins)
         {
-       //     Guard l(x_state);
             for (auto const& n: m_state[head].nodes)
                 if (auto p = n.lock())
                     found[distance(_target, p->m_id)].push_back(p);
@@ -298,7 +294,6 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeID _target)
     else
         while (tail > 0)
         {
-       //     Guard l(x_state);
             for (auto const& n: m_state[tail].nodes)
                 if (auto p = n.lock())
                     found[distance(_target, p->m_id)].push_back(p);
@@ -364,10 +359,10 @@ void NodeTable::noteActiveNode(NodeID const& _pubk, NodeIPEndpoint const& _endpo
     bool buket_chg_flag = false;
     if (_pubk == m_hostNodeID)
     {
-        return ;//TODO:JWN ip check
+        return ;
     }
 
-    shared_ptr<NodeEntry> newNode = nodeEntry(_pubk); //TODO:JWN time check
+    shared_ptr<NodeEntry> newNode = nodeEntry(_pubk);
     if (!newNode)
     {
         return;
@@ -448,13 +443,12 @@ void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
 		nodedropevent(_n->m_endpoint);
 	}
         m_PingsBad.erase(_n->m_id);
-// notify host
 	ilog("p2p.nodes.drop id ${id} ep ${ep}",("id",_n->m_id)("ep",_n->m_endpoint.address()));
 	printallbucket();
 }
 
 NodeTable::NodeBucket& NodeTable::bucket_UNSAFE(NodeEntry const* _n)
-{//TODO::JWN
+{
         return m_state[_n->distance - 1];
 }
 void NodeTable::printallbucket()
@@ -465,8 +459,7 @@ void NodeTable::printallbucket()
             if (auto n = np.lock())
             {
                 auto ip = (*n).m_endpoint.address();
-                auto address  = info_encode(ip);
-ilog("bucket node ${ip} ${udp} ${trx} ${rpos}",("ip",address)("udp",(*n).m_endpoint.udpPort())("trx",(*n).m_endpoint.listenPort(msg_priority_trx))("rpos",(*n).m_endpoint.listenPort(msg_priority_rpos)));
+ilog("bucket node ${ip} ${udp} ${trx} ${rpos}",("ip",ip)("udp",(*n).m_endpoint.udpPort())("trx",(*n).m_endpoint.listenPort(msg_priority_trx))("rpos",(*n).m_endpoint.listenPort(msg_priority_rpos)));
             }
         }
 }
@@ -506,7 +499,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
     auto const sentPing = m_sentPings.find(sourceId);
     if (sentPing == m_sentPings.end())
     {
-        ilog("Unexpected PONG from ${addr}",("addr",info_encode(_from.address().to_string())));
+        ilog("Unexpected PONG from ${addr}",("addr",_from.address().to_string()));
         return;
     }
      auto it = m_nodes.find(sourceId);
@@ -531,7 +524,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
         ilog("local m_hostNodeEndpoint before ${host}",("host",m_hostNodeEndpoint.address()));
         m_hostNodeEndpoint.setAddress(pong.destep.address());
         m_hostNodeEndpoint.setUdpPort(pong.destep.udpPort());
-        ilog("local m_hostNodeEndpoint after ${host}",("host",info_encode(m_hostNodeEndpoint.address())));
+        ilog("local m_hostNodeEndpoint after ${host}",("host",m_hostNodeEndpoint.address()));
     }
     NodeIPEndpoint from;
     from.m_address = _from.address().to_string();
@@ -604,7 +597,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
        noteActiveNode(in.fromID, from);
     }
 }
-bool  NodeTable::isnodevalid(Node const& _node)
+bool  NodeTable::isNodeValid(Node const& _node)
 {
     if (!_node.m_endpoint)
     {
@@ -676,7 +669,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     }
     for (auto const& n : in.neighbours)
     {
-	    if(isnodevalid(Node(n.node, n.endpoint)))
+	    if(isNodeValid(Node(n.node, n.endpoint)))
 	    {
 		    if(!m_nodes.count(n.node))
 		    {
@@ -767,7 +760,7 @@ void NodeTable::recordBadNode(NodeID const& _id)
     }
 
 }
-void NodeTable::doDiscovery()
+void NodeTable::doDiscoveryLoop()
 {
     discover_timer->expires_from_now( discoverinterval);
     discover_timer->async_wait( [this](boost::system::error_code _ec) {
@@ -775,7 +768,7 @@ void NodeTable::doDiscovery()
         if (_ec)
         {
             elog("Discovery timer was probably cancelled:");
-            doDiscovery();
+            doDiscoveryLoop();
         }
         else
         {
@@ -813,13 +806,13 @@ void NodeTable::doPingTimeoutCheck()
     for (auto const& n : nodesToActivate)
         noteActiveNode(n->m_id, n->m_endpoint);
 }
-void NodeTable::doHandlePingTimeouts()
+void NodeTable::doPingTimeoutLoop()
 {
     pingtimeout_timer->expires_from_now( pingtimeoutinterval);
     pingtimeout_timer->async_wait( [this](boost::system::error_code ec) {
 
         doPingTimeoutCheck();
-        doHandlePingTimeouts();
+        doPingTimeoutLoop();
     });
 }
 
@@ -841,53 +834,53 @@ void NodeTable::doNodeTimeoutCheck()
 
 }
 
-void NodeTable::doHandleNodeTimeouts()
+void NodeTable::doNodeTimeoutLoop()
 {
-    checknodereachable_timer->expires_from_now( nodetimeoutinterval);
-    checknodereachable_timer->async_wait( [this](boost::system::error_code ec) {
+    nodetimeout_timer->expires_from_now( nodetimeoutinterval);
+    nodetimeout_timer->async_wait( [this](boost::system::error_code ec) {
 
         doNodeTimeoutCheck();
-        doHandleNodeTimeouts();
+        doNodeTimeoutLoop();
     });
 }
-void NodeTable::doNodeRefindCheck()
+void NodeTable::doSeedKeepaliveCheck()
 {
-	requireSeeds(m_seeds);
+	doSeedRequest(m_seeds);
 }
-void NodeTable::doNodeReFindTimeouts()
+void NodeTable::doSeedKeepaliveLoop()
 {
-    nodesrefindtimer->expires_from_now( nodesrefindinterval);
-    nodesrefindtimer->async_wait( [this](boost::system::error_code ec) {
-            doNodeRefindCheck();
-            doNodeReFindTimeouts();
+    seedkeepalive_timer->expires_from_now( seedkeepaliveinterval);
+    seedkeepalive_timer->async_wait( [this](boost::system::error_code ec) {
+            doSeedKeepaliveCheck();
+            doSeedKeepaliveLoop();
             });
 }
-void NodeTable::doPackLimitCheck()
+void NodeTable::doPktLimitCheck()
 {
-    m_socket->reset_speedlimit_monitor();
+    m_socket->reset_pktlimit_monitor();
 }
-void NodeTable::doPackLimitTimeouts()
+void NodeTable::doPktLimitLoop()
 {
-    packlimitchecktimer->expires_from_now( packlimitcheckinterval);
-    packlimitchecktimer->async_wait( [this](boost::system::error_code ec) {
-            doPackLimitCheck();
-            doPackLimitTimeouts();
+    pktlimit_timer->expires_from_now( pktlimitinterval);
+    pktlimit_timer->async_wait( [this](boost::system::error_code ec) {
+            doPktLimitCheck();
+            doPktLimitLoop();
             });
 }
 void NodeTable::start_p2p_monitor(ba::io_service& _io)
 {
-    checknodereachable_timer.reset(new boost::asio::steady_timer(_io));
-    doHandleNodeTimeouts();
+    nodetimeout_timer.reset(new boost::asio::steady_timer(_io));
+    doNodeTimeoutLoop();
     pingtimeout_timer.reset(new boost::asio::steady_timer(_io));
-    doHandlePingTimeouts();
+    doPingTimeoutLoop();
     idrequest_timer.reset(new boost::asio::steady_timer(_io));
-    discover_splittimer.reset(new boost::asio::steady_timer(_io));
+    discover_roundtimer.reset(new boost::asio::steady_timer(_io));
     discover_timer.reset(new boost::asio::steady_timer(_io));
-    doDiscovery();
-    nodesrefindtimer.reset(new boost::asio::steady_timer(_io));
-    doNodeReFindTimeouts();
-    packlimitchecktimer.reset(new boost::asio::steady_timer(_io));
-    doPackLimitTimeouts();
+    doDiscoveryLoop();
+    seedkeepalive_timer.reset(new boost::asio::steady_timer(_io));
+    doSeedKeepaliveLoop();
+    pktlimit_timer.reset(new boost::asio::steady_timer(_io));
+    doPktLimitLoop();
 }
 
 void NodeTable::send_request_connect(NodeID nodeID)
@@ -949,7 +942,6 @@ bool NodeTable::isPublicAddress(bi::address const& _addressToCheck)
 {
     return !(isPrivateAddress(_addressToCheck) || isLocalHostAddress(_addressToCheck));
 }
-//#if(MINIUPNPC)
 bi::tcp::endpoint NodeTable::traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpInterfaceAddr)
 {
     unique_ptr<UPnP> upnp;
@@ -990,7 +982,6 @@ bi::tcp::endpoint NodeTable::traverseNAT(std::set<bi::address> const& _ifAddress
     return upnpEP;
 }
 
-//#endif
 std::set<bi::address> NodeTable::getInterfaceAddresses()
 {
     std::set<bi::address> addresses;
@@ -1007,7 +998,6 @@ std::set<bi::address> NodeTable::getInterfaceAddresses()
     char ac[80] = {0};
     if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR)
     {
-        cnetlog << "Error " << WSAGetLastError() << " when getting local host name.";
         WSACleanup();
         elog("no network");
     }
@@ -1015,7 +1005,6 @@ std::set<bi::address> NodeTable::getInterfaceAddresses()
     struct hostent* phe = gethostbyname(ac);
     if (phe == 0)
     {
-        cnetlog << "Bad host lookup.";
         WSACleanup();
         elog("no network");
         return addresses;
@@ -1071,7 +1060,6 @@ std::set<bi::address> NodeTable::getInterfaceAddresses()
 
     return addresses;
 }
-//#if(MINIUPNPC)
 void NodeTable::determinePublic()
 {
     auto ifAddresses = getInterfaceAddresses();
@@ -1102,11 +1090,10 @@ void NodeTable::determinePublic()
                 }
              //   ilog( "local address by upnp ${addr}",("addr",natIFAddr.to_string()));
             }
-            ilog("m_hostep is ${addr} rpos_port ${rpos_port} trx_port ${trx_port}",("addr",info_encode(m_hostNodeEndpoint.address()))("rpos_port",m_hostNodeEndpoint.listenPort(msg_priority_rpos))("trx_port",m_hostNodeEndpoint.listenPort(msg_priority_trx)));
+            ilog("m_hostep is ${addr} rpos_port ${rpos_port} trx_port ${trx_port}",("addr",m_hostNodeEndpoint.address())("rpos_port",m_hostNodeEndpoint.listenPort(msg_priority_rpos))("trx_port",m_hostNodeEndpoint.listenPort(msg_priority_trx)));
         }
     }
 }
 //
-// #endif
 }  // namespace p2p
 }  // namespace ultrainio

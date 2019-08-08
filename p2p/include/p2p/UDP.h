@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in ultrain/LICENSE.txt
+ */
 #pragma once
 
 #include <atomic>
@@ -46,7 +50,7 @@ namespace p2p
         uint8_t type ;/*2*/
         NodeIPEndpoint destep;
         NodeIPEndpoint fromep;
-        NodeID sourceid; // sender public key (from signature)
+        NodeID sourceid;
         NodeID destid;
         string chain_id;
         chain::public_key_type pk;/*public_key*/
@@ -130,11 +134,8 @@ constexpr auto     udpmessage_header_size = 4;
 constexpr auto     def_send_buffer_size_mb = 4;
 constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
 /**
- * @brief UDP Interface
- * Handler must implement UDPSocketEvents.
+ * @brief UDP socket
  *
- * @todo multiple endpoints (we cannot advertise 0.0.0.0)
- * @todo decouple deque from UDPDatagram and add ref() to datagram for fire&forget
  */
 template <typename Handler, unsigned MaxDatagramSize>
 class UDPSocket: public std::enable_shared_from_this<UDPSocket<Handler, MaxDatagramSize>>
@@ -154,14 +155,13 @@ public:
     void connect();
 
     /// Send datagram.
-  //  bool send(UDPDatagram const& _datagram);
     void send_msg(udp_msg const& m, bi::udp::endpoint const& ep);
     /// Returns if socket is open.
     bool isOpen() { return !m_closed; }
 
     /// Disconnect socket.
     void disconnect() { disconnectWithError(boost::asio::error::connection_reset); }
-    void reset_speedlimit_monitor();
+    void reset_pktlimit_monitor();
 
 protected:
     void doRead();
@@ -170,8 +170,8 @@ protected:
     bool process_next_message(bi::udp::endpoint &m_recvEndpoint);
     void disconnectWithError(boost::system::error_code _ec);
 
-    std::atomic<bool> m_started;					///< Atomically ensure connection is started once. Start cannot occur unless m_started is false. Managed by start and disconnectWithError.
-    std::atomic<bool> m_closed;					///< Connection availability.
+    std::atomic<bool> m_started;
+    std::atomic<bool> m_closed;
 
     UDPSocketEvents& m_host;						///< Interface which owns this socket.
     bi::udp::endpoint m_endpoint;					///< Endpoint which we listen to.
@@ -189,7 +189,7 @@ protected:
     fc::optional<std::size_t>        outstanding_read_bytes;
     uint32_t pack_count_rcv = 0;
     uint32_t pack_count_drop = 0;
-    bool check_pack_speed_exceed();
+    bool check_pkt_limit_exceed();
 };
 
 template <typename Handler, unsigned MaxDatagramSize>
@@ -209,7 +209,6 @@ void UDPSocket<Handler, MaxDatagramSize>::connect()
     }
 
     // clear write queue so reconnect doesn't send stale messages
-  //  Guard l(x_sendQ);
     write_queue.clear();
 
     m_closed = false;
@@ -250,7 +249,6 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
         }
         if (m_closed)
             return disconnectWithError(_ec);
-       // ilog("doRead from address ${address} ${port}",("address",m_recvEndpoint.address().to_string())("port",std::to_string(m_recvEndpoint.port()))); 
         if (_ec != boost::system::errc::success)
             elog("Receiving UDP message failed. ");
             outstanding_read_bytes.reset();
@@ -304,7 +302,7 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
     });
 }
 template <typename Handler, unsigned MaxDatagramSize>
-void UDPSocket<Handler, MaxDatagramSize>::reset_speedlimit_monitor( )
+void UDPSocket<Handler, MaxDatagramSize>::reset_pktlimit_monitor( )
 {
 
     ilog("pack_udp count_rcv ${counnt_rcv} count_drop ${count_drop}",
@@ -314,7 +312,7 @@ void UDPSocket<Handler, MaxDatagramSize>::reset_speedlimit_monitor( )
     pack_count_drop = 0;
 }
 template <typename Handler, unsigned MaxDatagramSize>
-bool UDPSocket<Handler, MaxDatagramSize>::check_pack_speed_exceed() {
+bool UDPSocket<Handler, MaxDatagramSize>::check_pkt_limit_exceed() {
     static int count_threhold = 2000;
     pack_count_rcv ++;
     if(pack_count_rcv > count_threhold)
@@ -327,18 +325,10 @@ bool UDPSocket<Handler, MaxDatagramSize>::check_pack_speed_exceed() {
 template <typename Handler, unsigned MaxDatagramSize>
 bool UDPSocket<Handler, MaxDatagramSize>::process_next_message(bi::udp::endpoint &m_recvEndpoint) {
     try {
-        auto index = pending_message_buffer.read_index();
-        uint64_t which = 0; char b = 0; uint8_t by = 0;
-        do {
-            pending_message_buffer.peek(&b, 1, index);
-            which |= uint32_t(uint8_t(b) & 0x7f) << by;
-            by += 7;
-        } while( uint8_t(b) & 0x80 && by < 32);
-
         auto ds = pending_message_buffer.create_datastream();
         udp_msg msg;
         fc::raw::unpack(ds, msg);
-        bool isexceed = check_pack_speed_exceed();
+        bool isexceed = check_pkt_limit_exceed();
         if(isexceed)
         {
             return true;
@@ -396,15 +386,11 @@ void UDPSocket<Handler, MaxDatagramSize>::disconnectWithError(boost::system::err
 
     assert(_ec);
     {
-        // disconnect-operation following prior non-zero errors are ignored
-   //     Guard l(x_socketError);
         if (m_socketError != boost::system::error_code())
             return;
         m_socketError = _ec;
     }
-    // TODO: (if non-zero error) schedule high-priority writes
 
-    // prevent concurrent disconnect
     bool expected = true;
     if (!m_started.compare_exchange_strong(expected, false))
         return;
@@ -428,7 +414,6 @@ void UDPSocket<Handler, MaxDatagramSize>::disconnectWithError(boost::system::err
 }
 
 }
-//FC_REFLECT( ultrainio::p2p::UDPDatagram, (data)(locus_ip)(locus_port))
 FC_REFLECT( ultrainio::p2p::Reserved, (key)(content))
 FC_REFLECT( ultrainio::p2p::UnsignedPingNode, (sourceid)(destid)(type)(source)(dest)(chain_id)(pk)(account)(to_save))
 FC_REFLECT_DERIVED( ultrainio::p2p::PingNode, (ultrainio::p2p::UnsignedPingNode), (signature))

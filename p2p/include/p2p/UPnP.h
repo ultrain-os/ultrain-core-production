@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in ultrain/LICENSE.txt
+ */
 #pragma once
 #include <set>
 #include <string>

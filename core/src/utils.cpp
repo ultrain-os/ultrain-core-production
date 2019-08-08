@@ -4,16 +4,6 @@
 #include <fc/crypto/hex.hpp>
 
 namespace ultrainio {
-std::vector<char> info_encode(std::string const& s) {
-    std::vector<char> v(s.size());
-    copy(s.begin(),s.end(),v.begin());
-    std::vector<char> temp(s.size());
-    for(int i =0 ;i<v.size();i++) {
-        temp[i] =(~v[i])^(225-i);
-    }
-    return temp;
-}
-
 std::string bin2hex(const std::string& data) {
     std::vector<unsigned char> v(data.size());
     copy(data.begin(),data.end(),v.begin());
