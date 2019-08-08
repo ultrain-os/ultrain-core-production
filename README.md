@@ -176,7 +176,35 @@ ULTRAINIO currently supports the following operating systems:
 Docker image with pre-compiled Ultrain software can be requested for.
 
 ## Code Structure
+Following are the code structure of ULTRAINIO.
+```
+.
+├── CMakeLists.txt
+├── CMakeModules
+├── HEADER
+├── LICENSE
+├── README.md
+├── base // base Library of ULTRAINIO
+├── build
+├── consensus // RPoS consensus
+├── contracts
+├── core // core struct
+├── crypto
+├── docs
+├── lightclient // light weight client
+├── p2p
+├── plugins
+├── programs
+├── scripts
+├── tests
+├── tools
+├── ultrain.doxygen.in
+├── ultrainio.version.in
+├── ultrainio_build.sh
+├── unittests
+└── vendor // Third-Party library
 
+```
 TODO
 
 ## BUILD
