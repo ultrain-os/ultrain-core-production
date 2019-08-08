@@ -207,6 +207,6 @@ TODO
 
 # Resources
 1. [ULTRAIN Website](https://ultrain.io)
-2. [ULTRAIN Developer protal](https://developer.ultrain.io)
+2. [ULTRAIN Developer portal](https://developer.ultrain.io)
 3. [ULTRAIN Explorer](https://explorer.ultrain.io/)
 4. [Community Telegram Group](https://t.me/ultrainchain)
