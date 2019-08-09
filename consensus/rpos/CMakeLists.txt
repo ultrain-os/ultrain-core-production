@@ -24,6 +24,7 @@ add_library( ultrainio_rpos
         src/StakeVoteFactory.cpp
         src/StakeVoteRandom.cpp
         src/StakeVoteVrf.cpp
+        src/SyncTask.cpp
         src/Utils.cpp
         src/VoterSet.cpp
         src/Vrf.cpp

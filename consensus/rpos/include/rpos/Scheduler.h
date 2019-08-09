@@ -19,26 +19,10 @@
 #include <rpos/EvilDDosDetector.h>
 #include <rpos/EvilMultiSignDetector.h>
 #include <rpos/RoundInfo.h>
+#include <rpos/SyncTask.h>
 #include <rpos/VoterSet.h>
 
 namespace ultrainio {
-
-    struct SyncTask {
-        uint32_t checkBlock;
-        BlsVoterSet bvs;
-        fc::sha256 nodeId;
-        uint32_t startBlock;
-        uint32_t endBlock;
-        uint32_t seqNum;
-
-        SyncTask(uint32_t _checkBlock, const BlsVoterSet &_bvs, const fc::sha256 &_nodeId, uint32_t _startBlock, uint32_t _endBlock, uint32_t _seqNum)
-                : bvs{_bvs}, nodeId(_nodeId) {
-            checkBlock = _checkBlock;
-            startBlock = _startBlock;
-            endBlock = _endBlock;
-            seqNum = _seqNum;
-        }
-    };
 
     class LightClientProducer;
     class CommitteeSet;
