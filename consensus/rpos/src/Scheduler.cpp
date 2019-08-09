@@ -1490,6 +1490,13 @@ namespace ultrainio {
             return false;
         }
 
+        if (block.timestamp.to_time_point() > (fc::time_point::now() + fc::hours(2))) {
+            ilog("Block ${blk} timestamp ${time} is too far into the future",
+                 ("blk", id)("time", string(block.timestamp.to_time_point())));
+            m_ba0FailedBlkId = id;
+            return false;
+        }
+
         chain.abort_block();
 
         ilog("---- Scheduler::verifyBa0Block with trx number ${count}",
