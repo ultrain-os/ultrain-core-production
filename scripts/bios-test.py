@@ -72,7 +72,6 @@ def importKeys():
     run(args.clultrain + 'wallet import --private-key ' + args.private_key)
     run(args.clultrain + 'wallet import --private-key ' + args.initacc_sk)
     run(args.clultrain + 'wallet import --private-key  5KG6NiRGhsEP9vTf4WVe312iVQ3uemEXsstsqkT9Wj1MkdY5uJk')
-    run(args.clultrain + 'wallet import --private-key  5KBtaXHJPeq9n5SzuBoxZNZFUZvEvzrRa4HhwpTHDV9dBmDXks8')  #utrioaccount privkey
     for i in range(0, len(account_sk_list)):
        run(args.clultrain + 'wallet import --private-key ' + account_sk_list[i])
     for i in range(0, len(rand_sk_lst)):
@@ -149,32 +148,13 @@ def stepSetSystemContract():
     retry(args.clultrain + 'push action ultrainio setpriv' + jsonArg(['utrio.msig', 1]) + '-p ultrainio@active')
     sleep(2)
 
-def getrewardaccount(producer):
-    producer = producer + ".r"
-    prodlen = len(producer)
-    if prodlen > 12:
-        producer = producer[(prodlen-12):prodlen]
-    if producer[0] == '.':
-        producer = "a"+producer[1:]
-    return producer
 def stepCreateStakedAccounts():
     retry(args.clultrain + ' create account ultrainio hello %s ' % args.initacc_pk)
-    rewardlist = []
     for i in range(0, args.num_producers + 1 + args.non_producers):
         retry(args.clultrain + 'create account ultrainio %s %s ' % (accounts[i], account_pk_list[i]))
-        if accounts[i] == "genesis":
-            continue
-        rewardacc = getrewardaccount(accounts[i])
-        rewardlist.append(rewardacc)
-        retry(args.clultrain + 'create account ultrainio %s %s ' % (rewardacc, account_pk_list[i]))
-    print(" reward account list:")
-    for a in rewardlist:
-        print(a)
 
     for a in initialAccounts:
         retry(args.clultrain + ' create account ultrainio %s %s ' % (a, args.initacc_pk))
-    if not (args.subchain and args.subchain != 'ultrainio') :
-        retry(args.clultrain + ' create account ultrainio utrioaccount UTR5Fa66fjgrWaNbUUeK1ZMfSfSHjA4nofQkwbK6bf4v6DRfaNkk6')
 
 def stepInitSimpleTest():
     retry(args.clultrain + 'push action hello hi \'{"user":"%s"}\' -p %s' % (accounts[1],accounts[1]))
@@ -188,13 +168,12 @@ def stepInitSimpleTest():
 
 def stepRegProducers():
     for i in range(1, args.num_producers+1):
-        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "ultrainio" -u' % (accounts[i], pk_list[i], bls_pk_list[i], getrewardaccount(accounts[i]), accounts[i]))
+        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "ultrainio" -u' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i]))
     #retry(args.clultrain + 'set contract hello  ' + args.contracts_dir + 'hello/')
     sleep(2)
     delegateaccount = "utrio.stake"
     if not (args.subchain and args.subchain != 'ultrainio') :
         delegateaccount = "ultrainio"
-        retry(args.clultrain + ' push action ultrainio setfreeacc \'{"account":"utrioaccount", "number":10000}\' -p ultrainio')
     for i in range(1, args.num_producers+1):
         retry(args.clultrain + 'system delegatecons %s %s  "%.4f UGAS" ' % (delegateaccount, accounts[i], min_committee_staked/10000))
 
@@ -229,14 +208,6 @@ def stepRegProducers():
         (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
         newaccount_fee, args.subchain, worldstate_interval, resourcelease_fee) )
 
-def stepCreateinitAccounts():
-    # for i in range(1, args.num_producers+1):
-    #     retry(args.clultrain + 'transfer ultrainio %s "%.4f UGAS"' % (accounts[i], 5000))
-
-    # for a in initialAccounts:
-    #     retry(args.clultrain + 'transfer  ultrainio  %s  "%s UGAS" '  % (a,"100000000.0000"))
-    # retry(args.clultrain + 'system resourcelease ultrainio  hello  10 100  "ultrainio"')
-    pass
 def stepResign():
     if args.subchain and args.subchain != 'ultrainio' :
         resignAccounts.append('utrio.cmnity')
@@ -246,86 +217,17 @@ def stepResign():
         resign( a, 'utrio.null')
     retry(args.clultrain + ' system listproducers')
 
-def resourceTransaction(fromacc,recacc,value):
-    retry(args.clultrain + 'system delegatebw  %s %s "%s UGAS"  "%s UGAS"'  % (fromacc,recacc,5000/value,5000/value))
-    sleep(20)
-    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
-    assert j["cpu_weight"] ==5000/value*10000,'account:'+recacc+' cpu_weight:'+str(j["cpu_weight"])+'!='+str(5000/value*10000)
-    assert j["net_weight"] ==5000/value*10000,'account:'+recacc+' net_weight:'+str(j["net_weight"])+'!='+str(5000/value*10000)
-    retry(args.clultrain + 'system undelegatebw  %s  %s  "%s UGAS"  "%s UGAS" '  % (fromacc,recacc,50/value,60/value))
-    sleep(20)
-    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
-    assert j["net_weight"] == 4950/value*10000,'undelegate account:'+recacc+' net_weight:'+str(j["net_weight"])+'!='+str(4950/value*10000)
-    assert j["cpu_weight"] == 4940/value*10000,'undelegate account:'+recacc+' cpu_weight:'+str(j["cpu_weight"])+'!='+str(4940/value*10000)
-    retry(args.clultrain + 'system buyram  %s  %s  "%s UGAS"  '  % (fromacc,recacc,50000/value))
-    sleep(2)
-    retry(args.clultrain + 'transfer  %s  %s  "%s UGAS" '  % (fromacc,recacc,20000/value))
-    sleep(25)
-    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
-    ramjson = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_table_records",data = json.dumps({"code":"ultrainio","scope":"ultrainio","table":"rammarket","json":"true","table_key":"","lower_bound":"","upper_bound":"","limit":10,"key_type":"","index_position":""})).text)   #Calculating ram ratio
-    ramvalue = ramjson["rows"][0]["base"]["balance"].replace(" RAM","")
-    sysvalue = ramjson["rows"][0]["quote"]["balance"].replace(" UGAS","")
-    shouldbuyram = float(ramvalue)*50000/value/float(sysvalue)
-    sellram_before = j["ram_quota"]
-    assert j["ram_quota"] >= shouldbuyram,'buyram account:'+recacc+' RAM:'+str(j["ram_quota"])+'<'+str(shouldbuyram)
-    core_liquid_balance = float(j["core_liquid_balance"].replace(" UGAS",""))
-    assert core_liquid_balance == 20000/value,'transfer account:'+recacc+' balance:'+str(core_liquid_balance)+'!='+str(20000/value)
-    #print(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
-    #retry(args.clultrain + 'get account  %s ' % (recacc))
-    retry(args.clultrain + 'system sellram  %s  "1024 bytes" '  % (recacc))
-    sleep(20)
-    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":recacc})).text)
-    assert (sellram_before-j["ram_quota"]) == 1024,'sellram account:'+recacc+' sell_ram:'+str(sellram_before-j["ram_quota"])+'!='+str(1024)
-    retry(args.clultrain + 'set contract %s  %sultrainio.msig/' % (recacc,args.contracts_dir))
-    sleep(20)
-    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_raw_code_and_abi",data = json.dumps({"account_name":recacc})).text)
-    assert j["wasm"] != "",'set contract account:'+recacc+' failed ,wasm is null'
-
-def stepResourceTransaction():
-    resourceAccount = [
-        "resacc11",
-        "resacc22",
-        "resacc33aaaa",
-        "resacc44aaaa"
-    ]
-    retry(args.clultrain + 'system newaccount --transfer ultrainio %s %s --stake-net "0 UGAS" --stake-cpu "0 UGAS" --buy-ram "1.000 UGAS" ' % (resourceAccount[0], args.public_key))
-    retry(args.clultrain + 'create account ultrainio %s %s ' % (resourceAccount[1], args.public_key))
-    sleep(20)
-    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":resourceAccount[0]})).text)
-    assert j["ram_usage"] ==272,'system newaccount:'+resourceAccount[2]+' ramusage:'+str(j["ram_usage"])+'!=272'
-
-    r = requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":resourceAccount[1]}))
-    j = json.loads(r.text)
-    assert j["ram_usage"] ==0,'create account:'+resourceAccount[2]+' ramusage:'+str(j["ram_usage"])+'!=0'
-    resourceTransaction("ultrainio",resourceAccount[0],1)
-    resourceTransaction("ultrainio",resourceAccount[1],1)
-    retry(args.clultrain + 'system newaccount --transfer %s %s %s --stake-net "0 UGAS" --stake-cpu "0 UGAS" --buy-ram "1.000 UGAS" ' % (resourceAccount[0],resourceAccount[2], args.public_key))
-    retry(args.clultrain + 'create account %s %s %s ' % (resourceAccount[1], resourceAccount[3], args.public_key))
-    sleep(20)
-    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":resourceAccount[2]})).text)
-    assert j["ram_usage"] ==272,'system newaccount:'+resourceAccount[2]+' ramusage:'+str(j["ram_usage"])+'!=272'
-    j = json.loads(requests.get("http://127.0.0.1:8888/v1/chain/get_account_info",data = json.dumps({"account_name":resourceAccount[3]})).text)
-    assert j["ram_usage"] ==0,'create account:'+resourceAccount[3]+' ramusage:'+str(j["ram_usage"])+'!=0'
-    resourceTransaction(resourceAccount[0],resourceAccount[2],5)
-    resourceTransaction(resourceAccount[1], resourceAccount[3],5)
-
 def stepTransfer():
     while True:
         randomTransfer()
 
-def stepunregproducersTest():
-    cur_accounts= [
-
-    ]
-    for a in cur_accounts:
-        retry(args.clultrain + 'system unregprod %s  ' % a)
 def stepregproducersTest():
     regindexstart = 0
     regindexend = 5
     chain_name = "newretail"
     for i in range(regindexstart, regindexend):
         run(args.clultrain + 'wallet import --private-key ' + account_sk_list[i])
-        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "%s" -u' % (accounts[i], pk_list[i], bls_pk_list[i], getrewardaccount(accounts[i]), accounts[i],chain_name))
+        retry(args.clultrain + 'system regproducer %s %s %s %s https://%s.com "%s" -u' % (accounts[i], pk_list[i], bls_pk_list[i], accounts[i], accounts[i],chain_name))
     sleep(2)
     delegateaccount = "ultrainio"
     for i in range(regindexstart, regindexend):
@@ -356,18 +258,11 @@ def stepexecrand():
       nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
 
 def addSubChainUser():
-    rewardlist = []
     for i in range(0,len(accounts)):
         userName = accounts[i]
         pk = account_pk_list[i]
         retry(args.clultrain + 'create account ultrainio ' + userName + ' ' + pk)
-        rewardacc = getrewardaccount(userName)
-        rewardlist.append(rewardacc)
-        retry(args.clultrain + 'create account ultrainio %s %s ' % (rewardacc, pk))
         sleep(1)
-    print(" reward account list:")
-    for a in rewardlist:
-        print(a)
     sleep(15)
     for i in range(0,len(accounts)):
         userName = accounts[i]
@@ -400,11 +295,8 @@ commands = [
     ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
     ('T', 'stake',          stepCreateStakedAccounts,   True,    "Create staked accounts"),
     ('I', 'initsimpletest', stepInitSimpleTest,         False,    "Simple transfer contract call test"),
-    ('i', 'create-initacc', stepCreateinitAccounts,     False,    "create initial accounts"),
     ('P', 'reg-prod',       stepRegProducers,           True,    "Register producers"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
-    ('R', 'resourcetrans',  stepResourceTransaction,    False,    "resource transaction"),
-    ('u', 'unregproducers',  stepunregproducersTest,    False,    "stepunregproducersTest"),
     ('r', 'regproducers',  stepregproducersTest,    False,    "stepregproducersTest"),
     ('e', 'execrand',          stepexecrand,            False,    "stepexecrand"),
     ('A', 'addSubChainUser', addSubChainUser,         False,    "addSubChainUser"),

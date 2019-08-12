@@ -11,10 +11,7 @@ import time
 import string
 import json
 from account_info import *
-#from account_info_master import *
-#from account_info_sub1 import *
-#from account_info_sub2 import *
-#from account_info_sub3 import *
+
 
 logFile = None
 
@@ -94,20 +91,10 @@ def getUserName(i):
     else:
         return accounts[i];
 
-def getrewardaccount(producer):
-    producer = producer + ".r"
-    prodlen = len(producer)
-    if prodlen > 12:
-        producer = producer[(prodlen-12):prodlen]
-    if producer[0] == '.':
-        producer = "a"+producer[1:]
-    return producer
-
 # addSubChainUse
 def addSubChainUser():
     print "addSubChainUser start..."
     endindex = endl;
-    rewardlist = []
     if args.producerNum :
         endindex = args.producerNum;
     for i in range(startl,endindex+1):
@@ -115,12 +102,6 @@ def addSubChainUser():
         pk = account_pk_list[i]
         print "add new user:" + userName + "(" + pk + ") belongs to chain(" + args.subchain + ")"
         retry(args.clultrain + 'create account ultrainio ' + userName + ' ' + pk)
-        rewardacc = getrewardaccount(userName)
-        rewardlist.append(rewardacc)
-        retry(args.clultrain + 'create account ultrainio %s %s ' % (rewardacc, pk))
-    print(" reward account list:")
-    for a in rewardlist:
-        print(a)
     print "addSubChainUser end..."
     sleep(2)
 
@@ -157,7 +138,7 @@ def regProducer():
         pk = pk_list[i]
         bls_key = bls_pk_list[i];
         print "reg producer:" + userName + "(" + pk + " "+bls_key+ ") belongs to chain(" + args.subchain + ")"
-        retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key + ' ' + getrewardaccount(userName)+' https://'+userName+'.com '+args.subchain +' -p ultrainio@active -u')
+        retry(args.clultrain + 'system regproducer ' + userName +' '+pk+' '+bls_key + ' ' + userName +' https://'+userName+'.com '+args.subchain +' -p ultrainio@active -u')
         sleep(0.5)
 
     print "regProducer end..."
