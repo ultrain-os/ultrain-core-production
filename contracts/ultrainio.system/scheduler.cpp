@@ -1,5 +1,5 @@
 #include "ultrainio.system.hpp"
-#include "ConfirmPoint.h"
+#include "confirm_point.h"
 #include <list>
 
 namespace ultrainiosystem {
@@ -274,12 +274,12 @@ namespace ultrainiosystem {
 
             bool need_report = chain_name == N(master) ? false : true;
             if((block_proposer == N(genesis) && block_number != initial_block_number) ||
-                ConfirmPoint::isConfirmPoint(headers[idx])) {
+                confirm_point::is_confirm_point(headers[idx])) {
                 char confirm_id[32];
                 if(!accept_block_header(chain_name, headers[idx], confirm_id, sizeof(confirm_id))) {
                     print("error: light client check failed\n");
                     need_report = false;
-                    final_confirmed_id = ConfirmPoint::getConfirmedBlockId(headers[idx]);
+                    final_confirmed_id = confirm_point::get_confirmed_block_id(headers[idx]);
                 } else {
                     memcpy(final_confirmed_id.hash, confirm_id, sizeof(confirm_id));
                 }
@@ -457,7 +457,7 @@ namespace ultrainiosystem {
             //check if this account has been empowered to this chain
             ultrainio_assert(is_empowered(producer.owner, chain_name), "account has not been empower to destination chain");
             _chains.modify(ite_chain, [&](chain_info& info) {
-                role_base temp_prod;
+                committee_info temp_prod;
                 temp_prod.owner = producer.owner;
                 temp_prod.producer_key = producer.producer_key;
                 temp_prod.bls_key = producer.bls_key;
@@ -753,7 +753,7 @@ namespace ultrainiosystem {
         }
     }
 
-    void system_contract::forcesetblock(name chain_name, const signed_block_header& signed_header, const std::vector<role_base>& cmt_set) {
+    void system_contract::forcesetblock(name chain_name, const signed_block_header& signed_header, const std::vector<committee_info>& cmt_set) {
         //set confirm block of a chain
         require_auth(N(ultrainio));
         auto ite_chain = _chains.find(chain_name);
@@ -915,7 +915,7 @@ namespace ultrainiosystem {
                     print("error: committee mroot changed but new committee set is empty\n");
                 } else {
                     //get committee delta
-                    CommitteeSet pre_committee_set(_chain.committee_set);
+                    committee_set pre_committee_set(_chain.committee_set);
                     auto cmt_delta = new_committee_set.diff(pre_committee_set);
                     _chain.handle_committee_update(cmt_delta);
                     new_committee_set.swap(_chain.committee_set);

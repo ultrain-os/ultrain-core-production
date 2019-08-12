@@ -2,7 +2,7 @@
 
 #include <string>
 #include "ultrainiolib/block_header.hpp"
-#include "BlockHeaderExtKey.h"
+#include "block_header_ext_key.h"
 
     uint8_t from_hex( char c ) {
       if( c >= '0' && c <= '9' )
@@ -33,7 +33,7 @@
     }
 
 namespace {
-    block_id_type readBlockId(const std::string& s) {
+    block_id_type read_block_id(const std::string& s) {
         block_id_type blk_id;
         std::string blockIdStr = s.substr(0, 64);
         from_hex(blockIdStr, (char*)blk_id.hash, sizeof(blk_id.hash));
@@ -41,25 +41,25 @@ namespace {
     }
 }
 namespace ultrainiosystem {
-    class ConfirmPoint {
+    class confirm_point {
     public:
-        static bool isConfirmPoint(const ultrainio::block_header& blockHeader) {
-            auto ext = blockHeader.header_extensions;
+        static bool is_confirm_point(const ultrainio::block_header& header) {
+            auto ext = header.header_extensions;
             for (auto& e : ext) {
-                if (std::get<0>(e) == kBlsVoterSet) {
+                if (std::get<0>(e) == k_bls_voter_set) {
                     return true;
                 }
             }
             return false;
         }
 
-        static block_id_type getConfirmedBlockId(const ultrainio::block_header& blockHeader) {
-            for (auto& e : blockHeader.header_extensions) {
-                BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
-                if (key == kBlsVoterSet) {
+        static block_id_type get_confirmed_block_id(const ultrainio::block_header& header) {
+            for (auto& e : header.header_extensions) {
+                block_header_ext_key key = static_cast<block_header_ext_key>(std::get<0>(e));
+                if (key == k_bls_voter_set) {
                     std::string s;
                     s.assign(std::get<1>(e).begin(), std::get<1>(e).end());
-                    return readBlockId(s);
+                    return read_block_id(s);
                 }
             }
             return block_id_type();

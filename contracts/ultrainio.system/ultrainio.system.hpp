@@ -15,8 +15,8 @@
 #include <string>
 #include <vector>
 #include <set>
-#include "BlockHeaderExtKey.h"
-#include "CommitteeSet.h"
+#include "block_header_ext_key.h"
+#include "committee_set.h"
 
 #define UNUSED(a) (void)(a);
 namespace ultrainiosystem {
@@ -125,9 +125,7 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE(producer_brief, (owner)(location)(in_disable) )
    };
 
-   using role_base = CommitteeInfo;
-
-   struct disabled_producer : public CommitteeInfo {
+   struct disabled_producer : public committee_info {
       int64_t               total_cons_staked = 0;
       std::string           url;
       uint64_t              total_produce_block = 0;
@@ -137,7 +135,7 @@ namespace ultrainiosystem {
 
       uint64_t primary_key()const { return owner; }
 
-      ULTRAINLIB_SERIALIZE_DERIVED( disabled_producer, CommitteeInfo, (total_cons_staked)
+      ULTRAINLIB_SERIALIZE_DERIVED( disabled_producer, committee_info, (total_cons_staked)
                                     (url)(total_produce_block)(last_operate_blocknum)
                                     (delegated_cons_blocknum)(claim_rewards_account) )
    };
@@ -200,7 +198,7 @@ namespace ultrainiosystem {
 
    struct master_chain_info {
        account_name                         owner;
-       std::vector<role_base>               master_prods;
+       std::vector<committee_info>               master_prods;
        uint64_t                             block_height = 0;
        block_id_type                        block_id;
        checksum256                          committee_mroot;
@@ -242,15 +240,15 @@ namespace ultrainiosystem {
       bool              updateable = true;
    };
 
-   struct changing_producer : public CommitteeInfo {
+   struct changing_producer : public committee_info {
       uint32_t          block_num;  //master block number when it happens
 
-      ULTRAINLIB_SERIALIZE_DERIVED( changing_producer, CommitteeInfo, (block_num))
+      ULTRAINLIB_SERIALIZE_DERIVED( changing_producer, committee_info, (block_num))
    };
 
    struct changing_committee {
        std::vector<changing_producer> removed_members;
-       std::vector<role_base> new_added_members;
+       std::vector<committee_info> new_added_members;
 
        bool empty() const {
            return removed_members.empty() && new_added_members.empty();
@@ -292,22 +290,22 @@ namespace ultrainiosystem {
                                 bool need_pay, bool is_sync) : ultrainio::signed_block_header(signed_header),
                                 block_id(b_id), block_number(b_n), to_be_paid(need_pay), is_leaf(true), is_synced(is_sync) {
            for (const auto& e : signed_header.header_extensions) {
-                BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
-                if (key == kNextCommitteeMroot) {
+                block_header_ext_key key = static_cast<block_header_ext_key>(std::get<0>(e));
+                if (key == k_next_committee_mroot) {
                     next_committee_mroot = std::string(std::get<1>(e).begin(), std::get<1>(e).end());
                     break;
                 }
            }
        }
-       CommitteeSet get_committee_set() {
+       committee_set get_committee_set() {
            for (const auto& e : header_extensions) {
-               BlockHeaderExtKey key = static_cast<BlockHeaderExtKey>(std::get<0>(e));
-               if (key == kCommitteeSet) {
+               block_header_ext_key key = static_cast<block_header_ext_key>(std::get<0>(e));
+               if (key == k_committee_set) {
                    const std::vector<char>& vc = std::get<1>(e);
-                   return CommitteeSet(vc);
+                   return committee_set(vc);
                }
            }
-           return CommitteeSet();
+           return committee_set();
        }
 
        ULTRAINLIB_SERIALIZE_DERIVED(unconfirmed_block_header, ultrainio::signed_block_header,(block_id)(block_number)
@@ -315,25 +313,25 @@ namespace ultrainiosystem {
    };
 
    struct chain_info {
-       name                      chain_name;
-       uint64_t                  chain_type;
-       block_timestamp           genesis_time;
-       chain_resource            global_resource;
-       bool                      is_synced;
-       bool                      is_schedulable;
-       bool                      schedule_on = true;
-       uint16_t                  committee_num;
-       std::vector<role_base>    deprecated_committee;//keep history producers for un-synced chain, clear it once synced
-       changing_committee        changing_info; //has changed but not be confirmed by subchain's block header.
-       std::vector<user_info>    recent_users;
-       uint32_t                  total_user_num;
-       checksum256               chain_id;
-       checksum256               committee_mroot;
-       uint32_t                  confirmed_block_number;
-       block_id_type             confirmed_block_id;
-       std::vector<role_base>    committee_set;//current committee set reported by chain
-       std::vector<unconfirmed_block_header>  unconfirmed_blocks;
-       exten_types               table_extension;
+       name                                  chain_name;
+       uint64_t                              chain_type;
+       block_timestamp                       genesis_time;
+       chain_resource                        global_resource;
+       bool                                  is_synced;
+       bool                                  is_schedulable;
+       bool                                  schedule_on = true;
+       uint16_t                              committee_num;
+       std::vector<committee_info>           deprecated_committee;//keep history producers for un-synced chain, clear it once synced
+       changing_committee                    changing_info; //has changed but not be confirmed by subchain's block header.
+       std::vector<user_info>                recent_users;
+       uint32_t                              total_user_num;
+       checksum256                           chain_id;
+       checksum256                           committee_mroot;
+       uint32_t                              confirmed_block_number;
+       block_id_type                         confirmed_block_id;
+       std::vector<committee_info>           committee_set;//current committee set reported by chain
+       std::vector<unconfirmed_block_header> unconfirmed_blocks;
+       exten_types                           table_extension;
        enum chains_state_exten_type_key {
          chains_state_key_start = 0,
          genesis_producer_public_key = 1,
@@ -346,16 +344,16 @@ namespace ultrainiosystem {
                             (recent_users)(total_user_num)(chain_id)(committee_mroot)(confirmed_block_number)
                             (confirmed_block_id)(committee_set)(unconfirmed_blocks)(table_extension) )
 
-       void handle_committee_update(CommitteeDelta& cmt_delta) {
+       void handle_committee_update(committee_delta& cmt_delta) {
            for(auto it_rm = changing_info.removed_members.begin(); it_rm != changing_info.removed_members.end();) {
-               if(cmt_delta.checkRemoved(*it_rm)) {
+               if(cmt_delta.check_removed(*it_rm)) {
                    it_rm = changing_info.removed_members.erase(it_rm);
                } else {
                     ++it_rm;
                }
            }
            for(auto it_add = changing_info.new_added_members.begin(); it_add != changing_info.new_added_members.end();) {
-               if(cmt_delta.checkAdded(*it_add)) {
+               if(cmt_delta.check_added(*it_add)) {
                    it_add = changing_info.new_added_members.erase(it_add);
                } else {
                    ++it_add;
@@ -573,7 +571,7 @@ namespace ultrainiosystem {
          void setsched(bool is_enabled, uint16_t sched_period, uint16_t expire_time);
          void forcesetblock(name chain_name,
                             const signed_block_header& signed_header,
-                            const std::vector<CommitteeInfo>& cmt_set);
+                            const std::vector<committee_info>& cmt_set);
          void setlwcparams(uint32_t keep_blocks_num);
          void setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on);
 

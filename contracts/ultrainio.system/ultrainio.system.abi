@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/05b779",
+   "version": "ultrainio::abi/1.0/ec2652",
 
    "types": [{
       "new_type_name": "account_name",
@@ -423,7 +423,7 @@
 
       ]
     },{
-      "name": "role_base",
+      "name": "committee_info",
       "base": "",
       "fields": [
          {"name":"owner",           "type":"account_name"},
@@ -451,7 +451,7 @@
       "base": "",
       "fields": [
          {"name":"owner",                    "type":"account_name"},
-         {"name":"master_prods",             "type":"role_base[]"},
+         {"name":"master_prods",             "type":"committee_info[]"},
          {"name":"block_height",             "type":"uint64"},
          {"name":"block_id",                 "type":"block_id_type"},
          {"name": "committee_mroot",         "type": "checksum256"},
@@ -491,7 +491,7 @@
       ]
     },{
       "name": "disabled_producer",
-      "base": "role_base",
+      "base": "committee_info",
       "fields": [
          {"name":"total_cons_staked",     "type":"int64"},
          {"name":"url",             "type":"string"},
@@ -565,7 +565,7 @@
        ]
    },{
      "name": "changing_producer",
-      "base": "role_base",
+      "base": "committee_info",
       "fields": [
         {"name": "block_num",      "type": "uint32"}
        ]
@@ -574,7 +574,7 @@
       "base": "",
       "fields": [
         {"name": "removed_members",               "type": "changing_producer[]"},
-        {"name": "new_added_members",             "type": "role_base[]"}
+        {"name": "new_added_members",             "type": "committee_info[]"}
        ]
     },{
       "name": "block_header_digest",
@@ -609,7 +609,7 @@
         {"name": "is_schedulable",                "type": "bool"},
         {"name": "schedule_on",                   "type": "bool"},
         {"name": "committee_num",                 "type": "uint16"},
-        {"name": "deprecated_committee",          "type": "role_base[]"},
+        {"name": "deprecated_committee",          "type": "committee_info[]"},
         {"name": "changing_info",                 "type": "changing_committee"},
         {"name": "recent_users",                  "type": "user_info[]"},
         {"name": "total_user_num",                "type": "uint32"},
@@ -617,7 +617,7 @@
         {"name": "committee_mroot",               "type": "checksum256"},
         {"name": "confirmed_block_number",        "type": "uint32"},
         {"name": "confirmed_block_id",            "type": "block_id_type"},
-        {"name": "committee_set",                 "type": "role_base[]"},
+        {"name": "committee_set",                 "type": "committee_info[]"},
         {"name": "unconfirmed_blocks",            "type": "unconfirmed_block_header[]"},
         {"name": "table_extension",               "type": "exten_type[]"}
        ]
@@ -705,7 +705,7 @@
       "fields": [
         {"name": "chain_name",             "type": "name"},
         {"name": "signed_header",          "type": "signed_block_header"},
-        {"name": "cmt_set",                "type": "role_base[]"}
+        {"name": "cmt_set",                "type": "committee_info[]"}
        ]
     },{
       "name": "setlwcparams",
@@ -1020,12 +1020,6 @@
        "index_type": "i64",
        "key_names" : ["newname"],
        "key_types" : ["account_name"]
-    },{
-      "name": "pendingque",
-      "type": "role_base[]",
-      "index_type": "i64",
-      "key_names": [],
-      "key_types": []
     },{
       "name": "chains",
       "type": "chain_info",
