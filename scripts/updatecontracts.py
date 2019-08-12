@@ -197,6 +197,45 @@ def updateContractTrx():
       #   retry(clu + ' set contract utrio.bank ' + args.contracts_dir + 'ultrainio.bank/  -p utrio.bank@active')
         retry(clu + ' set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/  -p ultrainio@active')
 
+def get_account_name( value ):
+    #value = 612507777549467648
+    charmap = ".12345abcdefghijklmnopqrstuvwxyz";
+    str = []
+    for i in range(0,13):
+        str.append('.')
+
+    tmp = value
+    for i in range(0,13):
+        c = charmap[tmp & (0x0f if i == 0 else 0x1f)]
+        str[12-i] = c
+        tmp >>= ( 4 if i == 0 else 5)
+    name_str = ""
+    is_end_sym = False
+    for i in str[::-1]:
+        if not is_end_sym and i == ".":
+            continue
+        else:
+            is_end_sym = True
+        name_str = i + name_str
+    print(name_str)
+    return name_str
+
+def recycleBalance():
+    url = "http://127.0.0.1:8888"
+    clu = args.clultrain + ' -u ' + url
+    j_str = (requests.get(url + "/v1/chain/get_table_by_scope",data = json.dumps({"code":"utrio.token","table":"accounts","json":"true","limit":10000})).text)
+    j_dict = json.loads(j_str)
+    print(j_str)
+    for table in j_dict["rows"]:
+        name = get_account_name( long(table["scope"]))
+        if len(name) >= 6 and (name == "ultrainio" or name[0:6]== "utrio."):
+            continue
+        j = json.loads(requests.get(url + "/v1/chain/get_table_records",data = json.dumps({"code":"utrio.token","scope":name,"table":"accounts","json":"true"})).text)
+        balance = float(j["rows"][0]["balance"].replace(" UGAS","")) - 0.2
+        simple_run(clu + ' transfer %s ultrainio "%.4f UGAS"' % ( name, balance) )
+        sleep(0.2)
+
+
 def verifyContractCode():
     print("utrio.token code:")
     for url in masterNetHttp.values():
@@ -262,6 +301,7 @@ commands = [
     ('V', 'verifyContractCode', verifyContractCode,        True,    "verifyContractCode"),
     ('c', 'createAccount', createAccount,        True,    "createAccount"),
     ('v', 'verifycreateisexist', verifycreateisexist,        True,    "verifycreateisexist"),
+    ('r', 'recycleBalance', recycleBalance,        True,    "recycleBalance"),
 ]
 
 parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '/root/workspace')
