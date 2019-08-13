@@ -16,7 +16,7 @@ namespace ultrainio {
 
 using boost::signals2::signal;
 
-class producer_uranus_plugin : public appbase::plugin<producer_uranus_plugin> {
+class producer_rpos_plugin : public appbase::plugin<producer_rpos_plugin> {
 public:
    APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_client_plugin))
 
@@ -25,8 +25,8 @@ public:
       fc::optional<int32_t> max_irreversible_block_age;
    };
 
-   producer_uranus_plugin();
-   virtual ~producer_uranus_plugin();
+   producer_rpos_plugin();
+   virtual ~producer_rpos_plugin();
 
    virtual void set_program_options(
       boost::program_options::options_description &command_line_options,
@@ -58,9 +58,9 @@ public:
 
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
-   std::shared_ptr<class producer_uranus_plugin_impl> my;
+   std::shared_ptr<class producer_rpos_plugin_impl> my;
 };
 
 } //ultrainio
 
-FC_REFLECT(ultrainio::producer_uranus_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age));
+//FC_REFLECT(ultrainio::producer_rpos_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age));

@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <appbase/application.hpp>
-#include <ultrainio/producer_uranus_plugin/producer_uranus_plugin.hpp>
+#include <ultrainio/producer_rpos_plugin/producer_rpos_plugin.hpp>
 #include "uranus_node_monitor.hpp"
 #include "uranus_controller_monitor.hpp"
 
@@ -83,7 +83,7 @@ public:
    monitor_plugin();
    virtual ~monitor_plugin();
  
-   APPBASE_PLUGIN_REQUIRES((producer_uranus_plugin))
+   APPBASE_PLUGIN_REQUIRES((producer_rpos_plugin))
    virtual void set_program_options(options_description&, options_description& cfg) override;
  
    void plugin_initialize(const variables_map& options);

@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in ultrain/LICENSE.txt
  */
-#include <ultrainio/producer_uranus_plugin/producer_uranus_plugin.hpp>
+#include <ultrainio/producer_rpos_plugin/producer_rpos_plugin.hpp>
 #include <ultrainio/chain/producer_object.hpp>
 #include <ultrainio/chain/plugin_interface.hpp>
 #include <ultrainio/chain/global_property_object.hpp>
@@ -55,7 +55,7 @@ namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
 }
 
-const fc::string logger_name("producer_uranus_plugin");
+const fc::string logger_name("producer_rpos_plugin");
 fc::logger _log;
 
 namespace {
@@ -68,7 +68,7 @@ namespace {
 
 namespace ultrainio {
 
-static appbase::abstract_plugin& _producer_uranus_plugin = app().register_plugin<producer_uranus_plugin>();
+static appbase::abstract_plugin& _producer_rpos_plugin = app().register_plugin<producer_rpos_plugin>();
 
 using namespace ultrainio::chain;
 using namespace ultrainio::chain::plugin_interface;
@@ -107,9 +107,9 @@ using transaction_id_with_expiry_index = multi_index_container<
       NEXT(e.dynamic_copy_exception());\
    }
 
-class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer_uranus_plugin_impl> {
+class producer_rpos_plugin_impl : public std::enable_shared_from_this<producer_rpos_plugin_impl> {
    public:
-      producer_uranus_plugin_impl(boost::asio::io_service& io)
+      producer_rpos_plugin_impl(boost::asio::io_service& io)
       : _transaction_ack_channel(app().get_channel<compat::channels::transaction_ack>())
       {
       }
@@ -143,7 +143,7 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
       time_point _start_time = fc::time_point::now();
       uint32_t   _last_signed_block_num = 0;
 
-      producer_uranus_plugin* _self = nullptr;
+      producer_rpos_plugin* _self = nullptr;
 
       incoming::channels::block::channel_type::handle         _incoming_block_subscription;
       incoming::channels::transaction::channel_type::handle   _incoming_transaction_subscription;
@@ -390,14 +390,14 @@ class producer_uranus_plugin_impl : public std::enable_shared_from_this<producer
          exhausted
       };
 };
-producer_uranus_plugin::producer_uranus_plugin()
-   : my(new producer_uranus_plugin_impl(app().get_io_service())) {
+producer_rpos_plugin::producer_rpos_plugin()
+   : my(new producer_rpos_plugin_impl(app().get_io_service())) {
       my->_self = this;
    }
 
-producer_uranus_plugin::~producer_uranus_plugin() {}
+producer_rpos_plugin::~producer_rpos_plugin() {}
 
-void producer_uranus_plugin::set_program_options(
+void producer_rpos_plugin::set_program_options(
    boost::program_options::options_description& command_line_options,
    boost::program_options::options_description& config_file_options)
 {
@@ -442,7 +442,7 @@ void producer_uranus_plugin::set_program_options(
    config_file_options.add(producer_options);
 }
 
-bool producer_uranus_plugin::is_producer_key(const chain::public_key_type& key) const
+bool producer_rpos_plugin::is_producer_key(const chain::public_key_type& key) const
 {
   auto private_key_itr = my->_signature_providers.find(key);
   if(private_key_itr != my->_signature_providers.end())
@@ -450,7 +450,7 @@ bool producer_uranus_plugin::is_producer_key(const chain::public_key_type& key) 
   return false;
 }
 
-chain::signature_type producer_uranus_plugin::sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const
+chain::signature_type producer_rpos_plugin::sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const
 {
   if(key != chain::public_key_type()) {
     auto private_key_itr = my->_signature_providers.find(key);
@@ -474,17 +474,17 @@ if( options.count(name) ) { \
    std::copy(ops.begin(), ops.end(), std::inserter(container, container.end())); \
 }
 
-static producer_uranus_plugin_impl::signature_provider_type
+static producer_rpos_plugin_impl::signature_provider_type
 make_key_signature_provider(const private_key_type& key) {
    return [key]( const chain::digest_type& digest ) {
       return key.sign(digest);
    };
 }
 
-static producer_uranus_plugin_impl::signature_provider_type
-make_kultraind_signature_provider(const std::shared_ptr<producer_uranus_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
+static producer_rpos_plugin_impl::signature_provider_type
+make_kultraind_signature_provider(const std::shared_ptr<producer_rpos_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
    auto kultraind_url = fc::url(url_str);
-   std::weak_ptr<producer_uranus_plugin_impl> weak_impl = impl;
+   std::weak_ptr<producer_rpos_plugin_impl> weak_impl = impl;
 
    return [weak_impl, kultraind_url, pubkey]( const chain::digest_type& digest ) {
       auto impl = weak_impl.lock();
@@ -499,7 +499,7 @@ make_kultraind_signature_provider(const std::shared_ptr<producer_uranus_plugin_i
    };
 }
 
-void producer_uranus_plugin::plugin_initialize(const boost::program_options::variables_map& options)
+void producer_rpos_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    my->_options = &options;
    LOAD_VALUE_SET(options, "producer-name", my->_producers, types::account_name)
@@ -602,51 +602,51 @@ void producer_uranus_plugin::plugin_initialize(const boost::program_options::var
    });
 
 } FC_LOG_AND_RETHROW() }
-int  producer_uranus_plugin::get_round_interval()
+int  producer_rpos_plugin::get_round_interval()
 {
 	    return  my->_max_round_seconds;
 }
-string producer_uranus_plugin::get_account_sk()
+string producer_rpos_plugin::get_account_sk()
 {
         return my->_my_sk_as_account;
 }
-string producer_uranus_plugin::get_account_name()
+string producer_rpos_plugin::get_account_name()
 {
         return my->_my_account_as_committee;
 }
-bool producer_uranus_plugin::handle_message(const EchoMsg& echo) {
+bool producer_rpos_plugin::handle_message(const EchoMsg& echo) {
    return Node::getInstance()->handleMessage(echo);
 }
 
-bool producer_uranus_plugin::handle_message(const ProposeMsg& propose) {
+bool producer_rpos_plugin::handle_message(const ProposeMsg& propose) {
    return Node::getInstance()->handleMessage(propose);
 }
 
-bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const ReqSyncMsg& msg) {
+bool producer_rpos_plugin::handle_message(const fc::sha256& node_id, const ReqSyncMsg& msg) {
    return Node::getInstance()->handleMessage(node_id, msg);
 }
 
-bool producer_uranus_plugin::handle_message(const SyncBlockMsg& msg, bool last_block, bool safe) {
+bool producer_rpos_plugin::handle_message(const SyncBlockMsg& msg, bool last_block, bool safe) {
    return Node::getInstance()->handleMessage(msg, last_block, safe);
 }
 
-bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const ReqBlockNumRangeMsg& msg) {
+bool producer_rpos_plugin::handle_message(const fc::sha256& node_id, const ReqBlockNumRangeMsg& msg) {
   return Node::getInstance()->handleMessage(node_id, msg);
 }
 
-bool producer_uranus_plugin::handle_message(const fc::sha256& node_id, const SyncStopMsg& msg) {
+bool producer_rpos_plugin::handle_message(const fc::sha256& node_id, const SyncStopMsg& msg) {
   return Node::getInstance()->handleMessage(node_id, msg);
 }
 
-bool producer_uranus_plugin::sync_fail(const ultrainio::ReqSyncMsg& sync_msg) {
+bool producer_rpos_plugin::sync_fail(const ultrainio::ReqSyncMsg& sync_msg) {
   return Node::getInstance()->syncFail(sync_msg);
 }
 
-bool producer_uranus_plugin::sync_cancel() {
+bool producer_rpos_plugin::sync_cancel() {
   return Node::getInstance()->syncCancel();
 }
 
-void producer_uranus_plugin::plugin_startup()
+void producer_rpos_plugin::plugin_startup()
 { try {
    if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end()) {
       _log = fc::get_logger_map()[logger_name];
@@ -692,24 +692,24 @@ void producer_uranus_plugin::plugin_startup()
    ilog("producer plugin:  plugin_startup() end");
 } FC_CAPTURE_AND_RETHROW() }
 
-void producer_uranus_plugin::plugin_shutdown() {
+void producer_rpos_plugin::plugin_shutdown() {
    my->_accepted_block_connection.reset();
    my->_irreversible_block_connection.reset();
 }
 
-void producer_uranus_plugin::pause() {
+void producer_rpos_plugin::pause() {
    my->_pause_production = true;
 }
 
-void producer_uranus_plugin::resume() {
-   ilog("producer_uranus_plugin::resume");
+void producer_rpos_plugin::resume() {
+   ilog("producer_rpos_plugin::resume");
 }
 
-bool producer_uranus_plugin::paused() const {
+bool producer_rpos_plugin::paused() const {
    return my->_pause_production;
 }
 
-void producer_uranus_plugin::update_runtime_options(const runtime_options& options) {
+void producer_rpos_plugin::update_runtime_options(const runtime_options& options) {
    bool check_speculating = false;
 
    if (options.max_transaction_time) {
@@ -722,7 +722,7 @@ void producer_uranus_plugin::update_runtime_options(const runtime_options& optio
    }
 }
 
-producer_uranus_plugin::runtime_options producer_uranus_plugin::get_runtime_options() const {
+producer_rpos_plugin::runtime_options producer_rpos_plugin::get_runtime_options() const {
    return {
       my->_max_transaction_time_ms,
       my->_max_irreversible_block_age_us.count() < 0 ? -1 : my->_max_irreversible_block_age_us.count() / 1'000'000

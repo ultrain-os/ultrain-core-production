@@ -9,7 +9,7 @@
 #include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/block.hpp>
 #include <ultrainio/chain/plugin_interface.hpp>
-#include <ultrainio/producer_uranus_plugin/producer_uranus_plugin.hpp>
+#include <ultrainio/producer_rpos_plugin/producer_rpos_plugin.hpp>
 #include <ultrainio/utilities/key_conversion.hpp>
 #include <ultrainio/chain/contract_types.hpp>
 
@@ -726,12 +726,12 @@ namespace ultrainio {
                 if (ec.value() == boost::asio::error::operation_aborted) {
                     ilog("receive block conn check canceled, will not wait for next block. last received:${rcv} last checked:${chk}",
                          ("rcv", last_received_block)("chk", last_checked_block));
-                    app().get_plugin<producer_uranus_plugin>().sync_cancel();
+                    app().get_plugin<producer_rpos_plugin>().sync_cancel();
                     reset();
                 }else if (last_received_block <= last_checked_block || ec.value() != 0) {
                     ilog("no block received in last period or error occur. last received:${rcv} last checked:${chk} ec:${ec}",
                          ("rcv", last_received_block)("chk", last_checked_block)("ec", ec.value()));
-                    app().get_plugin<producer_uranus_plugin>().sync_fail(sync_block_msg);
+                    app().get_plugin<producer_rpos_plugin>().sync_fail(sync_block_msg);
                     reset();
                 }else {
                     last_checked_block = last_received_block;
@@ -814,7 +814,7 @@ namespace ultrainio {
                 }
 
                 bool is_last_block = (b.block_num() == end_block_num);
-                if (!app().get_plugin<producer_uranus_plugin>().handle_message(block_msg_queue.front(), is_last_block, is_safe)) {
+                if (!app().get_plugin<producer_rpos_plugin>().handle_message(block_msg_queue.front(), is_last_block, is_safe)) {
                     return;
                 }
 
@@ -1814,8 +1814,8 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
             if (ec.value() == boost::asio::error::operation_aborted) {
                 ilog("select sync source canceled");
                 if (!sync_block_master->sync_conn) {
-                    ilog("producer_uranus_plugin sync cancel");
-                    app().get_plugin<producer_uranus_plugin>().sync_cancel();
+                    ilog("producer_rpos_plugin sync cancel");
+                    app().get_plugin<producer_rpos_plugin>().sync_cancel();
                 }
             }else if (sync_block_master->selecting_src && sync_block_master->end_block_num == 0) {
                 connection_ptr wc = sync_block_master->select_longest_sync_src();
@@ -1823,7 +1823,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                     sync_block_master->sync_block(wc);
                 } else {
                     ilog("select sync source timeout");
-                    app().get_plugin<producer_uranus_plugin>().sync_fail(sync_block_master->sync_block_msg);
+                    app().get_plugin<producer_rpos_plugin>().sync_fail(sync_block_master->sync_block_msg);
                 }
             }
         });
@@ -2317,7 +2317,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 //       ilog("echo from ${p} block_id: ${id} num: ${num} phase: ${phase} baxcount: ${baxcount} account: ${account} sig: ${sig}",
 //            ("p", c->peer_name())("id", short_hash(msg.blockId))("num", BlockHeader::num_from_id(msg.blockId))
 //            ("phase", (uint32_t)msg.phase)("baxcount",msg.baxCount)("account", std::string(msg.account))("sig", short_sig(msg.signature)));
-       if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
+       if (app().get_plugin<producer_rpos_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
                if (conn != c && conn->priority == msg_priority_rpos) {
                    conn->enqueue(net_message(msg));
@@ -2329,7 +2329,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
    void net_plugin_impl::handle_message( connection_ptr c, const ProposeMsg& msg) {
        ilog("propose from ${p} block id: ${id} block num: ${num}",
             ("p", c->peer_name())("id", short_hash(msg.block.id()))("num", msg.block.block_num()));
-       if (app().get_plugin<producer_uranus_plugin>().handle_message(msg)) {
+       if (app().get_plugin<producer_rpos_plugin>().handle_message(msg)) {
            for (auto &conn : connections) {
                if (conn != c && conn->priority == msg_priority_rpos) {
                    conn->enqueue(net_message(msg));
@@ -2340,7 +2340,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqBlockNumRangeMsg& msg) {
         ilog("receive req block num range msg!!! from peer ${p} seq: ${s}", ("p", c->peer_name())("s", msg.seqNum));
-        app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
+        app().get_plugin<producer_rpos_plugin>().handle_message(c->node_id, msg);
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::RspBlockNumRangeMsg& msg) {
@@ -2372,7 +2372,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg) {
         ilog("receive req sync msg!!! message from ${p} addr:${addr} blockNum = ${blockNum}",
              ("p", c->peer_name())("addr",c->peer_addr)("blockNum", msg.endBlockNum));
-        app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
+        app().get_plugin<producer_rpos_plugin>().handle_message(c->node_id, msg);
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg) {
@@ -2415,7 +2415,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncStopMsg &msg) {
         ilog("receive sync stop msg!!! message from ${p} addr:${addr} seqNum = ${sn}",
              ("p", c->peer_name())("addr", c->peer_addr)("sn", msg.seqNum));
-        app().get_plugin<producer_uranus_plugin>().handle_message(c->node_id, msg);
+        app().get_plugin<producer_rpos_plugin>().handle_message(c->node_id, msg);
     }
 
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
@@ -2591,7 +2591,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       producerslist_update_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
       start_conn_timer();
       start_txn_timer();
-      int round_interval = app().get_plugin<producer_uranus_plugin>().get_round_interval();
+      int round_interval = app().get_plugin<producer_rpos_plugin>().get_round_interval();
       speedmonitor_period = {std::chrono::seconds{round_interval}};
       start_speedlimit_monitor_timer();
       start_block_handler_timer();
@@ -2998,7 +2998,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
    chain::public_key_type net_plugin_impl::get_authentication_key() const {
       if(!private_keys.empty())
          return private_keys.begin()->first;
-      /*producer_uranus_plugin* pp = app().find_plugin<producer_uranus_plugin>();
+      /*producer_rpos_plugin* pp = app().find_plugin<producer_rpos_plugin>();
       if(pp != nullptr && pp->get_state() == abstract_plugin::started)
          return pp->first_producer_public_key();*/
       ilog("get_authentication_key empty");
@@ -3010,9 +3010,9 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       hello.network_version = net_version_base + net_version;
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
-      auto sk_account = private_key_type(app().get_plugin<producer_uranus_plugin>().get_account_sk());
+      auto sk_account = private_key_type(app().get_plugin<producer_rpos_plugin>().get_account_sk());
       hello.key = sk_account.get_public_key();
-      auto name_account = app().get_plugin<producer_uranus_plugin>().get_account_name();
+      auto name_account = app().get_plugin<producer_rpos_plugin>().get_account_name();
       hello.account = name_account;
       std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> tp = std::chrono::time_point_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now());
       hello.time = tp.time_since_epoch().count();
@@ -3364,10 +3364,10 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       for (auto active_peer : my->rpos_active_peers) {
          my->connect(active_peer, msg_priority_rpos);
       }
-      auto sk_account = private_key_type(app().get_plugin<producer_uranus_plugin>().get_account_sk());
+      auto sk_account = private_key_type(app().get_plugin<producer_rpos_plugin>().get_account_sk());
       my->node_table->set_nodetable_sk(sk_account);
       my->node_table->set_nodetable_pk(sk_account.get_public_key());
-      auto name_account = app().get_plugin<producer_uranus_plugin>().get_account_name();
+      auto name_account = app().get_plugin<producer_rpos_plugin>().get_account_name();
       my->node_table->set_nodetable_account(chain::account_name(name_account));
       if (!my->udp_seed_ip.empty())
       {
