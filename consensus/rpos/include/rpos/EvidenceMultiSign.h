@@ -2,10 +2,10 @@
 
 #include <core/types.h>
 
-#include "rpos/EvilType.h"
+#include "rpos/Evidence.h"
 
 namespace ultrainio {
-    class EvidenceMultiSign {
+    class EvidenceMultiSign : public Evidence {
     public:
         EvidenceMultiSign(const std::string& str);
 
@@ -19,10 +19,6 @@ namespace ultrainio {
         static const std::string kB;
 
         static const std::string kAccount;
-
-        static const std::string kType;
-
-        int mType;
 
         AccountName mAccount;
 

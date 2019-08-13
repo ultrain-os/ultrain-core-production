@@ -1,5 +1,4 @@
 #include <rpos/Scheduler.h>
-#include <rpos/Utils.h>
 
 #include <iostream>
 #include <string>
@@ -33,6 +32,7 @@
 #include <lightclient/LightClientProducer.h>
 #include <lightclient/LightClientMgr.h>
 #include <rpos/Config.h>
+#include <rpos/Evidence.h>
 #include <rpos/EvilBlsDetector.h>
 #include <rpos/Genesis.h>
 #include <rpos/MsgBuilder.h>
@@ -41,6 +41,7 @@
 #include <rpos/PunishMgr.h>
 #include <rpos/Seed.h>
 #include <rpos/StakeVoteBase.h>
+#include <rpos/Utils.h>
 #include <rpos/Vrf.h>
 #include <appbase/application.hpp>
 
@@ -528,7 +529,7 @@ namespace ultrainio {
 
         if (m_evilMultiSignDetector.hasMultiPropose(m_proposerMsgMap, propose)) {
             ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
-            punishMgrPtr->punish(propose.block.proposer, EvilType::kSignMultiPropose);
+            punishMgrPtr->punish(propose.block.proposer, Evidence::kSignMultiPropose);
             // return false in fastHandleMessage
             return false;
         }
@@ -562,7 +563,7 @@ namespace ultrainio {
 
         if (m_evilMultiSignDetector.hasMultiVote(echo)) {
             ilog("${account} vote multiple propose", ("account", std::string(echo.account)));
-            punishMgrPtr->punish(echo.account, EvilType::kVoteMultiPropose);
+            punishMgrPtr->punish(echo.account, Evidence::kVoteMultiPropose);
             // return false in fastHandleMessage
             return false;
         }
@@ -631,7 +632,7 @@ namespace ultrainio {
 
         if (m_evilMultiSignDetector.hasMultiPropose(m_proposerMsgMap, propose)) {
             ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
-            punishMgrPtr->punish(propose.block.proposer, EvilType::kSignMultiPropose);
+            punishMgrPtr->punish(propose.block.proposer, Evidence::kSignMultiPropose);
             //TODO should broadcast the propose message when the punish info not in world state, so return true
             return true;
         }
@@ -719,7 +720,7 @@ namespace ultrainio {
 
         if (m_evilMultiSignDetector.hasMultiVote(echo)) {
             ilog("${account} vote multiple propose", ("account", std::string(echo.account)));
-            punishMgrPtr->punish(echo.account, EvilType::kVoteMultiPropose);
+            punishMgrPtr->punish(echo.account, Evidence::kVoteMultiPropose);
             // TODO broadcast it now
             return true;
         }

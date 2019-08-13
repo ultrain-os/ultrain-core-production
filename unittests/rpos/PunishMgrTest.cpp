@@ -10,7 +10,7 @@ BOOST_AUTO_TEST_SUITE(punishmgr_unittest)
 
     BOOST_AUTO_TEST_CASE(push) {
         std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
-        punishMgrPtr->punish(AccountName("qin"), EvilType::kSignMultiPropose);
+        punishMgrPtr->punish(AccountName("qin"), Evidence::kSignMultiPropose);
         BOOST_CHECK(punishMgrPtr->isPunished(AccountName("qin")));
         BOOST_CHECK(!punishMgrPtr->isPunished(AccountName("li")));
     }

@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <core/types.h>
-#include <rpos/EvilType.h>
+#include "rpos/Evidence.h"
 
 namespace ultrainio {
     struct Evil {
