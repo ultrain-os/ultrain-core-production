@@ -92,10 +92,10 @@ namespace ultrainiosystem {
          header.trx_ids.insert(tx.tx_id);
       });
       ultrainio_assert(tx.actions.size() > 0, "no context related actions contains in this transaction.");
-      execactions( tx.actions, chain_name );
+      exec_actions( tx.actions, chain_name );
    }
 
-   void system_contract::execactions( const vector<action> & actios, name chain_name){
+   void system_contract::exec_actions( const vector<action> & actios, name chain_name){
       uint32_t  exec_succ = 0;
       for (const auto& act : actios) {
          if (act.account == N(utrio.token) && act.name == NEX(transfer)) {

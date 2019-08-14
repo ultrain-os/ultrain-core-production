@@ -128,7 +128,7 @@ namespace ultrainiosystem {
              if(enabled) {
                 name assigned_location = briefprod->location;
                 if(assigned_location == default_chain_name) {
-                    assigned_location = getdefaultchain();
+                    assigned_location = get_default_chain();
                 }
 
                 dp_tbl.modify(dis_prod, [&]( disabled_producer& _dis ) {
@@ -391,7 +391,7 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
       set_resource_limits( owner, ram_bytes, 0, 0 );
    }
 
-   void system_contract::checkresexpire(){
+   void system_contract::check_res_expire(){
       uint32_t block_height = (uint32_t)head_block_number() + 1;
       uint32_t interval_num = seconds_per_day/block_interval_seconds()/3; //check every eight hours
       if(block_height < 120 || block_height%interval_num != 0) {
@@ -482,20 +482,20 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
       }
    }
 
-   void system_contract::delexpiretable(){
+   void system_contract::del_expire_table(){
       penddeltable pendingdeltab(_self,_self);
       for(auto del_iter = pendingdeltab.begin(); del_iter != pendingdeltab.end(); ){
          auto const & owner = del_iter->owner;
          int dropstatus = db_drop_table(owner);   //drop contract account table
          if(dropstatus == 0){
             del_iter = pendingdeltab.erase(del_iter);
-            clearexpirecontract( owner );
+            clear_expire_contract( owner );
          }
          break;  //Delete only once and wait for the next delete
       }
    }
 
-   void system_contract::clearexpirecontract( account_name owner ){
+   void system_contract::clear_expire_contract( account_name owner ){
       vector<permission_level> pem = { { owner, N(active) },
                                        { N(ultrainio),     N(active) } };
       {

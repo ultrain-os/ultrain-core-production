@@ -599,13 +599,13 @@ namespace ultrainiosystem {
          //defind in delegate.cpp
          void change_cons( account_name from, account_name receiver, asset stake_cons_quantity);
          void process_undelegate_request(account_name from, asset unstake_quantity);
-         void checkresexpire();
-         void delexpiretable();
-         void clearexpirecontract( account_name owner );
+         void check_res_expire();
+         void del_expire_table();
+         void clear_expire_contract( account_name owner );
          //defined in reward.cpp
-         void reportsubchainblock( account_name producer, uint64_t block_height );
+         void report_subchain_block( account_name producer, uint64_t block_height );
 
-         void distributreward();
+         void distribut_reward();
          inline float get_reward_fee_ratio() const;
          inline uint64_t get_reward_per_block() const;
          inline uint32_t check_previous_claimed_reward( const ultrainiosystem::producer_info& prod,uint32_t block_height ) const;
@@ -619,22 +619,22 @@ namespace ultrainiosystem {
          void add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number);
          void remove_from_chain(name chain_name, account_name producer_name, uint64_t current_block_number);
          void pre_schedule(); //called in onblock every 24h defaultly.
-         void checkbulletin();
+         void check_bulletin();
          bool move_producer(checksum256 head_id,
                             chains_table::const_iterator from_iter,
                             chains_table::const_iterator to_iter,
                             uint64_t current_block_number, uint32_t num);
-         name getdefaultchain();
-         bool checkblockproposer(account_name block_proposer, chains_table::const_iterator chain_iter);
-         uint32_t findpreviousblock(const std::vector<unconfirmed_block_header>& block_vct, uint32_t block_num,
+         name get_default_chain();
+         bool check_block_proposer(account_name block_proposer, chains_table::const_iterator chain_iter);
+         uint32_t find_previous_block(const std::vector<unconfirmed_block_header>& block_vct, uint32_t block_num,
                                     const block_id_type& block_id, const block_id_type& previous_id);
-         void rmoverdueblocks(name chain_name, uint32_t last_confirm_num, uint32_t confirm_num);
-         uint64_t getinitialblocknum(name chain_name);
-         void handlenewconfirmblock(chain_info& _chain, const block_id_type& confirm_block_id);
-         void clearcommitteebulletin(name chain_name);
+         void rm_overdue_blocks(name chain_name, uint32_t last_confirm_num, uint32_t confirm_num);
+         uint64_t get_initial_block_num(name chain_name);
+         void handle_new_confirm_block(chain_info& _chain, const block_id_type& confirm_block_id);
+         void clear_committee_bulletin(name chain_name);
 
          //defined in ultrainio.system.cpp
-         void getKeydata(const std::string& pubkey,std::array<char,33> & data);
+         void get_key_data(const std::string& pubkey,std::array<char,33> & data);
 
          //defined in producer.cpp
          std::vector<name> get_all_chainname();
@@ -644,7 +644,7 @@ namespace ultrainiosystem {
          inline void check_producer_lastblock( const name& chain_name, uint64_t block_height ) const;
 
          // functions defined in synctransaction.cpp
-         void execactions( const vector<action> & actios, name chain_name);
+         void exec_actions( const vector<action> & actios, name chain_name);
    };
 
 } /// ultrainiosystem

@@ -144,22 +144,22 @@ namespace ultrainiosystem {
       set_updateabled( account, is_update );
    }
 
-   void system_contract::getKeydata(const std::string& pubkey,std::array<char,33> & data){
-      auto const getHexvalue = [](const char ch)->int{
+   void system_contract::get_key_data(const std::string& pubkey,std::array<char,33> & data){
+      auto const get_hex_value = [](const char ch)->int{
          if(ch >= '0' && ch <= '9')
             return (ch-'0');
          if(ch >= 'a' && ch <= 'f')
             return ((ch-'a')+10);
          return 0;
       };
-      char  keydata[67];
-      memset(keydata,0,sizeof(keydata));
-      frombase58_recover_key(pubkey.c_str(), keydata, 66);
+      char  key_data[67];
+      memset(key_data,0,sizeof(key_data));
+      frombase58_recover_key(pubkey.c_str(), key_data, 66);
       unsigned int j = 0;
-      for ( uint32_t i=0; i < strlen(keydata); i++ ){
+      for ( uint32_t i=0; i < strlen(key_data); i++ ){
          if(i%2 == 1)
          {
-            data[j] = static_cast<char>((getHexvalue(keydata[i-1])*16 + getHexvalue(keydata[i])) & 0xff);
+            data[j] = static_cast<char>((get_hex_value(key_data[i-1])*16 + get_hex_value(key_data[i])) & 0xff);
             j++;
          }
       }
@@ -167,7 +167,7 @@ namespace ultrainiosystem {
    void system_contract::add_subchain_account(const ultrainio::proposeaccount_info&  newacc ) {
       ultrainiosystem::key_weight ownerkeyweight;
       std::array<char,33> ownerdata;
-      getKeydata(newacc.owner_key,ownerdata);
+      get_key_data(newacc.owner_key,ownerdata);
       ownerkeyweight.key.data = ownerdata;
       ownerkeyweight.key.type = 0;
       ownerkeyweight.weight = 1;
@@ -175,7 +175,7 @@ namespace ultrainiosystem {
 
       ultrainiosystem::key_weight activekeyweight;
       std::array<char,33> activedata;
-      getKeydata(newacc.active_key,activedata);
+      get_key_data(newacc.active_key,activedata);
       activekeyweight.key.data = activedata;
       activekeyweight.key.type = 0;
       activekeyweight.weight = 1;

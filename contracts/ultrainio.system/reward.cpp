@@ -39,11 +39,11 @@ namespace ultrainiosystem {
          });
          print( "onblock timestamp:", timestamp.abstime, " producer:", name{producer}," produce_block:", prod->total_produce_block, "\n" );
       }
-      delexpiretable(); //Delete the expired account table
-      checkresexpire();
-      checkbulletin();
+      del_expire_table(); //Delete the expired account table
+      check_res_expire();
+      check_bulletin();
       pre_schedule();
-      distributreward();  //automatically send rewards
+      distribut_reward();  //automatically send rewards
       check_producer_lastblock( self_chain_name, head_block_height );
    }
    float system_contract::get_reward_fee_ratio() const {
@@ -153,7 +153,7 @@ namespace ultrainiosystem {
       });
    }
 
-   void system_contract::reportsubchainblock( account_name producer, uint64_t block_height ) {
+   void system_contract::report_subchain_block( account_name producer, uint64_t block_height ) {
       auto briefprod = _briefproducers.find(producer);
       if(briefprod == _briefproducers.end()) {
           print("error: block proposer ", name{producer}, " is not a producer\n");
@@ -263,7 +263,7 @@ namespace ultrainiosystem {
       _gstate.total_unpaid_balance += master_paid_balance;
    }
 
-   void system_contract::distributreward(){
+   void system_contract::distribut_reward(){
       if(!_gstate.is_master_chain())
          return;
       uint32_t block_height = (uint32_t)head_block_number() + 1;

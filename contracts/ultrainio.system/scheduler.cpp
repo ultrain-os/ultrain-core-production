@@ -199,7 +199,7 @@ namespace ultrainiosystem {
         acceptheader(name{N(master)}, headers);
     }
 
-    bool system_contract::checkblockproposer(account_name block_proposer, chains_table::const_iterator chain_iter) {
+    bool system_contract::check_block_proposer(account_name block_proposer, chains_table::const_iterator chain_iter) {
         //find proposer and check if it should be paid for proposing this block.
         if(block_proposer != N(utrio.empty) && block_proposer != N(genesis)) {
             auto briefprod = _briefproducers.find(block_proposer);
@@ -256,7 +256,7 @@ namespace ultrainiosystem {
         uint32_t confirmed_number_before = ite_chain->confirmed_block_number;
         checksum256 final_confirmed_id;
         bool new_confirm = false;
-        uint64_t initial_block_number = getinitialblocknum(chain_name);
+        uint64_t initial_block_number = get_initial_block_num(chain_name);
         for(uint32_t idx = 0; idx < headers.size(); ++idx) {
             auto block_number = headers[idx].block_num();
             ultrainio_assert(block_number > ite_chain->confirmed_block_number, "block has been confirmed");
@@ -267,7 +267,7 @@ namespace ultrainiosystem {
             }
 
             //check if it has been accepted, if not, find its previous block
-            uint32_t pre_block_index = findpreviousblock(ite_chain->unconfirmed_blocks, block_number, block_id, headers[idx].previous);
+            uint32_t pre_block_index = find_previous_block(ite_chain->unconfirmed_blocks, block_number, block_id, headers[idx].previous);
             if(block_number > initial_block_number) {
                 ultrainio_assert(pre_block_index < ite_chain->unconfirmed_blocks.size(), "previous block is not found\n");
             }
@@ -289,7 +289,7 @@ namespace ultrainiosystem {
                 }
             }
             if(need_report) {
-                need_report = checkblockproposer(block_proposer, ite_chain);
+                need_report = check_block_proposer(block_proposer, ite_chain);
             }
             _chains.modify(ite_chain, [&]( auto& _subchain ) {
                 unconfirmed_block_header uncfm_header(headers[idx], block_id, block_number, need_report, synced);
@@ -301,13 +301,13 @@ namespace ultrainiosystem {
                 if(!new_confirm) {
                     return;
                 }
-                handlenewconfirmblock(_subchain, final_confirmed_id);
+                handle_new_confirm_block(_subchain, final_confirmed_id);
 
             });
         }
         if (new_confirm && confirmed_number_before < ite_chain->confirmed_block_number ) {
             //handle all confirmed blocks
-            rmoverdueblocks(chain_name, confirmed_number_before, ite_chain->confirmed_block_number);
+            rm_overdue_blocks(chain_name, confirmed_number_before, ite_chain->confirmed_block_number);
             _chains.modify(ite_chain, [&]( auto& _subchain ) {
                 block_table subchain_block_tbl(_self, chain_name);
                 auto ite_uncfm_block = _subchain.unconfirmed_blocks.begin();
@@ -331,7 +331,7 @@ namespace ultrainiosystem {
                         else{
                             if(ite_uncfm_block->to_be_paid) {
                                 //apply reward for its proposer
-                                reportsubchainblock( ite_uncfm_block->proposer, ite_uncfm_block->block_number );
+                                report_subchain_block( ite_uncfm_block->proposer, ite_uncfm_block->block_number );
                             }
                             subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
                                 new_confirmed_header = block_header_digest(ite_uncfm_block->block_number,
@@ -717,7 +717,7 @@ namespace ultrainiosystem {
         _schedsetting.set(temp);
     }
 
-    void system_contract::checkbulletin() {
+    void system_contract::check_bulletin() {
         auto ct = now();
         uint64_t check_period = 30; //unit is minutes
         for(auto extension : _gstate.table_extension){
@@ -801,7 +801,7 @@ namespace ultrainiosystem {
         }
     }
 
-    name system_contract::getdefaultchain() {
+    name system_contract::get_default_chain() {
         auto ite_chain = _chains.begin();
         auto ite_min = _chains.end();
         uint32_t max_gap = 0;
@@ -828,7 +828,7 @@ namespace ultrainiosystem {
         return ite_min->chain_name;
     }
 
-    uint32_t system_contract::findpreviousblock(const std::vector<unconfirmed_block_header>& block_vct, uint32_t block_num,
+    uint32_t system_contract::find_previous_block(const std::vector<unconfirmed_block_header>& block_vct, uint32_t block_num,
                                                 const block_id_type& block_id, const block_id_type& previous_id) {
         uint32_t pre_index = std::numeric_limits<uint32_t>::max();
         if(block_vct.empty()) {
@@ -851,7 +851,7 @@ namespace ultrainiosystem {
         return pre_index;
     }
 
-    uint64_t system_contract::getinitialblocknum(name chain_name) {
+    uint64_t system_contract::get_initial_block_num(name chain_name) {
         if(chain_name == N(master)) {
             master_chain_infos masterinfos(_self, _self);
             auto initmasteriter = masterinfos.find(N(ultrainio));
@@ -861,7 +861,7 @@ namespace ultrainiosystem {
         return 1;
     }
 
-    void system_contract::rmoverdueblocks(name chain_name, uint32_t last_confirm_num, uint32_t confirm_num) {
+    void system_contract::rm_overdue_blocks(name chain_name, uint32_t last_confirm_num, uint32_t confirm_num) {
         block_table subchain_block_tbl(_self, chain_name);
         //remove overdue blocks, only keep recent 30000 blocks
         if(confirm_num > _lwc.save_blocks_num) {
@@ -879,7 +879,7 @@ namespace ultrainiosystem {
         }
     }
 
-    void system_contract::handlenewconfirmblock(chain_info& _chain, const block_id_type& confirm_block_id) {
+    void system_contract::handle_new_confirm_block(chain_info& _chain, const block_id_type& confirm_block_id) {
         auto ite_last_confirm_block = _chain.unconfirmed_blocks.begin();
         auto ite_confirm_block = _chain.unconfirmed_blocks.begin();
         for(; ite_confirm_block != _chain.unconfirmed_blocks.end(); ++ite_confirm_block) {
@@ -920,7 +920,7 @@ namespace ultrainiosystem {
                     _chain.handle_committee_update(cmt_delta);
                     new_committee_set.swap(_chain.committee_set);
                     if(_chain.is_schedulable) {
-                        clearcommitteebulletin(_chain.chain_name);
+                        clear_committee_bulletin(_chain.chain_name);
                     }
                 }
                 _chain.committee_mroot = ite_block->committee_mroot;
@@ -956,7 +956,7 @@ namespace ultrainiosystem {
         });
     }
 
-    void system_contract::clearcommitteebulletin(name chain_name) {
+    void system_contract::clear_committee_bulletin(name chain_name) {
         cmtbulletin  cb_tbl(_self, chain_name);
         auto record = cb_tbl.begin();
         while(record != cb_tbl.end()) {
