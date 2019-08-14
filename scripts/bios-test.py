@@ -71,11 +71,9 @@ def sleep(t):
 def importKeys():
     run(args.clultrain + 'wallet import --private-key ' + args.private_key)
     run(args.clultrain + 'wallet import --private-key ' + args.initacc_sk)
-    run(args.clultrain + 'wallet import --private-key  5KG6NiRGhsEP9vTf4WVe312iVQ3uemEXsstsqkT9Wj1MkdY5uJk')
+    run(args.clultrain + 'wallet import --private-key  5JnconiP4AMeLwUpAcwHTHcgAwyfyXnvZd6ExT2LLfid7bnFsGh')
     for i in range(0, len(account_sk_list)):
        run(args.clultrain + 'wallet import --private-key ' + account_sk_list[i])
-    for i in range(0, len(rand_sk_lst)):
-       run(args.clultrain + 'wallet import --private-key ' + rand_sk_lst[i])
 
 def updateAuth(account, permission, parent, controller):
     retry(args.clultrain + 'push action ultrainio updateauth' + jsonArg({
@@ -304,10 +302,10 @@ commands = [
     ('q', 'resign',         stepResign,                 True,    "Resign utrio"),
 ]
 
-parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR5t23dcRcnpXTTT7xFgbBkrJoEHvKuxz8FEjzbZrhkpkj2vmh8M', dest="public_key")
-parser.add_argument('--private-Key', metavar='', help="ULTRAIN Private Key", default='5HvhChtH919sEgh5YjspCa1wgE7dKP61f7wVmTPsedw6enz6g7H', dest="private_key")
-parser.add_argument('--initacc-pk', metavar='', help="ULTRAIN Public Key", default='UTR6XRzZpgATJaTtyeSKqGhZ6rH9yYn69f5fkLpjVx6y2mEv5iQTn', dest="initacc_pk")
-parser.add_argument('--initacc-sk', metavar='', help="ULTRAIN Private Key", default='5KZ7mnSHiKN8VaJF7aYf3ymCRKyfr4NiTiqKC5KLxkyM56KdQEP', dest="initacc_sk")
+parser.add_argument('--public-key', metavar='', help="ULTRAIN Public Key", default='UTR77x1saHs4yovCVsv2ctMWBgSscxcsaTzJwtamQE9jRGCZfKVLK', dest="public_key")
+parser.add_argument('--private-Key', metavar='', help="ULTRAIN Private Key", default='5HwF8jDS5fH3FGXR2GAUipoutyhcBfhZw6e75YTUda3MerwPvXt', dest="private_key")
+parser.add_argument('--initacc-pk', metavar='', help="ULTRAIN Public Key", default='UTR73sDNkEbaRkEnAhAhPNkGw3D5cmHwChQGUhHX5rdQ4Fgcvw21P', dest="initacc_pk")
+parser.add_argument('--initacc-sk', metavar='', help="ULTRAIN Private Key", default='5KPyztSimiMwNw78BanenZ4nCXjxUdjBNx4JMDNGJhNc5gFku6Q', dest="initacc_sk")
 parser.add_argument('--clultrain', metavar='', help="Clultrain command", default=defaultclu % '/root/workspace')
 parser.add_argument('--kultraind', metavar='', help="Path to kultraind binary", default=defaultkul % '/root/workspace')
 parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default=defaultcontracts_dir % '/root/workspace')

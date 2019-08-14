@@ -343,9 +343,9 @@ struct txn_test_gen_plugin_impl {
           controller& cc = app().get_plugin<chain_plugin>().chain();
           auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
 
-          fc::crypto::private_key a_priv_key(std::string("5JfSeQ3Jr8RyL7HThWsgctLmovDHGhBCnm7e6dQo3rV3TQ73oHB"));
-          fc::crypto::private_key b_priv_key(std::string("5KXoGjfRKb6qiJUR29jDPrt9DpUXPTMS1gpJpoSH8iN6axak89g"));
-          fc::crypto::private_key hello_priv_key(std::string("5KZ7mnSHiKN8VaJF7aYf3ymCRKyfr4NiTiqKC5KLxkyM56KdQEP"));
+          fc::crypto::private_key a_priv_key(std::string("5JbXkT2DP8HpwfaCRmSa3Qw2vH1pqnxfKGk5w8riUJUSVx7j1ir"));
+          fc::crypto::private_key b_priv_key(std::string("5J4fz4cApTLTZzqjKsFSdCYPUyDNcmSD2WsLRoPbGjSB8KBu7RL"));
+          fc::crypto::private_key hello_priv_key(std::string("5KPyztSimiMwNw78BanenZ4nCXjxUdjBNx4JMDNGJhNc5gFku6Q"));
 
          static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
          //         abi_serializer ultrainio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());

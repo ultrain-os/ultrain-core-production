@@ -206,7 +206,7 @@ endif()
 message( STATUS "Using '${CORE_SYMBOL_NAME}' as CORE symbol name" )
 
 if ("${ULTRAINIO_ROOT_KEY}" STREQUAL "")
-   set(ULTRAINIO_ROOT_KEY "UTR7UwpRXYqdUYctTnqLFeVif455xaPPP6KZkJAEv7ELCEowpuAHJ")
+   set(ULTRAINIO_ROOT_KEY "UTR7Dw4vB26dBEq57FAKdEWd1EFQZXVFAX9HvdifSVQ1B3o6fhGxk")
 endif()
 
 message( STATUS "Using '${ULTRAINIO_ROOT_KEY}' as public key for 'ultrainio' account" )
