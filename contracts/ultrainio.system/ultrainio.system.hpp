@@ -61,7 +61,7 @@ namespace ultrainiosystem {
       uint64_t             total_unpaid_balance = 0;
       int64_t              total_activated_stake = 0;
       block_timestamp      last_name_close;
-      uint64_t             max_resources_number = 10000;
+      uint64_t             max_resources_number = 10000; //number of total resource packages,same as the total_resource_number field of config.hpp
       uint64_t             total_resources_used_number = 0;
       uint32_t             newaccount_fee = 2000;
       name                 chain_name = name{N(ultrainio)};

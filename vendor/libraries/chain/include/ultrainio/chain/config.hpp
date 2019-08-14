@@ -104,7 +104,9 @@ const static uint32_t   hashing_checktime_block_size       = 10*1024;  /// call 
 const static ultrainio::chain::wasm_interface::vm_type default_wasm_runtime = ultrainio::chain::wasm_interface::vm_type::wabt;
 const static uint32_t   default_abi_serializer_max_time_ms = 30*1000; ///< default deadline for abi serialization methods
 
-const static uint64_t billable_alignment = 16;
+const static uint64_t   billable_alignment = 16;
+
+const static uint32_t   total_resource_number = 10'000; //number of total resource packages,same as the max_resources_number field of the system contract global table
 
 template<typename T>
 struct billable_size;
