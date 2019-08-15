@@ -236,8 +236,8 @@ install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/ultrain
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ultrainio.version.in ${CMAKE_CURRENT_BINARY_DIR}/ultrainio.version.hpp)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ultrainio.version.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/UltrainioTester.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/EosioTester.cmake @ONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/UltrainioBuildTester.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/EosioTester.cmake @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/UltrainioTester.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/UltrainTester.cmake @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/UltrainioBuildTester.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/UltrainioTester.cmake @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/UltrainioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/)
 
 include(installer)
