@@ -1,5 +1,26 @@
 # Release Notes
 
+### 2019-08-15 Release(Commit: b37d88b369202a6caf335b9f98a6667e0d5b96f3)
+
+* Overall
+We are going open source !!!
+Various code structure cleanup for ultrain-core open source
+
+* Nodultrain
+    * Add support for encoding confidential config info (nana)
+    * evil detection PoC code added (xiaofeng)
+    * ws creation exception fix (zhiping)
+    * various contracts unittests added (zhongwei, yhc)
+    * contracts base lib upstream fix cherry-picked (yufengshen)
+    * mongo rapid restore bug fix (liuwei)
+    * net plugin connection related bug fix (nana)
+    * fix bug: segmentation fault if block log not empty, but no blocks (zhiping)
+    * don't allow block timestamp into the future more than 2 hours (yufengshen)
+    * adjust fixed value of cpu/net and do not expand to virtual resources (yhc)
+
+* Ultrainmng
+    * encryption between seeds communication (zuofei)
+
 ### 2019-08-02 Release(Commit: 0230026a5bc827d013c9d474f4230663e0c51dd1)
 
 * Nodultrain
