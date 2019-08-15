@@ -186,7 +186,6 @@ Following are the code structure of some of the core components:
 ├── contracts                 // system & test smart contracts
 ├── core                      // core data structure for consensus
 ├── crypto                    // various crypto (e.g. ED25519, BLS) related components
-├── docs
 ├── lightclient               // light client for cross chain communication
 ├── p2p                       // p2p communication impl
 ├── plugins                   // feature components as plugins
