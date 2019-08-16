@@ -134,10 +134,14 @@ void monitor_plugin_impl::processReportTask() {
 }
 
 void monitor_plugin_impl::sendStaticConfigInfo() {
-  periodic_report_static_data configInfo = m_monitorHandler.getStaticConfigInfo();
-  configInfo.nodeIp = self_endpoint.address().to_v4().to_string();
-  configInfo.configuredPeers = supplied_peers;
-  call(monitor_central_server, call_path_static, configInfo);
+  auto sendStatic = [this]() {
+      periodic_report_static_data configInfo = this->m_monitorHandler.getStaticConfigInfo();
+      configInfo.nodeIp = this->self_endpoint.address().to_v4().to_string();
+      configInfo.configuredPeers = this->supplied_peers;
+      call(this->monitor_central_server, this->call_path_static, configInfo);
+  };
+  std::thread thrd(sendStatic);
+  thrd.detach();
 }
 
 monitor_plugin::monitor_plugin():my(new monitor_plugin_impl()){}
