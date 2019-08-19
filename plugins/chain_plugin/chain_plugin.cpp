@@ -1384,19 +1384,22 @@ read_only::get_global_exten_result read_only::get_global_exten_data(const read_o
     }
     return result;
 }
-bool read_only::is_exec_patch_code( int patch_version_number ) const{
+uint32_t read_only::get_upgrade_version_number() const{
    try {
       read_only::get_global_exten_params p;
       p.index = read_only::global_state_exten_type_key::version_number;
       read_only::get_global_exten_result result = get_global_exten_data( p );
-      if( result.global_exten_data.empty() )
-         return false;
-      else
-         return std::stoi(result.global_exten_data.c_str()) >= patch_version_number ? true : false;
+      if( !result.global_exten_data.empty() )
+         return std::stoul(result.global_exten_data.c_str());
    } catch (...) {
-      elog("is_exec_patch_code exception");
+      elog("get_upgrade_version_number exception");
    }
-   return false;
+   return 0;
+}
+
+bool read_only::is_exec_patch_code( int patch_version_number ) const{
+   if( patch_version_number <= 0 ) return false;
+   return get_upgrade_version_number() >= patch_version_number;
 }
 static fc::variant get_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms, const name& key) {
     const auto table_type = get_table_type(abi, N(rand));

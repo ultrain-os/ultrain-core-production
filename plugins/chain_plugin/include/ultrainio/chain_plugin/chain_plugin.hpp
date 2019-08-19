@@ -462,7 +462,7 @@ public:
        std::string global_exten_data = "";
    };
    get_global_exten_result get_global_exten_data(const get_global_exten_params& p) const;
-
+   uint32_t get_upgrade_version_number() const;
    bool is_exec_patch_code( int patch_version_number ) const;
    bool is_genesis_finished()const;
    uint64_t get_worldstate_interval()const;
