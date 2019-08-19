@@ -123,6 +123,7 @@ enum patch_update_version{
     lifecycle_onfinish = 4,
     verify_genesis_signature_in_lightclient = 5,
     add_account_sequence_object = 6, //Add account_sequence_object to reduce memory usage
+    set_fixed_cpu_net_value = 7, //Set a fixed cpu,net value for a single resource package
 };
 
 } } } // namespace ultrainio::chain::config

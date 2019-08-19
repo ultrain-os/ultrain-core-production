@@ -77,9 +77,11 @@ namespace ultrainio { namespace chain { namespace resource_limits {
          account_resource_limit get_account_cpu_limit_ex( const account_name& name, bool elastic = true) const;
          account_resource_limit get_account_net_limit_ex( const account_name& name, bool elastic = true) const;
          int64_t get_account_ram_usage( const account_name& name ) const;
+         void set_upgrade_version_number( uint32_t version_number ) { upgrade_version_number = version_number; }
 
       private:
          chainbase::database& _db;
+         uint32_t upgrade_version_number = 0;
    };
 } } } /// ultrainio::chain
 

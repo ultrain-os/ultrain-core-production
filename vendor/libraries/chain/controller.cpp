@@ -1400,8 +1400,10 @@ struct controller_impl {
 
       ULTRAIN_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                 ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
-
-      ilog("----------- START BLOCK");
+      const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
+      const auto upgrade_version_number = ro_api.get_upgrade_version_number();
+      resource_limits.set_upgrade_version_number( upgrade_version_number );
+      ilog("----------- START BLOCK upgrade_version_number:${version}", ("version", upgrade_version_number));
 
       auto guard_pending = fc::make_scoped_exit([this](){
          pending.reset();
