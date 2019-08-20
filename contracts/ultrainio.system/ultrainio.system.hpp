@@ -84,6 +84,7 @@ namespace ultrainiosystem {
          refund_delegate_consensus_seconds = 10,
          link_auth_fee = 11,
          res_transfer_fee = 12,
+         pending_resource_check = 13,
          global_state_key_end
       };
 

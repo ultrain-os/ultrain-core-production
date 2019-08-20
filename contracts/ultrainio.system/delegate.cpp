@@ -271,6 +271,10 @@ namespace ultrainiosystem {
          uint32_t cur_block_height = (uint32_t)head_block_number() + 1;
          auto reslease_itr = _reslease_tbl.find( receiver );
          if( reslease_itr ==  _reslease_tbl.end() ) {
+            penddeltable pendingdel(_self,_self);
+            auto deltab_itr = pendingdel.find(receiver);
+            ultrainio_assert(deltab_itr == pendingdel.end(), "legacy resource is pending for clean up, please apply new resources later");
+
             ultrainio_assert( (combosize > 0) && (days > 0), "resource lease buy days and numbler must > 0" );
             cuttingfee = days*combosize;
             if(chain_itr == _chains.end()) {
@@ -293,6 +297,8 @@ namespace ultrainiosystem {
                      tot.free_account_number = (uint32_t)combosize* free_account_per_res;
                });
          } else {
+            //handle at most 100 expired resource_lease every 8 hours, so maybe the resource has expired
+            ultrainio_assert(reslease_itr->end_block_height > cur_block_height, "legacy resource is waiting for clean up, please apply new resource later");
             uint64_t free_account_number = 0;
             ultrainio_assert(((combosize > 0) && (days == 0))||((combosize == 0) && (days > 0)), "resource lease days and numbler can't increase them at the same time" );
             uint32_t  blocknumberhour = seconds_per_day/24/block_interval_seconds();
@@ -498,7 +504,13 @@ namespace ultrainiosystem {
 
    void system_contract::check_res_expire(){
       uint32_t block_height = (uint32_t)head_block_number() + 1;
-      uint32_t interval_num = seconds_per_day/block_interval_seconds()/3; //check every eight hours
+      uint32_t interval_num = 1;
+      if(1 == getglobalextenuintdata(ultrainio_global_state::pending_resource_check, 0)) {
+          interval_num = seconds_per_day/block_interval_seconds()/48; //check every half hour
+      } else {
+          interval_num = seconds_per_day/block_interval_seconds()/3; //check every eight hours
+      }
+
       if(block_height < 120 || block_height%interval_num != 0) {
          return;
       }
@@ -507,12 +519,15 @@ namespace ultrainiosystem {
       int64_t net_bytes = 0;
       int64_t cpu_bytes = 0;
       uint32_t  calc_num = 0;
+      std::string pending_res_status("0");
       resources_lease_table _reslease_tbl( _self, self_chain_name);
       for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
          if(leaseiter->end_block_height <= block_height){
             calc_num++;
-            if(calc_num > 100)
-               break;
+            if(calc_num > 100) {
+                pending_res_status = "1";
+                break;
+            }
             const auto& owner = leaseiter->owner;
             get_resource_limits( owner, &ram_bytes, &net_bytes, &cpu_bytes );
             if(ram_bytes == 0 && net_bytes == 0 && cpu_bytes == 0){
@@ -539,6 +554,7 @@ namespace ultrainiosystem {
             ++leaseiter;
          }
       }
+      setglobalextendata(ultrainio_global_state::pending_resource_check, pending_res_status);
 
       for(auto chain_iter = _chains.begin(); chain_iter != _chains.end(); ++chain_iter) {
           if (chain_iter->chain_name == N(master))
