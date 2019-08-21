@@ -1,5 +1,5 @@
 #pragma once
-
+#include <memory>
 #include <string>
 
 #include "rpos/Evidence.h"
