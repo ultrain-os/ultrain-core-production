@@ -7,18 +7,15 @@
 #include "rpos/EvidenceNull.h"
 
 namespace ultrainio {
-    Evidence EvidenceFactory::create(const std::string& str) {
-        fc::variant v(str);
-        if (!v.is_object()) {
-            return EvidenceNull();
+    std::shared_ptr<Evidence> EvidenceFactory::create(const std::string& str) {
+        fc::variant v = fc::json::from_string(str);
+        if (v.is_object()) {
+            fc::variant_object o = v.get_object();
+            fc::variant typeVar = o[Evidence::kType];
+            if (typeVar.as_int64() == Evidence::kSignMultiPropose) {
+                return std::make_shared<EvidenceMultiSign>(str);
+            }
         }
-        fc::variant_object o = v.get_object();
-        fc::variant typeVar = o[Evidence::kType];
-        int type;
-        typeVar.as<int>(type);
-        if (type == Evidence::kSignMultiPropose) {
-            return EvidenceMultiSign(str);
-        }
-        return EvidenceNull();
+        return std::make_shared<EvidenceNull>();
     }
 }

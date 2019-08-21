@@ -7,6 +7,6 @@
 namespace ultrainio {
     class EvidenceFactory {
     public:
-        static Evidence create(const std::string& str);
+        static std::shared_ptr<Evidence> create(const std::string& str);
     };
 }

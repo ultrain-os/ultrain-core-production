@@ -283,6 +283,7 @@ namespace ultrainio {
         void handle_message( connection_ptr c, const ultrainio::SyncStopMsg& msg);
 
         void start_broadcast(const net_message& msg, msg_priority p);
+        void start_broadcast(const SignedTransaction& trx);
         void send_block(const fc::sha256& node_id, const net_message& msg);
         bool send_req_sync(const ultrainio::ReqSyncMsg& msg);
         void send_block_num_range(const fc::sha256& node_id, const net_message& msg);
@@ -1744,6 +1745,10 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
             ilog ("enqueue send to peers : ${peer_address}", ("peer_address", peers_str));
         }
 
+    }
+
+    void net_plugin_impl::start_broadcast(const SignedTransaction& trx) {
+        dispatcher->bcast_transaction(packed_transaction(trx, packed_transaction::zlib));
     }
 
     void net_plugin_impl::send_block(const fc::sha256& node_id, const net_message& msg) {
@@ -3419,6 +3424,10 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
    void net_plugin::broadcast(const EchoMsg& echo) {
       ilog("broadcast echo");
       my->start_broadcast(net_message(echo), msg_priority_rpos);
+   }
+
+   void net_plugin::broadcast(const SignedTransaction& trx) {
+      my->start_broadcast(trx);
    }
 
    void net_plugin::send_block(const fc::sha256& node_id, const ultrainio::SyncBlockMsg& msg) {

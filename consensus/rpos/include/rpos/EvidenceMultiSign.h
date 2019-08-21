@@ -20,10 +20,10 @@ namespace ultrainio {
 
         static const std::string kAccount;
 
-        AccountName mAccount;
+        AccountName m_Account;
 
-        SignedBlockHeader mA;
+        SignedBlockHeader m_A;
 
-        SignedBlockHeader mB;
+        SignedBlockHeader m_B;
     };
 }
