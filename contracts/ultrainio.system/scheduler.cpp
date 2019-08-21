@@ -169,8 +169,7 @@ namespace ultrainiosystem {
     void system_contract::regsubchain(name chain_name, uint64_t chain_type, const std::string& genesis_producer_pubkey) {
         require_auth(N(ultrainio));
         ultrainio_assert(_gstate.is_master_chain(), "only master chain can register new chain");
-        ultrainio_assert(chain_name != default_chain_name, "subchian cannot named as default.");
-        ultrainio_assert(chain_name != self_chain_name, "subchian cannot named as 0");
+        ultrainio_assert(chain_name != default_chain_name && chain_name != self_chain_name && chain_name != N(master), "unusable chian name");
         auto itor = _chains.find(chain_name);
         ultrainio_assert(itor == _chains.end(), "there has been a subchian with this name");
         chaintypes_table type_tbl(_self, _self);
@@ -247,11 +246,28 @@ namespace ultrainiosystem {
     /// @abi action
     void system_contract::acceptheader (name chain_name,
                                   const std::vector<ultrainio::signed_block_header>& headers) {
-        require_auth(current_sender());
         ultrainio_assert(!headers.empty(), "at least one block should be contained");
         ultrainio_assert(headers.size() <= 10, "too many blocks are reported.");
         auto ite_chain = _chains.find(chain_name);
         ultrainio_assert(ite_chain != _chains.end(), "subchian is not existed.");
+        name scope_name(chain_name);
+        if(chain_name == N(master)) {
+            scope_name = self_chain_name;
+        }
+        account_name sender = current_sender();
+        producers_table _producer_chain(_self, scope_name);
+        auto prod = _producer_chain.find(sender);
+        if(_producer_chain.end() == prod) {
+            auto ite_cmt = ite_chain->committee_set.begin();
+            bool valid_sender = false;
+            for(; ite_cmt != ite_chain->committee_set.end(); ++ite_cmt) {
+                if(ite_cmt->owner == sender) {
+                    valid_sender = true;
+                    break;
+                }
+            }
+            ultrainio_assert(valid_sender, "invalid sender");
+        }
         bool synced = headers.size() == 10 ? false : true;
         uint32_t confirmed_number_before = ite_chain->confirmed_block_number;
         checksum256 final_confirmed_id;
@@ -276,13 +292,8 @@ namespace ultrainiosystem {
             if((block_proposer == N(genesis) && block_number != initial_block_number) ||
                 confirm_point::is_confirm_point(headers[idx])) {
                 char confirm_id[32];
-                if(!accept_block_header(chain_name, headers[idx], confirm_id, sizeof(confirm_id))) {
-                    print("error: light client check failed\n");
-                    need_report = false;
-                    final_confirmed_id = confirm_point::get_confirmed_block_id(headers[idx]);
-                } else {
-                    memcpy(final_confirmed_id.hash, confirm_id, sizeof(confirm_id));
-                }
+                ultrainio_assert(accept_block_header(chain_name, headers[idx], confirm_id, sizeof(confirm_id)), "light client check failed");
+                memcpy(final_confirmed_id.hash, confirm_id, sizeof(confirm_id));
                 uint32_t confirm_num = block_header::num_from_id(final_confirmed_id);
                 if(confirm_num > ite_chain->confirmed_block_number) {
                     new_confirm = true;
@@ -359,6 +370,7 @@ namespace ultrainiosystem {
                 }
             });
         }
+        ultrainio_assert(ite_chain->unconfirmed_blocks.size() < 100, "too many uncomfirmed blocks");
     }
 
     void system_contract::clearchain(name chain_name, bool users_only) {
@@ -399,14 +411,6 @@ namespace ultrainiosystem {
             });
         }
         print( "clearchain chain_name:", name{chain_name}, " users_only:", users_only, "\n" );
-        producers_table _producers(_self, chain_name);
-        auto ite = _producers.begin();
-        for(; ite != _producers.end(); ++ite) {
-            _producers.modify(ite, [&](auto & p) {
-                p.unpaid_balance = 0;
-                p.total_produce_block = 0;
-            });
-        }
         block_table chain_block_tbl(_self, chain_name);
         auto it_blk = chain_block_tbl.begin();
         while (it_blk != chain_block_tbl.end()) {
