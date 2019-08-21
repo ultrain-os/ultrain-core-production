@@ -332,7 +332,11 @@ public:
 
    vector<get_subchain_committee_result> get_subchain_committee(const get_subchain_committee_params& p) const;
 
-   using get_subchain_resource_params = get_subchain_committee_params;
+   struct get_subchain_resource_params {
+       name         chain_name;
+       uint16_t     record_minutes;
+   };
+
    std::vector<ultrainio::chain::resources_lease> get_subchain_resource(const get_subchain_resource_params& p) const;
 
    using get_subchain_block_num_params = get_subchain_committee_params;
@@ -798,6 +802,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_params, (code)(
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_params, (chain_name));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk)(bls_pk) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_resource_params, (chain_name)(record_minutes) );
 FC_REFLECT( ultrainio::chain_apis::read_only::block_num_and_id, (number)(block_id));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_block_num_result, (confirmed_block)(forks));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_unconfirmed_header_params, (chain_name));

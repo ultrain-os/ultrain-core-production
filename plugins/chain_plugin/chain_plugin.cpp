@@ -1052,7 +1052,7 @@ vector<ultrainio::chain::resources_lease> results;
         fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
         fc::raw::unpack(ds, resLease);
         auto headblock = db.head_block_num();
-        auto blockinterval = (30 * 60 * 1000) /config::block_interval_ms;
+        auto blockinterval = (p.record_minutes * 60 * 1000) /config::block_interval_ms;
         if(resLease.modify_block_height <= headblock && (headblock - resLease.modify_block_height) <= blockinterval) {
             results.push_back(resLease);
         }
