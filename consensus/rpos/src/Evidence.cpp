@@ -12,4 +12,8 @@ namespace ultrainio {
     bool Evidence::isNull() const {
         return false;
     }
+
+    std::string Evidence::toString() const {
+        return std::string();
+    }
 }

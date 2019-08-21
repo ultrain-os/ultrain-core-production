@@ -14,6 +14,7 @@ add_library( ultrainio_rpos
         src/Genesis.cpp
         src/MsgBuilder.cpp
         src/MsgMgr.cpp
+        src/NativeTrx.cpp
         src/Node.cpp
         src/NodeInfo.cpp
         src/Proof.cpp

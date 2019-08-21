@@ -19,4 +19,5 @@ namespace ultrainio {
     using Block = chain::signed_block;
     using BlockHeader = chain::block_header;
     using SignedBlockHeader = chain::signed_block_header;
+    using ChainIdType = chain::chain_id_type;
 }

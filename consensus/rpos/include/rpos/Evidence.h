@@ -14,5 +14,7 @@ namespace ultrainio {
         virtual ~Evidence();
 
         virtual bool isNull() const;
+
+        virtual std::string toString() const;
     };
 }
