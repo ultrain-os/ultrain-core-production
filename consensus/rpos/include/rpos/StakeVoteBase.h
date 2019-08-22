@@ -25,7 +25,7 @@ namespace ultrainio {
     class StakeVoteBase {
     public:
         // static function
-        static std::shared_ptr<NodeInfo> getKeyKeeper();
+        static std::shared_ptr<NodeInfo> getNodeInfo();
 
         static AccountName getMyAccount();
 
@@ -123,6 +123,6 @@ namespace ultrainio {
         uint32_t m_blockNum = 0;
 
     private:
-        static std::shared_ptr<NodeInfo> s_keyKeeper;
+        static std::shared_ptr<NodeInfo> s_nodeInfo;
     };
 }

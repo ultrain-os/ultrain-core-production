@@ -24,9 +24,10 @@ namespace ultrainio {
      * 1. genesis can be config by itself
      * 2. non-producer can not config private and account
      */
-    void NodeInfo::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& blsSk, const std::string& account) {
+    void NodeInfo::setCommitteeInfo(const std::string& account, const std::string& sk, const std::string& blsSk, const std::string& accountSk) {
         m_privateKey = PrivateKey(sk);
         m_account = account;
+        m_accountSk = fc::crypto::private_key(accountSk);
         if (Genesis::kGenesisAccount == m_account) {
             ULTRAIN_ASSERT(m_privateKey.getPublicKey() == PublicKey(Genesis::s_genesisPk),
                     chain::chain_exception,
@@ -50,6 +51,10 @@ namespace ultrainio {
 
     PrivateKey NodeInfo::getPrivateKey() const {
         return m_privateKey;
+    }
+
+    fc::crypto::private_key NodeInfo::getAccountPrivateKey() const {
+        return m_accountSk;
     }
 
     bool NodeInfo::getMyBlsPrivateKey(unsigned char* sk, int skSize) const {
