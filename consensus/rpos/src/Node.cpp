@@ -70,8 +70,8 @@ namespace ultrainio {
         m_schedulerPtr->enableEventRegister(v);
     }
 
-    void Node::setMyInfoAsCommitteeKey(const std::string& sk, const std::string& blsSk, const std::string& account) {
-        StakeVoteBase::getKeyKeeper()->setMyInfoAsCommitteeKey(sk, blsSk, account);
+    void Node::setCommitteeInfo(const std::string& account, const std::string& sk, const std::string& blsSk, const std::string& accountSk) {
+        StakeVoteBase::getNodeInfo()->setCommitteeInfo(account, sk, blsSk, accountSk);
     }
 
     bool Node::getNonProducingNode() const {

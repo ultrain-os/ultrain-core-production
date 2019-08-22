@@ -34,7 +34,7 @@ namespace ultrainio {
                 }                                                                           \
             }
 
-    std::shared_ptr<NodeInfo> StakeVoteBase::s_keyKeeper = std::make_shared<NodeInfo>();
+    std::shared_ptr<NodeInfo> StakeVoteBase::s_nodeInfo = std::make_shared<NodeInfo>();
 
     StakeVoteBase::StakeVoteBase(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr)
             : m_committeeStatePtr(committeeStatePtr), m_blockNum(blockNum) {
@@ -50,20 +50,20 @@ namespace ultrainio {
     StakeVoteBase::~StakeVoteBase() {
     }
 
-    std::shared_ptr<NodeInfo> StakeVoteBase::getKeyKeeper() {
-        return s_keyKeeper;
+    std::shared_ptr<NodeInfo> StakeVoteBase::getNodeInfo() {
+        return s_nodeInfo;
     }
 
     AccountName StakeVoteBase::getMyAccount() {
-        return s_keyKeeper->getMyAccount();
+        return s_nodeInfo->getMyAccount();
     }
 
     PrivateKey StakeVoteBase::getMyPrivateKey() {
-        return s_keyKeeper->getPrivateKey();
+        return s_nodeInfo->getPrivateKey();
     }
 
     bool StakeVoteBase::getMyBlsPrivateKey(unsigned char* sk, int skSize) {
-        return s_keyKeeper->getMyBlsPrivateKey(sk, skSize);
+        return s_nodeInfo->getMyBlsPrivateKey(sk, skSize);
     }
 
     bool StakeVoteBase::newRound(ConsensusPhase phase, int baxCount) {
@@ -215,8 +215,8 @@ namespace ultrainio {
     }
 
     PublicKey StakeVoteBase::getPublicKey(const AccountName& account) const {
-        if (account == s_keyKeeper->getMyAccount()) {
-            return s_keyKeeper->getPrivateKey().getPublicKey();
+        if (account == s_nodeInfo->getMyAccount()) {
+            return s_nodeInfo->getPrivateKey().getPublicKey();
         } else if (account == AccountName(Genesis::kGenesisAccount)) {
             return PublicKey(Genesis::s_genesisPk);
         } else {

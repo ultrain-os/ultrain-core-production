@@ -42,7 +42,7 @@ namespace ultrainio {
 
         static std::shared_ptr<Node> getInstance();
 
-        void setMyInfoAsCommitteeKey(const std::string& sk, const std::string& blsKey, const std::string& account);
+        void setCommitteeInfo(const std::string& account, const std::string& sk, const std::string& blsSk, const std::string& accountSk);
 
         void setNonProducingNode(bool);
 

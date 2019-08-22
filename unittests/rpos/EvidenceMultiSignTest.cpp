@@ -10,11 +10,11 @@ using namespace ultrainio;
 BOOST_AUTO_TEST_SUITE(evidencemultisign_unittest)
 
     BOOST_AUTO_TEST_CASE(normal) {
-        AccountName acc("xiaofen");
+        AccountName acc("user.111");
         SignedBlockHeader a;
-        a.proposer = AccountName("xiaofen");
+        a.proposer = AccountName("user.111");
         SignedBlockHeader b;
-        b.proposer = AccountName("xiaofen");
+        b.proposer = AccountName("user.111");
         EvidenceMultiSign evidenceMultiSign(acc, a, b);
         std::cout << evidenceMultiSign.toString() << std::endl;
         std::shared_ptr<Evidence> evidence = EvidenceFactory::create(evidenceMultiSign.toString());

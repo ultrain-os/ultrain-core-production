@@ -671,7 +671,7 @@ void producer_rpos_plugin::plugin_startup()
        result = aes_decode(key, my->_my_bls_sk);
        my->_my_bls_sk = std::move(result);
    }
-   nodePtr->setMyInfoAsCommitteeKey(my->_my_sk_as_committee, my->_my_bls_sk, my->_my_account_as_committee);
+   nodePtr->setCommitteeInfo(my->_my_account_as_committee, my->_my_sk_as_committee, my->_my_bls_sk, my->_my_sk_as_account);
    ULTRAIN_ASSERT( !my->_genesis_time.empty(),
            plugin_config_exception,
            "Genesis-time can not be empty,should be set in config.ini.");
