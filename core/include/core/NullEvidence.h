@@ -1,9 +1,9 @@
 #pragma once
 
-#include "rpos/Evidence.h"
+#include "core/Evidence.h"
 
 namespace ultrainio {
-    class EvidenceNull : public Evidence {
+    class NullEvidence : public Evidence {
     public:
         virtual bool isNull() const;
     };

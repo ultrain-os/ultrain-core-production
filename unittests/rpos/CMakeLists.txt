@@ -55,12 +55,3 @@ add_executable( evilblsdetector_unittest
 target_link_libraries( evilblsdetector_unittest ultrainio_rpos )
 
 add_test(NAME evilblsdetector_unittest COMMAND evilblsdetector_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-### EvidenceMultiSign
-
-add_executable( evidencemultisign_unittest
-        EvidenceMultiSignTest.cpp)
-
-target_link_libraries( evidencemultisign_unittest ultrainio_rpos )
-
-add_test(NAME evidencemultisign_unittest COMMAND evidencemultisign_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

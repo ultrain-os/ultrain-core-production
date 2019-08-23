@@ -36,6 +36,8 @@
 #include <signal.h>
 
 #include <core/BlsVoterSet.h>
+#include <core/Evidence.h>
+#include <core/EvidenceFactory.h>
 #include <core/types.h>
 #include <lightclient/CommitteeSet.h>
 #include <lightclient/EpochEndPoint.h>
@@ -119,6 +121,9 @@ using boost::signals2::scoped_connection;
 using ultrainio::LightClient;
 using ultrainio::CommitteeSet;
 using ultrainio::LightClientMgr;
+using ultrainio::Evidence;
+using ultrainio::EvidenceFactory;
+using ultrainio::EvilInfo;
 
 class light_client_callback : public ultrainio::chain::callback {
 public:
@@ -160,6 +165,14 @@ public:
         LightClientProducer::setConfirmPointInterval(result.confirm_point_interval);
         m_lightClientProducer->acceptNewHeader(header);
         return true;
+    }
+
+    int on_verify_evil(const std::string& evidence, const EvilInfo& evilInfo) {
+        std::shared_ptr<Evidence> evidencePtr = EvidenceFactory::create(evidence);
+        if (evidencePtr->verify(ultrainio::PublicKey(evilInfo.commiteePk))) {
+            return evidencePtr->type();
+        }
+        return 0;
     }
 
 private:

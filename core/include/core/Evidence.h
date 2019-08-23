@@ -2,10 +2,16 @@
 
 #include <string>
 
+#include <crypto/PublicKey.h>
+
+#include "core/types.h"
+
 namespace ultrainio {
     class Evidence {
     public:
         static const std::string kType;
+
+        static const int kNone;
 
         static const int kSignMultiPropose; // send multi-propose message
 
@@ -16,5 +22,11 @@ namespace ultrainio {
         virtual bool isNull() const;
 
         virtual std::string toString() const;
+
+        virtual AccountName getEvilAccount() const;
+
+        virtual bool verify(const PublicKey& pk);
+
+        virtual int type() const;
     };
 }

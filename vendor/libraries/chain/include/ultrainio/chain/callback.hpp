@@ -7,6 +7,12 @@
 
 namespace ultrainio {
     namespace chain {
+
+        struct EvilInfo {
+            account_name accountName;
+            std::string commiteePk;
+        };
+
         // interface
         class callback {
         public:
@@ -16,6 +22,10 @@ namespace ultrainio {
                                                 chain::block_id_type& id);
 
             virtual bool on_replay_block(const chain::block_header& header);
+
+            virtual int on_verify_evil(const std::string& evidence, const EvilInfo& evilInfo);
         };
     }
 } // namespace ultrainio::chain
+
+FC_REFLECT( ultrainio::chain::EvilInfo, (accountName)(commiteePk) )
