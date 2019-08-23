@@ -1,10 +1,10 @@
-#include "rpos/EvidenceFactory.h"
+#include "core/EvidenceFactory.h"
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
-#include "rpos/EvidenceMultiSign.h"
-#include "rpos/EvidenceNull.h"
+#include "core/MultiSignEvidence.h"
+#include "core/NullEvidence.h"
 
 namespace ultrainio {
     std::shared_ptr<Evidence> EvidenceFactory::create(const std::string& str) {
@@ -13,9 +13,9 @@ namespace ultrainio {
             fc::variant_object o = v.get_object();
             fc::variant typeVar = o[Evidence::kType];
             if (typeVar.as_int64() == Evidence::kSignMultiPropose) {
-                return std::make_shared<EvidenceMultiSign>(str);
+                return std::make_shared<MultiSignEvidence>(str);
             }
         }
-        return std::make_shared<EvidenceNull>();
+        return std::make_shared<NullEvidence>();
     }
 }

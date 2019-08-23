@@ -1,7 +1,11 @@
 file(GLOB HEADERS "include/core/*.h")
 add_library( ultrainio_core
              src/BlsVoterSet.cpp
+             src/Evidence.cpp
+             src/EvidenceFactory.cpp
              src/Message.cpp
+             src/MultiSignEvidence.cpp
+             src/NullEvidence.cpp
              src/utils.cpp
         ${HEADERS} )
 

@@ -565,6 +565,17 @@ class privileged_api : public context_aware_api {
           return res;
       }
 
+      int verify_evil(array_ptr<char> evidence, size_t evidence_size, array_ptr<char> evil_info, size_t evil_info_size) {
+          std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
+          datastream<char*> ds(evidence, evidence_size);
+          std::string info;
+          fc::raw::unpack(ds, info);
+          datastream<char*> evil_ds(evil_info, evil_info_size);
+          EvilInfo evilInfo;
+          fc::raw::unpack(evil_ds, evilInfo);
+          return cb->on_verify_evil(info, evilInfo);
+      }
+
       void get_account_pubkey(account_name user, array_ptr<char> owner_pub, size_t owner_publen, array_ptr<char> active_pub, size_t active_publen ) {
          const auto& permission_o = context.db.get<permission_object,by_owner>(boost::make_tuple(user, N(owner)));
          string owner_pk = string(permission_o.auth.keys[0].key);

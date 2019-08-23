@@ -6,12 +6,12 @@
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
 
-#include <rpos/EvidenceMultiSign.h>
+#include <core/MultiSignEvidence.h>
 
 namespace ultrainio {
     void NativeTrx::sendMultiSignTrx(const AccountName& p, const fc::crypto::private_key& sk,
             const SignedBlockHeader& one, const SignedBlockHeader& other) {
-        EvidenceMultiSign evidence(one.proposer, one, other);
+        MultiSignEvidence evidence(one, other);
         Action action = buildAction(N(ultrainio), NEX(verifyprodevil), vector<PermissionLevel>{{p, chain::config::active_name}}, evidence.toString());
         chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
         SignedTransaction trx = buildTrx(action, chain.head_block_id(), chain.get_chain_id(), sk, chain.head_block_time() + fc::seconds(60), 5000);

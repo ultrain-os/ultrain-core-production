@@ -27,12 +27,12 @@
 #include <base/Memory.h>
 #include <crypto/Signer.h>
 #include <crypto/Validator.h>
+#include <core/Evidence.h>
 #include <lightclient/CommitteeSet.h>
 #include <lightclient/EpochEndPoint.h>
 #include <lightclient/LightClientProducer.h>
 #include <lightclient/LightClientMgr.h>
 #include <rpos/Config.h>
-#include <rpos/Evidence.h>
 #include <rpos/EvilBlsDetector.h>
 #include <rpos/Genesis.h>
 #include <rpos/MsgBuilder.h>
