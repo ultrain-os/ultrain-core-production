@@ -590,9 +590,9 @@ namespace ultrainio {
         }
 
         if (isLaterMsg(propose)) {
-            if (m_evilDDosDetector.evil(propose, Node::getInstance()->getRoundCount())) {
-                elog("evil echo : blockNum : ${blockNum} local : ${local}",
-                        ("blockNum", propose.block.block_num())("local", Node::getInstance()->getBlockNum()));
+            if (m_evilDDosDetector.evil(propose, Node::getInstance()->getRoundCount(), Node::getInstance()->getBlockNum())) {
+                elog("evil propose id : ${id} : blockNum : ${blockNum} local : ${local}",
+                     ("id", propose.block.id())("blockNum", propose.block.block_num())("local", Node::getInstance()->getBlockNum()));
                 return false;
             }
             if (duplicated(propose)) {
@@ -666,7 +666,7 @@ namespace ultrainio {
         }
 
         if (isLaterMsg(echo)) {
-            if (m_evilDDosDetector.evil(echo, Node::getInstance()->getRoundCount())) {
+            if (m_evilDDosDetector.evil(echo, Node::getInstance()->getRoundCount(), Node::getInstance()->getBlockNum())) {
                 elog("evil echo : blockNum : ${blockNum} local : ${local}",
                         ("blockNum", BlockHeader::num_from_id(echo.blockId))("local", Node::getInstance()->getBlockNum()));
                 return false;
@@ -2110,7 +2110,7 @@ namespace ultrainio {
     void Scheduler::invokeDeduceWhenBax() {
         uint32_t blockNum = Node::getInstance()->getBlockNum();
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(blockNum);
-        m_evilDDosDetector.deduceWhenBax(stakeVotePtr->getSendEchoThreshold(),
+        m_evilDDosDetector.deduceWhenBax(stakeVotePtr->getSendEchoThreshold() + 1,
                 Node::getInstance()->getRoundCount(), blockNum, Node::getInstance()->getPhase());
     }
 

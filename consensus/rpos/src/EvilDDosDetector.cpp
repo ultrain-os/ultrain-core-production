@@ -31,24 +31,23 @@ namespace ultrainio {
                 uint32_t fallBlockNum = (now - middle) / 2;
                 m_maxBlockNum = BlockHeader::num_from_id(voterSet.commonEchoMsg.blockId) + 2 + fallBlockNum;
                 m_expiry = now + s_twoPhase;
-            } else {
-                m_maxBlockNum = BlockHeader::num_from_id(voterSet.commonEchoMsg.blockId) + 2;
-                m_expiry = now + s_twoPhase;
             }
         }
         clear();
     }
 
-    bool EvilDDosDetector::evil(const EchoMsg& echo, uint32_t now) const {
+    bool EvilDDosDetector::evil(const EchoMsg& echo, uint32_t now, uint32_t localBlockNum) const {
         if (stillEffect(now)) {
-            return BlockHeader::num_from_id(echo.blockId) > m_maxBlockNum;
+            uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
+            return  blockNum > m_maxBlockNum && blockNum > localBlockNum;
         }
         return false;
     }
 
-    bool EvilDDosDetector::evil(const ProposeMsg& propose, uint32_t now) const {
+    bool EvilDDosDetector::evil(const ProposeMsg& propose, uint32_t now, uint32_t localBlockNum) const {
         if (stillEffect(now)) {
-            return BlockHeader::num_from_id(propose.block.id()) > m_maxBlockNum;
+            uint32_t blockNum = BlockHeader::num_from_id(propose.block.id());
+            return blockNum > m_maxBlockNum && blockNum > localBlockNum;
         }
         return false;
     }
@@ -63,7 +62,7 @@ namespace ultrainio {
         if (phase == kPhaseBAX) {
             std::vector<AccountName> accounts;
             for (auto e : m_recentEchoMsgV) {
-                if (e.timestamp >= now - 1 && BlockHeader::num_from_id(e.blockId) == blockNum) {
+                if (e.timestamp == now - 1 && BlockHeader::num_from_id(e.blockId) == blockNum) {
                     accounts.push_back(e.account);
                 }
             }
