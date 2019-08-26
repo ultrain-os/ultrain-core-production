@@ -86,7 +86,9 @@ namespace ultrainiosystem {
    }
 
    void system_contract::send_rewards_for_producer( account_name producer, account_name reward_account, const name& chain_name, uint64_t unpaid_balance ) {
-      require_auth( reward_account );
+      if( !has_auth( N(u.reward.1) ) ) {
+         require_auth( reward_account );
+      }
       account_name pay_account = ( chain_name == self_chain_name ) ? N(utrio.mfee) : N(utrio.resfee) ;
       asset pay_tokens = ultrainio::token(N(utrio.token)).get_balance( pay_account,symbol_type(CORE_SYMBOL).name());
       ultrainio_assert( pay_tokens.amount >= (int64_t)unpaid_balance, " Insufficient funds to claim rewards" );
