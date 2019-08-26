@@ -10,9 +10,9 @@ namespace ultrainio {
     public:
         void deduceBlockNum(const VoterSet& voterSet, int f, uint32_t now, ConsensusPhase phase);
 
-        bool evil(const EchoMsg& echo, uint32_t now) const;
+        bool evil(const EchoMsg& echo, uint32_t now, uint32_t localBlockNum) const;
 
-        bool evil(const ProposeMsg& propose, uint32_t now) const;
+        bool evil(const ProposeMsg& propose, uint32_t now, uint32_t localBlockNum) const;
 
         void gatherWhenBax(const EchoMsg& echo, uint32_t blockNum, ConsensusPhase phase);
 
