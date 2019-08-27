@@ -241,7 +241,8 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
          }
       }
       if (!found) {
-         ULTRAIN_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", pk));
+         //ULTRAIN_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", pk));
+         wlog("Public key not found in unlocked wallets ${k}", ("k", pk));
       }
    }
 
