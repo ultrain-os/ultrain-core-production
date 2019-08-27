@@ -153,6 +153,7 @@ string url = "http://127.0.0.1:8888/";
 string wallet_url = "http://127.0.0.1:8900/";
 bool no_verify = false;
 vector<string> headers;
+vector<string> addl_wallet_urls;
 
 auto   tx_expiration = fc::seconds(60);
 string tx_ref_block_num_or_id;
@@ -160,6 +161,7 @@ bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
+bool   tx_multi_urls = false;
 bool   print_request = false;
 bool   print_response = false;
 
@@ -185,6 +187,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("-x,--expiration", parse_expiration, localized("set the time in seconds before a transaction expires, defaults to 60s"));
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
+   cmd->add_flag("-m,--multi-urls", tx_multi_urls, localized("Specify if multiple wallets urls should be used to sign transaction"));
    cmd->add_flag("-j,--json", tx_print_json, localized("print result as json"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
@@ -261,9 +264,24 @@ fc::variant determine_required_keys(const signed_transaction& trx) {
    // TODO better error checking
    //wdump((trx));
    const auto& public_keys = call(wallet_url, wallet_public_keys);
-   auto get_arg = fc::mutable_variant_object
+   fc::mutable_variant_object get_arg;
+   flat_set<public_key_type> all_keys;
+
+   if (tx_multi_urls && addl_wallet_urls.size() > 0) {
+      all_keys = public_keys.as<flat_set<public_key_type>>();
+
+      for (const auto& addl_url : addl_wallet_urls) {
+         const auto& more_keys = call(addl_url, wallet_public_keys);
+         all_keys.merge(more_keys.as<flat_set<public_key_type>>());
+      }
+      get_arg = fc::mutable_variant_object
+           ("transaction", (transaction)trx)
+           ("available_keys", all_keys);
+   } else {
+      get_arg = fc::mutable_variant_object
            ("transaction", (transaction)trx)
            ("available_keys", public_keys);
+   }
    const auto& required_keys = call(get_required_keys, get_arg);
    return required_keys["required_keys"];
 }
@@ -272,6 +290,21 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const
    fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id)};
    const auto& signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
    trx = signed_trx.as<signed_transaction>();
+
+   // Try to sign trx from more wallet urls when trx -m flag is set
+   if (tx_multi_urls && addl_wallet_urls.size() > 0) {
+      for (const auto& addl_url : addl_wallet_urls) {
+         const auto& addl_trx = call(addl_url, wallet_sign_trx, sign_args);
+         for (const auto& sig : addl_trx.as<signed_transaction>().signatures) {
+            trx.signatures.push_back(sig);
+         }
+      }
+      fc::deduplicate(trx.signatures);
+   }
+   // The check in wallet manager is removed so we add check here
+   if (trx.signatures.size() != required_keys.as<flat_set<public_key_type>>().size()) {
+      ULTRAIN_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets");
+   }
 }
 
 fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
@@ -1275,6 +1308,16 @@ void get_account( const string& accountName, bool json_format ) {
    }
 }
 
+CLI::callback_t addl_wallet_callback = [](CLI::results_t res) {
+   vector<string>::iterator itr;
+
+   for (itr = res.begin(); itr != res.end(); itr++) {
+       addl_wallet_urls.push_back(*itr);
+   }
+
+   return true;
+};
+
 CLI::callback_t header_opt_callback = [](CLI::results_t res) {
    vector<string>::iterator itr;
 
@@ -1302,6 +1345,7 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-u,--url", ::url, localized("the http/https URL where nodultrain is running"), true );
    app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where kultraind is running"), true );
+   app.add_option( "--addl-wallet-url", addl_wallet_callback, localized("pass more wallet URLs; repeat this option to pass multiple urls"));
 
    app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
    app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
