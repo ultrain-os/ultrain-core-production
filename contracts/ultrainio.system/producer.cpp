@@ -122,7 +122,7 @@ namespace ultrainiosystem {
             disabled_producers_table dp_tbl(_self, _self);
             auto it_disable = dp_tbl.find(producer);
             ultrainio_assert(it_disable != dp_tbl.end(), "error: producer is not in disabled table");
-            prod_info = producer_info(*it_disable, 0, 0, 0);
+            prod_info = producer_info(*it_disable, remove_rewards_for_enableproducer( producer ), 0, 0);
             dp_tbl.erase(it_disable);
 
             print("move producer ", name{producer}, " from disable");
@@ -161,7 +161,6 @@ namespace ultrainiosystem {
         } else {
             ultrainio_assert( producerkey == prod_info.producer_key, "error: public producer key not consistent with the original chain" );
             ultrainio_assert( blskey == prod_info.bls_key, "error: public bls key not consistent with the original chain" );
-            prod_info.unpaid_balance = remove_rewards_for_enableproducer( prod_info.owner );
             remove_producer_from_evillist( producer );  //Will be moved to enabled producer, should be removed from the evil list
             add_to_chain(to_chain, prod_info, current_block_number);
             _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
