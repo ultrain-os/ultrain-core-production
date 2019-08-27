@@ -1314,6 +1314,11 @@ CLI::callback_t addl_wallet_callback = [](CLI::results_t res) {
    for (itr = res.begin(); itr != res.end(); itr++) {
        addl_wallet_urls.push_back(*itr);
    }
+   fc::deduplicate(addl_wallet_urls);
+   auto iter = std::find(addl_wallet_urls.begin(), addl_wallet_urls.end(), wallet_url);
+   if (iter != addl_wallet_urls.end()) {
+       addl_wallet_urls.erase(iter);
+   }
 
    return true;
 };
