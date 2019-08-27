@@ -273,8 +273,9 @@ namespace ultrainiosystem {
         checksum256 final_confirmed_id;
         bool new_confirm = false;
         uint64_t initial_block_number = get_initial_block_num(chain_name);
+        uint32_t block_number = 0;
         for(uint32_t idx = 0; idx < headers.size(); ++idx) {
-            auto block_number = headers[idx].block_num();
+            block_number = headers[idx].block_num();
             ultrainio_assert(block_number > ite_chain->confirmed_block_number, "block has been confirmed");
             auto block_id = headers[idx].id();
             const account_name block_proposer = headers[idx].proposer;
@@ -370,7 +371,7 @@ namespace ultrainiosystem {
                 }
             });
         }
-        ultrainio_assert(ite_chain->unconfirmed_blocks.size() < 100, "too many uncomfirmed blocks");
+        ultrainio_assert(block_number - ite_chain->confirmed_block_number <= 100, "too many unconfirmed blocks");
     }
 
     void system_contract::clearchain(name chain_name, bool users_only) {
