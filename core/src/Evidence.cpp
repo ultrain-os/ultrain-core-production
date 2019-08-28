@@ -3,6 +3,8 @@
 namespace ultrainio {
     const std::string Evidence::kType = "type";
 
+    const int Evidence::kReporterEvil = -1;
+
     const int Evidence::kNone = 0x0;
 
     const int Evidence::kSignMultiPropose = 0x1; // send multi-propose message
@@ -23,11 +25,7 @@ namespace ultrainio {
         return AccountName();
     }
 
-    bool Evidence::verify(const PublicKey& pk) {
-        return false;
-    }
-
-    int Evidence::type() const {
+    int Evidence::verify(const AccountName& accountName, const PublicKey& pk) {
         return Evidence::kNone;
     }
 }

@@ -565,15 +565,15 @@ class privileged_api : public context_aware_api {
           return res;
       }
 
-      int verify_evil(array_ptr<char> evidence, size_t evidence_size, array_ptr<char> evil_info, size_t evil_info_size) {
+      int native_verify_evil(array_ptr<char> evidence_array, size_t evidence_array_size, array_ptr<char> evil_array, size_t evil_array_size) {
           std::shared_ptr<callback> cb = callback_manager::get_self()->get_callback();
-          datastream<char*> ds(evidence, evidence_size);
-          std::string info;
-          fc::raw::unpack(ds, info);
-          datastream<char*> evil_ds(evil_info, evil_info_size);
-          EvilInfo evilInfo;
-          fc::raw::unpack(evil_ds, evilInfo);
-          return cb->on_verify_evil(info, evilInfo);
+          datastream<char*> ds(evidence_array, evidence_array_size);
+          std::string evidence_str;
+          fc::raw::unpack(ds, evidence_str);
+          datastream<char*> evil_ds(evil_array, evil_array_size);
+          evildoer evil;
+          fc::raw::unpack(evil_ds, evil);
+          return cb->on_verify_evil(evidence_str, evil);
       }
 
       void get_account_pubkey(account_name user, array_ptr<char> owner_pub, size_t owner_publen, array_ptr<char> active_pub, size_t active_publen ) {
@@ -2282,6 +2282,7 @@ REGISTER_INTRINSICS(privileged_api,
    (empower_to_chain,                 void(int64_t, int64_t)                )
    (is_empowered,                     int(int64_t, int64_t)                 )
    (lightclient_accept_block_header,  int(int64_t, int, int, int, int)      )
+   (native_verify_evil,               int(int, int, int, int)               )
    (get_account_pubkey,               void(int64_t, int, int, int, int)     )
 );
 

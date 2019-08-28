@@ -439,10 +439,16 @@ namespace ultrainiosystem {
    };
    typedef ultrainio::multi_index< N(cmtbltn), committee_bulletin>    cmtbulletin;
 
+   // sync with core/include/core/Evidence.h
    enum producer_evil_type {
-      not_evil_action = 0,
-      limit_time_not_produce = 1, //If there are no blocks issued during a specified period (default three days), tokens are not frozen
-      radio_error_echo_msg = 2, //Broadcast an error echo message
+      not_evil = 0,
+
+      // native
+      sign_multi_propose = 1, //If there are no blocks issued during a specified period (default three days), tokens are not frozen
+      vote_multi_propose = 2, //Broadcast an error echo message
+
+      // contract
+      limit_time_not_produce = 1000,
    };
    struct bulletin {
        uint64_t              block_num;
@@ -489,6 +495,12 @@ namespace ultrainiosystem {
        ULTRAINLIB_SERIALIZE(moveprod_param, (producer)(producerkey)(blskey)(from_disable)(from_chain)(to_disable)(to_chain) )
    };
 
+    struct evildoer {
+        account_name account;
+        std::string commitee_pk;
+        ULTRAINLIB_SERIALIZE(evildoer, (account)(commitee_pk))
+    };
+
    class system_contract : public native {
       private:
          global_state_singleton   _global;
@@ -502,6 +514,8 @@ namespace ultrainiosystem {
          sched_set_singleton      _schedsetting;
 
          bool accept_block_header(name chain_name, const ultrainio::signed_block_header& header, char* confirmed_bh_hash, size_t hash_size);
+
+         int verify_evil(const std::string& evidence, const evildoer& evil);
 
       public:
          system_contract( account_name s );
@@ -657,6 +671,7 @@ namespace ultrainiosystem {
     void empower_to_chain(account_name user, ultrainio::name chain_name);
     bool is_empowered(account_name user, ultrainio::name chain_name);
     bool lightclient_accept_block_header(ultrainio::name chain_name, const char* bh, size_t bh_size, char* confirmed_bh_buffer, size_t buffer_size);
+    int  native_verify_evil(const char* evidence, size_t evidence_size, const char* evil, size_t evil_size);
     void get_account_pubkey(account_name user, char* owner_pub, size_t owner_publen, char* active_pub, size_t active_publen );
    #ifdef __cplusplus
    }

@@ -192,26 +192,32 @@ namespace ultrainiosystem {
    void system_contract::verifyprodevil( account_name producer, const std::string& evil_info )
    */
    void system_contract::verifyprodevil() {
-      require_auth( _self );
+      //require_auth( _self );
       constexpr size_t max_stack_buffer_size = 512;
       size_t size = action_data_size();
       char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
       read_action_data( buffer, size );
-      account_name producer;
-      std::string evil_info;
-
+      account_name evil;
+      std::string evidence;
       datastream<const char*> ds( buffer, size );
-      ds >> producer >> evil_info;
-
-      //TODO  verify producer evil
-
-      uint128_t sendid = N(evilprod) + producer;
+      ds >> evil >> evidence;
+      auto briefprod = _briefproducers.find( evil );
+      ultrainio_assert( briefprod != _briefproducers.end(), "not a producer" );
+      ultrainio_assert( !briefprod->in_disable, "producer in disabled" );
+      producers_table _producers(_self, briefprod->location);
+      const auto& it = _producers.find( evil );
+      ultrainio_assert(it != _producers.end(), "producer is not found in its location");
+      producer_info prod = *it;
+      evildoer e = {evil, prod.producer_key};
+      int type = verify_evil(evidence, e);
+      ultrainio_assert(type != producer_evil_type::not_evil, "can not verify whether is evil");
+      uint128_t sendid = N(evilprod) + evil;
       cancel_deferred(sendid);
       ultrainio::transaction out;
       out.actions.emplace_back( permission_level{ _self, N(active) }
                               , _self
                               , NEX(procevilprod)
-                              , std::make_tuple(producer, producer_evil_type::radio_error_echo_msg)
+                              , std::make_tuple(evil, producer_evil_type::sign_multi_propose)
                               );
       out.delay_sec = 0;
       out.send( sendid, _self, true );
@@ -220,8 +226,8 @@ namespace ultrainiosystem {
    void system_contract::procevilprod( account_name producer, uint16_t evil_type ) {
       require_auth( _self );
       auto briefprod = _briefproducers.find( producer );
-      ultrainio_assert( briefprod != _briefproducers.end(), "not a producer" );
-      ultrainio_assert( !briefprod->in_disable, "producer in disabled" );
+      //ultrainio_assert( briefprod != _briefproducers.end(), "not a producer" );
+      //ultrainio_assert( !briefprod->in_disable, "producer in disabled" );
       producers_table _producers(_self, briefprod->location);
       const auto& it = _producers.find( producer );
       ultrainio_assert(it != _producers.end(), "producer is not found in its location");
@@ -232,14 +238,14 @@ namespace ultrainiosystem {
             evilprod.emplace([&](auto& e) {
                e.owner = producer;
                e.evil_type = evil_type;
-               if( producer_evil_type::radio_error_echo_msg == evil_type ){  //Freeze delegate tokens
+               if( producer_evil_type::sign_multi_propose == evil_type ){  //Freeze delegate tokens
                   e.is_freeze = true;
                }
             });
          } else {
             evilprod.modify(evilprod_itr, [&]( auto& e ) {
                e.evil_type = evil_type;
-               if( producer_evil_type::radio_error_echo_msg == evil_type ){  //Freeze delegate tokens
+               if( producer_evil_type::sign_multi_propose == evil_type ){  //Freeze delegate tokens
                   e.is_freeze = true;
                }
             });
@@ -249,7 +255,7 @@ namespace ultrainiosystem {
          moveprod_param mv_prod(it->owner, it->producer_key, it->bls_key, false, briefprod->location, true, name{N(disable)});
          send_defer_moveprod_action( mv_prod );
       } else {  //sidechain record bulletin
-         ultrainio_assert( producer_evil_type::radio_error_echo_msg == evil_type
+         ultrainio_assert( producer_evil_type::sign_multi_propose == evil_type
                            , " Non specified evil msg cannot emplace sidechain bulletin board" );
          bulletintab  bltn( _self, N(master) );
          auto current_block_number = uint64_t(head_block_number() + 1);

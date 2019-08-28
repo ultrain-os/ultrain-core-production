@@ -193,6 +193,12 @@ namespace ultrainiosystem {
       return lightclient_accept_block_header(chain_name, header_bytes.data(), header_bytes.size(), confirmed_bh_hash, hash_len);
     }
 
+    int system_contract::verify_evil(const std::string& evidence, const evildoer& evil) {
+       bytes evidence_bytes = pack(evidence);
+       bytes evil_bytes = pack(evil);
+       return native_verify_evil(evidence_bytes.data(), evidence_bytes.size(), evil_bytes.data(), evil_bytes.size());
+    }
+
    /**
     *  Called after a new account is created. This code enforces resource-limits rules
     *  for new accounts as well as new account naming conventions.

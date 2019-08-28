@@ -9,22 +9,15 @@
 #include <core/MultiSignEvidence.h>
 
 namespace ultrainio {
-    void NativeTrx::sendMultiSignTrx(const AccountName& p, const fc::crypto::private_key& sk,
+    void NativeTrx::sendMultiSignTrx(const AccountName& sender, const fc::crypto::private_key& sk, const AccountName& evil,
             const SignedBlockHeader& one, const SignedBlockHeader& other) {
         MultiSignEvidence evidence(one, other);
-        Action action = buildAction(N(ultrainio), NEX(verifyprodevil), vector<PermissionLevel>{{p, chain::config::active_name}}, evidence.toString());
+        std::pair<uint64_t, std::string> t = std::make_pair(evil, evidence.toString());
+        bytes data = fc::raw::pack(t);
+        Action action(std::vector<PermissionLevel>{{sender, chain::config::active_name}}, N(ultrainio), NEX(verifyprodevil), data);
         chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
         SignedTransaction trx = buildTrx(action, chain.head_block_id(), chain.get_chain_id(), sk, chain.head_block_time() + fc::seconds(60), 5000);
         app().get_plugin<net_plugin>().broadcast(trx);
-    }
-
-    Action NativeTrx::buildAction(const AccountName& accountName, const ActionName& actionName, const std::vector<PermissionLevel>& auth, const std::string& data) {
-        Action act;
-        act.account = accountName;
-        act.name = actionName;
-        act.authorization = auth;
-        act.data = fc::raw::pack(data);
-        return act;
     }
 
     SignedTransaction NativeTrx::buildTrx(const Action& action, const BlockIdType& referId, const ChainIdType& chainId,

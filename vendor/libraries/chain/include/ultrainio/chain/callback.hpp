@@ -8,9 +8,9 @@
 namespace ultrainio {
     namespace chain {
 
-        struct EvilInfo {
-            account_name accountName;
-            std::string commiteePk;
+        struct evildoer {
+            account_name account;
+            std::string commitee_pk;
         };
 
         // interface
@@ -23,9 +23,9 @@ namespace ultrainio {
 
             virtual bool on_replay_block(const chain::block_header& header);
 
-            virtual int on_verify_evil(const std::string& evidence, const EvilInfo& evilInfo);
+            virtual int on_verify_evil(const std::string& evidence, const evildoer& evil);
         };
     }
 } // namespace ultrainio::chain
 
-FC_REFLECT( ultrainio::chain::EvilInfo, (accountName)(commiteePk) )
+FC_REFLECT( ultrainio::chain::evildoer, (account)(commitee_pk) )

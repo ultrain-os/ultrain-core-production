@@ -15,9 +15,7 @@ namespace ultrainio {
 
         virtual AccountName getEvilAccount() const;
 
-        virtual bool verify(const PublicKey& pk);
-
-        virtual int type() const;
+        virtual int verify(const AccountName& accountName, const PublicKey& pk);
 
     private:
         static const std::string kA;
