@@ -14,7 +14,6 @@ namespace ultrainio {
     MultiSignEvidence::MultiSignEvidence(const std::string& str) {
         fc::variant v = fc::json::from_string(str);
         fc::variant_object o = v.get_object();
-        ULTRAIN_ASSERT(o[kType].as_int64() == Evidence::kSignMultiPropose, chain::chain_exception, "type error expect kSignMultiPropose while ${actual} actually", ("actual", o[kType].as_int64()));
         fc::variant aVar = o[kA];
         fc::variant bVar = o[kB];
         aVar.as<SignedBlockHeader>(m_A);
@@ -40,18 +39,18 @@ namespace ultrainio {
         return m_A.proposer;
     }
 
-    bool MultiSignEvidence::verify(const PublicKey& pk) {
+    int MultiSignEvidence::verify(const AccountName& accountName, const PublicKey& pk) {
+        if (accountName != m_B.proposer) {
+            return Evidence::kReporterEvil;
+        }
         if (m_A.proposer == m_B.proposer
                 && m_A.block_num() == m_B.block_num()
+                && m_A.previous == m_B.previous
                 && m_A.id() != m_B.id()
                 && Validator::verify<BlockHeader>(Signature(m_A.signature), m_A, pk)
                 && Validator::verify<BlockHeader>(Signature(m_B.signature), m_B, pk)) {
-            return true;
+            return Evidence::kSignMultiPropose;
         }
-        return false;
-    }
-
-    int MultiSignEvidence::type() const {
-        return Evidence::kSignMultiPropose;
+        return Evidence::kNone;
     }
 }

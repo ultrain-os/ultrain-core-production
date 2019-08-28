@@ -8,7 +8,7 @@ namespace ultrainio { namespace chain {
 
     bool callback::on_replay_block(const chain::block_header& header) { return false; }
 
-    int callback::on_verify_evil(const std::string& evidence, const EvilInfo& evilInfo) {
+    int callback::on_verify_evil(const std::string& evidence, const evildoer& evil) {
         return 0;
     }
 } } // namespace ultrainio::chain

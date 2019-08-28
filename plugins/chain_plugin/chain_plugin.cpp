@@ -123,7 +123,7 @@ using ultrainio::CommitteeSet;
 using ultrainio::LightClientMgr;
 using ultrainio::Evidence;
 using ultrainio::EvidenceFactory;
-using ultrainio::EvilInfo;
+using ultrainio::evildoer;
 
 class light_client_callback : public ultrainio::chain::callback {
 public:
@@ -167,12 +167,9 @@ public:
         return true;
     }
 
-    int on_verify_evil(const std::string& evidence, const EvilInfo& evilInfo) {
+    int on_verify_evil(const std::string& evidence, const evildoer& evil) {
         std::shared_ptr<Evidence> evidencePtr = EvidenceFactory::create(evidence);
-        if (evidencePtr->verify(ultrainio::PublicKey(evilInfo.commiteePk))) {
-            return evidencePtr->type();
-        }
-        return 0;
+        return evidencePtr->verify(evil.account, ultrainio::PublicKey(evil.commitee_pk));
     }
 
 private:
