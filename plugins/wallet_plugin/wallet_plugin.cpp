@@ -27,6 +27,8 @@ void wallet_plugin::set_program_options(options_description& cli, options_descri
    cfg.add_options()
          ("wallet-dir", bpo::value<boost::filesystem::path>()->default_value("."),
           "The path of the wallet files (absolute path or relative to application data dir)")
+         ("interactive", bpo::bool_switch()->default_value(false),
+          "Enable interactive mode when use multiple wallet urls to sign transcation")
          ("unlock-timeout", bpo::value<int64_t>()->default_value(900),
           "Timeout for unlocked wallet in seconds (default 900 (15 minutes)). "
           "Wallets will automatically lock after specified number of seconds of inactivity. "
@@ -51,6 +53,10 @@ void wallet_plugin::plugin_initialize(const variables_map& options) {
             wallet_manager_ptr->set_dir(app().data_dir() / dir);
          else
             wallet_manager_ptr->set_dir(dir);
+      }
+      if (options.count("interactive")) {
+        bool mode = options.at("interactive").as<bool>();
+        wallet_manager_ptr->set_interactive_mode(mode);
       }
       if (options.count("unlock-timeout")) {
          auto timeout = options.at("unlock-timeout").as<int64_t>();

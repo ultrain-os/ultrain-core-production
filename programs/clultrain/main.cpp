@@ -288,22 +288,26 @@ fc::variant determine_required_keys(const signed_transaction& trx) {
 
 void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const chain_id_type& chain_id) {
    fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id)};
-   const auto& signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
-   trx = signed_trx.as<signed_transaction>();
 
    // Try to sign trx from more wallet urls when trx -m flag is set
    if (tx_multi_urls && addl_wallet_urls.size() > 0) {
+      const auto& signed_trx = call(wallet_url, wallet_sign_trx_multi, sign_args);
+      trx = signed_trx.as<signed_transaction>();
       for (const auto& addl_url : addl_wallet_urls) {
-         const auto& addl_trx = call(addl_url, wallet_sign_trx, sign_args);
+         const auto& addl_trx = call(addl_url, wallet_sign_trx_multi, sign_args);
          for (const auto& sig : addl_trx.as<signed_transaction>().signatures) {
             trx.signatures.push_back(sig);
          }
       }
       fc::deduplicate(trx.signatures);
-   }
-   // The check in wallet manager is removed so we add check here
-   if (trx.signatures.size() != required_keys.as<flat_set<public_key_type>>().size()) {
-      ULTRAIN_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets");
+
+      // The check in wallet manager is removed so we add check here
+      if (trx.signatures.size() != required_keys.as<flat_set<public_key_type>>().size()) {
+         ULTRAIN_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets");
+      }
+   } else {
+      const auto& signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
+      trx = signed_trx.as<signed_transaction>();
    }
 }
 
@@ -752,7 +756,7 @@ void try_local_port( const string& lo_address, uint16_t port, uint32_t duration 
    }
 }
 
-void ensure_kultraind_running(CLI::App* app) {
+void make_kultraind_running(CLI::App* app, const string& url) {
     // get, version, net do not require kultraind
     if (tx_skip_sign || app->got_subcommand("get") || app->got_subcommand("version") || app->got_subcommand("net"))
         return;
@@ -763,7 +767,7 @@ void ensure_kultraind_running(CLI::App* app) {
          return;
     }
 
-    auto parsed_url = parse_url(wallet_url);
+    auto parsed_url = parse_url(url);
     auto resolved_url = resolve_url(context, parsed_url);
 
     if (!resolved_url.is_loopback)
@@ -809,6 +813,14 @@ void ensure_kultraind_running(CLI::App* app) {
     }
 }
 
+void ensure_kultraind_running(CLI::App* app) {
+    make_kultraind_running(app, wallet_url);
+    if (tx_multi_urls && addl_wallet_urls.size() > 0) {
+        for (const auto& addl_url : addl_wallet_urls) {
+            make_kultraind_running(app, addl_url);
+        }
+    }
+}
 
 CLI::callback_t obsoleted_option_host_port = [](CLI::results_t) {
    std::cerr << localized("Host and port options (-H, --wallet-host, etc.) have been replaced with -u/--url and --wallet-url\n"

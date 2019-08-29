@@ -41,6 +41,9 @@ public:
       
    void set_ultrainio_key(const std::string& key) { ultrainio_key = key; }
 
+   /// Set interactive mode which is used in signing transaction with multiple wallet urls
+   void set_interactive_mode(const bool mode) { interactive_mode = mode; }
+
    /// Sign transaction with the private keys specified via their public keys.
    /// Use chain_controller::get_required_keys to determine which keys are needed for txn.
    /// @param txn the transaction to sign.
@@ -51,6 +54,14 @@ public:
    chain::signed_transaction sign_transaction(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys,
                                              const chain::chain_id_type& id);
 
+   /// Sign transaction with the private keys specified via their public keys from multiple wallet urls.
+   /// Use chain_controller::get_required_keys to determine which keys are needed for txn.
+   /// @param txn the transaction to sign.
+   /// @param keys the public keys of the corresponding private keys to sign the transaction with
+   /// @param id the chain_id to sign transaction with.
+   /// @return txn signed
+   chain::signed_transaction sign_transaction_multi(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys,
+                                             const chain::chain_id_type& id);
 
    /// Sign digest with the private keys specified via their public keys.
    /// @param digest the digest to sign.
@@ -138,6 +149,7 @@ private:
    mutable timepoint_t timeout_time = timepoint_t::max(); ///< when to call lock_all()
    boost::filesystem::path dir = ".";
    std::string ultrainio_key = "";
+   bool interactive_mode = false;
 };
 
 } // namespace wallet
