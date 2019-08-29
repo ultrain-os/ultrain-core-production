@@ -679,7 +679,7 @@ namespace ultrainio {
             std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
             PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
             if (!publicKey.isValid()) {
-                elog("can not find ok of account : ${account} at block ${num}",
+                elog("can not find pk of account : ${account} at block ${num}",
                      ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum()));
                 return false;
             }
