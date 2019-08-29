@@ -686,6 +686,12 @@
         {"name":"producer",  "type":"account_name"}
       ]
     },{
+      "name": "rewardproof",
+      "base": "",
+      "fields": [
+        {"name":"proof_info",  "type":"string"}
+      ]
+    },{
       "name": "setpriv",
       "base": "",
       "fields": [
@@ -916,6 +922,10 @@
    },{
       "name": "claimrewards",
       "type": "claimrewards",
+      "ricardian_contract": ""
+   },{
+      "name": "rewardproof",
+      "type": "rewardproof",
       "ricardian_contract": ""
    },{
       "name": "setpriv",
