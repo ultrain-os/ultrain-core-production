@@ -7,6 +7,8 @@
 #include <ultrainio/wallet_plugin/se_wallet.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 #include <boost/algorithm/string.hpp>
+#include <fc/io/json.hpp>
+
 namespace ultrainio {
 namespace wallet {
 
@@ -241,7 +243,47 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
          }
       }
       if (!found) {
-         //ULTRAIN_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", pk));
+         ULTRAIN_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", pk));
+      }
+   }
+
+   return stxn;
+}
+
+chain::signed_transaction
+wallet_manager::sign_transaction_multi(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys, const chain::chain_id_type& id) {
+   check_timeout();
+   chain::signed_transaction stxn(txn);
+
+   if (interactive_mode == true) {
+      std::string choice = "";
+      std::cout << "You're going to sign the following transaction: " << std::endl;
+      std::cout << fc::json::to_pretty_string(stxn) << std::endl;
+      std::cout << "========================" << std::endl << "Would you sign it? (y/n) ";
+
+      std::cin.clear();
+      std::cin.sync();
+      std::getline(std::cin, choice, '\n');
+
+      if ( !boost::iequals(choice, "y")
+          && !boost::iequals(choice, "yes")) {
+         ULTRAIN_THROW(chain::wallet_exception, "Transaction sign rejected!");
+      }
+   }
+
+   for (const auto& pk : keys) {
+      bool found = false;
+      for (const auto& i : wallets) {
+         if (!i.second->is_locked()) {
+            optional<signature_type> sig = i.second->try_sign_digest(stxn.sig_digest(id, stxn.context_free_data), pk);
+            if (sig) {
+               stxn.signatures.push_back(*sig);
+               found = true;
+               break; // inner for
+            }
+         }
+      }
+      if (!found) {
          wlog("Public key not found in unlocked wallets ${k}", ("k", pk));
       }
    }
