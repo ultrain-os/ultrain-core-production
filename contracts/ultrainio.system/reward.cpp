@@ -97,6 +97,13 @@ namespace ultrainiosystem {
          { pay_account, reward_account, asset((int64_t)unpaid_balance), name{producer}.to_string() + std::string(" produce block pay") } );
       print("\nsend_rewards_for_producer subchainname:",name{chain_name}," pay_tokens:",pay_tokens.amount," producer:",name{producer},
          " reward_account:",name{reward_account}," unpaid_balance:",unpaid_balance, "\n");
+      char result_str[512] = "";
+      std::sprintf( result_str,"{\"chain_name\":\"%s\",\"producer\":\"%s\",\"reward_account\":\"%s\",\"token\":\"%s\"}",
+                                       name{chain_name}.to_string().c_str(),
+                                       name{producer}.to_string().c_str(),
+                                       name{reward_account}.to_string().c_str(),
+                                       std::to_string( unpaid_balance ).c_str() );
+      set_result_str( result_str );
       ultrainio_assert( _gstate.total_unpaid_balance >= unpaid_balance, " unpaid balance exception" );
       _gstate.total_unpaid_balance -= unpaid_balance;
    }
