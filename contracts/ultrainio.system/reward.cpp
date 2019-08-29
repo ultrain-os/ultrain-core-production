@@ -92,18 +92,14 @@ namespace ultrainiosystem {
       account_name pay_account = ( chain_name == self_chain_name ) ? N(utrio.mfee) : N(utrio.resfee) ;
       asset pay_tokens = ultrainio::token(N(utrio.token)).get_balance( pay_account,symbol_type(CORE_SYMBOL).name());
       ultrainio_assert( pay_tokens.amount >= (int64_t)unpaid_balance, " Insufficient funds to claim rewards" );
-
+      if( unpaid_balance > 10000*10000 ) {
+         reward_account = N(utrio.reward);
+      }
       INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
          { pay_account, reward_account, asset((int64_t)unpaid_balance), name{producer}.to_string() + std::string(" produce block pay") } );
       print("\nsend_rewards_for_producer subchainname:",name{chain_name}," pay_tokens:",pay_tokens.amount," producer:",name{producer},
          " reward_account:",name{reward_account}," unpaid_balance:",unpaid_balance, "\n");
-      char result_str[512] = "";
-      std::sprintf( result_str,"{\"chain_name\":\"%s\",\"producer\":\"%s\",\"reward_account\":\"%s\",\"token\":\"%s\"}",
-                                       name{chain_name}.to_string().c_str(),
-                                       name{producer}.to_string().c_str(),
-                                       name{reward_account}.to_string().c_str(),
-                                       std::to_string( unpaid_balance ).c_str() );
-      set_result_str( result_str );
+      generate_reward_trx( producer, reward_account, unpaid_balance );
       ultrainio_assert( _gstate.total_unpaid_balance >= unpaid_balance, " unpaid balance exception" );
       _gstate.total_unpaid_balance -= unpaid_balance;
    }
@@ -231,6 +227,36 @@ namespace ultrainiosystem {
                p.table_extension.push_back(exten_type(producer_info::producers_state_exten_type_key::claim_rewards_block_height ,std::to_string(block_height)));
          });
       }
+   }
+
+   void system_contract::generate_reward_trx( account_name producer, account_name reward_account, uint64_t paid_balance ) const {
+      auto block_height = (uint32_t)head_block_number() + 1;
+      std::string proof_str = "{\"block_height\":\"" + std::to_string(block_height)
+                              + "\",\"producer\":\"" + name{producer}.to_string()
+                              + "\",\"reward_account\":\"" + name{reward_account}.to_string()
+                              + "\",\"paid_balance\":\"" + std::to_string( paid_balance )
+                              + "\",\"confirm_block\":[";
+      for(auto chain_iter = _chains.begin(); chain_iter != _chains.end(); ++chain_iter) {
+         if (chain_iter->chain_name == self_chain_name)
+            continue;
+         proof_str += "{\"chain_name\":\"" + name{chain_iter->chain_name}.to_string()
+                      + "\",\"number\":" + std::to_string(chain_iter->confirmed_block_number)
+                      + "},";
+      }
+      proof_str.pop_back();
+      proof_str += "]}";
+      ultrainio::transaction trx;
+      trx.actions.emplace_back(
+          permission_level{ _self, N(active) }, _self, NEX(rewardproof), proof_str );
+      uint128_t trxid = block_height + producer + N(rewardproof);
+      cancel_deferred(trxid);
+      trx.send( trxid, _self, true );
+      print("rewardproof cur_block_height:",block_height," trxid:",trxid);
+   }
+
+   void system_contract::rewardproof( const std::string& proof_info ) {
+      require_auth( _self );
+      UNUSED( proof_info );
    }
 
    void system_contract::calcmasterrewards() {
