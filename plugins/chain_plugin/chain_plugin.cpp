@@ -134,13 +134,16 @@ public:
         ilog("on_accept_block_header chain : ${chainName}, blockNum : ${blockNum}",
              ("chainName", name(chainName))("blockNum", blockHeader.block_num()));
         std::shared_ptr<LightClient> lightClient = LightClientMgr::getInstance()->getLightClient(chainName);
+        std::vector<signed_block_header> unconfirmedheaders;
+        StartPoint startPoint;
         if (std::string(blockHeader.proposer) == std::string("genesis")) {
-            lightClient->accept(blockHeader, blockHeader.signature);
-            id = lightClient->getLatestConfirmedBlockId();
-            return lightClient->getStatus();
+            if (getUnconfirmedHeaderFromDb(name(chainName), unconfirmedheaders, startPoint)) {
+                lightClient->setStartPoint(startPoint);
+                lightClient->accept(blockHeader, blockHeader.signature);
+                id = lightClient->getLatestConfirmedBlockId();
+                return lightClient->getStatus();
+            }
         } else {
-            std::vector<signed_block_header> unconfirmedheaders;
-            StartPoint startPoint;
             if (getUnconfirmedHeaderFromDb(name(chainName), unconfirmedheaders, startPoint)) {
                 lightClient->setStartPoint(startPoint);
                 for (auto e : unconfirmedheaders) {
