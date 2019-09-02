@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/ad8bb2",
+   "version": "ultrainio::abi/1.0/465da7",
 
    "types": [{
       "new_type_name": "account_name",
@@ -295,6 +295,15 @@
          {"name":"receiver",  "type":"account_name"},
          {"name":"combosize", "type":"uint64"},
          {"name":"days",      "type":"uint64"},
+         {"name":"location",  "type":"name"}
+      ]
+    },{
+      "name": "transferresource",
+      "base": "",
+      "fields": [
+         {"name":"from",      "type":"account_name"},
+         {"name":"to",        "type":"account_name"},
+         {"name":"combosize", "type":"uint64"},
          {"name":"location",  "type":"name"}
       ]
     },{
@@ -842,6 +851,10 @@
    },{
       "name": "resourcelease",
       "type": "resourcelease",
+      "ricardian_contract": ""
+   },{
+      "name": "transferresource",
+      "type": "transferresource",
       "ricardian_contract": ""
    },{
       "name": "delegatecons",

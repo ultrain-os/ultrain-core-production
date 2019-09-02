@@ -63,6 +63,15 @@ namespace ultrainiosystem {
                              (from_chain)(to_disable)(to_chain))
     };
 
+    struct TransferResourceParam {
+        account_name from;
+        account_name to;
+        uint64_t combosize;
+        name location;
+
+        ULTRAINLIB_SERIALIZE(TransferResourceParam, (from)(to)(combosize)(location))
+    };
+
    static std::string checksum256_to_string( const uint8_t* d, uint32_t s )
    {
       std::string r;
@@ -166,6 +175,15 @@ namespace ultrainiosystem {
                 INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
                     { N(utrio.stake), ccp.producer, asset(_gstate.min_activated_stake)} );
             }
+         } else if(act.account == N(ultrainio) && act.name == NEX(transferresource)) {
+             //transfer resource
+             TransferResourceParam trp = unpack<TransferResourceParam>(act.data);
+             if(trp.location == _gstate.chain_name) {
+                 print("synclwctx, transfer ", trp.combosize, " resource from ", name{trp.from}, " to ", name{trp.to});
+                 INLINE_ACTION_SENDER(ultrainiosystem::system_contract, transferresource)( N(ultrainio), {N(ultrainio), N(active)},
+                        { trp.from, trp.to, trp.combosize, self_chain_name});
+                 exec_succ++;
+             }
          }
       }
       ultrainio_assert(exec_succ > 0, "The current transaction has no execution");

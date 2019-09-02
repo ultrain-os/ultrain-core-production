@@ -83,6 +83,7 @@ namespace ultrainiosystem {
          allow_undelegate_block_interval = 9,
          refund_delegate_consensus_seconds = 10,
          link_auth_fee = 11,
+         res_transfer_fee = 12,
          global_state_key_end
       };
 
@@ -532,6 +533,7 @@ namespace ultrainiosystem {
           */
          void resourcelease( account_name from, account_name receiver,
                              uint64_t combosize, uint64_t days, name location = self_chain_name);
+         void transferresource(account_name from, account_name to, uint64_t combosize, name location = self_chain_name);
          void recycleresource(const account_name owner);
          void setfreeacc( account_name account, uint64_t number);
 

@@ -333,7 +333,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // ultrainio.system.cpp
      (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)
      // delegate.cpp
-     (delegatecons)(undelegatecons)(refundcons)(resourcelease)(recycleresource)(setfreeacc)
+     (delegatecons)(undelegatecons)(refundcons)(resourcelease)(transferresource)(recycleresource)(setfreeacc)
      // producer.cpp
      (regproducer)(moveprod)(verifyprodevil)(procevilprod)
      // reward.cpp

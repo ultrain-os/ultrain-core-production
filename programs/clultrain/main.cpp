@@ -952,15 +952,15 @@ struct buy_respackage_subcommand {
    int    days = 0;
    string location;
    buy_respackage_subcommand(CLI::App* actionRoot) {
-      auto delegate_bandwidth = actionRoot->add_subcommand("resourcelease", localized("buy resources packages"));
-      delegate_bandwidth->add_option("from", from_str, localized("The account that pays for resources packages"))->required();
-      delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the resources packages"))->required();
-      delegate_bandwidth->add_option("combosize", combosize, localized("The amount of  buy for resources packages"))->required();
-      delegate_bandwidth->add_option("days", days, localized("days of use resource lease"))->required();
-      delegate_bandwidth->add_option("location", location, localized("location of buy resource lease on multichain"))->required();
-      add_standard_transaction_options(delegate_bandwidth);
+      auto buy_respackage = actionRoot->add_subcommand("resourcelease", localized("buy resources packages"));
+      buy_respackage->add_option("from", from_str, localized("The account that pays for resources packages"))->required();
+      buy_respackage->add_option("receiver", receiver_str, localized("The account to receive the resources packages"))->required();
+      buy_respackage->add_option("combosize", combosize, localized("The amount of resources packages"))->required();
+      buy_respackage->add_option("days", days, localized("days that receiver will own the resource lease for"))->required();
+      buy_respackage->add_option("location", location, localized("sidechain name that the resource lease located on"))->required();
+      add_standard_transaction_options(buy_respackage);
 
-      delegate_bandwidth->set_callback([this] {
+      buy_respackage->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
                   ("receiver", receiver_str)
@@ -968,6 +968,37 @@ struct buy_respackage_subcommand {
                   ("days", days)
                   ("location", location);
          std::vector<chain::action> acts{create_action({permission_level{from_str,config::active_name}}, config::system_account_name, NEX(resourcelease), act_payload)};
+         send_actions(std::move(acts));
+      });
+   }
+};
+
+struct transfer_res_subcommand {
+   string from_str;
+   string receiver_str;
+   int    combosize = 0;
+   string location;
+   transfer_res_subcommand(CLI::App* actionRoot) {
+      auto transfer_res = actionRoot->add_subcommand("transferresource", localized("transfer resources from account to account"));
+      transfer_res->add_option("from", from_str, localized("The account that sending resources"))->required();
+      transfer_res->add_option("to", receiver_str, localized("The account that receiving the resources"))->required();
+      transfer_res->add_option("combosize", combosize, localized("The amount of resources to transfer"))->required();
+      transfer_res->add_option("location", location, localized("sidechain name of the resource lease"))->required();
+      add_standard_transaction_options(transfer_res);
+
+      transfer_res->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("from", from_str)
+                  ("to", receiver_str)
+                  ("combosize", combosize)
+                  ("location", location);
+         vector<permission_level> permissions;
+         if( tx_permission.empty() ) {
+             permissions.emplace_back(permission_level{from_str, config::active_name});
+         } else {
+             permissions = get_account_permissions(tx_permission);
+         }
+         std::vector<chain::action> acts{create_action(permissions, config::system_account_name, NEX(transferresource), act_payload)};
          send_actions(std::move(acts));
       });
    }
@@ -2651,6 +2682,7 @@ int main( int argc, char** argv ) {
 
    auto listProducers = list_producers_subcommand(system);
    auto buyresourcespackage = buy_respackage_subcommand(system);
+   auto transferResource = transfer_res_subcommand(system);
    auto delegatecons = delegate_cons_subcommand(system);
    auto undelegatecons = undelegate_cons_subcommand(system);
    auto listdelcons = list_delcons_subcommand(system);

@@ -325,11 +325,11 @@ namespace ultrainiosystem {
                }
             }
             _reslease_tbl.modify( reslease_itr, [&]( auto& tot ) {
-                  tot.lease_num += combosize;
-                  tot.end_block_height  += days * seconds_per_day / block_interval_seconds();
-                  tot.modify_block_height = cur_block_height;
-                  tot.free_account_number += free_account_number;
-               });
+                tot.lease_num += combosize;
+                tot.end_block_height  += days * seconds_per_day / block_interval_seconds();
+                tot.modify_block_height = cur_block_height;
+                tot.free_account_number += free_account_number;
+            });
          }
          auto resourcefee = (int64_t)(_gstate.resource_fee * cuttingfee);
          ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
@@ -345,7 +345,112 @@ namespace ultrainiosystem {
       } // tot_itr can be invalid, should go out of scope
    }
 
-void system_contract::delegatecons(account_name from, account_name receiver, asset stake_cons_quantity)
+   void system_contract::transferresource(account_name from, account_name to, uint64_t combosize, name location) {
+       uint64_t bytes_per_combo = 0;
+       if(_gstate.is_master_chain()) {
+           require_auth( from );
+           ultrainio_assert( location != self_chain_name, "master chain is not allowed to transfer resourcelease" );
+
+           auto chain_ite = _chains.find(location);
+           ultrainio_assert(chain_ite != _chains.end(), "this subchian location is not existed");
+           ultrainio_assert(is_empowered(to, location), "the receiver was not yet empowered to this chain before");
+           bytes_per_combo = chain_ite->global_resource.max_ram_size/chain_ite->global_resource.max_resources_number;
+       } else {
+           require_auth( _self );
+           ultrainio_assert( location == self_chain_name, "wrong location to tranfer resources at sidechain" );
+           bytes_per_combo = _gstate.max_ram_size/_gstate.max_resources_number;
+       }
+
+       resources_lease_table _reslease_tbl( _self,location );
+       auto lease_from = _reslease_tbl.find(from);
+       std::string assert_desc(name{from}.to_string());
+       assert_desc.append(" has no resource in chain ").append(name{location}.to_string());
+       ultrainio_assert(lease_from != _reslease_tbl.end(), assert_desc.c_str());
+       assert_desc = name{from}.to_string();
+       assert_desc.append(" has not enought resources to transfer");
+       ultrainio_assert(lease_from->lease_num >= combosize, assert_desc.c_str());
+       uint32_t cur_block_height = (uint32_t)head_block_number() + 1;
+       ultrainio_assert(lease_from->end_block_height > cur_block_height, "resource is expired and waiting for clean up");
+
+       uint64_t combosize_to = 0;
+       auto lease_to = _reslease_tbl.find(to);
+       if(lease_to != _reslease_tbl.end()) {
+           assert_desc = "receiver ";
+           assert_desc.append(name{to}.to_string()).append(" already has resources with different endtime");
+           ultrainio_assert(lease_to->end_block_height == lease_from->end_block_height, assert_desc.c_str());
+           combosize_to = lease_to->lease_num;
+       }
+
+       uint32_t free_account_size = 0;
+       if(_gstate.is_master_chain()) {
+           //check free_account_number
+           uint32_t  free_account_per_res = 50; //The default free_account_per_res is 50
+           for(auto extension : _gstate.table_extension){
+               if(extension.key == ultrainio_global_state::global_state_exten_type_key::free_account_per_res) {
+                   if(extension.value.empty())
+                       continue;
+                   free_account_per_res = (uint32_t)std::stoi(extension.value);
+                   break;
+               }
+           }
+           free_account_size = free_account_per_res * uint32_t(combosize);
+           ultrainio_assert(lease_from->free_account_number >= free_account_size, "no enough free account number");
+       } else {
+           //calculate how much resource left
+           int64_t  total_ram = 0;
+           int64_t  total_net = 0;
+           int64_t  total_cpu = 0;
+           get_resource_limits(from, &total_ram, &total_net, &total_cpu);
+           int64_t  used_ram = 0;
+           get_account_ram_usage(from, &used_ram);
+           auto need_bytes = bytes_per_combo * combosize;
+           assert_desc = name{from}.to_string();
+           assert_desc.append(" has not enought memory left to transer to others");
+           ultrainio_assert(need_bytes <= uint64_t(total_ram - used_ram), assert_desc.c_str());
+           int64_t left_size = int64_t(lease_from->lease_num - combosize);
+           int64_t new_size = int64_t(combosize_to + combosize);
+           set_resource_limits( from, int64_t(bytes_per_combo) * left_size, left_size, left_size );
+           set_resource_limits( to, int64_t(bytes_per_combo) * new_size, new_size, new_size );
+       }
+
+       if( _gstate.is_master_chain()) {
+           uint16_t days = (lease_from->end_block_height - cur_block_height) * block_interval_seconds() / seconds_per_day;
+           ultrainio_assert(days > 0, "resource will expire in one day");
+           uint64_t fee_ratio = getglobalextenuintdata(ultrainio_global_state::res_transfer_fee, 1);
+           int64_t fee = int64_t(combosize * uint64_t(days) * uint64_t(_gstate.resource_fee) * fee_ratio / 100);
+           if(fee <= 0) {
+               fee = 1;
+           }
+           INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
+                    { from, N(utrio.resfee), asset(fee), std::string("transfer resource") } );
+       }
+
+       _reslease_tbl.modify( lease_from, [&]( auto& res ) {
+           res.lease_num -= combosize;
+           res.modify_block_height = cur_block_height;
+           res.free_account_number -= free_account_size;
+       });
+
+       if(lease_to == _reslease_tbl.end()) {
+           _reslease_tbl.emplace([&]( auto& res ) {
+               res.owner               = to;
+               res.lease_num           = combosize;
+               res.start_block_height  = cur_block_height;
+               res.end_block_height    = lease_from->end_block_height;
+               res.modify_block_height = cur_block_height;
+               res.free_account_number = free_account_size;
+           });
+       }
+       else {
+           _reslease_tbl.modify( lease_to, [&]( auto& res ) {
+               res.lease_num += combosize;
+               res.modify_block_height = cur_block_height;
+               res.free_account_number += free_account_size;
+           });
+       }
+   }
+
+   void system_contract::delegatecons(account_name from, account_name receiver, asset stake_cons_quantity)
    {
       ultrainio_assert( stake_cons_quantity > asset(0), "must stake a positive amount" );
       change_cons( from, receiver, stake_cons_quantity);
