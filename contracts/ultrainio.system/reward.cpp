@@ -105,7 +105,6 @@ namespace ultrainiosystem {
    }
 
    void system_contract::onfinish() {
-      print("onfinish in ultrainio.system");
       require_auth(N(ultrainio));
    }
 
