@@ -95,7 +95,7 @@ namespace ultrainiosystem {
           if (stake_cons_delta.amount < 0) {
               process_undelegate_request(from, stake_cons_delta);
           } else {
-            INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {source_stake_from, N(active)},
+            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {source_stake_from, N(active)},
                { source_stake_from, N(utrio.stake), asset(stake_cons_delta), std::string("stake consensus") } );
          }
       }
@@ -334,7 +334,7 @@ namespace ultrainiosystem {
          auto resourcefee = (int64_t)(_gstate.resource_fee * cuttingfee);
          ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
          if( _gstate.is_master_chain() || from != _self )
-            INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {from,N(active)},
+            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
                                 { from, N(utrio.resfee), asset(resourcefee), std::string("buy resource lease") } );
          print("resourcelease calculatefee receiver:", name{receiver}," resourcenum_time:",cuttingfee, " resourcefee:",resourcefee);
          ultrainio_assert( 0 < reslease_itr->lease_num, "insufficient resource lease" );
@@ -377,7 +377,7 @@ void system_contract::delegatecons(account_name from, account_name receiver, ass
       // allow people to get their tokens earlier than the refund_delay_sec delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {N(utrio.stake),N(active)},
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {N(utrio.stake),N(active)},
                                                     { N(utrio.stake), req->owner, req->cons_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );

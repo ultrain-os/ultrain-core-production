@@ -138,7 +138,7 @@ namespace ultrainiosystem {
       if( !has_auth(_self) ){
          require_auth( account );
          ultrainio_assert( !is_update, "the contract account can only be set to unupdatable" );
-         INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {account,N(active)},
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {account,N(active)},
             { account, N(utrio.fee), asset(1000), std::string("setupdateabled") } );  //0.1 UGAS service charge
       }
       set_updateabled( account, is_update );
@@ -246,7 +246,7 @@ namespace ultrainiosystem {
       }
       ultrainio_assert( is_free_create || creator == _self, "The current free account is insufficient, please purchase resouce to get the free account" );
       // if (!is_free_create && creator != _self && newaccount_fee > 0) {
-      //    INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {creator,N(active)},
+      //    INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {creator,N(active)},
       //                         { creator, N(utrio.fee), asset(newaccount_fee), std::string("create account") } );
       // }
 
@@ -273,7 +273,7 @@ namespace ultrainiosystem {
          int64_t authsize = data.keys.size() + data.accounts.size() + data.waits.size();
          ultrainio_assert(authsize > 0, "update authority amount has to be greater than zero");
          if(updateauth_fee > 0 && (name{account}.to_string().find( "utrio." ) != 0 ) && (account != _self)){
-            INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {account,N(active)},
+            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {account,N(active)},
                { account, N(utrio.fee), asset(updateauth_fee * authsize), std::string("update auth") } );
          }
       }
@@ -297,7 +297,7 @@ namespace ultrainiosystem {
             }
          }
       }
-      INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), { account,N(active) },
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), { account,N(active) },
          { account, N(utrio.fee), asset( linkauth_fee ), name{account}.to_string() + std::string(" linkauth fee") } );
    }
 

@@ -79,7 +79,7 @@ namespace ultrainiosystem {
                 ultrainio::token(N(utrio.token)).get_balance( producer,symbol_type(CORE_SYMBOL).name());
             ultrainio_assert( cur_tokens.amount >= 50000,
                               "The current action fee is 5 UGAS, please ensure that the account is fully funded" );
-            INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {producer,N(active)},
+            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {producer,N(active)},
                 { producer, N(utrio.fee), asset(50000), std::string("regproducer fee") } );
             for(auto ite_chain = _chains.begin(); ite_chain != _chains.end(); ++ite_chain) {
                 if(ite_chain->chain_name == N(master))
