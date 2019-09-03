@@ -95,7 +95,7 @@ namespace ultrainiosystem {
       if( unpaid_balance > 10000*10000 ) {
          reward_account = N(utrio.reward);
       }
-      INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), {pay_account,N(active)},
+      INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {pay_account,N(active)},
          { pay_account, reward_account, asset((int64_t)unpaid_balance), name{producer}.to_string() + std::string(" produce block pay") } );
       print("\nsend_rewards_for_producer subchainname:",name{chain_name}," pay_tokens:",pay_tokens.amount," producer:",name{producer},
          " reward_account:",name{reward_account}," unpaid_balance:",unpaid_balance, "\n");
@@ -270,14 +270,14 @@ namespace ultrainiosystem {
          master_reward_tokens += asset(_gstate.master_chain_pay_fee);
          asset resfee_tokens = ultrainio::token(N(utrio.token)).get_balance( N(utrio.resfee),symbol_type(CORE_SYMBOL).name());
          if( resfee_tokens.amount > _gstate.master_chain_pay_fee )
-            INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), { N(utrio.resfee),N(active) },
+            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), { N(utrio.resfee),N(active) },
                { N(utrio.resfee), N(utrio.mfee), asset(_gstate.master_chain_pay_fee), std::string("master producers block pay") } );
          _gstate.master_chain_pay_fee = 0;
       }
       if( master_reward_tokens.amount <= 0 )
          return;
       if ( fee_tokens.amount > 0 ) {
-         INLINE_ACTION_SENDER(ultrainio::token, safe_transfer)( N(utrio.token), { N(utrio.fee),N(active) },
+         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), { N(utrio.fee),N(active) },
             { N(utrio.fee), N(utrio.mfee), fee_tokens, std::string("master producers block pay") } );
       }
       uint64_t master_paid_balance = 0;

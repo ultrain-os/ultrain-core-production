@@ -83,28 +83,6 @@ void token::transfer( account_name from,
     add_balance( to, quantity );
 }
 
-void token::safe_transfer( account_name from,
-                           account_name to,
-                           asset        quantity,
-                           string       memo )
-{
-    ultrainio_assert( from != to, "cannot transfer to self" );
-    require_auth( from );
-    ultrainio_assert( is_account( to ), "to account does not exist");
-    auto sym = quantity.symbol.name();
-    stats statstable( _self, sym );
-    const auto& st = statstable.get( sym );
-    ultrainio_assert( !st.is_forbid_transfer, " transaction is not allowed" );
-    ultrainio_assert( quantity.is_valid(), "invalid quantity" );
-    ultrainio_assert( quantity.amount > 0, "must transfer positive quantity" );
-    ultrainio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
-    ultrainio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
-
-
-    sub_balance( from, quantity );
-    add_balance( to, quantity );
-}
-
 void token::set_chargeparams( std::string symbol, uint8_t precision, uint32_t operate_interval, uint32_t operate_fee, bool is_forbid_trans)
 {
     require_auth( _self );
@@ -180,4 +158,4 @@ int64_t token::get_transfer_fee() const {
 
 } /// namespace ultrainio
 
-ULTRAINIO_ABI( ultrainio::token, (create)(issue)(transfer)(safe_transfer)(set_chargeparams)(set_trans_fee) )
+ULTRAINIO_ABI( ultrainio::token, (create)(issue)(transfer)(set_chargeparams)(set_trans_fee) )

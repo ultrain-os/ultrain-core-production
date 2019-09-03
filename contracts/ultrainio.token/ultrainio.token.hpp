@@ -31,12 +31,6 @@ namespace ultrainio {
                         asset        quantity,
                         string       memo );
 
-         // transfer without calling require_recipient.
-         void safe_transfer( account_name from,
-                             account_name to,
-                             asset        quantity,
-                             string       memo );
-
          void set_chargeparams( std::string symbol, uint8_t precision, uint32_t operate_interval, uint32_t operate_fee, bool is_forbid_trans);
 
          void set_trans_fee( int64_t fee );
