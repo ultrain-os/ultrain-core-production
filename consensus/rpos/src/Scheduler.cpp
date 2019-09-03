@@ -303,7 +303,8 @@ namespace ultrainio {
             return false;
         }
 
-        dlog("processBeforeMsg.");
+        dlog("processBeforeMsg. blockNum : ${blockNum}, phase : ${phase} baxCount : ${count} id : ${id}",
+                ("blockNum", BlockHeader::num_from_id(echo.blockId))("phase", static_cast<int>(echo.phase))("count", echo.baxCount)("id", short_hash(echo.blockId)));
 
         auto map_it = m_echoMsgAllPhase.find(info);
         if (map_it == m_echoMsgAllPhase.end()) {
