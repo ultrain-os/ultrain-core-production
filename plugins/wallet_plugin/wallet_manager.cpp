@@ -251,23 +251,34 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
 }
 
 chain::signed_transaction
-wallet_manager::sign_transaction_multi(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys, const chain::chain_id_type& id) {
+wallet_manager::sign_transaction_multi(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys,
+        const chain::chain_id_type& id, const vector<string>& info) {
    check_timeout();
    chain::signed_transaction stxn(txn);
 
+   std::cout << std::endl << std::endl << "The transaction to sign contains the following actions: " << std::endl;
+
+   for ( const auto& line : info ) {
+      std::cout << line << std::endl;
+   }
+
    if (interactive_mode == true) {
-      std::string choice = "";
-      std::cout << "You're going to sign the following transaction: " << std::endl;
-      std::cout << fc::json::to_pretty_string(stxn) << std::endl;
       std::cout << "========================" << std::endl << "Would you sign it? (y/n) ";
 
-      std::cin.clear();
-      std::cin.sync();
-      std::getline(std::cin, choice, '\n');
+      std::string choice = "";
+      while(true) {
+         std::cin.clear();
+         std::cin.sync();
+         std::getline(std::cin, choice, '\n');
 
-      if ( !boost::iequals(choice, "y")
-          && !boost::iequals(choice, "yes")) {
-         ULTRAIN_THROW(chain::wallet_exception, "Transaction sign rejected!");
+         if ( boost::iequals(choice, "n") || boost::iequals(choice, "no")) {
+            ULTRAIN_THROW(chain::wallet_exception, "Transaction sign rejected!");
+            break;
+         } else if ( boost::iequals(choice, "y") || boost::iequals(choice, "yes")) {
+            break;
+         } else {
+            continue;
+         }
       }
    }
 

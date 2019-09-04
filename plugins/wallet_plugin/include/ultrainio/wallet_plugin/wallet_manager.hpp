@@ -59,9 +59,10 @@ public:
    /// @param txn the transaction to sign.
    /// @param keys the public keys of the corresponding private keys to sign the transaction with
    /// @param id the chain_id to sign transaction with.
+   /// @param info the transaction information.
    /// @return txn signed
    chain::signed_transaction sign_transaction_multi(const chain::signed_transaction& txn, const flat_set<public_key_type>& keys,
-                                             const chain::chain_id_type& id);
+                                             const chain::chain_id_type& id, const vector<string>& info);
 
    /// Sign digest with the private keys specified via their public keys.
    /// @param digest the digest to sign.

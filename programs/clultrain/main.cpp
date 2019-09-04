@@ -286,11 +286,21 @@ fc::variant determine_required_keys(const signed_transaction& trx) {
    return required_keys["required_keys"];
 }
 
-void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const chain_id_type& chain_id) {
-   fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id)};
+fc::variant bin_to_json( const account_name& account, const action_name& action, const vector<char>& binargs );
 
+void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const chain_id_type& chain_id) {
    // Try to sign trx from more wallet urls when trx -m flag is set
    if (tx_multi_urls && addl_wallet_urls.size() > 0) {
+      vector<string> args;
+      for (auto act : trx.actions) {
+         auto res = bin_to_json(act.account, act.name, act.data);
+         auto str = fc::json::to_string(res);
+         if( str.size() > 100 ) str = str.substr(0,100) + "...";
+         args.push_back("account: " + act.account.to_string() + " name: " + act.name.to_string() + " " + str);
+      }
+
+      fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id), fc::variant(args)};
+
       const auto& signed_trx = call(wallet_url, wallet_sign_trx_multi, sign_args);
       trx = signed_trx.as<signed_transaction>();
       for (const auto& addl_url : addl_wallet_urls) {
@@ -306,6 +316,7 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const
          ULTRAIN_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets");
       }
    } else {
+      fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id)};
       const auto& signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
       trx = signed_trx.as<signed_transaction>();
    }
@@ -384,8 +395,9 @@ void print_action( const fc::variant& at ) {
    }
 }
 
+static unordered_map<account_name, std::vector<char> > abi_cache;
+
 bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
-   static unordered_map<account_name, std::vector<char> > abi_cache;
    auto it = abi_cache.find( account );
    if ( it == abi_cache.end() ) {
       const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", account));
@@ -403,6 +415,28 @@ bytes variant_to_bin( const account_name& account, const action_name& action, co
    } else {
       FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
    }
+}
+
+fc::variant bin_to_json( const account_name& account, const action_name& action, const vector<char>& binargs ) {
+   auto it = abi_cache.find( account );
+   if ( it == abi_cache.end() ) {
+      const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", account));
+      std::tie( it, std::ignore ) = abi_cache.emplace( account, result["abi"].as_blob().data );
+      //we also received result["wasm"], but we don't use it
+   }
+   const std::vector<char>& abi_v = it->second;
+
+   abi_def abi;
+   fc::variant result;
+   fc::microseconds abi_serializer_max_time = fc::seconds(1);
+
+   if( abi_serializer::to_abi(abi_v, abi) ) {
+      abi_serializer abis( abi, abi_serializer_max_time );
+      result = abis.binary_to_variant( abis.get_action_type(action ), binargs, abi_serializer_max_time );
+   } else {
+      ULTRAIN_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", account));
+   }
+   return result;
 }
 
 fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)

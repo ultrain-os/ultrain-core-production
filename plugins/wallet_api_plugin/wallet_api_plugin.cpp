@@ -47,6 +47,11 @@ using namespace ultrainio;
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      auto result = api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>());
 
+#define INVOKE_R_R_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2, in_param3) \
+     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+     auto result = api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), \
+             vs.at(2).as<in_param2>(), vs.at(3).as<in_param3>());
+
 #define INVOKE_R_V(api_handle, call_name) \
      auto result = api_handle.call_name();
 
@@ -80,7 +85,7 @@ void wallet_api_plugin::plugin_startup() {
        CALL(wallet_mgr, wallet_mgr, sign_transaction,
             INVOKE_R_R_R_R(wallet_mgr, sign_transaction, chain::signed_transaction, flat_set<public_key_type>, chain::chain_id_type), 201),
        CALL(wallet_mgr, wallet_mgr, sign_transaction_multi,
-            INVOKE_R_R_R_R(wallet_mgr, sign_transaction_multi, chain::signed_transaction, flat_set<public_key_type>, chain::chain_id_type), 201),
+            INVOKE_R_R_R_R_R(wallet_mgr, sign_transaction_multi, chain::signed_transaction, flat_set<public_key_type>, chain::chain_id_type, vector<string>), 201),
        CALL(wallet_mgr, wallet_mgr, sign_digest,
             INVOKE_R_R_R(wallet_mgr, sign_digest, chain::digest_type, public_key_type), 201),
        CALL(wallet_mgr, wallet_mgr, create,
