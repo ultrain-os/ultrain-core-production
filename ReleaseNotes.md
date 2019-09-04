@@ -1,5 +1,18 @@
 # Release Notes
 
+### 2019-09-04 Release(Commit: 80feea0a63d30a6b8623fac0528b21358da00a0d)
+* Nodultrain
+    * allow mutiple wallet urls to sign transaction(Raymond)
+    * improve evil detection and punish(xiaofen)
+* Contract
+    * add rewardproof action to leave reward proof on chain(yhc)
+    * remove safe_transfer
+    * remove useless module/log(xiaofen, Liu Wei)
+    * fix bax issue(xiaofen)
+    * limit unconfirmed blocks within 100 for a branch(zhong wei)
+    * help producers to claimrewards(yhc)
+    * improve subchain management(zhong wei)
+
 ### 2019-08-15 Release(Commit: b37d88b369202a6caf335b9f98a6667e0d5b96f3)
 
 * Overall
