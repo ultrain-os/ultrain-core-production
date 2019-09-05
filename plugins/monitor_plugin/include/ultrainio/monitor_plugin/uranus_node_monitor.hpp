@@ -141,7 +141,8 @@ namespace ultrainio {
 #if 1
                 vector<connection_status> connectionsStatus = appbase::app().get_plugin<net_plugin>().get_connected_connections();
                 for (const auto& connectStatus : connectionsStatus) {
-                        reportData.activePeers.push_back(connectStatus.peer);
+                    auto peer = connectStatus.peer + "#$" + connectStatus.last_handshake.account.to_string();
+                    reportData.activePeers.push_back(peer);
                 }
 #endif
      	    }
