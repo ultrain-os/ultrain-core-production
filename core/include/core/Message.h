@@ -78,6 +78,8 @@ namespace ultrainio {
         bool fromStringStream(std::stringstream& ss);
 
         bool operator == (const CommonEchoMsg&) const;
+
+        uint32_t blockNum() const;
     };
 
     struct UnsignedEchoMsg : public CommonEchoMsg {

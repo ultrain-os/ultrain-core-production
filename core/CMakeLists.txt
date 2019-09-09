@@ -4,7 +4,8 @@ add_library( ultrainio_core
              src/Evidence.cpp
              src/EvidenceFactory.cpp
              src/Message.cpp
-             src/MultiSignEvidence.cpp
+             src/MultiProposeEvidence.cpp
+             src/MultiVoteEvidence.cpp
              src/NullEvidence.cpp
              src/utils.cpp
         ${HEADERS} )

@@ -37,6 +37,7 @@
 #include <rpos/Genesis.h>
 #include <rpos/MsgBuilder.h>
 #include <rpos/MsgMgr.h>
+#include <rpos/NativeTrx.h>
 #include <rpos/Node.h>
 #include <rpos/PunishMgr.h>
 #include <rpos/Seed.h>
@@ -134,7 +135,6 @@ namespace ultrainio {
         clearPreRunStatus();
         m_proposerMsgMap.clear();
         m_echoMsgMap.clear();
-        m_evilMultiSignDetector.reset();
         clearMsgCache(m_cacheProposeMsgMap, blockNum);
         clearMsgCache(m_cacheEchoMsgMap, blockNum);
         clearMsgCache(m_echoMsgAllPhase, blockNum);
@@ -142,7 +142,6 @@ namespace ultrainio {
 
     void Scheduler::resetEcho() {
         m_echoMsgMap.clear();
-        m_evilMultiSignDetector.reset();
     }
 
     bool Scheduler::insert(const EchoMsg &echo) {
@@ -528,10 +527,11 @@ namespace ultrainio {
             return false;
         }
 
-        if (m_evilMultiSignDetector.hasMultiPropose(m_proposerMsgMap, propose)) {
-            ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
-            punishMgrPtr->punish(propose.block.proposer, Evidence::kSignMultiPropose);
-            // return false in fastHandleMessage
+        MultiProposeEvidence evidence;
+        if (m_evilMultiProposeDetector.hasMultiPropose(m_proposerMsgMap, propose, evidence)) {
+            ilog("${account} sign multiple propose message", ("account", std::string(evidence.getEvilAccount())));
+            NativeTrx::sendMultiSignTrx(StakeVoteBase::getMyAccount(), StakeVoteBase::getAccountPrivateKey(), evidence.getEvilAccount(), evidence);
+            punishMgrPtr->punish(evidence.getEvilAccount(), Evidence::kMultiPropose);
             return false;
         }
 
@@ -562,10 +562,11 @@ namespace ultrainio {
             return false;
         }
 
-        if (m_evilMultiSignDetector.hasMultiVote(echo)) {
-            ilog("${account} vote multiple propose", ("account", std::string(echo.account)));
-            punishMgrPtr->punish(echo.account, Evidence::kVoteMultiPropose);
-            // return false in fastHandleMessage
+        MultiVoteEvidence evidence;
+        if (m_evilMultiVoteDetector.hasMultiVote(m_echoMsgMap, echo, evidence)) {
+            ilog("${account} vote multiple block", ("account", std::string(evidence.getEvilAccount())));
+            NativeTrx::sendMultiSignTrx(StakeVoteBase::getMyAccount(), StakeVoteBase::getAccountPrivateKey(), evidence.getEvilAccount(), evidence);
+            punishMgrPtr->punish(echo.account, Evidence::kMultiVote);
             return false;
         }
 
@@ -631,11 +632,12 @@ namespace ultrainio {
             return false;
         }
 
-        if (m_evilMultiSignDetector.hasMultiPropose(m_proposerMsgMap, propose)) {
+        MultiProposeEvidence evidence;
+        if (m_evilMultiProposeDetector.hasMultiPropose(m_proposerMsgMap, propose, evidence)) {
             ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
-            punishMgrPtr->punish(propose.block.proposer, Evidence::kSignMultiPropose);
-            //TODO should broadcast the propose message when the punish info not in world state, so return true
-            return true;
+            NativeTrx::sendMultiSignTrx(StakeVoteBase::getMyAccount(), StakeVoteBase::getAccountPrivateKey(), evidence.getEvilAccount(), evidence);
+            punishMgrPtr->punish(evidence.getEvilAccount(), Evidence::kMultiPropose);
+            return false;
         }
 
         dlog("receive propose msg.blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
@@ -719,11 +721,12 @@ namespace ultrainio {
             return false;
         }
 
-        if (m_evilMultiSignDetector.hasMultiVote(echo)) {
-            ilog("${account} vote multiple propose", ("account", std::string(echo.account)));
-            punishMgrPtr->punish(echo.account, Evidence::kVoteMultiPropose);
-            // TODO broadcast it now
-            return true;
+        MultiVoteEvidence evidence;
+        if (m_evilMultiVoteDetector.hasMultiVote(m_echoMsgMap, echo, evidence)) {
+            ilog("${account} vote multiple block", ("account", std::string(evidence.getEvilAccount())));
+            NativeTrx::sendMultiSignTrx(StakeVoteBase::getMyAccount(), StakeVoteBase::getAccountPrivateKey(), evidence.getEvilAccount(), evidence);
+            punishMgrPtr->punish(echo.account, Evidence::kMultiVote);
+            return false;
         }
         m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(), Node::getInstance()->getPhase());
 

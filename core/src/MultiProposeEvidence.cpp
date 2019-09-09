@@ -1,4 +1,4 @@
-#include "core/MultiSignEvidence.h"
+#include "core/MultiProposeEvidence.h"
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -7,11 +7,13 @@
 #include <crypto/Validator.h>
 
 namespace ultrainio {
-    const std::string MultiSignEvidence::kA = "a";
+    const std::string MultiProposeEvidence::kA = "a";
 
-    const std::string MultiSignEvidence::kB = "b";
+    const std::string MultiProposeEvidence::kB = "b";
 
-    MultiSignEvidence::MultiSignEvidence(const std::string& str) {
+    MultiProposeEvidence::MultiProposeEvidence() {}
+
+    MultiProposeEvidence::MultiProposeEvidence(const std::string& str) {
         fc::variant v = fc::json::from_string(str);
         fc::variant_object o = v.get_object();
         fc::variant aVar = o[kA];
@@ -20,13 +22,13 @@ namespace ultrainio {
         bVar.as<SignedBlockHeader>(m_B);
     }
 
-    MultiSignEvidence::MultiSignEvidence(const SignedBlockHeader& one, const SignedBlockHeader& other)
+    MultiProposeEvidence::MultiProposeEvidence(const SignedBlockHeader& one, const SignedBlockHeader& other)
             : m_A(one), m_B(other) {
     }
 
-    std::string MultiSignEvidence::toString() const {
+    std::string MultiProposeEvidence::toString() const {
         fc::mutable_variant_object o;
-        fc::variant typeVar(Evidence::kSignMultiPropose);
+        fc::variant typeVar(Evidence::kMultiPropose);
         fc::variant aVar(m_A);
         fc::variant bVar(m_B);
         o[kType] = typeVar;
@@ -35,12 +37,12 @@ namespace ultrainio {
         return fc::json::to_string(fc::variant(o));
     }
 
-    AccountName MultiSignEvidence::getEvilAccount() const {
+    AccountName MultiProposeEvidence::getEvilAccount() const {
         return m_A.proposer;
     }
 
-    int MultiSignEvidence::verify(const AccountName& accountName, const PublicKey& pk) {
-        if (accountName != m_B.proposer) {
+    int MultiProposeEvidence::verify(const AccountName& accountName, const PublicKey& pk) const {
+        if (accountName != m_B.proposer || accountName != m_A.proposer) {
             return Evidence::kReporterEvil;
         }
         if (m_A.proposer == m_B.proposer
@@ -49,8 +51,18 @@ namespace ultrainio {
                 && m_A.id() != m_B.id()
                 && Validator::verify<BlockHeader>(Signature(m_A.signature), m_A, pk)
                 && Validator::verify<BlockHeader>(Signature(m_B.signature), m_B, pk)) {
-            return Evidence::kSignMultiPropose;
+            return Evidence::kMultiPropose;
         }
         return Evidence::kNone;
+    }
+
+    bool MultiProposeEvidence::simpleVerify() const {
+        if (m_A.proposer == m_B.proposer
+            && m_A.block_num() == m_B.block_num()
+            && m_A.previous == m_B.previous
+            && m_A.id() != m_B.id()) {
+            return true;
+        }
+        return false;
     }
 }

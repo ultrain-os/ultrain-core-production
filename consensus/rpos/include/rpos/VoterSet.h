@@ -31,9 +31,15 @@ namespace ultrainio {
 
         int getTotalVoterWeight() const;
 
+        int size() const;
+
+        EchoMsg get(size_t index) const;
+
     private:
         bool fromStringStream(std::stringstream& ss);
 
         void toStringStream(std::stringstream& ss) const;
     };
+
+    typedef std::map<BlockIdType, VoterSet> BlockIdVoterSetMap;
 }

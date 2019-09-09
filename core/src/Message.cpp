@@ -44,6 +44,10 @@ namespace ultrainio {
         return false;
     }
 
+    uint32_t CommonEchoMsg::blockNum() const {
+        return BlockHeader::num_from_id(blockId);
+    }
+
     bool UnsignedEchoMsg::operator == (const UnsignedEchoMsg& rhs) const {
         if (this == &rhs) {
             return true;

@@ -62,6 +62,10 @@ namespace ultrainio {
         return s_nodeInfo->getPrivateKey();
     }
 
+    fc::crypto::private_key StakeVoteBase::getAccountPrivateKey() {
+        return s_nodeInfo->getAccountPrivateKey();
+    }
+
     bool StakeVoteBase::getMyBlsPrivateKey(unsigned char* sk, int skSize) {
         return s_nodeInfo->getMyBlsPrivateKey(sk, skSize);
     }

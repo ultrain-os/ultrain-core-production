@@ -103,7 +103,7 @@ namespace ultrainio {
             chain::signed_block_ptr blockPtr = chain.fetch_block_by_id(latestCheckPointId);
             uint32_t checkPointBlockNum = BlockHeader::num_from_id(latestCheckPointId);
             if (!blockPtr) {
-                elog("can not found CheckPoint for block : ${num}, check we have the full block?", ("num", checkPointBlockNum));
+                elog("found NUllPtr CheckPoint ${num} for block : ${m}, check we have the full block?", ("num", checkPointBlockNum)("m", confirmedBlockNum));
                 return CommitteeSet();
             }
             CheckPoint checkPoint(*blockPtr);

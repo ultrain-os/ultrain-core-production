@@ -15,9 +15,9 @@ namespace ultrainio {
 
         static const int kNone;
 
-        static const int kSignMultiPropose; // send multi-propose message
+        static const int kMultiPropose; // send multi-propose message
 
-        static const int kVoteMultiPropose; // eg. ba0 vote multi-propose
+        static const int kMultiVote; // eg. ba0 vote multi-propose
 
         virtual ~Evidence();
 
@@ -27,6 +27,8 @@ namespace ultrainio {
 
         virtual AccountName getEvilAccount() const;
 
-        virtual int verify(const AccountName& accountName, const PublicKey& pk);
+        virtual int verify(const AccountName& accountName, const PublicKey& pk) const;
+
+        virtual bool simpleVerify() const;
     };
 }

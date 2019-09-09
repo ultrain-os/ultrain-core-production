@@ -31,6 +31,8 @@ namespace ultrainio {
 
         static PrivateKey getMyPrivateKey();
 
+        static fc::crypto::private_key getAccountPrivateKey();
+
         static bool getMyBlsPrivateKey(unsigned char* sk, int skSize);
 
         static bool committeeHasWorked();

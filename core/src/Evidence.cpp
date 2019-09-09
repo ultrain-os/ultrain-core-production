@@ -7,9 +7,9 @@ namespace ultrainio {
 
     const int Evidence::kNone = 0x0;
 
-    const int Evidence::kSignMultiPropose = 0x1; // send multi-propose message
+    const int Evidence::kMultiPropose = 0x1; // send multi-propose message
 
-    const int Evidence::kVoteMultiPropose = 0x2; // eg. ba0 vote multi-propose
+    const int Evidence::kMultiVote = 0x2; // eg. ba0 vote multi-propose
 
     Evidence::~Evidence() {};
 
@@ -25,7 +25,11 @@ namespace ultrainio {
         return AccountName();
     }
 
-    int Evidence::verify(const AccountName& accountName, const PublicKey& pk) {
+    int Evidence::verify(const AccountName& accountName, const PublicKey& pk) const {
         return Evidence::kNone;
+    }
+
+    bool Evidence::simpleVerify() const {
+        return false;
     }
 }

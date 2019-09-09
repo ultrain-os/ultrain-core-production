@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ultrainio/chain/action.hpp>
+#include <core/Evidence.h>
 #include <core/types.h>
 
 namespace ultrainio {
@@ -10,8 +11,7 @@ namespace ultrainio {
 
     class NativeTrx {
     public:
-        static void sendMultiSignTrx(const AccountName& sender, const fc::crypto::private_key& sk, const AccountName& evil,
-                const SignedBlockHeader& one, const SignedBlockHeader& other);
+        static void sendMultiSignTrx(const AccountName& reporter, const fc::crypto::private_key& sk, const AccountName& evil, const Evidence& evidence);
 
     private:
         static SignedTransaction buildTrx(const Action& action, const BlockIdType& referId, const ChainIdType& chainId,

@@ -17,7 +17,8 @@
 #include <boost/asio/steady_timer.hpp>
 
 #include <rpos/EvilDDosDetector.h>
-#include <rpos/EvilMultiSignDetector.h>
+#include <rpos/EvilMultiProposeDetector.h>
+#include <rpos/EvilMultiVoteDetector.h>
 #include <rpos/RoundInfo.h>
 #include <rpos/SyncTask.h>
 #include <rpos/VoterSet.h>
@@ -30,8 +31,6 @@ namespace ultrainio {
 
 class Scheduler : public std::enable_shared_from_this<Scheduler> {
     public:
-        typedef std::map<BlockIdType, VoterSet> BlockIdVoterSetMap;
-
         ~Scheduler();
 
         Scheduler();
@@ -237,7 +236,8 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
         BlsVoterSet m_currentBlsVoterSet;
         std::shared_ptr<LightClientProducer> m_lightClientProducer;
         EvilDDosDetector m_evilDDosDetector;
-        EvilMultiSignDetector m_evilMultiSignDetector;
+        EvilMultiProposeDetector m_evilMultiProposeDetector;
+        EvilMultiVoteDetector m_evilMultiVoteDetector;
         friend class UranusControllerMonitor;
     };
 }

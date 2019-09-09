@@ -87,6 +87,24 @@ namespace ultrainio {
         return accountPool.size();
     }
 
+    int VoterSet::size() const {
+        return accountPool.size();
+    }
+
+    EchoMsg VoterSet::get(size_t index) const {
+        EchoMsg echoMsg;
+        echoMsg.blockId = commonEchoMsg.blockId;
+        echoMsg.phase = commonEchoMsg.phase;
+        echoMsg.baxCount = commonEchoMsg.baxCount;
+        echoMsg.proposer = commonEchoMsg.proposer;
+        echoMsg.account = accountPool[index];
+        echoMsg.timestamp = timePool[index];
+        echoMsg.blsSignature = blsSignPool[index];
+        // TODO echoMsg.ext
+        echoMsg.signature = sigPool[index];
+        return echoMsg;
+    }
+
     void VoterSet::toStringStream(std::stringstream& ss) const {
         if (empty()) {
             return;

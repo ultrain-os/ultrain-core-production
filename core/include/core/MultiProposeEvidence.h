@@ -5,17 +5,21 @@
 #include "core/Evidence.h"
 
 namespace ultrainio {
-    class MultiSignEvidence : public Evidence {
+    class MultiProposeEvidence : public Evidence {
     public:
-        MultiSignEvidence(const std::string& str);
+        MultiProposeEvidence();
 
-        MultiSignEvidence(const SignedBlockHeader& one, const SignedBlockHeader& other);
+        MultiProposeEvidence(const std::string& str);
+
+        MultiProposeEvidence(const SignedBlockHeader& one, const SignedBlockHeader& other);
 
         virtual std::string toString() const;
 
         virtual AccountName getEvilAccount() const;
 
-        virtual int verify(const AccountName& accountName, const PublicKey& pk);
+        virtual int verify(const AccountName& accountName, const PublicKey& pk) const;
+
+        virtual bool simpleVerify() const;
 
     private:
         static const std::string kA;
