@@ -53,6 +53,7 @@ namespace ultrainio {
         uint32_t     virtualMemory;   // kB
         uint64_t     usedStorage;
         std::vector<string> activePeers;
+        std::string  version;
     };
 
      struct periodic_report_static_data {
@@ -144,6 +145,8 @@ namespace ultrainio {
                     auto peer = connectStatus.peer + "#$" + connectStatus.last_handshake.account.to_string();
                     reportData.activePeers.push_back(peer);
                 }
+
+                reportData.version = ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version()));
 #endif
      	    }
         }
@@ -259,6 +262,6 @@ namespace ultrainio {
 
 FC_REFLECT( ultrainio::periodic_report_dynamic_data, (nodeIp)(chainId)(minerName)(blockNum)(dbFreeMem)(phase)(baxCount)(transactionNum)(blockProposer)(syncing)
                                                      (syncFailed)(connected)(ready)(blockHash)(previousBlockHash)(isProposer)(ba0BlockTime)
-                                                     (ba1BlockTime)(cpu)(memory)(virtualMemory)(usedStorage)(activePeers) )
+                                                     (ba1BlockTime)(cpu)(memory)(virtualMemory)(usedStorage)(activePeers)(version) )
 FC_REFLECT( ultrainio::periodic_report_static_data, (nodeIp)(chainId)(version)(nonProducingNode)(genesisLeaderPk)(publicKey)
                                                     (privateKey)(account)(dbTotalMem)(storageSize)(configuredPeers) )
