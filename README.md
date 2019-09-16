@@ -38,14 +38,14 @@ chosen (again with VRF) as "voters", and these voters will vote on the proposed 
 network. The voting process carries out in 2 rounds and eventually everyone in the network agrees on one proposed block, and the
 block finality is deterministic at the end of the 2 rounds of voting. The process is illustrated in the following diagram:
 
-![alt text](http://ultrain.io/public/images/github/consensus.png "Consensus Process")
+![alt text](http://ultrain.info/public/images/github/consensus.png "Consensus Process")
 
 
-With the assumption of semi-synchronous network condition, the consensus can work against up to 1/3 of the committee members being offline or malicious. More details can be found in our [consensus yellow paper](https://ultrain.io/downloads/consensus.pdf).
+With the assumption of semi-synchronous network condition, the consensus can work against up to 1/3 of the committee members being offline or malicious. More details can be found in our [consensus yellow paper](https://ultrain.info/downloads/consensus.pdf).
 
 By narrowing down the number of proposers in each round of the block production, the network communication overhead is dramatically
 reduced. And to achieve the true fairness and randomness of proposers selection, we devise a novel on-chain random number generator that
-has passed the NIST SP800-22 test. More details can be found [here](https://developer.ultrain.io/tutorial/Middleware-random_number);
+has passed the NIST SP800-22 test. More details can be found [here](https://developer.ultrain.info/tutorial/Middleware-random_number);
 And vote messages are also aggregated using BLS Aggregation Signature to further reduce the network overhead.
 
 
@@ -61,7 +61,7 @@ we naturally segregated the computation and storage resources between shard-chai
 on the main-chain, which its tasks involve users’ accounts creation/maintenance, miners’ registration/token staking
 and scheduling of mining nodes among different shard-chains.
 
-![alt text](http://ultrain.io/public/images/github/sidechain.png "Multichain")
+![alt text](http://ultrain.info/public/images/github/sidechain.png "Multichain")
 
 
 ### Main/Shard chain workflow
@@ -129,7 +129,7 @@ Oracle (off-chain data to on-chain) in inter-blockchain communication.
 synced from main-chain to shard-chains; 4) account information on main-chain is synced to shard-chain;
 5) the purchased resource package of Dapp developer on main-chain is synced to shard-chains; 6) UGAS can be transferred across the user’s main-chain and shard-chains accounts.
 
-More details of the multi-chain design can be found [here](https://ultrain.io/downloads/Ultrain%E2%80%99s%20Multi-chain%20architecture%20-%20revised.pdf)
+More details of the multi-chain design can be found [here](https://ultrain.info/downloads/Ultrain%E2%80%99s%20Multi-chain%20architecture%20-%20revised.pdf)
 
 
 ## Smart contract platform powered by WebAssembly & TypeScript
@@ -141,7 +141,7 @@ WABT as the VM implementation base to take advantage of WASM's high-performance 
 The toolchain has already supported C++ as the frontend smart contract developing language if the developers want the maximal control of the runtime performance. But for developer
 who wants better developing productivity, we also support TypeScript as another (recommended) option for developing smart contract and provide the full [compiler toolchian](https://github.com/ultrain-os/ultrascript) support, a richful set of [TS library](https://github.com/ultrain-os/ultrain-ts-lib), and some widely adopted [UIPs](https://github.com/ultrain-os/UIPs) (Ultrain Improvement Proposals) spec and ref implementations.
 
-More develop resource can be found at our [developer portal](https://developer.ultrain.io/).
+More develop resource can be found at our [developer portal](https://developer.ultrain.info/).
 
 
 ## Token Economy and Resource Package Model
@@ -155,7 +155,7 @@ to distinguish the “overselling” and “preselling” models, in an “overs
 of seats a train has, all passengers’ seat space is reduced. In a “preselling” model, we only sell tickets no more than the to
 seats available, this ensures everyone’s seat space remains unchanged. In essence, the “overselling” model disregards the outcome of inflation while reaping the full benefit from selling the resource packages, the “preselling” model, on the other hand, balances our package purchasers’ cost and user experience.
 
-More of the resource package model can be found [here](https://developer.ultrain.io/resources)
+More of the resource package model can be found [here](https://developer.ultrain.info/resources)
 
 
 ## LICENSE
@@ -225,7 +225,7 @@ Following are the code structure of some of the core components:
 
 
 # Resources
-1. [ULTRAIN Website](https://ultrain.io)
-2. [ULTRAIN Developer portal](https://developer.ultrain.io)
-3. [ULTRAIN Explorer](https://explorer.ultrain.io/)
+1. [ULTRAIN Website](https://ultrain.info)
+2. [ULTRAIN Developer portal](https://developer.ultrain.info)
+3. [ULTRAIN Explorer](https://explorer.ultrain.info/)
 4. [Community Telegram Group](https://t.me/ultrainchain)
