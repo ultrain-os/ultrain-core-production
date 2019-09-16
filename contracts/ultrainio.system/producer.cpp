@@ -22,7 +22,22 @@ namespace ultrainiosystem {
                                       account_name rewards_account,
                                       const std::string& url,
                                       name location ) {
-        require_auth(_self);
+        bool has_ultrainio_auth = true;
+        if(!has_auth(_self)) {
+            bool is_allow_self_register = false;
+            for(auto extension : _gstate.table_extension){
+                if(extension.key == ultrainio_global_state::global_state_exten_type_key::is_allow_producer_self_register
+                    && extension.value == "1") {
+                   is_allow_self_register = true;
+                   break;
+                }
+            }
+            ultrainio_assert(is_allow_self_register, "only allow ultrainio account to register producer");
+            require_auth(producer);
+
+            ultrainio_assert(location == default_chain_name, "no permission to assign producer to a specific location, please set location as default");
+            has_ultrainio_auth = false;
+        }
         ultrainio_assert( url.size() < 512, "url too long" );
         // key is hex encoded
         ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
@@ -30,8 +45,9 @@ namespace ultrainiosystem {
         ultrainio_assert( is_account( producer ), "producer account not exists" );
         ultrainio_assert( is_account( rewards_account ), "rewards account not exists" );
         check_producer_evillist( producer );
-        if(location != self_chain_name) {
-            ultrainio_assert(location != N(master) && location != default_chain_name, "wrong location name");
+
+        if(location != self_chain_name && location != default_chain_name) {
+            ultrainio_assert(location != N(master), "wrong location name");
             ultrainio_assert(_chains.find(location) != _chains.end(),
                                  "wrong location, chain is not existed");
         }
@@ -55,9 +71,14 @@ namespace ultrainiosystem {
                 brief_prod.in_disable   = true;
             });
         } else {
-            ultrainio_assert( briefprod->in_disable, "producer already exist" );
+            ultrainio_assert( briefprod->in_disable, "producer has been enabled" );
             if(location == default_chain_name) {
                 location = briefprod->location;
+            }
+            if(briefprod->location != location) {
+                _briefproducers.modify(briefprod, [&]( producer_brief& brief_prod ) {
+                    brief_prod.location     = location;
+                });
             }
             disabled_producers_table dp_tbl(_self, _self);
             auto it_disable = dp_tbl.find(producer);
@@ -72,8 +93,7 @@ namespace ultrainiosystem {
             });
         }
 
-        /*
-        if ( !is_has_ultrainio_auth ) {
+        if ( !has_ultrainio_auth ) {
             ultrainio_assert( _gstate.is_master_chain(), "only master chain allow regproducer" );
             asset cur_tokens =
                 ultrainio::token(N(utrio.token)).get_balance( producer,symbol_type(CORE_SYMBOL).name());
@@ -84,14 +104,12 @@ namespace ultrainiosystem {
             for(auto ite_chain = _chains.begin(); ite_chain != _chains.end(); ++ite_chain) {
                 if(ite_chain->chain_name == N(master))
                     continue;
-                if(is_empowered(producer, ite_chain->chain_name))
-                    continue;
                 std::string errorlog = std::string("producer account must be synchronized to all the subchains, \
                         so that we can schedule and secure the subchains. Please perform empoweruser action \
                         producer:") + name{producer}.to_string() + std::string(" not synchronized to subchain:") + name{ite_chain->chain_name}.to_string();
-                ultrainio_assert( false, errorlog.c_str());
+                ultrainio_assert(is_empowered(producer, ite_chain->chain_name), errorlog.c_str());
             }
-        }*/
+        }
     }
 
     std::vector<name> system_contract::get_all_chainname() {
@@ -133,17 +151,19 @@ namespace ultrainiosystem {
             prod_info = *producer_iter;
             remove_from_chain(from_chain, producer, current_block_number);
             print("move producer ", name{producer}, " from ", from_chain);
-            cmtbulletin  cb_tbl(_self, from_chain);
-            auto record = cb_tbl.find(current_block_number);
-            if(record == cb_tbl.end()) {
-                cb_tbl.emplace([&](auto& new_change) {
-                    new_change.block_num = current_block_number;
-                    new_change.change_type = remove_producer;
-                });
-            } else if ((record->change_type & remove_producer) == 0) {
-                cb_tbl.modify(record, [&](auto& _change) {
-                    _change.change_type |= remove_producer;
-                });
+            if(default_chain_name != from_chain) {
+                cmtbulletin  cb_tbl(_self, from_chain);
+                auto record = cb_tbl.find(current_block_number);
+                if(record == cb_tbl.end()) {
+                    cb_tbl.emplace([&](auto& new_change) {
+                        new_change.block_num = current_block_number;
+                        new_change.change_type = remove_producer;
+                    });
+                } else if ((record->change_type & remove_producer) == 0) {
+                    cb_tbl.modify(record, [&](auto& _change) {
+                        _change.change_type |= remove_producer;
+                    });
+                }
             }
         }
 
@@ -168,17 +188,19 @@ namespace ultrainiosystem {
                 producer_brf.location = to_chain;
             });
             print(" to ", to_chain, "\n");
-            cmtbulletin  cb_tbl(_self, to_chain);
-            auto record = cb_tbl.find(current_block_number);
-            if(record == cb_tbl.end()) {
-                cb_tbl.emplace([&](auto& new_change) {
-                    new_change.block_num = current_block_number;
-                    new_change.change_type = add_producer;
-                });
-            } else if ((record->change_type & add_producer) == 0) {
-                cb_tbl.modify(record, [&](auto& _change) {
-                    _change.change_type |= add_producer;
-                });
+            if(default_chain_name != to_chain) {
+                cmtbulletin  cb_tbl(_self, to_chain);
+                auto record = cb_tbl.find(current_block_number);
+                if(record == cb_tbl.end()) {
+                    cb_tbl.emplace([&](auto& new_change) {
+                        new_change.block_num = current_block_number;
+                        new_change.change_type = add_producer;
+                    });
+                } else if ((record->change_type & add_producer) == 0) {
+                    cb_tbl.modify(record, [&](auto& _change) {
+                        _change.change_type |= add_producer;
+                    });
+                }
             }
         }
     }

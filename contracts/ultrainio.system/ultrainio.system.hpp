@@ -85,6 +85,8 @@ namespace ultrainiosystem {
          link_auth_fee = 11,
          res_transfer_fee = 12,
          pending_resource_check = 13,
+         pending_producer_queue_blocks = 14,
+         is_allow_producer_self_register = 15,
          global_state_key_end
       };
 
@@ -152,12 +154,24 @@ namespace ultrainiosystem {
       enum producers_state_exten_type_key {
          producers_state_key_start = 0,
          claim_rewards_block_height = 1,
+         enqueue_block_height = 2, //block height of master chain when producer was added into pending que
          producers_state_key_end,
       };
       uint64_t primary_key()const { return owner; }
       producer_info() {}
       producer_info(const disabled_producer& dp, uint64_t unpay, uint64_t votes, uint64_t last_record_block)
           :disabled_producer(dp), unpaid_balance(unpay), vote_number(votes), last_record_blockheight(last_record_block) {}
+
+      uint64_t get_enqueue_block_height() const {
+          uint64_t enqueue_blockheight = 0;
+          for( auto& exten : table_extension ){
+              if( exten.key == enqueue_block_height ){
+                  enqueue_blockheight = std::stoull(exten.value);
+                  break;
+              }
+          }
+          return enqueue_blockheight;
+      }
 
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, disabled_producer,
                                     (unpaid_balance)(vote_number)(last_record_blockheight)(table_extension) )
@@ -635,6 +649,7 @@ namespace ultrainiosystem {
          //defined in scheduler.cpp
          void add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number);
          void remove_from_chain(name chain_name, account_name producer_name, uint64_t current_block_number);
+         void add_pending_producer(name chain_name, const committee_info& producer, uint32_t num);
          void pre_schedule(); //called in onblock every 24h defaultly.
          void check_bulletin();
          bool move_producer(checksum256 head_id,

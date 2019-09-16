@@ -126,17 +126,12 @@ namespace ultrainiosystem {
              }
              auto enabled = ((dis_prod->total_cons_staked + total_update.amount) >= _gstate.min_activated_stake);
              if(enabled) {
-                name assigned_location = briefprod->location;
-                if(assigned_location == default_chain_name) {
-                    assigned_location = get_default_chain();
-                }
-
                 dp_tbl.modify(dis_prod, [&]( disabled_producer& _dis ) {
                     _dis.total_cons_staked       += total_update.amount;
                     _dis.delegated_cons_blocknum = curblocknum;
                 });
 
-                moveprod_param mv_prod(dis_prod->owner, dis_prod->producer_key, dis_prod->bls_key, true, name{N(disable)}, false, assigned_location);
+                moveprod_param mv_prod(dis_prod->owner, dis_prod->producer_key, dis_prod->bls_key, true, name{N(disable)}, false, briefprod->location);
                 send_defer_moveprod_action( mv_prod );
              }
              else {
