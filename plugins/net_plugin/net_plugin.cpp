@@ -909,10 +909,11 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                 if(!conn)
                     return;
 
-                for (auto& m: conn->out_queue) {
+                while (conn->out_queue.size()>0) {
+                    auto m = conn->out_queue.front();
+                    conn->out_queue.pop_front();
                     m.callback(ec, w);
                 }
-
                 if(ec) {
                     string pname = conn ? conn->peer_name() : "no connection name";
                     if( ec.value() != boost::asio::error::eof) {
@@ -925,7 +926,6 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                     return;
                 }
 
-                conn->out_queue.clear();
                 conn->do_queue_write();
             }
             catch(const std::exception &ex) {
