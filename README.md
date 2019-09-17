@@ -209,17 +209,20 @@ Following are the code structure of some of the core components:
 #### 2.Enter any docker and compile node run
     $ cd ultrain-core/
     $ ./ultrainio_build.sh
-#### 3.Exit the docker, enter the physical host, and start node run
+#### 3. run unittest
+    $ cd build
+    $ make test
+#### 4.Exit the docker, enter the physical host, and start node run
     $ cd ultrain-core/scripts/
     $ ./start_all_ultrain.sh  dockername  /root/workspace
     (/root/workspace is the upper directory of docker ultrain-core)
-#### 4.Enter dockernam-7 and perform genesis bios
+#### 5.Enter dockernam-7 and perform genesis bios
     $ cd ultrain-core/scripts/
     $ ./bios-test.py  -a
 ### Other operating
-#### 5.Restart node , enter the physical host
+#### 6.Restart node , enter the physical host
     $ ./restart_all_ultrain.sh dockername  /root/workspace
-#### 6.Stop node
+#### 7.Stop node
     $ ./stop_all_ultrain.sh dockername
 
 
