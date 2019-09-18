@@ -216,7 +216,7 @@
 			done
 		fi
 		printf "\\tInstalling boost libraries.\\n"
-		if ! "${BREW}" install https://raw.githubusercontent.com/Homebrew/homebrew-core/f946d12e295c8a27519b73cc810d06593270a07f/Formula/boost.rb
+		if ! "${BREW}" install "${SOURCE_DIR}/scripts/boost.rb"
 		then
 			printf "\\tUnable to install boost 1.67 libraries at this time. 0\\n"
 			printf "\\tExiting now.\\n\\n"
@@ -531,6 +531,25 @@
 		printf "\\tSuccessfully installed LLVM/Clang with WASM support @ /usr/local/wasm/bin/.\\n"
 	else
 		printf "\\tWASM found at /usr/local/wasm/bin/.\\n"
+	fi
+
+	printf "\\n\\tChecking openssl@1.1 support.\\n"
+	opensslDir="/usr/local/Cellar/openssl@1.1/"
+	if [ -d $opensslDir ]; then
+		printf "\\tdo openssl@1.1 link\\n"
+		for dir in $(ls $opensslDir)
+		do
+			if [ -d $opensslDir$dir ]; then
+				rm -rf /usr/local/opt/openssl
+				ln -s $opensslDir$dir /usr/local/opt/openssl
+				break
+			else
+				printf "\\tlink openssl path $opensslDir$dir error.\\n"
+				exit 1
+			fi
+		done
+	else
+		printf "\\topenssl@1.1 not found at /usr/local/Cellar/openssl@1.1.\\n"
 	fi
 
 	function print_instructions()
