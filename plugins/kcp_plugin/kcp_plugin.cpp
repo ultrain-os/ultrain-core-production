@@ -4,7 +4,7 @@
  */
 #include <ultrainio/chain/types.hpp>
 
-#include <ultrainio/net_plugin/net_plugin.hpp>
+#include <ultrainio/kcp_plugin/kcp_plugin.hpp>
 #include <ultrainio/chain/controller.hpp>
 #include <ultrainio/chain/exceptions.hpp>
 #include <ultrainio/chain/block.hpp>
@@ -17,8 +17,8 @@ namespace fc {
     extern std::unordered_map<std::string,logger>& get_logger_map();
 }
 
-namespace ultrainio { namespace net_plugin_n {
-    static appbase::abstract_plugin& _net_plugin = app().register_plugin<net_plugin>();
+namespace ultrainio { namespace kcp_plugin_n {
+    static appbase::abstract_plugin& _kcp_plugin = app().register_plugin<kcp_plugin>();
 
     class connection;
     class sync_block_manager;
@@ -40,7 +40,7 @@ namespace ultrainio { namespace net_plugin_n {
 
     update_in_flight  incr_in_flight(1), decr_in_flight(-1);
 
-    class net_plugin_impl {
+    class kcp_plugin_impl {
     public:
         passive_peer                     rpos_listener;
         passive_peer                     trx_listener;
@@ -219,7 +219,7 @@ namespace ultrainio { namespace net_plugin_n {
         void promote_private_address(vector<string>& peers);
     };
 
-    const fc::string logger_name("net_plugin_impl");
+    const fc::string logger_name("kcp_plugin_impl");
     fc::logger logger;
     std::string peer_log_format;
 
@@ -255,7 +255,7 @@ namespace ultrainio { namespace net_plugin_n {
         return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
     }
 
-    static net_plugin_impl *my_impl;
+    static kcp_plugin_impl *my_impl;
 
     /**
      * default value initializers
@@ -413,12 +413,12 @@ namespace ultrainio { namespace net_plugin_n {
          *
          * Process the next message from the pending_message_buffer.
          * message_length is the already determined length of the data
-         * part of the message and impl in the net plugin implementation
+         * part of the message and impl in the kcp plugin implementation
          * that will handle the message.
          * Returns true is successful. Returns false if an error was
          * encountered unpacking or processing the message.
          */
-        bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
+        bool process_next_message(kcp_plugin_impl& impl, uint32_t message_length);
         bool check_pkt_limit_exceed();
         bool add_peer_block(const peer_block_state &pbs);
 
@@ -449,9 +449,9 @@ namespace ultrainio { namespace net_plugin_n {
     };
 
     struct msgHandler : public fc::visitor<void> {
-        net_plugin_impl &impl;
+        kcp_plugin_impl &impl;
         connection_ptr c;
-        msgHandler( net_plugin_impl &imp, connection_ptr conn) : impl(imp), c(conn) {}
+        msgHandler( kcp_plugin_impl &imp, connection_ptr conn) : impl(imp), c(conn) {}
 
         template <typename T> void operator()(const T &msg) const
         {
@@ -1037,7 +1037,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
         return false;
     }
-    bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
+    bool connection::process_next_message(kcp_plugin_impl& impl, uint32_t message_length) {
         try {
             // If it is a SyncBlockMsg, then save the raw message for the cache
             // This must be done before we unpack the message.
@@ -1312,7 +1312,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 
     //------------------------------------------------------------------------
 
-    string net_plugin_impl::connect(const string& host, msg_priority p, connection_direction dir, const fc::sha256& node_id) {
+    string kcp_plugin_impl::connect(const string& host, msg_priority p, connection_direction dir, const fc::sha256& node_id) {
         if (find_connection(host))
             return "already connected";
 
@@ -1325,7 +1325,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         return "added connection";
     }
 
-    void net_plugin_impl::connect( connection_ptr c ) {
+    void kcp_plugin_impl::connect( connection_ptr c ) {
         if (c->no_retry != go_away_reason::no_reason && c->no_retry != go_away_reason::authentication) {
             ilog("Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
             if(c->no_retry == go_away_reason::duplicate)
@@ -1370,7 +1370,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                                 });
     }
 
-    void net_plugin_impl::connect( connection_ptr c, tcp::resolver::iterator endpoint_itr ) {
+    void kcp_plugin_impl::connect( connection_ptr c, tcp::resolver::iterator endpoint_itr ) {
         if (c->no_retry != go_away_reason::no_reason && c->no_retry != go_away_reason::authentication) {
             string rsn = reason_str(c->no_retry);
             return;
@@ -1401,7 +1401,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         } );
     }
 
-    uint32_t net_plugin_impl::connect_to_endpoint( const p2p::NodeIPEndpoint& ep, connection_direction dir, const fc::sha256& node_id ) {
+    uint32_t kcp_plugin_impl::connect_to_endpoint( const p2p::NodeIPEndpoint& ep, connection_direction dir, const fc::sha256& node_id ) {
         uint32_t i = 0;
         string host = ep.address() + ":" + std::to_string(ep.listenPort(msg_priority_trx));
         if (!find_connection(host) && !is_grey_connection(host)) {
@@ -1420,7 +1420,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         return i;
     }
 
-    bool net_plugin_impl::start_session( connection_ptr con ) {
+    bool kcp_plugin_impl::start_session( connection_ptr con ) {
         boost::asio::ip::tcp::no_delay nodelay( true );
         boost::system::error_code ec;
         con->socket->set_option( nodelay, ec );
@@ -1441,7 +1441,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
     }
 
-    void net_plugin_impl::start_listen_loop(shared_ptr<tcp::acceptor> acceptor, msg_priority p) {
+    void kcp_plugin_impl::start_listen_loop(shared_ptr<tcp::acceptor> acceptor, msg_priority p) {
         auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
         acceptor->async_accept( *socket, [acceptor,socket,this,p]( boost::system::error_code ec ) {
             if( !ec ) {
@@ -1506,7 +1506,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
          });
    }
 
-    void net_plugin_impl::start_broadcast(const net_message& msg, msg_priority p) {
+    void kcp_plugin_impl::start_broadcast(const net_message& msg, msg_priority p) {
         std::string peers_str;
         for(auto &c : connections) {
             if (c->current() && p == c->priority) {
@@ -1520,11 +1520,11 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 
     }
 
-    void net_plugin_impl::start_broadcast(const SignedTransaction& trx) {
+    void kcp_plugin_impl::start_broadcast(const SignedTransaction& trx) {
         dispatcher->bcast_transaction(packed_transaction(trx, packed_transaction::zlib));
     }
 
-    void net_plugin_impl::send_block(const fc::sha256& node_id, const net_message& msg) {
+    void kcp_plugin_impl::send_block(const fc::sha256& node_id, const net_message& msg) {
         for(auto &c : connections) {
             if (c->priority == msg_priority_trx && c->current()) {
                 if (c->node_id == node_id) {
@@ -1536,7 +1536,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
     }
 
-    void net_plugin_impl::send_block_num_range(const fc::sha256& node_id, const net_message& msg) {
+    void kcp_plugin_impl::send_block_num_range(const fc::sha256& node_id, const net_message& msg) {
         for (auto &c : connections) {
             if (c->priority == msg_priority_trx && c->current()) {
                 if (c->node_id == node_id) {
@@ -1548,7 +1548,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
     }
 
-    void net_plugin_impl::stop_sync_block() {
+    void kcp_plugin_impl::stop_sync_block() {
         if (sync_block_master->sync_conn) {
             SyncStopMsg stop_msg;
             stop_msg.seqNum = sync_block_master->seq_num;
@@ -1557,7 +1557,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         sync_block_master->reset();
     }
 
-    bool net_plugin_impl::send_req_sync(const ultrainio::ReqSyncMsg& msg) {
+    bool kcp_plugin_impl::send_req_sync(const ultrainio::ReqSyncMsg& msg) {
         sync_block_master->rsp_conns.clear();
         std::vector<connection_ptr> conn_list;
         conn_list.reserve(connections.size());
@@ -1609,7 +1609,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         return true;
     }
 
-   void net_plugin_impl::start_read_message( connection_ptr conn ) {
+   void kcp_plugin_impl::start_read_message( connection_ptr conn ) {
 
       try {
          if(!conn->socket) {
@@ -1720,7 +1720,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       }
    }
 
-    size_t net_plugin_impl::count_open_sockets() const
+    size_t kcp_plugin_impl::count_open_sockets() const
     {
         size_t count = 0;
         for( auto &c : connections) {
@@ -1731,7 +1731,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
     }
 
     template<typename VerifierFunc>
-    void net_plugin_impl::send_all( const net_message &msg, VerifierFunc verify) {
+    void kcp_plugin_impl::send_all( const net_message &msg, VerifierFunc verify) {
         for( auto &c : connections) {
             if( c->priority == msg_priority_trx && c->current() && verify( c)) {
                 c->enqueue( msg );
@@ -1739,7 +1739,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
     }
 
-    bool net_plugin_impl::is_valid( const handshake_message &msg) {
+    bool kcp_plugin_impl::is_valid( const handshake_message &msg) {
         // Do some basic validation of an incoming handshake_message, so things
         // that really aren't handshake messages can be quickly discarded without
         // affecting state.
@@ -1764,7 +1764,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         return valid;
     }
 
-    shared_ptr<tcp::resolver> net_plugin_impl::get_resolver(msg_priority p) const {
+    shared_ptr<tcp::resolver> kcp_plugin_impl::get_resolver(msg_priority p) const {
         if (p == msg_priority_rpos) {
             return rpos_listener.resolver;
         } else {
@@ -1772,7 +1772,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
     }
 
-    shared_ptr<tcp::acceptor> net_plugin_impl::get_acceptor(msg_priority p) const {
+    shared_ptr<tcp::acceptor> kcp_plugin_impl::get_acceptor(msg_priority p) const {
         if (p == msg_priority_rpos) {
             return rpos_listener.acceptor;
         } else {
@@ -1780,7 +1780,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
     }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
+   void kcp_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
       ilog("got a handshake_message from ${p}, ${h}, ${nod}", ("p",c->peer_addr)("h",msg.p2p_address)("nod", msg.node_id));
       if (!is_valid(msg)) {
          elog("bad handshake message");
@@ -1943,7 +1943,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       c->_logger_variant.reset();
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const go_away_message &msg ) {
+   void kcp_plugin_impl::handle_message( connection_ptr c, const go_away_message &msg ) {
       string rsn = reason_str( msg.reason );
       peer_ilog(c, "received go_away_message");
       ilog( "received a go away message from ${p}, reason = ${r}",
@@ -1959,7 +1959,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       }
    }
 
-   void net_plugin_impl::handle_message(connection_ptr c, const time_message &msg) {
+   void kcp_plugin_impl::handle_message(connection_ptr c, const time_message &msg) {
       peer_ilog(c, "received time_message");
       /* We've already lost however many microseconds it took to dispatch
        * the message, but it can't be helped.
@@ -1997,7 +1997,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       c->rec = 0;
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const notice_message &msg) {
+   void kcp_plugin_impl::handle_message( connection_ptr c, const notice_message &msg) {
       // peer tells us about one or more blocks or txns. When done syncing, forward on
       // notices of previously unknown blocks or txns,
       //
@@ -2064,7 +2064,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       }
    }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
+    void kcp_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
         return;
         switch (msg.req_blocks.mode) {
         case catch_up :
@@ -2091,7 +2091,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const EchoMsg &msg) {
+   void kcp_plugin_impl::handle_message( connection_ptr c, const EchoMsg &msg) {
 //       ilog("echo from ${p} block_id: ${id} num: ${num} phase: ${phase} baxcount: ${baxcount} account: ${account} sig: ${sig}",
 //            ("p", c->peer_name())("id", short_hash(msg.blockId))("num", BlockHeader::num_from_id(msg.blockId))
 //            ("phase", (uint32_t)msg.phase)("baxcount",msg.baxCount)("account", std::string(msg.account))("sig", short_sig(msg.signature)));
@@ -2104,7 +2104,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
        }
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const ProposeMsg& msg) {
+   void kcp_plugin_impl::handle_message( connection_ptr c, const ProposeMsg& msg) {
        ilog("propose from ${p} block id: ${id} block num: ${num}",
             ("p", c->peer_name())("id", short_hash(msg.block.id()))("num", msg.block.block_num()));
        if (app().get_plugin<producer_rpos_plugin>().handle_message(msg)) {
@@ -2116,12 +2116,12 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
        }
    }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqBlockNumRangeMsg& msg) {
+    void kcp_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqBlockNumRangeMsg& msg) {
         ilog("receive req block num range msg!!! from peer ${p} seq: ${s}", ("p", c->peer_name())("s", msg.seqNum));
         app().get_plugin<producer_rpos_plugin>().handle_message(c->node_id, msg);
     }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::RspBlockNumRangeMsg& msg) {
+    void kcp_plugin_impl::handle_message( connection_ptr c, const ultrainio::RspBlockNumRangeMsg& msg) {
         ilog("receive rsp block num range msg!!! from peer ${p} seq: ${s} block num: ${f} - ${l}", ("p", c->peer_name())("s", msg.seqNum)("f", msg.firstNum)("l", msg.lastNum));
         ilog("sync block master selecting src:${s} seq:${seq}", ("s", sync_block_master->selecting_src)("seq", sync_block_master->seq_num));
         if (!sync_block_master->selecting_src || msg.seqNum != sync_block_master->seq_num) {
@@ -2147,13 +2147,13 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
     }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg) {
+    void kcp_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqSyncMsg& msg) {
         ilog("receive req sync msg!!! message from ${p} addr:${addr} blockNum = ${blockNum}",
              ("p", c->peer_name())("addr",c->peer_addr)("blockNum", msg.endBlockNum));
         app().get_plugin<producer_rpos_plugin>().handle_message(c->node_id, msg);
     }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg) {
+    void kcp_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncBlockMsg& msg) {
         ilog("receive block msg!!! message from ${p} blockNum = ${blockNum} end block num:${eb}",
              ("p", c->peer_name())("blockNum", msg.block.block_num())("eb", sync_block_master->end_block_num));
 
@@ -2190,13 +2190,13 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         }
     }
 
-    void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncStopMsg &msg) {
+    void kcp_plugin_impl::handle_message( connection_ptr c, const ultrainio::SyncStopMsg &msg) {
         ilog("receive sync stop msg!!! message from ${p} addr:${addr} seqNum = ${sn}",
              ("p", c->peer_name())("addr", c->peer_addr)("sn", msg.seqNum));
         app().get_plugin<producer_rpos_plugin>().handle_message(c->node_id, msg);
     }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
+   void kcp_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
       fc_dlog(logger, "got a packed transaction, cancel wait");
       peer_ilog(c, "received packed_transaction");
       transaction_id_type tid = msg.id();
@@ -2233,7 +2233,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       });
    }
 
-    void net_plugin_impl::reset_speedlimit_monitor( )
+    void kcp_plugin_impl::reset_speedlimit_monitor( )
     {
         for(auto &c : connections) {
             if(c->current()){
@@ -2247,7 +2247,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
             }
         }
     }
-    void net_plugin_impl::start_speedlimit_monitor_timer( )
+    void kcp_plugin_impl::start_speedlimit_monitor_timer( )
     {
         speedmonitor_timer->expires_from_now( speedmonitor_period);
         speedmonitor_timer->async_wait( [this](boost::system::error_code ec) {
@@ -2255,7 +2255,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 	       start_speedlimit_monitor_timer();
         });
     }
-    void net_plugin_impl::start_producerslist_update_timer( )
+    void kcp_plugin_impl::start_producerslist_update_timer( )
     {
         producerslist_update_timer->expires_from_now(producerslist_update_interval);
         producerslist_update_timer->async_wait( [this](boost::system::error_code ec) {
@@ -2263,7 +2263,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 	    start_producerslist_update_timer();
         });
     }
-    void net_plugin_impl::start_conn_timer( ) {
+    void kcp_plugin_impl::start_conn_timer( ) {
         connector_check->expires_from_now( connector_period);
         connector_check->async_wait( [this](boost::system::error_code ec) {
             if( !ec) {
@@ -2276,7 +2276,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         });
     }
 
-    void net_plugin_impl::onNodeTableDropEvent(p2p::NodeIPEndpoint const& _n) {
+    void kcp_plugin_impl::onNodeTableDropEvent(p2p::NodeIPEndpoint const& _n) {
         //TODO:P2P udp linkage p2p
         ilog("onNodeTableDropEven addr ${addr}",("addr",_n.address()));
         boost::system::error_code ec;
@@ -2291,7 +2291,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 	}
     }
 
-    void net_plugin_impl::onNodeTableTcpConnectEvent(p2p::NodeIPEndpoint const& _n) {
+    void kcp_plugin_impl::onNodeTableTcpConnectEvent(p2p::NodeIPEndpoint const& _n) {
         ilog("TcpConnectEvent from: ${addr}", ("addr", _n.address()));
         if (num_passive_out < max_passive_out_count) {
             num_passive_out += connect_to_endpoint(_n, direction_passive_out);
@@ -2300,7 +2300,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                  ("num", num_passive_out)("max", max_passive_out_count)("addr", _n.address()));
         }
     }
-    void net_plugin_impl::start_block_handler_timer( ) {
+    void kcp_plugin_impl::start_block_handler_timer( ) {
         block_handler_check->expires_from_now(block_handler_period);
         block_handler_check->async_wait( [this](boost::system::error_code ec) {
             if (ec.value() == boost::asio::error::operation_aborted) {
@@ -2312,7 +2312,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         });
     }
 
-   void net_plugin_impl::start_txn_timer() {
+   void kcp_plugin_impl::start_txn_timer() {
       transaction_check->expires_from_now( txn_exp_period);
       transaction_check->async_wait( [this](boost::system::error_code ec) {
             if( !ec) {
@@ -2325,7 +2325,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
          });
    }
 
-   void net_plugin_impl::ticker() {
+   void kcp_plugin_impl::ticker() {
       keepalive_timer->expires_from_now (keepalive_interval);
       keepalive_timer->async_wait ([this](boost::system::error_code ec) {
             ticker ();
@@ -2360,7 +2360,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
          });
    }
 
-   void net_plugin_impl::start_monitors() {
+   void kcp_plugin_impl::start_monitors() {
       connector_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       transaction_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       sizeprint_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
@@ -2375,7 +2375,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       start_block_handler_timer();
    }
 
-   void net_plugin_impl::expire_txns() {
+   void kcp_plugin_impl::expire_txns() {
       start_txn_timer( );
 
       // Lets keep watch on the size of received_transactions.
@@ -2408,7 +2408,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 #endif
    }
 
-   void net_plugin_impl::connection_monitor( ) {
+   void kcp_plugin_impl::connection_monitor( ) {
       static std::default_random_engine rg(time(0));
 
       start_conn_timer();
@@ -2477,7 +2477,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       }
    }
 
-   void net_plugin_impl::close( connection_ptr c ) {
+   void kcp_plugin_impl::close( connection_ptr c ) {
       if (c->socket->is_open()) {
          if (c->direct == direction_passive_out) {
             if (num_passive_out == 0) {
@@ -2498,7 +2498,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       c->close();
    }
 
-   void net_plugin_impl::transaction_ack(const std::tuple<const fc::exception_ptr, const transaction_trace_ptr, const packed_transaction_ptr>& results) {
+   void kcp_plugin_impl::transaction_ack(const std::tuple<const fc::exception_ptr, const transaction_trace_ptr, const packed_transaction_ptr>& results) {
       transaction_id_type id = std::get<2>(results)->id();
       if (std::get<0>(results)) {
          fc_ilog(logger,"signaled NACK, trx-id = ${id} : ${why}",("id", id)("why", std::get<0>(results)->to_detail_string()));
@@ -2513,7 +2513,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
          dispatcher->bcast_transaction(*ptx);
       }
    }
-   bool net_plugin_impl::is_producer_account_pk(chain::account_name const& account)
+   bool kcp_plugin_impl::is_producer_account_pk(chain::account_name const& account)
    {
 
        auto found_producer_account = std::find(producers_account.begin(), producers_account.end(), account.to_string());
@@ -2524,7 +2524,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
        return true;
    }
 
-   void net_plugin_impl::reset_producerslist()
+   void kcp_plugin_impl::reset_producerslist()
    {
         const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         struct chain_apis::read_only::get_producers_params params;
@@ -2546,7 +2546,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
             ilog("there may be no producer registered: ${e}", ("e", e.to_string()));
         }
    }
-   bool net_plugin_impl::is_genesis_finish()
+   bool kcp_plugin_impl::is_genesis_finish()
    {
        if(!is_genesis_finished)
        {
@@ -2565,7 +2565,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
        return true;
 
    }
-   bool net_plugin_impl::authen_whitelist_and_producer(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig,chain::account_name const& account)
+   bool kcp_plugin_impl::authen_whitelist_and_producer(fc::sha256 const& hash,chain::public_key_type const& pk,chain::signature_type const& sig,chain::account_name const& account)
    {
         bool is_genesis_fin = is_genesis_finish();
         if(!is_genesis_fin)
@@ -2594,7 +2594,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
        }
        return true;
    }
-bool net_plugin_impl::is_pk_signature_match(chain::public_key_type const& pk,fc::sha256 const& hash,chain::signature_type const& sig)
+bool kcp_plugin_impl::is_pk_signature_match(chain::public_key_type const& pk,fc::sha256 const& hash,chain::signature_type const& sig)
 {
     /*pk match the signature*/
     chain::public_key_type peer_key;
@@ -2612,7 +2612,7 @@ bool net_plugin_impl::is_pk_signature_match(chain::public_key_type const& pk,fc:
     }
     return true;
 }
-bool net_plugin_impl::is_account_commitee_pk_match(fc::sha256 const& hash,chain::account_name const& account,std::string sig)
+bool kcp_plugin_impl::is_account_commitee_pk_match(fc::sha256 const& hash,chain::account_name const& account,std::string sig)
 {
     controller& cc = chain_plug->chain();
     uint32_t blockNum = cc.head_block_num()+1;
@@ -2624,7 +2624,7 @@ bool net_plugin_impl::is_account_commitee_pk_match(fc::sha256 const& hash,chain:
     }
     return true;
 }
-bool net_plugin_impl::is_account_bls_pk_match(fc::sha256 const& hash,chain::account_name const& account,std::string sig)
+bool kcp_plugin_impl::is_account_bls_pk_match(fc::sha256 const& hash,chain::account_name const& account,std::string sig)
 {
     controller& cc = chain_plug->chain();
     uint32_t blockNum = cc.head_block_num()+1;
@@ -2637,7 +2637,7 @@ bool net_plugin_impl::is_account_bls_pk_match(fc::sha256 const& hash,chain::acco
     }
     return Validator::verify<fc::sha256>(sig, hash, blsPk);
 }
-bool net_plugin_impl::is_account_pk_match(chain::public_key_type const& pk,chain::account_name const& account)
+bool kcp_plugin_impl::is_account_pk_match(chain::public_key_type const& pk,chain::account_name const& account)
 {
 /*pk match the account*/
     const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
@@ -2676,7 +2676,7 @@ bool net_plugin_impl::is_account_pk_match(chain::public_key_type const& pk,chain
     return true;
 
 }
-bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
+bool kcp_plugin_impl::authenticate_peer(const handshake_message& msg) {
 	if(allowed_connections == None)
 		return false;
 
@@ -2773,7 +2773,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 	}
     return true;
 }
-   chain::public_key_type net_plugin_impl::get_authentication_key() const {
+   chain::public_key_type kcp_plugin_impl::get_authentication_key() const {
       if(!private_keys.empty())
          return private_keys.begin()->first;
       /*producer_rpos_plugin* pp = app().find_plugin<producer_rpos_plugin>();
@@ -2849,46 +2849,46 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       }
    }
 
-   net_plugin::net_plugin()
-      :my( new net_plugin_impl ) {
+   kcp_plugin::kcp_plugin()
+      :my( new kcp_plugin_impl ) {
       my_impl = my.get();
    }
 
-   net_plugin::~net_plugin() {
+   kcp_plugin::~kcp_plugin() {
    }
 
-   void net_plugin::set_program_options( options_description& /*cli*/, options_description& cfg )
+   void kcp_plugin::set_program_options( options_description& /*cli*/, options_description& cfg )
    {
       cfg.add_options()
-         ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:20122" ), "The actual host:port used to listen for incoming p2p connections.")
-         ( "p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
-         ( "p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
-         ( "rpos-p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:20123" ), "The actual host:port used to listen for incoming rpos p2p connections.")
-         ( "rpos-p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to rpos-p2p-listen-endpoint.")
-         ( "rpos-p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple rpos-p2p-peer-address options as needed to compose a network.")
-         ( "udp-listen-port", bpo::value<uint16_t>()->default_value(20124), "The udp port used by p2p search.")
-         ( "udp-seed", bpo::value< vector<string> >()->composing(), "The udp seed ip to build p2p nodes table. If this option was not set, we would get nothing from p2p nodes table.")
-         ( "listen-ip", bpo::value<string>()->default_value( "0.0.0.0" ), "IP that really works,public address first if the node has one.")
-         ( "p2p-max-nodes-per-host", bpo::value<int>()->default_value(4), "Maximum number of client nodes from any single IP address")
-         ( "agent-name", bpo::value<string>()->default_value("\"ULTRAIN Test Agent\""), "The name supplied to identify this node amongst the peers.")
-         ( "allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
-         ( "peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
-         ( "tcp-peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer only tcp allowed to connect.  May be used multiple times.")
-         ( "peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+         ( "kcp-p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:20222" ), "The actual host:port used to listen for incoming p2p connections.")
+         ( "kcp-p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
+         ( "kcp-p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
+         ( "kcp-rpos-p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:20223" ), "The actual host:port used to listen for incoming rpos p2p connections.")
+         ( "kcp-rpos-p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to rpos-p2p-listen-endpoint.")
+         ( "kcp-rpos-p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple rpos-p2p-peer-address options as needed to compose a network.")
+         ( "kcp-udp-listen-port", bpo::value<uint16_t>()->default_value(20224), "The udp port used by p2p search.")
+         ( "kcp-udp-seed", bpo::value< vector<string> >()->composing(), "The udp seed ip to build p2p nodes table. If this option was not set, we would get nothing from p2p nodes table.")
+         ( "kcp-listen-ip", bpo::value<string>()->default_value( "0.0.0.0" ), "IP that really works,public address first if the node has one.")
+         ( "kcp-p2p-max-nodes-per-host", bpo::value<int>()->default_value(4), "Maximum number of client nodes from any single IP address")
+         ( "kcp-agent-name", bpo::value<string>()->default_value("\"ULTRAIN KCP Agent\""), "The name supplied to identify this node amongst the peers.")
+         ( "kcp-allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
+         ( "kcp-peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
+         ( "kcp-tcp-peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer only tcp allowed to connect.  May be used multiple times.")
+         ( "kcp-peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
-         ( "max-static-clients", bpo::value<int>()->default_value(10), "Maximum number of static clients from which connections are accepted.")
-         ( "max-dynamic-clients", bpo::value<int>()->default_value(20), "Maximum number of dynamic(address from p2p table) clients from which connections are accepted.")
-         ( "max-passive-out-count", bpo::value<uint32_t>()->default_value(10), "Maximum number of passive out connections are accepted.")
-         ( "min-connections", bpo::value<int>()->default_value(8), "Minimum number of connections the programme need create, including active and subjective connections")
-         ( "max-retry-count", bpo::value<uint32_t>()->default_value(3), "Maximum number of reconnecting to listen endpoint")
-         ( "max-grey-list-size", bpo::value<uint32_t>()->default_value(10), "Maximum size of grey list")
-         ( "connection-cleanup-period", bpo::value<int>()->default_value(15), "number of seconds to wait before cleaning up dead connections")
-         ( "network-version-match", bpo::value<bool>()->default_value(false),
+         ( "kcp-max-static-clients", bpo::value<int>()->default_value(10), "Maximum number of static clients from which connections are accepted.")
+         ( "kcp-max-dynamic-clients", bpo::value<int>()->default_value(20), "Maximum number of dynamic(address from p2p table) clients from which connections are accepted.")
+         ( "kcp-max-passive-out-count", bpo::value<uint32_t>()->default_value(10), "Maximum number of passive out connections are accepted.")
+         ( "kcp-min-connections", bpo::value<int>()->default_value(8), "Minimum number of connections the programme need create, including active and subjective connections")
+         ( "kcp-max-retry-count", bpo::value<uint32_t>()->default_value(3), "Maximum number of reconnecting to listen endpoint")
+         ( "kcp-max-grey-list-size", bpo::value<uint32_t>()->default_value(10), "Maximum size of grey list")
+         ( "kcp-connection-cleanup-period", bpo::value<int>()->default_value(15), "number of seconds to wait before cleaning up dead connections")
+         ( "kcp-network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
-         ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
-         ( "max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "maximum sizes of transaction or block messages that are sent without first sending a notice")
-         ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
-         ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
+         ( "kcp-sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
+         ( "kcp-max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "maximum sizes of transaction or block messages that are sent without first sending a notice")
+         ( "kcp-use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
+         ( "kcp-peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
            "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
            "Available Variables:\n"
            "   _name  \tself-reported name\n\n"
@@ -2898,9 +2898,9 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
            "   _port  \tremote port number of peer\n\n"
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
-        ("max-waitblocknum-seconds", bpo::value<int>()->default_value(3), "Time duration for selecting sync block source.")
-        ("max-waitblock-seconds",bpo::value<int>()->default_value(12), "Check period for connecting during syncing block.")
-        ("nat-mapping", bpo::value<bool>()->default_value(false),"True to enable traverse Nat using upnp.")
+        ("kcp-max-waitblocknum-seconds", bpo::value<int>()->default_value(3), "Time duration for selecting sync block source.")
+        ("kcp-max-waitblock-seconds",bpo::value<int>()->default_value(12), "Check period for connecting during syncing block.")
+        ("kcp-nat-mapping", bpo::value<bool>()->default_value(false),"True to enable traverse Nat using upnp.")
 
         ;
    }
@@ -2910,40 +2910,41 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       return fc::json::from_string(s).as<T>();
    }
 
-   void net_plugin::plugin_initialize( const variables_map& options ) {
-      ilog("Initialize net plugin");
+   void kcp_plugin::plugin_initialize( const variables_map& options ) {
+      ilog("Initialize kcp plugin");
       try {
-         peer_log_format = options.at( "peer-log-format" ).as<string>();
+         peer_log_format = options.at( "kcp-peer-log-format" ).as<string>();
 
-         my->network_version_match = options.at( "network-version-match" ).as<bool>();
-         my->max_waitblocknum_seconds = options.at( "max-waitblocknum-seconds" ).as<int>();
-         my->max_waitblock_seconds = options.at( "max-waitblock-seconds" ).as<int>();
+         my->network_version_match = options.at( "kcp-network-version-match" ).as<bool>();
+         my->max_waitblocknum_seconds = options.at( "kcp-max-waitblocknum-seconds" ).as<int>();
+         my->max_waitblock_seconds = options.at( "kcp-max-waitblock-seconds" ).as<int>();
          my->dispatcher.reset( new dispatch_manager );
          my->sync_block_master.reset( new sync_block_manager(my->max_waitblocknum_seconds, my->max_waitblock_seconds) );
-         my->light_client = LightClientMgr::getInstance()->getLightClient(0);
+         // To be different than net_plugin;
+         my->light_client = LightClientMgr::getInstance()->getLightClient(999);
          my->light_client->addCallback(std::make_shared<CheckBlockCallback>(*my->sync_block_master));
 
-         my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
+         my->connector_period = std::chrono::seconds( options.at( "kcp-connection-cleanup-period" ).as<int>());
          my->txn_exp_period = def_txn_expire_wait;
          my->resp_expected_period = def_resp_expected_wait;
-         my->dispatcher->just_send_it_max = options.at( "max-implicit-request" ).as<uint32_t>();
-         my->max_static_clients = options.at( "max-static-clients" ).as<int>();
-         my->max_dynamic_clients = options.at( "max-dynamic-clients" ).as<int>();
-         my->min_connections = options.at( "min-connections" ).as<int>();
+         my->dispatcher->just_send_it_max = options.at( "kcp-max-implicit-request" ).as<uint32_t>();
+         my->max_static_clients = options.at( "kcp-max-static-clients" ).as<int>();
+         my->max_dynamic_clients = options.at( "kcp-max-dynamic-clients" ).as<int>();
+         my->min_connections = options.at( "kcp-min-connections" ).as<int>();
          ULTRAIN_ASSERT( my->max_static_clients + my->max_dynamic_clients > my->min_connections, plugin_config_exception, "max_client_count must be > min_connections");
 
-         my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
+         my->max_nodes_per_host = options.at( "kcp-p2p-max-nodes-per-host" ).as<int>();
 
-         if (options.count( "max-passive-out-count" )) {
-            my->max_passive_out_count = options.at( "max-passive-out-count" ).as<uint32_t>();
+         if (options.count( "kcp-max-passive-out-count" )) {
+            my->max_passive_out_count = options.at( "kcp-max-passive-out-count" ).as<uint32_t>();
          }
 
-         if (options.count( "max-retry-count" )) {
-            my->max_retry_count = options.at( "max-retry-count" ).as<uint32_t>();
+         if (options.count( "kcp-max-retry-count" )) {
+            my->max_retry_count = options.at( "kcp-max-retry-count" ).as<uint32_t>();
          }
 
-         if (options.count( "max-grey-list-size" )) {
-            my->max_grey_list_size = options.at( "max-grey-list-size" ).as<uint32_t>();
+          if (options.count( "kcp-max-grey-list-size" )) {
+            my->max_grey_list_size = options.at( "kcp-max-grey-list-size" ).as<uint32_t>();
          }
 
          my->num_clients = 0;
@@ -2956,8 +2957,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 
          my->trx_listener.resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
          string& trx_p2p_address = my->trx_listener.p2p_address;
-         if( options.count( "p2p-listen-endpoint" )) {
-            trx_p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
+         if( options.count( "kcp-p2p-listen-endpoint" )) {
+            trx_p2p_address = options.at( "kcp-p2p-listen-endpoint" ).as<string>();
             auto host = trx_p2p_address.substr( 0, trx_p2p_address.find( ':' ));
             auto port = trx_p2p_address.substr( host.size() + 1, trx_p2p_address.size());
             idump((host)( port ));
@@ -2968,8 +2969,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
             my->trx_listener.acceptor.reset( new tcp::acceptor( app().get_io_service()));
          }
 
-         if( options.count( "p2p-server-address" )) {
-            trx_p2p_address = options.at( "p2p-server-address" ).as<string>();
+         if( options.count( "kcp-p2p-server-address" )) {
+            trx_p2p_address = options.at( "kcp-p2p-server-address" ).as<string>();
          } else {
             if( my->trx_listener.listen_endpoint.address().to_v4() == address_v4::any()) {
                boost::system::error_code ec;
@@ -2987,8 +2988,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
 
          my->rpos_listener.resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
          string& rpos_p2p_address = my->rpos_listener.p2p_address;
-         if( options.count( "rpos-p2p-listen-endpoint" )) {
-            rpos_p2p_address = options.at( "rpos-p2p-listen-endpoint" ).as<string>();
+         if( options.count( "kcp-rpos-p2p-listen-endpoint" )) {
+            rpos_p2p_address = options.at( "kcp-rpos-p2p-listen-endpoint" ).as<string>();
             auto host = rpos_p2p_address.substr( 0, rpos_p2p_address.find( ':' ));
             auto port = rpos_p2p_address.substr( host.size() + 1, rpos_p2p_address.size());
             idump((host)( port ));
@@ -2999,8 +3000,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
             my->rpos_listener.acceptor.reset( new tcp::acceptor( app().get_io_service()));
          }
 
-         if( options.count( "rpos-p2p-server-address" )) {
-            rpos_p2p_address = options.at( "rpos-p2p-server-address" ).as<string>();
+         if( options.count( "kcp-rpos-p2p-server-address" )) {
+            rpos_p2p_address = options.at( "kcp-rpos-p2p-server-address" ).as<string>();
          } else {
             if( my->rpos_listener.listen_endpoint.address().to_v4() == address_v4::any()) {
                boost::system::error_code ec;
@@ -3016,46 +3017,46 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
             }
          }
 
-         if( options.count( "p2p-peer-address" )) {
-            my->trx_active_peers = options.at( "p2p-peer-address" ).as<vector<string> >();
+         if( options.count( "kcp-p2p-peer-address" )) {
+            my->trx_active_peers = options.at( "kcp-p2p-peer-address" ).as<vector<string> >();
             my->promote_private_address(my->trx_active_peers);
          }
-         if( options.count( "rpos-p2p-peer-address" )) {
-            my->rpos_active_peers = options.at( "rpos-p2p-peer-address" ).as<vector<string> >();
+         if( options.count( "kcp-rpos-p2p-peer-address" )) {
+            my->rpos_active_peers = options.at( "kcp-rpos-p2p-peer-address" ).as<vector<string> >();
             my->promote_private_address(my->rpos_active_peers);
          }
 
-         if( options.count( "agent-name" )) {
-            my->user_agent_name = options.at( "agent-name" ).as<string>();
+         if( options.count( "kcp-agent-name" )) {
+            my->user_agent_name = options.at( "kcp-agent-name" ).as<string>();
          }
 
-         if( options.count( "allowed-connection" )) {
-            const std::vector<std::string> allowed_remotes = options["allowed-connection"].as<std::vector<std::string>>();
+         if( options.count( "kcp-allowed-connection" )) {
+            const std::vector<std::string> allowed_remotes = options["kcp-allowed-connection"].as<std::vector<std::string>>();
             for( const std::string& allowed_remote : allowed_remotes ) {
                if( allowed_remote == "any" )
-                  my->allowed_connections |= net_plugin_impl::Any;
+                  my->allowed_connections |= kcp_plugin_impl::Any;
                else if( allowed_remote == "producers" )
-                  my->allowed_connections |= net_plugin_impl::Producers;
+                  my->allowed_connections |= kcp_plugin_impl::Producers;
                else if( allowed_remote == "specified" )
-                  my->allowed_connections |= net_plugin_impl::Specified;
+                  my->allowed_connections |= kcp_plugin_impl::Specified;
                else if( allowed_remote == "none" )
-                  my->allowed_connections = net_plugin_impl::None;
+                  my->allowed_connections = kcp_plugin_impl::None;
             }
          }
 
-         if( my->allowed_connections & net_plugin_impl::Specified )
-            ULTRAIN_ASSERT( options.count( "peer-key" ),
+         if( my->allowed_connections & kcp_plugin_impl::Specified )
+            ULTRAIN_ASSERT( options.count( "kcp-peer-key" ),
                         plugin_config_exception,
                        "At least one peer-key must accompany 'allowed-connection=specified'" );
 
-         if( options.count( "peer-key" )) {
-            const std::vector<std::string> key_strings = options["peer-key"].as<std::vector<std::string>>();
+         if( options.count( "kcp-peer-key" )) {
+            const std::vector<std::string> key_strings = options["kcp-peer-key"].as<std::vector<std::string>>();
             for( const std::string& key_string : key_strings ) {
                my->allowed_peers.push_back( chain::public_key_type( key_string ));
             }
          }
-         if( options.count( "tcp-peer-key" )) {
-            const std::vector<std::string> tcp_key_strings = options["tcp-peer-key"].as<std::vector<std::string>>();
+         if( options.count( "kcp-tcp-peer-key" )) {
+            const std::vector<std::string> tcp_key_strings = options["kcp-tcp-peer-key"].as<std::vector<std::string>>();
             for( const std::string& tcp_key_string : tcp_key_strings ) {
                my->allowed_tcp_peers.push_back( chain::public_key_type( tcp_key_string ));
             }
@@ -3065,9 +3066,9 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
             ilog("peer key ${key}",("key",peer));
          }
 
-         if( options.count( "peer-private-key" )) {
+         if( options.count( "kcp-peer-private-key" )) {
             ilog("has peer-private-key");
-	    const std::vector<std::string> key_id_to_wif_pair_strings = options["peer-private-key"].as<std::vector<std::string>>();
+	    const std::vector<std::string> key_id_to_wif_pair_strings = options["kcp-peer-private-key"].as<std::vector<std::string>>();
             for( const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings ) {
                auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(
                      key_id_to_wif_pair_string );
@@ -3079,17 +3080,17 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
          ilog( "my node_id is ${id} ${chainid}", ("id", my->node_id)("chainid",my->chain_id));
 
-         uint16_t udp_port = 20124;
-         if (options.count("udp-listen-port")) {
-            udp_port = options.at( "udp-listen-port" ).as<uint16_t>();
+         uint16_t udp_port = 20224;
+         if (options.count("kcp-udp-listen-port")) {
+            udp_port = options.at( "kcp-udp-listen-port" ).as<uint16_t>();
          }
          string listen_ip;
-         if(options.count("listen-ip")) {
-            listen_ip = options.at( "listen-ip" ).as<string>();
+         if(options.count("kcp-listen-ip")) {
+            listen_ip = options.at( "kcp-listen-ip" ).as<string>();
          }
          bool traverseNat = false;
-        if(options.count("nat-mapping")) {
-            traverseNat = options.at( "nat-mapping" ).as<bool>();
+        if(options.count("kcp-nat-mapping")) {
+            traverseNat = options.at( "kcp-nat-mapping" ).as<bool>();
         }
 
          p2p::NodeIPEndpoint local;
@@ -3098,8 +3099,8 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          local.setListenPort(msg_priority_trx, my->trx_listener.listen_endpoint.port());
          local.setListenPort(msg_priority_rpos, my->rpos_listener.listen_endpoint.port());
          my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str(), listen_ip, traverseNat);
-         if (options.count("udp-seed")) {
-            my->udp_seed_ip = options.at( "udp-seed" ).as<vector<string> >();
+         if (options.count("kcp-udp-seed")) {
+            my->udp_seed_ip = options.at( "kcp-udp-seed" ).as<vector<string> >();
          }
          if (!my->udp_seed_ip.empty()) {
             my->use_node_table = true;
@@ -3109,7 +3110,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       } FC_LOG_AND_RETHROW()
    }
 
-   void net_plugin::plugin_startup() {
+   void kcp_plugin::plugin_startup() {
       if (my->trx_listener.acceptor) {
          my->trx_listener.acceptor->open(my->trx_listener.listen_endpoint.protocol());
          my->trx_listener.acceptor->set_option(tcp::acceptor::reuse_address(true));
@@ -3127,11 +3128,11 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       }
 
       {
-         my->node_table->needtcpevent.connect( boost::bind(&net_plugin_impl::onNodeTableTcpConnectEvent, my.get(), _1));
-         my->node_table->nodedropevent.connect( boost::bind(&net_plugin_impl::onNodeTableDropEvent, my.get(), _1));
-         my->node_table->pktcheckevent.connect(boost::bind(&net_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3,_4));
+         my->node_table->needtcpevent.connect( boost::bind(&kcp_plugin_impl::onNodeTableTcpConnectEvent, my.get(), _1));
+         my->node_table->nodedropevent.connect( boost::bind(&kcp_plugin_impl::onNodeTableDropEvent, my.get(), _1));
+         my->node_table->pktcheckevent.connect(boost::bind(&kcp_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3,_4));
       }
-      my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
+      my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&kcp_plugin_impl::transaction_ack, my.get(), _1));
 
       my->start_monitors();
 
@@ -3155,7 +3156,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          logger = fc::get_logger_map()[logger_name];
    }
 
-    void net_plugin::plugin_shutdown() {
+    void kcp_plugin::plugin_shutdown() {
         try {
             ilog( "shutdown.." );
             my->done = true;
@@ -3189,52 +3190,52 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         FC_CAPTURE_AND_RETHROW()
     }
 
-   void net_plugin::broadcast(const ProposeMsg& propose) {
+   void kcp_plugin::broadcast(const ProposeMsg& propose) {
       ilog("broadcast propose msg. blockHash : ${blockHash}", ("blockHash", short_hash(propose.block.id())));
       my->start_broadcast(net_message(propose), msg_priority_rpos);
    }
 
-   void net_plugin::broadcast(const EchoMsg& echo) {
+   void kcp_plugin::broadcast(const EchoMsg& echo) {
       ilog("broadcast echo");
       my->start_broadcast(net_message(echo), msg_priority_rpos);
    }
 
-   void net_plugin::broadcast(const SignedTransaction& trx) {
+   void kcp_plugin::broadcast(const SignedTransaction& trx) {
       my->start_broadcast(trx);
    }
 
-   void net_plugin::send_block(const fc::sha256& node_id, const ultrainio::SyncBlockMsg& msg) {
+   void kcp_plugin::send_block(const fc::sha256& node_id, const ultrainio::SyncBlockMsg& msg) {
        ilog("send block msg to node:${node} block num:${n} seq num:${sn}", ("node", node_id)("n", msg.block.block_num())("sn", msg.seqNum));
        my->send_block(node_id, net_message(msg));
    }
 
-   bool net_plugin::send_req_sync(const ultrainio::ReqSyncMsg& msg) {
+   bool kcp_plugin::send_req_sync(const ultrainio::ReqSyncMsg& msg) {
        ilog("send req sync msg");
        return my->send_req_sync(msg);
    }
 
-   void net_plugin::send_block_num_range(const fc::sha256& node_id, const ultrainio::RspBlockNumRangeMsg& msg) {
+   void kcp_plugin::send_block_num_range(const fc::sha256& node_id, const ultrainio::RspBlockNumRangeMsg& msg) {
       ilog("send block num range:${f} - ${l} hash:${h} prev hash:${ph}", ("f", msg.firstNum)("l", msg.lastNum)("h", msg.blockHash)("ph", msg.prevBlockHash));
       my->send_block_num_range(node_id, net_message(msg));
    }
 
-   void net_plugin::stop_sync_block() {
+   void kcp_plugin::stop_sync_block() {
        ilog("stop sync block");
        my->stop_sync_block();
    }
 
-   size_t net_plugin::num_peers() const {
+   size_t kcp_plugin::num_peers() const {
       return my->count_open_sockets();
    }
 
    /**
     *  Used to trigger a new connection from RPC API
     */
-   string net_plugin::connect(const string& host) {
+   string kcp_plugin::connect(const string& host) {
       return my->connect(host);
    }
 
-   string net_plugin::disconnect( const string& host ) {
+   string kcp_plugin::disconnect( const string& host ) {
       for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
          if( (*itr)->peer_addr == host ) {
             (*itr)->reset();
@@ -3246,14 +3247,14 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       return "no known connection for host";
    }
 
-    optional<connection_status> net_plugin::status( const string& host )const {
+    optional<connection_status> kcp_plugin::status( const string& host )const {
         auto con = my->find_connection( host );
         if( con )
             return con->get_status();
         return optional<connection_status>();
     }
 
-    vector<connection_status> net_plugin::connections()const {
+    vector<connection_status> kcp_plugin::connections()const {
         vector<connection_status> result;
         result.reserve( my->connections.size() );
         for( const auto& c : my->connections ) {
@@ -3261,7 +3262,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
         return result;
     }
-    vector<connection_status> net_plugin::get_connected_connections()const {
+    vector<connection_status> kcp_plugin::get_connected_connections()const {
         vector<connection_status> result;
         result.reserve( my->connections.size() );
         for( const auto& c : my->connections ) {
@@ -3273,13 +3274,13 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         return result;
     }
 
-    connection_ptr net_plugin_impl::find_connection(const string& host )const {
+    connection_ptr kcp_plugin_impl::find_connection(const string& host )const {
         for( const auto& c : connections )
             if( c->peer_addr == host ) return c;
         return connection_ptr();
     }
 
-    bool net_plugin_impl::is_grey_connection(const string& host) const {
+    bool kcp_plugin_impl::is_grey_connection(const string& host) const {
         for (const auto& addr : peer_addr_grey_list) {
           if (addr == host) {
             return true;
@@ -3289,7 +3290,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         return false;
     }
 
-    bool net_plugin_impl::is_connection_to_seed(connection_ptr con) const {
+    bool kcp_plugin_impl::is_connection_to_seed(connection_ptr con) const {
         auto colon = con->peer_addr.find(':');
         if (colon != std::string::npos) {
             auto host = con->peer_addr.substr(0, colon);
@@ -3301,7 +3302,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         return std::find(udp_seed_ip.begin(), udp_seed_ip.end(), addr) != udp_seed_ip.end();
     }
 
-    bool net_plugin_impl::is_static_connection(connection_ptr con) const {
+    bool kcp_plugin_impl::is_static_connection(connection_ptr con) const {
         if (con->priority == msg_priority_trx) {
             return std::find(trx_active_peers.begin(), trx_active_peers.end(), con->peer_addr) != trx_active_peers.end();
         } else {
@@ -3309,7 +3310,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
     }
 
-    void net_plugin_impl::del_connection_with_node_id(const fc::sha256& node_id, connection_direction dir) {
+    void kcp_plugin_impl::del_connection_with_node_id(const fc::sha256& node_id, connection_direction dir) {
         auto it = connections.begin();
         ilog("connections size: ${s}", ("s", connections.size()));
         while (it != connections.end()) {
@@ -3325,7 +3326,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
     }
 
-    uint16_t net_plugin_impl::to_protocol_version (uint16_t v) {
+    uint16_t kcp_plugin_impl::to_protocol_version (uint16_t v) {
         if (v >= net_version_base) {
             v -= net_version_base;
             return (v > net_version_range) ? 0 : v;
@@ -3333,7 +3334,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         return 0;
     }
 
-    void net_plugin_impl::promote_private_address(vector<string>& peers) {
+    void kcp_plugin_impl::promote_private_address(vector<string>& peers) {
         fc::ip::endpoint ep;
         vector<string> private_peers;
         vector<string> public_peers;

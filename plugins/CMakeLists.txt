@@ -1,4 +1,5 @@
 add_subdirectory(net_plugin)
+add_subdirectory(kcp_plugin)
 add_subdirectory(monitor_plugin)
 add_subdirectory(http_plugin)
 add_subdirectory(http_client_plugin)

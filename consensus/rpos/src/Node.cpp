@@ -20,12 +20,66 @@
 
 #include <appbase/application.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
+#include <ultrainio/kcp_plugin/kcp_plugin.hpp>
 #include <ultrainio/utilities/common.hpp>
 
 using namespace boost::asio;
 using namespace std;
 
 namespace ultrainio {
+    using net_plugin = net_plugin_n::net_plugin;
+    using kcp_plugin = kcp_plugin_n::kcp_plugin;
+
+    // -1 not sure; 1 using net_plugin; 0 using kcp_plugin;
+    static int sync_using_net_plugin = -1;
+
+    void set_sync_using_net_plugin() {
+        if (sync_using_net_plugin == -1) {
+            if (app().find_plugin<net_plugin>()) {
+                sync_using_net_plugin = 1;
+            } else if (app().find_plugin<kcp_plugin>()) {
+                sync_using_net_plugin = 0;
+            } else {
+                ULTRAIN_ASSERT(false, chain::chain_exception, "not usable net/kcp plugin");
+            }
+        }
+    }
+
+    void stop_sync_block() {
+        set_sync_using_net_plugin();
+        if (sync_using_net_plugin == 1) {
+            app().get_plugin<net_plugin>().stop_sync_block();
+        } else {
+            app().get_plugin<kcp_plugin>().stop_sync_block();
+        }
+    }
+
+    void send_sync_block(const fc::sha256 &nodeId, const SyncBlockMsg &msg) {
+        set_sync_using_net_plugin();
+        if (sync_using_net_plugin == 1) {
+            app().get_plugin<net_plugin>().send_block(nodeId, msg);
+        } else {
+            app().get_plugin<kcp_plugin>().send_block(nodeId, msg);
+        }
+    }
+
+    bool send_req_sync_msg(const ReqSyncMsg &msg) {
+        set_sync_using_net_plugin();
+        if (sync_using_net_plugin == 1) {
+            return app().get_plugin<net_plugin>().send_req_sync(msg);
+        } else {
+            return app().get_plugin<kcp_plugin>().send_req_sync(msg);
+        }
+    }
+
+    void send_rsp_block_num_range(const fc::sha256 &nodeId, const RspBlockNumRangeMsg &msg) {
+        set_sync_using_net_plugin();
+        if (sync_using_net_plugin == 1) {
+            app().get_plugin<net_plugin>().send_block_num_range(nodeId, msg);
+        } else {
+            app().get_plugin<kcp_plugin>().send_block_num_range(nodeId, msg);
+        }
+    }
 
     std::shared_ptr<Node> Node::s_self(nullptr);
 
@@ -395,7 +449,7 @@ namespace ultrainio {
             m_ready = true;
             m_syncing = false;
             m_syncFailed = false;
-            app().get_plugin<net_plugin>().stop_sync_block();
+            stop_sync_block();
             signed_block_ptr blockPtr = std::make_shared<chain::signed_block>();
             *blockPtr = baxBlock;
             dlog("##############baxProcess. finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
@@ -560,7 +614,7 @@ namespace ultrainio {
             m_ready = true;
             m_syncing = false;
             m_syncFailed = true;
-            app().get_plugin<net_plugin>().stop_sync_block();
+            stop_sync_block();
             return false;
         } else if (last_block) {
             m_ready = true;
@@ -613,23 +667,33 @@ namespace ultrainio {
     }
 
     void Node::sendMessage(const EchoMsg &echo) {
-        app().get_plugin<net_plugin>().broadcast(echo);
+        if (app().find_plugin<net_plugin>()) {
+            app().get_plugin<net_plugin>().broadcast(echo);
+        }
+        if (app().find_plugin<kcp_plugin>()) {
+            app().get_plugin<kcp_plugin>().broadcast(echo);
+        }
     }
 
     void Node::sendMessage(const ProposeMsg &propose) {
-        app().get_plugin<net_plugin>().broadcast(propose);
+        if (app().find_plugin<net_plugin>()) {
+            app().get_plugin<net_plugin>().broadcast(propose);
+        }
+        if (app().find_plugin<kcp_plugin>()) {
+            app().get_plugin<kcp_plugin>().broadcast(propose);
+        }
     }
 
     void Node::sendMessage(const fc::sha256 &nodeId, const SyncBlockMsg &msg) {
-        app().get_plugin<net_plugin>().send_block(nodeId, msg);
+        send_sync_block(nodeId, msg);
     }
 
     bool Node::sendMessage(const ReqSyncMsg &msg) {
-        return app().get_plugin<net_plugin>().send_req_sync(msg);
+        return send_req_sync_msg(msg);
     }
 
     void Node::sendMessage(const fc::sha256 &nodeId, const RspBlockNumRangeMsg &msg) {
-        app().get_plugin<net_plugin>().send_block_num_range(nodeId, msg);
+        send_rsp_block_num_range(nodeId, msg);
     }
 
     bool Node::canEnterFastBlockMode() {

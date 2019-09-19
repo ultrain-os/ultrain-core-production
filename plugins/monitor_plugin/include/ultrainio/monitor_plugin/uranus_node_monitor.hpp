@@ -140,7 +140,7 @@ namespace ultrainio {
                 reportData.ba0BlockTime      = m_ba0BlockTime;
                 reportData.ba1BlockTime      = m_ba1BlockTime;
 #if 1
-                vector<connection_status> connectionsStatus = appbase::app().get_plugin<net_plugin>().get_connected_connections();
+                vector<connection_status> connectionsStatus = appbase::app().get_plugin<net_plugin_n::net_plugin>().get_connected_connections();
                 for (const auto& connectStatus : connectionsStatus) {
                     auto peer = connectStatus.peer + "#$" + connectStatus.last_handshake.account.to_string();
                     reportData.activePeers.push_back(peer);

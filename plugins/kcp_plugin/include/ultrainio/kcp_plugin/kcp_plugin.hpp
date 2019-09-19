@@ -8,14 +8,14 @@
 #include <core/protocol.hpp>
 #include <core/net_kcp_plugin_base.hpp>
 
-namespace ultrainio { namespace net_plugin_n {
+namespace ultrainio { namespace kcp_plugin_n {
     using namespace appbase;
 
-    class net_plugin : public appbase::plugin<net_plugin>
+    class kcp_plugin : public appbase::plugin<kcp_plugin>
     {
     public:
-        net_plugin();
-        virtual ~net_plugin();
+        kcp_plugin();
+        virtual ~kcp_plugin();
 
         APPBASE_PLUGIN_REQUIRES((chain_plugin))
         virtual void set_program_options(options_description& cli, options_description& cfg) override;
@@ -40,7 +40,7 @@ namespace ultrainio { namespace net_plugin_n {
 
         size_t num_peers() const;
     private:
-        std::unique_ptr<class net_plugin_impl> my;
+        std::unique_ptr<class kcp_plugin_impl> my;
     };
 
 }

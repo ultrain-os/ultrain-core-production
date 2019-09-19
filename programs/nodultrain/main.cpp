@@ -7,6 +7,7 @@
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <ultrainio/http_plugin/http_plugin.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
+#include <ultrainio/kcp_plugin/kcp_plugin.hpp>
 #include <ultrainio/producer_rpos_plugin/producer_rpos_plugin.hpp>
 #include <ultrainio/utilities/common.hpp>
 
@@ -98,7 +99,7 @@ int main(int argc, char** argv)
       auto root = fc::app_path();
       app().set_default_data_dir(root / "ultrainio/nodultrain/data" );
       app().set_default_config_dir(root / "ultrainio/nodultrain/config" );
-      if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_rpos_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, http_plugin, net_plugin_n::net_plugin, kcp_plugin_n::kcp_plugin, producer_rpos_plugin>(argc, argv))
          return INITIALIZE_FAIL;
       initialize_logging();
       ilog("nodultrain version ${ver}", ("ver", ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version()))));

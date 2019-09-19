@@ -15,7 +15,7 @@ namespace ultrainio {
         Action action(std::vector<PermissionLevel>{{reporter, chain::config::active_name}}, N(ultrainio), NEX(verifyprodevil), data);
         chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
         SignedTransaction trx = buildTrx(action, chain.head_block_id(), chain.get_chain_id(), sk, chain.head_block_time() + fc::seconds(60), 5000);
-        app().get_plugin<net_plugin>().broadcast(trx);
+        app().get_plugin<net_plugin_n::net_plugin>().broadcast(trx);
     }
 
     SignedTransaction NativeTrx::buildTrx(const Action& action, const BlockIdType& referId, const ChainIdType& chainId,

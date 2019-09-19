@@ -10,7 +10,14 @@ struct hello;
 
 namespace ultrainio {
 
-   class net_plugin_impl;
+   namespace net_plugin_n {
+     class net_plugin_impl;
+   }
+
+   namespace kcp_plugin_n {
+     class kcp_plugin_impl;
+   }
+
    struct handshake_message;
 
    namespace chain_apis {
@@ -45,7 +52,8 @@ namespace chain {
 
          friend class ultrainio::chain_apis::read_only;
 
-         friend class ultrainio::net_plugin_impl;
+         friend class ultrainio::net_plugin_n::net_plugin_impl;
+         friend class ultrainio::kcp_plugin_n::kcp_plugin_impl;
          friend struct ultrainio::handshake_message;
 
          friend struct ::hello; // TODO: Rushed hack to support bnet_plugin. Need a better solution.
