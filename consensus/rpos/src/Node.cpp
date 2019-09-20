@@ -961,6 +961,11 @@ namespace ultrainio {
              ("s_maxTrxMicroSeconds", Config::s_maxTrxMicroSeconds));
     }
 
+    void Node::setAllowReportEvil(bool v) {
+        Config::s_allowReportEvil = v;
+        ilog("s_maxTrxMicroSeconds : ${v}", ("v", Config::s_allowReportEvil));
+    }
+
     void Node::setTimerCanceled(TimerHandlerNumber thn) {
         m_timerCanceledBits |= (1 << thn);
     }

@@ -32,4 +32,6 @@ namespace ultrainio {
     // This is the deadline for all the trx times when proposing a block.
     // Make it smaller if we want consensus to be more stable.
     int Config::s_maxTrxMicroSeconds = 2700000;
+
+    bool Config::s_allowReportEvil = false;
 }

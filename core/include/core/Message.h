@@ -4,7 +4,9 @@
 #include <fc/variant.hpp>
 #include <ultrainio/chain/block.hpp>
 #include <crypto/Signature.h>
-#include <core/types.h>
+
+#include "core/ExtType.h"
+#include "core/types.h"
 
 namespace ultrainio {
 
@@ -13,13 +15,6 @@ namespace ultrainio {
         kPhaseBA0,
         kPhaseBA1,
         kPhaseBAX
-    };
-
-    struct ExtType {
-        uint32_t key;
-        std::string value;
-        bool operator == (const ExtType& rhs) const;
-        bool operator != (const ExtType& rhs) const;
     };
 
     typedef std::vector<ExtType> MsgExtension;
@@ -96,7 +91,6 @@ namespace ultrainio {
     };
 }
 
-FC_REFLECT( ultrainio::ExtType, (key)(value))
 FC_REFLECT( ultrainio::UnsignedProposeMsg, (block)(ext))
 FC_REFLECT_DERIVED( ultrainio::ProposeMsg, (ultrainio::UnsignedProposeMsg), (signature))
 

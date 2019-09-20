@@ -228,6 +228,7 @@ public:
    fc::microseconds                 abi_serializer_max_time_ms;
    fc::optional<bfs::path>          worldstate_path;
    std::string _genesis_time = std::string();
+   std::string _chain_name   = std::string();
 
    // retained references to channels for easy publication
    channels::pre_accepted_block::channel_type&     pre_accepted_block_channel;
@@ -297,7 +298,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "max_block_cpu_usage,used in resource ,in genesis param,etc")
          ("max_block_net_usage", bpo::value<uint32_t>()->default_value(config::default_max_block_net_usage),
                 "max_block_net_usage,used in resource ,in genesis param,etc")
-    	 ("genesis-time",bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("genesis-time", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("chain-name", bpo::value<string>(), "the name of this chain")
          ;
 
 // TODO: rate limiting
@@ -384,6 +386,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
               "Genesis-time can not be empty,should be set in config.ini.");
       fc::time_point genesis_timestamp =  calculate_genesis_timestamp(my->_genesis_time);
 
+      if(options.count("chain-name"))
+      {
+           my->_chain_name = options.at( "chain-name" ).as<string>();
+      }
+      ULTRAIN_ASSERT( !my->_chain_name.empty(),
+              plugin_config_exception,
+              "chain-name can not be empty,should be set in config.ini.");
       #ifdef ULTRAIN_CONFIG_CONTRACT_PARAMS
       if( options.count( "contract-return-string-length" ))
          my->chain_config->contract_return_length = options.at( "contract-return-string-length" ).as<uint64_t>();
@@ -563,7 +572,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->genesis.initial_syncing_source_timeout = options.at( "max-waitblocknum-seconds" ).as<int>();
       my->chain_config->genesis.initial_syncing_block_timeout = options.at( "max-waitblock-seconds" ).as<int>();
       my->chain_config->genesis.initial_max_trxs_time = options.at("max-trxs-microseconds").as<int32_t>();
-      ilog("genesis of chain in config: time ${genesis} phase ${initial_phase} round ${initial_round} syncing${source_timeout} ${block_timeout} trx ${trxs}",
+      ilog("genesis of chain in config: chain name ${name} time ${genesis} phase ${initial_phase} round ${initial_round} syncing${source_timeout} ${block_timeout} trx ${trxs}",
+              ("name",my->_chain_name)
               ("genesis",my->_genesis_time)
               ("initial_phase",my->chain_config->genesis.initial_phase)
               ("initial_round",my->chain_config->genesis.initial_round)
@@ -706,6 +716,10 @@ const controller& chain_plugin::chain() const { return *my->chain; }
 chain::chain_id_type chain_plugin::get_chain_id()const {
    ULTRAIN_ASSERT( my->chain_id.valid(), chain_id_type_exception, "chain ID has not been initialized yet" );
    return *my->chain_id;
+}
+
+chain::name chain_plugin::get_chain_name() const {
+    return my->_chain_name;
 }
 
 fc::microseconds chain_plugin::get_abi_serializer_max_time() const {

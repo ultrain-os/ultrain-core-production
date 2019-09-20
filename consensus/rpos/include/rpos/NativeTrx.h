@@ -11,7 +11,13 @@ namespace ultrainio {
 
     class NativeTrx {
     public:
-        static void sendMultiSignTrx(const AccountName& reporter, const fc::crypto::private_key& sk, const AccountName& evil, const Evidence& evidence);
+        static const std::string kDesc;
+
+        static const std::string kEvidence;
+
+        static void sendEvilTrx(const AccountName& reporter, const fc::crypto::private_key& sk, const AccountName& evil, const Evidence& evidence);
+
+        static void reportEvil(const EvilDesc& desc, const Evidence& evidence);
 
     private:
         static SignedTransaction buildTrx(const Action& action, const BlockIdType& referId, const ChainIdType& chainId,

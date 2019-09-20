@@ -769,6 +769,9 @@ public:
    const controller& chain() const;
 
    chain::chain_id_type get_chain_id() const;
+
+   chain::name get_chain_name() const;
+
    fc::microseconds get_abi_serializer_max_time() const;
 
    void handle_guard_exception(const chain::guard_exception& e) const;

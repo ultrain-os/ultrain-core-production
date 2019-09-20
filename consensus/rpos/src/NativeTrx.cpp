@@ -3,19 +3,37 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
-#include <ultrainio/chain_plugin/chain_plugin.hpp>
+#include <ultrainio/monitor_plugin/monitor_plugin.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
 
 #include <core/MultiProposeEvidence.h>
+#include "rpos/Config.h"
 
 namespace ultrainio {
-    void NativeTrx::sendMultiSignTrx(const AccountName& reporter, const fc::crypto::private_key& sk, const AccountName& evil, const Evidence& evidence) {
-        std::pair<uint64_t, std::string> t = std::make_pair(evil, evidence.toString());
-        bytes data = fc::raw::pack(t);
-        Action action(std::vector<PermissionLevel>{{reporter, chain::config::active_name}}, N(ultrainio), NEX(verifyprodevil), data);
-        chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
-        SignedTransaction trx = buildTrx(action, chain.head_block_id(), chain.get_chain_id(), sk, chain.head_block_time() + fc::seconds(60), 5000);
-        app().get_plugin<net_plugin_n::net_plugin>().broadcast(trx);
+    const std::string NativeTrx::kDesc = "kDesc";
+
+    const std::string NativeTrx::kEvidence = "kEvidence";
+
+    void NativeTrx::sendEvilTrx(const AccountName& reporter, const fc::crypto::private_key& sk, const AccountName& evil, const Evidence& evidence) {
+        if (Config::s_allowReportEvil) {
+            std::pair<uint64_t, std::string> t = std::make_pair(evil, evidence.toString());
+            bytes data = fc::raw::pack(t);
+            Action action(std::vector<PermissionLevel>{{reporter, chain::config::active_name}}, N(ultrainio), NEX(verifyprodevil), data);
+            chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
+            SignedTransaction trx = buildTrx(action, chain.head_block_id(), chain.get_chain_id(), sk, chain.head_block_time() + fc::seconds(60), 5000);
+            app().get_plugin<net_plugin_n::net_plugin>().broadcast(trx);
+        }
+    }
+
+    void NativeTrx::reportEvil(const EvilDesc& desc, const Evidence& evidence) {
+        if (Config::s_allowReportEvil) {
+            fc::mutable_variant_object o;
+            fc::variant descVar(desc);
+            fc::variant evidenceVar(evidence.toString());
+            o[kDesc] = descVar;
+            o[kEvidence] = evidenceVar;
+            appbase::app().get_plugin<monitor_plugin>().reportAlert(alert_type::EVIL, std::string(desc.chainName), desc.blockNum, fc::json::to_string(fc::variant(o)));
+        }
     }
 
     SignedTransaction NativeTrx::buildTrx(const Action& action, const BlockIdType& referId, const ChainIdType& chainId,

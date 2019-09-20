@@ -302,8 +302,9 @@ namespace ultrainio {
             return false;
         }
 
-        dlog("processBeforeMsg. blockNum : ${blockNum}, phase : ${phase} baxCount : ${count} id : ${id}",
-                ("blockNum", BlockHeader::num_from_id(echo.blockId))("phase", static_cast<int>(echo.phase))("count", echo.baxCount)("id", short_hash(echo.blockId)));
+        dlog("processBeforeMsg. account : ${account} blockNum : ${blockNum}, phase : ${phase} baxCount : ${count} id : ${id}",
+             ("account", std::string(echo.account))("blockNum", BlockHeader::num_from_id(echo.blockId))("phase", static_cast<int>(echo.phase))
+             ("count", echo.baxCount)("id", short_hash(echo.blockId)));
 
         auto map_it = m_echoMsgAllPhase.find(info);
         if (map_it == m_echoMsgAllPhase.end()) {
@@ -530,7 +531,8 @@ namespace ultrainio {
         MultiProposeEvidence evidence;
         if (m_evilMultiProposeDetector.hasMultiPropose(m_proposerMsgMap, propose, evidence)) {
             ilog("${account} sign multiple propose message", ("account", std::string(evidence.getEvilAccount())));
-            NativeTrx::sendMultiSignTrx(StakeVoteBase::getMyAccount(), StakeVoteBase::getAccountPrivateKey(), evidence.getEvilAccount(), evidence);
+            EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(), BlockHeader::num_from_id(propose.block.id()));
+            NativeTrx::reportEvil(evilDesc, evidence);
             punishMgrPtr->punish(evidence.getEvilAccount(), Evidence::kMultiPropose);
             return false;
         }
@@ -565,7 +567,8 @@ namespace ultrainio {
         MultiVoteEvidence evidence;
         if (m_evilMultiVoteDetector.hasMultiVote(m_echoMsgMap, echo, evidence)) {
             ilog("${account} vote multiple block", ("account", std::string(evidence.getEvilAccount())));
-            NativeTrx::sendMultiSignTrx(StakeVoteBase::getMyAccount(), StakeVoteBase::getAccountPrivateKey(), evidence.getEvilAccount(), evidence);
+            EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(), echo.blockNum());
+            NativeTrx::reportEvil(evilDesc, evidence);
             punishMgrPtr->punish(echo.account, Evidence::kMultiVote);
             return false;
         }
@@ -635,7 +638,8 @@ namespace ultrainio {
         MultiProposeEvidence evidence;
         if (m_evilMultiProposeDetector.hasMultiPropose(m_proposerMsgMap, propose, evidence)) {
             ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
-            NativeTrx::sendMultiSignTrx(StakeVoteBase::getMyAccount(), StakeVoteBase::getAccountPrivateKey(), evidence.getEvilAccount(), evidence);
+            EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(), BlockHeader::num_from_id(propose.block.id()));
+            NativeTrx::reportEvil(evilDesc, evidence);
             punishMgrPtr->punish(evidence.getEvilAccount(), Evidence::kMultiPropose);
             return false;
         }
@@ -724,7 +728,8 @@ namespace ultrainio {
         MultiVoteEvidence evidence;
         if (m_evilMultiVoteDetector.hasMultiVote(m_echoMsgMap, echo, evidence)) {
             ilog("${account} vote multiple block", ("account", std::string(evidence.getEvilAccount())));
-            NativeTrx::sendMultiSignTrx(StakeVoteBase::getMyAccount(), StakeVoteBase::getAccountPrivateKey(), evidence.getEvilAccount(), evidence);
+            EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(), echo.blockNum());
+            NativeTrx::reportEvil(evilDesc, evidence);
             punishMgrPtr->punish(echo.account, Evidence::kMultiVote);
             return false;
         }

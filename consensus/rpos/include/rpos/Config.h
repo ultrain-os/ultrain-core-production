@@ -35,6 +35,8 @@ namespace ultrainio {
         static const int MAX_LATER_NUMBER;
 
         static int s_maxTrxMicroSeconds;
+
+        static bool s_allowReportEvil;
     };
 
     // TODO(qinxiaofen) should add into Config class

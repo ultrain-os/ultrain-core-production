@@ -57,10 +57,13 @@ class monitor_plugin_impl {
 
     void sendStaticConfigInfo();
 
+    void reportAlert(alert_type type, const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const;
+
     tcp::endpoint   self_endpoint; // same as p2p-listen-endpoint in net plugin
     std::string     monitor_central_server;
     std::string     call_path_dynamic;
     std::string     call_path_static;
+    std::string     call_path_alert;
     bool            needReportTask = true;
     uint32_t        reportInterval;
     vector<string>  supplied_peers;
@@ -144,6 +147,23 @@ void monitor_plugin_impl::sendStaticConfigInfo() {
   thrd.detach();
 }
 
+void monitor_plugin_impl::reportAlert(alert_type type, const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const {
+    auto reportFunc = [this, type, chain_name, blockNum, reason, remark]() {
+        alert_info info;
+        info.alertType = static_cast<int>(type);
+        info.chainName = chain_name;
+        info.blockNum = blockNum;
+        info.reason = reason;
+        info.remark = remark;
+        info.nodeInfo = this->self_endpoint.address().to_v4().to_string() + std::string(".") + std::string(StakeVoteBase::getMyAccount());
+        ilog("report alert nodeInfo : ${i} type : ${t}, chain name : ${c} blockNum : ${n} reason : ${r} remark : ${m}",
+             ("i", info.nodeInfo)("t", static_cast<int>(type))("c", chain_name)("n", blockNum)("r", reason)("m", remark));
+        call(this->monitor_central_server, this->call_path_alert, info);
+    };
+    std::thread t(reportFunc);
+    t.detach();
+}
+
 monitor_plugin::monitor_plugin():my(new monitor_plugin_impl()){}
 monitor_plugin::~monitor_plugin() = default;
 
@@ -183,6 +203,7 @@ void monitor_plugin::plugin_initialize(const variables_map& options) {
 
     my->call_path_dynamic = "/status/info";
     my->call_path_static  = "/status/staticInfo";
+    my->call_path_alert   = "/status/alert";
 
    context = ultrainio::client::http::create_http_context();
 }
@@ -195,6 +216,10 @@ void monitor_plugin::plugin_startup() {
 void monitor_plugin::plugin_shutdown() {
    // OK, that's enough magic
    my->shutdown();
+}
+
+void monitor_plugin::reportAlert(alert_type type, const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const {
+   my->reportAlert(type, chain_name, blockNum, reason, remark);
 }
 
 monitor_apis::monitor_only  monitor_plugin::get_monitor_only_api()const {

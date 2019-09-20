@@ -77,6 +77,18 @@ class monitor_only {
       std::shared_ptr<UranusNodeMonitor> m_nodeMonitor;
 };
 }  //namespace monitor_apis
+enum alert_type {
+    EVIL = 1
+};
+
+struct alert_info {
+    int alertType;
+    std::string chainName;
+    uint32_t blockNum;
+    std::string nodeInfo; // ip.accout eg. 172.16.10.2.user.111
+    std::string reason;
+    std::string remark;
+};
 
 class monitor_plugin : public appbase::plugin<monitor_plugin> {
 public:
@@ -91,6 +103,8 @@ public:
    void plugin_shutdown();
 
    monitor_apis::monitor_only  get_monitor_only_api()const;
+
+   void reportAlert(alert_type type, const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark = std::string()) const;
 private:
    monitor_ptr my;
 };
@@ -113,3 +127,5 @@ FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_propose_cache_result,
 FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_echo_cache_result, (echoCache) )
 
 FC_REFLECT( ultrainio::monitor_apis::monitor_only::monitor_echo_ap_cache_result, (echoApCache) )
+
+FC_REFLECT( ultrainio::alert_info, (alertType)(chainName)(blockNum)(nodeInfo)(reason)(remark) )

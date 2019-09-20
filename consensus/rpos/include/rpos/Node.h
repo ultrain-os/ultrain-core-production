@@ -108,6 +108,8 @@ namespace ultrainio {
 
         void setTrxsSecond(int32_t trxssecond);
 
+        void setAllowReportEvil(bool v);
+
     private:
         explicit Node(boost::asio::io_service& ioservice);
 

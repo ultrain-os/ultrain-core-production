@@ -3,6 +3,7 @@ add_library( ultrainio_core
              src/BlsVoterSet.cpp
              src/Evidence.cpp
              src/EvidenceFactory.cpp
+             src/ExtType.cpp
              src/Message.cpp
              src/MultiProposeEvidence.cpp
              src/MultiVoteEvidence.cpp

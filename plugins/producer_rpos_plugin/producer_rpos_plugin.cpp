@@ -123,12 +123,12 @@ class producer_rpos_plugin_impl : public std::enable_shared_from_this<producer_r
       std::string _genesis_pk                      = Genesis::s_genesisPk;
       bool     _pause_production                   = false;
       bool     _is_non_producing_node              = false;
-      bool     _is_config_encrypt              = true;
-      //int32_t  _genesis_delay;
+      bool     _is_config_encrypt                  = true;
+      bool     _allow_report_evil                  = false;
       int32_t  _genesis_startup_time               = Genesis::s_genesisStartupTime;
       int32_t  _max_round_seconds                  = Config::s_maxRoundSeconds;
       int32_t  _max_phase_seconds                  = Config::s_maxPhaseSeconds;
-      int32_t  _max_trxs_seconds                  = Config::s_maxTrxMicroSeconds;
+      int32_t  _max_trxs_seconds                   = Config::s_maxTrxMicroSeconds;
       using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
       std::map<chain::public_key_type, signature_provider_type> _signature_providers;
       std::set<chain::account_name>                             _producers;
@@ -438,6 +438,7 @@ void producer_rpos_plugin::set_program_options(
          ("max-phase-seconds", bpo::value<int32_t>()->default_value(Config::s_maxPhaseSeconds), "max phase second, set by test mode usually")
          ("worldstates-dir", bpo::value<bfs::path>()->default_value("worldstate"),"the location of the worldstates directory (absolute path or relative to application data dir)")
          ("max-trxs-microseconds", bpo::value<int32_t>()->default_value(Config::s_maxTrxMicroSeconds), "max trxs microseconds in initpropose,set by test mode usually")
+         ("allow-report-evil", bpo::value<bool>()->default_value(false), "whether report evil evidence")
          ;
    config_file_options.add(producer_options);
 }
@@ -559,6 +560,7 @@ void producer_rpos_plugin::plugin_initialize(const boost::program_options::varia
    my->_genesis_startup_time = options.at("genesis-startup-time").as<int32_t>();
    my->_max_round_seconds = options.at("max-round-seconds").as<int32_t>();
    my->_max_phase_seconds = options.at("max-phase-seconds").as<int32_t>();
+   my->_allow_report_evil = options.at("allow-report-evil").as<bool>();
    my->_max_trxs_seconds = options.at("max-trxs-microseconds").as<int32_t>();
    my->_is_config_encrypt = options.at("encrypt-config").as<bool>();
    ultrainio::chain::config::block_interval_ms = my->_max_round_seconds * 1000;
@@ -687,6 +689,7 @@ void producer_rpos_plugin::plugin_startup()
    nodePtr->setGenesisStartupTime(my->_genesis_startup_time);
    nodePtr->setRoundAndPhaseSecond(my->_max_round_seconds, my->_max_phase_seconds);
    nodePtr->setTrxsSecond(my->_max_trxs_seconds);
+   nodePtr->setAllowReportEvil(my->_allow_report_evil);
    nodePtr->init();
    nodePtr->readyToJoin();
    ilog("producer plugin:  plugin_startup() end");
