@@ -28,9 +28,9 @@ newaccount_fee = 2000
 max_ram_size = 30 * 1024 *1024 *1024  #The maximum ram is set to 30G
 worldstate_interval = 1000
 resourcelease_fee = 35068
-defaultclu = '%s/ultrain-core/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
-defaultkul = '%s/ultrain-core/build/programs/kultraind/kultraind'
-defaultcontracts_dir = '%s/ultrain-core/build/contracts/'
+defaultclu = '%s/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
+defaultkul = '%s/build/programs/kultraind/kultraind'
+defaultcontracts_dir = '%s/build/contracts/'
 initaccount = accounts
 def jsonArg(a):
     return " '" + json.dumps(a) + "' "
@@ -250,9 +250,9 @@ def stepexecrand():
     if args.programpath:
         randpath = args.programpath
     listprods = args.clultrain + 'system listproducers'
-    # os.system("cd %s/ultrain-core/scripts/rand;  ./rand.sh c  sleep 2;  ./rand.sh r  sleep 2;\
+    # os.system("cd %s/scripts/rand;  ./rand.sh c  sleep 2;  ./rand.sh r  sleep 2;\
     #   nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
-    os.system("cd %s/ultrain-core/scripts/rand; \
+    os.system("cd %s/scripts/rand; \
       nohup ./rand.sh e >/dev/null 2>&1 &  sleep 2;echo  '\n Genesis end \n';echo %s;%s" % ( randpath, listprods, listprods))
 
 def addSubChainUser():

@@ -200,30 +200,127 @@ Following are the code structure of some of the core components:
 ```
 
 ## BUILD & STARTUP
-### Build startup process
-#### 1.Create seven docker (already created skip) run
-    $ cd ultrain-core/scripts/docker/
-    $ sh createDocker.sh dockername 7 IMAGE_NAME 8888:8888 /home/ultrain
-    (the dockername format is dockername-[1-7])
-    (/home/ultrain is the upper directory of ultrain-core)
-#### 2.Enter any docker and compile node run
-    $ cd ultrain-core/
+### Perface
+
+  Following steps is an example to create a single chain including 7 docker containers (1 Genesis , 5 Producers, 1 None-Producer) in your host machine. 
+  
+  For convenience of operation，all docker contaniers `share the host directory`(including ULTRAIN source code dir).
+  
+### Pull Docker Image 
+
+ Official docker image is recommended to build ULTRAIN source code, it's easy to get docker images from Ultrain's official Dockerhub repository by following cmd.
+ 
+    $ docker pull ultraincore/ultraincore-public
+    $ docker images
+```text
+REPOSITORY                       TAG                 IMAGE ID            CREATED             SIZE
+ultraincore/ultraincore-public   latest              64fbde4c84a4        3 hours ago         2.85GB
+```
+
+### Start Docker Containers 
+
+    $ cd ultrain-core-production/scripts/docker/
+    $ ./createDocker.sh ultrainchain 7 ultraincore/ultraincore-public:latest 8877:8888 /home/sidechain/
+    
+Parameter Description
+
+* `ultrainchain` : Prefix of docker container name
+* `7` : Number of containers(First contanier is Genesis, last is None-Producer, others are Producers)
+* `ultraincore/ultraincore-public:latest` : Name of Docker Image
+* `8877:8888`: Port mapping(8877 can be changed to any other avaliable port in your host machine).
+* `/home/sidechain/`: Host Directory(including ULTRAIN source code dir, you can directly access this directory  by path "`/root/workspace/`" in docker container).
+
+### Build Code 
+
+Build source code in any docker container.
+
+    $ docker attach ultrainchain-7
+    $ cd /root/workspace/ultrain-core-production
     $ ./ultrainio_build.sh
-#### 3. run unittest
-    $ cd build
-    $ make test
-#### 4.Exit the docker, enter the physical host, and start node run
-    $ cd ultrain-core/scripts/
-    $ ./start_all_ultrain.sh  dockername  /root/workspace
-    (/root/workspace is the upper directory of docker ultrain-core)
-#### 5.Enter dockernam-7 and perform genesis bios
-    $ cd ultrain-core/scripts/
-    $ ./bios-test.py  -a
-### Other operating
-#### 6.Restart node , enter the physical host
-    $ ./restart_all_ultrain.sh dockername  /root/workspace
-#### 7.Stop node
-    $ ./stop_all_ultrain.sh dockername
+
+### Boot Nodultrain 
+
+Folowing commands must be executed in your host machine(not in docker container), meanwhile make sure `Python` environment is ready. All Nodultrains  will be started up at the same time in 7 docker containers.
+
+    $ cd ultrain-core-production/scripts/
+    $ ./start_all_ultrain.sh ultrainchain /root/workspace/ultrain-core-production --httpAlias 172.16.10.5:8877 -ws
+    
+Parameter Description
+
+* `ultrainchain` : Prefix of docker container name
+* `/root/workspace/ultrain-core-production`: Ultrain Code directory in docker container 
+* `-ws`: Add this parameter will enable World State Function of chain
+* `--httpAlias 172.16.10.5:8877`: Corresponding to your host machine IP and port
+
+Request chain info's API to check whether chain is startup successfully.
+
+    $ docker attach ultrainchain-7
+    $ curl 127.0.0.1:8888/v1/chain/get_chain_info
+    or you can just request by host machine IP and port :
+    curl http://172.16.10.5:8877/v1/chain/get_chain_info
+
+### Perform Genesis BIOS
+
+    $ docker attach ultrainchain-7
+    $ cd /root/workspace/ultrain-core-production/scripts/
+    $ ./bios-test.py -a -p /root/workspace/ultrain-core-production
+    
+### Other DevOps Tool
+
+
+#### Restart Nodultrain
+
+* Single Nodultrain（Docker Container）
+
+    ```text
+      $ killall nodultrain
+      $ nohup /root/workspace/ultrain-core-production/build/programs/nodultrain/nodultrain &>> /tmp/nod.log &
+    ```
+
+* All Nodultrain (Host Machine)
+
+    ```text
+      $ cd ultrain-core-production/scripts/
+      $ ./restart_all_ultrain.sh ultrainchain /root/workspace/ （`ultrainchain`：Prefix of docker container name ， `/root/workspace`：Base directory in docker container (need not change)）
+    ```
+
+#### Stop Nodultrain
+
+* Single Nodultrain（Docker Container）
+
+    ```text
+      $ killall nodultrain
+    ```
+    
+* Stop And Remove All Nodultrain and Blocks (Host Machine)
+
+    ```text
+      $ cd ultrain-core-production/scripts/
+      $ ./stop_all_ultrain.sh ultrainchain
+    ```
+
+#### Docker Ops
+
+* Stop All Dockers
+
+    ```text
+      $ cd ultrain-core-production/scripts/docker/
+      $ ./stopDocker.sh ultrainchain
+    ```
+    
+* Start All Dockers   
+
+    ```text
+      $ cd ultrain-core-production/scripts/docker/
+      $ ./startDocker.sh ultrainchain
+    ```
+    
+* Remove All Dockers
+
+    ```text
+      $ cd ultrain-core-production/scripts/docker/
+      $ ./rmDocker.sh ultrainchain
+    ```
 
 
 

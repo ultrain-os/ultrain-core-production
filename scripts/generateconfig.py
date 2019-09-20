@@ -196,7 +196,7 @@ def insert_worldstate_config(fname):
 
 
 def insert_monitor_config(fname):
-    newcontent = "monitor-server-endpoint = http://172.16.10.7:8078"
+    newcontent = "monitor-server-endpoint = http://127.0.0.1:8078"
     if args.monitor:
         newcontent = "monitor-server-endpoint = " + args.monitor;
     content = readfile(fname)
@@ -215,16 +215,12 @@ def insert_chain_name_config(fname):
 
 def insert_non_producing(fname):
     content = readfile(fname)
-    newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
+    newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 0.0.0.0:8888\n"
     if args.httpAlias:
         newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = " + args.httpAlias + "\n"
     else:
         if args.masterchain:
-            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:9999\n"
-        if args.subchain == "11":
-            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8888\n"
-        elif args.subchain == "12":
-            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 172.16.10.5:8899\n"
+            newcontent = "is-non-producing-node = 1\nhttp-server-address = 0.0.0.0:8888\nhttp-alias = 0.0.0.0:9999\n"
     newcontent += "plugin = ultrainio::chain_api_plugin\n"
     newcontent += "contracts-console = 1\n"
     print(newcontent)
