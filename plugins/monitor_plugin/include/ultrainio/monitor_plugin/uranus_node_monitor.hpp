@@ -9,6 +9,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <ultrainio/chain/version.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
+#include <ultrainio/kcp_plugin/kcp_plugin.hpp>
 #include <ultrainio/utilities/common.hpp>
 
 namespace ultrainio {
@@ -139,15 +140,21 @@ namespace ultrainio {
                 }
                 reportData.ba0BlockTime      = m_ba0BlockTime;
                 reportData.ba1BlockTime      = m_ba1BlockTime;
-#if 1
+
                 vector<connection_status> connectionsStatus = appbase::app().get_plugin<net_plugin_n::net_plugin>().get_connected_connections();
                 for (const auto& connectStatus : connectionsStatus) {
                     auto peer = connectStatus.peer + "#$" + connectStatus.last_handshake.account.to_string();
                     reportData.activePeers.push_back(peer);
                 }
 
+                connectionsStatus = appbase::app().get_plugin<kcp_plugin_n::kcp_plugin>().get_connected_connections();
+                for (const auto& connectStatus : connectionsStatus) {
+                    auto peer = connectStatus.peer + "#$" + connectStatus.last_handshake.account.to_string();
+                    reportData.activePeers.push_back(peer);
+                }
+
                 reportData.version = ultrainio::utilities::common::itoh(static_cast<uint32_t>(app().version()));
-#endif
+
      	    }
         }
 
