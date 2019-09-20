@@ -213,6 +213,24 @@ namespace ultrainiosystem {
                             const authority& owner,
                             const authority& active*/ ) {
       global_state_singleton globalparams( _self,_self);
+      std::string name_str = name{newact}.to_string();
+      // Check if the creator is privileged
+      if( !is_privileged( creator ) ) {
+         ultrainio_assert( name_str.size() >= 5 && name_str.size() <= 12 , "account names must be between 5-12 in length" );
+         bool is_contain_letter = false;
+         bool is_contain_number = false;
+         for( uint16_t i = 0; i < name_str.size(); i++ ) {
+            char cha = name_str[i];
+            if( cha >= 'a' && cha <= 'z' ) {
+               is_contain_letter = true;
+            }
+            if( cha >= '1' && cha <= '5' ) {
+               is_contain_number = true;
+            }
+         }
+         ultrainio_assert( is_contain_letter && is_contain_number , "account names must contain lowercase letters and Numbers (1-5)" );
+         ultrainio_assert( name_str.find( "utrio." ) != 0, "only privileged accounts can have names that start with 'utrio.'" );
+      }
       int32_t newaccount_fee = 0;
       if(globalparams.exists()){
          ultrainio_global_state  _gstate = globalparams.get();

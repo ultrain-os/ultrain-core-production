@@ -26,7 +26,7 @@
 #include <appbase/application.hpp>
 #include <ultrainio/chain_plugin/chain_plugin.hpp>
 #include <ultrainio/chain/whiteblacklist_object.hpp>
-#include <regex>
+
 namespace ultrainio { namespace chain {
 
 
@@ -91,20 +91,7 @@ void apply_ultrainio_newaccount(apply_context& context) {
    auto p2 = name_str.rfind('.');
    bool at_end   = (p2 != std::string::npos) && (p2 == name_str.length() - 1);
    ULTRAIN_ASSERT( !(at_begin || at_end), action_validate_exception, "account name can't start/end with ." );
-
-   // Check if the creator is privileged
-   const auto &creator = db.get<account_object, by_name>(create.creator);
-   if( !creator.privileged ) {
-      ULTRAIN_ASSERT( name_str.size() >= 5 &&
-                     name_str.size() <= 12 &&
-                     std::regex_match(name_str.c_str(), std::regex(".*?[a-z]+.*?")) &&
-                     std::regex_match(name_str.c_str(), std::regex(".*?[1-5]+.*?"))
-                     , action_validate_exception, "account names must contain lowercase letters and Numbers (1-5), and must be between 5-12 in length" );
-      ULTRAIN_ASSERT( name_str.find( "utrio." ) != 0, action_validate_exception,
-                  "only privileged accounts can have names that start with 'utrio.'" );
-   } else {
-      ULTRAIN_ASSERT( name_str.size() <= 12, action_validate_exception, "account names must be less than only 12 chars long" );
-   }
+   ULTRAIN_ASSERT( name_str.size() <= 12, action_validate_exception, "account names must be less than only 12 chars long" );
 
    auto existing_account = db.find<account_object, by_name>(create.name);
    ULTRAIN_ASSERT(existing_account == nullptr, account_name_exists_exception,
