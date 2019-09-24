@@ -143,8 +143,7 @@ namespace ultrainio {
 
                 vector<connection_status> connectionsStatus = appbase::app().get_plugin<net_plugin_n::net_plugin>().get_connected_connections();
                 for (const auto& connectStatus : connectionsStatus) {
-                    auto peer = connectStatus.peer + "#$" + connectStatus.last_handshake.account.to_string();
-                    reportData.activePeers.push_back(peer);
+                        reportData.activePeers.push_back(connectStatus.peer);
                 }
 
                 connectionsStatus = appbase::app().get_plugin<kcp_plugin_n::kcp_plugin>().get_connected_connections();
