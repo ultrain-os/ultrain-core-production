@@ -60,9 +60,11 @@ class NodeTable: UDPSocketEvents
         boost::optional<NodeID> replacementNodeID;
     };
 public:
+    static void initInstance(ba::io_service& _io, NodeIPEndpoint const& _endpoint, NodeID const& nodeID, string const& chainid, string& listenIP, bool traverseNat);
+    static NodeTable* getInstance();
     static constexpr uint32_t c_bondingTimeMSeconds{3000000};
-    NodeTable(ba::io_service& _io, NodeIPEndpoint const& _endpoint, NodeID const& nodeID, string const& chainid, string& listenIP, bool traverseNat);
-    ~NodeTable();
+    bool init_flag = false;
+    bool init_socket_flag = false;
     NodeID const m_hostNodeID;
     string const m_chainid;
     /// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
@@ -75,7 +77,7 @@ public:
     }
 
     void init( const std::vector <std::string> &seeds,ba::io_service &_io);
-
+    void doSocketInit();
     /// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeID is empty.
     void addNode(Node const& _node);
     void printallbucket();
@@ -90,7 +92,12 @@ public:
     signal<void(const NodeIPEndpoint&)> nodeaddevent;
     signal<void(const NodeIPEndpoint&)> needtcpevent;
     signal<void(const NodeIPEndpoint&)> nodedropevent;
-    signal<bool(const fc::sha256&,const chain::public_key_type&,const chain::signature_type&,chain::account_name const& _account)> pktcheckevent;
+    signal<void(const NodeIPEndpoint&)> nodedropevent_kcp;
+    signal<void(const kcp_conv_t&,const string&)> kcpconnectackevent;
+    signal<void(const kcp_conv_t&,const string&,const msg_priority&)> kcpconnectevent;
+    signal<void(const kcp_conv_t&,const char*,const size_t&)> kcppktrcvevent;
+    signal<void(const kcp_conv_t&,const bool&)> sessioncloseevent;
+    signal<bool(const fc::sha256&,const chain::public_key_type&,const chain::signature_type&,chain::account_name const& _account,const bool)> pktcheckevent;
     chain::public_key_type m_pk;
     chain::private_key_type m_sk;
     void set_nodetable_pk(chain::public_key_type pk){m_pk = pk;}
@@ -104,12 +111,17 @@ public:
     bool m_traverseNat = false;
     string m_listenIP;
     void set_nodetable_listenIP(string ip){m_listenIP = ip;}
+    void send_kcp_package(const char *buf, int len,bi::udp::endpoint to,msg_priority pri);
+    void do_send_connect_packet(string peer,msg_priority pri,uint16_t port);
+    void sendSessionCloseMsg(bi::udp::endpoint const& _to,kcp_conv_t conv,msg_priority pri,bool todel);
 #if defined(BOOST_AUTO_TEST_SUITE) || defined(_MSC_VER) // MSVC includes access specifier in symbol name
 protected:
 #else
 private:
 #endif
-
+    static NodeTable* s_self;
+    NodeTable(ba::io_service& _io, NodeIPEndpoint const& _endpoint, NodeID const& nodeID, string const& chainid, string& listenIP, bool traverseNat);
+    ~NodeTable();
     static unsigned const s_bits = 256;	                                 ///< Denoted by n in [Kademlia].
     static unsigned const s_bins = s_bits - 1;                           ///< Size of m_state (excludes root, which is us).
     static unsigned const s_maxSteps = boost::static_log2<s_bits>::value;///< Max iterations of discovery. (discover)
@@ -149,6 +161,11 @@ private:
     void handlemsg( bi::udp::endpoint const& _from, Pong const& pongmsg ) ;
     void handlemsg( bi::udp::endpoint const& _from, FindNode const& findnodemsg ) ;
     void handlemsg( bi::udp::endpoint const& _from, Neighbours const& msg ) ;
+    void handlemsg( bi::udp::endpoint const& _from, NewPing const& pingmsg );
+    void handlemsg( bi::udp::endpoint const& _from, ConnectMsg const&  msg );
+    void handlemsg( bi::udp::endpoint const& _from, ConnectAckMsg const&  msg );
+    void handlemsg( bi::udp::endpoint const& _from, SessionCloseMsg const&  msg );
+    void handlekcpmsg(const char *data,size_t bytes_recvd);
     /// Called by m_socket when socket is disconnected.
     void onSocketDisconnected() {}
     ///timers
@@ -201,7 +218,9 @@ private:
     std::unordered_map<bi::address, fc::time_point> m_pubkDiscoverPings;///< List of pending pings where node entry wasn't created due to unkown pubk.
 
     std::unordered_map<NodeID, fc::time_point> m_sentFindNodes;
-    std::shared_ptr<NodeSocket> m_socket;                       ///< Shared pointer for our UDPSocket
+    std::shared_ptr<NodeSocket> m_socket;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
+    std::shared_ptr<NodeSocket> m_socket_rpos;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
+    std::shared_ptr<NodeSocket> m_socket_trx;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
     vector<string> m_seeds;
     void doSeedRequest(const std::vector <std::string> &seeds);
     bool isNodeValid(Node const& _node);
@@ -209,6 +228,10 @@ private:
     bool isPrivateAddress(bi::address const& _addressToCheck);
     bool isLocalHostAddress(bi::address const& _addressToCheck);
     bool isPublicAddress(bi::address const& _addressToCheck);
+    void constructNewPing(NodeIPEndpoint _to,NodeID _toID,msg_priority pri);
+    void updateListenPort(NodeID const& _pubk, uint16_t port ,msg_priority pri);
+    kcp_conv_t get_new_conv(void) const;
+    int p2p_output(const char *buf, int len, ikcpcb *kcp, void *user,string address,uint16_t port);
 }; // end of class NodeTable
 
 } // end of namespace p2p

@@ -9,10 +9,10 @@
 #include <vector>
 #include <deque>
 #include <fc/network/message_buffer.hpp>
-
+#include "kcp/ikcp.h"
+#include "core/protocol.hpp"
 namespace ba = boost::asio;
 namespace bi = ba::ip;
-
 namespace ultrainio
 {
 namespace p2p
@@ -100,10 +100,77 @@ namespace p2p
     {
         string signature;
     };
+       struct UnsignedConnectMsg
+    {
+        uint8_t type ;
+        string peer;
+        msg_priority pri;
+	NodeID sourceid;
+        string chain_id;
+        chain::public_key_type pk;/*public_key*/
+        chain::account_name account;
+        vector<Reserved> to_save;
+    };
+    struct ConnectMsg:public UnsignedConnectMsg
+    {
+        string signature;
+    };
+    struct UnsignedConnectAckMsg
+    {
+        uint8_t type ;
+        string peer;
+	NodeID sourceid;
+        msg_priority pri;
+        string chain_id;
+        chain::public_key_type pk;/*public_key*/
+        chain::account_name account;
+        kcp_conv_t conv;
+        vector<Reserved> to_save;
+    };
+    struct ConnectAckMsg:public UnsignedConnectAckMsg
+    {
+        string signature;
+    };
+    struct UnsignedNewPing
+    {
+        uint8_t type ;
+        NodeIPEndpoint source;
+        NodeIPEndpoint dest;
+        NodeID sourceid; // sender public key (from signature)
+        NodeID destid;
+        string chain_id;
+        msg_priority pri;
+        chain::public_key_type pk;/*public_key*/
+        chain::account_name account;
+        vector<Reserved> to_save;
+    };
+    struct NewPing:public UnsignedNewPing
+    {
+        string signature;
+    };
+        struct UnsignedSessionCloseMsg
+    {
+        uint8_t type ;
+        NodeID sourceid;
+        string chain_id;
+        chain::public_key_type pk;/*public_key*/
+        chain::account_name account;
+        kcp_conv_t conv;
+        bool todel;
+        vector<Reserved> to_save;
+    };
+    struct SessionCloseMsg:public UnsignedSessionCloseMsg
+    {
+        string signature;
+    };
     using udp_msg = fc::static_variant<PingNode,
             Pong,
             FindNode,
-            Neighbours>;
+            Neighbours,
+	    NewPing,
+	    ConnectMsg,
+	    ConnectAckMsg,
+	    SessionCloseMsg>;
 
 
 /**
@@ -117,6 +184,11 @@ struct UDPSocketEvents
     virtual void handlemsg( bi::udp::endpoint const& _from, Pong const& pongmsg ) = 0;
     virtual void handlemsg( bi::udp::endpoint const& _from, FindNode const& findnodemsg ) = 0;
     virtual void handlemsg( bi::udp::endpoint const& _from, Neighbours const& msg ) = 0;
+    virtual void handlemsg( bi::udp::endpoint const& _from, NewPing const& msg ) = 0;
+    virtual void handlemsg( bi::udp::endpoint const& _from, ConnectMsg const& msg ) = 0;
+    virtual void handlemsg( bi::udp::endpoint const& _from, ConnectAckMsg const& msg ) = 0;
+    virtual void handlemsg( bi::udp::endpoint const& _from, SessionCloseMsg const& msg ) = 0;
+    virtual void handlekcpmsg(const char *data,size_t bytes_recvd) = 0;
 };
     using std::vector;
 
@@ -129,8 +201,13 @@ struct UDPSocketEvents
         {
             impl.handlemsg(loep, msg);
         }
+        void handlekcpmsg(const char *data,size_t bytes_recvd) const
+	{
+	    impl.handlekcpmsg(data,bytes_recvd);
+	}
     };
 constexpr auto     udpmessage_header_size = 4;
+constexpr auto     kcpmessage_header_size = 20;
 constexpr auto     def_send_buffer_size_mb = 4;
 constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
 /**
@@ -155,6 +232,7 @@ public:
     void connect();
 
     /// Send datagram.
+    void send_kcp_packet(const char* msg,int len, const boost::asio::ip::udp::endpoint& endpoint);
     void send_msg(udp_msg const& m, bi::udp::endpoint const& ep);
     /// Returns if socket is open.
     bool isOpen() { return !m_closed; }
@@ -167,7 +245,7 @@ protected:
     void doRead();
 
     void doWrite();
-    bool process_next_message(bi::udp::endpoint &m_recvEndpoint);
+    bool process_next_message(bi::udp::endpoint &m_recvEndpoint,uint32_t message_length);
     void disconnectWithError(boost::system::error_code _ec);
 
     std::atomic<bool> m_started;
@@ -214,7 +292,25 @@ void UDPSocket<Handler, MaxDatagramSize>::connect()
     m_closed = false;
     doRead();
 }
-
+/*kcp pack segment,conv is much bigger than normal udp payloadsize
+0              4     5    (BYTE)
++--------------+-----|----------
+| conv         | cmd | .... |
+*/
+template <typename Handler, unsigned MaxDatagramSize>
+void UDPSocket<Handler, MaxDatagramSize>::send_kcp_packet(const char* msg,int len, const boost::asio::ip::udp::endpoint& endpoint) {
+   auto send_buffer = std::make_shared<vector<char>>(len);
+   fc::datastream<char*> ds( send_buffer->data(), len);
+   ds.write(msg,len);
+   write_queue.push_back({send_buffer,endpoint});
+   if (write_queue.size() ==1)
+       doWrite();
+}
+/*udp msg segment
+0              4   (BYTE)
++--------------+-----------
+| payloadsize  |  msg
+*/
 template <typename Handler, unsigned MaxDatagramSize>
 void UDPSocket<Handler, MaxDatagramSize>::send_msg(udp_msg const& m, bi::udp::endpoint const& ep)
 {
@@ -236,6 +332,7 @@ void UDPSocket<Handler, MaxDatagramSize>::send_msg(udp_msg const& m, bi::udp::en
 template <typename Handler, unsigned MaxDatagramSize>
 void UDPSocket<Handler, MaxDatagramSize>::doRead()
 {
+   try {
     if (m_closed)
         return;
     std::weak_ptr<UDPSocket<Handler, MaxDatagramSize>> self =UDPSocket<Handler, MaxDatagramSize>::shared_from_this();
@@ -249,6 +346,7 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
         }
         if (m_closed)
             return disconnectWithError(_ec);
+     try{
         if (_ec != boost::system::errc::success)
             elog("Receiving UDP message failed. ");
             outstanding_read_bytes.reset();
@@ -267,39 +365,90 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
                         break;
                     }
                     else {
-                         uint32_t message_length;
+                        bool is_kcp_pkt = false;
                         auto index = pending_message_buffer.read_index();
-                        pending_message_buffer.peek(&message_length, sizeof(message_length), index);
-
-                        if(message_length > def_send_buffer_size*2 || message_length == 0) {
-                            elog("incoming message length unexpected (${i})", ("i", message_length));
-                            pending_message_buffer.reset();
-                            break;
+                        uint32_t conv;
+                        uint8_t cmd;
+                        pending_message_buffer.peek(&conv, sizeof(conv), index);
+                        pending_message_buffer.peek(&cmd, sizeof(cmd), index);
+                        if(conv > def_send_buffer_size*2
+                                &&(cmd == 81 || cmd == 82 || cmd == 83 || cmd == 84)) {
+                            is_kcp_pkt = true;
                         }
+                        if(is_kcp_pkt){
+                            index = pending_message_buffer.read_index();
+                            vector<char> kcp_header;
+                            kcp_header.resize(kcpmessage_header_size);
+                            pending_message_buffer.peek(kcp_header.data(),kcpmessage_header_size,index);
+                            uint32_t kcp_data_len;
+                            pending_message_buffer.peek(&kcp_data_len, sizeof(kcp_data_len), index);
+                            auto total_len = kcpmessage_header_size +4 +kcp_data_len;
 
-                        auto total_message_bytes = message_length + udpmessage_header_size;
-                        if (bytes_in_buffer >= total_message_bytes) {
-                            pending_message_buffer.advance_read_ptr(udpmessage_header_size);
-                            if (!process_next_message(m_recvEndpoint)) {
-                                pending_message_buffer.advance_read_ptr_from_index(index, message_length);
+                            index = pending_message_buffer.read_index();
+                            kcp_header.resize(total_len);
+                            pending_message_buffer.peek(kcp_header.data(),total_len,index);
+                            udpmsgHandler m(m_host, m_recvEndpoint );
+                            m.handlekcpmsg(kcp_header.data(),total_len);
+                            pending_message_buffer.advance_read_ptr(total_len);
+                        }
+                        else
+                        {
+                            uint32_t message_length;
+                            index = pending_message_buffer.read_index();
+                            pending_message_buffer.peek(&message_length, sizeof(message_length), index);
+
+                            if(message_length > def_send_buffer_size*2 || message_length == 0) {
+                                elog("incoming message length unexpected (${i})", ("i", message_length));
+                                pending_message_buffer.reset();
                                 break;
                             }
-                        } else {
-                            auto outstanding_message_bytes = total_message_bytes - bytes_in_buffer;
-                            auto available_buffer_bytes = pending_message_buffer.bytes_to_write();
-                            if (outstanding_message_bytes > available_buffer_bytes) {
-                                pending_message_buffer.add_space( outstanding_message_bytes - available_buffer_bytes );
-                            }
 
-                            outstanding_read_bytes.emplace(outstanding_message_bytes);
-                            break;
+                            auto total_message_bytes = message_length + udpmessage_header_size;
+                            if (bytes_in_buffer >= total_message_bytes) {
+                                pending_message_buffer.advance_read_ptr(udpmessage_header_size);
+                                if (!process_next_message(m_recvEndpoint,message_length)) {
+                                    pending_message_buffer.advance_read_ptr_from_index(index, message_length);
+                                    break;
+                                }
+                            } else {
+                                auto outstanding_message_bytes = total_message_bytes - bytes_in_buffer;
+                                auto available_buffer_bytes = pending_message_buffer.bytes_to_write();
+                                if (outstanding_message_bytes > available_buffer_bytes) {
+                                    pending_message_buffer.add_space( outstanding_message_bytes - available_buffer_bytes );
+                                }
+
+                                outstanding_read_bytes.emplace(outstanding_message_bytes);
+                                break;
+                            }
                         }
                     }
                 }
             }
 
         doRead();
+     }
+     catch(const std::exception &ex) {
+        elog("exception in doRead");
+        pending_message_buffer.reset();
+        doRead();
+     }
+     catch(const fc::exception &ex) {
+        elog("exception in doRead");
+        pending_message_buffer.reset();
+        doRead();
+     }
+     catch (...) {
+        elog("exception in doRead");
+        pending_message_buffer.reset();
+        doRead();
+     }
     });
+   } catch (...) {
+        elog("exception in doRead");
+        pending_message_buffer.reset();
+        doRead();
+   }
+
 }
 template <typename Handler, unsigned MaxDatagramSize>
 void UDPSocket<Handler, MaxDatagramSize>::reset_pktlimit_monitor( )
@@ -323,7 +472,7 @@ bool UDPSocket<Handler, MaxDatagramSize>::check_pkt_limit_exceed() {
     return false;
 }
 template <typename Handler, unsigned MaxDatagramSize>
-bool UDPSocket<Handler, MaxDatagramSize>::process_next_message(bi::udp::endpoint &m_recvEndpoint) {
+bool UDPSocket<Handler, MaxDatagramSize>::process_next_message(bi::udp::endpoint &m_recvEndpoint,uint32_t message_length) {
     try {
         auto ds = pending_message_buffer.create_datastream();
         udp_msg msg;
@@ -359,15 +508,21 @@ void UDPSocket<Handler, MaxDatagramSize>::doWrite() {
         return;
     auto& m = write_queue.front();
     bi::udp::endpoint endpoint(m.endpoint);
-    auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
+     std::weak_ptr<UDPSocket<Handler, MaxDatagramSize>> self =UDPSocket<Handler, MaxDatagramSize>::shared_from_this();
     m_socket.async_send_to( boost::asio::buffer(*m.buff), endpoint, [this, self, endpoint](boost::system::error_code _ec, std::size_t)
     {
+         auto conn = self.lock();
+         if(!conn)
+         {
+             elog("closed");
+             return ;
+         }
         if (m_closed)
             return disconnectWithError(_ec);
 
         if (_ec != boost::system::errc::success)
         {
-            elog("Failed delivering UDP message.");
+            elog("Failed delivering UDP message.${ec}",("ec", _ec.message()));
         }
 
         write_queue.pop_front();
@@ -403,7 +558,8 @@ void UDPSocket<Handler, MaxDatagramSize>::disconnectWithError(boost::system::err
     boost::system::error_code ec;
     m_socket.shutdown(bi::udp::socket::shutdown_both, ec);
     m_socket.close();
-
+    write_queue.clear();
+    pending_message_buffer.reset();
     // socket never started if it never left stopped-state (pre-handshake)
     if (wasClosed)
         return;
@@ -424,3 +580,11 @@ FC_REFLECT_DERIVED( ultrainio::p2p::FindNode, (ultrainio::p2p::UnsignedFindNode)
 FC_REFLECT( ultrainio::p2p::Neighbour, (node)(endpoint))
 FC_REFLECT( ultrainio::p2p::UnsignedNeighbours, (type)(fromID)(destid)(fromep)(tartgetep)(neighbours)(chain_id)(pk)(account)(to_save))
 FC_REFLECT_DERIVED( ultrainio::p2p::Neighbours, (ultrainio::p2p::UnsignedNeighbours), (signature))
+FC_REFLECT( ultrainio::p2p::UnsignedConnectMsg, (type)(peer)(pri)(sourceid)(chain_id)(pk)(account)(to_save))
+FC_REFLECT_DERIVED( ultrainio::p2p::ConnectMsg, (ultrainio::p2p::UnsignedConnectMsg), (signature))
+FC_REFLECT( ultrainio::p2p::UnsignedConnectAckMsg, (type)(peer)(pri)(sourceid)(chain_id)(pk)(conv)(account)(to_save))
+FC_REFLECT_DERIVED( ultrainio::p2p::ConnectAckMsg, (ultrainio::p2p::UnsignedConnectAckMsg), (signature))
+FC_REFLECT( ultrainio::p2p::UnsignedNewPing, (sourceid)(destid)(type)(source)(dest)(chain_id)(pri)(pk)(account)(to_save))
+FC_REFLECT_DERIVED( ultrainio::p2p::NewPing, (ultrainio::p2p::UnsignedNewPing), (signature))
+FC_REFLECT( ultrainio::p2p::UnsignedSessionCloseMsg, (type)(sourceid)(chain_id)(pk)(account)(conv)(todel)(to_save))
+FC_REFLECT_DERIVED( ultrainio::p2p::SessionCloseMsg, (ultrainio::p2p::UnsignedSessionCloseMsg), (signature))

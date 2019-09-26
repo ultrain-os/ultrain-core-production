@@ -37,7 +37,20 @@ namespace ultrainio { namespace net_plugin_n {
         tcp::endpoint              listen_endpoint;
         string                     p2p_address;
     };
-
+    struct node_msg_state{
+        string signature;
+        connection_ptr conn;
+    };
+    struct by_sig;
+    typedef multi_index_container<
+        node_msg_state,
+        indexed_by<
+            ordered_unique<
+            tag< by_sig >,
+            member < node_msg_state,
+                     string,
+                     &node_msg_state::signature > > >
+    > node_msg_index;
     update_in_flight  incr_in_flight(1), decr_in_flight(-1);
 
     class net_plugin_impl {
@@ -113,9 +126,10 @@ namespace ultrainio { namespace net_plugin_n {
         int                           started_sessions = 0;
 
         node_transaction_index        local_txns;
+        node_msg_index                local_msgs;
 
         bool                          use_socket_read_watermark = false;
-
+        bool                          kcp_transport = false;
         channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
         string connect( const string& endpoint, msg_priority p = msg_priority_trx,
@@ -131,9 +145,6 @@ namespace ultrainio { namespace net_plugin_n {
         void close( connection_ptr c );
         size_t count_open_sockets() const;
 
-        std::shared_ptr<p2p::NodeTable> node_table = nullptr;
-
-        std::shared_ptr<p2p::NodeTable> get_node_table() { return node_table; }
         void onNodeTableDropEvent(const p2p::NodeIPEndpoint& _n);
         void onNodeTableTcpConnectEvent(const p2p::NodeIPEndpoint& _n);
         template<typename VerifierFunc> void send_all( const net_message &msg, VerifierFunc verify );
@@ -2097,25 +2108,23 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 //       ilog("echo from ${p} block_id: ${id} num: ${num} phase: ${phase} baxcount: ${baxcount} account: ${account} sig: ${sig}",
 //            ("p", c->peer_name())("id", short_hash(msg.blockId))("num", BlockHeader::num_from_id(msg.blockId))
 //            ("phase", (uint32_t)msg.phase)("baxcount",msg.baxCount)("account", std::string(msg.account))("sig", short_sig(msg.signature)));
-       if (app().get_plugin<producer_rpos_plugin>().handle_message(msg)) {
-           for (auto &conn : connections) {
-               if (conn != c && conn->priority == msg_priority_rpos) {
-                   conn->enqueue(net_message(msg));
-               }
-           }
+       string  sig = msg.signature;
+       if( my_impl->local_msgs.get<by_sig>().find( sig ) == my_impl->local_msgs.end( ) ) { //no found
+           node_msg_state nms= {sig,c};
+           my_impl->local_msgs.insert(std::move(nms));
        }
+       app().get_plugin<producer_rpos_plugin>().handle_message(msg);
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const ProposeMsg& msg) {
        ilog("propose from ${p} block id: ${id} block num: ${num}",
             ("p", c->peer_name())("id", short_hash(msg.block.id()))("num", msg.block.block_num()));
-       if (app().get_plugin<producer_rpos_plugin>().handle_message(msg)) {
-           for (auto &conn : connections) {
-               if (conn != c && conn->priority == msg_priority_rpos) {
-                   conn->enqueue(net_message(msg));
-               }
-           }
+       string  sig = msg.signature;
+       if( my_impl->local_msgs.get<by_sig>().find( sig ) == my_impl->local_msgs.end( ) ) { //no found
+           node_msg_state nms= {sig,c};
+           my_impl->local_msgs.insert(std::move(nms));
        }
+       app().get_plugin<producer_rpos_plugin>().handle_message(msg);
    }
 
     void net_plugin_impl::handle_message( connection_ptr c, const ultrainio::ReqBlockNumRangeMsg& msg) {
@@ -2435,7 +2444,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                peer_addr_grey_list.clear();
            }
            if(connections.size() >= min_connections + num_passive_out){
-               std::list<p2p::NodeEntry> nodes = node_table->getNodes();
+               std::list<p2p::NodeEntry> nodes = p2p::NodeTable::getInstance()->getNodes();
                uint32_t i = 0;
                for (std::list<p2p::NodeEntry>::iterator it = nodes.begin(); it != nodes.end() && i < 4; ++it) {
                    if (rg() % 2 == 0) {
@@ -2465,7 +2474,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                        ilog("put ${a} to grey list", ("a", (*it)->peer_addr));
                    }
                    if ((*it)->node_id != fc::sha256()) {
-                     node_table->send_request_connect((*it)->node_id);
+                     p2p::NodeTable::getInstance()->send_request_connect((*it)->node_id);
                      ilog("send_request_connect to ${p}.", ("p", (*it)->peer_addr));
                   }
                }
@@ -2488,7 +2497,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                     ("peer", (*it)->peer_name())
                     ("addr", (*it)->socket->remote_endpoint(ec).address().to_string()));
                if ((*it)->node_id != fc::sha256()) {
-                  node_table->send_request_connect((*it)->node_id);
+                  p2p::NodeTable::getInstance()->send_request_connect((*it)->node_id);
                   ilog("send_request_connect to ${p}.", ("p", (*it)->peer_addr));
                }
                close(*it);
@@ -2505,9 +2514,9 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 
       ilog("connections size: ${s} min_connections: ${mc} num_clients: ${nc} grey list: ${gls} num_passive_out: ${npo}",
            ("s", connections.size())("mc", min_connections)("nc", num_clients)("gls", peer_addr_grey_list.size())("npo", num_passive_out));
-      if (use_node_table && connections.size() < min_connections + num_passive_out) { // if use_node_table == false, we can't get any valid node ip from node table
+      if (!kcp_transport && use_node_table && connections.size() < min_connections + num_passive_out) { // if use_node_table == false, we can't get any valid node ip from node table
          uint32_t count = min_connections - (connections.size() - num_passive_out);
-         std::list<p2p::NodeEntry> nodes = node_table->getNodes();
+         std::list<p2p::NodeEntry> nodes = p2p::NodeTable::getInstance()->getNodes();
          uint32_t i = 0;
          for (std::list<p2p::NodeEntry>::iterator it = nodes.begin(); it != nodes.end() && i < count; ++it) {
             if (rg() % 2 == 0) {
@@ -3118,7 +3127,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          }
          my->chain_plug = app().find_plugin<chain_plugin>();
          my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
-         fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
+         my->node_id = app().get_plugin<chain_plugin>().get_node_id();
          ilog( "my node_id is ${id} ${chainid}", ("id", my->node_id)("chainid",my->chain_id));
 
          uint16_t udp_port = 20124;
@@ -3133,14 +3142,15 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         if(options.count("nat-mapping")) {
             traverseNat = options.at( "nat-mapping" ).as<bool>();
         }
+         my->kcp_transport = options.at( "kcp-transport" ).as<bool>();
 
          p2p::NodeIPEndpoint local;
          local.setAddress("0.0.0.0");
          local.setUdpPort(udp_port);
          local.setListenPort(msg_priority_trx, my->trx_listener.listen_endpoint.port());
          local.setListenPort(msg_priority_rpos, my->rpos_listener.listen_endpoint.port());
-         my->node_table = std::make_shared<p2p::NodeTable>(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str(), listen_ip, traverseNat);
-         if (options.count("udp-seed")) {
+         p2p::NodeTable::initInstance(std::ref(app().get_io_service()), local, my->node_id, my->chain_id.str(), listen_ip, traverseNat);
+	 if (options.count("udp-seed")) {
             my->udp_seed_ip = options.at( "udp-seed" ).as<vector<string> >();
          }
          if (!my->udp_seed_ip.empty()) {
@@ -3167,31 +3177,37 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
          my->rpos_listener.acceptor->listen();
          my->start_listen_loop(my->rpos_listener.acceptor, msg_priority_rpos);
       }
-
+      p2p::NodeTable* nodeTblPtr =   p2p::NodeTable::getInstance();
       {
-         my->node_table->needtcpevent.connect( boost::bind(&net_plugin_impl::onNodeTableTcpConnectEvent, my.get(), _1));
-         my->node_table->nodedropevent.connect( boost::bind(&net_plugin_impl::onNodeTableDropEvent, my.get(), _1));
-         my->node_table->pktcheckevent.connect(boost::bind(&net_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3,_4));
+        if(!my->kcp_transport)
+        {
+           ilog("kcp_transport");
+            nodeTblPtr->needtcpevent.connect( boost::bind(&net_plugin_impl::onNodeTableTcpConnectEvent, my.get(), _1));
+        }
+	    nodeTblPtr->nodedropevent.connect( boost::bind(&net_plugin_impl::onNodeTableDropEvent, my.get(), _1));
+    //nodeTblPtr->pktcheckevent.connect(boost::bind(&net_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3,_4));
       }
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
 
       my->start_monitors();
+      if(!my->kcp_transport){
+	  for (auto active_peer : my->trx_active_peers) {
+              my->connect(active_peer, msg_priority_trx);
+	  }
 
-      for (auto active_peer : my->trx_active_peers) {
-         my->connect(active_peer, msg_priority_trx);
-      }
-
-      for (auto active_peer : my->rpos_active_peers) {
-         my->connect(active_peer, msg_priority_rpos);
+	  for (auto active_peer : my->rpos_active_peers) {
+	      my->connect(active_peer, msg_priority_rpos);
+	  }
       }
       auto sk_account = private_key_type(app().get_plugin<producer_rpos_plugin>().get_account_sk());
-      my->node_table->set_nodetable_sk(sk_account);
-      my->node_table->set_nodetable_pk(sk_account.get_public_key());
+      nodeTblPtr->set_nodetable_sk(sk_account);
+      nodeTblPtr->set_nodetable_pk(sk_account.get_public_key());
       auto name_account = app().get_plugin<producer_rpos_plugin>().get_account_name();
-      my->node_table->set_nodetable_account(chain::account_name(name_account));
+      nodeTblPtr->set_nodetable_account(chain::account_name(name_account));
+      nodeTblPtr->doSocketInit();
       if (!my->udp_seed_ip.empty())
       {
-         my->node_table->init(my->udp_seed_ip,std::ref(app().get_io_service()));
+         nodeTblPtr->init(my->udp_seed_ip,std::ref(app().get_io_service()));
       }
       if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
          logger = fc::get_logger_map()[logger_name];
@@ -3237,10 +3253,50 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
    }
 
    void net_plugin::broadcast(const EchoMsg& echo) {
-      ilog("broadcast echo");
       my->start_broadcast(net_message(echo), msg_priority_rpos);
    }
-
+   void net_plugin::partial_broadcast(const ProposeMsg& msg,bool rtn){
+       string sig = msg.signature;
+       if(!rtn)
+       {
+          my->local_msgs.erase(sig);
+          return ;
+       }
+       auto msg_save = my->local_msgs.get<by_sig>().find(sig);
+       if(msg_save != my->local_msgs.end()){
+          connection_ptr c = msg_save->conn;
+          for (auto &conn : my->connections) {
+               if (conn != c && conn->priority == msg_priority_rpos && conn->current()) {
+                   conn->enqueue(net_message(msg));
+               }
+           }
+          my->local_msgs.erase(sig);
+       }
+       else{
+           broadcast(msg);
+       }
+   }
+   void net_plugin::partial_broadcast(const EchoMsg& msg,bool rtn){
+       string sig = msg.signature;
+       if(!rtn)
+       {
+          my->local_msgs.erase(sig);
+          return ;
+       }
+       auto msg_save = my->local_msgs.get<by_sig>().find(sig);
+       if(msg_save != my->local_msgs.end()){
+          connection_ptr c = msg_save->conn;
+          for (auto &conn : my->connections) {
+               if (conn != c && conn->priority == msg_priority_rpos && conn->current()) {
+                   conn->enqueue(net_message(msg));
+               }
+           }
+          my->local_msgs.erase(sig);
+       }
+       else{
+           broadcast(msg);
+       }
+   }
    void net_plugin::broadcast(const SignedTransaction& trx) {
       my->start_broadcast(trx);
    }
@@ -3314,7 +3370,12 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
         return result;
     }
-
+    int net_plugin::is_netplugin_prime()const{
+        if(my->kcp_transport){
+            return 0;
+        }
+        return 1;
+    }
     connection_ptr net_plugin_impl::find_connection(const string& host )const {
         for( const auto& c : connections )
             if( c->peer_addr == host ) return c;

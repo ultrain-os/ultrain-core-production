@@ -25,7 +25,9 @@ namespace ultrainio { namespace kcp_plugin_n {
         void plugin_shutdown();
 
         void   broadcast(const ProposeMsg& propose);
+        void   partial_broadcast(const ProposeMsg& propose,bool rtn);
         void   broadcast(const EchoMsg& echo);
+        void   partial_broadcast(const EchoMsg& echo,bool rtn);
         void   broadcast(const SignedTransaction& trx);
         void   send_block(const fc::sha256 &node_id, const SyncBlockMsg& sync_block);
         bool   send_req_sync(const ReqSyncMsg& reqSyncMsg);

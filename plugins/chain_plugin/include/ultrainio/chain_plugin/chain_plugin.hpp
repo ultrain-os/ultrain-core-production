@@ -773,6 +773,7 @@ public:
 
    chain::name get_chain_name() const;
 
+   fc::sha256 get_node_id() const;
    fc::microseconds get_abi_serializer_max_time() const;
 
    void handle_guard_exception(const chain::guard_exception& e) const;

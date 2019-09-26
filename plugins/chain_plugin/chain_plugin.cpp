@@ -33,6 +33,7 @@
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
+#include <fc/crypto/rand.hpp>
 #include <signal.h>
 
 #include <core/BlsVoterSet.h>
@@ -224,6 +225,7 @@ public:
    fc::optional<controller::config> chain_config;
    fc::optional<controller>         chain;
    fc::optional<chain_id_type>      chain_id;
+   fc::sha256                       node_id;
    //txn_msg_rate_limits              rate_limits;
    fc::microseconds                 abi_serializer_max_time_ms;
    fc::optional<bfs::path>          worldstate_path;
@@ -599,7 +601,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->chain.emplace( *my->chain_config );
       my->chain_id.emplace( my->chain->get_chain_id());
-
+      fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
+      ilog( "my node_id is ${id} ${chainid}", ("id", my->node_id.str().substr(0,7))("chainid",my->chain_id));
       // set up method providers
       my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
             [this]( uint32_t block_num ) -> signed_block_ptr {
@@ -734,6 +737,9 @@ chain::name chain_plugin::get_chain_name() const {
     return my->_chain_name;
 }
 
+fc::sha256 chain_plugin::get_node_id()const {
+   return my->node_id;
+}
 fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
    return my->abi_serializer_max_time_ms;
 }

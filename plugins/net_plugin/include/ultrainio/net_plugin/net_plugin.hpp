@@ -25,7 +25,9 @@ namespace ultrainio { namespace net_plugin_n {
         void plugin_shutdown();
 
         void   broadcast(const ProposeMsg& propose);
+        void   partial_broadcast(const ProposeMsg& propose,bool rtn);
         void   broadcast(const EchoMsg& echo);
+        void   partial_broadcast(const EchoMsg& echo,bool rtn);
         void   broadcast(const SignedTransaction& trx);
         void   send_block(const fc::sha256 &node_id, const SyncBlockMsg& sync_block);
         bool   send_req_sync(const ReqSyncMsg& reqSyncMsg);
@@ -37,7 +39,7 @@ namespace ultrainio { namespace net_plugin_n {
         optional<connection_status>  status( const string& endpoint )const;
         vector<connection_status>    connections()const;
         vector<connection_status>    get_connected_connections()const;
-
+        int                         is_netplugin_prime()const;
         size_t num_peers() const;
     private:
         std::unique_ptr<class net_plugin_impl> my;

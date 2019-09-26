@@ -231,6 +231,7 @@ add_subdirectory( vendor )
 add_subdirectory( unittests )
 add_subdirectory( lightclient )
 add_subdirectory( p2p )
+add_subdirectory( kcp )
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/ultrainio)
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/ultrainio)

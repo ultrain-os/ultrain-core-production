@@ -11,6 +11,7 @@
 #include <ifaddrs.h>
 #endif
 #include <core/utils.h>
+#include "kcp/ikcp.h"
 using namespace std;
 
 namespace ultrainio
@@ -38,12 +39,22 @@ namespace p2p {
                                                                                                           NodeTable::distance(
                                                                                                                   localID,
                                                                                                                   _pubk)) {}
-
-
+    NodeTable* NodeTable::s_self = nullptr;
+    void NodeTable::initInstance(ba::io_service &_io, NodeIPEndpoint const &_endpoint, NodeID const &nodeID, string const& chainid,string& listenIP,bool traverseNat) {
+        if (s_self == NULL) {
+            s_self = new NodeTable(_io,_endpoint,nodeID,chainid,listenIP,traverseNat);
+        }
+    }
+   NodeTable* NodeTable::getInstance()
+   {
+       return s_self;
+    }
     NodeTable::NodeTable(ba::io_service &_io, NodeIPEndpoint const &_endpoint, NodeID const &nodeID, string const& chainid,string& listenIP,bool traverseNat) :
             m_hostNodeID(nodeID),
             m_chainid(chainid),
             m_hostNodeEndpoint(_endpoint),
+            m_socket_rpos(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents *>(this),bi::udp::endpoint(bi::address::from_string(_endpoint.address()), _endpoint.listenPort(msg_priority_rpos)))),
+            m_socket_trx(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents *>(this),bi::udp::endpoint(bi::address::from_string(_endpoint.address()), _endpoint.listenPort(msg_priority_trx)))),
             m_socket(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents *>(this),
                                              (bi::udp::endpoint) _endpoint)
            )
@@ -57,14 +68,21 @@ namespace p2p {
 
     NodeTable::~NodeTable() {
         m_socket->disconnect();
+        m_socket_rpos->disconnect();
+        m_socket_trx->disconnect();
     }
 void NodeTable::init( const std::vector <std::string> &seeds,ba::io_service &_io) {
+    if(init_flag)
+    {
+        return ;
+    }
     try {
-	m_socket->connect();
-	start_p2p_monitor(_io);
+        ilog("init");
+        m_socket->connect();
+        start_p2p_monitor(_io);
     }
     catch (std::exception const &_e) {
-	elog("Exception connecting NodeTable socket:");
+        elog("Exception connecting NodeTable socket:");
     }
     if(m_traverseNat)
     {
@@ -73,6 +91,16 @@ void NodeTable::init( const std::vector <std::string> &seeds,ba::io_service &_io
     m_seeds = seeds;
     doSeedRequest(m_seeds);
     doIDRequestLoop();
+    init_flag = true;
+}
+void NodeTable::doSocketInit()
+{
+   if(!init_socket_flag)
+   {
+       m_socket_rpos->connect();
+       m_socket_trx->connect();
+       init_socket_flag = true;
+   }
 }
 void NodeTable::doSeedRequest(const std::vector <std::string> &seeds)
 {
@@ -80,10 +108,14 @@ void NodeTable::doSeedRequest(const std::vector <std::string> &seeds)
         p2p::NodeIPEndpoint peer;
         peer.setAddress(seed);
         peer.setUdpPort(20124);
+        peer.setListenPort(msg_priority_trx,20122);
+        peer.setListenPort(msg_priority_rpos,20123);
         p2p::NodeID id = fc::sha256();
         p2p::Node node(id, peer);
         m_pubkDiscoverPings[boost::asio::ip::address::from_string(node.m_endpoint.address())] = fc::time_point::now();
         ping(node.m_endpoint,id,false);
+        constructNewPing(node.m_endpoint,id,msg_priority_rpos);
+        constructNewPing(node.m_endpoint,id,msg_priority_trx);
     }
     ilog("seeds size ${size} disping size ${pingsize}",("size",seeds.size())("pingsize",m_pubkDiscoverPings.size()));
 }
@@ -101,7 +133,11 @@ void NodeTable::doIDRequestCheck()
             NodeIPEndpoint ep;
             ep.setAddress(i.first.to_string());
             ep.setUdpPort(20124);
+	    ep.setListenPort(msg_priority_trx,20122);
+	    ep.setListenPort(msg_priority_rpos,20123);
             ping(ep,fc::sha256(),false);
+            constructNewPing(ep,fc::sha256(),msg_priority_trx);
+            constructNewPing(ep,fc::sha256(),msg_priority_rpos);
         }
         doIDRequestLoop();
     }
@@ -344,7 +380,8 @@ void NodeTable::ping(NodeEntry const& _nodeEntry, boost::optional<NodeID> const&
         ilog("ping times ${time}",("time",sendtimes));
     }
     ping(_nodeEntry.m_endpoint,_nodeEntry.m_id,false);
-
+    constructNewPing(_nodeEntry.m_endpoint,_nodeEntry.m_id,msg_priority_rpos);
+    constructNewPing(_nodeEntry.m_endpoint,_nodeEntry.m_id,msg_priority_trx);
 }
 void NodeTable::evict(NodeEntry const& _leastSeen, NodeEntry const& _new)
 {
@@ -390,6 +427,7 @@ void NodeTable::noteActiveNode(NodeID const& _pubk, NodeIPEndpoint const& _endpo
         {
             ilog("old addr is public and new one is private, close old");
             nodedropevent(nd->m_endpoint);
+            nodedropevent_kcp(nd->m_endpoint);
             nd->m_endpoint = _endpoint;
             buket_chg_flag = true;
         }
@@ -441,6 +479,7 @@ void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
         if(sentPingBad != m_PingsBad.end())
 	{
 		nodedropevent(_n->m_endpoint);
+		nodedropevent_kcp(_n->m_endpoint);
 	}
         m_PingsBad.erase(_n->m_id);
 	ilog("p2p.nodes.drop id ${id} ep ${ep}",("id",_n->m_id)("ep",_n->m_endpoint.address()));
@@ -488,7 +527,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
         }
     } 
     fc::sha256 digest_pong = fc::sha256::hash<p2p::UnsignedPong>(pong);
-    bool isvalid = *pktcheckevent(digest_pong,pong.pk,chain::signature_type(pong.signature),pong.account);
+    bool isvalid = *pktcheckevent(digest_pong,pong.pk,chain::signature_type(pong.signature),pong.account,false);
     if(!isvalid)
     {
         elog("pong msg check fail:may not in whitelist or not a producer");
@@ -558,7 +597,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, FindNode const& in ) 
 	    }
     }
     fc::sha256 digest = fc::sha256::hash<p2p::UnsignedFindNode>(in);
-    bool isvalid = *pktcheckevent(digest,in.pk,chain::signature_type(in.signature),in.account);
+    bool isvalid = *pktcheckevent(digest,in.pk,chain::signature_type(in.signature),in.account,false);
     if(!isvalid)
     {
             elog("FindNode msg check fail:may not in whitelist or not a producer");
@@ -642,7 +681,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
 	    }
     }
     fc::sha256 digest = fc::sha256::hash<p2p::UnsignedNeighbours>(in);
-    bool isvalid = *pktcheckevent(digest,in.pk,chain::signature_type(in.signature),in.account);
+    bool isvalid = *pktcheckevent(digest,in.pk,chain::signature_type(in.signature),in.account,false);
     if(!isvalid)
     {
         elog("Neighbours msg check fail:may not in whitelist or not a producer");
@@ -710,7 +749,7 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingm
         }
     }
     fc::sha256 digest = fc::sha256::hash<p2p::UnsignedPingNode>(pingmsg);
-    bool isvalid = *pktcheckevent(digest,pingmsg.pk,chain::signature_type(pingmsg.signature),pingmsg.account);
+    bool isvalid = *pktcheckevent(digest,pingmsg.pk,chain::signature_type(pingmsg.signature),pingmsg.account,false);
     if(!isvalid)
     {
         elog("ping msg check fail:may not in whitelist or not a producer");
@@ -858,6 +897,8 @@ void NodeTable::doSeedKeepaliveLoop()
 void NodeTable::doPktLimitCheck()
 {
     m_socket->reset_pktlimit_monitor();
+    m_socket_rpos->reset_pktlimit_monitor();
+    m_socket_trx->reset_pktlimit_monitor();
 }
 void NodeTable::doPktLimitLoop()
 {
@@ -1094,6 +1135,309 @@ void NodeTable::determinePublic()
         }
     }
 }
-//
+void NodeTable::constructNewPing(NodeIPEndpoint _to,NodeID _toID,msg_priority pri)
+{
+    NewPing p;
+    p.type = 5;
+    p.source = m_hostNodeEndpoint;
+    p.dest = _to;
+    p.sourceid = m_hostNodeID;
+    p.destid = _toID;
+    p.chain_id = m_chainid;
+    p.pk = m_pk;
+    p.account = m_account;
+    p.pri = pri;
+    fc::sha256 digest = fc::sha256::hash<UnsignedNewPing>(p);
+    p.signature = std::string(m_sk.sign(digest));
+    switch(pri)
+    {
+        case msg_priority_rpos:
+            m_socket_rpos->send_msg(p,bi::udp::endpoint(bi::address::from_string(_to.address()),_to.listenPort(msg_priority_rpos)));
+            break;
+        case msg_priority_trx:
+            m_socket_trx->send_msg(p,bi::udp::endpoint(bi::address::from_string(_to.address()),_to.listenPort(msg_priority_trx)));
+            break;
+	default :
+	    break;
+    }
+
+}
+void NodeTable::updateListenPort(NodeID const& _pubk, uint16_t port ,msg_priority pri)
+{
+    bool buket_chg_flag = false;
+    if (_pubk == m_hostNodeID)
+    {
+        return ;
+    }
+
+    shared_ptr<NodeEntry> newNode = nodeEntry(_pubk);
+    if (!newNode)
+    {
+        return;
+    }
+    NodeBucket& s = bucket_UNSAFE(newNode.get());
+    auto& nodes = s.nodes;
+    auto it = std::find(nodes.begin(), nodes.end(), newNode);
+    if (it != nodes.end())
+    {
+        auto nd = it->lock();
+        if (!nd)
+        {
+            elog("invalid weak ptr of node");
+            return;
+        }
+	if(nd->m_endpoint.listenPort(pri) != port)
+	{
+	    nd->m_endpoint.setListenPort(pri,port);
+	    buket_chg_flag = true;
+	}
+    }
+    if(buket_chg_flag)
+    {
+        printallbucket();
+    }
+}
+void NodeTable::handlemsg( bi::udp::endpoint const& _from, NewPing const& pingmsg ) {
+    ilog("handle newping nodeid ${nodeid}",("nodeid",pingmsg.sourceid.str().substr(0,7)));
+    if(pingmsg.sourceid == fc::sha256() || pingmsg.sourceid == m_hostNodeID)
+    {
+        ilog("ping msg has no id or sent by myself");
+        return ;
+    }
+
+    if(pingmsg.destid != fc::sha256() && pingmsg.destid != m_hostNodeID)
+    {
+        elog("ping msg not for me. dest: ${dest} host: ${host}", ("dest", pingmsg.destid.str().substr(0,7))("host", m_hostNodeID.str().substr(0,7)));
+        return ;
+    }
+
+    if(pingmsg.chain_id != m_chainid)
+    {
+        elog("wrong chain");
+        return;
+    }
+
+    for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
+    {
+        if((it->second.account == pingmsg.account) && (it->first != pingmsg.sourceid))
+        {
+            elog("duplicate p2p pk");
+            return ;
+        }
+    }
+    fc::sha256 digest = fc::sha256::hash<p2p::UnsignedNewPing>(pingmsg);
+    bool isvalid = *pktcheckevent(digest,pingmsg.pk,chain::signature_type(pingmsg.signature),pingmsg.account,false);
+    if(!isvalid)
+    {
+        elog("newping msg check fail:may not in whitelist or not a producer");
+        recordBadNode(pingmsg.sourceid);
+        return ;
+    }
+
+    updateListenPort(pingmsg.sourceid,_from.port(),pingmsg.pri);
+}
+void NodeTable::do_send_connect_packet(string peer,msg_priority pri,uint16_t port)
+{
+    ConnectMsg msg;
+    msg.type = 6;
+    msg.peer = peer + ":" + to_string(port);
+    msg.pri = pri;
+    msg.sourceid = m_hostNodeID;
+    msg.chain_id = m_chainid;
+    msg.pk = m_pk;
+    msg.account = m_account;
+    fc::sha256 digest = fc::sha256::hash<UnsignedConnectMsg>(msg);
+    msg.signature = std::string(m_sk.sign(digest));
+    switch(pri)
+    {
+        case msg_priority_rpos:
+            m_socket_rpos->send_msg(msg,bi::udp::endpoint(bi::address::from_string(peer),port));
+            break;
+        case msg_priority_trx:
+            m_socket_trx->send_msg(msg,bi::udp::endpoint(bi::address::from_string(peer),port));
+            break;
+        default :
+            break;
+    }
+}
+void NodeTable::handlemsg( bi::udp::endpoint const& _from, ConnectMsg const&  msg ) {
+    ilog("handle connectmsg nodeid ${nodeid}",("nodeid", msg.sourceid.str().substr(0,7)));
+    if( msg.sourceid == fc::sha256() ||  msg.sourceid == m_hostNodeID)
+    {
+        ilog("connect msg has no id or sent by myself");
+        return ;
+    }
+
+    if( msg.chain_id != m_chainid)
+    {
+        elog("wrong chain");
+        return;
+    }
+
+    for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
+    {
+        if((it->second.account ==  msg.account) && (it->first !=  msg.sourceid))
+        {
+            elog("connnect msg duplicate p2p pk");
+            return ;
+        }
+    }
+    fc::sha256 digest = fc::sha256::hash<p2p::UnsignedConnectMsg>( msg);
+    bool isvalid = *pktcheckevent(digest, msg.pk,chain::signature_type( msg.signature), msg.account,true);
+    if(!isvalid)
+    {
+        elog("connect msg check fail:may not in whitelist or not a producer");
+        recordBadNode( msg.sourceid);
+        return ;
+    }
+    ConnectAckMsg ackmsg;
+    ackmsg.type = 7;
+    ackmsg.peer = msg.peer;
+    ackmsg.pri = msg.pri;
+    ackmsg.sourceid = m_hostNodeID;
+    ackmsg.chain_id = m_chainid;
+    ackmsg.pk = m_pk;
+    ackmsg.account = m_account;
+    ackmsg.conv = get_new_conv();
+    fc::sha256 hash = fc::sha256::hash<UnsignedConnectAckMsg>(ackmsg);
+    ackmsg.signature = std::string(m_sk.sign(hash));
+    switch(msg.pri)
+    {
+	    case msg_priority_rpos:
+		    m_socket_rpos->send_msg(ackmsg,bi::udp::endpoint(_from.address(),_from.port()));
+		    break;
+	    case msg_priority_trx:
+		    m_socket_trx->send_msg(ackmsg,bi::udp::endpoint(_from.address(),_from.port()));
+		    break;
+	    default :
+		    break;
+    }
+    kcpconnectevent(ackmsg.conv,_from.address().to_string()+":"+std::to_string(_from.port()),msg.pri);
+}
+void NodeTable::handlemsg( bi::udp::endpoint const& _from, ConnectAckMsg const& msg)
+{
+    ilog("handle connectAckmsg nodeid ${nodeid}",("nodeid", msg.sourceid.str().substr(0,7)));
+    if( msg.sourceid == fc::sha256() ||  msg.sourceid == m_hostNodeID)
+    {
+        ilog("connectAck msg has no id or sent by myself");
+        return ;
+    }
+
+    if( msg.chain_id != m_chainid)
+    {
+        elog("wrong chain");
+        return;
+    }
+
+    for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
+    {
+        if((it->second.account ==  msg.account) && (it->first !=  msg.sourceid))
+        {
+            elog("connectAck msg duplicate p2p pk");
+            return ;
+        }
+    }
+    fc::sha256 digest = fc::sha256::hash<p2p::UnsignedConnectAckMsg>( msg);
+    bool isvalid = *pktcheckevent(digest, msg.pk,chain::signature_type( msg.signature), msg.account,true);
+    if(!isvalid)
+    {   
+        elog("connectAck msg check fail:may not in whitelist or not a producer");
+        recordBadNode( msg.sourceid);
+        return ;
+    }
+
+    kcpconnectackevent(msg.conv,msg.peer);
+}
+void NodeTable::sendSessionCloseMsg(bi::udp::endpoint const& _to,kcp_conv_t conv,msg_priority pri,bool todel)
+{
+    SessionCloseMsg msg;
+    msg.type = 8;
+    msg.sourceid = m_hostNodeID;
+    msg.chain_id = m_chainid;
+    msg.pk = m_pk;
+    msg.account = m_account;
+    msg.conv = conv;
+    msg.todel = todel;
+    fc::sha256 hash = fc::sha256::hash<UnsignedSessionCloseMsg>(msg);
+    msg.signature = std::string(m_sk.sign(hash));
+    switch(pri)
+    {
+            case msg_priority_rpos:
+                    m_socket_rpos->send_msg(msg,_to);
+                    break;
+            case msg_priority_trx:
+                    m_socket_trx->send_msg(msg,_to);
+                    break;
+            default :
+                    break;
+    }
+   ilog("send sessonclose ${to} conv ${conv}",("to",_to.address().to_string())("conv",conv));
+}
+void NodeTable::handlemsg( bi::udp::endpoint const& _from, SessionCloseMsg const& msg)
+{
+    ilog("handle SessionCloseMsg nodeid ${nodeid} conv ${conv}",("nodeid", _from.address().to_string())("conv",msg.conv));
+    if( msg.sourceid == fc::sha256() ||  msg.sourceid == m_hostNodeID)
+    {
+	    ilog("SessionCloseMsg msg has no id or sent by myself");
+	    return ;
+    }
+
+    if( msg.chain_id != m_chainid)
+    {
+	    elog("wrong chain");
+	    return;
+    }
+
+    for(auto it = m_pknodes.begin(); it != m_pknodes.end();++it)
+    {
+	    if((it->second.account ==  msg.account) && (it->first !=  msg.sourceid))
+	    {
+		    elog("SessionCloseMsg msg duplicate p2p pk");
+		    return ;
+	    }
+    }
+    fc::sha256 digest = fc::sha256::hash<p2p::UnsignedSessionCloseMsg>( msg);
+    bool isvalid = *pktcheckevent(digest, msg.pk,chain::signature_type( msg.signature), msg.account,true);
+    if(!isvalid)
+    {
+        elog("SessionCloseMsg msg check fail:may not in whitelist or not a producer");
+        recordBadNode( msg.sourceid);
+        return ;
+    }
+ 
+    sessioncloseevent(msg.conv,msg.todel);
+}
+void NodeTable::handlekcpmsg(const char *data,size_t bytes_recvd)
+{
+    kcp_conv_t conv;
+    int ret = ikcp_get_conv(data, bytes_recvd, &conv);
+    if (ret == 0)
+    {
+        ilog("ikcp_get_conv return 0");
+        return;
+    }
+    kcppktrcvevent(conv,data,bytes_recvd);
+}
+
+kcp_conv_t NodeTable::get_new_conv(void) const
+{
+    static uint32_t static_cur_conv = hash64(m_hostNodeID.str().substr(0,7).c_str(),7);
+    static_cur_conv++;
+    return static_cur_conv;
+}
+void NodeTable::send_kcp_package(const char *buf, int len,bi::udp::endpoint to,msg_priority pri)
+{
+    switch(pri)
+    {
+            case msg_priority_rpos:
+                    m_socket_rpos->send_kcp_packet(buf, len,to);
+                    break;
+            case msg_priority_trx:
+                    m_socket_trx->send_kcp_packet(buf, len,to);
+                    break;
+            default :
+                    break;
+    }
+}
 }  // namespace p2p
 }  // namespace ultrainio

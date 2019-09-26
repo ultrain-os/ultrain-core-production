@@ -36,29 +36,25 @@ namespace ultrainio {
     void set_sync_using_net_plugin() {
         if (sync_using_net_plugin == -1) {
             if (app().find_plugin<net_plugin>()) {
-                sync_using_net_plugin = 1;
-            } else if (app().find_plugin<kcp_plugin>()) {
-                sync_using_net_plugin = 0;
-            } else {
-                ULTRAIN_ASSERT(false, chain::chain_exception, "not usable net/kcp plugin");
+                sync_using_net_plugin = app().get_plugin<net_plugin>().is_netplugin_prime();
             }
         }
     }
 
     void stop_sync_block() {
-        set_sync_using_net_plugin();
-        if (sync_using_net_plugin == 1) {
+        if (app().find_plugin<net_plugin>()) {
             app().get_plugin<net_plugin>().stop_sync_block();
-        } else {
+        }
+        if (app().find_plugin<kcp_plugin>()) {
             app().get_plugin<kcp_plugin>().stop_sync_block();
         }
     }
 
     void send_sync_block(const fc::sha256 &nodeId, const SyncBlockMsg &msg) {
-        set_sync_using_net_plugin();
-        if (sync_using_net_plugin == 1) {
+        if (app().find_plugin<net_plugin>()) {
             app().get_plugin<net_plugin>().send_block(nodeId, msg);
-        } else {
+        }
+        if (app().find_plugin<kcp_plugin>()) {
             app().get_plugin<kcp_plugin>().send_block(nodeId, msg);
         }
     }
@@ -73,10 +69,10 @@ namespace ultrainio {
     }
 
     void send_rsp_block_num_range(const fc::sha256 &nodeId, const RspBlockNumRangeMsg &msg) {
-        set_sync_using_net_plugin();
-        if (sync_using_net_plugin == 1) {
+        if (app().find_plugin<net_plugin>()) {
             app().get_plugin<net_plugin>().send_block_num_range(nodeId, msg);
-        } else {
+        }
+        if (app().find_plugin<kcp_plugin>()) {
             app().get_plugin<kcp_plugin>().send_block_num_range(nodeId, msg);
         }
     }
@@ -588,11 +584,25 @@ namespace ultrainio {
     }
 
     bool Node::handleMessage(const EchoMsg &echo) {
-        return m_schedulerPtr->handleMessage(echo);
+        bool rtn =  m_schedulerPtr->handleMessage(echo);
+        if (app().find_plugin<net_plugin>()) {
+            app().get_plugin<net_plugin>().partial_broadcast(echo,rtn);
+        }
+        if (app().find_plugin<kcp_plugin>()) {
+            app().get_plugin<kcp_plugin>().partial_broadcast(echo,rtn);
+        }
+        return rtn ;
     }
 
     bool Node::handleMessage(const ProposeMsg &propose) {
-        return m_schedulerPtr->handleMessage(propose);
+        bool rtn = m_schedulerPtr->handleMessage(propose);
+        if (app().find_plugin<net_plugin>()) {
+            app().get_plugin<net_plugin>().partial_broadcast(propose,rtn);
+        }
+        if (app().find_plugin<kcp_plugin>()) {
+            app().get_plugin<kcp_plugin>().partial_broadcast(propose,rtn);
+        }
+        return rtn ;
     }
 
     bool Node::handleMessage(const fc::sha256 &nodeId, const ReqSyncMsg &msg) {
