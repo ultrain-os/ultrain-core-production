@@ -634,7 +634,7 @@ namespace ultrainiosystem {
          void del_expire_table();
          void clear_expire_contract( account_name owner );
          //defined in reward.cpp
-         void report_subchain_block( account_name producer, uint64_t block_height );
+         void report_subchain_block( const name& chain_name, account_name producer, uint64_t block_height );
          inline void generate_reward_trx( account_name producer, account_name reward_account, uint64_t paid_balance ) const;
          void distribut_reward();
          inline float get_reward_fee_ratio() const;

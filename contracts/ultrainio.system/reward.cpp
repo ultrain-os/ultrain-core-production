@@ -157,7 +157,7 @@ namespace ultrainiosystem {
       });
    }
 
-   void system_contract::report_subchain_block( account_name producer, uint64_t block_height ) {
+   void system_contract::report_subchain_block( const name& chain_name, account_name producer, uint64_t block_height ) {
       auto briefprod = _briefproducers.find(producer);
       if(briefprod == _briefproducers.end()) {
           print("error: block proposer ", name{producer}, " is not a producer\n");
@@ -181,10 +181,12 @@ namespace ultrainiosystem {
       _producers.modify( prod, [&](auto& p ) {
           p.unpaid_balance += realreward;
           p.total_produce_block++;
-          p.last_record_blockheight = block_height;
+          if ( chain_name == briefprod->location ) { //If the reportblock chain is the same as the producer chain, it will be recorded
+             p.last_record_blockheight = block_height;
+          }
       });
       check_producer_lastblock( briefprod->location, block_height );
-      print( "reportsubchainblock chain_name:", name{briefprod->location}, " producer:", name{producer}, " produce_block:", prod->total_produce_block,"\n" );
+      print( "reportsubchainblock producer chain_name:", name{briefprod->location}, " producer:", name{producer}," reportblock chain_name:", name{chain_name}, " block_height:", block_height,"\n" );
    }
 
    void system_contract::claimrewards( account_name producer ) {

@@ -343,7 +343,7 @@ namespace ultrainiosystem {
                         else{
                             if(ite_uncfm_block->to_be_paid) {
                                 //apply reward for its proposer
-                                report_subchain_block( ite_uncfm_block->proposer, ite_uncfm_block->block_number );
+                                report_subchain_block( chain_name, ite_uncfm_block->proposer, ite_uncfm_block->block_number );
                             }
                             subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
                                 new_confirmed_header = block_header_digest(ite_uncfm_block->block_number,
