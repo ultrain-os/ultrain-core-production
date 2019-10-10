@@ -840,31 +840,36 @@ uint64_t convert_to_type(const string& str, const string& desc) {
    return value;
 }
 
-uint64_t convert_to_scope( const string& str ) {
-   uint64_t value = 0;
-   try {
-      auto trimmed_str = str;
-      boost::trim(trimmed_str);
-      name s(trimmed_str);
-      value = s.value;
-   } catch( ... ) {
+uint64_t convert_to_scope( const string& str, const string& type ) {
+   bool is_default_convert = (type != "name" && type != "symbol" && type != "uint64");
+   //first try transform for name type
+   if ( type == "name" || is_default_convert ) {
+      try {
+         auto trimmed_str = str;
+         boost::trim(trimmed_str);
+         name s(trimmed_str);
+         return s.value;
+      } catch( ... ) {}
+   }
+   //second try transform for symbol type
+   if ( type == "symbol" || is_default_convert ) {
       try {
          auto symb = ultrainio::chain::symbol::from_string(str);
-         value = symb.value();
+         return symb.value();
       } catch( ... ) {
          try {
-            value = ( ultrainio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
-         } catch( ... ) {
-            try {
-               value = boost::lexical_cast<uint64_t>(str.c_str(), str.size());
-            } catch( ... ) {
-               ULTRAIN_ASSERT( false, chain_type_exception, "convert_to_scope could not convert scope string '${str}' to any of the following: "
-                                 "uint64_t, valid name, or valid symbol (with or without the precision)", ("str", str));
-            }
-         }
+            return ( ultrainio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
+         } catch( ... ) {}
       }
    }
-   return value;
+   //third try transform for uint64 type
+   if ( type == "uint64" || is_default_convert ) {
+      try {
+         return boost::lexical_cast<uint64_t>(str.c_str(), str.size());
+      } catch( ... ) {}
+   }
+   ULTRAIN_ASSERT( false, chain_type_exception, "convert_to_scope could not convert scope string '${str}' to any of the following: "
+                     "uint64_t, valid name, or valid symbol (with or without the precision)", ("str", str));
 }
 
 abi_def get_abi( const controller& db, const name& account ) {

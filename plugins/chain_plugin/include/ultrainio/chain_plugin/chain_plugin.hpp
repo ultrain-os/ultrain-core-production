@@ -71,7 +71,7 @@ Type convert_to_type(const string& str, const string& desc) {
 template<>
 uint64_t convert_to_type(const string& str, const string& desc);
 
-uint64_t convert_to_scope( const string& str );
+uint64_t convert_to_scope( const string& str, const string& type );
 
 class read_only {
    const controller& db;
@@ -263,6 +263,7 @@ public:
       name        table;
       string      table_key_type;
       string      table_key;
+      string      scope_type; //scope params type: name,symbol,uint64
       string      lower_bound;
       string      upper_bound;
       uint32_t    limit = 10;
@@ -539,7 +540,7 @@ public:
       read_only::get_table_records_result result;
       const auto& d = db.db();
 
-      uint64_t scope = convert_to_scope( p.scope );
+      uint64_t scope = convert_to_scope( p.scope, p.scope_type );
 
       abi_serializer abis;
       abis.set_abi(abi, abi_serializer_max_time);
@@ -609,7 +610,7 @@ public:
       read_only::get_table_records_result result;
       const auto& d = db.db();
 
-      uint64_t scope = convert_to_scope( p.scope );
+      uint64_t scope = convert_to_scope( p.scope, p.scope_type );
 
       abi_serializer abis;
       abis.set_abi(abi, abi_serializer_max_time);
@@ -793,7 +794,7 @@ FC_REFLECT(ultrainio::chain_apis::read_only::get_block_header_state_params, (blo
 
 FC_REFLECT( ultrainio::chain_apis::read_write::push_tx_results, (transaction_id)(processed) )
 
-FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_params, (json)(code)(scope)(table)(table_key_type)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position) )
+FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_params, (json)(code)(scope)(table)(table_key_type)(table_key)(scope_type)(lower_bound)(upper_bound)(limit)(key_type)(index_position) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_table_records_result, (rows)(more) );
 
 FC_REFLECT( ultrainio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit) )

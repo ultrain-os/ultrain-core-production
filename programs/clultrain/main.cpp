@@ -1607,6 +1607,7 @@ int main( int argc, char** argv ) {
    string upper;
    string table_key_type;
    string table_key;
+   string scope_type;
    string key_type;
    bool binary = false;
    uint32_t limit = 10;
@@ -1619,6 +1620,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
    getTable->add_option( "-p,--type", table_key_type, localized("select table key type") );
    getTable->add_option( "-k,--key", table_key, localized("filter index key") );
+   getTable->add_option( "-s,--scopetype", scope_type, localized("scope type:name,symbol,uint64. default sequential conversion") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
    getTable->add_option( "--index", index_position,
@@ -1635,6 +1637,7 @@ int main( int argc, char** argv ) {
                          ("table",table)
                          ("table_key_type",table_key_type)
                          ("table_key",table_key)
+                         ("scope_type",scope_type)
                          ("lower_bound",lower)
                          ("upper_bound",upper)
                          ("limit",limit)
