@@ -276,20 +276,25 @@ namespace ultrainiosystem {
                   const authority& data ){
          UNUSED(permission);
          UNUSED(parent);
-         global_state_singleton globalparams( _self,_self);
-         int32_t updateauth_fee = 0;
-         if(globalparams.exists()){
-            ultrainio_global_state  _gstate = globalparams.get();
-            for(auto extension : _gstate.table_extension){
-               if(extension.key == ultrainio_global_state::global_state_exten_type_key::update_auth) {
-                  std::string str = extension.value;
-                  updateauth_fee = std::stoi(str);
-                  break;
-               }
-            }
-         }
          int64_t authsize = data.keys.size() + data.accounts.size() + data.waits.size();
          ultrainio_assert(authsize > 0, "update authority amount has to be greater than zero");
+
+         global_state_singleton globalparams( _self,_self);
+         ultrainio_assert(globalparams.exists(), "global state is not existed");
+         ultrainio_global_state  _gstate = globalparams.get();
+         if(!_gstate.is_master_chain()) {
+            require_auth( _self );
+            return;
+         }
+         int32_t updateauth_fee = 0;
+         for(auto extension : _gstate.table_extension){
+             if(extension.key == ultrainio_global_state::global_state_exten_type_key::update_auth) {
+                 std::string str = extension.value;
+                 updateauth_fee = std::stoi(str);
+                 break;
+             }
+         }
+
          if(updateauth_fee > 0 && (name{account}.to_string().find( "utrio." ) != 0 ) && (account != _self)){
             INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {account,N(active)},
                { account, N(utrio.fee), asset(updateauth_fee * authsize), std::string("update auth") } );

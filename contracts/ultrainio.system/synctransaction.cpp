@@ -72,6 +72,15 @@ namespace ultrainiosystem {
         ULTRAINLIB_SERIALIZE(TransferResourceParam, (from)(to)(combosize)(location))
     };
 
+    struct UpdateAuthParam {
+        account_name account;
+        permission_name permission;
+        permission_name parent;
+        authority auth;
+
+        ULTRAINLIB_SERIALIZE(UpdateAuthParam, (account)(permission)(parent)(auth))
+    };
+
    static std::string checksum256_to_string( const uint8_t* d, uint32_t s )
    {
       std::string r;
@@ -184,6 +193,15 @@ namespace ultrainiosystem {
                         { trp.from, trp.to, trp.combosize, self_chain_name});
                  exec_succ++;
              }
+         } else if(act.account == N(ultrainio) && act.name == NEX(updateauth)) {
+             //update auth
+             UpdateAuthParam uap = unpack<UpdateAuthParam>(act.data);
+             print("synclwctx, update auth of", name{uap.account}, ", permission: ", name{uap.permission}, ", parent: ", name{uap.parent});
+             vector<permission_level>   action_auth = act.authorization;
+             action_auth.emplace_back(N(ultrainio), N(active));
+             INLINE_ACTION_SENDER(ultrainiosystem::native, updateauth)( N(ultrainio), action_auth,
+                    {uap.account, uap.permission, uap.parent, uap.auth});
+             exec_succ++;
          }
       }
       ultrainio_assert(exec_succ > 0, "The current transaction has no execution");
