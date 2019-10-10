@@ -427,7 +427,6 @@ namespace ultrainio {
     void Node::baxProcess() {
         ilog("In baxProcess");
         m_schedulerPtr->invokeDeduceWhenBax();
-        Block baxBlock = m_schedulerPtr->produceTentativeBlock();
 
         if (m_phase == kPhaseInit) {
             dlog("baxProcess finish. Sync block ok. blockNum = ${id}, m_syncing = ${m_syncing}.",
@@ -445,6 +444,7 @@ namespace ultrainio {
             return;
         }
 
+        Block baxBlock = m_schedulerPtr->produceTentativeBlock();
         if (!isBlank(baxBlock.id())) {
             m_ready = true;
             m_syncing = false;
@@ -964,6 +964,10 @@ namespace ultrainio {
     void Node::setAllowReportEvil(bool v) {
         Config::s_allowReportEvil = v;
         ilog("s_maxTrxMicroSeconds : ${v}", ("v", Config::s_allowReportEvil));
+    }
+
+    EvilReportHandler& Node::getEvilReportHandler() {
+        return m_evilReportHandler;
     }
 
     void Node::setTimerCanceled(TimerHandlerNumber thn) {

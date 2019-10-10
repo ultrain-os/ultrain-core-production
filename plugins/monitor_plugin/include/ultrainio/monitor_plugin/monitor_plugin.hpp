@@ -104,7 +104,6 @@ public:
 
    monitor_apis::monitor_only  get_monitor_only_api()const;
 
-   void reportAlert(alert_type type, const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark = std::string()) const;
 private:
    monitor_ptr my;
 };

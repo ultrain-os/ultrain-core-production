@@ -1350,7 +1350,7 @@ namespace ultrainio {
                 = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
         ULTRAIN_ASSERT(stakeVotePtr, chain::chain_exception, "stakeVotePtr is null");
         uint32_t minPriority = stakeVotePtr->getProposerNumber();
-        dlog("produceBaxBlock begin.");
+        dlog("begin.");
         for (auto mapItor = m_echoMsgAllPhase.begin(); mapItor != m_echoMsgAllPhase.end(); ++mapItor) {
             if ((Node::getInstance()->getPhase() + Node::getInstance()->getBaxCount()) >= Config::kMaxBaxCount) {
                 if (mapItor->first.phase < Config::kMaxBaxCount) {
@@ -1376,7 +1376,7 @@ namespace ultrainio {
             }
 
             if (isEmpty(voterSet.commonEchoMsg.blockId)) {
-                dlog("produceBaxBlock.produce empty Block. save VoterSet in bax blockId = ${blockId}", ("blockId", short_hash(voterSet.commonEchoMsg.blockId)));
+                dlog("produce empty Block. save VoterSet in bax blockId = ${blockId}", ("blockId", short_hash(voterSet.commonEchoMsg.blockId)));
                 m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
                         stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
                 m_evilDDosDetector.deduceBlockNum(voterSet, stakeVotePtr->getSendEchoThreshold() + 1,
@@ -1386,7 +1386,7 @@ namespace ultrainio {
             auto proposeItor = m_proposerMsgMap.find(voterSet.commonEchoMsg.blockId);
             if (proposeItor != m_proposerMsgMap.end()
                     && stakeVotePtr->proposerPriority(proposeItor->second.block.proposer, kPhaseBA0, 0) == minPriority) {
-                dlog("produceBaxBlock.find propose msg ok. blocknum = ${blocknum} phase = ${phase} save VoterSet in bax blockId = ${blockId}",
+                dlog("find propose msg ok. blocknum = ${blocknum} phase = ${phase} save VoterSet in bax blockId = ${blockId}",
                      ("blocknum", mapItor->first.blockNum)("phase", mapItor->first.phase)("blockId", short_hash(voterSet.commonEchoMsg.blockId)));
                 m_currentBlsVoterSet = toBlsVoterSetAndFindEvil(voterSet, stakeVotePtr->getCommitteeSet(),
                         stakeVotePtr->isGenesisPeriod(), stakeVotePtr->getNextRoundThreshold() + 1);
@@ -1432,7 +1432,6 @@ namespace ultrainio {
                 return emptyBlock();
             }
             if ((!m_echoMsgAllPhase.empty()) && (Node::getInstance()->getPhase() == kPhaseBAX)) {
-                dlog("current blockhash is empty. into produceBaxBlock.");
                 return produceBaxBlock();
             }
             return blankBlock();

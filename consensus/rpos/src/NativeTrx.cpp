@@ -3,11 +3,11 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
-#include <ultrainio/monitor_plugin/monitor_plugin.hpp>
 #include <ultrainio/net_plugin/net_plugin.hpp>
 
 #include <core/MultiProposeEvidence.h>
 #include "rpos/Config.h"
+#include "rpos/Node.h"
 
 namespace ultrainio {
     const std::string NativeTrx::kDesc = "kDesc";
@@ -32,7 +32,7 @@ namespace ultrainio {
             fc::variant evidenceVar(evidence.toString());
             o[kDesc] = descVar;
             o[kEvidence] = evidenceVar;
-            appbase::app().get_plugin<monitor_plugin>().reportAlert(alert_type::EVIL, std::string(desc.chainName), desc.blockNum, fc::json::to_string(fc::variant(o)));
+            Node::getInstance()->getEvilReportHandler()(std::string(desc.chainName), desc.blockNum, fc::json::to_string(fc::variant(o)));
         }
     }
 

@@ -32,5 +32,5 @@ add_library( ultrainio_rpos
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=delete-non-virtual-dtor" )
 
-target_link_libraries( ultrainio_rpos net_plugin monitor_plugin kcp_plugin ultrainio_lightclient ultrainio_core ultrainio_crypto )
+target_link_libraries( ultrainio_rpos net_plugin kcp_plugin ultrainio_lightclient ultrainio_core ultrainio_crypto )
 target_include_directories( ultrainio_rpos PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )

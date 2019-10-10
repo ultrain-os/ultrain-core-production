@@ -9,6 +9,7 @@
 #include <boost/chrono/include.hpp>
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/signals2/signal.hpp>
 
 #include <core/Message.h>
 #include <core/types.h>
@@ -35,6 +36,8 @@ namespace ultrainio {
     // used for monitor to record block producing time
     typedef std::function<void ()> monitorCallback;
     typedef std::function<void (bool)> monitorSetCallback;
+
+    typedef boost::signals2::signal<void(const std::string&, uint32_t, const std::string&)> EvilReportHandler;
 
     class Node : public std::enable_shared_from_this<Node> {
     public:
@@ -109,6 +112,8 @@ namespace ultrainio {
         void setTrxsSecond(int32_t trxssecond);
 
         void setAllowReportEvil(bool v);
+
+        EvilReportHandler& getEvilReportHandler();
 
     private:
         explicit Node(boost::asio::io_service& ioservice);
@@ -196,6 +201,7 @@ namespace ultrainio {
         boost::asio::deadline_timer m_timer;
         boost::asio::deadline_timer m_preRunTimer;
         std::shared_ptr<Scheduler> m_schedulerPtr;
+        EvilReportHandler m_evilReportHandler;
         friend class UranusNodeMonitor;
         monitorCallback ba0Callback = nullptr;
         monitorCallback ba1Callback = nullptr;
