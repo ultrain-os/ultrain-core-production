@@ -116,7 +116,7 @@ public:
       name                       account_name;
       uint32_t                   head_block_num = 0;
       fc::time_point             head_block_time;
-
+      std::vector<name>          empowerchains;
       bool                       privileged = false;
       bool                       updateable;
       fc::time_point             last_code_update;
@@ -826,7 +826,7 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_global_exten_params, (index) )
 FC_REFLECT( ultrainio::chain_apis::read_only::get_global_exten_result, (global_exten_data) );
 
 FC_REFLECT(ultrainio::chain_apis::read_only::get_account_results,
-        (account_name)(head_block_num)(head_block_time)(privileged)(updateable)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
+        (account_name)(head_block_num)(head_block_time)(empowerchains)(privileged)(updateable)(last_code_update)(created)(core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(
                 net_limit)(cpu_limit)(ram_usage)(permissions)(
                 self_delegated_consensus)(refund_cons)(producer_info)(chain_resource))
 FC_REFLECT(ultrainio::chain_apis::read_only::account_exist_result,(is_exist))

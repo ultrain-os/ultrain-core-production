@@ -1258,6 +1258,13 @@ void get_account( const string& accountName, bool json_format ) {
          return ss.str();
       };
       std::cout << "contract updateable: " << res.updateable << std::endl;
+      if ( !res.empowerchains.empty() ) {
+         std::cout << "empower chains: ";
+         for ( auto chain_name:res.empowerchains ) {
+            std::cout << " " << chain_name;
+         }
+         std::cout << std::endl;
+      }
       if ( res.chain_resource.size() > 0) {
          std::cout << std::endl;
          std::cout << "resource lease: " << std::endl;
