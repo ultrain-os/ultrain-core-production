@@ -78,7 +78,8 @@ class monitor_only {
 };
 }  //namespace monitor_apis
 enum alert_type {
-    EVIL = 1
+    EVIL = 1,
+    EMPTY_BLOCK_REASON
 };
 
 struct alert_info {

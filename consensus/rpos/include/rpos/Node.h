@@ -37,7 +37,7 @@ namespace ultrainio {
     typedef std::function<void ()> monitorCallback;
     typedef std::function<void (bool)> monitorSetCallback;
 
-    typedef boost::signals2::signal<void(const std::string&, uint32_t, const std::string&)> EvilReportHandler;
+    typedef boost::signals2::signal<void(const std::string&, uint32_t, const std::string&, const std::string&)> ReportHandler;
 
     class Node : public std::enable_shared_from_this<Node> {
     public:
@@ -113,7 +113,9 @@ namespace ultrainio {
 
         void setAllowReportEvil(bool v);
 
-        EvilReportHandler& getEvilReportHandler();
+        ReportHandler& getEvilReportHandler();
+
+        ReportHandler& getBlockReportHandler();
 
     private:
         explicit Node(boost::asio::io_service& ioservice);
@@ -201,7 +203,8 @@ namespace ultrainio {
         boost::asio::deadline_timer m_timer;
         boost::asio::deadline_timer m_preRunTimer;
         std::shared_ptr<Scheduler> m_schedulerPtr;
-        EvilReportHandler m_evilReportHandler;
+        ReportHandler m_evilReportHandler;
+        ReportHandler m_emptyBlockReportHandler;
         friend class UranusNodeMonitor;
         monitorCallback ba0Callback = nullptr;
         monitorCallback ba1Callback = nullptr;

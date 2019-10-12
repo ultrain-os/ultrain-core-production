@@ -408,6 +408,7 @@ namespace ultrainio {
             return;
         }
 
+        m_schedulerPtr->reportEmptyBlockReason(blockPtr->id(), m_syncing);
         dlog("##############ba1 finish blockNum = ${block_num}, hash = ${hash}, head_hash = ${head_hash}",
              ("block_num", getBlockNum())
              ("hash", short_hash(blockPtr->id()))
@@ -457,6 +458,7 @@ namespace ultrainio {
                  ("hash", short_hash(blockPtr->id()))
                  ("head_hash", short_hash(m_schedulerPtr->getPreviousBlockhash())));
 
+            m_schedulerPtr->reportEmptyBlockReason(blockPtr->id(), m_syncing);
             m_schedulerPtr->produceBlock(blockPtr);
 
             ULTRAIN_ASSERT(blockPtr->id() == m_schedulerPtr->getPreviousBlockhash(),
@@ -966,8 +968,12 @@ namespace ultrainio {
         ilog("s_maxTrxMicroSeconds : ${v}", ("v", Config::s_allowReportEvil));
     }
 
-    EvilReportHandler& Node::getEvilReportHandler() {
+    ReportHandler& Node::getEvilReportHandler() {
         return m_evilReportHandler;
+    }
+
+    ReportHandler& Node::getBlockReportHandler() {
+        return m_emptyBlockReportHandler;
     }
 
     void Node::setTimerCanceled(TimerHandlerNumber thn) {

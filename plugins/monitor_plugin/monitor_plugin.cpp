@@ -57,7 +57,9 @@ class monitor_plugin_impl {
 
     void sendStaticConfigInfo();
 
-    void reportAlert(const std::string& chain_name, uint32_t blockNum, const std::string& reason) const;
+    void reportAlert(const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const;
+
+    void reportEmptyBlockReason(const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const;
 
     tcp::endpoint   self_endpoint; // same as p2p-listen-endpoint in net plugin
     std::string     monitor_central_server;
@@ -75,6 +77,8 @@ class monitor_plugin_impl {
 
     void startMonitorTaskTimer();
 
+    void commonReport(alert_type type, const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const;
+
     bool firstLoop;
     std::unique_ptr<boost::asio::steady_timer> m_reportTaskTimer;
 };
@@ -85,10 +89,12 @@ monitor_plugin_impl::monitor_plugin_impl() : firstLoop(true) {
 
 void monitor_plugin_impl::startup() {
     startMonitorTaskTimer();
-    Node::getInstance()->getEvilReportHandler().connect(boost::bind(&monitor_plugin_impl::reportAlert, this, _1, _2, _3));
+    Node::getInstance()->getEvilReportHandler().connect(boost::bind(&monitor_plugin_impl::reportAlert, this, _1, _2, _3, _4));
+    Node::getInstance()->getBlockReportHandler().connect(boost::bind(&monitor_plugin_impl::reportEmptyBlockReason, this, _1, _2, _3, _4));
 }
 
 void monitor_plugin_impl::shutdown() {
+    Node::getInstance()->getBlockReportHandler().disconnect_all_slots();
     Node::getInstance()->getEvilReportHandler().disconnect_all_slots();
     if(m_reportTaskTimer) {
         m_reportTaskTimer->cancel();
@@ -155,17 +161,25 @@ void monitor_plugin_impl::sendStaticConfigInfo() {
   thrd.detach();
 }
 
-void monitor_plugin_impl::reportAlert(const std::string& chain_name, uint32_t blockNum, const std::string& reason) const {
-    auto reportFunc = [this, chain_name, blockNum, reason]() {
+void monitor_plugin_impl::reportAlert(const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const {
+    commonReport(alert_type::EVIL, chain_name, blockNum, reason, remark);
+}
+
+void monitor_plugin_impl::reportEmptyBlockReason(const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const {
+    commonReport(alert_type::EMPTY_BLOCK_REASON, chain_name, blockNum, reason, remark);
+}
+
+void monitor_plugin_impl::commonReport(alert_type type, const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const {
+    auto reportFunc = [this, type, chain_name, blockNum, reason, remark]() {
         alert_info info;
-        info.alertType = static_cast<int>(alert_type::EVIL);
+        info.alertType = static_cast<int>(type);
         info.chainName = chain_name;
         info.blockNum = blockNum;
         info.reason = reason;
-        //info.remark = remark;
+        info.remark = remark;
         info.nodeInfo = this->self_endpoint.address().to_v4().to_string() + std::string(".") + std::string(StakeVoteBase::getMyAccount());
         ilog("report alert nodeInfo : ${i} type : ${t}, chain name : ${c} blockNum : ${n} reason : ${r} remark : ${m}",
-             ("i", info.nodeInfo)("t", info.alertType)("c", chain_name)("n", blockNum)("r", reason)("m", info.remark));
+             ("i", info.nodeInfo)("t", info.alertType)("c", chain_name)("n", blockNum)("r", reason)("m", remark));
         call(this->monitor_central_server, this->call_path_alert, info);
     };
     std::thread t(reportFunc);

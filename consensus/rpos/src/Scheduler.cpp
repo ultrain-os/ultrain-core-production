@@ -1400,6 +1400,22 @@ namespace ultrainio {
         return Block();
     }
 
+    void Scheduler::reportEmptyBlockReason(const BlockIdType& blockId, bool syncing) {
+        if (blockId == emptyBlock().id() && syncing == false) {
+            EmptyBlockReason reason;
+            reason.blockNum = Node::getInstance()->getBlockNum();
+            if (m_currentBlsVoterSet.valid() && m_currentBlsVoterSet.commonEchoMsg.blockId == blockId) {
+                reason.phase = m_currentBlsVoterSet.commonEchoMsg.phase;
+                reason.baxCount = m_currentBlsVoterSet.commonEchoMsg.phase;
+            }
+            reason.currentPhase = Node::getInstance()->getPhase();
+            reason.currentBaxCount = Node::getInstance()->getBaxCount();
+            reason.proposeCount = m_proposerMsgMap.size();
+            reason.isBa0Empty = m_ba0Block.id() == emptyBlock().id();
+            NativeTrx::reportEmptyBlockReason(std::string(appbase::app().get_plugin<chain_plugin>().get_chain_name()), reason.blockNum, reason);
+        }
+    }
+
     /**
      *
      * @return
