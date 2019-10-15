@@ -48,6 +48,13 @@ namespace ultrainio {
         return BlockHeader::num_from_id(blockId);
     }
 
+    bool CommonEchoMsg::valid() const {
+        if (((phase == kPhaseBA0 || phase == kPhaseBA1) && baxCount == 0) || (phase == kPhaseBAX)) {
+            return true;
+        }
+        return false;
+    }
+
     bool UnsignedEchoMsg::operator == (const UnsignedEchoMsg& rhs) const {
         if (this == &rhs) {
             return true;

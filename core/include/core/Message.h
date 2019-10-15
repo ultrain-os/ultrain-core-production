@@ -75,6 +75,8 @@ namespace ultrainio {
         bool operator == (const CommonEchoMsg&) const;
 
         uint32_t blockNum() const;
+
+        bool valid() const;
     };
 
     struct UnsignedEchoMsg : public CommonEchoMsg {

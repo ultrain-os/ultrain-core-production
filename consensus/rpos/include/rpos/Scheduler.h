@@ -178,6 +178,8 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         bool duplicated(const EchoMsg& echo) const;
 
+        bool satisfyVoteRules(const EchoMsg& echo) const;
+
         bool isValid(const EchoMsg &echo) const;
 
         // propose relative

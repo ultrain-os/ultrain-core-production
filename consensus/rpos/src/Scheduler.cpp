@@ -222,7 +222,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::duplicated(const EchoMsg& echo) const {
-        RoundInfo info(BlockHeader::num_from_id(echo.blockId), echo.phase + echo.baxCount);
+        RoundInfo info(echo.blockNum(), echo.phase + echo.baxCount);
         auto itor = m_cacheEchoMsgMap.find(info);
         if (itor != m_cacheEchoMsgMap.end()) {
             for (auto e : itor->second) {
@@ -232,6 +232,27 @@ namespace ultrainio {
             }
         }
         return false;
+    }
+
+    bool Scheduler::satisfyVoteRules(const EchoMsg& echo) const {
+        /*
+         * 1. In BA0, Voter can vote multi propose, but not great the number of proposer
+         * 2. In the other, voter can vote one
+         */
+        RoundInfo info(echo.blockNum(), echo.phase + echo.baxCount);
+        auto itor = m_cacheEchoMsgMap.find(info);
+        if (itor != m_cacheEchoMsgMap.end()) {
+            int existCount = 0;
+            for (auto e : itor->second) {
+                if (e.account == echo.account) {
+                    existCount++;
+                }
+            }
+            if ((echo.phase == kPhaseBA0 && existCount >= Config::kDesiredProposerNumber) || (echo.phase != kPhaseBA0 && existCount >= 1)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     bool Scheduler::duplicated(const ProposeMsg& propose) const {
@@ -516,242 +537,292 @@ namespace ultrainio {
     }
 
     bool Scheduler::fastHandleMessage(const ProposeMsg &propose) {
-        ULTRAIN_ASSERT(sameBlockNumAndPhase(propose), chain::chain_exception, "unexpected result");
+        try {
+            ULTRAIN_ASSERT(sameBlockNumAndPhase(propose), chain::chain_exception, "unexpected result");
 
-        if (!isValid(propose)) {
-            return false;
-        }
-
-        std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
-        if (punishMgrPtr->isPunished(propose.block.proposer)) {
-            ilog("${account} has been punished", ("account", std::string(propose.block.proposer)));
-            return false;
-        }
-
-        MultiProposeEvidence evidence;
-        if (m_evilMultiProposeDetector.hasMultiPropose(m_proposerMsgMap, propose, evidence)) {
-            ilog("${account} sign multiple propose message", ("account", std::string(evidence.getEvilAccount())));
-            EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(), BlockHeader::num_from_id(propose.block.id()));
-            NativeTrx::reportEvil(evilDesc, evidence);
-            punishMgrPtr->punish(evidence.getEvilAccount(), Evidence::kMultiPropose);
-            return false;
-        }
-
-        auto itor = m_proposerMsgMap.find(propose.block.id());
-        if (itor == m_proposerMsgMap.end()) {
-            if (isMinPropose(propose)) {
-                m_proposerMsgMap.insert(make_pair(propose.block.id(), propose));
-                return true;
+            if (!isValid(propose)) {
+                return false;
             }
+
+            std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
+            if (punishMgrPtr->isPunished(propose.block.proposer)) {
+                ilog("${account} has been punished", ("account", std::string(propose.block.proposer)));
+                return false;
+            }
+
+            MultiProposeEvidence evidence;
+            if (m_evilMultiProposeDetector.hasMultiPropose(m_proposerMsgMap, propose, evidence)) {
+                ilog("${account} sign multiple propose message", ("account", std::string(evidence.getEvilAccount())));
+                EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(),
+                                  BlockHeader::num_from_id(propose.block.id()));
+                NativeTrx::reportEvil(evilDesc, evidence);
+                punishMgrPtr->punish(evidence.getEvilAccount(), Evidence::kMultiPropose);
+                return false;
+            }
+
+            auto itor = m_proposerMsgMap.find(propose.block.id());
+            if (itor == m_proposerMsgMap.end()) {
+                if (isMinPropose(propose)) {
+                    m_proposerMsgMap.insert(make_pair(propose.block.id(), propose));
+                    return true;
+                }
+            }
+            return false;
+        } catch (const fc::exception& e) {
+            edump((e.to_detail_string()));
+            return false;
         }
-        return false;
     }
 
     bool Scheduler::fastHandleMessage(const EchoMsg &echo) {
-        ULTRAIN_ASSERT(sameBlockNumAndPhase(echo), chain::chain_exception, "unexpected result");
+        try {
+            ULTRAIN_ASSERT(sameBlockNumAndPhase(echo), chain::chain_exception, "unexpected result");
 
-        if (!isValid(echo)) {
-            return false;
-        }
-
-        if (m_fastTimestamp < echo.timestamp) {
-            m_fastTimestamp = echo.timestamp;
-        }
-
-        std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
-        if (punishMgrPtr->isPunished(echo.account)) {
-            ilog("${account} has been punished", ("account", std::string(echo.account)));
-            return false;
-        }
-
-        MultiVoteEvidence evidence;
-        if (m_evilMultiVoteDetector.hasMultiVote(m_echoMsgMap, echo, evidence)) {
-            ilog("${account} vote multiple block", ("account", std::string(evidence.getEvilAccount())));
-            EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(), echo.blockNum());
-            NativeTrx::reportEvil(evilDesc, evidence);
-            punishMgrPtr->punish(echo.account, Evidence::kMultiVote);
-            return false;
-        }
-
-        auto itor = m_echoMsgMap.find(echo.blockId);
-        if (itor != m_echoMsgMap.end()) {
-            updateAndMayResponse(itor->second, echo, false);
-        } else {
-            VoterSet voterSet;
-            voterSet.commonEchoMsg = echo;
-            updateAndMayResponse(voterSet, echo, false);
-            m_echoMsgMap.insert(make_pair(echo.blockId, voterSet));
-        }
-        return true;
-    }
-
-    bool Scheduler::handleMessage(const ProposeMsg& propose) {
-        if (loopback(propose)) {
-            return false;
-        }
-
-        if (obsolete(propose)) {
-            return false;
-        }
-
-        if (isLaterMsg(propose)) {
-            if (m_evilDDosDetector.evil(propose, Node::getInstance()->getRoundCount(), Node::getInstance()->getBlockNum())) {
-                elog("evil propose id : ${id} : blockNum : ${blockNum} local : ${local}",
-                     ("id", propose.block.id())("blockNum", propose.block.block_num())("local", Node::getInstance()->getBlockNum()));
-                return false;
-            }
-            if (duplicated(propose)) {
-                return false;
-            }
-            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
-            PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
-            if (!publicKey.isValid()) {
-                elog("can not find pk of proposer : ${p} at block ${num}",
-                        ("p", std::string(propose.block.proposer))("num", Node::getInstance()->getBlockNum()));
-                return false;
-            }
-            if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
-                elog("validator proposer error. proposer : ${p} at block ${num} sig : ${sig}",
-                        ("p", std::string(propose.block.proposer))("num", Node::getInstance()->getBlockNum())("sig", short_sig(propose.block.signature)));
-                return false;
-            }
-            return processLaterMsg(propose);
-        }
-
-        ULTRAIN_ASSERT(sameBlockNumAndPhase(propose), chain::chain_exception, "unexpected result");
-
-        if (!isValid(propose)) {
-            return false;
-        }
-
-        if (Node::getInstance()->isSyncing()) {
-            dlog("receive propose msg. node is syncing. blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
-            return true;
-        }
-
-        std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
-        if (punishMgrPtr->isPunished(propose.block.proposer)) {
-            ilog("${account} has been punished", ("account", std::string(propose.block.proposer)));
-            return false;
-        }
-
-        MultiProposeEvidence evidence;
-        if (m_evilMultiProposeDetector.hasMultiPropose(m_proposerMsgMap, propose, evidence)) {
-            ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
-            EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(), BlockHeader::num_from_id(propose.block.id()));
-            NativeTrx::reportEvil(evilDesc, evidence);
-            punishMgrPtr->punish(evidence.getEvilAccount(), Evidence::kMultiPropose);
-            return false;
-        }
-
-        dlog("receive propose msg.blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
-        auto itor = m_proposerMsgMap.find(propose.block.id());
-        if (itor == m_proposerMsgMap.end()) {
-            if (isMinPropose(propose)) {
-                if (MsgMgr::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
-                    EchoMsg echo = MsgBuilder::constructMsg(propose);
-                    ULTRAIN_ASSERT(verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error, check bls private key pls");
-                    Node::getInstance()->sendMessage(echo);
-                    insert(echo);
-                }
-                dlog("save propose msg.blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
-                m_proposerMsgMap.insert(make_pair(propose.block.id(), propose));
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool Scheduler::handleMessage(const EchoMsg &echo) {
-        if (loopback(echo)) {
-            elog("loopback echo. account : ${account}", ("account", std::string(echo.account)));
-            return false;
-        }
-
-        if (obsolete(echo)) {
-            return false;
-        }
-
-        if (isLaterMsg(echo)) {
-            if (m_evilDDosDetector.evil(echo, Node::getInstance()->getRoundCount(), Node::getInstance()->getBlockNum())) {
-                elog("evil echo : blockNum : ${blockNum} local : ${local}",
-                        ("blockNum", BlockHeader::num_from_id(echo.blockId))("local", Node::getInstance()->getBlockNum()));
-                return false;
-            }
-            if (duplicated(echo)) {
-                elog("duplicate echo message from account : ${account}, blockNum : ${n}, phase : ${p}",
-                     ("account", std::string(echo.account))("n", BlockHeader::num_from_id(echo.blockId))("p", static_cast<int>(echo.phase)));
-                return false;
-            }
-            std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(Node::getInstance()->getBlockNum());
-            PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
-            if (!publicKey.isValid()) {
-                elog("can not find pk of account : ${account} at block ${num}",
-                     ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum()));
-                return false;
-            }
-            if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
-                elog("validator echo error. account : ${account} at block : ${num} sig : ${sig}",
-                     ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum())("sig", short_sig(echo.signature)));
-                return false;
-            }
-            m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(), Node::getInstance()->getPhase());
-            return processLaterMsg(echo);
-        }
-
-        if (sameBlockNumButBeforePhase(echo)) {
             if (!isValid(echo)) {
                 return false;
             }
-            m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(), Node::getInstance()->getPhase());
-            return processBeforeMsg(echo);
-        }
 
-        ULTRAIN_ASSERT(sameBlockNumAndPhase(echo), chain::chain_exception, "unexpected result");
+            if (m_fastTimestamp < echo.timestamp) {
+                m_fastTimestamp = echo.timestamp;
+            }
 
-        if (!isValid(echo)) {
-            return false;
-        }
+            std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
+            if (punishMgrPtr->isPunished(echo.account)) {
+                ilog("${account} has been punished", ("account", std::string(echo.account)));
+                return false;
+            }
 
-        if ((Node::getInstance()->isSyncing()) && (Node::getInstance()->getPhase() != kPhaseBAX)) {
-            dlog("receive echo msg. node is syncing. blockhash = ${blockhash} echo'account = ${account}",
-                 ("blockhash", short_hash(echo.blockId))("account", std::string(echo.account)));
+            MultiVoteEvidence evidence;
+            if (m_evilMultiVoteDetector.hasMultiVote(m_echoMsgMap, echo, evidence)) {
+                ilog("${account} vote multiple block", ("account", std::string(evidence.getEvilAccount())));
+                EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(),
+                                  echo.blockNum());
+                NativeTrx::reportEvil(evilDesc, evidence);
+                punishMgrPtr->punish(echo.account, Evidence::kMultiVote);
+                return false;
+            }
+
+            auto itor = m_echoMsgMap.find(echo.blockId);
+            if (itor != m_echoMsgMap.end()) {
+                updateAndMayResponse(itor->second, echo, false);
+            } else {
+                VoterSet voterSet;
+                voterSet.commonEchoMsg = echo;
+                updateAndMayResponse(voterSet, echo, false);
+                m_echoMsgMap.insert(make_pair(echo.blockId, voterSet));
+            }
             return true;
-        }
-
-        std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
-        if (punishMgrPtr->isPunished(echo.account)) {
-            ilog("${account} has been punished", ("account", std::string(echo.account)));
+        } catch (const fc::exception& e) {
+            edump((e.to_detail_string()));
             return false;
         }
+    }
 
-        MultiVoteEvidence evidence;
-        if (m_evilMultiVoteDetector.hasMultiVote(m_echoMsgMap, echo, evidence)) {
-            ilog("${account} vote multiple block", ("account", std::string(evidence.getEvilAccount())));
-            EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(), echo.blockNum());
-            NativeTrx::reportEvil(evilDesc, evidence);
-            punishMgrPtr->punish(echo.account, Evidence::kMultiVote);
+    bool Scheduler::handleMessage(const ProposeMsg& propose) {
+        try {
+            if (loopback(propose)) {
+                return false;
+            }
+
+            if (obsolete(propose)) {
+                return false;
+            }
+
+            if (isLaterMsg(propose)) {
+                if (m_evilDDosDetector.evil(propose, Node::getInstance()->getRoundCount(),
+                                            Node::getInstance()->getBlockNum())) {
+                    elog("evil propose id : ${id} : blockNum : ${blockNum} local : ${local}",
+                         ("id", propose.block.id())("blockNum", propose.block.block_num())("local",
+                                                                                           Node::getInstance()->getBlockNum()));
+                    return false;
+                }
+                if (duplicated(propose)) {
+                    return false;
+                }
+                std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(
+                        Node::getInstance()->getBlockNum());
+                PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
+                if (!publicKey.isValid()) {
+                    elog("can not find pk of proposer : ${p} at block ${num}",
+                         ("p", std::string(propose.block.proposer))("num", Node::getInstance()->getBlockNum()));
+                    return false;
+                }
+                if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
+                    elog("validator proposer error. proposer : ${p} at block ${num} sig : ${sig}",
+                         ("p", std::string(propose.block.proposer))("num", Node::getInstance()->getBlockNum())("sig",
+                                                                                                               short_sig(
+                                                                                                                       propose.block.signature)));
+                    return false;
+                }
+                return processLaterMsg(propose);
+            }
+
+            ULTRAIN_ASSERT(sameBlockNumAndPhase(propose), chain::chain_exception, "unexpected result");
+
+            if (!isValid(propose)) {
+                return false;
+            }
+
+            if (Node::getInstance()->isSyncing()) {
+                dlog("receive propose msg. node is syncing. blockhash = ${blockhash}",
+                     ("blockhash", short_hash(propose.block.id())));
+                return true;
+            }
+
+            std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
+            if (punishMgrPtr->isPunished(propose.block.proposer)) {
+                ilog("${account} has been punished", ("account", std::string(propose.block.proposer)));
+                return false;
+            }
+
+            MultiProposeEvidence evidence;
+            if (m_evilMultiProposeDetector.hasMultiPropose(m_proposerMsgMap, propose, evidence)) {
+                ilog("${account} sign multiple propose message", ("account", std::string(propose.block.proposer)));
+                EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(),
+                                  BlockHeader::num_from_id(propose.block.id()));
+                NativeTrx::reportEvil(evilDesc, evidence);
+                punishMgrPtr->punish(evidence.getEvilAccount(), Evidence::kMultiPropose);
+                return false;
+            }
+
+            dlog("receive propose msg.blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
+            auto itor = m_proposerMsgMap.find(propose.block.id());
+            if (itor == m_proposerMsgMap.end()) {
+                if (isMinPropose(propose)) {
+                    if (MsgMgr::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
+                        EchoMsg echo = MsgBuilder::constructMsg(propose);
+                        ULTRAIN_ASSERT(verifyMyBlsSignature(echo), chain::chain_exception,
+                                       "bls signature error, check bls private key pls");
+                        Node::getInstance()->sendMessage(echo);
+                        insert(echo);
+                    }
+                    dlog("save propose msg.blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
+                    m_proposerMsgMap.insert(make_pair(propose.block.id(), propose));
+                    return true;
+                }
+            }
+            return false;
+        } catch (const fc::exception& e) {
+            edump((e.to_detail_string()));
             return false;
         }
-        m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(), Node::getInstance()->getPhase());
+    }
 
-        auto itor = m_echoMsgMap.find(echo.blockId);
-        bool bret;
-        if (itor != m_echoMsgMap.end()) {
-            bret = updateAndMayResponse(itor->second, echo, true);
-            if ((isMinEcho(itor->second) || isMinFEcho(itor->second)) && bret) {
+    bool Scheduler::handleMessage(const EchoMsg &echo) {
+        try {
+            if (!echo.valid()) {
+                elog("echo check failed. account : ${account}, phase : ${phase}, baxCount : ${baxCount}",
+                        ("account", std::string(echo.account))("phase", static_cast<int>(echo.phase))("baxCount", echo.baxCount));
+                return false;
+            }
+
+            if (loopback(echo)) {
+                elog("loopback echo. account : ${account}", ("account", std::string(echo.account)));
+                return false;
+            }
+
+            if (obsolete(echo)) {
+                return false;
+            }
+
+            if (isLaterMsg(echo)) {
+                if (m_evilDDosDetector.evil(echo, Node::getInstance()->getRoundCount(),
+                                            Node::getInstance()->getBlockNum())) {
+                    elog("evil echo : blockNum : ${blockNum} local : ${local}",
+                         ("blockNum", BlockHeader::num_from_id(echo.blockId))("local",
+                                                                              Node::getInstance()->getBlockNum()));
+                    return false;
+                }
+                if (duplicated(echo)) {
+                    elog("duplicate echo message from account : ${account}, blockNum : ${n}, phase : ${p}",
+                         ("account", std::string(echo.account))("n", BlockHeader::num_from_id(echo.blockId))("p", static_cast<int>(echo.phase)));
+                    return false;
+                }
+                if (!satisfyVoteRules(echo)) {
+                    // TODO(qinxiaofen) how to punish
+                    elog("echo does not satisfy rules. message from account : ${account}, blockNum : ${n}, phase : ${p}",
+                         ("account", std::string(echo.account))("n", BlockHeader::num_from_id(echo.blockId))("p", static_cast<int>(echo.phase)));
+                    return false;
+                }
+                std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(
+                        Node::getInstance()->getBlockNum());
+                PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
+                if (!publicKey.isValid()) {
+                    elog("can not find pk of account : ${account} at block ${num}",
+                         ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum()));
+                    return false;
+                }
+                if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
+                    elog("validator echo error. account : ${account} at block : ${num} sig : ${sig}",
+                         ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum())("sig",
+                                                                                                           short_sig(
+                                                                                                                   echo.signature)));
+                    return false;
+                }
+                m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(),
+                                                 Node::getInstance()->getPhase());
+                return processLaterMsg(echo);
+            }
+
+            if (sameBlockNumButBeforePhase(echo)) {
+                if (!isValid(echo)) {
+                    return false;
+                }
+                m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(),
+                                                 Node::getInstance()->getPhase());
+                return processBeforeMsg(echo);
+            }
+
+            ULTRAIN_ASSERT(sameBlockNumAndPhase(echo), chain::chain_exception, "unexpected result");
+
+            if (!isValid(echo)) {
+                return false;
+            }
+
+            if ((Node::getInstance()->isSyncing()) && (Node::getInstance()->getPhase() != kPhaseBAX)) {
+                dlog("receive echo msg. node is syncing. blockhash = ${blockhash} echo'account = ${account}",
+                     ("blockhash", short_hash(echo.blockId))("account", std::string(echo.account)));
                 return true;
             }
-        } else {
-            VoterSet voterSet;
-            voterSet.commonEchoMsg = echo;
-            bret = updateAndMayResponse(voterSet, echo, true);
-            m_echoMsgMap.insert(make_pair(echo.blockId, voterSet));
-            if ((isMinEcho(voterSet) || isMinFEcho(voterSet)) && bret) {
-                return true;
+
+            std::shared_ptr<PunishMgr> punishMgrPtr = PunishMgr::getInstance();
+            if (punishMgrPtr->isPunished(echo.account)) {
+                ilog("${account} has been punished", ("account", std::string(echo.account)));
+                return false;
             }
+
+            MultiVoteEvidence evidence;
+            if (m_evilMultiVoteDetector.hasMultiVote(m_echoMsgMap, echo, evidence)) {
+                ilog("${account} vote multiple block", ("account", std::string(evidence.getEvilAccount())));
+                EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), evidence.getEvilAccount(),
+                                  echo.blockNum());
+                NativeTrx::reportEvil(evilDesc, evidence);
+                punishMgrPtr->punish(echo.account, Evidence::kMultiVote);
+                return false;
+            }
+            m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(), Node::getInstance()->getPhase());
+
+            auto itor = m_echoMsgMap.find(echo.blockId);
+            bool bret;
+            if (itor != m_echoMsgMap.end()) {
+                bret = updateAndMayResponse(itor->second, echo, true);
+                if ((isMinEcho(itor->second) || isMinFEcho(itor->second)) && bret) {
+                    return true;
+                }
+            } else {
+                VoterSet voterSet;
+                voterSet.commonEchoMsg = echo;
+                bret = updateAndMayResponse(voterSet, echo, true);
+                m_echoMsgMap.insert(make_pair(echo.blockId, voterSet));
+                if ((isMinEcho(voterSet) || isMinFEcho(voterSet)) && bret) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (const fc::exception& e) {
+            edump((e.to_detail_string()));
+            return false;
         }
-        return false;
     }
 
     bool Scheduler::handleMessage(const fc::sha256 &nodeId, const ReqSyncMsg &msg) {
