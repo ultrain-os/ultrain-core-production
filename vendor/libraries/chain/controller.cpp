@@ -846,7 +846,7 @@ struct controller_impl {
       info.block_height = head->block_num;
       std::string file_name = ws_manager_ptr->get_file_path_by_info(tmp_chain_id, head->block_num);
       fc::path ws_file(file_name + ".ws");
-      if (ws_file != fc::path(worldstate_path)){
+      if (ws_file != fc::absolute(worldstate_path)){
          if (fc::exists(ws_file)) fc::remove(ws_file);
          fc::copy(worldstate_path, bfs::path(ws_file) );
       }
