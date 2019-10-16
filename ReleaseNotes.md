@@ -1,5 +1,22 @@
 # Release Notes
 
+### 2019-10-15 Release(master-testnet Commit: ecc07dc090126ae6da09aeddf5a6cfce92ded7a0)
+
+* Nodultrain
+    * parse action binary data to string(honglu)
+    * add penalty verification, and broadcast transaction interface(xiaofen)
+    * fix unit test issues(xiaofen)
+    * add kcp network support(nana, jiaquan)
+    * report kcp connection status(shenyufeng)
+    * Fix issue: ws file should be absolute path if copy(lizhiping)
+    * report the reason why produce empty block(xiaofen)
+* Contract
+    * transfer resource(zhongwei)
+    * add time for RPC interface get_subchain_resource(feifan)
+    * get table rpc set optional scope type(feifan)
+    * prevent resource conflict between legacy and new applied(zhongwei)
+    * sync update auth(zhongwei)
+
 ### 2019-09-04 Release(Commit: 80feea0a63d30a6b8623fac0528b21358da00a0d)
 * Nodultrain
     * allow mutiple wallet urls to sign transaction(Raymond)
