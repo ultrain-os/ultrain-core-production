@@ -38,7 +38,13 @@ namespace ultrainio {
 
     void NativeTrx::reportEmptyBlockReason(const std::string& chain_name, uint32_t blockNum, const EmptyBlockReason& reason) {
         if (Config::s_allowReportEvil) {
-            Node::getInstance()->getBlockReportHandler()(chain_name, blockNum, fc::json::to_string(fc::variant(reason)), std::string());
+            Node::getInstance()->getEmptyBlockReportHandler()(chain_name, blockNum, fc::json::to_string(fc::variant(reason)), std::string());
+        }
+    }
+
+    void NativeTrx::reportMaxBaxCountStatistics(const std::string& chain_name, uint32_t blockNum, const MaxBaxCountStatistics& statistics) {
+        if (Config::s_allowReportEvil) {
+            Node::getInstance()->getMaxBaxCountReportHandler()(chain_name, blockNum, fc::json::to_string(fc::variant(statistics)), std::string());
         }
     }
 
