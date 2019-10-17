@@ -459,6 +459,7 @@ namespace ultrainio {
                  ("head_hash", short_hash(m_schedulerPtr->getPreviousBlockhash())));
 
             m_schedulerPtr->reportEmptyBlockReason(blockPtr->id(), m_syncing);
+            m_schedulerPtr->reportMaxBaxCountStatistics(blockPtr->id(), m_syncing);
             m_schedulerPtr->produceBlock(blockPtr);
 
             ULTRAIN_ASSERT(blockPtr->id() == m_schedulerPtr->getPreviousBlockhash(),
@@ -972,8 +973,12 @@ namespace ultrainio {
         return m_evilReportHandler;
     }
 
-    ReportHandler& Node::getBlockReportHandler() {
+    ReportHandler& Node::getEmptyBlockReportHandler() {
         return m_emptyBlockReportHandler;
+    }
+
+    ReportHandler& Node::getMaxBaxCountReportHandler() {
+        return m_maxBaxCountReportHandler;
     }
 
     void Node::setTimerCanceled(TimerHandlerNumber thn) {

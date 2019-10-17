@@ -139,8 +139,9 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         void reportEmptyBlockReason(const BlockIdType& blockId, bool syncing);
 
+        void reportMaxBaxCountStatistics(const BlockIdType& blockId, bool syncing);
+
     private:
-        // This function is time consuming, please cache the result empty block.
         std::shared_ptr<Block> generateEmptyBlock();
 
         bool updateAndMayResponse(VoterSet &info, const EchoMsg &echo, bool response);

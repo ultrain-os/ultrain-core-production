@@ -61,6 +61,8 @@ class monitor_plugin_impl {
 
     void reportEmptyBlockReason(const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const;
 
+    void reportMaxBaxCountStatistics(const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const;
+
     tcp::endpoint   self_endpoint; // same as p2p-listen-endpoint in net plugin
     std::string     monitor_central_server;
     std::string     call_path_dynamic;
@@ -90,12 +92,14 @@ monitor_plugin_impl::monitor_plugin_impl() : firstLoop(true) {
 void monitor_plugin_impl::startup() {
     startMonitorTaskTimer();
     Node::getInstance()->getEvilReportHandler().connect(boost::bind(&monitor_plugin_impl::reportAlert, this, _1, _2, _3, _4));
-    Node::getInstance()->getBlockReportHandler().connect(boost::bind(&monitor_plugin_impl::reportEmptyBlockReason, this, _1, _2, _3, _4));
+    Node::getInstance()->getEmptyBlockReportHandler().connect(boost::bind(&monitor_plugin_impl::reportEmptyBlockReason, this, _1, _2, _3, _4));
+    Node::getInstance()->getMaxBaxCountReportHandler().connect(boost::bind(&monitor_plugin_impl::reportMaxBaxCountStatistics, this, _1, _2, _3, _4));
 }
 
 void monitor_plugin_impl::shutdown() {
-    Node::getInstance()->getBlockReportHandler().disconnect_all_slots();
+    Node::getInstance()->getEmptyBlockReportHandler().disconnect_all_slots();
     Node::getInstance()->getEvilReportHandler().disconnect_all_slots();
+    Node::getInstance()->getMaxBaxCountReportHandler().disconnect_all_slots();
     if(m_reportTaskTimer) {
         m_reportTaskTimer->cancel();
     }
@@ -167,6 +171,10 @@ void monitor_plugin_impl::reportAlert(const std::string& chain_name, uint32_t bl
 
 void monitor_plugin_impl::reportEmptyBlockReason(const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const {
     commonReport(alert_type::EMPTY_BLOCK_REASON, chain_name, blockNum, reason, remark);
+}
+
+void monitor_plugin_impl::reportMaxBaxCountStatistics(const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const {
+    commonReport(alert_type::MAXBAXCOUNT_STATISTICS, chain_name, blockNum, reason, remark);
 }
 
 void monitor_plugin_impl::commonReport(alert_type type, const std::string& chain_name, uint32_t blockNum, const std::string& reason, const std::string& remark) const {

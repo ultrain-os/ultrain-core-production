@@ -115,7 +115,9 @@ namespace ultrainio {
 
         ReportHandler& getEvilReportHandler();
 
-        ReportHandler& getBlockReportHandler();
+        ReportHandler& getEmptyBlockReportHandler();
+
+        ReportHandler& getMaxBaxCountReportHandler();
 
     private:
         explicit Node(boost::asio::io_service& ioservice);
@@ -205,6 +207,7 @@ namespace ultrainio {
         std::shared_ptr<Scheduler> m_schedulerPtr;
         ReportHandler m_evilReportHandler;
         ReportHandler m_emptyBlockReportHandler;
+        ReportHandler m_maxBaxCountReportHandler;
         friend class UranusNodeMonitor;
         monitorCallback ba0Callback = nullptr;
         monitorCallback ba1Callback = nullptr;

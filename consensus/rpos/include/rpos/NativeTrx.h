@@ -19,6 +19,14 @@ namespace ultrainio {
         bool isBa0Empty;
     };
 
+    struct MaxBaxCountStatistics {
+        uint32_t blockNum;
+        int phase;
+        uint32_t baxCount;
+        int currentPhase;
+        uint32_t currentBaxCount;
+    };
+
     class NativeTrx {
     public:
         static const std::string kDesc;
@@ -31,6 +39,7 @@ namespace ultrainio {
 
         static void reportEmptyBlockReason(const std::string& chain_name, uint32_t blockNum, const EmptyBlockReason& reason);
 
+        static void reportMaxBaxCountStatistics(const std::string& chain_name, uint32_t blockNum, const MaxBaxCountStatistics& statistics);
     private:
         static SignedTransaction buildTrx(const Action& action, const BlockIdType& referId, const ChainIdType& chainId,
                 const fc::crypto::private_key& sk, const fc::time_point_sec& expiration, fc::unsigned_int usageWords);
@@ -38,3 +47,4 @@ namespace ultrainio {
 }
 
 FC_REFLECT( ultrainio::EmptyBlockReason, (blockNum)(phase)(baxCount)(currentPhase)(currentBaxCount)(proposeCount)(isBa0Empty))
+FC_REFLECT( ultrainio::MaxBaxCountStatistics, (blockNum)(phase)(baxCount)(currentPhase)(currentBaxCount))

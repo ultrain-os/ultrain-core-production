@@ -1487,6 +1487,20 @@ namespace ultrainio {
         }
     }
 
+    void Scheduler::reportMaxBaxCountStatistics(const BlockIdType& blockId, bool syncing) {
+        if (blockId != emptyBlock().id() && syncing == false) {
+            MaxBaxCountStatistics statistics;
+            statistics.blockNum = Node::getInstance()->getBlockNum();
+            if (m_currentBlsVoterSet.valid() && m_currentBlsVoterSet.commonEchoMsg.blockId == blockId) {
+                statistics.phase = m_currentBlsVoterSet.commonEchoMsg.phase;
+                statistics.baxCount = m_currentBlsVoterSet.commonEchoMsg.phase;
+            }
+            statistics.currentPhase = Node::getInstance()->getPhase();
+            statistics.currentBaxCount = Node::getInstance()->getBaxCount();
+            NativeTrx::reportMaxBaxCountStatistics(std::string(appbase::app().get_plugin<chain_plugin>().get_chain_name()), statistics.blockNum, statistics);
+        }
+    }
+
     /**
      *
      * @return
