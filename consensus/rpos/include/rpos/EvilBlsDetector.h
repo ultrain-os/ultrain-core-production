@@ -9,10 +9,10 @@ namespace ultrainio {
     class EvilBlsDetector {
     public:
         void detect(const VoterSet& voterSet, const CommitteeSet& committeeSet,
-                    VoterSet& newVoterSet, std::vector<AccountName>& evilAccounts);
+                    VoterSet& newVoterSet, std::vector<EchoMsg>& evilEchoMsgs);
 
     private:
         void realDetect(const VoterSet& voterSet, int fromIndex, int toIndex, const CommitteeSet& committeeSet,
-                std::vector<AccountName>& evilAccounts);
+                std::vector<EchoMsg>& evilEchoMsgs);
     };
 }

@@ -25,7 +25,7 @@ namespace ultrainio {
 
         VoterSet subVoterSet(int startIndex, int endIndex) const;
 
-        VoterSet exclude(const std::vector<AccountName>& accounts) const;
+        VoterSet exclude(const std::vector<EchoMsg>& msgs) const;
 
         std::string toString() const;
 

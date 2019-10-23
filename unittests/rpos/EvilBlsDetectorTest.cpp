@@ -21,10 +21,10 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
 
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 1);
-        BOOST_CHECK(evilAccounts[0] == AccountName("user.115"));
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 1);
+        BOOST_CHECK(evilEchoMsgs[0].account == AccountName("user.115"));
         BOOST_CHECK(outVoterSet.accountPool.size() == 4);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == true);
@@ -39,9 +39,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
 
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 2);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 2);
         BOOST_CHECK(outVoterSet.empty() == false && outVoterSet.accountPool.size() == 3);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == false);
@@ -56,9 +56,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
 
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 5);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 5);
         BOOST_CHECK(outVoterSet.accountPool.size() == 0);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == false);
@@ -71,9 +71,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
         CommitteeSet committeeSet(committeeSetStr);
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 0);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 0);
         BOOST_CHECK(outVoterSet.accountPool.size() == 10);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == true);
@@ -86,9 +86,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
         CommitteeSet committeeSet(committeeSetStr);
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 1);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 1);
         BOOST_CHECK(outVoterSet.accountPool.size() == 9);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == true);
@@ -101,9 +101,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
         CommitteeSet committeeSet(committeeSetStr);
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 1);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 1);
         BOOST_CHECK(outVoterSet.accountPool.size() == 9);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == true);
@@ -116,9 +116,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
         CommitteeSet committeeSet(committeeSetStr);
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 1);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 1);
         BOOST_CHECK(outVoterSet.accountPool.size() == 9);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == true);
@@ -131,9 +131,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
         CommitteeSet committeeSet(committeeSetStr);
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 2);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 2);
         BOOST_CHECK(outVoterSet.accountPool.size() == 8);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == true);
@@ -146,9 +146,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
         CommitteeSet committeeSet(committeeSetStr);
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 2);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 2);
         BOOST_CHECK(outVoterSet.accountPool.size() == 8);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == true);
@@ -161,9 +161,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
         CommitteeSet committeeSet(committeeSetStr);
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 2);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 2);
         BOOST_CHECK(outVoterSet.accountPool.size() == 8);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == true);
@@ -176,9 +176,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
         CommitteeSet committeeSet(committeeSetStr);
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 3);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 3);
         BOOST_CHECK(outVoterSet.accountPool.size() == 7);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == true);
@@ -191,9 +191,9 @@ BOOST_AUTO_TEST_SUITE(evilblsdetector_unittest)
         CommitteeSet committeeSet(committeeSetStr);
         EvilBlsDetector detector;
         VoterSet outVoterSet;
-        std::vector<AccountName> evilAccounts;
-        detector.detect(voterSet, committeeSet, outVoterSet, evilAccounts);
-        BOOST_CHECK(evilAccounts.size() == 4);
+        std::vector<EchoMsg> evilEchoMsgs;
+        detector.detect(voterSet, committeeSet, outVoterSet, evilEchoMsgs);
+        BOOST_CHECK(evilEchoMsgs.size() == 4);
         BOOST_CHECK(outVoterSet.accountPool.size() == 6);
         BlsVoterSet blsVoterSet = outVoterSet.toBlsVoterSet(outVoterSet.accountPool.size());
         BOOST_CHECK(committeeSet.verify(blsVoterSet) == false);

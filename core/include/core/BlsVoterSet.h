@@ -19,6 +19,8 @@ namespace ultrainio {
 
         bool verifyBls(std::vector<std::string> blsPkVector) const;
 
+        size_t size() const;
+
         std::string toString() const;
 
         std::vector<char> toVectorChar() const;

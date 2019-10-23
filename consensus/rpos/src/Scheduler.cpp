@@ -27,6 +27,7 @@
 #include <base/Memory.h>
 #include <crypto/Signer.h>
 #include <crypto/Validator.h>
+#include <core/EchoBlsEvidence.h>
 #include <core/Evidence.h>
 #include <lightclient/CommitteeSet.h>
 #include <lightclient/EpochEndPoint.h>
@@ -527,7 +528,6 @@ namespace ultrainio {
             if (!c.empty()) {
                 BlsVoterSet blsVoterSet = confirmPoint.blsVoterSet();
                 if (!c.verify(blsVoterSet)) {
-                    // TODO(xiaofen) punish
                     elog("BlsVoterSet error for : ${num} from ${who}", ("num", propose.block.block_num())("who", std::string(propose.block.proposer)));
                     return false;
                 }
@@ -1477,7 +1477,7 @@ namespace ultrainio {
             reason.blockNum = Node::getInstance()->getBlockNum();
             if (m_currentBlsVoterSet.valid() && m_currentBlsVoterSet.commonEchoMsg.blockId == blockId) {
                 reason.phase = m_currentBlsVoterSet.commonEchoMsg.phase;
-                reason.baxCount = m_currentBlsVoterSet.commonEchoMsg.phase;
+                reason.baxCount = m_currentBlsVoterSet.commonEchoMsg.baxCount;
             }
             reason.currentPhase = Node::getInstance()->getPhase();
             reason.currentBaxCount = Node::getInstance()->getBaxCount();
@@ -2204,14 +2204,21 @@ namespace ultrainio {
         if (!genesisPeriod && !committeeSet.verify(blsVoterSet)) {
             // there are evil node
             VoterSet newVoterSet;
-            std::vector<AccountName> evilAccounts;
+            std::vector<EchoMsg> evilEchoMsgs;
             EvilBlsDetector detector;
-            detector.detect(voterSet, committeeSet, newVoterSet, evilAccounts);
-            // TODO(xiaofen) punish
-            for (auto evil : evilAccounts) {
-                elog("evil account : ${evil}", ("evil", std::string(evil)));
+            detector.detect(voterSet, committeeSet, newVoterSet, evilEchoMsgs);
+            if (evilEchoMsgs.size() > 0) {
+                for (auto echoMsg : evilEchoMsgs) {
+                    EvilDesc evilDesc(appbase::app().get_plugin<chain_plugin>().get_chain_name(), echoMsg.account, echoMsg.blockNum());
+                    NativeTrx::reportEvil(evilDesc, EchoBlsEvidence(echoMsg));
+                    PunishMgr::getInstance()->punish(echoMsg.account, Evidence::kEchoBls);
+                }
             }
             blsVoterSet = newVoterSet.toBlsVoterSet(weight);
+        }
+        if (blsVoterSet.size() < weight - 1) {
+            ilog("can not collect enough echo message expect ${weight} while ${size} actually", ("weight", weight)("size", blsVoterSet.size()));
+            return BlsVoterSet();
         }
         return blsVoterSet;
     }

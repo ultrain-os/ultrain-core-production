@@ -65,14 +65,20 @@ namespace ultrainio {
         return voterSet;
     }
 
-    VoterSet VoterSet::exclude(const std::vector<AccountName>& accounts) const {
-        if (accounts.empty()) {
+    VoterSet VoterSet::exclude(const std::vector<EchoMsg>& msgs) const {
+        if (msgs.empty()) {
             return *this;
         }
         VoterSet voterSet;
         voterSet.commonEchoMsg = this->commonEchoMsg;
         for (int i = 0; i < this->accountPool.size(); i++) {
-            if (std::find(accounts.begin(), accounts.end(), this->accountPool[i]) != accounts.end()) {
+            bool excluded = false;
+            for (EchoMsg echoMsg : msgs) {
+                if (this->accountPool[i] == echoMsg.account) {
+                    excluded = true;
+                }
+            }
+            if (excluded) {
                 continue;
             }
             voterSet.accountPool.push_back(this->accountPool[i]);

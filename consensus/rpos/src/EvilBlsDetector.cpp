@@ -5,13 +5,13 @@
 
 namespace ultrainio {
     void EvilBlsDetector::detect(const VoterSet& voterSet, const CommitteeSet& committeeSet,
-                                 VoterSet& newVoterSet, std::vector<AccountName>& evilAccounts) {
-        realDetect(voterSet, 0, voterSet.accountPool.size(), committeeSet, evilAccounts);
-        newVoterSet = voterSet.exclude(evilAccounts);
+                                 VoterSet& newVoterSet, std::vector<EchoMsg>& evilEchoMsgs) {
+        realDetect(voterSet, 0, voterSet.accountPool.size(), committeeSet, evilEchoMsgs);
+        newVoterSet = voterSet.exclude(evilEchoMsgs);
     }
 
     void EvilBlsDetector::realDetect(const VoterSet& voterSet, int fromIndex, int toIndex, const CommitteeSet& committeeSet,
-            std::vector<AccountName>& evilAccounts) {
+            std::vector<EchoMsg>& evilEchoMsgs) {
         if (toIndex <= fromIndex) {
             return;
         }
@@ -32,7 +32,7 @@ namespace ultrainio {
                 Hex::fromHex(voterSet.blsSignPool[i], blsSignUC, Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
                 fc::sha256 h = fc::sha256::hash(voterSet.commonEchoMsg);
                 if (!blsPtr->verify(blsPk, blsSignUC, (void*)(h.str().c_str()), h.str().length())) {
-                    evilAccounts.push_back(voterSet.accountPool[i]);
+                    evilEchoMsgs.push_back(voterSet.get(i));
                 }
             }
             return;
@@ -42,14 +42,14 @@ namespace ultrainio {
         BlsVoterSet leftBlsVoterSet = leftVoterSet.toBlsVoterSet(middle - fromIndex);
         std::vector<std::string> leftBlsPkV = committeeSet.getBlsPk(leftBlsVoterSet.accountPool);
         if (!leftBlsVoterSet.verifyBls(leftBlsPkV)) {
-            realDetect(voterSet, fromIndex, middle, committeeSet, evilAccounts);
+            realDetect(voterSet, fromIndex, middle, committeeSet, evilEchoMsgs);
         }
 
         VoterSet rightVoterSet = voterSet.subVoterSet(middle, toIndex);
         BlsVoterSet rightBlsVoterSet = rightVoterSet.toBlsVoterSet(toIndex - middle);
         std::vector<std::string> rightBlsPkV = committeeSet.getBlsPk(rightBlsVoterSet.accountPool);
         if (!rightBlsVoterSet.verifyBls(rightBlsPkV)) {
-            realDetect(voterSet, middle, toIndex, committeeSet, evilAccounts);
+            realDetect(voterSet, middle, toIndex, committeeSet, evilEchoMsgs);
         }
     }
 }

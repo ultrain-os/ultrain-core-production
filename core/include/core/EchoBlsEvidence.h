@@ -2,31 +2,25 @@
 
 #include "core/Evidence.h"
 #include "core/Message.h"
+#include "core/types.h"
 
 namespace ultrainio {
-    class MultiVoteEvidence : public Evidence {
+    class EchoBlsEvidence : public Evidence {
     public:
-        MultiVoteEvidence();
+        EchoBlsEvidence();
 
-        MultiVoteEvidence(const std::string& str);
+        EchoBlsEvidence(const std::string& str);
 
-        MultiVoteEvidence(const EchoMsg& one, const EchoMsg& other);
+        EchoBlsEvidence(const EchoMsg& echoMsg);
 
         virtual std::string toString() const;
 
         virtual AccountName getEvilAccount() const;
 
         virtual int verify(const AccountName& accountName, const PublicKey& pk, const std::string& blsPk) const;
-
-        virtual bool simpleVerify() const;
-
     private:
         static const std::string kA;
 
-        static const std::string kB;
-
         EchoMsg m_A;
-
-        EchoMsg m_B;
     };
 }

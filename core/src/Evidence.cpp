@@ -11,6 +11,8 @@ namespace ultrainio {
 
     const int Evidence::kMultiVote = 0x2; // eg. ba0 vote multi-propose
 
+    const int Evidence::kEchoBls = 0x3; // echo.blsSignature
+
     Evidence::~Evidence() {};
 
     bool Evidence::isNull() const {
@@ -25,7 +27,7 @@ namespace ultrainio {
         return AccountName();
     }
 
-    int Evidence::verify(const AccountName& accountName, const PublicKey& pk) const {
+    int Evidence::verify(const AccountName& accountName, const PublicKey& pk, const std::string& blsPk) const {
         return Evidence::kNone;
     }
 

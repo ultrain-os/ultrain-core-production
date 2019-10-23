@@ -172,7 +172,7 @@ public:
 
     int on_verify_evil(const std::string& evidence, const evildoer& evil) {
         std::shared_ptr<Evidence> evidencePtr = EvidenceFactory::create(evidence);
-        return evidencePtr->verify(evil.account, ultrainio::PublicKey(evil.commitee_pk));
+        return evidencePtr->verify(evil.account, ultrainio::PublicKey(evil.commitee_pk), evil.bls_pk);
     }
 
 private:

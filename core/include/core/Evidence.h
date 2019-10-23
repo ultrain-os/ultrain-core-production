@@ -29,6 +29,8 @@ namespace ultrainio {
 
         static const int kMultiVote; // eg. ba0 vote multi-propose
 
+        static const int kEchoBls; // echo.blsSignature
+
         virtual ~Evidence();
 
         virtual bool isNull() const;
@@ -37,7 +39,7 @@ namespace ultrainio {
 
         virtual AccountName getEvilAccount() const;
 
-        virtual int verify(const AccountName& accountName, const PublicKey& pk) const;
+        virtual int verify(const AccountName& accountName, const PublicKey& pk, const std::string& blsPk) const;
 
         virtual bool simpleVerify() const;
     };

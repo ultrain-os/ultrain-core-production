@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/core/*.h")
 add_library( ultrainio_core
              src/BlsVoterSet.cpp
+             src/EchoBlsEvidence.cpp
              src/Evidence.cpp
              src/EvidenceFactory.cpp
              src/ExtType.cpp
@@ -8,6 +9,7 @@ add_library( ultrainio_core
              src/MultiProposeEvidence.cpp
              src/MultiVoteEvidence.cpp
              src/NullEvidence.cpp
+             src/SerializedEchoMsg.cpp
              src/utils.cpp
         ${HEADERS} )
 

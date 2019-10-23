@@ -5,50 +5,11 @@
 
 #include <crypto/Signature.h>
 #include <crypto/Validator.h>
+
+#include "core/SerializedEchoMsg.h"
 #include "core/types.h"
 
 namespace ultrainio {
-    // sync with EchoMsg
-    struct SerializedEchoMsg {
-        BlockIdType blockId;
-        int phase;
-        uint32_t    baxCount;
-        AccountName proposer;
-        std::string blsSignature;
-        AccountName account;
-        uint32_t    timestamp;
-        MsgExtension ext;
-        std::string signature;
-
-        EchoMsg toEchoMsg() const {
-            EchoMsg echo;
-            echo.blockId = blockId;
-            echo.phase = static_cast<ConsensusPhase>(phase);
-            echo.baxCount = baxCount;
-            echo.proposer = proposer;
-            echo.blsSignature = blsSignature;
-            echo.account = account;
-            echo.timestamp = timestamp;
-            echo.ext = ext;
-            echo.signature = signature;
-            return echo;
-        }
-
-        SerializedEchoMsg() {}
-
-        SerializedEchoMsg(const EchoMsg& echo) {
-            blockId = echo.blockId;
-            phase = echo.phase;
-            baxCount = echo.baxCount;
-            proposer = echo.proposer;
-            blsSignature = echo.blsSignature;
-            account = echo.account;
-            timestamp = echo.timestamp;
-            ext = echo.ext;
-            signature = echo.signature;
-        }
-    };
-
     const std::string MultiVoteEvidence::kA = "a";
 
     const std::string MultiVoteEvidence::kB = "b";
@@ -87,7 +48,7 @@ namespace ultrainio {
         return m_A.account;
     }
 
-    int MultiVoteEvidence::verify(const AccountName& accountName, const PublicKey& pk) const {
+    int MultiVoteEvidence::verify(const AccountName& accountName, const PublicKey& pk, const std::string& blsPk) const {
         if (accountName != m_A.account || accountName != m_B.account) {
             return Evidence::kReporterEvil;
         }
@@ -116,5 +77,3 @@ namespace ultrainio {
         return false;
     }
 }
-
-FC_REFLECT( ultrainio::SerializedEchoMsg, (blockId)(phase)(baxCount)(proposer)(blsSignature)(account)(timestamp)(ext)(signature))

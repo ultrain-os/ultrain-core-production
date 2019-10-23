@@ -51,6 +51,10 @@ namespace ultrainio {
         return !accountPool.empty();
     }
 
+    size_t BlsVoterSet::size() const {
+        return accountPool.size();
+    }
+
     bool BlsVoterSet::verifyBls(std::vector<std::string> blsPkVector) const {
         if (blsPkVector.size() != accountPool.size()) {
             ilog("size not equal");

@@ -11,6 +11,7 @@ namespace ultrainio {
         struct evildoer {
             account_name account;
             std::string commitee_pk;
+            std::string bls_pk;
         };
 
         // interface
@@ -28,4 +29,4 @@ namespace ultrainio {
     }
 } // namespace ultrainio::chain
 
-FC_REFLECT( ultrainio::chain::evildoer, (account)(commitee_pk) )
+FC_REFLECT( ultrainio::chain::evildoer, (account)(commitee_pk)(bls_pk) )

@@ -514,7 +514,8 @@ namespace ultrainiosystem {
     struct evildoer {
         account_name account;
         std::string commitee_pk;
-        ULTRAINLIB_SERIALIZE(evildoer, (account)(commitee_pk))
+        std::string bls_pk;
+        ULTRAINLIB_SERIALIZE(evildoer, (account)(commitee_pk)(bls_pk))
     };
 
    class system_contract : public native {

@@ -41,7 +41,7 @@ namespace ultrainio {
         return m_A.proposer;
     }
 
-    int MultiProposeEvidence::verify(const AccountName& accountName, const PublicKey& pk) const {
+    int MultiProposeEvidence::verify(const AccountName& accountName, const PublicKey& pk, const std::string& blsPk) const {
         if (accountName != m_B.proposer || accountName != m_A.proposer) {
             return Evidence::kReporterEvil;
         }

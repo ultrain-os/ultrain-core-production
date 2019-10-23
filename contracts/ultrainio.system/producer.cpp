@@ -230,7 +230,7 @@ namespace ultrainiosystem {
       const auto& it = _producers.find( evil );
       ultrainio_assert(it != _producers.end(), "producer is not found in its location");
       producer_info prod = *it;
-      evildoer e = {evil, prod.producer_key};
+      evildoer e = {evil, prod.producer_key, prod.bls_key};
       int type = verify_evil(evidence, e);
       ultrainio_assert(type != producer_evil_type::not_evil, "can not verify whether is evil");
       uint128_t sendid = N(evilprod) + evil;
