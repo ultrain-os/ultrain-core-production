@@ -165,6 +165,19 @@ namespace ultrainiosystem {
             }
         }
     }
+
+    struct empoweruserparam {
+        account_name user;
+        name chain_name;
+        std::string owner_pk;
+        std::string active_pk;
+        bool updateable;
+
+        empoweruserparam(account_name ur, name cn, const std::string& opk, const std::string& apk, bool u)
+                  :user(ur), chain_name(cn), owner_pk(opk), active_pk(apk), updateable(u) {}
+
+        ULTRAINLIB_SERIALIZE(empoweruserparam, (user)(chain_name)(owner_pk)(active_pk)(updateable))
+    };
     /// @abi action
     void system_contract::regsubchain(name chain_name, uint64_t chain_type, const std::string& genesis_producer_pubkey) {
         require_auth(N(ultrainio));
@@ -190,6 +203,37 @@ namespace ultrainiosystem {
             new_subchain.confirmed_block_id = checksum256();
             new_subchain.table_extension.push_back( exten_type( chain_info::chains_state_exten_type_key::genesis_producer_public_key, genesis_producer_pubkey) );
         });
+        new_chain_singleton  ncs(_self, _self);
+        if(!ncs.exists()) {
+            return;
+        }
+        auto new_chain = ncs.get();
+        if(new_chain.chain_name == chain_name) {
+            //auto create new chain
+            new_chain.creation_status = new_chain_info::new_chain_status::registered;
+            //empower resource buyer
+            char opk_buf[54], apk_buf[54];
+            get_account_pubkey(new_chain.first_period_buyer, opk_buf, 54, apk_buf, 54);
+            opk_buf[53] = '\0';
+            apk_buf[53] = '\0';
+            std::string owner_pk(opk_buf);
+            std::string active_pk(apk_buf);
+            empoweruserparam euparam(new_chain.first_period_buyer, chain_name, owner_pk, active_pk, true);
+            uint128_t sendid = N(empoweruser) + new_chain.first_period_buyer + chain_name;
+            cancel_deferred(sendid);
+            ultrainio::transaction out;
+            out.actions.emplace_back( permission_level{ new_chain.first_period_buyer, N(active) }, _self, NEX(empoweruser), euparam);
+            out.delay_sec = 0;
+            out.send( sendid, _self, true );
+
+            if(new_chain.pending_producer_num >= type_iter->stable_min_producers) {
+                schedule_pending_producers(chain_name, type_iter->stable_max_producers);
+            }
+            else {
+                new_chain.creation_status = new_chain_info::new_chain_status::waiting_producers;
+            }
+            ncs.set(new_chain);
+        }
     }
 
     /// @abi action
@@ -257,7 +301,7 @@ namespace ultrainiosystem {
         account_name sender = current_sender();
         producers_table _producer_chain(_self, scope_name);
         auto prod = _producer_chain.find(sender);
-        if(_producer_chain.end() == prod) {
+        if( _producer_chain.end() == prod ) {
             auto ite_cmt = ite_chain->committee_set.begin();
             bool valid_sender = false;
             for(; ite_cmt != ite_chain->committee_set.end(); ++ite_cmt) {
@@ -265,6 +309,12 @@ namespace ultrainiosystem {
                     valid_sender = true;
                     break;
                 }
+            }
+            if ( !valid_sender
+                && !_gstate.is_master_chain()
+                && _gstate.cur_committee_number < _gstate.min_committee_member_number
+                && sender == N(genesis) ) {
+                valid_sender = true;
             }
             ultrainio_assert(valid_sender, "invalid sender");
         }
@@ -352,7 +402,19 @@ namespace ultrainiosystem {
                             if(1 == ite_uncfm_block->block_number) {
                                 _subchain.chain_id          = ite_uncfm_block->action_mroot; //save chain id
                                 _subchain.genesis_time      = ite_uncfm_block->timestamp;
-                                _subchain.is_schedulable    = true;
+                                _subchain.is_schedulable    = _subchain.changing_info.empty();
+                            }
+                            //auto setup new chain
+                            new_chain_singleton  ncs(_self, _self);
+                            if(ncs.exists()) {
+                                auto new_chain = ncs.get();
+                                if(new_chain.chain_name == chain_name
+                                   && new_chain_info::new_chain_status::producers_ready == new_chain.creation_status
+                                   && ite_uncfm_block->proposer != N(genesis)
+                                   && ite_uncfm_block->proposer != N(utrio.empty)) {
+                                    new_chain.creation_status = new_chain_info::new_chain_status::rpos_running;
+                                    ncs.set(new_chain);
+                                }
                             }
                         }
 
@@ -419,6 +481,19 @@ namespace ultrainiosystem {
         }
     }
 
+    struct resourceleaseparam {
+        account_name from;
+        account_name receiver;
+        uint64_t combosize;
+        uint64_t days;
+        name location;
+
+        resourceleaseparam(account_name f, account_name r, uint64_t cs, uint64_t d, name l)
+            :from(f), receiver(r), combosize(cs), days(d), location(l) {}
+
+        ULTRAINLIB_SERIALIZE(resourceleaseparam, (from)(receiver)(combosize)(days)(location))
+    };
+
     void system_contract::empoweruser(account_name user, name chain_name, const std::string& owner_pk, const std::string& active_pk, bool updateable) {
         if ( !has_auth(_self) ) {
            require_auth( user );
@@ -447,33 +522,100 @@ namespace ultrainiosystem {
             _chain.recent_users.push_back(tempuser);
             _chain.total_user_num += 1;
         });
+
+        new_chain_singleton  ncs(_self, _self);
+        if(!ncs.exists()) {
+            return;
+        }
+        auto new_chain = ncs.get();
+        if(new_chain.chain_name != chain_name ||
+           new_chain_info::new_chain_status::empty == new_chain.creation_status ||
+           new_chain_info::new_chain_status::rpos_running == new_chain.creation_status) {
+            return;
+        }
+
+
+        //check if user is new chain buyer, or pending producer
+        if(user == new_chain.first_period_buyer) {
+            //generate resourcelease trx
+            resourceleaseparam newchainresparam(N(ultrainio), user, 10000, 365, chain_name);
+            uint128_t sendid = _self + N(newchainres) + chain_name;
+            cancel_deferred(sendid);
+            ultrainio::transaction out;
+            out.actions.emplace_back( permission_level{ _self, N(active) }, N(ultrainio), NEX(resourcelease), newchainresparam );
+            out.delay_sec = 0;
+            out.send( sendid, _self, true );
+        }
+
+        producers_table pending_table(_self, default_chain_name);
+        auto producer_ite = pending_table.find(user);
+        if(producer_ite != pending_table.end()) {
+            //generate moveprod trx
+            moveprod_param mv_prod(user, producer_ite->producer_key, producer_ite->bls_key, false, default_chain_name, false, chain_name);
+            uint128_t sendid = N(moveprod) + user;
+            cancel_deferred(sendid);
+            ultrainio::transaction out;
+            out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
+            out.delay_sec = 0;
+            out.send( sendid, _self, true );
+        }
     }
 
     void system_contract::add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number) {
         uint64_t chain_block_height = current_block_number;
-        if(chain_name != default_chain_name) {
-            if (chain_name != self_chain_name) {
-                auto ite_chain = _chains.find(chain_name);
-                ultrainio_assert(ite_chain != _chains.end(), "destination chain is not existed" );
-                chaintypes_table type_tbl(_self, _self);
-                auto typeiter = type_tbl.find(ite_chain->chain_type);
-                ultrainio_assert(typeiter != type_tbl.end(), "destination chain type is not existed");
-                ultrainio_assert(ite_chain->committee_num < typeiter->stable_max_producers,
-                    "destination chain already has enough producers");
-                //check if this account has been empowered to this chain
-                ultrainio_assert(is_empowered(producer.owner, chain_name), "account has not been empower to destination chain");
-                _chains.modify(ite_chain, [&](chain_info& info) {
-                    committee_info temp_prod;
-                    temp_prod.owner = producer.owner;
-                    temp_prod.producer_key = producer.producer_key;
-                    temp_prod.bls_key = producer.bls_key;
-                    info.changing_info.new_added_members.push_back(temp_prod);
-                    info.is_schedulable = false;
-                    info.committee_num += 1;
-                });
-                chain_block_height = ite_chain->confirmed_block_number;
-            }else{
-                _gstate.cur_committee_number++;
+        new_chain_singleton  ncs(_self, _self);
+        bool start_newchain = false;
+        name newchain_name;
+        uint16_t max_producer_num = 0;
+        if(chain_name == default_chain_name) {
+            if(!ncs.exists()) {
+                new_chain_info new_chain;
+                new_chain.creation_status = new_chain_info::new_chain_status::empty;
+                new_chain.pending_producer_num = 1;
+                ncs.set(new_chain);
+            } else {
+                auto new_chain = ncs.get();
+                new_chain.pending_producer_num += 1;
+                if(new_chain_info::new_chain_status::waiting_producers == new_chain.creation_status) {
+                    chaintypes_table type_tbl(_self, _self);
+                    auto type_ite = type_tbl.find(new_chain.chain_type);
+                    if(type_ite != type_tbl.end() && new_chain.pending_producer_num >= type_ite->stable_min_producers) {
+                        start_newchain = true;
+                        newchain_name = new_chain.chain_name;
+                        max_producer_num = type_ite->stable_max_producers;
+                    }
+                }
+                ncs.set(new_chain);
+            }
+        } else if (chain_name == self_chain_name) {
+            _gstate.cur_committee_number++;
+        } else {
+            auto ite_chain = _chains.find(chain_name);
+            ultrainio_assert(ite_chain != _chains.end(), "destination chain is not existed" );
+            chaintypes_table type_tbl(_self, _self);
+            auto typeiter = type_tbl.find(ite_chain->chain_type);
+            ultrainio_assert(typeiter != type_tbl.end(), "destination chain type is not existed");
+            ultrainio_assert(ite_chain->committee_num < typeiter->stable_max_producers,
+                "destination chain already has enough producers");
+            //check if this account has been empowered to this chain
+            ultrainio_assert(is_empowered(producer.owner, chain_name), "account has not been empower to destination chain");
+            _chains.modify(ite_chain, [&](chain_info& info) {
+                committee_info temp_prod;
+                temp_prod.owner = producer.owner;
+                temp_prod.producer_key = producer.producer_key;
+                temp_prod.bls_key = producer.bls_key;
+                info.changing_info.new_added_members.push_back(temp_prod);
+                info.is_schedulable = false;
+                info.committee_num += 1;
+            });
+            chain_block_height = ite_chain->confirmed_block_number;
+
+            if(ncs.exists()) {
+                auto new_chain = ncs.get();
+                if(new_chain.chain_name == chain_name && ite_chain->committee_num == typeiter->stable_min_producers) {
+                    new_chain.creation_status = new_chain_info::new_chain_status::producers_ready;
+                    ncs.set(new_chain);
+                }
             }
         }
 
@@ -488,6 +630,11 @@ namespace ultrainiosystem {
                 _prod.table_extension.emplace_back(producer_info::producers_state_exten_type_key::enqueue_block_height, std::to_string(current_block_number));
             }
         });
+
+        if(start_newchain) {
+            //do it after all assert pass
+            schedule_pending_producers(newchain_name, max_producer_num);
+        }
     }
 
     void system_contract::remove_from_chain(name chain_name, account_name producer_name, uint64_t current_block_number) {
@@ -495,34 +642,40 @@ namespace ultrainiosystem {
         auto prod = _producer_chain.find( producer_name );
         ultrainio_assert(prod != _producer_chain.end(), "producer is not existed in source chain");
 
-        if(chain_name != default_chain_name) {
-            if (chain_name != self_chain_name) {
-                auto ite_chain = _chains.find(chain_name);
-                ultrainio_assert(ite_chain != _chains.end(), "source sidechain is not existed");
-                chaintypes_table type_tbl(_self, _self);
-                auto typeiter = type_tbl.find(ite_chain->chain_type);
-                ultrainio_assert(typeiter != type_tbl.end(), "source chain type is not existed");
-                ultrainio_assert(ite_chain->committee_num > typeiter->stable_min_producers,
-                           "the producers in source sidechain is not enough for removing");
+        if(chain_name == default_chain_name) {
+            new_chain_singleton  ncs(_self, _self);
+            ultrainio_assert(ncs.exists(), "new chain info is null");
+            auto new_chain = ncs.get();
+            ultrainio_assert(new_chain.pending_producer_num > 0, "pending producer user number is wrong");
+            new_chain.pending_producer_num -= 1;
+            ncs.set(new_chain);
+        } else if (chain_name == self_chain_name) {
+            ultrainio_assert(_gstate.cur_committee_number > _gstate.min_committee_member_number, "The current number of committees must be greater than the minimum number");
+            _gstate.cur_committee_number--;
+        } else{
+            auto ite_chain = _chains.find(chain_name);
+            ultrainio_assert(ite_chain != _chains.end(), "source sidechain is not existed");
+            chaintypes_table type_tbl(_self, _self);
+            auto typeiter = type_tbl.find(ite_chain->chain_type);
+            ultrainio_assert(typeiter != type_tbl.end(), "source chain type is not existed");
+            ultrainio_assert(ite_chain->committee_num > typeiter->stable_min_producers,
+                       "the producers in source sidechain is not enough for removing");
 
-                _chains.modify(ite_chain, [&](chain_info& info) {
-                    changing_producer temp_prod;
-                    temp_prod.owner = prod->owner;
-                    temp_prod.producer_key = prod->producer_key;
-                    temp_prod.bls_key = prod->bls_key;
-                    temp_prod.block_num = uint32_t(current_block_number);
-                    info.changing_info.removed_members.push_back(temp_prod);
-                    info.is_schedulable = false;
-                    if(!info.is_synced) {
-                        info.deprecated_committee.push_back(temp_prod);
-                    }
-                    info.committee_num -= 1;
-                });
-            }else{
-                ultrainio_assert(_gstate.cur_committee_number > 0, "local chain cur_committee_number is abnormal");
-                _gstate.cur_committee_number--;
-            }
+            _chains.modify(ite_chain, [&](chain_info& info) {
+                changing_producer temp_prod;
+                temp_prod.owner = prod->owner;
+                temp_prod.producer_key = prod->producer_key;
+                temp_prod.bls_key = prod->bls_key;
+                temp_prod.block_num = uint32_t(current_block_number);
+                info.changing_info.removed_members.push_back(temp_prod);
+                info.is_schedulable = false;
+                if(!info.is_synced) {
+                    info.deprecated_committee.push_back(temp_prod);
+                }
+                info.committee_num -= 1;
+            });
         }
+
         _producer_chain.erase(prod);
     }
 
@@ -1020,6 +1173,92 @@ namespace ultrainiosystem {
         auto record = cb_tbl.begin();
         while(record != cb_tbl.end()) {
             record = cb_tbl.erase(record);
+        }
+    }
+
+    void system_contract::setgenesisprodpk(const std::string& genesis_prod_pk) {
+        require_auth(N(ultrainio));
+        new_chain_singleton  ncs(_self, _self);
+        if(!ncs.exists()) {
+            new_chain_info new_chain;
+            new_chain.genesis_producer_pk = genesis_prod_pk;
+            new_chain.creation_status = new_chain_info::new_chain_status::auxiliary_nodes_prepared;
+            ncs.set(new_chain);
+        } else {
+            auto _new_chain = ncs.get();
+            ultrainio_assert(new_chain_info::new_chain_status::empty == _new_chain.creation_status
+                || new_chain_info::new_chain_status::rpos_running == _new_chain.creation_status, "the creation of previous chain is ongoing");
+            _new_chain.genesis_producer_pk = genesis_prod_pk;
+            _new_chain.chain_name = default_chain_name;
+            _new_chain.master_block_height = 1;
+            _new_chain.first_period_buyer = N(ultrainio);
+            _new_chain.creation_status = new_chain_info::new_chain_status::auxiliary_nodes_prepared;
+            ncs.set(_new_chain);
+        }
+    }
+
+    void system_contract::startnewchain(name chain_name, account_name owner) {
+        require_auth(owner);
+        auto itor = _chains.find(chain_name);
+        ultrainio_assert(itor == _chains.end(), "there has been a subchian with this name");
+        chaintypes_table type_tbl(_self, _self);
+        auto type_ite = type_tbl.begin();
+        ultrainio_assert(type_ite != type_tbl.end(), "there's no valid chain type");
+        new_chain_singleton  ncs(_self, _self);
+        ultrainio_assert(ncs.exists(), "new chain info is empty, please contact Ultrain to set it");
+        auto new_chain = ncs.get();
+        ultrainio_assert(new_chain_info::new_chain_status::auxiliary_nodes_prepared == new_chain.creation_status, "wrong new chain status");
+
+        new_chain.first_period_buyer = owner;
+        new_chain.chain_name = chain_name;
+        new_chain.chain_type = type_ite->type_id;
+        new_chain.genesis_time = now() + (2 * 60);
+        new_chain.master_block_height = uint32_t(head_block_number() + 1);
+        new_chain.creation_status = new_chain_info::new_chain_status::purchased;
+        ncs.set(new_chain);
+
+        //charge for resource
+        auto resourcefee = (int64_t)((seconds_per_year / block_interval_seconds()) * get_reward_per_block());
+        ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
+        INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {owner,N(active)},
+                            { owner, N(utrio.resfee), asset(resourcefee), std::string("buy new chain resource") } );
+        print("startnewchain: new chain buyer", name{owner}," chain name", chain_name, " resourcefee:",resourcefee);
+
+        //register new chain
+        INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regsubchain)(N(ultrainio), {N(ultrainio), N(active)},
+                            {chain_name, type_ite->type_id, new_chain.genesis_producer_pk} );
+    }
+
+    void system_contract::schedule_pending_producers(name chain_name, uint16_t max_producers) {
+        producers_table pending_table(_self, default_chain_name);
+        auto pending_prod = pending_table.begin();
+        uint16_t producer_num = 0;
+        char opk_buf[54];
+        char apk_buf[54];
+        for(; pending_prod != pending_table.end() && producer_num < max_producers; ++pending_prod, ++producer_num) {
+            if(is_empowered(pending_prod->owner, chain_name)) {
+                //generate moveprod trx
+                moveprod_param mv_prod(pending_prod->owner, pending_prod->producer_key, pending_prod->bls_key, false, default_chain_name, false, chain_name);
+                uint128_t sendid = N(moveprod) + pending_prod->owner;
+                cancel_deferred(sendid);
+                ultrainio::transaction out;
+                out.actions.emplace_back( permission_level{ _self, N(active) }, _self, NEX(moveprod), mv_prod );
+                out.delay_sec = 0;
+                out.send( sendid, _self, true );
+            } else {
+                get_account_pubkey(pending_prod->owner, opk_buf, 54, apk_buf, 54);
+                opk_buf[53] = '\0';
+                apk_buf[53] = '\0';
+                std::string owner_pubkey(opk_buf);
+                std::string active_pubkey(apk_buf);
+                empoweruserparam euparam_producer(pending_prod->owner, chain_name, owner_pubkey, active_pubkey, true);
+                uint128_t sendid = N(empoweruser) + pending_prod->owner + chain_name;
+                cancel_deferred(sendid);
+                ultrainio::transaction out_trx;
+                out_trx.actions.emplace_back( permission_level{ pending_prod->owner, N(active) }, _self, NEX(empoweruser), euparam_producer);
+                out_trx.delay_sec = 0;
+                out_trx.send( sendid, _self, true );
+            }
         }
     }
 } //namespace ultrainiosystem

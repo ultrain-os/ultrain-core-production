@@ -518,6 +518,32 @@ namespace ultrainiosystem {
         ULTRAINLIB_SERIALIZE(evildoer, (account)(commitee_pk)(bls_pk))
     };
 
+    struct new_chain_info {
+        name         chain_name = default_chain_name;
+        uint64_t     chain_type = 1;
+        std::string  genesis_producer_pk = "";
+        time         genesis_time;
+        uint32_t     master_block_height = 1;
+        account_name first_period_buyer = N(ultrainio);
+        uint16_t     creation_status = new_chain_status::empty;
+        uint16_t     pending_producer_num = 0;
+        exten_types  extensions;
+
+        enum new_chain_status {
+            empty = 0,
+            auxiliary_nodes_prepared,
+            purchased,
+            registered,
+            waiting_producers,
+            producers_ready,
+            rpos_running
+        };
+
+        ULTRAINLIB_SERIALIZE(new_chain_info, (chain_name)(chain_type)(genesis_producer_pk)(genesis_time)(master_block_height)
+                  (first_period_buyer)(creation_status)(pending_producer_num)(extensions))
+    };
+    typedef ultrainio::singleton<N(newchain), new_chain_info> new_chain_singleton;
+
    class system_contract : public native {
       private:
          global_state_singleton   _global;
@@ -606,6 +632,8 @@ namespace ultrainiosystem {
                             const std::vector<committee_info>& cmt_set);
          void setlwcparams(uint32_t keep_blocks_num);
          void setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on);
+         void setgenesisprodpk(const std::string& genesis_prod_pk);
+         void startnewchain(name chain_name, account_name owner);
 
          // functions defined in ultrainio.system.cpp
          void setsysparams( const ultrainio_system_params& params );
@@ -665,6 +693,7 @@ namespace ultrainiosystem {
          uint64_t get_initial_block_num(name chain_name);
          void handle_new_confirm_block(chain_info& _chain, const block_id_type& confirm_block_id);
          void clear_committee_bulletin(name chain_name);
+         void schedule_pending_producers(name chain_name, uint16_t max_producers);
 
          //defined in ultrainio.system.cpp
          void get_key_data(const std::string& pubkey,std::array<char,33> & data);

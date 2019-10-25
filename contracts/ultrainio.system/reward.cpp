@@ -23,7 +23,7 @@ namespace ultrainiosystem {
       if ( !_gstate.start_block){
          uint32_t i {};
          for(auto itr = _producers.begin(); i <= _gstate.min_committee_member_number && itr != _producers.end(); ++itr, ++i){}
-		 if( i > _gstate.min_committee_member_number){
+		 if( i >= _gstate.min_committee_member_number){
 			_gstate.start_block = head_block_height;
          }else{
             return;

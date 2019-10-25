@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/b08f71",
+   "version": "ultrainio::abi/1.0/a66827",
 
    "types": [{
       "new_type_name": "account_name",
@@ -149,6 +149,19 @@
         {"name": "owner_pk",      "type": "string"},
         {"name": "active_pk",     "type": "string"},
         {"name": "updateable",    "type": "bool"}
+      ]
+    },{
+      "name": "setgenesisprodpk",
+      "base": "",
+      "fields": [
+        {"name": "genesis_prod_pk",          "type": "string"}
+      ]
+    },{
+      "name": "startnewchain",
+      "base": "",
+      "fields": [
+        {"name": "chain_name",     "type": "name"},
+        {"name": "owner",          "type": "account_name"}
       ]
     },{
       "name": "permission_level_weight",
@@ -406,6 +419,20 @@
          {"name":"evil_type",          "type":"uint16"},
          {"name":"is_freeze",          "type":"bool"},
          {"name":"table_extension",    "type": "exten_type[]"}
+      ]
+    },{
+      "name": "new_chain_info",
+      "base": "",
+      "fields": [
+         {"name":"chain_name",          "type":"name"},
+         {"name":"chain_type",          "type":"uint64"},
+         {"name":"genesis_producer_pk", "type":"string"},
+         {"name": "genesis_time",       "type": "time_point_sec"},
+         {"name":"master_block_height", "type":"uint32"},
+         {"name":"first_period_buyer",  "type":"account_name"},
+         {"name":"creation_status",     "type":"uint16"},
+         {"name":"pending_producer_num" "type":"uint16"},
+         {"name":"extensions",          "type":"exten_type[]"}
       ]
     },{
       "name": "blockchain_parameters",
@@ -929,6 +956,14 @@
       "type": "empoweruser",
       "ricardian_contract": ""
    },{
+      "name": "setgenesisprodpk",
+      "type": "setgenesisprodpk",
+      "ricardian_contract": ""
+   },{
+      "name": "startnewchain",
+      "type": "startnewchain",
+      "ricardian_contract": ""
+   },{
       "name": "calcmasterrewards",
       "type": "calcmasterrewards",
       "ricardian_contract": ""
@@ -1037,6 +1072,12 @@
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
+    },{
+      "name": "newchain",
+      "type": "new_chain_info",
+      "index_type": "i64",
+      "key_names" : [],
+      "key_types" : []
     },{
        "name": "namebids",
        "type": "namebid_info",
