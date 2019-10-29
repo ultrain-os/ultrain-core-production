@@ -2421,13 +2421,17 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                }
 
                if (!is_grey_connection((*it)->peer_addr)) {
-                  peer_addr_grey_list.emplace_back((*it)->peer_addr);
-                  if ((*it)->node_id != fc::sha256()) {
+                   if(!is_connection_to_seed(*it))
+                   {
+                       peer_addr_grey_list.emplace_back((*it)->peer_addr);
+                       ilog("put ${a} to grey list", ("a", (*it)->peer_addr));
+                   }
+                   if ((*it)->node_id != fc::sha256()) {
                      node_table->send_request_connect((*it)->node_id);
                      ilog("send_request_connect to ${p}.", ("p", (*it)->peer_addr));
                   }
                }
-               ilog("put ${a} to grey list, and erase it from connections.", ("a", (*it)->peer_addr));
+               ilog("erase ${a} ", ("a", (*it)->peer_addr));
                it = connections.erase(it);
                continue;
             } else if ((*it)->peer_addr.length() <= 0 || is_grey_connection((*it)->peer_addr)) {
