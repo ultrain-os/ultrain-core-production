@@ -182,6 +182,7 @@ namespace ultrainio { namespace net_plugin_n {
 
         void expire_txns( );
         void connection_monitor( );
+        void connection_nosymm_monitor( );
 
         /** \brief Peer heartbeat ticker.
          */
@@ -2268,6 +2269,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         connector_check->async_wait( [this](boost::system::error_code ec) {
             if( !ec) {
                connection_monitor( );
+               connection_nosymm_monitor();
             }
             else {
                 elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
@@ -2408,6 +2410,37 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 #endif
    }
 
+   void net_plugin_impl::connection_nosymm_monitor( ) {
+       int count_pri_trx = 0,count_pri_rpos = 0;
+       static std::default_random_engine rg(time(0));
+       if(!use_node_table){
+           return ;
+       }
+       for (auto& c:connections) {
+           if(c->priority == msg_priority_rpos){
+               count_pri_rpos ++;
+           }
+           else if(c->priority == msg_priority_trx){
+               count_pri_trx ++;
+           }
+       }
+       if(count_pri_rpos < 2 || count_pri_trx < 2){
+           if(peer_addr_grey_list.size()>0){
+               ilog("pop all grey list");
+               peer_addr_grey_list.clear();
+           }
+           if(connections.size() >= min_connections + num_passive_out){
+               std::list<p2p::NodeEntry> nodes = node_table->getNodes();
+               uint32_t i = 0;
+               for (std::list<p2p::NodeEntry>::iterator it = nodes.begin(); it != nodes.end() && i < 4; ++it) {
+                   if (rg() % 2 == 0) {
+                       continue;
+                   }
+                   i += connect_to_endpoint(it->endPoint(), direction_out, it->id());
+               }
+           }
+       }
+   }
    void net_plugin_impl::connection_monitor( ) {
       static std::default_random_engine rg(time(0));
 
