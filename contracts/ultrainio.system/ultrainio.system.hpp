@@ -85,8 +85,9 @@ namespace ultrainiosystem {
          link_auth_fee = 11,
          res_transfer_fee = 12,
          pending_resource_check = 13,
-         pending_producer_queue_blocks = 14,
-         is_allow_producer_self_register = 15,
+         pending_producer_min_minutes = 14,
+         pending_producer_max_minutes = 15,
+         is_allow_producer_self_register = 16,
          global_state_key_end
       };
 
@@ -532,9 +533,7 @@ namespace ultrainiosystem {
         enum new_chain_status {
             empty = 0,
             auxiliary_nodes_prepared,
-            purchased,
             registered,
-            waiting_producers,
             producers_ready,
             rpos_running
         };
@@ -678,7 +677,7 @@ namespace ultrainiosystem {
          //defined in scheduler.cpp
          void add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number);
          void remove_from_chain(name chain_name, account_name producer_name, uint64_t current_block_number);
-         void add_pending_producer(name chain_name, const committee_info& producer, uint32_t num);
+         void move_pending_prod_to_sidechain(name chain_name, const committee_info& producer, uint32_t num);
          void pre_schedule(); //called in onblock every 24h defaultly.
          void check_bulletin();
          bool move_producer(checksum256 head_id,
@@ -693,7 +692,7 @@ namespace ultrainiosystem {
          uint64_t get_initial_block_num(name chain_name);
          void handle_new_confirm_block(chain_info& _chain, const block_id_type& confirm_block_id);
          void clear_committee_bulletin(name chain_name);
-         void schedule_pending_producers(name chain_name, uint16_t max_producers);
+         void schedule_pending_prod_to_newchain();
 
          //defined in ultrainio.system.cpp
          void get_key_data(const std::string& pubkey,std::array<char,33> & data);
