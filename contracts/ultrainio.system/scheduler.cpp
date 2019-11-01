@@ -586,6 +586,16 @@ namespace ultrainiosystem {
             if(default_chain_name == chain_name) {
                 _prod.table_extension.emplace_back(producer_info::producers_state_exten_type_key::enqueue_block_height, std::to_string(current_block_number));
             }
+            bool is_exist_start_produce_time = false;
+            for( auto& exten : _prod.table_extension ){
+               print("add_to_chain producer:", name{producer.owner}, " chain_name:", name{chain_name}," key:", std::to_string(exten.key).c_str(), " value:", exten.value.c_str(), " now:",std::to_string(now()).c_str());
+               if( exten.key == producer_info::producers_state_exten_type_key::start_produce_time ){
+                  is_exist_start_produce_time = true;
+                  break;
+               }
+            }
+            if( !is_exist_start_produce_time )
+               _prod.table_extension.push_back(exten_type(producer_info::producers_state_exten_type_key::start_produce_time ,std::to_string(now())));
         });
     }
 

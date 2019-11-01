@@ -156,6 +156,7 @@ namespace ultrainiosystem {
          producers_state_key_start = 0,
          claim_rewards_block_height = 1,
          enqueue_block_height = 2, //block height of master chain when producer was added into pending que
+         start_produce_time = 3, // producer start produce block time
          producers_state_key_end,
       };
       uint64_t primary_key()const { return owner; }

@@ -172,6 +172,7 @@ namespace ultrainiosystem {
             dp_tbl.emplace( [&]( disabled_producer& dis_prod ) {
                 dis_prod = prod_info;
                 dis_prod.delegated_cons_blocknum = current_block_number;
+                dis_prod.total_produce_block = 0;
             });
             record_rewards_for_disproducer( prod_info.owner, prod_info.claim_rewards_account, prod_info.unpaid_balance );
             _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
