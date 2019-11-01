@@ -742,6 +742,14 @@
         {"name":"is_update",    "type":"int8"}
       ]
     },{
+      "name": "setprodontimeblock",
+      "base": "",
+      "fields": [
+        {"name":"account",        "type":"account_name"},
+        {"name":"online_second",  "type":"uint32"},
+        {"name":"blocknum",       "type":"uint32"}
+      ]
+    },{
       "name": "forcesetblock",
       "base": "",
       "fields": [
@@ -982,6 +990,10 @@
    },{
       "name": "setupdateabled",
       "type": "setupdateabled",
+      "ricardian_contract": ""
+   },{
+      "name": "setprodontimeblock",
+      "type": "setprodontimeblock",
       "ricardian_contract": ""
    },{
       "name": "setsched",

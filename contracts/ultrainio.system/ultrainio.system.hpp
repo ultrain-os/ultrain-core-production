@@ -643,8 +643,7 @@ namespace ultrainiosystem {
          void setparams( const ultrainio::blockchain_parameters& params );
          void setpriv( account_name account, uint8_t is_priv );
          void setupdateabled( account_name account, uint8_t is_update );
-         void rmvproducer( account_name producer );
-
+         void setprodontimeblock( account_name account, uint32_t online_second, uint32_t blocknum );
          // functions defined in synctransaction.cpp
          void synclwctx( name chain_name,
                             uint32_t block_number,

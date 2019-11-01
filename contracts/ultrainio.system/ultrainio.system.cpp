@@ -146,6 +146,37 @@ namespace ultrainiosystem {
       set_updateabled( account, is_update );
    }
 
+   void system_contract::setprodontimeblock( account_name account, uint32_t online_second, uint32_t blocknum ) {
+      require_auth( _self );
+      auto briefprod = _briefproducers.find(account);
+      ultrainio_assert(briefprod != _briefproducers.end(), "this account is not a producer");
+      print("setprodontimeblock producer:",name{account}," online_second:",std::to_string(online_second).c_str()," blocknum:",std::to_string(blocknum).c_str()," now():",std::to_string(now()).c_str());
+
+      ultrainio_assert(!briefprod->in_disable, "producer is disabled");
+      producers_table _producers(_self, briefprod->location);
+      const auto& it = _producers.find( account );
+      ultrainio_assert(it != _producers.end(), "receiver is not found in its location");
+      _producers.modify(it, [&](auto & v) {
+         if(blocknum != 0){
+            v.total_produce_block += (uint64_t)blocknum;
+         }
+         if(online_second != 0){
+            ultrainio_assert(now()>(uint32_t)online_second, "set online second is wrong");
+            uint32_t cur_online_time = now()- (uint32_t)online_second;
+            bool is_exist_start_produce_time = false;
+            for( auto& exten : v.table_extension ){
+               if( exten.key == producer_info::producers_state_exten_type_key::start_produce_time ) {
+                  exten.value = std::to_string(cur_online_time);
+                  is_exist_start_produce_time = true;
+                  break;
+               }
+            }
+            if( !is_exist_start_produce_time )
+               v.table_extension.push_back(exten_type(producer_info::producers_state_exten_type_key::start_produce_time ,std::to_string(cur_online_time)));
+         }
+      });
+   }
+
    void system_contract::get_key_data(const std::string& pubkey,std::array<char,33> & data){
       auto const get_hex_value = [](const char ch)->int{
          if(ch >= '0' && ch <= '9')
@@ -356,7 +387,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)(delaccount)(addwhiteblack)(rmwhiteblack)
      // ultrainio.system.cpp
-     (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)
+     (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(setprodontimeblock)
      // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(transferresource)(recycleresource)(setfreeacc)
      // producer.cpp
