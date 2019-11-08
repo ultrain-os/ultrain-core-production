@@ -488,7 +488,7 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index< N(evilprod), evilprod>    evilprodtab;
 
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
-   static constexpr uint32_t seconds_per_year      = 52*7*24*3600;
+   static constexpr uint32_t seconds_per_year      = 365*24*3600;
    static constexpr uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
    static constexpr uint64_t seconds_per_halfhour  = 30 * 60;
    static constexpr uint64_t seconds_per_hour      = 60 * 60;
