@@ -332,7 +332,8 @@ namespace ultrainiosystem {
                 tot.free_account_number += free_account_number;
             });
          }
-         auto resourcefee = (int64_t)(_gstate.resource_fee * cuttingfee);
+         double feeratio = double(cuttingfee)/double(10000*365);
+         auto resourcefee = int64_t(double((seconds_per_year / block_interval_seconds()) * get_reward_per_block()) * feeratio);
          ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
          if( _gstate.is_master_chain() || from != _self )
             INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
@@ -417,11 +418,7 @@ namespace ultrainiosystem {
        if( _gstate.is_master_chain()) {
            uint16_t days = (lease_from->end_block_height - cur_block_height) * block_interval_seconds() / seconds_per_day;
            ultrainio_assert(days > 0, "resource will expire in one day");
-           uint64_t fee_ratio = getglobalextenuintdata(ultrainio_global_state::res_transfer_fee, 1);
-           int64_t fee = int64_t(combosize * uint64_t(days) * uint64_t(_gstate.resource_fee) * fee_ratio / 100);
-           if(fee <= 0) {
-               fee = 1;
-           }
+           int64_t fee = int64_t(getglobalextenuintdata(ultrainio_global_state::res_transfer_fee, asset().symbol.precision()));
            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
                     { from, N(utrio.resfee), asset(fee), std::string("transfer resource") } );
        }

@@ -1181,7 +1181,7 @@ namespace ultrainiosystem {
         auto resourcefee = (int64_t)((seconds_per_year / block_interval_seconds()) * get_reward_per_block());
         ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {owner,N(active)},
-                            { owner, N(utrio.resfee), asset(resourcefee), std::string("buy new chain resource") } );
+                            { owner, N(ultrainio), asset(resourcefee), std::string("buy new chain resource") } );
         print("startnewchain: new chain buyer", name{owner}," chain name", chain_name, " resourcefee:",resourcefee);
 
         //register new chain
