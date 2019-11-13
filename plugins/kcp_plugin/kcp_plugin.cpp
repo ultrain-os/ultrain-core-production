@@ -2284,8 +2284,12 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
         auto it = connections.begin();
         while(it != connections.end()) {
             if((*it)->socket->remote_endpoint(ec).address().to_string() == _n.m_address) {
-                close(*it);
-                it = connections.erase(it);
+                if(!is_static_connection(*it)){
+                    close(*it);
+                    it = connections.erase(it);
+                }else{
+                    ++it;
+                }
             } else {
                 ++it;
             }
