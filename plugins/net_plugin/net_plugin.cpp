@@ -75,7 +75,7 @@ namespace ultrainio { namespace net_plugin_n {
         bool is_grey_connection(const string& host) const;
         bool is_connection_to_seed(connection_ptr con) const;
         bool is_static_connection(connection_ptr con) const;
-        void del_connection_with_node_id(const fc::sha256& node_id,connection_direction dir);
+        void del_connection_with_node_id(const fc::sha256& node_id,connection_direction dir,string addr);
 
         std::set< connection_ptr >       connections;
         std::list< string >              peer_addr_grey_list;
@@ -1956,7 +1956,8 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
       c->flush_queues();
       close (c);
       if (msg.reason == duplicate) {
-         del_connection_with_node_id(msg.node_id,c->direct); /// warning !!!
+          boost::system::error_code ec;
+          del_connection_with_node_id(msg.node_id,c->direct,c->socket->remote_endpoint(ec).address().to_string()); /// warning !!!
       }
    }
 
@@ -3350,11 +3351,13 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
     }
 
-    void net_plugin_impl::del_connection_with_node_id(const fc::sha256& node_id, connection_direction dir) {
+    void net_plugin_impl::del_connection_with_node_id(const fc::sha256& node_id, connection_direction dir,string addr) {
+	boost::system::error_code ec;
         auto it = connections.begin();
         ilog("connections size: ${s}", ("s", connections.size()));
         while (it != connections.end()) {
-            if ((*it)->node_id == node_id && (*it)->direct == dir) {
+            if ((*it)->node_id == node_id && (*it)->direct == dir && (*it)
+                    && !strcmp((*it)->socket->remote_endpoint(ec).address().to_string().c_str(),addr.c_str())) {
                 ilog("del connection to ${peer}, node id: ${id}", ("peer", (*it)->peer_addr)("id", node_id));
                 if ((*it)->socket && (*it)->socket->is_open()) {
                     close(*it);
