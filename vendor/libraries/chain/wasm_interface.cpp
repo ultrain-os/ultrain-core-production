@@ -25,6 +25,7 @@
 #include <fstream>
 #include <gmp.h>
 #include <crypto/Random.h>
+#include <snark/zkp_interface.h>
 
 namespace ultrainio { namespace chain {
    using namespace webassembly;
@@ -315,7 +316,11 @@ class typescript_crypto_api : public context_aware_api {
       }
 
       int ts_verify_with_pk(null_terminated_ptr pk_str, null_terminated_ptr pk_proof, null_terminated_ptr message) {
-          return ultrainio::verify_with_pk(pk_str.value, pk_proof.value, message.value) ? 1 : 0;
+         return ultrainio::verify_with_pk(pk_str.value, pk_proof.value, message.value) ? 1 : 0;
+      }
+
+      int ts_verify_zero_knowledge_proof(null_terminated_ptr vk, null_terminated_ptr primary_input, null_terminated_ptr proof) {
+         return libsnark::verify_zero_knowledge_proof(vk.value, primary_input.value, proof.value) ? 1 : 0;
       }
 
       int ts_is_account_with_code(account_name account) {
@@ -2215,6 +2220,7 @@ REGISTER_INTRINSICS(typescript_crypto_api,
    (ts_merkle_proof_length,    int(int32_t, int)                  )
    (ts_merkle_proof,           int(int32_t, int, int, int)        )
    (ts_recover_transaction,    int(int, int, int, int)            )
+   (ts_verify_zero_knowledge_proof,  int(int, int, int)           )
 );
 #endif
 
