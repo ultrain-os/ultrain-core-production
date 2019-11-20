@@ -111,6 +111,8 @@ namespace ultrainio {
 
         void setTrxsSecond(int32_t trxssecond);
 
+        void setSyncFailBlockHeight();
+
         void setAllowReportEvil(bool v);
 
         ReportHandler& getEvilReportHandler();
@@ -197,6 +199,7 @@ namespace ultrainio {
         bool m_syncing;
         // used by monitor
         bool m_syncFailed;
+        int syncFailed_blockheight = 0;
         bool m_isNonProducingNode = false;
         TimerHandlerNumber m_currentTimerHandlerNo = THN_MAX;
         uint32_t m_timerCanceledBits = 0;

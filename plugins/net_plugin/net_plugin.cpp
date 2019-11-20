@@ -98,7 +98,6 @@ namespace ultrainio { namespace net_plugin_n {
         shared_ptr< LightClient >        light_client;
         int                        max_waitblocknum_seconds;
         int                        max_waitblock_seconds ;
-
         unique_ptr<boost::asio::steady_timer> connector_check;
         unique_ptr<boost::asio::steady_timer> transaction_check;
         unique_ptr<boost::asio::steady_timer> keepalive_timer;
@@ -3376,6 +3375,13 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
         return 1;
     }
+    int net_plugin::get_sync_waitblock_interval(){
+        return my->max_waitblock_seconds;
+    }
+    int net_plugin::get_sync_waitblocknum_interval(){
+        return my->max_waitblocknum_seconds;
+    }
+
     connection_ptr net_plugin_impl::find_connection(const string& host )const {
         for( const auto& c : connections )
             if( c->peer_addr == host ) return c;

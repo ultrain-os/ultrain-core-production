@@ -40,6 +40,8 @@ namespace ultrainio { namespace net_plugin_n {
         vector<connection_status>    connections()const;
         vector<connection_status>    get_connected_connections()const;
         int                         is_netplugin_prime()const;
+        int get_sync_waitblock_interval();
+        int get_sync_waitblocknum_interval();
         size_t num_peers() const;
     private:
         std::unique_ptr<class net_plugin_impl> my;

@@ -654,8 +654,7 @@ namespace ultrainio {
         m_syncFailed = true;
         m_ready = true;
         m_syncing = false;
-
-        if ((sync_msg.startBlockNum + 5 >= sync_msg.endBlockNum) // Only the latest blocks are missing, so we can try to produce them.
+        if ((sync_msg.startBlockNum + syncFailed_blockheight >= sync_msg.endBlockNum) // Only the latest blocks are missing, so we can try to produce them.
             && (sync_msg.endBlockNum == getLastBlocknum() + 1)
             && (m_phase == kPhaseInit)) {
             ilog("Fail to sync block from ${s} to ${e}, but there has been already ${last} blocks in local, let me try to produce them.",
@@ -908,7 +907,7 @@ namespace ultrainio {
 
     uint32_t Node::getLeftTime() {
         fc::time_point currentTime = fc::time_point::now();
-        int64_t passTimeFromGenesis = (currentTime - Genesis::s_time).to_seconds() * 1000;
+        int64_t passTimeFromGenesis = (currentTime - Genesis::s_time).count()/1000;
 
         uint32_t round = 1000 * Config::s_maxPhaseSeconds - (passTimeFromGenesis % (1000 * Config::s_maxPhaseSeconds));
         dlog("interval = ${id}", ("id", round));
@@ -967,6 +966,7 @@ namespace ultrainio {
         Config::s_maxPhaseSeconds = phaseSecond;
         ilog("maxRoundSecond : ${maxRoundSecond}, maxPhaseSecond : ${maxPhaseSecond}",
                 ("maxRoundSecond", Config::s_maxRoundSeconds)("maxPhaseSecond", Config::s_maxPhaseSeconds));
+        setSyncFailBlockHeight();
     }
     void Node::setTrxsSecond(int32_t trxssecond) {
         Config::s_maxTrxMicroSeconds = trxssecond;
@@ -978,7 +978,13 @@ namespace ultrainio {
         Config::s_allowReportEvil = v;
         ilog("s_maxTrxMicroSeconds : ${v}", ("v", Config::s_allowReportEvil));
     }
-
+    void Node::setSyncFailBlockHeight(){
+        int sync_waitblock_interval = app().get_plugin<net_plugin>().get_sync_waitblock_interval();
+        int sync_waitblocknum_interval = app().get_plugin<net_plugin>().get_sync_waitblocknum_interval();
+        int block_height = (sync_waitblocknum_interval+sync_waitblock_interval*2)/Config::s_maxRoundSeconds + 1;
+        syncFailed_blockheight = block_height*2;
+        ilog("syncFailed_blockheight ${syncFailed_blockheight}",("syncFailed_blockheight",syncFailed_blockheight));
+    }
     ReportHandler& Node::getEvilReportHandler() {
         return m_evilReportHandler;
     }
