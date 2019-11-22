@@ -332,8 +332,9 @@ namespace ultrainiosystem {
                 tot.free_account_number += free_account_number;
             });
          }
-         double feeratio = double(cuttingfee)/double(10000*365);
-         auto resourcefee = int64_t(double((seconds_per_year / block_interval_seconds()) * get_reward_per_block()) * feeratio);
+         auto blocks_per_day = seconds_per_day / block_interval_seconds();
+         auto chain_reward_per_day = blocks_per_day * get_reward_per_block();
+         auto resourcefee = int64_t(chain_reward_per_day / _gstate.max_resources_number * cuttingfee);
          ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
          if( _gstate.is_master_chain() || from != _self )
             INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
