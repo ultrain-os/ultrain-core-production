@@ -13,6 +13,7 @@ namespace ultrainiosystem {
     using ultrainio::asset;
     using ultrainio::bytes;
     using ultrainio::print;
+    /*
     struct chain_balance {
             name     chain_name;
             asset    balance;
@@ -21,6 +22,7 @@ namespace ultrainiosystem {
             ULTRAINLIB_SERIALIZE(chain_balance, (chain_name)(balance))
     };
     typedef ultrainio::multi_index<N(chainbalance), chain_balance> chainbalance;
+    */
     struct TransferActionParam {
         public:
             account_name from;

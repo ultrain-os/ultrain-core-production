@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/24fcea",
+   "version": "ultrainio::abi/1.0/6ea2cc",
 
    "types": [{
       "new_type_name": "account_name",
@@ -162,6 +162,13 @@
       "fields": [
         {"name": "chain_name",     "type": "name"},
         {"name": "owner",          "type": "account_name"}
+      ]
+    },{
+      "name": "destorychain",
+      "base": "",
+      "fields": [
+        {"name": "chain_name",     "type": "name"},
+        {"name": "force",          "type": "bool"}
       ]
     },{
       "name": "permission_level_weight",
@@ -970,6 +977,10 @@
    },{
       "name": "startnewchain",
       "type": "startnewchain",
+      "ricardian_contract": ""
+   },{
+      "name": "destorychain",
+      "type": "destorychain",
       "ricardian_contract": ""
    },{
       "name": "calcmasterrewards",

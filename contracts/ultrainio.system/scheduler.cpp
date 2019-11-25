@@ -3,6 +3,14 @@
 #include <list>
 
 namespace ultrainiosystem {
+    struct chain_balance {
+            name     chain_name;
+            asset    balance;
+            uint64_t primary_key()const { return chain_name; }
+
+            ULTRAINLIB_SERIALIZE(chain_balance, (chain_name)(balance))
+    };
+    typedef ultrainio::multi_index<N(chainbalance), chain_balance> chainbalance;
 
     ///@abi action
     void system_contract::regchaintype(uint64_t type_id, uint16_t min_producer_num, uint16_t max_producer_num,
@@ -588,7 +596,7 @@ namespace ultrainiosystem {
             }
             bool is_exist_start_produce_time = false;
             for( auto& exten : _prod.table_extension ){
-               print("add_to_chain producer:", name{producer.owner}, " chain_name:", name{chain_name}," key:", std::to_string(exten.key).c_str(), " value:", exten.value.c_str(), " now:",std::to_string(now()).c_str());
+               print("add_to_chain producer:", name{producer.owner}, " chain_name:", name{chain_name}," key:", std::to_string(exten.key).c_str(), " value:", exten.value.c_str(), " now:",std::to_string(now()).c_str(), "\n");
                if( exten.key == producer_info::producers_state_exten_type_key::start_produce_time ){
                   is_exist_start_produce_time = true;
                   break;
@@ -620,8 +628,17 @@ namespace ultrainiosystem {
             chaintypes_table type_tbl(_self, _self);
             auto typeiter = type_tbl.find(ite_chain->chain_type);
             ultrainio_assert(typeiter != type_tbl.end(), "source chain type is not existed");
-            ultrainio_assert(ite_chain->committee_num > typeiter->stable_min_producers,
+            bool in_destory = false;
+            for(const auto& ext : ite_chain->table_extension) {
+                if(ext.key == chain_info::chains_state_exten_type_key::is_being_destoryed) {
+                    in_destory = true;
+                    break;
+                }
+            }
+            if(!in_destory) {
+                ultrainio_assert(ite_chain->committee_num > typeiter->stable_min_producers,
                        "the producers in source sidechain is not enough for removing");
+            }
 
             _chains.modify(ite_chain, [&](chain_info& info) {
                 changing_producer temp_prod;
@@ -1279,6 +1296,45 @@ namespace ultrainiosystem {
                 out_trx.send( sendid, _self, true );
             }
         }
+    }
+
+    void system_contract::destorychain(name chain_name, bool force) {
+        require_auth(N(ultrainio));
+        auto ite_chain = _chains.find(chain_name);
+        ultrainio_assert(ite_chain != _chains.end(), "destory chain: this chian is not existed.");
+        //check token
+        chainbalance  chainbalan(N(utrio.bank), N(utrio.bank));
+        auto it_bank = chainbalan.find( chain_name );
+        if(it_bank != chainbalan.end()) {
+            if(!force) {
+                ultrainio_assert(it_bank->balance.amount == 0, "can not destory chain because there are tokens in side chain");
+            } else if (it_bank->balance.amount > 0) {
+                //TODO, add inline action in utrio.bank to clear chainbalance
+            }
+        }
+        //set destory flag, so that all producers can be moved out
+        _chains.modify(ite_chain, [&]( chain_info& chain ) {
+            exten_type destory_flag;
+            destory_flag.key = chain_info::chains_state_exten_type_key::is_being_destoryed;
+            destory_flag.value = ""; //ignore the value
+            chain.table_extension.push_back(destory_flag);
+        });
+
+        //move producers to pending queque
+        producers_table _producers(_self, chain_name);
+        auto ite_prod = _producers.begin();
+        while(ite_prod != _producers.end()) {
+            moveprod(ite_prod->owner, ite_prod->producer_key, ite_prod->bls_key, false, chain_name, false, default_chain_name);
+            ite_prod = _producers.begin();
+        }
+        //delete resources
+        resources_lease_table _reslease_sub(_self, chain_name);
+        for(auto reslease_iter = _reslease_sub.begin(); reslease_iter != _reslease_sub.end(); ) {
+            reslease_iter = _reslease_sub.erase(reslease_iter);
+        }
+        //TODO, delete users
+        //erase chain at last
+        _chains.erase(ite_chain);
     }
 
 } //namespace ultrainiosystem

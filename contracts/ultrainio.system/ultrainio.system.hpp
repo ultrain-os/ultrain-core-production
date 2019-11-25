@@ -353,6 +353,7 @@ namespace ultrainiosystem {
        enum chains_state_exten_type_key {
          chains_state_key_start = 0,
          genesis_producer_public_key = 1,
+         is_being_destoryed = 2,
          chains_state_key_end,
        };
        auto primary_key()const { return chain_name; }
@@ -634,6 +635,7 @@ namespace ultrainiosystem {
          void setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on);
          void setgenesisprodpk(const std::string& genesis_prod_pk);
          void startnewchain(name chain_name, account_name owner);
+         void destorychain(name chain_name, bool force);
 
          // functions defined in ultrainio.system.cpp
          void setsysparams( const ultrainio_system_params& params );

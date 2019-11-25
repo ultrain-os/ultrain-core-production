@@ -143,14 +143,14 @@ namespace ultrainiosystem {
             prod_info = producer_info(*it_disable, remove_rewards_for_enableproducer( producer ), 0, 0);
             dp_tbl.erase(it_disable);
 
-            print("move producer ", name{producer}, " from disable");
+            print("move producer ", name{producer}, " from disable\n");
         } else {
             producers_table _producers(_self, from_chain);
             auto producer_iter = _producers.find(producer);
             ultrainio_assert(producer_iter != _producers.end(), "error: producer to move out is not found in its location");
             prod_info = *producer_iter;
             remove_from_chain(from_chain, producer, current_block_number);
-            print("move producer ", name{producer}, " from ", from_chain);
+            print("move producer ", name{producer}, " from ", from_chain, "\n");
             if(default_chain_name != from_chain) {
                 cmtbulletin  cb_tbl(_self, from_chain);
                 auto record = cb_tbl.find(current_block_number);
@@ -178,7 +178,7 @@ namespace ultrainiosystem {
             _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                 producer_brf.in_disable = true;
             });
-            print(" to disable");
+            print("move producer ", name{producer}, "to disable\n");
         } else {
             ultrainio_assert( producerkey == prod_info.producer_key, "error: public producer key not consistent with the original chain" );
             ultrainio_assert( blskey == prod_info.bls_key, "error: public bls key not consistent with the original chain" );
@@ -188,7 +188,7 @@ namespace ultrainiosystem {
                 producer_brf.in_disable = false;
                 producer_brf.location = to_chain;
             });
-            print(" to ", to_chain, "\n");
+            print("move producer ", name{producer}, " to ", to_chain, "\n");
             if(default_chain_name != to_chain) {
                 cmtbulletin  cb_tbl(_self, to_chain);
                 auto record = cb_tbl.find(current_block_number);

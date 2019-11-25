@@ -120,7 +120,9 @@ namespace ultrainiosystem {
           uncfm_block.committee_mroot = chaininfo.committee_mroot;
           uncfm_block.block_id = chaininfo.block_id;
           uncfm_block.block_number = uint32_t(chaininfo.block_height);
+          uncfm_block.to_be_paid = false;
           uncfm_block.is_leaf = true;
+          uncfm_block.is_synced = false;
           masterchain.unconfirmed_blocks.push_back(uncfm_block);
       });
    }
@@ -396,7 +398,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      (onblock)(onfinish)(calcmasterrewards)(claimrewards)(rewardproof)
      // scheduler.cpp
      (regchaintype)(regsubchain)(acceptmaster)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)(setgenesisprodpk)(startnewchain)
-     (setsched)(forcesetblock)(setlwcparams)(setchainparam)
+     (setsched)(forcesetblock)(setlwcparams)(setchainparam)(destorychain)
      // synctransaction.cpp
      (synclwctx)
 )
