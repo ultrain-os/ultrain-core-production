@@ -58,6 +58,29 @@ void token::issue( account_name to, asset quantity, string memo )
     }
 }
 
+void token::burn( asset quantity )
+{
+    auto sym = quantity.symbol;
+    ultrainio_assert( sym.is_valid(), "invalid symbol name" );
+
+    auto sym_name = sym.name();
+    stats statstable( _self, sym_name );
+    auto existing = statstable.find( sym_name );
+    ultrainio_assert( existing != statstable.end(), "token with symbol does not exist" );
+    const auto& st = *existing;
+
+    require_auth( st.issuer );
+    ultrainio_assert( quantity.is_valid(), "invalid quantity" );
+    ultrainio_assert( quantity.amount > 0, "must burn positive quantity" );
+
+    ultrainio_assert( quantity.symbol == st.supply.symbol, "symbol precision mismatch" );
+    ultrainio_assert( quantity.amount <= st.max_supply.amount - st.supply.amount, "quantity exceeds available supply");
+
+    statstable.modify( st, [&]( auto& s ) {
+       s.max_supply -= quantity;
+    });
+}
+
 void token::transfer( account_name from,
                       account_name to,
                       asset        quantity,
@@ -158,4 +181,4 @@ int64_t token::get_transfer_fee() const {
 
 } /// namespace ultrainio
 
-ULTRAINIO_ABI( ultrainio::token, (create)(issue)(transfer)(set_chargeparams)(set_trans_fee) )
+ULTRAINIO_ABI( ultrainio::token, (create)(issue)(burn)(transfer)(set_chargeparams)(set_trans_fee) )

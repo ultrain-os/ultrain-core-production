@@ -26,6 +26,8 @@ namespace ultrainio {
 
          void issue( account_name to, asset quantity, string memo );
 
+         void burn( asset quantity );
+
          void transfer( account_name from,
                         account_name to,
                         asset        quantity,

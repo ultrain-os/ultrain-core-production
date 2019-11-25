@@ -45,6 +45,12 @@
         {"name":"memo", "type":"string"}
      ]
   },{
+     "name": "burn",
+     "base": "",
+     "fields": [
+        {"name":"quantity", "type":"asset"}
+     ]
+  },{
       "name": "account",
       "base": "",
       "fields": [
@@ -90,6 +96,10 @@
     }, {
       "name": "create",
       "type": "create",
+      "ricardian_contract": ""
+    }, {
+      "name": "burn",
+      "type": "burn",
       "ricardian_contract": ""
     }
 
