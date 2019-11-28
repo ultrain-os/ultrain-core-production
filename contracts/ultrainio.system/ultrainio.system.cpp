@@ -432,7 +432,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      (onblock)(onfinish)(calcmasterrewards)(claimrewards)(rewardproof)
      // scheduler.cpp
      (regchaintype)(regsubchain)(acceptmaster)(acceptheader)(clearchain)(empoweruser)(reportsubchainhash)(setgenesisprodpk)(startnewchain)
-     (setsched)(forcesetblock)(setlwcparams)(setchainparam)(destorychain)
+     (setsched)(forcesetblock)(setlwcparams)(setchainparam)(destorychain)(empower)
      // synctransaction.cpp
      (synclwctx)
 )

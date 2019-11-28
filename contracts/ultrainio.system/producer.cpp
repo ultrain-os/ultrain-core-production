@@ -21,7 +21,8 @@ namespace ultrainiosystem {
                                       const std::string& bls_key,
                                       account_name rewards_account,
                                       const std::string& url,
-                                      name location ) {
+                                      name location,
+                                      uint64_t chain_type) {
         bool has_ultrainio_auth = true;
         if(!has_auth(_self)) {
             bool is_allow_self_register = false;
@@ -44,6 +45,27 @@ namespace ultrainiosystem {
         ultrainio_assert( bls_key.size() == 130, "public bls key should be of size 130" );
         ultrainio_assert( is_account( producer ), "producer account not exists" );
         ultrainio_assert( is_account( rewards_account ), "rewards account not exists" );
+        prodexten_table prodext(_self, _self);
+        auto ite_ext = prodext.find(producer);
+        if(location == default_chain_name) {
+            chaintypes_table type_tbl(_self, _self);
+            auto type_ite = type_tbl.find(chain_type);
+            ultrainio_assert(type_ite != type_tbl.end(), "chain type id is not found");
+            if(ite_ext == prodext.end()) {
+                prodext.emplace([&]( producer_ext& prod_ext ) {
+                    prod_ext.owner = producer;
+                    prod_ext.chain_type = chain_type;
+                });
+            } else if(ite_ext->chain_type != chain_type) {
+                prodext.modify(ite_ext, [&]( producer_ext& prod_ext ) {
+                    prod_ext.chain_type = chain_type;
+                });
+            }
+        } else if(ite_ext != prodext.end()) {
+           //producer ext only has 1 member: chain_type, erase it directly.
+           //If some other members are added to this table someday, please use modify() to reset chain type to 0;
+           prodext.erase(ite_ext);
+        }
         check_producer_evillist( producer );
 
         if(location != self_chain_name && location != default_chain_name) {
@@ -72,9 +94,6 @@ namespace ultrainiosystem {
             });
         } else {
             ultrainio_assert( briefprod->in_disable, "producer has been enabled" );
-            if(location == default_chain_name) {
-                location = briefprod->location;
-            }
             if(briefprod->location != location) {
                 _briefproducers.modify(briefprod, [&]( producer_brief& brief_prod ) {
                     brief_prod.location     = location;
@@ -105,8 +124,8 @@ namespace ultrainiosystem {
                 if(ite_chain->chain_name == N(master))
                     continue;
                 std::string errorlog = std::string("producer account must be synchronized to all the subchains, \
-                        so that we can schedule and secure the subchains. Please perform empoweruser action \
-                        producer:") + name{producer}.to_string() + std::string(" not synchronized to subchain:") + name{ite_chain->chain_name}.to_string();
+so that we can schedule and secure the subchains. Please perform empoweruser action \
+producer:") + name{producer}.to_string() + std::string(" not synchronized to subchain:") + name{ite_chain->chain_name}.to_string();
                 ultrainio_assert(is_empowered(producer, ite_chain->chain_name), errorlog.c_str());
             }
         }
@@ -381,5 +400,34 @@ namespace ultrainiosystem {
                _producer.table_extension.emplace_back(producer_info::producers_state_exten_type_key::last_heartbeat_block_height, std::to_string(cur_block_height));
            }
        });
+   }
+   int64_t system_contract::get_producer_min_stake(const account_name& producer, name chain_name) {
+       if(chain_name == self_chain_name) {
+           return _gstate.min_activated_stake;
+       }
+       uint64_t chain_type_id = 0;
+       if(chain_name != default_chain_name) {
+           auto ite_chain = _chains.find(chain_name);
+           ultrainio_assert(ite_chain != _chains.end(), "get_producer_min_stake: wrong chain name");
+           chain_type_id = ite_chain->chain_type;
+       } else {
+           prodexten_table prodext(_self, _self);
+           auto ite_ext = prodext.find(producer);
+           if(ite_ext != prodext.end()) {
+               if(ite_ext->chain_type > 0) {
+                   chain_type_id = ite_ext->chain_type;
+               }
+           }
+       }
+       if(chain_type_id > 0 ) {
+           chaintypes_table type_tbl(_self, _self);
+           auto ite_type = type_tbl.find(chain_type_id);
+           ultrainio_assert(ite_type != type_tbl.end(), "get_producer_min_stake: chain type is not found");
+           auto min_stake = ite_type->get_min_activated_stake();
+           if(min_stake > 0) {
+               return min_stake;
+           }
+       }
+       return _gstate.min_activated_stake;
    }
 } /// namespace ultrainiosystem

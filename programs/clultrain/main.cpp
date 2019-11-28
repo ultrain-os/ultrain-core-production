@@ -551,7 +551,7 @@ chain::action create_action(const vector<permission_level>& authorization, const
    return chain::action{authorization, code, act, variant_to_bin(code, act, args)};
 }
 
-fc::variant regproducer_variant(const account_name& producer, const std::string& key, const std::string& bls_key, const account_name& rewards_account, const string& url, string location) {
+fc::variant regproducer_variant(const account_name& producer, const std::string& key, const std::string& bls_key, const account_name& rewards_account, const string& url, string location, uint64_t chain_type) {
     return fc::mutable_variant_object()
         ("producer", producer)
         ("producer_key", key)
@@ -559,6 +559,7 @@ fc::variant regproducer_variant(const account_name& producer, const std::string&
         ("rewards_account", rewards_account)
         ("url", url)
         ("location", location)
+        ("chain_type", chain_type)
         ;
 }
 
@@ -869,6 +870,7 @@ struct register_producer_subcommand {
    string bls_key_str;
    string url;
    string loc;
+   uint64_t chain_type = 0;
    string rewards_account;
    bool superprivflg = false;
 
@@ -880,12 +882,13 @@ struct register_producer_subcommand {
       register_producer->add_option("rewards_account", rewards_account, localized("The producer's block reward refund account"))->required();
       register_producer->add_option("url", url, localized("url where info about producer can be found"), true)->required();
       register_producer->add_option("location", loc, localized("name of the side chain to be added"), true)->required();
+      register_producer->add_option("chain_type", chain_type, localized("type of the side chain to be added, it's only required when location is default"), true);
       register_producer->add_flag("-u,--superpriv", superprivflg, localized("register_producer add privileged (rarely used)"));
       add_standard_transaction_options(register_producer);
 
       register_producer->set_callback([this] {
          // TODO(yufengshen): Check if the key is valid.
-         auto regprod_var = regproducer_variant(producer_str, producer_key_str, bls_key_str, rewards_account, url, loc );
+         auto regprod_var = regproducer_variant(producer_str, producer_key_str, bls_key_str, rewards_account, url, loc, chain_type );
          vector<permission_level> permiss_info{permission_level{producer_str,config::active_name}};
          if(superprivflg)
             permiss_info.push_back(permission_level{N(ultrainio),config::active_name});
@@ -924,6 +927,41 @@ struct create_account_subcommand {
             auto create = create_newaccount(creator, account_name, owner_key, active_key, !unrenewable_val);
             send_actions( { create } );
       });
+   }
+};
+
+struct list_chain_types_subcommand{
+   list_chain_types_subcommand(CLI::App* actionRoot) {
+       auto list_chain_types = actionRoot->add_subcommand("listchaintypes", localized("List all chain types"));
+       list_chain_types->set_callback([this] {
+          auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+                               ("code", name(config::system_account_name).to_string())
+                               ("scope", name(config::system_account_name).to_string())
+                               ("table", "chaintypes") );
+          auto chain_types = result.as<ultrainio::chain_apis::read_only::get_table_records_result>();
+               if ( !chain_types.rows.empty() ) {
+                  std::cout << std::setw(13) << std::left << "type_id" << std::setw(21) << std::left << "min_producers"
+                            << std::setw(21) << std::left << "max_producers" << std::setw(21) << std::left << "consensus_period"
+                            << std::setw(13) << std::left << "min_activated_stake" << std::endl;
+                  for ( const auto& t : chain_types.rows ) {
+                     std::string activated_stake = "420000000";
+                     const variants& exts = t["table_extension"].get_array();
+                     for(const auto& ext : exts) {
+                         if(ext["key"] == 1) {
+                             activated_stake = ext["value"].as_string();
+                         }
+                     }
+                     std::cout << std::setw(13) << std::left << t["type_id"].as_uint64()
+                               << std::setw(21) << std::left << t["stable_min_producers"].as_uint64()
+                               << std::setw(21) << std::left << t["stable_max_producers"].as_uint64()
+                               << std::setw(21) << std::left << t["consensus_period"].as_uint64()
+                               << std::setw(13) << std::left << activated_stake
+                               << std::endl;
+                  }
+               } else {
+                  std::cerr << "No chain types found" << std::endl;
+               }
+       });
    }
 };
 
@@ -1297,6 +1335,36 @@ struct buy_in_subcommand {
          vector<permission_level> permiss_info;
          permiss_info.push_back(permission_level{buyer_account,config::active_name});
          send_actions({create_action(permiss_info, N(utrio.res), NEX(buyin), act_payload)});
+      });
+   }
+};
+
+struct empower_subcommand {
+   string user_account;
+   string owner_public_key;
+   string active_public_key;
+   string chain_name;
+   bool   updateable = true;
+   bool   superprivflg = false;
+   empower_subcommand(CLI::App* actionRoot) {
+      auto empower_without_pk = actionRoot->add_subcommand("empower", localized("Empower user's onwer&active permissions(same pk in master chain) to a sidechain"));
+      empower_without_pk->add_option("user_account", user_account, localized("Account of the user to be empowered"))->required();
+      empower_without_pk->add_option("chain_name", chain_name, localized("The name of the sidechain which the user will be empowered to"))->required();
+      empower_without_pk->add_option("updateable", updateable, localized("Set whether the account is updatable"))->required();
+      empower_without_pk->add_flag("-u,--superpriv", superprivflg, localized("empoweruser add privileged (rarely used)"));
+      add_standard_transaction_options(empower_without_pk);
+
+      empower_without_pk->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("user", user_account)
+                  ("chain_name", chain_name)
+                  ("updateable", updateable);
+         vector<permission_level> permiss_info;
+         account_name auth_name = user_account;
+         if(superprivflg)
+            auth_name = N(ultrainio);
+         permiss_info.push_back(permission_level{auth_name,config::active_name});
+         send_actions({create_action(permiss_info, config::system_account_name, NEX(empower), act_payload)});
       });
    }
 };
@@ -2905,6 +2973,7 @@ int main( int argc, char** argv ) {
    auto system = app.add_subcommand("system", localized("Send ultrainio.system contract action to the blockchain."), false);
    system->require_subcommand();
 
+   auto listchaintypes = list_chain_types_subcommand(system);
    auto registerProducer = register_producer_subcommand(system);
 
    auto listProducers = list_producers_subcommand(system);
@@ -2915,6 +2984,7 @@ int main( int argc, char** argv ) {
    auto listdelcons = list_delcons_subcommand(system);
    auto cancelDelay = canceldelay_subcommand(system);
    auto empowerUser = empoweruser_subcommand(system);
+   auto empower = empower_subcommand(system);
 
    // resource subcommand
    auto resource = app.add_subcommand("resource", localized("Send resource contract action to the blockchain."), false);

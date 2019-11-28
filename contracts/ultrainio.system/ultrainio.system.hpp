@@ -134,6 +134,17 @@ namespace ultrainiosystem {
       ULTRAINLIB_SERIALIZE(producer_brief, (owner)(location)(in_disable) )
    };
 
+   struct producer_ext {
+      account_name          owner;
+      uint64_t              chain_type = 0;
+      exten_types           table_extension;
+
+      uint64_t primary_key()const { return owner; }
+
+      ULTRAINLIB_SERIALIZE(producer_ext, (owner)(chain_type)(table_extension) )
+   };
+   typedef ultrainio::multi_index< N(prodext), producer_ext > prodexten_table;
+
    struct disabled_producer : public committee_info {
       int64_t               total_cons_staked = 0;
       std::string           url;
@@ -261,11 +272,48 @@ namespace ultrainiosystem {
          chaintype_key_start = 0,
          is_fixed_reward_rate = 1,
          fixed_annual_reward_rate = 2,
-         min_active_delegate_rate = 3,
+         min_activated_stake_amount = 3,
          max_rewards_delegate = 4,
          min_produce_rewards_threshold = 5,  //default value 10
+         last_sched_block_number = 6,
          chaintype_key_end,
        };
+
+       int64_t get_min_activated_stake() const {
+           int64_t min_activated_stake   = 0;
+           for(const auto& exten : table_extension ) {
+               if(min_activated_stake_amount == exten.key) {
+                   min_activated_stake = std::stoll(exten.value);
+                   break;
+               }
+           }
+           return min_activated_stake;
+       }
+
+       uint32_t get_last_sched_block_num() const {
+           uint32_t last_sched_block = 0;
+           for(const auto& exten : table_extension ) {
+               if(last_sched_block_number == exten.key) {
+                   last_sched_block = std::stoul(exten.value);
+                   break;
+               }
+           }
+           return last_sched_block;
+       }
+
+       void set_last_sched_block_num(uint32_t block_number) {
+           bool set = false;
+           for(auto& exten : table_extension ) {
+               if(last_sched_block_number == exten.key) {
+                   exten.value = std::to_string(block_number);
+                   set = true;
+                   break;
+               }
+           }
+           if(!set) {
+               table_extension.emplace_back(last_sched_block_number, std::to_string(block_number));
+           }
+       }
 
        auto primary_key() const { return type_id; }
 
@@ -640,7 +688,8 @@ namespace ultrainiosystem {
                            const std::string& bls_key,
                            account_name rewards_account,
                            const std::string& url,
-                           name location );
+                           name location,
+                           uint64_t chain_type);
 
          void moveprod(account_name producer,
                        const std::string&  producerkey,
@@ -668,12 +717,16 @@ namespace ultrainiosystem {
                            uint16_t min_producer_num,
                            uint16_t max_producer_num,
                            uint16_t sched_step,
-                           uint16_t consensus_period);
+                           uint16_t consensus_period,
+                           int64_t  min_activated_stake);
          void regsubchain(name chain_name, uint64_t chain_type, const std::string& genesis_producer_pubkey);
          void acceptmaster(const std::vector<ultrainio::signed_block_header>& headers);
          void acceptheader(name chain_name,
                            const std::vector<ultrainio::signed_block_header>& headers);
          void clearchain(name chain_name, bool users_only);
+         void empower(account_name user,
+                      name chain_name,
+                      bool updateable);
          void empoweruser(account_name user,
                           name chain_name,
                           const std::string& owner_pk,
@@ -764,6 +817,7 @@ namespace ultrainiosystem {
          inline void check_producer_evillist( const account_name& producer ) const;
          inline void remove_producer_from_evillist( const account_name& producer ) const;
          inline void check_producer_lastblock( const name& chain_name, uint64_t block_height ) const;
+         int64_t get_producer_min_stake(const account_name& producer, name chain_name);
 
          // functions defined in synctransaction.cpp
          void exec_actions( const vector<action> & actios, name chain_name);

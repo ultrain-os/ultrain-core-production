@@ -14,14 +14,15 @@ namespace ultrainiosystem {
 
     ///@abi action
     void system_contract::regchaintype(uint64_t type_id, uint16_t min_producer_num, uint16_t max_producer_num,
-                                       uint16_t sched_step, uint16_t consensus_period) {
+                                       uint16_t sched_step, uint16_t consensus_period, int64_t  min_activated_stake) {
         require_auth(N(ultrainio));
         ultrainio_assert(_gstate.is_master_chain(), "only master chain can register chain type");
-        ultrainio_assert(type_id != 0, "0 has been occupied by ultrain system");
+        ultrainio_assert(type_id != 0, "type id 0 has been occupied by ultrain system");
         ultrainio_assert(min_producer_num >= 4, "wrong min_producer_num, at least 4 producers is required for a chain");
         ultrainio_assert(min_producer_num < max_producer_num, "max_producer_num must grater than min_producer_num");
         ultrainio_assert(sched_step > 1 && sched_step <= 100, "sched_step should in scope [2, 100]");
         ultrainio_assert(consensus_period > 1 && consensus_period <= 10, "consensus_period should in scope [2, 10]");
+        ultrainio_assert(min_activated_stake >= 0, "min_activated_stake should be greater than 0");
         chaintypes_table type_tbl(_self, _self);
         auto typeiter = type_tbl.find(type_id);
         if (typeiter == type_tbl.end()) {
@@ -31,6 +32,9 @@ namespace ultrainiosystem {
                 new_chain_type.stable_max_producers = max_producer_num;
                 new_chain_type.sched_inc_step = sched_step;
                 new_chain_type.consensus_period = consensus_period;
+                if(min_activated_stake > 0) {
+                    new_chain_type.table_extension.emplace_back(chaintype::min_activated_stake_amount, std::to_string(min_activated_stake));
+                }
             });
         } else {
             type_tbl.modify(typeiter, [&]( auto& _chain_type ) {
@@ -38,6 +42,22 @@ namespace ultrainiosystem {
                 _chain_type.stable_max_producers = max_producer_num;
                 _chain_type.sched_inc_step = sched_step;
                 _chain_type.consensus_period = consensus_period;
+                auto ite_ext = _chain_type.table_extension.begin();
+                bool found = false;
+                for(; ite_ext != _chain_type.table_extension.end(); ++ite_ext) {
+                    if(chaintype::min_activated_stake_amount == ite_ext->key) {
+                        found = true;
+                        if(min_activated_stake > 0) {
+                            ite_ext->value = std::to_string(min_activated_stake);
+                        } else {
+                            _chain_type.table_extension.erase(ite_ext);
+                        }
+                        break;
+                    }
+                }
+                if(!found && min_activated_stake > 0) {
+                    _chain_type.table_extension.emplace_back(chaintype::min_activated_stake_amount, std::to_string(min_activated_stake));
+                }
             });
         }
     }
@@ -538,6 +558,30 @@ namespace ultrainiosystem {
         }
     }
 
+    void system_contract::empower(account_name user, name chain_name, bool updateable) {
+        if ( !has_auth(_self) ) {
+           require_auth( user );
+        }
+
+        ultrainio_assert( _gstate.is_master_chain(), "only master chain allow empower" );
+        ultrainio_assert(!is_empowered(user, chain_name), "this account has been empowered to the chain");
+
+        char opk_buf[54], apk_buf[54];
+        get_account_pubkey(user, opk_buf, 54, apk_buf, 54);
+        opk_buf[53] = '\0';
+        apk_buf[53] = '\0';
+        std::string owner_pk(opk_buf);
+        std::string active_pk(apk_buf);
+        empoweruserparam euparam(user, chain_name, owner_pk, active_pk, updateable);
+        uint128_t sendid = N(empoweruser) + user + chain_name;
+        cancel_deferred(sendid);
+        ultrainio::transaction out;
+        out.actions.emplace_back( permission_level{ user, N(active) }, _self, NEX(empoweruser), euparam);
+        out.delay_sec = 0;
+        out.send( sendid, _self, true );
+    }
+
+
     void system_contract::add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number) {
         uint64_t chain_block_height = current_block_number;
         new_chain_singleton  ncs(_self, _self);
@@ -697,15 +741,30 @@ namespace ultrainiosystem {
             if(!temp.is_schedule_enabled) {
                 return;
             }
-            sched_period_minute = int32_t(temp.schedule_period);
+            sched_period_minute = uint32_t(temp.schedule_period);
         }
 
-        auto block_height = int32_t(current_block_height);
-        if( block_height%(sched_period_minute * 6) != 0) {
+        auto block_height = uint32_t(current_block_height);
+        if(block_height % 6 != 0 || block_height <= sched_period_minute * 6) {
+            //check scheduling once every 6 blocks
+            return;
+        }
+        auto max_last_sched_block_number =  block_height - (sched_period_minute * 6);
+        uint64_t scheduling_chain_type = 0;
+        chaintypes_table type_tbl(_self, _self);
+        auto type_iter = type_tbl.begin();
+        for(; type_iter != type_tbl.end(); ++type_iter) {
+            auto last_sched_block_num = type_iter->get_last_sched_block_num();
+            if(last_sched_block_num <= max_last_sched_block_number) {
+                scheduling_chain_type = type_iter->type_id;
+                break;
+            }
+        }
+        if(0 == scheduling_chain_type) {
             return;
         }
 
-        print( "[schedule] start, master block num: ", block_height, "\n");
+        print( "[schedule] start, master block num: ", block_height, ", chain type: ", scheduling_chain_type, "\n");
 
         //get current head block hash
         char blockid[32];
@@ -713,7 +772,6 @@ namespace ultrainiosystem {
         checksum256 head_block_hash;
         memcpy(head_block_hash.hash, blockid, sizeof(blockid));
 
-        chaintypes_table type_tbl(_self, _self);
         std::list<chain_sched_info> out_list;
 
         ////parepare all info
@@ -722,10 +780,8 @@ namespace ultrainiosystem {
         for(; chain_iter != _chains.end(); ++chain_iter, ++index_in_list) {
             if(chain_iter->chain_name == N(master))
                 continue;
-            auto type_iter = type_tbl.find(chain_iter->chain_type);
-            if(type_iter == type_tbl.end()) {
-                print("[schedule] error: the chain type is not existed\n");
-                return;
+            if(scheduling_chain_type != chain_iter->chain_type) {
+                continue;
             }
             //below cases will not take part in scheduling
             //1. producer sum doesn't reach stable_min
@@ -733,7 +789,7 @@ namespace ultrainiosystem {
             //3. not synced: current block reported to master is far from the head block on chain
             //4. schedule is off
             if((chain_iter->committee_num < uint32_t(type_iter->stable_min_producers)) ||
-               !(chain_iter->is_schedulable) || !(chain_iter->is_synced) || !(chain_iter->schedule_on)) {
+               /*!(chain_iter->is_schedulable) || !(chain_iter->is_synced) ||*/ !(chain_iter->schedule_on)) {
                 continue;
             }
             auto out_num = (chain_iter->committee_num - type_iter->stable_min_producers)/type_iter->sched_inc_step;
@@ -750,11 +806,21 @@ namespace ultrainiosystem {
         producers_table pending_que(_self, default_chain_name);
         auto max_minutes = getglobalextenuintdata(ultrainio_global_state::pending_producer_max_minutes, 43200);//30 days as default: 30*24*60
         for(auto pending_prod = pending_que.begin(); pending_prod != pending_que.end(); ++pending_prod) {
+            prodexten_table prodext(_self, _self);
+            auto ite_ext = prodext.find(pending_prod->owner);
+            if(ite_ext == prodext.end()) {
+                //error case
+                continue;
+            }
+            if(ite_ext->chain_type != scheduling_chain_type) {
+                continue;
+            }
             auto enqueue_blocknum = pending_prod->get_enqueue_block_height();
-            ultrainio_assert(enqueue_blocknum > 0 && enqueue_blocknum < uint64_t(block_height), "error: wrong enqueue block height");
-            auto interval_blocks = uint64_t(block_height) - enqueue_blocknum;
-            if(interval_blocks * block_interval_seconds() >= 60 * max_minutes ) {
-                available_producers.emplace_back(pending_prod->owner, pending_prod->producer_key, pending_prod->bls_key);
+            if(enqueue_blocknum > 0 && enqueue_blocknum < uint64_t(block_height)) {
+                auto interval_blocks = uint64_t(block_height) - enqueue_blocknum;
+                if(interval_blocks * block_interval_seconds() >= 60 * max_minutes ) {
+                    available_producers.emplace_back(pending_prod->owner, pending_prod->producer_key, pending_prod->bls_key);
+                }
             }
         }
 
@@ -765,6 +831,10 @@ namespace ultrainiosystem {
             scheduable_chain_num += 1; //count pending queue in schedul
         }
         if(scheduable_chain_num < 2) {
+            //update chain type schedule block number
+            type_tbl.modify(type_iter, [&]( auto& ctype ) {
+                ctype.set_last_sched_block_num(block_height);
+            });
             return;
         }
         uint32_t  sched_counter = 0;
@@ -850,6 +920,11 @@ namespace ultrainiosystem {
         print("[schedule] from chain: ", name{chain_from->chain_ite->chain_name});
         print(", to chain: ", name{chain_to->chain_ite->chain_name}, "\n");
         move_producer(head_block_hash, chain_from->chain_ite, chain_to->chain_ite, uint64_t(block_height), sched_counter);
+
+        //update chain type schedule block number
+        type_tbl.modify(type_iter, [&]( auto& ctype ) {
+            ctype.set_last_sched_block_num(block_height);
+        });
     }
 
     bool system_contract::move_producer(checksum256 head_id, chains_table::const_iterator from_iter,
@@ -898,6 +973,7 @@ namespace ultrainiosystem {
         require_auth(N(ultrainio));
 
         ultrainio_assert(sched_period <= 1440*7, "scheduling period is overlong, it's supposed at least once a week."); //60m*24h = minutes per day, perform scheduling at least once a week;
+        ultrainio_assert(sched_period >= 15, "scheduling period should be at least 15 minutes");
         ultrainio_assert(expire_time <= 30, "committee update confirm time is overlong, its maximum time is 30 minutes");
         ultrainio_assert(expire_time < sched_period, "committee update confirm time must lesser than scheduling period");
 
@@ -1326,6 +1402,14 @@ namespace ultrainiosystem {
         producers_table _producers(_self, chain_name);
         auto ite_prod = _producers.begin();
         while(ite_prod != _producers.end()) {
+            prodexten_table prodext(_self, _self);
+            auto ite_ext = prodext.find(ite_prod->owner);
+            if(ite_ext == prodext.end()) {
+                prodext.emplace([&]( producer_ext& prod_ext ) {
+                    prod_ext.owner = ite_prod->owner;
+                    prod_ext.chain_type = ite_chain->chain_type;
+                });
+            }
             moveprod(ite_prod->owner, ite_prod->producer_key, ite_prod->bls_key, false, chain_name, false, default_chain_name);
             ite_prod = _producers.begin();
         }

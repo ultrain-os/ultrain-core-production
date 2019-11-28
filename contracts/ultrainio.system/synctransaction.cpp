@@ -183,7 +183,7 @@ namespace ultrainiosystem {
                 authorization.emplace_back(permission_level{ N(ultrainio), N(active)});
                 authorization.emplace_back(permission_level{ccp.producer, N(active)});
                 INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regproducer)( N(ultrainio), authorization,
-                    { ccp.producer, ccp.producerkey, ccp.blskey, N(ultrainio), " ", self_chain_name } );
+                    { ccp.producer, ccp.producerkey, ccp.blskey, N(ultrainio), " ", self_chain_name, 0 } );
                 INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
                     { N(utrio.stake), ccp.producer, asset(_gstate.min_activated_stake)} );
             }

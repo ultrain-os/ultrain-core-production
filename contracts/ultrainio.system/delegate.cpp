@@ -116,16 +116,8 @@ namespace ultrainiosystem {
          asset total_update = stake_cons_delta;
          auto briefprod = _briefproducers.find(receiver);
          ultrainio_assert(briefprod != _briefproducers.end(), "this account is not a producer, please regproducer first");
-         auto chain_iter = _chains.find( briefprod->location );
-         ultrainio_assert( chain_iter != _chains.end(), " chain_name not found");
-         chaintypes_table type_tbl( _self, _self );
-         auto type_iter = type_tbl.find( chain_iter->chain_type );
-         ultrainio_assert( type_iter != type_tbl.end(), " chain_type not found");
-         bool is_fixed_reward_rate = getchaintypeextenuintdata( type_iter, chaintype::chaintype_exten_key::is_fixed_reward_rate, 0 );
-         int64_t stake_rate = 100;
-         if ( is_fixed_reward_rate ) {
-            stake_rate = (int64_t)getchaintypeextenuintdata( type_iter, chaintype::chaintype_exten_key::min_active_delegate_rate, 100 );
-         }
+
+         int64_t producer_min_activated_stake = get_producer_min_stake(receiver, briefprod->location);
          if(briefprod->in_disable) {
             disabled_producers_table dp_tbl(_self, _self);
             auto dis_prod = dp_tbl.find(receiver);
@@ -134,7 +126,7 @@ namespace ultrainiosystem {
              if(briefprod->is_on_master_chain()) {
                  _gstate.total_activated_stake += total_update.amount;
              }
-             auto enabled = ((dis_prod->total_cons_staked + total_update.amount) >= _gstate.min_activated_stake * stake_rate/100);
+             auto enabled = ((dis_prod->total_cons_staked + total_update.amount) >= producer_min_activated_stake);
              if(enabled) {
                 dp_tbl.modify(dis_prod, [&]( disabled_producer& _dis ) {
                     _dis.total_cons_staked       += total_update.amount;
@@ -159,7 +151,7 @@ namespace ultrainiosystem {
              if(briefprod->is_on_master_chain()) {
                  _gstate.total_activated_stake += total_update.amount;
              }
-             auto enabled = ((it->total_cons_staked + total_update.amount) >= _gstate.min_activated_stake  * stake_rate/100);
+             auto enabled = ((it->total_cons_staked + total_update.amount) >= producer_min_activated_stake);
              if(enabled) {
                  _producers.modify(it, [&](auto & v) {
                      v.total_cons_staked += total_update.amount;
