@@ -2555,8 +2555,8 @@ void disable_zkp_fns() {
                found = true;
                ilog("*******************found ${f} in wabt_runtime, disable it", ("f", fn));
                break;
-	    }
-	 }
+            }
+         }
 
          if (found) {
             itf = it->second.erase(itf);
@@ -2572,7 +2572,7 @@ void disable_zkp_fns() {
       bool found = false;
       for (auto& fn : s_zkp_fns) {
          size_t pos = it->first.find(fn);
-         if (pos != std::string::npos && pos + fn.length() == it->first.length()) {
+         if (pos != std::string::npos && pos > 0 && it->first[pos-1] == '.' && pos + fn.length() == it->first.length()) {
             ilog("*******************found ${f} in binaryren, disable it", ("f", it->first));
             found = true;
             break;
@@ -2592,7 +2592,7 @@ void disable_zkp_fns() {
       bool found = false;
       for (auto& fn : s_zkp_fns) {
          size_t pos = it->first.find(fn);
-         if (pos != std::string::npos && pos + fn.length() < it->first.length() && it->first[pos + fn.length()] == ' ') {
+         if (pos != std::string::npos && pos > 0 && it->first[pos-1] == '.' && pos + fn.length() < it->first.length() && it->first[pos + fn.length()] == ' ') {
             ilog("*******************found ${f} in Intrinsics fun map, disable it", ("f", it->first));
             found = true;
             break;
