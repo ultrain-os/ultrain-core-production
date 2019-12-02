@@ -9,7 +9,7 @@ namespace libsnark {
     bool verify_zero_knowledge_proof(char* vk, char* primary_input, char* proof);
 
     /// Sprout JoinSplit proof verification.
-    bool sprout_verify(
+    /*bool sprout_verify(
         const unsigned char *proof,
         const unsigned char *rt,
         const unsigned char *h_sig,
@@ -24,5 +24,5 @@ namespace libsnark {
     );
 
     bool init_zk_params();
-    bool check_shielded_transaction(const shielded_transaction& tx);
+    bool check_shielded_transaction(const shielded_transaction& tx);*/
 }// end of namespace

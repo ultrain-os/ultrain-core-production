@@ -1,6 +1,9 @@
-import { Contract } from "../../../src/contract";
-import { verify_zero_knowledge_proof } from "../../../src/crypto";
-import { NAME } from "../../../src/account";
+import { Contract } from "ultrain-ts-lib/src/contract";
+import { verify_zero_knowledge_proof } from "ultrain-ts-lib/src/crypto";
+import { SHA256 } from "ultrain-ts-lib/src/crypto";
+import { NAME } from "ultrain-ts-lib/src/account";
+import { Log } from "ultrain-ts-lib/src/log";
+import { intToString } from "ultrain-ts-lib/src/utils";
 
 class Record implements Serializable {
     id: u64;
@@ -19,31 +22,40 @@ class Vk implements Serializable {
     } 
 }
 
+class PmInput implements Serializable {
+    hash: u64;
+
+    primaryKey(): id_type {
+        return this.hash;
+    }
+}
 
 const TABLE_RESULT: string = "result";
 const TABLE_KEY: string = "key";
-const VERIFY_KEY_ID: u64 = 1;
+const TABLE_PRIMARY_INPUT: string = "pminput";
 
 @database(Record, TABLE_RESULT)
 @database(Vk, TABLE_KEY)
+@database(PmInput, TABLE_PRIMARY_INPUT)
 export　class ZkpDemo extends Contract {
     
     private resultManager: DBManager<Record>;
     private vkManager: DBManager<Vk>;
+    private pmManager: DBManager<PmInput>;
 
     constructor(receiver: account_name) {
         super(receiver);
         this.resultManager = new DBManager<Record>(NAME(TABLE_RESULT), NAME(TABLE_RESULT));
         this.vkManager = new DBManager<Vk>(NAME(TABLE_KEY), NAME(TABLE_KEY));
+        this.pmManager = new DBManager<PmInput>(NAME(TABLE_PRIMARY_INPUT), NAME(TABLE_PRIMARY_INPUT));
     }
 
     @action
-    setVerifyKey(key: string): void {
-        var id = VERIFY_KEY_ID;
+    setVerifyKey(bid: u64, key: string): void {
         var vk = new Vk();
-        vk.id =  id;
+        vk.id = bid;
         vk.key = key;
-        if (!this.vkManager.exists(id)) {
+        if (!this.vkManager.exists(bid)) {
             this.vkManager.emplace(vk);
         } else {
             this.vkManager.modify(vk)
@@ -52,44 +64,46 @@ export　class ZkpDemo extends Contract {
 
 
     @action
-    testZkp(pk_input: string, proof: string, expect: i32): void {
-        var vk = this.getVerifyKey();
+    testZkp(caseid: u64, bid: u64, pk_input: string, proof: string, expect: i32): void {
+        let pm = intToString(bid);
+        let arr: Array<u8> = new Array<u8>();
+        for (let i = 0; i < pk_input.length; i++) {
+            let code = <u8>pk_input.charCodeAt(i);
+            if ( code >= 0x30 && code <= 0x39) {
+                arr.push(code);
+            }
+        }
+        pm = pm + String.UTF8.decode(arr.buffer);
+	//Log.s("new pm: ").s(pm).flush();
+        var sha = new SHA256();
+        sha.hash(pm);
+        let ds = new DataStream(sha.buffer, 8);
+        var pm_record = new PmInput();
+	pm_record.hash = ds.read<u64>();
+
+        ultrain_assert(!this.pmManager.exists(pm_record.hash), "the primary input already exists");
+        this.pmManager.emplace(pm_record);
+
+        var vk = this.getVerifyKey(bid);
         var result = verify_zero_knowledge_proof(vk,pk_input,proof);
-        var pk = this.getLatestPk();
         var record = new Record();
-        record.id = pk;
+        record.id = caseid;
         record.val = result ? 1 : 0;
-        // Log.s("record.id: ").i(record.id).flush();
-        if (!this.resultManager.exists(record.id)) {
+        ultrain_assert(record.val == expect, "The zkp test case result is not expect.")
+        if (this.resultManager.exists(record.id)) {
+            ultrain_assert(false, "The test case already exists");
+        } else {
             this.resultManager.emplace(record);
         }
-        ultrain_assert(record.val == expect, "The zkp test case result is not expect.")
     }
 
-    private getVerifyKey(): string {
-        if (this.vkManager.exists(VERIFY_KEY_ID)) {
+    private getVerifyKey(id: u64): string {
+        if (this.vkManager.exists(id)) {
             let vk = new Vk();
-            this.vkManager.get(VERIFY_KEY_ID, vk);
+            this.vkManager.get(id, vk);
             return vk.key;
         }
         ultrain_assert(false, "Please set the verify key.");
         return "";
-    }
-
-    private getLatestPk(): u64 {
-        var const_pk = 1; 
-        var record = new Record();
-        if (this.resultManager.exists(const_pk)) {
-            this.resultManager.get(const_pk, record);
-            record.val  = record.val + 1;
-            this.resultManager.modify(record);
-            return record.val;
-        } else {
-            let startPk = 1122;
-            record.id = const_pk;
-            record.val = startPk;
-            this.resultManager.emplace(record);
-            return record.val;
-        }
     }
 }

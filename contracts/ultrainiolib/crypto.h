@@ -263,7 +263,9 @@ int ts_verify_merkle_proof(const char* transaction_mroot, const char* merkle_pro
 int ts_merkle_proof(uint32_t block_number, const char* tx_id, void* buffer, size_t buffer_size);
 int ts_merkle_proof_length(uint32_t block_number, const char* tx_id);
 int ts_recover_transaction(void* buffer, size_t buffer_size, const char* tx_receipt_bytes, size_t tx_receipt_bytes_len);
+#ifdef ENABLE_ZKP
 int ts_verify_zero_knowledge_proof(const char* vk, const char* primary_input, const char* proof);
+#endif
 /// }@cryptocapi
 
 }

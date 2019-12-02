@@ -2,17 +2,21 @@
   "version": "ultraio:1.0",
   "types": [
     {
-      "new_type_name": "i32",
-      "type": "int32"
-    },
-    {
       "new_type_name": "u64",
       "type": "uint64"
+    },
+    {
+      "new_type_name": "i32",
+      "type": "int32"
     }
   ],
   "structs": [
     {
       "fields": [
+        {
+          "name": "bid",
+          "type": "u64"
+        },
         {
           "name": "key",
           "type": "string"
@@ -23,6 +27,14 @@
     },
     {
       "fields": [
+        {
+          "name": "caseid",
+          "type": "u64"
+        },
+        {
+          "name": "bid",
+          "type": "u64"
+        },
         {
           "name": "pk_input",
           "type": "string"
@@ -66,6 +78,16 @@
       ],
       "base": "",
       "name": "Vk"
+    },
+    {
+      "fields": [
+        {
+          "name": "hash",
+          "type": "u64"
+        }
+      ],
+      "base": "",
+      "name": "PmInput"
     }
   ],
   "actions": [
@@ -104,6 +126,17 @@
       ],
       "name": "key",
       "type": "Vk"
+    },
+    {
+      "index_type": "i64",
+      "keys_names": [
+        "currency"
+      ],
+      "keys_types": [
+        "uint64"
+      ],
+      "name": "pminput",
+      "type": "PmInput"
     }
   ]
 }

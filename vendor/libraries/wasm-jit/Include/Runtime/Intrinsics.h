@@ -3,6 +3,7 @@
 #include "Inline/BasicTypes.h"
 #include "IR/IR.h"
 #include "Runtime.h"
+#include <map>
 
 namespace Intrinsics
 {
@@ -88,6 +89,24 @@ namespace Intrinsics
 	private:
 		const char* name;
 		Runtime::TableInstance* const table;
+	};
+
+	struct Singleton
+	{
+		std::map<std::string,Intrinsics::Function*> functionMap;
+		std::map<std::string,Intrinsics::Global*> variableMap;
+		std::map<std::string,Intrinsics::Memory*> memoryMap;
+		std::map<std::string,Intrinsics::Table*> tableMap;
+		Platform::Mutex* mutex;
+
+		Singleton(): mutex(Platform::createMutex()) {}
+		Singleton(const Singleton&) = delete;
+
+		static Singleton& get()
+		{
+			static Singleton result;
+			return result;
+		}
 	};
 
 	// Finds an intrinsic object by name and type.

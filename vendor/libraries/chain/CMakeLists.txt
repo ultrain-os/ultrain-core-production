@@ -60,15 +60,22 @@ add_library( ultrainio_chain
              )
 
 add_dependencies(ultrainio_chain  ultrainio.token)
-target_link_libraries( ultrainio_chain ultrain_utilities ultrainio_crypto fc chainbase appbase chain_plugin Logging IR WAST WASM Runtime
-      wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins wabt snarkv
-                     )
+if(ENABLE_ZKP)
+  target_link_libraries( ultrainio_chain ultrain_utilities ultrainio_crypto fc chainbase appbase chain_plugin Logging IR WAST WASM Runtime
+      wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins wabt snarkv )
+else()
+  target_link_libraries( ultrainio_chain ultrain_utilities ultrainio_crypto fc chainbase appbase chain_plugin Logging IR WAST WASM Runtime
+      wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins wabt )
+endif()
+
 target_include_directories( ultrainio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../../../vendor/binaryen/src"
                                    "${CMAKE_BINARY_DIR}/contracts"
+if(ENABLE_ZKP)
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../../snarkv/include"
+endif()
                                    "${CMAKE_SOURCE_DIR}/vendor/libraries/wabt"
                                    "${CMAKE_BINARY_DIR}/vendor/libraries/wabt"
                             )

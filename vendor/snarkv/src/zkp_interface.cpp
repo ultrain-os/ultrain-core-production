@@ -1,13 +1,8 @@
-#include <ctime>
 #include <cstdlib>
-#include <fstream>
-#include <memory>
 #include <memory>
 #include <regex>
 #include <exception>  
 
-
-// #include <boost/optional/optional_io.hpp>
 #include "common/utils.hpp"
 #include "algebra/fields/field_utils.hpp"
 #include "algebra/curves/public_params.hpp"
@@ -19,7 +14,6 @@
 #include "common/default_types/r1cs_gg_ppzksnark_pp.hpp"
 #include "zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp"
 #include "zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark_params.hpp"
-
 
 #include "common/data_structures/accumulation_vector.hpp"
 #include "algebra/knowledge_commitment/knowledge_commitment.hpp"
@@ -63,13 +57,6 @@ namespace  libsnark {
             ppT::init_public_params();
 
             auto vk = load_val<r1cs_gg_ppzksnark_verification_key<ppT>>(vkStr);
-            /*size_t size = 0;
-            size = load_val<size_t>(pm_inputStr);
-            if (size == 0 || size != vk.encoded_IC_query.domain_size())
-            {
-                elog("primary input size ${s} error or vk domain_size ${ds} error.", ("s", size)("ds", vk.encoded_IC_query.domain_size()));
-                return false;
-            }*/
 	    
             auto primary_input = load_val<r1cs_primary_input<Fr<ppT>>>(pm_inputStr);
             auto proof = load_val<r1cs_gg_ppzksnark_proof<ppT>>(proofStr);
@@ -108,16 +95,8 @@ namespace  libsnark {
             }
 
             const G1<ppT> &acc = accumulated_IC.first;
-            auto G1_one = G1<ppT>::one();
-            auto G2_one = G2<ppT>::one();
 
-            if (!proof.is_well_formed())
-            {
-                elog("proof.is_well_formed()");
-                return false;
-            }
-
-            const G1_precomp<ppT> proof_g_A_precomp = ppT::precompute_G1(proof.g_A);
+	    const G1_precomp<ppT> proof_g_A_precomp = ppT::precompute_G1(proof.g_A);
             const G2_precomp<ppT> proof_g_B_precomp = ppT::precompute_G2(proof.g_B);
             const G1_precomp<ppT> proof_g_C_precomp = ppT::precompute_G1(proof.g_C);
             const G1_precomp<ppT> acc_precomp = ppT::precompute_G1(acc);
@@ -144,6 +123,7 @@ namespace  libsnark {
         }
     }
 
+    /*
     // BCTV14
     template <typename ppT>
     bool f_sub1(G1<ppT> g1_1, G2<ppT> g2_1, G1<ppT> g1_2, G2<ppT> g2_2, G1<ppT> g1_3, G2<ppT> g2_3, int option)
@@ -280,6 +260,7 @@ namespace  libsnark {
             return false;
         }
     }
+    */
 
     bool interface_verify(char *chr)
     {
@@ -308,23 +289,7 @@ namespace  libsnark {
         return res;
     }
 
-    /// Sprout JoinSplit proof verification.
-    bool sprout_verify(
-        const unsigned char *proof,
-        const unsigned char *rt,
-        const unsigned char *h_sig,
-        const unsigned char *mac1,
-        const unsigned char *mac2,
-        const unsigned char *nf1,
-        const unsigned char *nf2,
-        const unsigned char *cm1,
-        const unsigned char *cm2,
-        uint64_t vpub_old,
-        uint64_t vpub_new)
-    {
-        return librustzcash_sprout_verify(proof, rt, h_sig, mac1, mac2, nf1, nf2, cm1, cm2, vpub_old, vpub_new);
-    }
-
+    /*
     bool init_zk_params()
     {
         if (init_and_check_sodium() == -1) {
@@ -425,5 +390,5 @@ namespace  libsnark {
             librustzcash_sapling_verification_ctx_free(ctx);
         }
         return true;
-    }
+    }*/
 }

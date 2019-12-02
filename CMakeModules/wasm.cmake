@@ -57,6 +57,11 @@ macro(compile_wast)
               -nostdlib -nostdlibinc -DBOOST_DISABLE_ASSERTS -DBOOST_EXCEPTION_DISABLE -fno-threadsafe-statics -fno-rtti -fno-exceptions
               -c ${infile} -o ${outfile}.bc
     )
+
+    if (ENABLE_ZKP)
+      list(APPEND WASM_COMMAND -DENABLE_ZKP)
+    endif()
+
     if (${ARG_NOWARNINGS})
       list(APPEND WASM_COMMAND -Wno-everything)
     else()

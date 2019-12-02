@@ -300,6 +300,9 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
                 "max_block_net_usage,used in resource ,in genesis param,etc")
          ("genesis-time", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("chain-name", bpo::value<string>(), "the name of this chain")
+#ifdef ENABLE_ZKP
+         ("enable-zkp-fns", bpo::value<bool>()->default_value(false), "enable zero knowledge proof functions on virtual machine")
+#endif
          ;
 
 // TODO: rate limiting
@@ -521,8 +524,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                     "Genesis information in blocks.log does not match genesis information in the worldstate");
          }
 
-      } else
-      {
+      } else {
          if( options.count( "genesis-json" )) {
             ULTRAIN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
                         plugin_config_exception,
@@ -584,6 +586,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
          ULTRAIN_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
       }
+
+#ifdef ENABLE_ZKP
+      bool enable_zkp = false;
+      if (options.count("enable-zkp-fns")) {
+         enable_zkp = options.at("enable-zkp-fns").as<bool>();
+      }
+      if (!enable_zkp) {
+         disable_zkp_fns();
+      }
+#endif
 
       my->chain.emplace( *my->chain_config );
       my->chain_id.emplace( my->chain->get_chain_id());

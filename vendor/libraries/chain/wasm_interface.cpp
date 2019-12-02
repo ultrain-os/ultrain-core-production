@@ -25,7 +25,14 @@
 #include <fstream>
 #include <gmp.h>
 #include <crypto/Random.h>
+
+#include <ultrainio/chain/webassembly/wabt.hpp>
+#include <ultrainio/chain/webassembly/binaryen.hpp>
+#include <Runtime/Intrinsics.h>
+
+#ifdef ENABLE_ZKP
 #include <snark/zkp_interface.h>
+#endif
 
 namespace ultrainio { namespace chain {
    using namespace webassembly;
@@ -319,9 +326,11 @@ class typescript_crypto_api : public context_aware_api {
          return ultrainio::verify_with_pk(pk_str.value, pk_proof.value, message.value) ? 1 : 0;
       }
 
+#ifdef ENABLE_ZKP
       int ts_verify_zero_knowledge_proof(null_terminated_ptr vk, null_terminated_ptr primary_input, null_terminated_ptr proof) {
          return libsnark::verify_zero_knowledge_proof(vk.value, primary_input.value, proof.value) ? 1 : 0;
       }
+#endif
 
       int ts_is_account_with_code(account_name account) {
          auto* acct = context.db.find<account_object, by_name>(account);
@@ -2222,7 +2231,9 @@ REGISTER_INTRINSICS(typescript_crypto_api,
    (ts_merkle_proof_length,    int(int32_t, int)                  )
    (ts_merkle_proof,           int(int32_t, int, int, int)        )
    (ts_recover_transaction,    int(int, int, int, int)            )
+#ifdef ENABLE_ZKP
    (ts_verify_zero_knowledge_proof,  int(int, int, int)           )
+#endif
 );
 #endif
 
@@ -2526,5 +2537,75 @@ std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
       in.setstate(std::ios_base::failbit);
    return in;
 }
+
+#ifdef ENABLE_ZKP
+// zero knowledge proof functions
+// NOTE: overload functions is not supported, so the function names should be unique
+static std::array<std::string, 1> s_zkp_fns = { {
+   "ts_verify_zero_knowledge_proof"
+} };
+
+void disable_zkp_fns() {
+   auto& wabt_map = chain::webassembly::wabt_runtime::intrinsic_registrator::get_map();
+   for (auto it = wabt_map.begin(); it != wabt_map.end(); ++it) {
+      for (auto itf = it->second.begin(); itf != it->second.end(); ) {
+         bool found = false;
+         for (auto& fn : s_zkp_fns) {
+            if (itf->first == fn) {
+               found = true;
+               ilog("*******************found ${f} in wabt_runtime, disable it", ("f", fn));
+               break;
+	    }
+	 }
+
+         if (found) {
+            itf = it->second.erase(itf);
+         } else { 
+            ++itf;
+         }
+      }
+   }
+
+   auto& binaryen_map = chain::webassembly::binaryen::intrinsic_registrator::get_map();
+   // example of key in map: env.ts_verify_zero_knowledge_proof
+   for (auto it = binaryen_map.begin(); it != binaryen_map.end(); ) {
+      bool found = false;
+      for (auto& fn : s_zkp_fns) {
+         size_t pos = it->first.find(fn);
+         if (pos != std::string::npos && pos + fn.length() == it->first.length()) {
+            ilog("*******************found ${f} in binaryren, disable it", ("f", it->first));
+            found = true;
+            break;
+         }
+      }
+
+      if (found) {
+         it = binaryen_map.erase(it);
+      } else {
+         ++it;
+      }
+   }
+
+   auto& fmap = Intrinsics::Singleton().get().functionMap;
+   // example of key in map: env.ts_log_print_s : func (i32)->()
+   for (auto it = fmap.begin(); it != fmap.end(); ) {
+      bool found = false;
+      for (auto& fn : s_zkp_fns) {
+         size_t pos = it->first.find(fn);
+         if (pos != std::string::npos && pos + fn.length() < it->first.length() && it->first[pos + fn.length()] == ' ') {
+            ilog("*******************found ${f} in Intrinsics fun map, disable it", ("f", it->first));
+            found = true;
+            break;
+         }
+      }
+
+      if (found) {
+         it = fmap.erase(it);
+      } else {
+         ++it;
+      } 
+   }
+}
+#endif
 
 } } /// ultrainio::chain

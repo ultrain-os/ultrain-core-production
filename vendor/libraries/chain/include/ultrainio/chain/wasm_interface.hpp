@@ -74,6 +74,11 @@ namespace ultrainio { namespace chain {
          friend class ultrainio::chain::webassembly::common::intrinsics_accessor;
    };
 
+#ifdef ENABLE_ZKP
+   // disable zero knowledge proof funtions on virtual machine
+   void disable_zkp_fns();
+#endif
+
 } } // ultrainio::chain
 
 namespace ultrainio{ namespace chain {
