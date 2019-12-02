@@ -45,6 +45,8 @@ namespace ultrainio {
         const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
         chain_apis::read_only::get_confirm_point_interval_result result = ro_api.get_confirm_point_interval(chain_apis::read_only::get_confirm_point_interval_params());
         LightClientProducer::setConfirmPointInterval(result.confirm_point_interval);
+        chain_apis::read_only::get_max_bax_count_result maxBaxCountResult = ro_api.get_max_bax_count(chain_apis::read_only::get_max_bax_count_result_params());
+        Config::kMaxBaxCount = maxBaxCountResult.max_bax_count;
     }
 
     StakeVoteBase::~StakeVoteBase() {

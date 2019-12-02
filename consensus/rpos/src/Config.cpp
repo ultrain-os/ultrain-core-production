@@ -3,8 +3,6 @@
 namespace ultrainio {
     const int Config::kAverageBlockPerMinutes = 6;
 
-    const int Config::kMaxBaxCount = 20;
-
     const int Config::kDeadlineCnt = 60;
 
     const double Config::kProposerStakeNumber = 7.0;
@@ -27,11 +25,13 @@ namespace ultrainio {
 
     int Config::s_maxPhaseSeconds = 5;
 
-    const int Config::MAX_LATER_NUMBER = 3;
+    const int Config::kMaxLaterNumber = 3;
 
     // This is the deadline for all the trx times when proposing a block.
     // Make it smaller if we want consensus to be more stable.
     int Config::s_maxTrxMicroSeconds = 2700000;
 
     bool Config::s_allowReportEvil = false;
+
+    int Config::kMaxBaxCount = 20;
 }

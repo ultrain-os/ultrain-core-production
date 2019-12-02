@@ -1414,6 +1414,26 @@ read_only::get_confirm_point_interval_result read_only::get_confirm_point_interv
     return result;
 }
 
+read_only::get_max_bax_count_result read_only::get_max_bax_count(const read_only::get_max_bax_count_result_params& p) const {
+    const abi_def abi = ultrainio::chain_apis::get_abi(db, N(ultrainio));
+    const auto& d = db.db();
+    read_only::get_max_bax_count_result result;
+    try {
+        auto gstate = get_global_row(d, abi, abi_serializer_max_time);
+        exten_types ext = gstate["table_extension"].as<exten_types>();
+        for (auto v : ext) {
+            if (v.key == global_state_exten_type_key::max_bax_count) {
+                result.max_bax_count = std::stoi(v.value);
+                ilog("read max_bax_count from global state : ${value}", ("value", result.max_bax_count));
+                break;
+            }
+        }
+    } catch (fc::exception& e) {
+        elog("get_max_bax_count_result exception : ${e}", ("e", e.to_string()));
+    }
+    return result;
+}
+
 read_only::get_global_exten_result read_only::get_global_exten_data(const read_only::get_global_exten_params& p) const {
     const abi_def abi = ultrainio::chain_apis::get_abi(db, N(ultrainio));
     const auto& d = db.db();

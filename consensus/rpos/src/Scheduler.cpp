@@ -397,10 +397,10 @@ namespace ultrainio {
             return false;
         }
 
-        uint32_t maxBlockNum = Node::getInstance()->getBlockNum();
-
+        uint32_t currBlockNum = Node::getInstance()->getBlockNum();
+        std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(currBlockNum);
         for (auto vector_itor = m_cacheEchoMsgMap.begin(); vector_itor != m_cacheEchoMsgMap.end(); ++vector_itor) {
-            if (vector_itor->first.blockNum > maxBlockNum) {
+            if (vector_itor->first.blockNum > currBlockNum) {
                 BlockIdVoterSetMap echo_msg_map;
 
                 for (auto &echo : vector_itor->second) {
@@ -416,8 +416,7 @@ namespace ultrainio {
                 }
 
                 for (auto echo_itor = echo_msg_map.begin(); echo_itor != echo_msg_map.end(); ++echo_itor) {
-                    if (echo_itor->second.accountPool.size() >= THRESHOLD_SYNCING) {
-                        maxBlockNum = vector_itor->first.blockNum;
+                    if (echo_itor->second.accountPool.size() >= stakeVotePtr->getSendEchoThreshold()) {
                         return true;
                     }
                 }
@@ -1493,7 +1492,7 @@ namespace ultrainio {
             statistics.blockNum = Node::getInstance()->getBlockNum();
             if (m_currentBlsVoterSet.valid() && m_currentBlsVoterSet.commonEchoMsg.blockId == blockId) {
                 statistics.phase = m_currentBlsVoterSet.commonEchoMsg.phase;
-                statistics.baxCount = m_currentBlsVoterSet.commonEchoMsg.phase;
+                statistics.baxCount = m_currentBlsVoterSet.commonEchoMsg.baxCount;
             }
             statistics.currentPhase = Node::getInstance()->getPhase();
             statistics.currentBaxCount = Node::getInstance()->getBaxCount();

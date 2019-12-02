@@ -447,6 +447,18 @@ public:
       is_claim_reward = 4,
       free_account_per_res = 5,
       version_number = 6,
+      is_allow_buy_res = 7, //Allows a general account to buy resources
+      check_user_bulletin = 8,
+      allow_undelegate_block_interval = 9,
+      refund_delegate_consensus_seconds = 10,
+      link_auth_fee = 11,
+      res_transfer_fee = 12,
+      pending_resource_check = 13,
+      pending_producer_min_minutes = 14,
+      pending_producer_max_minutes = 15,
+      is_allow_producer_self_register = 16,
+      max_bax_count = 17,
+      global_state_key_end,
    };
 
    struct get_confirm_point_interval_params {
@@ -458,6 +470,16 @@ public:
    };
 
    get_confirm_point_interval_result get_confirm_point_interval(const get_confirm_point_interval_params& p) const;
+
+   struct get_max_bax_count_result_params {
+       int dummy;
+   };
+
+   struct get_max_bax_count_result {
+       int max_bax_count = 20;
+   };
+
+   struct get_max_bax_count_result get_max_bax_count(const get_max_bax_count_result_params& p) const;
 
    struct get_global_exten_params {
        int index = 0;
@@ -823,6 +845,8 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_result, (rows)(more)
 FC_REFLECT( ultrainio::chain_apis::read_only::exten_type, (key)(value) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_confirm_point_interval_params, (dummy) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_confirm_point_interval_result, (confirm_point_interval) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_max_bax_count_result_params, (dummy) );
+FC_REFLECT( ultrainio::chain_apis::read_only::get_max_bax_count_result, (max_bax_count) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_global_exten_params, (index) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_global_exten_result, (global_exten_data) );
 

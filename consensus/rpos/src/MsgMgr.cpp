@@ -57,7 +57,7 @@ namespace ultrainio {
 
     void MsgMgr::clearSomeBlockMessage(uint32_t blockNum) {
         for (auto itor = m_blockMsgPoolMap.begin(); itor != m_blockMsgPoolMap.end();) {
-            if (blockNum - Config::MAX_LATER_NUMBER > itor->first) {
+            if (blockNum - Config::kMaxLaterNumber > itor->first) {
                 ilog("clear block msg for blockNum = ${blockNum}", ("blockNum", itor->first));
                 m_blockMsgPoolMap.erase(itor++);
             } else {

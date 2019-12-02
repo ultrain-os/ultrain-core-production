@@ -70,6 +70,7 @@ namespace ultrainiosystem {
       uint32_t             resource_fee = 100000;
       exten_types          table_extension;
 
+      // sync with chain_plugin.hpp
       enum global_state_exten_type_key {
          global_state_key_start = 0,
          update_auth = 1,
@@ -88,6 +89,7 @@ namespace ultrainiosystem {
          pending_producer_min_minutes = 14,
          pending_producer_max_minutes = 15,
          is_allow_producer_self_register = 16,
+         max_bax_count = 17,
          global_state_key_end
       };
 
