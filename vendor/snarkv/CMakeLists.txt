@@ -11,16 +11,11 @@ include_directories(
   ${Boost_INCLUDE_DIR}
 )
 
-# unit test
-#add_executable( snark_test test/test.cpp src/zkp_interface.cpp ${HEADERS})
-#target_link_libraries(snark_test  ${CMAKE_CURRENT_SOURCE_DIR}/snark/libsnark.a gmpxx gmp sodium procps)
-#target_include_directories( snark_test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
-
-add_library(snarkv src/zkp_interface.cpp src/incremental_merkle_tree.cpp src/uint256.cpp
+add_library(snarkv src/groth16.cpp src/incremental_merkle_tree.cpp src/uint256.cpp
 	           src/util_str_encodings.cpp src/util.cpp src/signature.cpp
                    src/address.cpp src/note_encryption.cpp src/hash.cpp src/prf.cpp
-		   src/sha256.cpp src/sha512.cpp src/stransaction_builder.cpp src/note.cpp ${HEADERS})
+		   src/sha256.cpp src/sha512.cpp src/stransaction_builder.cpp
+                   src/stransaction.cpp src/note.cpp ${HEADERS})
 
-	   #target_include_directories(snarkv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/snark )
 target_link_libraries(snarkv  fc ${CMAKE_CURRENT_SOURCE_DIR}/snark/libsnark.a ${CMAKE_CURRENT_SOURCE_DIR}/snark/librustzcash.a ${CMAKE_CURRENT_SOURCE_DIR}/snark/libsodium.a gmpxx gmp)
 
