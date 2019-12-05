@@ -18,6 +18,15 @@
 |bid|u64| business id|
 |key|string| verify key|
 
+Format of verify key:
+vk_alfabeta_12
+vk_gamma_2
+vk_delta_2
+IC_size
+IC[0]
+IC[1]
+...
+IC[IC_size-1]
 ---
 
 - 验证零知识证明
@@ -33,6 +42,17 @@
 |pk_input|string| primary input key|
 |proof |string| proof |
 |expect| i32 | expect value, 1表示true， 0 表示false|
+
+Format of primary input key:
+IC_size
+publicSignals[0]
+...
+publicSignals[IC_size-1]
+
+Format of proof:
+pi_a
+pi_b
+pi_c
 
 ## Test
 1. deploy contract

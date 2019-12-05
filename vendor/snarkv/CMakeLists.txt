@@ -17,5 +17,6 @@ add_library(snarkv src/groth16.cpp src/incremental_merkle_tree.cpp src/uint256.c
 		   src/sha256.cpp src/sha512.cpp src/stransaction_builder.cpp
                    src/stransaction.cpp src/note.cpp ${HEADERS})
 
-target_link_libraries(snarkv  fc ${CMAKE_CURRENT_SOURCE_DIR}/snark/libsnark.a ${CMAKE_CURRENT_SOURCE_DIR}/snark/librustzcash.a ${CMAKE_CURRENT_SOURCE_DIR}/snark/libsodium.a gmpxx gmp)
-
+target_link_libraries(snarkv  fc ${CMAKE_CURRENT_SOURCE_DIR}/snark/libsnark.a ${CMAKE_CURRENT_SOURCE_DIR}/snark/librustzcash.a
+                                 ${CMAKE_CURRENT_SOURCE_DIR}/snark/libsodium.a
+                                 ${CMAKE_CURRENT_SOURCE_DIR}/snark/libgmpxx.a ${CMAKE_CURRENT_SOURCE_DIR}/snark/libgmp.a)
