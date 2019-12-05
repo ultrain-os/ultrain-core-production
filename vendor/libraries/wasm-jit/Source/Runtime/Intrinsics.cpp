@@ -28,7 +28,10 @@ namespace Intrinsics
 	{
       {
          Platform::Lock Lock(Singleton::get().mutex);
-         Singleton::get().functionMap.erase(Singleton::get().functionMap.find(getDecoratedName(name,function->type)));
+         auto it = Singleton::get().functionMap.find(getDecoratedName(name,function->type));
+         if (it != Singleton::get().functionMap.end()) {
+            Singleton::get().functionMap.erase(it);
+         }
       }
       delete function;
 	}
