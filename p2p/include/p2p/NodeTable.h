@@ -56,8 +56,10 @@ class NodeTable: UDPSocketEvents
     struct NodeValidation
     {
         fc::time_point pingSendTime;
-	int sendtimes;
+        int sendtimes;
         boost::optional<NodeID> replacementNodeID;
+        NodeIPEndpoint from;//which one told me this route
+        NodeIPEndpoint endpoint;//ep
     };
 public:
     static void initInstance(ba::io_service& _io, NodeIPEndpoint const& _endpoint, NodeID const& nodeID, string const& chainid, string& listenIP, bool traverseNat);
@@ -98,6 +100,7 @@ public:
     signal<void(const kcp_conv_t&,const char*,const size_t&)> kcppktrcvevent;
     signal<void(const kcp_conv_t&,const bool&)> sessioncloseevent;
     signal<bool(const fc::sha256&,const chain::public_key_type&,const chain::signature_type&,chain::account_name const& _account,const bool)> pktcheckevent;
+    signal<void(const string&,msg_priority)> natPunchConnEvent;
     chain::public_key_type m_pk;
     chain::private_key_type m_sk;
     void set_nodetable_pk(chain::public_key_type pk){m_pk = pk;}
@@ -165,7 +168,14 @@ private:
     void handlemsg( bi::udp::endpoint const& _from, ConnectMsg const&  msg );
     void handlemsg( bi::udp::endpoint const& _from, ConnectAckMsg const&  msg );
     void handlemsg( bi::udp::endpoint const& _from, SessionCloseMsg const&  msg );
+    void handlemsg( bi::udp::endpoint const& _from, NatTypeReqMsg const&  msg );
+    void handlemsg( bi::udp::endpoint const& _from, NatPunchReqSyncMsg const& msg ) ;
+    void handlemsg( bi::udp::endpoint const& _from, NatPunchReqAckMsg const& msg ) ;
+    void handlemsg( bi::udp::endpoint const& _from, NatPunchRspAckMsg const& msg ) ;
+    void handlemsg( bi::udp::endpoint const& _from, NatTypeRspMsg const&  msg );
+    void handlemsg( bi::udp::endpoint const& _from, NatPunchNotifyMsg const&  msg );
     void handlekcpmsg(const char *data,size_t bytes_recvd);
+    //void handlenatmsg(const char *data,size_t bytes_recvd);
     /// Called by m_socket when socket is disconnected.
     void onSocketDisconnected() {}
     ///timers
@@ -186,6 +196,13 @@ private:
     
     boost::asio::steady_timer::duration   pktlimitinterval{std::chrono::seconds{30}};
     std::unique_ptr<boost::asio::steady_timer> pktlimit_timer;
+    boost::asio::steady_timer::duration   nattypeinterval{std::chrono::seconds{20}};
+    std::unique_ptr<boost::asio::steady_timer> nattypechecktimer;
+    std::unique_ptr<boost::asio::steady_timer> natPunchNegotimer;
+    std::unique_ptr<boost::asio::steady_timer> natPunchNotifytimer;
+    boost::asio::steady_timer::duration   natPunchNotifyInterval{std::chrono::seconds{50}};
+    std::unique_ptr<boost::asio::steady_timer> natRePunchtimer;
+    boost::asio::steady_timer::duration   natRePunchInterval{std::chrono::seconds{200}};
 
     void start_p2p_monitor(ba::io_service& _io);
     void doPingTimeoutLoop();
@@ -200,6 +217,7 @@ private:
     void doSeedKeepaliveLoop();
     void doSeedKeepaliveCheck();
     NodeIPEndpoint m_hostNodeEndpoint;
+    NodeIPEndpoint m_hostPublicEp;
 
     std::unordered_map<NodeID, std::shared_ptr<NodeEntry>> m_nodes;     ///< Known Node Endpoints
     struct node_feature
@@ -232,6 +250,46 @@ private:
     void updateListenPort(NodeID const& _pubk, uint16_t port ,msg_priority pri);
     kcp_conv_t get_new_conv(void) const;
     int p2p_output(const char *buf, int len, ikcpcb *kcp, void *user,string address,uint16_t port);
+    void doGetNatType();
+    void doNatTypeGetLoop();
+    void setNodeNatType(NodeID const& _pubk,string nat_type);
+    enum punchNegoStage{
+        none = 0,
+        sync_sent,
+        establish
+    };
+    struct punchNode{
+        NodeID _id;
+        chain::account_name name;
+        bool is_agreed;
+        bool is_set;
+        uint32_t stage;
+        uint32_t punch_times;//times notice local app to punch
+        uint32_t punch_failure_times;
+    };
+    punchNode toPunch;
+    struct toBePunchFeature{
+        NodeIPEndpoint msg_src;
+        NatPunchReqSyncMsg msg;
+    };
+    std::list<toBePunchFeature> toBePunchList;
+    void send_punch_req_sync(NodeIPEndpoint const& _to,NodeID reqsrc,NodeID reqdes,chain::account_name reqsrc_name);
+    void send_punch_req_ack(NodeIPEndpoint const& _to,NodeID reqsrc,NodeID reqdes,chain::account_name reqsrc_name); 
+    void send_punch_rsp_ack(NodeIPEndpoint const& _to,NodeID reqsrc,NodeID reqdes);
+    bool need_nat_punch(string ip,uint32_t nat_type);
+    void doNatPunchNotifyLoop();
+    void doNatRePunchLoop();
+    void doNatPunchNegoLoop();
+    void doNatPunchNegoTimeout();
+    void send_nat_type_get();
+    void send_nat_package(const char *buf, int len);
+    void send_nat_punch_notify();
+    std::unordered_map<int,string> m_sockets_pri;//key is msg_priority
+    std::unordered_map<string, std::shared_ptr<NodeSocket>> m_nat_sockets;//pair:peerinfo-socket
+    bool punch_ans_recved = false;
+    void doNatSocketCheck();
+    int find_peer_priority(string peer);
+    void doPunchReset();
 }; // end of class NodeTable
 
 } // end of namespace p2p

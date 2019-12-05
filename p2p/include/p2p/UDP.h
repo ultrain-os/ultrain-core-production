@@ -17,10 +17,6 @@ namespace ultrainio
 {
 namespace p2p
 {
-    enum ext_udp_msg_type
-    {
-       need_tcp_connect = 1
-    };
     struct Reserved
     {
         uint32_t key;/*reserve_1:1,reserver_2:2 ...*/
@@ -163,6 +159,35 @@ namespace p2p
     {
         string signature;
     };
+    struct NatTypeReqMsg{
+        int type;
+    };
+#if 1 
+    struct NatTypeRspMsg{
+        string nat_type;    
+    };
+#endif
+    struct NatPunchReqSyncMsg{
+        NodeID sendsrc;
+        NodeID reqsrc;
+        NodeID reqdst;
+        chain::account_name reqsrc_name;
+    };
+    struct NatPunchReqAckMsg{
+        NodeID sendsrc;
+        NodeID reqsrc;
+        NodeID reqdst;
+        chain::account_name reqsrc_name;
+    };
+    struct NatPunchRspAckMsg{
+        NodeID sendsrc;
+        NodeID reqsrc;
+        NodeID reqdst;
+    };
+    struct NatPunchNotifyMsg{
+    //    uint32_t local_port;
+        string peer_info;//localport,123.1.1.1:20001
+    };
     using udp_msg = fc::static_variant<PingNode,
             Pong,
             FindNode,
@@ -170,7 +195,9 @@ namespace p2p
 	    NewPing,
 	    ConnectMsg,
 	    ConnectAckMsg,
-	    SessionCloseMsg>;
+	    SessionCloseMsg,
+	    NatTypeReqMsg,
+        NatTypeRspMsg,NatPunchReqSyncMsg,NatPunchReqAckMsg,NatPunchRspAckMsg,NatPunchNotifyMsg>;
 
 
 /**
@@ -188,6 +215,12 @@ struct UDPSocketEvents
     virtual void handlemsg( bi::udp::endpoint const& _from, ConnectMsg const& msg ) = 0;
     virtual void handlemsg( bi::udp::endpoint const& _from, ConnectAckMsg const& msg ) = 0;
     virtual void handlemsg( bi::udp::endpoint const& _from, SessionCloseMsg const& msg ) = 0;
+    virtual void handlemsg( bi::udp::endpoint const& _from, NatTypeReqMsg const& msg ) = 0;
+    virtual void handlemsg( bi::udp::endpoint const& _from, NatPunchReqSyncMsg const& msg ) = 0;
+    virtual void handlemsg( bi::udp::endpoint const& _from, NatPunchReqAckMsg const& msg ) = 0;
+    virtual void handlemsg( bi::udp::endpoint const& _from, NatPunchRspAckMsg const& msg ) = 0;
+    virtual void handlemsg( bi::udp::endpoint const& _from, NatTypeRspMsg const& msg ) = 0;
+    virtual void handlemsg( bi::udp::endpoint const& _from, NatPunchNotifyMsg const& msg ) = 0;
     virtual void handlekcpmsg(const char *data,size_t bytes_recvd) = 0;
 };
     using std::vector;
@@ -240,6 +273,7 @@ public:
     /// Disconnect socket.
     void disconnect() { disconnectWithError(boost::asio::error::connection_reset); }
     void reset_pktlimit_monitor();
+    void ticker_check();
 
 protected:
     void doRead();
@@ -267,6 +301,8 @@ protected:
     fc::optional<std::size_t>        outstanding_read_bytes;
     uint32_t pack_count_rcv = 0;
     uint32_t pack_count_drop = 0;
+    bool ticker_rcv = false;
+    uint32_t ticker_norcv_count = 0;
     bool check_pkt_limit_exceed();
 };
 
@@ -390,6 +426,8 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
                             udpmsgHandler m(m_host, m_recvEndpoint );
                             m.handlekcpmsg(kcp_header.data(),total_len);
                             pending_message_buffer.advance_read_ptr(total_len);
+                            is_kcp_pkt = false;
+                            ticker_rcv = true;
                         }
                         else
                         {
@@ -449,6 +487,19 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
         doRead();
    }
 
+}
+template <typename Handler, unsigned MaxDatagramSize>
+void  UDPSocket<Handler, MaxDatagramSize>::ticker_check(){
+    if(ticker_rcv){
+        ticker_rcv = false;
+        ticker_norcv_count = 0;
+    }else{
+        ilog("ticker no rcv");
+        ticker_norcv_count++;
+        if(ticker_norcv_count>5){
+            disconnect();
+        }
+    }
 }
 template <typename Handler, unsigned MaxDatagramSize>
 void UDPSocket<Handler, MaxDatagramSize>::reset_pktlimit_monitor( )
@@ -588,3 +639,9 @@ FC_REFLECT( ultrainio::p2p::UnsignedNewPing, (sourceid)(destid)(type)(source)(de
 FC_REFLECT_DERIVED( ultrainio::p2p::NewPing, (ultrainio::p2p::UnsignedNewPing), (signature))
 FC_REFLECT( ultrainio::p2p::UnsignedSessionCloseMsg, (type)(sourceid)(chain_id)(pk)(account)(conv)(todel)(to_save))
 FC_REFLECT_DERIVED( ultrainio::p2p::SessionCloseMsg, (ultrainio::p2p::UnsignedSessionCloseMsg), (signature))
+FC_REFLECT( ultrainio::p2p::NatTypeReqMsg, (type))
+FC_REFLECT( ultrainio::p2p::NatTypeRspMsg, (nat_type))
+FC_REFLECT( ultrainio::p2p::NatPunchReqSyncMsg,(sendsrc)(reqsrc)(reqdst)(reqsrc_name))
+FC_REFLECT( ultrainio::p2p::NatPunchReqAckMsg,(sendsrc)(reqsrc)(reqdst)(reqsrc_name))
+FC_REFLECT( ultrainio::p2p::NatPunchRspAckMsg,(sendsrc)(reqsrc)(reqdst))
+FC_REFLECT( ultrainio::p2p::NatPunchNotifyMsg,(peer_info))

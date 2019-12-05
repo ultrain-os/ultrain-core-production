@@ -172,6 +172,7 @@ namespace ultrainio { namespace kcp_plugin_n {
         void onNodeTableKcpConnectEvent(const kcp_conv_t& conv,const string& paddr,const msg_priority& pri);//triggered when received kcp connect msg
         void onNodeTableKcpPktRcvEvent(const kcp_conv_t& conv,const char* data,const size_t& _len);//triggered when received kcp msg
         void onSessionCloseEvent(const kcp_conv_t& conv,bool todel);
+        void OnNodeTablePunchConnectEvent(const string& peer,msg_priority pri);
         template<typename VerifierFunc> void send_all( const net_message &msg, VerifierFunc verify );
 
         void transaction_ack(const std::tuple<const fc::exception_ptr, const transaction_trace_ptr, const packed_transaction_ptr>&);
@@ -1949,7 +1950,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
             if(c->current()){
                 ilog("${peername} ${peer}-${p}-${dir} count_rcv ${counnt_rcv} count_drop ${count_drop} conv ${conv}",
                         ("peername",c->peer_name())
-                        ("peer",c->peer_ep.address().to_string())
+                        ("peer",c->peer_ep.address().to_string()+":"+to_string(c->peer_ep.port()))
                         ("p",c->priority==msg_priority_rpos ? "rpos":"trx")
                         ("dir",get_conn_directstring(c->direct))
                         ("counnt_rcv",c->pack_count_rcv)
@@ -2027,6 +2028,10 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
                 ++it;
             }
 	}
+    }
+    void kcp_plugin_impl::OnNodeTablePunchConnectEvent(const string& peer,msg_priority pri){
+        ilog("OnNodeTablePunchConnectEvent");
+        connect(peer,pri);
     }
     void kcp_plugin_impl::onNodeTableKcpConnectEvent(const kcp_conv_t& conv,const string& paddr,const msg_priority& pri)
     {
@@ -2954,6 +2959,7 @@ bool kcp_plugin_impl::authenticate_peer(const handshake_message& msg) {
          nodeTblPtr->kcppktrcvevent.connect( boost::bind(&kcp_plugin_impl::onNodeTableKcpPktRcvEvent, my.get(), _1,_2,_3));
          nodeTblPtr->sessioncloseevent.connect( boost::bind(&kcp_plugin_impl::onSessionCloseEvent, my.get(), _1,_2));
          nodeTblPtr->pktcheckevent.connect(boost::bind(&kcp_plugin_impl::authen_whitelist_and_producer,my.get(),_1,_2,_3,_4,_5));
+         nodeTblPtr->natPunchConnEvent.connect(boost::bind(&kcp_plugin_impl::OnNodeTablePunchConnectEvent,my.get(),_1,_2));
       }
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&kcp_plugin_impl::transaction_ack, my.get(), _1));
 

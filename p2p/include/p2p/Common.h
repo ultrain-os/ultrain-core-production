@@ -18,6 +18,18 @@ namespace ultrainio
     namespace p2p
     {
         using NodeID = fc::sha256;
+	enum ext_udp_msg_type
+        {
+            need_tcp_connect = 1,
+            nat_type = 2
+        };
+        enum nat_type{
+            type_none=0,
+            full_cone =1,
+            ip_restrict_cone,
+            port_restrict_cone,
+            symmetric
+        };
 
         class Node;
 
@@ -77,6 +89,19 @@ namespace ultrainio
                     }
                 }
                 m_listenPorts.emplace_back(port, businessType);
+            }
+	    void set_ext_nat_type(uint32_t nat_type){
+                if(nat_type != p2p::nat_type::type_none){
+                    ext.push_back({ext_udp_msg_type::nat_type,to_string(nat_type)});
+                }
+            }
+            uint32_t get_ext_nat_type() const{
+                for(auto& ex:ext){
+                    if(ex.key == ext_udp_msg_type::nat_type){
+                        return std::atoi(ex.value.c_str());
+                    }
+                }
+                return nat_type::type_none;
             }
             MsgExtension ext;
         };

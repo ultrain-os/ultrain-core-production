@@ -12,6 +12,7 @@
 #endif
 #include <core/utils.h>
 #include "kcp/ikcp.h"
+#include <appbase/application.hpp>
 using namespace std;
 
 namespace ultrainio
@@ -20,6 +21,7 @@ namespace p2p {
     using boost::asio::ip::tcp;
     using boost::asio::ip::address_v4;
     using boost::asio::ip::host_name;
+    using namespace appbase;
     constexpr int c_findTimeoutMicroSec = 1000000;
 
     inline bool operator==(
@@ -53,17 +55,23 @@ namespace p2p {
             m_hostNodeID(nodeID),
             m_chainid(chainid),
             m_hostNodeEndpoint(_endpoint),
+            m_hostPublicEp(_endpoint),
             m_socket_rpos(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents *>(this),bi::udp::endpoint(bi::address::from_string(_endpoint.address()), _endpoint.listenPort(msg_priority_rpos)))),
             m_socket_trx(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents *>(this),bi::udp::endpoint(bi::address::from_string(_endpoint.address()), _endpoint.listenPort(msg_priority_trx)))),
-            m_socket(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents *>(this),
-                                             (bi::udp::endpoint) _endpoint)
-           )
+            m_socket(make_shared<NodeSocket>(_io, *reinterpret_cast<UDPSocketEvents *>(this), (bi::udp::endpoint) _endpoint))
     {
         m_listenIP = listenIP;
         m_traverseNat = traverseNat;
         for (unsigned i = 0; i < s_bins; i++)
             m_state[i].distance = i;
-	ilog("chain_id ${id}",("id",m_chainid));
+        ilog("chain_id ${id}",("id",m_chainid));
+        m_hostNodeEndpoint.set_ext_nat_type(nat_type::type_none);
+        toPunch.is_set = false;
+        toPunch.is_agreed = false;
+        toPunch.punch_times = 0;
+        toPunch.stage = punchNegoStage::none;
+        toPunch._id = fc::sha256();
+        toPunch.punch_failure_times = 0;
     }
 
     NodeTable::~NodeTable() {
@@ -90,6 +98,7 @@ void NodeTable::init( const std::vector <std::string> &seeds,ba::io_service &_io
     }
     m_seeds = seeds;
     doSeedRequest(m_seeds);
+    doGetNatType();
     doIDRequestLoop();
     init_flag = true;
 }
@@ -101,6 +110,20 @@ void NodeTable::doSocketInit()
        m_socket_trx->connect();
        init_socket_flag = true;
    }
+}
+void NodeTable::doGetNatType(){
+    send_nat_type_get();
+    doNatTypeGetLoop();
+}
+void NodeTable::doNatTypeGetLoop()
+{
+    nattypechecktimer->expires_from_now( nattypeinterval);
+    nattypechecktimer->async_wait( [this](boost::system::error_code ec){
+         ilog("local nattype ${nat}",("nat",m_hostNodeEndpoint.get_ext_nat_type()));
+         if(m_hostNodeEndpoint.get_ext_nat_type()  == nat_type::type_none){
+            doGetNatType();
+        }
+    });
 }
 void NodeTable::doSeedRequest(const std::vector <std::string> &seeds)
 {
@@ -370,7 +393,10 @@ void NodeTable::ping(NodeEntry const& _nodeEntry, boost::optional<NodeID> const&
     auto const sentPing = m_sentPings.find(_nodeEntry.m_id);
     if (sentPing == m_sentPings.end())
     {
-        m_sentPings[_nodeEntry.m_id] = {fc::time_point::now(),1, _replacementNodeID};
+        NodeIPEndpoint from;
+        from.setAddress("0.0.0.0");
+        from.setUdpPort(0);
+        m_sentPings[_nodeEntry.m_id] = {fc::time_point::now(),1, _replacementNodeID,from,_nodeEntry.m_endpoint};
     }
     else
     {
@@ -388,6 +414,38 @@ void NodeTable::evict(NodeEntry const& _leastSeen, NodeEntry const& _new)
 
      ilog("evict old ${old} new ${new}",("old",_leastSeen.m_endpoint.address())("new",_new.m_endpoint.address()));
      ping(_leastSeen, _new.m_id);
+}
+void NodeTable::setNodeNatType(NodeID const& _pubk,string nat_type){
+	if (_pubk == m_hostNodeID)
+	{
+		return ;
+	}
+	shared_ptr<NodeEntry> newNode = nodeEntry(_pubk);
+	if (!newNode)
+	{
+		return;
+	}
+	if(newNode->m_endpoint.get_ext_nat_type()!= nat_type::type_none){
+		return;
+	}else{
+		//newNode->m_natType = std::atoi(nat_type.c_str());
+		newNode->m_endpoint.set_ext_nat_type(std::atoi(nat_type.c_str()));
+	}
+	NodeBucket& s = bucket_UNSAFE(newNode.get());
+	auto& nodes = s.nodes;
+	auto it = std::find(nodes.begin(), nodes.end(), newNode);
+	if (it != nodes.end())
+	{
+		auto nd = it->lock();
+		if (!nd)
+		{
+			elog("invalid weak ptr of node");
+			return;
+		}
+		//    nd->m_natType = std::atoi(nat_type.c_str());
+		nd->m_endpoint.set_ext_nat_type(std::atoi(nat_type.c_str()));
+		printallbucket();
+	}
 }
 void NodeTable::noteActiveNode(NodeID const& _pubk, NodeIPEndpoint const& _endpoint)
 {
@@ -496,9 +554,10 @@ void NodeTable::printallbucket()
             if (auto n = np.lock())
             {
                 auto ip = (*n).m_endpoint.address();
-ilog("bucket node ${ip} ${udp} ${trx} ${rpos}",("ip",ip)("udp",(*n).m_endpoint.udpPort())("trx",(*n).m_endpoint.listenPort(msg_priority_trx))("rpos",(*n).m_endpoint.listenPort(msg_priority_rpos)));
+ilog("bucket node ${ip} ${udp} ${trx} ${rpos} ${nat_type}",("ip",ip)("udp",(*n).m_endpoint.udpPort())("trx",(*n).m_endpoint.listenPort(msg_priority_trx))("rpos",(*n).m_endpoint.listenPort(msg_priority_rpos))("nat_type",(*n).m_endpoint.get_ext_nat_type()));
             }
         }
+
 }
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
     if(pong.sourceid == fc::sha256() || pong.sourceid == m_hostNodeID)
@@ -562,6 +621,16 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
         m_hostNodeEndpoint.setUdpPort(pong.destep.udpPort());
         ilog("local m_hostNodeEndpoint after ${host}",("host",m_hostNodeEndpoint.address()));
     }
+    #if 1
+    if(!m_hostPublicEp){
+        auto addr = bi::address::from_string(pong.destep.address());
+        if(isPublicAddress(addr)){
+            m_hostPublicEp.setAddress(pong.destep.address());
+            m_hostPublicEp.setUdpPort(pong.destep.udpPort());            
+            ilog("local m_hostPublicEp  ${host}",("host",m_hostPublicEp.address()));
+        }
+    }
+    #endif
     NodeIPEndpoint from;
     from.m_address = _from.address().to_string();
     from.m_udpPort = _from.port();
@@ -707,13 +776,13 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     {
 	    if(isNodeValid(Node(n.node, n.endpoint)))
 	    {
-		    //if(!m_nodes.count(n.node))
-		    //{
-			    auto nodeEntry = make_shared<NodeEntry>(m_hostNodeID,n.node,n.endpoint);
-			    ping(*nodeEntry);
-		   // }
-	    }
-    }    
+			auto nodeEntry = make_shared<NodeEntry>(m_hostNodeID,n.node,n.endpoint);
+            ping(*nodeEntry);
+            if(!m_sentPings[n.node].from){
+                m_sentPings[n.node].from = from;
+            }
+        }
+    }
     noteActiveNode(in.fromID, from);
 }
 
@@ -781,6 +850,14 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingm
     p.signature = std::string(m_sk.sign(digest_pong));    
     m_socket->send_msg(p,(bi::udp::endpoint)p.destep);
     noteActiveNode(pingmsg.sourceid, from);
+    if(pingmsg.source.get_ext_nat_type()!= nat_type::type_none){
+        setNodeNatType(pingmsg.sourceid,std::to_string(pingmsg.source.get_ext_nat_type()));
+    }
+    #if 0
+    NatTypeRspMsg rspmsg;
+    rspmsg.nat_type = "symmetric";
+    m_socket->send_msg(rspmsg,(bi::udp::endpoint)p.destep);
+    #endif
 }
 void NodeTable::recordBadNode(NodeID const& _id)
 {
@@ -830,6 +907,19 @@ void NodeTable::doPingTimeoutCheck()
                     if (auto replacement = nodeEntry(*it->second.replacementNodeID))
                         nodesToActivate.emplace_back(replacement);
 
+            }
+            else{//no this node  in nodetable
+                if(!toPunch.is_set){
+                 if(need_nat_punch(it->second.endpoint.address(),it->second.endpoint.get_ext_nat_type())){
+                     toPunch.is_set = true;
+                     toPunch._id = it->first;
+                     ilog("first choose ${nodeid}",("nodeid",toPunch._id));
+                     toPunch.is_agreed = false;
+                     send_punch_req_sync(it->second.from,m_hostNodeID,it->first,m_account);
+                     toPunch.stage =punchNegoStage::sync_sent;
+                     doNatPunchNegoLoop();
+                 }
+                }
             }
 
             it = m_sentPings.erase(it);
@@ -896,6 +986,47 @@ void NodeTable::doPktLimitCheck()
     m_socket->reset_pktlimit_monitor();
     m_socket_rpos->reset_pktlimit_monitor();
     m_socket_trx->reset_pktlimit_monitor();
+    for (auto& i: m_nat_sockets){
+        i.second->ticker_check();
+    }
+    doNatSocketCheck();
+}
+int NodeTable::find_peer_priority(string peer){
+    for(auto& i:m_sockets_pri){
+        if(i.second == peer){
+            return i.first;
+        }
+    }
+    return msg_priority::msg_priority_none;
+}
+void NodeTable::doNatSocketCheck(){
+    auto it = m_nat_sockets.begin();
+    bool change_flag = false;
+    while(it != m_nat_sockets.end()){
+        if(!it->second->isOpen()){
+            string peer = it->first;
+            int peer_pri = find_peer_priority(peer);
+            if(peer_pri != msg_priority::msg_priority_none){
+                m_sockets_pri.erase(peer_pri);
+            }
+            it = m_nat_sockets.erase(it);
+            change_flag = true;
+            ilog("socket size${size1} ${size2}",("size1",m_nat_sockets.size())("size2",m_sockets_pri.size()));
+        }
+        else{
+            ++it;
+        }
+    }
+    if(change_flag){
+        if(m_nat_sockets.size()==0){
+            doPunchReset();
+        }else if(m_nat_sockets.size()==1){
+            doNatRePunchLoop();
+            toPunch.punch_times = 0;
+        }
+    }
+
+
 }
 void NodeTable::doPktLimitLoop()
 {
@@ -919,6 +1050,10 @@ void NodeTable::start_p2p_monitor(ba::io_service& _io)
     doSeedKeepaliveLoop();
     pktlimit_timer.reset(new boost::asio::steady_timer(_io));
     doPktLimitLoop();
+    nattypechecktimer.reset(new boost::asio::steady_timer(_io));
+    natPunchNegotimer.reset(new boost::asio::steady_timer(_io));
+    natPunchNotifytimer.reset(new boost::asio::steady_timer(_io));
+    natRePunchtimer.reset(new boost::asio::steady_timer(_io));
 }
 
 void NodeTable::send_request_connect(NodeID nodeID)
@@ -1244,6 +1379,13 @@ void NodeTable::do_send_connect_packet(string peer,msg_priority pri,uint16_t por
     msg.account = m_account;
     fc::sha256 digest = fc::sha256::hash<UnsignedConnectMsg>(msg);
     msg.signature = std::string(m_sk.sign(digest));
+    string peer_info = peer+":"+to_string(port);
+    if(m_nat_sockets.count(peer_info)){
+        auto socket = m_nat_sockets[peer_info];
+        ilog("punch socket");
+        socket->send_msg(msg,bi::udp::endpoint(bi::address::from_string(peer),port));
+        return ;
+    }
     switch(pri)
     {
         case msg_priority_rpos:
@@ -1297,6 +1439,14 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, ConnectMsg const&  ms
     ackmsg.conv = get_new_conv();
     fc::sha256 hash = fc::sha256::hash<UnsignedConnectAckMsg>(ackmsg);
     ackmsg.signature = std::string(m_sk.sign(hash));
+    string peer_info = _from.address().to_string()+":"+to_string(_from.port());
+    if(m_nat_sockets.count(peer_info)){
+        auto socket = m_nat_sockets[peer_info];
+        ilog("punch socket");
+        socket->send_msg(ackmsg,bi::udp::endpoint(_from.address(),_from.port()));
+        kcpconnectevent(ackmsg.conv,_from.address().to_string()+":"+std::to_string(_from.port()),msg.pri);
+        return ;
+    }
     switch(msg.pri)
     {
 	    case msg_priority_rpos:
@@ -1341,7 +1491,6 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, ConnectAckMsg const& 
         recordBadNode( msg.sourceid);
         return ;
     }
-
     kcpconnectackevent(msg.conv,msg.peer);
 }
 void NodeTable::sendSessionCloseMsg(bi::udp::endpoint const& _to,kcp_conv_t conv,msg_priority pri,bool todel)
@@ -1356,6 +1505,15 @@ void NodeTable::sendSessionCloseMsg(bi::udp::endpoint const& _to,kcp_conv_t conv
     msg.todel = todel;
     fc::sha256 hash = fc::sha256::hash<UnsignedSessionCloseMsg>(msg);
     msg.signature = std::string(m_sk.sign(hash));
+    ilog("send sessonclose ${to} conv ${conv}",("to",_to.address().to_string())("conv",conv));
+    string peer_info = _to.address().to_string()+":"+to_string(_to.port());
+    if(m_nat_sockets.count(peer_info)){
+        auto socket = m_nat_sockets[peer_info];
+        ilog("punch socket");
+        socket->send_msg(msg,_to);
+        return ;
+    }
+
     switch(pri)
     {
             case msg_priority_rpos:
@@ -1367,7 +1525,6 @@ void NodeTable::sendSessionCloseMsg(bi::udp::endpoint const& _to,kcp_conv_t conv
             default :
                     break;
     }
-   ilog("send sessonclose ${to} conv ${conv}",("to",_to.address().to_string())("conv",conv));
 }
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, SessionCloseMsg const& msg)
 {
@@ -1403,6 +1560,306 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, SessionCloseMsg const
  
     sessioncloseevent(msg.conv,msg.todel);
 }
+void NodeTable::doNatPunchNegoTimeout(){
+    if(!toPunch.is_agreed && !toBePunchList.empty()){
+        ilog("no response but has ask");
+        auto& latest_msg = toBePunchList.back();
+        toPunch.is_set = true;
+        toPunch._id = latest_msg.msg.reqsrc;
+        toPunch.name = latest_msg.msg.reqsrc_name;
+        send_punch_req_ack(latest_msg.msg_src,m_hostNodeID,latest_msg.msg.reqsrc,m_account); 
+        toPunch.stage  = punchNegoStage::sync_sent;
+        toBePunchList.clear();
+        doNatPunchNegoLoop();
+    }else{
+        if(!toPunch.is_agreed){
+            ilog("no response no  ask");
+            toPunch.is_set = false;
+        }
+    }
+}
+void NodeTable::doNatPunchNegoLoop(){
+    boost::asio::steady_timer::duration interval;
+    int int_interval = 10+rand()%9;
+    ilog("interval ${int}",("int",int_interval));
+    interval = {std::chrono::seconds{int_interval}};
+    natPunchNegotimer->expires_from_now( interval);
+    natPunchNegotimer->async_wait( [this](boost::system::error_code ec){
+        doNatPunchNegoTimeout();
+    });
+}
+void NodeTable::send_punch_req_sync(NodeIPEndpoint const& _to,NodeID reqsrc,NodeID reqdes,chain::account_name reqsrc_name){
+	NatPunchReqSyncMsg msg;
+	msg.sendsrc = m_hostNodeID;
+	msg.reqsrc = reqsrc;
+	msg.reqdst = reqdes;
+    msg.reqsrc_name = reqsrc_name;
+	m_socket->send_msg(msg,(bi::udp::endpoint)_to);
+}
+void NodeTable::send_punch_req_ack(NodeIPEndpoint const& _to,NodeID reqsrc,NodeID reqdes,chain::account_name reqsrc_name){
+    NatPunchReqAckMsg msg;
+    msg.sendsrc = m_hostNodeID;
+    msg.reqsrc = reqsrc;
+    msg.reqdst = reqdes;
+    msg.reqsrc_name = reqsrc_name;
+    m_socket->send_msg(msg,(bi::udp::endpoint)_to);
+}
+void NodeTable::send_punch_rsp_ack(NodeIPEndpoint const& _to,NodeID reqsrc,NodeID reqdes){
+     NatPunchRspAckMsg msg;
+     msg.sendsrc = m_hostNodeID;
+     msg.reqsrc = reqsrc;
+     msg.reqdst = reqdes;
+     m_socket->send_msg(msg,(bi::udp::endpoint)_to);
+}
+void NodeTable::handlemsg( bi::udp::endpoint const& _from, NatTypeReqMsg const& msg){
+}
+#if 1
+void NodeTable::handlemsg( bi::udp::endpoint const& _from, NatPunchReqSyncMsg const& msg ){
+    if(msg.reqdst != m_hostNodeID){
+        shared_ptr<NodeEntry> newNode = nodeEntry(msg.reqdst);
+        if(!newNode){
+                return ;
+        }else{
+        ilog("NatPunchReqSyncMsg i am bridge");
+            send_punch_req_sync(newNode->endPoint(),msg.reqsrc,msg.reqdst,msg.reqsrc_name);
+        }
+    }else{
+        shared_ptr<NodeEntry> newNode = nodeEntry(msg.reqdst);
+        if(newNode){
+            elog("you ${id} is my neighbour,no need to punch",("id",msg.reqdst));
+            if(toPunch.is_set && toPunch._id == msg.reqsrc){
+               doPunchReset();
+            }
+            return ;
+        }
+    //to me
+        NodeIPEndpoint from;
+        from.m_address = _from.address().to_string();
+        from.m_udpPort = _from.port();
+        if(!toPunch.is_set){//me is avalible
+        ilog("for me  i can NatPunchReqSyncMsg");
+            send_punch_req_ack(from,m_hostNodeID,msg.reqsrc,m_account);
+            toPunch.is_set = true;
+            toPunch._id = msg.reqsrc;
+            toPunch.stage =punchNegoStage::sync_sent;
+            toPunch.name = msg.reqsrc_name;
+        }else{
+            if(!toPunch.is_agreed){
+        	    ilog("i am busy wait NatPunchReqSyncMsg");
+                toBePunchFeature element;
+                element.msg_src = from;
+                element.msg = msg;
+                toBePunchList.emplace_back(element);
+            }
+        }
+    }
+}
+void NodeTable::handlemsg( bi::udp::endpoint const& _from, NatPunchReqAckMsg const& msg ){
+    if(msg.reqdst != m_hostNodeID){
+        shared_ptr<NodeEntry> newNode = nodeEntry(msg.reqdst);
+        if(!newNode){
+            return ;
+        }else{
+            ilog("NatPunchReqAckMsg i am bridge");
+           send_punch_req_ack(newNode->endPoint(),msg.reqsrc,msg.reqdst,msg.reqsrc_name); 
+        }
+    }else{
+        shared_ptr<NodeEntry> newNode = nodeEntry(msg.reqdst);
+        if(newNode){
+            elog("you ${id} is my neighbour,no need to punch",("id",msg.reqdst));
+            if(toPunch.is_set && toPunch._id == msg.reqsrc){
+               doPunchReset();
+            }
+            return ;
+        }
+        if(toPunch.is_set && toPunch._id == msg.reqsrc && toPunch.stage==punchNegoStage::sync_sent){
+             ilog("for me okey NatPunchReqAckMsg");
+             NodeIPEndpoint from;
+             from.m_address = _from.address().to_string();
+             from.m_udpPort = _from.port();
+             send_punch_rsp_ack(from,m_hostNodeID,msg.reqsrc);
+             toPunch.is_agreed = true;
+             toPunch.name = msg.reqsrc_name;
+             toPunch.stage = punchNegoStage::establish;
+             toBePunchList.clear();//be asked is useless;
+             send_nat_punch_notify();
+         }
+    }
+}
+void NodeTable::handlemsg( bi::udp::endpoint const& _from, NatPunchRspAckMsg const& msg ){
+    if(msg.reqdst != m_hostNodeID){
+        shared_ptr<NodeEntry> newNode = nodeEntry(msg.reqdst);
+        if(!newNode){
+            return ;
+        }else{
+            ilog("i am bridge");
+            send_punch_rsp_ack(newNode->endPoint(),msg.reqsrc,msg.reqdst);
+        }
+
+    }else{
+        shared_ptr<NodeEntry> newNode = nodeEntry(msg.reqdst);
+        if(newNode){
+            elog("you ${id} is my neighbour,no need to punch",("id",msg.reqdst));
+            if(toPunch.is_set && toPunch._id == msg.reqsrc){
+               doPunchReset();
+            }
+            return ;
+        }
+        if(toPunch.is_set && toPunch._id == msg.reqsrc && toPunch.stage==punchNegoStage::sync_sent){
+            ilog("for me i can NatPunchRspAckMsg");
+            toPunch.is_agreed = true;
+            toPunch.stage = punchNegoStage::establish;
+            toBePunchList.clear();//be asked is useless;
+            send_nat_punch_notify();
+        }
+    }
+}
+void NodeTable::doNatRePunchLoop(){
+    natRePunchtimer->expires_from_now( natRePunchInterval);
+    natRePunchtimer->async_wait( [this](boost::system::error_code ec){
+        if(ec.value() == boost::asio::error::operation_aborted){
+            ilog(" doNatRePunchLoop ${ec}",("ec",ec.message()));
+        }else{
+        send_nat_punch_notify();
+        }
+    });
+}
+
+
+void NodeTable::doNatPunchNotifyLoop(){
+    natPunchNotifytimer->expires_from_now( natPunchNotifyInterval);
+    natPunchNotifytimer->async_wait( [this](boost::system::error_code ec){
+        if(ec.value() == boost::asio::error::operation_aborted){
+            ilog(" doNatPunchNotifyLoop ${ec}",("ec",ec.message()));
+        }else{
+        if(!punch_ans_recved){
+            elog("no response from punch app");
+            if(toPunch.punch_times<4){
+                toPunch.punch_times++;
+                send_nat_punch_notify();
+            }
+            else{
+               //no response is actually no exsit,so just Repunch
+               doNatRePunchLoop();
+               toPunch.punch_times = 0;
+            }
+        }
+        }
+
+    });
+}
+void NodeTable::handlemsg( bi::udp::endpoint const& _from, NatTypeRspMsg const& msg){
+	ilog("handle NAt");
+    ilog("nattype ${nat}",("nat",msg.nat_type));
+    string nat_type = msg.nat_type;
+    uint32_t nat_type_int = nat_type::type_none;
+    if(nat_type == "full_cone"){
+        nat_type_int = nat_type::full_cone;
+    }else if(nat_type == "restrict_ip_cone"){
+        nat_type_int = nat_type::ip_restrict_cone;
+    }else if(nat_type == "restrict_port_cone"){
+        nat_type_int = nat_type::port_restrict_cone;
+    }else if(nat_type == "symmetric"){
+        nat_type_int = nat_type::symmetric;
+    }else{
+        nat_type_int = nat_type::type_none;
+    } 
+    m_hostNodeEndpoint.set_ext_nat_type(nat_type_int);
+}
+void NodeTable::handlemsg( bi::udp::endpoint const& _from, NatPunchNotifyMsg const& msg){
+    //string nat_info = "20000,10.0.0.216:20000";
+    try{
+        msg_priority pri_need = msg_priority_none;
+        string nat_info = msg.peer_info;
+        ilog("NatPunchNotifyMsg ${msg}",("msg",nat_info));
+        auto colon = nat_info.find(",");
+        if (colon == std::string::npos || colon == 0) {
+            elog("invalid");
+            return ;
+        }
+        if(punch_ans_recved){
+            elog("no ask but answer,is duplicate msg");
+            return ;
+        }
+        if(!toPunch.is_set || !toPunch.is_agreed){
+            elog("not for this round.maybe expired");
+            return ;
+        }
+        punch_ans_recved = true;
+        auto local_port = nat_info.substr(0,colon);
+        if(std::stoi(local_port) == 0){
+            elog("can not punch");
+            toPunch.punch_failure_times++;
+            if(m_nat_sockets.size()<2){//just need 2
+                if(m_nat_sockets.size()==0 && toPunch.punch_failure_times > 5)
+                {// no enough socket && failure in this one several times change to another
+                     ilog("change source");
+                     doPunchReset();
+                }else{
+                    doNatRePunchLoop();
+                    toPunch.punch_times = 0;
+                }
+            }
+            return ;
+        }
+        toPunch.punch_failure_times = 0;// clear punch failure log
+        auto peer_info = nat_info.substr(colon + 1);
+        if(m_nat_sockets.find(peer_info) != m_nat_sockets.end()){
+            elog("duplicate msg");
+            if(m_nat_sockets.size() == 1){
+                ilog("need another punch");
+                doNatRePunchLoop();
+                toPunch.punch_times = 0;
+            }
+
+            return ;
+        }
+        auto it = m_sockets_pri.find(msg_priority_rpos);
+        if(it == m_sockets_pri.end()){
+            pri_need = msg_priority_rpos;
+        }else{
+            if(m_sockets_pri.find(msg_priority_trx) == m_sockets_pri.end()){
+                 pri_need = msg_priority_trx;
+            }
+        }
+        if(pri_need == msg_priority_none){
+            return ;//just need 2
+        }
+        auto newSocket = make_shared<NodeSocket>(std::ref( appbase::app().get_io_service() ), *reinterpret_cast<UDPSocketEvents *>(this),bi::udp::endpoint(bi::address::from_string(m_hostNodeEndpoint.address()),std::stoi(local_port)));
+        m_nat_sockets[peer_info] = newSocket;
+        newSocket->connect();
+        natPunchConnEvent(peer_info,pri_need);
+        m_sockets_pri[pri_need] = peer_info;
+    }
+    catch(  const fc::exception& e ) {
+        edump((e.to_detail_string() ));
+    }
+    catch(const std::exception& e)
+    {
+        elog( "error: ${e}", ("e",e.what()));
+    }
+    catch(...)
+    {
+        elog("handlemsg error");
+    }
+    if(m_nat_sockets.size() == 1){
+        ilog("need another punch");
+        doNatRePunchLoop();
+        toPunch.punch_times = 0;
+    }
+}
+
+#endif
+void NodeTable::doPunchReset(){
+     toPunch.is_set = false;
+     toPunch.is_agreed = false;
+     toPunch.punch_times = 0;
+     toPunch.stage = punchNegoStage::none;
+     toPunch._id = fc::sha256();
+     toPunch.punch_failure_times = 0;
+     natPunchNotifytimer->cancel();
+     natRePunchtimer->cancel();
+}
 void NodeTable::handlekcpmsg(const char *data,size_t bytes_recvd)
 {
     kcp_conv_t conv;
@@ -1414,7 +1871,6 @@ void NodeTable::handlekcpmsg(const char *data,size_t bytes_recvd)
     }
     kcppktrcvevent(conv,data,bytes_recvd);
 }
-
 kcp_conv_t NodeTable::get_new_conv(void) const
 {
     static uint32_t static_cur_conv = hash64(m_hostNodeID.str().substr(0,7).c_str(),7);
@@ -1423,6 +1879,14 @@ kcp_conv_t NodeTable::get_new_conv(void) const
 }
 void NodeTable::send_kcp_package(const char *buf, int len,bi::udp::endpoint to,msg_priority pri)
 {
+    string peer_info = to.address().to_string()+":"+to_string(to.port());
+    if(m_nat_sockets.count(peer_info)){
+        auto socket = m_nat_sockets[peer_info];
+        socket->send_kcp_packet(buf, len,to);
+        return ;
+    }
+
+    
     switch(pri)
     {
             case msg_priority_rpos:
@@ -1434,6 +1898,43 @@ void NodeTable::send_kcp_package(const char *buf, int len,bi::udp::endpoint to,m
             default :
                     break;
     }
+}
+void NodeTable::send_nat_punch_notify(){
+    int nat_socket_size = m_nat_sockets.size();
+    if(nat_socket_size>=2 || !toPunch.is_set){
+        return ;
+    }
+    string msg = "{\"msg_type\":\"set_host_id\",\"msg_id\":\""+to_string(nat_socket_size+1)+"\",\"host_id\":\""+m_account.to_string()+"\",\"target_host_id\":\""+toPunch.name.to_string()+"\"}";
+    ilog("msg ${msg}",("msg",msg));
+    send_nat_package(msg.c_str(),msg.size());
+    punch_ans_recved = false;
+    doNatPunchNotifyLoop();
+}
+void NodeTable::send_nat_type_get(){
+    string msg = "{\"msg_type\":\"ask_nat_type\"}";
+    ilog("msg ${msg}",("msg",msg));
+    send_nat_package(msg.c_str(),msg.size());
+}
+void NodeTable::send_nat_package(const char *buf, int len){
+    m_socket->send_kcp_packet(buf,len,bi::udp::endpoint(bi::address::from_string("0.0.0.0"), 6010));
+}
+bool NodeTable::need_nat_punch(string ip,uint32_t nat_type){
+    uint32_t local_nat_type =0;
+    local_nat_type = m_hostNodeEndpoint.get_ext_nat_type();
+    if(local_nat_type == nat_type::type_none){
+        return false;
+    }
+    if((local_nat_type > nat_type::ip_restrict_cone && nat_type == symmetric)
+            || (local_nat_type == symmetric && nat_type > nat_type::ip_restrict_cone)){
+       auto addr = bi::address::from_string(ip);
+       auto local_public = bi::address::from_string(m_hostPublicEp.address());
+       if(isPublicAddress(addr) && isPublicAddress(local_public) && ip == m_hostPublicEp.address()){
+	       return false;//most router can not support loopback
+       }else{
+           return true;
+       }
+    }
+    return false;
 }
 }  // namespace p2p
 }  // namespace ultrainio
