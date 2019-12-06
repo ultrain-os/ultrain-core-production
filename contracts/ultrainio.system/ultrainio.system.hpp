@@ -635,7 +635,7 @@ namespace ultrainiosystem {
                             const std::vector<committee_info>& cmt_set);
          void setlwcparams(uint32_t keep_blocks_num);
          void setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on);
-         void setgenesisprodpk(const std::string& genesis_prod_pk);
+         void setgenesisprodpk(uint64_t chain_type, const std::string& genesis_prod_pk);
          void startnewchain(name chain_name, account_name owner);
          void destorychain(name chain_name, bool force);
 

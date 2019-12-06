@@ -154,6 +154,7 @@
       "name": "setgenesisprodpk",
       "base": "",
       "fields": [
+        {"name": "chain_type",               "type": "uint64"},
         {"name": "genesis_prod_pk",          "type": "string"}
       ]
     },{

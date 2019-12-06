@@ -1155,12 +1155,17 @@ namespace ultrainiosystem {
         }
     }
 
-    void system_contract::setgenesisprodpk(const std::string& genesis_prod_pk) {
+    void system_contract::setgenesisprodpk(uint64_t chain_type, const std::string& genesis_prod_pk) {
         require_auth(N(ultrainio));
+        chaintypes_table type_tbl(_self, _self);
+        auto typeiter = type_tbl.find(chain_type);
+        ultrainio_assert(typeiter != type_tbl.end(), "chain type does not exist");
+
         new_chain_singleton  ncs(_self, _self);
         if(!ncs.exists()) {
             new_chain_info new_chain;
             new_chain.genesis_producer_pk = genesis_prod_pk;
+            new_chain.chain_type = chain_type;
             new_chain.creation_status = new_chain_info::new_chain_status::auxiliary_nodes_prepared;
             ncs.set(new_chain);
         } else {
@@ -1169,6 +1174,7 @@ namespace ultrainiosystem {
                 || new_chain_info::new_chain_status::rpos_running == _new_chain.creation_status, "the creation of previous chain is ongoing");
             _new_chain.genesis_producer_pk = genesis_prod_pk;
             _new_chain.chain_name = default_chain_name;
+            _new_chain.chain_type = chain_type;
             _new_chain.master_block_height = 1;
             _new_chain.first_period_buyer = N(ultrainio);
             _new_chain.creation_status = new_chain_info::new_chain_status::auxiliary_nodes_prepared;
@@ -1180,9 +1186,6 @@ namespace ultrainiosystem {
         require_auth(owner);
         auto itor = _chains.find(chain_name);
         ultrainio_assert(itor == _chains.end(), "there has been a subchian with this name");
-        chaintypes_table type_tbl(_self, _self);
-        auto type_ite = type_tbl.begin();
-        ultrainio_assert(type_ite != type_tbl.end(), "there's no valid chain type");
         new_chain_singleton  ncs(_self, _self);
         ultrainio_assert(ncs.exists(), "new chain info is empty, please contact Ultrain to set it");
         auto new_chain = ncs.get();
@@ -1190,7 +1193,6 @@ namespace ultrainiosystem {
 
         new_chain.first_period_buyer = owner;
         new_chain.chain_name = chain_name;
-        new_chain.chain_type = type_ite->type_id;
         new_chain.genesis_time = now() + (2 * 60);
         new_chain.master_block_height = uint32_t(head_block_number());
 
@@ -1203,7 +1205,7 @@ namespace ultrainiosystem {
 
         //register new chain
         INLINE_ACTION_SENDER(ultrainiosystem::system_contract, regsubchain)(N(ultrainio), {N(ultrainio), N(active)},
-                            {chain_name, type_ite->type_id, new_chain.genesis_producer_pk} );
+                            {chain_name, new_chain.chain_type, new_chain.genesis_producer_pk} );
 
         new_chain.creation_status = new_chain_info::new_chain_status::registered;
         ncs.set(new_chain);
