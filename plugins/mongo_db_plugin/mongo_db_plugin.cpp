@@ -32,7 +32,9 @@
 #include <mongocxx/pool.hpp>
 #include <mongocxx/exception/operation_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
-
+#include <ultrainio/chain/plugin_interface.hpp>
+using namespace ultrainio::chain::plugin_interface::compat;
+using namespace ultrainio::chain;
 namespace fc { class variant; }
 
 namespace ultrainio {
@@ -102,6 +104,8 @@ public:
    void _process_accepted_block( const chain::block_state_ptr& );
    void process_irreversible_block(const chain::block_state_ptr&);
    void _process_irreversible_block(const chain::block_state_ptr&);
+   void process_failed_transaction( const chain::packed_transaction_ptr&, const string& );
+   void _process_failed_transaction( const chain::packed_transaction_ptr&, const string& );
 
    optional<abi_serializer> get_abi_serializer( account_name n );
    template<typename T> fc::variant to_variant_with_abi( const T& obj );
@@ -165,6 +169,7 @@ public:
    mongocxx::collection _blocks;
    mongocxx::collection _pub_keys;
    mongocxx::collection _account_controls;
+   mongocxx::collection _failed_trans;
 
    size_t max_queue_size = 0;
    int queue_sleep_time = 0;
@@ -187,7 +192,8 @@ public:
 
    struct by_account;
    struct by_last_access;
-
+   channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
+   void transaction_ack(const std::tuple<const fc::exception_ptr, const chain::transaction_trace_ptr, const chain::packed_transaction_ptr>&);
    struct abi_cache {
       account_name                     account;
       fc::time_point                   last_accessed;
@@ -219,6 +225,7 @@ public:
    static const std::string accounts_col;
    static const std::string pub_keys_col;
    static const std::string account_controls_col;
+   static const std::string failed_trans_col;
 };
 
 const action_name mongo_db_plugin_impl::newaccount = chain::newaccount::get_name();
@@ -237,6 +244,7 @@ const std::string mongo_db_plugin_impl::action_traces_col = "action_traces";
 const std::string mongo_db_plugin_impl::accounts_col = "accounts";
 const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
 const std::string mongo_db_plugin_impl::account_controls_col = "account_controls";
+const std::string mongo_db_plugin_impl::failed_trans_col = "failed_trxs";
 
 bool mongo_db_plugin_impl::filter_include( const account_name& receiver, const action_name& act_name,
                                            const vector<chain::permission_level>& authorization ) const
@@ -398,6 +406,7 @@ void mongo_db_plugin_impl::consume_blocks() {
       _block_states = mongo_conn[db_name][block_states_col];
       _pub_keys = mongo_conn[db_name][pub_keys_col];
       _account_controls = mongo_conn[db_name][account_controls_col];
+      _failed_trans = mongo_conn[db_name][failed_trans_col];
 
       while (true) {
          boost::mutex::scoped_lock lock(mtx);
@@ -859,6 +868,197 @@ void mongo_db_plugin_impl::process_accepted_block( const chain::block_state_ptr&
    }
 
 }*/
+
+void mongo_db_plugin_impl::_process_failed_transaction( const chain::packed_transaction_ptr& pack_trx, const string& error_info ) {
+    using namespace bsoncxx::types;
+    using bsoncxx::builder::basic::kvp;
+    using bsoncxx::builder::basic::make_document;
+    using bsoncxx::builder::basic::make_array;
+    transaction_id_type id = pack_trx->id();
+    const auto t = std::make_shared<transaction_metadata>(*pack_trx);
+    ilog( "mongodb process_failed_transaction trx-id = ${id} error_info: ${why}",("id", id)("why", error_info));
+    const auto& trx = t->trx;
+    auto trans_doc = bsoncxx::builder::basic::document{};
+    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+
+    const auto trx_id = t->id;
+    const auto trx_id_str = trx_id.str();
+    const chain::transaction_header& trx_header = trx;
+
+    int32_t act_num = 0;
+    auto process_action = [&](const std::string& trx_id_str, const chain::action& act, bsoncxx::builder::basic::array& act_array, bool cfa) -> auto {
+        auto act_doc = bsoncxx::builder::basic::document();
+        act_doc.append( kvp( "action_num", b_int32{act_num} ),
+                        kvp( "trx_id", trx_id_str ));
+        act_doc.append( kvp( "cfa", b_bool{cfa} ));
+        act_doc.append( kvp( "account", act.account.to_string()));
+        act_doc.append( kvp( "name", act.name.to_string()));
+        act_doc.append( kvp( "authorization", [&act]( bsoncxx::builder::basic::sub_array subarr ) {
+            for( const auto& auth : act.authorization ) {
+                subarr.append( [&auth]( bsoncxx::builder::basic::sub_document subdoc ) {
+                subdoc.append( kvp( "actor", auth.actor.to_string()),
+                                kvp( "permission", auth.permission.to_string()));
+                } );
+            }
+        } ));
+
+        try {
+            update_account( act );
+        } catch (...) {
+            ilog( "Unable to update account for ${s}::${n}", ("s", act.account)( "n", act.name ));
+        }
+
+        add_data( act_doc, _accounts, act, abi_serializer_max_time );
+        act_array.append( act_doc );
+        ++act_num;
+        return act_num;
+    };
+
+    trans_doc.append( kvp( "trx_id", trx_id_str ),
+                        kvp( "action_count", b_int32{static_cast<int32_t>(trx.total_actions())} ),
+                        kvp( "error_info", error_info ) );
+
+    string signing_keys_json;
+    if( t->signing_keys.valid()) {
+        signing_keys_json = fc::json::to_string( t->signing_keys->second );
+    } else {
+        auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
+        if( !signing_keys.empty()) {
+            signing_keys_json = fc::json::to_string( signing_keys );
+        }
+    }
+    string trx_header_json = fc::json::to_string( trx_header );
+    try {
+        const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
+        trans_doc.append( kvp( "transaction_header", trx_header_value ));
+    } catch( bsoncxx::exception& ) {
+        try {
+            trx_header_json = fc::prune_invalid_utf8( trx_header_json );
+            const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
+            trans_doc.append( kvp( "transaction_header", trx_header_value ));
+            trans_doc.append( kvp( "non-utf8-purged", b_bool{true}));
+        } catch( bsoncxx::exception& e ) {
+            elog( "Unable to convert transaction header JSON to MongoDB JSON: ${e}", ("e", e.what()));
+            elog( "  JSON: ${j}", ("j", trx_header_json));
+        }
+    }
+    if( !signing_keys_json.empty()) {
+        try {
+            const auto& keys_value = bsoncxx::from_json( signing_keys_json );
+            trans_doc.append( kvp( "signing_keys", keys_value ));
+        } catch( bsoncxx::exception& e ) {
+            // should never fail, so don't attempt to remove invalid utf8
+            elog( "Unable to convert signing keys JSON to MongoDB JSON: ${e}", ("e", e.what()));
+            elog( "  JSON: ${j}", ("j", signing_keys_json));
+        }
+    }
+
+    if( !trx.actions.empty() && store_actions) {
+        bsoncxx::builder::basic::array action_array;
+        for( const auto& act : trx.actions ) {
+            process_action( trx_id_str, act, action_array, false );
+        }
+        trans_doc.append( kvp( "actions", action_array ));
+    }
+
+    if( !trx.context_free_actions.empty() && store_actions) {
+        bsoncxx::builder::basic::array action_array;
+        for( const auto& cfa : trx.context_free_actions ) {
+            process_action( trx_id_str, cfa, action_array, true );
+        }
+        trans_doc.append( kvp( "context_free_actions", action_array ));
+    }
+
+    string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
+    string trx_signatures_json = fc::json::to_string( trx.signatures );
+    string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
+
+    try {
+        if( !trx_extensions_json.empty()) {
+            try {
+                const auto& trx_extensions_value = bsoncxx::from_json( trx_extensions_json );
+                trans_doc.append( kvp( "transaction_extensions", trx_extensions_value ));
+            } catch( bsoncxx::exception& ) {
+                static_assert( sizeof(std::remove_pointer<decltype(b_binary::bytes)>::type) == sizeof(std::string::value_type), "string type not storable as b_binary" );
+                trans_doc.append( kvp( "transaction_extensions",
+                                    b_binary{bsoncxx::binary_sub_type::k_binary,
+                                                static_cast<uint32_t>(trx_extensions_json.size()),
+                                                reinterpret_cast<const u_int8_t*>(trx_extensions_json.data())} ));
+            }
+        } else {
+            trans_doc.append( kvp( "transaction_extensions", make_array()));
+        }
+
+        if( !trx_signatures_json.empty()) {
+            // signatures contain only utf8
+            const auto& trx_signatures_value = bsoncxx::from_json( trx_signatures_json );
+            trans_doc.append( kvp( "signatures", trx_signatures_value ));
+        } else {
+            trans_doc.append( kvp( "signatures", make_array()));
+        }
+
+        if( !trx_context_free_data_json.empty()) {
+            try {
+                const auto& trx_context_free_data_value = bsoncxx::from_json( trx_context_free_data_json );
+                trans_doc.append( kvp( "context_free_data", trx_context_free_data_value ));
+            } catch( bsoncxx::exception& ) {
+                static_assert( sizeof(std::remove_pointer<decltype(b_binary::bytes)>::type) ==
+                            sizeof(std::remove_pointer<decltype(trx.context_free_data[0].data())>::type), "context_free_data not storable as b_binary" );
+                bsoncxx::builder::basic::array data_array;
+                for (auto& cfd : trx.context_free_data) {
+                data_array.append(
+                        b_binary{bsoncxx::binary_sub_type::k_binary,
+                                static_cast<uint32_t>(cfd.size()),
+                                reinterpret_cast<const u_int8_t*>(cfd.data())} );
+                }
+                trans_doc.append( kvp( "context_free_data", data_array.view() ));
+            }
+        } else {
+            trans_doc.append( kvp( "context_free_data", make_array()));
+        }
+    } catch( std::exception& e ) {
+        elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
+        elog( "  JSON: ${j}", ("j", trx_extensions_json));
+        elog( "  JSON: ${j}", ("j", trx_signatures_json));
+        elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
+    }
+
+    trans_doc.append( kvp( "createdAt", b_date{now} ));
+
+    try {
+        if( !_failed_trans.insert_one( trans_doc.view())) {
+            ULTRAIN_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", trx_id));
+        }
+    } catch(...) {
+        handle_mongo_exception("_failed_trans insert", __LINE__);
+    }
+}
+
+void mongo_db_plugin_impl::process_failed_transaction( const chain::packed_transaction_ptr& pack_trx, const string& error_info ) {
+   try {
+      _process_failed_transaction( pack_trx, error_info );
+   } catch (fc::exception& e) {
+      elog("FC Exception while processing failed transaction metadata: ${e}", ("e", e.to_detail_string()));
+   } catch (std::exception& e) {
+      elog("STD Exception while processing failed tranasction metadata: ${e}", ("e", e.what()));
+   } catch (...) {
+      elog("Unknown exception while processing failed transaction metadata");
+   }
+}
+
+void mongo_db_plugin_impl::transaction_ack(const std::tuple<const fc::exception_ptr, const chain::transaction_trace_ptr, const chain::packed_transaction_ptr>& results) {
+    const auto exception_ptr = std::get<0>(results);
+    if ( exception_ptr ) {
+        const auto error_code = exception_ptr->code();
+        if ( error_code == node_is_syncing::code_value
+            || error_code == expired_tx_exception::code_value
+            || error_code == tx_duplicate::code_value) {
+                return;
+        }
+        process_failed_transaction( std::get<2>(results), exception_ptr->to_detail_string() );
+    }
+}
 
 void mongo_db_plugin_impl::_process_accepted_transaction( const transaction_metadata_blocknum& tb ) {
    using namespace bsoncxx::types;
@@ -1918,6 +2118,8 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
 
 void mongo_db_plugin::plugin_startup()
 {
+   my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&mongo_db_plugin_impl::transaction_ack, my.get(), _1));
+
 }
 
 void mongo_db_plugin::plugin_shutdown()
