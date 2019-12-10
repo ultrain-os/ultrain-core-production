@@ -25,6 +25,8 @@
 #include <fstream>
 #include <gmp.h>
 #include <crypto/Random.h>
+#include <sstream>
+#include <iomanip>
 
 #include <ultrainio/chain/webassembly/wabt.hpp>
 #include <ultrainio/chain/webassembly/binaryen.hpp>
@@ -99,9 +101,6 @@ class context_aware_api {
 };
 
 #ifdef ULTRAIN_SUPPORT_TYPESCRIPT
-#include <sstream>
-#include <iomanip>
-
 class typescript_action_api : public context_aware_api {
    private:
      template<typename T>
@@ -1385,6 +1384,25 @@ public:
       ULTRAIN_ASSERT( false, abort_called, "abort() called");
    }
 
+   void uabort(null_terminated_ptr msg, null_terminated_ptr fileName, int32_t lineNum, int32_t colNum) {
+      auto utf16ToString = [](const char* sptr) -> std::string {
+         if (sptr == nullptr) return std::string("");
+
+         std::stringstream ss;
+         while (!(*sptr == '\0' && *(sptr + 1) == '\0')) {
+            ss << *sptr;
+            sptr += 2;
+         }
+         return ss.str();
+      };
+
+      std::stringstream ss;
+      ss << "{ what: " << utf16ToString(msg.value) << ", file: " << utf16ToString(fileName.value) << ", line: " << lineNum << ", column: " << colNum << " }";
+      std::string message(ss.str());
+      edump((message));
+      ULTRAIN_ASSERT( false, abort_called, "abort: " + message);
+   }
+
    // Kept as intrinsic rather than implementing on WASM side (using ultrainio_assert_message and strlen) because strlen is faster on native side.
    void ultrainio_assert( bool condition, null_terminated_ptr msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
@@ -2388,6 +2406,7 @@ REGISTER_INTRINSICS(system_api,
 
 REGISTER_INTRINSICS(context_free_system_api,
    (abort,                void()              )
+   (uabort,               void(int, int, int, int))
    (ultrainio_assert,         void(int, int)      )
    (ultrainio_assert_message, void(int, int, int) )
    (ultrainio_assert_code,    void(int, int64_t)  )
