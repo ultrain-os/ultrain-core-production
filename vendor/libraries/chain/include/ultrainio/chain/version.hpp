@@ -4,8 +4,8 @@
 
 namespace ultrainio { namespace chain {
 
-const int version_num_major = 2;
-const int version_num_minor = 2;
+const int version_num_major = 3;
+const int version_num_minor = 0;
 const int version_num_patch = 0;
 
 inline std::string get_version_str() {
