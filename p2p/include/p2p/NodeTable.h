@@ -218,9 +218,9 @@ private:
     std::unordered_map<bi::address, fc::time_point> m_pubkDiscoverPings;///< List of pending pings where node entry wasn't created due to unkown pubk.
 
     std::unordered_map<NodeID, fc::time_point> m_sentFindNodes;
-    std::shared_ptr<NodeSocket> m_socket;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
     std::shared_ptr<NodeSocket> m_socket_rpos;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
     std::shared_ptr<NodeSocket> m_socket_trx;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
+    std::shared_ptr<NodeSocket> m_socket;                       ///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
     vector<string> m_seeds;
     void doSeedRequest(const std::vector <std::string> &seeds);
     bool isNodeValid(Node const& _node);

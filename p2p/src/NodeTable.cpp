@@ -374,10 +374,8 @@ void NodeTable::ping(NodeEntry const& _nodeEntry, boost::optional<NodeID> const&
     }
     else
     {
-        int sendtimes = sentPing->second.sendtimes;
-        m_sentPings.erase(sentPing);
-        m_sentPings[_nodeEntry.m_id] = {fc::time_point::now(),sendtimes+1, _replacementNodeID};
-        ilog("ping times ${time}",("time",sendtimes));
+        //just times changes,the first pingsendtime do not change
+        sentPing->second.sendtimes+=1;
     }
     ping(_nodeEntry.m_endpoint,_nodeEntry.m_id,false);
     constructNewPing(_nodeEntry.m_endpoint,_nodeEntry.m_id,msg_priority_rpos);
@@ -710,11 +708,11 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
     {
 	    if(isNodeValid(Node(n.node, n.endpoint)))
 	    {
-		    if(!m_nodes.count(n.node))
-		    {
+		    //if(!m_nodes.count(n.node))
+		    //{
 			    auto nodeEntry = make_shared<NodeEntry>(m_hostNodeID,n.node,n.endpoint);
 			    ping(*nodeEntry);
-		    }
+		   // }
 	    }
     }    
     noteActiveNode(in.fromID, from);
@@ -822,7 +820,8 @@ void NodeTable::doPingTimeoutCheck()
     vector<shared_ptr<NodeEntry>> nodesToActivate;
     for (auto it = m_sentPings.begin(); it != m_sentPings.end();)
     {
-        if(it->second.sendtimes > 4 || it->second.pingSendTime + fc::microseconds(120000000) < fc::time_point::now())
+        //when receive nei-msg,may continue ping a node several times,the condition 'times' may cause unexpected drop
+        if(it->second.pingSendTime + fc::microseconds(120000000) < fc::time_point::now())
         {
             if (auto node = nodeEntry(it->first))
             {
