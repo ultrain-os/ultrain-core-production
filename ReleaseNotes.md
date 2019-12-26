@@ -1,5 +1,31 @@
 # Release Notes
 
+### 2019-12-26 Release(master-testnet Commit: 6d41b27ae9024aa57df70b3d2b5aeb10ab7bb2db)
+
+* Nodultrain
+    * report when bls signature error(xiaofen)
+    * don't add seed to grey list,just delete conn(jiangwenna)
+    * only del dynamic conn when p2p authenticate failure(jiangwenna)
+    * verify ip when delete duplicate conn(jiangwenna)
+    * Add zero knowledge proof feature(yemao)
+    * add:use kcp to transport(jiangwenna)
+    * read max_bax_count from global db, and reduce it from 20 to 14(xiaofen)
+    * fix:to be compatible:getLeftTime from sec to mi to improve accuracy(jiangwenna)
+    * add contract api 'uabort'(fanliangqin)
+    * failed trx add mongoDB(feifan)
+    * fix:p2p route may error in 20122/20123(jiangwenna)
+* Contract
+    * setup new chain automatically(zhongwei)
+    * redesign pending produer handling process(zhongwei)
+    * add producer online time and movedisable clear totalproduceblock(feifan)
+    * add setproducer onlinetime produceblocknum params(feifan)
+    * fix resource fee issue in start newchain(zhongwei)
+    * change seconds_per_year from 52*7 to 365(zhongwei)
+    * get account pk check isexist(feifan)
+    * change the method of calculating resouce fee to aviod using double type(zhongwei)
+    * utrio.token add burn action(feifan)
+    * set bool variable explicitly
+
 ### 2019-10-15 Release(master-testnet Commit: ecc07dc090126ae6da09aeddf5a6cfce92ded7a0)
 
 * Nodultrain
