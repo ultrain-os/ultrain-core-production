@@ -22,6 +22,7 @@
 namespace ultrainiosystem {
    using namespace ultrainio;
    const name self_chain_name{N(ultrainio)};
+   const account_name ultrainio_account_name{N(ultrainio)};
    const name default_chain_name{N(default)};  //default chain, will be assigned by system.
    const account_name ultrainio_community_name{N(utrio.cmnity)};
    const account_name ultrainio_technical_team_name{N(utrio.thteam)};

@@ -82,6 +82,7 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_block_info, 200),
       CHAIN_RO_CALL(get_merkle_proof, 200),
       CHAIN_RO_CALL(verify_merkle_proof, 200),
+      CHAIN_RO_CALL(get_resource_orders, 200),
       CHAIN_RO_CALL(get_block_header_state, 200),
       CHAIN_RO_CALL(get_account_info, 200),
       CHAIN_RO_CALL(get_account_exist, 200),

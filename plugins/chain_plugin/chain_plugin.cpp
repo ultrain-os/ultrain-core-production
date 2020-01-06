@@ -1687,6 +1687,49 @@ read_only::verify_merkle_proof_result read_only::verify_merkle_proof(const read_
    return result;
 }
 
+std::vector<read_only::get_resource_orders_result> read_only::get_resource_orders(const read_only::get_resource_orders_params& params) {
+   const abi_def abi = ultrainio::chain_apis::get_abi( db, N(utrio.res) );
+   name table = N(ressale);
+   auto index_type = get_table_type( abi, table );
+
+   chain::controller& chain = appbase::app().get_plugin<chain_plugin>().chain();
+   uint32_t head_block_num = chain.head_block_header().block_num();
+   uint32_t seconds_per_year = 60 * 60 * 24 * 365;
+   auto cur_period_id = head_block_num * chain.block_interval_seconds() / seconds_per_year + 1;
+   uint64_t scope_i = params.period_id;
+   ilog("get_resource_orders for period: ${period}, current period is ${cur_period}", ("period", params.period_id) ("cur_period", cur_period_id));
+   if(0 == scope_i) {
+       scope_i = uint64_t(cur_period_id);
+   }
+   std::vector<read_only::get_resource_orders_result>  orders;
+   walk_key_value_table(N(utrio.res), scope_i, table, [&](const key_value_object& obj){
+       ultrainio::chain::resource_sale resorder_data;
+       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+       fc::raw::unpack(ds, resorder_data);
+
+       read_only::get_resource_orders_result tmp;
+       tmp.owner = resorder_data.owner;
+       tmp.lease_num = resorder_data.lease_num;
+       tmp.initial_unit_price = resorder_data.initial_unit_price;
+       tmp.decrease_by_day = resorder_data.decrease_by_day;
+       tmp.current_price = resorder_data.initial_unit_price;
+       if (scope_i == uint64_t(cur_period_id) && resorder_data.decrease_by_day) {
+           uint32_t period_end_block = seconds_per_year / chain.block_interval_seconds() * uint32_t(cur_period_id);
+           uint32_t seconds_per_day = 60 * 60 * 24;
+           auto rest_seconds = (period_end_block - head_block_num) * chain.block_interval_seconds();
+           auto rest_days = rest_seconds / seconds_per_day;
+           if(rest_seconds % seconds_per_day > 0) {
+               rest_days += 1;
+           }
+           tmp.current_price = resorder_data.initial_unit_price * rest_days / 365;
+       }
+       orders.push_back(tmp);
+       return true;
+   });
+
+   return orders;
+}
+
 fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
    block_state_ptr b;
    optional<uint64_t> block_num;

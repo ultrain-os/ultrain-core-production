@@ -96,6 +96,7 @@ namespace ultrainio { namespace client { namespace http {
    const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
    const string get_producers_func = chain_func_base + "/get_producers";
    const string get_required_keys = chain_func_base + "/get_required_keys";
+   const string get_resource_orders_func = chain_func_base + "/get_resource_orders";
 
 
    const string history_func_base = "/v1/history";

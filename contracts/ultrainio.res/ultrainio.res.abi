@@ -1,0 +1,257 @@
+{
+   "version": "ultrainio.res::abi/1.0",
+   "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+   }],
+   "structs": [{
+      "name": "exten_type",
+      "base": "",
+      "fields": [
+        {"name": "key", "type": "uint16"},
+        {"name": "value", "type":"string"}
+      ]
+    },{
+      "name": "resource_global_params",
+      "base": "",
+      "fields": [
+         {"name":"is_allow_buy_res",               "type":"bool"},
+         {"name":"is_pending_check",               "type":"bool"},
+         {"name":"max_resources_number",           "type":"uint64"},
+         {"name":"total_resources_used_number",    "type":"uint64"},
+         {"name":"max_ram_size",                   "type":"uint64"},
+         {"name":"free_account_per_res",           "type":"uint16"},
+         {"name":"res_transfer_res",               "type":"uint64"},
+         {"name":"resource_fee",                   "type":"int64"},
+         {"name": "table_extension",               "type": "exten_type[]"}
+      ]
+    },{
+      "name": "setresparams",
+      "base": "",
+      "fields": [
+         {"name":"params",      "type":"resource_global_params"}
+      ]
+    },{
+      "name": "resourcelease",
+      "base": "",
+      "fields": [
+         {"name":"from",      "type":"account_name"},
+         {"name":"receiver",  "type":"account_name"},
+         {"name":"combosize", "type":"uint16"},
+         {"name":"period",      "type":"uint64"},
+         {"name":"location",  "type":"name"}
+      ]
+    },{
+      "name": "transresource",
+      "base": "",
+      "fields": [
+         {"name":"from",      "type":"account_name"},
+         {"name":"to",        "type":"account_name"},
+         {"name":"combosize", "type":"uint16"},
+         {"name":"period",   "type":"uint64"}
+      ]
+    },{
+      "name": "transaccount",
+      "base": "",
+      "fields": [
+         {"name":"from",      "type":"account_name"},
+         {"name":"to",        "type":"account_name"},
+         {"name":"number",    "type":"uint32"}
+      ]
+    },{
+      "name": "recycleresource",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"}
+      ]
+    },{
+      "name": "onblock",
+      "base": "",
+      "fields": [
+      ]
+    },{
+      "name": "modifyfreeaccount",
+      "base": "",
+      "fields": [
+         {"name":"owner",   "type":"account_name"},
+         {"name":"number",  "type":"uint32"}
+      ]
+    },{
+      "name": "copyresource",
+      "base": "",
+      "fields": [
+      ]
+    },{
+      "name": "putorder",
+      "base": "",
+      "fields": [
+         {"name":"owner",      "type":"account_name"},
+         {"name":"period",     "type":"uint64"},
+         {"name":"combosize",  "type":"uint16"},
+         {"name":"price",      "type":"asset"},
+         {"name":"decrease",   "type":"bool"}
+      ]
+    },{
+      "name": "updateorder",
+      "base": "",
+      "fields": [
+         {"name":"owner",      "type":"account_name"},
+         {"name":"period",     "type":"uint64"},
+         {"name":"price",      "type":"asset"},
+         {"name":"decrease",   "type":"bool"}
+      ]
+    },{
+      "name": "cancelorder",
+      "base": "",
+      "fields": [
+         {"name":"owner",   "type":"account_name"},
+         {"name":"period",     "type":"uint64"}
+      ]
+    },{
+      "name": "buyin",
+      "base": "",
+      "fields": [
+         {"name":"owner",      "type":"account_name"},
+         {"name":"period",     "type":"uint64"},
+         {"name":"buyer",      "type":"account_name"},
+         {"name":"combosize",  "type":"uint16"}
+      ]
+    },{
+      "name": "resources_lease",
+      "base": "",
+      "fields": [
+         {"name":"owner",       "type":"account_name"},
+         {"name":"lease_num",   "type":"uint16"},
+         {"name":"locked_num",  "type":"uint16"},
+         {"name":"start_block_height",  "type":"uint32"},
+         {"name":"end_block_height",    "type":"uint32"},
+         {"name":"modify_block_height", "type":"uint32"},
+         {"name": "table_extension", "type": "exten_type[]"}
+      ]
+    },{
+      "name": "resources_periods",
+      "base": "",
+      "fields": [
+         {"name":"periods",   "type":"uint64"},
+         {"name":"owner",       "type":"account_name"},
+         {"name":"modify_block_height", "type":"uint32"},
+         {"name": "table_extension", "type": "exten_type[]"}
+      ]
+    },{
+      "name": "pending_deltable",
+      "base": "",
+      "fields": [
+         {"name":"owner",       "type":"account_name"}
+      ]
+    },{
+      "name": "res_free_account",
+      "base": "",
+      "fields": [
+         {"name":"owner",       "type":"account_name"},
+         {"name":"free_account_number",   "type":"uint32"},
+         {"name": "table_extension", "type": "exten_type[]"}
+      ]
+    },{
+      "name": "resource_sale",
+      "base": "",
+      "fields": [
+         {"name":"owner",                 "type":"account_name"},
+         {"name":"lease_num",             "type":"uint16"},
+         {"name":"initial_unit_price",    "type":"uint64"},
+         {"name":"decrease_by_day",       "type":"bool"},
+         {"name":"modify_block_height",   "type":"uint32"},
+         {"name": "table_extension",      "type": "exten_type[]"}
+      ]
+    }
+   ],
+   "actions": [{
+      "name": "setresparams",
+      "type": "setresparams",
+      "ricardian_contract": ""
+   },{
+      "name": "resourcelease",
+      "type": "resourcelease",
+      "ricardian_contract": ""
+   },{
+      "name": "transresource",
+      "type": "transresource",
+      "ricardian_contract": ""
+   },{
+      "name": "transaccount",
+      "type": "transaccount",
+      "ricardian_contract": ""
+   },{
+      "name": "recycleresource",
+      "type": "recycleresource",
+      "ricardian_contract": ""
+   },{
+      "name": "onblock",
+      "type": "onblock",
+      "ricardian_contract": ""
+   },{
+      "name": "modifyfreeaccount",
+      "type": "modifyfreeaccount",
+      "ricardian_contract": ""
+   },{
+      "name": "copyresource",
+      "type": "copyresource",
+      "ricardian_contract": ""
+   },{
+      "name": "putorder",
+      "type": "putorder",
+      "ricardian_contract": ""
+   },{
+      "name": "updateorder",
+      "type": "updateorder",
+      "ricardian_contract": ""
+   },{
+      "name": "cancelorder",
+      "type": "cancelorder",
+      "ricardian_contract": ""
+   },{
+      "name": "buyin",
+      "type": "buyin",
+      "ricardian_contract": ""
+   }
+],
+   "tables": [{
+      "name": "global",
+      "type": "resource_global_params",
+      "index_type": "i64",
+      "key_names" : [],
+      "key_types" : []
+    },{
+      "name": "reslease",
+      "type": "resources_lease",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "resperiods",
+      "type": "resources_periods",
+      "index_type": "i64",
+      "key_names" : ["periods"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "penddeltab",
+      "type": "pending_deltable",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "resfreeacc",
+      "type": "res_free_account",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "ressale",
+      "type": "resource_sale",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    }
+   ],
+   "ricardian_clauses": [],
+   "abi_extensions": []
+}

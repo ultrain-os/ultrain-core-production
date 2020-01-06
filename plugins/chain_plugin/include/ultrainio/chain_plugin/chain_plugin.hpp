@@ -531,6 +531,20 @@ public:
 
    verify_merkle_proof_result verify_merkle_proof(const verify_merkle_proof_params& params);
 
+   struct get_resource_orders_params {
+       uint16_t  period_id;
+   };
+
+   struct get_resource_orders_result {
+       account_name owner;
+       uint16_t    lease_num;
+       uint64_t    initial_unit_price;
+       bool        decrease_by_day;
+       uint64_t    current_price;
+   };
+
+   std::vector<get_resource_orders_result> get_resource_orders(const get_resource_orders_params& params);
+
    static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
@@ -884,3 +898,5 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_merkle_proof_params, (block_nu
 FC_REFLECT( ultrainio::chain_apis::read_only::get_merkle_proof_result, (merkle_proof)(trx_receipt_bytes));
 FC_REFLECT( ultrainio::chain_apis::read_only::verify_merkle_proof_params, (merkle_proof)(transaction_mroot)(trx_receipt_bytes));
 FC_REFLECT( ultrainio::chain_apis::read_only::verify_merkle_proof_result, (is_matched));
+FC_REFLECT( ultrainio::chain_apis::read_only::get_resource_orders_params, (period_id));
+FC_REFLECT( ultrainio::chain_apis::read_only::get_resource_orders_result, (owner)(lease_num)(initial_unit_price)(decrease_by_day)(current_price));

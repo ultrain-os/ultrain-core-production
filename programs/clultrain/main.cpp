@@ -979,6 +979,7 @@ struct list_producers_subcommand {
    }
 };
 
+
 struct buy_respackage_subcommand {
    string from_str;
    string receiver_str;
@@ -1169,6 +1170,188 @@ struct empoweruser_subcommand {
             auth_name = N(ultrainio);
          permiss_info.push_back(permission_level{auth_name,config::active_name});
          send_actions({create_action(permiss_info, config::system_account_name, NEX(empoweruser), act_payload)});
+      });
+   }
+};
+
+struct put_order_subcommand {
+   string owner_account;
+   uint64_t period_id;
+   uint16_t combosize;
+   string price;
+   bool   decrease = true;
+   put_order_subcommand(CLI::App* actionRoot) {
+      auto put_order = actionRoot->add_subcommand("putorder", localized("Put order to sell resource"));
+      put_order->add_option("owner", owner_account, localized("Account of the user who want to sell resource"))->required();
+      put_order->add_option("period", period_id, localized("The period id of the resource"))->required();
+      put_order->add_option("combosize", combosize, localized("The amount of resources packages"))->required();
+      put_order->add_option("price", price, localized("The unit price of resource package"))->required();
+      put_order->add_option("decrease_by_day", decrease, localized("Set whether the price is decreasing by day"))->required();
+      add_standard_transaction_options(put_order);
+
+      put_order->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("owner", owner_account)
+                  ("period", period_id)
+                  ("combosize", combosize)
+                  ("price", price)
+                  ("decrease", decrease);
+         vector<permission_level> permiss_info;
+         permiss_info.push_back(permission_level{owner_account,config::active_name});
+         send_actions({create_action(permiss_info, N(utrio.res), NEX(putorder), act_payload)});
+      });
+   }
+};
+
+struct list_orders_subcommand {
+   uint64_t period_id;
+   list_orders_subcommand(CLI::App* actionRoot) {
+      auto list_orders = actionRoot->add_subcommand("listorders", localized("List all resource sell orders of a specified period"));
+      list_orders->add_option("period", period_id, localized("The period id of the resource"))->required();
+      add_standard_transaction_options(list_orders);
+
+      list_orders->set_callback([this] {
+         auto rawResult = call(get_resource_orders_func, fc::mutable_variant_object("period_id", period_id));
+         auto result = rawResult.as<vector<ultrainio::chain_apis::read_only::get_resource_orders_result>>();
+         if(result.empty()) {
+             std::cout << "No resource orders found" << std::endl;
+             return;
+         }
+         printf("%-13s %-10s  %-10s  %-13s     %-13s    %-13s\n", "Owner", "Period", "Lease size", "initial_price", "daily decreasing","current_price");
+         for ( const auto& row : result ) {
+            printf("%-13.13s %-8lu    %-10d  %-9.4f UGAS    %-15.5s     %-9.4f UGAS\n",
+                 row.owner.to_string().c_str(), period_id, row.lease_num,
+                 double(row.initial_unit_price)/10000,
+                 row.decrease_by_day ? "true" : "false",
+                 double(row.current_price)/10000);
+         }
+      });
+   }
+};
+
+struct update_order_subcommand {
+   string owner_account;
+   uint64_t period_id;
+   string price;
+   bool   decrease = true;
+   update_order_subcommand(CLI::App* actionRoot) {
+      auto update_order = actionRoot->add_subcommand("updateorder", localized("Update resource sell order"));
+      update_order->add_option("owner", owner_account, localized("Account of the user who selling resource"))->required();
+      update_order->add_option("period", period_id, localized("The period id of the resource"))->required();
+      update_order->add_option("price", price, localized("The unit price of resource package"))->required();
+      update_order->add_option("decrease_by_day", decrease, localized("Set whether the price is decreasing by day"))->required();
+      add_standard_transaction_options(update_order);
+
+      update_order->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("owner", owner_account)
+                  ("period", period_id)
+                  ("price", price)
+                  ("decrease", decrease);
+         vector<permission_level> permiss_info;
+         permiss_info.push_back(permission_level{owner_account,config::active_name});
+         send_actions({create_action(permiss_info, N(utrio.res), NEX(updateorder), act_payload)});
+      });
+   }
+};
+
+struct cancel_order_subcommand {
+   string owner_account;
+   uint64_t period_id;
+   cancel_order_subcommand(CLI::App* actionRoot) {
+      auto cancel_order = actionRoot->add_subcommand("cancelorder", localized("Cancel resource sell order"));
+      cancel_order->add_option("owner", owner_account, localized("Account of the user who selling resource"))->required();
+      cancel_order->add_option("period", period_id, localized("The period id of the resource"))->required();
+      add_standard_transaction_options(cancel_order);
+
+      cancel_order->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("owner", owner_account)
+                  ("period", period_id);
+         vector<permission_level> permiss_info;
+         permiss_info.push_back(permission_level{owner_account,config::active_name});
+         send_actions({create_action(permiss_info, N(utrio.res), NEX(cancelorder), act_payload)});
+      });
+   }
+};
+
+struct buy_in_subcommand {
+   string owner_account;
+   uint64_t period_id;
+   string buyer_account;
+   uint16_t combosize;
+   buy_in_subcommand(CLI::App* actionRoot) {
+      auto buy_in = actionRoot->add_subcommand("buyin", localized("Buy in resource"));
+      buy_in->add_option("owner", owner_account, localized("Account of the user who selling the resource"))->required();
+      buy_in->add_option("period", period_id, localized("The period id of the resource"))->required();
+      buy_in->add_option("buyer", buyer_account, localized("Account of the user who buying the resource"))->required();
+      buy_in->add_option("combosize", combosize, localized("The amount of resources packages the buyer "))->required();
+      add_standard_transaction_options(buy_in);
+
+      buy_in->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("owner", owner_account)
+                  ("period", period_id)
+                  ("buyer", buyer_account)
+                  ("combosize", combosize);
+         vector<permission_level> permiss_info;
+         permiss_info.push_back(permission_level{buyer_account,config::active_name});
+         send_actions({create_action(permiss_info, N(utrio.res), NEX(buyin), act_payload)});
+      });
+   }
+};
+
+struct buy_resource_package_subcommand {
+   string from_str;
+   string receiver_str;
+   int    combosize = 0;
+   int    period_id = 0;
+   string location;
+   buy_resource_package_subcommand(CLI::App* actionRoot) {
+      auto buy_respackage = actionRoot->add_subcommand("resourcelease", localized("buy resources packages"));
+      buy_respackage->add_option("from", from_str, localized("The account that pays for resources packages"))->required();
+      buy_respackage->add_option("receiver", receiver_str, localized("The account to receive the resources packages"))->required();
+      buy_respackage->add_option("period", period_id, localized("period id(start from 1) of resource that receiver will own, 0 always indicates current period"))->required();
+      buy_respackage->add_option("combosize", combosize, localized("The amount of resources packages"))->required();
+      buy_respackage->add_option("location", location, localized("sidechain name that the resource lease located on"))->required();
+      add_standard_transaction_options(buy_respackage);
+
+      buy_respackage->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("from", from_str)
+                  ("receiver", receiver_str)
+                  ("combosize", combosize)
+                  ("period", period_id)
+                  ("location", location);
+         std::vector<chain::action> acts{create_action({permission_level{from_str,config::active_name}}, N(utrio.res), NEX(resourcelease), act_payload)};
+         send_actions(std::move(acts));
+      });
+   }
+};
+
+struct transfer_resource_package_subcommand {
+   string from_str;
+   string to_str;
+   int    combosize = 0;
+   int    period_id = 0;
+   string location;
+   transfer_resource_package_subcommand(CLI::App* actionRoot) {
+      auto transfer_respackage = actionRoot->add_subcommand("transresource", localized("transfer resources packages"));
+      transfer_respackage->add_option("from", from_str, localized("The account that transfer resources packages from"))->required();
+      transfer_respackage->add_option("to", to_str, localized("The account to receive the resources packages"))->required();
+      transfer_respackage->add_option("period", period_id, localized("period id(start from 1) of resource that receiver will own, 0 always indicates current period"))->required();
+      transfer_respackage->add_option("combosize", combosize, localized("The amount of resources packages"))->required();
+      //transfer_respackage->add_option("location", location, localized("sidechain name that the resource lease located on"))->required();
+      add_standard_transaction_options(transfer_respackage);
+
+      transfer_respackage->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("from", from_str)
+                  ("to", to_str)
+                  ("combosize", combosize)
+                  ("period", period_id);
+         std::vector<chain::action> acts{create_action({permission_level{from_str,config::active_name}}, N(utrio.res), NEX(transresource), act_payload)};
+         send_actions(std::move(acts));
       });
    }
 };
@@ -2732,6 +2915,18 @@ int main( int argc, char** argv ) {
    auto listdelcons = list_delcons_subcommand(system);
    auto cancelDelay = canceldelay_subcommand(system);
    auto empowerUser = empoweruser_subcommand(system);
+
+   // resource subcommand
+   auto resource = app.add_subcommand("resource", localized("Send resource contract action to the blockchain."), false);
+   resource->require_subcommand();
+
+   auto buyresource = buy_resource_package_subcommand(resource);
+   auto transresource = transfer_resource_package_subcommand(resource);
+   auto putorder = put_order_subcommand(resource);
+   auto listorders = list_orders_subcommand(resource);
+   auto updateorder = update_order_subcommand(resource);
+   auto cancelorder = cancel_order_subcommand(resource);
+   auto buyin = buy_in_subcommand(resource);
 
    try {
        app.parse(argc, argv);
