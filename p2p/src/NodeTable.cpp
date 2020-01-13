@@ -536,7 +536,6 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Pong const& pong ) {
     auto const sentPing = m_sentPings.find(sourceId);
     if (sentPing == m_sentPings.end())
     {
-        ilog("Unexpected PONG from ${addr}",("addr",_from.address().to_string()));
         return;
     }
      auto it = m_nodes.find(sourceId);
@@ -719,7 +718,6 @@ void NodeTable::handlemsg( bi::udp::endpoint const& _from, Neighbours const& in 
 }
 
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, PingNode const& pingmsg ) {
-    ilog("handle ping nodeid ${nodeid}",("nodeid",pingmsg.sourceid));    
     if(pingmsg.sourceid == fc::sha256() || pingmsg.sourceid == m_hostNodeID)
     {
         ilog("ping msg has no id or sent by myself");
@@ -1185,11 +1183,11 @@ void NodeTable::updateListenPort(NodeID const& _pubk, uint16_t port ,msg_priorit
             elog("invalid weak ptr of node");
             return;
         }
-	if(nd->m_endpoint.listenPort(pri) != port)
-	{
-	    nd->m_endpoint.setListenPort(pri,port);
-	    buket_chg_flag = true;
-	}
+        if(nd->m_endpoint.listenPort(pri) != port)
+        {
+            nd->m_endpoint.setListenPort(pri,port);
+            buket_chg_flag = true;
+        }
     }
     if(buket_chg_flag)
     {
@@ -1197,7 +1195,6 @@ void NodeTable::updateListenPort(NodeID const& _pubk, uint16_t port ,msg_priorit
     }
 }
 void NodeTable::handlemsg( bi::udp::endpoint const& _from, NewPing const& pingmsg ) {
-    ilog("handle newping nodeid ${nodeid}",("nodeid",pingmsg.sourceid.str().substr(0,7)));
     if(pingmsg.sourceid == fc::sha256() || pingmsg.sourceid == m_hostNodeID)
     {
         ilog("ping msg has no id or sent by myself");

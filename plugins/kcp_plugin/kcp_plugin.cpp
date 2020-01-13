@@ -3001,7 +3001,6 @@ bool kcp_plugin_impl::authenticate_peer(const handshake_message& msg) {
    }
 
    void kcp_plugin::broadcast(const EchoMsg& echo) {
-      ilog("broadcast echo");
       my->start_broadcast(net_message(echo), msg_priority_rpos);
    }
    void kcp_plugin::partial_broadcast(const ProposeMsg& msg,bool rtn){
