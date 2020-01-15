@@ -558,7 +558,7 @@
       "base": "disabled_producer",
       "fields": [
          {"name":"unpaid_balance",   "type":"uint64"},
-         {"name":"vote_number",     "type":"uint64"},
+         {"name":"produce_block_perday",     "type":"uint64"},
          {"name":"last_record_blockheight", "type":"uint64"},
          {"name": "table_extension", "type": "exten_type[]"}
       ]
@@ -709,6 +709,14 @@
       "name": "setglobalextendata",
       "base": "",
       "fields": [
+        {"name":"key",     "type":"uint16"},
+        {"name":"value",     "type":"string"}
+      ]
+    },{
+      "name": "setchaintypeextendata",
+      "base": "",
+      "fields": [
+        {"name":"type_id",   "type":"uint64"},
         {"name":"key",     "type":"uint16"},
         {"name":"value",     "type":"string"}
       ]
@@ -945,6 +953,10 @@
    },{
       "name": "setglobalextendata",
       "type": "setglobalextendata",
+      "ricardian_contract": ""
+   },{
+      "name": "setchaintypeextendata",
+      "type": "setchaintypeextendata",
       "ricardian_contract": ""
    },{
       "name": "setmasterchaininfo",

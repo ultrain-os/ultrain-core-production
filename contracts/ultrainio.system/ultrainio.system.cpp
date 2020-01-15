@@ -92,6 +92,38 @@ namespace ultrainiosystem {
       return default_value;
    }
 
+   void system_contract::setchaintypeextendata( uint64_t type_id, uint16_t key, std::string value ) {
+      require_auth( _self );
+      ultrainio_assert( !value.empty(), "setchaintypeextendata value is empty" );
+      ultrainio_assert( key < chaintype::chaintype_exten_key::chaintype_key_end, " key should not exist" );
+      bool is_exist_key = false;
+      chaintypes_table type_tbl( _self, _self );
+      auto type_iter = type_tbl.find( type_id );
+      ultrainio_assert( type_iter != type_tbl.end(), "setchaintypeextendata type_id not found" );
+      type_tbl.modify( type_iter, [&]( auto& _chain_type ) {
+         for( auto& exten : _chain_type.table_extension ) {
+            if(exten.key == key) {
+               exten.value = value;
+               is_exist_key = true;
+               break;
+            }
+         }
+         if( !is_exist_key ) {
+            _chain_type.table_extension.push_back( exten_type( key, value) );
+         }
+      });
+   }
+
+   uint64_t system_contract::getchaintypeextenuintdata( const ultrainiosystem::chaintypes_table::const_iterator& type_iter, uint16_t key, uint64_t default_value ) const {
+
+      for( auto& exten : type_iter->table_extension ){
+         if( exten.key == key && !exten.value.empty() ){
+            return std::stoull( exten.value );
+         }
+      }
+      return default_value;
+   }
+
    void system_contract::setmasterchaininfo( const master_chain_info& chaininfo ){
       require_auth( _self );
       master_chain_infos masterinfos(_self, _self);
@@ -391,7 +423,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)(delaccount)(addwhiteblack)(rmwhiteblack)
      // ultrainio.system.cpp
-     (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(setprodontimeblock)
+     (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(setprodontimeblock)(setchaintypeextendata)
      // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(resourcelease)(transferresource)(recycleresource)(setfreeacc)
      // producer.cpp

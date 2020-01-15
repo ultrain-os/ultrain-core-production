@@ -151,7 +151,7 @@ namespace ultrainiosystem {
 
    struct producer_info : public disabled_producer {
       uint64_t              unpaid_balance = 0;
-      uint64_t              vote_number = 0;
+      uint64_t              produce_block_perday = 0;
       //Record the latest block height of a producer or the block height of the chain when a producer became a producer,
       // so as to judge whether a producer has made blocks and remove the committee
       uint64_t              last_record_blockheight = 0;
@@ -162,12 +162,13 @@ namespace ultrainiosystem {
          enqueue_block_height = 2, //block height of master chain when producer was added into pending que
          start_produce_time = 3, // producer start produce block time
          last_heartbeat_block_height = 4,
+         last_record_rewards_block_height = 5,//only for fixed rewards
          producers_state_key_end,
       };
       uint64_t primary_key()const { return owner; }
       producer_info() {}
-      producer_info(const disabled_producer& dp, uint64_t unpay, uint64_t votes, uint64_t last_record_block)
-          :disabled_producer(dp), unpaid_balance(unpay), vote_number(votes), last_record_blockheight(last_record_block) {}
+      producer_info(const disabled_producer& dp, uint64_t unpay, uint64_t prod_block, uint64_t last_record_block)
+          :disabled_producer(dp), unpaid_balance(unpay), produce_block_perday(prod_block), last_record_blockheight(last_record_block) {}
 
       uint64_t get_enqueue_block_height() const {
           uint64_t enqueue_blockheight = 0;
@@ -192,7 +193,7 @@ namespace ultrainiosystem {
       }
 
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, disabled_producer,
-                                    (unpaid_balance)(vote_number)(last_record_blockheight)(table_extension) )
+                                    (unpaid_balance)(produce_block_perday)(last_record_blockheight)(table_extension) )
    };
 
    struct unpaid_disproducer {
@@ -256,6 +257,15 @@ namespace ultrainiosystem {
        uint16_t sched_inc_step;
        uint16_t consensus_period;
        exten_types  table_extension;
+       enum chaintype_exten_key {
+         chaintype_key_start = 0,
+         is_fixed_reward_rate = 1,
+         fixed_annual_reward_rate = 2,
+         min_active_delegate_rate = 3,
+         max_rewards_delegate = 4,
+         min_produce_rewards_threshold = 5,  //default value 10
+         chaintype_key_end,
+       };
 
        auto primary_key() const { return type_id; }
 
@@ -687,6 +697,8 @@ namespace ultrainiosystem {
          void setsysparams( const ultrainio_system_params& params );
          void setglobalextendata( uint16_t key, std::string value );
          inline uint64_t getglobalextenuintdata( uint16_t key, uint64_t default_value ) const;
+         void setchaintypeextendata( uint64_t type_id, uint16_t key, std::string value );
+         inline uint64_t getchaintypeextenuintdata( const ultrainiosystem::chaintypes_table::const_iterator& type_iter, uint16_t key, uint64_t default_value ) const;
          void setmasterchaininfo( const master_chain_info& chaininfo );
          void setparams( const ultrainio::blockchain_parameters& params );
          void setpriv( account_name account, uint8_t is_priv );

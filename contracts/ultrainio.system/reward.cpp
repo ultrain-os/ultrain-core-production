@@ -172,24 +172,87 @@ namespace ultrainiosystem {
          print("error: block proposer ", name{producer}, " is not found in its location\n");
          return;
       }
-      const uint64_t rewardvalue = get_reward_per_block();
-      const uint64_t reward_percentage = rewardvalue / 100;
-      record_rewards_for_maintainer( ultrainio_community_name, reward_percentage * 5 );
-      record_rewards_for_maintainer( ultrainio_technical_team_name, reward_percentage * 5 );
-      record_rewards_for_maintainer( ultrainio_dapp_name, reward_percentage * 10 );
-      uint64_t realreward = (uint64_t)( reward_percentage * 80 * get_reward_fee_ratio() );
-      _gstate.total_unpaid_balance += realreward + reward_percentage * 20;
-      if( rewardvalue > (realreward + reward_percentage * 20) )
-         _gstate.master_chain_pay_fee += rewardvalue - realreward - reward_percentage * 20;
-      _producers.modify( prod, [&](auto& p ) {
-          p.unpaid_balance += realreward;
-          p.total_produce_block++;
-          if ( chain_name == briefprod->location ) { //If the reportblock chain is the same as the producer chain, it will be recorded
-             p.last_record_blockheight = block_height;
-          }
-      });
+      auto chain_iter = _chains.find( chain_name );
+      if( chain_iter == _chains.end() ) {
+         print("error: chain_name: ", name{chain_name}," producer: ", name{producer}, "report_subchain_block  chain not found\n");
+         return;
+      }
+      chaintypes_table type_tbl( _self, _self );
+      auto type_iter = type_tbl.find( chain_iter->chain_type );
+      if (type_iter == type_tbl.end()) {
+         print("error: chain_name: ", name{chain_name}," producer: ", name{producer}, "report_subchain_block chain_type not found\n");
+         return;
+      }
+      bool is_fixed_reward_rate = getchaintypeextenuintdata( type_iter, chaintype::chaintype_exten_key::is_fixed_reward_rate, 0 );
+      if ( !is_fixed_reward_rate ) {
+         const uint64_t rewardvalue = get_reward_per_block();
+         const uint64_t reward_percentage = rewardvalue / 100;
+         record_rewards_for_maintainer( ultrainio_community_name, reward_percentage * 5 );
+         record_rewards_for_maintainer( ultrainio_technical_team_name, reward_percentage * 5 );
+         record_rewards_for_maintainer( ultrainio_dapp_name, reward_percentage * 10 );
+         uint64_t realreward = (uint64_t)( reward_percentage * 80 * get_reward_fee_ratio() );
+         _gstate.total_unpaid_balance += realreward + reward_percentage * 20;
+         if( rewardvalue > (realreward + reward_percentage * 20) )
+            _gstate.master_chain_pay_fee += rewardvalue - realreward - reward_percentage * 20;
+         _producers.modify( prod, [&](auto& p ) {
+            p.unpaid_balance += realreward;
+            p.total_produce_block++;
+            if ( chain_name == briefprod->location ) { //If the reportblock chain is the same as the producer chain, it will be recorded
+               p.last_record_blockheight = block_height;
+            }
+         });
+      } else {
+         //use the block height of the main chain, count one day to avoid the influence of scheduling
+         auto main_block_height = (uint32_t)head_block_number() + 1;
+         bool is_exist_last_record_rewards = false;
+         uint32_t last_record_rewards_block = 0;
+         for( auto& exten : prod->table_extension ) {
+            if( exten.key == producer_info::producers_state_exten_type_key::last_record_rewards_block_height ) {
+               if( !exten.value.empty() ) {
+                  last_record_rewards_block = std::stoul(exten.value);
+               }
+               is_exist_last_record_rewards = true;
+               break;
+            }
+         }
+         uint64_t realreward = 0;
+         bool is_record_fixed_rewards = ( last_record_rewards_block + seconds_per_day/block_interval_seconds() ) <= main_block_height ? true : false;
+         if ( is_record_fixed_rewards ) {
+            uint64_t min_produce_rewards_threshold = getchaintypeextenuintdata( type_iter, chaintype::chaintype_exten_key::min_produce_rewards_threshold, 10 );
+            if ( prod->produce_block_perday >= min_produce_rewards_threshold ) {
+               uint64_t reward_rate = getchaintypeextenuintdata( type_iter, chaintype::chaintype_exten_key::fixed_annual_reward_rate, 15 );
+               uint64_t max_rewards_delegate = getchaintypeextenuintdata( type_iter, chaintype::chaintype_exten_key::max_rewards_delegate, 420000000 );
+               uint64_t real_delegate_value = (uint64_t)prod->total_cons_staked < max_rewards_delegate ? (uint64_t)prod->total_cons_staked : max_rewards_delegate;
+               realreward =  real_delegate_value * reward_rate / 100 / 365 ;
+            } else {
+               print("report_subchain_block record_fixed_rewards record failed producer:", name{producer}," produce_block_perday: ", prod->produce_block_perday," min_produce_rewards_threshold: ", min_produce_rewards_threshold," last_record_rewards_block: ", last_record_rewards_block, " \n");
+            }
+         }
+         print("report_subchain_block record_fixed_rewards producer:", name{producer}," produce_block_perday: ", prod->produce_block_perday," realreward: ", realreward," is_record_fixed_rewards: ", is_record_fixed_rewards, " \n");
+         _producers.modify( prod, [&](auto& p ) {
+            p.unpaid_balance += realreward;
+            p.total_produce_block++;
+            if ( chain_name == briefprod->location ) { //If the reportblock chain is the same as the producer chain, it will be recorded
+               p.last_record_blockheight = block_height;
+            }
+            if ( is_record_fixed_rewards ) {
+               p.produce_block_perday = 0;
+               for( auto& exten : p.table_extension ) {
+                  if( exten.key == producer_info::producers_state_exten_type_key::last_record_rewards_block_height ){
+                     exten.value = std::to_string(main_block_height);
+                     break;
+                  }
+               }
+            }
+            p.produce_block_perday++;
+
+            if( !is_exist_last_record_rewards )
+               p.table_extension.push_back(exten_type(producer_info::producers_state_exten_type_key::last_record_rewards_block_height ,std::to_string(main_block_height)));
+
+         });
+      }
       check_producer_lastblock( briefprod->location, block_height );
-      print( "reportsubchainblock producer chain_name:", name{briefprod->location}, " producer:", name{producer}," reportblock chain_name:", name{chain_name}, " block_height:", block_height,"\n" );
+      print( "reportsubchainblock producer chain_name:", name{briefprod->location}, " producer:", name{producer}," reportblock chain_name:", name{chain_name}, " block_height:", block_height, " is_fixed_reward_rate:", is_fixed_reward_rate,"\n" );
    }
 
    void system_contract::claimrewards( account_name producer ) {
