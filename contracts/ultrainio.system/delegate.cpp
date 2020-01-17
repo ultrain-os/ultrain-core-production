@@ -495,8 +495,7 @@ namespace ultrainiosystem {
       set_resource_limits( owner, ram_bytes, 0, 0 );
    }
 
-   void system_contract::check_res_expire(){
-      uint32_t block_height = (uint32_t)head_block_number() + 1;
+   void system_contract::check_res_expire(uint64_t current_block_height){
       uint32_t interval_num = 1;
       if(1 == getglobalextenuintdata(ultrainio_global_state::pending_resource_check, 0)) {
           interval_num = seconds_per_day/block_interval_seconds()/48; //check every half hour
@@ -504,7 +503,7 @@ namespace ultrainiosystem {
           interval_num = seconds_per_day/block_interval_seconds()/3; //check every eight hours
       }
 
-      if(block_height < 120 || block_height%interval_num != 0) {
+      if(current_block_height < 120 || current_block_height%interval_num != 0) {
          return;
       }
       uint64_t starttime = current_time();
@@ -515,7 +514,7 @@ namespace ultrainiosystem {
       std::string pending_res_status("0");
       resources_lease_table _reslease_tbl( _self, self_chain_name);
       for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
-         if(leaseiter->end_block_height <= block_height){
+         if(leaseiter->end_block_height <= current_block_height){
             calc_num++;
             if(calc_num > 100) {
                 pending_res_status = "1";
@@ -558,7 +557,7 @@ namespace ultrainiosystem {
           uint64_t bytes_per_combo = chain_gs.max_ram_size / chain_gs.max_resources_number;
           resources_lease_table _reslease_sub(_self, chain_iter->chain_name);
           for(auto reslease_iter = _reslease_sub.begin(); reslease_iter != _reslease_sub.end(); ) {
-              if(reslease_iter->end_block_height <= block_height) {
+              if(reslease_iter->end_block_height <= current_block_height) {
                   auto old_lease_num = reslease_iter->lease_num;
                   uint64_t lease_bytes = old_lease_num * bytes_per_combo;
                   uint64_t new_lease_number = (chain_gs.total_resources_used_number >= old_lease_num) ?

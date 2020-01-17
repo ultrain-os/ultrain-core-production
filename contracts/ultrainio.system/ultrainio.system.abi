@@ -777,7 +777,8 @@
       "fields": [
         {"name": "chain_name",                 "type": "name"},
         {"name": "chain_type",                 "type": "uint64"},
-        {"name": "is_sched_on",               "type": "bool"}
+        {"name": "is_sched_on",               "type": "bool"},
+        {"name": "prod_supervision",          "type": "bool"}
        ]
    },{
       "name": "moveprod",
@@ -791,6 +792,12 @@
         {"name": "to_disable",            "type": "bool"},
         {"name": "to_chain",              "type": "name"}
        ]
+    },{
+      "name": "prodheartbeat",
+      "base": "",
+      "fields": [
+        {"name":"producer",      "type":"account_name"}
+      ]
     },{
       "name": "producer_key",
       "base": "",
@@ -1026,6 +1033,10 @@
     },{
       "name": "moveprod",
       "type": "moveprod",
+      "ricardian_contract": ""
+    },{
+      "name": "prodheartbeat",
+      "type": "prodheartbeat",
       "ricardian_contract": ""
     },{
       "name": "setparams",

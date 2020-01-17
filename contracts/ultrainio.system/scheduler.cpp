@@ -690,7 +690,7 @@ namespace ultrainiosystem {
         return false;
     }
 
-    void system_contract::pre_schedule() {
+    void system_contract::pre_schedule(uint64_t current_block_height) {
        int32_t sched_period_minute = 60*24;
         if(_schedsetting.exists()) {
             auto temp = _schedsetting.get();
@@ -700,7 +700,7 @@ namespace ultrainiosystem {
             sched_period_minute = int32_t(temp.schedule_period);
         }
 
-        auto block_height = int32_t(head_block_number() + 1);
+        auto block_height = int32_t(current_block_height);
         if( block_height%(sched_period_minute * 6) != 0) {
             return;
         }
@@ -1131,7 +1131,7 @@ namespace ultrainiosystem {
         _lwcsingleton.set(_lwc);
     }
 
-    void system_contract::setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on) {
+    void system_contract::setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on, bool prod_supervision) {
         require_auth(N(ultrainio));
         ultrainio_assert(_gstate.is_master_chain(), "only master chain can perform this action");
         auto ite_chain = _chains.find(chain_name);
@@ -1144,6 +1144,7 @@ namespace ultrainiosystem {
         _chains.modify(ite_chain, [&]( auto& _subchain ) {
             _subchain.schedule_on = is_sched_on;
             _subchain.chain_type = chain_type;
+            _subchain.set_prod_supervision(prod_supervision);
         });
     }
 
@@ -1225,7 +1226,7 @@ namespace ultrainiosystem {
         out.send( sendid, _self, true );
     }
 
-    void system_contract::schedule_pending_prod_to_newchain() {
+    void system_contract::schedule_pending_prod_to_newchain(uint64_t current_block_height) {
         new_chain_singleton  ncs(_self, _self);
         if(!ncs.exists()) {
             return;
@@ -1261,16 +1262,15 @@ namespace ultrainiosystem {
         }
         char opk_buf[54];
         char apk_buf[54];
-        uint64_t block_height = uint64_t(head_block_number() + 1);
         auto min_minutes = getglobalextenuintdata(ultrainio_global_state::pending_producer_min_minutes, 10);
         auto pending_prod = pending_table.begin();
         for(; pending_prod != pending_table.end() && producer_num + 1 < ite_type->stable_max_producers; ++pending_prod) {
             if(is_empowered(pending_prod->owner, new_chain.chain_name)) {
                 auto enqueue_blocknum = pending_prod->get_enqueue_block_height();
-                if(enqueue_blocknum == 0 || enqueue_blocknum >= block_height) {
+                if(enqueue_blocknum == 0 || enqueue_blocknum >= current_block_height) {
                     continue;
                 }
-                auto interval_blocks = block_height - enqueue_blocknum;
+                auto interval_blocks = current_block_height - enqueue_blocknum;
                 if(interval_blocks * block_interval_seconds() >= 60 * min_minutes) {
                     ++producer_num;
                     //generate moveprod trx
@@ -1339,4 +1339,29 @@ namespace ultrainiosystem {
         _chains.erase(ite_chain);
     }
 
+    void system_contract::check_producer_heartbeat(uint64_t current_block_height) {
+        auto period_minutes = getglobalextenuintdata(ultrainio_global_state::producer_heartbeat_check_period, 10);
+        if( current_block_height%(period_minutes * 6) != 0) {
+            return;
+        }
+
+        auto chain_iter = _chains.begin();
+        for(; chain_iter != _chains.end(); ++chain_iter) {
+            if(!chain_iter->is_prod_supervision()) {
+                continue;
+            }
+            producers_table _producers(_self, chain_iter->chain_name);
+            auto prod_iter = _producers.begin();
+            for(; prod_iter != _producers.end(); ++prod_iter) {
+                auto last_heartbeat_block_height = prod_iter->get_heartbeat_block_height();
+                if(last_heartbeat_block_height > current_block_height) {
+                    print("error: wrong heartbeat block \n");
+                } else if(current_block_height - last_heartbeat_block_height > period_minutes*6) {
+                    //lost heartbeat for period_minutes minutes, remove it
+                    moveprod_param mv_prod(prod_iter->owner, prod_iter->producer_key, prod_iter->bls_key, false, chain_iter->chain_name, true, default_chain_name);
+                    send_defer_moveprod_action(mv_prod);
+                }
+            }
+        }
+    }
 } //namespace ultrainiosystem

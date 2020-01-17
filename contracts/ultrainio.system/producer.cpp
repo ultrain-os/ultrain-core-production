@@ -346,4 +346,40 @@ namespace ultrainiosystem {
       }
    }
 
+   void system_contract::prodheartbeat(account_name producer) {
+       require_auth(producer);
+       auto briefprod = _briefproducers.find(producer);
+       ultrainio_assert(briefprod != _briefproducers.end(), "not a producer");
+       if(briefprod->in_disable) {
+           check_producer_evillist(producer);
+           disabled_producers_table dp_tbl(_self, _self);
+           auto it_disable = dp_tbl.find(producer);
+           ultrainio_assert(it_disable != dp_tbl.end(), "error: producer is not in disabled table");
+           ultrainio_assert(it_disable->total_cons_staked >= _gstate.min_activated_stake, "producer has been undelegated");
+
+           auto ite_chain = _chains.find(briefprod->location);
+           ultrainio_assert(ite_chain != _chains.end(), "destination chain is not found");
+           ultrainio_assert(ite_chain->is_schedulable, "a committee change is ongoing in destination chain");
+           moveprod_param mv_prod(producer, it_disable->producer_key, it_disable->bls_key, true, default_chain_name, false, briefprod->location);
+           send_defer_moveprod_action(mv_prod);
+           return;
+       }
+       producers_table _producers(_self, briefprod->location);
+       auto prod = _producers.find(producer);
+       ultrainio_assert(prod != _producers.end(), "producer is not found in its location");
+       uint32_t cur_block_height = (uint32_t)head_block_number() + 1;
+       _producers.modify(prod, [&](auto& _producer) {
+           bool found = false;
+           for(auto& ext : _producer.table_extension) {
+               if( ext.key == producer_info::producers_state_exten_type_key::last_heartbeat_block_height ){
+                   ext.value = std::to_string(cur_block_height);
+                   found = true;
+                   break;
+               }
+           }
+           if(!found) {
+               _producer.table_extension.emplace_back(producer_info::producers_state_exten_type_key::last_heartbeat_block_height, std::to_string(cur_block_height));
+           }
+       });
+   }
 } /// namespace ultrainiosystem

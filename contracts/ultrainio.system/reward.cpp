@@ -40,12 +40,12 @@ namespace ultrainiosystem {
          });
          print( "onblock timestamp:", timestamp.abstime, " producer:", name{producer}," produce_block:", prod->total_produce_block, "\n" );
       }
-      schedule_pending_prod_to_newchain();
+      schedule_pending_prod_to_newchain(head_block_height);
       del_expire_table(); //Delete the expired account table
-      check_res_expire();
+      check_res_expire(head_block_height);
       check_bulletin();
-      pre_schedule();
-      distribut_reward();  //automatically send rewards
+      pre_schedule(head_block_height);
+      distribut_reward(head_block_height);  //automatically send rewards
       check_producer_lastblock( self_chain_name, head_block_height );
       //INLINE_ACTION_SENDER(ultrainiores::resource, onblock)( N(utrio.res), { _self, N(active) }, std::make_tuple() );
    }
@@ -302,12 +302,11 @@ namespace ultrainiosystem {
       _gstate.total_unpaid_balance += master_paid_balance;
    }
 
-   void system_contract::distribut_reward(){
+   void system_contract::distribut_reward(uint64_t current_block_height){
       if(!_gstate.is_master_chain())
          return;
-      uint32_t block_height = (uint32_t)head_block_number() + 1;
       uint32_t interval_num = seconds_per_day/block_interval_seconds()/24;   // calcmasterrewards once an hour
-      if(block_height < 20 || block_height%interval_num != 0) {
+      if(current_block_height < 20 || current_block_height%interval_num != 0) {
          return;
       }
       //distribute rewards

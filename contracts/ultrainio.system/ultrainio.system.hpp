@@ -91,6 +91,7 @@ namespace ultrainiosystem {
          pending_producer_max_minutes = 15,
          is_allow_producer_self_register = 16,
          max_bax_count = 17,
+         producer_heartbeat_check_period = 18,
          global_state_key_end
       };
 
@@ -160,6 +161,7 @@ namespace ultrainiosystem {
          claim_rewards_block_height = 1,
          enqueue_block_height = 2, //block height of master chain when producer was added into pending que
          start_produce_time = 3, // producer start produce block time
+         last_heartbeat_block_height = 4,
          producers_state_key_end,
       };
       uint64_t primary_key()const { return owner; }
@@ -176,6 +178,17 @@ namespace ultrainiosystem {
               }
           }
           return enqueue_blockheight;
+      }
+
+      uint64_t get_heartbeat_block_height() const {
+          uint64_t heartbeat_blockheight = 0;
+          for( auto& exten : table_extension ){
+              if( exten.key == last_heartbeat_block_height ){
+                  heartbeat_blockheight = std::stoull(exten.value);
+                  break;
+              }
+          }
+          return heartbeat_blockheight;
       }
 
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, disabled_producer,
@@ -357,6 +370,7 @@ namespace ultrainiosystem {
          chains_state_key_start = 0,
          genesis_producer_public_key = 1,
          is_being_destoryed = 2,
+         producer_supervision = 3,
          chains_state_key_end,
        };
        auto primary_key()const { return chain_name; }
@@ -387,6 +401,33 @@ namespace ultrainiosystem {
            if(!cmt_delta.empty()) {
                print("error: un-expected committee update happened \n");
            }
+       }
+
+       void set_prod_supervision(bool supervise) {
+           bool found = false;
+           for(auto& ext : table_extension) {
+               if(ext.key == chains_state_exten_type_key::producer_supervision) {
+                   found = true;
+                   if(1 == std::stoi(ext.value) && !supervise) {
+                       ext.value = std::to_string(0);
+                   } else if(0 == std::stoi(ext.value) && supervise) {
+                       ext.value = std::to_string(1);
+                   }
+                   break;
+               }
+           }
+           if(!found && supervise) {
+               table_extension.emplace_back(chains_state_exten_type_key::producer_supervision, std::to_string(1));
+           }
+       }
+
+       bool is_prod_supervision() const {
+           for(auto& ext : table_extension) {
+               if(ext.key == chains_state_exten_type_key::producer_supervision) {
+                   return 0 == std::stoi(ext.value) ? false: true;
+               }
+           }
+           return false;
        }
    };
    typedef ultrainio::multi_index<N(chains), chain_info> chains_table;
@@ -599,6 +640,8 @@ namespace ultrainiosystem {
                        bool to_disable,
                        name to_chain);
 
+         void prodheartbeat(account_name producer);
+
          void verifyprodevil();
 
          void procevilprod( account_name producer, uint16_t evil_type );
@@ -635,7 +678,7 @@ namespace ultrainiosystem {
                             const signed_block_header& signed_header,
                             const std::vector<committee_info>& cmt_set);
          void setlwcparams(uint32_t keep_blocks_num);
-         void setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on);
+         void setchainparam(name chain_name, uint64_t chain_type, bool is_sched_on, bool prod_supervision);
          void setgenesisprodpk(uint64_t chain_type, const std::string& genesis_prod_pk);
          void startnewchain(name chain_name, account_name owner);
          void destorychain(name chain_name, bool force);
@@ -663,13 +706,13 @@ namespace ultrainiosystem {
          //defind in delegate.cpp
          void change_cons( account_name from, account_name receiver, asset stake_cons_quantity);
          void process_undelegate_request(account_name from, asset unstake_quantity);
-         void check_res_expire();
+         void check_res_expire(uint64_t current_block_height);
          void del_expire_table();
          void clear_expire_contract( account_name owner );
          //defined in reward.cpp
          void report_subchain_block( const name& chain_name, account_name producer, uint64_t block_height );
          inline void generate_reward_trx( account_name producer, account_name reward_account, uint64_t paid_balance ) const;
-         void distribut_reward();
+         void distribut_reward(uint64_t current_block_height);
          inline float get_reward_fee_ratio() const;
          inline uint64_t get_reward_per_block() const;
          inline uint32_t check_previous_claimed_reward( const ultrainiosystem::producer_info& prod,uint32_t block_height ) const;
@@ -683,7 +726,7 @@ namespace ultrainiosystem {
          void add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number);
          void remove_from_chain(name chain_name, account_name producer_name, uint64_t current_block_number);
          void move_pending_prod_to_sidechain(name chain_name, const committee_info& producer, uint32_t num);
-         void pre_schedule(); //called in onblock every 24h defaultly.
+         void pre_schedule(uint64_t current_block_height); //called in onblock every 24h defaultly.
          void check_bulletin();
          bool move_producer(checksum256 head_id,
                             chains_table::const_iterator from_iter,
@@ -697,7 +740,8 @@ namespace ultrainiosystem {
          uint64_t get_initial_block_num(name chain_name);
          void handle_new_confirm_block(chain_info& _chain, const block_id_type& confirm_block_id);
          void clear_committee_bulletin(name chain_name);
-         void schedule_pending_prod_to_newchain();
+         void schedule_pending_prod_to_newchain(uint64_t current_block_height);
+         void check_producer_heartbeat(uint64_t current_block_height);
 
          //defined in ultrainio.system.cpp
          void get_key_data(const std::string& pubkey,std::array<char,33> & data);
