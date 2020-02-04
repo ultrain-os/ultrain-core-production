@@ -780,8 +780,8 @@ int apply_context::db_counts_i64(uint64_t code, uint64_t scope, uint64_t table) 
 }
 
 template<typename IndexType, typename ObjectType>
-int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id, bool is_exec_deltab_limit, uint64_t& calc_num, uint64_t& calc_delram_bytes) {
-   if(!t_id || (is_exec_deltab_limit && (calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit)) ) {
+int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id, uint64_t& calc_num, uint64_t& calc_delram_bytes) {
+   if(!t_id || ((calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit)) ) {
        dlog("calc_num ${calc_num} or calc_delram_bytes ${calc_delram_bytes} beyond the limit",("calc_num", calc_num)("calc_delram_bytes", calc_delram_bytes));
        return -1;
    }
@@ -810,7 +810,7 @@ int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_obje
       update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ));
       db.remove(obj);
       calc_num++;
-      if(is_exec_deltab_limit && (calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit)){
+      if(calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit){
           return -1;
       }
    }
@@ -842,8 +842,6 @@ int apply_context::db_drop_i64(uint64_t code, uint64_t scope, uint64_t table) {
    return 0;
 }
 int apply_context::db_drop_table(uint64_t code) {
-   const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_deltab_limit = ro_api.is_exec_patch_code( config::patch_update_version::delete_table_limit );
    const auto&  table_idx = db.get_index<table_id_multi_index , by_code_scope_table>();
    account_name systemname(config::system_account_name);
    account_name resourcename(config::resource_account_name);
@@ -859,7 +857,7 @@ int apply_context::db_drop_table(uint64_t code) {
    uint64_t calc_delram_bytes = 0;
    while(i_t++<count_t) {
        calc_num++;
-       if(is_exec_deltab_limit && (calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit)){
+       if(calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit){
           dlog("db_drop_table:scope i_t = ${i_t}, calc_num = ${calc_num}, calc_delram_bytes = ${calc_delram_bytes}, code = ${code}",
               ("i_t", i_t)("calc_num", calc_num)("calc_delram_bytes", calc_delram_bytes)("code", name{code}.to_string()));
           return -1;
@@ -880,7 +878,7 @@ int apply_context::db_drop_table(uint64_t code) {
        int64_t usage_delta = 0LL;
        while(i++<count) {
           calc_num++;
-          if(is_exec_deltab_limit && (calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit)){
+          if(calc_num > calc_num_limit || calc_delram_bytes > calc_delram_bytes_limit){
               dlog("db_drop_table: lower_bound i = ${i}，i_t = ${i_t}, count = ${count}, calc_num = ${calc_num}, calc_delram_bytes = ${calc_delram_bytes}, code = ${code}",
                   ("i", i)("i_t", i_t)("count", count)("calc_num", calc_num)("calc_delram_bytes", calc_delram_bytes)("code", name{code}.to_string()));
               return -1;
@@ -897,11 +895,11 @@ int apply_context::db_drop_table(uint64_t code) {
           update_db_usage( code,  -(usage_delta) );
           db.remove(obj);
        }
-       res = db_drop_secondary_index<index64_index,index64_object>(&table_obj, is_exec_deltab_limit, calc_num, calc_delram_bytes);
-       res = db_drop_secondary_index<index128_index,index128_object>(&table_obj, is_exec_deltab_limit, calc_num, calc_delram_bytes);
-       res = db_drop_secondary_index<index256_index,index256_object>(&table_obj, is_exec_deltab_limit, calc_num, calc_delram_bytes);
-       res = db_drop_secondary_index<index_double_index,index_double_object>(&table_obj, is_exec_deltab_limit, calc_num, calc_delram_bytes);
-       res = db_drop_secondary_index<index_long_double_index,index_long_double_object>(&table_obj, is_exec_deltab_limit, calc_num, calc_delram_bytes);
+       res = db_drop_secondary_index<index64_index,index64_object>(&table_obj, calc_num, calc_delram_bytes);
+       res = db_drop_secondary_index<index128_index,index128_object>(&table_obj, calc_num, calc_delram_bytes);
+       res = db_drop_secondary_index<index256_index,index256_object>(&table_obj, calc_num, calc_delram_bytes);
+       res = db_drop_secondary_index<index_double_index,index_double_object>(&table_obj, calc_num, calc_delram_bytes);
+       res = db_drop_secondary_index<index_long_double_index,index_long_double_object>(&table_obj, calc_num, calc_delram_bytes);
        if(res == -1) {
            return -1;
        }
@@ -920,57 +918,37 @@ uint64_t apply_context::next_global_sequence() {
 }
 
 uint64_t apply_context::next_recv_sequence( account_name receiver ) {
-   const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
-   if( is_exec_add_account_sequence_object ){
-      auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>(receiver);
-      if( !sequence_obj_itr ){
-         db.create<account_sequence_object>([&](auto & a) {
-            a.name = receiver;
-            a.recv_sequence++;
-         });
-         return 1;
-      } else {
-         db.modify( *sequence_obj_itr, [&]( auto& mrs ) {
-            ++mrs.recv_sequence;
-         });
-         return sequence_obj_itr->recv_sequence;
-      }
-   } else {
-      const auto& rs = db.get<account_sequence_object,by_name>( receiver );
-      db.modify( rs, [&]( auto& mrs ) {
-         ++mrs.recv_sequence;
-      });
-      return rs.recv_sequence;
-   }
+    auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>(receiver);
+    if( !sequence_obj_itr ){
+       db.create<account_sequence_object>([&](auto & a) {
+          a.name = receiver;
+          a.recv_sequence++;
+       });
+       return 1;
+    } else {
+       db.modify( *sequence_obj_itr, [&]( auto& mrs ) {
+          ++mrs.recv_sequence;
+       });
+       return sequence_obj_itr->recv_sequence;
+    }
 }
 uint64_t apply_context::next_auth_sequence( account_name actor ) {
-   const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
-   if( is_exec_add_account_sequence_object ){
-      auto const* auth_sequence_obj_itr = db.find<auth_sequence_object, by_name>(actor);
-      if( !auth_sequence_obj_itr ){
-         db.create<auth_sequence_object>([&](auto & a) {
-            a.name = actor;
-            ++a.auth_sequence;
-         });
-         return 1;
-      } else {
-         db.modify( *auth_sequence_obj_itr, [&](auto& a ){
-            if( a.auth_sequence >= std::numeric_limits<uint8_t>::max() )
-               a.auth_sequence = 0;
-            else
-               ++a.auth_sequence;
-         });
-         return auth_sequence_obj_itr->auth_sequence;
-      }
-   } else {
-      const auto& rs = db.get<account_sequence_object,by_name>( actor );
-      db.modify( rs, [&](auto& mrs ){
-         ++mrs.auth_sequence;
-      });
-      return rs.auth_sequence;
-   }
+    auto const* auth_sequence_obj_itr = db.find<auth_sequence_object, by_name>(actor);
+    if( !auth_sequence_obj_itr ){
+       db.create<auth_sequence_object>([&](auto & a) {
+          a.name = actor;
+          ++a.auth_sequence;
+       });
+       return 1;
+    } else {
+       db.modify( *auth_sequence_obj_itr, [&](auto& a ){
+          if( a.auth_sequence >= std::numeric_limits<uint8_t>::max() )
+             a.auth_sequence = 0;
+          else
+             ++a.auth_sequence;
+       });
+       return auth_sequence_obj_itr->auth_sequence;
+    }
 }
 
 

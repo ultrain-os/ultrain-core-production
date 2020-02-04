@@ -901,13 +901,6 @@ struct controller_impl {
             a.set_abi(ultrainio_contract_abi(abi_def()));
          }
       });
-      const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-      bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
-      if( !is_exec_add_account_sequence_object ){
-         db.create<account_sequence_object>([&](auto & a) {
-            a.name = name;
-         });
-      }
 
       const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
                                                                       owner, conf.genesis.initial_timestamp );
@@ -1033,7 +1026,6 @@ struct controller_impl {
                                         uint32_t& cpu_time_to_bill_us, // only set on failure
                                         uint32_t billed_cpu_time_us,
                                         bool explicit_billed_cpu_time = false,
-                                        bool packed_generated_trx_receipt = true,
                                         bool enforce_whiteblacklist = true ) {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
@@ -1056,7 +1048,7 @@ struct controller_impl {
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
-         trace->receipt = push_receipt_for_generated_trx(pgtrx, gtrx.trx_id, packed_generated_trx_receipt,
+         trace->receipt = push_receipt_for_generated_trx(pgtrx, gtrx.trx_id,
                                         transaction_receipt::soft_fail, trx_context.billed_cpu_time_us, trace->net_usage );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
@@ -1143,13 +1135,12 @@ struct controller_impl {
       packed_generated_transaction pgt(static_cast<transaction&>(dtrx));
       const int patch_version_number = 3;
       const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-      bool new_receipt = ro_api.is_exec_patch_code(patch_version_number);
 
       if( gtrx.expiration < self.pending_block_time() ) {
          auto trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
          trace->scheduled = false;
-         trace->receipt = push_receipt_for_generated_trx( pgt, gtrx.trx_id, new_receipt, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
+         trace->receipt = push_receipt_for_generated_trx( pgt, gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          undo_session.squash();
          return trace;
       }
@@ -1182,7 +1173,7 @@ struct controller_impl {
 
          auto restore = make_block_restore_point();
 
-         trace->receipt = push_receipt_for_generated_trx( pgt, gtrx.trx_id, new_receipt,
+         trace->receipt = push_receipt_for_generated_trx( pgt, gtrx.trx_id,
                                         transaction_receipt::executed,
                                         trx_context.billed_cpu_time_us,
                                         trace->net_usage );
@@ -1209,7 +1200,7 @@ struct controller_impl {
          // Attempt error handling for the generated transaction.
          dlog("${detail}", ("detail", trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gtrx, pgt, deadline, trx_context.pseudo_start, cpu_time_to_bill_us,
-                                      billed_cpu_time_us, explicit_billed_cpu_time, new_receipt,
+                                      billed_cpu_time_us, explicit_billed_cpu_time,
                                       trx_context.enforce_whiteblacklist);
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
@@ -1247,7 +1238,7 @@ struct controller_impl {
          resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
                                                 block_timestamp_type(self.pending_block_time()).abstime ); // Should never fail
 
-         trace->receipt = push_receipt_for_generated_trx(pgt, gtrx.trx_id, new_receipt, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
+         trace->receipt = push_receipt_for_generated_trx(pgt, gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
          emit( self.applied_transaction, trace );
          undo_session.squash();
       }
@@ -1257,13 +1248,9 @@ struct controller_impl {
 
 
    const transaction_receipt& push_receipt_for_generated_trx(const packed_generated_transaction& trx, const transaction_id_type& trx_id,
-                                            bool new_receipt, transaction_receipt_header::status_enum status,
+                                            transaction_receipt_header::status_enum status,
                                             uint64_t cpu_usage_us, uint64_t net_usage) {
-       if(new_receipt) {
-           return push_receipt(trx, status, cpu_usage_us, net_usage);
-       } else {
-           return push_receipt(trx_id, status, cpu_usage_us, net_usage);
-       }
+       return push_receipt(trx, status, cpu_usage_us, net_usage);
    }
 
    /**
@@ -1400,10 +1387,7 @@ struct controller_impl {
 
       ULTRAIN_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                 ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
-      const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-      const auto upgrade_version_number = ro_api.get_upgrade_version_number();
-      resource_limits.set_upgrade_version_number( upgrade_version_number );
-      ilog("----------- START BLOCK upgrade_version_number:${version}", ("version", upgrade_version_number));
+      ilog("----------- START BLOCK ------------");
 
       auto guard_pending = fc::make_scoped_exit([this](){
          pending.reset();
@@ -1446,28 +1430,27 @@ struct controller_impl {
    } // start_block
 
    void finish_block_hack() {
-      const auto& ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-      if (ro_api.is_exec_patch_code(config::patch_update_version::lifecycle_onfinish) && ro_api.is_genesis_finished()) {
-          if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
-              try {
-                  auto on_finish_trx = std::make_shared<transaction_metadata>( get_on_finish_transaction() );
-                  auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
-                      in_trx_requiring_checks = old_value;
-                  });
-                  in_trx_requiring_checks = true;
-                  ilog("push onfinish transaction");
-                  push_transaction( on_finish_trx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage, true );
-              } catch( const boost::interprocess::bad_alloc& e  ) {
-                  elog( "onfinish transaction failed due to a bad allocation" );
-                  throw;
-              } catch( const fc::exception& e ) {
-                  wlog( "onfinish transaction failed, but shouldn't impact block generation, system contract needs update" );
-                  edump((e.to_detail_string()));
-              } catch( ... ) {
-                  elog("onfinish transaction failed due to unknown reason");
-              }
-          }
-      }
+       if (!appbase::app().get_plugin<chain_plugin>().get_read_only_api().is_genesis_finished())
+           return;
+       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
+           try {
+               auto on_finish_trx = std::make_shared<transaction_metadata>( get_on_finish_transaction() );
+               auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+                                                                             in_trx_requiring_checks = old_value;
+                                                                         });
+               in_trx_requiring_checks = true;
+               ilog("push onfinish transaction");
+               push_transaction( on_finish_trx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+           } catch( const boost::interprocess::bad_alloc& e  ) {
+               elog( "onfinish transaction failed due to a bad allocation" );
+               throw;
+           } catch( const fc::exception& e ) {
+               wlog( "onfinish transaction failed, but shouldn't impact block generation, system contract needs update" );
+               edump((e.to_detail_string()));
+           } catch( ... ) {
+               elog("onfinish transaction failed due to unknown reason");
+           }
+       }
    }
 
    void assign_header_to_block() {

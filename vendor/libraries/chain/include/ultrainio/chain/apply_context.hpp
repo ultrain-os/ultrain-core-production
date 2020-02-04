@@ -570,7 +570,7 @@ class apply_context {
    private:
 
       template<typename INDEX_TYPE, typename OBJECT_TYPE>
-      int db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id, bool is_exec_deltab_limit, uint64_t& calc_num, uint64_t& calc_delram_bytes);
+      int db_drop_secondary_index(const ultrainio::chain::table_id_object * t_id, uint64_t& calc_num, uint64_t& calc_delram_bytes);
       const table_id_object* find_table( name code, name scope, name table );
       const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
       void  remove_table( account_name payer,const table_id_object& tid );

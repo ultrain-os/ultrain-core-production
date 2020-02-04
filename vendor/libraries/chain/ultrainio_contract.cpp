@@ -103,13 +103,6 @@ void apply_ultrainio_newaccount(apply_context& context) {
       a.updateable = create.updateable;
       a.creation_date = context.control.pending_block_time();
    });
-   const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
-   if(!is_exec_add_account_sequence_object){
-      db.create<account_sequence_object>([&](auto& a) {
-         a.name = create.name;
-      });
-   }
 
    for( const auto& auth : { create.owner, create.active } ){
       validate_authority_precondition( context, auth );
@@ -175,26 +168,17 @@ void apply_ultrainio_setcode(apply_context& context) {
          memcpy( a.code.data(), act.code.data(), code_size );
 
    });
-   const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
-   if( is_exec_add_account_sequence_object ){
-      auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>(act.account);
-      if( !sequence_obj_itr ){
-         db.create<account_sequence_object>([&](auto & a) {
-            a.name = act.account;
-            a.code_sequence += 1;
-         });
-      } else {
-         db.modify( *sequence_obj_itr, [&]( auto& aso ) {
-            aso.code_sequence += 1;
-         });
-      }
 
+   auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>(act.account);
+   if( !sequence_obj_itr ){
+       db.create<account_sequence_object>([&](auto & a) {
+          a.name = act.account;
+          a.code_sequence += 1;
+       });
    } else {
-      const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
-      db.modify( account_sequence, [&]( auto& aso ) {
-         aso.code_sequence += 1;
-      });
+       db.modify( *sequence_obj_itr, [&]( auto& aso ) {
+          aso.code_sequence += 1;
+       });
    }
 
    if (new_size != old_size) {
@@ -228,27 +212,18 @@ void apply_ultrainio_setabi(apply_context& context) {
       if( abi_size > 0 )
          memcpy( a.abi.data(), act.abi.data(), abi_size );
    });
-   const auto &ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-   bool  is_exec_add_account_sequence_object = ro_api.is_exec_patch_code( config::patch_update_version::add_account_sequence_object );
-   if( is_exec_add_account_sequence_object ){
-      auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>(act.account);
-      if( !sequence_obj_itr ){
-         db.create<account_sequence_object>([&](auto & a) {
-            a.name = act.account;
-            a.abi_sequence += 1;
-         });
-      } else {
-         db.modify( *sequence_obj_itr, [&]( auto& aso ) {
-            aso.abi_sequence += 1;
-         });
-      }
 
-   } else {
-      const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
-      db.modify( account_sequence, [&]( auto& aso ) {
-         aso.abi_sequence += 1;
-      });
-   }
+   auto const* sequence_obj_itr = db.find<account_sequence_object, by_name>(act.account);
+    if( !sequence_obj_itr ){
+       db.create<account_sequence_object>([&](auto & a) {
+          a.name = act.account;
+          a.abi_sequence += 1;
+       });
+    } else {
+       db.modify( *sequence_obj_itr, [&]( auto& aso ) {
+          aso.abi_sequence += 1;
+       });
+    }
 
    if (new_size != old_size) {
       context.trx_context.add_ram_usage( act.account, new_size - old_size );

@@ -216,8 +216,7 @@ namespace ultrainio {
 
     void LightClient::handleGenesis(const BlockHeader& blockHeader, const std::string& signature) {
         const auto& ro_api = appbase::app().get_plugin<chain_plugin>().get_read_only_api();
-        if (blockHeader.block_num() != 1 && ro_api.is_exec_patch_code(chain::config::patch_update_version::verify_genesis_signature_in_lightclient)
-                && !Validator::verify<BlockHeader>(Signature(signature), blockHeader, PublicKey(m_startPoint.genesisPk))) {
+        if (blockHeader.block_num() != 1 && !Validator::verify<BlockHeader>(Signature(signature), blockHeader, PublicKey(m_startPoint.genesisPk))) {
             elog("genesis signature error : ${s} for blockNum : ${num}, blockId : ${id}, genesisPk : ${pk}",
                     ("s", signature)("num", blockHeader.block_num())("id", blockHeader.id())("pk", m_startPoint.genesisPk));
             onError(LightClientError::kSignatureError ,blockHeader);

@@ -119,12 +119,12 @@ constexpr uint64_t billable_size_v = ((billable_size<T>::value + billable_alignm
     Patch version number is defined here, and the patch code is executed only when the version number is larger than the patch version number
 */
 enum patch_update_version{
-    delete_table_limit = 2,  //Prevent the delete table from timeout and is limited so that it can be deleted in batches
-    not_add_unessential_table = 3,  //Do not create unnecessary tables when creating accounts
-    lifecycle_onfinish = 4,
-    verify_genesis_signature_in_lightclient = 5,
-    add_account_sequence_object = 6, //Add account_sequence_object to reduce memory usage
-    set_fixed_cpu_net_value = 7, //Set a fixed cpu,net value for a single resource package
+    //    delete_table_limit = 2,  //Prevent the delete table from timeout and is limited so that it can be deleted in batches
+    //    not_add_unessential_table = 3,  //Do not create unnecessary tables when creating accounts
+    //    lifecycle_onfinish = 4,
+    //    verify_genesis_signature_in_lightclient = 5,
+    //    add_account_sequence_object = 6, //Add account_sequence_object to reduce memory usage
+    //    set_fixed_cpu_net_value = 7, //Set a fixed cpu,net value for a single resource package
 };
 
 } } } // namespace ultrainio::chain::config
