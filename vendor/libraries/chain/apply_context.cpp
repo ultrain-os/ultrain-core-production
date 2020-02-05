@@ -284,7 +284,7 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
-   ULTRAIN_ASSERT(act.account == N(ultrainio) || act.account == N(utrio.msig), action_validate_exception, "only ultrainio and utrio.msig contract can send deferred transaction" );
+   ULTRAIN_ASSERT(act.account == config::system_account_name || act.account == N(utrio.msig) || act.account == config::resource_account_name, action_validate_exception, "only ultrainio,utrio.msig,utrio.res contract can send deferred transaction" );
    ULTRAIN_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
    trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
@@ -786,7 +786,8 @@ int apply_context::db_drop_secondary_index(const ultrainio::chain::table_id_obje
        return -1;
    }
    account_name systemname(config::system_account_name);
-   ULTRAIN_ASSERT( systemname == receiver, table_access_violation, "db access violation" );
+   account_name resourcename(config::resource_account_name);
+   ULTRAIN_ASSERT( systemname == receiver || resourcename == receiver, table_access_violation, "db access violation" );
    const auto& idx = db.template get_index<IndexType, by_primary>();
    decltype(t_id->id) next_tid(t_id->id._id + 1);
    auto lower = idx.lower_bound(boost::make_tuple(t_id->id, 0));
@@ -845,7 +846,8 @@ int apply_context::db_drop_table(uint64_t code) {
    bool  is_exec_deltab_limit = ro_api.is_exec_patch_code( config::patch_update_version::delete_table_limit );
    const auto&  table_idx = db.get_index<table_id_multi_index , by_code_scope_table>();
    account_name systemname(config::system_account_name);
-   ULTRAIN_ASSERT( systemname == receiver, table_access_violation, "db access violation" );
+   account_name resourcename(config::resource_account_name);
+   ULTRAIN_ASSERT( systemname == receiver ||  resourcename == receiver, table_access_violation, "db access violation" );
    auto table_lower = table_idx.lower_bound(boost::make_tuple(code, 0, 0));
    auto table_upper = table_idx.lower_bound(boost::make_tuple(code+1, 0, 0));
    const auto& idx = db.get_index<key_value_index, by_scope_primary>();

@@ -47,7 +47,7 @@ namespace ultrainiosystem {
       pre_schedule();
       distribut_reward();  //automatically send rewards
       check_producer_lastblock( self_chain_name, head_block_height );
-      INLINE_ACTION_SENDER(ultrainiores::resource, onblock)( N(utrio.res), { _self, N(active) }, std::make_tuple() );
+      //INLINE_ACTION_SENDER(ultrainiores::resource, onblock)( N(utrio.res), { _self, N(active) }, std::make_tuple() );
    }
    float system_contract::get_reward_fee_ratio() const {
       uint32_t charge_ratio = 1; //The default handling charge is 1%

@@ -303,7 +303,9 @@ namespace ultrainiosystem {
       //                         { creator, N(utrio.fee), asset(newaccount_fee), std::string("create account") } );
       // }
 
-      set_resource_limits( newact, 0, 0, 0 );
+      if ( name_str.find( "utrio." ) != 0 ) {
+          set_resource_limits( newact, 0, 0, 0 );
+      }
    }
    void native::updateauth( account_name     account,
                   permission_name  permission,
