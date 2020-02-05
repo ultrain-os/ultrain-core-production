@@ -6,6 +6,7 @@
 #include <ultrainiolib/crypto.h>
 #include <ultrainiolib/datastream.hpp>
 #include <ultrainiolib/asset.hpp>
+#include <ultrainiolib/transaction.hpp>
 
 #include <vector>
 #include <string>

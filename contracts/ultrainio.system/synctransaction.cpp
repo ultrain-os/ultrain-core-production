@@ -7,6 +7,7 @@
 #include <ultrainiolib/ultrainio.hpp>
 #include <ultrainio.token/ultrainio.token.hpp>
 #include <ultrainiolib/merkle_proof.hpp>
+#include <ultrainiolib/transaction.hpp>
 
 namespace ultrainiosystem {
     using namespace ultrainio;
