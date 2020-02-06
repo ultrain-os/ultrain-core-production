@@ -19,7 +19,7 @@ namespace ultrainiores {
     using namespace ultrainiosystem;
 
     static constexpr uint32_t seconds_per_period = 365*24*3600;
-
+    static constexpr uint32_t seconds_per_day = 24*3600;
     struct resource_global_params {
         bool                 is_allow_buy_res;
         bool                 is_pending_check;

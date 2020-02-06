@@ -129,6 +129,7 @@ namespace ultrainiores {
     }
 
     void resource::transresource(account_name from, account_name to, uint16_t combosize, uint64_t period){
+        require_auth( from );
         resources_lease_table _reslease_tbl( _self, period );
         const auto& lease_from = _reslease_tbl.get( from , ( name{from}.to_string() + " has no resource in chain ").c_str() );
         ultrainio_assert(lease_from.lease_num >= combosize, ( name{from}.to_string() + " has not enough resources to transfer ").c_str() );
@@ -173,6 +174,7 @@ namespace ultrainiores {
     }
 
     void resource::transaccount( account_name from, account_name to, uint32_t number ) {
+        require_auth( from );
         resfreeaccount _resacc_tbl( _self, _self );
         auto resacc_itr = _resacc_tbl.find( from );
         ultrainio_assert( resacc_itr !=  _resacc_tbl.end(), ( name{from}.to_string() + " has no account in chain ").c_str() );
@@ -208,7 +210,7 @@ namespace ultrainiores {
         uint32_t next_periods_end_block = seconds_per_period / block_interval_seconds() * (cur_periods + 1);
         uint64_t bytes = _gstate.max_ram_size/_gstate.max_resources_number;
         //Set next period resource within the last three day of the year expiration
-        if ( (block_height + 3 * 60 / block_interval_seconds()) < next_periods_start_block ) {
+        if ( (block_height + seconds_per_day / block_interval_seconds()) < next_periods_start_block ) {
             return;
         }
         int32_t calc_num = 0;
