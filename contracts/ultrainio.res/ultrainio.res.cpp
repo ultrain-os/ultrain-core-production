@@ -27,7 +27,6 @@ namespace ultrainiores {
 
     void resource::resourcelease( account_name from, account_name receiver,
                                 uint16_t combosize, uint64_t period, name location ) {
-        require_auth( from );
         ultrainiosystem::global_state_singleton   gstatesingle(N(ultrainio),N(ultrainio));
         ultrainio_assert( gstatesingle.exists(), "global table not found");
         ultrainiosystem::ultrainio_global_state globalst = gstatesingle.get();
@@ -49,7 +48,14 @@ namespace ultrainiores {
             _gstate.total_resources_used_number += combosize;
             cur_block_height = (uint32_t)head_block_number();
         }
-        ultrainio_assert( combosize == _gstate.max_resources_number, (" combosize must equal to max_resources_number:" + std::to_string(_gstate.max_resources_number)).c_str() );
+        std::string assert_des("combosize must less then ");
+        assert_des.append(std::to_string(_gstate.max_resources_number));
+        ultrainio_assert(combosize <= _gstate.max_resources_number, assert_des.c_str());
+
+        if(!has_auth(ultrainio_account_name)) {
+            require_auth( from );
+            ultrainio_assert(combosize == _gstate.max_resources_number, ("must buy full resource: " + std::to_string(_gstate.max_resources_number) ).c_str());
+        }
 
         uint64_t should_buy_period = 1;     //Start with the first period
         resources_periods_table _resperiods_tbl( _self,location );
@@ -65,13 +71,26 @@ namespace ultrainiores {
         if ( should_buy_period < cur_period ) {
             should_buy_period = cur_period;
         }
-        ultrainio_assert( should_buy_period == period, ( std::to_string(should_buy_period)+ " should buy period not equal to period:" + std::to_string(period)).c_str() );
 
-        _resperiods_tbl.emplace( [&]( auto& tot ) {
-            tot.periods = period;
-            tot.owner = receiver;
-            tot.modify_block_height = cur_block_height;
-        });
+        auto ite_period = _resperiods_tbl.find(period);
+        if(ite_period != _resperiods_tbl.end()) {
+            ultrainio_assert( period >= cur_period, ("expired period, current period is " + std::to_string(cur_period) ).c_str());
+            ultrainio_assert(ite_period->total_lease_num + combosize <= _gstate.max_resources_number, "total combosize of this period exceeds full size");
+            ultrainio_assert(ite_period->owner == receiver, "only period owner can continue to receive resource of this period");
+
+            _resperiods_tbl.modify(ite_period, [&]( auto& tot ) {
+                tot.total_lease_num += combosize;
+                tot.modify_block_height = cur_block_height;
+            });
+        } else {
+            ultrainio_assert( should_buy_period == period, ( std::to_string(should_buy_period)+ " should buy period not equal to period:" + std::to_string(period)).c_str() );
+            _resperiods_tbl.emplace( [&]( auto& tot ) {
+                tot.periods = period;
+                tot.owner = receiver;
+                tot.total_lease_num = combosize;
+                tot.modify_block_height = cur_block_height;
+            });
+        }
         if ( globalst.is_master_chain() ) {
             auto resourcefee = (int64_t)(_gstate.resource_fee * combosize);
             ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
@@ -303,8 +322,9 @@ namespace ultrainiores {
             if(legacy_ite->lease_num >= 5000) {
                 resources_periods_table _resperiods_tbl( _self, N(ultrainio));
                 _resperiods_tbl.emplace( [&]( auto& tot ) {
-                    tot.periods = 0	;
+                    tot.periods = 1;
                     tot.owner = legacy_ite->owner;
+                    tot.total_lease_num = 10000;
                     tot.modify_block_height = legacy_ite->start_block_height;
                 });
             }
@@ -346,13 +366,20 @@ namespace ultrainiores {
                 }
                 if(!has_res_period && res_ite->lease_num >= 5000) {
                     _resperiods_tbl.emplace( [&]( auto& tot ) {
-                        tot.periods = 0 ;
+                        tot.periods = 1;
+                        tot.total_lease_num = 10000;
                         tot.owner = res_ite->owner;
                         tot.modify_block_height = res_ite->start_block_height;
                     });
                 }
 
                 //set free account number
+
+                //special handling for sanguo123, no need to set free account numver
+                if(N(sanguo123) == res_ite->owner) {
+                    continue;
+                }
+
                 resfreeaccount _resacc_tbl( _self, _self );
                 auto resacc_to_itr = _resacc_tbl.find(res_ite->owner);
                 if(resacc_to_itr == _resacc_tbl.end()) {

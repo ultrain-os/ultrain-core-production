@@ -56,12 +56,13 @@ namespace ultrainiores {
     struct resources_periods {
         uint64_t       periods = 0;
         account_name   owner;
+        uint16_t       total_lease_num = 0;
         uint32_t       modify_block_height = 0;
         exten_types    table_extension;
 
         uint64_t  primary_key()const { return periods; }
 
-        ULTRAINLIB_SERIALIZE( resources_periods, (periods)(owner)(modify_block_height)(table_extension) )
+        ULTRAINLIB_SERIALIZE( resources_periods, (periods)(owner)(total_lease_num)(modify_block_height)(table_extension) )
     };
     typedef ultrainio::multi_index< N(resperiods), resources_periods>      resources_periods_table;
 

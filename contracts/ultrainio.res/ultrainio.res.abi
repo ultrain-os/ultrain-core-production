@@ -134,6 +134,7 @@
       "fields": [
          {"name":"periods",   "type":"uint64"},
          {"name":"owner",       "type":"account_name"},
+         {"name":"total_lease_num",   "type":"uint16"},
          {"name":"modify_block_height", "type":"uint32"},
          {"name": "table_extension", "type": "exten_type[]"}
       ]
