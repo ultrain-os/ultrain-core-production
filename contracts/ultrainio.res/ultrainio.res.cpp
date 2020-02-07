@@ -307,7 +307,7 @@ namespace ultrainiores {
                 new_res.lease_num = uint16_t(legacy_ite->lease_num);
                 new_res.locked_num = 0;
                 //special handling
-                if(N(u.unitopia.1) == legacy_ite->owner && legacy_ite->lease_num == 9998) {
+                if(N(u.unitopia.1) == legacy_ite->owner && legacy_ite->lease_num > 9990) {
                     set_resource_limits(legacy_ite->owner, int64_t(_gstate.max_ram_size), 10000, 10000);
                     new_res.lease_num = 10000;
                 }
