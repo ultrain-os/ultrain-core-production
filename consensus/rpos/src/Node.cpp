@@ -120,10 +120,6 @@ namespace ultrainio {
         m_schedulerPtr->enableEventRegister(v);
     }
 
-    void Node::setCommitteeInfo(const std::string& account, const std::string& sk, const std::string& blsSk, const std::string& accountSk) {
-        StakeVoteBase::getNodeInfo()->setCommitteeInfo(account, sk, blsSk, accountSk);
-    }
-
     bool Node::getNonProducingNode() const {
         return m_isNonProducingNode;
     }
@@ -317,7 +313,7 @@ namespace ultrainio {
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA1, 0);
 
         dlog("############## ba0 finish blockNum = ${id}, voter.hash = ${hash1}, prepare ba1. isVoter = ${isVoter}",
-             ("id", getBlockNum())("hash1", short_hash(ba0Block.id()))("isVoter",MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA1, 0)));
+             ("id", getBlockNum())("hash1", short_hash(ba0Block.id()))("isVoter",MsgMgr::getInstance()->hasVoter(getBlockNum(), kPhaseBA1, 0)));
 
         vote(getBlockNum(), kPhaseBA1, 0);
 
@@ -338,37 +334,42 @@ namespace ultrainio {
                 ("phase",uint32_t(phase))("cnt",baxCount));
 
         if (kPhaseBA0 == phase) {
-            if (MsgMgr::getInstance()->isProposer(blockNum)) {
+            size_t index;
+            if (MsgMgr::getInstance()->hasProposer(blockNum, index)) {
                 ProposeMsg propose;
-                bool ret = m_schedulerPtr->initProposeMsg(propose);
+                bool ret = m_schedulerPtr->initProposeMsg(propose, index);
                 ULTRAIN_ASSERT(ret, chain::chain_exception, "Init propose msg failed");
                 m_schedulerPtr->insert(propose);
                 sendMessage(propose);
-                if (MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)) {
-                    EchoMsg echo = MsgBuilder::constructMsg(propose);
-                    ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error, check bls private key pls");
-                    m_schedulerPtr->insert(echo);
-                    dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", short_hash(echo.blockId)));
-                    sendMessage(echo);
+                std::vector<size_t> v;
+                if (MsgMgr::getInstance()->hasVoter(getBlockNum(), kPhaseBA0, 0, v)) {
+                    for (auto index : v) {
+                        EchoMsg echo = MsgBuilder::constructMsg(propose, index);
+                        ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo, index), chain::chain_exception, "bls signature error, check bls private key pls");
+                        m_schedulerPtr->insert(echo);
+                        dlog("vote. echo.block_hash : ${block_hash} account : ${account}", ("block_hash", short_hash(echo.blockId))
+                            ("account", NodeInfo::getInstance()->getAccountList()[index]));
+                        sendMessage(echo);
+                    }
                 }
             }
             return;
         }
 
-        if (MsgMgr::getInstance()->isVoter(blockNum, phase, baxCount)) {
+        std::vector<size_t> v;
+        if (MsgMgr::getInstance()->hasVoter(blockNum, phase, baxCount, v)) {
             const Block* ba0Block = m_schedulerPtr->getBa0Block();
-            if (isEmpty(ba0Block->id())) {
-                elog("vote ba0Block is empty, and send echo for empty block");
-                sendEchoForEmptyBlock();
-            } else if (m_schedulerPtr->verifyBa0Block()) { // not empty, verify
-                EchoMsg echo = MsgBuilder::constructMsg(*ba0Block);
-                ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo), chain::chain_exception, "bls signature error, check bls private key pls");
-                m_schedulerPtr->insert(echo);
-                dlog("vote. echo.block_hash : ${block_hash}", ("block_hash", short_hash(echo.blockId)));
-                sendMessage(echo);
+            if (!isEmpty(ba0Block->id()) && m_schedulerPtr->verifyBa0Block()) { // not empty, verify
+                for (auto index : v) {
+                    EchoMsg echo = MsgBuilder::constructMsg(*ba0Block, index);
+                    ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echo, index), chain::chain_exception, "bls signature error, check bls private key pls");
+                    m_schedulerPtr->insert(echo);
+                    dlog("vote. echo.block_hash : ${block_hash} account : ${account}", ("block_hash", short_hash(echo.blockId))("account", NodeInfo::getInstance()->getAccount(index)));
+                    sendMessage(echo);
+                }
             } else {
-                elog("vote. verify ba0Block failed. And send echo for empty block");
-                sendEchoForEmptyBlock();
+                elog("send echo for empty block");
+                sendEchoForEmptyBlock(v);
             }
         }
     }
@@ -567,13 +568,12 @@ namespace ultrainio {
         m_phase = kPhaseBAX;
         m_baxCount++;
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBAX, m_baxCount);
-        dlog("bax loop. Voter = ${Voter}, m_baxCount = ${count}.",
-             ("Voter", MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount))
-                     ("count",m_baxCount));
+        dlog("bax loop. m_baxCount = ${count}.", ("count",m_baxCount));
 
         if ((m_baxCount + m_phase) >= Config::kMaxBaxCount) {
-            if (MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBAX, m_baxCount)) {
-                sendEchoForEmptyBlock();
+            std::vector<size_t> v;
+            if (MsgMgr::getInstance()->hasVoter(getBlockNum(), kPhaseBAX, m_baxCount, v)) {
+                sendEchoForEmptyBlock(v);
             }
         } else {
             vote(getBlockNum(), kPhaseBAX, m_baxCount);
@@ -735,20 +735,19 @@ namespace ultrainio {
         // BA0=======
         MsgMgr::getInstance()->moveToNewStep(getBlockNum(), kPhaseBA0, 0);
 
-        bool isProposer = MsgMgr::getInstance()->isProposer(getBlockNum());
-        dlog("start BA0. blockNum = ${blockNum}. isProposer = ${isProposer} and isVoter = ${isVoter}",
-             ("blockNum", getBlockNum())("isProposer", isProposer)
-                     ("isVoter", MsgMgr::getInstance()->isVoter(getBlockNum(), kPhaseBA0, 0)));
+        bool hasProposer = MsgMgr::getInstance()->hasProposer(getBlockNum());
+        dlog("start BA0. blockNum = ${blockNum}. isProposer = ${isProposer}",
+             ("blockNum", getBlockNum())("isProposer", hasProposer));
         //monitor: report if this node is a proposer of this block at phase ba0.
         if(setIsProposer != nullptr) {
-            setIsProposer(isProposer);
+            setIsProposer(hasProposer);
         }
         RoundInfo info(getBlockNum(), m_phase);
         m_schedulerPtr->processCache(info);
 
         vote(getBlockNum(), kPhaseBA0, 0);
 
-        if ((getLeftTime() > (Config::s_maxTrxMicroSeconds/1000 + 300)) && (!MsgMgr::getInstance()->isProposer(getBlockNum()))) {
+        if ((getLeftTime() > (Config::s_maxTrxMicroSeconds/1000 + 300)) && (!hasProposer)) {
             fastLoop(Config::s_maxTrxMicroSeconds/1000 + 300);
         } else {
             ba0Loop(getLeftTime());
@@ -930,13 +929,15 @@ namespace ultrainio {
         return m_schedulerPtr->isEmpty(blockId);
     }
 
-    void Node::sendEchoForEmptyBlock() {
+    void Node::sendEchoForEmptyBlock(const std::vector<size_t>& v) {
         Block block = m_schedulerPtr->emptyBlock();
         dlog("vote empty block. blockNum = ${blockNum} hash = ${hash}", ("blockNum",getBlockNum())("hash", short_hash(block.id())));
-        EchoMsg echoMsg = MsgBuilder::constructMsg(block);
-        ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echoMsg), chain::chain_exception, "bls signature error, check bls private key pls");
-        m_schedulerPtr->insert(echoMsg);
-        sendMessage(echoMsg);
+        for (auto index : v) {
+            EchoMsg echoMsg = MsgBuilder::constructMsg(block, index);
+            ULTRAIN_ASSERT(m_schedulerPtr->verifyMyBlsSignature(echoMsg, index), chain::chain_exception, "bls signature error, check bls private key pls");
+            m_schedulerPtr->insert(echoMsg);
+            sendMessage(echoMsg);
+        }
     }
 
     int Node::getCommitteeMemberNumber() {
@@ -1010,6 +1011,7 @@ namespace ultrainio {
     }
 
     bool Node::isListener(uint32_t blockNum, ConsensusPhase phase, uint32_t baxCount) {
-        return !MsgMgr::getInstance()->isVoter(blockNum, phase, baxCount) && !m_isNonProducingNode;
+        std::vector<size_t> v;
+        return !MsgMgr::getInstance()->hasVoter(blockNum, phase, baxCount, v) && !m_isNonProducingNode;
     }
 }

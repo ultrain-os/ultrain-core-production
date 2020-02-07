@@ -40,6 +40,7 @@
 #include <rpos/MsgMgr.h>
 #include <rpos/NativeTrx.h>
 #include <rpos/Node.h>
+#include <rpos/NodeInfo.h>
 #include <rpos/PunishMgr.h>
 #include <rpos/Seed.h>
 #include <rpos/StakeVoteBase.h>
@@ -296,7 +297,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::loopback(const EchoMsg& echo) const {
-        return StakeVoteBase::getMyAccount() == echo.account;
+        return NodeInfo::getInstance()->hasAccount(std::string(echo.account));
     }
 
     bool Scheduler::sameBlockNumButBeforePhase(const EchoMsg &echo) const {
@@ -372,14 +373,16 @@ namespace ultrainio {
             std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(blockNum);
             if (response && voterSet.getTotalVoterWeight() >= stakeVotePtr->getSendEchoThreshold() && !voterSet.hasSend
                 && Node::getInstance()->getPhase() == kPhaseBA0 && isMinFEcho(voterSet)) {
-                if (MsgMgr::getInstance()->isVoter(Node::getInstance()->getBlockNum(), echo.phase,
-                                                           echo.baxCount)) {
-                    ilog("send echo when > f + 1");
-                    voterSet.hasSend = true;
-                    EchoMsg myEcho = MsgBuilder::constructMsg(echo);
-                    ULTRAIN_ASSERT(verifyMyBlsSignature(myEcho), chain::chain_exception, "bls signature error, check bls private key pls");
-                    insert(myEcho);
-                    Node::getInstance()->sendMessage(myEcho);
+                std::vector<size_t> v;
+                if (MsgMgr::getInstance()->hasVoter(Node::getInstance()->getBlockNum(), echo.phase, echo.baxCount, v)) {
+                    for (auto index : v) {
+                        ilog("send echo when > f + 1");
+                        voterSet.hasSend = true;
+                        EchoMsg myEcho = MsgBuilder::constructMsg(echo, index);
+                        ULTRAIN_ASSERT(verifyMyBlsSignature(myEcho, index), chain::chain_exception, "bls signature error, check bls private key pls");
+                        insert(myEcho);
+                        Node::getInstance()->sendMessage(myEcho);
+                    }
                 }
             }
             return true;
@@ -465,7 +468,7 @@ namespace ultrainio {
         PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
         if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
             elog("validator echo error. account : ${account} pk : ${pk} signature : ${signature}",
-                    ("account", std::string(echo.account))("pk", std::string(publicKey))("signature", echo.signature));
+                    ("account", std::string(echo.account))("pk", std::string(publicKey))("signature", short_sig(echo.signature)));
             return false;
         }
         if (!stakeVotePtr->isVoter(echo.account, echo.phase, echo.baxCount, Node::getInstance()->getNonProducingNode())) {
@@ -480,7 +483,7 @@ namespace ultrainio {
     }
 
     bool Scheduler::loopback(const ProposeMsg& propose) const {
-        return StakeVoteBase::getMyAccount() == propose.block.proposer;
+        return NodeInfo::getInstance()->hasAccount(std::string(propose.block.proposer));
     }
 
     bool Scheduler::obsolete(const ProposeMsg& propose) const {
@@ -499,7 +502,8 @@ namespace ultrainio {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(propose.block.block_num());
         PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
         if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
-            elog("validator proposer error. proposer : ${proposer}", ("proposer", std::string(propose.block.proposer)));
+            elog("validator proposer error. proposer : ${proposer}, pk : ${pk}, sig : ${sig}",
+                    ("proposer", std::string(propose.block.proposer))("pk", std::string(publicKey))("sig", short_sig(propose.block.signature)));
             return false;
         }
 
@@ -647,10 +651,8 @@ namespace ultrainio {
                     return false;
                 }
                 if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
-                    elog("validator proposer error. proposer : ${p} at block ${num} sig : ${sig}",
-                         ("p", std::string(propose.block.proposer))("num", Node::getInstance()->getBlockNum())("sig",
-                                                                                                               short_sig(
-                                                                                                                       propose.block.signature)));
+                    elog("validator proposer error. proposer : ${p} at block ${num} sig : ${sig} pk : ${pk}",
+                         ("p", std::string(propose.block.proposer))("num", Node::getInstance()->getBlockNum())("sig", short_sig(propose.block.signature))("pk", std::string(publicKey)));
                     return false;
                 }
                 return processLaterMsg(propose);
@@ -688,12 +690,15 @@ namespace ultrainio {
             auto itor = m_proposerMsgMap.find(propose.block.id());
             if (itor == m_proposerMsgMap.end()) {
                 if (isMinPropose(propose)) {
-                    if (MsgMgr::getInstance()->isVoter(propose.block.block_num(), kPhaseBA0, 0)) {
-                        EchoMsg echo = MsgBuilder::constructMsg(propose);
-                        ULTRAIN_ASSERT(verifyMyBlsSignature(echo), chain::chain_exception,
-                                       "bls signature error, check bls private key pls");
-                        Node::getInstance()->sendMessage(echo);
-                        insert(echo);
+                    std::vector<size_t> v;
+                    if (MsgMgr::getInstance()->hasVoter(propose.block.block_num(), kPhaseBA0, 0, v)) {
+                        for (auto index : v) {
+                            EchoMsg echo = MsgBuilder::constructMsg(propose, index);
+                            ULTRAIN_ASSERT(verifyMyBlsSignature(echo, index), chain::chain_exception,
+                                           "bls signature error, check bls private key pls");
+                            Node::getInstance()->sendMessage(echo);
+                            insert(echo);
+                        }
                     }
                     dlog("save propose msg.blockhash = ${blockhash}", ("blockhash", short_hash(propose.block.id())));
                     m_proposerMsgMap.insert(make_pair(propose.block.id(), propose));
@@ -752,10 +757,8 @@ namespace ultrainio {
                     return false;
                 }
                 if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
-                    elog("validator echo error. account : ${account} at block : ${num} sig : ${sig}",
-                         ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum())("sig",
-                                                                                                           short_sig(
-                                                                                                                   echo.signature)));
+                    elog("validator echo error. account : ${account} at block : ${num} sig : ${sig} pk : ${pk}",
+                         ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum())("sig", short_sig(echo.signature))("pk", std::string(publicKey)));
                     return false;
                 }
                 m_evilDDosDetector.gatherWhenBax(echo, Node::getInstance()->getBlockNum(),
@@ -1222,7 +1225,7 @@ namespace ultrainio {
         return count;
     }
 
-    bool Scheduler::initProposeMsg(ProposeMsg& proposeMsg) {
+    bool Scheduler::initProposeMsg(ProposeMsg& proposeMsg, size_t index) {
         auto& block = proposeMsg.block;
         auto start_timestamp = fc::time_point::now();
         chain::controller &chain = app().get_plugin<chain_plugin>().chain();
@@ -1303,7 +1306,7 @@ namespace ultrainio {
                 }
             }
             chain.set_version(0);
-            chain.set_proposer(StakeVoteBase::getMyAccount());
+            chain.set_proposer(NodeInfo::getInstance()->getAccount(index));
             // Construct the block msg from pbs.
             const auto &pbs = chain.pending_block_state();
             FC_ASSERT(pbs, "pending_block_state does not exist but it should, another plugin may have corrupted it");
@@ -1317,7 +1320,7 @@ namespace ultrainio {
             block.transactions = pbs->block->transactions;
             block.committee_mroot = bh.committee_mroot;
             block.header_extensions = bh.header_extensions;
-            block.signature = std::string(Signer::sign<BlockHeader>(block, StakeVoteBase::getMyPrivateKey()));
+            block.signature = std::string(Signer::sign<BlockHeader>(block, NodeInfo::getInstance()->getPrivateKey(index)));
             ilog("-------- propose a block, trx num ${num} proposer ${proposer} block signature ${signature} committee mroot ${mroot}",
                  ("num", block.transactions.size())
                  ("proposer", std::string(block.proposer))
@@ -2185,13 +2188,13 @@ namespace ultrainio {
         }
     }
 
-    bool Scheduler::verifyMyBlsSignature(const EchoMsg& echo) const {
+    bool Scheduler::verifyMyBlsSignature(const EchoMsg& echo, size_t index) const {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
         std::shared_ptr<StakeVoteBase> voterSysPtr = MsgMgr::getInstance()->getStakeVote(blockNum);
         unsigned char blsPk[Bls::BLS_PUB_KEY_COMPRESSED_LENGTH];
-        bool res = voterSysPtr->getCommitteeBlsPublicKey(StakeVoteBase::getMyAccount(), blsPk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
+        bool res = voterSysPtr->getCommitteeBlsPublicKey(NodeInfo::getInstance()->getAccount(index), blsPk, Bls::BLS_PUB_KEY_COMPRESSED_LENGTH);
         if (!res) {
-            elog("account ${account} is not in committee", ("account", std::string(StakeVoteBase::getMyAccount())));
+            elog("account ${account} is not in committee", ("account", std::string(NodeInfo::getInstance()->getAccount(index))));
             return false;
         }
         return Validator::verify<CommonEchoMsg>(echo.blsSignature, echo, blsPk);

@@ -6,62 +6,102 @@
 #include <rpos/Node.h>
 
 namespace ultrainio {
+    std::shared_ptr<NodeInfo> NodeInfo::s_instance = nullptr;
 
-    NodeInfo::NodeInfo() {
-        m_blsPrivateKey = (unsigned char*)malloc(Bls::BLS_PRI_KEY_LENGTH);
+    AccountName NodeInfo::getMainAccount() {
+        return AccountName(NodeInfo::getInstance()->getAccount(0));
+    }
+
+    PrivateKey NodeInfo::getMainPrivateKey() {
+        return NodeInfo::getInstance()->getPrivateKey(0);
+    }
+
+    bool NodeInfo::getMainBlsPriKey(unsigned char* sk, int skSize) {
+        return NodeInfo::getInstance()->getBlsPrivateKey(sk, skSize, 0);
+    }
+
+    fc::crypto::private_key NodeInfo::getMainAccountTrxPriKey() {
+        return NodeInfo::getInstance()->realGetMainAccountTrxPriKey();
     }
 
     NodeInfo::~NodeInfo() {
-        if (m_blsPrivateKey) {
-            free(m_blsPrivateKey);
-            m_blsPrivateKey = nullptr;
+        for (size_t i = 0; i < m_blsPrivateKeyV.size(); i++) {
+            free(m_blsPrivateKeyV[i]);
+            m_blsPrivateKeyV[i] = nullptr;
         }
     }
-    /**
-     *
-     * @param sk private key for committee member
-     * @param account committee member name
-     * 1. genesis can be config by itself
-     * 2. non-producer can not config private and account
-     */
-    void NodeInfo::setCommitteeInfo(const std::string& account, const std::string& sk, const std::string& blsSk, const std::string& accountSk) {
-        m_privateKey = PrivateKey(sk);
-        m_account = account;
-        m_accountSk = fc::crypto::private_key(accountSk);
-        if (Genesis::kGenesisAccount == m_account) {
-            ULTRAIN_ASSERT(m_privateKey.getPublicKey() == PublicKey(Genesis::s_genesisPk),
-                    chain::chain_exception,
-                    "genesis key pair invalid");
+
+    std::shared_ptr<NodeInfo> NodeInfo::getInstance() {
+        if (!s_instance) {
+            s_instance = std::make_shared<NodeInfo>();
         }
-        if (Node::getInstance()->getNonProducingNode()) {
-            ilog("Non Producer Node");
-            return;
-        }
-        ULTRAIN_ASSERT(PrivateKey::verifyKeyPair(m_privateKey.getPublicKey(), m_privateKey),
+        return s_instance;
+    }
+
+    NodeInfo::NodeInfo() {
+    }
+
+    void NodeInfo::setCommitteeInfo(const std::vector<std::string>& accountV, const std::vector<std::string>& skV,
+            const std::vector<std::string>& blsSkV, const std::vector<std::string>& accTrxPriKeyV) {
+        ULTRAIN_ASSERT(accountV.size() != 0, chain::chain_exception, "account is empty");
+        ULTRAIN_ASSERT(accountV.size() == skV.size() && skV.size() == blsSkV.size() && blsSkV.size() == accTrxPriKeyV.size(),
                        chain::chain_exception,
-                       "verify private key error.");
-        ULTRAIN_ASSERT(!m_account.empty(), chain::chain_exception, "account is empty");
-        ULTRAIN_ASSERT(blsSk.length() == Bls::BLS_PRI_KEY_LENGTH * 2, chain::chain_exception, "bls private key error");
-        Hex::fromHex<unsigned char>(blsSk, m_blsPrivateKey, Bls::BLS_PRI_KEY_LENGTH);
+                       "account key not match");
+        m_accountV = accountV;
+        for (size_t i = 0; i < accountV.size(); i++) {
+            m_privateKeyV.push_back(PrivateKey(skV[i]));
+            m_accountTrxPriKeyV.push_back(fc::crypto::private_key(accTrxPriKeyV[i]));
+            ULTRAIN_ASSERT(blsSkV[i].length() == Bls::BLS_PRI_KEY_LENGTH * 2, chain::chain_exception, "bls private key error");
+            unsigned char* blsPrivateKey = (unsigned char*)malloc(Bls::BLS_PRI_KEY_LENGTH);
+            Hex::fromHex<unsigned char>(blsSkV[i], blsPrivateKey, Bls::BLS_PRI_KEY_LENGTH);
+            m_blsPrivateKeyV.push_back(blsPrivateKey);
+        }
+        if (m_accountV.size() == 1 && Genesis::kGenesisAccount == m_accountV[0]) {
+            ULTRAIN_ASSERT(m_privateKeyV[0].getPublicKey() == PublicKey(Genesis::s_genesisPk),
+                           chain::chain_exception,
+                           "genesis key pair invalid");
+        }
     }
 
-    AccountName NodeInfo::getMyAccount() const {
-        return AccountName(m_account);
+    const std::vector<std::string>& NodeInfo::getAccountList() const {
+        return m_accountV;
     }
 
-    PrivateKey NodeInfo::getPrivateKey() const {
-        return m_privateKey;
+    fc::crypto::private_key NodeInfo::realGetMainAccountTrxPriKey() const {
+        if (m_accountTrxPriKeyV.size() > 0) {
+            return m_accountTrxPriKeyV[0];
+        }
+        return fc::crypto::private_key();
     }
 
-    fc::crypto::private_key NodeInfo::getAccountPrivateKey() const {
-        return m_accountSk;
+    bool NodeInfo::hasAccount(const std::string& account, size_t& index) const {
+        for (size_t i = 0; i < m_accountV.size(); i++) {
+            if (account == m_accountV[i]) {
+                index = i;
+                return true;
+            }
+        }
+        return false;
     }
 
-    bool NodeInfo::getMyBlsPrivateKey(unsigned char* sk, int skSize) const {
+    bool NodeInfo::hasAccount(const std::string& account) const {
+        size_t index;
+        return hasAccount(account, index);
+    }
+
+    PrivateKey NodeInfo::getPrivateKey(size_t index) const {
+        return m_privateKeyV[index];
+    }
+
+    std::string NodeInfo::getAccount(size_t index) const {
+        return m_accountV[index];
+    }
+
+    bool NodeInfo::getBlsPrivateKey(unsigned char* sk, int skSize, size_t index) const {
         if (!sk || skSize < Bls::BLS_PRI_KEY_LENGTH) {
             return false;
         }
-        memcpy(sk, m_blsPrivateKey, Bls::BLS_PRI_KEY_LENGTH);
+        memcpy(sk, m_blsPrivateKeyV[index], Bls::BLS_PRI_KEY_LENGTH);
         return true;
     }
 }

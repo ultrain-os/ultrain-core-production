@@ -4,6 +4,7 @@
 
 #include <rpos/Config.h>
 #include <rpos/Node.h>
+#include <rpos/NodeInfo.h>
 #include <rpos/Seed.h>
 #include <rpos/StakeVoteBase.h>
 #include <rpos/Vrf.h>
@@ -43,16 +44,48 @@ namespace ultrainio {
         return itor->second;
     }
 
-    bool MsgMgr::isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+    bool MsgMgr::hasProposer(uint32_t blockNum, size_t& outIndex) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = getStakeVote(blockNum);
         ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
-        return stakeVotePtr->isVoter(StakeVoteBase::getMyAccount(), phase, baxCount, Node::getInstance()->getNonProducingNode());
+        bool has = false;
+        const std::vector<std::string>& accountList = NodeInfo::getInstance()->getAccountList();
+        outIndex = accountList.size();
+        uint32_t currPriority = Config::kDesiredProposerNumber;
+        for (size_t i = 0; i < accountList.size(); i++) {
+            if (stakeVotePtr->isProposer(accountList[i], Node::getInstance()->getNonProducingNode())) {
+                has = true;
+                uint32_t priority = stakeVotePtr->proposerPriority(accountList[i], kPhaseBA0, 0);
+                if (priority < currPriority) {
+                    currPriority = priority;
+                    outIndex = i;
+                }
+            }
+        }
+        return has;
     }
 
-    bool MsgMgr::isProposer(uint32_t blockNum) {
+    bool MsgMgr::hasProposer(uint32_t blockNum) {
+        size_t index;
+        return hasProposer(blockNum, index);
+    }
+
+    bool MsgMgr::hasVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount, std::vector<size_t>& outV) {
         std::shared_ptr<StakeVoteBase> stakeVotePtr = getStakeVote(blockNum);
         ULTRAIN_ASSERT(stakeVotePtr != nullptr, chain::chain_exception, "not init StakeVote");
-        return stakeVotePtr->isProposer(StakeVoteBase::getMyAccount(), Node::getInstance()->getNonProducingNode());
+        bool has = false;
+        const std::vector<std::string>& accountList = NodeInfo::getInstance()->getAccountList();
+        for (size_t i = 0; i < accountList.size(); i++) {
+            if (stakeVotePtr->isVoter(accountList[i], phase, baxCount, Node::getInstance()->getNonProducingNode())) {
+                has = true;
+                outV.push_back(i);
+            }
+        }
+        return has;
+    }
+
+    bool MsgMgr::hasVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount) {
+        std::vector<size_t> v;
+        return hasVoter(blockNum, phase, baxCount, v);
     }
 
     void MsgMgr::clearSomeBlockMessage(uint32_t blockNum) {

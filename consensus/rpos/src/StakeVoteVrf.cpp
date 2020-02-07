@@ -3,6 +3,7 @@
 #include <boost/math/distributions/binomial.hpp>
 #include <rpos/Config.h>
 #include <rpos/Node.h>
+#include <rpos/NodeInfo.h>
 #include <rpos/Proof.h>
 #include <rpos/Seed.h>
 #include <rpos/Vrf.h>
@@ -93,12 +94,12 @@ namespace ultrainio {
         std::string previousHash(blockId.data());
         if (!m_proposerProof.isValid()) {
             Seed seed(previousHash, blockNum, kPhaseBA0, 0);
-            m_proposerProof = Vrf::vrf(StakeVoteBase::getMyPrivateKey(), seed, Vrf::kProposer);
+            m_proposerProof = Vrf::vrf(NodeInfo::getMainPrivateKey(), seed, Vrf::kProposer);
         }
         auto itor = m_phaseProofMap.find(phase + baxCount);
         if (itor == m_phaseProofMap.end()) {
             Seed seed(previousHash, blockNum, phase, baxCount);
-            Proof proof = Vrf::vrf(StakeVoteBase::getMyPrivateKey(), seed, Vrf::kVoter);
+            Proof proof = Vrf::vrf(NodeInfo::getMainPrivateKey(), seed, Vrf::kVoter);
             m_phaseProofMap.insert(std::make_pair(phase + baxCount, proof));
         }
     }

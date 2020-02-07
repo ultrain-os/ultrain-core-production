@@ -185,7 +185,7 @@ void monitor_plugin_impl::commonReport(alert_type type, const std::string& chain
         info.blockNum = blockNum;
         info.reason = reason;
         info.remark = remark;
-        info.nodeInfo = this->self_endpoint.address().to_v4().to_string() + std::string(".") + std::string(StakeVoteBase::getMyAccount());
+        info.nodeInfo = this->self_endpoint.address().to_v4().to_string() + std::string(".") + std::string(NodeInfo::getMainAccount());
         ilog("report alert nodeInfo : ${i} type : ${t}, chain name : ${c} blockNum : ${n} reason : ${r} remark : ${m}",
              ("i", info.nodeInfo)("t", info.alertType)("c", chain_name)("n", blockNum)("r", reason)("m", remark));
         call(this->monitor_central_server, this->call_path_alert, info);

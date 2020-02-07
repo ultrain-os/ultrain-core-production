@@ -39,7 +39,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         Block produceTentativeBlock();
 
-        bool initProposeMsg(ProposeMsg& proposeMsg);
+        bool initProposeMsg(ProposeMsg& proposeMsg, size_t index);
 
         bool insert(const ProposeMsg& propose);
 
@@ -133,7 +133,7 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
 
         bool setBlsVoterSet(const std::string& bls);
 
-        bool verifyMyBlsSignature(const EchoMsg& echo) const;
+        bool verifyMyBlsSignature(const EchoMsg& echo, size_t index) const;
 
         void invokeDeduceWhenBax();
 

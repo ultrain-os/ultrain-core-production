@@ -113,7 +113,7 @@ namespace ultrainio {
         void getNodeData(periodic_report_dynamic_data& reportData) {
             std::shared_ptr<Node> pNode = m_pNode.lock();
             if (pNode) {
-                reportData.minerName         = std::string(StakeVoteBase::getMyAccount());
+                reportData.minerName         = std::string(NodeInfo::getMainAccount());
                 reportData.phase             = phaseStr[static_cast<int32_t>(pNode->m_phase)];
                 reportData.baxCount          = pNode->m_baxCount;
                 reportData.syncing           = pNode->m_syncing;
@@ -187,9 +187,8 @@ namespace ultrainio {
                 staticConfig.version           += "+" + chain::get_version_str();
                 staticConfig.nonProducingNode  = pNode->getNonProducingNode();
                 staticConfig.genesisLeaderPk   = Genesis::s_genesisPk;
-                staticConfig.publicKey         = std::string(StakeVoteBase::getMyPrivateKey().getPublicKey());
-                //staticConfig.privateKey        = std::string(StakeVoteBase::getMyPrivateKey());
-                staticConfig.account           = std::string(StakeVoteBase::getMyAccount());
+                staticConfig.publicKey         = std::string(NodeInfo::getMainPrivateKey().getPublicKey());
+                staticConfig.account           = std::string(NodeInfo::getMainAccount());
 
                 const chain::controller &chain = appbase::app().get_plugin<chain_plugin>().chain();
                 staticConfig.chainId          = chain.get_chain_id().str();

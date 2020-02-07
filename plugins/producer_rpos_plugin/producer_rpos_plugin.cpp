@@ -31,9 +31,11 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/signals2/connection.hpp>
 
+#include <base/StringUtils.h>
 #include <rpos/Config.h>
 #include <rpos/Genesis.h>
 #include <rpos/Node.h>
+#include <rpos/NodeInfo.h>
 #include <core/utils.h>
 
 namespace bmi = boost::multi_index;
@@ -610,11 +612,11 @@ int  producer_rpos_plugin::get_round_interval()
 }
 string producer_rpos_plugin::get_account_sk()
 {
-        return my->_my_sk_as_account;
+    return std::string(NodeInfo::getMainAccountTrxPriKey());
 }
 string producer_rpos_plugin::get_account_name()
 {
-        return my->_my_account_as_committee;
+    return std::string(NodeInfo::getMainAccount());
 }
 bool producer_rpos_plugin::handle_message(const EchoMsg& echo) {
    return Node::getInstance()->handleMessage(echo);
@@ -673,19 +675,22 @@ void producer_rpos_plugin::plugin_startup()
        result = aes_decode(key, my->_my_bls_sk);
        my->_my_bls_sk = std::move(result);
    }
-   nodePtr->setCommitteeInfo(my->_my_account_as_committee, my->_my_sk_as_committee, my->_my_bls_sk, my->_my_sk_as_account);
+   std::vector<std::string> committeeV;
+   StringUtils::tokenlize(my->_my_account_as_committee, ',', committeeV);
+   std::vector<std::string> committeeSkV;
+   StringUtils::tokenlize(my->_my_sk_as_committee, ',', committeeSkV);
+   std::vector<std::string> blsSkV;
+   StringUtils::tokenlize(my->_my_bls_sk, ',', blsSkV);
+   std::vector<std::string> trxSkV;
+   StringUtils::tokenlize(my->_my_sk_as_account, ',', trxSkV);
+   NodeInfo::getInstance()->setCommitteeInfo(committeeV, committeeSkV, blsSkV, trxSkV);
    ULTRAIN_ASSERT( !my->_genesis_time.empty(),
            plugin_config_exception,
            "Genesis-time can not be empty,should be set in config.ini.");
    if (!my->_genesis_time.empty()) {
        fc::time_point tp = fc::time_point::from_iso_string(my->_genesis_time.data());
        nodePtr->setGenesisTime(tp);
-   } /*else {
-       // Align to the boundary of 5 seconds.
-       unsigned long msecs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-       int patch = (my->_max_phase_seconds * 1000) - (msecs % (my->_max_phase_seconds * 1000));
-       nodePtr->setGenesisTime(boost::chrono::system_clock::now() + boost::chrono::milliseconds(my->_genesis_delay * 1000 + patch));
-   }*/
+   }
    nodePtr->setGenesisStartupTime(my->_genesis_startup_time);
    nodePtr->setRoundAndPhaseSecond(my->_max_round_seconds, my->_max_phase_seconds);
    nodePtr->setTrxsSecond(my->_max_trxs_seconds);

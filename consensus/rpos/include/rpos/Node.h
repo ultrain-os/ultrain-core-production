@@ -45,8 +45,6 @@ namespace ultrainio {
 
         static std::shared_ptr<Node> getInstance();
 
-        void setCommitteeInfo(const std::string& account, const std::string& sk, const std::string& blsSk, const std::string& accountSk);
-
         void setNonProducingNode(bool);
 
         bool getNonProducingNode() const;
@@ -162,7 +160,7 @@ namespace ultrainio {
 
         bool isEmpty(const BlockIdType& blockId);
 
-        void sendEchoForEmptyBlock();
+        void sendEchoForEmptyBlock(const std::vector<size_t>& v);
 
         void syncBlock(bool once = false);
 

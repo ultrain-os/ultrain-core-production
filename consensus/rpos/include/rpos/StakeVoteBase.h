@@ -8,6 +8,7 @@
 #include <core/types.h>
 #include <crypto/PrivateKey.h>
 #include <crypto/PublicKey.h>
+#include <rpos/NodeInfo.h>
 #include <lightclient/CommitteeInfo.h>
 #include <lightclient/CommitteeSet.h>
 
@@ -15,7 +16,6 @@ namespace ultrainio {
     // forward declare
     class PublicKey;
     class Proof;
-    class NodeInfo;
 
     struct CommitteeState {
         std::vector<CommitteeInfo> cinfo;
@@ -25,16 +25,6 @@ namespace ultrainio {
     class StakeVoteBase {
     public:
         // static function
-        static std::shared_ptr<NodeInfo> getNodeInfo();
-
-        static AccountName getMyAccount();
-
-        static PrivateKey getMyPrivateKey();
-
-        static fc::crypto::private_key getAccountPrivateKey();
-
-        static bool getMyBlsPrivateKey(unsigned char* sk, int skSize);
-
         static bool committeeHasWorked();
 
         // get committee state from world state
@@ -123,8 +113,5 @@ namespace ultrainio {
         CommitteeInfo findInCommitteeMemberList(const AccountName& account) const;
 
         uint32_t m_blockNum = 0;
-
-    private:
-        static std::shared_ptr<NodeInfo> s_nodeInfo;
     };
 }

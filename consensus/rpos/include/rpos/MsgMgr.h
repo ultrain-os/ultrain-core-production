@@ -33,9 +33,14 @@ namespace ultrainio {
 
         void moveToNewStep(uint32_t blockNum, ConsensusPhase phase, int baxCount);
 
-        bool isVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount);
+        bool hasVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount, std::vector<size_t>& outV);
 
-        bool isProposer(uint32_t blockNum);
+        bool hasVoter(uint32_t blockNum, ConsensusPhase phase, int baxCount);
+
+        // get the most highest priority into outIndex
+        bool hasProposer(uint32_t blockNum, size_t& outIndex);
+
+        bool hasProposer(uint32_t blockNum);
 
         std::shared_ptr<StakeVoteBase> getStakeVote(uint32_t blockNum);
 

@@ -21,20 +21,17 @@ using namespace appbase;
 
 namespace ultrainio {
 
-#define GENESIS_ROLE_CHECK(account,isNonProducer)                                           \
-            AccountName myAccount = getMyAccount();                                         \
-            if (isNonProducer && account == myAccount) {                                    \
-                return false;                                                               \
-            }                                                                               \
-            if (isGenesisPeriod()) {                                                        \
-                if (isGenesisLeader(account)) {                                             \
-                    return true;                                                            \
-                } else {                                                                    \
-                    return false;                                                           \
-                }                                                                           \
+#define GENESIS_ROLE_CHECK(account,isNonProducer)                                                \
+            if (isNonProducer && NodeInfo::getInstance()->hasAccount(std::string(account))) {    \
+                return false;                                                                    \
+            }                                                                                    \
+            if (isGenesisPeriod()) {                                                             \
+                if (isGenesisLeader(account)) {                                                  \
+                    return true;                                                                 \
+                } else {                                                                         \
+                    return false;                                                                \
+                }                                                                                \
             }
-
-    std::shared_ptr<NodeInfo> StakeVoteBase::s_nodeInfo = std::make_shared<NodeInfo>();
 
     StakeVoteBase::StakeVoteBase(uint32_t blockNum, std::shared_ptr<CommitteeState> committeeStatePtr)
             : m_committeeStatePtr(committeeStatePtr), m_blockNum(blockNum) {
@@ -50,26 +47,6 @@ namespace ultrainio {
     }
 
     StakeVoteBase::~StakeVoteBase() {
-    }
-
-    std::shared_ptr<NodeInfo> StakeVoteBase::getNodeInfo() {
-        return s_nodeInfo;
-    }
-
-    AccountName StakeVoteBase::getMyAccount() {
-        return s_nodeInfo->getMyAccount();
-    }
-
-    PrivateKey StakeVoteBase::getMyPrivateKey() {
-        return s_nodeInfo->getPrivateKey();
-    }
-
-    fc::crypto::private_key StakeVoteBase::getAccountPrivateKey() {
-        return s_nodeInfo->getAccountPrivateKey();
-    }
-
-    bool StakeVoteBase::getMyBlsPrivateKey(unsigned char* sk, int skSize) {
-        return s_nodeInfo->getMyBlsPrivateKey(sk, skSize);
     }
 
     bool StakeVoteBase::newRound(ConsensusPhase phase, int baxCount) {
@@ -104,7 +81,7 @@ namespace ultrainio {
         fc::time_point current_time = fc::time_point::now();
         int pass_time_to_genesis_min = (current_time - Genesis::s_time).to_seconds() / 60;
         if (pass_time_to_genesis_min < Genesis::s_genesisStartupTime
-            && StakeVoteBase::getMyAccount() == AccountName(Genesis::kGenesisAccount)
+            && NodeInfo::getMainAccount() == AccountName(Genesis::kGenesisAccount)
             && !committeeHasWorked()) {
             return true;
         }
@@ -221,8 +198,9 @@ namespace ultrainio {
     }
 
     PublicKey StakeVoteBase::getPublicKey(const AccountName& account) const {
-        if (account == s_nodeInfo->getMyAccount()) {
-            return s_nodeInfo->getPrivateKey().getPublicKey();
+        size_t index = 0;
+        if (NodeInfo::getInstance()->hasAccount(std::string(account), index)) {
+            return NodeInfo::getInstance()->getPrivateKey(index).getPublicKey();
         } else if (account == AccountName(Genesis::kGenesisAccount)) {
             return PublicKey(Genesis::s_genesisPk);
         } else {
@@ -243,7 +221,6 @@ namespace ultrainio {
             Hex::fromHex<unsigned char>(c.blsPk, blsPublicKey, pkSize);
             return true;
         }
-        return false;
     }
 
     bool StakeVoteBase::isGenesisLeader(const AccountName& account) const {

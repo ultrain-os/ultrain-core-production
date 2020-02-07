@@ -2,6 +2,7 @@
 
 #include <rpos/Config.h>
 #include <rpos/Node.h>
+#include <rpos/NodeInfo.h>
 #include <rpos/RoleRandom.h>
 #include <rpos/RoleSelection.h>
 
@@ -25,7 +26,7 @@ namespace ultrainio {
     void StakeVoteRandom::initRoleSelection(std::shared_ptr<CommitteeState> committeeStatePtr, const RoleRandom& rand) {
         for (auto committeeInfo : committeeStatePtr->cinfo) {
             m_committeeV.push_back(committeeInfo.accountName);
-            if (committeeInfo.accountName == StakeVoteBase::getMyAccount()) {
+            if (NodeInfo::getInstance()->hasAccount(committeeInfo.accountName)) {
                 ULTRAIN_ASSERT(!Node::getInstance()->getNonProducingNode(), chain::chain_exception, "Committee Member is set as non-producer");
             }
         }

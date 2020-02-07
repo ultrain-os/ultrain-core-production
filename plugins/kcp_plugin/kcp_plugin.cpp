@@ -2691,10 +2691,10 @@ bool kcp_plugin_impl::authenticate_peer(const handshake_message& msg) {
       // If we couldn't sign, don't send a token.
       if(hello.sig == chain::signature_type())
          hello.token = sha256();
-      string sig_commitee = std::string(Signer::sign<fc::sha256>(hello.token, StakeVoteBase::getMyPrivateKey()));
+      string sig_commitee = std::string(Signer::sign<fc::sha256>(hello.token, NodeInfo::getMainPrivateKey()));
       hello.ext.push_back({handshake_ext::sig_commiteekey,sig_commitee});
       unsigned char sk[Bls::BLS_PRI_KEY_LENGTH];
-      StakeVoteBase::getMyBlsPrivateKey(sk, Bls::BLS_PRI_KEY_LENGTH);
+       NodeInfo::getMainBlsPriKey(sk, Bls::BLS_PRI_KEY_LENGTH);
       string sig_blk = std::string(Signer::sign<fc::sha256>(hello.token, sk));
       hello.ext.push_back({handshake_ext::sig_blskey,sig_blk});
       hello.ext.push_back({handshake_ext::connect_style, std::string(1, style)});
