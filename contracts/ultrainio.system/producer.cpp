@@ -374,7 +374,7 @@ producer:") + name{producer}.to_string() + std::string(" not synchronized to sub
            disabled_producers_table dp_tbl(_self, _self);
            auto it_disable = dp_tbl.find(producer);
            ultrainio_assert(it_disable != dp_tbl.end(), "error: producer is not in disabled table");
-           ultrainio_assert(it_disable->total_cons_staked >= _gstate.min_activated_stake, "producer has been undelegated");
+           ultrainio_assert(it_disable->total_cons_staked >= get_producer_min_stake(producer, briefprod->location), "producer has been undelegated");
 
            auto ite_chain = _chains.find(briefprod->location);
            ultrainio_assert(ite_chain != _chains.end(), "destination chain is not found");
@@ -387,6 +387,7 @@ producer:") + name{producer}.to_string() + std::string(" not synchronized to sub
        auto prod = _producers.find(producer);
        ultrainio_assert(prod != _producers.end(), "producer is not found in its location");
        uint32_t cur_block_height = (uint32_t)head_block_number() + 1;
+       ultrainio_assert(cur_block_height != prod->get_heartbeat_block_height(), "repeated heartbeat transaction");
        _producers.modify(prod, [&](auto& _producer) {
            bool found = false;
            for(auto& ext : _producer.table_extension) {

@@ -287,6 +287,7 @@ namespace ultrainiores {
 
     void resource::copyresource() {
         require_auth(_self);
+
         //copy resource from legacy table in system contract to new table in this contract
         ultrainiosystem::global_state_singleton   gstatesingle(N(ultrainio),N(ultrainio));
         ultrainiosystem::ultrainio_global_state globalst = gstatesingle.get();
@@ -318,6 +319,7 @@ namespace ultrainiores {
                     new_res.table_extension.emplace_back(ext.key, ext.value);
                 }
             });
+            _gstate.total_resources_used_number += legacy_ite->lease_num;
             //add period info
             if(legacy_ite->lease_num >= 5000) {
                 resources_periods_table _resperiods_tbl( _self, N(ultrainio));
@@ -333,17 +335,22 @@ namespace ultrainiores {
             if(globalst.is_master_chain()) {
                 resfreeaccount _resacc_tbl( _self, _self );
                 auto resacc_to_itr = _resacc_tbl.find(legacy_ite->owner);
-                if(resacc_to_itr == _resacc_tbl.end()) {
-                    resacc_to_itr = _resacc_tbl.emplace([&]( auto& acc_num ) {
-                        acc_num.owner = legacy_ite->owner;
-                        acc_num.free_account_number = legacy_ite->free_account_number;
-                    });
-                } else {
-                    _resacc_tbl.modify( resacc_to_itr, [&]( auto& acc_num ) {
-                        acc_num.free_account_number += legacy_ite->free_account_number;
-                    });
+                if(legacy_ite->free_account_number > 0) {
+                    if(resacc_to_itr == _resacc_tbl.end()) {
+                        resacc_to_itr = _resacc_tbl.emplace([&]( auto& acc_num ) {
+                            acc_num.owner = legacy_ite->owner;
+                            acc_num.free_account_number = legacy_ite->free_account_number;
+                        });
+                    } else {
+                        _resacc_tbl.modify( resacc_to_itr, [&]( auto& acc_num ) {
+                            acc_num.free_account_number += legacy_ite->free_account_number;
+                        });
+                    }
                 }
             }
+        }
+        if(_gstate.total_resources_used_number > 10000) {
+            _gstate.total_resources_used_number = 10000;
         }
 
         //if master chain, set period records of all sidechains

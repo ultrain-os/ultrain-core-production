@@ -47,6 +47,7 @@ namespace ultrainiosystem {
       pre_schedule(head_block_height);
       distribut_reward(head_block_height);  //automatically send rewards
       check_producer_lastblock( self_chain_name, head_block_height );
+      check_producer_heartbeat(head_block_height);
       //INLINE_ACTION_SENDER(ultrainiores::resource, onblock)( N(utrio.res), { _self, N(active) }, std::make_tuple() );
    }
    float system_contract::get_reward_fee_ratio() const {
