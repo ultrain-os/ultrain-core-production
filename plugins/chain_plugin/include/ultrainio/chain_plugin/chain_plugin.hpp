@@ -53,6 +53,7 @@ struct permission {
 struct resourcelease {
    name           chain_name;
    uint64_t       lease_num = 0;
+   uint64_t       locked_num = 0;
    std::string    start_time;
    std::string    end_time;
 };
@@ -333,13 +334,6 @@ public:
 
    vector<get_subchain_committee_result> get_subchain_committee(const get_subchain_committee_params& p) const;
 
-   struct get_subchain_resource_params {
-       name         chain_name;
-       uint16_t     record_minutes;
-   };
-
-   std::vector<ultrainio::chain::resources_lease> get_subchain_resource(const get_subchain_resource_params& p) const;
-
    using get_subchain_block_num_params = get_subchain_committee_params;
 
    struct block_num_and_id {
@@ -394,18 +388,6 @@ public:
    };
 
    get_random_result get_random(const get_random_params& p) const;
-
-   using get_user_bulletin_params = get_subchain_committee_params;
-   struct get_user_bulletin_result {
-       std::string     owner;
-       std::string     owner_pk;
-       std::string     active_pk;
-       fc::time_point_sec  issue_date;
-       uint64_t        block_height;
-       bool            updateable;
-   };
-
-   std::vector<get_user_bulletin_result> get_user_bulletin(const get_user_bulletin_params& p) const;
 
    using get_committee_bulletin_params = get_subchain_committee_params;
    std::vector<chain::committee_bulletin> get_committee_bulletin(const get_committee_bulletin_params& p) const;
@@ -822,7 +804,7 @@ private:
 }
 
 FC_REFLECT( ultrainio::chain_apis::permission, (perm_name)(parent)(required_auth) )
-FC_REFLECT( ultrainio::chain_apis::resourcelease, (chain_name)(lease_num)(start_time)(end_time) )
+FC_REFLECT( ultrainio::chain_apis::resourcelease, (chain_name)(lease_num)(locked_num)(start_time)(end_time) )
 FC_REFLECT(ultrainio::chain_apis::empty, )
 FC_REFLECT(ultrainio::chain_apis::read_only::get_info_results,
 (server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_proposer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)(block_interval_ms) )
@@ -843,14 +825,12 @@ FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_params, (code)(
 FC_REFLECT( ultrainio::chain_apis::read_only::get_currency_stats_result, (supply)(max_supply)(issuer));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_params, (chain_name));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_committee_result, (owner)(miner_pk)(bls_pk) );
-FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_resource_params, (chain_name)(record_minutes) );
 FC_REFLECT( ultrainio::chain_apis::read_only::block_num_and_id, (number)(block_id));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_block_num_result, (confirmed_block)(forks));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_unconfirmed_header_params, (chain_name));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_subchain_unconfirmed_header_result, (confirmed_block_id)(next_committee_mroot)(committee_set)(unconfirmed_headers)(genesisPk));
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_params, (owner) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producer_info_result, (location)(chain_id)(genesis_time)(quit_before_num)(genesis_pk) );
-FC_REFLECT( ultrainio::chain_apis::read_only::get_user_bulletin_result, (owner)(owner_pk)(active_pk)(issue_date)(block_height)(updateable) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_params, (blocknum) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_random_result, (random) );
 FC_REFLECT( ultrainio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(all_chain)(chain_name) )

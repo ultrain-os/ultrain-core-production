@@ -447,7 +447,7 @@ bytes apply_context::get_packed_transaction() {
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
    auto p = receiver;
-   if(delta < 0 && receiver == N(ultrainio)){
+   if(delta < 0 && (receiver == N(ultrainio) || receiver == config::resource_account_name)){
       p = payer;
    }
 //    if( delta > 0 ) {

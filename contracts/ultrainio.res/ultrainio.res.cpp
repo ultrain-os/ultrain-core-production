@@ -83,7 +83,7 @@ namespace ultrainiores {
                 tot.modify_block_height = cur_block_height;
             });
         } else {
-            ultrainio_assert( should_buy_period == period, ( std::to_string(should_buy_period)+ " should buy period not equal to period:" + std::to_string(period)).c_str() );
+            ultrainio_assert( should_buy_period == period, ("excepted period: " + std::to_string(should_buy_period) + " is not equal to required period: " + std::to_string(period)).c_str() );
             _resperiods_tbl.emplace( [&]( auto& tot ) {
                 tot.periods = period;
                 tot.owner = receiver;
@@ -96,7 +96,7 @@ namespace ultrainiores {
             ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
             INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
                             { from, N(utrio.resfee), asset(resourcefee), std::string("buy resource lease") } );
-            print("resourcelease calculatefee receiver:", name{receiver}," combosize:", uint32_t(combosize), " resourcefee:",resourcefee);
+            print("resourcelease calculatefee receiver:", name{receiver}," combosize:", uint32_t(combosize), " resourcefee:",resourcefee,"\n");
             resfreeaccount _resacc_tbl( _self, _self );
             auto resacc_to_itr = _resacc_tbl.find(receiver);
             if(resacc_to_itr == _resacc_tbl.end()) {
@@ -113,29 +113,21 @@ namespace ultrainiores {
         if( location == self_chain_name ) { //Purchase resources for this chain
             uint32_t last_period_blockheight = seconds_per_period / block_interval_seconds() * ((uint32_t)period - 1) + 1;
             uint32_t next_period_blockheight = seconds_per_period / block_interval_seconds() * (uint32_t)period;
+            uint64_t scope_period = period;
             if ( period == cur_period ) {
-                resources_lease_table _reslease_tbl( _self, 0 );
-                auto reslease_itr = _reslease_tbl.find( receiver );
-                if( reslease_itr ==  _reslease_tbl.end() ) {
+                scope_period = 0;
+            }
+            print("reslourcelease: scope period = ", scope_period, " \n");
+            resources_lease_table _reslease_tbl( _self, scope_period );
+            auto reslease_itr = _reslease_tbl.find( receiver );
+            if(reslease_itr == _reslease_tbl.end()) {
+                if(0 == scope_period) {
                     penddeltable pendingdel(_self,_self);
                     auto deltab_itr = pendingdel.find(receiver);
                     ultrainio_assert(deltab_itr == pendingdel.end(), "legacy resource is pending for clean up, please apply new resources later");
-                    _reslease_tbl.emplace( [&]( auto& tot ) {
-                        tot.owner = receiver;
-                        tot.lease_num = combosize;
-                        tot.locked_num = 0;
-                        tot.start_block_height = last_period_blockheight;
-                        tot.end_block_height = next_period_blockheight;
-                        tot.modify_block_height = cur_block_height;
-                    });
-                } else {
-                    ultrainio_assert( false , " resource already exist" );
                 }
-                set_resource_limits( receiver, int64_t(bytes*combosize), int64_t(combosize), int64_t(combosize) );
-                print("current resource limit  receiver:", name{receiver}, " net:", uint32_t(combosize)," cpu:", uint32_t(combosize)," ram:",int64_t(bytes*combosize));
-            } else {
-                resources_lease_table _reslease_tbl( _self, period );
-                _reslease_tbl.emplace([&]( auto& res ) {
+                print("reslourcelease: new resource for ", name{receiver}, "\n");
+                reslease_itr = _reslease_tbl.emplace([&]( auto& res ) {
                     res.owner               = receiver;
                     res.lease_num           = combosize;
                     res.locked_num          = 0;
@@ -143,25 +135,46 @@ namespace ultrainiores {
                     res.end_block_height    = next_period_blockheight;
                     res.modify_block_height = cur_block_height;
                 });
+            } else {
+                print("reslourcelease: update resource for ", name{receiver}, "\n");
+                _reslease_tbl.modify(reslease_itr, [&]( auto& tot ) {
+                    tot.lease_num += combosize;
+                    tot.modify_block_height = cur_block_height;
+                });
+            }
+
+            if(0 == scope_period) {
+                set_resource_limits( receiver, int64_t(bytes*reslease_itr->lease_num), int64_t(reslease_itr->lease_num), int64_t(reslease_itr->lease_num) );
+                print("current resource limit receiver:", name{receiver}, " net:", uint32_t(reslease_itr->lease_num)," cpu:", uint32_t(reslease_itr->lease_num)," ram:",int64_t(bytes*reslease_itr->lease_num), "\n");
             }
         }
     }
 
     void resource::transresource(account_name from, account_name to, uint16_t combosize, uint64_t period){
         require_auth( from );
-        resources_lease_table _reslease_tbl( _self, period );
-        const auto& lease_from = _reslease_tbl.get( from , ( name{from}.to_string() + " has no resource in chain ").c_str() );
-        ultrainio_assert(lease_from.lease_num >= combosize, ( name{from}.to_string() + " has not enough resources to transfer ").c_str() );
+        ultrainio_assert(from != to, "can't transfer resource to oneself");
         ultrainio_assert(combosize > 0, "resource combosize must be greater than 0" );
         uint32_t cur_block_height = (uint32_t)head_block_number() + 1;
         uint64_t cur_period = cur_block_height * block_interval_seconds()/ seconds_per_period + 1;
+        uint64_t reslease_period = period;
+        if(period == cur_period) {
+            reslease_period = 0;
+        }
+        resources_lease_table _reslease_tbl( _self, reslease_period );
+        const auto& lease_from = _reslease_tbl.get( from , ( name{from}.to_string() + " has no resource in chain ").c_str() );
+        ultrainio_assert(lease_from.lease_num >= combosize, ( name{from}.to_string() + " has not enough resources to transfer ").c_str() );
         if ( period == 0 ) {
             period = cur_period;
         }
-        _reslease_tbl.modify( lease_from, [&]( auto& res ) {
-            res.lease_num -= combosize;
-            res.modify_block_height = cur_block_height;
-        });
+        uint16_t from_new_lease = lease_from.lease_num - combosize;
+        if(0 == from_new_lease && 0 == lease_from.locked_num) {
+            _reslease_tbl.erase(lease_from);
+        } else {
+            _reslease_tbl.modify( lease_from, [&]( auto& res ) {
+                res.lease_num = from_new_lease;
+                res.modify_block_height = cur_block_height;
+            });
+        }
         auto lease_to_itr = _reslease_tbl.find(to);
         if(lease_to_itr == _reslease_tbl.end()) {
             lease_to_itr = _reslease_tbl.emplace([&]( auto& res ) {
@@ -180,13 +193,23 @@ namespace ultrainiores {
             });
         }
         if ( period == cur_period ) { //Process current period resources
+            //check if has enough rest resource
+            int64_t  total_ram = 0;
+            int64_t  total_net = 0;
+            int64_t  total_cpu = 0;
+            get_resource_limits(from, &total_ram, &total_net, &total_cpu);
+            int64_t  used_ram = 0;
+            get_account_ram_usage(from, &used_ram);
             uint64_t bytes_per_combo = _gstate.max_ram_size/_gstate.max_resources_number;
-            set_resource_limits( lease_from.owner, int64_t(bytes_per_combo*lease_from.lease_num), int64_t(lease_from.lease_num), int64_t(lease_from.lease_num) );
-            print("current resource limit  sender:", name{lease_from.owner}, " net:",uint32_t(lease_from.lease_num)," cpu:",uint32_t(lease_from.lease_num)," ram:",int64_t(bytes_per_combo*lease_from.lease_num));
+            int64_t need_ram = int64_t(bytes_per_combo * combosize);
+            ultrainio_assert(need_ram <= total_ram - used_ram, "don't have enough rest resource of current period to transfer");
+
+            set_resource_limits( from, int64_t(bytes_per_combo*from_new_lease), int64_t(from_new_lease), int64_t(from_new_lease) );
+            print("current resource limit  sender:", name{lease_from.owner}, " net:",uint32_t(lease_from.lease_num)," cpu:",uint32_t(lease_from.lease_num)," ram:",int64_t(bytes_per_combo*lease_from.lease_num), "\n");
             set_resource_limits( to, int64_t(bytes_per_combo*lease_to_itr->lease_num), int64_t(lease_to_itr->lease_num), int64_t(lease_to_itr->lease_num) );
-            print("current resource limit  receiver:", name{to}, " net:", uint32_t(lease_to_itr->lease_num)," cpu:", uint32_t(lease_to_itr->lease_num)," ram:",int64_t(bytes_per_combo*lease_to_itr->lease_num));
+            print("current resource limit  receiver:", name{to}, " net:", uint32_t(lease_to_itr->lease_num)," cpu:", uint32_t(lease_to_itr->lease_num)," ram:",int64_t(bytes_per_combo*lease_to_itr->lease_num), "\n");
         }
-        int64_t res_trans_fee = (int64_t)(_gstate.res_transfer_res * combosize);
+        int64_t res_trans_fee = int64_t(_gstate.res_transfer_res);
         ultrainio_assert(res_trans_fee > 0, "resource lease res_trans_fee is abnormal" );
         INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
                             { from, N(utrio.fee), asset(res_trans_fee), std::string("transresource fee") } );
@@ -236,7 +259,7 @@ namespace ultrainiores {
         resources_lease_table _reslease_tbl( _self, cur_periods + 1 );
         for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
             if( leaseiter->lease_num == 0 ) {
-                print("set_next_period_res  owner:", name{leaseiter->owner}, " next_periods:",(cur_periods + 1)," resouce number is 0");
+                print("set_next_period_res  owner:", name{leaseiter->owner}, " next_periods:",(cur_periods + 1)," resouce number is 0\n");
                 leaseiter = _reslease_tbl.erase(leaseiter);
                 continue;
             }
@@ -250,7 +273,7 @@ namespace ultrainiores {
                 cur_periods_res.emplace( [&]( auto& tot ) {
                     tot.owner = leaseiter->owner;
                     tot.lease_num = leaseiter->lease_num;
-                    tot.locked_num = 0;
+                    tot.locked_num = leaseiter->locked_num;
                     tot.start_block_height = next_periods_start_block;
                     tot.end_block_height = next_periods_end_block;
                     tot.modify_block_height = block_height;
@@ -260,6 +283,7 @@ namespace ultrainiores {
                 _gstate.total_resources_used_number += leaseiter->lease_num - cur_periods_itr->lease_num;
                 cur_periods_res.modify( cur_periods_itr, [&]( auto& tot ) {
                     tot.lease_num = leaseiter->lease_num;
+                    tot.locked_num = leaseiter->locked_num;
                     tot.end_block_height = next_periods_end_block;
                     tot.modify_block_height = block_height;
                 });
@@ -268,7 +292,7 @@ namespace ultrainiores {
             get_account_ram_usage( leaseiter->owner, &used_ram );
             if ( (uint64_t)used_ram <= leaseiter->lease_num*bytes ) {
                 set_resource_limits( leaseiter->owner, int64_t(bytes*leaseiter->lease_num), int64_t(leaseiter->lease_num), int64_t(leaseiter->lease_num) );
-                print("set_next_period_res resource limit  receiver:", name{leaseiter->owner}, " net:",uint32_t(leaseiter->lease_num)," cpu:", uint32_t(leaseiter->lease_num)," ram:",int64_t(bytes*leaseiter->lease_num));
+                print("set_next_period_res resource limit  receiver:", name{leaseiter->owner}, " net:",uint32_t(leaseiter->lease_num)," cpu:", uint32_t(leaseiter->lease_num)," ram:",int64_t(bytes*leaseiter->lease_num), "\n");
             }
             leaseiter = _reslease_tbl.erase(leaseiter);
         }
@@ -289,7 +313,7 @@ namespace ultrainiores {
             tot.free_account_number -= number;
         });
     }
-
+/*
     void resource::copyresource() {
         require_auth(_self);
 
@@ -410,11 +434,11 @@ namespace ultrainiores {
             }
         }
     }
+    */
 
     void resource::putorder(account_name owner, uint64_t period, uint16_t combosize, asset price, bool decrease) {
         require_auth(owner);
 
-        ultrainio_assert(price.amount > 0, "price cannot be set as zero");
         uint64_t real_period = period;
         uint32_t cur_block_height = (uint32_t)head_block_number() + 1;
         uint32_t period_end_block = 1;
@@ -450,10 +474,11 @@ namespace ultrainiores {
             ultrainio_assert(need_ram <= total_ram - used_ram, "you don't have enough rest resource of current period");
             new_total_ram = total_ram - need_ram;
         }
-        print("putorder real period:", real_period, "reslease period ", period, "\n");
+        print("putorder real period:", real_period, ", reslease period ", period, "\n");
         ressaletable resorders(_self, real_period);
         auto ite_order = resorders.find(owner);
         if(resorders.end() == ite_order) {
+            ultrainio_assert(price.amount > 0, "you dont't have an existed order, so the price cannot be set as zero");
             resorders.emplace([&]( auto& order ) {
                 order.owner = owner;
                 order.lease_num = combosize;
@@ -462,7 +487,9 @@ namespace ultrainiores {
                 order.modify_block_height = cur_block_height;
             });
         } else {
-            ultrainio_assert(ite_order->decrease_by_day == decrease, "you already have an order with different price strategy");
+            if(price.amount > 0) {
+                ultrainio_assert(ite_order->decrease_by_day == decrease, "you already have an order with different price strategy");
+            }
             auto realtime_unit_price = ite_order->initial_unit_price;
             if(decrease && current_period) {
                 //calculate real time price
@@ -473,10 +500,16 @@ namespace ultrainiores {
                 }
                 realtime_unit_price = ite_order->initial_unit_price * rest_days / 365;
             }
-            ultrainio_assert(realtime_unit_price == uint64_t(price.amount), "you already have an order with different price");
+
+            //price == 0 indicates an append order case
+            if(price.amount > 0) {
+                std::string assert_msg("you already have an order with price:");
+                assert_msg.append(std::to_string(realtime_unit_price));
+                ultrainio_assert(realtime_unit_price == uint64_t(price.amount), assert_msg.c_str());
+            }
 
             resorders.modify(ite_order, [&]( auto& order ) {
-                order.initial_unit_price = realtime_unit_price;  //change price since the modify_block_height was changed
+                //order.initial_unit_price = realtime_unit_price;  //change price since the modify_block_height was changed
                 order.lease_num += combosize;
                 order.modify_block_height = cur_block_height;
             });
@@ -522,8 +555,9 @@ namespace ultrainiores {
                     { owner, N(utrio.fee), asset(200), std::string("update order") } );
     }
 
-    void resource::cancelorder(account_name owner, uint64_t period) {
+    void resource::cancelorder(account_name owner, uint64_t period, uint16_t combosize) {
         require_auth(owner);
+        ultrainio_assert(combosize > 0, "combosize must be greater than 0");
         uint32_t cur_block_height = (uint32_t)head_block_number() + 1;
         uint64_t real_period = period;
         uint64_t cur_period_id = cur_block_height * block_interval_seconds()/ seconds_per_period + 1;
@@ -542,18 +576,26 @@ namespace ultrainiores {
         ressaletable resorders(_self, real_period);
         auto ite_order = resorders.find(owner);
         ultrainio_assert(ite_order != resorders.end(), "order is not found");
+        ultrainio_assert(ite_order->lease_num >= combosize, "required combosize exceeds resource number in the order");
 
         resources_lease_table _reslease_tbl( _self, period );
         auto ite_res = _reslease_tbl.find(owner);
         ultrainio_assert(ite_res != _reslease_tbl.end(), "error: resource is not found");
         ultrainio_assert(ite_order->lease_num == ite_res->locked_num, "resource size in the order is mismatch with locked size");
-        uint16_t new_lease_num = ite_res->lease_num + ite_order->lease_num;
+        uint16_t new_lease_num = ite_res->lease_num + combosize;
         _reslease_tbl.modify(ite_res, [&]( auto& tot ) {
             tot.lease_num = new_lease_num;
-            tot.locked_num = 0;
+            tot.locked_num -= combosize;
         });
 
-        resorders.erase(ite_order);
+        if(ite_order->lease_num == combosize) {
+            resorders.erase(ite_order);
+        } else {
+            resorders.modify(ite_order, [&]( auto& order ) {
+                order.lease_num -= combosize;
+                order.modify_block_height = cur_block_height;
+            });
+        }
 
         if(current_period) {
             //reset resource
@@ -658,4 +700,4 @@ namespace ultrainiores {
 
 }/// namespace ultrainiores
 
-ULTRAINIO_ABI( ultrainiores::resource, (setresparams)(resourcelease)(transresource)(transaccount)(recycleresource)(onblock)(modifyfreeaccount)(copyresource)(putorder)(updateorder)(cancelorder)(buyin) )
+ULTRAINIO_ABI( ultrainiores::resource, (setresparams)(resourcelease)(transresource)(transaccount)(recycleresource)(onblock)(modifyfreeaccount)(putorder)(updateorder)(cancelorder)(buyin) )

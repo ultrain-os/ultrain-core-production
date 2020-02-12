@@ -318,25 +318,6 @@
         {"name":"sent_trx",  "type":"bytes"}
       ]
     },{
-      "name": "resourcelease",
-      "base": "",
-      "fields": [
-         {"name":"from",      "type":"account_name"},
-         {"name":"receiver",  "type":"account_name"},
-         {"name":"combosize", "type":"uint64"},
-         {"name":"days",      "type":"uint64"},
-         {"name":"location",  "type":"name"}
-      ]
-    },{
-      "name": "transferresource",
-      "base": "",
-      "fields": [
-         {"name":"from",      "type":"account_name"},
-         {"name":"to",        "type":"account_name"},
-         {"name":"combosize", "type":"uint64"},
-         {"name":"location",  "type":"name"}
-      ]
-    },{
       "name": "delegatecons",
       "base": "",
       "fields": [
@@ -353,12 +334,6 @@
       ]
     },{
       "name": "refundcons",
-      "base": "",
-      "fields": [
-         {"name":"owner", "type":"account_name"}
-      ]
-    },{
-      "name": "recycleresource",
       "base": "",
       "fields": [
          {"name":"owner", "type":"account_name"}
@@ -925,14 +900,6 @@
      "type": "onerror",
      "ricardian_contract": ""
    },{
-      "name": "resourcelease",
-      "type": "resourcelease",
-      "ricardian_contract": ""
-   },{
-      "name": "transferresource",
-      "type": "transferresource",
-      "ricardian_contract": ""
-   },{
       "name": "delegatecons",
       "type": "delegatecons",
       "ricardian_contract": ""
@@ -943,10 +910,6 @@
    },{
       "name": "refundcons",
       "type": "refundcons",
-      "ricardian_contract": ""
-   },{
-      "name": "recycleresource",
-      "type": "recycleresource",
       "ricardian_contract": ""
    },{
       "name": "setfreeacc",

@@ -18,7 +18,7 @@ namespace ultrainiores {
     using namespace ultrainio;
     using namespace ultrainiosystem;
 
-    static constexpr uint32_t seconds_per_period = 365*24*3600;
+    static constexpr uint32_t seconds_per_period = 3600 * 24 * 365;
     static constexpr uint32_t seconds_per_day = 24*3600;
     struct resource_global_params {
         bool                 is_allow_buy_res;
@@ -108,10 +108,10 @@ namespace ultrainiores {
             void recycleresource( const account_name owner );
             void onblock();
             void modifyfreeaccount( const account_name owner, uint32_t number );
-            void copyresource();
+            //void copyresource();
             void putorder(account_name owner, uint64_t period, uint16_t combosize, asset price, bool decrease);
             void updateorder(account_name owner, uint64_t period, asset price, bool decrease);
-            void cancelorder(account_name owner, uint64_t period);
+            void cancelorder(account_name owner, uint64_t period, uint16_t combosize);
             void buyin(account_name owner, uint64_t period, account_name buyer, uint16_t combosize);
 
         private:
@@ -121,7 +121,7 @@ namespace ultrainiores {
             void check_res_expire();
             void del_expire_table();
             void clear_expire_contract( account_name owner );
-            void check_res_order_expire();
+            void del_expired_res_order(account_name owner, uint64_t period_id);
 
     };
 }/// namespace ultrainiores

@@ -1080,24 +1080,6 @@ vector<read_only::get_subchain_committee_result> read_only::get_subchain_committ
    return result;
 }
 
-vector<ultrainio::chain::resources_lease> read_only::get_subchain_resource(const read_only::get_subchain_resource_params& p) const {
-vector<ultrainio::chain::resources_lease> results;
-    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
-    auto index_type = get_table_type( abi, N(reslease) );
-    walk_key_value_table(N(ultrainio), p.chain_name, N(reslease), [&](const key_value_object& obj) {
-        resources_lease resLease;
-        fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-        fc::raw::unpack(ds, resLease);
-        auto headblock = db.head_block_num();
-        auto blockinterval = (p.record_minutes * 60 * 1000) /config::block_interval_ms;
-        if(resLease.modify_block_height <= headblock && (headblock - resLease.modify_block_height) <= blockinterval) {
-            results.push_back(resLease);
-        }
-        return true;
-    } );
-    return results;
-}
-
 read_only::get_subchain_block_num_result read_only::get_subchain_block_num(const read_only::get_subchain_block_num_params& p) const {
    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
    ULTRAIN_ASSERT(p.chain_name != self_chain_name, chain::contract_table_query_exception, "Could not query committee list of master chain.");
@@ -1256,51 +1238,6 @@ read_only::get_producer_info_result read_only::get_producer_info(const read_only
         });
     }
     result.quit_before_num = 0; // todo, quey it from table
-    return result;
-}
-
-std::vector<read_only::get_user_bulletin_result> read_only::get_user_bulletin(const read_only::get_user_bulletin_params& p) const {
-    const abi_def abi = ultrainio::chain_apis::get_abi( db, N(ultrainio) );
-
-    name table = N(chains);
-    auto index_type = get_table_type( abi, table );
-    const auto& d = db.db();
-    std::vector<read_only::get_user_bulletin_result> result;
-    walk_key_value_table(N(ultrainio), N(ultrainio), table, [&](const key_value_object& obj){
-       chain_info subchain_data;
-       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-       fc::raw::unpack(ds, subchain_data);
-       if(p.chain_name == subchain_data.chain_name) {
-           for(int32_t index = subchain_data.recent_users.size() - 1; index >= 0; --index) {
-               read_only::get_user_bulletin_result tmpuser;
-               tmpuser.owner = subchain_data.recent_users[index].user_name.to_string();
-               tmpuser.issue_date = fc::time_point_sec(subchain_data.recent_users[index].emp_time);
-               if(subchain_data.recent_users[index].is_producer || subchain_data.recent_users[index].owner_key == "") {
-                   //producer will always use the same pk as in master
-                   const auto& permission_o = d.get<permission_object,by_owner>(boost::make_tuple(subchain_data.recent_users[index].user_name, N(owner)));
-                   tmpuser.owner_pk = string(permission_o.auth.keys[0].key);
-               }
-               else{
-                   tmpuser.owner_pk = subchain_data.recent_users[index].owner_key;
-               }
-
-               if(subchain_data.recent_users[index].is_producer ||subchain_data.recent_users[index].active_key == "") {
-                   const auto& permission_a = d.get<permission_object,by_owner>(boost::make_tuple(subchain_data.recent_users[index].user_name, N(active)));
-                   tmpuser.active_pk = string(permission_a.auth.keys[0].key);
-               }
-               else {
-                   tmpuser.active_pk = subchain_data.recent_users[index].active_key;
-               }
-               tmpuser.block_height = subchain_data.recent_users[index].block_height;
-               tmpuser.updateable = subchain_data.recent_users[index].updateable;
-               result.push_back(tmpuser);
-           }
-           return false;
-       }
-       else {
-           return true;
-       }
-    });
     return result;
 }
 
@@ -1956,10 +1893,13 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
    }
 
    const auto& code_account = db.db().get<account_object,by_name>( N(ultrainio) );
+   const auto& res_account = db.db().get<account_object,by_name>( N(utrio.res) );
 
    abi_def abi;
-   if( abi_serializer::to_abi(code_account.abi, abi) ) {
+   abi_def res_abi;
+   if( abi_serializer::to_abi(code_account.abi, abi) && abi_serializer::to_abi(res_account.abi, res_abi)) {
       abi_serializer abis( abi, abi_serializer_max_time );
+      abi_serializer res_abis(res_abi, abi_serializer_max_time);
 
       const auto token_code = N(utrio.token);
 
@@ -2033,15 +1973,15 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
          }
       }
       auto chain_resource_func = [&](const vector<char>& data, name chain_name){
-         auto resleaseinfo = abis.binary_to_variant( "resources_lease", data, abi_serializer_max_time );
+         auto resleaseinfo = res_abis.binary_to_variant( "resources_lease", data, abi_serializer_max_time );
          read_only::get_block_info_params blockinfoparams{resleaseinfo["start_block_height"].as_string()};
          auto blockinfo = get_block_info(blockinfoparams);
          string str_start_time = blockinfo["timestamp"].as_string();
          fc::time_point start_timestamp = time_point::from_iso_string( str_start_time );
          fc::time_point end_timestamp(microseconds((resleaseinfo["end_block_height"].as_uint64() - resleaseinfo["start_block_height"].as_uint64())*config::block_interval_us + start_timestamp.time_since_epoch().count()));
-         result.chain_resource.push_back( resourcelease{ chain_name, resleaseinfo["lease_num"].as_uint64(), string(start_timestamp), string(end_timestamp) } );
+         result.chain_resource.push_back( resourcelease{ chain_name, resleaseinfo["lease_num"].as_uint64(), resleaseinfo["locked_num"].as_uint64(), string(start_timestamp), string(end_timestamp) } );
       };
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(reslease) ));
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::resource_account_name, 0, N(reslease) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
          auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
@@ -2050,30 +1990,6 @@ read_only::get_account_results read_only::get_account_info( const get_account_in
             copy_inline_row(*it, data);
             chain_resource_func( data, config::system_account_name );
          }
-      }
-
-      auto table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(chains) ));
-      if (table_id != nullptr) {
-         const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
-         decltype(table_id->id) next_tid(table_id->id._id + 1);
-         auto lower = kv_index.lower_bound(boost::make_tuple(table_id->id));
-         auto upper = kv_index.lower_bound(boost::make_tuple(next_tid));
-         std::for_each(lower,upper, [&](const key_value_object& obj) {
-            vector<char> data;
-            copy_inline_row(obj, data);
-            auto subchain = abis.binary_to_variant(abis.get_table_type(N(chains)), data, abi_serializer_max_time);
-            name chain_name = subchain["chain_name"].as_string();
-            const auto* res_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, chain_name, N(reslease) ));
-            if (res_id != nullptr) {
-               const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-               auto itres = idx.find(boost::make_tuple( res_id->id, params.account_name ));
-               if ( itres != idx.end() ) {
-                  vector<char> data;
-                  copy_inline_row(*itres, data);
-                  chain_resource_func(data, chain_name);
-               }
-            }
-         });
       }
    }
    return result;

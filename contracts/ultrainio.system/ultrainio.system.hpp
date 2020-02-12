@@ -604,7 +604,6 @@ namespace ultrainiosystem {
    static constexpr uint32_t seconds_per_day       = 24 * 3600;
    static constexpr uint32_t seconds_per_year      = 365*24*3600;
    static constexpr uint64_t useconds_per_day      = 24 * 3600 * uint64_t(1000000);
-   static constexpr uint64_t seconds_per_halfhour  = 30 * 60;
    static constexpr uint64_t seconds_per_hour      = 60 * 60;
    static constexpr uint64_t useconds_per_year     = seconds_per_year*1000000ll;
 
@@ -687,10 +686,13 @@ namespace ultrainiosystem {
           *  This action is called after the delegation-period to claim all pending
           *  unstaked tokens belonging to owner
           */
+         /*
          void resourcelease( account_name from, account_name receiver,
                              uint64_t combosize, uint64_t days, name location = self_chain_name);
          void transferresource(account_name from, account_name to, uint64_t combosize, name location = self_chain_name);
+
          void recycleresource(const account_name owner);
+         */
          void setfreeacc( account_name account, uint64_t number);
 
          // functions defined in producer.cpp
@@ -782,7 +784,7 @@ namespace ultrainiosystem {
          //defind in delegate.cpp
          void change_cons( account_name from, account_name receiver, asset stake_cons_quantity);
          void process_undelegate_request(account_name from, asset unstake_quantity);
-         void check_res_expire(uint64_t current_block_height);
+         //void check_res_expire(uint64_t current_block_height);
          void del_expire_table();
          void clear_expire_contract( account_name owner );
          //defined in reward.cpp
@@ -803,7 +805,6 @@ namespace ultrainiosystem {
          void remove_from_chain(name chain_name, account_name producer_name, uint64_t current_block_number);
          void move_pending_prod_to_sidechain(name chain_name, const committee_info& producer, uint32_t num);
          void pre_schedule(uint64_t current_block_height); //called in onblock every 24h defaultly.
-         void check_bulletin();
          bool move_producer(checksum256 head_id,
                             chains_table::const_iterator from_iter,
                             chains_table::const_iterator to_iter,

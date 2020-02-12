@@ -213,7 +213,7 @@ namespace ultrainiosystem {
             out.send( trxid, _self, true );
         }
     }
-
+/*
    void system_contract::resourcelease( account_name from, account_name receiver,
                           uint64_t combosize, uint64_t days, name location){
       require_auth( from );
@@ -450,7 +450,7 @@ namespace ultrainiosystem {
            });
        }
    }
-
+*/
    void system_contract::delegatecons(account_name from, account_name receiver, asset stake_cons_quantity)
    {
       ultrainio_assert( stake_cons_quantity > asset(0), "must stake a positive amount" );
@@ -488,6 +488,7 @@ namespace ultrainiosystem {
 
       refunds_tbl.erase( req );
    }
+   /*
    void system_contract::recycleresource(const account_name owner) {
       require_auth( _self );
       int64_t ram_bytes = 0;
@@ -581,6 +582,7 @@ namespace ultrainiosystem {
       uint64_t endtime = current_time();
       print("checkresexpire expend time:",(endtime - starttime));
    }
+   */
    void system_contract::setfreeacc( account_name account, uint64_t number){
       require_auth( _self );
       freeaccount free_acc(_self,_self);

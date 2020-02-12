@@ -10,13 +10,12 @@ namespace ultrainiores {
         set_next_period_res();
         del_expire_table(); //Delete the expired account table
         check_res_expire();
-        check_res_order_expire();
     }
     void resource::recycleresource(const account_name owner) {
         require_auth( _self );
         int64_t ram_bytes = 0;
         get_account_ram_usage( owner, &ram_bytes );
-        print("checkresexpire  recycleresource account:",name{owner}," ram_used:",ram_bytes);
+        print("checkresexpire  recycleresource account:",name{owner}," ram_used:",ram_bytes, "\n");
         ram_bytes = 0;
         set_resource_limits( owner, ram_bytes, 0, 0 );
     }
@@ -45,12 +44,13 @@ namespace ultrainiores {
         int64_t net_bytes = 0;
         int64_t cpu_bytes = 0;
         uint32_t  calc_num = 0;
+        uint64_t cur_period_id = block_height * block_interval_seconds()/ seconds_per_period + 1;
         _gstate.is_pending_check = false;
         resources_lease_table _reslease_tbl( _self, 0 );
         for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
             const auto& owner = leaseiter->owner;
             get_resource_limits( owner, &ram_bytes, &net_bytes, &cpu_bytes );
-            if(leaseiter->end_block_height <= block_height) {
+            if(leaseiter->end_block_height < block_height) {
                 calc_num++;
                 if(calc_num > 100) {
                     _gstate.is_pending_check = true;
@@ -65,12 +65,14 @@ namespace ultrainiores {
                 } else {
                     set_resource_limits( owner, ram_bytes, 0, 0 ); //Resource expired, no action allowed
                     add_pending_deltab_func( owner );
+                    del_expired_res_order(owner, cur_period_id - 1);
                     ++leaseiter;
                 }
             } else {
                 if ( (uint64_t)ram_bytes > bytes * leaseiter->lease_num ) {
                     add_pending_deltab_func( owner );
                 }
+                del_expired_res_order(owner, cur_period_id - 1);
                 ++leaseiter;
             }
         }
@@ -87,9 +89,12 @@ namespace ultrainiores {
                 resources_lease_table _reslease_tbl( _self, 0 );
                 auto reslease_itr = _reslease_tbl.find( owner );
                 if( reslease_itr != _reslease_tbl.end() && reslease_itr->end_block_height > (uint32_t)head_block_number() ) {
-                    print("del_expire_table  delete resources end contract name: ",name{owner});
+                    uint64_t bytes = _gstate.max_ram_size/_gstate.max_resources_number;
+                    set_resource_limits(owner, int64_t(bytes*reslease_itr->lease_num), int64_t(reslease_itr->lease_num), int64_t(reslease_itr->lease_num) );
+                    print("del_expire_table: delete table only for ",name{owner}, "\n");
                     continue;
                 }
+                print("del_expire_table: delete table and contract for ",name{owner}, "\n");
                 clear_expire_contract( owner );
             }
             break;  //Delete only once and wait for the next delete
@@ -108,7 +113,7 @@ namespace ultrainiores {
             uint128_t trxid = now() + owner + N(clrcontract);
             cancel_deferred(trxid);
             trx.send( trxid, _self, true );
-            print("checkresexpire  clear contract account name: ",name{owner}, " trxid:",trxid);
+            print("checkresexpire  clear contract account name: ",name{owner}, " trxid:",trxid, "\n");
         }
         {
             //recycle resource
@@ -119,29 +124,19 @@ namespace ultrainiores {
             uint128_t trxid = now() + owner + N(recycleres);
             cancel_deferred(trxid);
             recyclerestrans.send( trxid, _self, true );
-            print("checkresexpire  recycle resource account name: ",name{owner}, " trxid:",trxid);
+            print("checkresexpire  recycle resource account name: ",name{owner}, " trxid:",trxid, "\n");
         }
     }
 
-    void resource::check_res_order_expire() {
-        uint32_t block_height = (uint32_t)head_block_number() + 1;
-        //check every 1024 block
-        if(block_height < 120 || block_height / 1024 != 0) {
+    void resource::del_expired_res_order(account_name owner, uint64_t period_id) {
+        if(0 == period_id) {
             return;
         }
-        auto block_num_per_period = seconds_per_halfhour / block_interval_seconds();
-        uint64_t cur_period_id = block_height / block_num_per_period + 1;
-        if(1 == cur_period_id) {
-            return;
-        }
-        ressaletable resorders(_self, cur_period_id - 1);
-        uint16_t calc_num = 0;
-        for(auto ite_order = resorders.begin(); ite_order != resorders.end();) {
-            ite_order = resorders.erase(ite_order);
-            ++calc_num;
-            if(calc_num > 20) {
-                break;
-            }
+        ressaletable resorders(_self, period_id);
+        auto ite_order = resorders.find(owner);
+        if(ite_order != resorders.end()) {
+            print("delete expired resource order, owner: ", name{owner}, " period: ", period_id, "\n");
+            resorders.erase(ite_order);
         }
     }
 

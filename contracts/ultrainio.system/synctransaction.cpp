@@ -47,10 +47,10 @@ namespace ultrainiosystem {
         public:
             account_name from;
             account_name receiver;
-            uint64_t combosize;
-            uint64_t days;
+            uint16_t combosize;
+            uint64_t period;
             name location;
-            ULTRAINLIB_SERIALIZE(ResleaseActionParam, (from)(receiver)(combosize)(days)(location))
+            ULTRAINLIB_SERIALIZE(ResleaseActionParam, (from)(receiver)(combosize)(period)(location))
     };
 
     struct CommitteeChangeParam {
@@ -64,15 +64,6 @@ namespace ultrainiosystem {
 
         ULTRAINLIB_SERIALIZE(CommitteeChangeParam, (producer)(producerkey)(blskey)(from_disable)
                              (from_chain)(to_disable)(to_chain))
-    };
-
-    struct TransferResourceParam {
-        account_name from;
-        account_name to;
-        uint64_t combosize;
-        name location;
-
-        ULTRAINLIB_SERIALIZE(TransferResourceParam, (from)(to)(combosize)(location))
     };
 
     struct UpdateAuthParam {
@@ -159,14 +150,15 @@ namespace ultrainiosystem {
              new_acc.updateable = eup.updateable;
              new_acc.location = name{N(ultrainio)};
              add_subchain_account(new_acc);
-             print("sync user", name{eup.user}, "\n");
-         }else if (act.account == N(ultrainio) && act.name == NEX(resourcelease)) {
+             print("sync user ", name{eup.user}, "\n");
+         }else if (act.account == N(utrio.res) && act.name == NEX(resourcelease)) {
             ResleaseActionParam rap = unpack<ResleaseActionParam>(act.data);
             if(rap.location != _gstate.chain_name)
                 continue;
             exec_succ++;
-            INLINE_ACTION_SENDER(ultrainiosystem::system_contract, resourcelease)( N(ultrainio), {N(ultrainio), N(active)},
-                  { N(ultrainio), rap.receiver, rap.combosize, rap.days, self_chain_name} );
+            INLINE_ACTION_SENDER(ultrainiores::resource, resourcelease)( N(utrio.res), {N(ultrainio), N(active)},
+                  { N(ultrainio), rap.receiver, rap.combosize, rap.period, self_chain_name} );
+            print("sync resource of ", name{rap.receiver}, " leasenum: ", uint32_t(rap.combosize), " period: ",rap.period, "\n");
          } else if (act.account == N(ultrainio) && act.name == NEX(moveprod)) {
             CommitteeChangeParam ccp = unpack<CommitteeChangeParam>(act.data);
             if(ccp.from_chain == _gstate.chain_name) {
@@ -187,15 +179,6 @@ namespace ultrainiosystem {
                 INLINE_ACTION_SENDER(ultrainiosystem::system_contract, delegatecons)( N(ultrainio), {N(utrio.stake), N(active)},
                     { N(utrio.stake), ccp.producer, asset(_gstate.min_activated_stake)} );
             }
-         } else if(act.account == N(ultrainio) && act.name == NEX(transferresource)) {
-             //transfer resource
-             TransferResourceParam trp = unpack<TransferResourceParam>(act.data);
-             if(trp.location == _gstate.chain_name) {
-                 print("synclwctx, transfer ", trp.combosize, " resource from ", name{trp.from}, " to ", name{trp.to});
-                 INLINE_ACTION_SENDER(ultrainiosystem::system_contract, transferresource)( N(ultrainio), {N(ultrainio), N(active)},
-                        { trp.from, trp.to, trp.combosize, self_chain_name});
-                 exec_succ++;
-             }
          } else if(act.account == N(ultrainio) && act.name == NEX(updateauth)) {
              //update auth
              UpdateAuthParam uap = unpack<UpdateAuthParam>(act.data);

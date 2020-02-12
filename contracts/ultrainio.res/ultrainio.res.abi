@@ -77,11 +77,6 @@
          {"name":"number",  "type":"uint32"}
       ]
     },{
-      "name": "copyresource",
-      "base": "",
-      "fields": [
-      ]
-    },{
       "name": "putorder",
       "base": "",
       "fields": [
@@ -105,7 +100,8 @@
       "base": "",
       "fields": [
          {"name":"owner",   "type":"account_name"},
-         {"name":"period",     "type":"uint64"}
+         {"name":"period",     "type":"uint64"},
+         {"name":"combosize",  "type":"uint16"}
       ]
     },{
       "name": "buyin",
@@ -192,10 +188,6 @@
    },{
       "name": "modifyfreeaccount",
       "type": "modifyfreeaccount",
-      "ricardian_contract": ""
-   },{
-      "name": "copyresource",
-      "type": "copyresource",
       "ricardian_contract": ""
    },{
       "name": "putorder",

@@ -247,7 +247,7 @@ namespace ultrainiosystem {
       activekeyweight.key.type = 0;
       activekeyweight.weight = 1;
       ultrainiosystem::authority     activekey = { .threshold = 1, .keys = { activekeyweight }, .accounts = {}, .waits = {} };
-      print("updateactiveaccounts proposerminer:",name{newacc.account}," ownerkey:",newacc.owner_key," active_key:",newacc.active_key);
+      print("updateactiveaccounts proposerminer:",name{newacc.account}," ownerkey:",newacc.owner_key," active_key:",newacc.active_key, "\n");
       action(
          permission_level{ N(ultrainio), N(active) },
          N(ultrainio), NEX(newaccount),
@@ -319,17 +319,18 @@ namespace ultrainiosystem {
             break;
          }
       }
-      if(!is_free_create){
-         freeaccount free_acc(_self,_self);
-         auto itr_acc = free_acc.find(creator);
-         if (itr_acc != free_acc.end() && itr_acc->acc_num > 0){
-            free_acc.modify( itr_acc, [&]( auto& f  ) {
-               f.acc_num--;
-            });
-            is_free_create = true;
-         }
+      freeaccount free_acc(_self,_self);
+      auto itr_acc = free_acc.find(creator);
+      if (itr_acc != free_acc.end() && itr_acc->acc_num > 0){
+          free_acc.modify( itr_acc, [&]( auto& f  ) {
+              f.acc_num--;
+          });
+          is_free_create = true;
       }
-      ultrainio_assert( is_free_create || creator == _self, "The current free account is insufficient, please purchase resouce to get the free account" );
+      if(!is_free_create && creator != _self){
+        INLINE_ACTION_SENDER(ultrainiores::resource, modifyfreeaccount)
+                            (N(utrio.res), {N(utrio.res), N(active)},{creator, 1});
+      }
       // if (!is_free_create && creator != _self && newaccount_fee > 0) {
       //    INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {creator,N(active)},
       //                         { creator, N(utrio.fee), asset(newaccount_fee), std::string("create account") } );
@@ -406,6 +407,7 @@ namespace ultrainiosystem {
       producer_brief_table   _briefproducers( _self, _self );
       auto const briefprod = _briefproducers.find( account );
       ultrainio_assert(briefprod == _briefproducers.end(), "this account is a producer and cannot be deleted");
+      /*
       chains_table _chains(_self,_self);
       for(auto ite_chain = _chains.begin(); ite_chain != _chains.end(); ++ite_chain) {
          if( ite_chain->chain_name == N(master) )
@@ -413,7 +415,7 @@ namespace ultrainiosystem {
          resources_lease_table _reslease_tbl( _self, ite_chain->chain_name );
          auto reslease_itr = _reslease_tbl.find( account );
          ultrainio_assert( reslease_itr ==  _reslease_tbl.end(), "this account has purchased resource and cannot be deleted");
-      }
+      }*/
       print(" native::delaccount contract account:" ,name{account} );
    }
 } /// ultrainio.system
@@ -425,7 +427,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // ultrainio.system.cpp
      (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(setprodontimeblock)(setchaintypeextendata)
      // delegate.cpp
-     (delegatecons)(undelegatecons)(refundcons)(resourcelease)(transferresource)(recycleresource)(setfreeacc)
+     (delegatecons)(undelegatecons)(refundcons)(setfreeacc)
      // producer.cpp
      (regproducer)(moveprod)(verifyprodevil)(procevilprod)(prodheartbeat)
      // reward.cpp

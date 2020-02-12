@@ -1017,7 +1017,7 @@ struct list_producers_subcommand {
    }
 };
 
-
+/*
 struct buy_respackage_subcommand {
    string from_str;
    string receiver_str;
@@ -1076,6 +1076,7 @@ struct transfer_res_subcommand {
       });
    }
 };
+*/
 
 struct delegate_cons_subcommand {
    string from_str;
@@ -1232,7 +1233,33 @@ struct put_order_subcommand {
                   ("owner", owner_account)
                   ("period", period_id)
                   ("combosize", combosize)
-                  ("price", price)
+                  ("price", to_asset(price))
+                  ("decrease", decrease);
+         vector<permission_level> permiss_info;
+         permiss_info.push_back(permission_level{owner_account,config::active_name});
+         send_actions({create_action(permiss_info, N(utrio.res), NEX(putorder), act_payload)});
+      });
+   }
+};
+
+struct append_order_subcommand {
+   string owner_account;
+   uint64_t period_id;
+   uint16_t combosize;
+   bool   decrease = false;
+   append_order_subcommand(CLI::App* actionRoot) {
+      auto append_order = actionRoot->add_subcommand("appendorder", localized("Add more resource in your sell order"));
+      append_order->add_option("owner", owner_account, localized("Account of the user who want to sell resource"))->required();
+      append_order->add_option("period", period_id, localized("The period id of the resource"))->required();
+      append_order->add_option("combosize", combosize, localized("The amount of resources packages"))->required();
+      add_standard_transaction_options(append_order);
+
+      append_order->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("owner", owner_account)
+                  ("period", period_id)
+                  ("combosize", combosize)
+                  ("price", to_asset("0 UGAS"))
                   ("decrease", decrease);
          vector<permission_level> permiss_info;
          permiss_info.push_back(permission_level{owner_account,config::active_name});
@@ -1284,7 +1311,7 @@ struct update_order_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("owner", owner_account)
                   ("period", period_id)
-                  ("price", price)
+                  ("price", to_asset(price))
                   ("decrease", decrease);
          vector<permission_level> permiss_info;
          permiss_info.push_back(permission_level{owner_account,config::active_name});
@@ -1296,16 +1323,19 @@ struct update_order_subcommand {
 struct cancel_order_subcommand {
    string owner_account;
    uint64_t period_id;
+   uint16_t combo_size;
    cancel_order_subcommand(CLI::App* actionRoot) {
       auto cancel_order = actionRoot->add_subcommand("cancelorder", localized("Cancel resource sell order"));
       cancel_order->add_option("owner", owner_account, localized("Account of the user who selling resource"))->required();
       cancel_order->add_option("period", period_id, localized("The period id of the resource"))->required();
+      cancel_order->add_option("combosize", combo_size, localized("The amount of resources packages"))->required();
       add_standard_transaction_options(cancel_order);
 
       cancel_order->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("owner", owner_account)
-                  ("period", period_id);
+                  ("period", period_id)
+                  ("combosize", combo_size);
          vector<permission_level> permiss_info;
          permiss_info.push_back(permission_level{owner_account,config::active_name});
          send_actions({create_action(permiss_info, N(utrio.res), NEX(cancelorder), act_payload)});
@@ -1521,8 +1551,9 @@ void get_account( const string& accountName, bool json_format ) {
          std::cout << "resource lease: " << std::endl;
          for(auto chainres : res.chain_resource){
             std::cout << std::fixed << setprecision(3);
-            std::cout << indent << std::left << std::setw(11) << "location:"      << std::right << std::setw(13) << chainres.chain_name << "\n";
+            //std::cout << indent << std::left << std::setw(11) << "location:"      << std::right << std::setw(13) << chainres.chain_name << "\n";
             std::cout << indent << std::left << std::setw(11) << "lease_num:"      << std::right << std::setw(13) << chainres.lease_num << "\n";
+            std::cout << indent << std::left << std::setw(11) << "locked_num:" << std::right << std::setw(13) << chainres.locked_num << "\n";
             std::cout << indent << std::left << std::setw(11) << "start_time:" << std::right << std::setw(13) << chainres.start_time << "\n";
             std::cout << indent << std::left << std::setw(11) << "end_time:"     << std::right << std::setw(14) << chainres.end_time << "\n";
             std::cout << std::endl;
@@ -2977,8 +3008,8 @@ int main( int argc, char** argv ) {
    auto registerProducer = register_producer_subcommand(system);
 
    auto listProducers = list_producers_subcommand(system);
-   auto buyresourcespackage = buy_respackage_subcommand(system);
-   auto transferResource = transfer_res_subcommand(system);
+   //auto buyresourcespackage = buy_respackage_subcommand(system);
+   //auto transferResource = transfer_res_subcommand(system);
    auto delegatecons = delegate_cons_subcommand(system);
    auto undelegatecons = undelegate_cons_subcommand(system);
    auto listdelcons = list_delcons_subcommand(system);
@@ -2993,6 +3024,7 @@ int main( int argc, char** argv ) {
    auto buyresource = buy_resource_package_subcommand(resource);
    auto transresource = transfer_resource_package_subcommand(resource);
    auto putorder = put_order_subcommand(resource);
+   auto appendorder = append_order_subcommand(resource);
    auto listorders = list_orders_subcommand(resource);
    auto updateorder = update_order_subcommand(resource);
    auto cancelorder = cancel_order_subcommand(resource);

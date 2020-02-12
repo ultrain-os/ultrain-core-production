@@ -543,10 +543,6 @@ namespace ultrainiosystem {
         tempuser.block_height = (uint64_t)head_block_number() + 1;
         tempuser.updateable = updateable;
         _chains.modify(ite_chain, [&]( auto& _chain ) {
-            for(const auto& _user : _chain.recent_users) {
-                ultrainio_assert(_user.user_name != user, "User has published in this chain recently.");
-            }
-            _chain.recent_users.push_back(tempuser);
             _chain.total_user_num += 1;
         });
 
@@ -1016,42 +1012,6 @@ namespace ultrainiosystem {
         temp.schedule_period = sched_period;
         temp.expire_minutes = expire_time;
         _schedsetting.set(temp);
-    }
-
-    void system_contract::check_bulletin() {
-        auto ct = now();
-        uint64_t check_period = 30; //unit is minutes
-        for(auto extension : _gstate.table_extension){
-           if(extension.key == ultrainio_global_state::global_state_exten_type_key::check_user_bulletin) {
-               std::string str = extension.value;
-               check_period = uint64_t(std::stoi(str));
-               break;
-           }
-        }
-        auto chain_it = _chains.begin();
-        for(; chain_it != _chains.end(); ++chain_it) {
-            if(chain_it->chain_name == N(master))
-                continue;
-            if(chain_it->recent_users.empty()) {
-                continue;
-            }
-            if( (ct > chain_it->recent_users[0].emp_time) && (ct - chain_it->recent_users[0].emp_time >= check_period*60 ) ) {
-                _chains.modify(chain_it, [&](auto& _subchain) {
-                    auto user_it = _subchain.recent_users.begin();
-                    for(; user_it != _subchain.recent_users.end(); ) {
-                        if(ct > user_it->emp_time && (ct - user_it->emp_time < 30*60)) {
-                            break;
-                        } else {
-                            ++user_it;
-                        }
-                    }
-                    if(user_it != _subchain.recent_users.begin()) {
-                        _subchain.recent_users.erase(_subchain.recent_users.begin(), user_it);
-                        _subchain.recent_users.shrink_to_fit();
-                    }
-                });
-            }
-        }
     }
 
     void system_contract::forcesetblock(name chain_name, const signed_block_header& signed_header, const std::vector<committee_info>& cmt_set) {
