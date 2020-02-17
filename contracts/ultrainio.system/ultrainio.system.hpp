@@ -24,6 +24,7 @@ namespace ultrainiosystem {
    const name self_chain_name{N(ultrainio)};
    const account_name ultrainio_account_name{N(ultrainio)};
    const name default_chain_name{N(default)};  //default chain, will be assigned by system.
+   const name disable_heartbeat{N(heartbeat)};  //doesn't make sense, only used in moveprod() to indecate producer moving from disabled table because of heartbeat
    const account_name ultrainio_community_name{N(utrio.cmnity)};
    const account_name ultrainio_technical_team_name{N(utrio.thteam)};
    const account_name ultrainio_dapp_name{N(utrio.dapp)};
@@ -181,26 +182,25 @@ namespace ultrainiosystem {
       producer_info(const disabled_producer& dp, uint64_t unpay, uint64_t prod_block, uint64_t last_record_block)
           :disabled_producer(dp), unpaid_balance(unpay), produce_block_perday(prod_block), last_record_blockheight(last_record_block) {}
 
-      uint64_t get_enqueue_block_height() const {
-          uint64_t enqueue_blockheight = 0;
-          for( auto& exten : table_extension ){
-              if( exten.key == enqueue_block_height ){
-                  enqueue_blockheight = std::stoull(exten.value);
+      uint64_t get_block_height_by_key(producers_state_exten_type_key ext_key) const {
+          uint64_t blockheight = 0;
+          for(const auto& exten : table_extension ){
+              if( exten.key == ext_key ){
+                  blockheight = std::stoull(exten.value);
                   break;
               }
           }
-          return enqueue_blockheight;
+          return blockheight;
       }
 
-      uint64_t get_heartbeat_block_height() const {
-          uint64_t heartbeat_blockheight = 0;
-          for( auto& exten : table_extension ){
-              if( exten.key == last_heartbeat_block_height ){
-                  heartbeat_blockheight = std::stoull(exten.value);
-                  break;
-              }
-          }
-          return heartbeat_blockheight;
+      void set_block_height_for_key(producers_state_exten_type_key ext_key, uint64_t cur_block_height) {
+           for(auto& ext : table_extension) {
+               if( ext.key == ext_key ){
+                   ext.value = std::to_string(cur_block_height);
+                   return;
+               }
+           }
+           table_extension.emplace_back(ext_key, std::to_string(cur_block_height));
       }
 
       ULTRAINLIB_SERIALIZE_DERIVED( producer_info, disabled_producer,
@@ -429,6 +429,7 @@ namespace ultrainiosystem {
          genesis_producer_public_key = 1,
          is_being_destoryed = 2,
          producer_supervision = 3,
+         producer_supervision_block_height = 4,
          chains_state_key_end,
        };
        auto primary_key()const { return chain_name; }
@@ -487,6 +488,9 @@ namespace ultrainiosystem {
            }
            return false;
        }
+
+       uint64_t get_last_spuervision_block_height() const;
+       void set_last_spuervision_block_height(uint64_t current_block_height);
    };
    typedef ultrainio::multi_index<N(chains), chain_info> chains_table;
 
@@ -788,7 +792,7 @@ namespace ultrainiosystem {
          inline void send_rewards_for_maintainer( account_name maintainer );
 
          //defined in scheduler.cpp
-         void add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number);
+         void add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number, bool with_heartbeat);
          void remove_from_chain(name chain_name, account_name producer_name, uint64_t current_block_number);
          void move_pending_prod_to_sidechain(name chain_name, const committee_info& producer, uint32_t num);
          void pre_schedule(uint64_t current_block_height); //called in onblock every 24h defaultly.

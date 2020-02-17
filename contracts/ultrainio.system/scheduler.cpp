@@ -3,6 +3,28 @@
 #include <list>
 
 namespace ultrainiosystem {
+
+    uint64_t chain_info::get_last_spuervision_block_height() const {
+        uint64_t last_block_height = 0;
+        for(const auto& ext : table_extension) {
+            if(ext.key == chain_info::producer_supervision_block_height) {
+                last_block_height = std::stoull(ext.value);
+                break;
+            }
+        }
+        return last_block_height;
+    }
+
+    void chain_info::set_last_spuervision_block_height(uint64_t current_block_height) {
+        for(auto& ext : table_extension) {
+            if(ext.key == chain_info::producer_supervision_block_height) {
+                ext.value = std::to_string(current_block_height);
+                return;
+            }
+        }
+        table_extension.emplace_back(chain_info::producer_supervision_block_height, std::to_string(current_block_height));
+    }
+
     struct chain_balance {
             name     chain_name;
             asset    balance;
@@ -314,7 +336,15 @@ namespace ultrainiosystem {
                 valid_sender = true;
             }
             ultrainio_assert(valid_sender, "invalid sender");
+        } else if(ite_chain->is_prod_supervision()) {
+            uint64_t cur_block_height = uint64_t(head_block_number() + 1);
+            if(cur_block_height > prod->get_block_height_by_key(producer_info::last_heartbeat_block_height)) {
+                _producer_chain.modify(prod, [&](auto& a_producer) {
+                    a_producer.set_block_height_for_key(producer_info::last_heartbeat_block_height, cur_block_height);
+                });
+            }
         }
+
         bool synced = headers.size() == 10 ? false : true;
         uint32_t confirmed_number_before = ite_chain->confirmed_block_number;
         checksum256 final_confirmed_id;
@@ -582,7 +612,7 @@ namespace ultrainiosystem {
     }
 
 
-    void system_contract::add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number) {
+    void system_contract::add_to_chain(name chain_name, const producer_info& producer, uint64_t current_block_number, bool with_heartbeat) {
         uint64_t chain_block_height = current_block_number;
         new_chain_singleton  ncs(_self, _self);
         if(chain_name == default_chain_name) {
@@ -636,18 +666,22 @@ namespace ultrainiosystem {
             _prod.last_record_blockheight = chain_block_height;
             _prod.last_operate_blocknum = current_block_number;
             if(default_chain_name == chain_name) {
-                _prod.table_extension.emplace_back(producer_info::producers_state_exten_type_key::enqueue_block_height, std::to_string(current_block_number));
+                _prod.set_block_height_for_key(producer_info::enqueue_block_height, current_block_number);
+            }
+            if(with_heartbeat) {
+                _prod.set_block_height_for_key(producer_info::last_heartbeat_block_height, current_block_number);
             }
             bool is_exist_start_produce_time = false;
             for( auto& exten : _prod.table_extension ){
-               print("add_to_chain producer:", name{producer.owner}, " chain_name:", name{chain_name}," key:", std::to_string(exten.key).c_str(), " value:", exten.value.c_str(), " now:",std::to_string(now()).c_str(), "\n");
                if( exten.key == producer_info::producers_state_exten_type_key::start_produce_time ){
                   is_exist_start_produce_time = true;
                   break;
                }
             }
             if( !is_exist_start_produce_time )
-               _prod.table_extension.push_back(exten_type(producer_info::producers_state_exten_type_key::start_produce_time ,std::to_string(now())));
+               _prod.table_extension.emplace_back(producer_info::producers_state_exten_type_key::start_produce_time, std::to_string(now()));
+
+            print("add_to_chain producer:", name{producer.owner}, " chain_name:", name{chain_name},"\n");
         });
     }
 
@@ -815,7 +849,7 @@ namespace ultrainiosystem {
             if(ite_ext->chain_type != scheduling_chain_type) {
                 continue;
             }
-            auto enqueue_blocknum = pending_prod->get_enqueue_block_height();
+            auto enqueue_blocknum = pending_prod->get_block_height_by_key(producer_info::enqueue_block_height);
             if(enqueue_blocknum > 0 && enqueue_blocknum < uint64_t(block_height)) {
                 auto interval_blocks = uint64_t(block_height) - enqueue_blocknum;
                 if(interval_blocks * block_interval_seconds() >= 60 * max_minutes ) {
@@ -1342,7 +1376,7 @@ namespace ultrainiosystem {
         auto pending_prod = pending_table.begin();
         for(; pending_prod != pending_table.end() && producer_num + 1 < ite_type->stable_max_producers; ++pending_prod) {
             if(is_empowered(pending_prod->owner, new_chain.chain_name)) {
-                auto enqueue_blocknum = pending_prod->get_enqueue_block_height();
+                auto enqueue_blocknum = pending_prod->get_block_height_by_key(producer_info::enqueue_block_height);;
                 if(enqueue_blocknum == 0 || enqueue_blocknum >= current_block_height) {
                     continue;
                 }
@@ -1425,19 +1459,24 @@ namespace ultrainiosystem {
 
     void system_contract::check_producer_heartbeat(uint64_t current_block_height) {
         auto period_minutes = getglobalextenuintdata(ultrainio_global_state::producer_heartbeat_check_period, 10);
-        if( current_block_height%(period_minutes * 6) != 0) {
-            return;
-        }
 
         auto chain_iter = _chains.begin();
         for(; chain_iter != _chains.end(); ++chain_iter) {
             if(!chain_iter->is_prod_supervision()) {
                 continue;
             }
+            auto last_check_block_height = chain_iter->get_last_spuervision_block_height();
+            if(last_check_block_height >= current_block_height) {
+                print("error: wrong spuervision check block \n");
+                continue;
+            }
+            if(current_block_height - last_check_block_height < period_minutes * 6) {
+                continue;
+            }
             producers_table _producers(_self, chain_iter->chain_name);
             auto prod_iter = _producers.begin();
             for(; prod_iter != _producers.end(); ++prod_iter) {
-                auto last_heartbeat_block_height = prod_iter->get_heartbeat_block_height();
+                auto last_heartbeat_block_height = prod_iter->get_block_height_by_key(producer_info::last_heartbeat_block_height);;
                 if(last_heartbeat_block_height > current_block_height) {
                     print("error: wrong heartbeat block \n");
                 } else if(current_block_height - last_heartbeat_block_height > period_minutes*6) {
@@ -1446,6 +1485,10 @@ namespace ultrainiosystem {
                     send_defer_moveprod_action(mv_prod);
                 }
             }
+            _chains.modify(chain_iter, [&]( auto& a_chain ) {
+                a_chain.set_last_spuervision_block_height(current_block_height);
+            });
+            break;
         }
     }
 } //namespace ultrainiosystem

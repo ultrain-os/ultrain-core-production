@@ -202,7 +202,8 @@ producer:") + name{producer}.to_string() + std::string(" not synchronized to sub
             ultrainio_assert( producerkey == prod_info.producer_key, "error: public producer key not consistent with the original chain" );
             ultrainio_assert( blskey == prod_info.bls_key, "error: public bls key not consistent with the original chain" );
             remove_producer_from_evillist( producer );  //Will be moved to enabled producer, should be removed from the evil list
-            add_to_chain(to_chain, prod_info, current_block_number);
+            bool enable_by_heartbeat = from_disable && from_chain == disable_heartbeat;
+            add_to_chain(to_chain, prod_info, current_block_number, enable_by_heartbeat);
             _briefproducers.modify(briefprod, [&](producer_brief& producer_brf) {
                 producer_brf.in_disable = false;
                 producer_brf.location = to_chain;
@@ -369,6 +370,7 @@ producer:") + name{producer}.to_string() + std::string(" not synchronized to sub
        require_auth(producer);
        auto briefprod = _briefproducers.find(producer);
        ultrainio_assert(briefprod != _briefproducers.end(), "not a producer");
+       ultrainio_assert(_gstate.is_master_chain(), "only handle producer heartbeat in master chain");
        if(briefprod->in_disable) {
            check_producer_evillist(producer);
            disabled_producers_table dp_tbl(_self, _self);
@@ -379,27 +381,17 @@ producer:") + name{producer}.to_string() + std::string(" not synchronized to sub
            auto ite_chain = _chains.find(briefprod->location);
            ultrainio_assert(ite_chain != _chains.end(), "destination chain is not found");
            ultrainio_assert(ite_chain->is_schedulable, "a committee change is ongoing in destination chain");
-           moveprod_param mv_prod(producer, it_disable->producer_key, it_disable->bls_key, true, default_chain_name, false, briefprod->location);
+           moveprod_param mv_prod(producer, it_disable->producer_key, it_disable->bls_key, true, disable_heartbeat, false, briefprod->location);
            send_defer_moveprod_action(mv_prod);
            return;
        }
        producers_table _producers(_self, briefprod->location);
        auto prod = _producers.find(producer);
        ultrainio_assert(prod != _producers.end(), "producer is not found in its location");
-       uint32_t cur_block_height = (uint32_t)head_block_number() + 1;
-       ultrainio_assert(cur_block_height != prod->get_heartbeat_block_height(), "repeated heartbeat transaction");
+       uint64_t cur_block_height = (uint64_t)head_block_number() + 1;
+       ultrainio_assert(cur_block_height != prod->get_block_height_by_key(producer_info::last_heartbeat_block_height), "repeated heartbeat transaction");
        _producers.modify(prod, [&](auto& _producer) {
-           bool found = false;
-           for(auto& ext : _producer.table_extension) {
-               if( ext.key == producer_info::producers_state_exten_type_key::last_heartbeat_block_height ){
-                   ext.value = std::to_string(cur_block_height);
-                   found = true;
-                   break;
-               }
-           }
-           if(!found) {
-               _producer.table_extension.emplace_back(producer_info::producers_state_exten_type_key::last_heartbeat_block_height, std::to_string(cur_block_height));
-           }
+           _producer.set_block_height_for_key(producer_info::last_heartbeat_block_height, cur_block_height);
        });
    }
    int64_t system_contract::get_producer_min_stake(const account_name& producer, name chain_name) {
