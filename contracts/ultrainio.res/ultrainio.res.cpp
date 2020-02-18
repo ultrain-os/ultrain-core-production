@@ -235,6 +235,11 @@ namespace ultrainiores {
         int32_t calc_num = 0;
         resources_lease_table _reslease_tbl( _self, cur_periods + 1 );
         for(auto leaseiter = _reslease_tbl.begin(); leaseiter != _reslease_tbl.end(); ) {
+            if( leaseiter->lease_num == 0 ) {
+                print("set_next_period_res  owner:", name{leaseiter->owner}, " next_periods:",(cur_periods + 1)," resouce number is 0");
+                leaseiter = _reslease_tbl.erase(leaseiter);
+                continue;
+            }
             calc_num++;
             if(calc_num > 100) {
                 break;
