@@ -464,6 +464,7 @@ namespace ultrainiosystem {
 
        void set_prod_supervision(bool supervise) {
            bool found = false;
+           bool from_deactive_to_active = false;
            for(auto& ext : table_extension) {
                if(ext.key == chains_state_exten_type_key::producer_supervision) {
                    found = true;
@@ -471,12 +472,18 @@ namespace ultrainiosystem {
                        ext.value = std::to_string(0);
                    } else if(0 == std::stoi(ext.value) && supervise) {
                        ext.value = std::to_string(1);
+                       from_deactive_to_active = true;
                    }
                    break;
                }
            }
            if(!found && supervise) {
                table_extension.emplace_back(chains_state_exten_type_key::producer_supervision, std::to_string(1));
+               from_deactive_to_active = true;
+           }
+           if(from_deactive_to_active) {
+               uint64_t current_block_height = (uint64_t)head_block_number() + 1;
+               set_last_spuervision_block_height(current_block_height);
            }
        }
 
