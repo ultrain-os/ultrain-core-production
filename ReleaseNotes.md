@@ -1,5 +1,20 @@
 # Release Notes
 
+### 2020-2-25 Release(master-testnet Commit: 1776c11f828f87a01c25b1d9fe3fe1d418a380f6)
+* Nodultrain
+    * Get node nat type and broadcast, nat punch
+    * Add base worldstate snapshots files
+    * Break the chainbase state compatability with old code,
+      Note that replay can only start at a fairly recently block
+      so as to generate consistent chainbase world state.
+* Contract
+    * Add resource contract, externalize resource function from system contract.
+    * Add resource market to trade chain resource.
+    * Add heartbeat function to enhance chain stability
+    * Improvement, schedule the producer according to chaintype.
+    * Improvement, flexible reward type for different chaintype
+
+
 ### 2019-12-26 Release(master-testnet Commit: 6d41b27ae9024aa57df70b3d2b5aeb10ab7bb2db)
 
 * Nodultrain
