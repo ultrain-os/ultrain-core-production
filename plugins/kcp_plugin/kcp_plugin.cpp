@@ -349,7 +349,10 @@ namespace ultrainio { namespace kcp_plugin_n {
         uint32_t wait_handshake_count = 0;
         connection_status get_status()const {
             connection_status stat;
-            stat.peer = peer_addr;
+            stat.peer = peer_ep.address().to_string() + ":" + to_string(peer_ep.port()) + ","
+                + my_impl->get_conn_directstring(direct)+","
+                + (priority==msg_priority_rpos ? "rpos":"trx")+","
+                + last_handshake_recv.account.to_string()+",kcp";
             stat.connecting = connecting;
             stat.last_handshake = last_handshake_recv;
             return stat;
@@ -3096,6 +3099,7 @@ bool kcp_plugin_impl::authenticate_peer(const handshake_message& msg) {
       return "no known connection for host";
    }
 
+#if 0
     optional<connection_status> kcp_plugin::status( const string& host )const {
         auto con = my->find_connection( host );
         if( con )
@@ -3111,6 +3115,7 @@ bool kcp_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
         return result;
     }
+#endif
     vector<connection_status> kcp_plugin::get_connected_connections()const {
         vector<connection_status> result;
         result.reserve( my->connections.size() );

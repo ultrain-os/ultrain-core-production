@@ -36,8 +36,8 @@ namespace ultrainio { namespace net_plugin_n {
 
         string                       connect( const string& endpoint );
         string                       disconnect( const string& endpoint );
-        optional<connection_status>  status( const string& endpoint )const;
-        vector<connection_status>    connections()const;
+        //optional<connection_status>  status1( const string& endpoint )const;
+        //vector<connection_status>    connections1()const;
         vector<connection_status>    get_connected_connections()const;
         int                         is_netplugin_prime()const;
         int get_sync_waitblock_interval();

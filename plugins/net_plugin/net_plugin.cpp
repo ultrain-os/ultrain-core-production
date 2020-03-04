@@ -359,9 +359,32 @@ namespace ultrainio { namespace net_plugin_n {
         uint32_t pack_count_drop = 0;
         uint32_t retry_connect_count = 0;
         uint32_t wait_handshake_count = 0;
+        std::string get_conn_directstring(connection_direction dir)const{
+            switch(dir)
+            {
+                case direction_in:
+                    return "in";
+                    break;
+                case direction_out:
+                    return "out";
+                    break;
+                case direction_passive_out:
+                    return "passive";
+                    break;
+                default:
+                    break;
+            }
+            return "in";
+        }
         connection_status get_status()const {
             connection_status stat;
-            stat.peer = peer_addr;
+            boost::system::error_code ec;
+            auto peer_str = socket->remote_endpoint(ec).address().to_string();
+            auto port =  to_string(socket->remote_endpoint(ec).port());
+            stat.peer = peer_str + ":" + port + ","
+                + get_conn_directstring(direct)+","
+                + (priority==msg_priority_rpos ? "rpos":"trx")+","
+                + last_handshake_recv.account.to_string()+",tcp";
             stat.connecting = connecting;
             stat.last_handshake = last_handshake_recv;
             return stat;
@@ -3342,7 +3365,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
       }
       return "no known connection for host";
    }
-
+#if 0
     optional<connection_status> net_plugin::status( const string& host )const {
         auto con = my->find_connection( host );
         if( con )
@@ -3358,6 +3381,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
         }
         return result;
     }
+#endif
     vector<connection_status> net_plugin::get_connected_connections()const {
         vector<connection_status> result;
         result.reserve( my->connections.size() );

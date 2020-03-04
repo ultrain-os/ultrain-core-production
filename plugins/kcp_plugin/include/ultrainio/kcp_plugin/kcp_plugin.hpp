@@ -36,8 +36,8 @@ namespace ultrainio { namespace kcp_plugin_n {
 
         string                       connect( const string& endpoint );
         string                       disconnect( const string& endpoint );
-        optional<connection_status>  status( const string& endpoint )const;
-        vector<connection_status>    connections()const;
+        //optional<connection_status>  status( const string& endpoint )const;
+        //vector<connection_status>    connections()const;
         vector<connection_status>    get_connected_connections()const;
 
         size_t num_peers() const;
