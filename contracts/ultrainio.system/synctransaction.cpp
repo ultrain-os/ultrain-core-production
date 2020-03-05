@@ -75,6 +75,13 @@ namespace ultrainiosystem {
         ULTRAINLIB_SERIALIZE(UpdateAuthParam, (account)(permission)(parent)(auth))
     };
 
+    struct DeleteAuthParam {
+        account_name account;
+        permission_name permission;
+
+        ULTRAINLIB_SERIALIZE(DeleteAuthParam, (account)(permission))
+    };
+
    static std::string checksum256_to_string( const uint8_t* d, uint32_t s )
    {
       std::string r;
@@ -127,7 +134,7 @@ namespace ultrainiosystem {
                chainbalance  chainbalan(N(utrio.bank), N(utrio.bank));
                auto it_chain = chainbalan.find( chain_name );
                if(cur_tokens < tap.val || it_chain == chainbalan.end() || it_chain->balance < tap.val){
-                  print(" ERROR The utrio.bank of the masterchain should never be smaller than the amount of money to be transferred");
+                  print(" ERROR The utrio.bank of the masterchain should never be smaller than the amount of money to be transferred\n");
                   continue;
                }
             }
@@ -182,11 +189,20 @@ namespace ultrainiosystem {
          } else if(act.account == N(ultrainio) && act.name == NEX(updateauth)) {
              //update auth
              UpdateAuthParam uap = unpack<UpdateAuthParam>(act.data);
-             print("synclwctx, update auth of", name{uap.account}, ", permission: ", name{uap.permission}, ", parent: ", name{uap.parent});
+             print("synclwctx, update auth of ", name{uap.account}, ", permission: ", name{uap.permission}, ", parent: ", name{uap.parent}, "\n");
              vector<permission_level>   action_auth = act.authorization;
              action_auth.emplace_back(N(ultrainio), N(active));
              INLINE_ACTION_SENDER(ultrainiosystem::native, updateauth)( N(ultrainio), action_auth,
                     {uap.account, uap.permission, uap.parent, uap.auth});
+             exec_succ++;
+         } else if(act.account == N(ultrainio) && act.name == NEX(deleteauth)) {
+             //delete auth
+             DeleteAuthParam dap = unpack<DeleteAuthParam>(act.data);
+             print("synclwctx, delete auth of ", name{dap.account}, ", permission: ", name{dap.permission}, "\n");
+             vector<permission_level>   action_auth = act.authorization;
+             action_auth.emplace_back(N(ultrainio), N(active));
+             INLINE_ACTION_SENDER(ultrainiosystem::native, deleteauth)( N(ultrainio), action_auth,
+                    {dap.account, dap.permission});
              exec_succ++;
          }
       }
