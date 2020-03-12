@@ -2118,7 +2118,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
 
 void mongo_db_plugin::plugin_startup()
 {
-   my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&mongo_db_plugin_impl::transaction_ack, my.get(), _1));
+   //my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&mongo_db_plugin_impl::transaction_ack, my.get(), _1));
 
 }
 
