@@ -81,7 +81,8 @@ namespace ultrainiores {
 
     void resource::del_expire_table() {
         penddeltable pendingdeltab(_self,_self);
-        for(auto del_iter = pendingdeltab.begin(); del_iter != pendingdeltab.end(); ){
+        if(pendingdeltab.begin() != pendingdeltab.end()) {
+            auto del_iter = pendingdeltab.begin();
             auto const & owner = del_iter->owner;
             int dropstatus = db_drop_table(owner);   //drop contract account table
             if(dropstatus == 0){
@@ -92,12 +93,10 @@ namespace ultrainiores {
                     uint64_t bytes = _gstate.max_ram_size/_gstate.max_resources_number;
                     set_resource_limits(owner, int64_t(bytes*reslease_itr->lease_num), int64_t(reslease_itr->lease_num), int64_t(reslease_itr->lease_num) );
                     print("del_expire_table: delete table only for ",name{owner}, "\n");
-                    continue;
                 }
                 print("del_expire_table: delete table and contract for ",name{owner}, "\n");
                 clear_expire_contract( owner );
             }
-            break;  //Delete only once and wait for the next delete
         }
     }
 
