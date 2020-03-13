@@ -83,7 +83,7 @@ namespace ultrainiores {
         penddeltable pendingdeltab(_self,_self);
         if(pendingdeltab.begin() != pendingdeltab.end()) {
             auto del_iter = pendingdeltab.begin();
-            auto const & owner = del_iter->owner;
+            auto  owner = del_iter->owner;
             int dropstatus = db_drop_table(owner);   //drop contract account table
             if(dropstatus == 0){
                 pendingdeltab.erase(del_iter);

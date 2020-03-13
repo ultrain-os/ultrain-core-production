@@ -601,14 +601,14 @@ namespace ultrainiosystem {
 
    void system_contract::del_expire_table(){
       penddeltable pendingdeltab(_self,_self);
-      for(auto del_iter = pendingdeltab.begin(); del_iter != pendingdeltab.end(); ){
-         auto const & owner = del_iter->owner;
+      if(pendingdeltab.begin() != pendingdeltab.end()) {
+         auto del_iter = pendingdeltab.begin();
+         auto owner = del_iter->owner;
          int dropstatus = db_drop_table(owner);   //drop contract account table
          if(dropstatus == 0){
             del_iter = pendingdeltab.erase(del_iter);
             clear_expire_contract( owner );
          }
-         break;  //Delete only once and wait for the next delete
       }
    }
 
