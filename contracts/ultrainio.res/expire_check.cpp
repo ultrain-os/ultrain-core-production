@@ -94,8 +94,10 @@ namespace ultrainiores {
                     set_resource_limits(owner, int64_t(bytes*reslease_itr->lease_num), int64_t(reslease_itr->lease_num), int64_t(reslease_itr->lease_num) );
                     print("del_expire_table: delete table only for ",name{owner}, "\n");
                 }
-                print("del_expire_table: delete table and contract for ",name{owner}, "\n");
-                clear_expire_contract( owner );
+                else {
+                    print("del_expire_table: delete table and contract for ",name{owner}, "\n");
+                    clear_expire_contract( owner );
+                }
             }
         }
     }
