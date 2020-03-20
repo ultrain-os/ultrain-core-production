@@ -146,6 +146,27 @@ namespace ultrainiosystem {
    };
    typedef ultrainio::multi_index< N(prodext), producer_ext > prodexten_table;
 
+   struct blocks_per_day {
+       blocks_per_day(){}
+       blocks_per_day(uint32_t bn, uint32_t mon):block_num(bn), month(mon){}
+       uint32_t block_num;
+       uint32_t month;
+       ULTRAINLIB_SERIALIZE(blocks_per_day, (block_num)(month))
+   };
+
+   struct producer_history {
+      account_name          owner;
+      uint64_t              total_produce_block = 0;
+      uint64_t              delegated_cons_blocknum = 0;
+      std::vector<blocks_per_day> pay_per_day;
+      exten_types           table_extension;
+
+      uint64_t primary_key()const { return owner; }
+
+      ULTRAINLIB_SERIALIZE(producer_history, (owner)(total_produce_block)(delegated_cons_blocknum)(pay_per_day)(table_extension) )
+   };
+   typedef ultrainio::multi_index< N(prodhistory), producer_history > prodhistory_table;
+
    struct disabled_producer : public committee_info {
       int64_t               total_cons_staked = 0;
       std::string           url;
@@ -788,7 +809,7 @@ namespace ultrainiosystem {
          void del_expire_table();
          void clear_expire_contract( account_name owner );
          //defined in reward.cpp
-         void report_subchain_block( const name& chain_name, account_name producer, uint64_t block_height );
+         void report_subchain_block( const name& chain_name, account_name producer, uint64_t block_height, uint32_t accounting_date, uint32_t month);
          inline void generate_reward_trx( account_name producer, account_name reward_account, uint64_t paid_balance ) const;
          void distribut_reward(uint64_t current_block_height);
          inline float get_reward_fee_ratio() const;

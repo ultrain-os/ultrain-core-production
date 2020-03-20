@@ -317,6 +317,13 @@ namespace ultrainiosystem {
         if(chain_name == N(master)) {
             scope_name = self_chain_name;
         }
+        auto timestamp = now();
+        struct tm * tm = std::gmtime((time_t*)&timestamp);
+        int accounting_date = tm->tm_mday;
+
+        if(accounting_date < 0) {
+            accounting_date = 0;
+        }
         account_name sender = current_sender();
         producers_table _producer_chain(_self, scope_name);
         auto prod = _producer_chain.find(sender);
@@ -420,7 +427,8 @@ namespace ultrainiosystem {
                         else{
                             if(ite_uncfm_block->to_be_paid) {
                                 //apply reward for its proposer
-                                report_subchain_block( chain_name, ite_uncfm_block->proposer, ite_uncfm_block->block_number );
+                                report_subchain_block( chain_name, ite_uncfm_block->proposer, ite_uncfm_block->block_number ,
+                                                (uint32_t)accounting_date, (uint32_t)tm->tm_mon+1);
                             }
                             subchain_block_tbl.emplace([&]( auto& new_confirmed_header ) {
                                 new_confirmed_header = block_header_digest(ite_uncfm_block->block_number,

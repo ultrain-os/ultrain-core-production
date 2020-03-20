@@ -5,6 +5,7 @@
 #include <ultrainiolib/system.h>
 #include <ultrainiolib/transaction.hpp>
 #include <cmath>
+
 namespace ultrainiosystem {
    using namespace ultrainio;
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
@@ -159,7 +160,8 @@ namespace ultrainiosystem {
       });
    }
 
-   void system_contract::report_subchain_block( const name& chain_name, account_name producer, uint64_t block_height ) {
+   void system_contract::report_subchain_block( const name& chain_name, account_name producer, uint64_t block_height,
+                                    uint32_t accounting_date, uint32_t month) {
       auto briefprod = _briefproducers.find(producer);
       if(briefprod == _briefproducers.end()) {
           print("error: block proposer ", name{producer}, " is not a producer\n");
@@ -171,6 +173,24 @@ namespace ultrainiosystem {
          print("error: block proposer ", name{producer}, " is not found in its location\n");
          return;
       }
+      prodhistory_table _prodhistory(_self, producer);
+      auto prod_itr = _prodhistory.find(producer);
+      if ( prod_itr == _prodhistory.end() ) {
+          prod_itr = _prodhistory.emplace([&](producer_history &prodhist){
+                  prodhist.pay_per_day.assign(32, {0,0});
+                  prodhist.owner = producer;
+                  prodhist.delegated_cons_blocknum = prod->delegated_cons_blocknum;
+                  prodhist.total_produce_block = prod->total_produce_block;
+                  });
+      }
+      _prodhistory.modify(prod_itr, [&](producer_history & prodhist) {
+            if(month != prodhist.pay_per_day[accounting_date].month) {
+                prodhist.pay_per_day[accounting_date].block_num = 0;
+                prodhist.pay_per_day[accounting_date].month = month;
+            }
+            prodhist.pay_per_day[accounting_date].block_num++;
+            prodhist.total_produce_block++;
+      });
       auto chain_iter = _chains.find( chain_name );
       if( chain_iter == _chains.end() ) {
          print("error: chain_name: ", name{chain_name}," producer: ", name{producer}, "report_subchain_block  chain not found\n");
