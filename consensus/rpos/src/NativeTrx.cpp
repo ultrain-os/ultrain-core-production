@@ -26,14 +26,13 @@ namespace ultrainio {
     }
 
     void NativeTrx::reportEvil(const EvilDesc& desc, const Evidence& evidence) {
-        if (Config::s_allowReportEvil) {
-            fc::mutable_variant_object o;
-            fc::variant descVar(desc);
-            fc::variant evidenceVar(evidence.toString());
-            o[kDesc] = descVar;
-            o[kEvidence] = evidenceVar;
-            Node::getInstance()->getEvilReportHandler()(std::string(desc.chainName), desc.blockNum, fc::json::to_string(fc::variant(o)), std::string());
-        }
+        fc::mutable_variant_object o;
+        fc::variant descVar(desc);
+        fc::variant evidenceVar(evidence.toString());
+        o[kDesc] = descVar;
+        o[kEvidence] = evidenceVar;
+        Node::getInstance()->getEvilReportHandler()(std::string(desc.chainName), desc.blockNum,
+                                                    fc::json::to_string(fc::variant(o)), std::string());
     }
 
     void NativeTrx::reportEmptyBlockReason(const std::string& chain_name, uint32_t blockNum, const EmptyBlockReason& reason) {
