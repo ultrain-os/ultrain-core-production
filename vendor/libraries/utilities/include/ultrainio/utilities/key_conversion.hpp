@@ -10,8 +10,9 @@
 
 namespace ultrainio { namespace utilities {
 
-std::string                        key_to_wif(const fc::sha256& private_secret );
+#ifndef ULTRAIN_TRX_SUPPORT_GM
 std::string                        key_to_wif(const fc::ecc::private_key& key);
 fc::optional<fc::ecc::private_key> wif_to_key( const std::string& wif_key );
+#endif
 
 } } // end namespace ultrainio::utilities

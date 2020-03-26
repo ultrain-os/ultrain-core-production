@@ -28,6 +28,7 @@
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/crypto/rand.hpp>
+#include <set>
 
 #include <ultrainio/chain/ultrainio_contract.hpp>
 #include <appbase/application.hpp>
@@ -1269,6 +1270,26 @@ struct controller_impl {
       return r;
    }
 
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+    void get_account_pubkey(account_name user, permission_name perm_name, std::vector<key_weight>& keys) const {
+         auto auth = std::set<permission_level>();
+         get_account_pubkey(user, perm_name, keys, auth);
+    }
+
+    void get_account_pubkey(account_name user, permission_name perm_name, std::vector<key_weight>& keys,
+             std::set<permission_level>& perm_set) const {
+         const auto& permission_o = db.get<permission_object,by_owner>(boost::make_tuple(user, perm_name));
+         keys.insert(keys.end(), permission_o.auth.keys.begin(), permission_o.auth.keys.end());
+         for(const auto &acc:permission_o.auth.accounts) {
+             auto retpair = perm_set.insert({acc.permission.actor, acc.permission.permission});
+             if(retpair.second) {
+                get_account_pubkey(acc.permission.actor, acc.permission.permission, keys, perm_set);
+             }
+         }
+    }
+
+#endif
+
    /**
     *  This is the entry point for new transactions to the block state. It will check authorization and
     *  determine whether to execute it now or to delay it. Lastly it inserts a transaction receipt into
@@ -1302,11 +1323,41 @@ struct controller_impl {
             }
 
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+            std::vector<key_weight> keys;
+            for(const auto& act:trx->trx.actions) {
+                for(const auto& perm:act.authorization) {
+                    get_account_pubkey(perm.actor, perm.permission, keys);
+                }
+            }
+            digest_type d = trx->trx.sig_digest(chain_id, trx->trx.context_free_data);
+            flat_set<public_key_type> pks;
+            auto check_digest = [&](key_weight kw) -> bool {
+               for(const signature_type& sig : trx->trx.signatures) {
+                  if (kw.key.verify(d.data(), d.data_size(), sig)) {
+                     return true;
+                  }
+               }
+               return 0;
+            };
+            for(const key_weight& kw:keys) {
+                ilog("kw, ${acc}", ("acc", kw.key));
+                if(check_digest(kw)) {
+                    ilog("insert to pks, ${acc}", ("acc", kw.key));
+                    pks.insert(kw.key);
+                }
+            }
+            // TODO(xiaofen.qin@gmail.com may set signing_keys in transaction_metadata
+#endif
 
             if( !self.skip_auth_check() && !implicit ) {
                authorization.check_authorization(
                        trx->trx.actions,
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+                       pks,
+#else
                        trx->recover_keys( chain_id ),
+#endif
                        {},
                        trx_context.delay,
                        [](){}
@@ -2539,6 +2590,11 @@ vector<digest_type> controller::merkle_proof_of(const uint32_t& block_number, co
 //    for (auto c: trx_receipt_bytes) std::cout << std::hex << (int(c) & 0xff) << " ";
 //    std::cout << std::endl;
 // }
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+void controller::get_account_pubkey(account_name user, permission_name perm_name, std::vector<key_weight>& keys) const {
+    my->get_account_pubkey(user, perm_name, keys);
+}
+#endif
 
 bool controller::verify_merkle_proof(const vector<digest_type>& merkle_proof, const digest_type& transaction_mroot, const vector<char>& trx_receipt_bytes) const {
 

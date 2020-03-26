@@ -91,6 +91,9 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
    const digest_type digest = sig_digest(chain_id, cfd);
 
    flat_set<public_key_type> recovered_pub_keys;
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   ULTRAIN_ASSERT(false, tx_decompression_error, "ULTRAIN_TRX_SUPPORT_GM do not support, should not be here");
+#else
    for(const signature_type& sig : signatures) {
       public_key_type recov;
       if( use_cache ) {
@@ -116,6 +119,7 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
       while ( recovery_cache.size() > recovery_cache_size )
          recovery_cache.erase( recovery_cache.begin() );
    }
+#endif
 
    return recovered_pub_keys;
 } FC_CAPTURE_AND_RETHROW() }

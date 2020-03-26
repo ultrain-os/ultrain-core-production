@@ -202,8 +202,8 @@ class typescript_crypto_api : public context_aware_api {
       void ts_assert_recover_key( array_ptr<char> hash, size_t hashlen,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
-         fc::crypto::signature s;
-         fc::crypto::public_key p;
+         signature_type s;
+         public_key_type p;
          datastream<const char*> ds( sig, siglen );
          datastream<const char*> pubds( pub, publen );
 
@@ -212,15 +212,24 @@ class typescript_crypto_api : public context_aware_api {
 
          std::string hash_str(hash.value);
          fc::sha256 digest(hash_str);
-
-         auto check = fc::crypto::public_key( s, digest, false );
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+         bool verified = p.verify(digest.data(), digest.data_size(), s);
+         ULTRAIN_ASSERT( verified == true, crypto_api_exception, "Error expected key different than recovered key" );
+#else
+         auto check = public_key_type( s, digest, false );
          ULTRAIN_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
+#endif
       }
 
       int ts_recover_key( array_ptr<char> hash, size_t hashlen,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
-         fc::crypto::signature s;
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+         // TODO(xiaofen.qin@gmail.com
+         ULTRAIN_ASSERT(false, crypto_api_exception, "ULTRAIN_TRX_SUPPORT_GM not provide ts_recover_key");
+         return 0;
+#else
+         signature_type s;
          datastream<const char*> ds( sig, siglen );
          datastream<char*> pubds( pub, publen );
 
@@ -228,8 +237,9 @@ class typescript_crypto_api : public context_aware_api {
          fc::sha256 digest(hash_str);
 
          fc::raw::unpack(ds, s);
-         fc::raw::pack( pubds, fc::crypto::public_key( s, digest, false ) );
+         fc::raw::pack( pubds, public_key_type( s, digest, false ) );
          return pubds.tellp();
+#endif
       }
 
       template<class Encoder> auto encode(char* data, size_t datalen) {
@@ -311,7 +321,7 @@ class typescript_crypto_api : public context_aware_api {
                memcpy(pubkey_val, pubkey.data(), pubkey.size());
                return pubkey.size();
             } else if (std::string(key_type) == "hex") {
-               std::string hexstr = fc::crypto::public_key::base58_to_hex(pubkey);
+               std::string hexstr = public_key_type::base58_to_hex(pubkey);
                if (pubkey_len < hexstr.size()) return -1;
                memcpy(pubkey_val, hexstr.c_str(), hexstr.size());
                return hexstr.size();
@@ -1149,33 +1159,43 @@ class crypto_api : public context_aware_api {
       void assert_recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
-         fc::crypto::signature s;
-         fc::crypto::public_key p;
+         signature_type s;
+         public_key_type p;
          datastream<const char*> ds( sig, siglen );
          datastream<const char*> pubds( pub, publen );
 
          fc::raw::unpack(ds, s);
          fc::raw::unpack(pubds, p);
-
-         auto check = fc::crypto::public_key( s, digest, false );
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+         bool verified = p.verify(digest.data(), digest.data_size(), s);
+         ULTRAIN_ASSERT( verified == true, crypto_api_exception, "Error expected key different than recovered key" );
+#else
+         auto check = public_key_type( s, digest, false );
          ULTRAIN_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
+#endif
       }
       void frombase58_recover_key(null_terminated_ptr pubkey,
                         array_ptr<char> pub, size_t publen ) {
-         std::string hexstr = fc::crypto::public_key::base58_to_hex(std::string(pubkey));
+         std::string hexstr = public_key_type::base58_to_hex(std::string(pubkey));
          ULTRAIN_ASSERT( hexstr.size() == publen, crypto_api_exception, "frombase58_recover_key public key parase error" );
          memcpy(pub, hexstr.c_str(), hexstr.size());
       }
       int recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
-         fc::crypto::signature s;
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+          //TODO(xiaofen.qin@gmail.com)
+          ULTRAIN_ASSERT(false, crypto_api_exception, "ULTRAIN_TRX_SUPPORT_GM not provide recover_key");
+          return 0;
+#else
+         signature_type s;
          datastream<const char*> ds( sig, siglen );
          datastream<char*> pubds( pub, publen );
 
          fc::raw::unpack(ds, s);
-         fc::raw::pack( pubds, fc::crypto::public_key( s, digest, false ) );
+         fc::raw::pack( pubds, public_key_type( s, digest, false ) );
          return pubds.tellp();
+#endif
       }
 
       template<class Encoder> auto encode(char* data, size_t datalen) {

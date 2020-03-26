@@ -924,7 +924,12 @@ void mongo_db_plugin_impl::_process_failed_transaction( const chain::packed_tran
     if( t->signing_keys.valid()) {
         signing_keys_json = fc::json::to_string( t->signing_keys->second );
     } else {
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+        auto signing_keys = trx.get_signature_keys( *chain_id, false, false );;
+        elog("ULTRAIN_TRX_SUPPORT_GM do not support get_signature_keys");
+#else
         auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
+#endif
         if( !signing_keys.empty()) {
             signing_keys_json = fc::json::to_string( signing_keys );
         }
@@ -1130,7 +1135,12 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const transaction_meta
    if( t->signing_keys.valid()) {
       signing_keys_json = fc::json::to_string( t->signing_keys->second );
    } else {
+#ifdef ULTRAIN_TRX_SUPPORT_GM
       auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
+      elog("ULTRAIN_TRX_SUPPORT_GM do not support get_signature_keys");
+#else
+      auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
+#endif
       if( !signing_keys.empty()) {
          signing_keys_json = fc::json::to_string( signing_keys );
       }

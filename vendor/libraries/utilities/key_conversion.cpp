@@ -8,7 +8,8 @@
 
 namespace ultrainio { namespace utilities {
 
-std::string key_to_wif(const fc::sha256& secret )
+#ifndef ULTRAIN_TRX_SUPPORT_GM
+static std::string key_to_wif(const fc::sha256& secret )
 {
   const size_t size_of_data_to_hash = sizeof(secret) + 1;
   const size_t size_of_hash_bytes = 4;
@@ -49,5 +50,6 @@ fc::optional<fc::ecc::private_key> wif_to_key( const std::string& wif_key )
 
   return fc::optional<fc::ecc::private_key>();
 }
+#endif
 
 } } // end namespace ultrainio::utilities

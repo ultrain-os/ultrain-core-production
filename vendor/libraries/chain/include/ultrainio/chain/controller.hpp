@@ -213,6 +213,10 @@ namespace ultrainio { namespace chain {
          sha256 calculate_integrity_hash()const;
 
          void check_actor_list( const flat_set<account_name>& actors )const;
+
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+         void get_account_pubkey(account_name user, permission_name perm_name, std::vector<key_weight>& keys) const;
+#endif
          void check_contract_list( account_name code )const;
          void check_action_list( account_name code, action_name action )const;
          void check_key_list( const public_key_type& key )const;

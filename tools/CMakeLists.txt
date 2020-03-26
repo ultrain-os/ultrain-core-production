@@ -13,3 +13,7 @@ target_link_libraries( bls_keypair_gen ultrainio_base ultrainio_crypto )
 add_executable( committee_sk_gen
         CommitteeSkGenerator.cpp)
 target_link_libraries( committee_sk_gen ultrainio_base ultrainio_crypto ultrainio_chain)
+
+add_executable( gm_keys_gen
+        GmKeysGenerator.cpp)
+target_link_libraries( gm_keys_gen ultrainio_gm )

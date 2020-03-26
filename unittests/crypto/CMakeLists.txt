@@ -42,3 +42,5 @@ include_directories ( ${Boost_INCLUDE_DIR} )
 target_link_libraries( random_unittest ultrainio_crypto)
 
 add_test(NAME random_unittest COMMAND random_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+add_subdirectory( gm )

@@ -14,7 +14,7 @@ namespace ultrainio {
 
     const std::string NativeTrx::kEvidence = "kEvidence";
 
-    void NativeTrx::sendEvilTrx(const AccountName& reporter, const fc::crypto::private_key& sk, const AccountName& evil, const Evidence& evidence) {
+    void NativeTrx::sendEvilTrx(const AccountName& reporter, const chain::private_key_type& sk, const AccountName& evil, const Evidence& evidence) {
         if (Config::s_allowReportEvil) {
             std::pair<uint64_t, std::string> t = std::make_pair(evil, evidence.toString());
             bytes data = fc::raw::pack(t);
@@ -48,7 +48,7 @@ namespace ultrainio {
     }
 
     SignedTransaction NativeTrx::buildTrx(const Action& action, const BlockIdType& referId, const ChainIdType& chainId,
-            const fc::crypto::private_key& sk, const fc::time_point_sec& expiration, fc::unsigned_int usageWords) {
+            const chain::private_key_type& sk, const fc::time_point_sec& expiration, fc::unsigned_int usageWords) {
         SignedTransaction trx;
         trx.actions.push_back(action);
         trx.set_reference_block(referId);

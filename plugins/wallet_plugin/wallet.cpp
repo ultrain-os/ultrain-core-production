@@ -40,7 +40,11 @@ private_key_type derive_private_key( const std::string& prefix_string,
 {
    std::string sequence_string = std::to_string(sequence_number);
    fc::sha512 h = fc::sha512::hash(prefix_string + " " + sequence_string);
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   return private_key_type::regenerate(fc::sha256::hash(h));
+#else
    return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(h));
+#endif
 }
 
 class soft_wallet_impl
@@ -180,10 +184,15 @@ public:
          key_type = _default_key_type;
 
       private_key_type priv_key;
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+      if (true)
+         priv_key = private_key_type::generate();
+#else
       if(key_type == "K1")
-         priv_key = fc::crypto::private_key::generate<fc::ecc::private_key_shim>();
+         priv_key = private_key_type::generate<fc::ecc::private_key_shim>();
       else if(key_type == "R1")
-         priv_key = fc::crypto::private_key::generate<fc::crypto::r1::private_key_shim>();
+         priv_key = private_key_type::generate<fc::crypto::r1::private_key_shim>();
+#endif
       else
          ULTRAIN_THROW(chain::unsupported_key_type_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
 
@@ -409,7 +418,11 @@ pair<public_key_type,private_key_type> soft_wallet::get_private_key_from_passwor
    auto seed = account + role + password;
    ULTRAIN_ASSERT( seed.size(), wallet_exception, "seed should not be empty" );
    auto secret = fc::sha256::hash( seed.c_str(), seed.size() );
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   auto priv = private_key_type::regenerate( secret );
+#else
    auto priv = private_key_type::regenerate<fc::ecc::private_key_shim>( secret );
+#endif
    return std::make_pair(  priv.get_public_key(), priv );
 }
 

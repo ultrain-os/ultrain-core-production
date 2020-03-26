@@ -20,3 +20,5 @@ add_executable( random_test
         RandomTest.cpp )
 
 target_link_libraries( random_test ultrainio_crypto )
+
+add_subdirectory( gm )

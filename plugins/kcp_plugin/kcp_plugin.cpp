@@ -2501,21 +2501,22 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 bool kcp_plugin_impl::is_pk_signature_match(chain::public_key_type const& pk,fc::sha256 const& hash,chain::signature_type const& sig)
 {
     /*pk match the signature*/
-    chain::public_key_type peer_key;
     try {
-        peer_key = crypto::public_key(sig,hash, true);
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+        return pk.verify(hash.data(), hash.data_size(), sig);
+#else
+        chain::public_key_type peer_key = chain::public_key_type(sig, hash, true);
+        return peer_key == pk;
+#endif
     }
     catch (fc::exception& /*e*/) {
         elog("unrecover key error");
         return false;
     }
-    if(peer_key != pk)
-    {
-        elog("unauthenticated key");
-        return false;
-    }
-    return true;
+    elog("unauthenticated key");
+    return false;
 }
+
 bool kcp_plugin_impl::is_account_commitee_pk_match(fc::sha256 const& hash,chain::account_name const& account,std::string sig)
 {
     controller& cc = chain_plug->chain();

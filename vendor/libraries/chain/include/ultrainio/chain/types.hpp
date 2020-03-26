@@ -21,8 +21,20 @@
 #include <fc/static_variant.hpp>
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/crypto/ripemd160.hpp>
+#include <fc/crypto/sha512.hpp>
+#include <fc/crypto/elliptic.hpp>
+#include <fc/crypto/elliptic_r1.hpp>
 #include <fc/fixed_string.hpp>
+#include <fc/reflect/reflect.hpp>
+#include <fc/reflect/variant.hpp>
+
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+#include <gm/sm2/PrivateKey.h>
+#include <gm/sm2/PublicKey.h>
+#include <gm/sm2/Signature.h>
+#else
 #include <fc/crypto/private_key.hpp>
+#endif
 
 #include <memory>
 #include <vector>
@@ -80,13 +92,20 @@ namespace ultrainio { namespace chain {
    using                               fc::flat_map;
    using                               fc::flat_set;
    using                               fc::static_variant;
-   using                               fc::ecc::range_proof_type;
-   using                               fc::ecc::range_proof_info;
-   using                               fc::ecc::commitment_type;
 
+
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   using public_key_type  = gm::sm2::PublicKey;
+   using private_key_type = gm::sm2::PrivateKey;
+   using signature_type   = gm::sm2::Signature;
+#else
    using public_key_type  = fc::crypto::public_key;
    using private_key_type = fc::crypto::private_key;
    using signature_type   = fc::crypto::signature;
+   using                               fc::ecc::range_proof_type;
+   using                               fc::ecc::range_proof_info;
+   using                               fc::ecc::commitment_type;
+#endif
 
    struct void_t{};
 

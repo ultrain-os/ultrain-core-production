@@ -1746,7 +1746,12 @@ int main( int argc, char** argv ) {
         string privs,pubs;
         for(int i = 0; i < keysize; i++){
             if( r1 ) {
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+                FC_ASSERT(false, "gm not support r1");
+                auto pk    = private_key_type::generate();
+#else
                 auto pk    = private_key_type::generate_r1();
+#endif
                 privs = string(pk);
                 pubs  = string(pk.get_public_key());
             } else {
@@ -2625,8 +2630,11 @@ int main( int argc, char** argv ) {
          std::getline( std::cin, str_private_key, '\n' );
          fc::set_console_echo(true);
       }
-
-      auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+      private_key_type priv_key(str_private_key);
+#else
+      auto priv_key = private_key_type::regenerate(*utilities::wif_to_key(str_private_key));
+#endif
       trx.sign(priv_key, *chain_id);
 
       if(push_trx) {

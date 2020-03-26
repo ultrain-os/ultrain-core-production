@@ -2670,20 +2670,20 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 bool net_plugin_impl::is_pk_signature_match(chain::public_key_type const& pk,fc::sha256 const& hash,chain::signature_type const& sig)
 {
     /*pk match the signature*/
-    chain::public_key_type peer_key;
     try {
-        peer_key = crypto::public_key(sig,hash, true);
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+        return pk.verify(hash.data(), hash.data_size(), sig);
+#else
+        chain::public_key_type peer_key = chain::public_key_type(sig, hash, true);
+        return peer_key == pk;
+#endif
     }
     catch (fc::exception& /*e*/) {
         elog("unrecover key error");
         return false;
     }
-    if(peer_key != pk)
-    {
-        elog("unauthenticated key");
-        return false;
-    }
-    return true;
+    elog("unauthenticated key");
+    return false;
 }
 bool net_plugin_impl::is_account_commitee_pk_match(fc::sha256 const& hash,chain::account_name const& account,std::string sig)
 {
@@ -3144,7 +3144,7 @@ bool net_plugin_impl::authenticate_peer(const handshake_message& msg) {
             for( const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings ) {
                auto key_id_to_wif_pair = dejsonify<std::pair<chain::public_key_type, std::string>>(
                      key_id_to_wif_pair_string );
-               my->private_keys[key_id_to_wif_pair.first] = fc::crypto::private_key( key_id_to_wif_pair.second );
+               my->private_keys[key_id_to_wif_pair.first] = chain::private_key_type( key_id_to_wif_pair.second );
             }
          }
          my->chain_plug = app().find_plugin<chain_plugin>();

@@ -9,7 +9,7 @@ file(GLOB HEADERS "include/ultrainio/chain/*.hpp"
 add_library( ultrainio_chain
              merkle.cpp
              name.cpp
-	     name_ex.cpp
+             name_ex.cpp
              transaction.cpp
              block_header.cpp
              block_header_state.cpp
@@ -61,10 +61,10 @@ add_library( ultrainio_chain
 
 add_dependencies(ultrainio_chain  ultrainio.token)
 if(ENABLE_ZKP)
-  target_link_libraries( ultrainio_chain ultrain_utilities ultrainio_crypto fc chainbase appbase chain_plugin Logging IR WAST WASM Runtime
+  target_link_libraries( ultrainio_chain ultrain_utilities ultrainio_crypto ultrainio_gm fc chainbase appbase chain_plugin Logging IR WAST WASM Runtime
       wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins wabt snarkv )
 else()
-  target_link_libraries( ultrainio_chain ultrain_utilities ultrainio_crypto fc chainbase appbase chain_plugin Logging IR WAST WASM Runtime
+  target_link_libraries( ultrainio_chain ultrain_utilities ultrainio_crypto ultrainio_gm fc chainbase appbase chain_plugin Logging IR WAST WASM Runtime
       wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins wabt )
 endif()
 

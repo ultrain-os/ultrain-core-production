@@ -137,13 +137,13 @@ struct txn_test_gen_plugin_impl {
 
          abi_serializer ultrainio_token_serializer{fc::json::from_string(ultrainio_token_abi).as<abi_def>(), abi_serializer_max_time};
 
-         fc::crypto::private_key txn_test_receiver_A_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
-         fc::crypto::private_key txn_test_receiver_B_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
-         fc::crypto::private_key txn_test_receiver_C_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'c')));
-         fc::crypto::public_key  txn_text_receiver_A_pub_key = txn_test_receiver_A_priv_key.get_public_key();
-         fc::crypto::public_key  txn_text_receiver_B_pub_key = txn_test_receiver_B_priv_key.get_public_key();
-         fc::crypto::public_key  txn_text_receiver_C_pub_key = txn_test_receiver_C_priv_key.get_public_key();
-         fc::crypto::private_key creator_priv_key = fc::crypto::private_key(init_priv_key);
+         private_key_type txn_test_receiver_A_priv_key = private_key_type::regenerate(fc::sha256(std::string(64, 'a')));
+         private_key_type txn_test_receiver_B_priv_key = private_key_type::regenerate(fc::sha256(std::string(64, 'b')));
+         private_key_type txn_test_receiver_C_priv_key = private_key_type::regenerate(fc::sha256(std::string(64, 'c')));
+         public_key_type  txn_text_receiver_A_pub_key = txn_test_receiver_A_priv_key.get_public_key();
+         public_key_type  txn_text_receiver_B_pub_key = txn_test_receiver_B_priv_key.get_public_key();
+         public_key_type  txn_text_receiver_C_pub_key = txn_test_receiver_C_priv_key.get_public_key();
+         private_key_type creator_priv_key = private_key_type(init_priv_key);
 
          //create some test accounts
          {
@@ -343,9 +343,9 @@ struct txn_test_gen_plugin_impl {
           controller& cc = app().get_plugin<chain_plugin>().chain();
           auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
 
-          fc::crypto::private_key a_priv_key(std::string("5JbXkT2DP8HpwfaCRmSa3Qw2vH1pqnxfKGk5w8riUJUSVx7j1ir"));
-          fc::crypto::private_key b_priv_key(std::string("5J4fz4cApTLTZzqjKsFSdCYPUyDNcmSD2WsLRoPbGjSB8KBu7RL"));
-          fc::crypto::private_key hello_priv_key(std::string("5KPyztSimiMwNw78BanenZ4nCXjxUdjBNx4JMDNGJhNc5gFku6Q"));
+          private_key_type a_priv_key(std::string("5JbXkT2DP8HpwfaCRmSa3Qw2vH1pqnxfKGk5w8riUJUSVx7j1ir"));
+          private_key_type b_priv_key(std::string("5J4fz4cApTLTZzqjKsFSdCYPUyDNcmSD2WsLRoPbGjSB8KBu7RL"));
+          private_key_type hello_priv_key(std::string("5KPyztSimiMwNw78BanenZ4nCXjxUdjBNx4JMDNGJhNc5gFku6Q"));
 
          static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
          //         abi_serializer ultrainio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());

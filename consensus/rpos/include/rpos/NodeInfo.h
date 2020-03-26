@@ -20,7 +20,7 @@ namespace ultrainio {
 
         static bool getMainBlsPriKey(unsigned char* sk, int skSize);
 
-        static fc::crypto::private_key getMainAccountTrxPriKey();
+        static chain::private_key_type getMainAccountTrxPriKey();
 
         bool hasAccount(const std::string& account, size_t& index) const;
 
@@ -37,7 +37,7 @@ namespace ultrainio {
         void setCommitteeInfo(const std::vector<std::string>& accountV, const std::vector<std::string>& skV,
                               const std::vector<std::string>& blsSkV, const std::vector<std::string>& accTrxPriKeyV);
     private:
-        fc::crypto::private_key realGetMainAccountTrxPriKey() const;
+        chain::private_key_type realGetMainAccountTrxPriKey() const;
 
         static std::shared_ptr<NodeInfo> s_instance;
 
@@ -47,6 +47,6 @@ namespace ultrainio {
 
         std::vector<std::string> m_accountV;
 
-        std::vector<fc::crypto::private_key> m_accountTrxPriKeyV;
+        std::vector<chain::private_key_type> m_accountTrxPriKeyV;
     };
 }

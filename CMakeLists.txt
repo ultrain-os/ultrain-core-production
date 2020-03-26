@@ -4,7 +4,9 @@ project( ULTRAINIO )
 
 enable_testing()
 
-add_definitions(-DULTRAIN_SUPPORT_TYPESCRIPT -DULTRAIN_CONFIG_CONTRACT_PARAMS)
+add_definitions(-DULTRAIN_SUPPORT_TYPESCRIPT -DULTRAIN_CONFIG_CONTRACT_PARAMS -DULTRAIN_TRX_SUPPORT_GM)
+
+set(ULTRAIN_TRX_SUPPORT_GM ON)
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
    message(WARNING "CMAKE_INSTALL_PREFIX is set to default path of ${CMAKE_INSTALL_PREFIX}, resetting to ${CMAKE_INSTALL_PREFIX}/ultrainio")
@@ -208,7 +210,11 @@ endif()
 message( STATUS "Using '${CORE_SYMBOL_NAME}' as CORE symbol name" )
 
 if ("${ULTRAINIO_ROOT_KEY}" STREQUAL "")
-   set(ULTRAINIO_ROOT_KEY "UTR7Dw4vB26dBEq57FAKdEWd1EFQZXVFAX9HvdifSVQ1B3o6fhGxk")
+   if(ULTRAIN_TRX_SUPPORT_GM)
+     set(ULTRAINIO_ROOT_KEY "UTR5YmuioKinwYiWHhEPWrQQoq4bnELBMUdz35FsorgcXpN8oAxBg")
+   else()
+     set(ULTRAINIO_ROOT_KEY "UTR7Dw4vB26dBEq57FAKdEWd1EFQZXVFAX9HvdifSVQ1B3o6fhGxk")
+   endif()
 endif()
 
 message( STATUS "Using '${ULTRAINIO_ROOT_KEY}' as public key for 'ultrainio' account" )

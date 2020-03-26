@@ -403,7 +403,11 @@ void producer_rpos_plugin::set_program_options(
    boost::program_options::options_description& command_line_options,
    boost::program_options::options_description& config_file_options)
 {
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   auto default_priv_key = private_key_type::regenerate(fc::sha256::hash(std::string("nathan")));
+#else
    auto default_priv_key = private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(std::string("nathan")));
+#endif
    auto private_key_default = std::make_pair(default_priv_key.get_public_key(), default_priv_key );
 
    boost::program_options::options_description producer_options;
@@ -676,13 +680,13 @@ void producer_rpos_plugin::plugin_startup()
        my->_my_bls_sk = std::move(result);
    }
    std::vector<std::string> committeeV;
-   StringUtils::tokenlize(my->_my_account_as_committee, ',', committeeV);
+   StringUtils::split(my->_my_account_as_committee, ',', committeeV);
    std::vector<std::string> committeeSkV;
-   StringUtils::tokenlize(my->_my_sk_as_committee, ',', committeeSkV);
+   StringUtils::split(my->_my_sk_as_committee, ',', committeeSkV);
    std::vector<std::string> blsSkV;
-   StringUtils::tokenlize(my->_my_bls_sk, ',', blsSkV);
+   StringUtils::split(my->_my_bls_sk, ',', blsSkV);
    std::vector<std::string> trxSkV;
-   StringUtils::tokenlize(my->_my_sk_as_account, ',', trxSkV);
+   StringUtils::split(my->_my_sk_as_account, ',', trxSkV);
    NodeInfo::getInstance()->setCommitteeInfo(committeeV, committeeSkV, blsSkV, trxSkV);
    ULTRAIN_ASSERT( !my->_genesis_time.empty(),
            plugin_config_exception,

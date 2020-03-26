@@ -19,10 +19,10 @@ BOOST_AUTO_TEST_SUITE(base_test_suite)
         BOOST_CHECK(src == des);
     }
 
-    BOOST_AUTO_TEST_CASE(tokenlize) {
+    BOOST_AUTO_TEST_CASE(split) {
             std::string str = std::string("user.111,user.112,user.121");
             std::vector<std::string> v;
-            StringUtils::tokenlize(str, ',', v);
+            StringUtils::split(str, ',', v);
             BOOST_CHECK(v.size() == 3);
             BOOST_CHECK(v[0] == std::string("user.111"));
             BOOST_CHECK(v[1] == std::string("user.112"));

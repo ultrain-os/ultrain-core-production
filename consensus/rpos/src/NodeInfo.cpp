@@ -20,7 +20,7 @@ namespace ultrainio {
         return NodeInfo::getInstance()->getBlsPrivateKey(sk, skSize, 0);
     }
 
-    fc::crypto::private_key NodeInfo::getMainAccountTrxPriKey() {
+    chain::private_key_type NodeInfo::getMainAccountTrxPriKey() {
         return NodeInfo::getInstance()->realGetMainAccountTrxPriKey();
     }
 
@@ -50,7 +50,7 @@ namespace ultrainio {
         m_accountV = accountV;
         for (size_t i = 0; i < accountV.size(); i++) {
             m_privateKeyV.push_back(PrivateKey(skV[i]));
-            m_accountTrxPriKeyV.push_back(fc::crypto::private_key(accTrxPriKeyV[i]));
+            m_accountTrxPriKeyV.push_back(chain::private_key_type(accTrxPriKeyV[i]));
             ULTRAIN_ASSERT(blsSkV[i].length() == Bls::BLS_PRI_KEY_LENGTH * 2, chain::chain_exception, "bls private key error");
             unsigned char* blsPrivateKey = (unsigned char*)malloc(Bls::BLS_PRI_KEY_LENGTH);
             Hex::fromHex<unsigned char>(blsSkV[i], blsPrivateKey, Bls::BLS_PRI_KEY_LENGTH);
@@ -67,11 +67,11 @@ namespace ultrainio {
         return m_accountV;
     }
 
-    fc::crypto::private_key NodeInfo::realGetMainAccountTrxPriKey() const {
+    chain::private_key_type NodeInfo::realGetMainAccountTrxPriKey() const {
         if (m_accountTrxPriKeyV.size() > 0) {
             return m_accountTrxPriKeyV[0];
         }
-        return fc::crypto::private_key();
+        return chain::private_key_type();
     }
 
     bool NodeInfo::hasAccount(const std::string& account, size_t& index) const {

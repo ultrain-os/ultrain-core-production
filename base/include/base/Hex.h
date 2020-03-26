@@ -7,13 +7,20 @@ namespace ultrainio {
     class Hex {
     public:
         template <class T>
-        static std::string toHex(const T* c, size_t len) {
+        static std::string toHex(const T* c, size_t len, bool lower = true) {
             std::string r;
             const char* hexStr="0123456789abcdef";
+            const char* upperHexStr="0123456789ABCDEF";
             r.resize(len * 2);
             for (size_t i = 0; i < len; i++) {
-                r[i*2] = hexStr[(c[i]>>4)];
-                r[i*2 + 1] = hexStr[(c[i] & 0x0f)];
+                if (lower) {
+                    r[i*2] = hexStr[(c[i]>>4)];
+                    r[i*2 + 1] = hexStr[(c[i] & 0x0f)];
+                } else {
+                    r[i*2] = upperHexStr[(c[i]>>4)];
+                    r[i*2 + 1] = upperHexStr[(c[i] & 0x0f)];
+                }
+
             }
             return r;
         }
