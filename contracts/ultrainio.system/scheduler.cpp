@@ -519,14 +519,14 @@ namespace ultrainiosystem {
     struct resourceleaseparam {
         account_name from;
         account_name receiver;
-        uint64_t combosize;
-        uint64_t days;
+        uint16_t combosize;
+        uint64_t period;
         name location;
 
-        resourceleaseparam(account_name f, account_name r, uint64_t cs, uint64_t d, name l)
-            :from(f), receiver(r), combosize(cs), days(d), location(l) {}
+        resourceleaseparam(account_name f, account_name r, uint16_t cs, uint64_t d, name l)
+            :from(f), receiver(r), combosize(cs), period(d), location(l) {}
 
-        ULTRAINLIB_SERIALIZE(resourceleaseparam, (from)(receiver)(combosize)(days)(location))
+        ULTRAINLIB_SERIALIZE(resourceleaseparam, (from)(receiver)(combosize)(period)(location))
     };
 
     void system_contract::empoweruser(account_name user, name chain_name, const std::string& owner_pk, const std::string& active_pk, bool updateable) {
@@ -569,11 +569,11 @@ namespace ultrainiosystem {
         //check if user is new chain buyer, or pending producer
         if(user == new_chain.first_period_buyer) {
             //generate resourcelease trx
-            resourceleaseparam newchainresparam(N(ultrainio), user, 10000, 365, chain_name);
+            resourceleaseparam newchainresparam(N(ultrainio), user, 10000, 1, chain_name);
             uint128_t sendid = _self + N(newchainres) + chain_name;
             cancel_deferred(sendid);
             ultrainio::transaction out;
-            out.actions.emplace_back( permission_level{ _self, N(active) }, N(ultrainio), NEX(resourcelease), newchainresparam );
+            out.actions.emplace_back( permission_level{ _self, N(active) }, N(utrio.res), NEX(resourcelease), newchainresparam );
             out.delay_sec = 0;
             out.send( sendid, _self, true );
         }
