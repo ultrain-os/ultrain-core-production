@@ -451,6 +451,7 @@ namespace ultrainiosystem {
          is_being_destoryed = 2,
          producer_supervision = 3,
          producer_supervision_block_height = 4,
+         commercial_total_delegated = 5,
          chains_state_key_end,
        };
        auto primary_key()const { return chain_name; }
@@ -791,6 +792,9 @@ namespace ultrainiosystem {
          void setpriv( account_name account, uint8_t is_priv );
          void setupdateabled( account_name account, uint8_t is_update );
          void setprodontimeblock( account_name account, uint32_t online_second, uint32_t blocknum );
+         //update commercial total delegated value for chains
+         void updatecommercdel( name chain_name, asset delegated_value );
+
          // functions defined in synctransaction.cpp
          void synclwctx( name chain_name,
                             uint32_t block_number,
@@ -843,6 +847,7 @@ namespace ultrainiosystem {
 
          //defined in ultrainio.system.cpp
          void get_key_data(const std::string& pubkey,std::array<char,33> & data);
+         void update_commercial_delegatesd( name chain_name, asset delegated_value );
 
          //defined in producer.cpp
          std::vector<name> get_all_chainname();

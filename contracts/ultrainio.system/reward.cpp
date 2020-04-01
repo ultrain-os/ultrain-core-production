@@ -100,6 +100,7 @@ namespace ultrainiosystem {
       }
       INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {pay_account,N(active)},
          { pay_account, reward_account, asset((int64_t)unpaid_balance), name{producer}.to_string() + std::string(" produce block pay") } );
+      update_commercial_delegatesd( chain_name, -asset((int64_t)unpaid_balance) );
       print("\nsend_rewards_for_producer subchainname:",name{chain_name}," pay_tokens:",pay_tokens.amount," producer:",name{producer},
          " reward_account:",name{reward_account}," unpaid_balance:",unpaid_balance, "\n");
       generate_reward_trx( producer, reward_account, unpaid_balance );

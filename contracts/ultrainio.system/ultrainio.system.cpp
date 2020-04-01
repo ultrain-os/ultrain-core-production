@@ -211,6 +211,30 @@ namespace ultrainiosystem {
       });
    }
 
+   void system_contract::updatecommercdel( name chain_name, asset delegated_value ) {
+      require_auth( _self );
+      update_commercial_delegatesd( chain_name, delegated_value );
+   }
+   void system_contract::update_commercial_delegatesd( name chain_name, asset delegated_value ) {
+      auto ite_chain = _chains.find(chain_name);
+      ultrainio_assert(ite_chain != _chains.end(), "this chian does not exist");
+      _chains.modify(ite_chain, [&](chain_info& info) {
+         bool is_exist_exten_param = false;
+         for( auto& exten : info.table_extension ){
+            if( exten.key == chain_info::chains_state_exten_type_key::commercial_total_delegated ) {
+               int64_t total_delegated_value = std::stoll(exten.value) + delegated_value.amount;
+               //In order to prevent not in time to commercial delegated, resulting in the reward can not be claimed, so cancel assert
+               //ultrainio_assert( total_delegated_value >= 0, " total_delegated_value shouldn't be negative" );
+               exten.value = std::to_string(total_delegated_value);
+               is_exist_exten_param = true;
+               break;
+            }
+         }
+         if( !is_exist_exten_param ) {
+            info.table_extension.push_back(exten_type(chain_info::chains_state_exten_type_key::commercial_total_delegated ,std::to_string(delegated_value.amount)));
+         }
+      } );
+   }
    void system_contract::get_key_data(const std::string& pubkey,std::array<char,33> & data){
       auto const get_hex_value = [](const char ch)->int{
          if(ch >= '0' && ch <= '9')
@@ -425,7 +449,7 @@ ULTRAINIO_ABI( ultrainiosystem::system_contract,
      // native.hpp (newaccount definition is actually in ultrainio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(deletetable)(delaccount)(addwhiteblack)(rmwhiteblack)
      // ultrainio.system.cpp
-     (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(setprodontimeblock)(setchaintypeextendata)
+     (setsysparams)(setglobalextendata)(setmasterchaininfo)(setparams)(setpriv)(setupdateabled)(setprodontimeblock)(setchaintypeextendata)(updatecommercdel)
      // delegate.cpp
      (delegatecons)(undelegatecons)(refundcons)(setfreeacc)
      // producer.cpp

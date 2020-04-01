@@ -97,6 +97,8 @@ namespace ultrainiores {
             INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
                             { from, N(utrio.resfee), asset(resourcefee), std::string("buy resource lease") } );
             print("resourcelease calculatefee receiver:", name{receiver}," combosize:", uint32_t(combosize), " resourcefee:",resourcefee,"\n");
+            INLINE_ACTION_SENDER(ultrainiosystem::system_contract, updatecommercdel)( N(ultrainio), {N(ultrainio),N(active)},
+                            { location, asset(resourcefee) } );
             resfreeaccount _resacc_tbl( _self, _self );
             auto resacc_to_itr = _resacc_tbl.find(receiver);
             if(resacc_to_itr == _resacc_tbl.end()) {

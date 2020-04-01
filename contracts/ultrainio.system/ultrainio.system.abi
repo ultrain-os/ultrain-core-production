@@ -776,6 +776,13 @@
         {"name":"blocknum",       "type":"uint32"}
       ]
     },{
+      "name": "updatecommercdel",
+      "base": "",
+      "fields": [
+        {"name":"chain_name",       "type":"name"},
+        {"name":"delegated_value",  "type":"asset"}
+      ]
+    },{
       "name": "forcesetblock",
       "base": "",
       "fields": [
@@ -1027,6 +1034,10 @@
    },{
       "name": "setprodontimeblock",
       "type": "setprodontimeblock",
+      "ricardian_contract": ""
+   },{
+      "name": "updatecommercdel",
+      "type": "updatecommercdel",
       "ricardian_contract": ""
    },{
       "name": "setsched",
