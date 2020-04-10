@@ -142,6 +142,7 @@ public:
 
    uint32_t current_block_num = 0;
    uint32_t start_block_num = 0;
+   time_point block_time = fc::time_point::now();
 
    bool is_producer = false;
    bool filter_on_star = true;
@@ -880,7 +881,7 @@ void mongo_db_plugin_impl::_process_failed_transaction( const chain::packed_tran
     const auto& trx = t->trx;
     auto trans_doc = bsoncxx::builder::basic::document{};
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+            std::chrono::microseconds{block_time.time_since_epoch().count()});
 
     const auto trx_id = t->id;
     const auto trx_id_str = trx_id.str();
@@ -1075,7 +1076,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const transaction_meta
    auto trans_doc = bsoncxx::builder::basic::document{};
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+         std::chrono::microseconds{block_time.time_since_epoch().count()});
 
    const auto trx_id = t->id;
    const auto trx_id_str = trx_id.str();
@@ -1095,6 +1096,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const transaction_meta
       act_doc.append( kvp( "cfa", b_bool{cfa} ));
       act_doc.append( kvp( "account", act.account.to_string()));
       act_doc.append( kvp( "name", act.name.to_string()));
+      act_doc.append( kvp( "createdAt", b_date{now} ));
       act_doc.append( kvp( "authorization", [&act]( bsoncxx::builder::basic::sub_array subarr ) {
          for( const auto& auth : act.authorization ) {
             subarr.append( [&auth]( bsoncxx::builder::basic::sub_document subdoc ) {
@@ -1319,7 +1321,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const transaction_trace
    auto trans_traces_doc = bsoncxx::builder::basic::document{};
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+         std::chrono::microseconds{block_time.time_since_epoch().count()});
 
    mongocxx::options::bulk_write bulk_opts;
    bulk_opts.ordered(false);
@@ -1391,6 +1393,8 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::basic::make_document;
 
+   block_time = bs->block->timestamp.to_time_point();
+
    mongocxx::options::update update_opts{};
    update_opts.upsert( true );
 
@@ -1401,7 +1405,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
    const auto block_id_str = block_id.str();
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+         std::chrono::microseconds{block_time.time_since_epoch().count()});
 
    if( store_block_states ) {
       auto block_state_doc = bsoncxx::builder::basic::document{};
@@ -1502,7 +1506,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    const auto block_id_str = block_id.str();
    ilog("block id: ${b}", ("b", block_id_str));
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+         std::chrono::microseconds{block_time.time_since_epoch().count()});
 
    if( store_blocks ) {
       auto ir_block = find_block( _blocks, block_id_str );
@@ -1737,7 +1741,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
    try {
       if( act.name == newaccount ) {
          std::chrono::milliseconds now = std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
+               std::chrono::microseconds{block_time.time_since_epoch().count()} );
          auto newacc = act.data_as<chain::newaccount>();
 
          create_account( _accounts, newacc.name, now );
@@ -1749,7 +1753,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
 
       } else if( act.name == updateauth ) {
          auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
+               std::chrono::microseconds{block_time.time_since_epoch().count()} );
          const auto update = act.data_as<chain::updateauth>();
          remove_pub_keys(update.account, update.permission);
          remove_account_control(update.account, update.permission);
@@ -1763,7 +1767,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
 
       } else if( act.name == setabi ) {
          auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
+               std::chrono::microseconds{block_time.time_since_epoch().count()} );
          auto setabi = act.data_as<chain::setabi>();
 
          abi_cache_index.erase( setabi.account );
