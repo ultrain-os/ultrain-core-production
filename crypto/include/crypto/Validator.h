@@ -3,19 +3,22 @@
 #include <fc/crypto/sha256.hpp>
 
 #include <base/Hex.h>
+#include <core/types.h>
 #include <crypto/Bls.h>
-#include <crypto/Digest.h>
-#include <crypto/PublicKey.h>
-#include <crypto/Signature.h>
+#include <ed25519/Digest.h>
 
 namespace ultrainio {
     class Validator {
     public:
         template <class T>
-        static bool verify(const Signature& signature, const T& v, const PublicKey& publicKey) {
+        static bool verify(const consensus::SignatureType& signature, const T& v, const consensus::PublicKeyType& publicKey) {
             fc::sha256 h = fc::sha256::hash(v);
-            Digest digest(h.str());
+#ifdef ULTRAIN_CONSENSUS_SUPPORT_GM
+            return publicKey.verify(h.data(), h.data_size(), signature);
+#else
+            ed25519::Digest digest(h.str());
             return publicKey.verify(signature, digest);
+#endif
         }
 
         template <class T>

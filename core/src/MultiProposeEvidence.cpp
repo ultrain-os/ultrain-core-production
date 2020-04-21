@@ -3,7 +3,6 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
-#include <crypto/Signature.h>
 #include <crypto/Validator.h>
 
 namespace ultrainio {
@@ -41,7 +40,7 @@ namespace ultrainio {
         return m_A.proposer;
     }
 
-    int MultiProposeEvidence::verify(const AccountName& accountName, const PublicKey& pk, const std::string& blsPk) const {
+    int MultiProposeEvidence::verify(const AccountName& accountName, const consensus::PublicKeyType& pk, const std::string& blsPk) const {
         if (accountName != m_B.proposer || accountName != m_A.proposer) {
             return Evidence::kReporterEvil;
         }
@@ -49,8 +48,8 @@ namespace ultrainio {
                 && m_A.block_num() == m_B.block_num()
                 && m_A.previous == m_B.previous
                 && m_A.id() != m_B.id()
-                && Validator::verify<BlockHeader>(Signature(m_A.signature), m_A, pk)
-                && Validator::verify<BlockHeader>(Signature(m_B.signature), m_B, pk)) {
+                && Validator::verify<BlockHeader>(consensus::SignatureType(m_A.signature), m_A, pk)
+                && Validator::verify<BlockHeader>(consensus::SignatureType(m_B.signature), m_B, pk)) {
             return Evidence::kMultiPropose;
         }
         return Evidence::kNone;

@@ -4,8 +4,7 @@
 #include <iostream>
 
 #include <core/Message.h>
-#include <crypto/PrivateKey.h>
-#include <crypto/PublicKey.h>
+#include <core/types.h>
 #include <rpos/Proof.h>
 #include <rpos/Seed.h>
 #include <rpos/Vrf.h>
@@ -17,9 +16,10 @@ using namespace std;
 BOOST_AUTO_TEST_SUITE(proof_test_suite)
 
     BOOST_AUTO_TEST_CASE(normal_flow) {
-        PrivateKey privateKey;
-        PublicKey publicKey;
-        PrivateKey::generate(publicKey, privateKey);
+#ifndef ULTRAIN_CONSENSUS_SUPPORT_GM
+        consensus::PrivateKeyType privateKey;
+        consensus::PublicKeyType publicKey;
+        consensus::PrivateKeyType::generate(publicKey, privateKey);
         Seed seed(std::string("preHash"), 40, static_cast<ConsensusPhase>(1), 0);
         Proof proof = Vrf::vrf(privateKey, seed, Vrf::kProposer);
 
@@ -35,6 +35,7 @@ BOOST_AUTO_TEST_SUITE(proof_test_suite)
         Proof faultProof(faultHexStr);
         BOOST_CHECK(faultProof.getPriority() == faultProof.getPriority());
         BOOST_CHECK(!Vrf::verify(publicKey, faultProof, seed, Vrf::kProposer));
+#endif
     }
 
 BOOST_AUTO_TEST_SUITE_END()

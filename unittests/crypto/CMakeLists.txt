@@ -13,16 +13,6 @@ target_link_libraries( bls_test ultrainio_crypto )
 
 add_test(NAME bls_test COMMAND bls_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-#private/public key
-add_executable( pripubkey_test
-        PriPubKeyTest.cpp)
-
-include_directories ( ${Boost_INCLUDE_DIR} )
-
-target_link_libraries( pripubkey_test ultrainio_crypto )
-
-add_test(NAME pripubkey_test COMMAND pripubkey_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
 #Signer/Validator
 add_executable( signervalidator_test
         SignerValidatorTest.cpp)
@@ -44,3 +34,4 @@ target_link_libraries( random_unittest ultrainio_crypto)
 add_test(NAME random_unittest COMMAND random_unittest WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 add_subdirectory( gm )
+add_subdirectory( ed25519 )

@@ -13,9 +13,6 @@
 
 #include <core/Message.h>
 #include <core/types.h>
-#include <crypto/Ed25519.h>
-#include <crypto/PrivateKey.h>
-#include <crypto/PublicKey.h>
 
 namespace ultrainio {
     class Scheduler;

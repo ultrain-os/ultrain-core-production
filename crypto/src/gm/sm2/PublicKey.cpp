@@ -25,7 +25,7 @@ namespace gm {
         }
 
         bool PublicKey::valid() const {
-            return true; //TODO(xiaofen.qin@gmail.com
+            return m_binKey.get<PublicKey::PublicKeyData>() != PublicKey::PublicKeyData();
         }
 
         PublicKey::operator std::string() const {

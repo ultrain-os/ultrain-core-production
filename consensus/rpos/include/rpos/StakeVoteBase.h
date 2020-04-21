@@ -6,15 +6,12 @@
 
 #include <core/Message.h>
 #include <core/types.h>
-#include <crypto/PrivateKey.h>
-#include <crypto/PublicKey.h>
 #include <rpos/NodeInfo.h>
 #include <lightclient/CommitteeInfo.h>
 #include <lightclient/CommitteeSet.h>
 
 namespace ultrainio {
     // forward declare
-    class PublicKey;
     class Proof;
 
     struct CommitteeState {
@@ -58,7 +55,7 @@ namespace ultrainio {
 
         int getCommitteeMemberNumber() const;
 
-        PublicKey getPublicKey(const AccountName& account) const;
+        consensus::PublicKeyType getPublicKey(const AccountName& account) const;
 
         bool getCommitteeBlsPublicKey(const AccountName& account, unsigned char* blsPublicKey, int pkSize) const;
 

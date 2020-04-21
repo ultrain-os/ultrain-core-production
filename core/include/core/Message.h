@@ -3,7 +3,6 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
 #include <ultrainio/chain/block.hpp>
-#include <crypto/Signature.h>
 
 #include "core/ExtType.h"
 #include "core/types.h"

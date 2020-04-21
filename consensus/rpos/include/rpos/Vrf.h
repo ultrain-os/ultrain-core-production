@@ -1,9 +1,9 @@
 #pragma once
 
+#include "core/types.h"
+
 namespace ultrainio {
     // forward declare
-    class PrivateKey;
-    class PublicKey;
     class Seed;
     class Proof;
 
@@ -11,7 +11,7 @@ namespace ultrainio {
     public:
         static const int kProposer;
         static const int kVoter;
-        static Proof vrf(const PrivateKey& privateKey, const Seed& seed, int role);
-        static bool verify(const PublicKey& publicKey, const Proof& proof, const Seed& seed, int role);
+        static Proof vrf(const consensus::PrivateKeyType& privateKey, const Seed& seed, int role);
+        static bool verify(const consensus::PublicKeyType& publicKey, const Proof& proof, const Seed& seed, int role);
     };
 }

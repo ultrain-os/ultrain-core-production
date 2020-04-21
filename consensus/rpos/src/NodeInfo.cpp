@@ -12,7 +12,7 @@ namespace ultrainio {
         return AccountName(NodeInfo::getInstance()->getAccount(0));
     }
 
-    PrivateKey NodeInfo::getMainPrivateKey() {
+    consensus::PrivateKeyType NodeInfo::getMainPrivateKey() {
         return NodeInfo::getInstance()->getPrivateKey(0);
     }
 
@@ -49,7 +49,7 @@ namespace ultrainio {
                        "account key not match");
         m_accountV = accountV;
         for (size_t i = 0; i < accountV.size(); i++) {
-            m_privateKeyV.push_back(PrivateKey(skV[i]));
+            m_privateKeyV.push_back(consensus::PrivateKeyType(skV[i]));
             m_accountTrxPriKeyV.push_back(chain::private_key_type(accTrxPriKeyV[i]));
             ULTRAIN_ASSERT(blsSkV[i].length() == Bls::BLS_PRI_KEY_LENGTH * 2, chain::chain_exception, "bls private key error");
             unsigned char* blsPrivateKey = (unsigned char*)malloc(Bls::BLS_PRI_KEY_LENGTH);
@@ -57,7 +57,7 @@ namespace ultrainio {
             m_blsPrivateKeyV.push_back(blsPrivateKey);
         }
         if (m_accountV.size() == 1 && Genesis::kGenesisAccount == m_accountV[0]) {
-            ULTRAIN_ASSERT(m_privateKeyV[0].getPublicKey() == PublicKey(Genesis::s_genesisPk),
+            ULTRAIN_ASSERT(m_privateKeyV[0].getPublicKey() == consensus::PublicKeyType(Genesis::s_genesisPk),
                            chain::chain_exception,
                            "genesis key pair invalid");
         }
@@ -89,7 +89,7 @@ namespace ultrainio {
         return hasAccount(account, index);
     }
 
-    PrivateKey NodeInfo::getPrivateKey(size_t index) const {
+    consensus::PrivateKeyType NodeInfo::getPrivateKey(size_t index) const {
         return m_privateKeyV[index];
     }
 

@@ -3,7 +3,6 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
-#include <crypto/Signature.h>
 #include <crypto/Validator.h>
 
 #include "core/SerializedEchoMsg.h"
@@ -48,7 +47,7 @@ namespace ultrainio {
         return m_A.account;
     }
 
-    int MultiVoteEvidence::verify(const AccountName& accountName, const PublicKey& pk, const std::string& blsPk) const {
+    int MultiVoteEvidence::verify(const AccountName& accountName, const consensus::PublicKeyType& pk, const std::string& blsPk) const {
         if (accountName != m_A.account || accountName != m_B.account) {
             return Evidence::kReporterEvil;
         }
@@ -58,8 +57,8 @@ namespace ultrainio {
                 && m_A.baxCount == m_B.baxCount
                 && m_A.account == m_B.account
                 && m_A.blockId != m_B.blockId
-                && Validator::verify<UnsignedEchoMsg>(Signature(m_A.signature), m_A, pk)
-                && Validator::verify<UnsignedEchoMsg>(Signature(m_A.signature), m_A, pk)) {
+                && Validator::verify<UnsignedEchoMsg>(consensus::SignatureType(m_A.signature), m_A, pk)
+                && Validator::verify<UnsignedEchoMsg>(consensus::SignatureType(m_A.signature), m_A, pk)) {
             return Evidence::kMultiVote;
         }
         return Evidence::kNone;

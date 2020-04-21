@@ -3,13 +3,13 @@
 #include <vector>
 #include <string>
 
-#include <crypto/Digest.h>
-#include <crypto/PrivateKey.h>
-#include <crypto/PublicKey.h>
-#include <crypto/Signature.h>
+#include <ed25519/Digest.h>
+#include <ed25519/PrivateKey.h>
+#include <ed25519/PublicKey.h>
+#include <ed25519/Signature.h>
 
 #include <stdio.h>
-using namespace ultrainio;
+using namespace ed25519;
 using namespace std;
 
 int main(int argc, char* argv[]) {
@@ -24,9 +24,9 @@ int main(int argc, char* argv[]) {
     std::vector<std::string> skList;
     std::vector<std::string> pkList;
     for (int i = 0; i < n; i++) {
-        PrivateKey privateKey;
-        PublicKey publicKey;
-        PrivateKey::generate(publicKey, privateKey);
+        ed25519::PrivateKey privateKey;
+        ed25519::PublicKey publicKey;
+        ed25519::PrivateKey::generate(publicKey, privateKey);
         std::string hexPri = std::string(privateKey);
         std::string hexPub = std::string(publicKey);
         cout << "pri:" << hexPri << endl;

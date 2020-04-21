@@ -3,7 +3,6 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
-#include <crypto/Signature.h>
 #include <crypto/Validator.h>
 
 #include "core/SerializedEchoMsg.h"
@@ -38,13 +37,13 @@ namespace ultrainio {
         return m_A.account;
     }
 
-    int EchoBlsEvidence::verify(const AccountName& accountName, const PublicKey& pk, const std::string& blsPkStr) const {
+    int EchoBlsEvidence::verify(const AccountName& accountName, const consensus::PublicKeyType& pk, const std::string& blsPkStr) const {
         if (accountName == m_A.account) {
             return Evidence::kReporterEvil;
         }
         unsigned char blsPk[Bls::BLS_SIGNATURE_COMPRESSED_LENGTH];
         Hex::fromHex(blsPkStr, blsPk, Bls::BLS_SIGNATURE_COMPRESSED_LENGTH);
-        if (Validator::verify<UnsignedEchoMsg>(Signature(m_A.signature), m_A, pk) &&
+        if (Validator::verify<UnsignedEchoMsg>(consensus::SignatureType(m_A.signature), m_A, pk) &&
                 !Validator::verify<CommonEchoMsg>(m_A.blsSignature, m_A, blsPk)) {
             return Evidence::kEchoBls;
         }

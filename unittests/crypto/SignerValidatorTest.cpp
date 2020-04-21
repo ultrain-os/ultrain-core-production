@@ -4,8 +4,6 @@
 #include <iostream>
 
 #include <core/Message.h>
-#include <crypto/PrivateKey.h>
-#include <crypto/PublicKey.h>
 #include <crypto/Validator.h>
 #include <crypto/Signer.h>
 
@@ -16,20 +14,25 @@ using namespace std;
 BOOST_AUTO_TEST_SUITE(signer_validator_test_suite)
 
     BOOST_AUTO_TEST_CASE(normal) {
-        PrivateKey privateKey;
-        PublicKey publicKey;
-        PrivateKey::generate(publicKey, privateKey);
+        consensus::PrivateKeyType privateKey;
+        consensus::PublicKeyType publicKey;
+#ifdef ULTRAIN_CONSENSUS_SUPPORT_GM
+        privateKey = consensus::PrivateKeyType::generate();
+        publicKey = privateKey.getPublicKey();
+#else
+        consensus::PrivateKeyType::generate(publicKey, privateKey);
+#endif
         Block block;
         block.version = 1;
         block.proposer = N("ultr_genesis");
         block.signature = std::string(Signer::sign<BlockHeader>(block, privateKey));
-        BOOST_CHECK(Validator::verify<BlockHeader>(Signature(block.signature), block, publicKey));
+        BOOST_CHECK(Validator::verify<BlockHeader>(consensus::SignatureType(block.signature), block, publicKey));
 
         EchoMsg echoMsg;
         echoMsg.baxCount = 0;
         echoMsg.account = N("ultr_test");
         echoMsg.signature = std::string(Signer::sign<UnsignedEchoMsg>(echoMsg, privateKey));
-        BOOST_CHECK(Validator::verify<UnsignedEchoMsg>(Signature(echoMsg.signature), echoMsg, publicKey));
+        BOOST_CHECK(Validator::verify<UnsignedEchoMsg>(consensus::SignatureType(echoMsg.signature), echoMsg, publicKey));
     }
 
 BOOST_AUTO_TEST_SUITE_END()

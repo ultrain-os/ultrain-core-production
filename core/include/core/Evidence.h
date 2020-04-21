@@ -2,8 +2,6 @@
 
 #include <string>
 
-#include <crypto/PublicKey.h>
-
 #include "core/ExtType.h"
 #include "core/types.h"
 
@@ -39,7 +37,7 @@ namespace ultrainio {
 
         virtual AccountName getEvilAccount() const;
 
-        virtual int verify(const AccountName& accountName, const PublicKey& pk, const std::string& blsPk) const;
+        virtual int verify(const AccountName& accountName, const consensus::PublicKeyType& pk, const std::string& blsPk) const;
 
         virtual bool simpleVerify() const;
     };

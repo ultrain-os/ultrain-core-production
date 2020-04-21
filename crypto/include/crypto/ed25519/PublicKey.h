@@ -2,10 +2,10 @@
 
 #include <string>
 
-#include <crypto/Digest.h>
-#include <crypto/Signature.h>
+#include <ed25519/Digest.h>
+#include <ed25519/Signature.h>
 
-namespace ultrainio {
+namespace ed25519 {
     class PublicKey {
     public:
         PublicKey() = default;
@@ -26,7 +26,7 @@ namespace ultrainio {
 
         bool verify(const Signature& signature, const Digest& digest) const;
 
-        bool isValid() const;
+        bool valid() const;
 
     private:
         bool getRaw(uint8_t* rawKey, size_t len) const;

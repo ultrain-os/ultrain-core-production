@@ -1,7 +1,6 @@
 #pragma once
 
 #include <core/Message.h>
-#include <crypto/Signature.h>
 
 namespace ultrainio {
     class MsgBuilder {

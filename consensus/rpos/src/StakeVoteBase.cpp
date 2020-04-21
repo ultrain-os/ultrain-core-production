@@ -197,15 +197,15 @@ namespace ultrainio {
         return CommitteeInfo();
     }
 
-    PublicKey StakeVoteBase::getPublicKey(const AccountName& account) const {
+    consensus::PublicKeyType StakeVoteBase::getPublicKey(const AccountName& account) const {
         size_t index = 0;
         if (NodeInfo::getInstance()->hasAccount(std::string(account), index)) {
             return NodeInfo::getInstance()->getPrivateKey(index).getPublicKey();
         } else if (account == AccountName(Genesis::kGenesisAccount)) {
-            return PublicKey(Genesis::s_genesisPk);
+            return consensus::PublicKeyType(Genesis::s_genesisPk);
         } else {
             CommitteeInfo c = findInCommitteeMemberList(account);
-            return PublicKey(c.pk);
+            return consensus::PublicKeyType(c.pk);
         }
     }
 

@@ -173,7 +173,7 @@ public:
 
     int on_verify_evil(const std::string& evidence, const evildoer& evil) {
         std::shared_ptr<Evidence> evidencePtr = EvidenceFactory::create(evidence);
-        return evidencePtr->verify(evil.account, ultrainio::PublicKey(evil.commitee_pk), evil.bls_pk);
+        return evidencePtr->verify(evil.account, consensus::PublicKeyType(evil.commitee_pk), evil.bls_pk);
     }
 
 private:
@@ -188,7 +188,7 @@ private:
             startPoint.committeeSet = CommitteeSet(result.committee_set);
             startPoint.nextCommitteeMroot = result.next_committee_mroot;
             if (result.genesisPk.empty()) {
-                result.genesisPk = std::string("369c31f242bfc5093815511e4a4eda297f4b8772a7ff98f7806ce7a80ffffb35"); // default
+                result.genesisPk = std::string("UTR7fzCYqCvi5WiAq6sVWqhqwcJ9UXuefASqptqa76hLV4gfU7LdD"); // default
             }
             startPoint.genesisPk = result.genesisPk;
             //ilog("chainName name = ${name} committee : ${committee} size : ${size}", ("name", chainName.to_string())("committee", committeeSet.toString())("size", result.committee_set.size()));

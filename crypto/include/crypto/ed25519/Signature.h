@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace ultrainio {
+namespace ed25519 {
     class Signature {
     public:
         Signature();

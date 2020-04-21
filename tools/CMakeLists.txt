@@ -1,6 +1,6 @@
 add_executable( keypair_generator
         KeyPairGenerator.cpp)
-target_link_libraries( keypair_generator ultrainio_crypto )
+target_link_libraries( keypair_generator ultrainio_ed25519 )
 
 add_executable( ws2json ws2json.cpp)
 target_include_directories( ws2json PRIVATE ${Boost_INCLUDE_DIR} )

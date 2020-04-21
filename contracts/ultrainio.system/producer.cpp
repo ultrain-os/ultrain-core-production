@@ -40,8 +40,8 @@ namespace ultrainiosystem {
             has_ultrainio_auth = false;
         }
         ultrainio_assert( url.size() < 512, "url too long" );
-        // key is hex encoded
-        ultrainio_assert( producer_key.size() == 64, "public key should be of size 64" );
+        // key is hex encoded, ed25519 64 and sm2 53
+        ultrainio_assert( producer_key.size() == 64 || producer_key.size() == 53, "public key should be of size 64 or 53" );
         ultrainio_assert( bls_key.size() == 130, "public bls key should be of size 130" );
         ultrainio_assert( is_account( producer ), "producer account not exists" );
         ultrainio_assert( is_account( rewards_account ), "rewards account not exists" );

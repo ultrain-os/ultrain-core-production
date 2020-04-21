@@ -1,6 +1,6 @@
-#include "crypto/Digest.h"
+#include "ed25519/Digest.h"
 
-namespace ultrainio {
+namespace ed25519 {
     Digest::Digest(const std::string& h) : m_h(h) {}
 
     Digest::operator std::string() const {

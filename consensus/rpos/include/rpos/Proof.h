@@ -1,11 +1,11 @@
 #pragma once
 
-#include <crypto/Signature.h>
+#include "core/types.h"
 
 namespace ultrainio {
     class Proof {
     public:
-        explicit Proof(const Signature& signature);
+        explicit Proof(const consensus::SignatureType& signature);
 
         // hex string
         explicit Proof(const std::string& hexString);
@@ -24,8 +24,8 @@ namespace ultrainio {
 
         bool isValid() const;
 
-        Signature getSignature() const;
+        consensus::SignatureType getSignature() const;
     private:
-        Signature m_sign;
+        consensus::SignatureType m_sign;
     };
 }

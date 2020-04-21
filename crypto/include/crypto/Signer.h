@@ -3,19 +3,22 @@
 #include <fc/crypto/sha256.hpp>
 
 #include <base/Hex.h>
+#include <core/types.h>
 #include <crypto/Bls.h>
-#include <crypto/Digest.h>
-#include <crypto/PrivateKey.h>
-#include <crypto/Signature.h>
+#include <ed25519/Digest.h>
 
 namespace ultrainio {
     class Signer {
     public:
         template <class T>
-        static Signature sign(const T& v, const PrivateKey& privateKey) {
+        static consensus::SignatureType sign(const T& v, const consensus::PrivateKeyType& privateKey) {
             fc::sha256 h = fc::sha256::hash(v);
-            Digest digest(h.str());
+#ifdef ULTRAIN_CONSENSUS_SUPPORT_GM
+            return privateKey.sign(h);
+#else
+            ed25519::Digest digest(h.str());
             return privateKey.sign(digest);
+#endif
         }
 
         template <class T>

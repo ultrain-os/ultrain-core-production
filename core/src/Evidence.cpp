@@ -27,7 +27,7 @@ namespace ultrainio {
         return AccountName();
     }
 
-    int Evidence::verify(const AccountName& accountName, const PublicKey& pk, const std::string& blsPk) const {
+    int Evidence::verify(const AccountName& accountName, const consensus::PublicKeyType& pk, const std::string& blsPk) const {
         return Evidence::kNone;
     }
 

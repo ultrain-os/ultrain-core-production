@@ -1,8 +1,8 @@
-#include "crypto/Ed25519.h"
+#include "ed25519/Ed25519.h"
 
 #include <boringssl/curve25519.h>
 
-namespace ultrainio {
+namespace ed25519 {
     const int Ed25519::PRIVATE_KEY_LEN = ED25519_PRIVATE_KEY_LEN;
 
     const int Ed25519::PUBLIC_KEY_LEN = ED25519_PUBLIC_KEY_LEN;

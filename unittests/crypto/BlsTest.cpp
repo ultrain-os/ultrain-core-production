@@ -5,8 +5,6 @@
 
 #include <base/Hex.h>
 #include <crypto/Bls.h>
-#include <crypto/PrivateKey.h>
-#include <crypto/PublicKey.h>
 
 using namespace ultrainio;
 using namespace std;

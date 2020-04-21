@@ -1,9 +1,9 @@
-#include "crypto/PrivateKey.h"
+#include "ed25519/PrivateKey.h"
 
 #include <base/Hex.h>
-#include <crypto/Ed25519.h>
+#include <ed25519/Ed25519.h>
 
-namespace ultrainio {
+namespace ed25519 {
     bool PrivateKey::generate(PublicKey& publicKey, PrivateKey& privateKey) {
         uint8_t pk[Ed25519::PUBLIC_KEY_LEN];
         uint8_t sk[Ed25519::PRIVATE_KEY_LEN];
@@ -15,7 +15,7 @@ namespace ultrainio {
 
     bool PrivateKey::verifyKeyPair(const PublicKey& publicKey, const PrivateKey& privateKey) {
         Digest digest("");
-        if (!privateKey.isValid() || !publicKey.isValid()) {
+        if (!privateKey.isValid() || !publicKey.valid()) {
             return false;
         }
         return publicKey.verify(privateKey.sign(digest), digest);
@@ -24,7 +24,7 @@ namespace ultrainio {
     PrivateKey::PrivateKey(const std::string& key) : m_key(key) {
     }
 
-    PrivateKey::PrivateKey(uint8_t* rawKey, size_t len) : m_key(Hex::toHex<uint8_t>(rawKey, len)) {
+    PrivateKey::PrivateKey(uint8_t* rawKey, size_t len) : m_key(ultrainio::Hex::toHex<uint8_t>(rawKey, len)) {
     }
 
     PrivateKey::operator std::string() const {
@@ -45,7 +45,7 @@ namespace ultrainio {
     }
 
     bool PrivateKey::getRaw(uint8_t* rawKey, size_t len) const {
-        return Hex::fromHex<uint8_t>(m_key, rawKey, len) == Ed25519::PRIVATE_KEY_LEN;
+        return ultrainio::Hex::fromHex<uint8_t>(m_key, rawKey, len) == Ed25519::PRIVATE_KEY_LEN;
     }
 
     // maybe more condition check

@@ -1,12 +1,12 @@
-#include "crypto/PublicKey.h"
+#include "ed25519/PublicKey.h"
 
 #include <base/Hex.h>
-#include <crypto/Ed25519.h>
+#include <ed25519/Ed25519.h>
 
-namespace ultrainio {
+namespace ed25519 {
     PublicKey::PublicKey(const std::string& key) : m_key(key) {}
 
-    PublicKey::PublicKey(uint8_t* rawKey, size_t len) : m_key(Hex::toHex<uint8_t>(rawKey, len)) {}
+    PublicKey::PublicKey(uint8_t* rawKey, size_t len) : m_key(ultrainio::Hex::toHex<uint8_t>(rawKey, len)) {}
 
     bool operator == (const PublicKey& lhs, const PublicKey& rhs) {
         return lhs.m_key == rhs.m_key;
@@ -21,7 +21,7 @@ namespace ultrainio {
     }
 
     bool PublicKey::verify(const Signature& signature, const Digest& digest) const {
-        if (!isValid()) {
+        if (!valid()) {
             return false;
         }
         uint8_t pk[Ed25519::PUBLIC_KEY_LEN];
@@ -40,10 +40,10 @@ namespace ultrainio {
     }
 
     bool PublicKey::getRaw(uint8_t* rawKey, size_t len) const {
-        return Hex::fromHex<uint8_t>(m_key, rawKey, len) == Ed25519::PUBLIC_KEY_LEN;
+        return ultrainio::Hex::fromHex<uint8_t>(m_key, rawKey, len) == Ed25519::PUBLIC_KEY_LEN;
     }
 
-    bool PublicKey::isValid() const {
+    bool PublicKey::valid() const {
         if (m_key.length() == Ed25519::PUBLIC_KEY_HEX_LEN) {
             return true;
         }

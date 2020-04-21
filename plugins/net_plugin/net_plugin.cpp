@@ -2690,8 +2690,8 @@ bool net_plugin_impl::is_account_commitee_pk_match(fc::sha256 const& hash,chain:
     controller& cc = chain_plug->chain();
     uint32_t blockNum = cc.head_block_num()+1;
     std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(blockNum);
-    PublicKey publicKey = stakeVotePtr->getPublicKey(account);
-    if (!Validator::verify<fc::sha256>(Signature(sig), hash, publicKey)) {
+    consensus::PublicKeyType publicKey = stakeVotePtr->getPublicKey(account);
+    if (!Validator::verify<fc::sha256>(consensus::SignatureType(sig), hash, publicKey)) {
         elog("validate error");
         return false;
     }

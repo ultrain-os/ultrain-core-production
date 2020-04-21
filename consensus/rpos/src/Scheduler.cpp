@@ -465,8 +465,8 @@ namespace ultrainio {
     bool Scheduler::isValid(const EchoMsg &echo) const {
         uint32_t blockNum = BlockHeader::num_from_id(echo.blockId);
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(blockNum);
-        PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
-        if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
+        consensus::PublicKeyType publicKey = stakeVotePtr->getPublicKey(echo.account);
+        if (!Validator::verify<UnsignedEchoMsg>(consensus::SignatureType(echo.signature), echo, publicKey)) {
             elog("validator echo error. account : ${account} pk : ${pk} signature : ${signature}",
                     ("account", std::string(echo.account))("pk", std::string(publicKey))("signature", short_sig(echo.signature)));
             return false;
@@ -500,8 +500,8 @@ namespace ultrainio {
         }
 
         std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(propose.block.block_num());
-        PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
-        if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
+        consensus::PublicKeyType publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
+        if (!Validator::verify<BlockHeader>(consensus::SignatureType(propose.block.signature), propose.block, publicKey)) {
             elog("validator proposer error. proposer : ${proposer}, pk : ${pk}, sig : ${sig}",
                     ("proposer", std::string(propose.block.proposer))("pk", std::string(publicKey))("sig", short_sig(propose.block.signature)));
             return false;
@@ -644,13 +644,13 @@ namespace ultrainio {
                 }
                 std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(
                         Node::getInstance()->getBlockNum());
-                PublicKey publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
-                if (!publicKey.isValid()) {
+                consensus::PublicKeyType publicKey = stakeVotePtr->getPublicKey(propose.block.proposer);
+                if (!publicKey.valid()) {
                     elog("can not find pk of proposer : ${p} at block ${num}",
                          ("p", std::string(propose.block.proposer))("num", Node::getInstance()->getBlockNum()));
                     return false;
                 }
-                if (!Validator::verify<BlockHeader>(Signature(propose.block.signature), propose.block, publicKey)) {
+                if (!Validator::verify<BlockHeader>(consensus::SignatureType(propose.block.signature), propose.block, publicKey)) {
                     elog("validator proposer error. proposer : ${p} at block ${num} sig : ${sig} pk : ${pk}",
                          ("p", std::string(propose.block.proposer))("num", Node::getInstance()->getBlockNum())("sig", short_sig(propose.block.signature))("pk", std::string(publicKey)));
                     return false;
@@ -750,13 +750,13 @@ namespace ultrainio {
                 }
                 std::shared_ptr<StakeVoteBase> stakeVotePtr = MsgMgr::getInstance()->getStakeVote(
                         Node::getInstance()->getBlockNum());
-                PublicKey publicKey = stakeVotePtr->getPublicKey(echo.account);
-                if (!publicKey.isValid()) {
+                consensus::PublicKeyType publicKey = stakeVotePtr->getPublicKey(echo.account);
+                if (!publicKey.valid()) {
                     elog("can not find pk of account : ${account} at block ${num}",
                          ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum()));
                     return false;
                 }
-                if (!Validator::verify<UnsignedEchoMsg>(Signature(echo.signature), echo, publicKey)) {
+                if (!Validator::verify<UnsignedEchoMsg>(consensus::SignatureType(echo.signature), echo, publicKey)) {
                     elog("validator echo error. account : ${account} at block : ${num} sig : ${sig} pk : ${pk}",
                          ("account", std::string(echo.account))("num", Node::getInstance()->getBlockNum())("sig", short_sig(echo.signature))("pk", std::string(publicKey)));
                     return false;

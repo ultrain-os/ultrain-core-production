@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-namespace ultrainio {
+namespace ed25519 {
 
     /**
      * Wrapper class for ed25519

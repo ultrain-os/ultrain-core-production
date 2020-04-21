@@ -2,11 +2,11 @@
 
 #include <string>
 
-#include <crypto/Digest.h>
-#include <crypto/PublicKey.h>
-#include <crypto/Signature.h>
+#include <ed25519/Digest.h>
+#include <ed25519/PublicKey.h>
+#include <ed25519/Signature.h>
 
-namespace ultrainio {
+namespace ed25519 {
     // ed25519
     class PrivateKey {
     public:

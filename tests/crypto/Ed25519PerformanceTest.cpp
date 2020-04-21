@@ -5,12 +5,12 @@
 #include <chrono>
 #include <iostream>
 
-#include <crypto/Ed25519.h>
+#include <ed25519/Ed25519.h>
 #include <fc/crypto/public_key.hpp>
 #include <fc/crypto/private_key.hpp>
 #include <fc/crypto/signature.hpp>
 
-using namespace ultrainio;
+using namespace ed25519;
 using namespace std;
 using namespace fc;
 using namespace fc::crypto;

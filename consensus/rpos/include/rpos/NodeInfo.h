@@ -2,8 +2,6 @@
 
 #include <vector>
 #include <core/types.h>
-#include <crypto/PrivateKey.h>
-#include <crypto/PublicKey.h>
 
 namespace ultrainio {
     class NodeInfo {
@@ -16,7 +14,7 @@ namespace ultrainio {
 
         static AccountName getMainAccount();
 
-        static PrivateKey getMainPrivateKey();
+        static consensus::PrivateKeyType getMainPrivateKey();
 
         static bool getMainBlsPriKey(unsigned char* sk, int skSize);
 
@@ -30,7 +28,7 @@ namespace ultrainio {
 
         std::string getAccount(size_t index) const;
 
-        PrivateKey getPrivateKey(size_t index) const;
+        consensus::PrivateKeyType getPrivateKey(size_t index) const;
 
         bool getBlsPrivateKey(unsigned char* sk, int skSize, size_t index) const;
 
@@ -41,7 +39,7 @@ namespace ultrainio {
 
         static std::shared_ptr<NodeInfo> s_instance;
 
-        std::vector<PrivateKey> m_privateKeyV;
+        std::vector<consensus::PrivateKeyType> m_privateKeyV;
 
         std::vector<unsigned char*> m_blsPrivateKeyV;
 

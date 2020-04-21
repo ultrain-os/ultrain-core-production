@@ -1,6 +1,5 @@
 #include "rpos/BlockMsgPool.h"
 
-#include <crypto/PrivateKey.h>
 #include <rpos/Node.h>
 #include <rpos/Seed.h>
 #include <rpos/StakeVoteBase.h>
