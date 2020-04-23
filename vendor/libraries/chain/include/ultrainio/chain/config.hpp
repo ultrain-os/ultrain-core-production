@@ -15,6 +15,9 @@ typedef __uint128_t uint128_t;
 const static auto default_blocks_dir_name    = "blocks";
 
 const static auto default_state_dir_name     = "state";
+
+const static auto default_wsroot_dir_name     = "wsroot";
+
 const static auto default_worldstate_dir_name = "worldstate";
 const static auto forkdb_filename            = "forkdb.dat";
 const static auto default_state_size            = 1*1024*1024*1024ll;

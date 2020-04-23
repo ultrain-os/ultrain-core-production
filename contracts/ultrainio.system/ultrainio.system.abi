@@ -1,5 +1,5 @@
 {
-   "version": "ultrainio::abi/1.0/1776c1",
+   "version": "ultrainio::abi/1.0/c3250a",
 
    "types": [{
       "new_type_name": "account_name",
@@ -68,6 +68,13 @@
          {"name":"hash", "type":"checksum256"},
          {"name":"file_size", "type":"uint64"}
       ]
+    },{
+        "name": "reportblockwshash",
+        "base": "",
+        "fields": [
+           {"name":"blocknum", "type":"uint64"},
+           {"name":"hash", "type":"checksum256"}
+        ]
     },{
       "name": "regchaintype",
       "base": "",
@@ -684,6 +691,14 @@
         {"name": "table_extension",          "type": "exten_type[]"}
        ]
     },{
+        "name": "block_ws_hash",
+        "base": "",
+        "fields": [
+          {"name": "block_num",                "type": "uint64"},
+          {"name": "hash",                     "type": "checksum256"},
+          {"name": "table_extension",          "type": "exten_type[]"}
+        ]
+    },{
       "name": "regproducer",
       "base": "",
       "fields": [
@@ -972,6 +987,10 @@
       "type": "reportsubchainhash",
       "ricardian_contract": ""
    },{
+       "name": "reportblockwshash",
+       "type": "reportblockwshash",
+       "ricardian_contract": ""
+   },{
       "name": "regchaintype",
       "type": "regchaintype",
       "ricardian_contract": ""
@@ -1156,6 +1175,12 @@
       "index_type": "i64",
       "key_names": ["block_num"],
       "key_types": ["uint64"]
+    },{
+        "name": "blockwshash",
+        "type": "block_ws_hash",
+        "index_type": "i64",
+        "key_names": ["block_num"],
+        "key_types": ["uint64"]
     },{
       "name": "chaintypes",
       "type": "chaintype",

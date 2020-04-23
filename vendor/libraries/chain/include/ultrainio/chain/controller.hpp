@@ -236,6 +236,7 @@ namespace ultrainio { namespace chain {
 
          chain_id_type get_chain_id()const;
          db_read_mode get_read_mode()const;
+         bool is_replaying() const;
 
          void enable_event_register(bool v);
 

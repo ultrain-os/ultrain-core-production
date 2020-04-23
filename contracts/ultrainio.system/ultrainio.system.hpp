@@ -253,6 +253,22 @@ namespace ultrainiosystem {
    static constexpr uint32_t NEAR_WS_CNT  = 3;
    static constexpr uint32_t FAR_WS_CNT   = 5;
    static constexpr uint32_t FAR_WS_MUL   = 10;
+   static constexpr uint32_t VAL_HASH_CNT = 10;
+   static constexpr uint32_t VAL_HASH_INT = 100;
+
+   enum ws_hash_type {
+      ws_hash_snapshot = 0,
+      ws_hash_validate = 1,
+      ws_hash_end,
+   };
+
+   struct block_ws_hash {
+       uint64_t             block_num;
+       checksum256          hash;
+       exten_types          table_extension;
+       uint64_t  primary_key()const { return block_num; }
+       ULTRAINLIB_SERIALIZE( block_ws_hash , (block_num)(hash)(table_extension) )
+   };
 
    struct subchain_ws_hash {
        uint64_t             block_num;
@@ -279,6 +295,7 @@ namespace ultrainiosystem {
    typedef ultrainio::multi_index<N(producers), producer_info> producers_table;
    typedef ultrainio::singleton<N(global), ultrainio_global_state> global_state_singleton;
    typedef ultrainio::multi_index< N(wshash), subchain_ws_hash>      subchain_hash_table;
+   typedef ultrainio::multi_index< N(blockwshash), block_ws_hash>    block_ws_hash_table;
    typedef ultrainio::multi_index<N(masterinfos),master_chain_info> master_chain_infos;
    typedef ultrainio::singleton<N(lwc), lwc_parameters>  lwc_singleton;
 
@@ -767,6 +784,8 @@ namespace ultrainiosystem {
                           const std::string& owner_pk,
                           const std::string& active_pk,
                           bool updateable);
+         void reportblockwshash(uint64_t blocknum,
+                                checksum256 hash);
          void reportsubchainhash(name subchain,
                                  uint64_t blocknum,
                                  checksum256 hash,
@@ -844,6 +863,7 @@ namespace ultrainiosystem {
          void clear_committee_bulletin(name chain_name);
          void schedule_pending_prod_to_newchain(uint64_t current_block_height);
          void check_producer_heartbeat(uint64_t current_block_height);
+         void reportwshash(name subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size, ws_hash_type hash_type);
 
          //defined in ultrainio.system.cpp
          void get_key_data(const std::string& pubkey,std::array<char,33> & data);

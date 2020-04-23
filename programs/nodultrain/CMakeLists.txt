@@ -53,6 +53,8 @@ target_link_libraries( nodultrain
         PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin            -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} monitor_plugin             -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} txn_test_gen_plugin        -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} state_history_plugin       -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} state_merkle_plugin       -Wl,${no_whole_archive_flag}
         PRIVATE chain_plugin http_plugin producer_rpos_plugin http_client_plugin
         PRIVATE ultrainio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 

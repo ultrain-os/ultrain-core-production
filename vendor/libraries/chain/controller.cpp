@@ -2372,6 +2372,10 @@ bool controller::is_producing_block()const {
    return (my->pending->_block_status == block_status::incomplete);
 }
 
+bool controller::is_replaying()const{
+    return my->replaying;
+}
+
 void controller::validate_expiration( const transaction& trx )const { try {
 
    const auto& chain_configuration = get_global_properties().configuration;

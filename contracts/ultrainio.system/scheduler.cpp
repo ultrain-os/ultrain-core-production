@@ -83,27 +83,46 @@ namespace ultrainiosystem {
             });
         }
     }
+
+    ///@abi action
+    void system_contract::reportblockwshash(uint64_t blocknum, checksum256 hash) {
+        reportwshash(name{N(utrio.wshash)}, blocknum, hash, 0, ws_hash_type::ws_hash_validate);
+    }
+
     ///@abi action
     void system_contract::reportsubchainhash(name subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size) {
+        reportwshash(subchain, blocknum, hash, file_size, ws_hash_type::ws_hash_snapshot);
+    }
+
+    void system_contract::reportwshash(name subchain, uint64_t blocknum, checksum256 hash, uint64_t file_size, ws_hash_type hash_type) {
         auto sender = current_sender();
-        producers_table _producers(_self, subchain);
+
+        name check_chain = subchain;
+        if (hash_type == ws_hash_type::ws_hash_validate) {
+            check_chain = name{N(ultrainio)};
+        }
+        producers_table _producers(_self, check_chain);
         auto propos = _producers.find(sender);
         ultrainio_assert( propos != _producers.end(), "enabled producer not found this proposer" );
 
         uint32_t confirmed_blocknum = 0;
         uint32_t vote_threshold = 0;
-        if (subchain == self_chain_name) {
+        if (check_chain == self_chain_name) {
             confirmed_blocknum = (uint32_t)head_block_number();
             vote_threshold = (uint32_t)ceil((double)_gstate.cur_committee_number * 2 / 3);
         } else {
-            auto ite_chain = _chains.find(subchain);
+            auto ite_chain = _chains.find(check_chain);
             ultrainio_assert(ite_chain != _chains.end(), "subchain not found");
             confirmed_blocknum = ite_chain->confirmed_block_number;
             vote_threshold = (uint32_t)ceil((double)ite_chain->committee_num * 2 / 3);
         }
 
         auto checkBlockNum = [&](uint64_t  bn) -> bool {
-            return (bn%_gstate.worldstate_interval) == 0;
+            if (hash_type == ws_hash_type::ws_hash_validate) {
+                return (bn % VAL_HASH_INT) == 0;
+            } else {
+                return (bn%_gstate.worldstate_interval) == 0;
+            }
         };
         ultrainio_assert(checkBlockNum(blocknum), "report an invalid blocknum ws");
         ultrainio_assert(blocknum <= confirmed_blocknum, "report a blocknum larger than current block");
@@ -149,6 +168,17 @@ namespace ultrainiosystem {
                                 p.hash_v[pos].accounts.emplace(sender);
                                 p.accounts.emplace(sender);
                             });
+                            // if it's for ws validate we need to save the blocknum and hash to another table
+                            if (hash_type == ws_hash_type::ws_hash_validate) {
+                                block_ws_hash_table ws_table(_self, subchain);
+                                auto blockws = ws_table.find(blocknum);
+                                ultrainio_assert(blockws == ws_table.end(), "wshash for this block has been recorded");
+
+                                ws_table.emplace([&](auto &p) {
+                                    p.block_num = blocknum;
+                                    p.hash = hash;
+                                });
+                            }
                         } else {
                             hashTable.modify(wshash, [&](auto &p) {
                                 auto pos = static_cast<unsigned int>(it - hashv.begin());
@@ -182,10 +212,28 @@ namespace ultrainiosystem {
                 p.accounts.emplace(sender);
             });
 
-            // delete item which is old enough but need to keep it if it is the only one with valid flag
-            if (blocknum > uint64_t(NEAR_WS_CNT * _gstate.worldstate_interval)){
+            // remove hash records for validation
+            if (hash_type == ws_hash_type::ws_hash_validate) {
+                uint64_t gate    = uint64_t(VAL_HASH_INT * VAL_HASH_CNT);
+                uint64_t expired = blocknum > gate ? (blocknum - gate) : 0;
+                std::vector<uint64_t> expired_nums;
+
+                for(auto itr = hashTable.begin(); itr != hashTable.end(); itr++) {
+                    if(itr->block_num <= expired) {
+                        expired_nums.push_back(itr->block_num);
+                    }
+                }
+                for(auto exp : expired_nums) {
+                    auto old = hashTable.find(exp);
+                    if (old != hashTable.end()) {
+                        hashTable.erase(old);
+                    }
+                }
+            } else if (blocknum > uint64_t(NEAR_WS_CNT * _gstate.worldstate_interval)){
+                // delete item which is old enough but need to keep it if it is the only one with valid flag
                 uint64_t latest_valid = 0;
-                uint64_t expired = blocknum - uint64_t(NEAR_WS_CNT * _gstate.worldstate_interval);
+                uint64_t gate    = uint64_t(NEAR_WS_CNT * _gstate.worldstate_interval);
+                uint64_t expired = blocknum > gate ? blocknum - gate : 0;
                 uint64_t far_int = uint64_t(FAR_WS_MUL * _gstate.worldstate_interval);
                 uint64_t far_val = uint64_t(FAR_WS_CNT * far_int);
                 uint64_t far_exp = blocknum > far_val ? blocknum - far_val : 0;
