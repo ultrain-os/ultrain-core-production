@@ -48,7 +48,7 @@ namespace gm {
         }
 
         std::string PublicKey::base58_to_hex(const std::string& base58str) {
-            FC_ASSERT(base58str.length() >= 53, "public key less than 3");
+            FC_ASSERT(base58str.length() >= 53, "public key less than 53, ${key}", ("key", base58str));
             auto subStr = base58str.substr(strlen(UTR));
             auto bin = fc::from_base58(subStr);
             // do checksum
@@ -59,6 +59,9 @@ namespace gm {
         }
 
         PublicKey::DataType PublicKey::wif2Bin(const std::string& wif) {
+            if (wif.empty()) {
+                return PublicKey::DataType();
+            }
             std::string hexStr = base58_to_hex(wif);
             return hex2Bin(hexStr);
         }

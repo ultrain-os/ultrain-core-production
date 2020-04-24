@@ -1,7 +1,6 @@
 #include "gm/sm2/PrivateKey.h"
 #include "gm/sm2/PublicKey.h"
 #include "gm/sm2/Signature.h"
-#include "gm/sm3/Digest.h"
 
 #include <stdio.h>
 #include <string.h>

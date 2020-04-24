@@ -4,7 +4,8 @@
 #include "gm/sm2/PrivateKey.h"
 #include "gm/sm2/PublicKey.h"
 #include "gm/sm2/Signature.h"
-#include "gm/sm3/Digest.h"
+#include "gm/sm3/Sm3.h"
+#include "gm/sm4/Sm4.h"
 #include "base/Hex.h"
 
 #include <stdio.h>
@@ -60,7 +61,7 @@ BOOST_AUTO_TEST_CASE(signature_checksum) {
         BOOST_CHECK(pub.verify("hello", 5, sig));
 }
 
-//// see sm2 doc
+//// see sm2 spec
 BOOST_AUTO_TEST_CASE(verify) {
         const unsigned char msg[] = {'a', 'b', 'c', 0};
         // private key: D8C2FCAC2EF69C732CC6F7892267A03618E11BAC2990B2F2FC1B14CF27445718
@@ -74,6 +75,45 @@ BOOST_AUTO_TEST_CASE(verify) {
         BOOST_CHECK(!d8Pub.verify((char*)msg, strlen((char*)msg), d8SignatureErr));
         gm::sm2::Signature d8SignatureErr2(std::string("SIG_GM_LJP7RPtyYPpuLoZiK49jUzuhfCcxtSZyt9eibhVGRT1CPa4mAHJfd2EPeiK5MR1tWYbrxULw2Cs7N9X1kECkE2MqAaLapv"));
         BOOST_CHECK(!d8Pub.verify((char*)msg, strlen((char*)msg), d8SignatureErr2));
+}
+
+// sm3 spec
+BOOST_AUTO_TEST_CASE(hash) {
+    const unsigned char msg[] = {'a', 'b', 'c', 0};
+    BOOST_CHECK(gm::sm3::Sm3::hash(msg, strlen((char*)msg)) == std::string("66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0"));
+
+    const unsigned char msg2[] = "abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd";
+    BOOST_CHECK(gm::sm3::Sm3::hash(msg2, strlen((char*)msg2)) == std::string("debe9ff92275b8a138604889c18e5a4d6fdb70e5387e5765293dcba39c0c5732"));
+}
+
+// sm4 spec
+BOOST_AUTO_TEST_CASE(encrypt) {
+        const uint8_t data[] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
+        const uint8_t key[]  = {0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
+        uint8_t* buffer = nullptr;
+        int outDataLen = 0;
+        BOOST_CHECK(gm::sm4::Sm4::cbcEncrypt(key, data, sizeof(data), &buffer, &outDataLen) == true);
+        BOOST_CHECK(ultrainio::Hex::toHex<uint8_t>(buffer, outDataLen) == std::string("681edf34d206965e86b3e94f536e4246"));
+        free(buffer);
+
+        // decrypt
+        int blockSize = 16; // bytes
+        uint8_t enc[blockSize];
+        ultrainio::Hex::fromHex<uint8_t>("681edf34d206965e86b3e94f536e4246", enc, blockSize);
+        uint8_t* decryptBuffer = nullptr;
+        int len = 0;
+        BOOST_CHECK(gm::sm4::Sm4::cbcDecrypt(key, enc, blockSize, &decryptBuffer, &len) == true);
+        BOOST_CHECK(len == blockSize && memcmp(data, decryptBuffer, len) == 0);
+        free(decryptBuffer);
+
+        uint8_t encryptData[] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
+        const uint8_t encryptKey[]  = {0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
+        for (int i = 0; i < 1000000; i++) {
+            BOOST_CHECK(gm::sm4::Sm4::cbcEncrypt(encryptKey, encryptData, sizeof(encryptData), &buffer, &outDataLen) == true);
+            memcpy(encryptData, buffer, outDataLen);
+            free(buffer);
+        }
+        BOOST_CHECK(ultrainio::Hex::toHex<uint8_t>(encryptData, outDataLen) == std::string("595298c7c6fd271f0402f804c33d3f66"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

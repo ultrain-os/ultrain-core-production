@@ -1,9 +1,4 @@
-#GM test
-add_executable( gm_test
-        GmTest.cpp)
-
-target_link_libraries( gm_test ultrainio_gm )
-
+#GM profile test
 add_executable( gmprofile_test
         GmProfileTest.cpp)
 

@@ -13,7 +13,6 @@
 #include "base/StringUtils.h"
 #include "base/StringUtils.h"
 #include "gm/sm2/PublicKey.h"
-#include "gm/sm3/Digest.h"
 
 // todo workround
 #include "sm2.h"

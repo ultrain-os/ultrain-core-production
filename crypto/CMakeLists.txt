@@ -28,7 +28,8 @@ add_library( ultrainio_gm
         src/gm/sm2/PrivateKey.cpp
         src/gm/sm2/PublicKey.cpp
         src/gm/sm2/Signature.cpp
-        src/gm/sm3/Digest.cpp
+        src/gm/sm3/Sm3.cpp
+        src/gm/sm4/Sm4.cpp
         ${HEADERS} )
 
 target_link_libraries( ultrainio_gm ultrainio_base fc)

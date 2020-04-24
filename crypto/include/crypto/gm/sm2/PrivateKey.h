@@ -5,7 +5,6 @@
 #include <fc/reflect/reflect.hpp>
 #include "PublicKey.h"
 #include "Signature.h"
-#include "gm/sm3/Digest.h"
 
 namespace gm {
     namespace sm2 {
