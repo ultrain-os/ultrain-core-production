@@ -24,6 +24,9 @@ struct state_merkle_plugin_impl: std::enable_shared_from_this<state_merkle_plugi
     chain_plugin*                             chain_plug = nullptr;
     fc::optional<scoped_connection>           accepted_block_connection;
     std::deque<states>                        kv_state_queue;
+    std::deque<states>                        kv_state_process_queue;
+    std::mutex                                mtx;
+    std::condition_variable                   cv;
     std::thread                               consume_thread;
     fc::optional<merkle_file_manager>         m_manager;
     bool                                      is_ready{false};
@@ -31,16 +34,20 @@ struct state_merkle_plugin_impl: std::enable_shared_from_this<state_merkle_plugi
     state_merkle_plugin_impl(){}
     ~state_merkle_plugin_impl(){
         done = true;
+        std::unique_lock<std::mutex> lck{mtx};
+        cv.notify_one();
+        lck.unlock();
         consume_thread.join();
     }
     template<typename Queue, typename Index, typename F> void queue(Queue& queue, const int64_t blk,const Index& index,F& pack_row){
         auto&   db = chain_plug->chain().db();
+        std::unique_lock<std::mutex> lck{mtx};
         queue.emplace_back();
         auto& state = queue.back();
         state.revision = blk;
 
         if (index.stack().empty())
-                return;
+            return;
         auto& undo = index.stack().back();
         if (undo.old_values.empty() && undo.new_ids.empty() && undo.removed_values.empty())
             return;
@@ -57,6 +64,8 @@ struct state_merkle_plugin_impl: std::enable_shared_from_this<state_merkle_plugi
             auto& row = index.get(id);
             state.new_values.push_back(pack_row(row));
         }
+        lck.unlock();
+        cv.notify_one();
     }
 
     void on_accepted_block(const block_state_ptr& block_state) {
@@ -108,14 +117,23 @@ struct state_merkle_plugin_impl: std::enable_shared_from_this<state_merkle_plugi
 
     void consume_item(){
         while(true){
-            while(kv_state_queue.size() < 2){
-                if (done){
-                    return;
+            std::unique_lock<std::mutex> lck{mtx};
+            cv.wait(lck,[this]{return kv_state_queue.size() || done;});
+            kv_state_process_queue = move(kv_state_queue);
+            kv_state_queue.clear();
+            lck.unlock();
+
+            auto prcoess_queue = [this](auto& queue){
+                while(queue.size()){
+                    merkle_computer(queue.front());
+                    queue.pop_front();
                 }
-                std::this_thread::sleep_for(std::chrono::milliseconds{ultrainio::chain::config::block_interval_ms});//sleep 1 block
+            };
+
+            prcoess_queue(kv_state_process_queue);
+            if (done){
+                break;
             }
-            merkle_computer(kv_state_queue.front());
-            kv_state_queue.pop_front();
         }
     }
 };
