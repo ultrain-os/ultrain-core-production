@@ -22,12 +22,11 @@ min_committee_number = 4
 max_resources_number = 10000
 unlockTimeout = 999999999
 maxBodySize = 2 * 1024 * 1024
-reward_tensecperiod = 10000
-reward_twosecperiod = 2000
+reward_tensecperiod = 12500
 newaccount_fee = 2000
 max_ram_size = 30 * 1024 *1024 *1024  #The maximum ram is set to 30G
 worldstate_interval = 1000
-resourcelease_fee = 35068
+resourcelease_fee = 10800
 defaultclu = '%s/build/programs/clultrain/clultrain --wallet-url http://127.0.0.1:6666 '
 defaultkul = '%s/build/programs/kultraind/kultraind'
 defaultcontracts_dir = '%s/build/contracts/'
@@ -132,6 +131,7 @@ def stepInstallSystemContracts():
     retry(args.clultrain + 'set contract utrio.msig ' + args.contracts_dir + 'ultrainio.msig/')
     retry(args.clultrain + 'set contract utrio.rand ' + args.contracts_dir + 'ultrainio.rand/')
     retry(args.clultrain + 'set contract utrio.bank ' + args.contracts_dir + 'ultrainio.bank/')
+    retry(args.clultrain + 'set contract utrio.res ' + args.contracts_dir + 'ultrainio.res/')
     sleep(2)
 
 def stepCreateTokens():
@@ -144,6 +144,7 @@ def stepCreateTokens():
 def stepSetSystemContract():
     retry(args.clultrain + 'set contract ultrainio ' + args.contracts_dir + 'ultrainio.system/')
     retry(args.clultrain + 'push action ultrainio setpriv' + jsonArg(['utrio.msig', 1]) + '-p ultrainio@active')
+    retry(args.clultrain + 'push action ultrainio setpriv' + jsonArg(['utrio.res', 1]) + '-p ultrainio@active')
     sleep(2)
 
 def stepCreateStakedAccounts():
@@ -201,9 +202,9 @@ def stepRegProducers():
     #};
     retry(args.clultrain + ' push action ultrainio setsysparams \'{"params":{"chain_type": "0", "max_ram_size":"%s",\
         "min_activated_stake":%s,"min_committee_member_number":%s,\
-        "block_reward_vec":[{"consensus_period":10,"reward":"%s"},{"consensus_period":2,"reward":"%s"}],\
-        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"], [2, "12"], [3, "1"], [4, "true"], [5, "50"], [6, "6"], [9, "8640"], [10, "2592000"], [17, "14"]]}}\' -p ultrainio ' % \
-        (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, reward_twosecperiod, max_resources_number, \
+        "block_reward_vec":[{"consensus_period":10,"reward":"%s"}{"consensus_period":2,"reward":"%s"}],\
+        "max_resources_number":%s, "newaccount_fee":%s, "chain_name":"%s", "worldstate_interval":%s,"resource_fee":%s,"table_extension":[[1,"10000"], [2, "12"], [3, "0"], [4, "true"], [5, "50"], [6, "7"], [9, "8640"], [10, "2592000"]]}}\' -p ultrainio ' % \
+        (max_ram_size, min_committee_staked, min_committee_number, reward_tensecperiod, int(reward_tensecperiod/5), max_resources_number, \
         newaccount_fee, args.subchain, worldstate_interval, resourcelease_fee) )
 
 def stepResign():

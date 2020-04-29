@@ -11,6 +11,10 @@ systemAccounts = [
     'utrio.empty',
     'utrio.reward',
     'utrio.mfee',
+    'utrio.cmnity',
+    'utrio.thteam',
+    'utrio.dapp',
+    'utrio.res'
 ]
 
 resignAccounts = [
