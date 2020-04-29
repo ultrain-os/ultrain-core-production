@@ -76,7 +76,7 @@ namespace ultrainiores {
         if(ite_period != _resperiods_tbl.end()) {
             ultrainio_assert( period >= cur_period, ("expired period, current period is " + std::to_string(cur_period) ).c_str());
             ultrainio_assert(ite_period->total_lease_num + combosize <= _gstate.max_resources_number, "total combosize of this period exceeds full size");
-            ultrainio_assert(ite_period->owner == receiver, "only period owner can continue to receive resource of this period");
+            ultrainio_assert((from == ultrainio_account_name) || (ite_period->owner == receiver), "only period owner can continue to receive resource of this period");
 
             _resperiods_tbl.modify(ite_period, [&]( auto& tot ) {
                 tot.total_lease_num += combosize;
@@ -94,11 +94,13 @@ namespace ultrainiores {
         if ( globalst.is_master_chain() ) {
             auto resourcefee = (int64_t)(_gstate.resource_fee * combosize);
             ultrainio_assert(resourcefee > 0, "resource lease resourcefee is abnormal" );
-            INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
-                            { from, N(utrio.resfee), asset(resourcefee), std::string("buy resource lease") } );
+            if( from != ultrainio_account_name ) { //ultrainio resourcelease not charge
+                INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {from,N(active)},
+                                { from, N(utrio.resfee), asset(resourcefee), std::string("buy resource lease") } );
+                INLINE_ACTION_SENDER(ultrainiosystem::system_contract, updatecommercdel)( N(ultrainio), {N(ultrainio),N(active)},
+                                { location, asset(resourcefee) } );
+            }
             print("resourcelease calculatefee receiver:", name{receiver}," combosize:", uint32_t(combosize), " resourcefee:",resourcefee,"\n");
-            INLINE_ACTION_SENDER(ultrainiosystem::system_contract, updatecommercdel)( N(ultrainio), {N(ultrainio),N(active)},
-                            { location, asset(resourcefee) } );
             resfreeaccount _resacc_tbl( _self, _self );
             auto resacc_to_itr = _resacc_tbl.find(receiver);
             if(resacc_to_itr == _resacc_tbl.end()) {
