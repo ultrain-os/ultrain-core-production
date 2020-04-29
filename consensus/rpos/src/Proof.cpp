@@ -25,19 +25,22 @@ namespace ultrainio {
             return std::numeric_limits<uint32_t>::max();
         }
         uint8_t raw[ed25519::Ed25519::SIGNATURE_LEN];
-        //TODO(xiaofen.qin@gmail.com)
-//        if (!m_sign.getRaw(raw, Ed25519::SIGNATURE_LEN)) {
-//            return std::numeric_limits<uint32_t>::max();
-//        }
+#ifndef ULTRAIN_CONSENSUS_SUPPORT_GM
+        if (!m_sign.getRaw(raw, ed25519::Ed25519::SIGNATURE_LEN)) {
+            return std::numeric_limits<uint32_t>::max();
+        }
+#endif
 
         // get a 32-bit uint32_t number, get 192 - 224 bit
         return Utils::toInt(raw, ed25519::Ed25519::SIGNATURE_LEN, 24);
     }
 
     bool Proof::isValid() const {
-        //TODO(xiaofen.qin@gmail.com)
+#ifndef ULTRAIN_CONSENSUS_SUPPORT_GM
+       return m_sign.isValid();
+#else
         return false;
-        // return m_sign.isValid();
+#endif
     }
 
     consensus::SignatureType Proof::getSignature() const {
