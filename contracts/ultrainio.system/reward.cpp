@@ -100,7 +100,6 @@ namespace ultrainiosystem {
       }
       INLINE_ACTION_SENDER(ultrainio::token, transfer)( N(utrio.token), {pay_account,N(active)},
          { pay_account, reward_account, asset((int64_t)unpaid_balance), name{producer}.to_string() + std::string(" produce block pay") } );
-      update_commercial_delegatesd( chain_name, -asset((int64_t)unpaid_balance) );
       print("\nsend_rewards_for_producer subchainname:",name{chain_name}," pay_tokens:",pay_tokens.amount," producer:",name{producer},
          " reward_account:",name{reward_account}," unpaid_balance:",unpaid_balance, "\n");
       generate_reward_trx( producer, reward_account, unpaid_balance );
@@ -206,6 +205,7 @@ namespace ultrainiosystem {
       bool is_fixed_reward_rate = getchaintypeextenuintdata( type_iter, chaintype::chaintype_exten_key::is_fixed_reward_rate, 0 );
       if ( !is_fixed_reward_rate ) {
          const uint64_t rewardvalue = get_reward_per_block();
+         update_commercial_delegatesd( chain_name, -asset((int64_t)rewardvalue) );
          const uint64_t reward_percentage = rewardvalue / 100;
          record_rewards_for_maintainer( ultrainio_community_name, reward_percentage * 5 );
          record_rewards_for_maintainer( ultrainio_technical_team_name, reward_percentage * 5 );
@@ -248,6 +248,7 @@ namespace ultrainiosystem {
                print("report_subchain_block record_fixed_rewards record failed producer:", name{producer}," produce_block_perday: ", prod->produce_block_perday," min_produce_rewards_threshold: ", min_produce_rewards_threshold," last_record_rewards_block: ", last_record_rewards_block, " \n");
             }
          }
+         update_commercial_delegatesd( chain_name, -asset((int64_t)realreward) );
          print("report_subchain_block record_fixed_rewards producer:", name{producer}," produce_block_perday: ", prod->produce_block_perday," realreward: ", realreward," is_record_fixed_rewards: ", is_record_fixed_rewards, " \n");
          _producers.modify( prod, [&](auto& p ) {
             p.unpaid_balance += realreward;

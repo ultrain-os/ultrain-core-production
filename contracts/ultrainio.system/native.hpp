@@ -65,7 +65,7 @@ namespace ultrainiosystem {
                                  permission_name  parent,
                                  const authority& data);
 
-         void deleteauth( account_name account, permission_name permission ) {}
+         void deleteauth( account_name account, permission_name permission );
 
          void linkauth( account_name    account,
                         account_name    code,

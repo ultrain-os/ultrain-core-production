@@ -468,7 +468,6 @@ namespace ultrainiosystem {
          is_being_destoryed = 2,
          producer_supervision = 3,
          producer_supervision_block_height = 4,
-         commercial_total_delegated = 5,
          chains_state_key_end,
        };
        auto primary_key()const { return chain_name; }
@@ -558,6 +557,14 @@ namespace ultrainiosystem {
                             (min_committee_member_number)(block_reward_vec)(max_resources_number)
                             (newaccount_fee)(chain_name)(worldstate_interval)(resource_fee)(table_extension) )
    };
+   struct chain_commercial_delegate{
+       name                 chain_name;
+       int64_t              delegate_value;
+       uint64_t              primary_key()const { return chain_name; }
+
+       ULTRAINLIB_SERIALIZE( chain_commercial_delegate, (chain_name)(delegate_value) )
+   };
+   typedef ultrainio::multi_index< N(chaincommdel), chain_commercial_delegate>      chain_comm_del_table;
 
    struct resources_lease {
       account_name   owner;

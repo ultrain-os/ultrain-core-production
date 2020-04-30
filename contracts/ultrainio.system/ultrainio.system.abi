@@ -369,6 +369,13 @@
          {"name":"cons_amount", "type":"asset"}
       ]
     },{
+      "name": "chain_commercial_delegate",
+      "base": "",
+      "fields": [
+         {"name":"chain_name",       "type":"name"},
+         {"name":"delegate_value",   "type":"int64"}
+      ]
+    },{
       "name": "resources_lease",
       "base": "",
       "fields": [
@@ -1120,6 +1127,12 @@
       "type": "refund_cons",
       "index_type": "i64",
       "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "chaincommdel",
+      "type": "chain_commercial_delegate",
+      "index_type": "i64",
+      "key_names" : ["chain_name"],
       "key_types" : ["uint64"]
     },{
       "name": "reslease",
