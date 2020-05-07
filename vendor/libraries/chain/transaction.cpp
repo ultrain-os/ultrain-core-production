@@ -81,8 +81,11 @@ digest_type transaction::sig_digest( const chain_id_type& chain_id, const vector
    return enc.result();
 }
 
-flat_set<public_key_type> transaction::get_signature_keys( const vector<signature_type>& signatures,
-      const chain_id_type& chain_id, const vector<bytes>& cfd, bool allow_duplicate_keys, bool use_cache )const
+flat_set<public_key_type> transaction::get_signature_keys(const vector<signature_type>& signatures,
+                                                          const chain_id_type& chain_id,
+                                                          const vector<bytes>& cfd,
+                                                          map<signature_type, public_key_type>* sig_to_key_map,
+                                                          bool allow_duplicate_keys, bool use_cache ) const
 { try {
    using boost::adaptors::transformed;
 
@@ -96,16 +99,34 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
 #else
    for(const signature_type& sig : signatures) {
       public_key_type recov;
-      if( use_cache ) {
-         recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find( sig );
-         if( it == recovery_cache.get<by_sig>().end() || it->trx_id != id()) {
-            recov = public_key_type( sig, digest );
-            recovery_cache.emplace_back(cached_pub_key{id(), recov, sig} ); //could fail on dup signatures; not a problem
-         } else {
-            recov = it->pub_key;
-         }
-      } else {
-         recov = public_key_type( sig, digest );
+      bool found_in_sig_to_key_map = false;
+
+      if(sig_to_key_map) {
+          auto itr = sig_to_key_map->find(sig);
+          if (itr != sig_to_key_map->end()) {
+              recov = itr->second;
+              found_in_sig_to_key_map = true;
+          }
+      }
+
+      if (!found_in_sig_to_key_map) {
+          if( use_cache ) {
+              recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find( sig );
+              if( it == recovery_cache.get<by_sig>().end() || it->trx_id != id()) {
+                  recov = public_key_type( sig, digest );
+                  recovery_cache.emplace_back(cached_pub_key{id(), recov, sig} ); //could fail on dup signatures; not a problem
+              } else {
+                  recov = it->pub_key;
+              }
+          } else {
+              recov = public_key_type( sig, digest );
+          }
+
+          if (sig_to_key_map) {
+              (*sig_to_key_map)[sig] = recov;
+              while (sig_to_key_map->size() > config::default_max_sig_to_pubkey_size)
+                  sig_to_key_map->erase(sig_to_key_map->begin());
+          }
       }
       bool successful_insertion = false;
       std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
@@ -134,9 +155,10 @@ signature_type signed_transaction::sign(const private_key_type& key, const chain
    return key.sign(sig_digest(chain_id, context_free_data));
 }
 
-flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id, bool allow_duplicate_keys, bool use_cache )const
-{
-   return transaction::get_signature_keys(signatures, chain_id, context_free_data, allow_duplicate_keys, use_cache);
+flat_set<public_key_type> signed_transaction::get_signature_keys(const chain_id_type& chain_id,
+                                                                 map<signature_type, public_key_type>* sig_to_key_map,
+                                                                 bool allow_duplicate_keys, bool use_cache ) const {
+    return transaction::get_signature_keys(signatures, chain_id, context_free_data, sig_to_key_map, allow_duplicate_keys, use_cache);
 }
 
 uint32_t packed_transaction::get_unprunable_size()const {

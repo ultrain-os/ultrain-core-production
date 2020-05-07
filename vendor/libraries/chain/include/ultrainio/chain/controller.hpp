@@ -59,6 +59,7 @@ namespace ultrainio { namespace chain {
             bool                     worldstate_control     =  false;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
+            bool                     force_skip_all_checks  =  false;
             bool                     contracts_console      =  false;
 
             genesis_state            genesis;
@@ -315,6 +316,7 @@ FC_REFLECT( ultrainio::chain::controller::config,
             (worldstate_control)
             (read_only)
             (force_all_checks)
+            (force_skip_all_checks)
             (contracts_console)
             (genesis)
             (wasm_runtime)

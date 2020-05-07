@@ -1060,7 +1060,7 @@ connection::connection(string endpoint, msg_priority pri, connection_direction d
 
     bool connection::check_pkt_limit_exceed() {
         static int count_rpos_threhold =  2000;
-        static int count_trx_threhold =  5000;
+        static int count_trx_threhold =  20000;
 
         pack_count_rcv ++;
         if(((priority == msg_priority_rpos) && (pack_count_rcv > count_rpos_threhold))

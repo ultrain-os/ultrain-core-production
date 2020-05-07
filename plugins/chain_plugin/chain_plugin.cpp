@@ -276,6 +276,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("worldstate", bpo::value<bfs::path>(), "File to read Worldstate State from")
          ("worldstate-control", bpo::bool_switch()->default_value(false), "Enable worldstate generation")
+         ("force-skip-all-checks", bpo::bool_switch()->default_value(false), "force skip all auth checks")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
           "Override default maximum ABI serialization time allowed in ms")
@@ -447,6 +448,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->chain_config->worldstate_control = options.at( "worldstate-control" ).as<bool>();
       my->chain_config->force_all_checks = options.at( "force-all-checks" ).as<bool>();
+      // Force to skip all auth checks, this one has the higher priority thann "force-all-checks".
+      // Should only be used in test mode.
+      my->chain_config->force_skip_all_checks = options.at( "force-skip-all-checks" ).as<bool>();
+      ilog("force-skip-all-checks ${s}", ("s", my->chain_config->force_skip_all_checks));
       my->chain_config->contracts_console = options.at( "contracts-console" ).as<bool>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {

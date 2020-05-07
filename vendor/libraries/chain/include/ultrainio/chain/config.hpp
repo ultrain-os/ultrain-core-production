@@ -62,7 +62,8 @@ static const uint32_t block_size_average_window_ms         = 60*1000l;
 
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
-const static uint32_t   default_max_propose_trx_count                 = 11000;
+const static uint32_t   default_max_sig_to_pubkey_size                = 100000;
+const static uint32_t   default_max_propose_trx_count                 = 20000;
 const static uint32_t   default_max_pending_trx_count                 = 30000;
 const static uint32_t   default_max_unapplied_trx_count               = 30000;
 extern uint32_t default_max_block_net_usage;

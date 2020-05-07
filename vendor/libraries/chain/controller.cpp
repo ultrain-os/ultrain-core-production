@@ -177,11 +177,40 @@ struct controller_impl {
     std::list<transaction_metadata_ptr>    pending_transactions;
     set<digest_type>     pending_transactions_set;
 
+    // This map is a trx signature to public key cache. For producer, when receiving
+    // a trx, extract the public key from the signature and cache it in this map first.
+    // Then when validating the block, the public key can be used directly.
+    // Essentially we amortize the time spent on the signature validation across the whole
+    // consensus period (~10s) instead of having to be constrained by the validation period
+    // (only ~3s); Thus we can improve the overall throughput and TPS.
+    map<signature_type, public_key_type>  sig_to_pubkey_map;
+    // Timer to periodically clear the sig_to_pubkey_map in case there is a memleak.
+    unique_ptr<boost::asio::steady_timer> sig_to_pubkey_map_size_check_timer;
+    boost::asio::steady_timer::duration   sig_to_pubkey_map_size_check_period = std::chrono::seconds(3600);
+
+
    void set_apply_handler( account_name receiver, account_name contract, action_name action, apply_handler v ) {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
 
-   controller_impl( const controller::config& cfg, controller& s  )
+    void clear_sig_to_pubkey_map() {
+        ilog("clear_sig_to_pubkey_map, size ${s}", ("s", sig_to_pubkey_map.size()));
+        start_sig_to_pubkey_map_timer();
+        sig_to_pubkey_map.clear();
+    }
+    void start_sig_to_pubkey_map_timer() {
+        sig_to_pubkey_map_size_check_timer->expires_from_now(sig_to_pubkey_map_size_check_period);
+        sig_to_pubkey_map_size_check_timer->async_wait([this](boost::system::error_code ec) {
+            if (!ec) {
+                clear_sig_to_pubkey_map();
+            } else {
+               elog( "Error from sig_to_pubkey_map check: ${m}",( "m", ec.message()));
+               start_sig_to_pubkey_map_timer();
+            }
+        });
+    }
+
+    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
@@ -228,7 +257,11 @@ struct controller_impl {
 
    if (db.get_data("worldstate_previous_block", worldstate_previous_block))
       ilog("Get worldstate_previous_block from  db: ${s}", ("s", worldstate_previous_block));
+
+    sig_to_pubkey_map_size_check_timer.reset(new boost::asio::steady_timer( app().get_io_service()));
+    start_sig_to_pubkey_map_timer();
    }
+
 
    /**
     *  Plugins / observers listening to signals emited (such as accepted_transaction) might trigger
@@ -968,6 +1001,14 @@ struct controller_impl {
             ULTRAIN_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
          }
          emit( self.accepted_block, pending->_pending_block_state );
+
+         // Clear the sig to pubkey cache
+         for (const auto& trx: pending->_pending_block_state->trxs) {
+             for (const auto& sig: trx->trx.signatures) {
+                 sig_to_pubkey_map.erase(sig);
+             }
+         }
+         ilog("after commit block, sig_to_pubkey_map size is ${s}", ("s", sig_to_pubkey_map.size()));
       } catch (...) {
          // dont bother resetting pending, instead abort the block
          reset_pending_on_exit.cancel();
@@ -1349,14 +1390,13 @@ struct controller_impl {
             }
             // TODO(xiaofen.qin@gmail.com may set signing_keys in transaction_metadata
 #endif
-
             if( !self.skip_auth_check() && !implicit ) {
                authorization.check_authorization(
                        trx->trx.actions,
 #ifdef ULTRAIN_TRX_SUPPORT_GM
                        pks,
 #else
-                       trx->recover_keys( chain_id ),
+                       trx->recover_keys( chain_id, &sig_to_pubkey_map ),
 #endif
                        {},
                        trx_context.delay,
@@ -1579,6 +1619,7 @@ struct controller_impl {
          static_cast<signed_block_header&>(*pending->_pending_block_state->block) =  pending->_pending_block_state->header;
 
          commit_block(false);
+         ilog("produceBlock finshed commit_block");
          return;
       } catch ( const fc::exception& e ) {
          edump((e.to_detail_string()));
@@ -2306,7 +2347,10 @@ sha256 controller::calculate_integrity_hash()const { try {
 } FC_LOG_AND_RETHROW() }
 
 bool controller::skip_auth_check()const {
-   return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
+    // This should happen only in test mode.
+    if (my->conf.force_skip_all_checks)
+        return true;
+    return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
 }
 
 bool controller::contracts_console()const {
@@ -2367,6 +2411,8 @@ std::pair<bool, bool> controller::push_into_pending_transaction(const transactio
         return std::pair<bool, bool>(true, false);
 
     if (my->pending_transactions_set.find(trx->signed_id) == my->pending_transactions_set.end()) {
+        // Compute the sig/pubkey and cache it in sig_to_pubkey_map
+        trx->recover_keys(my->chain_id, &my->sig_to_pubkey_map);
         my->pending_transactions_set.insert(trx->signed_id);
         my->pending_transactions.push_back(trx);
         return std::pair<bool, bool>(false, false);
@@ -2383,6 +2429,9 @@ std::pair<bool, bool> controller::push_into_pending_transaction(const transactio
 
 void controller::drop_pending_transaction_from_set(const transaction_metadata_ptr& trx) {
     my->pending_transactions_set.erase(trx->signed_id);
+    for (const auto& sig: trx->trx.signatures) {
+        my->sig_to_pubkey_map.erase(sig);
+    }
 }
 
 void controller::clear_unapplied_transaction() {

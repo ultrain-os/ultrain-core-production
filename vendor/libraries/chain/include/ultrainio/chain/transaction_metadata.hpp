@@ -36,10 +36,11 @@ class transaction_metadata {
          signed_id = digest_type::hash(packed_trx);
       }
 
-      const flat_set<public_key_type>& recover_keys( const chain_id_type& chain_id ) {
-         if( !signing_keys || signing_keys->first != chain_id ) // Unlikely for more than one chain_id to be used in one nodultrain instance
-            signing_keys = std::make_pair( chain_id, trx.get_signature_keys( chain_id ) );
-         return signing_keys->second;
+      const flat_set<public_key_type>& recover_keys(const chain_id_type& chain_id,
+                                                    map<signature_type, public_key_type>* sig_to_key_map) {
+          if(!signing_keys || signing_keys->first != chain_id ) // Unlikely for more than one chain_id to be used in one nodultrain instance
+              signing_keys = std::make_pair( chain_id, trx.get_signature_keys( chain_id, sig_to_key_map ) );
+          return signing_keys->second;
       }
 
       uint32_t total_actions()const { return trx.context_free_actions.size() + trx.actions.size(); }

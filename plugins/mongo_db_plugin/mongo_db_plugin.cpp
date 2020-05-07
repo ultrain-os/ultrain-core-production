@@ -803,7 +803,7 @@ void mongo_db_plugin_impl::process_accepted_block( const chain::block_state_ptr&
    const auto& trx = t->trx;
 
    if( !filter_include( trx ) ) return;
-   
+
    auto trans_doc = bsoncxx::builder::basic::document{};
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -929,7 +929,7 @@ void mongo_db_plugin_impl::_process_failed_transaction( const chain::packed_tran
         flat_set<public_key_type> signing_keys;
         elog("ULTRAIN_TRX_SUPPORT_GM do not support get_signature_keys");
 #else
-        auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
+        auto signing_keys = trx.get_signature_keys( *chain_id, nullptr, false, false );
 #endif
         if( !signing_keys.empty()) {
             signing_keys_json = fc::json::to_string( signing_keys );
@@ -1141,7 +1141,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const transaction_meta
       flat_set<public_key_type> signing_keys;
       elog("ULTRAIN_TRX_SUPPORT_GM do not support get_signature_keys");
 #else
-      auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
+      auto signing_keys = trx.get_signature_keys( *chain_id, nullptr, false, false );
 #endif
       if( !signing_keys.empty()) {
          signing_keys_json = fc::json::to_string( signing_keys );

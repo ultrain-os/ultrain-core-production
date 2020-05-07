@@ -358,6 +358,8 @@ class producer_rpos_plugin_impl : public std::enable_shared_from_this<producer_r
           try {
               auto ptrx = std::make_shared<transaction_metadata>(*trx);
               auto trace = chain.push_transaction(ptrx, deadline);
+              // If in TPS pressure test mode, use this line instead to skip pre-running.
+              // transaction_trace_ptr trace = std::make_shared<transaction_trace>();
               if (trace->except) {
                   if (failure_is_subjective(*trace->except)) {
                       ilog("---------Failure is subjective, abort block--------");
