@@ -75,6 +75,10 @@ if(BUILD_MONGO_DB_PLUGIN)
     PRIVATE ${LIBMONGOCXX_STATIC_DEFINITIONS} ${LIBBSONCXX_STATIC_DEFINITIONS}
     )
 
+  list(REMOVE_ITEM ULTRAIN_LIBMONGOCXX /usr/lib/libssl.so /usr/lib/libcrypto.so
+          /usr/local/lib/libssl.so /usr/local/lib/libcrypto.so
+          /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/x86_64-linux-gnu/libcrypto.so)
+
   target_link_libraries(mongo_db_plugin
           PUBLIC chain_plugin ultrainio_chain appbase
           ${ULTRAIN_LIBMONGOCXX} ${ULTRAIN_LIBBSONCXX}
