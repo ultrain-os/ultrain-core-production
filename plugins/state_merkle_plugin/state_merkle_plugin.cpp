@@ -31,13 +31,16 @@ struct state_merkle_plugin_impl: std::enable_shared_from_this<state_merkle_plugi
     fc::optional<merkle_file_manager>         m_manager;
     bool                                      is_ready{false};
     std::atomic_bool                          done{false};
+    std::atomic_bool                          startup{true};
     state_merkle_plugin_impl(){}
     ~state_merkle_plugin_impl(){
-        done = true;
-        std::unique_lock<std::mutex> lck{mtx};
-        cv.notify_one();
-        lck.unlock();
-        consume_thread.join();
+        if (!startup) {
+            done = true;
+            std::unique_lock<std::mutex> lck{mtx};
+            cv.notify_one();
+            lck.unlock();
+            consume_thread.join();
+        }
     }
     template<typename Queue, typename Index, typename F> void queue(Queue& queue, const int64_t blk,const Index& index,F& pack_row){
         auto&   db = chain_plug->chain().db();
@@ -111,8 +114,10 @@ struct state_merkle_plugin_impl: std::enable_shared_from_this<state_merkle_plugi
 
         m_manager->write_data(state.revision,mroot);
     }
+
     void init(){
         consume_thread =std::thread([this]{consume_item();});
+        startup = false;
     }
 
     void consume_item(){
