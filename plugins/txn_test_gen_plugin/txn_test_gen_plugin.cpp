@@ -343,9 +343,15 @@ struct txn_test_gen_plugin_impl {
           controller& cc = app().get_plugin<chain_plugin>().chain();
           auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
 
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+          private_key_type a_priv_key(std::string("5JVXpFNifL67xJfgqM9s9RhVfNGnTMtLSihrQ4YS1QJT76SJMZ6"));
+          private_key_type b_priv_key(std::string("5JaXiDYLPbExEE5YweWNWhYYvtLrzH6hMzbNCJ9gMvgwQHEwU7i"));
+          private_key_type hello_priv_key(std::string("5Hz5B4nFr5Hs4Vrmiy7HbRJxpsWBhJKoGDFL9cwiBVPjNvzffsp"));
+#else
           private_key_type a_priv_key(std::string("5JbXkT2DP8HpwfaCRmSa3Qw2vH1pqnxfKGk5w8riUJUSVx7j1ir"));
           private_key_type b_priv_key(std::string("5J4fz4cApTLTZzqjKsFSdCYPUyDNcmSD2WsLRoPbGjSB8KBu7RL"));
           private_key_type hello_priv_key(std::string("5KPyztSimiMwNw78BanenZ4nCXjxUdjBNx4JMDNGJhNc5gFku6Q"));
+#endif
 
          static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
          //         abi_serializer ultrainio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi());
