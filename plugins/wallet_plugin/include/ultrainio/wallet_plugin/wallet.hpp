@@ -10,6 +10,9 @@
 #include <fc/real128.hpp>
 #include <fc/crypto/base58.hpp>
 
+#include "gm/sm3/Sm3.h"
+#include "gm/sm4/Sm4.h"
+
 using namespace std;
 using namespace ultrainio::chain;
 
@@ -188,7 +191,11 @@ class soft_wallet final : public wallet_api
 };
 
 struct plain_keys {
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   gm::sm3::Sm3                          checksum;
+#else
    fc::sha512                            checksum;
+#endif
    map<public_key_type,private_key_type> keys;
 };
 

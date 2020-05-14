@@ -80,7 +80,11 @@ public:
          data.keys = _keys;
          data.checksum = _checksum;
          auto plain_txt = fc::raw::pack(data);
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+         _wallet.cipher_keys = gm::sm4::Sm4::cbcEncrypt(data.checksum.data(), data.checksum.data() + 16, (uint8_t*)plain_txt.data(), plain_txt.size());
+#else
          _wallet.cipher_keys = fc::aes_encrypt( data.checksum, plain_txt );
+#endif
       }
    }
 
@@ -119,7 +123,11 @@ public:
 
    bool is_locked()const
    {
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+      return _checksum == gm::sm3::Sm3();
+#else
       return _checksum == fc::sha512();
+#endif
    }
 
    string get_wallet_filename() const { return _wallet_filename; }
@@ -262,7 +270,12 @@ public:
    wallet_data                             _wallet;
 
    map<public_key_type,private_key_type>   _keys;
+
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   gm::sm3::Sm3                            _checksum;
+#else
    fc::sha512                              _checksum;
+#endif
 
 #ifdef __unix__
    mode_t                  _old_umask;
@@ -359,14 +372,23 @@ void soft_wallet::lock()
       key.second = private_key_type();
 
    my->_keys.clear();
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   my->_checksum = gm::sm3::Sm3();
+#else
    my->_checksum = fc::sha512();
+#endif
 } FC_CAPTURE_AND_RETHROW() }
 
 void soft_wallet::unlock(string password)
 { try {
    FC_ASSERT(password.size() > 0);
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   gm::sm3::Sm3 pw = gm::sm3::Sm3::hash((uint8_t*)password.c_str(), password.size());
+   vector<char> decrypted = gm::sm4::Sm4::cbcDecrypt(pw.data(), pw.data() + 16, (uint8_t*)my->_wallet.cipher_keys.data(), my->_wallet.cipher_keys.size());
+#else
    auto pw = fc::sha512::hash(password.c_str(), password.size());
    vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
+#endif
    auto pk = fc::raw::unpack<plain_keys>(decrypted);
    FC_ASSERT(pk.checksum == pw);
    my->_keys = std::move(pk.keys);
@@ -377,8 +399,13 @@ void soft_wallet::unlock(string password)
 void soft_wallet::check_password(string password)
 { try {
    FC_ASSERT(password.size() > 0);
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   gm::sm3::Sm3 pw = gm::sm3::Sm3::hash((uint8_t*)password.c_str(), password.size());
+   vector<char> decrypted = gm::sm4::Sm4::cbcDecrypt(pw.data(), pw.data() + 16, (uint8_t*)my->_wallet.cipher_keys.data(), my->_wallet.cipher_keys.size());
+#else
    auto pw = fc::sha512::hash(password.c_str(), password.size());
    vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
+#endif
    auto pk = fc::raw::unpack<plain_keys>(decrypted);
    FC_ASSERT(pk.checksum == pw);
 } ULTRAIN_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
@@ -388,7 +415,11 @@ void soft_wallet::set_password( string password )
 {
    if( !is_new() )
       ULTRAIN_ASSERT( !is_locked(), wallet_locked_exception, "The wallet must be unlocked before the password can be set" );
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+   my->_checksum = gm::sm3::Sm3::hash((uint8_t*)password.c_str(), password.size());
+#else
    my->_checksum = fc::sha512::hash( password.c_str(), password.size() );
+#endif
    lock();
 }
 

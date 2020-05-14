@@ -176,7 +176,7 @@ namespace ultrainio { namespace chain {
                 using value_t = typename index_t::value_type;
                 ilog("add_table_to_worldstate: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
 
-                auto& cache_node = worldstate_db.get_mutable_index<index_t>().cache().front();
+                //auto& cache_node = worldstate_db.get_mutable_index<index_t>().cache().front();
                 //ilog("remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
                 //ilog("Cache count: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().cache().size()));
                 //ilog("Backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
