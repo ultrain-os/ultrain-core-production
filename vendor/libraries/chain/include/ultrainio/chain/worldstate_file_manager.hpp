@@ -156,7 +156,7 @@ namespace ultrainio { namespace chain {
 
             template<typename index_t> void store_backup_indices(chainbase::database& worldstate_db, void* data = nullptr){
                 using value_t = typename index_t::value_type;
-                ilog("store_backup_indices");
+                //ilog("store_backup_indices");
                 ULTRAIN_ASSERT(get_writer() && get_id_writer(), worldstate_exception, "Ws writer is not exist!");
 
                 get_id_writer()->write_start_id_section(boost::core::demangle(typeid(value_t).name()));
@@ -177,9 +177,9 @@ namespace ultrainio { namespace chain {
                 ilog("add_table_to_worldstate: ${t}", ("t", boost::core::demangle(typeid(value_t).name())));
 
                 auto& cache_node = worldstate_db.get_mutable_index<index_t>().cache().front();
-                ilog("remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
-                ilog("Cache count: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().cache().size()));
-                ilog("Backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
+                //ilog("remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+                //ilog("Cache count: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().cache().size()));
+                //ilog("Backup size: ${s}", ("s", worldstate_db.get_mutable_index<index_t>().backup_indices().size()));
 
                 //1:  add to backup if exit old ws file
                 restore_backup_indices<index_t>(worldstate_db);

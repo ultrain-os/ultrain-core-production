@@ -366,7 +366,7 @@ struct controller_impl {
       worldstate_thread_running = true;
 
       auto end=fc::time_point::now();
-      ilog("start world state thread end, cost time: ${time_delta}", ("time_delta", end - begin));
+      //ilog("start world state thread end, cost time: ${time_delta}", ("time_delta", end - begin));
    }
 
    void on_irreversible( const block_state_ptr& s ) {
@@ -560,7 +560,7 @@ struct controller_impl {
    }
 
    void store_one_contract_table(chainbase::database& worldstate_db, worldstate_writer::section_writer& writer_section, std::shared_ptr<ws_helper> ws_helper_ptr){
-      ilog("store_one_contract_table");
+      //ilog("store_one_contract_table");
       int count = 0;
       index_utils<table_id_multi_index>::walk(worldstate_db, [&]( const table_id_object& table_row ){
          ws_helper_ptr->get_id_writer()->write_row_id(table_row.id._id, 0);
@@ -620,12 +620,12 @@ struct controller_impl {
                   //1.read 1 table_id row from old ws file, insert to backup indices
                   uint64_t old_id = 0, size = 0;
                   id_more = ws_helper_ptr->get_id_reader()->read_id_row(old_id, size);
-                  ilog("add table-id: ${x}", ("x", old_id));
+                  //ilog("add table-id: ${x}", ("x", old_id));
                   index_utils<table_id_multi_index>::create(worldstate_db, [&](auto& row) {
                      row.id._id = old_id;
                      reader_section.read_row(row, db);
                      t_id = row.id;
-                     ilog("t_id id ${t}", ("t",row.id._id ));
+                     //ilog("t_id id ${t}", ("t",row.id._id ));
                   }, true);
 
                   //2.restore all contract_database_index_set rows from ws old file where its' table_id equal t_id
@@ -633,7 +633,7 @@ struct controller_impl {
 
                   //3.process table_id table and all contract_database_index_set
                   auto ret = worldstate_db.get_mutable_index<table_id_multi_index>().process_table();
-                  ilog("process_table ret: ${t}", ("t", ret));
+                  //ilog("process_table ret: ${t}", ("t", ret));
 
                   contract_database_index_set::walk_indices([&]( auto utils ) {
                      using index_t = typename decltype(utils)::index_t;
@@ -641,7 +641,7 @@ struct controller_impl {
                         return item.second.t_id == t_id;
                      });
                   });
-                  ilog("process_table done");
+                  //ilog("process_table done");
 
                   //4.store table_id and contract_database_index_set to ws new file
                   store_one_contract_table(worldstate_db, writer_section, ws_helper_ptr);
@@ -660,13 +660,13 @@ struct controller_impl {
 
          auto& cache_node = worldstate_db.get_mutable_index<table_id_multi_index>().cache().front();
          do {
-            ilog("add_contract remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
-            ilog("add_contract Cache count: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().cache().size()));
-            ilog("add_contract Backup size: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices().size()));
+            //ilog("add_contract remove/modify/create size: ${s} ${t} ${y}", ("s", cache_node.removed_ids.size())("t", cache_node.modify_values.size())("y", cache_node.new_values.size()));
+            //ilog("add_contract Cache count: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().cache().size()));
+            //ilog("add_contract Backup size: ${s}", ("s", worldstate_db.get_mutable_index<table_id_multi_index>().backup_indices().size()));
 
             //1.new create row,  insert to backup
             auto result_paire = worldstate_db.get_mutable_index<table_id_multi_index>().process_create();
-            ilog("process_create ${x} ${t}", ("x", std::get<0>(result_paire))("t", std::get<1>(result_paire)));
+            //ilog("process_create ${x} ${t}", ("x", std::get<0>(result_paire))("t", std::get<1>(result_paire)));
             if(!std::get<0>(result_paire))
                break;
 
