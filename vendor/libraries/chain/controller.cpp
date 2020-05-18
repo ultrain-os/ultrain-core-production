@@ -2411,8 +2411,10 @@ std::pair<bool, bool> controller::push_into_pending_transaction(const transactio
         return std::pair<bool, bool>(true, false);
 
     if (my->pending_transactions_set.find(trx->signed_id) == my->pending_transactions_set.end()) {
+#ifndef ULTRAIN_TRX_SUPPORT_GM
         // Compute the sig/pubkey and cache it in sig_to_pubkey_map
         trx->recover_keys(my->chain_id, &my->sig_to_pubkey_map);
+#endif
         my->pending_transactions_set.insert(trx->signed_id);
         my->pending_transactions.push_back(trx);
         return std::pair<bool, bool>(false, false);
