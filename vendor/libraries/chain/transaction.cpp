@@ -84,7 +84,7 @@ digest_type transaction::sig_digest( const chain_id_type& chain_id, const vector
 flat_set<public_key_type> transaction::get_signature_keys(const vector<signature_type>& signatures,
                                                           const chain_id_type& chain_id,
                                                           const vector<bytes>& cfd,
-                                                          map<signature_type, public_key_type>* sig_to_key_map,
+                                                          sig_to_pubkey_map_type* sig_to_key_map,
                                                           bool allow_duplicate_keys, bool use_cache ) const
 { try {
    using boost::adaptors::transformed;
@@ -103,8 +103,8 @@ flat_set<public_key_type> transaction::get_signature_keys(const vector<signature
 
       if(sig_to_key_map) {
           auto itr = sig_to_key_map->find(sig);
-          if (itr != sig_to_key_map->end()) {
-              recov = itr->second;
+          if (itr != sig_to_key_map->end() && itr->second.second == id()) {
+              recov = itr->second.first;
               found_in_sig_to_key_map = true;
           }
       }
@@ -123,7 +123,7 @@ flat_set<public_key_type> transaction::get_signature_keys(const vector<signature
           }
 
           if (sig_to_key_map) {
-              (*sig_to_key_map)[sig] = recov;
+              (*sig_to_key_map)[sig] = std::make_pair(recov, id());
               while (sig_to_key_map->size() > config::default_max_sig_to_pubkey_size)
                   sig_to_key_map->erase(sig_to_key_map->begin());
           }
@@ -156,7 +156,7 @@ signature_type signed_transaction::sign(const private_key_type& key, const chain
 }
 
 flat_set<public_key_type> signed_transaction::get_signature_keys(const chain_id_type& chain_id,
-                                                                 map<signature_type, public_key_type>* sig_to_key_map,
+                                                                 sig_to_pubkey_map_type* sig_to_key_map,
                                                                  bool allow_duplicate_keys, bool use_cache ) const {
     return transaction::get_signature_keys(signatures, chain_id, context_free_data, sig_to_key_map, allow_duplicate_keys, use_cache);
 }

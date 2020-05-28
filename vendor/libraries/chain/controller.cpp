@@ -183,7 +183,8 @@ struct controller_impl {
     // Essentially we amortize the time spent on the signature validation across the whole
     // consensus period (~10s) instead of having to be constrained by the validation period
     // (only ~3s); Thus we can improve the overall throughput and TPS.
-    map<signature_type, public_key_type>  sig_to_pubkey_map;
+    map<signature_type, std::pair<public_key_type, transaction_id_type>> sig_to_pubkey_map;
+
     // Timer to periodically clear the sig_to_pubkey_map in case there is a memleak.
     unique_ptr<boost::asio::steady_timer> sig_to_pubkey_map_size_check_timer;
     boost::asio::steady_timer::duration   sig_to_pubkey_map_size_check_period = std::chrono::seconds(3600);

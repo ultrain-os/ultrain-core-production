@@ -6,8 +6,13 @@
 
 #include <ultrainio/chain/action.hpp>
 #include <numeric>
+#include <map>
 
 namespace ultrainio { namespace chain {
+
+typedef std::map<signature_type,
+                 std::pair<public_key_type, transaction_id_type>>
+sig_to_pubkey_map_type;
 
    /**
     *  The transaction header contains the fixed-sized data
@@ -61,7 +66,7 @@ namespace ultrainio { namespace chain {
       flat_set<public_key_type>  get_signature_keys( const vector<signature_type>& signatures,
                                                      const chain_id_type& chain_id,
                                                      const vector<bytes>& cfd = vector<bytes>(),
-                                                     map<signature_type, public_key_type>* sig_to_key_map = nullptr,
+                                                     sig_to_pubkey_map_type* sig_to_key_map = nullptr,
                                                      bool allow_duplicate_keys = false,
                                                      bool use_cache = true )const;
 
@@ -106,7 +111,7 @@ namespace ultrainio { namespace chain {
       const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
       signature_type            sign(const private_key_type& key, const chain_id_type& chain_id)const;
       flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id,
-                                                    map<signature_type, public_key_type>* = nullptr,
+                                                    sig_to_pubkey_map_type* = nullptr,
                                                     bool allow_duplicate_keys = false, bool use_cache = true )const;
    };
 

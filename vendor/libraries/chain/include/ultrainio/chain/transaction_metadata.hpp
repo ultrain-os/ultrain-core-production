@@ -37,7 +37,7 @@ class transaction_metadata {
       }
 
       const flat_set<public_key_type>& recover_keys(const chain_id_type& chain_id,
-                                                    map<signature_type, public_key_type>* sig_to_key_map) {
+                                                    sig_to_pubkey_map_type* sig_to_key_map) {
           if(!signing_keys || signing_keys->first != chain_id ) // Unlikely for more than one chain_id to be used in one nodultrain instance
               signing_keys = std::make_pair( chain_id, trx.get_signature_keys( chain_id, sig_to_key_map ) );
           return signing_keys->second;
