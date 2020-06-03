@@ -183,7 +183,7 @@ struct controller_impl {
     // Essentially we amortize the time spent on the signature validation across the whole
     // consensus period (~10s) instead of having to be constrained by the validation period
     // (only ~3s); Thus we can improve the overall throughput and TPS.
-    map<signature_type, std::pair<public_key_type, transaction_id_type>> sig_to_pubkey_map;
+    sig_to_pubkey_map_type sig_to_pubkey_map;
 
     // Timer to periodically clear the sig_to_pubkey_map in case there is a memleak.
     unique_ptr<boost::asio::steady_timer> sig_to_pubkey_map_size_check_timer;
@@ -1320,6 +1320,9 @@ struct controller_impl {
 
     void get_account_pubkey(account_name user, permission_name perm_name, std::vector<key_weight>& keys,
              std::set<permission_level>& perm_set) const {
+         if (!db.find<permission_object,by_owner>(boost::make_tuple(user, perm_name))) {
+             return;
+         }
          const auto& permission_o = db.get<permission_object,by_owner>(boost::make_tuple(user, perm_name));
          keys.insert(keys.end(), permission_o.auth.keys.begin(), permission_o.auth.keys.end());
          for(const auto &acc:permission_o.auth.accounts) {
@@ -1328,6 +1331,43 @@ struct controller_impl {
                 get_account_pubkey(acc.permission.actor, acc.permission.permission, keys, perm_set);
              }
          }
+    }
+
+    bool check_digest(const key_weight& kw, const transaction_metadata_ptr& trx, const digest_type& d, sig_to_pubkey_map_type* sig_pubkey_map) {
+        for(const signature_type& sig : trx->trx.signatures) {
+            if (sig_pubkey_map) {
+                auto itor = sig_pubkey_map->find(sig);
+                if (itor != sig_pubkey_map->end() && itor->second.second == trx->id && itor->second.first == kw.key) {
+                    return true;
+                }
+            }
+            if (kw.key.verify(d.data(), d.data_size(), sig)) {
+                if (sig_pubkey_map) {
+                    (*sig_pubkey_map)[sig] = std::make_pair(kw.key, trx->id);
+                    while (sig_pubkey_map->size() > config::default_max_sig_to_pubkey_size)
+                        sig_pubkey_map->erase(sig_pubkey_map->begin());
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    flat_set<public_key_type> restore_keys(const transaction_metadata_ptr& trx, sig_to_pubkey_map_type* sig_pubkey_map) {
+        flat_set<public_key_type> pks;
+        std::vector<key_weight> keys;
+        for(const auto& act:trx->trx.actions) {
+            for(const auto& perm:act.authorization) {
+                get_account_pubkey(perm.actor, perm.permission, keys);
+            }
+        }
+        digest_type d = trx->trx.sig_digest(chain_id, trx->trx.context_free_data);
+        for(const key_weight& kw:keys) {
+            if(check_digest(kw, trx, d, sig_pubkey_map)) {
+                pks.insert(kw.key);
+            }
+        }
+        return pks;
     }
 
 #endif
@@ -1365,37 +1405,11 @@ struct controller_impl {
             }
 
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
-#ifdef ULTRAIN_TRX_SUPPORT_GM
-            std::vector<key_weight> keys;
-            for(const auto& act:trx->trx.actions) {
-                for(const auto& perm:act.authorization) {
-                    get_account_pubkey(perm.actor, perm.permission, keys);
-                }
-            }
-            digest_type d = trx->trx.sig_digest(chain_id, trx->trx.context_free_data);
-            flat_set<public_key_type> pks;
-            auto check_digest = [&](key_weight kw) -> bool {
-               for(const signature_type& sig : trx->trx.signatures) {
-                  if (kw.key.verify(d.data(), d.data_size(), sig)) {
-                     return true;
-                  }
-               }
-               return 0;
-            };
-            for(const key_weight& kw:keys) {
-                ilog("kw, ${acc}", ("acc", kw.key));
-                if(check_digest(kw)) {
-                    ilog("insert to pks, ${acc}", ("acc", kw.key));
-                    pks.insert(kw.key);
-                }
-            }
-            // TODO(xiaofen.qin@gmail.com may set signing_keys in transaction_metadata
-#endif
             if( !self.skip_auth_check() && !implicit ) {
                authorization.check_authorization(
                        trx->trx.actions,
 #ifdef ULTRAIN_TRX_SUPPORT_GM
-                       pks,
+                       restore_keys( trx, &sig_to_pubkey_map ),
 #else
                        trx->recover_keys( chain_id, &sig_to_pubkey_map ),
 #endif
@@ -2412,8 +2426,10 @@ std::pair<bool, bool> controller::push_into_pending_transaction(const transactio
         return std::pair<bool, bool>(true, false);
 
     if (my->pending_transactions_set.find(trx->signed_id) == my->pending_transactions_set.end()) {
-#ifndef ULTRAIN_TRX_SUPPORT_GM
         // Compute the sig/pubkey and cache it in sig_to_pubkey_map
+#ifdef ULTRAIN_TRX_SUPPORT_GM
+        my->restore_keys( trx, &my->sig_to_pubkey_map );
+#else
         trx->recover_keys(my->chain_id, &my->sig_to_pubkey_map);
 #endif
         my->pending_transactions_set.insert(trx->signed_id);

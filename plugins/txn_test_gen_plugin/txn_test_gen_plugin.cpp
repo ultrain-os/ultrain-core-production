@@ -346,6 +346,7 @@ struct txn_test_gen_plugin_impl {
 #ifdef ULTRAIN_TRX_SUPPORT_GM
           private_key_type a_priv_key(std::string("5JVXpFNifL67xJfgqM9s9RhVfNGnTMtLSihrQ4YS1QJT76SJMZ6"));
           private_key_type b_priv_key(std::string("5JaXiDYLPbExEE5YweWNWhYYvtLrzH6hMzbNCJ9gMvgwQHEwU7i"));
+          // public key: UTR7N6xm3NspBPPjFus3mewiaoN7iQtsJ142jM5p4qyCJgUze84VJ
           private_key_type hello_priv_key(std::string("5Hz5B4nFr5Hs4Vrmiy7HbRJxpsWBhJKoGDFL9cwiBVPjNvzffsp"));
 #else
           private_key_type a_priv_key(std::string("5JbXkT2DP8HpwfaCRmSa3Qw2vH1pqnxfKGk5w8riUJUSVx7j1ir"));

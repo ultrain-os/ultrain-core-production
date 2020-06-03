@@ -55,7 +55,7 @@ namespace gm {
             uint32_t checksum = calcChecksum(bin.data(), PublicKey::kSm2PublicKeyCompressedLength);
             size_t sizeOfHashBytes = 4;
             FC_ASSERT(memcmp((char*)&checksum, bin.data() + PublicKey::kSm2PublicKeyCompressedLength, sizeOfHashBytes) == 0, "wif ${wif} to public key checksum error", ("wif", base58str));
-            return ultrainio::Hex::toHex<unsigned char>((unsigned char*)bin.data(), PublicKey::kSm2PublicKeyCompressedLength, false);
+            return ultrainio::Hex::toHex<unsigned char>((unsigned char*)bin.data(), PublicKey::kSm2PublicKeyCompressedLength, true);
         }
 
         PublicKey::DataType PublicKey::wif2Bin(const std::string& wif) {
