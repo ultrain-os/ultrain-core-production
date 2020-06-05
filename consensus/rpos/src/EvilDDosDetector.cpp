@@ -63,7 +63,9 @@ namespace ultrainio {
             std::vector<AccountName> accounts;
             for (auto e : m_recentEchoMsgV) {
                 if (e.timestamp == now - 1 && BlockHeader::num_from_id(e.blockId) == blockNum) {
-                    accounts.push_back(e.account);
+                    if (std::find(accounts.begin(), accounts.end(), e.account) == accounts.end()) {
+                        accounts.push_back(e.account);
+                    }
                 }
             }
             if (accounts.size() > f) {
