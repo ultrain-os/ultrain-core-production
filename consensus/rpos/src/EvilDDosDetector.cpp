@@ -1,5 +1,7 @@
 #include "rpos/EvilDDosDetector.h"
 
+#include <set>
+
 namespace ultrainio {
 
     int EvilDDosDetector::s_twoPhase = 2;
@@ -60,12 +62,10 @@ namespace ultrainio {
 
     void EvilDDosDetector::deduceWhenBax(int f, uint32_t now, uint32_t blockNum, ConsensusPhase phase) {
         if (phase == kPhaseBAX) {
-            std::vector<AccountName> accounts;
+            std::set<AccountName> accounts;
             for (auto e : m_recentEchoMsgV) {
                 if (e.timestamp == now - 1 && BlockHeader::num_from_id(e.blockId) == blockNum) {
-                    if (std::find(accounts.begin(), accounts.end(), e.account) == accounts.end()) {
-                        accounts.push_back(e.account);
-                    }
+                    accounts.insert(e.account);
                 }
             }
             if (accounts.size() > f) {
