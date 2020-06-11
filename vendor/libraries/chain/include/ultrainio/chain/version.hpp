@@ -4,7 +4,7 @@
 
 namespace ultrainio { namespace chain {
 
-const int version_num_major = 4;
+const int version_num_major = 5;
 const int version_num_minor = 0;
 const int version_num_patch = 0;
 
