@@ -1,5 +1,23 @@
 # Release Notes
 
+### 2020-7-17 Release(master-testnet Commit: 870cc3a5fbeb209de5e431ddf5920e0ca3e65f30)
+* Nodultrain
+    * support multiple account in one nodultrain
+    * Modify format of connection reported to monitor
+    * use lock to syn main thread and merkle calculate thread
+    * support chinese GM
+    * Optimize signature validation by caching the signature-to-public-key map
+* Contract
+    * resource contract switch phase2
+    * pre-execution failed transaction not written to mongo
+    * when delete table, only delete once
+    * only delete contracts for users whose resouce expired
+    * record the number of block produced by committee everyday
+    * sync deleteauth from master chain to side chains
+    * add commercial delegated statistics for each chain
+    * add auto build chain buy resource call utrio.res contract
+    * chain bios script add utrio.res contracts
+
 ### 2020-2-25 Release(master-testnet Commit: 1776c11f828f87a01c25b1d9fe3fe1d418a380f6)
 * Nodultrain
     * Get node nat type and broadcast, nat punch
